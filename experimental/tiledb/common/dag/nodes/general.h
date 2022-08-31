@@ -40,7 +40,438 @@
 
 #include "experimental/tiledb/common/dag/execution/stop_token.hpp"
 
+#include "experimental/tiledb/common/dag/nodes/base.h"
+#include "experimental/tiledb/common/dag/utils/print_types.h"
+
 namespace tiledb::common {
+
+enum class NodeState {
+  init,
+  input,
+  compute,
+  output,
+  waiting,
+  runnable,
+  running,
+  done,
+  exit,
+  error,
+  abort,
+  last
+};
+
+constexpr unsigned short to_index(NodeState x) {
+  return static_cast<unsigned short>(x);
+}
+
+namespace {
+constexpr unsigned short num_states = to_index(NodeState::last) + 1;
+
+std::vector<std::string> node_state_strings{"init",
+                                            "input",
+                                            "compute",
+                                            "output",
+                                            "waiting",
+                                            "runnable",
+                                            "running",
+                                            "done",
+                                            "exit",
+                                            "error",
+                                            "abort",
+                                            "last"};
+}  // namespace
+
+/**
+ * @todo Partial specialization for non-tuple types?
+ *
+ * @todo Unify function behavior for simple and general function nodes.
+ */
+template <
+    class CalculationState,
+    template <class>
+    class SinkMover_T,
+    class BlocksIn,
+    template <class> class SourceMover_T = SinkMover_T,
+    class BlocksOut = BlocksIn>
+class GeneralFunctionNode;
+
+template <
+    class CalculationState,
+    template <class>
+    class SinkMover_T,
+    class... BlocksIn,
+    template <class>
+    class SourceMover_T,
+    class... BlocksOut>
+class GeneralFunctionNode<
+    CalculationState,
+    SinkMover_T,
+    std::tuple<BlocksIn...>,
+    SourceMover_T,
+    std::tuple<BlocksOut...>> {
+  /*
+   * Make public for now for testing
+   */
+ public:
+  std::tuple<Sink<SinkMover_T, BlocksIn>...> inputs_;
+  std::tuple<Source<SourceMover_T, BlocksOut>...> outputs_;
+
+ private:
+  std::tuple<BlocksIn...> input_items_;
+  std::tuple<BlocksOut...> output_items_;
+
+  CalculationState current_state_;
+  CalculationState new_state_;
+
+  NodeState instruction_counter_{NodeState::init};
+
+  // Alternatively... ?
+  // std::function<std::tuple<BlocksOut...>(std::tuple<BlocksIn...>)> f_;
+  std::function<void(const std::tuple<BlocksIn...>&, std::tuple<BlocksOut...>&)>
+      f_;
+
+  template <size_t I = 0, class Fn, class... Ts, class... Us>
+  constexpr void tuple_map(
+      Fn&& f, std::tuple<Ts...>& in, std::tuple<Us...>& out) {
+    static_assert(sizeof(in) == sizeof(out));
+    if constexpr (I == sizeof...(Ts)) {
+      return;
+    } else {
+      std::get<I>(out) = std::forward<Fn>(f)(std::get<I>(in));
+      tuple_map(I + 1, std::forward<Fn>(f), in, out);
+    }
+  }
+
+  // From inputs to input_items
+  template <size_t I = 0, class... Ts, class... Us>
+  constexpr void tuple_extract(std::tuple<Ts...>& in, std::tuple<Us...>& out) {
+    static_assert(sizeof...(Ts) == sizeof...(Us));
+    if constexpr (I == sizeof...(Ts)) {
+      return;
+    } else {
+      std::get<I>(out) = *(std::get<I>(in).extract());
+      tuple_extract<I + 1>(in, out);
+    }
+  }
+
+  // From output_items to outputs
+  template <size_t I = 0, class... Ts, class... Us>
+  constexpr void tuple_inject(std::tuple<Ts...>& in, std::tuple<Us...>& out) {
+    static_assert(sizeof...(Ts) == sizeof...(Us));
+    if constexpr (I == sizeof...(Ts)) {
+      return;
+    } else {
+      std::get<I>(out).inject(std::get<I>(in));
+      tuple_inject<I + 1>(in, out);
+    }
+  }
+
+ public:
+  /*
+   * For testing
+   */
+  GeneralFunctionNode() = default;
+
+  /**
+   * Constructor
+   * @param f A function that accepts items.
+   * @tparam The type of the function (or function object) that accepts items.
+   */
+
+  template <class Function>
+  explicit GeneralFunctionNode(
+      Function&& f,
+      std::enable_if_t<
+          std::is_invocable_r_v<
+              void,
+              Function,
+              const std::tuple<BlocksIn...>&,
+              std::tuple<BlocksOut...>&>,
+          void**> = nullptr)
+      : f_{std::forward<Function>(f)} {
+  }
+
+  /**
+   * Pull the sinks, fill the input tuple, apply stored function, fill the
+   * output tuple, and push the sources.
+   */
+  NodeState run_once() {
+    switch (instruction_counter_) {
+      instruction_counter_ = NodeState::input;
+      case NodeState::input:
+        // pull
+        std::apply(
+            [](auto&... sink) { (sink.get_mover()->do_pull(), ...); }, inputs_);
+
+        // extract
+        tuple_extract(inputs_, input_items_);
+
+        // drain
+        std::apply(
+            [](auto&... sink) { (sink.get_mover()->do_drain(), ...); },
+            inputs_);
+
+        instruction_counter_ = NodeState::compute;
+      case NodeState::compute:
+
+        // apply
+        // f(input_items_, output_items_);
+
+        instruction_counter_ = NodeState::output;
+      case NodeState::output:
+
+        // inject
+        tuple_inject(output_items_, outputs_);
+
+        // fill
+        std::apply(
+            [](auto&... source) { (source.get_mover()->do_fill(), ...); },
+            outputs_);
+
+        // push
+        std::apply(
+            [](auto&... source) { (source.get_mover()->do_push(), ...); },
+            outputs_);
+
+        instruction_counter_ = NodeState::done;
+
+      case NodeState::done:
+        break;
+
+      default:
+        break;
+    }
+    return instruction_counter_;
+  }
+
+  /*
+   * Function for invoking `run_once` mutiple times, until the node is stopped.
+   *
+   */
+  NodeState resume() {
+    auto sink_done = std::apply(
+        [](auto&... sink) { (sink.get_mover()->is_done() && ...); }, inputs_);
+
+    auto source_done = std::apply(
+        [](auto&... source) { (source.get_mover()->is_done() && ...); },
+        outputs_);
+
+    while (!source_done && !sink_done) {
+      return run_once(instruction_counter_);
+    }
+
+    sink_done = std::apply(
+        [](auto&... sink) { (sink.get_mover()->is_done() && ...); }, inputs_);
+
+    if (!sink_done) {
+      std::apply(
+          [](auto&... sink) { (sink.get_mover()->do_pull(), ...); }, inputs_);
+    }
+
+    std::apply(
+        [](auto&... source) { (source.get_mover()->do_stop(), ...); },
+        outputs_);
+
+    instruction_counter_ = NodeState::exit;
+
+    return instruction_counter_;
+  }
+
+#if 0
+
+    if (sink_state_machine->debug_enabled())
+      std::cout << "function pulled "
+                << " ( done: " << sink_state_machine->is_done() << " )"
+                << std::endl;
+
+    /*
+     * The "other side" of the sink state machine is a `Source`, which can be
+     * stopped.  Similarly, the "other side" of the `Source` could be stopped.
+     */
+    if (source_state_machine->is_done() || sink_state_machine->is_done()) {
+      if (sink_state_machine->debug_enabled())
+        std::cout << "function returning i " << std::endl;
+      return;
+    }
+
+    if (sink_state_machine->debug_enabled())
+      std::cout << "function checked done "
+                << " ( done: " << sink_state_machine->is_done() << " )"
+                << std::endl;
+
+    // @todo as elsewhere, extract+drain should be atomic
+    auto b = SinkBase::extract();
+
+    if (sink_state_machine->debug_enabled())
+      std::cout << "function extracted, about to drain " << std::endl;
+
+    sink_state_machine->do_drain();
+
+    if (sink_state_machine->debug_enabled())
+      std::cout << "function drained " << std::endl;
+
+    //    if (b.has_value()) {
+
+    auto j = f_(*b);
+
+    if (sink_state_machine->debug_enabled())
+      std::cout << "function ran function " << std::endl;
+
+    // @todo as elsewhere, inject+fill should be atomic
+    SourceBase::inject(j);
+    if (source_state_machine->debug_enabled())
+      std::cout << "function injected " << std::endl;
+
+    source_state_machine->do_fill();
+    if (source_state_machine->debug_enabled())
+      std::cout << "function filled " << std::endl;
+
+    source_state_machine->do_push();
+    if (source_state_machine->debug_enabled())
+      std::cout << "function pushed " << std::endl;
+
+    //    } else {
+    //      if (source_state_machine->debug_enabled()) {
+    //        std::cout << "No value in function node @ " << std::endl;
+    //        std::cout << "State = " << str(sink_state_machine->state()) << " @
+    //        "
+    //                  << std::endl;
+    //      }
+    //      return;
+    //  }
+
+    if (source_state_machine->is_done() || sink_state_machine->is_done()) {
+      if (sink_state_machine->debug_enabled())
+        std::cout << "function break ii " << std::endl;
+      return;
+    }
+  }
+
+  /*
+   * Function for invoking `run_once` mutiple times, as given by the input
+   * parameter, or until the node is stopped, whichever happens first.
+   *
+   * @param rounds The maximum number of times to invoke the producer function.
+   */
+  void run_for(size_t rounds) {
+    auto source_state_machine = SourceBase::get_mover();
+    auto sink_state_machine = SinkBase::get_mover();
+
+    while (rounds--) {
+      if (sink_state_machine->is_done() || source_state_machine->is_done()) {
+        break;
+      }
+      run_once();
+    }
+    if (!sink_state_machine->is_done()) {
+      if (sink_state_machine->debug_enabled())
+        std::cout << "function final pull " << rounds << std::endl;
+      sink_state_machine->do_pull();
+    }
+    source_state_machine->do_stop();
+  }
+
+  /*
+   * Function for invoking `run_once` mutiple times, until the node is stopped.
+   *
+   */
+  void run() {
+    auto source_state_machine = SourceBase::get_mover();
+    auto sink_state_machine = SinkBase::get_mover();
+
+    while (!sink_state_machine->is_done() && !source_state_machine->is_done()) {
+      run_once();
+    }
+    if (!sink_state_machine->is_done()) {
+      if (sink_state_machine->debug_enabled())
+        std::cout << "function final pull in run()" << std::endl;
+      sink_state_machine->do_pull();
+    }
+    source_state_machine->do_stop();
+  }
+#endif
+};
+
+#if 0
+
+enum class NodeEvent : unsigned short {
+  run,
+  yield,
+  have_input,
+  done_computing,
+  wait,
+  notified,
+  done,
+  stop,
+  error,
+  abort,
+  last
+};
+
+inline constexpr unsigned short to_index(NodeEvent x) {
+  return static_cast<unsigned short>(x);
+}
+
+/**
+ * Number of events in the NodeEvent state machine
+ */
+constexpr unsigned int n_events = to_index(NodeEvent::last) + 1;
+
+/**
+ * Strings for each enum member, useful for debugging.
+ */
+static std::vector<std::string> event_strings{"run",
+                                              "yield",
+                                              "have_input",
+                                              "done_computing",
+                                              "wait",
+                                              "notified",
+                                              "done",
+                                              "stop",
+                                              "error",
+                                              "abort",
+                                              "last"};
+
+/**
+ * Function to convert event to a string.
+ *
+ * @param event The event to stringify.
+ * @return The string corresponding to the event.
+ */
+static inline auto str(NodeEvent ev) {
+  return event_strings[static_cast<int>(ev)];
+}
+
+}  // namespace
+
+static inline auto str(NodeState st) {
+  return node_state_strings[static_cast<int>(st)];
+}
+
+namespace {
+
+// clang-format off
+constexpr const NodeState node_transition_table[num_states][n_events]{
+
+    /* start */      /* run */            /* yield */          /* have_input */  /* done_computing */  /* wait */       /* notified */       /* done */        /* stop */        /* error */       /* abort */
+
+    /* input */    { NodeState::error,    NodeState::runnable, NodeState::compute, NodeState::error,  NodeState::waiting, NodeState::error,    NodeState::error, NodeState::error, NodeState::error, NodeState::error, },
+    /* compute */  { NodeState::error,    NodeState::runnable, NodeState::error,   NodeState::output, NodeState::waiting, NodeState::error,    NodeState::error, NodeState::error, NodeState::error, NodeState::error, },
+    /* output */   { NodeState::error,    NodeState::runnable, NodeState::error,   NodeState::error,  NodeState::waiting, NodeState::error,    NodeState::error, NodeState::error, NodeState::error, NodeState::error, },
+
+    /* waiting */  { NodeState::error,    NodeState::error,    NodeState::error,   NodeState::error,  NodeState::error,   NodeState::runnable, NodeState::error, NodeState::error, NodeState::error, NodeState::error, },
+    /* runnable */ { NodeState::last,     NodeState::error,    NodeState::error,   NodeState::error,  NodeState::error,   NodeState::error,    NodeState::error, NodeState::error, NodeState::error, NodeState::error, },
+    /* running  */ { NodeState::error,    NodeState::error,    NodeState::error,   NodeState::error,  NodeState::error,   NodeState::error,    NodeState::error, NodeState::error, NodeState::error, NodeState::error, },
+
+    /* done */     { NodeState::error,    NodeState::error,    NodeState::error,   NodeState::error,  NodeState::error,   NodeState::error,    NodeState::error, NodeState::error, NodeState::error, NodeState::error, },
+    /* error */    { NodeState::error,    NodeState::error,    NodeState::error,   NodeState::error,  NodeState::error,   NodeState::error,    NodeState::error, NodeState::error, NodeState::error, NodeState::error, },
+    /* abort */    { NodeState::error,    NodeState::error,    NodeState::error,   NodeState::error,  NodeState::error,   NodeState::error,    NodeState::error, NodeState::error, NodeState::error, NodeState::error, },
+
+    /* last */     { NodeState::error,    NodeState::error,    NodeState::error,   NodeState::error,  NodeState::error,   NodeState::error,    NodeState::error, NodeState::error, NodeState::error, NodeState::error, },
+};
+
+// clang-format on
+}  // namespace
 
 #if 0
 template <
@@ -175,6 +606,7 @@ class FunctionNode : protected GeneralGraphNode<CalculationState> {
   finish() {
   }
 };
+#endif
 #endif
 
 #if 0
@@ -331,10 +763,10 @@ class BoundFunctionNode : public GeneralFunctionNode<void>,
 
   /**
    * Function for extracting data from the item mover, invoking the function in
-   * the `FunctionNode` and sending the result to * the item mover.  The
-   * `run` function will invoke the stored function * multiple times, given
-   * by the input parameter, or until the node is stopped, * whichever happens
-   * first.It will also issue `stop` if either its `Sink` portion or its
+   * the `FunctionNode` and sending the result to  the item mover.  The
+   * `run` function will invoke the stored function  multiple times, given
+   * by the input parameter, or until the node is stopped,  whichever happens
+   * first. It will also issue `stop` if either its `Sink` portion or its
    * `Source` portion is stopped.
    *
    * @param rounds The maximum number of times to invoke the producer function.

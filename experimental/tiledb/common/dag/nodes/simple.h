@@ -543,7 +543,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
  * `inject`, and `do_stop`.
  *
  * @tparam SourceMover_T The type of item mover to be used with the
- * `ProducerNode` part of thi class. It is a template template to be composed
+ * `ProducerNode` part of this class. It is a template template to be composed
  * with `Block`.
  *
  * @tparam BlockIn The type of item to be consumed by the `Sink` part of the

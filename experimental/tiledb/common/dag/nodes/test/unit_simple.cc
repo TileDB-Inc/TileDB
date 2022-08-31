@@ -40,7 +40,7 @@
 #include "experimental/tiledb/common/dag/utils/print_types.h"
 
 using namespace tiledb::common;
-#if 0
+
 /**
  * Verify various API approaches
  */
@@ -358,7 +358,7 @@ TEST_CASE(
 
     ProducerNode<AsyncMover2, size_t> d([]() { return 0UL; });
     FunctionNode<AsyncMover2, size_t> e([](size_t) { return 0UL; });
-    ConsumerNode<AsyncMover2, size_t> f([](size_t) {});
+    v ConsumerNode<AsyncMover2, size_t> f([](size_t) {});
 
     Edge g{a, b};
     Edge h{b, c};
@@ -1846,7 +1846,6 @@ TEST_CASE(
   CHECK(std::equal(input.begin(), i, output.begin()));
 }
 
-#endif
 /**
  * Test that we can correctly pass a sequence of integers from producer node to
  * consumer node via function node.
