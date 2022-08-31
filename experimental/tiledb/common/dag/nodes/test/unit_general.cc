@@ -446,52 +446,6 @@ TEST_CASE(
     "Nodes: Manually pass some data in a chain with a multi component general "
     "function node [general]") {
   size_t i{0UL};
-  ProducerNode<AsyncMover2, size_t> q([&]() { return i++; });
-
-  GeneralFunctionNode<size_t, AsyncMover2, std::tuple<size_t>> r(
-      [&](const std::tuple<std::size_t>& in, std::tuple<std::size_t>& out) {
-        std::get<0>(out) = 2 * std::get<0>(in);
-      });
-
-  std::vector<size_t> v;
-  ConsumerNode<AsyncMover2, size_t> s([&](size_t i) { v.push_back(i); });
-
-  Edge g{q, std::get<0>(r.inputs_)};
-  Edge h{std::get<0>(r.outputs_), s};
-
-  q.run_once();
-  r.run_once();
-  s.run_once();
-
-  CHECK(v.size() == 1);
-
-  q.run_once();
-  r.reset();
-  r.run_once();
-  s.run_once();
-
-  CHECK(v.size() == 2);
-
-  q.run_once();
-  r.reset();
-  r.run_once();
-  s.run_once();
-
-  CHECK(v.size() == 3);
-
-  CHECK(v[0] == 0);
-  CHECK(v[1] == 2);
-  CHECK(v[2] == 4);
-}
-
-/**
- * Test that we can synchronously send data from a producer to an attached
- * compound general function node and then to consumer.
- */
-TEST_CASE(
-    "Nodes: Manually pass some data in a chain with a multi component general "
-    "function node [general]") {
-  size_t i{0UL};
   double j{0.0};
   ProducerNode<AsyncMover2, size_t> q1([&]() { return i++; });
   ProducerNode<AsyncMover2, double> q2([&]() { return j++; });
