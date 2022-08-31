@@ -407,6 +407,12 @@ class Array {
    * */
   tuple<Status, optional<const NDRange>> non_empty_domain();
 
+  /**
+   * Retrieves the array metadata object that is already loadad.
+   * If it's not yet loaded it will be empty.
+   */
+  NDRange* loaded_non_empty_domain();
+
   /** Returns the non-empty domain of the opened array. */
   void set_non_empty_domain(const NDRange& non_empty_domain);
 
