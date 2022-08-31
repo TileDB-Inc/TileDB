@@ -1411,3 +1411,48 @@ TEST_CASE_METHOD(
 
   remove_sparse_array();
 }
+
+TEST_CASE_METHOD(
+    DeletesFx,
+    "CPP API: Test consolidating fragment with delete timestamp, with purge "
+    "option",
+    "[cppapi][deletes][consolidation][with-delete-meta][purge]") {
+  remove_sparse_array();
+
+  create_sparse_array(false);
+
+  write_sparse({0}, {1}, {1}, 1);
+  write_sparse({1}, {4}, {4}, 2);
+
+  // Define query condition (a1 == 1).
+  QueryCondition qc(ctx_);
+  int32_t val = 1;
+  qc.init("a1", &val, sizeof(int32_t), TILEDB_EQ);
+
+  // Write condition.
+  write_delete_condition(qc, 3);
+
+  consolidate_sparse(true);
+
+  write_sparse({1}, {4}, {4}, 3);
+  set_purge_deleted_cells();
+  consolidate_sparse(true);
+
+  // Reading after new fragment.
+  std::string stats;
+  uint64_t buffer_size = 1;
+  std::vector<int> a1(buffer_size);
+  std::vector<uint64_t> dim1(buffer_size);
+  std::vector<uint64_t> dim2(buffer_size);
+  read_sparse(a1, dim1, dim2, stats, TILEDB_UNORDERED, 1);
+
+  std::vector<int> c_a1 = {0};
+  std::vector<uint64_t> c_dim1 = {1};
+  std::vector<uint64_t> c_dim2 = {1};
+
+  CHECK(!memcmp(c_a1.data(), a1.data(), c_a1.size() * sizeof(int)));
+  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+
+  remove_sparse_array();
+}

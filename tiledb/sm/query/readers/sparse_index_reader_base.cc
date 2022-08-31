@@ -635,7 +635,9 @@ Status SparseIndexReaderBase::apply_query_condition(
                 *(frag_meta->array_schema().get()),
                 *rt,
                 rt->post_dedup_bitmap()));
-            rt->count_cells();
+            if (array_schema_.allows_dups()) {
+              rt->count_cells();
+            }
           }
 
           // Compute the result of the query condition for this tile
