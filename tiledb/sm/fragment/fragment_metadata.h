@@ -899,6 +899,11 @@ class FragmentMetadata {
     return has_timestamps_;
   }
 
+  /** has_delete_meta accessor */
+  bool& has_delete_meta() {
+    return has_delete_meta_;
+  }
+
   /** sparse_tile_num accessor */
   uint64_t& sparse_tile_num() {
     return sparse_tile_num_;

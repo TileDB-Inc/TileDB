@@ -2410,6 +2410,7 @@ Status global_write_state_to_capnp(
 
     frag_meta_builder.setFragmentUri(frag_meta->fragment_uri());
     frag_meta_builder.setHasTimestamps(frag_meta->has_timestamps());
+    frag_meta_builder.setHasDeleteMeta(frag_meta->has_delete_meta());
     frag_meta_builder.setSparseTileNum(frag_meta->sparse_tile_num());
     frag_meta_builder.setTileIndexBase(frag_meta->tile_index_base());
 
@@ -2706,6 +2707,7 @@ Status global_write_state_from_capnp(
       frag_meta->fragment_uri() = URI(frag_meta_reader.getFragmentUri().cStr());
     }
     frag_meta->has_timestamps() = frag_meta_reader.getHasTimestamps();
+    frag_meta->has_delete_meta() = frag_meta_reader.getHasDeleteMeta();
     frag_meta->sparse_tile_num() = frag_meta_reader.getSparseTileNum();
     frag_meta->tile_index_base() = frag_meta_reader.getTileIndexBase();
     if (frag_meta_reader.hasTileOffsets()) {
