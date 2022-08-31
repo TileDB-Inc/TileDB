@@ -590,12 +590,12 @@ TEST_CASE_METHOD(
   CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
   CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
 
-  // Reading after delete condition timestamp.
+  // Reading at delete condition timestamp.
   buffer_size = legacy ? 100 : 2;
   std::vector<int> a1_2(buffer_size);
   std::vector<uint64_t> dim1_2(buffer_size);
   std::vector<uint64_t> dim2_2(buffer_size);
-  read_sparse(a1_2, dim1_2, dim2_2, stats, read_layout, 4);
+  read_sparse(a1_2, dim1_2, dim2_2, stats, read_layout, 3);
 
   std::vector<int> c_a1_2 = {2, 3};
   std::vector<uint64_t> c_dim1_2 = {1, 2};
@@ -606,76 +606,92 @@ TEST_CASE_METHOD(
   CHECK(!memcmp(
       c_dim2_2.data(), dim2_2.data(), c_dim2_2.size() * sizeof(uint64_t)));
 
-  // Reading after new fragment.
-  buffer_size = legacy ? 100 : 3;
+  // Reading after delete condition timestamp.
+  buffer_size = legacy ? 100 : 2;
   std::vector<int> a1_3(buffer_size);
   std::vector<uint64_t> dim1_3(buffer_size);
   std::vector<uint64_t> dim2_3(buffer_size);
-  read_sparse(a1_3, dim1_3, dim2_3, stats, read_layout, 6);
+  read_sparse(a1_3, dim1_3, dim2_3, stats, read_layout, 4);
 
-  std::vector<int> c_a1_3 = {2, 3, 1};
-  std::vector<uint64_t> c_dim1_3 = {1, 2, 4};
-  std::vector<uint64_t> c_dim2_3 = {4, 3, 4};
+  std::vector<int> c_a1_3 = {2, 3};
+  std::vector<uint64_t> c_dim1_3 = {1, 2};
+  std::vector<uint64_t> c_dim2_3 = {4, 3};
   CHECK(!memcmp(c_a1_3.data(), a1_3.data(), c_a1_3.size() * sizeof(int)));
   CHECK(!memcmp(
       c_dim1_3.data(), dim1_3.data(), c_dim1_3.size() * sizeof(uint64_t)));
   CHECK(!memcmp(
       c_dim2_3.data(), dim2_3.data(), c_dim2_3.size() * sizeof(uint64_t)));
 
-  // Reading after adding deleted cells.
-  buffer_size = legacy ? 100 : 5;
+  // Reading after new fragment.
+  buffer_size = legacy ? 100 : 3;
   std::vector<int> a1_4(buffer_size);
   std::vector<uint64_t> dim1_4(buffer_size);
   std::vector<uint64_t> dim2_4(buffer_size);
-  read_sparse(a1_4, dim1_4, dim2_4, stats, read_layout, 8);
+  read_sparse(a1_4, dim1_4, dim2_4, stats, read_layout, 6);
 
-  std::vector<int> c_a1_4_ordered = {0, 1, 2, 3, 1};
-  std::vector<uint64_t> c_dim1_4_ordered = {1, 1, 1, 2, 4};
-  std::vector<uint64_t> c_dim2_4_ordered = {1, 2, 4, 3, 4};
-  std::vector<int> c_a1_4_unordered = {2, 3, 1, 0, 1};
-  std::vector<uint64_t> c_dim1_4_unordered = {1, 2, 4, 1, 1};
-  std::vector<uint64_t> c_dim2_4_unordered = {4, 3, 4, 1, 2};
+  std::vector<int> c_a1_4 = {2, 3, 1};
+  std::vector<uint64_t> c_dim1_4 = {1, 2, 4};
+  std::vector<uint64_t> c_dim2_4 = {4, 3, 4};
+  CHECK(!memcmp(c_a1_4.data(), a1_4.data(), c_a1_4.size() * sizeof(int)));
+  CHECK(!memcmp(
+      c_dim1_4.data(), dim1_4.data(), c_dim1_4.size() * sizeof(uint64_t)));
+  CHECK(!memcmp(
+      c_dim2_4.data(), dim2_4.data(), c_dim2_4.size() * sizeof(uint64_t)));
+
+  // Reading after adding deleted cells.
+  buffer_size = legacy ? 100 : 5;
+  std::vector<int> a1_5(buffer_size);
+  std::vector<uint64_t> dim1_5(buffer_size);
+  std::vector<uint64_t> dim2_5(buffer_size);
+  read_sparse(a1_5, dim1_5, dim2_5, stats, read_layout, 8);
+
+  std::vector<int> c_a1_5_ordered = {0, 1, 2, 3, 1};
+  std::vector<uint64_t> c_dim1_5_ordered = {1, 1, 1, 2, 4};
+  std::vector<uint64_t> c_dim2_5_ordered = {1, 2, 4, 3, 4};
+  std::vector<int> c_a1_5_unordered = {2, 3, 1, 0, 1};
+  std::vector<uint64_t> c_dim1_5_unordered = {1, 2, 4, 1, 1};
+  std::vector<uint64_t> c_dim2_5_unordered = {4, 3, 4, 1, 2};
   if (read_layout == TILEDB_GLOBAL_ORDER) {
     CHECK(!memcmp(
-        c_a1_4_ordered.data(),
-        a1_4.data(),
-        c_a1_4_ordered.size() * sizeof(int)));
+        c_a1_5_ordered.data(),
+        a1_5.data(),
+        c_a1_5_ordered.size() * sizeof(int)));
     CHECK(!memcmp(
-        c_dim1_4_ordered.data(),
-        dim1_4.data(),
-        c_dim1_4_ordered.size() * sizeof(uint64_t)));
+        c_dim1_5_ordered.data(),
+        dim1_5.data(),
+        c_dim1_5_ordered.size() * sizeof(uint64_t)));
     CHECK(!memcmp(
-        c_dim2_4_ordered.data(),
-        dim2_4.data(),
-        c_dim2_4_ordered.size() * sizeof(uint64_t)));
+        c_dim2_5_ordered.data(),
+        dim2_5.data(),
+        c_dim2_5_ordered.size() * sizeof(uint64_t)));
   } else {
     CHECK(
         (!memcmp(
-             c_a1_4_ordered.data(),
-             a1_4.data(),
-             c_a1_4_ordered.size() * sizeof(int)) ||
+             c_a1_5_ordered.data(),
+             a1_5.data(),
+             c_a1_5_ordered.size() * sizeof(int)) ||
          !memcmp(
-             c_a1_4_unordered.data(),
-             a1_4.data(),
-             c_a1_4_unordered.size() * sizeof(int))));
+             c_a1_5_unordered.data(),
+             a1_5.data(),
+             c_a1_5_unordered.size() * sizeof(int))));
     CHECK(
         (!memcmp(
-             c_dim1_4_ordered.data(),
-             dim1_4.data(),
-             c_dim1_4_ordered.size() * sizeof(uint64_t)) ||
+             c_dim1_5_ordered.data(),
+             dim1_5.data(),
+             c_dim1_5_ordered.size() * sizeof(uint64_t)) ||
          !memcmp(
-             c_dim1_4_unordered.data(),
-             dim1_4.data(),
-             c_dim1_4_unordered.size() * sizeof(uint64_t))));
+             c_dim1_5_unordered.data(),
+             dim1_5.data(),
+             c_dim1_5_unordered.size() * sizeof(uint64_t))));
     CHECK(
         (!memcmp(
-             c_dim2_4_ordered.data(),
-             dim2_4.data(),
-             c_dim2_4_ordered.size() * sizeof(uint64_t)) ||
+             c_dim2_5_ordered.data(),
+             dim2_5.data(),
+             c_dim2_5_ordered.size() * sizeof(uint64_t)) ||
          !memcmp(
-             c_dim2_4_unordered.data(),
-             dim2_4.data(),
-             c_dim2_4_unordered.size() * sizeof(uint64_t))));
+             c_dim2_5_unordered.data(),
+             dim2_5.data(),
+             c_dim2_5_unordered.size() * sizeof(uint64_t))));
   }
 
   remove_sparse_array();
