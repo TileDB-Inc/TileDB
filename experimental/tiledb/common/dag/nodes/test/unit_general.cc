@@ -397,8 +397,8 @@ TEST_CASE("GeneralNode: Verify compound connections", "[general]") {
  * function node and then to consumer.
  */
 TEST_CASE(
-    "Nodes: Manuallay pass some data in a chain with function node",
-    "[nodes]") {
+    "Nodes: Manually pass some data in a chain with a one component general "
+    "function node [general]") {
   size_t i{0UL};
   ProducerNode<AsyncMover2, size_t> q([&]() { return i++; });
 
@@ -436,4 +436,121 @@ TEST_CASE(
   CHECK(v[0] == 0);
   CHECK(v[1] == 2);
   CHECK(v[2] == 4);
+}
+
+/**
+ * Test that we can synchronously send data from a producer to an attached
+ * compound general function node and then to consumer.
+ */
+TEST_CASE(
+    "Nodes: Manually pass some data in a chain with a multi component general "
+    "function node [general]") {
+  size_t i{0UL};
+  ProducerNode<AsyncMover2, size_t> q([&]() { return i++; });
+
+  GeneralFunctionNode<size_t, AsyncMover2, std::tuple<size_t>> r(
+      [&](const std::tuple<std::size_t>& in, std::tuple<std::size_t>& out) {
+        std::get<0>(out) = 2 * std::get<0>(in);
+      });
+
+  std::vector<size_t> v;
+  ConsumerNode<AsyncMover2, size_t> s([&](size_t i) { v.push_back(i); });
+
+  Edge g{q, std::get<0>(r.inputs_)};
+  Edge h{std::get<0>(r.outputs_), s};
+
+  q.run_once();
+  r.run_once();
+  s.run_once();
+
+  CHECK(v.size() == 1);
+
+  q.run_once();
+  r.reset();
+  r.run_once();
+  s.run_once();
+
+  CHECK(v.size() == 2);
+
+  q.run_once();
+  r.reset();
+  r.run_once();
+  s.run_once();
+
+  CHECK(v.size() == 3);
+
+  CHECK(v[0] == 0);
+  CHECK(v[1] == 2);
+  CHECK(v[2] == 4);
+}
+
+/**
+ * Test that we can synchronously send data from a producer to an attached
+ * compound general function node and then to consumer.
+ */
+TEST_CASE(
+    "Nodes: Manually pass some data in a chain with a multi component general "
+    "function node [general]") {
+  size_t i{0UL};
+  double j{0.0};
+  ProducerNode<AsyncMover2, size_t> q1([&]() { return i++; });
+  ProducerNode<AsyncMover2, double> q2([&]() { return j++; });
+
+  GeneralFunctionNode<
+      size_t,
+      AsyncMover2,
+      std::tuple<size_t, double>,
+      AsyncMover2,
+      std::tuple<double, size_t>>
+      r([&](const std::tuple<size_t, double>& in,
+            std::tuple<double, std::size_t>& out) {
+        std::get<1>(out) = 2 * std::get<0>(in);
+        std::get<0>(out) = 3.0 * std::get<1>(in);
+      });
+
+  std::vector<double> v;
+  std::vector<size_t> w;
+  ConsumerNode<AsyncMover2, double> s1([&](size_t i) { v.push_back(i); });
+  ConsumerNode<AsyncMover2, size_t> s2([&](size_t i) { w.push_back(i); });
+
+  Edge g1{q1, std::get<0>(r.inputs_)};
+  Edge g2{q2, std::get<1>(r.inputs_)};
+  Edge h1{std::get<0>(r.outputs_), s1};
+  Edge h2{std::get<1>(r.outputs_), s2};
+
+  q1.run_once();
+  q2.run_once();
+  r.run_once();
+  s1.run_once();
+  s2.run_once();
+
+  CHECK(v.size() == 1);
+  CHECK(w.size() == 1);
+
+  q1.run_once();
+  q2.run_once();
+  r.reset();
+  r.run_once();
+  s1.run_once();
+  s2.run_once();
+
+  CHECK(v.size() == 2);
+  CHECK(w.size() == 2);
+
+  q1.run_once();
+  q2.run_once();
+  r.reset();
+  r.run_once();
+  s1.run_once();
+  s2.run_once();
+
+  CHECK(v.size() == 3);
+  CHECK(w.size() == 3);
+
+  CHECK(w[0] == 0);
+  CHECK(w[1] == 2);
+  CHECK(w[2] == 4);
+  CHECK(v[0] == 0.0);
+  CHECK(v[1] == 3.0);
+  CHECK(v[2] == 6.0);
 }
