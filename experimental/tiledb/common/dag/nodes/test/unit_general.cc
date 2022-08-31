@@ -777,7 +777,7 @@ TEST_CASE(
 
   SECTION(
       "test source launch, sink launch, source "
-      "get, sink get" +
+      "get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a1 = std::async(std::launch::async, source1);
     auto fut_a2 = std::async(std::launch::async, source2);
@@ -792,7 +792,7 @@ TEST_CASE(
   }
   SECTION(
       "test source launch, sink launch, source "
-      "get, sink get" +
+      "get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a1 = std::async(std::launch::async, source1);
     auto fut_a2 = std::async(std::launch::async, source2);
@@ -807,7 +807,7 @@ TEST_CASE(
   }
   SECTION(
       "test source launch, sink launch, "
-      "source get, sink get" +
+      "source get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_b = std::async(std::launch::async, mid);
     auto fut_c1 = std::async(std::launch::async, sink1);
@@ -822,7 +822,7 @@ TEST_CASE(
   }
   SECTION(
       "test source launch, sink "
-      "launch, source get, sink get" +
+      "launch, source get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_c1 = std::async(std::launch::async, sink1);
     auto fut_a1 = std::async(std::launch::async, source1);
@@ -837,7 +837,7 @@ TEST_CASE(
   }
   SECTION(
       "test source launch, sink "
-      "launch, source get, sink get" +
+      "launch, source get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a2 = std::async(std::launch::async, source2);
     auto fut_a1 = std::async(std::launch::async, source1);
@@ -901,9 +901,6 @@ TEST_CASE(
     }
   }
 
-  //  Can't use these with generator and consumer function nodes
-  //  CHECK(std::distance(input.begin(), i) == static_cast<long>(rounds));
-  //  CHECK(std::distance(output.begin(), j) == static_cast<long>(rounds));
   CHECK(std::equal(input1.begin(), i1, output2.begin()));
   CHECK(std::equal(input2.begin(), i2, output1.begin()));
 }
