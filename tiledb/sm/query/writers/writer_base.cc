@@ -690,77 +690,29 @@ Status WriterBase::filter_tiles(
     }
 
     RETURN_CANCEL_OR_ERROR(
-        filter_tiles(attr_name, &((*tiles)[attr_name]), dim_tiles));
-
-    auto num = buffers_.size();
-    auto status =
-        parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
-          auto buff_it = buffers_.begin();
-          std::advance(buff_it, i);
-          const auto& name = buff_it->first;
-          if (array_schema_.is_attr(name) && name != attr_name) {
-            RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
-          }
-          return Status::Ok();
-        });
-
-    RETURN_NOT_OK(status);
-  } else {
-    auto num = buffers_.size();
-    auto status =
-        parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
-          auto buff_it = buffers_.begin();
-          std::advance(buff_it, i);
-          const auto& name = buff_it->first;
-          RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
-          return Status::Ok();
-        });
-
-    RETURN_NOT_OK(status);
+        filter_tiles<std::vector<Tile*>>(attr_name, &((*tiles)[attr_name]), dim_tiles));
   }
-  return Status::Ok();
-}
 
-Status WriterBase::filter_tiles(
-    const std::string& name,
-    WriterTileVector* tiles,
-    const std::vector<WriterTileVector*>& dim_tiles) {
-  // Constraints: attribute must be fixed sized and non nullable
-
-  /**
-   *  tiles[0]
-   *  dim_tiles[{0, n-1}][0]
-   *  global order
-   *
-   */
-
-  // TODO: no way this is the fastest way
-  std::vector<std::pair<Tile*, std::vector<Tile*>>> args;
-  auto args_status = parallel_for(
-      storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
-        auto& tile = (*tiles)[i];
-        std::vector<Tile*> dim_tiles_temp;
-        for (const auto& elem : dim_tiles) {
-          dim_tiles_temp.push_back(&((*elem)[i].fixed_tile()));
+  /// TODO: may affect performance
+  auto num = buffers_.size();
+  auto status =
+      parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
+        auto buff_it = buffers_.begin();
+        std::advance(buff_it, i);
+        const auto& name = buff_it->first;
+        if (!attr_value || (attr_value && array_schema_.is_attr(name) && name != attr_name)) {
+          RETURN_CANCEL_OR_ERROR(filter_tiles<Tile*>(name, &((*tiles)[name])));
         }
-
-        args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp);
         return Status::Ok();
       });
-  RETURN_NOT_OK(args_status);
 
-  auto filter_tiles_status = parallel_for(
-      storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
-        const auto& [tile, dim_tiles_arr] = args[i];
-        RETURN_NOT_OK(filter_tile(name, tile, dim_tiles_arr));
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(filter_tiles_status);
+  RETURN_NOT_OK(status);
   return Status::Ok();
 }
 
+template<typename T>
 Status WriterBase::filter_tiles(
-    const std::string& name, WriterTileVector* tiles) {
+    const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*>& dim_tiles={}) {
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
 
@@ -768,27 +720,42 @@ Status WriterBase::filter_tiles(
   auto tile_num = tiles->size();
 
   // Process all tiles, minus offsets, they get processed separately.
-  std::vector<std::tuple<Tile*, Tile*, bool, bool>> args;
-  args.reserve(tile_num * (1 + nullable));
-  for (auto& tile : *tiles) {
-    if (var_size) {
-      args.emplace_back(&tile.var_tile(), &tile.offset_tile(), false, false);
-    } else {
-      args.emplace_back(&tile.fixed_tile(), nullptr, false, false);
-    }
+  std::vector<std::tuple<Tile*, T, bool, bool>> args;
+  if constexpr (std::is_same<Tile*, T>::value) {
+    args.reserve(tile_num * (1 + nullable));
+    for (auto& tile : *tiles) {
+      if (var_size) {
+        args.emplace_back(&tile.var_tile(), &tile.offset_tile(), false, false);
+      } else {
+        args.emplace_back(&tile.fixed_tile(), nullptr, false, false);
+      }
 
-    if (nullable) {
-      args.emplace_back(&tile.validity_tile(), nullptr, false, true);
+      if (nullable) {
+        args.emplace_back(&tile.validity_tile(), nullptr, false, true);
+      }
     }
+  } else if constexpr (std::is_same<std::vector<Tile*>, T>::value) {
+    auto args_status = parallel_for(
+    storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
+      auto& tile = (*tiles)[i];
+      std::vector<Tile*> dim_tiles_temp;
+      for (const auto& elem : dim_tiles) {
+        dim_tiles_temp.push_back(&((*elem)[i].fixed_tile()));
+      }
+
+      args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp, false, false);
+      return Status::Ok();
+    });
+    RETURN_NOT_OK(args_status);
   }
 
   // For fixed size, process everything, for var size, everything minus offsets.
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
-        const auto& [tile, offset_tile, contains_offsets, is_nullable] =
+        const auto& [tile, support_tiles, contains_offsets, is_nullable] =
             args[i];
         RETURN_NOT_OK(filter_tile(
-            name, tile, offset_tile, contains_offsets, is_nullable));
+            name, tile, support_tiles, contains_offsets, is_nullable));
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
@@ -808,30 +775,11 @@ Status WriterBase::filter_tiles(
   return Status::Ok();
 }
 
-Status WriterBase::filter_tile(
-    const std::string& name, Tile* tile, std::vector<Tile*> dim_tiles) {
-  // Get a copy of the appropriate filter pipeline.
-  FilterPipeline filters = array_schema_.filters(name);
-
-  // Append an encryption filter when necessary.
-  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-      &filters, array_->get_encryption_key()));
-
-  // Check if chunk or tile level filtering/unfiltering is appropriate
-  bool use_chunking = filters.use_tile_chunking(
-      array_schema_.var_size(name), array_schema_.version(), tile->type());
-
-  assert(!tile->filtered());
-  RETURN_NOT_OK(filters.run_forward(
-      stats_, tile, dim_tiles, storage_manager_->compute_tp(), use_chunking));
-  assert(tile->filtered());
-  return Status::Ok();
-}
-
+template<typename T>
 Status WriterBase::filter_tile(
     const std::string& name,
     Tile* const tile,
-    Tile* const offsets_tile,
+    T const support_tiles, // dim_tiles or offset
     const bool offsets,
     const bool nullable) {
   auto timer_se = stats_->start_timer("filter_tile");
@@ -868,10 +816,10 @@ Status WriterBase::filter_tile(
       array_schema_.var_size(name), array_schema_.version(), tile->type());
 
   assert(!tile->filtered());
-  RETURN_NOT_OK(filters.run_forward(
+  RETURN_NOT_OK(filters.run_forward<T>(
       stats_,
       tile,
-      offsets_tile,
+      support_tile,
       storage_manager_->compute_tp(),
       use_chunking));
   assert(tile->filtered());

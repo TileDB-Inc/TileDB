@@ -200,21 +200,12 @@ class FilterPipeline {
    * filtering, false if not.
    * @return Status
    */
-  Status run_forward(
-      stats::Stats* writer_stats,
-      Tile* tile,
-      Tile* offsets_tile,
-      ThreadPool* compute_tp,
-      bool chunking = true) const;
 
-  /**
-   * @brief TODO DIM TILE
-   * @return Status
-   */
+  template<typename T>
   Status run_forward(
       stats::Stats* writer_stats,
       Tile* tile,
-      std::vector<Tile*> dim_tiles,
+      T support_tiles,
       ThreadPool* compute_tp,
       bool chunking = true) const;
 
@@ -381,29 +372,13 @@ class FilterPipeline {
    * @param compute_tp The thread pool for compute-bound tasks.
    * @return Status
    */
+
+  template<typename T>
   Status filter_chunks_forward(
       const Tile& tile,
-      Tile* const offsets_tile,
+      Tile* const support_tiles,
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,
-      FilteredBuffer& output,
-      ThreadPool* const compute_tp) const;
-
-  /**
-   * @brief TODO: dim tile
-   *
-   * @param tile
-   * @param dim_tiles
-   * @param chunk_size
-   * @param chunk_offsets
-   * @param output
-   * @param compute_tp
-   * @return Status
-   */
-  Status filter_chunks_forward(
-      const Tile& tile,
-      std::vector<Tile*> dim_tiles,
-      uint32_t chunk_size,
       FilteredBuffer& output,
       ThreadPool* const compute_tp) const;
 

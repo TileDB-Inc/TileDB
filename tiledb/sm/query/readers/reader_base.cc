@@ -48,6 +48,8 @@
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/subarray/subarray.h"
 
+#include <variant>
+
 namespace tiledb {
 namespace sm {
 
@@ -1217,6 +1219,7 @@ tuple<uint64_t, uint64_t> ReaderBase::compute_chunk_min_max(
   return {t_min, t_max};
 }
 
+// TODO: pass here?
 Status ReaderBase::unfilter_tile_chunk_range(
     const uint64_t num_range_threads,
     const uint64_t thread_idx,

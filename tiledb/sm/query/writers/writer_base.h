@@ -284,22 +284,12 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    *
    * @param name The attribute/dimension the tiles belong to.
    * @param tile The tiles to be filtered.
+   * @param dim_tiles The dimension tile array (used for BitSortFilter).
    * @return Status
    */
-  Status filter_tiles(const std::string& name, WriterTileVector* tiles);
-
-  /**
-   * @brief Function overload to handle dim tiles.
-   *
-   * @param name
-   * @param tiles
-   * @param dim_tiles
-   * @return Status
-   */
-  Status filter_tiles(
-      const std::string& name,
-      WriterTileVector* tiles,
-      const std::vector<WriterTileVector*>& dim_tiles);
+  
+  template<typename T>
+  Status filter_tiles(const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*>& dim_tiles);
 
   /**
    * Runs the input tile for the input attribute/dimension through the filter
@@ -314,23 +304,14 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @param offsets True if the tile to be filtered contains validity values.
    * @return Status
    */
+  
+  template<typename T>
   Status filter_tile(
       const std::string& name,
       Tile* tile,
-      Tile* offsets_tile,
+      T support_tile,
       bool offsets,
       bool nullable);
-
-  /**
-   * @brief dim tiles todo
-   *
-   * @param name
-   * @param tile
-   * @param dim_tiles
-   * @return Status
-   */
-  Status filter_tile(
-      const std::string& name, Tile* tile, std::vector<Tile*> dim_tiles);
 
   /**
    * Determines if an attribute has min max metadata.
