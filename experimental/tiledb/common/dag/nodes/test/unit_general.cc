@@ -508,3 +508,202 @@ TEST_CASE(
   CHECK(v[1] == 3.0);
   CHECK(v[2] == 6.0);
 }
+
+/**
+ * Test that we can asynchronously send data from a producer to an attached
+ * function node and then to consumer.  Each of the nodes is launched as an
+ * asynchronous task.
+ *
+ * @param qwt Weighting for source node delay.
+ * @param rwt Weighting for function node delay.
+ * @param swt Weighting for sink node delay.
+ *
+ * @tparam delay Flag indicating whether or not to include a delay at all in
+ * node function bodies to simulate processing time.
+ */
+template <bool delay>
+void asynchronous_with_function_node(
+    double qwt = 1, double rwt = 1, double swt = 1) {
+  size_t rounds = 437;
+
+  std::vector<double> v;
+  double j{0.0};
+
+  std::vector<size_t> w;
+  size_t i{0};
+
+  ProducerNode<AsyncMover2, size_t> q1([&]() {
+    if constexpr (delay) {
+      std::this_thread::sleep_for(std::chrono::microseconds(
+          static_cast<size_t>(qwt * random_us(1234))));
+    }
+    return i++;
+  });
+  ProducerNode<AsyncMover2, double> q2([&]() {
+    if constexpr (delay) {
+      std::this_thread::sleep_for(std::chrono::microseconds(
+          static_cast<size_t>(qwt * random_us(1234))));
+    }
+    return j++;
+  });
+
+  GeneralFunctionNode<
+      size_t,
+      AsyncMover2,
+      std::tuple<size_t, double>,
+      AsyncMover2,
+      std::tuple<double, size_t>>
+      r([&](const std::tuple<size_t, double>& in,
+            std::tuple<double, size_t>& out) {
+        if constexpr (delay) {
+          std::this_thread::sleep_for(std::chrono::microseconds(
+              static_cast<size_t>(rwt * random_us(1234))));
+        }
+        std::get<0>(out) = 3 * std::get<1>(in);
+        std::get<1>(out) = 5.0 * std::get<0>(in);
+      });
+
+  ConsumerNode<AsyncMover2, size_t> s1([&](size_t i) {
+    v.push_back(i);
+    if constexpr (delay) {
+      std::this_thread::sleep_for(std::chrono::microseconds(
+          static_cast<size_t>(swt * random_us(1234))));
+    }
+  });
+  ConsumerNode<AsyncMover2, double> s2([&](double i) {
+    w.push_back(i);
+    if constexpr (delay) {
+      std::this_thread::sleep_for(std::chrono::microseconds(
+          static_cast<size_t>(swt * random_us(1234))));
+    }
+  });
+
+  Edge g1{q1, std::get<0>(r.inputs_)};
+  Edge g2{q2, std::get<1>(r.inputs_)};
+  Edge h1{std::get<1>(r.outputs_), s1};
+  Edge h2{std::get<0>(r.outputs_), s2};
+
+  auto fun_a1 = [&]() {
+    size_t N = rounds;
+    while (N--) {
+      q1.run_once();
+    }
+  };
+  auto fun_a2 = [&]() {
+    size_t N = rounds;
+    while (N--) {
+      q2.run_once();
+    }
+  };
+
+  auto fun_b = [&]() {
+    size_t N = rounds;
+    while (N--) {
+      r.run_once();
+      r.reset();
+    }
+  };
+
+  auto fun_c1 = [&]() {
+    size_t N = rounds;
+    while (N--) {
+      s1.run_once();
+    }
+  };
+
+  auto fun_c2 = [&]() {
+    size_t N = rounds;
+    while (N--) {
+      s2.run_once();
+    }
+  };
+
+  CHECK(v.size() == 0);
+  CHECK(w.size() == 0);
+
+  SECTION("Async Nodes a, b, c, a, b, c") {
+    auto fut_a1 = std::async(std::launch::async, fun_a1);
+    auto fut_a2 = std::async(std::launch::async, fun_a2);
+    auto fut_b = std::async(std::launch::async, fun_b);
+    auto fut_c1 = std::async(std::launch::async, fun_c1);
+    auto fut_c2 = std::async(std::launch::async, fun_c2);
+    fut_a1.get();
+    fut_a2.get();
+    fut_b.get();
+    fut_c1.get();
+    fut_c2.get();
+  }
+
+  SECTION("Async Nodes a, b, c, c, b, a") {
+    auto fut_a1 = std::async(std::launch::async, fun_a1);
+    auto fut_a2 = std::async(std::launch::async, fun_a2);
+    auto fut_b = std::async(std::launch::async, fun_b);
+    auto fut_c1 = std::async(std::launch::async, fun_c1);
+    auto fut_c2 = std::async(std::launch::async, fun_c2);
+    fut_c2.get();
+    fut_c1.get();
+    fut_b.get();
+    fut_a2.get();
+    fut_a1.get();
+  }
+
+  SECTION("Async Nodes c, b, a, a, b, c") {
+    auto fut_c2 = std::async(std::launch::async, fun_c2);
+    auto fut_c1 = std::async(std::launch::async, fun_c1);
+    auto fut_b = std::async(std::launch::async, fun_b);
+    auto fut_a2 = std::async(std::launch::async, fun_a2);
+    auto fut_a1 = std::async(std::launch::async, fun_a1);
+    fut_a1.get();
+    fut_a2.get();
+    fut_b.get();
+    fut_c1.get();
+    fut_c2.get();
+  }
+
+  SECTION("Async Nodes c, b, a, c, b, a") {
+    auto fut_c2 = std::async(std::launch::async, fun_c2);
+    auto fut_c1 = std::async(std::launch::async, fun_c1);
+    auto fut_b = std::async(std::launch::async, fun_b);
+    auto fut_a2 = std::async(std::launch::async, fun_a2);
+    auto fut_a1 = std::async(std::launch::async, fun_a1);
+    fut_c2.get();
+    fut_c1.get();
+    fut_b.get();
+    fut_a2.get();
+    fut_a1.get();
+  }
+
+  CHECK(v.size() == rounds);
+  for (size_t i = 0; i < rounds; ++i) {
+    CHECK(v[i] == 5.0 * i);
+  }
+  CHECK(w.size() == rounds);
+  for (size_t i = 0; i < rounds; ++i) {
+    CHECK(v[i] == 3 * i);
+  }
+}
+
+/**
+ * Exercise `asynchronous_with_function_node()` with and without
+ * computation-simulating delays and with weighted delays.
+ */
+TEST_CASE("Nodes: Asynchronous with function node and delay", "[nodes]") {
+  SECTION("Without delay") {
+    asynchronous_with_function_node<false>();
+  }
+  SECTION("With delay") {
+    asynchronous_with_function_node<true>(1, 1, 1);
+  }
+  SECTION("With delay, fast source") {
+    asynchronous_with_function_node<true>(0.2, 1, 1);
+  }
+  SECTION("With delay, fast sink") {
+    asynchronous_with_function_node<true>(1, 1, 0.2);
+  }
+  SECTION("With delay, fast source and fast sink") {
+    asynchronous_with_function_node<true>(0.2, 1, 0.2);
+  }
+  SECTION("With delay, fast function") {
+    asynchronous_with_function_node<true>(1, 0.2, 1);
+  }
+}
