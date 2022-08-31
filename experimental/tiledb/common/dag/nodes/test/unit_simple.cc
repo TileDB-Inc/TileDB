@@ -623,7 +623,7 @@ TEST_CASE(
 }
 
 /**
- * Test of producer and consumer functions.  The producer generates a an
+ * Test of producer and consumer functions.  The producer generates an
  * increasing sequence of numbers starting from 0 and incrementing by 1 on each
  * invocation.  The consumer appends its input to a specified output iterator --
  * in this case, a back inserter to an `std::vector`.

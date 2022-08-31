@@ -113,6 +113,11 @@ class GeneralFunctionNode<
    * Make public for now for testing
    */
  public:
+  // Alternatively... ?
+  // std::function<std::tuple<BlocksOut...>(std::tuple<BlocksIn...>)> f_;
+  std::function<void(const std::tuple<BlocksIn...>&, std::tuple<BlocksOut...>&)>
+      f_;
+
   std::tuple<Sink<SinkMover_T, BlocksIn>...> inputs_;
   std::tuple<Source<SourceMover_T, BlocksOut>...> outputs_;
 
@@ -124,11 +129,6 @@ class GeneralFunctionNode<
   CalculationState new_state_;
 
   NodeState instruction_counter_{NodeState::init};
-
-  // Alternatively... ?
-  // std::function<std::tuple<BlocksOut...>(std::tuple<BlocksIn...>)> f_;
-  std::function<void(const std::tuple<BlocksIn...>&, std::tuple<BlocksOut...>&)>
-      f_;
 
   template <size_t I = 0, class Fn, class... Ts, class... Us>
   constexpr void tuple_map(
@@ -188,7 +188,8 @@ class GeneralFunctionNode<
               const std::tuple<BlocksIn...>&,
               std::tuple<BlocksOut...>&>,
           void**> = nullptr)
-      : f_{std::forward<Function>(f)} {
+      : f_{std::forward<Function>(f)}
+      , inputs_{} {
   }
 
   /**
@@ -197,7 +198,9 @@ class GeneralFunctionNode<
    */
   NodeState run_once() {
     switch (instruction_counter_) {
-      instruction_counter_ = NodeState::input;
+      case NodeState::init:
+
+        instruction_counter_ = NodeState::input;
       case NodeState::input:
         // pull
         std::apply(
@@ -216,6 +219,8 @@ class GeneralFunctionNode<
 
         // apply
         // f(input_items_, output_items_);
+
+        f_(input_items_, output_items_);
 
         instruction_counter_ = NodeState::output;
       case NodeState::output:
@@ -274,6 +279,11 @@ class GeneralFunctionNode<
 
     instruction_counter_ = NodeState::exit;
 
+    return instruction_counter_;
+  }
+
+  NodeState reset() {
+    instruction_counter_ = NodeState::input;
     return instruction_counter_;
   }
 

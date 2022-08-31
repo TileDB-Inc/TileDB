@@ -81,7 +81,6 @@ TEST_CASE("GeneralNode: Verify simple run_once", "[general]") {
       AsyncMover3,
       std::tuple<size_t, double>>
       x{};
-  x.run_once();
 }
 
 TEST_CASE(
@@ -93,7 +92,6 @@ TEST_CASE(
       AsyncMover3,
       std::tuple<size_t>>
       x{[](std::tuple<size_t>, std::tuple<size_t>) {}};
-  x.run_once();
 }
 
 TEST_CASE(
@@ -105,7 +103,6 @@ TEST_CASE(
       AsyncMover3,
       std::tuple<size_t, double>>
       x{[](std::tuple<size_t, int>, std::tuple<size_t, double>) {}};
-  x.run_once();
 }
 
 /**
@@ -393,4 +390,50 @@ TEST_CASE("GeneralNode: Verify compound connections", "[general]") {
     Edge j1{std::get<0>(e.outputs_), f1};
     Edge j2{std::get<1>(e.outputs_), f2};
   }
+}
+
+/**
+ * Test that we can synchronously send data from a producer to an attached
+ * function node and then to consumer.
+ */
+TEST_CASE(
+    "Nodes: Manuallay pass some data in a chain with function node",
+    "[nodes]") {
+  size_t i{0UL};
+  ProducerNode<AsyncMover2, size_t> q([&]() { return i++; });
+
+  GeneralFunctionNode<size_t, AsyncMover2, std::tuple<size_t>> r(
+      [&](const std::tuple<std::size_t>& in, std::tuple<std::size_t>& out) {
+        std::get<0>(out) = 2 * std::get<0>(in);
+      });
+
+  std::vector<size_t> v;
+  ConsumerNode<AsyncMover2, size_t> s([&](size_t i) { v.push_back(i); });
+
+  Edge g{q, std::get<0>(r.inputs_)};
+  Edge h{std::get<0>(r.outputs_), s};
+
+  q.run_once();
+  r.run_once();
+  s.run_once();
+
+  CHECK(v.size() == 1);
+
+  q.run_once();
+  r.reset();
+  r.run_once();
+  s.run_once();
+
+  CHECK(v.size() == 2);
+
+  q.run_once();
+  r.reset();
+  r.run_once();
+  s.run_once();
+
+  CHECK(v.size() == 3);
+
+  CHECK(v[0] == 0);
+  CHECK(v[1] == 2);
+  CHECK(v[2] == 4);
 }
