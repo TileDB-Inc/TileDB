@@ -190,8 +190,8 @@ WriterBase::WriterBase(
     check_extra_element();
   }
 
-  check_subarray();
   if (!skip_checks_serialization) {
+    check_subarray();
     check_buffer_sizes();
   }
 
