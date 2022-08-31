@@ -679,7 +679,7 @@ void asynchronous_with_function_node(
   }
   CHECK(w.size() == rounds);
   for (size_t i = 0; i < rounds; ++i) {
-    CHECK(v[i] == 3 * i);
+    CHECK(w[i] == 3 * i);
   }
 }
 
