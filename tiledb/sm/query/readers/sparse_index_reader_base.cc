@@ -731,7 +731,7 @@ SparseIndexReaderBase::read_and_unfilter_attributes(
       read_attribute_tiles(names_to_read, result_tiles), nullopt);
 
   for (auto& name : names_to_read)
-    RETURN_NOT_OK_TUPLE(unfilter_tiles(name, result_tiles), nullopt);
+    RETURN_NOT_OK_TUPLE((name, result_tiles), nullopt);
 
   return {Status::Ok(), std::move(index_to_copy)};
 }
