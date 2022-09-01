@@ -84,8 +84,38 @@ std::vector<std::string> node_state_strings{"init",
 /**
  * @todo Partial specialization for non-tuple types?
  *
+ * @todo CTAD deduction guides to simplify construction (and eliminate
+ redundancy,
+ * site of errors, due to template args of class and function in constructor).
+
  * @todo Unify function behavior for simple and general function nodes.
  */
+
+/**
+ * Some type aliases for the enclosed function, to allow empty inputs or empty
+ * outputs (for creating producer or consumer nodes from function node).
+ */
+template <
+    class BlocksIn = std ::tuple<std::tuple<>>,
+    class BlocksOut = std::tuple<std::tuple<>>>
+struct fn_type;
+
+template <class... BlocksIn, class... BlocksOut>
+struct fn_type<std::tuple<BlocksIn...>, std::tuple<BlocksOut...>> {
+  using type = std::function<void(
+      const std::tuple<BlocksIn...>&, std::tuple<BlocksOut...>&)>;
+};
+
+template <class... BlocksOut>
+struct fn_type<std::tuple<>, std::tuple<BlocksOut...>> {
+  using type = std::function<void(std::tuple<BlocksOut...>&)>;
+};
+
+template <class... BlocksIn>
+struct fn_type<std::tuple<BlocksIn...>, std::tuple<>> {
+  using type = std::function<void(const std::tuple<BlocksIn...>&)>;
+};
+
 template <
     class CalculationState,
     template <class>
@@ -109,19 +139,27 @@ class GeneralFunctionNode<
     std::tuple<BlocksIn...>,
     SourceMover_T,
     std::tuple<BlocksOut...>> {
-  /*
-   * Make public for now for testing
-   */
- public:
   // Alternatively... ?
   // std::function<std::tuple<BlocksOut...>(std::tuple<BlocksIn...>)> f_;
-  std::function<void(const std::tuple<BlocksIn...>&, std::tuple<BlocksOut...>&)>
-      f_;
+  //  std::function<void(const std::tuple<BlocksIn...>&,
+  //  std::tuple<BlocksOut...>&)> f_;
+  typename fn_type<std::tuple<BlocksIn...>, std::tuple<BlocksOut...>>::type f_;
 
+  /*
+   * Make these public for now for testing
+   *
+   * @todo Develop better interface for `Edge` connections.
+   */
+ public:
   std::tuple<Sink<SinkMover_T, BlocksIn>...> inputs_;
   std::tuple<Source<SourceMover_T, BlocksOut>...> outputs_;
 
  private:
+  /*
+   * Tuple of items, collected from `inputs_` and `outputs_`.
+   *
+   * @todo Avoid copying somehow?  E.g., via `get_item()`?
+   */
   std::tuple<BlocksIn...> input_items_;
   std::tuple<BlocksOut...> output_items_;
 
@@ -130,9 +168,18 @@ class GeneralFunctionNode<
 
   NodeState instruction_counter_{NodeState::init};
 
+  /**
+   * Helper function to deal with tuples.  Applies the same single input single
+   * output function to elements of an input tuple to set values of an output
+   * tuple.
+   *
+   * @note Elements are processed in order from 0 to sizeof(Ts)-1
+   *
+   * @pre sizeof(Ts) == sizeof(Us)
+   */
   template <size_t I = 0, class Fn, class... Ts, class... Us>
   constexpr void tuple_map(
-      Fn&& f, std::tuple<Ts...>& in, std::tuple<Us...>& out) {
+      Fn&& f, const std::tuple<Ts...>& in, std::tuple<Us...>& out) {
     static_assert(sizeof(in) == sizeof(out));
     if constexpr (I == sizeof...(Ts)) {
       return;
@@ -142,7 +189,14 @@ class GeneralFunctionNode<
     }
   }
 
-  // From inputs to input_items
+  /**
+   * Helper function to deal with tuples.  A tuple version of simple nodes
+   * extract.  Copies items from inputs_ (Sinks) to a tuple of input_items.
+   *
+   * @note Elements are processed in order from 0 to sizeof(Ts)-1
+   *
+   * @pre sizeof(Ts) == sizeof(Us)
+   */
   template <size_t I = 0, class... Ts, class... Us>
   constexpr void tuple_extract(std::tuple<Ts...>& in, std::tuple<Us...>& out) {
     static_assert(sizeof...(Ts) == sizeof...(Us));
@@ -154,7 +208,14 @@ class GeneralFunctionNode<
     }
   }
 
-  // From output_items to outputs
+  /**
+   * Helper function to deal with tuples.  A tuple version of simple node
+   * inject. Copies items from tuple of output_items to outputs_ (Sources).
+   *
+   * @note Elements are processed in order from 0 to sizeof(Ts)-1
+   *
+   * @pre sizeof(Ts) == sizeof(Us)
+   */
   template <size_t I = 0, class... Ts, class... Us>
   constexpr void tuple_inject(std::tuple<Ts...>& in, std::tuple<Us...>& out) {
     static_assert(sizeof...(Ts) == sizeof...(Us));
@@ -167,17 +228,25 @@ class GeneralFunctionNode<
   }
 
  public:
-  /*
-   * For testing
+  /**
+   * Default constructor, for testing only.
    */
   GeneralFunctionNode() = default;
 
+  template <class T, class... Ts>
+  struct are_same : std::conjunction<std::is_same<T, Ts>...> {};
+
+  template <class T, class... Ts>
+  inline constexpr static bool are_same_v = are_same<T, Ts...>::value;
+
   /**
-   * Constructor
-   * @param f A function that accepts items.
+   * Primary constructor.
+   *
+   * @param f A function that accepts a tuple of input items and sets values in
+   * tuple of output items.
+   *
    * @tparam The type of the function (or function object) that accepts items.
    */
-
   template <class Function>
   explicit GeneralFunctionNode(
       Function&& f,
@@ -193,8 +262,69 @@ class GeneralFunctionNode<
   }
 
   /**
-   * Pull the sinks, fill the input tuple, apply stored function, fill the
-   * output tuple, and push the sources.
+   * Secondary constructor.
+   *
+   * @param f A function that accepts a tuple of input items and returns void.
+   *
+   * @tparam The type of the function (or function object) that accepts items.
+   */
+  template <class Function>
+  explicit GeneralFunctionNode(
+      Function&& f,
+      std::enable_if_t<
+          are_same_v<std::tuple<>, BlocksOut...> &&
+              std::is_invocable_r_v<
+                  void,
+                  Function,
+                  const std::tuple<BlocksIn...>&>,
+          void**> = nullptr)
+      : f_{std::forward<Function>(f)}
+      , inputs_{} {
+  }
+
+  /**
+   * Secondary constructor.
+   *
+   * @param f A function that accepts void and fills in output items.
+   *
+   * @tparam The type of the function (or function object) that accepts items.
+   */
+  template <class Function>
+  explicit GeneralFunctionNode(
+      Function&& f,
+      std::enable_if_t<
+          are_same_v<std::tuple<>, BlocksIn...> &&
+              std::is_invocable_r_v<void, Function, std::tuple<BlocksOut...>&>,
+          void**> = nullptr)
+      : f_{std::forward<Function>(f)}
+      , inputs_{} {
+  }
+
+  /**
+   * Function for applying all actions of the node: Pull the sinks, fill the
+   * input tuple from sinks, apply stored function, fill the output tuple, and
+   * push the sources.
+   *
+   * @todo Develop better model and API for use of `instruction_counter_` as
+   * part of `GeneralNode` object and as interface to scheduler.
+   *
+   * @note Right now, yielding (waiting) may be done in `Mover` calls (via a
+   * `Policy`), i.e., `do_push` and `do_pull`.  Those should interface to the
+   * scheduler, e.g., and cause a return from `resume` or `run_once` that will
+   * then be started from when the scheduler is notified (again, down in the
+   * `Mover` policy).
+   *
+   * @note It would be nice if this could be agnostic here as to what kind of
+   * scheduler is being used, but it isn't clear how to do a return in the case
+   * of a coroutine-like scheduler, or a condition-variable wait in the case of
+   * an `std::async` (or similar) scheduler. Perhaps we could use a return value
+   * of `do_pull` or `do_push` to indicate what to do next (yield or continue).
+   * Or we could pass in a continuation?  Either approach seems to couple
+   * `Mover`, `Scheduler`, and `Node` too much.
+   *
+   * @todo Maybe we need a many-to-one and a one-to-many `ItemMover`.  We could
+   * then put items in the mover rather than in the nodes -- though that would
+   * make the nodes almost superfluous.
    */
   NodeState run_once() {
     switch (instruction_counter_) {
@@ -202,11 +332,31 @@ class GeneralFunctionNode<
 
         instruction_counter_ = NodeState::input;
       case NodeState::input:
-        // pull
+
+        /*
+         * Here begins pull-check-extract-drain (aka `input`)
+         *
+         * @todo Add (indicate) state update
+         *
+         * @todo Atomicity with extract and drain?  (Note that we can't extract
+         * if we get a done on pull()).
+         */
+
+        // ----------------------------------------------------------------
+        // pull all
         std::apply(
             [](auto&... sink) { (sink.get_mover()->do_pull(), ...); }, inputs_);
+        // @todo Should we have a NodeState case here to resume (since pull may
+        // block/return)
 
-        // check for source or sink connections being done
+        /*
+         * Check all for source or sink connections being done
+         *
+         * @note All sources or all sinks need to be done at the same time.
+         *
+         * @todo Develop model and interface for partial completion (i.e., only
+         * some of the members of the tuple being done while others not).
+         */
         {
           auto sink_done = std::apply(
               [](auto&... sink) {
@@ -226,37 +376,59 @@ class GeneralFunctionNode<
           }
         }
 
-        // extract
+        // extract all
         tuple_extract(inputs_, input_items_);
 
-        // drain
+        // drain all
         std::apply(
             [](auto&... sink) { (sink.get_mover()->do_drain(), ...); },
             inputs_);
+        // ----------------------------------------------------------------
 
         instruction_counter_ = NodeState::compute;
       case NodeState::compute:
 
-        // apply
-        // f(input_items_, output_items_);
+        /*
+         * Here begins function application (aka compute).
+         *
+         * @todo Indicate use of state and application of state update.
+         *
+         * @todo Atomicity?
+         */
 
-        f_(input_items_, output_items_);
+        // print_types(input_items_, output_items_);
+        if constexpr (std::is_same_v<decltype(input_items_), std::tuple<>>) {
+          f_(output_items_);
+        } else if constexpr (std::is_same_v<
+                                 decltype(output_items_),
+                                 std::tuple<>>) {
+          f_(input_items_);
+        } else {
+          f_(input_items_, output_items_);
+        }
 
         instruction_counter_ = NodeState::output;
       case NodeState::output:
+        /*
+         * Here begins inject-fill-push (aka `output`).
+         *
+         * @todo Atomicity?
+         */
 
-        // inject
+        // ----------------------------------------------------------------
+        // inject all
         tuple_inject(output_items_, outputs_);
 
-        // fill
+        // fill all
         std::apply(
             [](auto&... source) { (source.get_mover()->do_fill(), ...); },
             outputs_);
 
-        // push
+        // push all
         std::apply(
             [](auto&... source) { (source.get_mover()->do_push(), ...); },
             outputs_);
+        // ----------------------------------------------------------------
 
         instruction_counter_ = NodeState::done;
 
@@ -269,11 +441,14 @@ class GeneralFunctionNode<
     return instruction_counter_;
   }
 
-  /*
-   * Function for invoking `run_once` mutiple times, as given by the input
+  /**
+   *
+   * Function for invoking `run_once` multiple times, as given by the input
    * parameter, or until the node is stopped, whichever happens first.
    *
    * @param rounds The maximum number of times to invoke the producer function.
+   * @todo Develop model and API for yielding after each (or some number of)
+   * `run_once`.
    */
   void run_for(size_t rounds) {
     while (rounds--) {
@@ -307,8 +482,12 @@ class GeneralFunctionNode<
         outputs_);
   }
 
-  /*
-   * Function for invoking `run_once` mutiple times, until the node is stopped.
+  /**
+   * Function for invoking `run_once` multiple times, until the node is
+   * stopped.
+   *
+   * @todo Develop model and API for yielding after each (or some number of)
+   * `run_once`.  This doesn't really do a "resume".
    *
    */
   NodeState resume() {
@@ -319,8 +498,13 @@ class GeneralFunctionNode<
         [](auto&... source) { (source.get_mover()->is_done() && ...); },
         outputs_);
 
+    /*
+     * Call run_once repeatedly until done.  Right now yielding is done inside
+     * of run_once.  Perhaps part (or all) of Duff device should happen here
+     * instead?
+     */
     while (!source_done && !sink_done) {
-      return run_once(instruction_counter_);
+      run_once(instruction_counter_);
     }
 
     sink_done = std::apply(
@@ -340,6 +524,11 @@ class GeneralFunctionNode<
     return instruction_counter_;
   }
 
+  /**
+   * `run_once` leaves the `instruction_counter` in the `done` state.  `reset`
+   * sets the `instruction_counter_` to `input` so that `run_once` can be
+   * invoked again.
+   */
   NodeState reset() {
     instruction_counter_ = NodeState::input;
     return instruction_counter_;

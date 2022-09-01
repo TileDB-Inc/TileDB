@@ -105,6 +105,89 @@ TEST_CASE(
       x{[](std::tuple<size_t, int>, std::tuple<size_t, double>) {}};
 }
 
+template <class T>
+struct foo {
+  void operator()() {
+  }
+};
+
+/*
+ * @note Cannot use void for SinkMover_T nor BlocksIn
+ *
+ * @todo Partial specialization to allow void
+ *
+ * @todo Special casing (?) in GeneralFunctionNode to support these.
+ */
+template <
+    class CalculationState,
+    template <class>
+    class SourceMover_T,
+    class... BlocksOut>
+using GeneralProducerNode = GeneralFunctionNode<
+    CalculationState,
+    foo,
+    std::tuple<>,
+    SourceMover_T,
+    BlocksOut...>;
+
+template <
+    class CalculationState,
+    template <class>
+    class SinkMover_T,
+    class... BlocksIn>
+using GeneralConsumerNode = GeneralFunctionNode<
+    CalculationState,
+    SinkMover_T,
+    BlocksIn...,
+    foo,
+    std::tuple<>>;
+
+TEST_CASE(
+    "GeneralNode: Verify use of (void) template arguments for "
+    "producer/consumer",
+    "[general]") {
+  GeneralProducerNode<size_t, AsyncMover3, std::tuple<size_t, double>> x{
+      [](std::tuple<size_t, double>) {}};
+  GeneralConsumerNode<size_t, AsyncMover3, std::tuple<size_t, double>> y{
+      [](std::tuple<size_t, double>) {}};
+}
+
+TEST_CASE(
+    "GeneralNode: Connect void-created Producer and Consumer "
+    "[general]") {
+  GeneralProducerNode<size_t, AsyncMover3, std::tuple<size_t, double>> x{
+      [](std::tuple<size_t, double>) {}};
+  GeneralConsumerNode<size_t, AsyncMover3, std::tuple<double, size_t>> y{
+      [](std::tuple<double, size_t>) {}};
+
+  Edge g{std::get<0>(x.outputs_), std::get<1>(y.inputs_)};
+  Edge h{std::get<1>(x.outputs_), std::get<0>(y.inputs_)};
+}
+
+TEST_CASE(
+    "GeneralNode: Pass values with void-created Producer and Consumer "
+    "[general]") {
+  double ext1{0.0};
+  size_t ext2{0};
+
+  GeneralProducerNode<size_t, AsyncMover3, std::tuple<size_t, double>> x{
+      [](std::tuple<size_t, double>& a) { a = std::make_tuple(5UL, 3.14159); }};
+  GeneralConsumerNode<size_t, AsyncMover3, std::tuple<double, size_t>> y{
+      [&ext1, &ext2](const std::tuple<double, size_t>& b) {
+        ext1 = std::get<0>(b);
+        ext2 = std::get<1>(b);
+      }};
+
+  Edge g{std::get<0>(x.outputs_), std::get<1>(y.inputs_)};
+  Edge h{std::get<1>(x.outputs_), std::get<0>(y.inputs_)};
+
+  x.run_once();
+  y.run_once();
+
+  CHECK(ext1 == 3.14159);
+  CHECK(ext2 == 5);
+}
+
 /**
  * Some dummy functions and classes to test node constructors
  * with.
