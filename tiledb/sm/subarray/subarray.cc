@@ -468,7 +468,7 @@ Status Subarray::add_point_ranges(
 
 Status Subarray::add_ranges_list(
     unsigned dim_idx, const void* start, uint64_t count) {
-  if (dim_idx >= this->array_->array_schema_latest().dim_num())
+  if (dim_idx >= this->array_->array_schema_latest().dim_num()){
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
   }
