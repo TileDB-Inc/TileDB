@@ -213,40 +213,20 @@ Status array_from_capnp(
         make_shared<ArraySchema>(HERE(), array_schema_latest));
   }
 
-  if (array->use_refactored_array_open()) {
-    if (array->serialize_non_empty_domain()) {
-      if (array_reader.hasNonEmptyDomain()) {
-        const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();
-        // Deserialize
-        RETURN_NOT_OK(
-            utils::deserialize_non_empty_domain(nonempty_domain_reader, array));
-        array->set_non_empty_domain_computed(true);
-      }
-    }
+  if (array_reader.hasNonEmptyDomain()) {
+    const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();
+    // Deserialize
+    RETURN_NOT_OK(
+        utils::deserialize_non_empty_domain(nonempty_domain_reader, array));
+    array->set_non_empty_domain_computed(true);
+  }
 
-    if (array->serialize_metadata()) {
-      if (array_reader.hasArrayMetadata()) {
-        const auto& array_metadata_reader = array_reader.getArrayMetadata();
-        // Deserialize
-        RETURN_NOT_OK(metadata_from_capnp(
-            array_metadata_reader, array->unsafe_metadata()));
-        array->set_metadata_loaded(true);
-      }
-    }
-  } else {
-    if (array_reader.hasNonEmptyDomain()) {
-      const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();
-      // Deserialize
-      RETURN_NOT_OK(
-          utils::deserialize_non_empty_domain(nonempty_domain_reader, array));
-    }
-
-    if (array_reader.hasArrayMetadata()) {
-      const auto& array_metadata_reader = array_reader.getArrayMetadata();
-      // Deserialize
-      RETURN_NOT_OK(
-          metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
-    }
+  if (array_reader.hasArrayMetadata()) {
+    const auto& array_metadata_reader = array_reader.getArrayMetadata();
+    // Deserialize
+    RETURN_NOT_OK(
+        metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
+    array->set_metadata_loaded(true);
   }
 
   return Status::Ok();
