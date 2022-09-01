@@ -145,6 +145,9 @@ class GeneralFunctionNode<
   //  std::tuple<BlocksOut...>&)> f_;
   typename fn_type<std::tuple<BlocksIn...>, std::tuple<BlocksOut...>>::type f_;
 
+  // exists: SinkMover_T::scheduler
+  // exists: SourceMover_T::scheduler
+
   /*
    * Make these public for now for testing
    *
@@ -167,6 +170,11 @@ class GeneralFunctionNode<
   CalculationState new_state_;
 
   NodeState instruction_counter_{NodeState::init};
+
+  static constexpr const bool is_producer_{
+      std::is_same_v<decltype(input_items_), std::tuple<>>};
+  static constexpr const bool is_consumer_{
+      std::is_same_v<decltype(output_items_), std::tuple<>>};
 
   /**
    * Helper function to deal with tuples.  Applies the same single input single
@@ -326,6 +334,7 @@ class GeneralFunctionNode<
    * then put items in the mover rather than in the nodes -- though that would
    * make the nodes almost superfluous.
    */
+
   NodeState run_once() {
     switch (instruction_counter_) {
       case NodeState::init:
@@ -340,6 +349,10 @@ class GeneralFunctionNode<
          *
          * @todo Atomicity with extract and drain?  (Note that we can't extract
          * if we get a done on pull()).
+         */
+
+        /*
+         * A custom "f_"
          */
 
         // ----------------------------------------------------------------
@@ -389,19 +402,17 @@ class GeneralFunctionNode<
       case NodeState::compute:
 
         /*
-         * Here begins function application (aka compute).
+         * Here begins function application (aka compute).  We have constexpr
+         * special cases for empty inputs or empty outputs (producers and
+         * consumers).
          *
          * @todo Indicate use of state and application of state update.
          *
          * @todo Atomicity?
          */
-
-        // print_types(input_items_, output_items_);
-        if constexpr (std::is_same_v<decltype(input_items_), std::tuple<>>) {
+        if constexpr (is_producer_) {
           f_(output_items_);
-        } else if constexpr (std::is_same_v<
-                                 decltype(output_items_),
-                                 std::tuple<>>) {
+        } else if constexpr (is_consumer_) {
           f_(input_items_);
         } else {
           f_(input_items_, output_items_);
