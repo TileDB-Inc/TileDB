@@ -897,7 +897,7 @@ class S3 {
    * @return an optional MultiPartUploadState object
    */
   std::optional<S3::MultiPartUploadState> multipart_upload_state(
-      const URI& uri) const;
+      const URI& uri);
 };
 
 }  // namespace sm

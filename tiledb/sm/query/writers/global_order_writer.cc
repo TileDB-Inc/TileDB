@@ -1219,7 +1219,7 @@ GlobalOrderWriter::GlobalWriteState* GlobalOrderWriter::get_global_state() {
 }
 
 std::pair<Status, std::unordered_map<std::string, VFS::MultiPartUploadState>>
-GlobalOrderWriter::multipart_upload_state() const {
+GlobalOrderWriter::multipart_upload_state() {
   auto meta = global_write_state_->frag_meta_;
   std::unordered_map<std::string, VFS::MultiPartUploadState> result;
 

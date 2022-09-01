@@ -1752,7 +1752,7 @@ Status S3::get_make_upload_part_req(
 }
 
 std::optional<S3::MultiPartUploadState> S3::multipart_upload_state(
-    const URI& uri) const {
+    const URI& uri) {
   const Aws::Http::URI aws_uri(uri.c_str());
   const std::string uri_path(aws_uri.GetPath().c_str());
 
@@ -1763,7 +1763,15 @@ std::optional<S3::MultiPartUploadState> S3::multipart_upload_state(
     return nullopt;
   }
 
-  return state_iter->second;
+  // Delete the multipart state from the internal map to avoid
+  // the upload being completed by S3::disconnect during Context
+  // destruction when cloud executors die. The multipart request should be
+  // completed only during query finalize for remote global order writes.
+  std::unique_lock<std::mutex> state_lck(state_iter->second.mtx);
+  MultiPartUploadState rv_state = std::move(state_iter->second);
+  multipart_upload_states_.erase(state_iter);
+
+  return std::move(rv_state);
 }
 
 Status S3::set_multipart_upload_state(

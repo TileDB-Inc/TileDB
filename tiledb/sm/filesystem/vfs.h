@@ -461,7 +461,7 @@ class VFS {
    * @return A pair of status and VFS::MultiPartUploadState object.
    */
   std::pair<Status, std::optional<MultiPartUploadState>> multipart_upload_state(
-      const URI& uri) const;
+      const URI& uri);
 
   /**
    * Used in serialization of global order writes to set the multipart upload
