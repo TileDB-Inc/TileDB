@@ -223,6 +223,11 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
       // Run deduplication for tiles with timestamps, if required.
       RETURN_NOT_OK(dedup_tiles_with_timestamps(tmp_result_tiles));
 
+      // Compute hilbert values.
+      if (array_schema_.cell_order() == Layout::HILBERT) {
+        RETURN_NOT_OK(compute_hilbert_values(tmp_result_tiles));
+      }
+
       // Clear result tiles that are not necessary anymore.
       std::mutex ignored_tiles_mutex;
       auto status = parallel_for(
@@ -243,11 +248,6 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
             return Status::Ok();
           });
       RETURN_NOT_OK_ELSE(status, logger_->status(status));
-
-      // Compute hilbert values.
-      if (array_schema_.cell_order() == Layout::HILBERT) {
-        RETURN_NOT_OK(compute_hilbert_values(tmp_result_tiles));
-      }
     }
 
     // For fragments with timestamps, check first and last cell of every tiles
