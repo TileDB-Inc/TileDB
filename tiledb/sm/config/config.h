@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,10 +40,26 @@
 #include <string>
 #include <vector>
 
+/*
+ * C++14 introduced the attribute [[deprecated]], but no conditional syntax
+ * for it. In order to turn it on only when we want it, we have to use the
+ * preprocessor.
+ */
+#if defined(TILEDB_DEPRECATE_OLD_CONFIG_GET)
+/*
+ * Old versions of `Config::get` don't obey the "outputs on the left" principle,
+ * or return `Status`, or both.
+ */
+#define TILEDB_DEPRECATE_CONFIG \
+  [[deprecated(                 \
+      "Instead use the single-argument version that returns `optional`")]]
+#else
+#define TILEDB_DEPRECATE_CONFIG
+#endif
+
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /**
  * This class manages the TileDB configuration options.
@@ -77,21 +93,36 @@ class Config {
   /** The default exponential delay factor for retrying a http request. */
   static const std::string REST_RETRY_DELAY_FACTOR;
 
+  /** The default buffer size for curl reads used by REST. */
+  static const std::string REST_CURL_BUFFER_SIZE;
+
   /** The default for Curl's verbose mode used by REST. */
   static const std::string REST_CURL_VERBOSE;
+
+  /** If the array metadata should be loaded on array open */
+  static const std::string REST_LOAD_METADATA_ON_ARRAY_OPEN;
+
+  /** If the array non empty domain should be loaded on array open */
+  static const std::string REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN;
+
+  /** Refactored array open is disabled by default */
+  static const std::string REST_USE_REFACTORED_ARRAY_OPEN;
 
   /** The prefix to use for checking for parameter environmental variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 
   /**
    * The default logging level. It can be:
-   * - `1` i.e. `error` if bootstrap flag --enalbe-verbose is given
+   * - `1` i.e. `error` if bootstrap flag --enable-verbose is given
    * - `0` i.e. `fatal` if this bootstrap flag is missing
    */
   static const std::string CONFIG_LOGGING_LEVEL;
 
   /** The default format for logging. */
   static const std::string CONFIG_LOGGING_DEFAULT_FORMAT;
+
+  /** Allow updates or not. */
+  static const std::string SM_ALLOW_UPDATES_EXPERIMENTAL;
 
   /**
    * The key for encrypted arrays.
@@ -226,6 +257,9 @@ class Config {
   /** The buffer size for each attribute used in consolidation. */
   static const std::string SM_CONSOLIDATION_BUFFER_SIZE;
 
+  /** Purge deleted cells or not. */
+  static const std::string SM_CONSOLIDATION_PURGE_DELETED_CELLS;
+
   /** Number of steps in the consolidation algorithm. */
   static const std::string SM_CONSOLIDATION_STEPS;
 
@@ -262,11 +296,6 @@ class Config {
   static const std::string SM_CONSOLIDATION_TIMESTAMP_END;
 
   /**
-   * Enable or disable consolidation with timestamps.
-   */
-  static const std::string SM_CONSOLIDATION_WITH_TIMESTAMPS;
-
-  /**
    * The vacuum mode. It can be one of:
    *     - "fragments": only the fragments will be vacuumed
    *     - "fragment_meta": only the fragment metadata will be vacuumed
@@ -282,12 +311,12 @@ class Config {
 
   /**
    * An array will vacuum between timestamp_start and this value.
-   *  */
+   */
   static const std::string SM_VACUUM_TIMESTAMP_END;
 
   /**
    * The size of offsets in bits to be used for offset buffers of var-sized
-   * attributes<br>
+   * attributes
    */
   static const std::string SM_OFFSETS_BITSIZE;
 
@@ -317,7 +346,7 @@ class Config {
 
   /**
    * An group will open between timestamp_start and this value.
-   *  */
+   */
   static const std::string SM_GROUP_TIMESTAMP_END;
 
   /** The default minimum number of bytes in a parallel VFS operation. */
@@ -333,6 +362,9 @@ class Config {
 
   /** The default minimum number of bytes in a batched VFS read operation. */
   static const std::string VFS_MIN_BATCH_SIZE;
+
+  /** Disable batching from VFS, making direct reads from storage. */
+  static const std::string VFS_DISABLE_BATCHING;
 
   /** The default posix permissions for file creations */
   static const std::string VFS_FILE_POSIX_FILE_PERMISSIONS;
@@ -496,6 +528,12 @@ class Config {
   /** S3 default object canned ACL */
   static const std::string VFS_S3_OBJECT_CANNED_ACL;
 
+  /**
+   * Specifies the size in bytes of the internal buffers used in the filestore
+   * API. The size should be bigger than the minimum tile size filestore
+   * currently supports, that is currently 1024bytes. */
+  static const std::string FILESTORE_BUFFER_SIZE;
+
   /* ****************************** */
   /*        OTHER CONSTANTS         */
   /* ****************************** */
@@ -524,18 +562,39 @@ class Config {
   Status set(const std::string& param, const std::string& value);
 
   /**
+   * Retrieve the string value of a configuration parameter.
+   *
+   * @param key The name of the configuration parameter
+   * @return If a configuration item is present, its value. If not, `nullopt`.
+   */
+  [[nodiscard]] optional<std::string> get(const std::string& key) const;
+
+  /**
+   * Retrieve the string value of a configuration parameter and convert it to
+   * a designated type.
+   *
+   * @param key The name of the configuration parameter
+   * @return If a configuration item is present, its value. If not, `nullopt`.
+   */
+  template <class T>
+  [[nodiscard]] optional<T> get(const std::string& key) const;
+
+  /**
    * Returns the string representation of a config parameter value.
    * Sets `found` to `true` if found and `false` otherwise.
    */
+  TILEDB_DEPRECATE_CONFIG
   std::string get(const std::string& param, bool* found) const;
 
   /** Gets a config parameter value (`nullptr` if `param` does not exist). */
+  TILEDB_DEPRECATE_CONFIG
   Status get(const std::string& param, const char** value) const;
 
   /**
    * Retrieves the value of the given parameter in the templated type.
    * Sets `found` to `true` if found and `false` otherwise.
    */
+  TILEDB_DEPRECATE_CONFIG
   template <class T>
   Status get(const std::string& param, T* value, bool* found) const;
 
@@ -636,7 +695,20 @@ class Config {
       const std::string& param, bool* found) const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+/**
+ * An explicit specialization for `std::string`. It does not call a conversion
+ * function and it is thus the same as the non-template `get`.
+ */
+template <>
+[[nodiscard]] inline optional<std::string> Config::get<std::string>(
+    const std::string& key) const {
+  return get(key);
+}
+
+}  // namespace tiledb::sm
+
+#ifdef TILEDB_DEPRECATE_CONFIG
+#undef TILEDB_DEPRECATE_CONFIG
+#endif
 
 #endif  // TILEDB_CONFIG_H

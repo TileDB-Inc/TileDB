@@ -59,6 +59,7 @@ namespace sm {
 Dimension::Dimension(const std::string& name, Datatype type)
     : name_(name)
     , type_(type) {
+  ensure_datatype_is_supported(type_);
   cell_val_num_ = (datatype_is_string(type)) ? constants::var_num : 1;
   set_ceil_to_tile_func();
   set_coincides_with_tiles_func();
@@ -95,6 +96,7 @@ Dimension::Dimension(
     , name_(name)
     , tile_extent_(tile_extent)
     , type_(type) {
+  ensure_datatype_is_supported(type_);
   set_ceil_to_tile_func();
   set_coincides_with_tiles_func();
   set_compute_mbr_func();
@@ -126,6 +128,9 @@ Dimension::Dimension(const Dimension* dim) {
   name_ = dim->name();
   tile_extent_ = dim->tile_extent();
   type_ = dim->type_;
+
+  // Validate type
+  ensure_datatype_is_supported(type_);
 
   // Set fuctions
   ceil_to_tile_func_ = dim->ceil_to_tile_func_;
@@ -175,19 +180,13 @@ Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
   return Status::Ok();
 }
 
-tuple<Status, optional<shared_ptr<Dimension>>> Dimension::deserialize(
-    ConstBuffer* buff, uint32_t version, Datatype type) {
+shared_ptr<Dimension> Dimension::deserialize(
+    Deserializer& deserializer, uint32_t version, Datatype type) {
   Status st;
   // Load dimension name
-  uint32_t dimension_name_size;
-  st = buff->read(&dimension_name_size, sizeof(uint32_t));
-  if (!st.ok())
-    return {st, nullopt};
-  std::string name;
-  name.resize(dimension_name_size);
-  st = buff->read(&name[0], dimension_name_size);
-  if (!st.ok())
-    return {st, nullopt};
+  auto dimension_name_size = deserializer.read<uint32_t>();
+  std::string name(
+      deserializer.get_ptr<char>(dimension_name_size), dimension_name_size);
 
   Datatype datatype;
   uint32_t cell_val_num;
@@ -195,24 +194,14 @@ tuple<Status, optional<shared_ptr<Dimension>>> Dimension::deserialize(
   // Applicable only to version >= 5
   if (version >= 5) {
     // Load type
-    uint8_t type;
-    st = buff->read(&type, sizeof(uint8_t));
-    if (!st.ok())
-      return {st, nullopt};
+    auto type = deserializer.read<uint8_t>();
     datatype = (Datatype)type;
 
     // Load cell_val_num_
-    st = buff->read(&cell_val_num, sizeof(uint32_t));
-    if (!st.ok())
-      return {st, nullopt};
+    cell_val_num = deserializer.read<uint32_t>();
 
     // Load filter pipeline
-    auto&& [st_filterpipeline, filterpipeline]{
-        FilterPipeline::deserialize(buff, version)};
-    if (!st_filterpipeline.ok()) {
-      return {st_filterpipeline, nullopt};
-    }
-    filter_pipeline = filterpipeline.value();
+    filter_pipeline = FilterPipeline::deserialize(deserializer, version);
   } else {
     datatype = type;
     cell_val_num = (datatype_is_string(datatype)) ? constants::var_num : 1;
@@ -221,44 +210,32 @@ tuple<Status, optional<shared_ptr<Dimension>>> Dimension::deserialize(
   // Load domain
   uint64_t domain_size = 0;
   if (version >= 5) {
-    st = buff->read(&domain_size, sizeof(uint64_t));
-    if (!st.ok())
-      return {st, nullopt};
+    domain_size = deserializer.read<uint64_t>();
   } else {
     domain_size = 2 * datatype_size(datatype);
   }
   Range domain;
   if (domain_size != 0) {
-    std::vector<uint8_t> tmp(domain_size);
-    st = buff->read(&tmp[0], domain_size);
-    if (!st.ok())
-      return {st, nullopt};
-    domain = Range(&tmp[0], domain_size);
+    domain = Range(deserializer.get_ptr<uint8_t>(domain_size), domain_size);
   }
 
   ByteVecValue tile_extent;
   // Load tile extent
   tile_extent.assign_as_void();
-  uint8_t null_tile_extent;
-  st = buff->read(&null_tile_extent, sizeof(uint8_t));
-  if (!st.ok())
-    return {st, nullopt};
+  auto null_tile_extent = deserializer.read<uint8_t>();
   if (null_tile_extent == 0) {
     tile_extent.resize(datatype_size(datatype));
-    st = buff->read(tile_extent.data(), datatype_size(datatype));
-    if (!st.ok())
-      return {st, nullopt};
+    deserializer.read(tile_extent.data(), datatype_size(datatype));
   }
 
-  return {Status::Ok(),
-          tiledb::common::make_shared<Dimension>(
-              HERE(),
-              name,
-              datatype,
-              cell_val_num,
-              domain,
-              filter_pipeline,
-              tile_extent)};
+  return tiledb::common::make_shared<Dimension>(
+      HERE(),
+      name,
+      datatype,
+      cell_val_num,
+      domain,
+      filter_pipeline,
+      tile_extent);
 }
 
 const Range& Dimension::domain() const {
@@ -535,8 +512,14 @@ bool Dimension::oob(
   auto coord_t = (const T*)coord;
   if (*coord_t < domain[0] || *coord_t > domain[1]) {
     std::stringstream ss;
-    ss << "Coordinate " << *coord_t << " is out of domain bounds [" << domain[0]
-       << ", " << domain[1] << "] on dimension '" << dim->name() << "'";
+    ss << "Coordinate ";
+    // Account for precision in floating point types. Arbitrarily set
+    // the precision to up to 2 decimal places.
+    if (dim->type_ == Datatype::FLOAT32 || dim->type_ == Datatype::FLOAT64) {
+      ss << std::setprecision(std::numeric_limits<T>::digits10 + 1);
+    }
+    ss << *coord_t << " is out of domain bounds [" << domain[0] << ", "
+       << domain[1] << "] on dimension '" << dim->name() << "'";
     *err_msg = ss.str();
     return true;
   }
@@ -782,35 +765,34 @@ void Dimension::relevant_ranges<char>(
       });
 
   // If we have no ranges just exit early
-  if (it == ranges.end())
+  if (it == ranges.end()) {
     return;
+  }
 
   // Set start index
-  const uint64_t start_range_idx = std::distance(ranges.begin(), it);
+  const uint64_t start_range = std::distance(ranges.begin(), it);
 
-  // Binary search to find the last range containing the start mbr.
+  // Find upper bound to end comparisons. Finding this early allows avoiding the
+  // conditional exit in the for loop below
   auto it2 = std::lower_bound(
       it,
       ranges.end(),
       mbr_end,
       [&](const Range& a, const std::string_view& value) {
-        return a.start_str() < value;
+        return a.start_str() <= value;
       });
 
-  // If the upper bound isn't the end add +1 to the index
-  uint64_t offset = 0;
-  if (it2 != ranges.end())
-    offset = 1;
-  const uint64_t end_range_idx =
-      std::distance(it, it2) + start_range_idx + offset;
+  // Set end index
+  const uint64_t end_range = std::distance(it, it2) + start_range;
 
   // Loop over only potential relevant ranges
-  for (uint64_t r = start_range_idx; r < end_range_idx; ++r) {
+  for (uint64_t r = start_range; r < end_range; ++r) {
     const auto& r1_start = ranges[r].start_str();
     const auto& r1_end = ranges[r].end_str();
 
-    if (r1_start <= mbr_end && mbr_start <= r1_end)
+    if (r1_start <= mbr_end && mbr_start <= r1_end) {
       relevant_ranges.emplace_back(r);
+    }
   }
 }
 
@@ -832,30 +814,30 @@ void Dimension::relevant_ranges(
         return ((const T*)a.start_fixed())[1] < value;
       });
 
-  if (it == ranges.end())
+  if (it == ranges.end()) {
     return;
+  }
 
+  // Set start index
   const uint64_t start_range = std::distance(ranges.begin(), it);
 
   // Find upper bound to end comparisons. Finding this early allows avoiding the
   // conditional exit in the for loop below
   auto it2 = std::lower_bound(
       it, ranges.end(), mbr_end, [&](const Range& a, const T value) {
-        return ((const T*)a.start_fixed())[0] < value;
+        return ((const T*)a.start_fixed())[0] <= value;
       });
 
-  // If the upper bound isn't the end add +1 to the index
-  uint64_t offset = 0;
-  if (it2 != ranges.end())
-    offset = 1;
-  const uint64_t end_range = std::distance(it, it2) + start_range + offset;
+  // Set end index
+  const uint64_t end_range = std::distance(it, it2) + start_range;
 
   // Loop over only potential relevant ranges
   for (uint64_t r = start_range; r < end_range; ++r) {
     const auto d1 = (const T*)ranges[r].start_fixed();
 
-    if ((d1[0] <= mbr_end && d1[1] >= mbr_start))
+    if ((d1[0] <= mbr_end && d1[1] >= mbr_start)) {
       relevant_ranges.emplace_back(r);
+    }
   }
 }
 
@@ -1321,40 +1303,39 @@ bool Dimension::smaller_than<char>(
 // domain (void* - domain_size)
 // null_tile_extent (uint8_t)
 // tile_extent (void* - type_size)
-Status Dimension::serialize(Buffer* buff, uint32_t version) {
+void Dimension::serialize(Serializer& serializer, uint32_t version) const {
   // Sanity check
   auto is_str = datatype_is_string(type_);
   assert(is_str || !domain_.empty());
 
   // Write dimension name
   auto dimension_name_size = (uint32_t)name_.size();
-  RETURN_NOT_OK(buff->write(&dimension_name_size, sizeof(uint32_t)));
-  RETURN_NOT_OK(buff->write(name_.c_str(), dimension_name_size));
+  serializer.write<uint32_t>(dimension_name_size);
+  serializer.write(name_.data(), dimension_name_size);
 
   // Applicable only to version >= 5
   if (version >= 5) {
     // Write type
     auto type = (uint8_t)type_;
-    RETURN_NOT_OK(buff->write(&type, sizeof(uint8_t)));
+    serializer.write<uint8_t>(type);
 
     // Write cell_val_num_
-    RETURN_NOT_OK(buff->write(&cell_val_num_, sizeof(uint32_t)));
+    serializer.write<uint32_t>(cell_val_num_);
 
     // Write filter pipeline
-    RETURN_NOT_OK(filters_.serialize(buff));
+    filters_.serialize(serializer);
   }
 
   // Write domain and tile extent
   uint64_t domain_size = (is_str) ? 0 : 2 * coord_size();
-  RETURN_NOT_OK(buff->write(&domain_size, sizeof(uint64_t)));
-  RETURN_NOT_OK(buff->write(domain_.data(), domain_size));
+  serializer.write<uint64_t>(domain_size);
+  serializer.write(domain_.data(), domain_size);
 
   auto null_tile_extent = (uint8_t)(tile_extent_ ? 0 : 1);
-  RETURN_NOT_OK(buff->write(&null_tile_extent, sizeof(uint8_t)));
-  if (tile_extent_)
-    RETURN_NOT_OK(buff->write(tile_extent_.data(), tile_extent_.size()));
-
-  return Status::Ok();
+  serializer.write<uint8_t>(null_tile_extent);
+  if (tile_extent_) {
+    serializer.write(tile_extent_.data(), tile_extent_.size());
+  }
 }
 
 Status Dimension::set_domain(const void* domain) {
@@ -1823,6 +1804,7 @@ std::string Dimension::domain_str() const {
 
     case Datatype::BLOB:
     case Datatype::CHAR:
+    case Datatype::BOOL:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
@@ -1837,6 +1819,33 @@ std::string Dimension::domain_str() const {
 
   assert(false);
   return "";
+}
+
+void Dimension::ensure_datatype_is_supported(Datatype type) const {
+  try {
+    ensure_datatype_is_valid(type);
+  } catch (...) {
+    std::throw_with_nested(
+        std::logic_error("[Dimension::ensure_datatype_is_supported] "));
+    return;
+  }
+
+  switch (type) {
+    case Datatype::CHAR:
+    case Datatype::BLOB:
+    case Datatype::BOOL:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    case Datatype::ANY:
+      throw std::logic_error(
+          "Datatype::" + datatype_str(type) +
+          " is not a valid Dimension Datatype");
+    default:
+      return;
+  }
 }
 
 std::string Dimension::tile_extent_str() const {
@@ -1921,6 +1930,7 @@ std::string Dimension::tile_extent_str() const {
 
     case Datatype::BLOB:
     case Datatype::CHAR:
+    case Datatype::BOOL:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:

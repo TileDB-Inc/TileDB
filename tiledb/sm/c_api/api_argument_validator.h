@@ -34,6 +34,9 @@
 #ifndef TILEDB_CAPI_HELPERS_H
 #define TILEDB_CAPI_HELPERS_H
 
+#include "tiledb/api/c_api/filter/filter_api_internal.h"
+#include "tiledb/api/c_api_support/argument_validation.h"
+#include "tiledb/common/exception/exception.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/filter_type.h"
@@ -42,10 +45,32 @@
 /*         AUXILIARY FUNCTIONS       */
 /* ********************************* */
 
-/* Saves a status inside the context object. */
-bool save_error(tiledb_ctx_t* ctx, const Status& st);
+namespace tiledb::api {
 
-bool create_error(tiledb_error_t** error, const Status& st);
+/**
+ * Returns after successfully validating an array.
+ *
+ * @param array Possibly-valid pointer to array
+ */
+inline void ensure_array_is_valid(const tiledb_array_t* array) {
+  if (array == nullptr) {
+    action_invalid_object("array");
+  }
+}
+
+/**
+ * Returns after successfully validating a filter list.
+ *
+ * @param filter_list Possibly-valid pointer to filter list
+ */
+inline void ensure_filter_list_is_valid(
+    const tiledb_filter_list_t* filter_list) {
+  if (filter_list == nullptr) {
+    action_invalid_object("filter list");
+  }
+}
+
+}  // namespace tiledb::api
 
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_array_t* array) {
   if (array == nullptr || array->array_ == nullptr) {
@@ -137,41 +162,17 @@ inline int32_t sanity_check(
   return TILEDB_OK;
 }
 
-inline int32_t sanity_check(tiledb_ctx_t* ctx) {
-  if (ctx == nullptr)
-    return TILEDB_ERR;
-  if (ctx->ctx_ == nullptr || ctx->ctx_->storage_manager() == nullptr) {
-    auto st = Status_Error("Invalid TileDB context");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
-inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_error_t* err) {
-  if (err == nullptr) {
-    auto st = Status_Error("Invalid TileDB error object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
+/**
+ * This function is dead code. Validity of the context is now checked in the
+ * exception wrapper.
+ */
+inline int32_t sanity_check(tiledb_ctx_t*) {
   return TILEDB_OK;
 }
 
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_attribute_t* attr) {
   if (attr == nullptr || attr->attr_ == nullptr) {
     auto st = Status_Error("Invalid TileDB attribute object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
-inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_filter_t* filter) {
-  if (filter == nullptr || filter->filter_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB filter object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -289,20 +290,6 @@ inline int32_t sanity_check(
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_group_t* group) {
   if (group == nullptr || group->group_ == nullptr) {
     auto st = Status_Error("Invalid TileDB group object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
-inline int32_t check_filter_type(
-    tiledb_ctx_t* ctx, tiledb_filter_t* filter, tiledb_filter_type_t type) {
-  auto cpp_type = static_cast<tiledb::sm::FilterType>(type);
-  if (filter->filter_->type() != cpp_type) {
-    auto st = Status_FilterError(
-        "Invalid filter type (expected " +
-        tiledb::sm::filter_type_str(cpp_type) + ")");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;

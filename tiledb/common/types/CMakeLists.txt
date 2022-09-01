@@ -30,10 +30,12 @@ include(common NO_POLICY_SCOPE)
 # `datum` object library
 #
 add_library(datum OBJECT untyped_datum.cc dynamic_typed_datum.cc)
+
 #
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_datum EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_datum)
 target_link_libraries(compile_datum PRIVATE datum)
 target_sources(compile_datum PRIVATE test/compile_datum_main.cc)
 

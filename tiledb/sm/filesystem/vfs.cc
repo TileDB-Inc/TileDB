@@ -190,22 +190,19 @@ Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
 
   // Get all files in the tree rooted at `dir_name` and add their sizes
   *dir_size = 0;
-  uint64_t size;
   std::list<URI> to_ls;
-  bool is_file;
   to_ls.push_front(dir_name);
   do {
     auto uri = to_ls.front();
     to_ls.pop_front();
-    std::vector<URI> children;
-    RETURN_NOT_OK(ls(uri, &children));
-    for (const auto& child : children) {
-      RETURN_NOT_OK(this->is_file(child, &is_file));
-      if (is_file) {
-        RETURN_NOT_OK(file_size(child, &size));
-        *dir_size += size;
+    auto&& [st, children] = ls_with_sizes(uri);
+    RETURN_NOT_OK(st);
+
+    for (const auto& child : *children) {
+      if (!child.is_directory()) {
+        *dir_size += child.file_size();
       } else {
-        to_ls.push_back(child);
+        to_ls.push_back(URI(child.path().native()));
       }
     }
   } while (!to_ls.empty());
@@ -539,6 +536,7 @@ Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
 }
 
 Status VFS::file_size(const URI& uri, uint64_t* size) const {
+  stats_->add_counter("file_size_num", 1);
   if (!init_)
     return LOG_STATUS(
         Status_VFSError("Cannot get file size; VFS not initialized"));
@@ -641,9 +639,12 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
 }
 
 Status VFS::is_file(const URI& uri, bool* is_file) const {
-  if (!init_)
+  if (!init_) {
     return LOG_STATUS(
         Status_VFSError("Cannot check file; VFS not initialized"));
+  }
+
+  stats_->add_counter("is_object_num", 1);
 
   if (uri.is_file()) {
 #ifdef _WIN32
@@ -812,6 +813,7 @@ Status VFS::terminate() {
 }
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
+  stats_->add_counter("ls_num", 1);
   auto&& [st, entries] = ls_with_sizes(parent);
   RETURN_NOT_OK(st);
 
@@ -1467,11 +1469,13 @@ Status VFS::read_all(
     ThreadPool* thread_pool,
     std::vector<ThreadPool::Task>* tasks,
     const bool use_read_ahead) {
-  if (!init_)
+  if (!init_) {
     return LOG_STATUS(Status_VFSError("Cannot read all; VFS not initialized"));
+  }
 
-  if (regions.empty())
+  if (regions.empty()) {
     return Status::Ok();
+  }
 
   // Convert the individual regions into batched regions.
   std::vector<BatchedRead> batches;
@@ -1499,6 +1503,41 @@ Status VFS::read_all(
             uint64_t nbytes = std::get<2>(region);
             std::memcpy(dest, buffer.data(offset - batch_copy.offset), nbytes);
           }
+
+          return Status::Ok();
+        });
+
+    tasks->push_back(std::move(task));
+  }
+
+  return Status::Ok();
+}
+
+Status VFS::read_all_no_batching(
+    const URI& uri,
+    const std::vector<tuple<uint64_t, Tile*, uint64_t>>& regions,
+    ThreadPool* thread_pool,
+    std::vector<ThreadPool::Task>* tasks,
+    const bool use_read_ahead) {
+  if (!init_) {
+    return LOG_STATUS(Status_VFSError("Cannot read all; VFS not initialized"));
+  }
+
+  if (regions.empty()) {
+    return Status::Ok();
+  }
+
+  // Read all the batches and copy to the original destinations.
+  for (const auto& region : regions) {
+    URI uri_copy = uri;
+    auto task =
+        thread_pool->execute([this, uri_copy, region, use_read_ahead]() {
+          RETURN_NOT_OK(read(
+              uri_copy,
+              std::get<0>(region),
+              std::get<1>(region)->filtered_buffer().data(),
+              std::get<2>(region),
+              use_read_ahead));
 
           return Status::Ok();
         });

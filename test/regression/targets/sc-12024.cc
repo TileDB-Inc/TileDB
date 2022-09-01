@@ -1,13 +1,13 @@
 #include <tiledb/tiledb>
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 
 #include <chrono>
 #include <thread>
 
 using namespace tiledb;
 
-TEST_CASE("C++ API: Truncated values (ch12024)", "[cppapi][sparse][!shouldfail]") {
+TEST_CASE("C++ API: Truncated values (ch12024)", "[cppapi][sparse]") {
   const std::string array_name_1d = "cpp_unit_array_1d";
   Context ctx;
   VFS vfs(ctx);
@@ -36,7 +36,7 @@ TEST_CASE("C++ API: Truncated values (ch12024)", "[cppapi][sparse][!shouldfail]"
     REQUIRE_THROWS_WITH(
         q.submit(),
         "[TileDB::Dimension] Error: Coordinate -682.75 is out of domain "
-        "bounds [-682.74, 929.43] on dimension 'Z'");
+        "bounds [-682.73999, 929.42999] on dimension 'Z'");
   }
   {
     Query q(ctx, array, TILEDB_WRITE);
@@ -47,7 +47,7 @@ TEST_CASE("C++ API: Truncated values (ch12024)", "[cppapi][sparse][!shouldfail]"
     REQUIRE_THROWS_WITH(
         q.submit(),
         "[TileDB::Dimension] Error: Coordinate 139200.34 is out of domain "
-        "bounds [139200.34, 140000.19] on dimension 'Y'");
+        "bounds [139200.34375, 140000.1875] on dimension 'Y'");
   }
 
   array.close();

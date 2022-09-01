@@ -27,7 +27,7 @@
 // clang-format off
 /**
  * NOTE: The values of these enums are serialized to the array schema and/or
- * fragment metadata. Therefore, the values below should never change, 
+ * fragment metadata. Therefore, the values below should never change,
  * otherwise backwards compatibility breaks.
  */
 #ifdef TILEDB_QUERY_TYPE_ENUM
@@ -35,6 +35,12 @@
     TILEDB_QUERY_TYPE_ENUM(READ) = 0,
     /** Write query */
     TILEDB_QUERY_TYPE_ENUM(WRITE) = 1,
+    /** Delete query */
+    TILEDB_QUERY_TYPE_ENUM(DELETE) = 2,
+    /** Update query */
+    TILEDB_QUERY_TYPE_ENUM(UPDATE) = 3,
+    /** Exclusive Modification query */
+    TILEDB_QUERY_TYPE_ENUM(MODIFY_EXCLUSIVE) = 4,
 #endif
 // clang-format on
 
@@ -144,6 +150,8 @@
     TILEDB_DATATYPE_ENUM(TIME_AS) = 39,
     /** std::byte */
     TILEDB_DATATYPE_ENUM(BLOB) = 40,
+    /** Boolean */
+    TILEDB_DATATYPE_ENUM(BOOL) = 41,
 #endif
 
 #ifdef TILEDB_ARRAY_TYPE_ENUM
@@ -164,47 +172,6 @@
     TILEDB_LAYOUT_ENUM(UNORDERED) = 3,
     /** Hilbert layout */
     TILEDB_LAYOUT_ENUM(HILBERT) = 4,
-#endif
-
-#ifdef TILEDB_FILTER_TYPE_ENUM
-    /** No-op filter */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_NONE) = 0,
-    /** Gzip compressor */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_GZIP) = 1,
-    /** Zstandard compressor */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_ZSTD) = 2,
-    /** LZ4 compressor */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_LZ4) = 3,
-    /** Run-length encoding compressor */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_RLE) = 4,
-    /** Bzip2 compressor */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BZIP2) = 5,
-    /** Double-delta compressor */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_DOUBLE_DELTA) = 6,
-    /** Bit width reduction filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BIT_WIDTH_REDUCTION) = 7,
-    /** Bitshuffle filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BITSHUFFLE) = 8,
-    /** Byteshuffle filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BYTESHUFFLE) = 9,
-    /** Positive-delta encoding filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_POSITIVE_DELTA) = 10,
-    /** MD5 checksum filter. Starts at 12 because 11 is used for encryption, see
-       tiledb/sm/enums/filter_type.h */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_CHECKSUM_MD5) = 12,
-    /** SHA256 checksum filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_CHECKSUM_SHA256) = 13,
-    /** Dictionary encoding filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_DICTIONARY) = 14,
-#endif
-
-#ifdef TILEDB_FILTER_OPTION_ENUM
-    /** Compression level. Type: `int32_t`. */
-    TILEDB_FILTER_OPTION_ENUM(COMPRESSION_LEVEL) = 0,
-    /** Max window length for bit width reduction. Type: `uint32_t`. */
-    TILEDB_FILTER_OPTION_ENUM(BIT_WIDTH_MAX_WINDOW) = 1,
-    /** Max window length for positive-delta encoding. Type: `uint32_t`. */
-    TILEDB_FILTER_OPTION_ENUM(POSITIVE_DELTA_MAX_WINDOW) = 2,
 #endif
 
 #ifdef TILEDB_ENCRYPTION_TYPE_ENUM

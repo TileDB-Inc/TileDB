@@ -202,12 +202,8 @@ Status Posix::touch(const std::string& filename) const {
 }
 
 std::string Posix::current_dir() {
-  std::string dir;
-  char* path = getcwd(nullptr, 0);
-  if (path != nullptr) {
-    dir = path;
-    free(path);
-  }
+  static std::unique_ptr<char, decltype(&free)> cwd_(getcwd(nullptr, 0), free);
+  std::string dir = cwd_.get();
   return dir;
 }
 
@@ -317,11 +313,11 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
     // If this penalty becomes noticeable, we should just duplicate
     // this implementation in ls() and don't get the size
     if (next_path->d_type == DT_DIR) {
-      entries.emplace_back(abspath, 0);
+      entries.emplace_back(abspath, 0, true);
     } else {
       uint64_t size;
       RETURN_NOT_OK_TUPLE(file_size(abspath, &size), nullopt);
-      entries.emplace_back(abspath, size);
+      entries.emplace_back(abspath, size, false);
     }
   }
   // close parent directory

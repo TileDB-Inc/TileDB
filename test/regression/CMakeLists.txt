@@ -25,12 +25,23 @@
 # THE SOFTWARE.
 #
 
+set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+
 find_package(Catch_EP REQUIRED)
 
 set(SOURCES
   targets/sc-12024.cc
   targets/sc-15387.cc
+  targets/sc-18836.cc
 )
+
+if (TILEDB_SERIALIZATION)
+  list(APPEND SOURCES targets/sc-18250.cc)
+endif()
+
+if (TILEDB_CPP_API)
+  list(APPEND SOURCES targets/sc-19240_cppapi-vfs-exception.cc)
+endif()
 
 add_executable(tiledb_regression
   EXCLUDE_FROM_ALL
@@ -45,12 +56,14 @@ endif()
 target_link_libraries(tiledb_regression
   PUBLIC
     Catch2::Catch2
+    local_install
     tiledb_shared
 )
 
 target_include_directories(tiledb_regression
   PRIVATE
     ${CMAKE_INSTALL_PREFIX}/include
+    "${TILEDB_CORE_INCLUDE_DIR}"
 )
 
 add_test(

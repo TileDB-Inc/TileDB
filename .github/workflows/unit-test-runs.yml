@@ -1,19 +1,6 @@
 name: unit-test-standalone
 on:
-  push:
-    paths-ignore:
-      - '_quarto.yml'
-      - 'quarto-materials/*'
-      - '**/.md'
-      - 'doc/source/conf.py'
-      - 'tiledb/sm/c_api/tiledb_version.h'
-  pull_request:
-    paths-ignore:
-      - '_quarto.yml'
-      - 'quarto-materials/*'
-      - '**/.md'
-      - 'doc/source/conf.py'
-      - 'tiledb/sm/c_api/tiledb_version.h'
+  workflow_call:
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
@@ -23,6 +10,7 @@ env:
   TILEDB_SERIALIZATION: OFF
   TILEDB_STATIC: OFF
   TILEDB_TOOLS: ON
+  TILEDB_WEBP: ON
 
 jobs:
   build:
@@ -45,14 +33,6 @@ jobs:
           printenv
         shell: bash
 
-      - name: 'Install system headers (OSX 10.14 only)'
-        run: |
-          set -e pipefail
-          open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
-          sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
-        shell: bash
-        if: ${{ runner.os == 'macOS' && env.imageName == 'macOS-10.14' }}
-
       - name: 'Build and run standalone unit tests'
         id: test
         run: |
@@ -64,7 +44,8 @@ jobs:
             -DTILEDB_AZURE=${TILEDB_AZURE}\
             -DTILEDB_GCS=${TILEDB_GCS} \
             -DTILEDB_S3=${TILEDB_S3} \
-            -DTILEDB_SERIALIZATION=${TILEDB_SERIALIZATION}
+            -DTILEDB_SERIALIZATION=${TILEDB_SERIALIZATION} \
+            -DTILEDB_WEBP=${TILEDB_WEBP}
           make -j4
           # Build all unit tests
           make -C tiledb tests -j4

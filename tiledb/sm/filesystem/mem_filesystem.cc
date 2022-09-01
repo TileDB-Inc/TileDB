@@ -291,11 +291,11 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
     for (const auto& child : children_) {
       std::unique_lock<std::mutex> lock(child.second->mutex_);
       if (child.second->is_dir()) {
-        names.emplace_back("mem://" + full_path + child.first, 0);
+        names.emplace_back("mem://" + full_path + child.first, 0, true);
       } else {
         uint64_t size;
         RETURN_NOT_OK_TUPLE(child.second->get_size(&size), nullopt);
-        names.emplace_back("mem://" + full_path + child.first, size);
+        names.emplace_back("mem://" + full_path + child.first, size, false);
       }
     }
 

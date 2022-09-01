@@ -66,7 +66,14 @@ class FilterPipeline;
 enum class Compressor : uint8_t;
 enum class Datatype : uint8_t;
 
-/** Manipulates a TileDB dimension. */
+/** Manipulates a TileDB dimension.
+ *
+ * Note: as laid out in the Storage Format,
+ * the following Datatypes are not valid for Dimension:
+ * TILEDB_CHAR, TILEDB_BLOB, TILEDB_BOOL, TILEDB_STRING_UTF8,
+ * TILEDB_STRING_UTF16, TILEDB_STRING_UTF32, TILEDB_STRING_UCS2,
+ * TILEDB_STRING_UCS4, TILEDB_ANY
+ */
 class Dimension {
  public:
   /* ********************************* */
@@ -142,13 +149,13 @@ class Dimension {
   /**
    * Populates the object members from the data in the input binary buffer.
    *
-   * @param buff The buffer to deserialize from.
+   * @param deserializer The deserializer to deserialize from.
    * @param type The type of the dimension.
    * @param version The array schema version.
-   * @return Status and Dimension
+   * @return Dimension
    */
-  static tuple<Status, optional<shared_ptr<Dimension>>> deserialize(
-      ConstBuffer* buff, uint32_t version, Datatype type);
+  static shared_ptr<Dimension> deserialize(
+      Deserializer& deserializer, uint32_t version, Datatype type);
 
   /** Returns the domain. */
   const Range& domain() const;
@@ -686,11 +693,11 @@ class Dimension {
   /**
    * Serializes the object members into a binary buffer.
    *
-   * @param buff The buffer to serialize the data into.
+   * @param serializer The object the dimension is serialized into.
    * @param version The array schema version
    * @return Status
    */
-  Status serialize(Buffer* buff, uint32_t version);
+  void serialize(Serializer& serializer, uint32_t version) const;
 
   /** Sets the domain. */
   Status set_domain(const void* domain);
@@ -999,6 +1006,9 @@ class Dimension {
 
   /** Returns the domain in string format. */
   std::string domain_str() const;
+
+  /** Throws error if the input type is not a supported Dimension Datatype. */
+  void ensure_datatype_is_supported(Datatype type) const;
 
   /** Returns the tile extent in string format. */
   std::string tile_extent_str() const;

@@ -49,6 +49,7 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/subarray/subarray.h"
 
@@ -135,11 +136,17 @@ class Query {
    * for the name of the new fragment to be created.
    *
    * @note Array must be a properly opened array.
+   *
+   * @param array The array that is being queried.
+   * @param fragment_uri The full URI for the new fragment. Only used for
+   * writes.
+   * @param fragment_base_uri Optional base name for new fragment. Only used for
+   *     writes and only if fragment_uri is empty.
    */
   Query(
       StorageManager* storage_manager,
-      Array* array,
-      URI fragment_uri = URI(""));
+      shared_ptr<Array> array,
+      optional<std::string> fragment_name = nullopt);
 
   /** Destructor. */
   ~Query();
@@ -339,6 +346,11 @@ class Query {
    */
   Status get_written_fragment_timestamp_range(
       uint32_t idx, uint64_t* t1, uint64_t* t2) const;
+
+  /** Returns the array's smart pointer. */
+  inline shared_ptr<Array> array_shared() {
+    return array_shared_;
+  }
 
   /** Returns the array. */
   const Array* array() const;
@@ -541,19 +553,29 @@ class Query {
    * Returns the condition for filtering results in a read query.
    * @return QueryCondition
    */
-  const QueryCondition* condition() const;
+  const QueryCondition& condition() const;
+
+  /**
+   * Returns the update values for an update query.
+   * @return UpdateValues
+   */
+  const std::vector<UpdateValue>& update_values() const;
 
   /** Processes a query. */
   Status process();
 
-  /** Create the strategy. */
-  Status create_strategy();
-
   /** Gets the strategy of the query. */
-  IQueryStrategy* strategy();
+  IQueryStrategy* strategy(bool skip_checks_serialization = false);
 
-  /** Remove the current strategy. Used by serialization. */
-  void clear_strategy();
+  /**
+   * Switch the strategy depending on layout. Used by serialization.
+   *
+   * @param layout New layout
+   * @param force_legacy_reader Force use of the legacy reader if the client
+   *    requested it.
+   * @return Status
+   */
+  Status reset_strategy_with_layout(Layout layout, bool force_legacy_reader);
 
   /**
    * Disables checking the global order and coordinate duplicates. Applicable
@@ -565,6 +587,13 @@ class Query {
    * Enables consolidation with timestamps.
    */
   Status set_consolidation_with_timestamps();
+
+  /**
+   * Set the processed conditions for writes.
+   *
+   * @param processed_conditions The processed conditions.
+   */
+  void set_processed_conditions(std::vector<std::string>& processed_conditions);
 
   /**
    * Sets the config for the Query
@@ -794,11 +823,6 @@ class Query {
       std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size);
 
   /**
-   * Sets the cell layout of the query without performing any checks.
-   */
-  Status set_layout_unsafe(Layout layout);
-
-  /**
    * Sets the cell layout of the query.
    */
   Status set_layout(Layout layout);
@@ -810,6 +834,19 @@ class Query {
    * @return Status
    */
   Status set_condition(const QueryCondition& condition);
+
+  /**
+   * Adds an update value for an update query.
+   *
+   * @param field_name The attribute name.
+   * @param update_value The value to set.
+   * @param update_value_size The byte size of `update_value`.
+   * @return Status
+   */
+  Status add_update_value(
+      const char* field_name,
+      const void* update_value,
+      uint64_t update_value_size);
 
   /**
    * Set query status, needed for json deserialization
@@ -878,13 +915,16 @@ class Query {
   shared_ptr<Buffer> rest_scratch() const;
 
   /** Use the refactored dense reader or not. */
-  bool use_refactored_dense_reader();
+  bool use_refactored_dense_reader(
+      const ArraySchema& array_schema, bool all_dense);
 
   /** Use the refactored sparse global order reader or not. */
-  bool use_refactored_sparse_global_order_reader();
+  bool use_refactored_sparse_global_order_reader(
+      Layout layout, const ArraySchema& array_schema);
 
   /** Use the refactored sparse unordered with dups reader or not. */
-  bool use_refactored_sparse_unordered_with_dups_reader();
+  bool use_refactored_sparse_unordered_with_dups_reader(
+      Layout layout, const ArraySchema& array_schema);
 
   /** Returns if all ranges for this query are non overlapping. */
   tuple<Status, optional<bool>> non_overlapping_ranges();
@@ -894,7 +934,12 @@ class Query {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array the query is associated with. */
+  /** A smart pointer to the array the query is associated with.
+   * Ensures that the Array object exists as long as the Query object exists. */
+  shared_ptr<Array> array_shared_;
+
+  /** The array the query is associated with.
+   * Cached copy of array_shared_.get(). */
   Array* array_;
 
   /** The array schema. */
@@ -952,6 +997,12 @@ class Query {
   /** The query condition. */
   QueryCondition condition_;
 
+  /** The update values. */
+  std::vector<UpdateValue> update_values_;
+
+  /** Set of attributes that have an update value. */
+  std::set<std::string> attributes_with_update_value_;
+
   /** The fragment metadata that this query will focus on. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
 
@@ -990,15 +1041,38 @@ class Query {
    */
   bool consolidation_with_timestamps_;
 
-  /** The name of the new fragment to be created for writes. */
-  URI fragment_uri_;
-
   /* Scratch space used for REST requests. */
   shared_ptr<Buffer> rest_scratch_;
+
+  /* Processed conditions, used for consolidation. */
+  std::vector<std::string> processed_conditions_;
+
+  /**
+   * Flag to force legacy reader when strategy gets created. This is used by
+   * the serialization codebase if a query comes from an older version of the
+   * library that doesn't have the refactored readers, we need to run it with
+   * the legacy reader.
+   */
+  bool force_legacy_reader_;
+
+  /**
+   * The name of the new fragment to be created for writes.
+   *
+   * If not set, the fragment name will be created using the latest array
+   * timestamp and a generated UUID.
+   */
+  optional<std::string> fragment_name_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /**
+   * Create the strategy.
+   *
+   * @param skip_checks_serialization Skip checks during serialization.
+   */
+  Status create_strategy(bool skip_checks_serialization = false);
 
   Status check_set_fixed_buffer(const std::string& name);
 

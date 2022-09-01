@@ -31,8 +31,8 @@
  * Tests the TileDB filestore C API.
  */
 
+#include <test/support/tdb_catch.h>
 #include <iostream>
-#include "catch.hpp"
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -166,6 +166,7 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string txt_path = files_dir + "/" + "text.txt";
+  std::string array_path = temp_dir + "/" + "test_filestore_non_imported_array";
 
   create_temp_dir(temp_dir);
 
@@ -201,6 +202,10 @@ TEST_CASE_METHOD(
       tiledb::sm::constants::filestore_attribute_name.c_str(),
       &attr);
   REQUIRE(rc == TILEDB_OK);
+
+  size_t size = 0;
+  REQUIRE(tiledb_array_create(ctx_, array_path.c_str(), schema) == TILEDB_OK);
+  REQUIRE(tiledb_filestore_size(ctx_, array_path.c_str(), &size) == TILEDB_ERR);
 
   // Cleanup
   tiledb_attribute_free(&attr);
@@ -369,6 +374,12 @@ TEST_CASE_METHOD(
 
   // Check correctness
   CHECK(!std::memcmp(buffer, file_content.data(), file_content.size()));
+
+  // Exporting to a non-existent directory should return an error, not abort
+  // (SC-19240)
+  REQUIRE(
+      tiledb_filestore_uri_export(
+          ctx_, "/dir/not/exists/hello.txt", array_name.c_str()) == TILEDB_ERR);
 
   // Clean up
   tiledb_vfs_close(ctx_, fh);

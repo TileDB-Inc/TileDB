@@ -733,7 +733,8 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
     for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
       std::string file(object.GetKey().c_str());
       uint64_t size = object.GetSize();
-      entries.emplace_back("s3://" + aws_auth + add_front_slash(file), size);
+      entries.emplace_back(
+          "s3://" + aws_auth + add_front_slash(file), size, false);
     }
 
     for (const auto& object :
@@ -742,7 +743,9 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
       // For "directories" it doesn't seem possible to get a shallow size in
       // S3, so the size of such an entry will be 0 in S3.
       entries.emplace_back(
-          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)), 0);
+          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)),
+          0,
+          true);
     }
 
     is_done =
@@ -935,10 +938,13 @@ Status S3::remove_dir(const URI& uri) const {
   RETURN_NOT_OK(init_client());
 
   std::vector<std::string> paths;
-  auto uri_dir = uri.add_trailing_slash();
-  RETURN_NOT_OK(ls(uri_dir, &paths, ""));
-  for (const auto& p : paths)
-    RETURN_NOT_OK(remove_object(URI(p)));
+  RETURN_NOT_OK(ls(uri, &paths, ""));
+  auto status = parallel_for(vfs_thread_pool_, 0, paths.size(), [&](size_t i) {
+    RETURN_NOT_OK(remove_object(URI(paths[i])));
+    return Status::Ok();
+  });
+  RETURN_NOT_OK(status);
+
   return Status::Ok();
 }
 

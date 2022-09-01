@@ -30,7 +30,7 @@
  * Tests the C API async queries.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
@@ -1130,6 +1130,11 @@ void IncompleteFx::check_sparse_unsplittable_overflow() {
   CHECK(rc == TILEDB_OK);
   CHECK(status == TILEDB_INCOMPLETE);
   CHECK(buffer_sizes[0] == 0);
+
+  tiledb_query_status_details_t details;
+  rc = tiledb_query_get_status_details(ctx_, query, &details);
+  CHECK(rc == TILEDB_OK);
+  CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);
 
   // Finalize query
   rc = tiledb_query_finalize(ctx_, query);

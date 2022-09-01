@@ -265,6 +265,10 @@ class Config {
    *
    * **Parameters**
    *
+   * - `sm.consolidation.allow_updates_experimental` <br>
+   *    **Experimental** <br>
+   *    Allow update queries. Experimental for testing purposes, do not use.<br>
+   *    **Default**: false
    * - `sm.dedup_coords` <br>
    *    If `true`, cells with duplicate coordinates will be removed during
    *    sparse fragment writes. Note that ties during deduplication are broken
@@ -307,26 +311,21 @@ class Config {
    *    Upper-bound on number of threads to allocate for IO-bound tasks. <br>
    *    **Default*: # cores
    * - `sm.vacuum.mode` <br>
-   *    The vacuuming mode, one of `fragments` (remove consolidated fragments),
-   *    `fragment_meta` (remove only consolidated fragment metadata), or
-   *    `array_meta` (remove consolidated array metadata files). <br>
-   *    **Default**: fragments
-   * - `sm.vacuum.timestamp_start` <br>
-   *    **Experimental** <br>
-   *    When set, an array will be vacuumed between this value and
-   *    `sm.vacuum.timestamp_end` (inclusive). <br>
-   *    Only for `fragments` and `array_meta` vacuum mode. <br>
-   *    **Default**: 0
-   * - `sm.vacuum.timestamp_end` <br>
-   *    **Experimental** <br>
-   *    When set, an array will be vacuumed between `sm.vacuum.timestamp_start`
-   *    and this value (inclusive). <br>
-   *    Only for `fragments` and `array_meta` vacuum mode. <br>
-   *    **Default**: UINT64_MAX
+   *    The vacuuming mode, one of
+   *    `commits` (remove only consolidated commit files),
+   *    `fragments` (remove only consolidated fragments),
+   *    `fragment_meta` (remove only consolidated fragment metadata),
+   *    `array_meta` (remove only consolidated array metadata files), or
+   *    `group_meta` (remove only consolidate group metadata only).
+   *    <br>
+   *    **Default**: "fragments"
    * - `sm.consolidation_mode` <br>
-   *    The consolidation mode, one of `fragments` (consolidate all fragments),
+   *    The consolidation mode, one of
+   *    `commits` (consolidate all commit files),
+   *    `fragments` (consolidate all fragments),
    *    `fragment_meta` (consolidate only fragment metadata footers to a single
-   *    file), or `array_meta` (consolidate array metadata only). <br>
+   * file), `array_meta` (consolidate array metadata only), or `group_meta`
+   * (consolidate group metadata only). <br>
    *    **Default**: "fragments"
    * - `sm.consolidation.amplification` <br>
    *    The factor by which the size of the dense fragment resulting
@@ -345,6 +344,10 @@ class Config {
    *    The number of consolidation steps to be performed when executing
    *    the consolidation algorithm.<br>
    *    **Default**: 1
+   * - `sm.consolidation.purge_deleted_cells` <br>
+   *    **Experimental** <br>
+   *    Purge deleted cells from the consolidated fragment or not.<br>
+   *    **Default**: false
    * - `sm.consolidation.step_min_frags` <br>
    *    The minimum number of fragments to consolidate in a single step.<br>
    *    **Default**: UINT32_MAX
@@ -367,11 +370,6 @@ class Config {
    *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
    *    Only for `fragments` and `array_meta` consolidation mode. <br>
    *    **Default**: UINT64_MAX
-   * - `sm.consolidation.with_timestamps` <br>
-   *    **Experimental** <br>
-   *    Consolidation with timestamps will include, for each cells, the
-   *    timestamp at which the cell was written. <br>
-   *    **Default**: "false"
    * - `sm.memory_budget` <br>
    *    The memory budget for tiles of fixed-sized attributes (or offsets for
    *    var-sized attributes) to be fetched during reads.<br>
@@ -469,6 +467,10 @@ class Config {
    * - `vfs.min_batch_gap` <br>
    *    The minimum number of bytes between two VFS read batches.<br>
    *    **Default**: 500KB
+   * - `vfs.disable_batching` <br>
+   *    **Experimental** <br>
+   *    Disables tile batching from VFS, making direct reads.<br>
+   *    **Default**: false
    * - `vfs.file.posix_file_permissions` <br>
    *    permissions to use for posix file system with file or dir creation.<br>
    *    **Default**: 644
@@ -721,9 +723,29 @@ class Config {
    *    failed REST request <br>
    *    **Default**: 1.25
    * - `rest.curl.verbose` <br>
-   * Set curl to run in verbose mode for REST requests <br>
-   * curl will print to stdout with this option
+   *    Set curl to run in verbose mode for REST requests <br>
+   *    curl will print to stdout with this option
    *    **Default**: false
+   * - `rest.load_metadata_on_array_open` <br>
+   *    If true, array metadata will be loaded and sent to server together with
+   *    the open array <br>
+   *    **Default**: true
+   * - `rest.load_non_empty_domain_on_array_open` <br>
+   *    If true, array non empty domain will be loaded and sent to server
+   *    together with the open array <br>
+   *    **Default**: true
+   * - `rest.use_refactored_array_open` <br>
+   *    If true, the new, experimental REST routes and APIs for opening an array
+   *    will be used <br>
+   *    **Default**: false
+   * - `rest.curl.buffer_size` <br>
+   *    Set curl buffer size for REST requests <br>
+   *    **Default**: 524288 (512KB)
+   * - `filestore.buffer_size` <br>
+   *    Specifies the size in bytes of the internal buffers used in the
+   *    filestore API. The size should be bigger than the minimum tile size
+   *    filestore currently supports, that is currently 1024bytes. <br>
+   *    **Default**: 100MB
    */
   Config& set(const std::string& param, const std::string& value) {
     tiledb_error_t* err;

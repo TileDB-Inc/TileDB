@@ -30,13 +30,70 @@
  * This file tests the Dimension class
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include "../dimension.h"
 #include "tiledb/sm/enums/datatype.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
+
+using Datatype = tiledb::sm::Datatype;
+
+template <class T>
+struct type_to_datatype {
+  static Datatype datatype;
+};
+
+template <>
+struct type_to_datatype<int8_t> {
+  static constexpr Datatype datatype = Datatype::INT8;
+};
+
+template <>
+struct type_to_datatype<int16_t> {
+  static constexpr Datatype datatype = Datatype::INT16;
+};
+
+template <>
+struct type_to_datatype<int32_t> {
+  static constexpr Datatype datatype = Datatype::INT32;
+};
+
+template <>
+struct type_to_datatype<int64_t> {
+  static constexpr Datatype datatype = Datatype::INT64;
+};
+
+template <>
+struct type_to_datatype<uint8_t> {
+  static constexpr Datatype datatype = Datatype::UINT8;
+};
+
+template <>
+struct type_to_datatype<uint16_t> {
+  static constexpr Datatype datatype = Datatype::UINT16;
+};
+
+template <>
+struct type_to_datatype<uint32_t> {
+  static constexpr Datatype datatype = Datatype::UINT32;
+};
+
+template <>
+struct type_to_datatype<uint64_t> {
+  static constexpr Datatype datatype = Datatype::UINT64;
+};
+
+template <>
+struct type_to_datatype<float> {
+  static constexpr Datatype datatype = Datatype::FLOAT32;
+};
+
+template <>
+struct type_to_datatype<double> {
+  static constexpr Datatype datatype = Datatype::FLOAT64;
+};
 
 template <class T, int n>
 inline T& dim_buffer_offset(void* p) {
@@ -77,20 +134,17 @@ TEST_CASE("Dimension: Test deserialize,int32", "[dimension][deserialize]") {
   dim_buffer_offset<uint8_t, 35>(p) = null_tile_extent;
   dim_buffer_offset<int32_t, 36>(p) = tile_extent;
 
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_dim, dim]{
-      Dimension::deserialize(&constbuffer, 10, Datatype::INT32)};
-
-  REQUIRE(st_dim.ok());
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
+  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32);
 
   // Check name
-  CHECK(dim.value()->name() == dimension_name);
+  CHECK(dim->name() == dimension_name);
 
   // Check type
-  CHECK(dim.value()->type() == Datatype::INT32);
+  CHECK(dim->type() == Datatype::INT32);
 
-  CHECK(dim.value()->cell_val_num() == 1);
-  CHECK(dim.value()->var_size() == false);
+  CHECK(dim->cell_val_num() == 1);
+  CHECK(dim->var_size() == false);
 }
 
 TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
@@ -119,16 +173,83 @@ TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
   dim_buffer_offset<uint64_t, 19>(p) = domain_size;
   dim_buffer_offset<uint8_t, 27>(p) = null_tile_extent;
 
-  ConstBuffer constbuffer(&serialized_buffer, sizeof(serialized_buffer));
-  auto&& [st_dim, dim]{
-      Dimension::deserialize(&constbuffer, 10, Datatype::INT32)};
-  REQUIRE(st_dim.ok());
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
+  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32);
   // Check name
-  CHECK(dim.value()->name() == dimension_name);
+  CHECK(dim->name() == dimension_name);
   // Check type
-  CHECK(dim.value()->type() == type);
-  CHECK(dim.value()->cell_val_num() == constants::var_num);
-  CHECK(dim.value()->var_size() == true);
+  CHECK(dim->type() == type);
+  CHECK(dim->cell_val_num() == constants::var_num);
+  CHECK(dim->var_size() == true);
+}
+
+TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
+  std::string dim_name = "dim";
+
+  SECTION("- valid and supported Datatypes") {
+    std::vector<Datatype> valid_supported_datatypes = {
+        Datatype::INT32,          Datatype::INT64,
+        Datatype::FLOAT32,        Datatype::FLOAT64,
+        Datatype::INT8,           Datatype::UINT8,
+        Datatype::INT16,          Datatype::UINT16,
+        Datatype::UINT32,         Datatype::UINT64,
+        Datatype::STRING_ASCII,   Datatype::DATETIME_YEAR,
+        Datatype::DATETIME_MONTH, Datatype::DATETIME_WEEK,
+        Datatype::DATETIME_DAY,   Datatype::DATETIME_HR,
+        Datatype::DATETIME_MIN,   Datatype::DATETIME_SEC,
+        Datatype::DATETIME_MS,    Datatype::DATETIME_US,
+        Datatype::DATETIME_NS,    Datatype::DATETIME_PS,
+        Datatype::DATETIME_FS,    Datatype::DATETIME_AS,
+        Datatype::TIME_HR,        Datatype::TIME_MIN,
+        Datatype::TIME_SEC,       Datatype::TIME_MS,
+        Datatype::TIME_US,        Datatype::TIME_NS,
+        Datatype::TIME_PS,        Datatype::TIME_FS,
+        Datatype::TIME_AS};
+
+    for (Datatype type : valid_supported_datatypes) {
+      try {
+        Dimension dim{dim_name, type};
+      } catch (...) {
+        throw std::logic_error("Uncaught exception in Dimension constructor");
+      }
+    }
+  }
+
+  SECTION("- valid and unsupported Datatypes") {
+    std::vector<Datatype> valid_unsupported_datatypes = {Datatype::CHAR,
+                                                         Datatype::BLOB,
+                                                         Datatype::BOOL,
+                                                         Datatype::STRING_UTF8,
+                                                         Datatype::STRING_UTF16,
+                                                         Datatype::STRING_UTF32,
+                                                         Datatype::STRING_UCS2,
+                                                         Datatype::STRING_UCS4,
+                                                         Datatype::ANY};
+
+    for (Datatype type : valid_unsupported_datatypes) {
+      try {
+        Dimension dim{dim_name, type};
+      } catch (std::exception& e) {
+        CHECK(
+            e.what() == "Datatype::" + datatype_str(type) +
+                            " is not a valid Dimension Datatype");
+      }
+    }
+  }
+
+  SECTION("- invalid Datatypes") {
+    std::vector<std::underlying_type_t<Datatype>> invalid_datatypes = {42, 100};
+
+    for (auto type : invalid_datatypes) {
+      try {
+        Dimension dim{dim_name, Datatype(type)};
+      } catch (std::exception& e) {
+        CHECK(
+            std::string(e.what()) ==
+            "[Dimension::ensure_datatype_is_supported] ");
+      }
+    }
+  }
 }
 
 typedef tuple<
@@ -212,4 +333,102 @@ TEMPLATE_LIST_TEST_CASE(
       }
     }
   }
+}
+
+void check_relevant_ranges(
+    std::vector<uint64_t>& relevant_ranges, std::vector<uint64_t>& expected) {
+  CHECK(relevant_ranges.size() == expected.size());
+  for (uint64_t r = 0; r < expected.size(); r++) {
+    CHECK(relevant_ranges[r] == expected[r]);
+  }
+}
+
+typedef tuple<
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t,
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t>
+    FixedTypes;
+TEMPLATE_LIST_TEST_CASE(
+    "test relevant_ranges", "[dimension][relevant_ranges][fixed]", FixedTypes) {
+  typedef TestType T;
+  auto tiledb_type = type_to_datatype<T>().datatype;
+  Dimension dim{"", tiledb_type};
+
+  std::vector<T> range_data = {
+      1, 1, 1, 1, 2, 2, 3, 4, 5, 6, 5, 7, 8, 9, 50, 56};
+  NDRange ranges;
+  for (uint64_t r = 0; r < range_data.size() / 2; r++) {
+    ranges.emplace_back(&range_data[r * 2], 2 * sizeof(T));
+  }
+
+  // Test data.
+  std::vector<std::vector<T>> mbr_data = {{1, 1}, {2, 6}, {7, 8}};
+  std::vector<std::vector<uint64_t>> expected = {{0, 1}, {2, 3, 4, 5}, {5, 6}};
+
+  // Compute and check relevant ranges.
+  for (uint64_t i = 0; i < mbr_data.size(); i++) {
+    Range mbr(mbr_data[i].data(), 2 * sizeof(T));
+
+    std::vector<uint64_t> relevant_ranges;
+    dim.relevant_ranges(ranges, mbr, relevant_ranges);
+    check_relevant_ranges(relevant_ranges, expected[i]);
+  }
+}
+
+TEST_CASE("test relevant_ranges", "[dimension][relevant_ranges][string]") {
+  Dimension dim{"", Datatype::STRING_ASCII};
+
+  std::vector<char> range_data = {'a',
+                                  'a',
+                                  'a',
+                                  'a',
+                                  'b',
+                                  'b',
+                                  'c',
+                                  'd',
+                                  'e',
+                                  'f',
+                                  'e',
+                                  'g',
+                                  'h',
+                                  'i',
+                                  'y',
+                                  'z'};
+  NDRange ranges;
+  for (uint64_t r = 0; r < range_data.size() / 2; r++) {
+    ranges.emplace_back(&range_data[r * 2], 2, 1);
+  }
+
+  // Test data.
+  std::vector<std::vector<char>> mbr_data = {
+      {'a', 'a'}, {'b', 'f'}, {'g', 'h'}};
+  std::vector<std::vector<uint64_t>> expected = {{0, 1}, {2, 3, 4, 5}, {5, 6}};
+
+  // Compute and check relevant ranges.
+  for (uint64_t i = 0; i < mbr_data.size(); i++) {
+    Range mbr(mbr_data[i].data(), 2, 1);
+
+    std::vector<uint64_t> relevant_ranges;
+    dim.relevant_ranges(ranges, mbr, relevant_ranges);
+    check_relevant_ranges(relevant_ranges, expected[i]);
+  }
+}
+
+TEST_CASE("Dimension::oob format") {
+  Dimension d("X", Datatype::FLOAT64);
+  double d_dom[2]{-682.73999, 929.42999};
+  d.set_domain(Range(&d_dom, sizeof(d_dom)));
+  double x{-682.75};
+  std::string error{};
+  bool b{Dimension::oob<double>(&d, &x, &error)};
+  REQUIRE(b);
+  CHECK(
+      error ==
+      "Coordinate -682.75 is out of domain bounds [-682.73999, 929.42999] on "
+      "dimension 'X'");
 }

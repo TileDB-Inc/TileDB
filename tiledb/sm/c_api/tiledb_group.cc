@@ -61,8 +61,7 @@ int32_t tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) {
   }
 
   // Create the group
-  if (SAVE_ERROR_CATCH(
-          ctx, ctx->ctx_->storage_manager()->group_create(group_uri)))
+  if (SAVE_ERROR_CATCH(ctx, ctx->storage_manager()->group_create(group_uri)))
     return TILEDB_ERR;
 
   // Success
@@ -99,7 +98,7 @@ int32_t tiledb_group_alloc(
 
   // Allocate a group object
   (*group)->group_ = tdb_unique_ptr<tiledb::sm::Group>(
-      tdb_new(tiledb::sm::GroupV1, uri, ctx->ctx_->storage_manager()));
+      tdb_new(tiledb::sm::GroupV1, uri, ctx->storage_manager()));
   if ((*group)->group_ == nullptr) {
     delete *group;
     *group = nullptr;
@@ -626,6 +625,40 @@ int32_t tiledb_deserialize_group_metadata(
   return TILEDB_OK;
 }
 
+int32_t tiledb_group_consolidate_metadata(
+    tiledb_ctx_t* ctx, const char* group_uri, tiledb_config_t* config) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->storage_manager()->group_metadata_consolidate(
+              group_uri,
+              (config == nullptr) ? &ctx->storage_manager()->config() :
+                                    config->config_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_group_vacuum_metadata(
+    tiledb_ctx_t* ctx, const char* group_uri, tiledb_config_t* config) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->storage_manager()->group_metadata_vacuum(
+              group_uri,
+              (config == nullptr) ? &ctx->storage_manager()->config() :
+                                    config->config_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::common::detail
 
 int32_t tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri)
@@ -832,4 +865,19 @@ TILEDB_EXPORT int32_t tiledb_deserialize_group(
     tiledb_group_t* group) TILEDB_NOEXCEPT {
   return api_entry<detail::tiledb_deserialize_group>(
       ctx, buffer, serialize_type, client_side, group);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_consolidate_metadata(
+    tiledb_ctx_t* ctx,
+    const char* group_uri,
+    tiledb_config_t* config) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_consolidate_metadata>(
+      ctx, group_uri, config);
+}
+TILEDB_EXPORT int32_t tiledb_group_vacuum_metadata(
+    tiledb_ctx_t* ctx,
+    const char* group_uri,
+    tiledb_config_t* config) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_vacuum_metadata>(
+      ctx, group_uri, config);
 }

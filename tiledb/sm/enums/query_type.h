@@ -55,6 +55,12 @@ inline const std::string& query_type_str(QueryType query_type) {
       return constants::query_type_read_str;
     case QueryType::WRITE:
       return constants::query_type_write_str;
+    case QueryType::DELETE:
+      return constants::query_type_delete_str;
+    case QueryType::UPDATE:
+      return constants::query_type_update_str;
+    case QueryType::MODIFY_EXCLUSIVE:
+      return constants::query_type_modify_exclusive_str;
     default:
       return constants::empty_str;
   }
@@ -67,6 +73,12 @@ inline Status query_type_enum(
     *query_type = QueryType::READ;
   else if (query_type_str == constants::query_type_write_str)
     *query_type = QueryType::WRITE;
+  else if (query_type_str == constants::query_type_delete_str)
+    *query_type = QueryType::DELETE;
+  else if (query_type_str == constants::query_type_update_str)
+    *query_type = QueryType::UPDATE;
+  else if (query_type_str == constants::query_type_modify_exclusive_str)
+    *query_type = QueryType::MODIFY_EXCLUSIVE;
   else {
     return Status_Error("Invalid QueryType " + query_type_str);
   }

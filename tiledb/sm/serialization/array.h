@@ -58,7 +58,10 @@ namespace serialization {
  * Serialize an Array to Cap'n proto
  * @param array to serialize
  * @param array_builder cap'n proto class
- * @param cleint_side is serialization client or server side
+ * @param client_side Allows to specify different behavior depending on who is
+ serializing, the client (1) or the Cloud server (0). This is sometimes needed
+ since they are both using the same Core library APIs for serialization.
+
  * @return Status
  */
 Status array_to_capnp(
@@ -71,6 +74,26 @@ Status array_to_capnp(
  * @return Status
  */
 Status array_from_capnp(const capnp::Array::Reader& array_reader, Array* array);
+
+/**
+ * Convert info for opening and array to Cap'n Proto message
+ *
+ * @param array_open_builder cap'n proto class
+ * @param array array object that contains the info to convert
+ * @return Status
+ */
+Status array_open_to_capnp(
+    const Array& array, capnp::ArrayOpen::Builder* array_open_builder);
+
+/**
+ * Convert Cap'n Proto message to Array
+ *
+ * @param array_metadata_reader cap'n proto class
+ * @param array array object to convert to
+ * @return Status
+ */
+Status array_open_from_capnp(
+    const capnp::ArrayMetadata::Reader& array_open_reader, Array* array);
 
 /**
  * Convert Cap'n Proto message to Array Metadata
@@ -102,6 +125,32 @@ Status array_serialize(
     const bool client_side);
 
 Status array_deserialize(
+    Array* array,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer);
+
+/**
+ * Serialize an open array request via Cap'n Proto
+ *
+ * @param Array array object with the necessary info to serialize
+ * @param serialize_type format to serialize into Cap'n Proto or JSON
+ * @param serialized_buffer buffer to store serialized bytes in
+ * @return Status
+ */
+Status array_open_serialize(
+    const Array& array,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer);
+
+/**
+ * Deserialize an open array request via Cap'n Proto
+ *
+ * @param Array array object to set the open array details into
+ * @param serialize_type format to serialize into Cap'n Proto or JSON
+ * @param serialized_buffer buffer to store serialized bytes in
+ * @return Status
+ */
+Status array_open_deserialize(
     Array* array,
     SerializationType serialize_type,
     const Buffer& serialized_buffer);

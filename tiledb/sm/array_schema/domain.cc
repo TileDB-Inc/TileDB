@@ -70,7 +70,7 @@ Domain::Domain(
     Layout tile_order)
     : cell_order_(cell_order)
     , dimensions_(dimensions)
-    , dim_num_((unsigned int)dimensions.size())
+    , dim_num_(static_cast<dimension_size_type>(dimensions.size()))
     , tile_order_(tile_order) {
   /*
    * Verify that the input vector has no non-null elements in order to meet the
@@ -329,38 +329,28 @@ void Domain::crop_ndrange(NDRange* ndrange) const {
     dimension_ptrs_[d]->crop_range(&(*ndrange)[d]);
 }
 
-tuple<Status, optional<shared_ptr<Domain>>> Domain::deserialize(
-    ConstBuffer* buff, uint32_t version, Layout cell_order, Layout tile_order) {
+shared_ptr<Domain> Domain::deserialize(
+    Deserializer& deserializer,
+    uint32_t version,
+    Layout cell_order,
+    Layout tile_order) {
   Status st;
   // Load type
   Datatype type = Datatype::INT32;
   if (version < 5) {
-    uint8_t type_c;
-    st = buff->read(&type_c, sizeof(uint8_t));
-    if (!st.ok()) {
-      return {st, nullopt};
-    }
+    auto type_c = deserializer.read<uint8_t>();
     type = static_cast<Datatype>(type_c);
   }
 
   std::vector<shared_ptr<Dimension>> dimensions;
-  uint32_t dim_num;
-  // Load dimensions
-  st = buff->read(&dim_num, sizeof(uint32_t));
-  if (!st.ok()) {
-    return {st, nullopt};
-  }
+  auto dim_num = deserializer.read<uint32_t>();
   for (uint32_t i = 0; i < dim_num; ++i) {
-    auto&& [st_dim, dim]{Dimension::deserialize(buff, version, type)};
-    if (!st_dim.ok()) {
-      return {Status_DomainError("Cannot deserialize dimension."), nullopt};
-    }
-    dimensions.emplace_back(std::move(dim.value()));
+    auto dim{Dimension::deserialize(deserializer, version, type)};
+    dimensions.emplace_back(std::move(dim));
   }
 
-  return {Status::Ok(),
-          tiledb::common::make_shared<Domain>(
-              HERE(), cell_order, dimensions, tile_order)};
+  return tiledb::common::make_shared<Domain>(
+      HERE(), cell_order, dimensions, tile_order);
 }
 
 const Range& Domain::domain(unsigned i) const {
@@ -377,7 +367,7 @@ NDRange Domain::domain() const {
 }
 
 const Dimension* Domain::dimension_ptr(const std::string& name) const {
-  for (unsigned int i = 0; i < dim_num_; i++) {
+  for (dimension_size_type i = 0; i < dim_num_; i++) {
     const auto dim = dimension_ptrs_[i];
     if (dim->name() == name) {
       return dim;
@@ -596,13 +586,12 @@ bool Domain::null_tile_extents() const {
 // dimension #1
 // dimension #2
 // ...
-Status Domain::serialize(Buffer* buff, uint32_t version) {
+void Domain::serialize(Serializer& serializer, uint32_t version) const {
   // Write dimensions
-  RETURN_NOT_OK(buff->write(&dim_num_, sizeof(uint32_t)));
-  for (const auto& dim : dimensions_)
-    RETURN_NOT_OK(dim->serialize(buff, version));
-
-  return Status::Ok();
+  serializer.write<uint32_t>(dim_num_);
+  for (const auto& dim : dimensions_) {
+    dim->serialize(serializer, version);
+  }
 }
 
 Status Domain::set_null_tile_extents_to_range() {
@@ -960,6 +949,7 @@ void Domain::set_tile_cell_order_cmp_funcs() {
         break;
       case Datatype::BLOB:
       case Datatype::CHAR:
+      case Datatype::BOOL:
       case Datatype::STRING_UTF8:
       case Datatype::STRING_UTF16:
       case Datatype::STRING_UTF32:
@@ -975,7 +965,7 @@ void Domain::set_tile_cell_order_cmp_funcs() {
 
 template <class T>
 void Domain::get_next_tile_coords_col(const T* domain, T* tile_coords) const {
-  unsigned int i = 0;
+  dimension_size_type i = 0;
   ++tile_coords[i];
 
   while (i < dim_num_ - 1 && tile_coords[i] > domain[2 * i + 1]) {
@@ -987,7 +977,7 @@ void Domain::get_next_tile_coords_col(const T* domain, T* tile_coords) const {
 template <class T>
 void Domain::get_next_tile_coords_col(
     const T* domain, T* tile_coords, bool* in) const {
-  unsigned int i = 0;
+  dimension_size_type i = 0;
   ++tile_coords[i];
 
   while (i < dim_num_ - 1 && tile_coords[i] > domain[2 * i + 1]) {
@@ -1000,7 +990,7 @@ void Domain::get_next_tile_coords_col(
 
 template <class T>
 void Domain::get_next_tile_coords_row(const T* domain, T* tile_coords) const {
-  unsigned int i = dim_num_ - 1;
+  dimension_size_type i = dim_num_ - 1;
   ++tile_coords[i];
 
   while (i > 0 && tile_coords[i] > domain[2 * i + 1]) {
@@ -1012,7 +1002,7 @@ void Domain::get_next_tile_coords_row(const T* domain, T* tile_coords) const {
 template <class T>
 void Domain::get_next_tile_coords_row(
     const T* domain, T* tile_coords, bool* in) const {
-  unsigned int i = dim_num_ - 1;
+  dimension_size_type i = dim_num_ - 1;
   ++tile_coords[i];
 
   while (i > 0 && tile_coords[i] > domain[2 * i + 1]) {
@@ -1067,13 +1057,14 @@ uint64_t Domain::get_tile_pos_row(const T* domain, const T* tile_coords) const {
 
   // Calculate position
   uint64_t pos = 0;
-  for (unsigned int i = 0; i < dim_num_; ++i)
+  for (dimension_size_type i = 0; i < dim_num_; ++i)
     pos += tile_coords[i] * tile_offsets[i];
 
   // Return
   return pos;
 }
 
+// Explicit template instantiations
 template void Domain::get_next_tile_coords<int>(
     const int* domain, int* tile_coords) const;
 template void Domain::get_next_tile_coords<int64_t>(

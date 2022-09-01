@@ -33,7 +33,7 @@
  * well)
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 

@@ -66,6 +66,31 @@ extern std::mutex catch2_macro_mutex;
     REQUIRE(a);                                           \
   }
 
+// A variant of the CHECK macro for checking C API return value equals
+// TILEDB_OK.
+#define CHECK_TILEDB_OK(a) \
+  { CHECK(a == TILEDB_OK); }
+
+// A variant of the REQUIRE macro for checking C API return value equals
+// TILEDB_OK.
+#define REQUIRE_TILEDB_OK(a) \
+  { REQUIRE(a == TILEDB_OK); }
+
+// A variant of the CHECK macro for checking a Status object is okay.
+#define CHECK_TILEDB_STATUS_OK(status) \
+  {                                    \
+    if (!status.ok())                  \
+      INFO(status.to_string());        \
+    CHECK(status.ok());                \
+  }
+
+// A variant of the REQUIRE macro for checking a Status objects is okay.
+#define REQUIRE_TILEDB_STATUS_OK(status) \
+  {                                      \
+    if (!status.ok())                    \
+      INFO(status.to_string());          \
+    REQUIRE(status.ok());                \
+  }
 namespace tiledb {
 
 namespace sm {
@@ -275,6 +300,42 @@ void create_array(
     uint64_t capacity);
 
 /**
+ * Helper method to create an array schema.
+ *
+ * @param ctx TileDB context.
+ * @param array_name The array name.
+ * @param array_type The array type (dense or sparse).
+ * @param dim_names The names of dimensions.
+ * @param dim_types The types of dimensions.
+ * @param dim_domains The domains of dimensions.
+ * @param tile_extents The tile extents of dimensions.
+ * @param attr_names The names of attributes.
+ * @param attr_types The types of attributes.
+ * @param cell_val_num The number of values per cell of attributes.
+ * @param compressors The compressors of attributes.
+ * @param tile_order The tile order.
+ * @param cell_order The cell order.
+ * @param capacity The tile capacity.
+ * @param allows_dups Whether the array allows coordinate duplicates.
+ * not
+ */
+tiledb_array_schema_t* create_array_schema(
+    tiledb_ctx_t* ctx,
+    tiledb_array_type_t array_type,
+    const std::vector<std::string>& dim_names,
+    const std::vector<tiledb_datatype_t>& dim_types,
+    const std::vector<void*>& dim_domains,
+    const std::vector<void*>& tile_extents,
+    const std::vector<std::string>& attr_names,
+    const std::vector<tiledb_datatype_t>& attr_types,
+    const std::vector<uint32_t>& cell_val_num,
+    const std::vector<std::pair<tiledb_filter_type_t, int>>& compressors,
+    tiledb_layout_t tile_order,
+    tiledb_layout_t cell_order,
+    uint64_t capacity,
+    bool allows_dups = false);
+
+/**
  * Helper method that creates a directory.
  *
  * @param path The name of the directory to be created.
@@ -323,7 +384,7 @@ void create_azure_container(
  */
 template <class T>
 void create_subarray(
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<T>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
@@ -342,7 +403,7 @@ void create_subarray(
 template <class T>
 void create_subarray(
     tiledb_ctx_t* ctx,
-    tiledb::sm::Array* array,
+    shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<T>& ranges,
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,
@@ -691,6 +752,12 @@ std::string get_fragment_dir(std::string array_dir);
  * Gets the commit directory from the array directory.
  */
 std::string get_commit_dir(std::string array_dir);
+
+/**
+ * Check count of values against a vector of expected counts for an array.
+ */
+template <class T>
+void check_counts(span<T> vals, std::vector<uint64_t> expected);
 
 }  // End of namespace test
 

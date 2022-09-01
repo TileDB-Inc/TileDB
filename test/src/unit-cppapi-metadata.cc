@@ -45,7 +45,7 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -371,11 +371,14 @@ TEST_CASE_METHOD(
     CPPMetadataFx,
     "C++ API: Metadata, multiple metadata and consolidate",
     "[cppapi][metadata][multiple][consolidation]") {
+  Config cfg;
+  cfg["sm.consolidation.buffer_size"] = "10000";
+
   // Create default array
   create_default_array_1d();
 
   // Create and open array in write mode
-  tiledb::Context ctx;
+  tiledb::Context ctx(cfg);
   tiledb::Array array(ctx, array_name_, TILEDB_WRITE);
 
   // Write items

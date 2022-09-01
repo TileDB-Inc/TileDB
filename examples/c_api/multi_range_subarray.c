@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -138,13 +138,18 @@ void read_array() {
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_data_buffer(ctx, query, "a", data, &data_size);
 
+  // Create subarray
+  tiledb_subarray_t* subarray;
+  tiledb_subarray_alloc(ctx, array, &subarray);
+  tiledb_query_set_subarray_t(ctx, query, subarray);
+
   // Set multi-range subarray to query
   int row_0_start = 1, row_0_end = 2;
   int row_1_start = 4, row_1_end = 4;
   int col_0_start = 1, col_0_end = 4;
-  tiledb_query_add_range(ctx, query, 0, &row_0_start, &row_0_end, NULL);
-  tiledb_query_add_range(ctx, query, 0, &row_1_start, &row_1_end, NULL);
-  tiledb_query_add_range(ctx, query, 1, &col_0_start, &col_0_end, NULL);
+  tiledb_subarray_add_range(ctx, subarray, 0, &row_0_start, &row_0_end, NULL);
+  tiledb_subarray_add_range(ctx, subarray, 0, &row_1_start, &row_1_end, NULL);
+  tiledb_subarray_add_range(ctx, subarray, 1, &col_0_start, &col_0_end, NULL);
 
   // Submit query
   tiledb_query_submit(ctx, query);
@@ -158,6 +163,7 @@ void read_array() {
   printf("\n");
 
   // Clean up
+  tiledb_subarray_free(&subarray);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);

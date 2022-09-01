@@ -30,7 +30,7 @@
  * Tests the C++ API for type related dispatch.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
 
 struct MyData {

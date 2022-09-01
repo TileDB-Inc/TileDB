@@ -40,9 +40,9 @@
 
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
-#include "tiledb/sm/query/domain_buffer.h"
-#include "tiledb/sm/query/result_coords.h"
-#include "tiledb/sm/query/sparse_index_reader_base.h"
+#include "tiledb/sm/query/readers/result_coords.h"
+#include "tiledb/sm/query/readers/sparse_global_order_reader.h"
+#include "tiledb/sm/query/writers/domain_buffer.h"
 
 using namespace tiledb::common;
 
@@ -62,8 +62,9 @@ class CellCmpBase {
       , dim_num_(domain.dim_num()) {
   }
 
+  template <class RCType>
   [[nodiscard]] int cell_order_cmp_RC(
-      unsigned int d, const ResultCoords& a, const ResultCoords& b) const {
+      unsigned int d, const RCType& a, const RCType& b) const {
     const auto& dim{*(domain_.dimension_ptr(d))};
     auto v1{a.dimension_datum(dim, d)};
     auto v2{b.dimension_datum(dim, d)};
@@ -149,11 +150,12 @@ class HilbertCmp : protected CellCmpBase {
    * @param b The second coordinate.
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
-  bool operator()(const ResultCoords& a, const ResultCoords& b) const {
-    auto hilbert_a =
-        ((ResultTileWithBitmap<uint8_t>*)a.tile_)->hilbert_values_[a.pos_];
-    auto hilbert_b =
-        ((ResultTileWithBitmap<uint8_t>*)b.tile_)->hilbert_values_[b.pos_];
+  template <class BitmapType>
+  bool operator()(
+      const GlobalOrderResultCoords<BitmapType>& a,
+      const GlobalOrderResultCoords<BitmapType>& b) const {
+    auto hilbert_a = a.tile_->hilbert_value(a.pos_);
+    auto hilbert_b = b.tile_->hilbert_value(b.pos_);
     if (hilbert_a < hilbert_b)
       return true;
     else if (hilbert_a > hilbert_b)
@@ -196,7 +198,8 @@ class HilbertCmpReverse {
    * @param b The second coordinate.
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
-  bool operator()(const ResultCoords& a, const ResultCoords& b) const {
+  template <class RCType>
+  bool operator()(const RCType& a, const RCType& b) const {
     return !cmp_.operator()(a, b);
   }
 
@@ -283,7 +286,8 @@ class GlobalCmp : protected CellCmpBase {
    * @param b The second coordinate.
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
-  bool operator()(const ResultCoords& a, const ResultCoords& b) const {
+  template <class RCType>
+  bool operator()(const RCType& a, const RCType& b) const {
     if (tile_order_ == Layout::ROW_MAJOR) {
       for (unsigned d = 0; d < dim_num_; ++d) {
         // Not applicable to var-sized dimensions
@@ -373,7 +377,8 @@ class GlobalCmpReverse {
    * @param b The second coordinate.
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
-  bool operator()(const ResultCoords& a, const ResultCoords& b) const {
+  template <class RCType>
+  bool operator()(const RCType& a, const RCType& b) const {
     return !cmp_.operator()(a, b);
   }
 

@@ -37,5 +37,6 @@ target_link_libraries(tile PUBLIC constants $<TARGET_OBJECTS:constants>)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_tile EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_tile)
 target_link_libraries(compile_tile PRIVATE tile)
 target_sources(compile_tile PRIVATE test/compile_tile_main.cc)

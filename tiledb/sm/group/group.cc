@@ -64,16 +64,31 @@ Group::Group(
     , changes_applied_(false) {
 }
 
-Status Group::open(QueryType query_type) {
+Status Group::open(
+    QueryType query_type, uint64_t timestamp_start, uint64_t timestamp_end) {
   // Checks
-  if (is_open_)
+  if (is_open_) {
     return Status_GroupError("Cannot open group; Group already open");
-  if (!remote_) {
-    bool is_group = false;
-    RETURN_NOT_OK(storage_manager_->is_group(group_uri_, &is_group));
-    if (!is_group)
-      return Status_GroupError("Cannot open group; Group does not exist");
   }
+
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
+      query_type != QueryType::MODIFY_EXCLUSIVE) {
+    return Status_GroupError("Cannot open group; Unsupported query type");
+  }
+
+  if (timestamp_end == UINT64_MAX) {
+    if (query_type == QueryType::READ) {
+      timestamp_end = utils::time::timestamp_now_ms();
+    } else {
+      assert(
+          query_type == QueryType::WRITE ||
+          query_type == QueryType::MODIFY_EXCLUSIVE);
+      timestamp_end = 0;
+    }
+  }
+
+  timestamp_start_ = timestamp_start;
+  timestamp_end_ = timestamp_end;
 
   // Get encryption key from config
   std::string encryption_key_from_cfg;
@@ -120,22 +135,6 @@ Status Group::open(QueryType query_type) {
   metadata_.clear();
   metadata_loaded_ = false;
 
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.group.timestamp_start", &timestamp_start_, &found));
-  assert(found);
-  RETURN_NOT_OK(
-      config_.get<uint64_t>("sm.group.timestamp_end", &timestamp_end_, &found));
-  assert(found);
-
-  if (timestamp_end_ == UINT64_MAX) {
-    if (query_type == QueryType::READ) {
-      timestamp_end_ = utils::time::timestamp_now_ms();
-    } else {
-      assert(query_type == QueryType::WRITE);
-      timestamp_end_ = 0;
-    }
-  }
-
   // Make sure to reset any values
   changes_applied_ = false;
   members_to_remove_.clear();
@@ -155,8 +154,8 @@ Status Group::open(QueryType query_type) {
           storage_manager_->vfs(),
           storage_manager_->compute_tp(),
           group_uri_,
-          timestamp_start_,
-          timestamp_end_);
+          timestamp_start,
+          timestamp_end);
     } catch (const std::logic_error& le) {
       return Status_GroupDirectoryError(le.what());
     }
@@ -182,9 +181,9 @@ Status Group::open(QueryType query_type) {
           storage_manager_->vfs(),
           storage_manager_->compute_tp(),
           group_uri_,
-          timestamp_start_,
-          (timestamp_end_ != 0) ? timestamp_end_ :
-                                  utils::time::timestamp_now_ms());
+          timestamp_start,
+          (timestamp_end != 0) ? timestamp_end :
+                                 utils::time::timestamp_now_ms());
     } catch (const std::logic_error& le) {
       return Status_GroupDirectoryError(le.what());
     }
@@ -205,13 +204,25 @@ Status Group::open(QueryType query_type) {
       }
     }
 
-    metadata_.reset(timestamp_end_);
+    metadata_.reset(timestamp_end);
   }
 
   query_type_ = query_type;
   is_open_ = true;
 
   return Status::Ok();
+}
+
+Status Group::open(QueryType query_type) {
+  bool found = false;
+  RETURN_NOT_OK(config_.get<uint64_t>(
+      "sm.group.timestamp_start", &timestamp_start_, &found));
+  assert(found);
+  RETURN_NOT_OK(
+      config_.get<uint64_t>("sm.group.timestamp_end", &timestamp_end_, &found));
+  assert(found);
+
+  return Group::open(query_type, timestamp_start_, timestamp_end_);
 }
 
 Status Group::close() {
@@ -222,7 +233,8 @@ Status Group::close() {
   if (remote_) {
     // Update group metadata for write queries if metadata was written by the
     // user
-    if (query_type_ == QueryType::WRITE) {
+    if (query_type_ == QueryType::WRITE ||
+        query_type_ == QueryType::MODIFY_EXCLUSIVE) {
       if (metadata_.num() > 0) {
         // Set metadata loaded to be true so when serialization fetches the
         // metadata it won't trigger a deadlock
@@ -252,7 +264,9 @@ Status Group::close() {
   } else {
     if (query_type_ == QueryType::READ) {
       RETURN_NOT_OK(storage_manager_->group_close_for_reads(this));
-    } else if (query_type_ == QueryType::WRITE) {
+    } else if (
+        query_type_ == QueryType::WRITE ||
+        query_type_ == QueryType::MODIFY_EXCLUSIVE) {
       // If changes haven't been applied, apply them
       if (!changes_applied_) {
         RETURN_NOT_OK(apply_pending_changes());
@@ -294,10 +308,11 @@ Status Group::delete_metadata(const char* key) {
     return Status_GroupError("Cannot delete metadata. Group is not open");
 
   // Check mode
-  if (query_type_ != QueryType::WRITE)
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE)
     return Status_GroupError(
         "Cannot delete metadata. Group was "
-        "not opened in write mode");
+        "not opened in write or modify_exclusive mode");
 
   // Check if key is null
   if (key == nullptr)
@@ -318,10 +333,11 @@ Status Group::put_metadata(
     return Status_GroupError("Cannot put metadata; Group is not open");
 
   // Check mode
-  if (query_type_ != QueryType::WRITE)
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE)
     return Status_GroupError(
         "Cannot put metadata; Group was "
-        "not opened in write mode");
+        "not opened in write or modify_exclusive mode");
 
   // Check if key is null
   if (key == nullptr)
@@ -510,9 +526,11 @@ Status Group::mark_member_for_addition(
   }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE) {
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return Status_GroupError(
-        "Cannot get member; Group was not opened in write mode");
+        "Cannot get member; Group was not opened in write or modify_exclusive "
+        "mode");
   }
 
   const std::string& uri = group_member_uri.to_string();
@@ -579,9 +597,11 @@ Status Group::mark_member_for_removal(const std::string& uri) {
   }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE) {
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return Status_GroupError(
-        "Cannot get member; Group was not opened in write mode");
+        "Cannot get member; Group was not opened in write or modify_exclusive "
+        "mode");
   }
   if (members_to_add_.find(uri) != members_to_add_.end()) {
     return Status_GroupError(
@@ -652,7 +672,7 @@ Status Group::apply_and_serialize(Buffer* buff) {
 std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> Group::deserialize(
     ConstBuffer* buff, const URI& group_uri, StorageManager* storage_manager) {
   uint32_t version = 0;
-  RETURN_NOT_OK_TUPLE(buff->read(&version, sizeof(version)), std::nullopt);
+  RETURN_NOT_OK_TUPLE(buff->read(&version, sizeof(uint32_t)), std::nullopt);
   if (version == 1) {
     return GroupV1::deserialize(buff, group_uri, storage_manager);
   }

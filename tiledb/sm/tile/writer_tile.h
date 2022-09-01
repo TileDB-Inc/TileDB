@@ -44,13 +44,19 @@ namespace sm {
 /**
  * Handles tile information, with added data used by writer.
  */
-class WriterTile : public Tile {
+class WriterTile {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  WriterTile();
+  WriterTile(
+      const ArraySchema& array_schema,
+      const bool has_coords,
+      const bool var_size,
+      const bool nullable,
+      const uint64_t cell_size,
+      const Datatype type);
 
   /** Move constructor. */
   WriterTile(WriterTile&& tile);
@@ -64,63 +70,122 @@ class WriterTile : public Tile {
   /*                API                */
   /* ********************************* */
 
-  /**
-   * Returns the pre-filtered size of the tile data in the buffer.
-   *
-   * @return Pre-filtered size.
-   */
-  uint64_t pre_filtered_size() const;
+  /** Returns the fixed tile. */
+  inline Tile& fixed_tile() {
+    assert(!var_tile_.has_value());
+    return fixed_tile_;
+  }
+
+  /** Returns the fixed tile. */
+  inline const Tile& fixed_tile() const {
+    assert(!var_tile_.has_value());
+    return fixed_tile_;
+  }
+
+  /** Returns the offset tile. */
+  inline Tile& offset_tile() {
+    assert(var_tile_.has_value());
+    return fixed_tile_;
+  }
+
+  /** Returns the offset tile. */
+  inline const Tile& offset_tile() const {
+    assert(var_tile_.has_value());
+    return fixed_tile_;
+  }
+
+  /** Is the tile var_size. */
+  inline bool var_size() const {
+    return var_tile_.has_value();
+  }
+
+  /** Returns the var tile. */
+  inline Tile& var_tile() {
+    return *var_tile_;
+  }
+
+  /** Returns the var tile. */
+  inline const Tile& var_tile() const {
+    return *var_tile_;
+  }
+
+  /** Is the tile nullable. */
+  inline bool nullable() const {
+    return validity_tile_.has_value();
+  }
+
+  /** Returns the validity tile. */
+  inline Tile& validity_tile() {
+    return *validity_tile_;
+  }
+
+  /** Returns the validity tile. */
+  inline const Tile& validity_tile() const {
+    return *validity_tile_;
+  }
 
   /**
-   * Sets the pre-filtered size value to the given value.
+   * Returns the var pre-filtered size of the tile data in the buffer.
    *
-   * @param pre_filtered_size Pre-filtered size.
+   * @return Var pre-filtered size.
    */
-  void set_pre_filtered_size(uint64_t pre_filtered_size);
+  inline uint64_t var_pre_filtered_size() const {
+    return var_pre_filtered_size_;
+  }
 
   /**
    * Returns the tile minimum value.
    *
    * @return tile minimum value.
    */
-  void* min() const;
+  inline const ByteVec& min() const {
+    return min_;
+  }
 
   /**
    * Returns the tile maximum value.
    *
    * @return tile maximum value.
    * */
-  void* max() const;
+  inline const ByteVec& max() const {
+    return max_;
+  }
 
   /**
-   * Returns the tile metadata.
+   * Returns the tile null count.
    *
-   * @return minimum, minimum size, maximum, maximum size, sum, null count.
+   * @return tile null count.
    */
-  tuple<const void*, uint64_t, const void*, uint64_t, const ByteVec*, uint64_t>
-  metadata() const;
+  inline uint64_t null_count() const {
+    return null_count_;
+  }
+
+  /**
+   * Returns the tile sum.
+   *
+   * @return tile sum.
+   */
+  inline const ByteVec& sum() const {
+    return sum_;
+  }
 
   /**
    * Sets the tile metadata.
    *
-   * @param md minimum, minimum size, maximum, maximum size, sum, null count.
+   * @param min Minimum.
+   * @param min_size Minimum size.
+   * @param max Maximum.
+   * @param max_size Maxmum size.
+   * @param sum Sum.
+   * @param null_count Null count.
    */
-  void set_metadata(const tuple<
-                    const void*,
-                    uint64_t,
-                    const void*,
-                    uint64_t,
-                    const ByteVec*,
-                    uint64_t>& md);
-  /**
-   * Write method used for var data. Resizes the internal buffer if needed.
-   *
-   * @param data Pointer to the data to write.
-   * @param offset Offset to write into the tile buffer.
-   * @param nbytes Number of bytes to write.
-   * @return Status.
-   */
-  Status write_var(const void* data, uint64_t offset, uint64_t nbytes);
+  void set_metadata(
+      const void* min,
+      const uint64_t min_size,
+      const void* max,
+      const uint64_t max_size,
+      const ByteVec& sum,
+      const uint64_t null_count);
 
   /**
    * Sets the final size of a written tile.
@@ -128,7 +193,24 @@ class WriterTile : public Tile {
    * @param size Final size.
    */
   inline void final_size(uint64_t size) {
-    size_ = size;
+    if (var_tile_.has_value()) {
+      fixed_tile_.set_size(size * constants::cell_var_offset_size);
+    } else {
+      fixed_tile_.set_size(size * cell_size_);
+    }
+
+    if (validity_tile_.has_value()) {
+      validity_tile_->set_size(size * constants::cell_validity_size);
+    }
+  }
+
+  /**
+   * Returns the cell number.
+   *
+   * @return Cell number.
+   */
+  inline uint64_t cell_num() const {
+    return fixed_tile_.cell_num();
   }
 
   /** Swaps the contents (all field values) of this tile with the given tile. */
@@ -136,11 +218,31 @@ class WriterTile : public Tile {
 
  private:
   /* ********************************* */
+  /*        PRIVATE CONSTRUCTOR        */
+  /* ********************************* */
+  WriterTile() = default;
+
+  /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The size in bytes of the tile data before it has been filtered. */
-  uint64_t pre_filtered_size_;
+  /**
+   * Fixed data tile. Contains offsets for var size attribute/dimension and
+   * the data itself in case of fixed sized attribute/dimension.
+   */
+  Tile fixed_tile_;
+
+  /** Var data tile. */
+  std::optional<Tile> var_tile_;
+
+  /** Validity data tile. */
+  std::optional<Tile> validity_tile_;
+
+  /** Cell size for this attribute. */
+  uint64_t cell_size_;
+
+  /** The size in bytes of the var tile data before it has been filtered. */
+  uint64_t var_pre_filtered_size_;
 
   /** Minimum value for this tile. */
   ByteVec min_;

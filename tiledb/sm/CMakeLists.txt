@@ -26,6 +26,7 @@
 
 include(common-root)
 
+add_subdirectory(array)
 add_subdirectory(array_schema)
 add_subdirectory(buffer)
 add_subdirectory(compressors)

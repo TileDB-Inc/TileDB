@@ -51,6 +51,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 #include "tiledb/type/range/range.h"
 
@@ -64,6 +65,13 @@ using namespace tiledb::type;
 
 namespace tiledb {
 namespace sm {
+
+class FragmentMetadataStatusException : public StatusException {
+ public:
+  explicit FragmentMetadataStatusException(const std::string& message)
+      : StatusException("FragmentMetadata", message) {
+  }
+};
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -79,7 +87,8 @@ FragmentMetadata::FragmentMetadata(
     const URI& fragment_uri,
     const std::pair<uint64_t, uint64_t>& timestamp_range,
     bool dense,
-    bool has_timestamps)
+    bool has_timestamps,
+    bool has_deletes_meta)
     : storage_manager_(storage_manager)
     , memory_tracker_(memory_tracker)
     , array_schema_(array_schema)
@@ -90,6 +99,7 @@ FragmentMetadata::FragmentMetadata(
     , has_consolidated_footer_(false)
     , last_tile_cell_num_(0)
     , has_timestamps_(has_timestamps)
+    , has_delete_meta_(has_deletes_meta)
     , sparse_tile_num_(0)
     , meta_file_size_(0)
     , rtree_(RTree(&array_schema_->domain(), constants::rtree_fanout))
@@ -116,6 +126,7 @@ FragmentMetadata::FragmentMetadata(const FragmentMetadata& other) {
   version_ = other.version_;
   tile_index_base_ = other.tile_index_base_;
   has_timestamps_ = other.has_timestamps_;
+  has_delete_meta_ = other.has_delete_meta_;
   sparse_tile_num_ = other.sparse_tile_num_;
   footer_size_ = other.footer_size_;
   footer_offset_ = other.footer_offset_;
@@ -136,6 +147,7 @@ FragmentMetadata& FragmentMetadata::operator=(const FragmentMetadata& other) {
   version_ = other.version_;
   tile_index_base_ = other.tile_index_base_;
   has_timestamps_ = other.has_timestamps_;
+  has_delete_meta_ = other.has_delete_meta_;
   sparse_tile_num_ = other.sparse_tile_num_;
   footer_size_ = other.footer_size_;
   footer_offset_ = other.footer_offset_;
@@ -205,14 +217,15 @@ void FragmentMetadata::set_tile_validity_offset(
 }
 
 void FragmentMetadata::set_tile_min(
-    const std::string& name, uint64_t tid, const void* min, uint64_t size) {
+    const std::string& name, uint64_t tid, const ByteVec& min) {
+  const auto size = min.size();
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
   auto buff_offset = tid * size;
   assert(tid < tile_min_buffer_[idx].size() / size);
-  memcpy(&tile_min_buffer_[idx][buff_offset], min, size);
+  memcpy(&tile_min_buffer_[idx][buff_offset], min.data(), size);
 }
 
 void FragmentMetadata::set_tile_min_var_size(
@@ -229,7 +242,7 @@ void FragmentMetadata::set_tile_min_var_size(
 }
 
 void FragmentMetadata::set_tile_min_var(
-    const std::string& name, uint64_t tid, const void* min) {
+    const std::string& name, uint64_t tid, const ByteVec& min) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -244,19 +257,20 @@ void FragmentMetadata::set_tile_min_var(
 
   // Copy var data
   if (size) {  // avoid (potentially) illegal index ref's when size is zero
-    memcpy(&tile_min_var_buffer_[idx][offset[0]], min, size);
+    memcpy(&tile_min_var_buffer_[idx][offset[0]], min.data(), size);
   }
 }
 
 void FragmentMetadata::set_tile_max(
-    const std::string& name, uint64_t tid, const void* max, uint64_t size) {
+    const std::string& name, uint64_t tid, const ByteVec& max) {
+  const auto size = max.size();
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
   auto buff_offset = tid * size;
   assert(tid < tile_max_buffer_[idx].size() / size);
-  memcpy(&tile_max_buffer_[idx][buff_offset], max, size);
+  memcpy(&tile_max_buffer_[idx][buff_offset], max.data(), size);
 }
 
 void FragmentMetadata::set_tile_max_var_size(
@@ -273,7 +287,7 @@ void FragmentMetadata::set_tile_max_var_size(
 }
 
 void FragmentMetadata::set_tile_max_var(
-    const std::string& name, uint64_t tid, const void* max) {
+    const std::string& name, uint64_t tid, const ByteVec& max) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -288,7 +302,7 @@ void FragmentMetadata::set_tile_max_var(
 
   // Copy var data
   if (size) {  // avoid (potentially) illegal index ref's when size is zero
-    memcpy(&tile_max_var_buffer_[idx][offset[0]], max, size);
+    memcpy(&tile_max_var_buffer_[idx][offset[0]], max.data(), size);
   }
 }
 
@@ -330,14 +344,14 @@ void FragmentMetadata::convert_tile_min_max_var_sizes_to_offsets(
 }
 
 void FragmentMetadata::set_tile_sum(
-    const std::string& name, uint64_t tid, const ByteVec* sum) {
+    const std::string& name, uint64_t tid, const ByteVec& sum) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
   assert(tid * sizeof(uint64_t) < tile_sums_[idx].size());
   memcpy(
-      &tile_sums_[idx][tid * sizeof(uint64_t)], sum->data(), sizeof(uint64_t));
+      &tile_sums_[idx][tid * sizeof(uint64_t)], sum.data(), sizeof(uint64_t));
 }
 
 void FragmentMetadata::set_tile_null_count(
@@ -391,6 +405,7 @@ Status FragmentMetadata::compute_fragment_min_max_sum_null_count() {
             case Datatype::INT64:
               compute_fragment_min_max_sum<int64_t>(name);
               break;
+            case Datatype::BOOL:
             case Datatype::UINT8:
               compute_fragment_min_max_sum<uint8_t>(name);
               break;
@@ -707,10 +722,6 @@ bool FragmentMetadata::has_consolidated_footer() const {
   return has_consolidated_footer_;
 }
 
-bool FragmentMetadata::has_timestamps() const {
-  return has_timestamps_;
-}
-
 Status FragmentMetadata::get_tile_overlap(
     const NDRange& range,
     std::vector<bool>& is_default,
@@ -728,8 +739,7 @@ void FragmentMetadata::compute_tile_bitmap(
 
 Status FragmentMetadata::init(const NDRange& non_empty_domain) {
   // For easy reference
-  auto dim_num = array_schema_->dim_num();
-  auto num = array_schema_->attribute_num() + dim_num + 1 + has_timestamps_;
+  auto num = num_dims_and_attrs();
   auto& domain{array_schema_->domain()};
 
   // Sanity check
@@ -831,30 +841,43 @@ Status FragmentMetadata::load(
   return load_v3_or_higher(encryption_key, f_buff, offset, array_schemas);
 }
 
-Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
+void FragmentMetadata::store(const EncryptionKey& encryption_key) {
   auto timer_se =
       storage_manager_->stats()->start_timer("write_store_frag_meta");
 
-  assert(version_ >= 7);
-  if (version_ <= 10) {
-    return store_v7_v10(encryption_key);
-  } else if (version_ == 11) {
-    return store_v11(encryption_key);
-  } else {
-    return store_v12_or_higher(encryption_key);
+  if (version_ < 7) {
+    auto fragment_metadata_uri =
+        fragment_uri_.join_path(constants::fragment_metadata_filename);
+    throw std::logic_error(
+        "FragmentMetadata::store(), unexpected version_ " +
+        std::to_string(version_) + " storing " +
+        fragment_metadata_uri.to_string());
   }
-
-  assert(false);
-  return Status::Ok();
+  try {
+    if (version_ <= 10) {
+      throw_if_not_ok(store_v7_v10(encryption_key));
+    } else if (version_ == 11) {
+      throw_if_not_ok(store_v11(encryption_key));
+    } else if (version_ <= 14) {
+      throw_if_not_ok(store_v12_v14(encryption_key));
+    } else {
+      store_v15_or_higher(encryption_key);
+    }
+    return;
+  } catch (...) {
+    clean_up();
+    auto fragment_metadata_uri =
+        fragment_uri_.join_path(constants::fragment_metadata_filename);
+    std::throw_with_nested(std::runtime_error(
+        "FragmentMetadata::store() failed on " +
+        fragment_metadata_uri.to_string()));
+  }
 }
 
 Status FragmentMetadata::store_v7_v10(const EncryptionKey& encryption_key) {
-  auto timer_se =
-      storage_manager_->stats()->start_timer("write_store_frag_meta");
-
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   uint64_t offset = 0, nbytes;
 
   // Store R-Tree
@@ -906,12 +929,9 @@ Status FragmentMetadata::store_v7_v10(const EncryptionKey& encryption_key) {
 }
 
 Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
-  auto timer_se =
-      storage_manager_->stats()->start_timer("write_store_frag_meta");
-
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   uint64_t offset = 0, nbytes;
 
   // Store R-Tree
@@ -995,14 +1015,10 @@ Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
   return storage_manager_->close_file(fragment_metadata_uri);
 }
 
-Status FragmentMetadata::store_v12_or_higher(
-    const EncryptionKey& encryption_key) {
-  auto timer_se =
-      storage_manager_->stats()->start_timer("write_store_frag_meta");
-
+Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   uint64_t offset = 0, nbytes;
 
   // Store R-Tree
@@ -1080,7 +1096,7 @@ Status FragmentMetadata::store_v12_or_higher(
   }
 
   // Store fragment min, max, sum and null count
-  gt_offsets_.tile_min_max_sum_null_count_offset_ = offset;
+  gt_offsets_.fragment_min_max_sum_null_count_offset_ = offset;
   RETURN_NOT_OK_ELSE(
       store_fragment_min_max_sum_null_count(num, encryption_key, &nbytes),
       clean_up());
@@ -1088,6 +1104,100 @@ Status FragmentMetadata::store_v12_or_higher(
 
   // Store footer
   RETURN_NOT_OK_ELSE(store_footer(encryption_key), clean_up());
+
+  // Close file
+  return storage_manager_->close_file(fragment_metadata_uri);
+}
+
+Status FragmentMetadata::store_v15_or_higher(
+    const EncryptionKey& encryption_key) {
+  auto fragment_metadata_uri =
+      fragment_uri_.join_path(constants::fragment_metadata_filename);
+  auto num = num_dims_and_attrs();
+  uint64_t offset = 0, nbytes;
+
+  // Store R-Tree
+  gt_offsets_.rtree_ = offset;
+  throw_if_not_ok(store_rtree(encryption_key, &nbytes));
+  offset += nbytes;
+
+  // Store tile offsets
+  gt_offsets_.tile_offsets_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_offsets_[i] = offset;
+    throw_if_not_ok(store_tile_offsets(i, encryption_key, &nbytes));
+    offset += nbytes;
+  }
+
+  // Store tile var offsets
+  gt_offsets_.tile_var_offsets_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_var_offsets_[i] = offset;
+    throw_if_not_ok(store_tile_var_offsets(i, encryption_key, &nbytes));
+    offset += nbytes;
+  }
+
+  // Store tile var sizes
+  gt_offsets_.tile_var_sizes_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_var_sizes_[i] = offset;
+    throw_if_not_ok(store_tile_var_sizes(i, encryption_key, &nbytes));
+    offset += nbytes;
+  }
+
+  // Store validity tile offsets
+  gt_offsets_.tile_validity_offsets_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_validity_offsets_[i] = offset;
+    throw_if_not_ok(store_tile_validity_offsets(i, encryption_key, &nbytes));
+    offset += nbytes;
+  }
+
+  // Store mins
+  gt_offsets_.tile_min_offsets_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_min_offsets_[i] = offset;
+    throw_if_not_ok(store_tile_mins(i, encryption_key, &nbytes));
+    offset += nbytes;
+  }
+
+  // Store maxs
+  gt_offsets_.tile_max_offsets_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_max_offsets_[i] = offset;
+    throw_if_not_ok(store_tile_maxs(i, encryption_key, &nbytes));
+    offset += nbytes;
+  }
+
+  // Store sums
+  gt_offsets_.tile_sum_offsets_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_sum_offsets_[i] = offset;
+    throw_if_not_ok(store_tile_sums(i, encryption_key, &nbytes));
+    offset += nbytes;
+  }
+
+  // Store null counts
+  gt_offsets_.tile_null_count_offsets_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_null_count_offsets_[i] = offset;
+    throw_if_not_ok(store_tile_null_counts(i, encryption_key, &nbytes));
+    offset += nbytes;
+  }
+
+  // Store fragment min, max, sum and null count
+  gt_offsets_.fragment_min_max_sum_null_count_offset_ = offset;
+  throw_if_not_ok(
+      store_fragment_min_max_sum_null_count(num, encryption_key, &nbytes));
+  offset += nbytes;
+
+  // Store processed condition
+  gt_offsets_.processed_conditions_offsets_ = offset;
+  store_processed_conditions(encryption_key, &nbytes);
+  offset += nbytes;
+
+  // Store footer
+  throw_if_not_ok(store_footer(encryption_key));
 
   // Close file
   return storage_manager_->close_file(fragment_metadata_uri);
@@ -1233,6 +1343,14 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
 
   if (name == constants::timestamps) {
     return {Status::Ok(), "t"};
+  }
+
+  if (name == constants::delete_timestamps) {
+    return {Status::Ok(), "dt"};
+  }
+
+  if (name == constants::delete_condition_index) {
+    return {Status::Ok(), "dci"};
   }
 
   auto err = "Unable to locate dimension/attribute " + name;
@@ -1408,17 +1526,46 @@ Status FragmentMetadata::load_fragment_min_max_sum_null_count(
 
   std::lock_guard<std::mutex> lock(mtx_);
 
-  Buffer buff;
-  RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_min_max_sum_null_count_offset_, &buff));
+  auto&& [st, tile_opt] = read_generic_tile_from_file(
+      encryption_key, gt_offsets_.fragment_min_max_sum_null_count_offset_);
+  RETURN_NOT_OK(st);
+  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter(
-      "read_fragment_min_max_sum_null_count_size", buff.size());
+      "read_fragment_min_max_sum_null_count_size", tile.size());
 
-  ConstBuffer cbuff(&buff);
+  ConstBuffer cbuff(tile.data(), tile.size());
   RETURN_NOT_OK(load_fragment_min_max_sum_null_count(&cbuff));
 
   loaded_metadata_.fragment_min_max_sum_null_count_ = true;
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_processed_conditions(
+    const EncryptionKey& encryption_key) {
+  if (loaded_metadata_.processed_conditions_) {
+    return Status::Ok();
+  }
+
+  if (version_ <= 15) {
+    return Status::Ok();
+  }
+
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  auto&& [st, tile_opt] = read_generic_tile_from_file(
+      encryption_key, gt_offsets_.processed_conditions_offsets_);
+  RETURN_NOT_OK(st);
+  auto& tile = *tile_opt;
+
+  storage_manager_->stats()->add_counter(
+      "read_processed_conditions_size", tile.size());
+
+  Deserializer deserializer(tile.data(), tile.size());
+  RETURN_NOT_OK(load_processed_conditions(deserializer));
+
+  loaded_metadata_.processed_conditions_ = true;
 
   return Status::Ok();
 }
@@ -1428,9 +1575,10 @@ Status FragmentMetadata::file_offset(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!loaded_metadata_.tile_offsets_[idx])
+  if (!loaded_metadata_.tile_offsets_[idx]) {
     return LOG_STATUS(Status_FragmentMetadataError(
         "Trying to access metadata that's not loaded"));
+  }
 
   *offset = tile_offsets_[idx][tile_idx];
   return Status::Ok();
@@ -1441,9 +1589,10 @@ Status FragmentMetadata::file_var_offset(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!loaded_metadata_.tile_var_offsets_[idx])
+  if (!loaded_metadata_.tile_var_offsets_[idx]) {
     return LOG_STATUS(Status_FragmentMetadataError(
         "Trying to access metadata that's not loaded"));
+  }
 
   *offset = tile_var_offsets_[idx][tile_idx];
   return Status::Ok();
@@ -1454,9 +1603,10 @@ Status FragmentMetadata::file_validity_offset(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!loaded_metadata_.tile_validity_offsets_[idx])
+  if (!loaded_metadata_.tile_validity_offsets_[idx]) {
     return LOG_STATUS(Status_FragmentMetadataError(
         "Trying to access metadata that's not loaded"));
+  }
 
   *offset = tile_validity_offsets_[idx][tile_idx];
   return Status::Ok();
@@ -1475,10 +1625,11 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::persisted_tile_size(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!loaded_metadata_.tile_offsets_[idx])
+  if (!loaded_metadata_.tile_offsets_[idx]) {
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
             nullopt};
+  }
 
   auto tile_num = this->tile_num();
 
@@ -1496,10 +1647,11 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::persisted_tile_var_size(
   assert(it != idx_map_.end());
   auto idx = it->second;
 
-  if (!loaded_metadata_.tile_var_offsets_[idx])
+  if (!loaded_metadata_.tile_var_offsets_[idx]) {
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
             nullopt};
+  }
 
   auto tile_num = this->tile_num();
 
@@ -1517,10 +1669,11 @@ FragmentMetadata::persisted_tile_validity_size(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!loaded_metadata_.tile_validity_offsets_[idx])
+  if (!loaded_metadata_.tile_validity_offsets_[idx]) {
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
             nullopt};
+  }
 
   auto tile_num = this->tile_num();
 
@@ -1546,12 +1699,13 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::tile_var_size(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!loaded_metadata_.tile_var_sizes_[idx])
+  if (!loaded_metadata_.tile_var_sizes_[idx]) {
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
             nullopt};
-  auto tile_size = tile_var_sizes_[idx][tile_idx];
+  }
 
+  auto tile_size = tile_var_sizes_[idx][tile_idx];
   return {Status::Ok(), tile_size};
 }
 
@@ -1560,22 +1714,24 @@ FragmentMetadata::get_tile_min(const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!loaded_metadata_.tile_min_[idx])
+  if (!loaded_metadata_.tile_min_[idx]) {
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
             nullopt,
             nullopt};
+  }
 
   const auto type = array_schema_->type(name);
   const auto is_dim = array_schema_->is_dim(name);
   const auto var_size = array_schema_->var_size(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_min_max_metadata(
-          type, is_dim, var_size, cell_val_num))
+          type, is_dim, var_size, cell_val_num)) {
     return {Status_FragmentMetadataError(
                 "Trying to access metadata that's not present"),
             nullopt,
             nullopt};
+  }
 
   if (var_size) {
     auto tile_num = this->tile_num();
@@ -1598,22 +1754,24 @@ FragmentMetadata::get_tile_max(const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!loaded_metadata_.tile_max_[idx])
+  if (!loaded_metadata_.tile_max_[idx]) {
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
             nullopt,
             nullopt};
+  }
 
   const auto type = array_schema_->type(name);
   const auto is_dim = array_schema_->is_dim(name);
   const auto var_size = array_schema_->var_size(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_min_max_metadata(
-          type, is_dim, var_size, cell_val_num))
+          type, is_dim, var_size, cell_val_num)) {
     return {Status_FragmentMetadataError(
                 "Trying to access metadata that's not present"),
             nullopt,
             nullopt};
+  }
 
   if (var_size) {
     auto tile_num = this->tile_num();
@@ -1636,18 +1794,20 @@ tuple<Status, optional<void*>> FragmentMetadata::get_tile_sum(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!loaded_metadata_.tile_sum_[idx])
+  if (!loaded_metadata_.tile_sum_[idx]) {
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
             nullopt};
+  }
 
   auto type = array_schema_->type(name);
   auto var_size = array_schema_->var_size(name);
   auto cell_val_num = array_schema_->cell_val_num(name);
-  if (!TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num))
+  if (!TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num)) {
     return {Status_FragmentMetadataError(
                 "Trying to access metadata that's not present"),
             nullopt};
+  }
 
   void* sum = &tile_sums_[idx][tile_idx * sizeof(uint64_t)];
   return {Status::Ok(), sum};
@@ -1658,10 +1818,11 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::get_tile_null_count(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!loaded_metadata_.tile_null_count_[idx])
+  if (!loaded_metadata_.tile_null_count_[idx]) {
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
             nullopt};
+  }
 
   if (!array_schema_->is_nullable(name)) {
     return {Status_FragmentMetadataError(
@@ -1678,20 +1839,22 @@ tuple<Status, optional<std::vector<uint8_t>>> FragmentMetadata::get_min(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!loaded_metadata_.fragment_min_max_sum_null_count_)
+  if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
             nullopt};
+  }
 
   const auto type = array_schema_->type(name);
   const auto is_dim = array_schema_->is_dim(name);
   const auto var_size = array_schema_->var_size(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_min_max_metadata(
-          type, is_dim, var_size, cell_val_num))
+          type, is_dim, var_size, cell_val_num)) {
     return {Status_FragmentMetadataError(
                 "Trying to access metadata that's not present"),
             nullopt};
+  }
 
   return {Status::Ok(), fragment_mins_[idx]};
 }
@@ -1701,20 +1864,22 @@ tuple<Status, optional<std::vector<uint8_t>>> FragmentMetadata::get_max(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!loaded_metadata_.fragment_min_max_sum_null_count_)
+  if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
             nullopt};
+  }
 
   const auto type = array_schema_->type(name);
   const auto is_dim = array_schema_->is_dim(name);
   const auto var_size = array_schema_->var_size(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_min_max_metadata(
-          type, is_dim, var_size, cell_val_num))
+          type, is_dim, var_size, cell_val_num)) {
     return {Status_FragmentMetadataError(
                 "Trying to access metadata that's not present"),
             nullopt};
+  }
 
   return {Status::Ok(), fragment_maxs_[idx]};
 }
@@ -1724,18 +1889,20 @@ tuple<Status, optional<void*>> FragmentMetadata::get_sum(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!loaded_metadata_.fragment_min_max_sum_null_count_)
+  if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
             nullopt};
+  }
 
   const auto type = array_schema_->type(name);
   const auto var_size = array_schema_->var_size(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
-  if (!TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num))
+  if (!TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num)) {
     return {Status_FragmentMetadataError(
                 "Trying to access metadata that's not present"),
             nullopt};
+  }
 
   return {Status::Ok(), &fragment_sums_[idx]};
 }
@@ -1745,10 +1912,11 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::get_null_count(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!loaded_metadata_.fragment_min_max_sum_null_count_)
+  if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
     return {LOG_STATUS(Status_FragmentMetadataError(
                 "Trying to access metadata that's not loaded")),
             nullopt};
+  }
 
   if (!array_schema_->is_nullable(name)) {
     return {Status_FragmentMetadataError(
@@ -1757,6 +1925,30 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::get_null_count(
   }
 
   return {Status::Ok(), fragment_null_counts_[idx]};
+}
+
+void FragmentMetadata::set_processed_conditions(
+    std::vector<std::string>& processed_conditions) {
+  processed_conditions_ = processed_conditions;
+  processed_conditions_set_ = std::unordered_set<std::string>(
+      processed_conditions.begin(), processed_conditions.end());
+}
+
+std::vector<std::string>& FragmentMetadata::get_processed_conditions() {
+  if (!loaded_metadata_.processed_conditions_) {
+    throw std::logic_error("Trying to access metadata that's not present");
+  }
+
+  return processed_conditions_;
+}
+
+std::unordered_set<std::string>&
+FragmentMetadata::get_processed_conditions_set() {
+  if (!loaded_metadata_.processed_conditions_) {
+    throw std::logic_error("Trying to access metadata that's not present");
+  }
+
+  return processed_conditions_set_;
 }
 
 uint64_t FragmentMetadata::first_timestamp() const {
@@ -1787,6 +1979,10 @@ Status FragmentMetadata::write_footer(Buffer* buff) const {
     RETURN_NOT_OK(write_has_timestamps(buff));
   }
 
+  if (version_ >= 15) {
+    RETURN_NOT_OK(write_has_delete_meta(buff));
+  }
+
   RETURN_NOT_OK(write_file_sizes(buff));
   RETURN_NOT_OK(write_file_var_sizes(buff));
   RETURN_NOT_OK(write_file_validity_sizes(buff));
@@ -1803,25 +1999,26 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   if (loaded_metadata_.rtree_)
     return Status::Ok();
 
-  Buffer buff;
-  RETURN_NOT_OK(
-      read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_, &buff));
+  auto&& [st, tile_opt] =
+      read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_);
+  RETURN_NOT_OK(st);
+  auto& tile = *tile_opt;
 
-  storage_manager_->stats()->add_counter("read_rtree_size", buff.size());
+  storage_manager_->stats()->add_counter("read_rtree_size", tile.size());
 
   // Use the serialized buffer size to approximate memory usage of the rtree.
   if (memory_tracker_ != nullptr &&
-      !memory_tracker_->take_memory(buff.size())) {
+      !memory_tracker_->take_memory(tile.size())) {
     return LOG_STATUS(Status_FragmentMetadataError(
         "Cannot load R-tree; Insufficient memory budget; Needed " +
-        std::to_string(buff.size()) + " but only had " +
+        std::to_string(tile.size()) + " but only had " +
         std::to_string(memory_tracker_->get_memory_available()) +
         " from budget " +
         std::to_string(memory_tracker_->get_memory_budget())));
   }
 
-  ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(rtree_.deserialize(&cbuff, &array_schema_->domain(), version_));
+  Deserializer deserializer(tile.data(), tile.size());
+  rtree_.deserialize(deserializer, &array_schema_->domain(), version_);
 
   loaded_metadata_.rtree_ = true;
 
@@ -1920,7 +2117,7 @@ uint64_t FragmentMetadata::footer_size_v3_v4() const {
 
 uint64_t FragmentMetadata::footer_size_v5_v6() const {
   auto dim_num = array_schema_->dim_num();
-  auto num = array_schema_->attribute_num() + dim_num + 1;
+  auto num = num_dims_and_attrs();
   size_t domain_size = 0;
 
   if (non_empty_domain_.empty()) {
@@ -1961,7 +2158,7 @@ uint64_t FragmentMetadata::footer_size_v5_v6() const {
 
 uint64_t FragmentMetadata::footer_size_v7_v10() const {
   auto dim_num = array_schema_->dim_num();
-  auto num = array_schema_->attribute_num() + dim_num + 1;
+  auto num = num_dims_and_attrs();
   uint64_t domain_size = 0;
 
   if (non_empty_domain_.empty()) {
@@ -2004,7 +2201,7 @@ uint64_t FragmentMetadata::footer_size_v7_v10() const {
 
 uint64_t FragmentMetadata::footer_size_v11_or_higher() const {
   auto dim_num = array_schema_->dim_num();
-  auto num = array_schema_->attribute_num() + dim_num + 1;
+  auto num = num_dims_and_attrs();
   uint64_t domain_size = 0;
 
   if (non_empty_domain_.empty()) {
@@ -2206,13 +2403,14 @@ Status FragmentMetadata::load_tile_offsets(
   if (loaded_metadata_.tile_offsets_[idx])
     return Status::Ok();
 
-  Buffer buff;
-  RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_offsets_[idx], &buff));
+  auto&& [st, tile_opt] = read_generic_tile_from_file(
+      encryption_key, gt_offsets_.tile_offsets_[idx]);
+  RETURN_NOT_OK(st);
+  auto& tile = *tile_opt;
 
-  storage_manager_->stats()->add_counter("read_tile_offsets_size", buff.size());
+  storage_manager_->stats()->add_counter("read_tile_offsets_size", tile.size());
 
-  ConstBuffer cbuff(&buff);
+  ConstBuffer cbuff(tile.data(), tile.size());
   RETURN_NOT_OK(load_tile_offsets(idx, &cbuff));
 
   loaded_metadata_.tile_offsets_[idx] = true;
@@ -2234,14 +2432,15 @@ Status FragmentMetadata::load_tile_var_offsets(
   if (loaded_metadata_.tile_var_offsets_[idx])
     return Status::Ok();
 
-  Buffer buff;
-  RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_var_offsets_[idx], &buff));
+  auto&& [st, tile_opt] = read_generic_tile_from_file(
+      encryption_key, gt_offsets_.tile_var_offsets_[idx]);
+  RETURN_NOT_OK(st);
+  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter(
-      "read_tile_var_offsets_size", buff.size());
+      "read_tile_var_offsets_size", tile.size());
 
-  ConstBuffer cbuff(&buff);
+  ConstBuffer cbuff(tile.data(), tile.size());
   RETURN_NOT_OK(load_tile_var_offsets(idx, &cbuff));
 
   loaded_metadata_.tile_var_offsets_[idx] = true;
@@ -2259,14 +2458,15 @@ Status FragmentMetadata::load_tile_var_sizes(
   if (loaded_metadata_.tile_var_sizes_[idx])
     return Status::Ok();
 
-  Buffer buff;
-  RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_var_sizes_[idx], &buff));
+  auto&& [st, tile_opt] = read_generic_tile_from_file(
+      encryption_key, gt_offsets_.tile_var_sizes_[idx]);
+  RETURN_NOT_OK(st);
+  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter(
-      "read_tile_var_sizes_size", buff.size());
+      "read_tile_var_sizes_size", tile.size());
 
-  ConstBuffer cbuff(&buff);
+  ConstBuffer cbuff(tile.data(), tile.size());
   RETURN_NOT_OK(load_tile_var_sizes(idx, &cbuff));
 
   loaded_metadata_.tile_var_sizes_[idx] = true;
@@ -2284,14 +2484,15 @@ Status FragmentMetadata::load_tile_validity_offsets(
   if (loaded_metadata_.tile_validity_offsets_[idx])
     return Status::Ok();
 
-  Buffer buff;
-  RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_validity_offsets_[idx], &buff));
+  auto&& [st, tile_opt] = read_generic_tile_from_file(
+      encryption_key, gt_offsets_.tile_validity_offsets_[idx]);
+  RETURN_NOT_OK(st);
+  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter(
-      "read_tile_validity_offsets_size", buff.size());
+      "read_tile_validity_offsets_size", tile.size());
 
-  ConstBuffer cbuff(&buff);
+  ConstBuffer cbuff(tile.data(), tile.size());
   RETURN_NOT_OK(load_tile_validity_offsets(idx, &cbuff));
 
   loaded_metadata_.tile_validity_offsets_[idx] = true;
@@ -2309,13 +2510,14 @@ Status FragmentMetadata::load_tile_min_values(
   if (loaded_metadata_.tile_min_[idx])
     return Status::Ok();
 
-  Buffer buff;
-  RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_min_offsets_[idx], &buff));
+  auto&& [st, tile_opt] = read_generic_tile_from_file(
+      encryption_key, gt_offsets_.tile_min_offsets_[idx]);
+  RETURN_NOT_OK(st);
+  auto& tile = *tile_opt;
 
-  storage_manager_->stats()->add_counter("read_tile_min_size", buff.size());
+  storage_manager_->stats()->add_counter("read_tile_min_size", tile.size());
 
-  ConstBuffer cbuff(&buff);
+  ConstBuffer cbuff(tile.data(), tile.size());
   RETURN_NOT_OK(load_tile_min_values(idx, &cbuff));
 
   loaded_metadata_.tile_min_[idx] = true;
@@ -2333,13 +2535,14 @@ Status FragmentMetadata::load_tile_max_values(
   if (loaded_metadata_.tile_max_[idx])
     return Status::Ok();
 
-  Buffer buff;
-  RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_max_offsets_[idx], &buff));
+  auto&& [st, tile_opt] = read_generic_tile_from_file(
+      encryption_key, gt_offsets_.tile_max_offsets_[idx]);
+  RETURN_NOT_OK(st);
+  auto& tile = *tile_opt;
 
-  storage_manager_->stats()->add_counter("read_tile_max_size", buff.size());
+  storage_manager_->stats()->add_counter("read_tile_max_size", tile.size());
 
-  ConstBuffer cbuff(&buff);
+  ConstBuffer cbuff(tile.data(), tile.size());
   RETURN_NOT_OK(load_tile_max_values(idx, &cbuff));
 
   loaded_metadata_.tile_max_[idx] = true;
@@ -2357,13 +2560,14 @@ Status FragmentMetadata::load_tile_sum_values(
   if (loaded_metadata_.tile_sum_[idx])
     return Status::Ok();
 
-  Buffer buff;
-  RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_sum_offsets_[idx], &buff));
+  auto&& [st, tile_opt] = read_generic_tile_from_file(
+      encryption_key, gt_offsets_.tile_sum_offsets_[idx]);
+  RETURN_NOT_OK(st);
+  auto& tile = *tile_opt;
 
-  storage_manager_->stats()->add_counter("read_tile_sum_size", buff.size());
+  storage_manager_->stats()->add_counter("read_tile_sum_size", tile.size());
 
-  ConstBuffer cbuff(&buff);
+  ConstBuffer cbuff(tile.data(), tile.size());
   RETURN_NOT_OK(load_tile_sum_values(idx, &cbuff));
 
   loaded_metadata_.tile_sum_[idx] = true;
@@ -2381,14 +2585,15 @@ Status FragmentMetadata::load_tile_null_count_values(
   if (loaded_metadata_.tile_null_count_[idx])
     return Status::Ok();
 
-  Buffer buff;
-  RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_null_count_offsets_[idx], &buff));
+  auto&& [st, tile_opt] = read_generic_tile_from_file(
+      encryption_key, gt_offsets_.tile_null_count_offsets_[idx]);
+  RETURN_NOT_OK(st);
+  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter(
-      "read_tile_null_count_size", buff.size());
+      "read_tile_null_count_size", tile.size());
 
-  ConstBuffer cbuff(&buff);
+  ConstBuffer cbuff(tile.data(), tile.size());
   RETURN_NOT_OK(load_tile_null_count_values(idx, &cbuff));
 
   loaded_metadata_.tile_null_count_[idx] = true;
@@ -2448,7 +2653,7 @@ Status FragmentMetadata::load_file_sizes_v1_v4(ConstBuffer* buff) {
 // ...
 // file_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::load_file_sizes_v5_or_higher(ConstBuffer* buff) {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   file_sizes_.resize(num);
   Status st = buff->read(&file_sizes_[0], num * sizeof(uint64_t));
 
@@ -2489,7 +2694,7 @@ Status FragmentMetadata::load_file_var_sizes_v1_v4(ConstBuffer* buff) {
 // ...
 // file_var_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::load_file_var_sizes_v5_or_higher(ConstBuffer* buff) {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   file_var_sizes_.resize(num);
   Status st = buff->read(&file_var_sizes_[0], num * sizeof(uint64_t));
 
@@ -2505,7 +2710,7 @@ Status FragmentMetadata::load_file_validity_sizes(ConstBuffer* buff) {
   if (version_ <= 6)
     return Status::Ok();
 
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   file_validity_sizes_.resize(num);
   Status st = buff->read(&file_validity_sizes_[0], num * sizeof(uint64_t));
 
@@ -2538,6 +2743,28 @@ Status FragmentMetadata::load_has_timestamps(ConstBuffer* buff) {
   if (!st.ok()) {
     return LOG_STATUS(Status_FragmentMetadataError(
         "Cannot load fragment metadata; Reading include timestamps failed"));
+  }
+
+  // Rebuild index map
+  if (has_timestamps_) {
+    build_idx_map();
+  }
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
+// has_delete_meta (char)
+Status FragmentMetadata::load_has_delete_meta(ConstBuffer* buff) {
+  // Get includes timestamps
+  Status st = buff->read(&has_delete_meta_, sizeof(char));
+  if (!st.ok()) {
+    return LOG_STATUS(Status_FragmentMetadataError(
+        "Cannot load fragment metadata; Reading include delete meta failed"));
+  }
+
+  // Rebuild index map
+  if (has_delete_meta_) {
+    build_idx_map();
   }
   return Status::Ok();
 }
@@ -3226,7 +3453,7 @@ Status FragmentMetadata::load_tile_null_count_values(
 Status FragmentMetadata::load_fragment_min_max_sum_null_count(
     ConstBuffer* buff) {
   Status st;
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
 
   for (unsigned int i = 0; i < num; ++i) {
     // Get min.
@@ -3283,6 +3510,36 @@ Status FragmentMetadata::load_fragment_min_max_sum_null_count(
   return Status::Ok();
 }
 
+// ===== FORMAT =====
+// condition_num (uint64_t)
+// processed_condition_size#0 (uint64_t)
+// processed_condition#0
+// ...
+// processed_condition_size#<condition_num-1> (uint64_t)
+// processed_condition#<condition_num-1>
+Status FragmentMetadata::load_processed_conditions(Deserializer& deserializer) {
+  // Get num conditions.
+  uint64_t num;
+  num = deserializer.read<uint64_t>();
+
+  processed_conditions_.reserve(num);
+  for (uint64_t i = 0; i < num; i++) {
+    uint64_t size;
+    size = deserializer.read<uint64_t>();
+
+    std::string condition;
+    condition.resize(size);
+    deserializer.read(condition.data(), size);
+
+    processed_conditions_.emplace_back(condition);
+  }
+
+  processed_conditions_set_ = std::unordered_set<std::string>(
+      processed_conditions_.begin(), processed_conditions_.end());
+
+  return Status::Ok();
+}
+
 Status FragmentMetadata::load_version(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&version_, sizeof(uint32_t)));
   return Status::Ok();
@@ -3307,8 +3564,10 @@ Status FragmentMetadata::load_generic_tile_offsets(ConstBuffer* buff) {
     return load_generic_tile_offsets_v7_v10(buff);
   } else if (version_ == 11) {
     return load_generic_tile_offsets_v11(buff);
+  } else if (version_ >= 12 && version_ < 16) {
+    return load_generic_tile_offsets_v12_v15(buff);
   } else {
-    return load_generic_tile_offsets_v12_or_higher(buff);
+    return load_generic_tile_offsets_v16_or_higher(buff);
   }
 
   assert(false);
@@ -3348,7 +3607,7 @@ Status FragmentMetadata::load_generic_tile_offsets_v5_v6(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
   // Load offsets for tile offsets
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
@@ -3376,7 +3635,7 @@ Status FragmentMetadata::load_generic_tile_offsets_v7_v10(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
   // Load offsets for tile offsets
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
@@ -3411,7 +3670,7 @@ Status FragmentMetadata::load_generic_tile_offsets_v11(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
   // Load offsets for tile offsets
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
@@ -3469,13 +3728,12 @@ Status FragmentMetadata::load_generic_tile_offsets_v11(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_generic_tile_offsets_v12_or_higher(
-    ConstBuffer* buff) {
+Status FragmentMetadata::load_generic_tile_offsets_v12_v15(ConstBuffer* buff) {
   // Load R-Tree offset
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
   // Load offsets for tile offsets
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
@@ -3531,7 +3789,77 @@ Status FragmentMetadata::load_generic_tile_offsets_v12_or_higher(
   }
 
   RETURN_NOT_OK(buff->read(
-      &gt_offsets_.tile_min_max_sum_null_count_offset_, sizeof(uint64_t)));
+      &gt_offsets_.fragment_min_max_sum_null_count_offset_, sizeof(uint64_t)));
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_generic_tile_offsets_v16_or_higher(
+    ConstBuffer* buff) {
+  // Load R-Tree offset
+  RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
+
+  // Load offsets for tile offsets
+  auto num = num_dims_and_attrs();
+  gt_offsets_.tile_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile var offsets
+  gt_offsets_.tile_var_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_var_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile var sizes
+  gt_offsets_.tile_var_sizes_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_var_sizes_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile validity offsets
+  gt_offsets_.tile_validity_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_validity_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile min offsets
+  gt_offsets_.tile_min_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_min_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile max offsets
+  gt_offsets_.tile_max_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_max_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile sum offsets
+  gt_offsets_.tile_sum_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_sum_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile null count offsets
+  gt_offsets_.tile_null_count_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_null_count_offsets_[i], sizeof(uint64_t)));
+  }
+
+  RETURN_NOT_OK(buff->read(
+      &gt_offsets_.fragment_min_max_sum_null_count_offset_, sizeof(uint64_t)));
+
+  RETURN_NOT_OK(
+      buff->read(&gt_offsets_.processed_conditions_offsets_, sizeof(uint64_t)));
 
   return Status::Ok();
 }
@@ -3558,17 +3886,12 @@ Status FragmentMetadata::load_v1_v2(
       std::string(constants::fragment_metadata_filename));
   // Read metadata
   GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
-  auto tile = (Tile*)nullptr;
-  RETURN_NOT_OK(tile_io.read_generic(
-      &tile, 0, encryption_key, storage_manager_->config()));
+  auto&& [st, tile_opt] =
+      tile_io.read_generic(0, encryption_key, storage_manager_->config());
+  RETURN_NOT_OK(st);
+  auto& tile = *tile_opt;
 
-  Buffer buff;
-  RETURN_NOT_OK_ELSE(buff.realloc(tile->size()), tdb_delete(tile));
-  buff.set_size(tile->size());
-  RETURN_NOT_OK_ELSE(tile->read(buff.data(), 0, buff.size()), tdb_delete(tile));
-  tdb_delete(tile);
-
-  storage_manager_->stats()->add_counter("read_frag_meta_size", buff.size());
+  storage_manager_->stats()->add_counter("read_frag_meta_size", tile.size());
 
   // Pre-v10 format fragments we need to set the schema and schema name to
   // the "old" schema. This way "old" fragments are still loaded fine
@@ -3584,7 +3907,7 @@ Status FragmentMetadata::load_v1_v2(
   }
 
   // Deserialize
-  ConstBuffer cbuff(&buff);
+  ConstBuffer cbuff(tile.data(), tile.size());
   RETURN_NOT_OK(load_version(&cbuff));
   RETURN_NOT_OK(load_non_empty_domain(&cbuff));
   RETURN_NOT_OK(load_mbrs(&cbuff));
@@ -3669,11 +3992,16 @@ Status FragmentMetadata::load_footer(
     RETURN_NOT_OK(load_has_timestamps(cbuff.get()));
   }
 
+  if (version_ >= 15) {
+    RETURN_NOT_OK(load_has_delete_meta(cbuff.get()));
+  }
+
   RETURN_NOT_OK(load_file_sizes(cbuff.get()));
   RETURN_NOT_OK(load_file_var_sizes(cbuff.get()));
   RETURN_NOT_OK(load_file_validity_sizes(cbuff.get()));
 
-  unsigned num = array_schema_->attribute_num() + 1 + has_timestamps_;
+  unsigned num = array_schema_->attribute_num() + 1 + has_timestamps_ +
+                 has_delete_meta_ * 2;
   num += (version_ >= 5) ? array_schema_->dim_num() : 0;
 
   tile_offsets_.resize(num);
@@ -3720,7 +4048,7 @@ Status FragmentMetadata::load_footer(
 // ...
 // file_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::write_file_sizes(Buffer* buff) const {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   Status st = buff->write(&file_sizes_[0], num * sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status_FragmentMetadataError(
@@ -3735,7 +4063,7 @@ Status FragmentMetadata::write_file_sizes(Buffer* buff) const {
 // ...
 // file_var_sizes#{attribute_num+dim_num} (uint64_t)
 Status FragmentMetadata::write_file_var_sizes(Buffer* buff) const {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   Status st = buff->write(&file_var_sizes_[0], num * sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status_FragmentMetadataError(
@@ -3753,7 +4081,7 @@ Status FragmentMetadata::write_file_validity_sizes(Buffer* buff) const {
   if (version_ <= 6)
     return Status::Ok();
 
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
   Status st = buff->write(&file_validity_sizes_[0], num * sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status_FragmentMetadataError(
@@ -3775,7 +4103,7 @@ Status FragmentMetadata::write_file_validity_sizes(Buffer* buff) const {
 // ...
 // tile_var_sizes_{attr_num+dim_num}(uint64_t)
 Status FragmentMetadata::write_generic_tile_offsets(Buffer* buff) const {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto num = num_dims_and_attrs();
 
   // Write R-Tree offset
   auto st = buff->write(&gt_offsets_.rtree_, sizeof(uint64_t));
@@ -3872,11 +4200,21 @@ Status FragmentMetadata::write_generic_tile_offsets(Buffer* buff) const {
 
   if (version_ >= 11) {
     st = buff->write(
-        &gt_offsets_.tile_min_max_sum_null_count_offset_, sizeof(uint64_t));
+        &gt_offsets_.fragment_min_max_sum_null_count_offset_, sizeof(uint64_t));
     if (!st.ok()) {
       return LOG_STATUS(Status_FragmentMetadataError(
           "Cannot serialize fragment metadata; Writing fragment min max sum "
           "null counts failed"));
+    }
+  }
+
+  if (version_ >= 16) {
+    st = buff->write(
+        &gt_offsets_.processed_conditions_offsets_, sizeof(uint64_t));
+    if (!st.ok()) {
+      return LOG_STATUS(Status_FragmentMetadataError(
+          "Cannot serialize fragment metadata; Writing processed conditions"
+          "failed"));
     }
   }
 
@@ -3915,19 +4253,33 @@ Status FragmentMetadata::write_last_tile_cell_num(Buffer* buff) const {
 
 Status FragmentMetadata::store_rtree(
     const EncryptionKey& encryption_key, uint64_t* nbytes) {
-  Buffer buff;
-  RETURN_NOT_OK(write_rtree(&buff));
-
-  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
+  auto rtree_tile = write_rtree();
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, rtree_tile, nbytes));
   storage_manager_->stats()->add_counter("write_rtree_size", *nbytes);
 
   return Status::Ok();
 }
 
-Status FragmentMetadata::write_rtree(Buffer* buff) {
-  RETURN_NOT_OK(rtree_.build_tree());
-  RETURN_NOT_OK(rtree_.serialize(buff));
-  return Status::Ok();
+Tile FragmentMetadata::write_rtree() {
+  rtree_.build_tree();
+  SizeComputationSerializer size_computation_serializer;
+  rtree_.serialize(size_computation_serializer);
+
+  Tile tile;
+  if (!tile.init_unfiltered(
+               0,
+               constants::generic_tile_datatype,
+               size_computation_serializer.size(),
+               constants::generic_tile_cell_size,
+               0)
+           .ok()) {
+    throw FragmentMetadataStatusException("Cannot initialize tile");
+  }
+
+  Serializer serializer(tile.data(), tile.size());
+  rtree_.serialize(serializer);
+
+  return tile;
 }
 
 // ===== FORMAT =====
@@ -3972,24 +4324,18 @@ Status FragmentMetadata::write_non_empty_domain(Buffer* buff) const {
   return Status::Ok();
 }
 
-Status FragmentMetadata::read_generic_tile_from_file(
-    const EncryptionKey& encryption_key, uint64_t offset, Buffer* buff) const {
+tuple<Status, optional<Tile>> FragmentMetadata::read_generic_tile_from_file(
+    const EncryptionKey& encryption_key, uint64_t offset) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
   // Read metadata
   GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
-  Tile* tile = nullptr;
-  RETURN_NOT_OK(tile_io.read_generic(
-      &tile, offset, encryption_key, storage_manager_->config()));
+  auto&& [st, tile_opt] =
+      tile_io.read_generic(offset, encryption_key, storage_manager_->config());
+  RETURN_NOT_OK_TUPLE(st, nullopt);
 
-  buff->realloc(tile->size());
-  buff->set_size(tile->size());
-  RETURN_NOT_OK_ELSE(
-      tile->read(buff->data(), 0, buff->size()), tdb_delete(tile));
-  tdb_delete(tile);
-
-  return Status::Ok();
+  return {Status::Ok(), std::move(*tile_opt)};
 }
 
 Status FragmentMetadata::read_file_footer(
@@ -4028,7 +4374,17 @@ Status FragmentMetadata::write_generic_tile_to_file(
       0,
       buff.data(),
       buff.size());
-  buff.disown_data();
+
+  GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
+  RETURN_NOT_OK(tile_io.write_generic(&tile, encryption_key, nbytes));
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::write_generic_tile_to_file(
+    const EncryptionKey& encryption_key, Tile& tile, uint64_t* nbytes) const {
+  URI fragment_metadata_uri = fragment_uri_.join_path(
+      std::string(constants::fragment_metadata_filename));
 
   GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
   RETURN_NOT_OK(tile_io.write_generic(&tile, encryption_key, nbytes));
@@ -4451,6 +4807,34 @@ Status FragmentMetadata::store_fragment_min_max_sum_null_count(
   return Status::Ok();
 }
 
+void FragmentMetadata::store_processed_conditions(
+    const EncryptionKey& encryption_key, uint64_t* nbytes) {
+  auto serialize_processed_conditions = [this](Serializer& serializer) {
+    // Store num conditions.
+    uint64_t num = processed_conditions_.size();
+    serializer.write<uint64_t>(num);
+
+    for (auto& processed_condition : processed_conditions_) {
+      uint64_t size = processed_condition.size();
+      serializer.write<uint64_t>(size);
+
+      serializer.write(processed_condition.data(), processed_condition.size());
+    }
+  };
+  SizeComputationSerializer size_computation_serializer;
+  serialize_processed_conditions(size_computation_serializer);
+
+  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+
+  Serializer serializer(tile.data(), tile.size());
+  serialize_processed_conditions(serializer);
+
+  throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
+
+  storage_manager_->stats()->add_counter(
+      "write_processed_conditions_size", *nbytes);
+}
+
 template <class T>
 void FragmentMetadata::compute_fragment_min_max_sum(const std::string& name) {
   // For easy reference.
@@ -4768,6 +5152,11 @@ Status FragmentMetadata::write_has_timestamps(Buffer* buff) const {
   return Status::Ok();
 }
 
+Status FragmentMetadata::write_has_delete_meta(Buffer* buff) const {
+  RETURN_NOT_OK(buff->write(&has_delete_meta_, sizeof(char)));
+  return Status::Ok();
+}
+
 Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
   (void)encryption_key;  // Not used for now, maybe in the future
 
@@ -4806,9 +5195,14 @@ void FragmentMetadata::build_idx_map() {
     const auto& dim_name{array_schema_->dimension_ptr(i)->name()};
     idx_map_[dim_name] = array_schema_->attribute_num() + 1 + i;
   }
+
+  auto idx = array_schema_->attribute_num() + 1 + array_schema_->dim_num();
   if (has_timestamps_) {
-    idx_map_[constants::timestamps] =
-        array_schema_->attribute_num() + 1 + array_schema_->dim_num();
+    idx_map_[constants::timestamps] = idx++;
+  }
+  if (has_delete_meta_) {
+    idx_map_[constants::delete_timestamps] = idx++;
+    idx_map_[constants::delete_condition_index] = idx++;
   }
 }
 

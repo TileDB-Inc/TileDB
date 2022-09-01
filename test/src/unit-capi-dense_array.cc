@@ -31,7 +31,7 @@
  * Tests of C API for dense array operations.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
 #ifdef _WIN32
@@ -4717,7 +4717,7 @@ TEST_CASE_METHOD(
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  std::string array_name = temp_dir + "default-dim";
+  std::string array_name = temp_dir + "unary-range";
   create_temp_dir(temp_dir);
 
   // Create and write dense array
@@ -4972,7 +4972,7 @@ TEST_CASE_METHOD(
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  std::string array_name = temp_dir + "dense_read_large";
+  std::string array_name = temp_dir + "dense_read_multi_index_simple";
   create_temp_dir(temp_dir);
 
   create_large_dense_array_1_attribute(array_name);
@@ -5029,7 +5029,7 @@ TEST_CASE_METHOD(
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  std::string array_name = temp_dir + "dense_read_large";
+  std::string array_name = temp_dir + "dense_read_multi_index_complex";
   create_temp_dir(temp_dir);
 
   create_large_dense_array_1_attribute(array_name);
@@ -5103,7 +5103,7 @@ TEST_CASE_METHOD(
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  std::string array_name = temp_dir + "dense_read_large";
+  std::string array_name = temp_dir + "dense_read_multi_index_cross_tile";
   create_temp_dir(temp_dir);
 
   create_large_dense_array_1_attribute(array_name);
@@ -5160,7 +5160,7 @@ TEST_CASE_METHOD(
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  std::string array_name = temp_dir + "dense_read_large";
+  std::string array_name = temp_dir + "dense_read_multi_out_of_order";
   create_temp_dir(temp_dir);
 
   create_large_dense_array_1_attribute(array_name);
@@ -5217,7 +5217,7 @@ TEST_CASE_METHOD(
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  std::string array_name = temp_dir + "dense_read_large";
+  std::string array_name = temp_dir + "dense_read_multi_index_coalesce";
   create_temp_dir(temp_dir);
 
   create_large_dense_array_1_attribute(array_name);

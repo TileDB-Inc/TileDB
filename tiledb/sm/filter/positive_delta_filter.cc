@@ -84,6 +84,7 @@ Status PositiveDeltaFilter::run_forward(
       return run_forward<int8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::BLOB:
+    case Datatype::BOOL:
     case Datatype::UINT8:
       return run_forward<uint8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
@@ -263,6 +264,7 @@ Status PositiveDeltaFilter::run_reverse(
       return run_reverse<int8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::BLOB:
+    case Datatype::BOOL:
     case Datatype::UINT8:
       return run_reverse<uint8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
@@ -409,9 +411,8 @@ PositiveDeltaFilter* PositiveDeltaFilter::clone_impl() const {
   return clone;
 }
 
-Status PositiveDeltaFilter::serialize_impl(Buffer* buff) const {
-  RETURN_NOT_OK(buff->write(&max_window_size_, sizeof(uint32_t)));
-  return Status::Ok();
+void PositiveDeltaFilter::serialize_impl(Serializer& serializer) const {
+  serializer.write<uint32_t>(max_window_size_);
 }
 
 }  // namespace sm

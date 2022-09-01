@@ -31,7 +31,7 @@
  * Tests of backwards compatibility for opening/reading arrays.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -132,16 +132,10 @@ TEST_CASE(
     "[backwards-compat]") {
   Context ctx;
   std::string array_uri(arrays_dir + "/dense_array_v1_3_0");
-  try {
-    Array array(ctx, array_uri, TILEDB_READ);
-    REQUIRE(false);
-  } catch (const TileDBError& e) {
-    // Check correct exception type and error message.
-    std::string msg(e.what());
-    REQUIRE(msg.find("Error: Read buffer overflow") != std::string::npos);
-  } catch (const std::exception& e) {
-    REQUIRE(false);
-  }
+  REQUIRE_THROWS_WITH(
+      Array(ctx, array_uri, TILEDB_READ),
+      "[TileDB::Array] Error: [TileDB::StorageManager] Error: Reading data "
+      "past end of serialized data size.");
 }
 
 template <typename T>
@@ -299,6 +293,7 @@ TEST_CASE(
                 &buffers);
             break;
           }
+          case TILEDB_BOOL:
           case TILEDB_UINT8: {
             set_buffer_wrapper<uint8_t>(
                 query,
@@ -586,6 +581,7 @@ TEST_CASE(
             REQUIRE(static_cast<int8_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
+          case TILEDB_BOOL:
           case TILEDB_UINT8: {
             REQUIRE(static_cast<uint8_t*>(std::get<1>(buffer))[0] == 1);
             break;
@@ -682,6 +678,10 @@ TEST_CASE(
 TEST_CASE(
     "Backwards compatibility: Write to an array of older version",
     "[backwards-compat][write-to-older-version]") {
+  if constexpr (is_experimental_build) {
+    return;
+  }
+
   std::string old_array_name(arrays_dir + "/non_split_coords_v1_4_0");
   Context ctx;
   std::string fragment_uri;
@@ -722,6 +722,8 @@ TEST_CASE(
       REQUIRE(a_read[i] == i + 1);
     }
   } catch (const std::exception& e) {
+    std::cerr << "Unexpected exception in unit-backwards_compat: " << e.what()
+              << std::endl;
     CHECK(false);
   }
 }
@@ -790,6 +792,7 @@ TEST_CASE(
                 &buffers);
             break;
           }
+          case TILEDB_BOOL:
           case TILEDB_UINT8: {
             set_buffer_wrapper<uint8_t>(
                 query,
@@ -1113,6 +1116,7 @@ TEST_CASE(
             REQUIRE(static_cast<int8_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
+          case TILEDB_BOOL:
           case TILEDB_UINT8: {
             REQUIRE(static_cast<uint8_t*>(std::get<1>(buffer))[0] == 1);
             break;

@@ -31,5 +31,5 @@
  */
 
 #define CATCH_CONFIG_MAIN
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include "../exception.h"

@@ -54,7 +54,6 @@ namespace serialization {
  * @param Group group object to serialize
  * @param serialize_type format to serialize into Cap'n Proto or JSON
  * @param serialized_buffer buffer to store serialized bytes in
- * serialize the array URI
  * @return Status
  */
 Status group_serialize(

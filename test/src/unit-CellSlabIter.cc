@@ -33,7 +33,7 @@
 #include "test/src/helpers.h"
 #include "test/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/subarray/cell_slab_iter.h"
+#include "tiledb/sm/query/legacy/cell_slab_iter.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -41,7 +41,7 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include <iostream>
 
 using namespace tiledb::sm;

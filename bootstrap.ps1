@@ -57,8 +57,17 @@ Enables building TileDB CLI tools (experimental)
 .PARAMETER EnableExperimentalFeatures
 Enables building TileDB Experimental features
 
+.PARAMETER EnableWebP
+Enables building of WebP and simple linkage test
+
+.PARAMETER EnableAbseil
+Enables building of Abseil and simple linkage test
+
 .Parameter DisableWerror
 Disable use of warnings-as-errors (/WX) during build.
+
+.PARAMETER _EnableCrc32
+Enables building of Crc32 and simple linkage test
 
 .Parameter DisableCppApi
 Disable building the TileDB C++ API.
@@ -93,7 +102,10 @@ Param(
     [switch]$EnableStaticTileDB,
     [switch]$EnableTools,
     [switch]$EnableExperimentalFeatures,
+    [switch]$EnableWebP,
+    [switch]$EnableAbseil,
     [switch]$EnableBuildDeps,
+    [switch]$_EnableCrc32,
     [switch]$DisableWerror,
     [switch]$DisableCppApi,
     [switch]$DisableTests,
@@ -196,9 +208,24 @@ if ($EnableExperimentalFeatures.IsPresent) {
     $TileDBExperimentalFeatures = "ON"
 }
 
+$BuildWebP="OFF"
+if ($EnableWebP.IsPresent) {
+  $BuildWebP="ON"
+}
+
+$BuildAbseil="OFF"
+if ($EnableAbseil.IsPresent) {
+  $BuildAbseil="ON"
+}
+
 $TileDBBuildDeps = "OFF";
 if ($EnableBuildDeps.IsPresent) {
     $TileDBBuildDeps = "ON"
+}
+
+$BuildCrc32="OFF"
+if ($_EnableCrc32.IsPresent) {
+  $BuildCrc32="ON"
 }
 
 # Set TileDB prefix
@@ -234,7 +261,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_ABSEIL=$BuildAbseil -DTILEDB_CRC32=$BuildCrc32 $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"

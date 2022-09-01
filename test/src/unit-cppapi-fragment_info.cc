@@ -33,7 +33,7 @@
 #include "test/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include <iostream>
 
 using namespace tiledb;
@@ -176,6 +176,9 @@ TEST_CASE(
     // Get fragment num again
     auto fragment_num = fragment_info.fragment_num();
     CHECK(fragment_num == 1);
+
+    auto total_cell_num = fragment_info.total_cell_num();
+    CHECK(total_cell_num == 10);
   }
 
   // Write another dense fragment
@@ -224,7 +227,7 @@ TEST_CASE(
 
     // Get fragment size
     auto size = fragment_info.fragment_size(1);
-    CHECK(size == 3085);
+    CHECK(size == 3193);
 
     // Get dense / sparse
     auto dense = fragment_info.dense(0);
@@ -253,12 +256,15 @@ TEST_CASE(
     CHECK(non_empty_dom == std::vector<uint64_t>{1, 7});
 
     // Get number of cells
-    auto cell_num = fragment_info.cell_num(0);
-    CHECK(cell_num == 10);
-    cell_num = fragment_info.cell_num(1);
-    CHECK(cell_num == 10);
-    cell_num = fragment_info.cell_num(2);
-    CHECK(cell_num == 10);
+    auto frag0_cell_num = fragment_info.cell_num(0);
+    CHECK(frag0_cell_num == 10);
+    auto frag1_cell_num = fragment_info.cell_num(1);
+    CHECK(frag1_cell_num == 10);
+    auto frag2_cell_num = fragment_info.cell_num(2);
+    CHECK(frag2_cell_num == 10);
+
+    auto total_cell_num = fragment_info.total_cell_num();
+    CHECK(total_cell_num == frag0_cell_num + frag1_cell_num + frag2_cell_num);
 
     // Get number of MBRs - should always be 0 since it's a dense array
     auto mbr_num = fragment_info.mbr_num(0);
@@ -845,16 +851,16 @@ TEST_CASE(
         "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
         "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
         "  > Type: dense\n" + "  > Non-empty domain: [1, 6]\n" +
-        "  > Size: 3085\n" + "  > Cell num: 10\n" +
+        "  > Size: 3193\n" + "  > Cell num: 10\n" +
         "  > Timestamp range: [1, 1]\n" + "  > Format version: " + ver + "\n" +
         "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
         "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: dense\n" +
-        "  > Non-empty domain: [1, 4]\n" + "  > Size: 3034\n" +
+        "  > Non-empty domain: [1, 4]\n" + "  > Size: 3142\n" +
         "  > Cell num: 5\n" + "  > Timestamp range: [2, 2]\n" +
         "  > Format version: " + ver + "\n" +
         "  > Has consolidated metadata: no\n" + "- Fragment #3:\n" +
         "  > URI: " + written_frag_uri_3 + "\n" + "  > Type: dense\n" +
-        "  > Non-empty domain: [5, 6]\n" + "  > Size: 3082\n" +
+        "  > Non-empty domain: [5, 6]\n" + "  > Size: 3190\n" +
         "  > Cell num: 10\n" + "  > Timestamp range: [3, 3]\n" +
         "  > Format version: " + ver + "\n" +
         "  > Has consolidated metadata: no\n";
