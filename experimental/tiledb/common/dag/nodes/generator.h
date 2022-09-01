@@ -83,5 +83,60 @@ class generator {
   }
 };
 
+template <class T>
+struct distrib_type {
+  using type = std::uniform_int_distribution<T>;
+};
+
+template <>
+struct distrib_type<float> {
+  using type = std::uniform_real_distribution<>;
+};
+
+template <>
+struct distrib_type<double> {
+  using type = std::uniform_real_distribution<>;
+};
+
+/**
+ * Prototype PRNG function object class.  This class generates a sequence of
+ * pseudorandom numbers from a given seed, returning a new pseudorandom number
+ * with each invocation of `operator()`.
+ */
+template <class Integral = size_t>
+class prng {
+  std::atomic<Integral> min_{0}, max_{0};
+
+  std::random_device rd_;
+
+  std::mt19937 gen_;
+
+  typename distrib_type<Integral>::type distrib_;
+
+ public:
+  prng(Integral min, Integral max)
+      : min_{min}
+      , max_{max}
+      , gen_{rd_()}
+      , distrib_{min, max} {
+  }
+
+  void seed(Integral n) {
+    gen_.seed(n);
+  }
+
+  /**
+   * Function returning sequence of numbers, from `min_` to `max_`.  Stop is
+   * requested once `max_` is reached.
+   *
+   * @param stop_source Stop is requested once `i_` hits `max_`
+   *
+   * @return Next number in sequence, up to `max_`,
+   */
+  Integral operator()() {
+    return distrib_(gen_);
+  }
+};
+
 }  // namespace tiledb::common
 #endif  // TILEDB_DAG_GENERATOR_H

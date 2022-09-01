@@ -172,7 +172,7 @@ TEST_CASE(
  * Test various uses of `generator class.
  */
 TEST_CASE(
-    "Utility Functions: Test various uses of `generator class.",
+    "Utility Functions: Test various uses of `generator` class.",
     "[util_functions]") {
   std::vector<size_t> w(10);
   std::iota(begin(w), end(w), 19);
@@ -181,16 +181,64 @@ TEST_CASE(
    * Test that the generator can fill an existing container.
    */
   SECTION("Generator, starting at 19") {
+    std::stop_source stop_source;
+
     std::vector<size_t> v(10);
     std::iota(begin(v), end(v), 0);
     CHECK(!std::equal(begin(v), end(v), begin(w)));
 
     auto c = generator{19};
     for (size_t i = 0; i < size(v); ++i) {
-      v[i] = c();
+      v[i] = c(stop_source);
     }
     CHECK(std::size(v) == 10);
     CHECK(std::size(w) == 10);
+    CHECK(std::equal(begin(v), end(v), begin(w)));
+  }
+}
+
+/**
+ * Test various uses of `prng` class.
+ */
+TEMPLATE_TEST_CASE(
+    "Utility Functions: Test various uses of `prng` class.",
+    "[util_functions]",
+    int,
+    long,
+    float,
+    double) {
+  /**
+   * Test that the prng generates two different sequences when started from
+   * different seeds (default seed).
+   */
+  SECTION("PRNG, default seed") {
+    std::vector<TestType> v(10);
+    std::vector<TestType> w(10);
+    auto c = prng<TestType>{-10, 10};
+    for (size_t i = 0; i < size(v); ++i) {
+      v[i] = c();
+    }
+    for (size_t i = 0; i < size(w); ++i) {
+      w[i] = c();
+    }
+    CHECK(!std::equal(begin(v), end(v), begin(w)));
+  }
+
+  /**
+   * Test that the prng generates same sequences when started from same seed.
+   */
+  SECTION("PRNG, fixed seed") {
+    std::vector<TestType> v(10);
+    std::vector<TestType> w(10);
+    auto c = prng<TestType>{-10, 10};
+    c.seed(314159);
+    for (size_t i = 0; i < size(v); ++i) {
+      v[i] = c();
+    }
+    c.seed(314159);
+    for (size_t i = 0; i < size(w); ++i) {
+      w[i] = c();
+    }
     CHECK(std::equal(begin(v), end(v), begin(w)));
   }
 }
