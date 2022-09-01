@@ -274,7 +274,6 @@ TEMPLATE_LIST_TEST_CASE(
   CHECK(dict == dictionary_ref);
 }
 
-
 TEST_CASE(
     "Compression-Dictionary: Test compression of empty strings",
     "[compression][dict]") {
@@ -300,8 +299,7 @@ TEST_CASE(
           exp_compressed.size()) == 0);
 
   // Decompress the previously compressed array
-  const char* exp_decompressed =
-      "";
+  const char* exp_decompressed = "";
 
   // In this test we allocate atleast 1 byte to avoid empty input buffer
   std::vector<std::byte> decompressed(1);
@@ -322,7 +320,6 @@ TEST_CASE(
     CHECK(expected_offsets[i] == decompressed_offsets[i]);
   }
 }
-
 
 TEST_CASE(
     "Compression-Dictionary: Test compression of mixed empty strings",
