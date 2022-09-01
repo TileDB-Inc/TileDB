@@ -696,7 +696,7 @@ Status WriterBase::filter_tiles(
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
         const auto& name = buff_it->first;
-        if (!attr_value || (attr_value && array_schema_.is_attr(name) && name != attr_name)) {
+        if (!attr_value || (attr_value && array_schema_.is_attr(name) && name != attr_value.value())) {
           RETURN_CANCEL_OR_ERROR(filter_tiles<Tile*>(name, &((*tiles)[name])));
         }
         return Status::Ok();
@@ -708,7 +708,7 @@ Status WriterBase::filter_tiles(
 
 template<typename T>
 Status WriterBase::filter_tiles(
-    const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*>& dim_tiles={}) {
+    const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*>& dim_tiles) {
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
 
@@ -762,7 +762,7 @@ Status WriterBase::filter_tiles(
         storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
           auto& tile = (*tiles)[i];
           RETURN_NOT_OK(
-              filter_tile(name, &tile.offset_tile(), nullptr, true, false));
+              filter_tile<Tile*>(name, &tile.offset_tile(), nullptr, true, false));
           return Status::Ok();
         });
     RETURN_NOT_OK(status);
@@ -771,7 +771,8 @@ Status WriterBase::filter_tiles(
   return Status::Ok();
 }
 
-template<typename T>
+template<typename T,
+  typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type*>
 Status WriterBase::filter_tile(
     const std::string& name,
     Tile* const tile,
@@ -815,7 +816,7 @@ Status WriterBase::filter_tile(
   RETURN_NOT_OK(filters.run_forward<T>(
       stats_,
       tile,
-      support_tile,
+      support_tiles,
       storage_manager_->compute_tp(),
       use_chunking));
   assert(tile->filtered());

@@ -285,7 +285,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   
   template<typename T>
-  Status filter_tiles(const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*>& dim_tiles);
+  Status filter_tiles(const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*>& dim_tiles = {});
 
   /**
    * Runs the input tile for the input attribute/dimension through the filter
@@ -301,7 +301,8 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @return Status
    */
   
-  template<typename T>
+  template<typename T,
+    typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type* = nullptr>
   Status filter_tile(
       const std::string& name,
       Tile* tile,

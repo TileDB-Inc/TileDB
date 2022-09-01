@@ -157,7 +157,7 @@ FilterPipeline::get_var_chunk_sizes(
 template <typename T = Tile*>
 Status FilterPipeline::filter_chunks_forward(
     const Tile& tile,
-    T const support_tiles,
+    T support_tiles,
     uint32_t chunk_size,
     std::vector<uint64_t>& chunk_offsets,
     FilteredBuffer& output,
@@ -215,7 +215,7 @@ Status FilterPipeline::filter_chunks_forward(
       output_metadata.clear();
 
       f->init_compression_resource_pool(compute_tp->concurrency_level());
-      if constexpr (std::is_same<T, std::vector<Tile*>::value) {
+      if constexpr (std::is_same<T, std::vector<Tile*>>::value) {
         if (f->type() == FilterType::FILTER_BITSORT) {
           RETURN_NOT_OK(
               std::dynamic_pointer_cast<const shared_ptr<BitSortFilter>>(f)
@@ -453,7 +453,18 @@ uint32_t FilterPipeline::max_chunk_size() const {
   return max_chunk_size_;
 }
 
-template <typename T = Tile*>
+/// TODO: get this to compile without this.
+Status FilterPipeline::run_forward(
+      stats::Stats* writer_stats,
+      Tile* tile,
+      Tile* const support_tiles,
+      ThreadPool* compute_tp,
+      bool chunking) const {
+  return run_forward<Tile*>(writer_stats, tile, support_tiles, compute_tp, chunking);
+}
+
+template <typename T,
+ typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type*>
 Status FilterPipeline::run_forward(
     stats::Stats* const writer_stats,
     Tile* const tile,
@@ -494,12 +505,13 @@ Status FilterPipeline::run_forward(
           compute_tp),
       tile->filtered_buffer().clear());
   } else {
+    std::vector<uint64_t> dummy_offsets = {};
     RETURN_NOT_OK_ELSE(
       filter_chunks_forward(
           *tile,
           support_tiles,
           chunk_size,
-          {},
+          dummy_offsets,
           tile->filtered_buffer(),
           compute_tp),
       tile->filtered_buffer().clear());
@@ -784,6 +796,21 @@ bool FilterPipeline::use_tile_chunking(
 
   return true;
 }
+
+/** Explicit template instantiations of run_forward. */
+template Status FilterPipeline::run_forward<Tile*>(
+      stats::Stats* writer_stats,
+      Tile* tile,
+      Tile* const support_tiles,
+      ThreadPool* compute_tp,
+      bool chunking) const;
+
+template Status FilterPipeline::run_forward<std::vector<Tile*>>(
+      stats::Stats* writer_stats,
+      Tile* tile,
+      std::vector<Tile*> const support_tiles,
+      ThreadPool* compute_tp,
+      bool chunking) const;
 
 }  // namespace sm
 }  // namespace tiledb

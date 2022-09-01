@@ -201,11 +201,19 @@ class FilterPipeline {
    * @return Status
    */
 
-  template<typename T>
   Status run_forward(
       stats::Stats* writer_stats,
       Tile* tile,
-      T support_tiles,
+      Tile* const support_tiles,
+      ThreadPool* compute_tp,
+      bool chunking = true) const;
+
+  template<typename T = Tile*,
+    typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type* = nullptr>
+  Status run_forward(
+      stats::Stats* writer_stats,
+      Tile* tile,
+      T const support_tiles,
       ThreadPool* compute_tp,
       bool chunking = true) const;
 
@@ -376,7 +384,7 @@ class FilterPipeline {
   template<typename T>
   Status filter_chunks_forward(
       const Tile& tile,
-      Tile* const support_tiles,
+      T support_tiles,
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,
       FilteredBuffer& output,

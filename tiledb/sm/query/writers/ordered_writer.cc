@@ -371,16 +371,16 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
           md_generator.process_tile(writer_tile);
 
           if (!var) {
-            RETURN_NOT_OK(filter_tile(
+            RETURN_NOT_OK(filter_tile<Tile*>(
                 name, &writer_tile.fixed_tile(), nullptr, false, false));
           } else {
             auto offset_tile = &writer_tile.offset_tile();
-            RETURN_NOT_OK(filter_tile(
+            RETURN_NOT_OK(filter_tile<Tile*>(
                 name, &writer_tile.var_tile(), offset_tile, false, false));
-            RETURN_NOT_OK(filter_tile(name, offset_tile, nullptr, true, false));
+            RETURN_NOT_OK(filter_tile<Tile*>(name, offset_tile, nullptr, true, false));
           }
           if (nullable) {
-            RETURN_NOT_OK(filter_tile(
+            RETURN_NOT_OK(filter_tile<Tile*>(
                 name, &writer_tile.validity_tile(), nullptr, false, true));
           }
           return Status::Ok();
