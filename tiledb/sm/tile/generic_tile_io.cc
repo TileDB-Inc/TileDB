@@ -174,7 +174,7 @@ Status GenericTileIO::write_generic(
 
   // Filter tile
   assert(!tile->filtered());
-  RETURN_NOT_OK(header.filters.run_forward(
+  RETURN_NOT_OK(header.filters.run_forward<Tile*>(
       storage_manager_->stats(),
       tile,
       nullptr,
