@@ -753,6 +753,9 @@ Status SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
 
   // Get current_.end_. based on end_coords
   current_.end_ = subarray_.range_idx(end_coords);
+  // adjust downward if needed to align with computed overlap
+  current_.end_ = std::min<uint64_t>(
+      current_.end_, subarray_.subarray_tile_overlap()->range_idx_end());
   return Status::Ok();
 }
 
@@ -781,6 +784,13 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
       state_.start_, state_.end_, config_, compute_tp_));
   const SubarrayTileOverlap* const tile_overlap =
       subarray_.subarray_tile_overlap();
+  // .precompute_tile_overlap() may be based on
+  //      tile_overlap.byte_size() being >= max_tile_overlap_size;
+  // The resulting overlap may still be -way- beyond the max_tile_overlap_size,
+  // but this at least makes the .end_ consistent with the overlap end so that
+  // an eventual .get_subarray() which does an .update_range() does not fail due
+  // to the .end_ being beyond the (overlap) subarray end_.
+  state_.end_ = std::min<uint64_t>(state_.end_, tile_overlap->range_idx_end());
   assert(tile_overlap->range_idx_start() == state_.start_);
   assert(tile_overlap->range_idx_end() <= state_.end_);
 
@@ -868,6 +878,9 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   if (*found) {
     // If the range was found, make it inclusive before returning.
     current_.end_--;
+//..shouldn't be necessary given for loop parameters above... 
+//    current_.end_ =
+//        std::min<uint64_t>(current_.end_, tile_overlap->range_idx_end());
 
     stats_->add_counter("compute_current_start_end.found", 1);
     stats_->add_counter(
