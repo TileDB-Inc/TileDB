@@ -1155,6 +1155,13 @@ class Query {
    * for both dense and sparse arrays.
    */
   Status check_tile_alignment() const;
+
+  /**
+   * Check if input buffers are bigger than 5MB. S3 multipart upload
+   * requires each part be bigger than 5MB, except the last part.
+   * This function should be called only for remote global order writes.
+   */
+  Status check_buffer_multipart_size() const;
 };
 
 }  // namespace sm
