@@ -165,13 +165,17 @@ Status array_to_capnp(
       RETURN_NOT_OK(metadata_to_capnp(metadata, &array_metadata_builder));
     }
   } else {
-    auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
-    RETURN_NOT_OK(
-        utils::serialize_non_empty_domain(nonempty_domain_builder, array));
+    if (array->non_empty_domain_computed()) {
+      auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
+      RETURN_NOT_OK(
+          utils::serialize_non_empty_domain(nonempty_domain_builder, array));
+    }
 
-    auto array_metadata_builder = array_builder->initArrayMetadata();
-    RETURN_NOT_OK(
-        metadata_to_capnp(array->unsafe_metadata(), &array_metadata_builder));
+    if (array->metadata_loaded()) {
+      auto array_metadata_builder = array_builder->initArrayMetadata();
+      RETURN_NOT_OK(
+          metadata_to_capnp(array->unsafe_metadata(), &array_metadata_builder));
+    }
   }
 
   return Status::Ok();

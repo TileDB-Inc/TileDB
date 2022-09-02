@@ -401,6 +401,16 @@ class Array {
     metadata_loaded_ = is_loaded;
   }
 
+  /** Check if array metadata is loaded already for this array or not */
+  inline bool& metadata_loaded() {
+    return metadata_loaded_;
+  }
+
+  /** Check if non emtpy domain is loaded already for this array or not */
+  inline bool& non_empty_domain_computed() {
+    return non_empty_domain_computed_;
+  }
+
   /** Returns the non-empty domain of the opened array.
    *  If the non_empty_domain has not been computed or loaded
    *  it will be loaded first

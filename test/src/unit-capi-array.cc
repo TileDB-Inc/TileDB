@@ -2111,12 +2111,13 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
-  // Metadata are not loaded automatically in array open v1
-  // but with a separate request, so we simulate this here
-  // by forcing metadata loading
+  // Metadata and non empty domain are not loaded automatically
+  // in array open v1 but with separate requests, so we simulate
+  // this here by forcing metadata loading
   if (!array_v2) {
     Metadata* metadata = nullptr;
     array->array_->metadata(&metadata);
+    array->array_->non_empty_domain();
   }
 
   // Serialize array and deserialize into new_array
