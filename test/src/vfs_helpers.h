@@ -33,7 +33,7 @@
 #ifndef TILEDB_VFS_HELPERS_H
 #define TILEDB_VFS_HELPERS_H
 
-#include "tdb_catch.h"
+#include "test/support/tdb_catch.h"
 #include "test/src/helpers.h"
 
 #ifdef _WIN32

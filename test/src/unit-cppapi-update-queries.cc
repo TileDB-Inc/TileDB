@@ -30,7 +30,7 @@
  * Tests the C++ API for update value related functions.
  */
 
-#include "catch.hpp"
+#include "test/support/tdb_catch.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
