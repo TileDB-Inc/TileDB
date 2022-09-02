@@ -233,6 +233,30 @@ TILEDB_EXPORT int32_t tiledb_array_upgrade_version(
 /* ********************************* */
 
 /**
+ * Adds a query update values to be applied on an update.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value = 5;
+ * tiledb_query_add_update_value(
+ *   ctx, query, "longitude", &value, sizeof(value), &update_value);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param field_name The attribute name.
+ * @param update_value The value to set.
+ * @param update_value_size The byte size of `update_value`.
+ */
+TILEDB_EXPORT int32_t tiledb_query_add_update_value(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size) TILEDB_NOEXCEPT;
+
+/**
  * Adds point ranges to the given dimension index of the subarray
  * Effectively `add_range(x_i, x_i)` for `count` points in the
  * target array, but set in bulk to amortize expensive steps.
@@ -296,9 +320,6 @@ TILEDB_EXPORT int32_t tiledb_query_get_relevant_fragment_num(
 /*        QUERY STATUS DETAILS       */
 /* ********************************* */
 
-/** This should move to c_api/tiledb.h when stabilized */
-typedef struct tiledb_query_status_details_t tiledb_query_status_details_t;
-
 /** TileDB query status details type. */
 typedef enum {
 /** Helper macro for defining status details type enums. */
@@ -308,9 +329,9 @@ typedef enum {
 } tiledb_query_status_details_reason_t;
 
 /** This should move to c_api/tiledb_struct_defs.h when stabilized */
-struct tiledb_query_status_details_t {
+typedef struct tiledb_experimental_query_status_details_t {
   tiledb_query_status_details_reason_t incomplete_reason;
-};
+} tiledb_query_status_details_t;
 
 /**
  * Get extended query status details.

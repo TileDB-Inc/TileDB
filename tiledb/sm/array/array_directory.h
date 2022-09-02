@@ -295,10 +295,6 @@ class ArrayDirectory {
   /** Returns the location of delete tiles. */
   const std::vector<DeleteTileLocation>& delete_tiles_location() const;
 
-  /** Set the location of delete tiles, used by consolidation */
-  void set_delete_tiles_location(
-      const std::vector<DeleteTileLocation>& delete_tiles_location);
-
   /** Returns the URI to store fragments. */
   URI get_fragments_dir(uint32_t write_version) const;
 
@@ -312,7 +308,7 @@ class ArrayDirectory {
   tuple<Status, optional<URI>> get_commit_uri(const URI& fragment_uri) const;
 
   /** Returns the URI for a vacuum file. */
-  tuple<Status, optional<URI>> get_vaccum_uri(const URI& fragment_uri) const;
+  tuple<Status, optional<URI>> get_vacuum_uri(const URI& fragment_uri) const;
 
   /**
    * The new fragment name is computed

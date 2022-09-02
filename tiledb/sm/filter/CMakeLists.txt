@@ -157,6 +157,18 @@ target_link_libraries(compile_float_scale_filters PRIVATE float_scaling_filters)
 target_sources(compile_float_scale_filters PRIVATE test/compile_float_scaling_filter_main.cc)
 
 #
+# `xor_filters` object library
+#
+add_library(xor_filters OBJECT xor_filter.cc)
+target_link_libraries(xor_filters PUBLIC filter $<TARGET_OBJECTS:filter>)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_xor_filters EXCLUDE_FROM_ALL)
+target_link_libraries(compile_xor_filters PRIVATE xor_filters)
+target_sources(compile_xor_filters PRIVATE test/compile_xor_filter_main.cc)
+
+#
 # `all_filters` object library
 #
 add_library(all_filters OBJECT
@@ -169,6 +181,7 @@ target_link_libraries(all_filters PUBLIC checksum_filters $<TARGET_OBJECTS:check
 target_link_libraries(all_filters PUBLIC compression_filter $<TARGET_OBJECTS:compression_filter>)
 target_link_libraries(all_filters PUBLIC encryption_filters $<TARGET_OBJECTS:encryption_filters>)
 target_link_libraries(all_filters PUBLIC float_scaling_filters $<TARGET_OBJECTS:float_scaling_filters>)
+target_link_libraries(all_filters PUBLIC xor_filters $<TARGET_OBJECTS:xor_filters>)
 #
 # Test-compile of object library ensures link-completeness
 #

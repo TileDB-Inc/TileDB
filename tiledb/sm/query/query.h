@@ -49,6 +49,7 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/subarray/subarray.h"
 
@@ -135,11 +136,17 @@ class Query {
    * for the name of the new fragment to be created.
    *
    * @note Array must be a properly opened array.
+   *
+   * @param array The array that is being queried.
+   * @param fragment_uri The full URI for the new fragment. Only used for
+   * writes.
+   * @param fragment_base_uri Optional base name for new fragment. Only used for
+   *     writes and only if fragment_uri is empty.
    */
   Query(
       StorageManager* storage_manager,
       shared_ptr<Array> array,
-      URI fragment_uri = URI(""));
+      optional<std::string> fragment_name = nullopt);
 
   /** Destructor. */
   ~Query();
@@ -546,7 +553,13 @@ class Query {
    * Returns the condition for filtering results in a read query.
    * @return QueryCondition
    */
-  const QueryCondition* condition() const;
+  const QueryCondition& condition() const;
+
+  /**
+   * Returns the update values for an update query.
+   * @return UpdateValues
+   */
+  const std::vector<UpdateValue>& update_values() const;
 
   /** Processes a query. */
   Status process();
@@ -823,6 +836,19 @@ class Query {
   Status set_condition(const QueryCondition& condition);
 
   /**
+   * Adds an update value for an update query.
+   *
+   * @param field_name The attribute name.
+   * @param update_value The value to set.
+   * @param update_value_size The byte size of `update_value`.
+   * @return Status
+   */
+  Status add_update_value(
+      const char* field_name,
+      const void* update_value,
+      uint64_t update_value_size);
+
+  /**
    * Set query status, needed for json deserialization
    * @param status
    * @return Status
@@ -971,6 +997,12 @@ class Query {
   /** The query condition. */
   QueryCondition condition_;
 
+  /** The update values. */
+  std::vector<UpdateValue> update_values_;
+
+  /** Set of attributes that have an update value. */
+  std::set<std::string> attributes_with_update_value_;
+
   /** The fragment metadata that this query will focus on. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
 
@@ -1009,9 +1041,6 @@ class Query {
    */
   bool consolidation_with_timestamps_;
 
-  /** The name of the new fragment to be created for writes. */
-  URI fragment_uri_;
-
   /* Scratch space used for REST requests. */
   shared_ptr<Buffer> rest_scratch_;
 
@@ -1025,6 +1054,14 @@ class Query {
    * the legacy reader.
    */
   bool force_legacy_reader_;
+
+  /**
+   * The name of the new fragment to be created for writes.
+   *
+   * If not set, the fragment name will be created using the latest array
+   * timestamp and a generated UUID.
+   */
+  optional<std::string> fragment_name_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

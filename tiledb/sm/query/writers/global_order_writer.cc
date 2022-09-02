@@ -78,7 +78,7 @@ GlobalOrderWriter::GlobalOrderWriter(
     bool disable_checks_consolidation,
     std::vector<std::string>& processed_conditions,
     Query::CoordsInfo& coords_info,
-    URI fragment_uri,
+    optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
           stats,
@@ -92,7 +92,7 @@ GlobalOrderWriter::GlobalOrderWriter(
           written_fragment_info,
           disable_checks_consolidation,
           coords_info,
-          fragment_uri,
+          fragment_name,
           skip_checks_serialization)
     , processed_conditions_(processed_conditions) {
 }
@@ -517,7 +517,12 @@ Status GlobalOrderWriter::finalize_global_write_state() {
       meta->compute_fragment_min_max_sum_null_count(), clean_up(uri));
 
   // Flush fragment metadata to storage
-  RETURN_NOT_OK_ELSE(meta->store(array_->get_encryption_key()), clean_up(uri));
+  try {
+    meta->store(array_->get_encryption_key());
+  } catch (...) {
+    clean_up(uri);
+    throw;
+  }
 
   // Add written fragment info
   RETURN_NOT_OK_ELSE(add_written_fragment_info(uri), clean_up(uri));

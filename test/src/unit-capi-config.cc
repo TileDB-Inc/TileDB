@@ -238,6 +238,7 @@ void check_save_to_file() {
   ss << "rest.server_address https://api.tiledb.com\n";
   ss << "rest.server_serialization_format CAPNP\n";
   ss << "rest.use_refactored_array_open false\n";
+  ss << "sm.allow_updates_experimental false\n";
   ss << "sm.check_coord_dups true\n";
   ss << "sm.check_coord_oob true\n";
   ss << "sm.check_global_order true\n";
@@ -581,6 +582,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.load_metadata_on_array_open"] = "false";
   all_param_values["rest.load_non_empty_domain_on_array_open"] = "false";
   all_param_values["rest.use_refactored_array_open"] = "true";
+  all_param_values["sm.allow_updates_experimental"] = "false";
   all_param_values["sm.encryption_key"] = "";
   all_param_values["sm.encryption_type"] = "NO_ENCRYPTION";
   all_param_values["sm.dedup_coords"] = "false";

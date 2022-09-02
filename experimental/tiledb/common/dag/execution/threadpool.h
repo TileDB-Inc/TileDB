@@ -64,8 +64,21 @@ struct QueueBase<false> {
   ProducerConsumerQueue<std::shared_ptr<std::function<void()>>> task_queue_;
 };
 
+/**
+ * Experimtal threadpool class.
+ *
+ * @tparam WorkStealing Whether the threadpool implements a work-stealing
+ * scheme.  Only applicable when there are multiple queues.
+ * @tparam MultipleQueues Whether the threadpool uses one queue per thread (plus
+ * a global queue).
+ * @tparam RecursivePush Whether the threadpool queues tasks from threads in the
+ * threadpool.  If not, the worker thread trying to submit the job will just run
+ * the job.  This is not necessarily a bad scheme, since the job being enqueued
+ * would go at the top of the stack and would be the next job to be run by a
+ * worker thread anyway.
+ */
 template <
-    bool WorkStealing = false,
+    bool WorkStealing = true,
     bool MultipleQueues = false,
     bool RecursivePush = true>
 class ThreadPool : public QueueBase<MultipleQueues> {
@@ -155,8 +168,8 @@ class ThreadPool : public QueueBase<MultipleQueues> {
     return future;
   }
 
-  template <class R, bool U = WorkStealing, std::enable_if_t<U, bool> = true>
-  auto wait(std::future<R>&& task) {
+  template <class R, bool U = WorkStealing>
+  auto wait(std::future<R>&& task, std::enable_if_t<U, bool> = true) {
     while (true) {
       if (task.wait_for(std::chrono::milliseconds(0)) ==
           std::future_status::ready) {
@@ -192,9 +205,9 @@ class ThreadPool : public QueueBase<MultipleQueues> {
     }
   }
 
-  template <class R, bool U = WorkStealing, std::enable_if_t<!U, bool> = true>
-  auto wait(std::future<R>& task) {
-    return wait(std::move(task));
+  template <class R, bool U = WorkStealing>
+  auto wait(std::future<R>&& task, std::enable_if_t<!U, bool> = true) {
+    return task.wait();
   }
 
   size_t num_threads() {

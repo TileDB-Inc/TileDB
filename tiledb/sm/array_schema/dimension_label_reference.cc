@@ -123,7 +123,7 @@ DimensionLabelReference::DimensionLabelReference(
 //| Field                     | Type       |
 //| ------------------------- | ---------- |
 //| Dimension ID              | `uint32_t` |
-//| Label order               | `uint32_t` |
+//| Label order               | `uint8_t` |
 //| Label datatype            | `uint8_t`  |
 //| Label cell_val_num        | `uint32_t` |
 //| Is external               | `uint8_t`  |
@@ -218,7 +218,7 @@ void DimensionLabelReference::dump(FILE* out) const {
 //| Field                     | Type       |
 //| ------------------------- | ---------- |
 //| Dimension ID              | `uint32_t` |
-//| Label order               | `uint32_t` |
+//| Label order               | `uint8_t` |
 //| Label datatype            | `uint8_t`  |
 //| Label cell_val_num        | `uint32_t` |
 //| Is external               | `uint8_t`  |

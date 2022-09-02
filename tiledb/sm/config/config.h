@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,10 +40,26 @@
 #include <string>
 #include <vector>
 
+/*
+ * C++14 introduced the attribute [[deprecated]], but no conditional syntax
+ * for it. In order to turn it on only when we want it, we have to use the
+ * preprocessor.
+ */
+#if defined(TILEDB_DEPRECATE_OLD_CONFIG_GET)
+/*
+ * Old versions of `Config::get` don't obey the "outputs on the left" principle,
+ * or return `Status`, or both.
+ */
+#define TILEDB_DEPRECATE_CONFIG \
+  [[deprecated(                 \
+      "Instead use the single-argument version that returns `optional`")]]
+#else
+#define TILEDB_DEPRECATE_CONFIG
+#endif
+
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /**
  * This class manages the TileDB configuration options.
@@ -104,6 +120,9 @@ class Config {
 
   /** The default format for logging. */
   static const std::string CONFIG_LOGGING_DEFAULT_FORMAT;
+
+  /** Allow updates or not. */
+  static const std::string SM_ALLOW_UPDATES_EXPERIMENTAL;
 
   /**
    * The key for encrypted arrays.
@@ -543,18 +562,39 @@ class Config {
   Status set(const std::string& param, const std::string& value);
 
   /**
+   * Retrieve the string value of a configuration parameter.
+   *
+   * @param key The name of the configuration parameter
+   * @return If a configuration item is present, its value. If not, `nullopt`.
+   */
+  [[nodiscard]] optional<std::string> get(const std::string& key) const;
+
+  /**
+   * Retrieve the string value of a configuration parameter and convert it to
+   * a designated type.
+   *
+   * @param key The name of the configuration parameter
+   * @return If a configuration item is present, its value. If not, `nullopt`.
+   */
+  template <class T>
+  [[nodiscard]] optional<T> get(const std::string& key) const;
+
+  /**
    * Returns the string representation of a config parameter value.
    * Sets `found` to `true` if found and `false` otherwise.
    */
+  TILEDB_DEPRECATE_CONFIG
   std::string get(const std::string& param, bool* found) const;
 
   /** Gets a config parameter value (`nullptr` if `param` does not exist). */
+  TILEDB_DEPRECATE_CONFIG
   Status get(const std::string& param, const char** value) const;
 
   /**
    * Retrieves the value of the given parameter in the templated type.
    * Sets `found` to `true` if found and `false` otherwise.
    */
+  TILEDB_DEPRECATE_CONFIG
   template <class T>
   Status get(const std::string& param, T* value, bool* found) const;
 
@@ -655,7 +695,20 @@ class Config {
       const std::string& param, bool* found) const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+/**
+ * An explicit specialization for `std::string`. It does not call a conversion
+ * function and it is thus the same as the non-template `get`.
+ */
+template <>
+[[nodiscard]] inline optional<std::string> Config::get<std::string>(
+    const std::string& key) const {
+  return get(key);
+}
+
+}  // namespace tiledb::sm
+
+#ifdef TILEDB_DEPRECATE_CONFIG
+#undef TILEDB_DEPRECATE_CONFIG
+#endif
 
 #endif  // TILEDB_CONFIG_H

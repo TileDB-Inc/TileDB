@@ -2483,8 +2483,12 @@ int32_t tiledb_query_alloc(
 
   // Error if the query type and array query type do not match
   tiledb::sm::QueryType array_query_type;
-  if (SAVE_ERROR_CATCH(ctx, array->array_->get_query_type(&array_query_type)))
+  try {
+    array_query_type = array->array_->get_query_type();
+  } catch (StatusException& e) {
     return TILEDB_ERR;
+  }
+
   if (query_type != static_cast<tiledb_query_type_t>(array_query_type)) {
     std::stringstream errmsg;
     errmsg << "Cannot create query; "
@@ -3415,6 +3419,30 @@ int32_t tiledb_query_get_relevant_fragment_num(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_add_update_value(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size) noexcept {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, query) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Add update value.
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          query->query_->add_update_value(
+              field_name, update_value, update_value_size))) {
+    return TILEDB_ERR;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*         SUBARRAY               */
 /* ****************************** */
@@ -3973,6 +4001,24 @@ int32_t tiledb_array_get_open_timestamp_end(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_delete_fragments(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array->array_->delete_fragments(
+              tiledb::sm::URI(uri), timestamp_start, timestamp_end)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
@@ -4202,8 +4248,11 @@ int32_t tiledb_array_get_query_type(
 
   // Get query_type
   tiledb::sm::QueryType type;
-  if (SAVE_ERROR_CATCH(ctx, array->array_->get_query_type(&type)))
+  try {
+    type = array->array_->get_query_type();
+  } catch (StatusException& e) {
     return TILEDB_ERR;
+  }
 
   *query_type = static_cast<tiledb_query_type_t>(type);
 
@@ -6485,15 +6534,7 @@ int32_t tiledb_fragment_info_load(
     return TILEDB_ERR;
 
   // Load fragment info
-  bool set_timestamp_range_from_config = true;
-  bool set_enc_key_from_config = true;
-  bool compute_anterior = false;
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          fragment_info->fragment_info_->load(
-              set_timestamp_range_from_config,
-              set_enc_key_from_config,
-              compute_anterior)))
+  if (SAVE_ERROR_CATCH(ctx, fragment_info->fragment_info_->load()))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -8933,6 +8974,20 @@ int32_t tiledb_query_condition_combine(
 }
 
 /* ****************************** */
+/*         UPDATE CONDITION       */
+/* ****************************** */
+
+int32_t tiledb_query_add_update_value(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size) noexcept {
+  return api_entry<detail::tiledb_query_add_update_value>(
+      ctx, query, field_name, update_value, update_value_size);
+}
+
+/* ****************************** */
 /*              ARRAY             */
 /* ****************************** */
 
@@ -8969,6 +9024,16 @@ int32_t tiledb_array_get_open_timestamp_end(
     uint64_t* timestamp_end) noexcept {
   return api_entry<detail::tiledb_array_get_open_timestamp_end>(
       ctx, array, timestamp_end);
+}
+
+int32_t tiledb_array_delete_fragments(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end) noexcept {
+  return api_entry<detail::tiledb_array_delete_fragments>(
+      ctx, array, uri, timestamp_start, timestamp_end);
 }
 
 int32_t tiledb_array_open(

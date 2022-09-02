@@ -107,6 +107,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object_iter.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_condition.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/schema_base.h
@@ -200,6 +201,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_pipeline.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_storage.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/float_scaling_filter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/xor_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/noop_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/positive_delta_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_info.cc
@@ -241,6 +243,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/sparse_index_reader_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/sparse_unordered_with_dups_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/strategy_base.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/update_value.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/dense_tiler.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/global_order_writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/ordered_writer.cc
@@ -268,6 +271,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/generic_tile_io.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile_metadata_generator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/writer_tile.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/generate_uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/parse_uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/type/range/range.cc
 )
@@ -366,8 +370,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS PRIVATE $<BUILD_INTERFACE:common>)
 ############################################################
 # provide actions/target for preparation of magic.mgc data for embedding/build
 
-#set(MGC_GZIPPED_BIN_PATH3 "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc/magic_mgc_gzipped.bin")
-set(MGC_GZIPPED_BIN_OUTPUT_DIRECTORY "${TILEDB_EP_BASE}/install/include")
+set(MGC_GZIPPED_BIN_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/..")
 set(MGC_GZIPPED_BIN_OUTPUT_FILE "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}/magic_mgc_gzipped.bin")
 set(MGC_GZIPPED_BIN_INPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc")
 set(MGC_GZIPPED_BIN_INPUT_FILE "${MGC_GZIPPED_BIN_INPUT_DIRECTORY}/magic_mgc_gzipped.bin.tar.bz2")
@@ -609,11 +612,35 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Zstd::Zstd
     libmagic
 )
+
+if(TILEDB_CRC32)
+  find_package(crc32c_EP REQUIRED)
+  find_package(crc32c CONFIG REQUIRED
+    HINTS
+      ${TILEDB_EP_INSTALL_PREFIX}/lib/cmake
+    )
+
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+    Crc32c::crc32c
+  )
+endif()
+
 if(TILEDB_WEBP)
   find_package(Webp_EP REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
     WebP::webp
+  )
+endif()
+
+if(TILEDB_ABSEIL)
+  find_package(absl_EP REQUIRED)
+
+  include(${CMAKE_SOURCE_DIR}/test/external/src/absl_library_targets.cmake)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+    ${TILEDB_ABSL_LIBRARY_TARGETS}
   )
 endif()
 
@@ -888,7 +915,13 @@ if (TILEDB_STATIC)
   append_dep_lib(GCSSDK::crc32c)
   append_dep_lib(spdlog::spdlog)
   append_dep_lib(libmagic)
+  append_dep_lib(Crc32c::crc32c)
   append_dep_lib(WebP::webp)
+  if(TILEDB_ABSEIL)
+    foreach(tgt ${TILEDB_ABSL_LIBRARIES})
+      append_dep_lib(${tgt})
+    endforeach()
+  endif()
 endif()
 
 ############################################################

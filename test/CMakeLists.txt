@@ -148,6 +148,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
   src/unit-capi-string_dims.cc
+  src/unit-capi-update-queries.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
@@ -207,6 +208,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-float-scaling-filter.cc
+    src/unit-cppapi-xor-filter.cc
     src/unit-cppapi-fragment_info.cc
     src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
@@ -218,6 +220,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-string-dims.cc
     src/unit-cppapi-subarray.cc
     src/unit-cppapi-type.cc
+    src/unit-cppapi-update-queries.cc
     src/unit-cppapi-updates.cc
     src/unit-cppapi-util.cc
     src/unit-cppapi-var-offsets.cc
@@ -251,6 +254,8 @@ endif()
 if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/test-capi-dimension_labels.cc
+    src/test-dimension_labels-read-consistency.cc
+    src/unit_intersect_fragments.cc
   )
 endif()
 
@@ -413,3 +418,6 @@ add_subdirectory(ci)
 if(WIN32)
   add_subdirectory(performance)
 endif()
+
+#add tests related to external items
+add_subdirectory(external)

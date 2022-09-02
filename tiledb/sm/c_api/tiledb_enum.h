@@ -44,10 +44,10 @@
     #undef DELETE
     #endif
     TILEDB_QUERY_TYPE_ENUM(DELETE) = 2,
-    // can't pop, other places ref'ing QueryType::DELETE will still fail...
-    // #if (_MSC_VER)
-    // #pragma pop_macro("DELETE")
-    // #endif
+    /** Update query */
+    TILEDB_QUERY_TYPE_ENUM(UPDATE) = 3,
+    /** Exclusive Modification query */
+    TILEDB_QUERY_TYPE_ENUM(MODIFY_EXCLUSIVE) = 4,
 #endif
 // clang-format on
 

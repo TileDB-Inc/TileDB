@@ -522,7 +522,7 @@ typedef struct tiledb_vfs_fh_t tiledb_vfs_fh_t;
 /** A fragment info object. */
 typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
-/** An group object. */
+/** A group object. */
 typedef struct tiledb_group_t tiledb_group_t;
 
 /* ********************************* */
@@ -902,6 +902,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *
  * **Parameters**
  *
+ * - `sm.consolidation.allow_updates_experimental` <br>
+ *    **Experimental** <br>
+ *    Allow update queries. Experimental for testing purposes, do not use.<br>
+ *    **Default**: false
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
  *    fragment writes. Note that ties during deduplication are broken
@@ -5735,6 +5739,31 @@ TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_end(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     uint64_t* timestamp_end) TILEDB_NOEXCEPT;
+
+/**
+ * Deletes array fragments written between the input timestamps.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_vfs_delete_fragments(
+ *   ctx, vfs, "hdfs:///temp/my_array", 0, UINT64_MAX);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to delete the fragments from.
+ * @param uri The URI of the fragments' parent Array.
+ * @param timestamp_start The epoch timestamp in milliseconds.
+ * @param timestamp_end The epoch timestamp in milliseconds. Use UINT64_MAX for
+ *   the current timestamp.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_delete_fragments(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end) TILEDB_NOEXCEPT;
 
 /**
  * Opens a TileDB array. The array is opened using a query type as input.

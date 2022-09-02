@@ -160,6 +160,16 @@ Status StorageManager::array_close_for_deletes(Array* array) {
   return Status::Ok();
 }
 
+Status StorageManager::array_close_for_updates(Array* array) {
+  assert(open_arrays_.find(array) != open_arrays_.end());
+
+  // Remove entry from open arrays
+  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
+  open_arrays_.erase(array);
+
+  return Status::Ok();
+}
+
 Status StorageManager::group_close_for_reads(Group* group) {
   assert(open_groups_.find(group) != open_groups_.end());
 
@@ -552,6 +562,20 @@ Status StorageManager::fragments_consolidate(
       array_name, encryption_type, encryption_key, key_length, fragment_uris);
 }
 
+Status StorageManager::fragments_vacuum(
+    const char* array_name,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    bool for_deletes) {
+  // Vacuum
+  auto consolidator =
+      Consolidator::create(ConsolidationMode::FRAGMENT, &config_, this);
+  auto fragment_consolidator =
+      dynamic_cast<FragmentConsolidator*>(consolidator.get());
+  return fragment_consolidator->vacuum(
+      array_name, timestamp_start, timestamp_end, for_deletes);
+}
+
 Status StorageManager::array_vacuum(
     const char* array_name, const Config* config) {
   // If 'config' is unset, use the 'config_' that was set during initialization
@@ -888,8 +912,7 @@ Status StorageManager::array_get_non_empty_domain(
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Array is not open"));
 
-  QueryType query_type;
-  RETURN_NOT_OK(array->get_query_type(&query_type));
+  QueryType query_type{array->get_query_type()};
   if (query_type != QueryType::READ)
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Array not opened for reads"));
@@ -1590,12 +1613,7 @@ Status StorageManager::load_array_metadata(
     meta_size += b->size();
   stats_->add_counter("read_array_meta_size", meta_size);
 
-  auto&& [st_metadata, deserialized_metadata]{
-      Metadata::deserialize(metadata_buffs)};
-  if (!st_metadata.ok()) {
-    return st_metadata;
-  }
-  *metadata = *(deserialized_metadata.value());
+  *metadata = Metadata::deserialize(metadata_buffs);
 
   // Sets the loaded metadata URIs
   RETURN_NOT_OK(metadata->set_loaded_metadata_uris(array_metadata_to_load));
@@ -2186,14 +2204,8 @@ Status StorageManager::load_group_metadata(
     meta_size += b->size();
   stats_->add_counter("read_array_meta_size", meta_size);
 
-  // Deserialize metadata buffers
-  auto&& [st, deserialized_metadata] = metadata->deserialize(metadata_buffs);
-  if (!st.ok()) {
-    return st;
-  }
-
   // Copy the deserialized metadata into the original Metadata object
-  *metadata = *(deserialized_metadata.value());
+  *metadata = Metadata::deserialize(metadata_buffs);
   RETURN_NOT_OK(metadata->set_loaded_metadata_uris(group_metadata_to_load));
 
   return Status::Ok();

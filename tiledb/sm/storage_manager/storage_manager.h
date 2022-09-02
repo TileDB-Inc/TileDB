@@ -159,6 +159,14 @@ class StorageManager {
   Status array_close_for_deletes(Array* array);
 
   /**
+   * Closes an array opened for updates.
+   *
+   * @param array The array to be closed.
+   * @return Status
+   */
+  Status array_close_for_updates(Array* array);
+
+  /**
    * Closes an group opened for reads.
    *
    * @param group The group to be closed.
@@ -409,6 +417,21 @@ class StorageManager {
       uint32_t key_length,
       const std::vector<std::string> fragment_uris,
       const Config* config);
+
+  /**
+   * Cleans up the array fragments.
+   *
+   * @param array_name The name of the array to be vacuumed.
+   * @param timestamp_start The start timestamp at which to vacuum.
+   * @param timestamp_end The end timestamp at which to vacuum.
+   * @param for_deletes True if vacuumuming for deletion of fragments.
+   * @return Status
+   */
+  Status fragments_vacuum(
+      const char* array_name,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      bool for_deletes);
 
   /**
    * Cleans up the array, such as its consolidated fragments and array

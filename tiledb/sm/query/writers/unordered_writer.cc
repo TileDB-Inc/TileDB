@@ -76,7 +76,7 @@ UnorderedWriter::UnorderedWriter(
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
-    URI fragment_uri,
+    optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
           stats,
@@ -90,7 +90,7 @@ UnorderedWriter::UnorderedWriter(
           written_fragment_info,
           false,
           coords_info,
-          fragment_uri,
+          fragment_name,
           skip_checks_serialization) {
 }
 
@@ -666,8 +666,12 @@ Status UnorderedWriter::unordered_write() {
       frag_meta->compute_fragment_min_max_sum_null_count(), clean_up(uri));
 
   // Write the fragment metadata
-  RETURN_CANCEL_OR_ERROR_ELSE(
-      frag_meta->store(array_->get_encryption_key()), clean_up(uri));
+  try {
+    frag_meta->store(array_->get_encryption_key());
+  } catch (...) {
+    clean_up(uri);
+    throw;
+  }
 
   // Add written fragment info
   RETURN_NOT_OK_ELSE(add_written_fragment_info(uri), clean_up(uri));

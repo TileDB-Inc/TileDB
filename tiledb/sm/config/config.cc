@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,8 +42,16 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
+
+/** Return a Config error class Status with a given message **/
+inline Status Status_ConfigError(const std::string& msg) {
+  return {"[TileDB::Config] Error", msg};
+}
+
+void throw_config_exception(const std::string& msg) {
+  throw StatusException(Status_ConfigError(msg));
+}
 
 /* ****************************** */
 /*        CONFIG DEFAULTS         */
@@ -69,6 +77,7 @@ const std::string Config::REST_CURL_VERBOSE = "false";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "false";
+const std::string Config::SM_ALLOW_UPDATES_EXPERIMENTAL = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
 const std::string Config::SM_ENCRYPTION_TYPE = "NO_ENCRYPTION";
 const std::string Config::SM_DEDUP_COORDS = "false";
@@ -238,6 +247,8 @@ Config::Config() {
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
+  param_values_["sm.allow_updates_experimental"] =
+      SM_ALLOW_UPDATES_EXPERIMENTAL;
   param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   param_values_["sm.encryption_type"] = SM_ENCRYPTION_TYPE;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
@@ -459,6 +470,36 @@ Status Config::set(const std::string& param, const std::string& value) {
   return Status::Ok();
 }
 
+optional<std::string> Config::get(const std::string& key) const {
+  bool found;
+  const char* val = get_from_config_or_env(key, &found);
+  if (found) {
+    return {std::string{val}};
+  } else {
+    return {nullopt};
+  }
+}
+
+template <class T>
+optional<T> Config::get(const std::string& key) const {
+  auto value{get(key)};
+  if (!value.has_value()) {
+    return {nullopt};
+  }
+  T converted_value;
+  /*
+   * `convert` is only declared for certain types. If the type argument to this
+   * function isn't one of them, this function won't compile.
+   */
+  auto status = utils::parse::convert(value.value(), &converted_value);
+  if (!status.ok()) {
+    throw_config_exception(
+        "Failed to convert configuration value '" + value.value() +
+        std::string("' for key '") + key + "'. Reason: " + status.to_string());
+  }
+  return {converted_value};
+}
+
 Status Config::get(const std::string& param, const char** value) const {
   bool found;
   const char* val = get_from_config_or_env(param, &found);
@@ -549,6 +590,9 @@ Status Config::unset(const std::string& param) {
     param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   } else if (param == "config.logging_format") {
     param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
+  } else if (param == "sm.allow_updates_experimental") {
+    param_values_["sm.allow_updates_experimental"] =
+        SM_ALLOW_UPDATES_EXPERIMENTAL;
   } else if (param == "sm.encryption_key") {
     param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   } else if (param == "sm.encryption_type") {
@@ -844,6 +888,8 @@ Status Config::sanity_check(
     if (value != "DEFAULT" && value != "JSON")
       return LOG_STATUS(
           Status_ConfigError("Invalid logging format parameter value"));
+  } else if (param == "sm.allow_updates_experimental") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.dedup_coords") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_coord_dups") {
@@ -1011,8 +1057,8 @@ const char* Config::get_from_config_or_env(
     return value_config;
   }
 
-  // Check env if not found in config or if it was found in the config but is a
-  // default value
+  // Check env if not found in config or if it was found in the config but is
+  // a default value
   const char* value_env = get_from_env(param, found);
   if (*found)
     return value_env;
@@ -1044,5 +1090,12 @@ template Status Config::get<double>(
 template Status Config::get_vector<uint32_t>(
     const std::string& param, std::vector<uint32_t>* value, bool* found) const;
 
-}  // namespace sm
-}  // namespace tiledb
+template optional<bool> Config::get<bool>(const std::string&) const;
+template optional<int> Config::get<int>(const std::string&) const;
+template optional<uint32_t> Config::get<uint32_t>(const std::string&) const;
+template optional<int64_t> Config::get<int64_t>(const std::string&) const;
+template optional<uint64_t> Config::get<uint64_t>(const std::string&) const;
+template optional<float> Config::get<float>(const std::string&) const;
+template optional<double> Config::get<double>(const std::string&) const;
+
+}  // namespace tiledb::sm

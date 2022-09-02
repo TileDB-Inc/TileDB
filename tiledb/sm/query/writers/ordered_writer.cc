@@ -76,7 +76,7 @@ OrderedWriter::OrderedWriter(
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
-    URI fragment_uri,
+    optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
           stats,
@@ -90,7 +90,7 @@ OrderedWriter::OrderedWriter(
           written_fragment_info,
           false,
           coords_info,
-          fragment_uri,
+          fragment_name,
           skip_checks_serialization) {
 }
 
@@ -296,9 +296,12 @@ Status OrderedWriter::ordered_write() {
       storage_manager_->vfs()->remove_dir(uri));
 
   // Write the fragment metadata
-  RETURN_CANCEL_OR_ERROR_ELSE(
-      frag_meta->store(array_->get_encryption_key()),
-      storage_manager_->vfs()->remove_dir(uri));
+  try {
+    frag_meta->store(array_->get_encryption_key());
+  } catch (...) {
+    storage_manager_->vfs()->remove_dir(uri);
+    throw;
+  }
 
   // Add written fragment info
   RETURN_NOT_OK_ELSE(

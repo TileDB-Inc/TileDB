@@ -159,14 +159,22 @@ class DimensionLabel {
   /** Latest dimension label schema  */
   shared_ptr<DimensionLabelSchema> schema_;
 
+  /** The query type the dimension label is opened as. */
   optional<QueryType> query_type_;
 
   /*******************/
   /* Private methods */
   /*******************/
 
-  /** Loads and checks the dimension label schema. */
-  void load_schema();
+  /**
+   * Loads and checks the dimension label schema.
+   *
+   * @param indexed_array_schema Array schema for the indexed array
+   * @param labelled_array_schema Array schema for the labelled array
+   **/
+  void load_schema(
+      shared_ptr<ArraySchema> indexed_array_schema,
+      shared_ptr<ArraySchema> labelled_array_schema);
 };
 
 /**
@@ -181,6 +189,20 @@ void create_dimension_label(
     const URI& uri,
     StorageManager& storage_manager,
     const DimensionLabelSchema& schema);
+
+/**
+ * Removes all fragments URIs from a fragment list that do not have a similarly
+ * named fragment in a comparison fragments list.
+ *
+ * The comparison here is only on the base name of the fragment URIs. Fragments
+ * may be re-ordered upon return.
+ *
+ * @param comparison_fragment_uris The list of fragment URIs to check against.
+ * @param fragment_list The list of fragment URIs to prune.
+ */
+void intersect_fragments(
+    const std::vector<TimestampedURI>& comparison_fragment_list,
+    std::vector<TimestampedURI>& fragment_list);
 
 }  // namespace tiledb::sm
 
