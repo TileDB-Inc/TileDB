@@ -726,34 +726,34 @@ Status Query::check_tile_alignment() const {
     return Status::Ok();
   }
 
-  auto& first_attr_name = buffers_.begin()->first;
+  // It is enough to check for the first attr/dim only as we have
+  // previously checked in check_buffer_sizes that all the buffers
+  // have the same size
+  auto& first_buffer_name = buffers_.begin()->first;
   auto& first_buffer = buffers_.begin()->second;
-  const bool is_var_size = array_schema_->var_size(first_attr_name);
+  const bool is_var_size = array_schema_->var_size(first_buffer_name);
 
-  uint64_t capacity = array_schema_->capacity();
-  if (array_schema_->dense()) {
-    auto first_dimension = array_schema_->dimension_ptr(0);
-    // TODO: limiting tile_extent to unsigned integral type is probably
-    // incorrect
-    capacity = *(const uint32_t*)(first_dimension->tile_extent().data());
-  }
+  uint64_t cell_num_per_tile = array_schema_->dense() ?
+                                   array_schema_->domain().cell_num_per_tile() :
+                                   array_schema_->capacity();
   bool buffers_tile_aligned = true;
   if (is_var_size) {
-    if ((*first_buffer.buffer_size_ / constants::cell_var_offset_size) %
-        capacity) {
+    auto offsets_buf_size = *first_buffer.buffer_size_;
+    if ((offsets_buf_size / constants::cell_var_offset_size) %
+        cell_num_per_tile) {
       buffers_tile_aligned = false;
     }
   } else {
-    uint64_t cell_size = array_schema_->cell_size(first_attr_name);
-    if ((*first_buffer.buffer_size_ / cell_size) % capacity) {
+    uint64_t cell_size = array_schema_->cell_size(first_buffer_name);
+    if ((*first_buffer.buffer_size_ / cell_size) % cell_num_per_tile) {
       buffers_tile_aligned = false;
     }
   }
+
   if (!buffers_tile_aligned) {
     return Status_WriterError(
-        "Tile alignment check failed; Input buffers "
-        "need to be tile-aligned for remote global "
-        "order writes.");
+        "Tile alignment check failed; Input buffers need to be tile-aligned "
+        "for remote global order writes.");
   }
 
   return Status::Ok();
