@@ -100,6 +100,11 @@ const std::vector<URI>& ArrayDirectory::commit_uris_to_vacuum() const {
   return commit_uris_to_vacuum_;
 }
 
+const std::unordered_set<std::string>&
+ArrayDirectory::consolidated_commit_uris_set() const {
+  return consolidated_commit_uris_set_;
+}
+
 const std::vector<URI>& ArrayDirectory::consolidated_commits_uris_to_vacuum()
     const {
   return consolidated_commits_uris_to_vacuum_;

@@ -281,14 +281,6 @@ Status FragmentConsolidator::consolidate_fragments(
 }
 
 Status FragmentConsolidator::vacuum(const char* array_name) {
-  return vacuum(array_name, 0, std::numeric_limits<uint64_t>::max(), false);
-}
-
-Status FragmentConsolidator::vacuum(
-    const char* array_name,
-    uint64_t timestamp_start,
-    uint64_t timestamp_end,
-    bool for_deletes) {
   if (array_name == nullptr)
     return logger_->status(Status_StorageManagerError(
         "Cannot vacuum fragments; Array name cannot be null"));
@@ -300,8 +292,8 @@ Status FragmentConsolidator::vacuum(
       vfs,
       compute_tp,
       URI(array_name),
-      timestamp_start,
-      timestamp_end,
+      0,
+      std::numeric_limits<uint64_t>::max(),
       ArrayDirectoryMode::VACUUM_FRAGMENTS);
 
   auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
@@ -315,26 +307,8 @@ Status FragmentConsolidator::vacuum(
       filtered_fragment_uris.fragment_vac_uris_to_vacuum();
 
   if (commit_uris_to_ignore.size() > 0) {
-    // Write an ignore file to ensure consolidated WRT files still work
-    auto&& [st1, name] = array_dir.compute_new_fragment_name(
-        commit_uris_to_ignore.front(),
-        commit_uris_to_ignore.back(),
-        constants::format_version);
-    RETURN_NOT_OK(st1);
-
-    // Write URIs, relative to the array URI.
-    std::stringstream ss;
-    auto base_uri_size = array_dir.uri().to_string().size();
-    for (const auto& uri : commit_uris_to_ignore) {
-      ss << uri.to_string().substr(base_uri_size) << "\n";
-    }
-
-    auto data = ss.str();
-    URI ignore_file_uri =
-        array_dir.get_commits_dir(constants::format_version)
-            .join_path(name.value() + constants::ignore_file_suffix);
-    RETURN_NOT_OK(vfs->write(ignore_file_uri, data.c_str(), data.size()));
-    RETURN_NOT_OK(vfs->close_file(ignore_file_uri));
+    RETURN_NOT_OK(storage_manager_->write_commit_ignore(
+        array_dir, commit_uris_to_ignore));
   }
 
   // Delete the commit files
@@ -362,16 +336,6 @@ Status FragmentConsolidator::vacuum(
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
-
-  // Delete fragments if vacuuming for deletes
-  if (for_deletes) {
-    const auto& fragment_uris = filtered_fragment_uris.fragment_uris();
-    status = parallel_for(compute_tp, 0, fragment_uris.size(), [&](size_t i) {
-      RETURN_NOT_OK(vfs->remove_dir(fragment_uris[i].uri_));
-      return Status::Ok();
-    });
-    RETURN_NOT_OK(status);
-  }
 
   return Status::Ok();
 }

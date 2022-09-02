@@ -246,9 +246,9 @@ Status Array::delete_fragments(
         "May not perform simultaneous open or close operations."));
   }
 
-  // Vacuum fragments for deletes
-  RETURN_NOT_OK(storage_manager_->fragments_vacuum(
-      uri.c_str(), timestamp_start, timestamp_end, true));
+  // Delete fragments
+  RETURN_NOT_OK(storage_manager_->delete_fragments(
+      uri.c_str(), timestamp_start, timestamp_end));
 
   return Status::Ok();
 }

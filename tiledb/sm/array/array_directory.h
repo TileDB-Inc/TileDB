@@ -283,6 +283,9 @@ class ArrayDirectory {
   /** Returns the URIs of the commit files to vacuum. */
   const std::vector<URI>& commit_uris_to_vacuum() const;
 
+  /** Returns the consolidated commit URI set. */
+  const std::unordered_set<std::string>& consolidated_commit_uris_set() const;
+
   /** Returns the URIs of the consolidated commit files to vacuum. */
   const std::vector<URI>& consolidated_commits_uris_to_vacuum() const;
 

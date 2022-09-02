@@ -724,51 +724,85 @@ TEST_CASE(
   }
 
   SECTION("MODIFY_EXCLUSIVE") {
-    auto array = tiledb::Array(ctx, array_name, TILEDB_MODIFY_EXCLUSIVE);
+    // Write fragment at timestamp 1
+    auto array = tiledb::Array(ctx, array_name, TILEDB_MODIFY_EXCLUSIVE, 1);
     auto query = tiledb::Query(ctx, array, TILEDB_MODIFY_EXCLUSIVE);
     query.set_data_buffer("a", data).set_subarray({0, 1}).submit();
+    array.close();
+    CHECK(tiledb::test::num_fragments(array_name) == 1);
+
+    // Write fragment at timestamp 3
+    array.open(TILEDB_MODIFY_EXCLUSIVE, 3);
     query.set_data_buffer("a", data).set_subarray({2, 3}).submit();
+    array.close();
+    CHECK(tiledb::test::num_fragments(array_name) == 2);
+
+    // Write fragment at timestamp 5
+    array.open(TILEDB_MODIFY_EXCLUSIVE, 5);
     query.set_data_buffer("a", data).set_subarray({4, 5}).submit();
-    query.finalize();
+    array.close();
     CHECK(tiledb::test::num_fragments(array_name) == 3);
 
-    SECTION("no consolidation") {
-      // Delete fragments
-      array.delete_fragments(array_name, timestamp_start, timestamp_end);
-      CHECK(tiledb::test::num_fragments(array_name) == 0);
-      array.close();
-    }
+    // Write fragment at timestamp 7
+    array.open(TILEDB_MODIFY_EXCLUSIVE, 7);
+    query.set_data_buffer("a", data).set_subarray({6, 7}).submit();
+    query.finalize();
+    array.close();
+    CHECK(tiledb::test::num_fragments(array_name) == 4);
 
-    SECTION("consolidation") {
-      array.close();
+    // Consolidate commits
+    auto config = ctx.config();
+    config["sm.consolidation.mode"] = "commits";
+    config["sm.vacuum.mode"] = "commits";
+    Array::consolidate(ctx, array_name, &config);
+    Array::vacuum(ctx, array_name, &config);
+    CHECK(tiledb::test::num_fragments(array_name) == 4);
 
-      // Consolidate and reopen array
-      Array::consolidate(ctx, array_name);
-      CHECK(tiledb::test::num_fragments(array_name) == 4);
-      array.open(TILEDB_MODIFY_EXCLUSIVE);
-      CHECK(tiledb::test::num_fragments(array_name) == 4);
+    // Check commits directory after consolidation and vacuum
+    std::string commit_dir = tiledb::test::get_commit_dir(array_name);
+    std::vector<std::string> commits{vfs.ls(commit_dir)};
+    CHECK(commits.size() == 1);
+    CHECK(tiledb::sm::utils::parse::ends_with(
+        commits[0], tiledb::sm::constants::con_commits_file_suffix));
 
-      // Check commits directory after consolidation
-      int vac_file_count = 0;
-      std::string commit_dir = tiledb::test::get_commit_dir(array_name);
-      std::vector<std::string> commits{vfs.ls(commit_dir)};
-      for (auto commit : commits) {
-        if (tiledb::sm::utils::parse::ends_with(
-                commit, tiledb::sm::constants::vacuum_file_suffix))
-          vac_file_count++;
+    // Delete fragments
+    array.open(TILEDB_MODIFY_EXCLUSIVE);
+    array.delete_fragments(array_name, 2, 6);
+    CHECK(tiledb::test::num_fragments(array_name) == 2);
+    array.close();
+
+    // Check commits directory after deletion
+    int con_file_count = 0;
+    int ign_file_count = 0;
+    // commit_dir = tiledb::test::get_commit_dir(array_name);
+    commits = vfs.ls(commit_dir);
+    for (auto commit : commits) {
+      if (tiledb::sm::utils::parse::ends_with(
+              commit, tiledb::sm::constants::con_commits_file_suffix)) {
+        con_file_count++;
       }
-      CHECK(commits.size() == 5);
-      CHECK(vac_file_count == 1);
+      if (tiledb::sm::utils::parse::ends_with(
+              commit, tiledb::sm::constants::ignore_file_suffix)) {
+        ign_file_count++;
+      }
+    }
+    CHECK(commits.size() == 2);
+    CHECK(con_file_count == 1);
+    CHECK(ign_file_count == 1);
 
-      // Delete fragments
-      array.delete_fragments(array_name, timestamp_start, timestamp_end);
-      CHECK(tiledb::test::num_fragments(array_name) == 0);
+    // Read from the array
+    array.open(TILEDB_READ);
+    std::vector<int> subarray = {0, 1};
+    std::vector<int> a_read(2);
+    Query query_r(ctx, array);
+    query_r.set_subarray(subarray)
+        .set_layout(TILEDB_ROW_MAJOR)
+        .set_data_buffer("a", a_read);
+    query_r.submit();
+    array.close();
 
-      // Check commits directory after deletion
-      commits = vfs.ls(commit_dir);
-      CHECK(commits.size() == 1);
-      CHECK(!tiledb::sm::utils::parse::ends_with(
-          commits[0], tiledb::sm::constants::vacuum_file_suffix));
+    for (int i = 0; i < 2; i++) {
+      REQUIRE(a_read[i] == i);
     }
   }
 
