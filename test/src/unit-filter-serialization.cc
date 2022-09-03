@@ -43,7 +43,7 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/filter/float_scaling_filter.h"
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include <iostream>
 
 using namespace tiledb::sm;
