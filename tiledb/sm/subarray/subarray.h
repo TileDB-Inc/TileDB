@@ -321,7 +321,7 @@ class Subarray {
   Status add_point_ranges(unsigned dim_idx, const void* start, uint64_t count);
 
   /**
-   * @brief Set ranges from an array of ranges (paired { begin,end)
+   * @brief Set ranges from an array of ranges (paired { begin,end } )
    *
    * @param dim_idx Dimension index
    * @param start Pointer to start of the array

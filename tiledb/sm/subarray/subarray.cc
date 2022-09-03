@@ -414,7 +414,7 @@ Status Subarray::add_point_ranges(
       array_query_type == QueryType::MODIFY_EXCLUSIVE) {
     if (!array_->array_schema_latest().dense()) {
       return LOG_STATUS(Status_SubarrayError(
-          "Adding a subarray range to a write or modify_exclsuive query is not "
+          "Adding a subarray range to a write or modify_exclusive query is not "
           "supported in sparse arrays"));
     }
     if (this->is_set(dim_idx)) {
@@ -474,10 +474,9 @@ Status Subarray::add_ranges_list(
   }
 
   if (count % 2) {
-    std::stringstream msg;
-    msg << "add_ranges_list: Invalid count " << count
-        << ",count must be a multple of 2 ";
-    return LOG_STATUS(Status_SubarrayError(msg.str().c_str()));
+    return LOG_STATUS(Status_SubarrayError("add_ranges_list: Invalid count " 
+        + std::to_string(count)
+        + ", count must be a multple of 2 "));
   }
 
   QueryType array_query_type{array_->get_query_type()};
@@ -485,7 +484,7 @@ Status Subarray::add_ranges_list(
       array_query_type == QueryType::MODIFY_EXCLUSIVE) {
     if (!array_->array_schema_latest().dense()) {
       return LOG_STATUS(Status_SubarrayError(
-          "Adding a subarray range to a write or modify_exclsuive query is not "
+          "Adding a subarray range to a write or modify_exclusive query is not "
           "supported in sparse arrays"));
     }
     if (this->is_set(dim_idx)) {
@@ -516,20 +515,15 @@ Status Subarray::add_ranges_list(
   }
 
   // Prepare a temp range
-  std::vector<uint8_t> range;
   auto coord_size =
       this->array_->array_schema_latest().dimension_ptr(dim_idx)->coord_size();
-  range.resize(2 * coord_size);
 
   for (size_t i = 0; i < count / 2; i++) {
     uint8_t* ptr = (uint8_t*)start + 2 * coord_size * i;
-    // point ranges
-    std::memcpy(&range[0], ptr, coord_size);
-    std::memcpy(&range[coord_size], ptr + coord_size, coord_size);
 
     // Add range
     auto st = this->add_range(
-        dim_idx, Range(&range[0], 2 * coord_size), err_on_range_oob_);
+        dim_idx, Range(ptr, 2 * coord_size), err_on_range_oob_);
     if (!st.ok()) {
       return LOG_STATUS(std::move(st));
     }
