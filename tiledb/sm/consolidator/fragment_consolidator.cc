@@ -429,7 +429,8 @@ Status FragmentConsolidator::consolidate_internal(
   // If there are any delete conditions coming after the first fragment or if
   // there are any fragments with delete meta, the new fragment will include
   // delete meta.
-  if (array_schema.write_version() >= constants::deletes_min_version) {
+  if (!config_.purge_deleted_cells_ &&
+      array_schema.write_version() >= constants::deletes_min_version) {
     // Get the first fragment first timestamp.
     std::pair<uint64_t, uint64_t> timestamps;
     RETURN_NOT_OK(
