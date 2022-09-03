@@ -155,4 +155,75 @@ QueryCondition deserialize_condition(
       deserialize_condition_impl(deserializer));
 }
 
+void serialize_update_values_impl(
+    const std::vector<UpdateValue>& update_values, Serializer& serializer) {
+  serializer.write<uint64_t>(update_values.size());
+  for (const auto& update_value : update_values) {
+    uint64_t field_name_size = update_value.field_name().length();
+    serializer.write<uint64_t>(field_name_size);
+    serializer.write(update_value.field_name().data(), field_name_size);
+
+    uint64_t value_size = update_value.view().size();
+    serializer.write<uint64_t>(value_size);
+    serializer.write(update_value.view().content(), value_size);
+  }
+}
+
+storage_size_t get_serialized_update_condition_and_values_size(
+    const tdb_unique_ptr<tiledb::sm::ASTNode>& node,
+    const std::vector<UpdateValue>& update_values) {
+  SizeComputationSerializer size_computation_serializer;
+  serialize_condition_impl(node, size_computation_serializer);
+  serialize_update_values_impl(update_values, size_computation_serializer);
+
+  return size_computation_serializer.size();
+}
+
+std::vector<uint8_t> serialize_update_condition_and_values(
+    const QueryCondition& query_condition,
+    const std::vector<UpdateValue>& update_values) {
+  std::vector<uint8_t> ret(get_serialized_update_condition_and_values_size(
+      query_condition.ast(), update_values));
+
+  Serializer serializer(ret.data(), ret.size());
+  serialize_condition_impl(query_condition.ast(), serializer);
+  serialize_update_values_impl(update_values, serializer);
+
+  return ret;
+}
+std::vector<UpdateValue> deserialize_update_values_impl(
+    Deserializer& deserializer) {
+  auto num = deserializer.read<uint64_t>();
+  std::vector<UpdateValue> ret;
+  ret.reserve(num);
+  for (uint64_t i = 0; i < num; i++) {
+    uint64_t field_name_size = deserializer.read<uint64_t>();
+    std::string field_name;
+    field_name.resize(field_name_size);
+    deserializer.read(field_name.data(), field_name_size);
+
+    uint64_t value_size = deserializer.read<uint64_t>();
+    std::vector<uint8_t> value(value_size);
+    deserializer.read(value.data(), value_size);
+
+    ret.emplace_back(field_name, value.data(), value_size);
+  }
+
+  return ret;
+}
+
+tuple<QueryCondition, std::vector<UpdateValue>>
+deserialize_update_condition_and_values(
+    const uint64_t condition_index,
+    const std::string& condition_marker,
+    const void* buff,
+    const storage_size_t size) {
+  Deserializer deserializer(buff, size);
+  return {QueryCondition(
+              condition_index,
+              condition_marker,
+              deserialize_condition_impl(deserializer)),
+          deserialize_update_values_impl(deserializer)};
+}
+
 }  // namespace tiledb::sm::deletes_and_updates::serialization
