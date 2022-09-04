@@ -338,7 +338,6 @@ class BaseMover<Mover, two_stage, Block> {
   inline void on_move(std::atomic<int>& event) {
     auto state = static_cast<Mover*>(this)->state();
     bool debug = static_cast<Mover*>(this)->debug_enabled();
-    CHECK(is_ready_to_move(state) == "");
 
     /**
      * Increment the move count.
@@ -463,6 +462,7 @@ class ItemMover
   using block_type = Block;
   constexpr inline static bool edgeful = Base::edgeful;
 
+#ifndef FXM
   /**
    * Invoke `source_fill` event
    */
@@ -498,7 +498,21 @@ class ItemMover
 
     this->event(PortEvent::sink_pull, msg);
   }
+#else
 
+  void do_inject(const std::string& msg = "") {
+    debug_msg("  -- injecting");
+
+    this->event(PortEvent::source_inject, msg);
+  }
+
+  void do_extract(const std::string& msg = "") {
+    debug_msg("  -- extracting");
+
+    this->event(PortEvent::sink_extract, msg);
+  }
+
+#endif
   /**
    * Invoke `stop` event
    */

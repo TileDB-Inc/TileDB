@@ -72,6 +72,58 @@ if (TILEDB_TESTS)
 
 message(STATUS "+++++++ done unit_fsm")
 
+endif()
+
+
+if (TILEDB_TESTS)
+    add_executable(unit_fxm EXCLUDE_FROM_ALL)
+#    target_link_libraries(unit_fxm PUBLIC fxm)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_fxm PUBLIC Catch2::Catch2)
+#    target_link_libraries(unit_fxm PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_fxm PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_fxm PUBLIC
+            test/main.cc
+            test/unit_fxm.cc
+            )
+
+    add_test(
+            NAME "unit_fxm"
+            COMMAND $<TARGET_FILE:unit_fxm> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+message(STATUS "+++++++ done unit_fxm")
+
+endif()
+
+if (TILEDB_TESTS)
+    add_executable(unit_proof EXCLUDE_FROM_ALL)
+#    target_link_libraries(unit_proof PUBLIC proof)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_proof PUBLIC Catch2::Catch2)
+#    target_link_libraries(unit_proof PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_proof PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_proof PUBLIC
+            test/main.cc
+            test/unit_proof.cc
+            )
+
+    add_test(
+            NAME "unit_proof"
+            COMMAND $<TARGET_FILE:unit_proof> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+message(STATUS "+++++++ done unit_proof")
 
 endif()
 
