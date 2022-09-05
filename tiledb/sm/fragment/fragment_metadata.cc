@@ -1532,7 +1532,6 @@ Status FragmentMetadata::load_fragment_min_max_sum_null_count(
       "read_fragment_min_max_sum_null_count_size", tile.size());
 
   Deserializer deserializer(tile.data(), tile.size());
-
   load_fragment_min_max_sum_null_count(deserializer);
 
   loaded_metadata_.fragment_min_max_sum_null_count_ = true;
@@ -4228,16 +4227,17 @@ Tile FragmentMetadata::write_rtree() {
   SizeComputationSerializer size_computation_serializer;
   rtree_.serialize(size_computation_serializer);
 
-  Tile tile;
-  if (!tile.init_unfiltered(
-               0,
-               constants::generic_tile_datatype,
-               size_computation_serializer.size(),
-               constants::generic_tile_cell_size,
-               0)
-           .ok()) {
-    throw FragmentMetadataStatusException("Cannot initialize tile");
-  }
+  // Tile tile;
+  // if (!tile.init_unfiltered(
+  //              0,
+  //              constants::generic_tile_datatype,
+  //              size_computation_serializer.size(),
+  //              constants::generic_tile_cell_size,
+  //              0)
+  //          .ok()) {
+  //   throw FragmentMetadataStatusException("Cannot initialize tile");
+  // }
+  Tile tile{Tile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   rtree_.serialize(serializer);
