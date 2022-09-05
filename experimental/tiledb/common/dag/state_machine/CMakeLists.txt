@@ -102,6 +102,33 @@ message(STATUS "+++++++ done unit_fxm")
 endif()
 
 if (TILEDB_TESTS)
+    add_executable(unit_sched EXCLUDE_FROM_ALL)
+#    target_link_libraries(unit_sched PUBLIC sched)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_sched PUBLIC Catch2::Catch2)
+#    target_link_libraries(unit_sched PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+    target_sources(unit_sched PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_sched PUBLIC
+            test/main.cc
+            test/unit_sched.cc
+            )
+
+    add_test(
+            NAME "unit_sched"
+            COMMAND $<TARGET_FILE:unit_sched> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+message(STATUS "+++++++ done unit_sched")
+
+endif()
+
+
+if (TILEDB_TESTS)
     add_executable(unit_proof EXCLUDE_FROM_ALL)
 #    target_link_libraries(unit_proof PUBLIC proof)
     find_package(Catch_EP REQUIRED)
