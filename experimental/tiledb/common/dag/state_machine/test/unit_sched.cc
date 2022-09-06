@@ -42,6 +42,8 @@
 #include <mutex>
 #include <numeric>
 #include <queue>
+#include <set>
+#include <string>
 #include <thread>
 #include <tuple>
 #include <vector>
@@ -340,6 +342,10 @@ std::string str(state st) {
   return strings[static_cast<size_t>(st)];
 }
 
+std::string str(size_t st) {
+  return strings[st];
+}
+
 template <class T>
 struct alt_triple_maker_state {
   state counter = state::init;
@@ -356,24 +362,37 @@ struct alt_single_maker_state {
 
 class node_hook {
  public:
-  virtual enum state resume() = 0;
+  virtual node_hook* resume() = 0;
+  virtual state get_state() const = 0;
+  virtual std::string get_id() const = 0;
 };
 
 template <class State>
 class node : public node_hook {
   State alt_state_;
+  std::string id_;
 
  public:
   std::function<enum state(State&)> f_;
 
  public:
   template <class Function>
-  node(Function&& f)
-      : f_{std::forward<Function>(f)} {
+  node(Function&& f, const std::string& id = "")
+      : id_{id}
+      , f_{std::forward<Function>(f)} {
   }
 
-  enum state resume() {
-    return f_(this->alt_state_);
+  node_hook* resume() {
+    f_(this->alt_state_);
+    return this;
+  }
+
+  state get_state() const {
+    return alt_state_.counter;
+  }
+
+  std::string get_id() const {
+    return id_;
   }
 };
 
@@ -390,50 +409,81 @@ class single_maker_node : public node<alt_single_maker_state<T>> {
 };
 
 std::queue<node_hook*> runnable_queue;
-
-std::atomic running{0};
+std::set<node_hook*> running_queue;
 
 void do_run() {
   static std::mutex mutex_;
-  {
-    std::scoped_lock lock(mutex_);
-    std::cout << "do_run starting " << std::endl;
-    running++;
-  }
 
-  while (running != 0) {
-    std::unique_lock lock(mutex_);
+  std::cout << "do_run starting " << std::endl;
+
+  std::unique_lock lock(mutex_);
+
+  auto id = std::this_thread::get_id();
+
+  // Somehow a node is in the running queue without actually running
+
+  while (!running_queue.empty() || !runnable_queue.empty()) {
+    std::cout << id << " do run running "
+              << " runnable queue.size() " << runnable_queue.size()
+              << " running queue size " << running_queue.size() << std::endl;
+
+    node_hook* n{nullptr};
 
     if (!runnable_queue.empty()) {
-      auto n = runnable_queue.front();
+      n = runnable_queue.front();
       runnable_queue.pop();
-      // std::cout << "running " << n->id_ << " with " << str(n->pc) <<
-      // std::endl;
+      running_queue.emplace(n);
+
+      std::cout << id << " about to run " << n->get_id() << std::endl;
 
       lock.unlock();
-      //      std::cout << "resuming " << n->id_ << " with " << str(n->pc) <<
-      //      std::endl;
-
-      auto ret = n->resume();
+      n = n->resume();
       lock.lock();
 
-      //      std::cout << "returning " << n->id_ << " with " << str(n->pc)
-      //                << std::endl;
+      std::cout << id << " do run return " << n->get_id() << " from resume "
+                << str(n->get_state()) << " runnable queue size "
+                << runnable_queue.size() << " running queue size "
+                << running_queue.size() << std::endl;
 
-      if (ret != state::exit) {
-        //        std::cout << "pushing " << n->id_ << " with " << str(n->pc)
-        //                  << std::endl;
-        runnable_queue.push(n);
-      } else {
-        running--;
+      if (running_queue.erase(n) == 0) {
+        throw("element not found in running queue");
       }
+
+      std::cout << id << " running dequeued " << n->get_id() << " with "
+                << str(n->get_state()) << " running queue size "
+                << running_queue.size() << " runnable queue size "
+                << runnable_queue.size() << std::endl;
+
+      if (n->get_state() == state::exit) {
+        std::cout << id << " runnable " << n->get_id() << " exiting "
+                  << std::endl;
+
+        continue;
+      }
+
+      runnable_queue.push(n);
+      std::cout << id << " runnable enqueued " << n->get_id() << " with "
+                << str(n->get_state()) << " running queue size "
+                << running_queue.size() << " runnable queue size "
+                << runnable_queue.size() << std::endl;
+
+    } else {
+      if (running_queue.erase(n) == 0) {
+        throw("element not found in running queue");
+      }
+      runnable_queue.push(n);
     }
-    lock.unlock();
   }
+  std::cout << id << " bottom of while: running queue size "
+            << running_queue.size() << " runnable queue size "
+            << runnable_queue.size() << std::endl;
+
+  std::cout << id << " post while: running queue size " << running_queue.size()
+            << " runnable queue size " << runnable_queue.size() << std::endl;
 }
 
 TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
-  [[maybe_unused]] constexpr bool debug = false;
+  [[maybe_unused]] constexpr bool debug = true;
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> mid_item_in{0};
@@ -454,7 +504,7 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
 
   size_t rounds = 33;
   if (debug)
-    rounds = 33;
+    rounds = 3;
 
   std::vector<size_t> input(rounds * 3);
   std::vector<size_t> midput_in(rounds * 3);
@@ -471,7 +521,8 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
   CHECK(std::equal(input.begin(), input.end(), midput_in.begin()) == false);
 
   auto source_node_fn = [&](alt_single_maker_state<size_t>& alt_state) {
-    std::cout << "source node iteration " << alt_state.n << std::endl;
+    if (debug)
+      std::cout << "source node iteration " << alt_state.n << std::endl;
 
     switch (alt_state.counter) {
       case state::init:
@@ -482,7 +533,8 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
         [[fallthrough]];
 
       case state::top:
-        std::cout << "source node top " << alt_state.n << std::endl;
+        if (debug)
+          std::cout << "source node top " << alt_state.n << std::endl;
 
         CHECK(is_source_empty(a.state()) == "");
 
@@ -494,12 +546,11 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
 
         alt_state.counter = state::middle;
 
-        return alt_state.counter;
-
         [[fallthrough]];
 
       case state::middle:
-        std::cout << "source node middle " << alt_state.n << std::endl;
+        if (debug)
+          std::cout << "source node middle " << alt_state.n << std::endl;
 
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -513,9 +564,13 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
         [[fallthrough]];
 
       case state::bottom:
-        std::cout << "source node bottom " << alt_state.n << std::endl;
+        if (debug)
+          std::cout << "source node bottom " << alt_state.n << std::endl;
 
-        a.do_push();
+        a.do_try_push();
+        if (!empty_source(a.state())) {
+          return alt_state.counter;
+        }
 
         CHECK(is_source_empty(a.state()) == "");
 
@@ -528,9 +583,10 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
         break;
 
       default:
-        std::cout << "Source node this should not happen!! " +
-                         str(alt_state.counter)
-                  << std::endl;
+        if (debug)
+          std::cout << "Source node this should not happen!! " +
+                           str(alt_state.counter)
+                    << std::endl;
         break;
     }
     if (--alt_state.n == 0) {
@@ -538,8 +594,9 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
     } else {
       alt_state.counter = state::top;
     }
-    std::cout << "source node return " << alt_state.n << " "
-              << str(alt_state.counter) << std::endl;
+    if (debug)
+      std::cout << "source node return " << alt_state.n << " "
+                << str(alt_state.counter) << std::endl;
     return alt_state.counter;
   };
 
@@ -556,9 +613,13 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
         [[fallthrough]];
 
       case state::top: {
-        std::cout << "mid node top " << alt_state.n << std::endl;
+        if (debug)
+          std::cout << "mid node top " << alt_state.n << std::endl;
 
-        a.do_pull();
+        a.do_try_pull();
+        if (!full_sink(a.state())) {
+          return alt_state.counter;
+        }
 
         CHECK(is_sink_full(a.state()) == "");
 
@@ -578,11 +639,15 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
         [[fallthrough]];
 
       case state::middle: {
-        std::cout << "mid node middle " << alt_state.n << std::endl;
+        if (debug)
+          std::cout << "mid node middle " << alt_state.n << std::endl;
 
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-        a.do_pull();
+        a.do_try_pull();
+        if (!full_sink(a.state())) {
+          return alt_state.counter;
+        }
 
         CHECK(is_sink_full(a.state()) == "");
 
@@ -601,10 +666,14 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
         [[fallthrough]];
 
       case state::bottom: {
-        std::cout << "mid node bottom " << alt_state.n << std::endl;
+        if (debug)
+          std::cout << "mid node bottom " << alt_state.n << std::endl;
 
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-        a.do_pull();
+        a.do_try_pull();
+        if (!full_sink(a.state())) {
+          return alt_state.counter;
+        }
 
         CHECK(is_sink_full(a.state()) == "");
 
@@ -618,7 +687,8 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
         [[fallthrough]];
 
       case state::alt_top: {
-        std::cout << "mid node alt top " << alt_state.n << std::endl;
+        if (debug)
+          std::cout << "mid node alt top " << alt_state.n << std::endl;
         auto item = *(a.sink_item());
         *j_in++ = item;
 
@@ -640,7 +710,8 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
         [[fallthrough]];
 
       case state::alt_middle: {
-        std::cout << "mid node alt middle " << alt_state.n << std::endl;
+        if (debug)
+          std::cout << "mid node alt middle " << alt_state.n << std::endl;
 
         b.do_fill();
 
@@ -650,9 +721,13 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
         [[fallthrough]];
       }
       case state::alt_bottom: {
-        std::cout << "mid node alt bottom " << alt_state.n << std::endl;
+        if (debug)
+          std::cout << "mid node alt bottom " << alt_state.n << std::endl;
 
-        b.do_push();
+        b.do_try_push();
+        if (!empty_source(b.state())) {
+          return alt_state.counter;
+        }
 
         CHECK(is_source_empty(b.state()) == "");
 
@@ -660,9 +735,10 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
       } break;
 
       default:
-        std::cout << "mid node this should not happen!! " +
-                         str(alt_state.counter)
-                  << std::endl;
+        if (debug)
+          std::cout << "mid node this should not happen!! " +
+                           str(alt_state.counter)
+                    << std::endl;
         break;
     }
     if (--alt_state.n == 0) {
@@ -670,13 +746,15 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
     } else {
       alt_state.counter = state::top;
     }
-    std::cout << "mid node return " << alt_state.n << " "
-              << str(alt_state.counter) << std::endl;
+    if (debug)
+      std::cout << "mid node return " << alt_state.n << " "
+                << str(alt_state.counter) << std::endl;
     return alt_state.counter;
   };
 
   auto sink_node_fn = [&](alt_single_maker_state<size_t>& alt_state) {
-    std::cout << "sink node iteration " << alt_state.n << std::endl;
+    if (debug)
+      std::cout << "sink node iteration " << alt_state.n << std::endl;
 
     switch (alt_state.counter) {
       case state::init:
@@ -686,9 +764,15 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
         [[fallthrough]];
 
       case state::top:
-        std::cout << "sink node top " << alt_state.n << std::endl;
+        if (debug)
+          std::cout << "sink node top " << alt_state.n << std::endl;
 
-        b.do_pull();
+        b.do_try_pull();
+        if (!full_sink(b.state())) {
+          if (debug)
+            std::cout << "sink node not full " << alt_state.n << std::endl;
+          return alt_state.counter;
+        }
 
         CHECK(is_sink_full(b.state()) == "");
 
@@ -702,7 +786,8 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
         [[fallthrough]];
 
       case state::middle:
-        std::cout << "sink node middle " << alt_state.n << std::endl;
+        if (debug)
+          std::cout << "sink node middle " << alt_state.n << std::endl;
 
         output.emplace_back(*(b.sink_item()));
 
@@ -710,7 +795,8 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
         [[fallthrough]];
 
       case state::bottom:
-        std::cout << "sink node bottom " << alt_state.n << std::endl;
+        if (debug)
+          std::cout << "sink node bottom " << alt_state.n << std::endl;
 
         b.do_drain();
 
@@ -718,10 +804,11 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
 
         break;
 
-      default:
-        std::cout << "Sink node this should not happen!! " +
-                         str(alt_state.counter)
-                  << std::endl;
+      default:;
+        if (debug)
+          std::cout << "Sink node this should not happen!! " +
+                           str(alt_state.counter)
+                    << std::endl;
     }
     if (--alt_state.n == 0) {
       alt_state.counter = state::exit;
@@ -729,29 +816,41 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
       alt_state.counter = state::top;
     }
 
-    std::cout << "sink node return " << alt_state.n << " "
-              << str(alt_state.counter) << std::endl;
+    if (debug)
+      std::cout << "sink node return " << alt_state.n << " "
+                << str(alt_state.counter) << std::endl;
     return alt_state.counter;
   };
 
-  SECTION("Threadpool 2") {
-    ThreadPool tp(3);
+  size_t threads = GENERATE(1, 2, 3, 4, 8, 16);
 
-    auto c = single_maker_node<size_t>{source_node_fn};
-    auto p = triple_maker_node<size_t>{mid_node_fn};
-    auto q = single_maker_node<size_t>{sink_node_fn};
+  SECTION("Threadpool 2 with " + std::to_string(threads)) {
+    //    ThreadPool tp(threads);
+
+    auto c = single_maker_node<size_t>{source_node_fn, "source"};
+    auto p = triple_maker_node<size_t>{mid_node_fn, "mid"};
+    auto q = single_maker_node<size_t>{sink_node_fn, "sink"};
 
     runnable_queue.push(&c);
     runnable_queue.push(&p);
     runnable_queue.push(&q);
 
-    auto fut_c = tp.async([&]() { do_run(); });
-    auto fut_p = tp.async([&]() { do_run(); });
-    auto fut_q = tp.async([&]() { do_run(); });
+    std::vector<std::future<void>> futs;
 
-    fut_c.wait();
-    fut_p.wait();
-    fut_q.wait();
+    for (size_t t = 0; t < threads; ++t) {
+      futs.emplace_back(std::async(std::launch::async, [&]() { do_run(); }));
+    }
+    CHECK(futs.size() == threads);
+
+    //    auto fut_c = tp.async([&]() { do_run(); });
+    //    auto fut_p = tp.async([&]() { do_run(); });
+    //    auto fut_q = tp.async([&]() { do_run(); });
+
+    for (size_t t = 0; t < threads; ++t) {
+      futs[t].wait();
+    }
+    CHECK(running_queue.size() == 0);
+    CHECK(runnable_queue.empty());
   }
 
   if (!std::equal(input.begin(), input.end(), midput_in.begin())) {

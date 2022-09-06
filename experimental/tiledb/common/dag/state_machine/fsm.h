@@ -180,8 +180,10 @@ inline auto str(two_stage st) {
 enum class PortEvent : unsigned short {
   source_fill,
   source_push,
+  try_push,
   sink_drain,
   sink_pull,
+  try_pull,
   stop,
 };
 
@@ -200,8 +202,10 @@ constexpr unsigned int n_events = to_index(PortEvent::stop) + 1;
 static std::vector<std::string> event_strings{
     "source_fill",
     "source_push",
+    "try_push",
     "sink_drain",
     "sink_pull",
+    "try_pull",
     "stop",
 };
 
@@ -347,6 +351,90 @@ static auto inline str(PortAction ac) {
   return (full_s_sink(st) || full_x_sink(st));
 }
 
+/**
+ *
+ */
+
+[[maybe_unused]] static bool null_s(two_stage st) {
+  return (st == two_stage::st_00);
+}
+
+[[maybe_unused]] static bool null_x(two_stage st) {
+  return (st == two_stage::xt_00);
+}
+
+[[maybe_unused]] static bool null(two_stage st) {
+  return null_s(st) || null_x(st);
+}
+
+[[maybe_unused]] static bool empty_s_source(two_stage st) {
+  return (st == two_stage::st_00 || st == two_stage::st_01);
+}
+
+[[maybe_unused]] static bool empty_x_source(two_stage st) {
+  return (st == two_stage::xt_00 || st == two_stage::xt_01);
+}
+
+[[maybe_unused]] static bool empty_source(two_stage st) {
+  return (empty_s_source(st) || empty_x_source(st));
+}
+[[maybe_unused]] static bool full_s_source(two_stage st) {
+  return (st == two_stage::st_10 || st == two_stage::st_11);
+}
+
+[[maybe_unused]] static bool full_x_source(two_stage st) {
+  return (st == two_stage::xt_10 || st == two_stage::xt_11);
+}
+
+[[maybe_unused]] static bool full_source(two_stage st) {
+  return (full_s_source(st) || full_x_source(st));
+}
+
+[[maybe_unused]] static bool empty_s_sink(two_stage st) {
+  return (st == two_stage::st_00 || st == two_stage::st_10);
+}
+
+[[maybe_unused]] static bool empty_x_sink(two_stage st) {
+  return (st == two_stage::xt_00 || st == two_stage::xt_10);
+}
+
+[[maybe_unused]] static bool empty_sink(two_stage st) {
+  return (empty_s_sink(st) || empty_x_sink(st));
+}
+[[maybe_unused]] static bool full_s_sink(two_stage st) {
+  return (st == two_stage::st_01 || st == two_stage::st_11);
+}
+
+[[maybe_unused]] static bool full_x_sink(two_stage st) {
+  return (st == two_stage::xt_01 || st == two_stage::xt_11);
+}
+
+[[maybe_unused]] static bool full_sink(two_stage st) {
+  return (full_s_sink(st) || full_x_sink(st));
+}
+
+[[maybe_unused]] static bool empty_s_state(two_stage st) {
+  return (st == two_stage::st_00 || st == two_stage::st_01);
+}
+
+[[maybe_unused]] static bool empty_x_state(two_stage st) {
+  return (st == two_stage::xt_00 || st == two_stage::xt_01);
+}
+
+[[maybe_unused]] static bool empty_state(two_stage st) {
+  return (empty_s_state(st) || empty_x_state(st));
+}
+[[maybe_unused]] static bool full_s_state(two_stage st) {
+  return (st == two_stage::st_10 || st == two_stage::st_11);
+}
+
+[[maybe_unused]] static bool full_x_state(two_stage st) {
+  return (st == two_stage::xt_10 || st == two_stage::xt_11);
+}
+
+[[maybe_unused]] static bool full_state(two_stage st) {
+  return (full_s_state(st) || full_x_state(st));
+}
 namespace {
 /**
  * Tables for state transitions, exit events, and entry events.  Indexed by
@@ -368,22 +456,22 @@ PortAction entry_table[num_states<PortState>][n_events];
 template<>
 constexpr const two_stage
 transition_table<two_stage>[num_states<two_stage>][n_events] {
-  /* state */   /* source_fill */ /* source_push */ /* sink_drain */  /* sink_pull */   /* stop */
-
-  /* st_00 */ { two_stage::st_10, two_stage::st_00, two_stage::error, two_stage::error, two_stage::xt_00 },
-  /* st_01 */ { two_stage::st_11, two_stage::st_01, two_stage::st_00, two_stage::st_01, two_stage::xt_01 },
-  /* st_10 */ { two_stage::error, two_stage::st_01, two_stage::error, two_stage::st_01, two_stage::xt_10 },
-  /* st_11 */ { two_stage::error, two_stage::error, two_stage::st_10, two_stage::st_11, two_stage::xt_11 },
-
-  /* xt_00 */ { two_stage::error, two_stage::error, two_stage::error, two_stage::done,  two_stage::error },
-  /* xt_01 */ { two_stage::error, two_stage::error, two_stage::/*done*/xt_00,  two_stage::xt_01, two_stage::error },
-  /* xt_10 */ { two_stage::error, two_stage::error, two_stage::error, two_stage::xt_01, two_stage::error },
-  /* xt_11 */ { two_stage::error, two_stage::error, two_stage::xt_10, two_stage::xt_11, two_stage::error },
-
-  /* done  */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error },
-  /* error */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error },
-
-  /* last */  { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error },
+  /* state */   /* source_fill */ /* source_push */ /* try_push */    /* sink_drain */  /* sink_pull */   /* try_pull */    /* stop */
+						    		    		                                          
+  /* st_00 */ { two_stage::st_10, two_stage::st_00, two_stage::st_00, two_stage::error, two_stage::error, two_stage::st_00, two_stage::xt_00 },
+  /* st_01 */ { two_stage::st_11, two_stage::st_01, two_stage::st_01, two_stage::st_00, two_stage::st_01, two_stage::st_01, two_stage::xt_01 },
+  /* st_10 */ { two_stage::error, two_stage::st_01, two_stage::st_01, two_stage::error, two_stage::st_01, two_stage::st_01, two_stage::xt_10 },
+  /* st_11 */ { two_stage::error, two_stage::error, two_stage::st_11, two_stage::st_10, two_stage::st_11, two_stage::st_11, two_stage::xt_11 },
+						    		    		                                          
+  /* xt_00 */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::done,  two_stage::done,  two_stage::error },
+  /* xt_01 */ { two_stage::error, two_stage::error, two_stage::error, two_stage::xt_00, two_stage::xt_00, two_stage::xt_01, two_stage::error },
+  /* xt_10 */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::xt_01, two_stage::xt_01, two_stage::error },
+  /* xt_11 */ { two_stage::error, two_stage::error, two_stage::error, two_stage::xt_10, two_stage::xt_11, two_stage::xt_11, two_stage::error },
+						    		    		                                          
+  /* done  */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error },
+  /* error */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error },
+								                                          
+  /* last */  { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error },
 };
 
 /**
@@ -391,22 +479,22 @@ transition_table<two_stage>[num_states<two_stage>][n_events] {
  */
 template<>
 constexpr const PortAction exit_table<two_stage>[num_states<two_stage>][n_events] {
-  /* state */   /* source_fill */ /* source_push */        /* sink_drain */  /* sink_pull */        /* stop */
-
-  /* st_00 */ { PortAction::none, PortAction::ac_return,   PortAction::none, PortAction::sink_wait, PortAction::notify_sink },
-  /* st_01 */ { PortAction::none, PortAction::ac_return,   PortAction::none, PortAction::ac_return, PortAction::notify_sink },
-  /* st_10 */ { PortAction::none, PortAction::source_move, PortAction::none, PortAction::sink_move, PortAction::notify_sink },
-  /* st_11 */ { PortAction::none, PortAction::source_wait, PortAction::none, PortAction::ac_return, PortAction::notify_sink },
-
-  /* xt_00 */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
-  /* xt_01 */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::ac_return, PortAction::none },
-  /* xt_10 */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::sink_move, PortAction::none },
-  /* xt_11 */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::ac_return, PortAction::none },
-
-  /* done  */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
-  /* error */ { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
-
-  /* last */  { PortAction::none, PortAction::none,        PortAction::none, PortAction::none,      PortAction::none },
+  /* state */   /* source_fill */ /* source_push */        /* try_push */           /* sink_drain */  /* sink_pull */        /* try_pull */        /* stop */
+							                            					                            
+  /* st_00 */ { PortAction::none, PortAction::ac_return,   PortAction::ac_return,   PortAction::none, PortAction::sink_wait, PortAction::none,      PortAction::notify_sink },
+  /* st_01 */ { PortAction::none, PortAction::ac_return,   PortAction::ac_return,   PortAction::none, PortAction::ac_return, PortAction::ac_return, PortAction::notify_sink },
+  /* st_10 */ { PortAction::none, PortAction::source_move, PortAction::source_move, PortAction::none, PortAction::sink_move, PortAction::sink_move, PortAction::notify_sink },
+  /* st_11 */ { PortAction::none, PortAction::source_wait, PortAction::none,        PortAction::none, PortAction::ac_return, PortAction::ac_return, PortAction::notify_sink },
+							                            					                            
+  /* xt_00 */ { PortAction::none, PortAction::none,        PortAction::none,        PortAction::none, PortAction::none,      PortAction::none,      PortAction::none },
+  /* xt_01 */ { PortAction::none, PortAction::none,        PortAction::none,        PortAction::none, PortAction::ac_return, PortAction::ac_return, PortAction::none },
+  /* xt_10 */ { PortAction::none, PortAction::none,        PortAction::none,        PortAction::none, PortAction::sink_move, PortAction::sink_move, PortAction::none },
+  /* xt_11 */ { PortAction::none, PortAction::none,        PortAction::none,        PortAction::none, PortAction::ac_return, PortAction::ac_return, PortAction::none },
+							                            					                            
+  /* done  */ { PortAction::none, PortAction::none,        PortAction::none,        PortAction::none, PortAction::none,      PortAction::none,      PortAction::none },
+  /* error */ { PortAction::none, PortAction::none,        PortAction::none,        PortAction::none, PortAction::none,      PortAction::none,      PortAction::none },
+							                            					                            
+  /* last */  { PortAction::none, PortAction::none,        PortAction::none,        PortAction::none, PortAction::none,      PortAction::none,      PortAction::none },
 };
 
 /**
@@ -414,22 +502,22 @@ constexpr const PortAction exit_table<two_stage>[num_states<two_stage>][n_events
  */
 template<>
 constexpr const PortAction entry_table<two_stage> [num_states<two_stage>][n_events] {
-  /* state */   /* source_fill */        /* source_push */        /* sink_drain */           /* sink_pull */        /* stop */
-
-  /* st_00 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
-  /* st_01 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
-  /* st_10 */ { PortAction::notify_sink, PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
-  /* st_11 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
-
-  /* xt_00 */ { PortAction::none,        PortAction::none,        PortAction::/*notify_source*/none, PortAction::none,      PortAction::source_done },
-  /* xt_01 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::source_done },
-  /* xt_10 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::source_done },
-  /* xt_11 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::source_done },
-
-  /* done  */ { PortAction::none,        PortAction::none,        PortAction::sink_done,     PortAction::sink_done, PortAction::none },
-  /* error */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
-
-  /* last */  { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
+  /* state */   /* source_fill */        /* source_push */        /* try_push */           /* sink_drain */           /* sink_pull */        /* try_pull */        /* stop */
+								                           						                            
+  /* st_00 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none,      PortAction::none },
+  /* st_01 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::none },
+  /* st_10 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none,      PortAction::none },
+  /* st_11 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::none },
+								                           						                            
+  /* xt_00 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::source_done },
+  /* xt_01 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::source_done },
+  /* xt_10 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none,      PortAction::source_done },
+  /* xt_11 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::source_done },
+								                           						                            
+  /* done  */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::sink_done,     PortAction::sink_done, PortAction::sink_done, PortAction::none },
+  /* error */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::none },
+								                           						                            
+  /* last */  { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::none },
 };
 
 /**
@@ -469,30 +557,30 @@ transition_table<three_stage>[num_states<three_stage>][n_events] {
  */
 template<>
 constexpr const PortAction exit_table<three_stage>[num_states<three_stage>][n_events] {
-  /* state  */  /* source_fill */  /* source_push */        /* sink_drain */      /* sink_pull */        /* stop */
-
-  /* st_000 */ { PortAction::none, PortAction::ac_return,   PortAction::none,      PortAction::sink_wait, PortAction::notify_sink },
-  /* st_001 */ { PortAction::none, PortAction::ac_return,   PortAction::none,      PortAction::ac_return, PortAction::notify_sink },
-  /* st_010 */ { PortAction::none, PortAction::source_move, PortAction::none,      PortAction::sink_move, PortAction::notify_sink },
-  /* st_011 */ { PortAction::none, PortAction::ac_return,   PortAction::none,      PortAction::ac_return, PortAction::notify_sink },
-  /* st_100 */ { PortAction::none, PortAction::source_move, PortAction::none,      PortAction::sink_move, PortAction::notify_sink },
-  /* st_101 */ { PortAction::none, PortAction::source_move, PortAction::none,      PortAction::sink_move, PortAction::notify_sink },
-  /* st_110 */ { PortAction::none, PortAction::source_move, PortAction::none,      PortAction::sink_move, PortAction::notify_sink },
-  /* st_111 */ { PortAction::none, PortAction::source_wait, PortAction::none,      PortAction::ac_return, PortAction::notify_sink },
-
-  /* xt_000 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::none,      PortAction::none },
-  /* xt_001 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::ac_return, PortAction::none },
-  /* xt_010 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::sink_move, PortAction::none },
-  /* xt_011 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::ac_return, PortAction::none },
-  /* xt_100 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::sink_move, PortAction::none },
-  /* xt_101 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::sink_move, PortAction::none },
-  /* xt_110 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::sink_move, PortAction::none },
-  /* xt_111 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::ac_return, PortAction::none },
-
-  /* done   */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::none,      PortAction::none },
-  /* error  */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::none,      PortAction::none },
-
-  /* last   */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::none,      PortAction::none },
+  /* state  */  /* source_fill */  /* source_push */        /* sink_drain */       /* sink_pull */        /* sink_try_pull */    /* stop */
+										                                                 
+  /* st_000 */ { PortAction::none, PortAction::ac_return,   PortAction::none,      PortAction::sink_wait, PortAction::none,      PortAction::notify_sink },
+  /* st_001 */ { PortAction::none, PortAction::ac_return,   PortAction::none,      PortAction::ac_return, PortAction::ac_return, PortAction::notify_sink },
+  /* st_010 */ { PortAction::none, PortAction::source_move, PortAction::none,      PortAction::sink_move, PortAction::sink_move, PortAction::notify_sink },
+  /* st_011 */ { PortAction::none, PortAction::ac_return,   PortAction::none,      PortAction::ac_return, PortAction::ac_return, PortAction::notify_sink },
+  /* st_100 */ { PortAction::none, PortAction::source_move, PortAction::none,      PortAction::sink_move, PortAction::sink_move, PortAction::notify_sink },
+  /* st_101 */ { PortAction::none, PortAction::source_move, PortAction::none,      PortAction::sink_move, PortAction::sink_move, PortAction::notify_sink },
+  /* st_110 */ { PortAction::none, PortAction::source_move, PortAction::none,      PortAction::sink_move, PortAction::sink_move, PortAction::notify_sink },
+  /* st_111 */ { PortAction::none, PortAction::source_wait, PortAction::none,      PortAction::ac_return, PortAction::ac_return, PortAction::notify_sink },
+										                                                 
+  /* xt_000 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::none,      PortAction::none,      PortAction::none },
+  /* xt_001 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::ac_return, PortAction::ac_return, PortAction::none },
+  /* xt_010 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::sink_move, PortAction::sink_move, PortAction::none },
+  /* xt_011 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::ac_return, PortAction::ac_return, PortAction::none },
+  /* xt_100 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::sink_move, PortAction::sink_move, PortAction::none },
+  /* xt_101 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::sink_move, PortAction::sink_move, PortAction::none },
+  /* xt_110 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::sink_move, PortAction::sink_move, PortAction::none },
+  /* xt_111 */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::ac_return, PortAction::ac_return, PortAction::none },
+										                                                 
+  /* done   */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::none,      PortAction::none,      PortAction::none },
+  /* error  */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::none,      PortAction::none,      PortAction::none },
+										                                                 
+  /* last   */ { PortAction::none, PortAction::none,        PortAction::none,      PortAction::none,      PortAction::none,      PortAction::none },
 };
 
 /**
@@ -500,61 +588,61 @@ constexpr const PortAction exit_table<three_stage>[num_states<three_stage>][n_ev
  */
 template<>
 constexpr const PortAction entry_table<three_stage>[num_states<three_stage>][n_events] {
-  /* state  */  /* source_fill */         /* source_push */        /* sink_drain */           /* sink_pull */        /* stop */
-
-  /* st_000 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
-  /* st_001 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
-  /* st_010 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
-  /* st_011 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
-  /* st_100 */ { PortAction::notify_sink, PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
-  /* st_101 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
-  /* st_110 */ { PortAction::notify_sink, PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none },
-  /* st_111 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
-
-  /* xt_000 */ { PortAction::none,        PortAction::none,        PortAction::/*notify_source*/none, PortAction::none,      PortAction::source_done },
-  /* xt_001 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::source_done },
-  /* xt_010 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::source_done },
-  /* xt_011 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::source_done },
-  /* xt_100 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::source_done },
-  /* xt_101 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::source_done },
-  /* xt_110 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::source_done },
-  /* xt_111 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::source_done },
-
-  /* done   */ { PortAction::none,        PortAction::none,        PortAction::sink_done,     PortAction::sink_done, PortAction::none },
-  /* error  */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
-
-  /* last   */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none },
+  /* state  */  /* source_fill */         /* source_push */        /* sink_drain */           /* sink_pull */       /* sink_try_pull */   /* stop */
+											                                                  
+  /* st_000 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,     PortAction::none,      PortAction::none },
+  /* st_001 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::none },
+  /* st_010 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,     PortAction::none,      PortAction::none },
+  /* st_011 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::none },
+  /* st_100 */ { PortAction::notify_sink, PortAction::none,        PortAction::notify_source, PortAction::none,     PortAction::none,      PortAction::none },
+  /* st_101 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::none },
+  /* st_110 */ { PortAction::notify_sink, PortAction::none,        PortAction::notify_source, PortAction::none,     PortAction::none,      PortAction::none },
+  /* st_111 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::none },
+											                                                  
+  /* xt_000 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::source_done },
+  /* xt_001 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::source_done },
+  /* xt_010 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,     PortAction::none,      PortAction::source_done },
+  /* xt_011 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::source_done },
+  /* xt_100 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,     PortAction::none,      PortAction::source_done },
+  /* xt_101 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::source_done },
+  /* xt_110 */ { PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,     PortAction::none,      PortAction::source_done },
+  /* xt_111 */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::source_done },
+											                                                  
+  /* done   */ { PortAction::none,        PortAction::none,        PortAction::sink_done,     PortAction::sink_done,PortAction::sink_done, PortAction::none },
+  /* error  */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::none },
+											                                                  
+  /* last   */ { PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::none },
 
 };
-// clang-format on
+  // clang-format on
 }  // namespace
 /**
  * Class template representing states of a bound source and sink node (in the
- * two stage case) or the states of a bound source, sink node, and intermediary
- * (in the three stage case).  The class supplies an `event` function for
- * effecting state transitions (including application of exit and entry
- * functions).  The class is agnostic as to how the actions are actually
- * implemented by the users of the state machine.  A policy class is used by the
- * `PortFinitStateMachine` to realize the specific state transition actions.  It
- * is assumed the the Policy class inherits from `PortFiniteStateMachine` using
- * CRTP.
+ * two stage case) or the states of a bound source, sink node, and
+ * intermediary (in the three stage case).  The class supplies an `event`
+ * function for effecting state transitions (including application of exit and
+ * entry functions).  The class is agnostic as to how the actions are actually
+ * implemented by the users of the state machine.  A policy class is used by
+ * the `PortFinitStateMachine` to realize the specific state transition
+ * actions.  It is assumed the the Policy class inherits from
+ * `PortFiniteStateMachine` using CRTP.
  *
  * Extended documentation for the operation of the state machine for the
  * two-stage case can be found in * fsm.md.
  *
  * The `Policy` class is expected to use the `PortFiniteStateMachine` class
- * using CRTP so that functions provided by the `Policy` class are available to
- * the `PortFiniteStateMachine`. Documentation about action policy classes can
- * be found in policies.h.
+ * using CRTP so that functions provided by the `Policy` class are available
+ * to the `PortFiniteStateMachine`. Documentation about action policy classes
+ * can be found in policies.h.
  *
- * @note There is a fair amount of debugging code inserted into the class at the
- * moment.
+ * @note There is a fair amount of debugging code inserted into the class at
+ * the moment.
  *
  * @todo Clean up the debugging code as we gain more confidence/experiene with
  * the state machine (et al).
  *
- * @todo Use an aspect class (as another template argument) to effect callbacks
- * at each interesting point in the state machine (such as debugging
+ * @todo Use an aspect class (as another template argument) to effect
+ * callbacks at each interesting point in the state machine (such as debugging
  * statements).
  */
 template <class Policy, class PortState>
@@ -670,8 +758,8 @@ class PortFiniteStateMachine {
 
     /**
      * Perform any exit actions.  Based on the exit action in the exit action
-     * table, we dispatch to a function provided by the policy.  Since Policy is
-     * assumed to be derived from this class, we use a `static_cast` to
+     * table, we dispatch to a function provided by the policy.  Since Policy
+     * is assumed to be derived from this class, we use a `static_cast` to
      * `Policy*` on `this`.
      */
     switch (exit_action) {
@@ -814,8 +902,8 @@ class PortFiniteStateMachine {
         static_cast<Policy*>(this)->on_source_move(lock, event_counter);
 
         /*
-         * If we do a move on entry, we need to fix up the state, since we have
-         * already passed the state transition step.
+         * If we do a move on entry, we need to fix up the state, since we
+         * have already passed the state transition step.
          */
         if constexpr (std::is_same_v<port_state, two_stage>) {
           switch (state_) {
@@ -870,8 +958,8 @@ class PortFiniteStateMachine {
         static_cast<Policy*>(this)->on_sink_move(lock, event_counter);
 
         /*
-         * If we do a move on entry, we need to fix up the state, since we have
-         * already passed the state transition step.
+         * If we do a move on entry, we need to fix up the state, since we
+         * have already passed the state transition step.
          */
         if constexpr (std::is_same_v<port_state, two_stage>) {
           switch (state_) {
@@ -997,9 +1085,9 @@ class PortFiniteStateMachine {
   }
 
   /**
-   * Functions for invoking events in the StateMachine.  In general, clients of
-   * the StateMachine will be using it via a mover class.  These are here to
-   * enable direct testing of the state machine.
+   * Functions for invoking events in the StateMachine.  In general, clients
+   * of the StateMachine will be using it via a mover class.  These are here
+   * to enable direct testing of the state machine.
    */
 
   /**
@@ -1017,10 +1105,24 @@ class PortFiniteStateMachine {
   }
 
   /**
+   * Invoke `try_push` event.
+   */
+  void do_try_push(const std::string& msg = "") {
+    event(PortEvent::try_push, msg);
+  }
+
+  /**
    * Invoke `do_pull` event.
    */
   void do_pull(const std::string& msg = "") {
     event(PortEvent::sink_pull, msg);
+  }
+
+  /**
+   * Invoke `try_pull` event.
+   */
+  void do_try_pull(const std::string& msg = "") {
+    event(PortEvent::try_pull, msg);
   }
 
   /**
@@ -1064,7 +1166,7 @@ class PortFiniteStateMachine {
   constexpr inline bool debug_enabled() const {
     return debug_;
   }
-};
+  };
 
 }  // namespace tiledb::common
 
