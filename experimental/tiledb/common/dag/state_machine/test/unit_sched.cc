@@ -305,6 +305,7 @@ TEST_CASE("Tuple maker: Test abundant pseudo-scheduler with fsm", "[sched]") {
                 << std::endl;
     } else {
       std::cout << "this should not happen" << std::endl;
+      throw("this should not happen");
     }
   }
 
@@ -411,10 +412,11 @@ class single_maker_node : public node<alt_single_maker_state<T>> {
 std::queue<node_hook*> runnable_queue;
 std::set<node_hook*> running_queue;
 
-void do_run() {
+void do_run(bool debug = false) {
   static std::mutex mutex_;
 
-  std::cout << "do_run starting " << std::endl;
+  std::cout << "do_run starting " << runnable_queue.size() << " "
+            << running_queue.size() << std::endl;
 
   std::unique_lock lock(mutex_);
 
@@ -423,9 +425,10 @@ void do_run() {
   // Somehow a node is in the running queue without actually running
 
   while (!running_queue.empty() || !runnable_queue.empty()) {
-    std::cout << id << " do run running "
-              << " runnable queue.size() " << runnable_queue.size()
-              << " running queue size " << running_queue.size() << std::endl;
+    if (debug)
+      std::cout << id << " do run running "
+                << " runnable queue.size() " << runnable_queue.size()
+                << " running queue size " << running_queue.size() << std::endl;
 
     node_hook* n{nullptr};
 
@@ -434,25 +437,28 @@ void do_run() {
       runnable_queue.pop();
       running_queue.emplace(n);
 
-      std::cout << id << " about to run " << n->get_id() << std::endl;
+      if (debug)
+        std::cout << id << " about to run " << n->get_id() << std::endl;
 
       lock.unlock();
       n = n->resume();
       lock.lock();
 
-      std::cout << id << " do run return " << n->get_id() << " from resume "
-                << str(n->get_state()) << " runnable queue size "
-                << runnable_queue.size() << " running queue size "
-                << running_queue.size() << std::endl;
+      if (debug)
+        std::cout << id << " do run return " << n->get_id() << " from resume "
+                  << str(n->get_state()) << " runnable queue size "
+                  << runnable_queue.size() << " running queue size "
+                  << running_queue.size() << std::endl;
 
       if (running_queue.erase(n) == 0) {
         throw("element not found in running queue");
       }
 
-      std::cout << id << " running dequeued " << n->get_id() << " with "
-                << str(n->get_state()) << " running queue size "
-                << running_queue.size() << " runnable queue size "
-                << runnable_queue.size() << std::endl;
+      if (debug)
+        std::cout << id << " running dequeued " << n->get_id() << " with "
+                  << str(n->get_state()) << " running queue size "
+                  << running_queue.size() << " runnable queue size "
+                  << runnable_queue.size() << std::endl;
 
       if (n->get_state() == state::exit) {
         std::cout << id << " runnable " << n->get_id() << " exiting "
@@ -462,10 +468,12 @@ void do_run() {
       }
 
       runnable_queue.push(n);
-      std::cout << id << " runnable enqueued " << n->get_id() << " with "
-                << str(n->get_state()) << " running queue size "
-                << running_queue.size() << " runnable queue size "
-                << runnable_queue.size() << std::endl;
+
+      if (debug)
+        std::cout << id << " runnable enqueued " << n->get_id() << " with "
+                  << str(n->get_state()) << " running queue size "
+                  << running_queue.size() << " runnable queue size "
+                  << runnable_queue.size() << std::endl;
 
     } else {
       if (running_queue.erase(n) == 0) {
@@ -474,35 +482,25 @@ void do_run() {
       runnable_queue.push(n);
     }
   }
-  std::cout << id << " bottom of while: running queue size "
-            << running_queue.size() << " runnable queue size "
-            << runnable_queue.size() << std::endl;
+  if (debug)
+    std::cout << id << " bottom of while: running queue size "
+              << running_queue.size() << " runnable queue size "
+              << runnable_queue.size() << std::endl;
 
-  std::cout << id << " post while: running queue size " << running_queue.size()
-            << " runnable queue size " << runnable_queue.size() << std::endl;
+  if (debug)
+    std::cout << id << " post while: running queue size "
+              << running_queue.size() << " runnable queue size "
+              << runnable_queue.size() << std::endl;
 }
 
-TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
-  [[maybe_unused]] constexpr bool debug = true;
-
-  std::optional<size_t> source_item{0};
-  std::optional<size_t> mid_item_in{0};
-  std::optional<std::tuple<size_t, size_t, size_t>> mid_item_out;
-  std::optional<std::tuple<size_t, size_t, size_t>> sink_item;
-
-  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, mid_item_in};
-  [[maybe_unused]] auto b =
-      AsyncMover2<std::tuple<size_t, size_t, size_t>>{mid_item_out, sink_item};
-
+template <class Mover1, class Mover2>
+void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
   if (debug) {
     a.enable_debug();
     b.enable_debug();
   }
 
-  a.set_state(two_stage::st_00);
-  b.set_state(two_stage::st_00);
-
-  size_t rounds = 33;
+  size_t rounds = 337;
   if (debug)
     rounds = 3;
 
@@ -587,6 +585,7 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
           std::cout << "Source node this should not happen!! " +
                            str(alt_state.counter)
                     << std::endl;
+        throw("Source node this should not happen!! " + str(alt_state.counter));
         break;
     }
     if (--alt_state.n == 0) {
@@ -739,6 +738,7 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
           std::cout << "mid node this should not happen!! " +
                            str(alt_state.counter)
                     << std::endl;
+        throw("Mid node this should not happen!! " + str(alt_state.counter));
         break;
     }
     if (--alt_state.n == 0) {
@@ -809,6 +809,7 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
           std::cout << "Sink node this should not happen!! " +
                            str(alt_state.counter)
                     << std::endl;
+        throw("Sink node this should not happen!! " + str(alt_state.counter));
     }
     if (--alt_state.n == 0) {
       alt_state.counter = state::exit;
@@ -822,36 +823,55 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
     return alt_state.counter;
   };
 
+  auto c = single_maker_node<size_t>{source_node_fn, "source"};
+  auto p = triple_maker_node<size_t>{mid_node_fn, "mid"};
+  auto q = single_maker_node<size_t>{sink_node_fn, "sink"};
+
+  CHECK(runnable_queue.size() == 0);
+  CHECK(running_queue.size() == 0);
+
+  std::queue<node_hook*> clear_queue;
+  std::swap(runnable_queue, clear_queue);
+
+  running_queue.clear();
+
+  runnable_queue.push(&c);
+  runnable_queue.push(&p);
+  runnable_queue.push(&q);
+
+  std::vector<std::future<void>> futs;
+  futs.clear();
+
   size_t threads = GENERATE(1, 2, 3, 4, 8, 16);
 
-  SECTION("Threadpool 2 with " + std::to_string(threads)) {
-    //    ThreadPool tp(threads);
-
-    auto c = single_maker_node<size_t>{source_node_fn, "source"};
-    auto p = triple_maker_node<size_t>{mid_node_fn, "mid"};
-    auto q = single_maker_node<size_t>{sink_node_fn, "sink"};
-
-    runnable_queue.push(&c);
-    runnable_queue.push(&p);
-    runnable_queue.push(&q);
-
-    std::vector<std::future<void>> futs;
-
+  SECTION("Std async with " + std::to_string(threads)) {
     for (size_t t = 0; t < threads; ++t) {
-      futs.emplace_back(std::async(std::launch::async, [&]() { do_run(); }));
+      futs.emplace_back(
+          std::async(std::launch::async, [&]() { do_run(debug); }));
     }
     CHECK(futs.size() == threads);
-
-    //    auto fut_c = tp.async([&]() { do_run(); });
-    //    auto fut_p = tp.async([&]() { do_run(); });
-    //    auto fut_q = tp.async([&]() { do_run(); });
 
     for (size_t t = 0; t < threads; ++t) {
       futs[t].wait();
     }
-    CHECK(running_queue.size() == 0);
-    CHECK(runnable_queue.empty());
   }
+
+  SECTION("Threadpool with " + std::to_string(threads)) {
+    ThreadPool<false, false, false> tp(threads);
+
+    for (size_t t = 0; t < threads; ++t) {
+      futs.emplace_back(tp.async([&]() { do_run(debug); }));
+    }
+    CHECK(futs.size() == threads);
+
+    // Not condfigured for get() with void -- so don't do that
+    for (size_t t = 0; t < threads; ++t) {
+      futs[t].wait();
+    }
+  }
+
+  CHECK(running_queue.size() == 0);
+  CHECK(runnable_queue.empty());
 
   if (!std::equal(input.begin(), input.end(), midput_in.begin())) {
     for (size_t j = 0; j < input.size(); ++j) {
@@ -881,8 +901,52 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
   CHECK(output.size() == rounds);
   CHECK(std::equal(input.begin(), input.end(), midput_in.begin()));
   CHECK(std::equal(midput_out.begin(), midput_out.end(), output.begin()));
-  CHECK(str(a.state()) == "st_00");
-  CHECK(str(b.state()) == "st_00");
-  CHECK((a.source_swaps() + a.sink_swaps()) == 3 * rounds);
-  CHECK((b.source_swaps() + b.sink_swaps()) == rounds);
+}
+
+TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
+  [[maybe_unused]] constexpr bool debug = false;
+
+  SECTION("Test async2") {
+    std::optional<size_t> source_item{0};
+    std::optional<size_t> mid_item_in{0};
+    std::optional<std::tuple<size_t, size_t, size_t>> mid_item_out;
+    std::optional<std::tuple<size_t, size_t, size_t>> sink_item;
+
+    [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, mid_item_in};
+    [[maybe_unused]] auto b = AsyncMover2<std::tuple<size_t, size_t, size_t>>{
+        mid_item_out, sink_item};
+
+    a.set_state(two_stage::st_00);
+    b.set_state(two_stage::st_00);
+
+    test_stingy(a, b, debug);
+
+    CHECK(str(a.state()) == "st_00");
+    CHECK(str(b.state()) == "st_00");
+  }
+
+  SECTION("Test async3") {
+    std::optional<size_t> source_item{0};
+    std::optional<size_t> source_mid_item_in{0};
+    std::optional<size_t> mid_item_in{0};
+    std::optional<std::tuple<size_t, size_t, size_t>> mid_item_out;
+    std::optional<std::tuple<size_t, size_t, size_t>> mid_sink_item_out;
+    std::optional<std::tuple<size_t, size_t, size_t>> sink_item;
+
+    [[maybe_unused]] auto a =
+        AsyncMover3<size_t>{source_item, source_mid_item_in, mid_item_in};
+    [[maybe_unused]] auto b = AsyncMover3<std::tuple<size_t, size_t, size_t>>{
+        mid_item_out, mid_sink_item_out, sink_item};
+
+    a.set_state(three_stage::st_000);
+    b.set_state(three_stage::st_000);
+
+    test_stingy(a, b, debug);
+
+    CHECK(str(a.state()) == "st_000");
+    CHECK(str(b.state()) == "st_000");
+
+    // CHECK((a.source_swaps() + a.sink_swaps()) == 3 * rounds);
+    // CHECK((b.source_swaps() + b.sink_swaps()) == rounds);
+  }
 }

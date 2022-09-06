@@ -53,7 +53,8 @@ struct QueueBase<true> {
 
   std::atomic<size_t> index_;
   const size_t rounds_{3};
-  std::vector<ProducerConsumerQueue<std::shared_ptr<std::function<void()>>>>
+  std::vector<
+      ProducerConsumerQueue<std::shared_ptr<std::packaged_task<void()>>>>
       task_queues_;
 };
 
@@ -61,11 +62,12 @@ template <>
 struct QueueBase<false> {
   QueueBase(size_t) {
   }
-  ProducerConsumerQueue<std::shared_ptr<std::function<void()>>> task_queue_;
+  ProducerConsumerQueue<std::shared_ptr<std::packaged_task<void()>>>
+      task_queue_;
 };
 
 /**
- * Experimtal threadpool class.
+ * Experimental threadpool class.
  *
  * @tparam WorkStealing Whether the threadpool implements a work-stealing
  * scheme.  Only applicable when there are multiple queues.
@@ -120,6 +122,7 @@ class ThreadPool : public QueueBase<MultipleQueues> {
     std::shared_ptr<std::promise<R>> task_promise(new std::promise<R>);
     std::future<R> future = task_promise->get_future();
 
+#if 0
     auto task = std::make_shared<std::function<void()>>(
         [f = std::forward<Fn>(f),
          args = std::make_tuple(std::forward<Args>(args)...),
@@ -136,7 +139,13 @@ class ThreadPool : public QueueBase<MultipleQueues> {
             task_promise->set_exception(std::current_exception());
           }
         });
-
+#else
+    auto task = std::make_shared<std::packaged_task<R()>>(
+        [f = std::forward<Fn>(f),
+         args = std::make_tuple(std::forward<Args>(args)...)]() mutable {
+          return std::apply(std::move(f), std::move(args));
+        });
+#endif
     if constexpr (RecursivePush) {
       if constexpr (MultipleQueues) {
         size_t i = QBase::index_++;
@@ -217,7 +226,7 @@ class ThreadPool : public QueueBase<MultipleQueues> {
  private:
   void worker(size_t i) {
     while (true) {
-      std::optional<std::shared_ptr<std::function<void()>>> val;
+      std::optional<std::shared_ptr<std::packaged_task<void()>>> val;
 
       if constexpr (MultipleQueues) {
         for (size_t j = 0; j < num_threads_ * QBase::rounds_; ++j) {

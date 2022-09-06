@@ -171,13 +171,13 @@ class BaseMover<Mover, three_stage, Block> {
     switch (state) {
       case PortState::st_101:
       case PortState::xt_101:
-        CHECK(*(items_[0]) != EMPTY_SINK);
+        //        CHECK(*(items_[0]) != EMPTY_SINK);
         std::swap(*items_[0], *items_[1]);
         break;
 
       case PortState::st_010:
       case PortState::xt_010:
-        CHECK(*(items_[1]) != EMPTY_SINK);
+        // CHECK(*(items_[1]) != EMPTY_SINK);
         std::swap(*items_[1], *items_[2]);
         break;
 
@@ -189,9 +189,9 @@ class BaseMover<Mover, three_stage, Block> {
 
       case PortState::st_110:
       case PortState::xt_110:
-        CHECK(*(items_[1]) != EMPTY_SINK);
+        //        CHECK(*(items_[1]) != EMPTY_SINK);
         std::swap(*items_[1], *items_[2]);
-        CHECK(*(items_[0]) != EMPTY_SINK);
+        //        CHECK(*(items_[0]) != EMPTY_SINK);
         std::swap(*items_[0], *items_[1]);
         break;
 
