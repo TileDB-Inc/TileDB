@@ -1575,10 +1575,11 @@ Status ReaderBase::unfilter_tiles(
           // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
           // 't_var' for var-sized tiles.
           if (!var_size) {
-            if (!nullable)
+            if (!nullable) {
               RETURN_NOT_OK(unfilter_tile(name, t));
-            else
+            } else {
               RETURN_NOT_OK(unfilter_tile_nullable(name, t, t_validity));
+            }
           } else {
             if (!nullable)
               RETURN_NOT_OK(unfilter_tile(name, t, t_var));
