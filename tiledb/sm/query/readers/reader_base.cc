@@ -362,7 +362,9 @@ Status ReaderBase::add_delete_timestamps_condition() {
         std::string(constants::delete_timestamps),
         &open_ts,
         sizeof(uint64_t),
-        QueryConditionOp::GE));
+        open_ts == std::numeric_limits<uint64_t>::max() ?
+            QueryConditionOp::GE :
+            QueryConditionOp::GT));
   }
 
   return Status::Ok();

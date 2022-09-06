@@ -473,7 +473,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_consistency)
   add_dependencies(tests unit_range)
   add_dependencies(tests unit_capi_handle unit_capi_filter)
-  add_dependencies(tests unit_delete_condition)
+  add_dependencies(tests unit_delete_update_condition)
   add_dependencies(tests unit_ast)
   add_dependencies(tests unit_serializers)
 

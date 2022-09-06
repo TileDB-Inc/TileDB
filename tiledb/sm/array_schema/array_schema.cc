@@ -526,8 +526,7 @@ bool ArraySchema::is_dim_label(const std::string& name) const {
 }
 
 bool ArraySchema::is_field(const std::string& name) const {
-  return is_attr(name) || is_dim(name) || name == constants::coords ||
-         name == constants::timestamps || name == constants::delete_timestamps;
+  return is_attr(name) || is_dim(name) || is_special_attribute(name);
 }
 
 bool ArraySchema::is_nullable(const std::string& name) const {

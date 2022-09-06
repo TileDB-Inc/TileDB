@@ -26,22 +26,22 @@
 include(common NO_POLICY_SCOPE)
 
 if (TILEDB_TESTS)
-    add_executable(unit_delete_condition EXCLUDE_FROM_ALL)
+    add_executable(unit_delete_update_condition EXCLUDE_FROM_ALL)
     find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_delete_condition PUBLIC Catch2::Catch2WithMain)
-    target_include_directories(unit_delete_condition PUBLIC ${TILEDB_EP_INSTALL_PREFIX}/include)
-    target_link_libraries(unit_delete_condition PUBLIC ast_test_support_lib)
+    target_link_libraries(unit_delete_update_condition PUBLIC Catch2::Catch2WithMain)
+    target_link_libraries(unit_delete_update_condition PUBLIC ast_test_support_lib)
+    target_include_directories(unit_delete_update_condition PUBLIC ${TILEDB_EP_INSTALL_PREFIX}/include)
 
     # Sources for tests
-    target_sources(unit_delete_condition PUBLIC test/main.cc test/unit_delete_condition.cc)
+    target_sources(unit_delete_update_condition PUBLIC test/main.cc test/unit_delete_condition.cc test/unit_update_condition.cc)
 
     # The dependencies can't yet be factored into separate object libraries
-    target_link_libraries(unit_delete_condition PUBLIC TILEDB_CORE_OBJECTS)
-    target_link_libraries(unit_delete_condition PUBLIC TILEDB_CORE_OBJECTS_ILIB)
+    target_link_libraries(unit_delete_update_condition PUBLIC TILEDB_CORE_OBJECTS)
+    target_link_libraries(unit_delete_update_condition PUBLIC TILEDB_CORE_OBJECTS_ILIB)
 
     add_test(
-        NAME "unit_delete_condition"
-        COMMAND $<TARGET_FILE:unit_delete_condition>
+        NAME "unit_delete_update_condition"
+        COMMAND $<TARGET_FILE:unit_delete_update_condition>
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()
