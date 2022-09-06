@@ -1928,17 +1928,7 @@ Status StorageManager::store_array_schema(
   SizeComputationSerializer size_computation_serializer;
   array_schema->serialize(size_computation_serializer);
 
-  Tile tile;
-  if (!tile.init_unfiltered(
-               0,
-               constants::generic_tile_datatype,
-               size_computation_serializer.size(),
-               constants::generic_tile_cell_size,
-               0)
-           .ok()) {
-    throw StatusException("StorageManager", "Cannot initialize tile");
-  }
-
+  Tile tile{Tile::from_generic(size_computation_serializer.size())};
   Serializer serializer(tile.data(), tile.size());
   array_schema->serialize(serializer);
 
