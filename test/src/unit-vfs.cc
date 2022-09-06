@@ -46,11 +46,9 @@ using namespace tiledb::test;
 TEST_CASE("VFS: Test read batching", "[vfs]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
-  Config config;
-
   URI testfile("vfs_unit_test_data");
-  std::unique_ptr<VFS> vfs(new VFS);
-  REQUIRE(vfs->init(&g_helper_stats, &compute_tp, &io_tp, config).ok());
+  std::unique_ptr<VFS> vfs(
+      new VFS(&g_helper_stats, &compute_tp, &io_tp, Config{}));
 
   bool exists = false;
   REQUIRE(vfs->is_file(testfile, &exists).ok());
@@ -65,7 +63,6 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     data_write[i] = i;
   }
   REQUIRE(vfs->write(testfile, data_write, nelts * sizeof(uint32_t)).ok());
-  REQUIRE(vfs->terminate().ok());
 
   Tile tile[nelts];
   for (uint64_t i = 0; i < nelts; i++) {
@@ -79,8 +76,8 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     // Check reading in one batch: single read operation.
     std::memset(tile[0].filtered_buffer().data(), 0, nelts * sizeof(uint32_t));
     batches.emplace_back(0, &tile[0], nelts * sizeof(uint32_t));
-    REQUIRE(vfs->init(&g_helper_stats, &compute_tp, &io_tp, config).ok());
-    REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
+    VFS vfs{&g_helper_stats, &compute_tp, &io_tp, Config{}};
+    REQUIRE(vfs.read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++)
@@ -94,7 +91,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     batches.emplace_back(0, &tile[0], sizeof(uint32_t));
     batches.emplace_back(
         (nelts - 1) * sizeof(uint32_t), &tile[1], sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
+    REQUIRE(vfs.read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
     REQUIRE(tile[0].filtered_buffer().data_as<uint32_t>()[0] == 0);
@@ -108,25 +105,25 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
           tile[i].filtered_buffer().data(), 0, nelts * sizeof(uint32_t));
       batches.emplace_back(i * sizeof(uint32_t), &tile[i], sizeof(uint32_t));
     }
-    REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
+    REQUIRE(vfs.read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++) {
       REQUIRE(tile[i].filtered_buffer().data_as<uint32_t>()[0] == i);
     }
-    REQUIRE(vfs->terminate().ok());
   }
 
   SECTION("- Reduce min batch size and min batch gap") {
     // Set a smaller min batch size and min batch gap
+    Config config;
     config.set("vfs.min_batch_size", "0");
     config.set("vfs.min_batch_gap", "0");
-    REQUIRE(vfs->init(&g_helper_stats, &compute_tp, &io_tp, config).ok());
+    VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
 
     // Check large batches are not split up.
     std::memset(tile[0].filtered_buffer().data(), 0, nelts * sizeof(uint32_t));
     batches.emplace_back(0, &tile[0], nelts * sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
+    REQUIRE(vfs.read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++) {
@@ -142,7 +139,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
       batches.emplace_back(
           2 * i * sizeof(uint32_t), &tile[i], sizeof(uint32_t));
     }
-    REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
+    REQUIRE(vfs.read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
     for (unsigned i = 0; i < nelts / 2; i++) {
@@ -157,19 +154,18 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     batches.emplace_back(0, &tile[0], sizeof(uint32_t));
     batches.emplace_back(
         (nelts - 1) * sizeof(uint32_t), &tile[1], sizeof(uint32_t));
-    REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
+    REQUIRE(vfs.read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
     REQUIRE(tile[0].filtered_buffer().data_as<uint32_t>()[0] == 0);
     REQUIRE(tile[1].filtered_buffer().data_as<uint32_t>()[0] == nelts - 1);
-    REQUIRE(vfs->terminate().ok());
   }
 
   SECTION("- Reduce min batch size but not min batch gap") {
     // Set a smaller min batch size
     Config config;
     config.set("vfs.min_batch_size", "0");
-    REQUIRE(vfs->init(&g_helper_stats, &compute_tp, &io_tp, config).ok());
+    VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
 
     // There should be a single read due to the gap
     batches.clear();
@@ -178,20 +174,19 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
           tile[i].filtered_buffer().data(), 0, nelts * sizeof(uint32_t));
       batches.emplace_back(i * sizeof(uint32_t), &tile[i], sizeof(uint32_t));
     }
-    REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
+    REQUIRE(vfs.read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++) {
       REQUIRE(tile[i].filtered_buffer().data_as<uint32_t>()[0] == i);
     }
-    REQUIRE(vfs->terminate().ok());
   }
 
   SECTION("- Reduce min batch gap but not min batch size") {
     // Set a smaller min batch size
     Config config;
     config.set("vfs.min_batch_gap", "0");
-    REQUIRE(vfs->init(&g_helper_stats, &compute_tp, &io_tp, config).ok());
+    VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
 
     // There should be a single read due to the batch size
     batches.clear();
@@ -200,21 +195,17 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
           tile[i].filtered_buffer().data(), 0, nelts * sizeof(uint32_t));
       batches.emplace_back(i * sizeof(uint32_t), &tile[i], sizeof(uint32_t));
     }
-    REQUIRE(vfs->read_all(testfile, batches, &io_tp, &tasks).ok());
+    REQUIRE(vfs.read_all(testfile, batches, &io_tp, &tasks).ok());
     REQUIRE(io_tp.wait_all(tasks).ok());
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++) {
       REQUIRE(tile[i].filtered_buffer().data_as<uint32_t>()[0] == i);
     }
-    REQUIRE(vfs->terminate().ok());
   }
 
-  REQUIRE(vfs->init(&g_helper_stats, &compute_tp, &io_tp, config).ok());
   REQUIRE(vfs->is_file(testfile, &exists).ok());
   if (exists)
     REQUIRE(vfs->remove_file(testfile).ok());
-
-  REQUIRE(vfs->terminate().ok());
 }
 
 #ifdef _WIN32
@@ -224,9 +215,9 @@ TEST_CASE("VFS: Test long paths (Win32)", "[vfs][windows]") {
   ThreadPool io_tp(4);
   Config config;
 
-  std::unique_ptr<VFS> vfs(new VFS);
+  std::unique_ptr<VFS> vfs(
+      new VFS(&g_helper_stats, &compute_tp, &io_tp, config));
   std::string tmpdir_base = tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
-  REQUIRE(vfs->init(&g_helper_stats, &compute_tp, &io_tp, config).ok());
   REQUIRE(vfs->create_dir(URI(tmpdir_base)).ok());
 
   SECTION("- Deep hierarchy") {
@@ -275,8 +266,8 @@ TEST_CASE("VFS: Test long posix paths", "[vfs]") {
   ThreadPool io_tp(4);
   Config config;
 
-  std::unique_ptr<VFS> vfs(new VFS);
-  REQUIRE(vfs->init(&g_helper_stats, &compute_tp, &io_tp, config).ok());
+  std::unique_ptr<VFS> vfs(
+      new VFS(&g_helper_stats, &compute_tp, &io_tp, config));
 
   std::string tmpdir_base = Posix::current_dir() + "/tiledb_test/";
   REQUIRE(vfs->create_dir(URI(tmpdir_base)).ok());
@@ -317,7 +308,6 @@ TEST_CASE("VFS: Test long posix paths", "[vfs]") {
   }
 
   REQUIRE(vfs->remove_dir(URI(tmpdir_base)).ok());
-  REQUIRE(vfs->terminate().ok());
 }
 
 #endif
@@ -389,8 +379,7 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
     const URI& root = root_pair.first;
     const Config& config = root_pair.second;
 
-    VFS vfs;
-    REQUIRE(vfs.init(&g_helper_stats, &compute_tp, &io_tp, config).ok());
+    VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
 
     bool exists = false;
     if (root.is_s3() || root.is_azure()) {
@@ -466,16 +455,13 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
     } else {
       REQUIRE(vfs.remove_dir(root).ok());
     }
-    vfs.terminate();
   }
 }
 
 TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
-  VFS vfs;
-  Config config;
-  REQUIRE(vfs.init(&g_helper_stats, &compute_tp, &io_tp, config).ok());
+  VFS vfs{&g_helper_stats, &compute_tp, &io_tp, Config{}};
 
 #ifdef _WIN32
   std::string path = tiledb::sm::Win::current_dir() + "\\vfs_test\\";

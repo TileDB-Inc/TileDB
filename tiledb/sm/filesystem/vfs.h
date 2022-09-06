@@ -150,9 +150,6 @@ class VFS {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  VFS();
-
   /** Constructor.
    * @param parent_stats The parent stats to inherit from.
    * @param compute_tp Thread pool for compute-bound tasks.
@@ -165,7 +162,7 @@ class VFS {
       const Config& config);
 
   /** Destructor. */
-  ~VFS() = default;
+  ~VFS();
 
   DISABLE_COPY_AND_COPY_ASSIGN(VFS);
   DISABLE_MOVE_AND_MOVE_ASSIGN(VFS);
@@ -314,28 +311,6 @@ class VFS {
    * @param is_empty Set to `true` if the bucket is empty and `false` otherwise.
    */
   Status is_empty_bucket(const URI& uri, bool* is_empty) const;
-
-  /**
-   * Initializes the virtual filesystem with the given configuration.
-   *
-   * @param parent_stats The parent stats to inherit from.
-   * @param config Configuration parameters
-   * @return Status
-   */
-  Status init(
-      stats::Stats* parent_stats,
-      ThreadPool* compute_tp,
-      ThreadPool* io_tp,
-      const Config& config);
-
-  /**
-   * Terminates the virtual system. Must only be called if init() returned
-   * successfully. The behavior is undefined if not successfully invoked prior
-   * to destructing this object.
-   *
-   * @return Status
-   */
-  Status terminate();
 
   /**
    * Retrieves all the URIs that have the first input as parent.
@@ -750,9 +725,6 @@ class VFS {
    * pass-by-reference initialization of filesystems' config_ member variables.
    **/
   Config config_;
-
-  /** `true` if the VFS object has been initialized. */
-  bool init_;
 
   /** The set with the supported filesystems. */
   std::set<Filesystem> supported_fs_;

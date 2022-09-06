@@ -57,27 +57,6 @@ namespace tiledb::sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-VFS::VFS()
-    : stats_(nullptr)
-    , init_(false)
-    , compute_tp_(nullptr)
-    , io_tp_(nullptr)
-    , vfs_params_(VFSParameters(config_)) {
-#ifdef HAVE_AZURE
-  supported_fs_.insert(Filesystem::AZURE);
-#endif
-#ifdef HAVE_GCS
-  supported_fs_.insert(Filesystem::GCS);
-#endif
-#ifdef HAVE_HDFS
-  supported_fs_.insert(Filesystem::HDFS);
-#endif
-#ifdef HAVE_S3
-  supported_fs_.insert(Filesystem::S3);
-#endif
-  supported_fs_.insert(Filesystem::MEMFS);
-}
-
 VFS::VFS(
     stats::Stats* const parent_stats,
     ThreadPool* const compute_tp,
@@ -85,7 +64,6 @@ VFS::VFS(
     const Config& config)
     : stats_(parent_stats->create_child("VFS"))
     , config_(config)
-    , init_(false)
     , compute_tp_(compute_tp)
     , io_tp_(io_tp)
     , vfs_params_(VFSParameters(config)) {
@@ -100,7 +78,7 @@ VFS::VFS(
 #ifdef HAVE_HDFS
   supported_fs_.insert(Filesystem::HDFS);
   hdfs_ = tdb_unique_ptr<hdfs::HDFS>(tdb_new(hdfs::HDFS));
-  st = hdfs_->init(config);
+  st = hdfs_->init(config_);
   if (!st.ok()) {
     throw std::runtime_error("[VFS::VFS] Failed to initialize HDFS backend.");
   }
@@ -108,7 +86,7 @@ VFS::VFS(
 
 #ifdef HAVE_S3
   supported_fs_.insert(Filesystem::S3);
-  st = s3_.init(stats_, config, io_tp_);
+  st = s3_.init(stats_, config_, io_tp_);
   if (!st.ok()) {
     throw std::runtime_error("[VFS::VFS] Failed to initialize S3 backend.");
   }
@@ -116,7 +94,7 @@ VFS::VFS(
 
 #ifdef HAVE_AZURE
   supported_fs_.insert(Filesystem::AZURE);
-  st = azure_.init(config, io_tp_);
+  st = azure_.init(config_, io_tp_);
   if (!st.ok()) {
     throw std::runtime_error("[VFS::VFS] Failed to initialize Azure backend.");
   }
@@ -124,7 +102,7 @@ VFS::VFS(
 
 #ifdef HAVE_GCS
   supported_fs_.insert(Filesystem::GCS);
-  st = gcs_.init(config, io_tp_);
+  st = gcs_.init(config_, io_tp_);
   if (!st.ok()) {
     // We should print some warning here, LOG_STATUS only prints in
     // verbose mode. Since this is called in the init of the context, we
@@ -137,13 +115,28 @@ VFS::VFS(
 #endif
 
 #ifdef _WIN32
-  win_.init(config, io_tp_);
+  win_.init(config_, io_tp_);
 #else
-  posix_.init(config, io_tp_);
+  posix_.init(config_, io_tp_);
 #endif
 
   supported_fs_.insert(Filesystem::MEMFS);
-  init_ = true;
+}
+
+VFS::~VFS() {
+  /**
+   * Note: if s3 fails to disconnect, the Status must be logged.
+   * Right now, there aren't means to adjust s3 issues that may cause
+   * disconnection failure.
+   * In the future, the Governor class may be invoked here as a means of
+   * handling s3 connection issues.
+   */
+  Status st;
+#ifdef HAVE_S3
+  st = s3_.disconnect();
+#endif
+  if (!st.ok())
+    LOG_STATUS(st);
 }
 
 /* ********************************* */
@@ -185,10 +178,6 @@ Config VFS::config() const {
 }
 
 Status VFS::create_dir(const URI& uri) const {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot create directory; VFS not initialized"));
-
   if (!uri.is_s3() && !uri.is_azure() && !uri.is_gcs()) {
     bool is_dir;
     RETURN_NOT_OK(this->is_dir(uri, &is_dir));
@@ -243,10 +232,6 @@ Status VFS::create_dir(const URI& uri) const {
 }
 
 Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot get directory size; VFS not initialized"));
-
   // Sanity check
   bool is_dir;
   RETURN_NOT_OK(this->is_dir(dir_name, &is_dir));
@@ -278,10 +263,6 @@ Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
 }
 
 Status VFS::touch(const URI& uri) const {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot touch file; VFS not initialized"));
-
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.touch(uri.to_path());
@@ -326,19 +307,11 @@ Status VFS::touch(const URI& uri) const {
 }
 
 Status VFS::cancel_all_tasks() {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot cancel all tasks; VFS not initialized"));
-
   cancelable_tasks_.cancel_all_tasks();
   return Status::Ok();
 }
 
 Status VFS::create_bucket(const URI& uri) const {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot create bucket; VFS not initialized"));
-
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.create_bucket(uri);
@@ -369,10 +342,6 @@ Status VFS::create_bucket(const URI& uri) const {
 }
 
 Status VFS::remove_bucket(const URI& uri) const {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot remove bucket; VFS not initialized"));
-
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.remove_bucket(uri);
@@ -403,11 +372,6 @@ Status VFS::remove_bucket(const URI& uri) const {
 }
 
 Status VFS::empty_bucket(const URI& uri) const {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot empty bucket; VFS not "
-                        "initialized"));
-
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.empty_bucket(uri);
@@ -438,11 +402,6 @@ Status VFS::empty_bucket(const URI& uri) const {
 }
 
 Status VFS::is_empty_bucket(const URI& uri, bool* is_empty) const {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot check if bucket is empty; "
-                        "VFS not initialized"));
-
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.is_empty_bucket(uri, is_empty);
@@ -476,11 +435,6 @@ Status VFS::is_empty_bucket(const URI& uri, bool* is_empty) const {
 }
 
 Status VFS::remove_dir(const URI& uri) const {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot remove directory; VFS not "
-                        "initialized"));
-
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.remove_dir(uri.to_path());
@@ -521,10 +475,6 @@ Status VFS::remove_dir(const URI& uri) const {
 }
 
 Status VFS::remove_file(const URI& uri) const {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot remove file; VFS not initialized"));
-
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.remove_file(uri.to_path());
@@ -569,10 +519,6 @@ Status VFS::remove_file(const URI& uri) const {
 }
 
 Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot get max parallel ops; VFS not initialized"));
-
   bool found;
   *ops = 0;
 
@@ -604,10 +550,6 @@ Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
 
 Status VFS::file_size(const URI& uri, uint64_t* size) const {
   stats_->add_counter("file_size_num", 1);
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot get file size; VFS not initialized"));
-
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.file_size(uri.to_path(), size);
@@ -652,10 +594,6 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
 }
 
 Status VFS::is_dir(const URI& uri, bool* is_dir) const {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot check directory; VFS not initialized"));
-
   if (uri.is_file()) {
 #ifdef _WIN32
     *is_dir = win_.is_dir(uri.to_path());
@@ -706,13 +644,7 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
 }
 
 Status VFS::is_file(const URI& uri, bool* is_file) const {
-  if (!init_) {
-    return LOG_STATUS(
-        Status_VFSError("Cannot check file; VFS not initialized"));
-  }
-
   stats_->add_counter("is_object_num", 1);
-
   if (uri.is_file()) {
 #ifdef _WIN32
     *is_file = win_.is_file(uri.to_path());
@@ -764,10 +696,6 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
 }
 
 Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot check bucket; VFS not initialized"));
-
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     RETURN_NOT_OK(s3_.is_bucket(uri, is_bucket));
@@ -801,71 +729,6 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
       Status_VFSError("Unsupported URI scheme: " + uri.to_string()));
 }
 
-Status VFS::init(
-    stats::Stats* const parent_stats,
-    ThreadPool* const compute_tp,
-    ThreadPool* const io_tp,
-    const Config& config) {
-  stats_ = parent_stats->create_child("VFS");
-
-  assert(compute_tp);
-  assert(io_tp);
-  compute_tp_ = compute_tp;
-  io_tp_ = io_tp;
-
-  /* Initialize VFSParameters */
-  config_ = config;
-  vfs_params_ = VFSParameters(config_);
-
-  // Construct the read-ahead cache.
-  read_ahead_cache_ = tdb_unique_ptr<ReadAheadCache>(
-      tdb_new(ReadAheadCache, vfs_params_.read_ahead_cache_size_));
-
-#ifdef HAVE_HDFS
-  hdfs_ = tdb_unique_ptr<hdfs::HDFS>(tdb_new(hdfs::HDFS));
-  RETURN_NOT_OK(hdfs_->init(config_));
-#endif
-
-#ifdef HAVE_S3
-  RETURN_NOT_OK(s3_.init(stats_, config_, io_tp_));
-#endif
-
-#ifdef HAVE_AZURE
-  RETURN_NOT_OK(azure_.init(config_, io_tp_));
-#endif
-
-#ifdef HAVE_GCS
-  Status st = gcs_.init(config_, io_tp_);
-  if (!st.ok()) {
-    // We should print some warning here, this LOG_STATUS only prints in
-    // verbose mode. Since this is called in the init of the context, we
-    // can't return the error through the normal set it on the context.
-    LOG_STATUS(Status_GCSError(
-        "GCS failed to initialize, GCS support will not be available in this "
-        "context: " +
-        st.message()));
-  }
-#endif
-
-#ifdef _WIN32
-  win_.init(config_, io_tp_);
-#else
-  posix_.init(config_, io_tp_);
-#endif
-
-  init_ = true;
-
-  return Status::Ok();
-}
-
-Status VFS::terminate() {
-#ifdef HAVE_S3
-  return s3_.disconnect();
-#endif
-
-  return Status::Ok();
-}
-
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   stats_->add_counter("ls_num", 1);
   auto&& [st, entries] = ls_with_sizes(parent);
@@ -880,11 +743,6 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
 
 tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
     const URI& parent) const {
-  if (!init_) {
-    auto st = LOG_STATUS(Status_VFSError("Cannot list; VFS not initialized"));
-    return {st, std::nullopt};
-  }
-
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just
   // return an empty `uris` vector.
@@ -965,9 +823,6 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
 }
 
 Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
-  if (!init_)
-    return LOG_STATUS(Status_VFSError("Cannot move file; VFS not initialized"));
-
   // If new_uri exists, delete it or raise an error based on `force`
   bool is_file;
   RETURN_NOT_OK(this->is_file(new_uri, &is_file));
@@ -1054,10 +909,6 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
 }
 
 Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot move directory; VFS not initialized"));
-
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
@@ -1138,9 +989,6 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
 }
 
 Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
-  if (!init_)
-    return LOG_STATUS(Status_VFSError("Cannot copy file; VFS not initialized"));
-
   // If new_uri exists, delete it or raise an error based on `force`
   bool is_file;
   RETURN_NOT_OK(this->is_file(new_uri, &is_file));
@@ -1222,10 +1070,6 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
 }
 
 Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot copy directory; VFS not initialized"));
-
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
@@ -1307,9 +1151,6 @@ Status VFS::read(
     const uint64_t nbytes,
     bool use_read_ahead) {
   stats_->add_counter("read_byte_num", nbytes);
-
-  if (!init_)
-    return LOG_STATUS(Status_VFSError("Cannot read; VFS not initialized"));
 
   // Get config params
   uint64_t min_parallel_size = vfs_params_.min_parallel_size_;
@@ -1519,10 +1360,6 @@ Status VFS::read_all(
     ThreadPool* thread_pool,
     std::vector<ThreadPool::Task>* tasks,
     const bool use_read_ahead) {
-  if (!init_) {
-    return LOG_STATUS(Status_VFSError("Cannot read all; VFS not initialized"));
-  }
-
   if (regions.empty()) {
     return Status::Ok();
   }
@@ -1569,10 +1406,6 @@ Status VFS::read_all_no_batching(
     ThreadPool* thread_pool,
     std::vector<ThreadPool::Task>* tasks,
     const bool use_read_ahead) {
-  if (!init_) {
-    return LOG_STATUS(Status_VFSError("Cannot read all; VFS not initialized"));
-  }
-
   if (regions.empty()) {
     return Status::Ok();
   }
@@ -1662,9 +1495,6 @@ bool VFS::supports_uri_scheme(const URI& uri) const {
 }
 
 Status VFS::sync(const URI& uri) {
-  if (!init_)
-    return LOG_STATUS(Status_VFSError("Cannot sync; VFS not initialized"));
-
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.sync(uri.to_path());
@@ -1709,9 +1539,6 @@ Status VFS::sync(const URI& uri) {
 }
 
 Status VFS::open_file(const URI& uri, VFSMode mode) {
-  if (!init_)
-    return LOG_STATUS(Status_VFSError("Cannot open file; VFS not initialized"));
-
   bool is_file;
   RETURN_NOT_OK(this->is_file(uri, &is_file));
 
@@ -1764,10 +1591,6 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
 }
 
 Status VFS::close_file(const URI& uri) {
-  if (!init_)
-    return LOG_STATUS(
-        Status_VFSError("Cannot close file; VFS not initialized"));
-
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.sync(uri.to_path());
@@ -1814,9 +1637,6 @@ Status VFS::close_file(const URI& uri) {
 Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
   stats_->add_counter("write_byte_num", buffer_size);
   stats_->add_counter("write_ops_num", 1);
-
-  if (!init_)
-    return LOG_STATUS(Status_VFSError("Cannot write; VFS not initialized"));
 
   if (uri.is_file()) {
 #ifdef _WIN32

@@ -104,11 +104,6 @@ StorageManager::~StorageManager() {
 
   if (vfs_ != nullptr) {
     cancel_all_tasks();
-    const Status st = vfs_->terminate();
-    if (!st.ok()) {
-      logger_->status(Status_StorageManagerError("Failed to terminate VFS."));
-    }
-
     tdb_delete(vfs_);
   }
 
