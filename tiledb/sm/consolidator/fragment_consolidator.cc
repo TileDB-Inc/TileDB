@@ -307,7 +307,7 @@ Status FragmentConsolidator::vacuum(const char* array_name) {
       filtered_fragment_uris.fragment_vac_uris_to_vacuum();
 
   if (commit_uris_to_ignore.size() > 0) {
-    RETURN_NOT_OK(storage_manager_->write_commit_ignore(
+    RETURN_NOT_OK(storage_manager_->write_commit_ignore_file(
         array_dir, commit_uris_to_ignore));
   }
 

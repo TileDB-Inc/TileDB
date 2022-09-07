@@ -416,7 +416,7 @@ class StorageManager {
    * @param array_dir The ArrayDirectory where the data is stored.
    * @param commit_uris_to_ignore The commit files that are to be ignored.
    */
-  Status write_commit_ignore(
+  Status write_commit_ignore_file(
       ArrayDirectory array_dir, const std::vector<URI>& commit_uris_to_ignore);
 
   /**

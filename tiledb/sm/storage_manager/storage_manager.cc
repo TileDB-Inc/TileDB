@@ -552,7 +552,7 @@ Status StorageManager::fragments_consolidate(
       array_name, encryption_type, encryption_key, key_length, fragment_uris);
 }
 
-Status StorageManager::write_commit_ignore(
+Status StorageManager::write_commit_ignore_file(
     ArrayDirectory array_dir, const std::vector<URI>& commit_uris_to_ignore) {
   auto&& [st, name] = array_dir.compute_new_fragment_name(
       commit_uris_to_ignore.front(),
@@ -581,9 +581,10 @@ Status StorageManager::write_commit_ignore(
 Status StorageManager::delete_fragments(
     const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
   Status st;
-  if (array_name == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot delete_fragments; Array name cannot be null"));
+  if (array_name == nullptr) {
+    throw Status_StorageManagerError(
+        "Cannot delete_fragments; Array name cannot be null");
+  }
 
   auto array_dir = ArrayDirectory(
       vfs_, compute_tp_, URI(array_name), timestamp_start, timestamp_end);
@@ -610,7 +611,7 @@ Status StorageManager::delete_fragments(
 
   // Write ignore file
   if (commit_uris_to_ignore.size() != 0) {
-    RETURN_NOT_OK(write_commit_ignore(array_dir, commit_uris_to_ignore));
+    RETURN_NOT_OK(write_commit_ignore_file(array_dir, commit_uris_to_ignore));
   }
 
   // Delete fragments and commits
