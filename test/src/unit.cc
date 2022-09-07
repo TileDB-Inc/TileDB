@@ -51,7 +51,6 @@ int main(const int argc, char** const argv) {
   return session.run();
 }
 
-//struct CICompletionStatusListener : Catch::TestEventListenerBase {
 struct CICompletionStatusListener : Catch::EventListenerBase {
   using Catch::EventListenerBase::EventListenerBase;  // inherit constructor
 

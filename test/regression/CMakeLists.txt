@@ -26,6 +26,7 @@
 #
 
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_BINARY_DIR}/tiledb/")
 
 find_package(Catch_EP REQUIRED)
 
@@ -64,7 +65,6 @@ target_include_directories(tiledb_regression
   PRIVATE
     ${CMAKE_INSTALL_PREFIX}/include
     "${TILEDB_CORE_INCLUDE_DIR}"
-    #Catch2::Catch2
     ${TILEDB_EP_INSTALL_PREFIX}/include
 )
 

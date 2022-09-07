@@ -51,7 +51,6 @@ target_link_libraries(unit_consistency
 )
 target_include_directories(unit_consistency
   PUBLIC
-    #Catch2::Catch2
     ${TILEDB_EP_INSTALL_PREFIX}/include
 )
 

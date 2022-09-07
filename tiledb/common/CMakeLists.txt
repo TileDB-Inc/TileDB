@@ -96,7 +96,7 @@ if (TILEDB_TESTS)
     PUBLIC Catch2::Catch2WithMain
   )
   target_include_directories(unit_experimental
-    PUBLIC #Catch2::Catch2
+    PUBLIC
       ${TILEDB_EP_INSTALL_PREFIX}/include
   )
   target_sources(unit_experimental

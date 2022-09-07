@@ -55,7 +55,6 @@ add_executable(
   tiledb_explore_msys_handle_leakage EXCLUDE_FROM_ALL
   $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
   ${TILEDB_MSYS_HANDLE_LEAKAGE_SOURCES}
-#  "performance/msys_handle_leakage/unit.cc"
   "msys_handle_leakage/unit.cc"
 )
 
@@ -72,7 +71,6 @@ target_include_directories(
   tiledb_explore_msys_handle_leakage BEFORE PRIVATE
     ${TILEDB_CORE_INCLUDE_DIR}
     ${TILEDB_EXPORT_HEADER_DIR}
-    #Catch2::Catch2
     ${TILEDB_EP_INSTALL_PREFIX}/include
 )
 

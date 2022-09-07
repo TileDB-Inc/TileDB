@@ -296,7 +296,6 @@ target_include_directories(
   tiledb_unit BEFORE PRIVATE
     ${TILEDB_CORE_INCLUDE_DIR}
     ${TILEDB_EXPORT_HEADER_DIR}
-#     Catch2::Catch2
      ${TILEDB_SOURCE_ROOT_DIR}/test/support
 )
 target_include_directories(

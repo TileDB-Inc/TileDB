@@ -44,10 +44,8 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_datum PRIVATE datum)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_datum PUBLIC Catch2::Catch2WithMain)
-    #target_include_directories(unit_datum PUBLIC Catch2::Catch2)
     target_include_directories(unit_dynamic_memory 
       PUBLIC
-      #$<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
       ${TILEDB_EP_INSTALL_PREFIX}/include
       )
 
