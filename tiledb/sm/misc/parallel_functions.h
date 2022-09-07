@@ -279,7 +279,7 @@ Status parallel_for(
   if (failed_status.has_value()) {
     return failed_status.value();
   }
-  return Status{}; // otherwise return OK
+  return Status{};  // otherwise return OK
 }
 
 /**
