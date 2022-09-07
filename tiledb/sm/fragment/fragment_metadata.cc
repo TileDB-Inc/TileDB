@@ -2401,7 +2401,6 @@ Status FragmentMetadata::load_tile_offsets(
 
   storage_manager_->stats()->add_counter("read_tile_offsets_size", tile.size());
 
-  //ConstBuffer cbuff(tile.data(), tile.size());
   Deserializer deserializer(tile.data(), tile.size());
   load_tile_offsets(idx, deserializer);
 
@@ -2432,8 +2431,6 @@ Status FragmentMetadata::load_tile_var_offsets(
   storage_manager_->stats()->add_counter(
       "read_tile_var_offsets_size", tile.size());
 
-  //ConstBuffer cbuff(tile.data(), tile.size());
-  //RETURN_NOT_OK(load_tile_var_offsets(idx, &cbuff));
   Deserializer deserializer(tile.data(), tile.size());
   load_tile_var_offsets(idx, deserializer);
 
