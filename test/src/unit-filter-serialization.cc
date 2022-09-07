@@ -61,9 +61,9 @@ TEST_CASE(
       tiledb::sm::serialization::filter_from_capnp(filter_builder)};
   REQUIRE(st_f.ok());
 
-  double scale_clone;
-  double offset_clone;
-  uint64_t byte_width_clone;
+  double scale_clone = 0;
+  double offset_clone = 0;
+  uint64_t byte_width_clone = 0;
   REQUIRE(
       filter_clone.value()
           .get()
@@ -103,9 +103,9 @@ TEST_CASE(
       tiledb::sm::serialization::filter_from_capnp(filter_builder)};
   REQUIRE(st_f.ok());
 
-  double scale_clone;
-  double offset_clone;
-  uint64_t byte_width_clone;
+  double scale_clone = 0;
+  double offset_clone = 0;
+  uint64_t byte_width_clone = 0;
   REQUIRE(
       filter_clone.value()
           .get()
