@@ -327,7 +327,7 @@ TEST_CASE_METHOD(
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  uint64_t bytes_read;
+  uint64_t bytes_read = 0;
   REQUIRE(azure_.read(URI(largefile), 0, read_buffer, 26, 0, &bytes_read).ok());
   CHECK(26 == bytes_read);
   bool allok = true;
@@ -442,7 +442,7 @@ TEST_CASE_METHOD(
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  uint64_t bytes_read;
+  uint64_t bytes_read = 0;
   REQUIRE(
       azure_.read(URI(large_file), 0, read_buffer, 26, 0, &bytes_read).ok());
   CHECK(26 == bytes_read);
