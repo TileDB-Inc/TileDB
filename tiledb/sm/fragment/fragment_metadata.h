@@ -1400,23 +1400,24 @@ class FragmentMetadata {
   /**
    * Loads the min values for the input attribute from the input buffer.
    */
-  Status load_tile_min_values(unsigned idx, ConstBuffer* buff);
+  void load_tile_min_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the max values for the input attribute from the input buffer.
    */
-  Status load_tile_max_values(unsigned idx, ConstBuffer* buff);
+  // Status load_tile_max_values(unsigned idx, ConstBuffer* buff);
+  void load_tile_max_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the sum values for the input attribute from the input buffer.
    */
-  Status load_tile_sum_values(unsigned idx, ConstBuffer* buff);
+  void load_tile_sum_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the null count values for the input attribute from the input
    * buffer.
    */
-  Status load_tile_null_count_values(unsigned idx, ConstBuffer* buff);
+  void load_tile_null_count_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the min max sum null count values for the fragment.
@@ -1598,7 +1599,7 @@ class FragmentMetadata {
   /**
    * Writes the mins of the input attribute idx to the input buffer.
    */
-  Status write_tile_mins(unsigned idx, Buffer* buff);
+  void write_tile_mins(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the maxs of the input attribute to storage.
@@ -1614,7 +1615,7 @@ class FragmentMetadata {
   /**
    * Writes the maxs of the input attribute idx to the input buffer.
    */
-  Status write_tile_maxs(unsigned idx, Buffer* buff);
+  void write_tile_maxs(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the sums of the input attribute to storage.
@@ -1630,7 +1631,7 @@ class FragmentMetadata {
   /**
    * Writes the sums of the input attribute idx to the input buffer.
    */
-  Status write_tile_sums(unsigned idx, Buffer* buff);
+  void write_tile_sums(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the null counts of the input attribute to storage.
@@ -1646,7 +1647,7 @@ class FragmentMetadata {
   /**
    * Writes the null counts of the input attribute idx to the input buffer.
    */
-  Status write_tile_null_counts(unsigned idx, Buffer* buff);
+  void write_tile_null_counts(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the fragment min, max, sum and null count to storage.
