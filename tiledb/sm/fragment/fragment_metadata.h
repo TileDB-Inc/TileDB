@@ -1362,13 +1362,14 @@ class FragmentMetadata {
    * Loads the tile offsets for the input attribute from the input buffer.
    * Applicable to versions 1 and 2
    */
-  Status load_tile_offsets(ConstBuffer* buff);
+  // TBD: This is used in series with multiple other routines still using ConstBuffer...
+  Status load_tile_offsets(ConstBuffer *cbuff);
 
   /**
    * Loads the tile offsets for the input attribute or dimension from the
    * input buffer.
    */
-  Status load_tile_offsets(unsigned idx, ConstBuffer* buff);
+  void load_tile_offsets(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the variable tile offsets from the input buffer.
@@ -1380,7 +1381,7 @@ class FragmentMetadata {
    * Loads the variable tile offsets for the input attribute or dimension from
    * the input buffer.
    */
-  Status load_tile_var_offsets(unsigned idx, ConstBuffer* buff);
+  void load_tile_var_offsets(unsigned idx, Deserializer &deserializer);
 
   /** Loads the variable tile sizes from the input buffer. */
   Status load_tile_var_sizes(ConstBuffer* buff);
@@ -1389,7 +1390,7 @@ class FragmentMetadata {
    * Loads the variable tile sizes for the input attribute or dimension
    * from the input buffer.
    */
-  Status load_tile_var_sizes(unsigned idx, ConstBuffer* buff);
+  void load_tile_var_sizes(unsigned idx, Deserializer &deserializer);
 
   /**
    * Loads the validity tile offsets for the input attribute from the
@@ -1521,14 +1522,14 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the tile offsets.
    * @return Status
    */
-  Status store_tile_offsets(
+  void store_tile_offsets(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the tile offsets of the input attribute or dimension idx to the
    * input buffer.
    */
-  Status write_tile_offsets(unsigned idx, Buffer* buff);
+  void write_tile_offsets(unsigned idx, Serializer &serializer);
 
   /**
    * Writes the variable tile offsets of the input attribute or dimension
@@ -1539,14 +1540,14 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the tile var offsets.
    * @return Status
    */
-  Status store_tile_var_offsets(
+  void store_tile_var_offsets(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the variable tile offsets of the input attribute or dimension idx
    * to the buffer.
    */
-  Status write_tile_var_offsets(unsigned idx, Buffer* buff);
+  void write_tile_var_offsets(unsigned idx, Serializer &serializer);
 
   /**
    * Writes the variable tile sizes for the input attribute or dimension to
@@ -1557,14 +1558,14 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the tile var sizes.
    * @return Status
    */
-  Status store_tile_var_sizes(
+  void store_tile_var_sizes(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the variable tile sizes for the input attribute or dimension
    * to storage.
    */
-  Status write_tile_var_sizes(unsigned idx, Buffer* buff);
+  void write_tile_var_sizes(unsigned idx, Serializer &serializer);
 
   /**
    * Writes the validity tile offsets of the input attribute to storage.

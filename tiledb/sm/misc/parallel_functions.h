@@ -180,9 +180,13 @@ Status parallel_for(
 
   assert(tp);
 
+  /*
+   * Mutex protects atomicity of `failed` and `return_st` together. The first
+   * subrange to fail to execute determines the value of `return_st`.
+   */
+  std::mutex return_st_mutex;
   bool failed = false;
   Status return_st = Status::Ok();
-  std::mutex return_st_mutex;
 
   // Executes subrange [subrange_start, subrange_end) that exists
   // within the range [begin, end).
@@ -191,15 +195,29 @@ Status parallel_for(
           const uint64_t subrange_start,
           const uint64_t subrange_end) -> Status {
     for (uint64_t i = subrange_start; i < subrange_end; ++i) {
-      const Status st = F(i);
-      if (!st.ok() && !failed) {
-        failed = true;
-        std::lock_guard<std::mutex> lock(return_st_mutex);
-        return_st = st;
+      Status st;
+      try {
+        st = F(i);
+        if (st.ok()) {
+          continue;
+        }
+      } catch (const StatusException& e) {
+        st = e.extract_status();
+      } catch (const std::exception& e) {
+        st = Status{"parallel_for exception", e.what()};
+      } catch (...) {
+        st = Status{"parallel_for unknown exception", ""};
       }
+      // Assert: executing F failed, either by exception or with an error status
+      // Assert: `st` contains a status for the failure
+      std::lock_guard<std::mutex> lock(return_st_mutex);
+      if (!failed) {
+        return_st = st;
+        failed = true;
+      }
+      return st;
     }
-
-    return Status::Ok();
+    return Status{};
   };
 
   // Calculate the length of the subrange that each thread will
