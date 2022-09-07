@@ -40,7 +40,6 @@
     // note: 'DELETE' is #define'd somewhere within windows headers as
     // something resolving to '(0x00010000L)', which causes problems with
     // query_type.h which does not qualify the 'id' like tiledb.h does.
-    #pragma push_macro("DELETE")
     #undef DELETE
     #endif
     TILEDB_QUERY_TYPE_ENUM(DELETE) = 2,
