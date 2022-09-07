@@ -37,9 +37,6 @@ target_include_directories(unit_interval
   ${TILEDB_EP_INSTALL_PREFIX}/include
   )
   
-print_target_properties(unit_interval)
-print_target_properties(Catch2::Catch2)
-
 # Sources for code under test
 target_sources(unit_interval PUBLIC
   interval.cc
