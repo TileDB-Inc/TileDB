@@ -660,21 +660,22 @@ Group::members() const {
   return members_;
 }
 
-Status Group::serialize(Buffer*) {
-  return Status_GroupError("Invalid call to Group::serialize");
+void Group::serialize(Serializer &) {
+  throw StatusException(Status_GroupError("Invalid call to Group::serialize"));
 }
 
-Status Group::apply_and_serialize(Buffer* buff) {
+Status Group::apply_and_serialize(Serializer& serializer) {
   RETURN_NOT_OK(apply_pending_changes());
-  return serialize(buff);
+  serialize(serializer);
+  return Status::Ok();
 }
 
 std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> Group::deserialize(
-    ConstBuffer* buff, const URI& group_uri, StorageManager* storage_manager) {
+    Deserializer &deserializer, const URI& group_uri, StorageManager* storage_manager) {
   uint32_t version = 0;
-  RETURN_NOT_OK_TUPLE(buff->read(&version, sizeof(uint32_t)), std::nullopt);
+  version = deserializer.read<uint32_t>();
   if (version == 1) {
-    return GroupV1::deserialize(buff, group_uri, storage_manager);
+    return GroupV1::deserialize(deserializer, group_uri, storage_manager);
   }
 
   return {

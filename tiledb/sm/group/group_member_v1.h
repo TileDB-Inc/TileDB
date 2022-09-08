@@ -40,6 +40,7 @@
 #include "tiledb/sm/enums/object_type.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/group/group.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
 
@@ -62,7 +63,7 @@ class GroupMemberV1 : public GroupMember {
    * @param buff The buffer to serialize the data into.
    * @return Status
    */
-  Status serialize(Buffer* buff) override;
+  void serialize(Serializer &serializer) override;
 
   /**
    * Returns a Group object from the data in the input binary buffer.
@@ -72,7 +73,7 @@ class GroupMemberV1 : public GroupMember {
    * @return Status and Attribute
    */
   static std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
-  deserialize(ConstBuffer* buff);
+  deserialize(Deserializer &deserializer);
 
  private:
   /* Format version for class. */

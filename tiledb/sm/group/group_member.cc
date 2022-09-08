@@ -66,16 +66,17 @@ const bool& GroupMember::relative() const {
   return relative_;
 }
 
-Status GroupMember::serialize(Buffer*) {
-  return Status_GroupMemberError("Invalid call to GroupMember::serialize");
+void GroupMember::serialize(Serializer &) {
+  throw StatusException(
+      Status_GroupMemberError("Invalid call to GroupMember::serialize"));
 }
 
 std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
-GroupMember::deserialize(ConstBuffer* buff) {
+GroupMember::deserialize(Deserializer &deserializer) {
   uint32_t version = 0;
-  RETURN_NOT_OK_TUPLE(buff->read(&version, sizeof(uint32_t)), std::nullopt);
+  version = deserializer.read<uint32_t>();
   if (version == 1) {
-    return GroupMemberV1::deserialize(buff);
+    return GroupMemberV1::deserialize(deserializer);
   }
 
   return {Status_GroupError(

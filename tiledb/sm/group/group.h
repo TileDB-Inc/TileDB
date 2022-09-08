@@ -279,7 +279,7 @@ class Group {
    * @param version The format spec version.
    * @return Status
    */
-  virtual Status serialize(Buffer* buff);
+  virtual void serialize(Serializer &serializer);
 
   /**
    * Applies and pending changes and then calls serialize
@@ -288,7 +288,7 @@ class Group {
    * @param version The format spec version.
    * @return Status
    */
-  Status apply_and_serialize(Buffer* buff);
+  Status apply_and_serialize(Serializer &serializer);
 
   /**
    * Returns a Group object from the data in the input binary buffer.
@@ -298,7 +298,7 @@ class Group {
    * @return Status and Attribute
    */
   static std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> deserialize(
-      ConstBuffer* buff, const URI& group_uri, StorageManager* storage_manager);
+      Deserializer &deserializer, const URI& group_uri, StorageManager* storage_manager);
 
   /** Returns the group URI. */
   const URI& group_uri() const;
