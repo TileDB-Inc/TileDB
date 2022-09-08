@@ -603,6 +603,100 @@ Status FilterPipeline::run_reverse_chunk_range(
   return Status::Ok();
 }
 
+Status FilterPipeline::run_reverse_chunk_range(
+      stats::Stats* const reader_stats,
+      Tile* const tile,
+      const ChunkData& chunk_data,
+      const uint64_t min_chunk_index,
+      const uint64_t max_chunk_index,
+      uint64_t concurrency_level,
+      const Config& config,
+      std::vector<Tile*> &dim_tiles) const {
+        // Run each chunk through the entire pipeline.
+  for (size_t i = min_chunk_index; i < max_chunk_index; i++) {
+    auto& chunk = chunk_data.filtered_chunks_[i];
+    FilterStorage storage;
+    FilterBuffer input_data(&storage), output_data(&storage);
+    FilterBuffer input_metadata(&storage), output_metadata(&storage);
+
+    // First filter's input is the filtered chunk data.
+    RETURN_NOT_OK(input_metadata.init(
+        chunk.filtered_metadata_, chunk.filtered_metadata_size_));
+    RETURN_NOT_OK(
+        input_data.init(chunk.filtered_data_, chunk.filtered_data_size_));
+
+    // If the pipeline is empty, just copy input to output.
+    if (filters_.empty()) {
+      void* output_chunk_buffer =
+          static_cast<char*>(tile->data()) + chunk_data.chunk_offsets_[i];
+      RETURN_NOT_OK(input_data.copy_to(output_chunk_buffer));
+      continue;
+    }
+
+    // Apply the filters sequentially in reverse.
+    for (int64_t filter_idx = (int64_t)filters_.size() - 1; filter_idx >= 0;
+         filter_idx--) {
+      auto& f = filters_[filter_idx];
+
+      // Clear and reset I/O buffers
+      input_data.reset_offset();
+      input_data.set_read_only(true);
+      input_metadata.reset_offset();
+      input_metadata.set_read_only(true);
+
+      output_data.clear();
+      output_metadata.clear();
+
+      // Final filter: output directly into the shared output buffer.
+      bool last_filter = filter_idx == 0;
+      if (last_filter) {
+        void* output_chunk_buffer =
+            static_cast<char*>(tile->data()) + chunk_data.chunk_offsets_[i];
+        RETURN_NOT_OK(output_data.set_fixed_allocation(
+            output_chunk_buffer, chunk.unfiltered_data_size_));
+        reader_stats->add_counter(
+            "read_unfiltered_byte_num", chunk.unfiltered_data_size_);
+      }
+
+      f->init_decompression_resource_pool(concurrency_level);
+
+       if (f->type() == FilterType::FILTER_BITSORT) {
+          RETURN_NOT_OK(
+              std::dynamic_pointer_cast<const shared_ptr<BitSortFilter>>(f)
+                  ->get()
+                  ->run_reverse(
+                      tile,
+                      support_tiles,
+                      &input_metadata,
+                      &input_data,
+                      &output_metadata,
+                      &output_data,
+                      config));
+        } else {
+          RETURN_NOT_OK(f->run_reverse(
+          *tile,
+          nullptr,
+          &input_metadata,
+          &input_data,
+          &output_metadata,
+          &output_data,
+          config));
+        }
+
+      input_data.set_read_only(false);
+      input_metadata.set_read_only(false);
+
+      if (!last_filter) {
+        input_data.swap(output_data);
+        input_metadata.swap(output_metadata);
+        // Next input (input_buffers) now stores this output (output_buffers).
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status FilterPipeline::run_reverse(
     stats::Stats* const reader_stats,
     Tile* const tile,

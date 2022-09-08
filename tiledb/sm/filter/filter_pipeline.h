@@ -285,6 +285,16 @@ class FilterPipeline {
       uint64_t concurrency_level,
       const Config& config) const;
 
+   Status run_reverse_chunk_range(
+      stats::Stats* const reader_stats,
+      Tile* const tile,
+      const ChunkData& chunk_data,
+      const uint64_t min_chunk_index,
+      const uint64_t max_chunk_index,
+      uint64_t concurrency_level,
+      const Config& config,
+      std::vector<Tile*> &dim_tiles) const;
+
   /**
    * Serializes the pipeline metadata into a binary buffer.
    *
