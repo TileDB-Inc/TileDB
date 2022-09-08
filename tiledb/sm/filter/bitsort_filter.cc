@@ -70,6 +70,24 @@ Status BitSortFilter::run_forward(
   return Status_FilterError("Do not call");
 }
 
+Status BitSortFilter::run_reverse(
+      const Tile& tile,
+      Tile* const tile_offsets,
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output,
+      const Config& config) const {
+  (void)tile;
+  (void)tile_offsets;
+  (void)input_metadata;
+  (void)input;
+  (void)output_metadata;
+  (void)output;
+  (void)config;
+  return Status_FilterError("Do not call");
+}
+
 /**
  * Run forward. TODO: COMMENT
  */
@@ -152,13 +170,14 @@ Status BitSortFilter::sort_part(
  */
 Status BitSortFilter::run_reverse(
     const Tile& tile,
-    Tile* const,  // offsets_tile
+    std::vector<Tile*> &dim_tiles,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
     const Config& config) const {
   (void)config;
+  (void)dim_tiles;
   auto tile_type = tile.type();
   switch (datatype_size(tile_type)) {
     case sizeof(int8_t): {

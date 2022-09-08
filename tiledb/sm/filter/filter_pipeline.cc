@@ -665,8 +665,8 @@ Status FilterPipeline::run_reverse_chunk_range(
               std::dynamic_pointer_cast<const shared_ptr<BitSortFilter>>(f)
                   ->get()
                   ->run_reverse(
-                      tile,
-                      support_tiles,
+                      *tile,
+                      dim_tiles,
                       &input_metadata,
                       &input_data,
                       &output_metadata,

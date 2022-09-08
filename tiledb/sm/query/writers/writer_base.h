@@ -283,9 +283,12 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @param dim_tiles The dimension tile array (used for BitSortFilter).
    * @return Status
    */
-  
-  template<typename T>
-  Status filter_tiles(const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*>& dim_tiles = {});
+
+  template <typename T>
+  Status filter_tiles(
+      const std::string& name,
+      WriterTileVector* tiles,
+      const std::vector<WriterTileVector*>& dim_tiles = {});
 
   /**
    * Runs the input tile for the input attribute/dimension through the filter
@@ -300,9 +303,11 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @param offsets True if the tile to be filtered contains validity values.
    * @return Status
    */
-  
-  template<typename T,
-    typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type* = nullptr>
+
+  template <
+      typename T,
+      typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type* =
+          nullptr>
   Status filter_tile(
       const std::string& name,
       Tile* tile,
