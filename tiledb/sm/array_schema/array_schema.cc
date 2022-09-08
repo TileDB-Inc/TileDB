@@ -1159,25 +1159,25 @@ Status ArraySchema::check_string_compressor(
 
   // Error if there are also other filters set for a string dimension together
   // with RLE or Dictionary-encoding
-  auto dim_num = domain_->dim_num();
-  for (dimension_size_type d = 0; d < dim_num; ++d) {
-    auto dim{domain_->dimension_ptr(d)};
-    const auto& dim_filters = dim->filters();
-    // if it's a var-length string dimension and there is no specific filter
-    // list already set for that dimension (then coords_filters_ will be used)
-    if (dim->type() == Datatype::STRING_ASCII && dim->var_size() &&
-        dim_filters.empty()) {
-      if (filters.has_filter(FilterType::FILTER_RLE)) {
-        return LOG_STATUS(Status_ArraySchemaError(
-            "RLE filter cannot be combined with other filters when applied to "
-            "variable length string dimensions"));
-      } else {
-        return LOG_STATUS(Status_ArraySchemaError(
-            "Dictionary-encoding filter cannot be combined with other filters "
-            "when applied to variable length string dimensions"));
-      }
-    }
-  }
+  //auto dim_num = domain_->dim_num();
+  //for (dimension_size_type d = 0; d < dim_num; ++d) {
+  //  auto dim{domain_->dimension_ptr(d)};
+  //  const auto& dim_filters = dim->filters();
+  //  // if it's a var-length string dimension and there is no specific filter
+  //  // list already set for that dimension (then coords_filters_ will be used)
+  //  if (dim->type() == Datatype::STRING_ASCII && dim->var_size() &&
+  //      dim_filters.empty()) {
+  //    if (filters.has_filter(FilterType::FILTER_RLE)) {
+  //      return LOG_STATUS(Status_ArraySchemaError(
+  //          "RLE filter cannot be combined with other filters when applied to "
+  //          "variable length string dimensions"));
+  //    } else {
+  //      return LOG_STATUS(Status_ArraySchemaError(
+  //          "Dictionary-encoding filter cannot be combined with other filters "
+  //          "when applied to variable length string dimensions"));
+  //    }
+  //  }
+  //}
 
   return Status::Ok();
 }
