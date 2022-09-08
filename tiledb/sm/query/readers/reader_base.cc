@@ -970,6 +970,7 @@ ReaderBase::load_tile_chunk_data(
           unfiltered_tile_validity_size};
 }
 
+// TODO: pass here?
 Status ReaderBase::unfilter_tile_chunk_range(
     const std::string& name,
     ResultTile* const tile,
@@ -1015,9 +1016,23 @@ Status ReaderBase::unfilter_tile_chunk_range(
     // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
     // 't_var' for var-sized tiles.
     if (!var_size) {
-      if (!nullable)
-        RETURN_NOT_OK(unfilter_tile_chunk_range(
-            num_range_threads, range_thread_idx, name, t, tile_chunk_data));
+      if (!nullable) {
+        if (array_schema_.has_bitsort_filter()) {
+          // Collect dim tiles.
+          std::vector<Tile*> dim_tiles;
+          for (const auto &dim_name : array_schema_.dim_names()) {
+            auto dim_tile_tuple = tile->tile_tuple(dim_name);
+            dim_tiles.push_back(&dim_tile_tuple->fixed_tile());
+          }
+
+          RETURN_NOT_OK(unfilter_tile_chunk_range(
+            num_range_threads, range_thread_idx, name, t, tile_chunk_data, dim_tiles)); 
+
+        } else {
+          RETURN_NOT_OK(unfilter_tile_chunk_range(
+            num_range_threads, range_thread_idx, name, t, tile_chunk_data)); 
+        }
+      }
       else {
         RETURN_NOT_OK(unfilter_tile_chunk_range_nullable(
             num_range_threads,
@@ -1250,6 +1265,44 @@ Status ReaderBase::unfilter_tile_chunk_range(
       t_max,
       storage_manager_->compute_tp()->concurrency_level(),
       storage_manager_->config()));
+
+  return Status::Ok();
+}
+
+Status ReaderBase::unfilter_tile_chunk_range(
+      uint64_t num_range_threads,
+      uint64_t thread_idx,
+      const std::string& name,
+      Tile* tile,
+      const ChunkData& tile_chunk_data,
+      std::vector<Tile*> &dim_tiles) const {
+  assert(tile);
+  // Prevent processing past the end of chunks in case there are more
+  // threads than chunks.
+  if (thread_idx > tile_chunk_data.filtered_chunks_.size() - 1) {
+    return Status::Ok();
+  }
+
+  FilterPipeline filters = array_schema_.filters(name);
+
+  // Append an encryption unfilter when necessary.
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &filters, array_->get_encryption_key()));
+
+  // Compute chunk boundaries
+  auto&& [t_min, t_max] = compute_chunk_min_max(
+      tile_chunk_data.chunk_offsets_.size(), num_range_threads, thread_idx);
+
+  // Reverse the tile filters.
+  RETURN_NOT_OK(filters.run_reverse_chunk_range(
+      stats_,
+      tile,
+      tile_chunk_data,
+      t_min,
+      t_max,
+      storage_manager_->compute_tp()->concurrency_level(),
+      storage_manager_->config(),
+      dim_tiles));
 
   return Status::Ok();
 }
