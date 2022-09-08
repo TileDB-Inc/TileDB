@@ -498,15 +498,14 @@ class ReaderBase : public StrategyBase {
       Tile* tile,
       const ChunkData& tile_chunk_data) const;
 
-
- // TODO: dim tiles
+  // TODO: dim tiles
   Status unfilter_tile_chunk_range(
       uint64_t num_range_threads,
       uint64_t thread_idx,
       const std::string& name,
       Tile* tile,
       const ChunkData& tile_chunk_data,
-      std::vector<Tile*> &dim_tiles) const;
+      std::vector<Tile*>& dim_tiles) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through

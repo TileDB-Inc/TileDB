@@ -208,8 +208,10 @@ class FilterPipeline {
       ThreadPool* compute_tp,
       bool chunking = true) const;
 
-  template<typename T = Tile*,
-    typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type* = nullptr>
+  template <
+      typename T = Tile*,
+      typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type* =
+          nullptr>
   Status run_forward(
       stats::Stats* writer_stats,
       Tile* tile,
@@ -285,7 +287,7 @@ class FilterPipeline {
       uint64_t concurrency_level,
       const Config& config) const;
 
-   Status run_reverse_chunk_range(
+  Status run_reverse_chunk_range(
       stats::Stats* const reader_stats,
       Tile* const tile,
       const ChunkData& chunk_data,
@@ -293,7 +295,7 @@ class FilterPipeline {
       const uint64_t max_chunk_index,
       uint64_t concurrency_level,
       const Config& config,
-      std::vector<Tile*> &dim_tiles) const;
+      std::vector<Tile*>& dim_tiles) const;
 
   /**
    * Serializes the pipeline metadata into a binary buffer.
@@ -391,7 +393,7 @@ class FilterPipeline {
    * @return Status
    */
 
-  template<typename T>
+  template <typename T>
   Status filter_chunks_forward(
       const Tile& tile,
       T support_tiles,
