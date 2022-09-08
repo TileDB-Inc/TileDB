@@ -254,8 +254,7 @@ class GeneralFunctionNode<
   template <size_t I = 0, class... Ts, class... Us>
   constexpr void inject_all(std::tuple<Ts...>& in, std::tuple<Us...>& out) {
     static_assert(sizeof...(Ts) == sizeof...(Us));
-
-    if constexpr (is_producer_) {
+    if constexpr (is_consumer_) {
       return;
     }
     if constexpr (I == sizeof...(Ts)) {
