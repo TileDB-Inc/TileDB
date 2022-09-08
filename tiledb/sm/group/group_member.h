@@ -90,7 +90,7 @@ class GroupMember {
    * @param buff The buffer to serialize the data into.
    * @return Status
    */
-  virtual void serialize(Serializer &serializer);
+  virtual void serialize(Serializer& serializer);
 
   /**
    * Returns a Group object from the data in the input binary buffer.
@@ -100,7 +100,7 @@ class GroupMember {
    * @return Status and Attribute
    */
   static std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
-  deserialize(Deserializer &deserializer);
+  deserialize(Deserializer& deserializer);
 
  protected:
   /* ********************************* */

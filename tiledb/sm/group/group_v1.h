@@ -42,8 +42,8 @@
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/storage_format/serialization/serializers.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
 
@@ -65,7 +65,7 @@ class GroupV1 : public Group {
    * @param buff The buffer to serialize the data into.
    * @return Status
    */
-  void serialize(Serializer &serializer) override;
+  void serialize(Serializer& serializer) override;
 
   /**
    * Returns a Group object from the data in the input binary buffer.
@@ -75,7 +75,9 @@ class GroupV1 : public Group {
    * @return Status and Attribute
    */
   static std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> deserialize(
-      Deserializer &deserializer, const URI& group_uri, StorageManager* storage_manager);
+      Deserializer& deserializer,
+      const URI& group_uri,
+      StorageManager* storage_manager);
 
  private:
   /* Format version for class. */
