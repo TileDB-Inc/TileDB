@@ -232,6 +232,9 @@ class GeneralFunctionNode<
   template <size_t I = 0, class... Ts, class... Us>
   constexpr void extract_all(std::tuple<Ts...>& in, std::tuple<Us...>& out) {
     static_assert(sizeof...(Ts) == sizeof...(Us));
+    if constexpr (is_producer_) {
+      return;
+    }
     if constexpr (I == sizeof...(Ts)) {
       return;
     } else {
@@ -251,6 +254,10 @@ class GeneralFunctionNode<
   template <size_t I = 0, class... Ts, class... Us>
   constexpr void inject_all(std::tuple<Ts...>& in, std::tuple<Us...>& out) {
     static_assert(sizeof...(Ts) == sizeof...(Us));
+
+    if constexpr (is_producer_) {
+      return;
+    }
     if constexpr (I == sizeof...(Ts)) {
       return;
     } else {
@@ -338,7 +345,7 @@ class GeneralFunctionNode<
   }
 
   /**
-   * Test that all sinks are in the done state.
+   * Test that all sinks are in the done state.  Always false if producer.
    */
   bool sink_done_all() {
     if constexpr (is_producer_) {
@@ -350,7 +357,8 @@ class GeneralFunctionNode<
   }
 
   /**
-   * Test that at least one sink is in the done state.
+   * Test that at least one sink is in the done state.  Always false if
+   * producer.
    */
   bool sink_done_any() {
     if constexpr (is_producer_) {
@@ -362,7 +370,7 @@ class GeneralFunctionNode<
   }
 
   /**
-   * Test that all sources are in the done state.
+   * Test that all sources are in the done state.  Always false if consumer.
    */
   bool source_done_all() {
     if constexpr (is_consumer_) {
@@ -374,7 +382,8 @@ class GeneralFunctionNode<
   }
 
   /**
-   * Test that at least one source is in the done state.
+   * Test that at least one source is in the done state.  Always false if
+   * consumer.
    */
   bool source_done_any() {
     if constexpr (is_consumer_) {
@@ -386,7 +395,7 @@ class GeneralFunctionNode<
   }
 
   /**
-   * Apply do_pull to every input port.
+   * Apply do_pull to every input port.  Make empty function if producer.
    */
   void pull_all() {
     if constexpr (is_producer_) {
@@ -397,7 +406,7 @@ class GeneralFunctionNode<
   }
 
   /**
-   * Apply do_drain to every input port.
+   * Apply do_drain to every input port.  Make empty function if producer.
    */
   void drain_all() {
     if constexpr (is_producer_) {
@@ -408,7 +417,7 @@ class GeneralFunctionNode<
   }
 
   /**
-   * Apply do_fill to every output port.
+   * Apply do_fill to every output port.  Make empty function if consumer.
    */
   void fill_all() {
     if constexpr (is_consumer_) {
@@ -420,7 +429,7 @@ class GeneralFunctionNode<
   }
 
   /**
-   * Apply do_push to every output port.
+   * Apply do_push to every output port.  Make empty function if consumer.
    */
   void push_all() {
     if constexpr (is_consumer_) {
@@ -473,40 +482,38 @@ class GeneralFunctionNode<
 
         instruction_counter_ = NodeState::input;
       case NodeState::input:
-        if constexpr (!is_producer_) {
-          /*
-           * Here begins pull-check-extract-drain (aka `input`)
-           * This follows the same pattern as for simple function nodes, but
-           * over the tuple inputs and outputs.
-           *
-           * @todo Add (indicate) state update
-           *
-           */
+        /*
+         * Here begins pull-check-extract-drain (aka `input`)
+         * This follows the same pattern as for simple function nodes, but
+         * over the tuple inputs and outputs.
+         *
+         * @todo Add (indicate) state update
+         *
+         */
 
-          // pull
-          pull_all();
+        // pull
+        pull_all();
 
-          /*
-           * Check if all sources or all sinks are done.
-           *
-           * @note All sources or all sinks need to be done for the `input_` or
-           * `output_` to be considered done.
-           *
-           * @todo Develop model and interface for partial completion (i.e.,
-           * only some of the members of the tuple being done while others not).
-           *
-           */
-          if (sink_done_all() || source_done_all()) {
-            instruction_counter_ = NodeState::done;
-            return instruction_counter_;
-          }
-
-          // extract
-          extract_all(inputs_, input_items_);
-
-          // drain
-          drain_all();
+        /*
+         * Check if all sources or all sinks are done.
+         *
+         * @note All sources or all sinks need to be done for the `input_` or
+         * `output_` to be considered done.
+         *
+         * @todo Develop model and interface for partial completion (i.e.,
+         * only some of the members of the tuple being done while others not).
+         *
+         */
+        if (sink_done_all() || source_done_all()) {
+          instruction_counter_ = NodeState::done;
+          return instruction_counter_;
         }
+
+        // extract
+        extract_all(inputs_, input_items_);
+
+        // drain
+        drain_all();
 
         instruction_counter_ = NodeState::compute;
       case NodeState::compute:
