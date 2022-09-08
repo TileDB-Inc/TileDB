@@ -601,10 +601,10 @@ Status StorageManager::delete_fragments(
     if (!st.ok()) {
       throw std::logic_error(st.message());
     }
+
+    commit_uris_to_delete.emplace_back(commit_uri.value());
     if (array_dir.consolidated_commit_uris_set().count(
-            commit_uri.value().c_str()) == 0) {
-      commit_uris_to_delete.emplace_back(commit_uri.value());
-    } else {
+            commit_uri.value().c_str()) != 0) {
       commit_uris_to_ignore.emplace_back(commit_uri.value());
     }
   }
@@ -617,7 +617,9 @@ Status StorageManager::delete_fragments(
   // Delete fragments and commits
   st = parallel_for(compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
     RETURN_NOT_OK(vfs_->remove_dir(fragment_uris[i].uri_));
-    if (commit_uris_to_delete.size() != 0) {
+    bool is_file = false;
+    RETURN_NOT_OK(vfs_->is_file(commit_uris_to_delete[i], &is_file));
+    if (is_file) {
       RETURN_NOT_OK(vfs_->remove_file(commit_uris_to_delete[i]));
     }
     return Status::Ok();

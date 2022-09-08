@@ -838,7 +838,7 @@ TEST_CASE_METHOD(
     if (vacuum) {
       CHECK(commits.size() == 2);
     } else {
-      CHECK(commits.size() == 6);
+      CHECK(commits.size() == 4);
     }
   }
 
