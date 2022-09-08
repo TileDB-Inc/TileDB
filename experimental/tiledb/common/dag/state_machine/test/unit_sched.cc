@@ -422,8 +422,6 @@ void do_run(bool debug = false) {
 
   auto id = std::this_thread::get_id();
 
-  // Somehow a node is in the running queue without actually running
-
   while (!running_queue.empty() || !runnable_queue.empty()) {
     if (debug)
       std::cout << id << " do run running "
@@ -857,6 +855,8 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
   }
 
   SECTION("Threadpool with " + std::to_string(threads)) {
+    // New thread pool -- should try with different configurations in its own
+    // unit test
     ThreadPool<false, false, false> tp(threads);
 
     for (size_t t = 0; t < threads; ++t) {
@@ -864,7 +864,7 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
     }
     CHECK(futs.size() == threads);
 
-    // Not condfigured for get() with void -- so don't do that
+    // Not configured for get() with void -- so don't do that
     for (size_t t = 0; t < threads; ++t) {
       futs[t].wait();
     }
@@ -923,6 +923,10 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
 
     CHECK(str(a.state()) == "st_00");
     CHECK(str(b.state()) == "st_00");
+
+    // These don't seem to work properly
+    // CHECK((a.source_swaps() + a.sink_swaps()) == 3 * rounds);
+    // CHECK((b.source_swaps() + b.sink_swaps()) == rounds);
   }
 
   SECTION("Test async3") {
@@ -946,6 +950,7 @@ TEST_CASE("Tuple maker: Test stingy pseudo-scheduler with fsm", "[sched]") {
     CHECK(str(a.state()) == "st_000");
     CHECK(str(b.state()) == "st_000");
 
+    // These don't seem to work properly
     // CHECK((a.source_swaps() + a.sink_swaps()) == 3 * rounds);
     // CHECK((b.source_swaps() + b.sink_swaps()) == rounds);
   }

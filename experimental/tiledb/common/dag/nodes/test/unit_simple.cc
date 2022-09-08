@@ -358,7 +358,7 @@ TEST_CASE(
 
     ProducerNode<AsyncMover2, size_t> d([]() { return 0UL; });
     FunctionNode<AsyncMover2, size_t> e([](size_t) { return 0UL; });
-    v ConsumerNode<AsyncMover2, size_t> f([](size_t) {});
+    ConsumerNode<AsyncMover2, size_t> f([](size_t) {});
 
     Edge g{a, b};
     Edge h{b, c};

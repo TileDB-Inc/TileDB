@@ -44,28 +44,24 @@ using namespace tiledb::common;
 
 TEST_CASE("GeneralNode: Verify various API approaches", "[general]") {
   [[maybe_unused]] GeneralFunctionNode<
-      size_t,
       AsyncMover2,
       std::tuple<size_t, int>,
       AsyncMover3,
       std::tuple<size_t, double>>
       x{};
   [[maybe_unused]] GeneralFunctionNode<
-      size_t,
       AsyncMover2,
       std::tuple<int>,
       AsyncMover3,
       std::tuple<size_t, double>>
       y{};
   [[maybe_unused]] GeneralFunctionNode<
-      size_t,
       AsyncMover2,
       std::tuple<char*>,
       AsyncMover3,
       std::tuple<size_t, std::tuple<int, float>>>
       z{};
   [[maybe_unused]] GeneralFunctionNode<
-      size_t,
       AsyncMover2,
       std::tuple<int, char, double, double, double>,
       AsyncMover3,
@@ -75,7 +71,6 @@ TEST_CASE("GeneralNode: Verify various API approaches", "[general]") {
 
 TEST_CASE("GeneralNode: Verify simple run_once", "[general]") {
   [[maybe_unused]] GeneralFunctionNode<
-      size_t,
       AsyncMover2,
       std::tuple<size_t, int>,
       AsyncMover3,
@@ -86,7 +81,6 @@ TEST_CASE("GeneralNode: Verify simple run_once", "[general]") {
 TEST_CASE(
     "GeneralNode: Verify construction with simple function", "[general]") {
   [[maybe_unused]] GeneralFunctionNode<
-      size_t,
       AsyncMover2,
       std::tuple<size_t>,
       AsyncMover3,
@@ -97,7 +91,6 @@ TEST_CASE(
 TEST_CASE(
     "GeneralNode: Verify construction with compound function", "[general]") {
   [[maybe_unused]] GeneralFunctionNode<
-      size_t,
       AsyncMover2,
       std::tuple<size_t, int>,
       AsyncMover3,
@@ -118,46 +111,30 @@ struct foo {
  *
  * @todo Special casing (?) in GeneralFunctionNode to support these.
  */
-template <
-    class CalculationState,
-    template <class>
-    class SourceMover_T,
-    class... BlocksOut>
-using GeneralProducerNode = GeneralFunctionNode<
-    CalculationState,
-    foo,
-    std::tuple<>,
-    SourceMover_T,
-    BlocksOut...>;
+template <template <class> class SourceMover_T, class... BlocksOut>
+using GeneralProducerNode =
+    GeneralFunctionNode<foo, std::tuple<>, SourceMover_T, BlocksOut...>;
 
-template <
-    class CalculationState,
-    template <class>
-    class SinkMover_T,
-    class... BlocksIn>
-using GeneralConsumerNode = GeneralFunctionNode<
-    CalculationState,
-    SinkMover_T,
-    BlocksIn...,
-    foo,
-    std::tuple<>>;
+template <template <class> class SinkMover_T, class... BlocksIn>
+using GeneralConsumerNode =
+    GeneralFunctionNode<SinkMover_T, BlocksIn..., foo, std::tuple<>>;
 
 TEST_CASE(
     "GeneralNode: Verify use of (void) template arguments for "
     "producer/consumer",
     "[general]") {
-  GeneralProducerNode<size_t, AsyncMover3, std::tuple<size_t, double>> x{
+  GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
       [](std::tuple<size_t, double>) {}};
-  GeneralConsumerNode<size_t, AsyncMover3, std::tuple<size_t, double>> y{
+  GeneralConsumerNode<AsyncMover3, std::tuple<size_t, double>> y{
       [](std::tuple<size_t, double>) {}};
 }
 
 TEST_CASE(
     "GeneralNode: Connect void-created Producer and Consumer "
     "[general]") {
-  GeneralProducerNode<size_t, AsyncMover3, std::tuple<size_t, double>> x{
+  GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
       [](std::tuple<size_t, double>) {}};
-  GeneralConsumerNode<size_t, AsyncMover3, std::tuple<double, size_t>> y{
+  GeneralConsumerNode<AsyncMover3, std::tuple<double, size_t>> y{
       [](std::tuple<double, size_t>) {}};
 
   Edge g{std::get<0>(x.outputs_), std::get<1>(y.inputs_)};
@@ -170,9 +147,9 @@ TEST_CASE(
   double ext1{0.0};
   size_t ext2{0};
 
-  GeneralProducerNode<size_t, AsyncMover3, std::tuple<size_t, double>> x{
+  GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
       [](std::tuple<size_t, double>& a) { a = std::make_tuple(5UL, 3.14159); }};
-  GeneralConsumerNode<size_t, AsyncMover3, std::tuple<double, size_t>> y{
+  GeneralConsumerNode<AsyncMover3, std::tuple<double, size_t>> y{
       [&ext1, &ext2](const std::tuple<double, size_t>& b) {
         ext1 = std::get<0>(b);
         ext2 = std::get<1>(b);
@@ -247,7 +224,6 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
     ProducerNode<AsyncMover3, size_t> a{dummy_source};
 
     GeneralFunctionNode<
-        size_t,
         AsyncMover3,
         std::tuple<size_t>,
         AsyncMover3,
@@ -256,8 +232,7 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
     ConsumerNode<AsyncMover3, size_t> c{dummy_sink};
 
     ProducerNode<AsyncMover2, size_t> d{dummy_source};
-    GeneralFunctionNode<size_t, AsyncMover2, std::tuple<size_t>> e{
-        dummy_function};
+    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e{dummy_function};
     ConsumerNode<AsyncMover2, size_t> f{dummy_sink};
 
     Edge g{a, std::get<0>(b.inputs_)};
@@ -274,12 +249,12 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
     auto dummy_sink_lambda = [](size_t) {};
 
     ProducerNode<AsyncMover3, size_t> a{dummy_source_lambda};
-    GeneralFunctionNode<size_t, AsyncMover3, std::tuple<size_t>> b{
+    GeneralFunctionNode<AsyncMover3, std::tuple<size_t>> b{
         dummy_function_lambda};
     ConsumerNode<AsyncMover3, size_t> c{dummy_sink_lambda};
 
     ProducerNode<AsyncMover2, size_t> d{dummy_source_lambda};
-    GeneralFunctionNode<size_t, AsyncMover2, std::tuple<size_t>> e{
+    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e{
         dummy_function_lambda};
     ConsumerNode<AsyncMover2, size_t> f{dummy_sink_lambda};
 
@@ -292,14 +267,14 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
 
   SECTION("inline lambda") {
     ProducerNode<AsyncMover3, size_t> a([]() { return 0UL; });
-    GeneralFunctionNode<size_t, AsyncMover3, std::tuple<size_t>> b(
+    GeneralFunctionNode<AsyncMover3, std::tuple<size_t>> b(
         [](const std::tuple<size_t>& in, std::tuple<size_t>& out) {
           out = in;
         });
     ConsumerNode<AsyncMover3, size_t> c([](size_t) {});
 
     ProducerNode<AsyncMover2, size_t> d([]() { return 0UL; });
-    GeneralFunctionNode<size_t, AsyncMover2, std::tuple<size_t>> e(
+    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e(
         [](const std::tuple<size_t>& in, std::tuple<size_t>& out) {
           out = in;
         });
@@ -318,11 +293,11 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
     dummy_sink_class dc{};
 
     ProducerNode<AsyncMover3, size_t> a{ac};
-    GeneralFunctionNode<size_t, AsyncMover3, std::tuple<size_t>> b{fc};
+    GeneralFunctionNode<AsyncMover3, std::tuple<size_t>> b{fc};
     ConsumerNode<AsyncMover3, size_t> c{dc};
 
     ProducerNode<AsyncMover2, size_t> d{ac};
-    GeneralFunctionNode<size_t, AsyncMover2, std::tuple<size_t>> e{fc};
+    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e{fc};
     ConsumerNode<AsyncMover2, size_t> f{dc};
 
     Edge g{a, std::get<0>(b.inputs_)};
@@ -334,12 +309,12 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
 
   SECTION("inline function object") {
     ProducerNode<AsyncMover3, size_t> a{dummy_source_class{}};
-    GeneralFunctionNode<size_t, AsyncMover3, std::tuple<size_t>> b{
+    GeneralFunctionNode<AsyncMover3, std::tuple<size_t>> b{
         dummy_function_class{}};
     ConsumerNode<AsyncMover3, size_t> c{dummy_sink_class{}};
 
     ProducerNode<AsyncMover2, size_t> d{dummy_source_class{}};
-    GeneralFunctionNode<size_t, AsyncMover2, std::tuple<size_t>> e{
+    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e{
         dummy_function_class{}};
     ConsumerNode<AsyncMover2, size_t> f{dummy_sink_class{}};
 
@@ -365,11 +340,11 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
         std::placeholders::_2);
 
     ProducerNode<AsyncMover3, size_t> a{ac};
-    GeneralFunctionNode<size_t, AsyncMover3, std::tuple<size_t>> b{fc};
+    GeneralFunctionNode<AsyncMover3, std::tuple<size_t>> b{fc};
     ConsumerNode<AsyncMover3, size_t> c{dc};
 
     ProducerNode<AsyncMover2, size_t> d{ac};
-    GeneralFunctionNode<size_t, AsyncMover2, std::tuple<size_t>> e{fc};
+    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e{fc};
     ConsumerNode<AsyncMover2, size_t> f{dc};
 
     Edge g{a, std::get<0>(b.inputs_)};
@@ -385,7 +360,7 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
     int z = 8675309;
 
     ProducerNode<AsyncMover3, size_t> a{std::bind(dummy_bind_source, x)};
-    GeneralFunctionNode<size_t, AsyncMover3, std::tuple<size_t>> b{std::bind(
+    GeneralFunctionNode<AsyncMover3, std::tuple<size_t>> b{std::bind(
         dummy_bind_function,
         x,
         y,
@@ -395,7 +370,7 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
         std::bind(dummy_bind_sink, y, std::placeholders::_1, z)};
 
     ProducerNode<AsyncMover2, size_t> d{std::bind(dummy_bind_source, x)};
-    GeneralFunctionNode<size_t, AsyncMover2, std::tuple<size_t>> e{std::bind(
+    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e{std::bind(
         dummy_bind_function,
         x,
         y,
@@ -427,13 +402,11 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
         std::placeholders::_2);
 
     ProducerNode<AsyncMover3, size_t> a{std::move(ac)};
-    GeneralFunctionNode<size_t, AsyncMover3, std::tuple<size_t>> b{
-        std::move(fc)};
+    GeneralFunctionNode<AsyncMover3, std::tuple<size_t>> b{std::move(fc)};
     ConsumerNode<AsyncMover3, size_t> c{std::move(dc)};
 
     ProducerNode<AsyncMover2, size_t> d{std::move(ac)};
-    GeneralFunctionNode<size_t, AsyncMover2, std::tuple<size_t>> e{
-        std::move(fc)};
+    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e{std::move(fc)};
     ConsumerNode<AsyncMover2, size_t> f{std::move(dc)};
 
     Edge g{a, std::get<0>(b.inputs_)};
@@ -448,7 +421,7 @@ TEST_CASE("GeneralNode: Verify compound connections", "[general]") {
   SECTION("inline lambda") {
     ProducerNode<AsyncMover3, size_t> a1([]() { return 0UL; });
     ProducerNode<AsyncMover3, double> a2([]() { return 0.0; });
-    GeneralFunctionNode<size_t, AsyncMover3, std::tuple<size_t, double>> b(
+    GeneralFunctionNode<AsyncMover3, std::tuple<size_t, double>> b(
         [](const std::tuple<size_t, double>& in,
            std::tuple<size_t, double>& out) { out = in; });
     ConsumerNode<AsyncMover3, size_t> c1([](size_t) {});
@@ -456,7 +429,7 @@ TEST_CASE("GeneralNode: Verify compound connections", "[general]") {
 
     ProducerNode<AsyncMover2, size_t> d1([]() { return 0UL; });
     ProducerNode<AsyncMover2, double> d2([]() { return 0.0; });
-    GeneralFunctionNode<size_t, AsyncMover2, std::tuple<size_t, double>> e(
+    GeneralFunctionNode<AsyncMover2, std::tuple<size_t, double>> e(
         [](const std::tuple<size_t, double>& in,
            std::tuple<size_t, double>& out) { out = in; });
     ConsumerNode<AsyncMover2, size_t> f1([](size_t) {});
@@ -484,7 +457,7 @@ TEST_CASE(
   size_t i{0UL};
   ProducerNode<AsyncMover2, size_t> q([&]() { return i++; });
 
-  GeneralFunctionNode<size_t, AsyncMover2, std::tuple<size_t>> r(
+  GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> r(
       [&](const std::tuple<std::size_t>& in, std::tuple<std::size_t>& out) {
         std::get<0>(out) = 2 * std::get<0>(in);
       });
@@ -533,7 +506,6 @@ TEST_CASE(
   ProducerNode<AsyncMover2, double> q2([&]() { return j++; });
 
   GeneralFunctionNode<
-      size_t,
       AsyncMover2,
       std::tuple<size_t, double>,
       AsyncMover2,
@@ -630,7 +602,6 @@ void asynchronous_with_function_node(
   });
 
   GeneralFunctionNode<
-      size_t,
       AsyncMover2,
       std::tuple<size_t, double>,
       AsyncMover2,
@@ -831,7 +802,6 @@ TEST_CASE(
   ProducerNode<AsyncMover3, double> source_node2(generator{337});
 
   GeneralFunctionNode<
-      size_t,
       AsyncMover3,
       std::tuple<size_t, double>,
       AsyncMover3,

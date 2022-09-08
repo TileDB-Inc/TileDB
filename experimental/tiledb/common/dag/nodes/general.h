@@ -27,7 +27,9 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the general nodes classes for the dag task graph library.
+ * This file declares the general node class for the dag task graph library.  A
+ * general node is a function node that takes multiple inputs and multiple
+ * outputs.
  */
 
 #ifndef TILEDB_DAG_GENERAL_H
@@ -45,6 +47,11 @@
 
 namespace tiledb::common {
 
+/**
+ * In anticipation of the possible use of a Duff's device mechanism for
+ * interaction between nodes and schedulers, we define some candidate callback
+ * states.
+ */
 enum class NodeState {
   init,
   input,
@@ -60,13 +67,24 @@ enum class NodeState {
   last
 };
 
+/**
+ * A function to convert a `NodeState` to an integral type suitable for
+ * indexing.
+ */
 constexpr unsigned short to_index(NodeState x) {
   return static_cast<unsigned short>(x);
 }
 
+/**
+ * A count of the number of node states.
+ */
 namespace {
 constexpr unsigned short num_states = to_index(NodeState::last) + 1;
 
+/**
+ * A vector of strings corresponding to the states.  Useful for diagnostics,
+ * testing, and debugging.
+ */
 std::vector<std::string> node_state_strings{"init",
                                             "input",
                                             "compute",
@@ -85,15 +103,16 @@ std::vector<std::string> node_state_strings{"init",
  * @todo Partial specialization for non-tuple types?
  *
  * @todo CTAD deduction guides to simplify construction (and eliminate
- redundancy,
- * site of errors, due to template args of class and function in constructor).
-
+ * redundancy, site of errors, due to template args of class and function in
+ * constructor).
+ *
  * @todo Unify function behavior for simple and general function nodes.
  */
 
 /**
- * Some type aliases for the enclosed function, to allow empty inputs or empty
- * outputs (for creating producer or consumer nodes from function node).
+ * Some type aliases for the function enclosed by the node, to allow empty
+ * inputs or empty outputs (for creating producer or consumer nodes for
+ * testing/validation from function node).
  */
 template <
     class BlocksIn = std ::tuple<std::tuple<>>,
@@ -117,7 +136,6 @@ struct fn_type<std::tuple<BlocksIn...>, std::tuple<>> {
 };
 
 template <
-    class CalculationState,
     template <class>
     class SinkMover_T,
     class BlocksIn,
@@ -125,8 +143,18 @@ template <
     class BlocksOut = BlocksIn>
 class GeneralFunctionNode;
 
+/*
+ * By specializing through the use of `std::tuple`, we are able to have two variadic
+ * template lists.  Thus, we can define a node with `size_t` and `int` for its inputs
+ * and `size_t` and `double` for its outputs in the following way:
+ *
+ * @code{.cpp}
+ * GeneralFunctionNode<AsyncMover2, std::tuple<size_t, int>,
+ *                     AsyncMover3, std::tuple<size_t, double>> x{};
+ * @endcode
+ *
+ */
 template <
-    class CalculationState,
     template <class>
     class SinkMover_T,
     class... BlocksIn,
@@ -134,7 +162,6 @@ template <
     class SourceMover_T,
     class... BlocksOut>
 class GeneralFunctionNode<
-    CalculationState,
     SinkMover_T,
     std::tuple<BlocksIn...>,
     SourceMover_T,
@@ -165,9 +192,6 @@ class GeneralFunctionNode<
    */
   std::tuple<BlocksIn...> input_items_;
   std::tuple<BlocksOut...> output_items_;
-
-  CalculationState current_state_;
-  CalculationState new_state_;
 
   NodeState instruction_counter_{NodeState::init};
 
@@ -206,13 +230,13 @@ class GeneralFunctionNode<
    * @pre sizeof(Ts) == sizeof(Us)
    */
   template <size_t I = 0, class... Ts, class... Us>
-  constexpr void tuple_extract(std::tuple<Ts...>& in, std::tuple<Us...>& out) {
+  constexpr void extract_all(std::tuple<Ts...>& in, std::tuple<Us...>& out) {
     static_assert(sizeof...(Ts) == sizeof...(Us));
     if constexpr (I == sizeof...(Ts)) {
       return;
     } else {
       std::get<I>(out) = *(std::get<I>(in).extract());
-      tuple_extract<I + 1>(in, out);
+      extract_all<I + 1>(in, out);
     }
   }
 
@@ -225,13 +249,13 @@ class GeneralFunctionNode<
    * @pre sizeof(Ts) == sizeof(Us)
    */
   template <size_t I = 0, class... Ts, class... Us>
-  constexpr void tuple_inject(std::tuple<Ts...>& in, std::tuple<Us...>& out) {
+  constexpr void inject_all(std::tuple<Ts...>& in, std::tuple<Us...>& out) {
     static_assert(sizeof...(Ts) == sizeof...(Us));
     if constexpr (I == sizeof...(Ts)) {
       return;
     } else {
       std::get<I>(out).inject(std::get<I>(in));
-      tuple_inject<I + 1>(in, out);
+      inject_all<I + 1>(in, out);
     }
   }
 
@@ -254,6 +278,11 @@ class GeneralFunctionNode<
    * tuple of output items.
    *
    * @tparam The type of the function (or function object) that accepts items.
+   *
+   * @note The enclosed function is assumed to be stateless.  I.e., it can be
+   * restarted with the same input multiple times and produce the same output
+   * each time.  This requirement will be necessary for stopping and restarting
+   * these nodes.
    */
   template <class Function>
   explicit GeneralFunctionNode(
@@ -309,6 +338,109 @@ class GeneralFunctionNode<
   }
 
   /**
+   * Test that all sinks are in the done state.
+   */
+  bool sink_done_all() {
+    if constexpr (is_producer_) {
+      return false;
+    }
+    return std::apply(
+        [](auto&... sink) { return (sink.get_mover()->is_done() && ...); },
+        inputs_);
+  }
+
+  /**
+   * Test that at least one sink is in the done state.
+   */
+  bool sink_done_any() {
+    if constexpr (is_producer_) {
+      return false;
+    }
+    return std::apply(
+        [](auto&... sink) { return (sink.get_mover()->is_done() || ...); },
+        inputs_);
+  }
+
+  /**
+   * Test that all sources are in the done state.
+   */
+  bool source_done_all() {
+    if constexpr (is_consumer_) {
+      return false;
+    }
+    return std::apply(
+        [](auto&... source) { return (source.get_mover()->is_done() && ...); },
+        outputs_);
+  }
+
+  /**
+   * Test that at least one source is in the done state.
+   */
+  bool source_done_any() {
+    if constexpr (is_consumer_) {
+      return false;
+    }
+    return std::apply(
+        [](auto&... source) { return (source.get_mover()->is_done() || ...); },
+        outputs_);
+  }
+
+  /**
+   * Apply do_pull to every input port.
+   */
+  void pull_all() {
+    if constexpr (is_producer_) {
+      return;
+    }
+    std::apply(
+        [](auto&... sink) { (sink.get_mover()->do_pull(), ...); }, inputs_);
+  }
+
+  /**
+   * Apply do_drain to every input port.
+   */
+  void drain_all() {
+    if constexpr (is_producer_) {
+      return;
+    }
+    std::apply(
+        [](auto&... sink) { (sink.get_mover()->do_drain(), ...); }, inputs_);
+  }
+
+  /**
+   * Apply do_fill to every output port.
+   */
+  void fill_all() {
+    if constexpr (is_consumer_) {
+      return;
+    }
+    std::apply(
+        [](auto&... source) { (source.get_mover()->do_fill(), ...); },
+        outputs_);
+  }
+
+  /**
+   * Apply do_push to every output port.
+   */
+  void push_all() {
+    if constexpr (is_consumer_) {
+      return;
+    }
+    std::apply(
+        [](auto&... source) { (source.get_mover()->do_push(), ...); },
+        outputs_);
+  }
+
+  /**
+   * Send stop to every output port.
+   */
+  void stop_all() {
+    std::apply(
+        [](auto&... source) { (source.get_mover()->do_stop(), ...); },
+        outputs_);
+  }
+
+  /**
    * Function for applying all actions of the node: Pull the sinks, fill the
    * input tuple from sinks, apply stored function, fill the output tuple, and
    * push the sources.
@@ -333,70 +465,48 @@ class GeneralFunctionNode<
    * @todo Maybe we need a many-to-one and a one-to-many `ItemMover`.  We could
    * then put items in the mover rather than in the nodes -- though that would
    * make the nodes almost superfluous.
+   *
    */
-
   NodeState run_once() {
     switch (instruction_counter_) {
       case NodeState::init:
 
         instruction_counter_ = NodeState::input;
       case NodeState::input:
+        if constexpr (!is_producer_) {
+          /*
+           * Here begins pull-check-extract-drain (aka `input`)
+           * This follows the same pattern as for simple function nodes, but
+           * over the tuple inputs and outputs.
+           *
+           * @todo Add (indicate) state update
+           *
+           */
 
-        /*
-         * Here begins pull-check-extract-drain (aka `input`)
-         *
-         * @todo Add (indicate) state update
-         *
-         * @todo Atomicity with extract and drain?  (Note that we can't extract
-         * if we get a done on pull()).
-         */
+          // pull
+          pull_all();
 
-        /*
-         * A custom "f_"
-         */
-
-        // ----------------------------------------------------------------
-        // pull all
-        std::apply(
-            [](auto&... sink) { (sink.get_mover()->do_pull(), ...); }, inputs_);
-        // @todo Should we have a NodeState case here to resume (since pull may
-        // block/return)
-
-        /*
-         * Check all for source or sink connections being done
-         *
-         * @note All sources or all sinks need to be done at the same time.
-         *
-         * @todo Develop model and interface for partial completion (i.e., only
-         * some of the members of the tuple being done while others not).
-         */
-        {
-          auto sink_done = std::apply(
-              [](auto&... sink) {
-                return (sink.get_mover()->is_done() && ...);
-              },
-              inputs_);
-
-          auto source_done = std::apply(
-              [](auto&... source) {
-                return (source.get_mover()->is_done() && ...);
-              },
-              outputs_);
-
-          if (sink_done || source_done) {
+          /*
+           * Check if all sources or all sinks are done.
+           *
+           * @note All sources or all sinks need to be done for the `input_` or
+           * `output_` to be considered done.
+           *
+           * @todo Develop model and interface for partial completion (i.e.,
+           * only some of the members of the tuple being done while others not).
+           *
+           */
+          if (sink_done_all() || source_done_all()) {
             instruction_counter_ = NodeState::done;
             return instruction_counter_;
           }
+
+          // extract
+          extract_all(inputs_, input_items_);
+
+          // drain
+          drain_all();
         }
-
-        // extract all
-        tuple_extract(inputs_, input_items_);
-
-        // drain all
-        std::apply(
-            [](auto&... sink) { (sink.get_mover()->do_drain(), ...); },
-            inputs_);
-        // ----------------------------------------------------------------
 
         instruction_counter_ = NodeState::compute;
       case NodeState::compute:
@@ -420,30 +530,27 @@ class GeneralFunctionNode<
 
         instruction_counter_ = NodeState::output;
       case NodeState::output:
-        /*
-         * Here begins inject-fill-push (aka `output`).
-         *
-         * @todo Atomicity?
-         */
+        if constexpr (!is_consumer_) {
+          /*
+           * Here begins inject-fill-push (aka `output`).
+           *
+           */
 
-        // ----------------------------------------------------------------
-        // inject all
-        tuple_inject(output_items_, outputs_);
+          // inject
+          inject_all(output_items_, outputs_);
 
-        // fill all
-        std::apply(
-            [](auto&... source) { (source.get_mover()->do_fill(), ...); },
-            outputs_);
+          // fill
+          fill_all();
 
-        // push all
-        std::apply(
-            [](auto&... source) { (source.get_mover()->do_push(), ...); },
-            outputs_);
-        // ----------------------------------------------------------------
-
+          // push
+          push_all();
+        }
         instruction_counter_ = NodeState::done;
 
       case NodeState::done:
+        break;
+
+      case NodeState::exit:
         break;
 
       default:
@@ -463,34 +570,17 @@ class GeneralFunctionNode<
    */
   void run_for(size_t rounds) {
     while (rounds--) {
-      auto sink_done = std::apply(
-          [](auto&... sink) { return (sink.get_mover()->is_done() && ...); },
-          inputs_);
-
-      auto source_done = std::apply(
-          [](auto&... source) {
-            return (source.get_mover()->is_done() && ...);
-          },
-          outputs_);
-
-      if (sink_done || source_done) {
+      if (sink_done_all() || source_done_all()) {
         break;
       }
 
       run_once();
       reset();
     }
-    auto sink_done = std::apply(
-        [](auto&... sink) { return (sink.get_mover()->is_done() && ...); },
-        inputs_);
-
-    if (!sink_done) {
-      std::apply(
-          [](auto&... sink) { (sink.get_mover()->do_pull(), ...); }, inputs_);
+    if (!sink_done_all()) {
+      pull_all();
     }
-    std::apply(
-        [](auto&... source) { (source.get_mover()->do_stop(), ...); },
-        outputs_);
+    stop_all();
   }
 
   /**
@@ -502,33 +592,21 @@ class GeneralFunctionNode<
    *
    */
   NodeState resume() {
-    auto sink_done = std::apply(
-        [](auto&... sink) { (sink.get_mover()->is_done() && ...); }, inputs_);
-
-    auto source_done = std::apply(
-        [](auto&... source) { (source.get_mover()->is_done() && ...); },
-        outputs_);
-
     /*
-     * Call run_once repeatedly until done.  Right now yielding is done inside
-     * of run_once.  Perhaps part (or all) of Duff device should happen here
-     * instead?
+     * Call run_once repeatedly until done.
+     *
+     * @note Right now yielding is done inside of run_once.  Perhaps part (or
+     * all) of Duff's device should happen here instead?
      */
-    while (!source_done && !sink_done) {
+    while (!source_done_all() && !sink_done_all()) {
       run_once(instruction_counter_);
+      reset();
     }
 
-    sink_done = std::apply(
-        [](auto&... sink) { (sink.get_mover()->is_done() && ...); }, inputs_);
-
-    if (!sink_done) {
-      std::apply(
-          [](auto&... sink) { (sink.get_mover()->do_pull(), ...); }, inputs_);
+    if (!sink_done_all()) {
+      pull_all();
     }
-
-    std::apply(
-        [](auto&... source) { (source.get_mover()->do_stop(), ...); },
-        outputs_);
+    stop_all();
 
     instruction_counter_ = NodeState::exit;
 
