@@ -132,6 +132,8 @@ class NullableArrayCppFx {
       tiledb_layout_t tile_order,
       tiledb_layout_t write_order);
 
+  bool serialized_writes_;
+
  private:
   /** The C++ API context object. */
   Context ctx_;
@@ -290,13 +292,12 @@ void NullableArrayCppFx::write(
     }
   }
 
-  // Submit the query.
-  // REQUIRE(query.submit() == Query::Status::COMPLETE);
-
-  // Finalize the query, a no-op for non-global writes.
-  // query.finalize();
-
-  submit_and_finalize_serialized_query(ctx_, query);
+  if (!serialized_writes_) {
+    REQUIRE(query.submit() == Query::Status::COMPLETE);
+    query.finalize();
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Clean up
   array.close();
@@ -555,6 +556,15 @@ TEST_CASE_METHOD(
   attrs.emplace_back("a1", false /* var */, true /* nullable */);
   attrs.emplace_back("a2", false /* var */, true /* nullable */);
   attrs.emplace_back("a3", true /* var */, true /* nullable */);
+
+  SECTION("no serialization") {
+    serialized_writes_ = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes_ = true;
+#endif
+  }
 
   for (auto attr_iter = attrs.begin(); attr_iter != attrs.end(); ++attr_iter) {
     vector<test_attr_t<uint64_t>> test_attrs(attrs.begin(), attr_iter + 1);

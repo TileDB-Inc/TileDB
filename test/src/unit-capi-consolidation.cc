@@ -1663,14 +1663,23 @@ void ConsolidationFx::write_dense_full() {
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
-  // Submit query
-  // rc = tiledb_query_submit(ctx_, query);
-  // CHECK(rc == TILEDB_OK);
-
-  // Finalize query
-  // rc = tiledb_query_finalize(ctx_, query);
-  // CHECK(rc == TILEDB_OK);
-  submit_and_finalize_serialized_query(ctx_, query);
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -1745,14 +1754,23 @@ void ConsolidationFx::write_dense_subarray(
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
-  // Submit query
-  // rc = tiledb_query_submit(ctx_, query);
-  // CHECK(rc == TILEDB_OK);
-
-  // Finalize query
-  // rc = tiledb_query_finalize(ctx_, query);
-  // CHECK(rc == TILEDB_OK);
-  submit_and_finalize_serialized_query(ctx_, query);
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -1852,14 +1870,23 @@ void ConsolidationFx::write_sparse_full() {
       ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
-  // Submit query
-  // rc = tiledb_query_submit(ctx_, query);
-  // CHECK(rc == TILEDB_OK);
-
-  // Finalize query
-  // rc = tiledb_query_finalize(ctx_, query);
-  // CHECK(rc == TILEDB_OK);
-  submit_and_finalize_serialized_query(ctx_, query);
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2147,14 +2174,23 @@ void ConsolidationFx::write_sparse_heterogeneous_full() {
       ctx_, query, attributes[4], buffers[5], &buffer_sizes[5]);
   CHECK(rc == TILEDB_OK);
 
-  // Submit query
-  // rc = tiledb_query_submit(ctx_, query);
-  // CHECK(rc == TILEDB_OK);
-
-  // Finalize query
-  // rc = tiledb_query_finalize(ctx_, query);
-  // CHECK(rc == TILEDB_OK);
-  submit_and_finalize_serialized_query(ctx_, query);
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2356,14 +2392,23 @@ void ConsolidationFx::write_sparse_string_full() {
       ctx_, query, attributes[4], (uint64_t*)buffers[5], &buffer_sizes[5]);
   CHECK(rc == TILEDB_OK);
 
-  // Submit query
-  // rc = tiledb_query_submit(ctx_, query);
-  // CHECK(rc == TILEDB_OK);
-
-  // Finalize query
-  // rc = tiledb_query_finalize(ctx_, query);
-  // CHECK(rc == TILEDB_OK);
-  submit_and_finalize_serialized_query(ctx_, query);
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

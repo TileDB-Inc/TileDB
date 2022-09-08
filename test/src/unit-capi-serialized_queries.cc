@@ -1222,6 +1222,15 @@ TEST_CASE_METHOD(
 
   uint64_t begin = 0;
   uint64_t end = chunk_size - 1;
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
   while (begin < end) {
     query.set_data_buffer("a1", a1.data() + begin, end - begin + 1);
     query.set_data_buffer("a2", a2.data() + begin * 2, (end - begin + 1) * 2);
@@ -1235,11 +1244,20 @@ TEST_CASE_METHOD(
 
     // Simulate REST submit()
     if (begin < end) {
-      test::submit_serialized_query(ctx, query);
+      if (!serialized_writes) {
+        query.submit();
+      } else {
+        test::submit_serialized_query(ctx, query);
+      }
     }
   }
 
-  test::submit_and_finalize_serialized_query(ctx, query);
+  if (!serialized_writes) {
+    query.submit();
+    query.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query);
+  }
 
   REQUIRE(query.query_status() == Query::Status::COMPLETE);
 

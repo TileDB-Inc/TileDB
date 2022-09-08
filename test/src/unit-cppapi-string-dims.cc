@@ -1458,11 +1458,21 @@ void write_sparse_array_string_dim(
   query.set_data_buffer("dim1", (char*)data.data(), data.size());
   query.set_offsets_buffer("dim1", data_offsets.data(), data_offsets.size());
 
-  // CHECK_NOTHROW(query.submit());
-
-  // Finalize is necessary in global writes, otherwise a no-op
-  // query.finalize();
-  test::submit_and_finalize_serialized_query(ctx, query);
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes || layout != TILEDB_GLOBAL_ORDER) {
+    CHECK_NOTHROW(query.submit());
+    query.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query);
+  }
 
   array.close();
 }

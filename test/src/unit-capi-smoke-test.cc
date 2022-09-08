@@ -656,21 +656,29 @@ void SmokeTestFx::write(
     }
   }
 
-  // Submit the query.
-  // rc = tiledb_query_submit(ctx_, query);
-  // REQUIRE(rc == TILEDB_OK);
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes || layout != TILEDB_GLOBAL_ORDER) {
+    rc = tiledb_query_submit(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
 
-  // Check query status.
-  // tiledb_query_status_t status;
-  // rc = tiledb_query_get_status(ctx_, query, &status);
-  // CHECK(rc == TILEDB_OK);
-  // CHECK(status == TILEDB_COMPLETED);
+    tiledb_query_status_t status;
+    rc = tiledb_query_get_status(ctx_, query, &status);
+    CHECK(rc == TILEDB_OK);
+    CHECK(status == TILEDB_COMPLETED);
 
-  // Finalize the query, a no-op for non-global writes.
-  // rc = tiledb_query_finalize(ctx_, query);
-  // REQUIRE(rc == TILEDB_OK);
-  submit_serialized_query(ctx_, query);
-  finalize_serialized_query(ctx_, query);
+    rc = tiledb_query_finalize(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Clean up
   rc = tiledb_array_close(ctx_, array);

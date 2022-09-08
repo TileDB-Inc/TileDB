@@ -870,14 +870,31 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "array-open-at-reads";
+  bool serialized_writes = false;
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
     encryption_key_ = nullptr;
+    SECTION("no serialization") {
+      serialized_writes = false;
+    }
+    SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+      serialized_writes = true;
+#endif
+    }
   }
 
   SECTION("- with encryption") {
     encryption_type_ = TILEDB_AES_256_GCM;
     encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    SECTION("no serialization") {
+      serialized_writes = false;
+    }
+    SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+      serialized_writes = true;
+#endif
+    }
   }
 
   create_temp_dir(temp_dir);
@@ -927,12 +944,14 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  // rc = tiledb_query_submit(ctx_, query);
-  // CHECK(rc == TILEDB_OK);
-  // rc = tiledb_query_finalize(ctx_, query);
-  // CHECK(rc == TILEDB_OK);
-  submit_serialized_query(ctx_, query);
-  finalize_serialized_query(ctx_, query);
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array and clean up
   rc = tiledb_array_close(ctx_, array);
@@ -1433,14 +1452,31 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "array-open-at-writes";
+  bool serialized_writes = false;
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
     encryption_key_ = nullptr;
+    SECTION("no serialization") {
+      serialized_writes = false;
+    }
+    SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+      serialized_writes = true;
+#endif
+    }
   }
 
   SECTION("- with encryption") {
     encryption_type_ = TILEDB_AES_256_GCM;
     encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    SECTION("no serialization") {
+      serialized_writes = false;
+    }
+    SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+      serialized_writes = true;
+#endif
+    }
   }
 
   create_temp_dir(temp_dir);
@@ -1492,13 +1528,14 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  // rc = tiledb_query_submit(ctx_, query);
-  // CHECK(rc == TILEDB_OK);
-  // rc = tiledb_query_finalize(ctx_, query);
-  // CHECK(rc == TILEDB_OK);
-  // TODO: Bug, wrong results
-  // submit_serialized_query(ctx_, query);
-  submit_and_finalize_serialized_query(ctx_, query);
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Get written timestamp
   uint64_t timestamp_get;
@@ -1765,16 +1802,14 @@ TEST_CASE_METHOD(
         ctx, query, "d2", buffer_coords_dim2, &buffer_coords_size);
     CHECK(rc == TILEDB_OK);
   }
-  // rc = tiledb_query_submit(ctx, query);
-  // if (check_coords_oob)
-  // CHECK(rc == TILEDB_ERR);
-  // else
-  // CHECK(rc == TILEDB_OK);
-  // rc = tiledb_query_finalize(ctx, query);
-  // CHECK(rc == TILEDB_OK);
-  if (!check_coords_oob) {
-    submit_and_finalize_serialized_query(ctx, query);
+  rc = tiledb_query_submit(ctx, query);
+  if (check_coords_oob) {
+    CHECK(rc == TILEDB_ERR);
+  } else {
+    CHECK(rc == TILEDB_OK);
   }
+  rc = tiledb_query_finalize(ctx, query);
+  CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
   rc = tiledb_array_close(ctx, array);

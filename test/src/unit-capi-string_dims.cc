@@ -636,7 +636,7 @@ void StringDimsFx::write_array_1d(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, layout);
   REQUIRE(rc == TILEDB_OK);
-  if (layout != TILEDB_GLOBAL_ORDER) {
+  if (layout != TILEDB_GLOBAL_ORDER || !serialize_) {
     rc = tiledb_query_submit_wrapper(ctx, query, array_name);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_finalize(ctx, query);
@@ -1899,7 +1899,6 @@ TEST_CASE_METHOD(
   d_off = {0, 1, 2};
   d_val = "abee";
   a = {5, 6, 7};
-  // Bug: wrong results here
   write_array_1d(ctx_, array_name, TILEDB_GLOBAL_ORDER, d_off, d_val, a);
 
   // Open array
