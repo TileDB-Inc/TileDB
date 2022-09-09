@@ -1,3 +1,14 @@
+# TileDB v2.11.2 Release Notes
+
+## Improvements
+### Build
+* Adjust example dockerfile so layers can be cached better [#3488](https://github.com/TileDB-Inc/TileDB/pull/3488)
+
+## Defects removed
+* Dictionary encoding should handle zero length strings [#3493](https://github.com/TileDB-Inc/TileDB/pull/3493)
+* Fix empty metadata after array open/query submit [#3495](https://github.com/TileDB-Inc/TileDB/pull/3495)
+* Sparse global order reader: compute hilbert vals before filtering tiles. [#3497](https://github.com/TileDB-Inc/TileDB/pull/3497)
+
 # TileDB v2.11.1 Release Notes
 
 ## Improvements
