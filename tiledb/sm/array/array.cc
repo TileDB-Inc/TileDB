@@ -863,6 +863,10 @@ Status Array::metadata(Metadata** metadata) {
   return Status::Ok();
 }
 
+NDRange* Array::loaded_non_empty_domain() {
+  return &non_empty_domain_;
+}
+
 tuple<Status, optional<const NDRange>> Array::non_empty_domain() {
   if (!non_empty_domain_computed_) {
     // Compute non-empty domain

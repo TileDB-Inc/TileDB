@@ -147,16 +147,35 @@ Status array_to_capnp(
         *(schema.second.get()), &schema_builder, client_side));
   }
 
-  if (array->serialize_non_empty_domain()) {
-    auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
-    RETURN_NOT_OK(
-        utils::serialize_non_empty_domain(nonempty_domain_builder, array));
-  }
+  if (array->use_refactored_array_open()) {
+    if (array->serialize_non_empty_domain()) {
+      auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
+      RETURN_NOT_OK(
+          utils::serialize_non_empty_domain(nonempty_domain_builder, array));
+    }
 
-  if (array->serialize_metadata()) {
-    auto array_metadata_builder = array_builder->initArrayMetadata();
-    RETURN_NOT_OK(
-        metadata_to_capnp(array->unsafe_metadata(), &array_metadata_builder));
+    if (array->serialize_metadata()) {
+      auto array_metadata_builder = array_builder->initArrayMetadata();
+      // If this is the Cloud server, it should load and serialize metadata
+      // If this is the client, it should have previously received the array
+      // metadata from the Cloud server, so it should just serialize it
+      Metadata* metadata = nullptr;
+      // Get metadata. If not loaded, load it first.
+      RETURN_NOT_OK(array->metadata(&metadata));
+      RETURN_NOT_OK(metadata_to_capnp(metadata, &array_metadata_builder));
+    }
+  } else {
+    if (array->non_empty_domain_computed()) {
+      auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
+      RETURN_NOT_OK(
+          utils::serialize_non_empty_domain(nonempty_domain_builder, array));
+    }
+
+    if (array->metadata_loaded()) {
+      auto array_metadata_builder = array_builder->initArrayMetadata();
+      RETURN_NOT_OK(
+          metadata_to_capnp(array->unsafe_metadata(), &array_metadata_builder));
+    }
   }
 
   return Status::Ok();
@@ -200,24 +219,20 @@ Status array_from_capnp(
     array->set_array_schema_latest(std::move(array_schema_latest));
   }
 
-  if (array->serialize_non_empty_domain()) {
-    if (array_reader.hasNonEmptyDomain()) {
-      const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();
-      // Deserialize
-      RETURN_NOT_OK(
-          utils::deserialize_non_empty_domain(nonempty_domain_reader, array));
-      array->set_non_empty_domain_computed(true);
-    }
+  if (array_reader.hasNonEmptyDomain()) {
+    const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();
+    // Deserialize
+    RETURN_NOT_OK(
+        utils::deserialize_non_empty_domain(nonempty_domain_reader, array));
+    array->set_non_empty_domain_computed(true);
   }
 
-  if (array->serialize_metadata()) {
-    if (array_reader.hasArrayMetadata()) {
-      const auto& array_metadata_reader = array_reader.getArrayMetadata();
-      // Deserialize
-      RETURN_NOT_OK(
-          metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
-      array->set_metadata_loaded(true);
-    }
+  if (array_reader.hasArrayMetadata()) {
+    const auto& array_metadata_reader = array_reader.getArrayMetadata();
+    // Deserialize
+    RETURN_NOT_OK(
+        metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
+    array->set_metadata_loaded(true);
   }
 
   return Status::Ok();
