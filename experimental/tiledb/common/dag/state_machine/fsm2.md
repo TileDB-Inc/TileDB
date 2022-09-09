@@ -518,7 +518,7 @@ fashion to all of the `Source` predicates, we obtain:
      /* { state = 10 ∧ items = 10 } ∨ { state = 11 ∧ ( items = 10 ∨ items = 11 ) } */
      push: 〈 await ¬{ state = 11 } :
               if { state = 10 ∧ items = 10 } → { state = 01 ∧ items = 01 } ⟩
-     /* { state = 00 ∧ items = 00 } ∨ { state = 01 ∧ ( items = 00 ∨ items = 01 ) } */     
+     /* { state = 00 ∧ items = 00 } ∨ { state = 01 ∧ ( items = 00 ∨ items = 01 ) } */
    }
 ```
 
@@ -645,4 +645,220 @@ the state machine will never enter any `BAD` state.  We define a `BAD` state to 
 
 6.  In fact, there are no race conditions between **any** of the steps in the `Source` or the `Sink`.  As a result, we do not need to introduce any locking mechanism to make any pairs of actions atomic.  (As a reminder, all actions executed by the state machine are atomic.)
 
+
+## Proof Outlines for Buffered Edges Between Source and Sink
+
+For much of what TileDB will be doing with our task graph library, we will be using multi-stage edges between nodes.
+`Edge`s, as they are currently implemented, still provide a control connection from the `Sink` to the `Source` connected by the `Edge`.
+In developing a proof outline for `Source` and `Sink` connected by an `Edge` with one (or more) buffered stages, we must account for the buffered data in both the `state` and the `items`.
+
+Revisiting the `Source` and `Sink` operations that we previously presented, we have the following actions for a three-stage port state machine:
+
+### Source Actions
+
+```
+1. inject: items[0] ← 1
+2. fill: state[0] ← 1
+3. push: 〈 await ¬{ state = 111 } :
+            if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
+            if { state = 100 ∧ items = 100 } → { state = 001 ∧ items = 001 } ⟩
+            if { state = 101 ∧ items = 101 } → { state = 011 ∧ items = 011 } ⟩
+            if { state = 110 ∧ items = 110 } → { state = 011 ∧ items = 011 } ⟩
+```
+
+### Sink Actions
+
+Similarly, for the purposes of a proof outline, the `Sink` has three operations:
+
+```
+1. extract: item[2] ← 0
+2. drain: state[2] ← 0
+3. pull: 〈 await ¬{ state = 000 } :
+            if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
+            if { state = 100 ∧ items = 100 } → { state = 001 ∧ items = 001 } ⟩
+            if { state = 101 ∧ items = 101 } → { state = 011 ∧ items = 011 } ⟩
+            if { state = 110 ∧ items = 110 } → { state = 011 ∧ items = 011 } ⟩
+```
+
+
+### Source Proof Outline
+
+In the following, we indicate a "don't care" value in `state` or in `items` with an `x`.
+
+```C
+   while (not done) {
+     /* { state = 000 ∧ items = 000 } ∨ { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } */
+       /* extract: */
+       /* { state = 000 ∧ items = 000 } ∨ { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } */
+       /* drain: */
+       /* { state = 0x0 ∧ ( items = 0x0 ∨ items = 0x1 ) } ∨ { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } */
+       /* pull: */
+       /* { state = 0x0 ∧ ( items = 0x0 ∨ items = 0x1 ) } ∨ { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } */
+   
+     /* { state = 0x0 ∧ ( items = 0x0 ∨ items = 0x1 ) } ∨ { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } */
+     inject: items[0] ← 1
+     /* { state = 0x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 0x1 ∧ ( items = 1x0 ∨ items = 1x1 ) } */
+
+       /* extract: */
+       /* { state = 0x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 0x1 ∧ ( items = 1x0 ∨ items = 1x1 ) } */
+       /* drain: */
+       /* { state = 0x0 ∧ items = 1x0 ∨ items = 1x1 } ∨ { state = 0x1 ∧ ( items = 1x0 ∨ items = 1x1 } */
+       /* pull: */
+       /* { state = 0x0 ∧ items = 1x0 ∨ items = 1x1 } ∨ { state = 0x1 ∧ ( items = 1x0 ∨ items = 1x1 } */
+
+     /* { state = 0x0 ∧ items = 1x0 ∨ items = 1x1 } ∨ { state = 0x1 ∧ ( items = 1x0 ∨ items = 1x1 } */  
+     fill: state[0] ← 1
+     /* { state = 1x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ ( items = 1x0 ∨ items = 1x1 } */
+       /* extract: */
+       /* { state = 1x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ ( items = 1x0 ∨ items = 1x1 } */
+       /* drain: */
+       /* { state = 1x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ ( items = 1x0 ∨ items = 1x1 } */
+       /* pull: */
+       /* { state = 1x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ ( items = 1x0 ∨ items = 1x1 } ∨
+          { state = 0x1 ∧ items = 0x1 } ∨ { state = x11 ∧ items = x11 } */
+
+     /* { state = 1x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ ( items = 1x0 ∨ items = 1x1 } ∨
+        { state = 0x1 ∧ items = 0x1 } ∨ { state = x11 ∧ items = x11 } ∨
+        { state = 0x1 ∧ items = 0x0 } ∨ { state = x11 ∧ items = x10 } ∨
+	{ state = 0x0 ∧ items = 0x0 } */
+     push: 〈 await ¬{ state = 111 } :
+            if { state = 1x0 ∧ items = 1x0 } → { state = 0x1 ∧ items = 0x1 } ⟩
+            if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
+            if { state = 101 ∧ items = 101 } → { state = 011 ∧ items = 011 } ⟩
+     /* { state = 000 ∧ items = 000 } ∨ { state = 0x1 ∧ items = 0x1 } */
+   }
+```
+
+### Summary
+
+```C
+   while (not done) {
+     /* { state = 000 ∧ items = 000 } ∨ { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } */
+     inject: items[0] ← 1
+     /* { state = 0x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 0x1 ∧ ( items = 1x0 ∨ items = 1x1 ) } */
+     fill: state[0] ← 1
+     /* { state = 1x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ */
+     /* { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } ∨ { state = x11 ∧ ( items = x10 ∨ items = x11 ) } ∨ */
+     /* { state = 0x0 ∧ items = 0x0 } */
+     push: 〈 await ¬{ state = 111 } :
+            if { state = 1x0 ∧ items = 1x0 } → { state = 0x1 ∧ items = 0x1 } ⟩
+            if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
+            if { state = 101 ∧ items = 101 } → { state = 011 ∧ items = 011 } ⟩
+     /* { state = 000 ∧ items = 000 } ∨ { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } */
+   }
+```
+
+
+### Sink Proof Outline
+
+
+```C
+   while (not done) {
+
+     /* { state = 0x0 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0 ) } */
+
+       /* inject */
+       /* { state = 0x0 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0 ) } */       
+
+       /* fill */
+       /* { state = 0x0 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0 ) } */       
+
+       /* push */
+       /* { state = 0x0 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0 ) } */
+       /* { state = 0x1 ∨ state = 0x1 } */
+
+     pull: 〈 await ¬{ state = 00 } :
+            if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
+            if { state = 100 ∧ items = 100 } → { state = 001 ∧ items = 001 } ⟩
+            if { state = 101 ∧ items = 101 } → { state = 011 ∧ items = 011 } ⟩
+            if { state = 110 ∧ items = 110 } → { state = 011 ∧ items = 011 } ⟩
+
+     /* { state = 0x1 ∧ items = 0x1 } */
+
+       /* inject: */
+       /* { state = 0x1 ∧ items = 0x1 } ∨ { state = 0x1 ∧ items = 1x1 } */
+
+       /* fill: */
+       /* { state = 0x1 ∧ ( items = 0x1 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ items = 1x1 } 
+
+       /* push: */
+       /* { state = 0x1 ∧ ( items = 0x1 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ items = 1x1 } 
+
+     extract: extract: item[2] ← 0
+
+     /* { state = 0x1 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x1 ∧ items = 1x0 } */
+
+       inject:
+       /* { state = 0x1 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x1 ∧ items = 1x0 } */
+
+       fill:
+
+       /* { state = 0x1 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x1 ∧ ( items = 0x0 ∨ items = 1x0) } */
+
+       push:
+
+     /* { state = 0x1 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x1 ∧ ( items = 0x0 ∨ items = 1x0) } */
+
+     drain: state[1] ← 0
+     /* { state = 0x0 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0) } */
+   }
+```
+
+
+### Summary
+
+```C
+   while (not done) {
+     /* { state = 0x0 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0) } ∨ */
+     /* { state = 0x1 ∧ ( items = 0x1 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ items = 1x1 }                    */
+     pull: 〈 await ¬{ state = 00 } :
+            if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
+            if { state = 100 ∧ items = 100 } → { state = 001 ∧ items = 001 } ⟩
+            if { state = 101 ∧ items = 101 } → { state = 011 ∧ items = 011 } ⟩
+            if { state = 110 ∧ items = 110 } → { state = 011 ∧ items = 011 } ⟩
+     /* { state = 0x1 ∧ ( items = 0x1 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ items = 1x1 }                    */
+     extract: extract: item[2] ← 0
+     /* { state = 0x1 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x1 ∧ ( items = 0x0 ∨ items = 1x0) }   */
+     drain: state[1] ← 0
+     /* { state = 0x0 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0) } ∨ */
+     /* { state = 0x1 ∧ ( items = 0x1 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ items = 1x1 }                    */ 
+   }
+```
+
+
+### Comments
+
+As with the unbuffered case, the the buffered proof outlines shows the same important
+characteristics of the port state machine.
+
+1. If we begin with the valid state `{ state = 000 ∧ items = 000 }` (which is the only sensible state with which to begin),
+the state machine will never enter any `BAD` state.  We define a `BAD` state to be any of the following:
+  - predicate with `{ items = 1x0 ∨ items = 1x1 }` prior to `inject` 
+  - predicate with `{ state = 1x0 ∨ state = 1x1 }` prior to `fill` 
+  - predicate with `{ items = 0x0 ∨ items = 1x0 }` prior to `extract` 
+  - predicate with `{ state = 0x0 ∨ state = 1x0 }` prior to `drain` 
+
+2. If we begin with the valid state `{ state = 000 ∧ items = 000 }`, and use the following steps for the `Source`
+
+    ```C
+      inject
+      fill
+      push
+    ``` 
+    The `Source` will **always** be ready to accept an item for injection.  Hence we do not have to check whether the `Source` is ready prior to invoking `inject`.  No concurrent `Sink` action will change the state into one that is `BAD` prior to `inject`.
+
+4. Similarly, if we begin with the valid state `{ state = 000 ∧ items = 000 }` and
+use the following steps for the `Sink`
+
+    ```C
+      pull
+      extract
+      drain
+      ```
+
+    There will **always** be an item ready to extract after `pull` completes.
+
+5. There are no race conditions between `inject` and `fill`, nor between `extract` and `drain`.  Concurrent actions from the `Sink` cannot cause a `BAD` state between `inject` and `fill`, nor can concurrent actions from the `Source` introduce a `BAD` state between `extract` and `drain`.
+
+6.  In fact, there are no race conditions between **any** of the steps in the `Source` or the `Sink`.  As a result, we do not need to introduce any locking mechanism to make any pairs of actions atomic.  (As a reminder, all actions executed by the state machine are atomic.)
 
