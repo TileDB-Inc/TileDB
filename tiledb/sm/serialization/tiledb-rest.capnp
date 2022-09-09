@@ -608,6 +608,10 @@ struct Query {
 
     delete @17 :Delete;
     # delete contains QueryCondition representing deletion expression
+
+    writtenFragmentInfo @18 :List(WrittenFragmentInfo);
+    # Needed in global order writes when WrittenFragmentInfo gets updated
+    # during finalize, but doesn't end up back on the client Query object
 }
 
 struct NonEmptyDomain {
@@ -828,4 +832,9 @@ struct MultiPartUploadState {
 struct CompletedPart {
   eTag@0 :Text;
   partNumber@1 :UInt64;
+}
+
+struct WrittenFragmentInfo {
+  uri @0 :Text;
+  timestampRange @1 :List(UInt64);
 }

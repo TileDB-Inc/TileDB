@@ -2570,6 +2570,10 @@ bool Query::is_dense() const {
   return !coords_info_.has_coords_;
 }
 
+std::vector<WrittenFragmentInfo>& Query::get_written_fragment_info() {
+  return written_fragment_info_;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */

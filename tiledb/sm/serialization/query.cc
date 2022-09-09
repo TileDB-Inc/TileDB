@@ -1364,6 +1364,18 @@ Status query_to_capnp(
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
   }
 
+  auto& written_fragment_info = query.get_written_fragment_info();
+  if (!written_fragment_info.empty()) {
+    auto builder =
+        query_builder->initWrittenFragmentInfo(written_fragment_info.size());
+    for (uint64_t i = 0; i < written_fragment_info.size(); ++i) {
+      builder[i].setUri(written_fragment_info[i].uri_);
+      auto range_builder = builder[i].initTimestampRange(2);
+      range_builder.set(0, written_fragment_info[i].timestamp_range_.first);
+      range_builder.set(1, written_fragment_info[i].timestamp_range_.second);
+    }
+  }
+
   return Status::Ok();
 }
 
@@ -1952,6 +1964,16 @@ Status query_from_capnp(
     // We should always have a stats here
     if (stats != nullptr) {
       RETURN_NOT_OK(stats_from_capnp(query_reader.getStats(), stats));
+    }
+  }
+
+  if (query_reader.hasWrittenFragmentInfo()) {
+    auto reader_list = query_reader.getWrittenFragmentInfo();
+    auto& written_fi = query->get_written_fragment_info();
+    for (auto fi : reader_list) {
+      written_fi.emplace_back(
+          URI(fi.getUri().cStr()),
+          std::make_pair(fi.getTimestampRange()[0], fi.getTimestampRange()[1]));
     }
   }
 

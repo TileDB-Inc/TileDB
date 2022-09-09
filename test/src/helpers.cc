@@ -1504,7 +1504,8 @@ void submit_and_finalize_serialized_query(
   tiledb_query_type_t type;
   tiledb_query_get_type(ctx, query, &type);
   auto uri = query->query_->array()->array_uri().to_string();
-  Array copy_array(context, uri, type);
+  uint64_t timestamp = query->query_->array()->timestamp_end_opened_at();
+  Array copy_array(context, uri, type, timestamp);
   Query copy_query(context, copy_array);
   std::vector<uint8_t> serialized;
   context.handle_error(serialize_query(ctx, query, &serialized, true));

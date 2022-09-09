@@ -941,6 +941,9 @@ class Query {
   /** Returns true if this is a dense query */
   bool is_dense() const;
 
+  /** Returns a reference to the internal WrittenFragmentInfo list */
+  std::vector<WrittenFragmentInfo>& get_written_fragment_info();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
