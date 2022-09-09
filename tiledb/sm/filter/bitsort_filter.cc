@@ -67,7 +67,7 @@ Status BitSortFilter::run_forward(
   (void)input;
   (void)output_metadata;
   (void)output;
-  return Status_FilterError("Do not call");
+  return Status_FilterError("Do not call (forward)");
 }
 
 Status BitSortFilter::run_reverse(
@@ -85,7 +85,7 @@ Status BitSortFilter::run_reverse(
   (void)output_metadata;
   (void)output;
   (void)config;
-  return Status_FilterError("Do not call");
+  return Status_FilterError("Do not call (reverse)");
 }
 
 /**

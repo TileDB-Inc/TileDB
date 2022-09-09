@@ -82,6 +82,8 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
       return tdb_new(tiledb::sm::FloatScalingFilter);
     case tiledb::sm::FilterType::FILTER_XOR:
       return tdb_new(tiledb::sm::XORFilter);
+    case tiledb::sm::FilterType::FILTER_BITSORT:
+      return tdb_new(tiledb::sm::BitSortFilter);
     default:
       throw StatusException(
           "FilterCreate",
