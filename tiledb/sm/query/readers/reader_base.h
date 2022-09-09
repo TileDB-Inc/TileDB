@@ -161,16 +161,17 @@ class ReaderBase : public StrategyBase {
   /** The query condition. */
   QueryCondition& condition_;
 
-  /** The delete conditions. */
-  std::vector<QueryCondition> delete_conditions_;
+  /** The delete and update conditions. */
+  std::vector<QueryCondition> delete_and_update_conditions_;
 
   /**
-   * Timestamped delete conditions. This the same as delete_conditions_ but
-   * adds a conditional in the condition with the timestamp of the condition.
-   * It will be used to process fragments with timestamps when a delete
-   * condition timestamp falls within the fragment timestamps.
+   * Timestamped delete and update conditions. This the same as
+   * delete_and_update_conditions_ but adds a conditional in the condition with
+   * the timestamp of the condition. It will be used to process fragments with
+   * timestamps when a delete or update condition timestamp falls within the
+   * fragment timestamps.
    */
-  std::vector<QueryCondition> timestamped_delete_conditions_;
+  std::vector<QueryCondition> timestamped_delete_and_update_conditions_;
 
   /** The fragment metadata that the reader will focus on. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
@@ -206,7 +207,7 @@ class ReaderBase : public StrategyBase {
    * Boolean, per fragment, to specify that we need to load timestamps for
    * deletes. This matches the fragments in 'fragment_metadata_'
    */
-  std::vector<bool> timestamps_needed_for_deletes_;
+  std::vector<bool> timestamps_needed_for_deletes_and_updates_;
 
   /** Names of dim/attr loaded for query condition. */
   std::unordered_set<std::string> qc_loaded_attr_names_set_;

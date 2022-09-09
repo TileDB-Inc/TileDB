@@ -1,5 +1,5 @@
 /**
- * @file   deletes.h
+ * @file   deletes_and_updates.h
  *
  * @section LICENSE
  *
@@ -44,14 +44,14 @@ namespace tiledb {
 namespace sm {
 
 /** Processes delete queries. */
-class Deletes : public StrategyBase, public IQueryStrategy {
+class DeletesAndUpdates : public StrategyBase, public IQueryStrategy {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Constructor. */
-  Deletes(
+  DeletesAndUpdates(
       stats::Stats* stats,
       shared_ptr<Logger> logger,
       StorageManager* storage_manager,
@@ -61,13 +61,14 @@ class Deletes : public StrategyBase, public IQueryStrategy {
       Subarray& subarray,
       Layout layout,
       QueryCondition& condition,
+      std::vector<UpdateValue>& update_values,
       bool skip_checks_serialization = false);
 
   /** Destructor. */
-  ~Deletes();
+  ~DeletesAndUpdates();
 
-  DISABLE_COPY_AND_COPY_ASSIGN(Deletes);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(Deletes);
+  DISABLE_COPY_AND_COPY_ASSIGN(DeletesAndUpdates);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(DeletesAndUpdates);
 
   /* ********************************* */
   /*                 API               */
@@ -102,6 +103,9 @@ class Deletes : public StrategyBase, public IQueryStrategy {
 
   /** The query condition. */
   QueryCondition& condition_;
+
+  /** The update values. */
+  std::vector<UpdateValue>& update_values_;
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;

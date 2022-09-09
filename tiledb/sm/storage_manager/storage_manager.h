@@ -81,6 +81,7 @@ class MemoryTracker;
 class Query;
 class QueryCondition;
 class RestClient;
+class UpdateValue;
 class VFS;
 
 enum class EncryptionType : uint8_t;
@@ -805,13 +806,16 @@ class StorageManager {
       Metadata* metadata);
 
   /**
-   * Loads the delete conditions from storage.
+   * Loads the delete and update conditions from storage.
    *
    * @param array The array.
-   * @return Status, vector of the delete conditions.
+   * @return Status, vector of the conditions, vector of the update values.
    */
-  tuple<Status, optional<std::vector<QueryCondition>>> load_delete_conditions(
-      const Array& array);
+  tuple<
+      Status,
+      optional<std::vector<QueryCondition>>,
+      optional<std::vector<std::vector<UpdateValue>>>>
+  load_delete_and_update_conditions(const Array& array);
 
   /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;

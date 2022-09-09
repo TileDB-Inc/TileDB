@@ -40,7 +40,7 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/deletes_and_updates/deletes.h"
+#include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
@@ -1485,9 +1485,9 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           condition_,
           skip_checks_serialization));
     }
-  } else if (type_ == QueryType::DELETE) {
+  } else if (type_ == QueryType::DELETE || type_ == QueryType::UPDATE) {
     strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-        Deletes,
+        DeletesAndUpdates,
         stats_->create_child("Deletes"),
         logger_,
         storage_manager_,
@@ -1497,6 +1497,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
         subarray_,
         layout_,
         condition_,
+        update_values_,
         skip_checks_serialization));
   } else {
     return logger_->status(
@@ -2341,7 +2342,8 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 
 Status Query::check_buffers_correctness() {
   if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::MODIFY_EXCLUSIVE && type_ != QueryType::DELETE) {
+      type_ != QueryType::MODIFY_EXCLUSIVE && type_ != QueryType::DELETE &&
+      type_ != QueryType::UPDATE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot check buffers; Unsupported query type."));
   }
