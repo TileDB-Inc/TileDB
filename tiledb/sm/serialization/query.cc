@@ -2963,22 +2963,6 @@ Status query_est_result_size_deserialize(
       "Cannot deserialize; serialization not enabled."));
 }
 
-Status global_write_state_to_capnp(
-    const Query& query,
-    GlobalOrderWriter& globalwriter,
-    capnp::GlobalWriteState::Builder* state_builder) {
-  return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
-}
-
-Status global_write_state_from_capnp(
-    const Query& query,
-    const capnp::GlobalWriteState::Builder& state_reader,
-    GlobalOrderWriter* globalwriter) {
-  return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
-}
-
 #endif  // TILEDB_SERIALIZATION
 
 }  // namespace serialization
