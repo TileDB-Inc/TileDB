@@ -217,10 +217,9 @@ Status FilterPipeline::filter_chunks_forward(
       f->init_compression_resource_pool(compute_tp->concurrency_level());
       if constexpr (std::is_same<T, std::vector<Tile*>>::value) {
         if (f->type() == FilterType::FILTER_BITSORT) {
+          auto bitsort_filter = reinterpret_cast<const BitSortFilter*>(f.get());
           RETURN_NOT_OK(
-              std::dynamic_pointer_cast<const shared_ptr<BitSortFilter>>(f)
-                  ->get()
-                  ->run_forward(
+              bitsort_filter->run_forward(
                       tile,
                       support_tiles,
                       &input_metadata,

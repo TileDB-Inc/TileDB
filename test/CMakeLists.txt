@@ -112,6 +112,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/test-capi-query-error-handling.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
+  src/unit-bitsort-filter.cc
   src/unit-bufferlist.cc
   src/unit-capi-any.cc
   src/unit-capi-array.cc
@@ -211,7 +212,6 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-float-scaling-filter.cc
-    src/unit-cppapi-xor-filter.cc
     src/unit-cppapi-fragment_info.cc
     src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
@@ -228,6 +228,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-util.cc
     src/unit-cppapi-var-offsets.cc
     src/unit-cppapi-vfs.cc
+    src/unit-cppapi-xor-filter.cc
   )
 endif()
 

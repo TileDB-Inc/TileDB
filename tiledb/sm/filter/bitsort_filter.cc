@@ -98,6 +98,16 @@ Status BitSortFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
+
+  (void)tile;
+  (void)dim_tiles;
+  RETURN_NOT_OK(output->append_view(input));
+  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+  return Status::Ok();
+
+  /*
+
+  TODO: uncomment this
   auto tile_type = tile.type();
   switch (datatype_size(tile_type)) {
     case sizeof(int8_t): {
@@ -121,9 +131,11 @@ Status BitSortFilter::run_forward(
           "BitSortFilter::run_forward: datatype does not have an appropriate "
           "size");
     }
-  }
+  } 
 
   return Status_FilterError("BitSortFilter::run_forward: invalid datatype.");
+
+  */
 }
 
 template <typename T>
@@ -176,6 +188,16 @@ Status BitSortFilter::run_reverse(
     FilterBuffer* output_metadata,
     FilterBuffer* output,
     const Config& config) const {
+  (void)tile;
+  (void)dim_tiles;
+  (void)config;
+
+  RETURN_NOT_OK(output->append_view(input));
+  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+  return Status::Ok();
+  /*
+
+  TODO: uncomment this
   (void)config;
   (void)dim_tiles;
   auto tile_type = tile.type();
@@ -204,6 +226,7 @@ Status BitSortFilter::run_reverse(
   }
 
   return Status_FilterError("BitSortFilter::run_reverse: invalid datatype.");
+  */
 }
 
 template <typename T>
