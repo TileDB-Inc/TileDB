@@ -42,10 +42,10 @@
 using namespace tiledb::common;
 
 /**
- * Test various uses of `consumer class.
+ * Test various uses of `consumer` class.
  */
 TEST_CASE(
-    "Utility Functions: Test various uses of `consumer class.",
+    "Utility Functions: Test various uses of `consumer` class.",
     "[util_functions]") {
   std::vector<size_t> w(10);
   std::iota(begin(w), end(w), 19);
@@ -433,4 +433,114 @@ TEST_CASE(
     CHECK(std::size(w) == 10);
     CHECK(std::equal(begin(w), end(w), begin(v)));
   }
+}
+
+/**
+ * Test `ConsumerNode` with `ProducerNode`, using `consumer` and `generator`
+ * function objects.
+ */
+TEMPLATE_TEST_CASE(
+    "Utility Functions: Test InjectorNode an ConsumerNode together "
+    "instantiated "
+    "`consumer` function object.",
+    "[util_functions]",
+    (std::tuple<
+        InjectorNode<AsyncMover2, size_t>,
+        ConsumerNode<AsyncMover2, size_t>>),
+    (std::tuple<
+        InjectorNode<AsyncMover3, size_t>,
+        ConsumerNode<AsyncMover3, size_t>>)) {
+  bool delay = GENERATE(false, true);
+  size_t offset = GENERATE(0, 1, 2, 5);
+
+  size_t rounds = 1337;
+
+  std::vector<size_t> w(rounds);
+  std::iota(begin(w), end(w), 19);
+
+  std::vector<size_t> v;
+  auto x = std::back_inserter(v);
+  consumer con{x};
+  auto decon = [&con, delay](size_t j) {
+    if (delay)
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    con(j);
+    if (delay)
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+  };
+
+  //  InjectorNode<AsyncMover3, size_t> injector_node{};
+  //  ConsumerNode<AsyncMover3, size_t> consumer_node{decon};
+
+  using I = typename std::tuple_element<0, TestType>::type;
+  using C = typename std::tuple_element<1, TestType>::type;
+
+  I injector_node{};
+  C consumer_node{decon};
+
+  Edge(injector_node, consumer_node);
+
+  /**
+   * Test InjectorNode and ConsumerNoder, using put, back_inserter and
+   * AsyncMover3.
+   */
+  SECTION(
+      "InjectorNode and ConsumerNoder, using generator and consumer, starting "
+      "at begin(v), using AsyncMover3, put " +
+      std::to_string(offset) + " " + std::to_string(delay)) {
+    CHECK(v.size() == 0);
+    CHECK(w.size() == rounds);
+    auto a = std::async(std::launch::async, [&injector_node, rounds]() {
+      for (size_t i = 0; i < rounds; ++i) {
+        injector_node.put(i + 19);
+      }
+      injector_node.stop();
+    });
+    if (delay)
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    auto b = std::async(std::launch::async, [&consumer_node, offset, rounds]() {
+      consumer_node.run_for(rounds + offset);
+    });
+
+    if (delay)
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    a.wait();
+    if (delay)
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    b.wait();
+  }
+
+  /**
+   * Test InjectorNode and ConsumerNoder, using try_put, back_inserter and
+   * AsyncMover3.
+   */
+  SECTION(
+      "InjectorNode and ConsumerNoder, using generator and consumer, starting "
+      "at begin(v), using AsyncMover3, try_put " +
+      std::to_string(offset) + " " + std::to_string(delay)) {
+    CHECK(v.size() == 0);
+    CHECK(w.size() == rounds);
+    auto a = std::async(std::launch::async, [&injector_node, rounds]() {
+      for (size_t i = 0; i < rounds; ++i) {
+        injector_node.try_put(i + 19);
+      }
+      injector_node.stop();
+    });
+    if (delay)
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    auto b = std::async(std::launch::async, [&consumer_node, offset, rounds]() {
+      consumer_node.run_for(rounds + offset);
+    });
+
+    if (delay)
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    a.wait();
+    if (delay)
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    b.wait();
+  }
+
+  CHECK(std::size(v) == rounds);
+  CHECK(std::size(w) == rounds);
+  CHECK(std::equal(begin(w), end(w), begin(v)));
 }

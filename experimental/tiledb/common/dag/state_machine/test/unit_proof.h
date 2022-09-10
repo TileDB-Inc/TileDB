@@ -1,5 +1,5 @@
 /**
- * @file   fsm3.cc
+ * @file unit_proof.h
  *
  * @section LICENSE
  *
@@ -26,12 +26,9 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * This file defines a finite state machine with 2^3 states, one state
- * for each binary number in [0, 2^3).
  */
 
-#include <cassert>
-
-#include "experimental/tiledb/common/dag/state_machine/fsm.h"
-// #include "tiledb/common/logger.h"
+#ifndef TILEDB_UNIT_PROOF_H
+#define TILEDB_UNIT_PROOF_H
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_UNIT_PROOF_H

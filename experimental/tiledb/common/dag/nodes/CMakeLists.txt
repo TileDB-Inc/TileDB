@@ -36,7 +36,7 @@ include(common NO_POLICY_SCOPE)
 # Object library for other units to depend upon
 #
 #add_library(nodes OBJECT ${SOURCES})
-#target_link_libraries(nodes PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+# target_link_libraries(nodes PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness
@@ -153,7 +153,7 @@ endif()
 # Object library for other units to depend upon
 #
 #add_library(nodes_sieve OBJECT ${NODES_SIEVE_SOURCES})
-#target_link_libraries(nodes_sieve PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+# target_link_libraries(nodes_sieve PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Since there are no components, there is no object library to test compile

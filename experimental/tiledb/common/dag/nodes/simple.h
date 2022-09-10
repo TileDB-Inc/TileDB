@@ -245,9 +245,9 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
       if (state_machine->debug_enabled())
         std::cout << "producer starting " << rounds << std::endl;
 
-      // @todo inject() and fill() need to be atomic (use state machine mutex?)
-      // Note that there are other places where these are used together, there
-      // should probably be just one atomic function.
+      // @todo Do inject() and fill() need to be atomic (use state machine
+      // mutex?) Note that there are other places where these are used together,
+      // there should probably be just one atomic function.
       switch (f_.index()) {
         case 0:
           Base::inject(std::get<0>(f_)());

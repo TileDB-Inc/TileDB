@@ -39,7 +39,7 @@ gather_sources(${FSM_SOURCES})
 # Object library for other units to depend upon
 #
 add_library(fsm OBJECT ${FSM_SOURCES})
-target_link_libraries(fsm PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+# target_link_libraries(fsm PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness
@@ -53,7 +53,7 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_fsm PUBLIC fsm)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_fsm PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_fsm PUBLIC $<TARGET_OBJECTS:thread_pool>)
+#    target_link_libraries(unit_fsm PUBLIC $<TARGET_OBJECTS:thread_pool>)
 
     # Sources for code elsewhere required for tests
     target_sources(unit_fsm PUBLIC ${DEPENDENT_SOURCES})
@@ -157,8 +157,8 @@ endif()
 #
 # Object library for other units to depend upon
 #
-#add_library(policies OBJECT ${POLICIES_SOURCES})
-#target_link_libraries(policies PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+# add_library(policies OBJECT ${POLICIES_SOURCES})
+# target_link_libraries(policies PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness
@@ -198,8 +198,8 @@ endif()
 #
 # Object library for other units to depend upon
 #
-#add_library(item_mover OBJECT ${ITEM_MOVER_SOURCES})
-#target_link_libraries(item_mover PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+# add_library(item_mover OBJECT ${ITEM_MOVER_SOURCES})
+# target_link_libraries(item_mover PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness
@@ -240,8 +240,8 @@ endif()
 #
 # Object library for other units to depend upon
 #
-#add_library(stop OBJECT ${STOP_SOURCES})
-#target_link_libraries(stop PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+# add_library(stop OBJECT ${STOP_SOURCES})
+# target_link_libraries(stop PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness

@@ -44,7 +44,11 @@
 #include <string>
 #include <tuple>
 
+#ifdef FXM
+#include "experimental/tiledb/common/dag/state_machine/fxm.h"
+#else
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#endif
 
 namespace tiledb::common {
 

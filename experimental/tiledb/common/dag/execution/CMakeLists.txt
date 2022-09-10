@@ -36,7 +36,7 @@ gather_sources(${SOURCES})
 # Object library for other units to depend upon
 #
 add_library(execution OBJECT ${SOURCES})
-target_link_libraries(execution PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+# target_link_libraries(execution PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness
@@ -51,7 +51,7 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_execution PUBLIC execution)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_execution PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_execution PUBLIC $<TARGET_OBJECTS:thread_pool>)
+#    target_link_libraries(unit_execution PUBLIC $<TARGET_OBJECTS:thread_pool>)
 
     # Sources for code elsewhere required for tests
     target_sources(unit_execution PUBLIC ${DEPENDENT_SOURCES})
@@ -76,7 +76,7 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_threadpool PUBLIC execution)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_threadpool PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_threadpool PUBLIC $<TARGET_OBJECTS:thread_pool>)
+#    target_link_libraries(unit_threadpool PUBLIC $<TARGET_OBJECTS:thread_pool>)
 
     # Sources for code elsewhere required for tests
     target_sources(unit_threadpool PUBLIC ${DEPENDENT_SOURCES})
@@ -101,7 +101,7 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_bountiful PUBLIC execution)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_bountiful PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_bountiful PUBLIC $<TARGET_OBJECTS:thread_pool>)
+#    target_link_libraries(unit_bountiful PUBLIC $<TARGET_OBJECTS:thread_pool>)
 
     # Sources for code elsewhere required for tests
     target_sources(unit_bountiful PUBLIC ${DEPENDENT_SOURCES})
@@ -126,7 +126,7 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_stop_token PUBLIC execution)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_stop_token PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_stop_token PUBLIC $<TARGET_OBJECTS:thread_pool>)
+#    target_link_libraries(unit_stop_token PUBLIC $<TARGET_OBJECTS:thread_pool>)
 
     # Sources for code elsewhere required for tests
     target_sources(unit_stop_token PUBLIC ${DEPENDENT_SOURCES})

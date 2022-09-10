@@ -36,7 +36,11 @@
 
 #include <random>
 #include <thread>
+#ifdef FXM
+#include "experimental/tiledb/common/dag/state_machine/fxm.h"
+#else
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#endif
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
 
 namespace tiledb::common {

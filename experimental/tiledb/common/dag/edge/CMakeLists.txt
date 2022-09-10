@@ -36,7 +36,7 @@ gather_sources(${SOURCES})
 # Object library for other units to depend upon
 #
 add_library(edge OBJECT ${SOURCES})
-target_link_libraries(edge PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+# target_link_libraries(edge PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness
@@ -51,7 +51,7 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_edge PUBLIC edge)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_edge PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_edge PUBLIC $<TARGET_OBJECTS:thread_pool>)
+#    target_link_libraries(unit_edge PUBLIC $<TARGET_OBJECTS:thread_pool>)
 
     # Sources for code elsewhere required for tests
     target_sources(unit_edge PUBLIC ${DEPENDENT_SOURCES})
@@ -78,7 +78,7 @@ gather_sources(${SOURCES})
 # Object library for other units to depend upon
 #
 add_library(block_edge OBJECT ${SOURCES})
-target_link_libraries(block_edge PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+# target_link_libraries(block_edge PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness
@@ -92,7 +92,7 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_block_edge PUBLIC block_edge)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_block_edge PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_block_edge PUBLIC $<TARGET_OBJECTS:thread_pool>)
+#    target_link_libraries(unit_block_edge PUBLIC $<TARGET_OBJECTS:thread_pool>)
 
     # Sources for code elsewhere required for tests
     target_sources(unit_block_edge PUBLIC ${DEPENDENT_SOURCES})
@@ -119,7 +119,7 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_edge_pseudo_nodes PUBLIC block_edge)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_edge_pseudo_nodes PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_edge_pseudo_nodes PUBLIC $<TARGET_OBJECTS:thread_pool>)
+#    target_link_libraries(unit_edge_pseudo_nodes PUBLIC $<TARGET_OBJECTS:thread_pool>)
 
     # Sources for code elsewhere required for tests
     target_sources(unit_edge_pseudo_nodes PUBLIC ${DEPENDENT_SOURCES})

@@ -53,8 +53,7 @@ struct QueueBase<true> {
 
   std::atomic<size_t> index_;
   const size_t rounds_{3};
-  std::vector<
-      ProducerConsumerQueue<std::shared_ptr<std::packaged_task<void()>>>>
+  std::vector<ProducerConsumerQueue<std::shared_ptr<std::function<void()>>>>
       task_queues_;
 };
 
@@ -62,8 +61,7 @@ template <>
 struct QueueBase<false> {
   QueueBase(size_t) {
   }
-  ProducerConsumerQueue<std::shared_ptr<std::packaged_task<void()>>>
-      task_queue_;
+  ProducerConsumerQueue<std::shared_ptr<std::function<void()>>> task_queue_;
 };
 
 /**
@@ -122,7 +120,7 @@ class ThreadPool : public QueueBase<MultipleQueues> {
     std::shared_ptr<std::promise<R>> task_promise(new std::promise<R>);
     std::future<R> future = task_promise->get_future();
 
-#if 0
+#if 1
     auto task = std::make_shared<std::function<void()>>(
         [f = std::forward<Fn>(f),
          args = std::make_tuple(std::forward<Args>(args)...),
@@ -226,7 +224,7 @@ class ThreadPool : public QueueBase<MultipleQueues> {
  private:
   void worker(size_t i) {
     while (true) {
-      std::optional<std::shared_ptr<std::packaged_task<void()>>> val;
+      std::optional<std::shared_ptr<std::function<void()>>> val;
 
       if constexpr (MultipleQueues) {
         for (size_t j = 0; j < num_threads_ * QBase::rounds_; ++j) {

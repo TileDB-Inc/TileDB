@@ -105,11 +105,14 @@ struct foo {
 };
 
 /*
- * @note Cannot use void for SinkMover_T nor BlocksIn
+ * @note Cannot use void for SinkMover_T nor SourceMover_T, because that must be
+ * a template template.  Use dummy class `foo` instead.
  *
- * @todo Partial specialization to allow void
+ * The GeneralFunctionNode includes some special casing to support these.  There
+ * may be a more elegant way, given that the tuple being used (and hence the
+ * corresponding variadic) is empty.
  *
- * @todo Special casing (?) in GeneralFunctionNode to support these.
+ * @todo Partial specialization to allow void (?)
  */
 template <template <class> class SourceMover_T, class... BlocksOut>
 using GeneralProducerNode =
@@ -121,17 +124,14 @@ using GeneralConsumerNode =
 
 TEST_CASE(
     "GeneralNode: Verify use of (void) template arguments for "
-    "producer/consumer",
-    "[general]") {
+    "producer/consumer [general]") {
   GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
       [](std::tuple<size_t, double>) {}};
   GeneralConsumerNode<AsyncMover3, std::tuple<size_t, double>> y{
       [](std::tuple<size_t, double>) {}};
 }
 
-TEST_CASE(
-    "GeneralNode: Connect void-created Producer and Consumer "
-    "[general]") {
+TEST_CASE("GeneralNode: Connect void-created Producer and Consumer [general]") {
   GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
       [](std::tuple<size_t, double>) {}};
   GeneralConsumerNode<AsyncMover3, std::tuple<double, size_t>> y{
@@ -172,10 +172,6 @@ TEST_CASE(
 size_t dummy_source() {
   return size_t{};
 }
-
-//std::tuple<size_t> dummy_function(std::tuple<size_t>) {
-//  return {0UL};
-//}
 
 void dummy_function(const std::tuple<size_t>& in, std::tuple<size_t>& out) {
   out = in;

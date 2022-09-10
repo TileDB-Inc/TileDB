@@ -729,7 +729,7 @@ In the following, we indicate a "don't care" value in `state` or in `items` with
    }
 ```
 
-### Summary
+### Source Summary
 
 ```C
    while (not done) {
@@ -805,11 +805,11 @@ In the following, we indicate a "don't care" value in `state` or in `items` with
 ```
 
 
-### Summary
+### Sink Summary
 
 ```C
    while (not done) {
-     /* { state = 0x0 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0) } ∨ */
+     /* { state = 0x0 ∨ ( items = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0) } ∨ */
      /* { state = 0x1 ∧ ( items = 0x1 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ items = 1x1 }                    */
      pull: 〈 await ¬{ state = 00 } :
             if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
@@ -818,9 +818,9 @@ In the following, we indicate a "don't care" value in `state` or in `items` with
             if { state = 110 ∧ items = 110 } → { state = 011 ∧ items = 011 } ⟩
      /* { state = 0x1 ∧ ( items = 0x1 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ items = 1x1 }                    */
      extract: extract: item[2] ← 0
-     /* { state = 0x1 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x1 ∧ ( items = 0x0 ∨ items = 1x0) }   */
+     /* { state = 0x1 ∨ ( items = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x1 ∧ ( items = 0x0 ∨ items = 1x0) }   */
      drain: state[1] ← 0
-     /* { state = 0x0 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0) } ∨ */
+     /* { state = 0x0 ∨ ( items = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0) } ∨ */
      /* { state = 0x1 ∧ ( items = 0x1 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ items = 1x1 }                    */ 
    }
 ```

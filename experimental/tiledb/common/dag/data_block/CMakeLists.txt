@@ -37,7 +37,7 @@ gather_sources(${SOURCES})
 # Object library for other units to depend upon
 #
 add_library(data_block OBJECT ${SOURCES})
-target_link_libraries(data_block PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+# target_link_libraries(data_block PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness
@@ -52,7 +52,7 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_data_block PUBLIC data_block)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_data_block PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_data_block PUBLIC $<TARGET_OBJECTS:thread_pool>)
+#     target_link_libraries(unit_data_block PUBLIC $<TARGET_OBJECTS:thread_pool>)
 
     # Sources for code elsewhere required for tests
     target_sources(unit_data_block PUBLIC ${DEPENDENT_SOURCES})
@@ -79,7 +79,7 @@ gather_sources(${POOL_SOURCES})
 # Object library for other units to depend upon
 #
 add_library(pool_allocator OBJECT ${POOL_SOURCES})
-target_link_libraries(pool_allocator PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+# target_link_libraries(pool_allocator PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness
@@ -94,7 +94,7 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_pool_allocator PUBLIC pool_allocator)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_pool_allocator PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_pool_allocator PUBLIC $<TARGET_OBJECTS:thread_pool>)
+#    target_link_libraries(unit_pool_allocator PUBLIC $<TARGET_OBJECTS:thread_pool>)
 
     # Sources for code elsewhere required for tests
     target_sources(unit_pool_allocator PUBLIC ${DEPENDENT_POOL_SOURCES})
