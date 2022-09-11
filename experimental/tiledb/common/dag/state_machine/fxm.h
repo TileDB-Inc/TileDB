@@ -27,16 +27,26 @@
  *
  * @section DESCRIPTION
  *
- *
  * This file defines the operation of a finite state machine, parameterized to
  * accommodate 2 stage or 3 stage data transfer, i.e., 4 or 8 states.  Each
  * state corresponds to a binary number in [0, 2^N) (for N = 2 or N = 3).
  *
+ * @note This state machine was orginally intended for use with stateful nodes
+ * and a Duff's device scheduler.  This initial implementation does not include
+ * is_*_available as an explicit state machine action. As a result, it neither
+ * blocks nor moves data. This is incorrect behavior. The is_*_available
+ * functions should block as well as move items.  Which is exactly equivalent to
+ * do_push and do_pull. Hence, a correct fxm state machine will be equivalent to
+ * the fsm state machine, obviating the need for this state machine.
  */
 
 #ifndef TILEDB_DAG_FXM_H
 #define TILEDB_DAG_FXM_H
 
+/*
+ * Preprocessor directive to admit small differences in behavior in other parts
+ * of the state machine, policy, mover hierarchy.
+ */
 #define FXM
 #include "experimental/tiledb/common/dag/state_machine/fsm_types.h"
 

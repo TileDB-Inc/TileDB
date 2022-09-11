@@ -29,7 +29,19 @@
  *
  * This file declares the general node class for the dag task graph library.  A
  * general node is a function node that takes multiple inputs and multiple
- * outputs.
+ * outputs. The stages of the general node are demarcated by cases of a switch
+ * statement, in anticipation of potential use with a Duff's device based
+ * scheduler.
+ *
+ * The general node can also be specialized to be a producer or consumer
+ * respectively by passing in std::tuple<> for the input block type or for the
+ * output block type. In either case, a dummy argument needs to be used for the
+ * associated mover.
+ *
+ * @todo Specialize for non-tuple block types.
+ *
+ * @todo Specialize for void input/output types (rather than tuple<>) as well as
+ * for void mover types.
  */
 
 #ifndef TILEDB_DAG_GENERAL_H
@@ -144,9 +156,10 @@ template <
 class GeneralFunctionNode;
 
 /*
- * By specializing through the use of `std::tuple`, we are able to have two variadic
- * template lists.  Thus, we can define a node with `size_t` and `int` for its inputs
- * and `size_t` and `double` for its outputs in the following way:
+ * By specializing through the use of `std::tuple`, we are able to have two
+ * variadic template lists.  Thus, we can define a node with `size_t` and `int`
+ * for its inputs and `size_t` and `double` for its outputs in the following
+ * way:
  *
  * @code{.cpp}
  * GeneralFunctionNode<AsyncMover2, std::tuple<size_t, int>,

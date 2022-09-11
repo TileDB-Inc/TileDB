@@ -27,10 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * This file declares "simple" nodes for dag task graph library.  Simple nodes
- * are nodes whose enclosed functions are assumed to have no state.  (More
- * specifically, simple nodes have no capability of maintaining, saving, nor
- * restoring state for the enclosed functions.
+ * This file declares "simple" nodes for dag task graph library. Simple nodes
+ * are nodes whose enclosed functions are assumed to have no state and whose
+ * enclosed function takes one input and produces one output (though the input
+ * and output could be tuples).  Furthermore, the enclosed function produces one
+ * output for every input. Simple nodes have no capability of maintaining,
+ * saving, nor restoring state for the enclosed functions.
  */
 
 #ifndef TILEDB_DAG_SIMPLE_H
@@ -59,6 +61,8 @@ namespace tiledb::common {
  * `ProducerNode`. It is a template template to be composed with `Block`.
  * @tparam Block The type of data to be produced by the `ProducerNode` and
  * sent through the item mover.
+ *
+ * @note We include the two-stage proof outline for Source inline here.
  */
 
 template <template <class> class Mover_T, class Block>
@@ -314,7 +318,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
  * @param Block The type of data to be obtained from the item mover and
  * consumed.
  *
- * @note We include the proof outline for Sink inline here.
+ * @note We include the two-stage proof outline for Sink inline here.
  */
 template <template <class> class Mover_T, class Block>
 class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
