@@ -666,6 +666,8 @@ Revisiting the `Source` and `Sink` operations that we previously presented, we h
             if { state = 110 ∧ items = 110 } → { state = 011 ∧ items = 011 } ⟩
 ```
 
+
+
 ### Sink Actions
 
 Similarly, for the purposes of a proof outline, the `Sink` has three operations:
@@ -683,145 +685,169 @@ Similarly, for the purposes of a proof outline, the `Sink` has three operations:
 
 ### Source Proof Outline
 
-In the following, we indicate a "don't care" value in `state` or in `items` with an `x`.
+Consider first the effect of the push operation.
+Given the await condition, the state of the system must be 
+¬{ state = 111 }.  Moreover, the push operation includes a "move" operation such that there are no "holes" in the data being transferred.  
+That is, immediately after the (atomic) push operation completes, we have
+
+```C
+     /* { state = 000 ∧ items = 000 } */
+     /* { state = 001 ∧ items = 001 } */
+     /* { state = 011 ∧ items = 011 } */
+```
+
+Actions from the asynchronous `Sink` can then occur, i.e., an extract, drain, and/or pull.  
+Given the operations shown above, we can see that the predicate 
+
+```C
+     /* { state = 001 ∧ items = 001 } */
+```
+
+can become
+
+```C
+     /* { state = 001 ∧ ( items = 001 ∨ 000 } */
+```
+
+if an extract occurs.  A drain may then cause `{ state = 001 }` to become 
+`{ state = 000 }`.  But note that a drain can only follow an extract, so the predicate
+
+```C
+     /* { state = 000 ∧ items = 001 } */
+```
+cannot occur.  Applying the possible occurrences of extract-drain-pull, we have the following potential states that can occur due to an asynchronous `Sink` following the `Source` push:
+
+```C
+     /* { state = 000 ∧ items = 000 } */ 
+     /* { state = 001 ∧ ( items = 001 ∨ items = 000 ) } */
+     /* { state = 010 ∧ items = 010 } */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 010 ) } */
+```
+These are stable states, meaning there are no other possible states that could occur due to `Sink` actions.
+
+The final state of the push operation will also be the initial state prior to inject.
+If we begin there and apply the state changes that would be caused by inject and fill
+(along with the asynchronous `Sink`), we arrive at the following proof outline for the
+`Source`:
 
 ```C
    while (not done) {
-     /* { state = 000 ∧ items = 000 } ∨ { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } */
-       /* extract: */
-       /* { state = 000 ∧ items = 000 } ∨ { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } */
-       /* drain: */
-       /* { state = 0x0 ∧ ( items = 0x0 ∨ items = 0x1 ) } ∨ { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } */
-       /* pull: */
-       /* { state = 0x0 ∧ ( items = 0x0 ∨ items = 0x1 ) } ∨ { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } */
-   
-     /* { state = 0x0 ∧ ( items = 0x0 ∨ items = 0x1 ) } ∨ { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } */
+     /* { state = 000 ∧ items = 000 } */ 
+     /* { state = 001 ∧ ( items = 001 ∨ items = 000 ) } */
+     /* { state = 010 ∧ items = 010 } */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 010 ) } */
+
      inject: items[0] ← 1
-     /* { state = 0x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 0x1 ∧ ( items = 1x0 ∨ items = 1x1 ) } */
 
-       /* extract: */
-       /* { state = 0x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 0x1 ∧ ( items = 1x0 ∨ items = 1x1 ) } */
-       /* drain: */
-       /* { state = 0x0 ∧ items = 1x0 ∨ items = 1x1 } ∨ { state = 0x1 ∧ ( items = 1x0 ∨ items = 1x1 } */
-       /* pull: */
-       /* { state = 0x0 ∧ items = 1x0 ∨ items = 1x1 } ∨ { state = 0x1 ∧ ( items = 1x0 ∨ items = 1x1 } */
+     /* { state = 000 ∧ items = 100 } */
+     /* { state = 001 ∧ ( items = 101 ∨ items = 100 ) } */
+     /* { state = 011 ∧ ( items = 111 ∨ items = 110 ) } */
+     /* { state = 010 ∧ items = 110 } */
 
-     /* { state = 0x0 ∧ items = 1x0 ∨ items = 1x1 } ∨ { state = 0x1 ∧ ( items = 1x0 ∨ items = 1x1 } */  
      fill: state[0] ← 1
-     /* { state = 1x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ ( items = 1x0 ∨ items = 1x1 } */
-       /* extract: */
-       /* { state = 1x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ ( items = 1x0 ∨ items = 1x1 } */
-       /* drain: */
-       /* { state = 1x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ ( items = 1x0 ∨ items = 1x1 } */
-       /* pull: */
-       /* { state = 1x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ ( items = 1x0 ∨ items = 1x1 } ∨
-          { state = 0x1 ∧ items = 0x1 } ∨ { state = x11 ∧ items = x11 } */
 
-     /* { state = 1x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ ( items = 1x0 ∨ items = 1x1 } ∨
-        { state = 0x1 ∧ items = 0x1 } ∨ { state = x11 ∧ items = x11 } ∨
-        { state = 0x1 ∧ items = 0x0 } ∨ { state = x11 ∧ items = x10 } ∨
-	{ state = 0x0 ∧ items = 0x0 } */
-     push: 〈 await ¬{ state = 111 } :
-            if { state = 1x0 ∧ items = 1x0 } → { state = 0x1 ∧ items = 0x1 } ⟩
-            if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
-            if { state = 101 ∧ items = 101 } → { state = 011 ∧ items = 011 } ⟩
-     /* { state = 000 ∧ items = 000 } ∨ { state = 0x1 ∧ items = 0x1 } */
+     /* { state = 111 ∧ ( items = 111 ∨ items = 110 ) } */
+     /* { state = 110 ∧ items = 110 } */
+     /* { state = 101 ∧ ( items = 101 ∨ items = 100 ) } */
+     /* { state = 100 ∧ items = 100 } */ 
+     /* { state = 011 ∧ ( items = 011 ∨ items = 010 ) } */
+     /* { state = 010 ∧ items = 010 } */
+     /* { state = 001 ∧ ( items = 001 ∨ items = 000 ) } */
+     /* { state = 000 ∧ items = 000 } */ 
+
+     push: 〈 await ¬{ state = 111 } 
+
+     /* { state = 000 ∧ items = 000 } */ 
+     /* { state = 001 ∧ ( items = 001 ∨ items = 000 ) } */
+     /* { state = 010 ∧ items = 010 } */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 010 ) } */
    }
 ```
 
-### Source Summary
-
-```C
-   while (not done) {
-     /* { state = 000 ∧ items = 000 } ∨ { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } */
-     inject: items[0] ← 1
-     /* { state = 0x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 0x1 ∧ ( items = 1x0 ∨ items = 1x1 ) } */
-     fill: state[0] ← 1
-     /* { state = 1x0 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ ( items = 1x0 ∨ items = 1x1 ) } ∨ */
-     /* { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } ∨ { state = x11 ∧ ( items = x10 ∨ items = x11 ) } ∨ */
-     /* { state = 0x0 ∧ items = 0x0 } */
-     push: 〈 await ¬{ state = 111 } :
-            if { state = 1x0 ∧ items = 1x0 } → { state = 0x1 ∧ items = 0x1 } ⟩
-            if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
-            if { state = 101 ∧ items = 101 } → { state = 011 ∧ items = 011 } ⟩
-     /* { state = 000 ∧ items = 000 } ∨ { state = 0x1 ∧ ( items = 0x0 ∨ items = 0x1 ) } */
-   }
-```
 
 
 ### Sink Proof Outline
 
 
+We can apply a similar process to derive the `Sink` proof outline.  In this case, we begin with the system state immediately following the pull operation, which is 
+`¬{ state = 000 }`.  The pull operation will also move the items, in similar fashion to push above, i.e.:
+
 ```C
-   while (not done) {
+     /* { state = 001 ∧ items = 001 } */
+     /* { state = 011 ∧ items = 011 } */
+     /* { state = 111 ∧ items = 111 } */
+```
+Now we consider the changes to this state that may occur due to asynchronous operation of the `Source`, i.e., inject, fill, and/or push.
+Given the operations shown above, we can see that the predicate 
 
-     /* { state = 0x0 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0 ) } */
-
-       /* inject */
-       /* { state = 0x0 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0 ) } */       
-
-       /* fill */
-       /* { state = 0x0 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0 ) } */       
-
-       /* push */
-       /* { state = 0x0 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0 ) } */
-       /* { state = 0x1 ∨ state = 0x1 } */
-
-     pull: 〈 await ¬{ state = 00 } :
-            if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
-            if { state = 100 ∧ items = 100 } → { state = 001 ∧ items = 001 } ⟩
-            if { state = 101 ∧ items = 101 } → { state = 011 ∧ items = 011 } ⟩
-            if { state = 110 ∧ items = 110 } → { state = 011 ∧ items = 011 } ⟩
-
-     /* { state = 0x1 ∧ items = 0x1 } */
-
-       /* inject: */
-       /* { state = 0x1 ∧ items = 0x1 } ∨ { state = 0x1 ∧ items = 1x1 } */
-
-       /* fill: */
-       /* { state = 0x1 ∧ ( items = 0x1 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ items = 1x1 } 
-
-       /* push: */
-       /* { state = 0x1 ∧ ( items = 0x1 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ items = 1x1 } 
-
-     extract: extract: item[2] ← 0
-
-     /* { state = 0x1 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x1 ∧ items = 1x0 } */
-
-       inject:
-       /* { state = 0x1 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x1 ∧ items = 1x0 } */
-
-       fill:
-
-       /* { state = 0x1 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x1 ∧ ( items = 0x0 ∨ items = 1x0) } */
-
-       push:
-
-     /* { state = 0x1 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x1 ∧ ( items = 0x0 ∨ items = 1x0) } */
-
-     drain: state[1] ← 0
-     /* { state = 0x0 ∨ ( state = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0) } */
-   }
+```C
+     /* { state = 001 ∧ items = 001 } */
 ```
 
+can become
 
-### Sink Summary
+```C
+     /* { state = 001 ∧ ( items = 001 ∨ items = 101 } */
+```
+
+if an inject occurs.  
+A fill will cause `{ state = 001 }` to become 
+`{ state = 101 }`.  But note that a fill can only follow an inject, so the predicate
+
+```C
+     /* { state = 101 ∧ items = 001 } */
+```
+cannot occur.  Applying the possible occurrences of inject-fill-push,
+we have the following potential states that can occur due to an asynchronous `Source` following the `Sink` pull:
+
+
+```C
+     /* { state = 001 ∧ ( items = 001 ∨ items = 101 ) } */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 111 ) } */
+     /* { state = 101 ∧ items = 101 */
+     /* { state = 111 ∧ items = 111 } */
+```
+These are stable states, meaning there are no other possible states that could occur due to the `Source`.
+
+Evolving the states from there based on operations of the `Sink` and taking into account asynchronous operations of the `Source` we obtain the following proof outline:
+
 
 ```C
    while (not done) {
-     /* { state = 0x0 ∨ ( items = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0) } ∨ */
-     /* { state = 0x1 ∧ ( items = 0x1 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ items = 1x1 }                    */
-     pull: 〈 await ¬{ state = 00 } :
-            if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
-            if { state = 100 ∧ items = 100 } → { state = 001 ∧ items = 001 } ⟩
-            if { state = 101 ∧ items = 101 } → { state = 011 ∧ items = 011 } ⟩
-            if { state = 110 ∧ items = 110 } → { state = 011 ∧ items = 011 } ⟩
-     /* { state = 0x1 ∧ ( items = 0x1 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ items = 1x1 }                    */
+
+     /* { state = 000 ∧ ( items = 000 ∨ items = 100 ) } */
+     /* { state = 001 ∧ ( items = 001 ∨ items = 101 ) } */
+     /* { state = 010 ∧ ( items = 010 ∨ items = 110 ) } */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 111 ) } */
+     /* { state = 100 ∧ items = 100 } */
+     /* { state = 101 ∧ items = 101 } */
+     /* { state = 110 ∧ items = 110 } */
+     /* { state = 111 ∧ items = 111 } */
+
+     pull: 〈 await ¬{ state = 000 } :
+
+     /* { state = 001 ∧ ( items = 001 ∨ items = 101 ) } */
+     /* { state = 101 ∧ items = 101 */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 111 ) } */
+     /* { state = 111 ∧ items = 111 } */
+
      extract: extract: item[2] ← 0
-     /* { state = 0x1 ∨ ( items = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x1 ∧ ( items = 0x0 ∨ items = 1x0) }   */
-     drain: state[1] ← 0
-     /* { state = 0x0 ∨ ( items = 0x0 ∧ items = 1x0 ) } ∨ { state = 1x0 ∧ ( items = 0x0 ∨ items = 1x0) } ∨ */
-     /* { state = 0x1 ∧ ( items = 0x1 ∨ items = 1x1 ) } ∨ { state = 1x1 ∧ items = 1x1 }                    */ 
+
+     /* { state = 001 ∧ ( items = 000 ∨ items = 100 ) } */
+     /* { state = 101 ∧ items = 100 */
+     /* { state = 011 ∧ ( items = 010 ∨ items = 110 ) } */
+     /* { state = 111 ∧ items = 110 } */
+
+     drain: state[2] ← 0
+
+     /* { state = 000 ∧ ( items = 000 ∨ items = 100 ) } */
+     /* { state = 001 ∧ ( items = 001 ∨ items = 101 ) } */
+     /* { state = 010 ∧ ( items = 010 ∨ items = 110 ) } */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 111 ) } */
+     /* { state = 100 ∧ items = 100 } */
+     /* { state = 101 ∧ items = 101 } */
+     /* { state = 110 ∧ items = 110 } */
+     /* { state = 111 ∧ items = 111 } */
    }
 ```
 
