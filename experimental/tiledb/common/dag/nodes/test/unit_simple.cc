@@ -1286,6 +1286,11 @@ TEST_CASE("Nodes: Async pass n integers, two nodes, two stage", "[nodes]") {
   auto source = [&]() { source_node.run_for(rounds); };
   auto sink = [&]() { sink_node.run_for(rounds + offset); };
 
+  auto x = sink_node.get_mover();
+  if (debug) {
+    x->enable_debug();
+  }
+
   SECTION(
       "a c a c " + std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);

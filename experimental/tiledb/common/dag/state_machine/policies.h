@@ -364,10 +364,11 @@ class AsyncPolicy
         "    source notifying sink(on_signal_sink) with " + str(this->state()) +
         " and " + str(this->next_state()));
 
-#if 1
-    if (!static_cast<Mover*>(this)->is_stopping())
+    // This CHECK will fail when state machine is stopping, so check
+    if (!static_cast<Mover*>(this)->is_stopping()) {
       CHECK(is_source_full(this->state()) == "");
-#endif
+    }
+
     sink_cv_.notify_one();
   }
 
