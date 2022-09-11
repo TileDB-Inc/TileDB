@@ -345,7 +345,10 @@ class AsyncPolicy
         "    sink notifying source (on_signal_source) with " +
         str(this->state()) + " and " + str(this->next_state()));
 
+#ifndef FXM
     CHECK(is_sink_empty(this->state()) == "");
+#endif
+
     source_cv_.notify_one();
   }
 
@@ -361,7 +364,9 @@ class AsyncPolicy
         "    source notifying sink(on_signal_sink) with " + str(this->state()) +
         " and " + str(this->next_state()));
 
-    //    CHECK(is_source_full(this->state()) == "");
+#ifndef FXM
+    CHECK(is_source_full(this->state()) == "");
+#endif
     sink_cv_.notify_one();
   }
 

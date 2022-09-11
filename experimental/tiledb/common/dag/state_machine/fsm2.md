@@ -162,7 +162,484 @@ When the state is 00, the `Sink` will wait for the `Source` to become full.  The
 `Source` will notify the `Sink` when it becomes full.  Similarly, if the state is 11,
 the `Source` will wait until it is signalled by the `Sink` that the `Sink` is empty.
 
-## Proof Outlines
+
+## Proof Outline
+
+To prove correctness of the port state machine, we use proof outline techniques from e.g., *Concurrent Programming* by Greg Andrews.
+For this proof outline, we represent the overall state of a connected `Source` and `Sink` with
+two boolean arrays, each with two elements, shared by the `Source` and `Sink`: `state` and `items`.
+
+### Actions
+
+For the purposes of a proof outline, the `Source` has three operations:
+
+```
+1. inject: items[0] ← 1
+2. fill: state[0] ← 1
+3. push: 〈 await ¬{ state = 11 } :
+            if { state = 10 ∧ items = 10 } → { state = 01 ∧ items = 01 } ⟩
+```
+
+Similarly, for the purposes of a proof outline, the `Sink` has three operations:
+
+```
+1. extract: item[1] ← 0
+2. drain: state[1] ← 0
+3. pull: 〈 await ¬{ state = 00 } :
+            if { state = 10 ∧ items = 10 } → { state = 01 ∧ items = 01 } ⟩
+```
+
+### Source Proof Outline
+
+
+The critical operation of the `Source` is the `push`, which blocks (awaits) until 
+`¬{ state = 11 }`, that is, until the `state` is not equal to `11`.  In that case, states 00, 01, and 10 could pass through.
+However, in addition to the await, `push` includes a data transfer step (a "move") that will perform the following predicate transformation for 
+`{ state = 10 }`:
+```C
+/* { state = 10 ∧ items = 10 } → { state = 01 ∧ items = 01 } */
+```
+This represents moving a data item from the `Source` to the `Sink`.  Note that both the state machine `state` and the actual data items being held are (atomically) changed in the move.
+
+Based on these properties of the `push`, we have the following valide states that can occur directly following a `push`:
+```C
+     /* { state = 00 ∧ items = 00 } ∨ */
+     /* { state = 01 ∧ items = 01 }   */
+```
+The `push` itself is atomic, but as soon as it has completed, the state of the port can be changed by the `Sink` operating asynchronously to the `Source`.  Given the three operations that the `Sink` can perform, the above states can be subject to `pull`, `extract`, or `extract+drain`.  The `pull` operation will not change the state.  The `extract` operation can change `{ items = 01 }` to 
+`{ items = 00 }`.  Similarly, `drain` can change `{ state = 01 }` to `{ state = 00 }`.  Note that `extract` always precedes `drain` – the `Sink` cannot change 
+`{ state = 01 ∧ items = 01 }` into `{ state = 00 ∧ items = 01 }`.
+
+Thus, the entire set of possible configurations following `push` are
+```C
+     /* { state = 00 ∧ items = 00 }                  ∨ */
+     /* { state = 01 ∧ ( items = 00 ∨ items = 01 ) }   */
+```
+
+Following the `push`, the `Source` may `inject`, which will change the above states to:
+```C
+     /* { state = 00 ∧ items = 10 }                  ∨ */
+     /* { state = 01 ∧ ( items = 11 ∨ items = 10 ) }   */
+```
+Again, the `Sink` may `extract`, `drain`, or `pull`.  However, the only change that can occur is that `extract` may change 
+`{ items = 11 }` to `{ items = 10 }`, which is already part of the above configuration.  A subsequent `drain` may then change  
+`{ state = 01 ∧ items = 10 }` to `{ state = 00 ∧ items = 10 }`, which again, is already part of the above configuration.  **Thus, the
+`Sink` operating asynchronously will not change the system predicate between `inject` and `fill`.**  In other words, the
+sequence `inject` then `fill` can be considered to be atomic.
+
+For the `fill` operation, the above predicate will be changed to
+```C
+     /* { state = 10 ∧ items = 10 }                  ∨ */
+     /* { state = 11 ∧ ( items = 11 ∨ items = 10 ) }   */
+```
+Asynchronous operation of the `Sink` can change this predicate to
+```C
+     /* { state = 00 ∧ items = 00 }                  ∨ */
+     /* { state = 01 ∧ ( items = 00 ∨ items = 01 ) } ∨ */
+     /* { state = 10 ∧ items = 10 }                  ∨ */
+     /* { state = 11 ∧ ( items = 10 ∨ items = 11 ) }   */
+```
+
+#### Final Source Proof Outline
+
+Thus, the proof outline for the `Source` is
+
+
+```C
+   while (not done) {
+     /* { state = 00 ∧ items = 00 } ∨ { state = 01 ∧ ( items = 00 ∨ items = 01 ) }   */
+     inject: items[0] ← 1
+     /* { state = 00 ∧ items = 10 } ∨ { state = 01 ∧ ( items = 10 ∨ items = 11 ) }   */
+     fill: state[0] ← 1
+     /* { state = 00 ∧ items = 00 } ∨ { state = 01 ∧ ( items = 00 ∨ items = 01 ) } ∨ */
+     /* { state = 10 ∧ items = 10 } ∨ { state = 11 ∧ ( items = 10 ∨ items = 11 ) }   */
+     push: 〈 await ¬{ state = 11 } :
+              if { state = 10 ∧ items = 10 } → { state = 01 ∧ items = 01 } ⟩
+     /* { state = 00 ∧ items = 00 } ∨ { state = 01 ∧ ( items = 00 ∨ items = 01 ) }   */     
+   }
+```
+
+### Sink Proof Outline
+
+We can follow a similar process to derive the proof outline for the `Sink`.
+
+The critical operation of the `Sink` is the `pull`, which blocks (awaits) until 
+`¬{ state = 00 }`, that is, until the `state` is not equal to `00`.  In that case, states 01, 10, and 11 could pass through.
+However, in addition to the await, `pull` includes a data transfer step (a "move") that will perform the following predicate transformation for 
+`{ state = 10 }`:
+```C
+/* { state = 10 ∧ items = 10 } → { state = 01 ∧ items = 01 } */
+```
+This represents moving a data item from the `Source` to the `Sink`.  Note that both the state machine `state` and the actual data items being held are (atomically) changed in the move.
+
+Based on these properties of the `push`, we have the following valide states that can occur directly following a `push`:
+```C
+     /* { state = 01 ∧ items = 01 } ∨ */
+     /* { state = 11 ∧ items = 11 }   */
+```
+The `pull` itself is atomic, but as soon as it has completed, the state of the port can be changed by the `Source` operating asynchronously to the `Sink`.  Given the three operations that the `Source` can perform, the above states can be subject to `push`, `inject`, or `inject+fill`.  The `push` operation will not change the predicate.  The `inject` operation can change `{ items = 01 }` to 
+`{ items = 11 }`.  Similarly, `fill` can change `{ state = 01 }` to `{ state = 11 }`.  Note that `inject` always precedes `fill` – the `Source` cannot change 
+`{ state = 01 ∧ items = 01 }` into `{ state = 11 ∧ items = 01 }`.
+
+Thus, the entire set of possible configurations following `push` are
+```C
+     /* { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨ */
+     /* { state = 11 ∧ items = 11 }                    */
+```
+
+Following the `pull`, the `Sink` may `extract`, which will change the above predicate to:
+```C
+     /* { state = 01 ∧ ( items = 00 ∨ items = 10 ) } ∨ */
+     /* { state = 11 ∧ items = 10 }                    */
+```
+Again, the `Source` may `inject`, `fill`, or `push`.  However, the only change that can occur is that `inject` may change 
+`{ items = 00 }` to `{ items = 10 }`, which is already part of the above configuration.  A subsequent `fill` may then change  
+`{ state = 01 ∧ items = 10 }` to `{ state = 11 ∧ items = 10 }`, which again, is already part of the above configuration.  **Thus, the
+`Source` operating asynchronously will not change the system predicate between `extract` and `drain`.**  In other words, the
+sequence `extract` then `drain` can be considered to be atomic.
+
+For the `drain` operation, the above predicate will be changed to
+```C
+     /* { state = 00 ∧ ( items = 00 ∨ items = 10 ) } ∨ */
+     /* { state = 10 ∧ items = 10 }                    */
+```
+Asynchronous operation of the `Source` can change this predicate to
+```C
+     /* { state = 00 ∧ ( items = 00 ∨ items = 10 ) } ∨ */
+     /* { state = 10 ∧ items = 10 }                  ∨ */
+     /* { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨ */
+     /* { state = 11 ∧ items = 11 }                    */
+```
+
+#### Final Sink Proof Outline
+
+Thus, the complete `Sink` proof outline iw
+
+```C
+   while (not done) {
+     /* { state = 00 ∧ ( items = 00 ∨ items = 10 ) } ∨ { state = 10 ∧ items = 10 }   ∨ */
+     /* { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨ { state = 11 ∧ items = 11 ) }   */
+     pull: 〈 await ¬{ state = 00 } :
+              if { state = 10 ∧ items = 10 } → { state = 01 ∧ items = 01 } ⟩
+     /* { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨ { state = 11 ∧ items = 11 ) }   */
+     extract: extract: item[1] ← 0
+     /* { state = 01 ∧ ( items = 00 ∨ items = 10 ) } ∨ { state = 11 ∧ items = 01 ) }   */
+     drain: state[1] ← 0  
+     /* { state = 00 ∧ ( items = 00 ∨ items = 10 ) } ∨ { state = 10 ∧ items = 10 }   ∨ */
+     /* { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨ { state = 11 ∧ items = 11 ) }   */
+   }
+```
+
+
+### Comments
+
+The proof outlines shows some important characteristics of the port state machine.
+
+1. If we begin with the valid state `{ state = 00 ∧ items = 00 }` (which is the only sensible state with which to begin),
+the state machine will never enter any `BAD` state.  We define a `BAD` state to be any of the following:
+  - predicate with `{ items = 10 ∨ items = 11 }` prior to `inject` 
+  - predicate with `{ state = 10 ∨ state = 11 }` prior to `fill` 
+  - predicate with `{ items = 00 ∨ items = 10 }` prior to `extract` 
+  - predicate with `{ state = 00 ∨ state = 10 }` prior to `drain` 
+
+2. If we begin with the valid state `{ state = 00 ∧ items = 00 }`, and use the following steps for the `Source`
+
+    ```C
+      inject
+      fill
+      push
+    ``` 
+    The `Source` will **always** be ready to accept an item for injection.  Hence we do not have to check whether the `Source` is ready prior to invoking `inject`.  No concurrent `Sink` action will change the state into one that is `BAD` prior to `inject`.
+
+4. Similarly, if we use the following steps for the `Sink`
+
+    ```C
+      pull
+      extract
+      drain
+      ```
+
+    There will **always** be an item ready to extract after `pull` completes.
+
+5. There are no race conditions between `inject` and `fill`, nor between `extract` and `drain`.  Concurrent actions from the `Sink` cannot cause a `BAD` state between `inject` and `fill`, nor can concurrent actions from the `Source` introduce a `BAD` state between `extract` and `drain`.
+
+6.  In fact, there are no race conditions between **any** of the steps in the `Source` or the `Sink`.  As a result, we do not need to introduce any locking mechanism to make any pairs of actions atomic.  (As a reminder, all actions executed by the state machine are atomic.)
+
+
+7. Operations carried out directly by the state machine are protected by a lock.  When
+the `Source` or `Sink` wait, they do so on a condition variable using that same lock.
+Note that when the `Source` and `Sink` both exit their loops that the `Source` will
+have 
+  { state = 00 ∨ state = 01 } 
+while the `Sink` will have 
+  { state = 00 ∨ state = 10 }.
+The final state of the state machine is therefore 
+  { state = 00 ∨ state = 01 } ∧ { state = 00 ∨ state = 10 } ∧ { item = empty }, 
+i.e., 
+  { state = 00 } ∧ { item = empty }.
+(This assumes that both `Source` and `Sink` perform the same number of operations,
+otherwise one of them will be left in a wait.)
+
+8. **NB:** The "move" portion of `push` and the "move" portion of `pull` 
+(`source_swap` and `sink_swap`, respectively).
+Each checks to see if
+the state is equal to 10, if so, they swap the state to 01 (and perform a
+swap of the items associated with the source and sink), and notifies the other.
+If the state is not equal to 10, the swap function notifies the other and goes
+into a wait.
+Thus, we may not need separate swaps for `Source` and `Sink`, nor separate condition
+variables, nor separate notification functions.  I have verified that this works
+experimentally, but I am leaving things separate for now.
+
+
+## Proof Outlines for Buffered Edges Between Source and Sink
+
+For much of what TileDB will be doing with our task graph library, we will be using multi-stage edges between nodes.
+`Edge`s, as they are currently implemented, still provide a control connection from the `Sink` to the `Source` connected by the `Edge`.
+In developing a proof outline for `Source` and `Sink` connected by an `Edge` with one (or more) buffered stages, we must account for the buffered data in both the `state` and the `items`.
+
+We can follow a similar development for thi proof outline as we did for the unbuffered case.
+
+Revisiting the `Source` and `Sink` operations that we previously presented, we have the following actions for a three-stage port state machine:
+
+### Source Actions
+
+```
+1. inject: items[0] ← 1
+2. fill: state[0] ← 1
+3. push: 〈 await ¬{ state = 111 } :
+            if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
+            if { state = 100 ∧ items = 100 } → { state = 001 ∧ items = 001 } ⟩
+            if { state = 101 ∧ items = 101 } → { state = 011 ∧ items = 011 } ⟩
+            if { state = 110 ∧ items = 110 } → { state = 011 ∧ items = 011 } ⟩
+```
+
+
+
+### Sink Actions
+
+Similarly, for the purposes of a proof outline, the `Sink` has three operations:
+
+```
+1. extract: item[2] ← 0
+2. drain: state[2] ← 0
+3. pull: 〈 await ¬{ state = 000 } :
+            if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
+            if { state = 100 ∧ items = 100 } → { state = 001 ∧ items = 001 } ⟩
+            if { state = 101 ∧ items = 101 } → { state = 011 ∧ items = 011 } ⟩
+            if { state = 110 ∧ items = 110 } → { state = 011 ∧ items = 011 } ⟩
+```
+
+
+### Source Proof Outline
+
+Consider first the effect of the `push` operation.
+Given the await condition, the state of the system must be 
+`¬{ state = 111 }`.  Moreover, the push operation includes a "move" operation such that there are no "holes" in the data being transferred.
+That is, immediately after the (atomic) push operation completes, we have
+
+```C
+     /* { state = 000 ∧ items = 000 } ∨ */
+     /* { state = 001 ∧ items = 001 } ∨ */
+     /* { state = 011 ∧ items = 011 }   */
+```
+
+Actions from the asynchronous `Sink` can then occur, i.e., an extract, drain, and/or pull.  
+Given the operations shown above, we can see that the predicate 
+```C
+     /* { state = 001 ∧ items = 001 } */
+```
+can become
+
+```C
+     /* { state = 001 ∧ ( items = 001 ∨ 000 } */
+```
+if an extract occurs.  A drain may then cause `{ state = 001 }` to become 
+`{ state = 000 }`.  But note that a drain can only follow an extract, so the predicate
+
+```C
+     /* { state = 000 ∧ items = 001 } */
+```
+cannot occur.  Applying the possible occurrences of extract-drain-pull, we have the following potential predicate that can occur due to an asynchronous `Sink` following the `Source` push:
+
+```C
+     /* { state = 000 ∧ items = 000 }                   ∨ */ 
+     /* { state = 001 ∧ ( items = 001 ∨ items = 000 ) } ∨ */
+     /* { state = 010 ∧ items = 010 }                   ∨ */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 010 ) }   */
+```
+This is a "stable" predicate, meaning there are no other possible states that could occur due to asynchronous `Sink` actions.
+
+#### Final Source Proof Outline
+
+The final state of the push operation will also be the initial state prior to `inject`.
+If we begin there and apply the state changes that would be caused by `inject` and `fill`
+(along with the asynchronous `Sink`), we arrive at the following complete proof outline for the
+`Source`:
+
+```C
+   while (not done) {
+     /* { state = 000 ∧ items = 000 }                   ∨ */ 
+     /* { state = 001 ∧ ( items = 001 ∨ items = 000 ) } ∨ */
+     /* { state = 010 ∧ items = 010 }                   ∨ */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 010 ) }   */
+
+     inject: items[0] ← 1
+
+     /* { state = 000 ∧ items = 100 }                   ∨ */
+     /* { state = 001 ∧ ( items = 101 ∨ items = 100 ) } ∨ */
+     /* { state = 010 ∧ items = 110 }                   ∨ */
+     /* { state = 011 ∧ ( items = 111 ∨ items = 110 ) }   */
+
+     fill: state[0] ← 1
+
+     /* { state = 000 ∧ items = 000 }                   ∨ */ 
+     /* { state = 001 ∧ ( items = 001 ∨ items = 000 ) } ∨ */
+     /* { state = 010 ∧ items = 010 }                   ∨ */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 010 ) } ∨ */
+     /* { state = 100 ∧ items = 100 }                   ∨ */ 
+     /* { state = 101 ∧ ( items = 101 ∨ items = 100 ) } ∨ */
+     /* { state = 110 ∧ items = 110 }                   ∨ */
+     /* { state = 111 ∧ ( items = 111 ∨ items = 110 ) }   */
+
+     push: 〈 await ¬{ state = 111 } 
+
+     /* { state = 000 ∧ items = 000 }                   ∨ */ 
+     /* { state = 001 ∧ ( items = 001 ∨ items = 000 ) } ∨ */
+     /* { state = 010 ∧ items = 010 }                   ∨ */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 010 ) }   */
+   }
+```
+
+
+
+### Sink Proof Outline
+
+
+We can apply a similar process to derive the `Sink` proof outline.  In this case, we begin with the system state immediately following the pull operation, which is 
+`¬{ state = 000 }`.  The pull operation will also move the items, in similar fashion to push above, i.e.:
+
+```C
+     /* { state = 001 ∧ items = 001 } ∨ */
+     /* { state = 011 ∧ items = 011 } ∨ */
+     /* { state = 111 ∧ items = 111 }   */
+```
+Now we consider the changes to this state that may occur due to asynchronous operation of the `Source`, i.e., inject, fill, and/or push.
+Given the operations shown above, we can see that the predicate 
+
+```C
+     /* { state = 001 ∧ items = 001 } */
+```
+
+can become
+
+```C
+     /* { state = 001 ∧ ( items = 001 ∨ items = 101 } */
+```
+
+if an inject occurs.  
+A fill will cause `{ state = 001 }` to become 
+`{ state = 101 }`.  But note that a fill can only follow an inject, so the predicate
+
+```C
+     /* { state = 101 ∧ items = 001 } */
+```
+cannot occur.  Applying the possible occurrences of inject-fill-push,
+we have the following potential states that can occur due to an asynchronous `Source` following the `Sink` pull:
+
+
+```C
+     /* { state = 001 ∧ ( items = 001 ∨ items = 101 ) } ∨ */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 111 ) } ∨ */
+     /* { state = 101 ∧ items = 101 }                   ∨ */
+     /* { state = 111 ∧ items = 111 }                     */
+```
+These are stable states, meaning there are no other possible states that could occur due to the `Source`.
+
+### Final Sink Proof Outline
+
+Evolving the states from there based on operations of the `Sink` and taking into account asynchronous operations of the `Source` we obtain the following proof outline:
+
+
+```C
+   while (not done) {
+
+     /* { state = 000 ∧ ( items = 000 ∨ items = 100 ) } ∨ */
+     /* { state = 001 ∧ ( items = 001 ∨ items = 101 ) } ∨ */
+     /* { state = 010 ∧ ( items = 010 ∨ items = 110 ) } ∨ */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 111 ) } ∨ */
+     /* { state = 100 ∧ items = 100 }                   ∨ */
+     /* { state = 101 ∧ items = 101 }                   ∨ */
+     /* { state = 110 ∧ items = 110 }                   ∨ */
+     /* { state = 111 ∧ items = 111 }                     */
+
+     pull: 〈 await ¬{ state = 000 } :
+
+     /* { state = 001 ∧ ( items = 001 ∨ items = 101 ) } ∨ */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 111 ) } ∨ */
+     /* { state = 101 ∧ items = 101 }                   ∨ */
+     /* { state = 111 ∧ items = 111 }                     */
+
+     extract: extract: item[2] ← 0
+
+     /* { state = 001 ∧ ( items = 000 ∨ items = 100 ) } ∨ */
+     /* { state = 011 ∧ ( items = 010 ∨ items = 110 ) } ∨ */
+     /* { state = 101 ∧ items = 100 }                   ∨ */
+     /* { state = 111 ∧ items = 110 }                     */
+
+     drain: state[2] ← 0
+
+     /* { state = 000 ∧ ( items = 000 ∨ items = 100 ) } ∨ */
+     /* { state = 001 ∧ ( items = 001 ∨ items = 101 ) } ∨ */
+     /* { state = 010 ∧ ( items = 010 ∨ items = 110 ) } ∨ */
+     /* { state = 011 ∧ ( items = 011 ∨ items = 111 ) } ∨ */
+     /* { state = 100 ∧ items = 100 }                   ∨ */
+     /* { state = 101 ∧ items = 101 }                   ∨ */
+     /* { state = 110 ∧ items = 110 }                   ∨ */
+     /* { state = 111 ∧ items = 111 }                     */
+   }
+```
+
+
+### Comments
+
+As with the unbuffered case, the the buffered proof outlines shows the same important
+characteristics of the port state machine.
+
+1. If we begin with the valid state `{ state = 000 ∧ items = 000 }` (which is the only sensible state with which to begin),
+the state machine will never enter any `BAD` state.  We define a `BAD` state to be any of the following:
+  - predicate with `{ items = 1x0 ∨ items = 1x1 }` prior to `inject` 
+  - predicate with `{ state = 1x0 ∨ state = 1x1 }` prior to `fill` 
+  - predicate with `{ items = 0x0 ∨ items = 1x0 }` prior to `extract` 
+  - predicate with `{ state = 0x0 ∨ state = 1x0 }` prior to `drain` 
+
+2. If we begin with the valid state `{ state = 000 ∧ items = 000 }`, and use the following steps for the `Source`
+
+    ```C
+      inject
+      fill
+      push
+    ``` 
+    The `Source` will **always** be ready to accept an item for injection.  Hence we do not have to check whether the `Source` is ready prior to invoking `inject`.  No concurrent `Sink` action will change the state into one that is `BAD` prior to `inject`.
+
+4. Similarly, if we begin with the valid state `{ state = 000 ∧ items = 000 }` and
+use the following steps for the `Sink`
+
+    ```C
+      pull
+      extract
+      drain
+      ```
+
+    There will **always** be an item ready to extract after `pull` completes.
+
+5. There are no race conditions between `inject` and `fill`, nor between `extract` and `drain`.  Concurrent actions from the `Sink` cannot cause a `BAD` state between `inject` and `fill`, nor can concurrent actions from the `Source` introduce a `BAD` state between `extract` and `drain`.
+
+6.  In fact, there are no race conditions between **any** of the steps in the `Source` or the `Sink`.  As a result, we do not need to introduce any locking mechanism to make any pairs of actions atomic.  (As a reminder, all actions executed by the state machine are atomic.)
+
+
+
+## Additional, Alternative, Proof Outlines (In Various Detail)
 
 ### Source Proof Outline
 
@@ -345,63 +822,6 @@ From the above analysis, we can summarize the `Sink` proof outline as follows:
      /* { state = 00 ∨ state = 01 ∨ state = 10 ∨ state = 11 } ∧       */
      /* { items = 00 ∨ items = 01 ∨ items = 10 ∨ state = 11 }         */
    }
-```
-
-
-### Comments
-
-Operations carried out directly by the state machine are protected by a lock.  When
-the `Source` or `Sink` wait, they do so on a condition variable using that same lock.
-
-Note that when the `Source` and `Sink` both exit their loops that the `Source` will
-have 
-  { state = 00 ∨ state = 01 } 
-while the `Sink` will have 
-  { state = 00 ∨ state = 10 }.
-The final state of the state machine is therefore 
-  { state = 00 ∨ state = 01 } ∧ { state = 00 ∨ state = 10 } ∧ { item = empty }, 
-i.e., 
-  { state = 00 } ∧ { item = empty }.
-(This assumes that both `Source` and `Sink` perform the same number of operations,
-otherwise one of them will be left in a wait.)
-
-**NB:** The sink_swap and source_swap functions are identical. Each checks to see if
-the state is equal to 10, if so, swap the state to 01 (and perform an
-action swap of the items assoiated with the source and sink), and notifies the other.
-If the state is not equal to 10, the swap function notifies the other and goes
-into a wait.
-
-Thus, we may not need separate swaps for `Source` and `Sink`, nor separate condition
-variables, nor separate notification functions.  I have verified that this works
-experimentally, but I am leaving things separate for now.
-
-
-## Alternate Proof Outline
-
-We can perform somewhat more precise proof outlines by considering `Source` and `Sink` actions in better detail.  We use the techniques from, e.g., *Concurrent Programming* by Greg Andrews.
-
-For this proof outline, there are two boolean arrays, each with two elements, shared by the `Source` and `Sink`: `state` and `items`.
-
-### Source Actions
-
-For the purposes of a proof outline, the `Source` has three operations:
-
-```
-1. inject: items[0] ← 1
-2. fill: state[0] ← 1
-3. push: 〈 await ¬{ state = 11 } :
-            if { state = 10 ∧ items = 10 } → { state = 01 ∧ items = 01 } ⟩
-```
-
-### Sink Actions
-
-Similarly, for the purposes of a proof outline, the `Sink` has three operations:
-
-```
-1. extract: item[1] ← 0
-2. drain: state[1] ← 0
-3. pull: 〈 await ¬{ state = 00 } :
-            if { state = 10 ∧ items = 10 } → { state = 01 ∧ items = 01 } ⟩
 ```
 
 
@@ -610,281 +1030,3 @@ and `items`.  Where helpful, we include these predicates as comments in the dag 
      /* { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨ { state = 11 ∧ items = 11 ) } */
    }
 ```
-
-### Comments
-
-The proof outlines shows some important characteristics of the port state machine.
-
-1. If we begin with the valid state `{ state = 00 ∧ items = 00 }` (which is the only sensible state with which to begin),
-the state machine will never enter any `BAD` state.  We define a `BAD` state to be any of the following:
-  - predicate with `{ items = 10 ∨ items = 11 }` prior to `inject` 
-  - predicate with `{ state = 10 ∨ state = 11 }` prior to `fill` 
-  - predicate with `{ items = 00 ∨ items = 10 }` prior to `extract` 
-  - predicate with `{ state = 00 ∨ state = 10 }` prior to `drain` 
-
-2. If we begin with the valid state `{ state = 00 ∧ items = 00 }`, and use the following steps for the `Source`
-
-    ```C
-      inject
-      fill
-      push
-    ``` 
-    The `Source` will **always** be ready to accept an item for injection.  Hence we do not have to check whether the `Source` is ready prior to invoking `inject`.  No concurrent `Sink` action will change the state into one that is `BAD` prior to `inject`.
-
-4. Similarly, if we use the following steps for the `Sink`
-
-    ```C
-      pull
-      extract
-      drain
-      ```
-
-    There will **always** be an item ready to extract after `pull` completes.
-
-5. There are no race conditions between `inject` and `fill`, nor between `extract` and `drain`.  Concurrent actions from the `Sink` cannot cause a `BAD` state between `inject` and `fill`, nor can concurrent actions from the `Source` introduce a `BAD` state between `extract` and `drain`.
-
-6.  In fact, there are no race conditions between **any** of the steps in the `Source` or the `Sink`.  As a result, we do not need to introduce any locking mechanism to make any pairs of actions atomic.  (As a reminder, all actions executed by the state machine are atomic.)
-
-
-## Proof Outlines for Buffered Edges Between Source and Sink
-
-For much of what TileDB will be doing with our task graph library, we will be using multi-stage edges between nodes.
-`Edge`s, as they are currently implemented, still provide a control connection from the `Sink` to the `Source` connected by the `Edge`.
-In developing a proof outline for `Source` and `Sink` connected by an `Edge` with one (or more) buffered stages, we must account for the buffered data in both the `state` and the `items`.
-
-Revisiting the `Source` and `Sink` operations that we previously presented, we have the following actions for a three-stage port state machine:
-
-### Source Actions
-
-```
-1. inject: items[0] ← 1
-2. fill: state[0] ← 1
-3. push: 〈 await ¬{ state = 111 } :
-            if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
-            if { state = 100 ∧ items = 100 } → { state = 001 ∧ items = 001 } ⟩
-            if { state = 101 ∧ items = 101 } → { state = 011 ∧ items = 011 } ⟩
-            if { state = 110 ∧ items = 110 } → { state = 011 ∧ items = 011 } ⟩
-```
-
-
-
-### Sink Actions
-
-Similarly, for the purposes of a proof outline, the `Sink` has three operations:
-
-```
-1. extract: item[2] ← 0
-2. drain: state[2] ← 0
-3. pull: 〈 await ¬{ state = 000 } :
-            if { state = 010 ∧ items = 010 } → { state = 001 ∧ items = 001 } ⟩
-            if { state = 100 ∧ items = 100 } → { state = 001 ∧ items = 001 } ⟩
-            if { state = 101 ∧ items = 101 } → { state = 011 ∧ items = 011 } ⟩
-            if { state = 110 ∧ items = 110 } → { state = 011 ∧ items = 011 } ⟩
-```
-
-
-### Source Proof Outline
-
-Consider first the effect of the push operation.
-Given the await condition, the state of the system must be 
-¬{ state = 111 }.  Moreover, the push operation includes a "move" operation such that there are no "holes" in the data being transferred.  
-That is, immediately after the (atomic) push operation completes, we have
-
-```C
-     /* { state = 000 ∧ items = 000 } */
-     /* { state = 001 ∧ items = 001 } */
-     /* { state = 011 ∧ items = 011 } */
-```
-
-Actions from the asynchronous `Sink` can then occur, i.e., an extract, drain, and/or pull.  
-Given the operations shown above, we can see that the predicate 
-
-```C
-     /* { state = 001 ∧ items = 001 } */
-```
-
-can become
-
-```C
-     /* { state = 001 ∧ ( items = 001 ∨ 000 } */
-```
-
-if an extract occurs.  A drain may then cause `{ state = 001 }` to become 
-`{ state = 000 }`.  But note that a drain can only follow an extract, so the predicate
-
-```C
-     /* { state = 000 ∧ items = 001 } */
-```
-cannot occur.  Applying the possible occurrences of extract-drain-pull, we have the following potential states that can occur due to an asynchronous `Sink` following the `Source` push:
-
-```C
-     /* { state = 000 ∧ items = 000 } */ 
-     /* { state = 001 ∧ ( items = 001 ∨ items = 000 ) } */
-     /* { state = 010 ∧ items = 010 } */
-     /* { state = 011 ∧ ( items = 011 ∨ items = 010 ) } */
-```
-These are stable states, meaning there are no other possible states that could occur due to `Sink` actions.
-
-The final state of the push operation will also be the initial state prior to inject.
-If we begin there and apply the state changes that would be caused by inject and fill
-(along with the asynchronous `Sink`), we arrive at the following proof outline for the
-`Source`:
-
-```C
-   while (not done) {
-     /* { state = 000 ∧ items = 000 } */ 
-     /* { state = 001 ∧ ( items = 001 ∨ items = 000 ) } */
-     /* { state = 010 ∧ items = 010 } */
-     /* { state = 011 ∧ ( items = 011 ∨ items = 010 ) } */
-
-     inject: items[0] ← 1
-
-     /* { state = 000 ∧ items = 100 } */
-     /* { state = 001 ∧ ( items = 101 ∨ items = 100 ) } */
-     /* { state = 011 ∧ ( items = 111 ∨ items = 110 ) } */
-     /* { state = 010 ∧ items = 110 } */
-
-     fill: state[0] ← 1
-
-     /* { state = 111 ∧ ( items = 111 ∨ items = 110 ) } */
-     /* { state = 110 ∧ items = 110 } */
-     /* { state = 101 ∧ ( items = 101 ∨ items = 100 ) } */
-     /* { state = 100 ∧ items = 100 } */ 
-     /* { state = 011 ∧ ( items = 011 ∨ items = 010 ) } */
-     /* { state = 010 ∧ items = 010 } */
-     /* { state = 001 ∧ ( items = 001 ∨ items = 000 ) } */
-     /* { state = 000 ∧ items = 000 } */ 
-
-     push: 〈 await ¬{ state = 111 } 
-
-     /* { state = 000 ∧ items = 000 } */ 
-     /* { state = 001 ∧ ( items = 001 ∨ items = 000 ) } */
-     /* { state = 010 ∧ items = 010 } */
-     /* { state = 011 ∧ ( items = 011 ∨ items = 010 ) } */
-   }
-```
-
-
-
-### Sink Proof Outline
-
-
-We can apply a similar process to derive the `Sink` proof outline.  In this case, we begin with the system state immediately following the pull operation, which is 
-`¬{ state = 000 }`.  The pull operation will also move the items, in similar fashion to push above, i.e.:
-
-```C
-     /* { state = 001 ∧ items = 001 } */
-     /* { state = 011 ∧ items = 011 } */
-     /* { state = 111 ∧ items = 111 } */
-```
-Now we consider the changes to this state that may occur due to asynchronous operation of the `Source`, i.e., inject, fill, and/or push.
-Given the operations shown above, we can see that the predicate 
-
-```C
-     /* { state = 001 ∧ items = 001 } */
-```
-
-can become
-
-```C
-     /* { state = 001 ∧ ( items = 001 ∨ items = 101 } */
-```
-
-if an inject occurs.  
-A fill will cause `{ state = 001 }` to become 
-`{ state = 101 }`.  But note that a fill can only follow an inject, so the predicate
-
-```C
-     /* { state = 101 ∧ items = 001 } */
-```
-cannot occur.  Applying the possible occurrences of inject-fill-push,
-we have the following potential states that can occur due to an asynchronous `Source` following the `Sink` pull:
-
-
-```C
-     /* { state = 001 ∧ ( items = 001 ∨ items = 101 ) } */
-     /* { state = 011 ∧ ( items = 011 ∨ items = 111 ) } */
-     /* { state = 101 ∧ items = 101 */
-     /* { state = 111 ∧ items = 111 } */
-```
-These are stable states, meaning there are no other possible states that could occur due to the `Source`.
-
-Evolving the states from there based on operations of the `Sink` and taking into account asynchronous operations of the `Source` we obtain the following proof outline:
-
-
-```C
-   while (not done) {
-
-     /* { state = 000 ∧ ( items = 000 ∨ items = 100 ) } */
-     /* { state = 001 ∧ ( items = 001 ∨ items = 101 ) } */
-     /* { state = 010 ∧ ( items = 010 ∨ items = 110 ) } */
-     /* { state = 011 ∧ ( items = 011 ∨ items = 111 ) } */
-     /* { state = 100 ∧ items = 100 } */
-     /* { state = 101 ∧ items = 101 } */
-     /* { state = 110 ∧ items = 110 } */
-     /* { state = 111 ∧ items = 111 } */
-
-     pull: 〈 await ¬{ state = 000 } :
-
-     /* { state = 001 ∧ ( items = 001 ∨ items = 101 ) } */
-     /* { state = 101 ∧ items = 101 */
-     /* { state = 011 ∧ ( items = 011 ∨ items = 111 ) } */
-     /* { state = 111 ∧ items = 111 } */
-
-     extract: extract: item[2] ← 0
-
-     /* { state = 001 ∧ ( items = 000 ∨ items = 100 ) } */
-     /* { state = 101 ∧ items = 100 */
-     /* { state = 011 ∧ ( items = 010 ∨ items = 110 ) } */
-     /* { state = 111 ∧ items = 110 } */
-
-     drain: state[2] ← 0
-
-     /* { state = 000 ∧ ( items = 000 ∨ items = 100 ) } */
-     /* { state = 001 ∧ ( items = 001 ∨ items = 101 ) } */
-     /* { state = 010 ∧ ( items = 010 ∨ items = 110 ) } */
-     /* { state = 011 ∧ ( items = 011 ∨ items = 111 ) } */
-     /* { state = 100 ∧ items = 100 } */
-     /* { state = 101 ∧ items = 101 } */
-     /* { state = 110 ∧ items = 110 } */
-     /* { state = 111 ∧ items = 111 } */
-   }
-```
-
-
-### Comments
-
-As with the unbuffered case, the the buffered proof outlines shows the same important
-characteristics of the port state machine.
-
-1. If we begin with the valid state `{ state = 000 ∧ items = 000 }` (which is the only sensible state with which to begin),
-the state machine will never enter any `BAD` state.  We define a `BAD` state to be any of the following:
-  - predicate with `{ items = 1x0 ∨ items = 1x1 }` prior to `inject` 
-  - predicate with `{ state = 1x0 ∨ state = 1x1 }` prior to `fill` 
-  - predicate with `{ items = 0x0 ∨ items = 1x0 }` prior to `extract` 
-  - predicate with `{ state = 0x0 ∨ state = 1x0 }` prior to `drain` 
-
-2. If we begin with the valid state `{ state = 000 ∧ items = 000 }`, and use the following steps for the `Source`
-
-    ```C
-      inject
-      fill
-      push
-    ``` 
-    The `Source` will **always** be ready to accept an item for injection.  Hence we do not have to check whether the `Source` is ready prior to invoking `inject`.  No concurrent `Sink` action will change the state into one that is `BAD` prior to `inject`.
-
-4. Similarly, if we begin with the valid state `{ state = 000 ∧ items = 000 }` and
-use the following steps for the `Sink`
-
-    ```C
-      pull
-      extract
-      drain
-      ```
-
-    There will **always** be an item ready to extract after `pull` completes.
-
-5. There are no race conditions between `inject` and `fill`, nor between `extract` and `drain`.  Concurrent actions from the `Sink` cannot cause a `BAD` state between `inject` and `fill`, nor can concurrent actions from the `Source` introduce a `BAD` state between `extract` and `drain`.
-
-6.  In fact, there are no race conditions between **any** of the steps in the `Source` or the `Sink`.  As a result, we do not need to introduce any locking mechanism to make any pairs of actions atomic.  (As a reminder, all actions executed by the state machine are atomic.)
-
