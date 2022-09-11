@@ -318,7 +318,7 @@ Thus, the complete `Sink` proof outline iw
 ```C
    while (not done) {
      /* { state = 00 ∧ ( items = 00 ∨ items = 10 ) } ∨ { state = 10 ∧ items = 10 }   ∨ */
-     /* { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨ { state = 11 ∧ items = 11 ) }   */
+     /* { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨ { state = 11 ∧ items = 11 }     */
      pull: 〈 await ¬{ state = 00 } :
               if { state = 10 ∧ items = 10 } → { state = 01 ∧ items = 01 } ⟩
      /* { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨ { state = 11 ∧ items = 11 ) }   */

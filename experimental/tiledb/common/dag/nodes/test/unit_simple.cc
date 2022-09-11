@@ -1473,7 +1473,7 @@ TEST_CASE("Nodes: Async pass n integers, three nodes, two stage", "[nodes]") {
   auto sink = [&]() { sink_node.run_for(rounds); };
 
   SECTION(
-      "test source launch, sink launch, source get, sink get" +
+      "test source launch, sink launch, source get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1483,7 +1483,7 @@ TEST_CASE("Nodes: Async pass n integers, three nodes, two stage", "[nodes]") {
     fut_c.get();
   }
   SECTION(
-      "test source launch, sink launch, source get, sink get" +
+      "test source launch, sink launch, source get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_c = std::async(std::launch::async, sink);
@@ -1493,7 +1493,7 @@ TEST_CASE("Nodes: Async pass n integers, three nodes, two stage", "[nodes]") {
     fut_c.get();
   }
   SECTION(
-      "test source launch, sink launch, source get, sink get" +
+      "test source launch, sink launch, source get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_b = std::async(std::launch::async, mid);
     auto fut_a = std::async(std::launch::async, source);
@@ -1503,7 +1503,7 @@ TEST_CASE("Nodes: Async pass n integers, three nodes, two stage", "[nodes]") {
     fut_c.get();
   }
   SECTION(
-      "test source launch, sink launch, source get, sink get" +
+      "test source launch, sink launch, source get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_b = std::async(std::launch::async, mid);
     auto fut_c = std::async(std::launch::async, sink);
@@ -1513,7 +1513,7 @@ TEST_CASE("Nodes: Async pass n integers, three nodes, two stage", "[nodes]") {
     fut_c.get();
   }
   SECTION(
-      "test source launch, sink launch, source get, sink get" +
+      "test source launch, sink launch, source get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_c = std::async(std::launch::async, sink);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1524,7 +1524,7 @@ TEST_CASE("Nodes: Async pass n integers, three nodes, two stage", "[nodes]") {
     fut_c.get();
   }
   SECTION(
-      "test source launch, sink launch, source get, sink get" +
+      "test source launch, sink launch, source get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_c = std::async(std::launch::async, sink);
     auto fut_a = std::async(std::launch::async, source);
@@ -1536,7 +1536,7 @@ TEST_CASE("Nodes: Async pass n integers, three nodes, two stage", "[nodes]") {
   }
   SECTION(
       "test source launch, sink launch, source get, sink "
-      "get" +
+      "get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1547,7 +1547,7 @@ TEST_CASE("Nodes: Async pass n integers, three nodes, two stage", "[nodes]") {
   }
   SECTION(
       "test source launch, sink launch, source get, sink "
-      "get" +
+      "get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1558,7 +1558,7 @@ TEST_CASE("Nodes: Async pass n integers, three nodes, two stage", "[nodes]") {
   }
   SECTION(
       "test source launch, sink launch, source get, sink "
-      "get" +
+      "get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1569,7 +1569,7 @@ TEST_CASE("Nodes: Async pass n integers, three nodes, two stage", "[nodes]") {
   }
   SECTION(
       "test source launch, sink launch, source get, "
-      "sink get" +
+      "sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1580,7 +1580,7 @@ TEST_CASE("Nodes: Async pass n integers, three nodes, two stage", "[nodes]") {
   }
   SECTION(
       "test source launch, sink launch, source get, "
-      "sink get" +
+      "sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1591,7 +1591,7 @@ TEST_CASE("Nodes: Async pass n integers, three nodes, two stage", "[nodes]") {
   }
   SECTION(
       "test source launch, sink launch, source "
-      "get, sink get" +
+      "get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1674,7 +1674,7 @@ TEST_CASE(
 
   SECTION(
       "test source launch, sink launch, source "
-      "get, sink get" +
+      "get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1696,7 +1696,7 @@ TEST_CASE(
   }
   SECTION(
       "test source launch, sink launch, "
-      "source get, sink get" +
+      "source get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_b = std::async(std::launch::async, mid);
     auto fut_a = std::async(std::launch::async, source);
@@ -1707,7 +1707,7 @@ TEST_CASE(
   }
   SECTION(
       "test source launch, sink launch, "
-      "source get, sink get" +
+      "source get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_b = std::async(std::launch::async, mid);
     auto fut_c = std::async(std::launch::async, sink);
@@ -1718,7 +1718,7 @@ TEST_CASE(
   }
   SECTION(
       "test source launch, sink launch, "
-      "source get, sink get" +
+      "source get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_c = std::async(std::launch::async, sink);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1730,7 +1730,7 @@ TEST_CASE(
   }
   SECTION(
       "test source launch, sink "
-      "launch, source get, sink get" +
+      "launch, source get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_c = std::async(std::launch::async, sink);
     auto fut_a = std::async(std::launch::async, source);
@@ -1742,7 +1742,7 @@ TEST_CASE(
   }
   SECTION(
       "test source launch, sink "
-      "launch, source get, sink get" +
+      "launch, source get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1754,7 +1754,7 @@ TEST_CASE(
   SECTION(
       "test source launch, sink "
       "launch, source get, sink "
-      "get" +
+      "get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1766,7 +1766,7 @@ TEST_CASE(
   SECTION(
       "test source launch, sink "
       "launch, source get, sink "
-      "get" +
+      "get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1778,7 +1778,7 @@ TEST_CASE(
   SECTION(
       "test source launch, "
       "sink launch, source "
-      "get, sink get" +
+      "get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1790,7 +1790,7 @@ TEST_CASE(
   SECTION(
       "test source launch, "
       "sink launch, source "
-      "get, sink get" +
+      "get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1802,7 +1802,7 @@ TEST_CASE(
   SECTION(
       "test source launch, "
       "sink launch, source "
-      "get, sink get" +
+      "get, sink get " +
       std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid);
@@ -1895,7 +1895,7 @@ TEST_CASE(
   auto sink = [&]() { sink_node.run_for(rounds + offset); };
 
   SECTION(
-      "dcba abcd" + std::to_string(rounds) + " / " + std::to_string(offset)) {
+      "dcba abcd " + std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_d = std::async(std::launch::async, mid2);
     auto fut_c = std::async(std::launch::async, sink);
     auto fut_b = std::async(std::launch::async, mid1);
@@ -1917,7 +1917,7 @@ TEST_CASE(
     fut_a.get();
   }
   SECTION(
-      "dcba dcba" + std::to_string(rounds) + " / " + std::to_string(offset)) {
+      "dcba dcba " + std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_d = std::async(std::launch::async, mid2);
     auto fut_c = std::async(std::launch::async, sink);
     auto fut_b = std::async(std::launch::async, mid1);
@@ -1928,7 +1928,7 @@ TEST_CASE(
     fut_a.get();
   }
   SECTION(
-      "abcd abcd" + std::to_string(rounds) + " / " + std::to_string(offset)) {
+      "abcd abcd " + std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid1);
     auto fut_c = std::async(std::launch::async, sink);
@@ -2019,9 +2019,7 @@ TEST_CASE(
   auto sink = [&]() { sink_node.run_for(rounds + offset); };
 
   SECTION(
-      "abcd "
-      "abcd" +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+      "abcd abcd " + std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid1);
     auto fut_c = std::async(std::launch::async, sink);
@@ -2032,9 +2030,7 @@ TEST_CASE(
     fut_d.get();
   }
   SECTION(
-      "dcba "
-      "abcd" +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+      "dcba abcd " + std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_d = std::async(std::launch::async, mid2);
     auto fut_c = std::async(std::launch::async, sink);
     auto fut_b = std::async(std::launch::async, mid1);
@@ -2045,9 +2041,7 @@ TEST_CASE(
     fut_d.get();
   }
   SECTION(
-      "abcd "
-      "dcba" +
-      std::to_string(rounds) +
+      "abcd dcba " + std::to_string(rounds) +
       " /"
       " " +
       std::to_string(offset)) {
@@ -2061,10 +2055,7 @@ TEST_CASE(
     fut_a.get();
   }
   SECTION(
-      "dcba"
-      " dcb"
-      "a" +
-      std::to_string(rounds) + " / " + std::to_string(offset)) {
+      "dcba dcba " + std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_d = std::async(std::launch::async, mid2);
     auto fut_c = std::async(std::launch::async, sink);
     auto fut_b = std::async(std::launch::async, mid1);
@@ -2148,7 +2139,7 @@ TEST_CASE(
   auto sink = [&]() { sink_node.run_for_with_delays(rounds + offset + 2); };
 
   SECTION(
-      "abcd abcd" + std::to_string(rounds) + " / " + std::to_string(offset)) {
+      "abcd abcd " + std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid1);
     auto fut_c = std::async(std::launch::async, sink);
@@ -2159,7 +2150,7 @@ TEST_CASE(
     fut_d.get();
   }
   SECTION(
-      "dcba abcd" + std::to_string(rounds) + " / " + std::to_string(offset)) {
+      "dcba abcd " + std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_d = std::async(std::launch::async, mid2);
     auto fut_c = std::async(std::launch::async, sink);
     auto fut_b = std::async(std::launch::async, mid1);
@@ -2170,7 +2161,7 @@ TEST_CASE(
     fut_d.get();
   }
   SECTION(
-      "abcd dcba" + std::to_string(rounds) + " / " + std::to_string(offset)) {
+      "abcd dcba " + std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_a = std::async(std::launch::async, source);
     auto fut_b = std::async(std::launch::async, mid1);
     auto fut_c = std::async(std::launch::async, sink);
@@ -2181,7 +2172,7 @@ TEST_CASE(
     fut_a.get();
   }
   SECTION(
-      "dcba dcba" + std::to_string(rounds) + " / " + std::to_string(offset)) {
+      "dcba dcba " + std::to_string(rounds) + " / " + std::to_string(offset)) {
     auto fut_d = std::async(std::launch::async, mid2);
     auto fut_c = std::async(std::launch::async, sink);
     auto fut_b = std::async(std::launch::async, mid1);

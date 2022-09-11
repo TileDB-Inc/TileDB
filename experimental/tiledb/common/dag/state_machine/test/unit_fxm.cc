@@ -58,13 +58,13 @@
 
 using namespace tiledb::common;
 
-TEST_CASE("Port FSM: Construct DebugStateMachine2", "[fsm]") {
+TEST_CASE("Port FXM: Construct DebugStateMachine2", "[fxm]") {
   [[maybe_unused]] auto a = DebugStateMachine2<size_t>{};
 
   CHECK(a.state() == two_stage::st_00);
 }
 
-TEST_CASE("Port FSM: Copy, Move, etc", "[fsm]") {
+TEST_CASE("Port FXM: Copy, Move, etc", "[fxm]") {
   [[maybe_unused]] auto a = DebugStateMachine3<size_t>{};
   std::vector<DebugStateMachine2<size_t>> v;
   v.reserve(55);
@@ -85,7 +85,7 @@ TEST_CASE("Port FSM: Copy, Move, etc", "[fsm]") {
   bar(std::move(b));
 }
 
-TEST_CASE("Port FSM: Start up", "[fsm]") {
+TEST_CASE("Port FXM: Start up", "[fxm]") {
   constexpr bool debug = false;
   [[maybe_unused]] auto a = DebugStateMachine2<size_t>{};
 
@@ -110,7 +110,7 @@ TEST_CASE("Port FSM: Start up", "[fsm]") {
  * Use the `DebugPolicy` to verify startup state and some more involved
  * transition sequences.
  */
-TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
+TEST_CASE("Port FXM: Basic manual sequence", "[fxm]") {
   [[maybe_unused]] auto a = DebugStateMachine2<size_t>{};
   CHECK(a.state() == two_stage::st_00);
 
@@ -146,7 +146,7 @@ TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
  * Use the `DebugStateMachine` to verify startup state and some more involved
  * transition sequences.
  */
-TEST_CASE("Port FSM: Basic three stage manual sequence", "[fsm]") {
+TEST_CASE("Port FXM: Basic three stage manual sequence", "[fxm]") {
   [[maybe_unused]] auto a = DebugStateMachine3<size_t>{};
   CHECK(a.state() == three_stage::st_000);
 
@@ -183,7 +183,7 @@ TEST_CASE("Port FSM: Basic three stage manual sequence", "[fsm]") {
  * client as an asynchronous task and running an emulated sink client in the
  * main thread. The test just runs one pass of each emulated client.
  */
-TEST_CASE("AsynchronousPolicy: Asynchronous source and manual sink", "[fsm]") {
+TEST_CASE("AsynchronousPolicy: Asynchronous source and manual sink", "[fxm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
@@ -263,7 +263,7 @@ TEMPLATE_TEST_CASE(
  */
 TEMPLATE_TEST_CASE(
     "AsynchronousPolicy: Asynchronous source and asynchronous sink",
-    "[fsm]",
+    "[fxm]",
     AsyncMover2<size_t>,
     UnifiedAsyncMover2<size_t>) {
   [[maybe_unused]] constexpr bool debug = false;
@@ -381,7 +381,7 @@ TEMPLATE_TEST_CASE(
  * different interleavings of the tasks, we use all combinations of ordering for
  * launching the tasks and waiting on their futures.
  */
-TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
+TEST_CASE("Pass a sequence of n integers, async", "[fxm]") {
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
@@ -407,6 +407,8 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
   CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
 
+  static std::mutex mutex_;
+
   auto source_node = [&]() {
     size_t n = rounds;
 
@@ -423,18 +425,20 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
       CHECK(is_source_empty(a.state()) == "");
+      {
+        std::lock_guard _(mutex_);
+        *(a.source_item()) = *i++;
 
-      *(a.source_item()) = *i++;
+        std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+        CHECK(is_source_empty(a.state()) == "");
 
-      CHECK(is_source_empty(a.state()) == "");
+        a.do_inject(debug ? "async source node" : "");
 
-      a.do_inject(debug ? "async source node" : "");
+        std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-
-      *(a.source_item()) = EMPTY_SOURCE;
+        *(a.source_item()) = EMPTY_SOURCE;
+      }
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
@@ -447,7 +451,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
         std::cout << "source node iteration " << n << std::endl;
       }
 
-      if (a.do_sink_available(debug ? "async sink node extract" : ""))
+      if (a.do_sink_available(debug ? "Check sink available" : ""))
         ;
 
       CHECK(is_sink_full(a.state()) == "");
@@ -456,13 +460,16 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
       CHECK(is_sink_full(a.state()) == "");
 
-      a.do_extract(debug ? "async sink node extract" : "");
+      {
+        std::lock_guard _(mutex_);
+        a.do_extract(debug ? "async sink node extract" : "");
 
-      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+        std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      *j++ = *(a.sink_item());  // This needs to be atomic with extract
+        *j++ = *(a.sink_item());  // This needs to be atomic with extract
 
-      *(a.sink_item()) = EMPTY_SINK;
+        *(a.sink_item()) = EMPTY_SINK;
+      }
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }

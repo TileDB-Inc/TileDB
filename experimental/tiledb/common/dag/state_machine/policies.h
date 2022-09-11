@@ -172,17 +172,17 @@ class NullPolicy
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
   }
 #ifndef FXM
-  inline bool on_source_available(lock_type&, std::atomic<int>&) {
-    return true;
-  }
-  inline bool on_sink_available(lock_type&, std::atomic<int>&) {
-    return true;
-  }
-#else
   inline bool on_source_wait(lock_type&, std::atomic<int>&) {
     return true;
   }
   inline bool on_sink_wait(lock_type&, std::atomic<int>&) {
+    return true;
+  }
+#else
+  inline bool on_source_available(lock_type&, std::atomic<int>&) {
+    return true;
+  }
+  inline bool on_sink_available(lock_type&, std::atomic<int>&) {
     return true;
   }
 #endif
@@ -364,8 +364,9 @@ class AsyncPolicy
         "    source notifying sink(on_signal_sink) with " + str(this->state()) +
         " and " + str(this->next_state()));
 
-#ifndef FXM
-    CHECK(is_source_full(this->state()) == "");
+#if 1
+    if (!static_cast<Mover*>(this)->is_stopping())
+      CHECK(is_source_full(this->state()) == "");
 #endif
     sink_cv_.notify_one();
   }
@@ -379,7 +380,7 @@ class AsyncPolicy
   inline bool on_source_available(lock_type& lock, std::atomic<int>& event) {
 #endif
     assert(lock.owns_lock());
-#if 0
+#ifndef FXM
     if constexpr (std::is_same_v<PortState, two_stage>) {
       CHECK(str(this->state()) == "st_11");
     } else if constexpr (std::is_same_v<PortState, three_stage>) {
@@ -705,6 +706,16 @@ class DebugPolicyWithLock : public Mover {
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
     debug_msg("    Action notify sink");
   }
+#ifndef FXM
+  inline bool on_source_wait(lock_type&, std::atomic<int>&) {
+    debug_msg("    Action wait source");
+    return true;
+  }
+  inline bool on_sink_wait(lock_type&, std::atomic<int>&) {
+    debug_msg("    Action wait sink");
+    return true;
+  }
+#else
   inline bool on_source_available(lock_type&, std::atomic<int>&) {
     debug_msg("    Action wait source");
     return true;
@@ -713,6 +724,7 @@ class DebugPolicyWithLock : public Mover {
     debug_msg("    Action wait sink");
     return true;
   }
+#endif
   inline void on_source_done(lock_type&, std::atomic<int>&) {
     debug_msg("    Action done source");
   }

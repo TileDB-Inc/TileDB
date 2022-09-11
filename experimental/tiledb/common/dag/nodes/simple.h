@@ -154,7 +154,10 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
      * handed the item to the mover.
      */
 
-    //  { state = st_00 ∨ state = st_01 } ∧ { source_item = empty }
+    /*
+     * { state = 00 ∧ items = 00 }                  ∨
+     * { state = 01 ∧ ( items = 00 ∨ items = 01 ) }
+     */
     switch (f_.index()) {
       case 0:
         Base::inject(std::get<0>(f_)());
@@ -175,17 +178,24 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
       state_machine->do_stop();
       return;
     }
-    //  { state = st_00 ∨ state = st_01 } ∧ { source_item = full }
 
+    /*
+     * { state = 00 ∧ items = 10 }                  ∨
+     * { state = 01 ∧ ( items = 10 ∨ items = 11 ) }
+     */
     state_machine->do_fill();
-    //  { state = st_10 ∨ state = st_11 } ∧ { source_item = full }
-
-    if (state_machine->debug_enabled())
-      std::cout << "producer filled "
-                << "state: " << str(state_machine->state()) << std::endl;
-
+    /*
+     * { state = 00 ∧ items = 00 }                  ∨
+     * { state = 01 ∧ ( items = 00 ∨ items = 01 ) } ∨
+     * { state = 10 ∧ items = 10 }                  ∨
+     * { state = 11 ∧ ( items = 10 ∨ items = 11 ) }
+     */
     state_machine->do_push();
-    //  { state = st_01 ∨ state = st_00 } ∧ { source_item = empty }
+
+    /*
+     * { state = 00 ∧ items = 00 }                  ∨
+     * { state = 01 ∧ ( items = 00 ∨ items = 01 ) }
+     */
 
     if (state_machine->debug_enabled())
       std::cout << "producer pushed " << std::endl;
@@ -303,6 +313,8 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
  *
  * @param Block The type of data to be obtained from the item mover and
  * consumed.
+ *
+ * @note We include the proof outline for Sink inline here.
  */
 template <template <class> class Mover_T, class Block>
 class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
@@ -360,11 +372,18 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
    */
   void run_once() {
     auto state_machine = this->get_mover();
-    //  {{ state = st_00 ∨ state = st_10 } ∧ { item = empty }}
-    //  ∨
-    //  {{ state = st_01 } ∨ { state = st_11 } ∧ { item = full }}
+
+    /*
+     * { state = 00 ∧ ( items = 00 ∨ items = 10 ) } ∨
+     * { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨
+     * { state = 10 ∧ items = 10 }                  ∨
+     * { state = 11 ∧ items = 11 }
+     */
     state_machine->do_pull();
-    //  { state = st_01 ∨ state = st_11 } ∧ { item = full }
+    /*
+     * { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨
+     * { state = 11 ∧ items = 11 ) }
+     */
 
     if (state_machine->debug_enabled())
       std::cout << "consumer pulled "
@@ -380,48 +399,31 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
       std::cout << "consumer checked done "
                 << " ( done: " << state_machine->is_done() << " )" << std::endl;
 
-    //  { state = st_01 ∨ state = st_11 } ∧ { item = full }
-
     // Returns an optional, may not be necessary given stop state
     // @todo Pass in b as parameter so assignment is atomic
-    // @todo extract() and drain() need to be atomic (use state machine mutex?)
-    // Note that there are other places where these are used together, there
-    // should probably be just one atomic function.
-
+    // @todo Do extract() and drain() need to be atomic (use state machine
+    // mutex?)
     auto b = Base::extract();
-    //  { state = st_01 ∨ state = st_11 } ∧ { item = empty }  (This is
-    //  bad.) Source cannot change st_11 until drain is called.
+    /*
+     * { state = 01 ∧ ( items = 00 ∨ items = 10 ) } ∨
+     * { state = 11 ∧ items = 01 ) }
+     */
 
     if (state_machine->debug_enabled())
       std::cout << "consumer extracted, about to drain " << std::endl;
 
     state_machine->do_drain();
-    //  { state = st_00 ∨ state = st_10 } ∧ { item = empty }
-
-    //  Source could have filled and pushed (perhaps twice)
-    //  {{ state = st_00 ∨ state = st_10 } ∧ { item = empty }}
-    //  ∨
-    //  {{ state = st_01 } ∨ { state = st_11 } ∧ { item = full }}
-
-    //  Should drain be before extract or after?
-    //  Should we make drain atomic with extract()?
-    //  Then would have { state = st_00 ∨ state = st_10 } ∧ { item = empty
-    //  } And Source would be notified, which could change state to
-    //  {{ state = st_01 ∨ state = st_11 } ∧ { item = full }}
-    //  ∨
-    //  {{ state = st_10 } ∧ { item = empty }
-    //  We have the previous item in b, so { item = full } is okay
-    //  This would benefit concurrency
+    /*
+     * { state = 00 ∧ ( items = 00 ∨ items = 10 ) } ∨
+     * { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨
+     * { state = 10 ∧ items = 10 }                  ∨
+     * { state = 11 ∧ items = 11 ) }
+     */
 
     if (state_machine->debug_enabled())
       std::cout << "consumer drained " << std::endl;
 
-    //  Or maybe not have an extract and just send (full) item to f_() ?
     //  CHECK(b.has_value());
-
-    //  Here we have that item has been extracted and
-    // { item = empty } ∨ { item = full }
-    // (but would be different item if full)
 
     /**
      * @todo Invoke f_ directly on the `item_` of the `Sink`.  This would remove
@@ -429,8 +431,6 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
      * another stage to the `Edge`.
      */
     f_(*b);
-    //  Here we have that item has been processed and
-    // { item = empty } ∨ { item = full }
     // Deallocate b
 
     if (state_machine->debug_enabled())
@@ -656,7 +656,7 @@ class FunctionNode : public GraphNode,
     if (sink_state_machine->debug_enabled())
       std::cout << "function ran function " << std::endl;
 
-    // @todo as elsewhere, inject+fill should be atomic
+    // @todo Should inject+fill be atomic? (No need.)
     SourceBase::inject(j);
     if (source_state_machine->debug_enabled())
       std::cout << "function injected " << std::endl;
