@@ -979,7 +979,7 @@ Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_min_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_min_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(store_tile_mins(i, encryption_key, &nbytes), clean_up());
+    store_tile_mins(i, encryption_key, &nbytes);
     offset += nbytes;
   }
 
@@ -987,7 +987,7 @@ Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_max_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_max_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(store_tile_maxs(i, encryption_key, &nbytes), clean_up());
+    store_tile_maxs(i, encryption_key, &nbytes);
     offset += nbytes;
   }
 
@@ -995,7 +995,7 @@ Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_sum_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_sum_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(store_tile_sums(i, encryption_key, &nbytes), clean_up());
+    store_tile_sums(i, encryption_key, &nbytes);
     offset += nbytes;
   }
 
@@ -1003,8 +1003,7 @@ Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_null_count_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_null_count_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_null_counts(i, encryption_key, &nbytes), clean_up());
+    store_tile_null_counts(i, encryption_key, &nbytes);
     offset += nbytes;
   }
 
@@ -1066,7 +1065,7 @@ Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_min_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_min_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(store_tile_mins(i, encryption_key, &nbytes), clean_up());
+    store_tile_mins(i, encryption_key, &nbytes);
     offset += nbytes;
   }
 
@@ -1074,7 +1073,7 @@ Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_max_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_max_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(store_tile_maxs(i, encryption_key, &nbytes), clean_up());
+    store_tile_maxs(i, encryption_key, &nbytes);
     offset += nbytes;
   }
 
@@ -1082,7 +1081,7 @@ Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_sum_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_sum_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(store_tile_sums(i, encryption_key, &nbytes), clean_up());
+    store_tile_sums(i, encryption_key, &nbytes);
     offset += nbytes;
   }
 
@@ -1090,8 +1089,7 @@ Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_null_count_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_null_count_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_null_counts(i, encryption_key, &nbytes), clean_up());
+    store_tile_null_counts(i, encryption_key, &nbytes);
     offset += nbytes;
   }
 
@@ -1157,7 +1155,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_min_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_min_offsets_[i] = offset;
-    throw_if_not_ok(store_tile_mins(i, encryption_key, &nbytes));
+    store_tile_mins(i, encryption_key, &nbytes);
     offset += nbytes;
   }
 
@@ -1165,7 +1163,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_max_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_max_offsets_[i] = offset;
-    throw_if_not_ok(store_tile_maxs(i, encryption_key, &nbytes));
+    store_tile_maxs(i, encryption_key, &nbytes);
     offset += nbytes;
   }
 
@@ -1173,7 +1171,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_sum_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_sum_offsets_[i] = offset;
-    throw_if_not_ok(store_tile_sums(i, encryption_key, &nbytes));
+    store_tile_sums(i, encryption_key, &nbytes);
     offset += nbytes;
   }
 
@@ -1181,7 +1179,7 @@ Status FragmentMetadata::store_v15_or_higher(
   gt_offsets_.tile_null_count_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_null_count_offsets_[i] = offset;
-    throw_if_not_ok(store_tile_null_counts(i, encryption_key, &nbytes));
+    store_tile_null_counts(i, encryption_key, &nbytes);
     offset += nbytes;
   }
 
@@ -4495,7 +4493,7 @@ Status FragmentMetadata::write_tile_validity_offsets(
   return Status::Ok();
 }
 
-Status FragmentMetadata::store_tile_mins(
+void FragmentMetadata::store_tile_mins(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   SizeComputationSerializer size_computation_serializer;
   write_tile_mins(idx, size_computation_serializer);
@@ -4508,8 +4506,6 @@ Status FragmentMetadata::store_tile_mins(
   throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
 
   storage_manager_->stats()->add_counter("write_mins_size", *nbytes);
-
-  return Status::Ok();
 }
 
 void FragmentMetadata::write_tile_mins(unsigned idx, Serializer &serializer) {
@@ -4535,7 +4531,7 @@ void FragmentMetadata::write_tile_mins(unsigned idx, Serializer &serializer) {
   }
 }
 
-Status FragmentMetadata::store_tile_maxs(
+void FragmentMetadata::store_tile_maxs(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   SizeComputationSerializer size_computation_serializer;
   write_tile_maxs(idx, size_computation_serializer);
@@ -4548,8 +4544,6 @@ Status FragmentMetadata::store_tile_maxs(
   throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
 
   storage_manager_->stats()->add_counter("write_maxs_size", *nbytes);
-
-  return Status::Ok();
 }
 
 void FragmentMetadata::write_tile_maxs(unsigned idx, Serializer &serializer) {
@@ -4574,7 +4568,7 @@ void FragmentMetadata::write_tile_maxs(unsigned idx, Serializer &serializer) {
   }
 }
 
-Status FragmentMetadata::store_tile_sums(
+void FragmentMetadata::store_tile_sums(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
 
   SizeComputationSerializer size_computation_serializer;
@@ -4588,8 +4582,6 @@ Status FragmentMetadata::store_tile_sums(
   throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
 
   storage_manager_->stats()->add_counter("write_sums_size", *nbytes);
-
-  return Status::Ok();
 }
 
 void FragmentMetadata::write_tile_sums(unsigned idx, Serializer &serializer) {
@@ -4603,7 +4595,7 @@ void FragmentMetadata::write_tile_sums(unsigned idx, Serializer &serializer) {
   }
 }
 
-Status FragmentMetadata::store_tile_null_counts(
+void FragmentMetadata::store_tile_null_counts(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
 
   SizeComputationSerializer size_computation_serializer;
@@ -4617,8 +4609,6 @@ Status FragmentMetadata::store_tile_null_counts(
   throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
 
   storage_manager_->stats()->add_counter("write_null_counts_size", *nbytes);
-
-  return Status::Ok();
 }
 
 void FragmentMetadata::write_tile_null_counts(unsigned idx, Serializer &serializer) {

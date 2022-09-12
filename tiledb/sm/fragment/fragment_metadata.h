@@ -1593,7 +1593,7 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the mins.
    * @return Status
    */
-  Status store_tile_mins(
+  void store_tile_mins(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
@@ -1609,7 +1609,7 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the maxs.
    * @return Status
    */
-  Status store_tile_maxs(
+  void store_tile_maxs(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
@@ -1625,7 +1625,7 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the sums.
    * @return Status
    */
-  Status store_tile_sums(
+  void store_tile_sums(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
@@ -1641,7 +1641,7 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the null counts.
    * @return Status
    */
-  Status store_tile_null_counts(
+  void store_tile_null_counts(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
