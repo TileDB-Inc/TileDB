@@ -513,6 +513,7 @@ TEST_CASE_METHOD(
   remove_sparse_array();
 }
 
+// TODO: remove once tiledb_vfs_copy_dir is implemented for windows.
 #ifndef _WIN32
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
