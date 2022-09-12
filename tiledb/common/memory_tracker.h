@@ -44,7 +44,7 @@ class MemoryTracker {
   /** Constructor. */
   MemoryTracker() {
     memory_usage_ = 0;
-    memory_budget_ = std::numeric_limits<uint32_t>::max();
+    memory_budget_ = std::numeric_limits<uint64_t>::max();
   };
 
   /** Destructor. */
