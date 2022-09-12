@@ -355,9 +355,6 @@ class FragmentInfo {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  /** Checks the array URI is valid. */
-  Status check_array_uri();
-
   /** Sets the encryption key (if present) from config_. */
   Status set_enc_key_from_config();
 

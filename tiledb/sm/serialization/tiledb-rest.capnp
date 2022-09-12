@@ -688,6 +688,25 @@ struct EstimatedResultSize {
   memorySizes @1 :Map(Text, MemorySize);
 }
 
+struct SingleFragmentInfo {
+  meta @0 :FragmentMetadata;
+  # fragment metadata
+}
+
+struct FragmentInfo {
+  arraySchemaLatest @0 :ArraySchema;
+  # latest array schema
+
+  arraySchemasAll @1 :Map(Text, ArraySchema);
+  # map of all array schemas
+
+  fragmentInfo @2 :List(SingleFragmentInfo);
+  # information about fragments in the array
+
+  toVacuum @3 :List(Text);
+  # the URIs of the fragments to vacuum
+}
+
 struct GroupMetadata {
   config @0 :Config;
   # Config

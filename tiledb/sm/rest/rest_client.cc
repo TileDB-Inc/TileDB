@@ -37,6 +37,7 @@
 #include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/config.h"
+#include "tiledb/sm/serialization/fragment_info.h"
 #include "tiledb/sm/serialization/group.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/serialization/tiledb-rest.h"
@@ -1037,6 +1038,36 @@ Status RestClient::post_array_schema_evolution_to_rest(
   return sc;
 }
 
+Status RestClient::get_fragment_info(
+    const URI& uri, FragmentInfo* fragment_info) {
+  if (fragment_info == nullptr)
+    return LOG_STATUS(Status_RestError(
+        "Error getting fragment info from REST; fragment info is null."));
+
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string array_ns, array_uri;
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri) + "/fragment_info";
+
+  // Get the data
+  Buffer returned_data;
+  RETURN_NOT_OK(curlc.get_data(
+      stats_, url, serialization_type_, &returned_data, cache_key));
+  if (returned_data.data() == nullptr || returned_data.size() == 0)
+    return LOG_STATUS(Status_RestError(
+        "Error getting fragment info from REST; server returned no data."));
+
+  // Ensure data has a null delimiter for cap'n proto if using JSON
+  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
+  return serialization::fragment_info_deserialize(
+      fragment_info, serialization_type_, returned_data);
+}
+
 Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
   if (group == nullptr) {
     return LOG_STATUS(Status_RestError(
@@ -1326,6 +1357,11 @@ tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
 }
 
 Status RestClient::post_group_metadata_from_rest(const URI&, Group*) {
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+Status RestClient::get_fragment_info(const URI&, FragmentInfo*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }

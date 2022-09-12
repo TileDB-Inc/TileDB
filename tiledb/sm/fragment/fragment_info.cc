@@ -41,6 +41,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb::sm;
@@ -798,7 +799,6 @@ Status FragmentInfo::has_consolidated_metadata(
 }
 
 Status FragmentInfo::load() {
-  RETURN_NOT_OK(check_array_uri());
   RETURN_NOT_OK(set_enc_key_from_config());
   RETURN_NOT_OK(set_default_timestamp_range());
 
@@ -817,8 +817,6 @@ Status FragmentInfo::load(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  RETURN_NOT_OK(check_array_uri());
-
   RETURN_NOT_OK(enc_key_.set_key(encryption_type, encryption_key, key_length));
   RETURN_NOT_OK(set_default_timestamp_range());
 
@@ -839,7 +837,6 @@ Status FragmentInfo::load(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  RETURN_NOT_OK(check_array_uri());
   timestamp_start_ = timestamp_start;
   timestamp_end_ = timestamp_end;
 
@@ -848,6 +845,16 @@ Status FragmentInfo::load(
 }
 
 Status FragmentInfo::load(const ArrayDirectory& array_dir) {
+  if (array_uri_.is_tiledb()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr) {
+      return LOG_STATUS(Status_ArrayError(
+          "Cannot load fragment info; remote array with no REST client."));
+    }
+
+    return rest_client->get_fragment_info(array_uri_, this);
+  }
+
   // Get the array schemas and fragment metadata.
   auto&& [st_schemas, array_schema_latest, array_schemas_all, fragment_metadata] =
       storage_manager_->load_array_schemas_and_fragment_metadata(
@@ -957,18 +964,6 @@ uint32_t FragmentInfo::unconsolidated_metadata_num() const {
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
-
-Status FragmentInfo::check_array_uri() {
-  if (array_uri_.is_tiledb()) {
-    auto msg = std::string(
-                   "FragmentInfo not supported in TileDB Cloud arrays; "
-                   "FragmentInfo for array '") +
-               array_uri_.to_string() + "' cannot be loaded";
-    return LOG_STATUS(Status_FragmentInfoError(msg));
-  }
-
-  return Status::Ok();
-}
 
 Status FragmentInfo::set_enc_key_from_config() {
   std::string enc_key_str, enc_type_str;
