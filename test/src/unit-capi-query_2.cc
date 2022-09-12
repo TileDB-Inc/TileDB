@@ -3164,8 +3164,6 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Add ranges
-  // coalesces, having only 3 ranges...
-  // uint64_t ranges[] = {1, 2, 3, 4, 6, 7, 9, 10};
   uint64_t ranges[] = {1, 2, 4, 5, 7, 8, 10, 11};
   rc = tiledb_query_add_ranges_list(ctx_, query, 0, ranges, 8);
   CHECK(rc == TILEDB_OK);

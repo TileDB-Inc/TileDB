@@ -476,7 +476,7 @@ Status Subarray::add_ranges_list(
   if (count % 2) {
     return LOG_STATUS(Status_SubarrayError("add_ranges_list: Invalid count " 
         + std::to_string(count)
-        + ", count must be a multple of 2 "));
+        + ", count must be a multiple of 2 "));
   }
 
   QueryType array_query_type{array_->get_query_type()};
