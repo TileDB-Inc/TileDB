@@ -71,17 +71,17 @@ void GroupMember::serialize(Serializer &) {
       Status_GroupMemberError("Invalid call to GroupMember::serialize"));
 }
 
-std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
+std::optional<tdb_shared_ptr<GroupMember>>
 GroupMember::deserialize(Deserializer &deserializer) {
   uint32_t version = 0;
   version = deserializer.read<uint32_t>();
   if (version == 1) {
     return GroupMemberV1::deserialize(deserializer);
   }
-
-  return {Status_GroupError(
-              "Unsupported group member version " + std::to_string(version)),
-          std::nullopt};
+  throw StatusException(
+    Status_GroupError(
+              "Unsupported group member version " + std::to_string(version))
+          );
 }
 }  // namespace sm
 }  // namespace tiledb

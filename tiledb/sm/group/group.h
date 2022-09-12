@@ -297,7 +297,7 @@ class Group {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> deserialize(
+  static std::optional<tdb_shared_ptr<Group>> deserialize(
       Deserializer& deserializer,
       const URI& group_uri,
       StorageManager* storage_manager);

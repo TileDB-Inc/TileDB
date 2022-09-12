@@ -56,7 +56,7 @@ void GroupV1::serialize(Serializer &serializer) {
   }
 }
 
-std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> GroupV1::deserialize(
+std::optional<tdb_shared_ptr<Group>> GroupV1::deserialize(
     Deserializer &deserializer, const URI& group_uri, StorageManager* storage_manager) {
   tdb_shared_ptr<GroupV1> group =
       tdb::make_shared<GroupV1>(HERE(), group_uri, storage_manager);
@@ -64,12 +64,11 @@ std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> GroupV1::deserialize(
   uint64_t member_count = 0;
   member_count = deserializer.read<uint64_t>();
   for (uint64_t i = 0; i < member_count; i++) {
-    auto&& [st, member] = GroupMember::deserialize(deserializer);
-    RETURN_NOT_OK_TUPLE(st, std::nullopt);
+    auto&& member = GroupMember::deserialize(deserializer);
     group->add_member(member.value());
   }
 
-  return {Status::Ok(), group};
+  return group;
 }
 }  // namespace sm
 }  // namespace tiledb

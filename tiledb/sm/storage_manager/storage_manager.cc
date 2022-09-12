@@ -2095,7 +2095,9 @@ tuple<Status, optional<shared_ptr<Group>>> StorageManager::load_group_from_uri(
 
   // Deserialize
   Deserializer deserializer(tile.data(), tile.size());
-  return Group::deserialize(deserializer, group_uri, this);
+  auto opt_group = Group::deserialize(deserializer, group_uri, this);
+  return {Status::Ok(), opt_group};
+
 }
 
 tuple<Status, optional<shared_ptr<Group>>> StorageManager::load_group_details(

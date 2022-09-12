@@ -667,7 +667,7 @@ void Group::apply_and_serialize(Serializer& serializer) {
   serialize(serializer);
 }
 
-std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> Group::deserialize(
+std::optional<tdb_shared_ptr<Group>> Group::deserialize(
     Deserializer &deserializer, const URI& group_uri, StorageManager* storage_manager) {
   uint32_t version = 0;
   version = deserializer.read<uint32_t>();
@@ -675,9 +675,8 @@ std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> Group::deserialize(
     return GroupV1::deserialize(deserializer, group_uri, storage_manager);
   }
 
-  return {
-      Status_GroupError("Unsupported group version " + std::to_string(version)),
-      std::nullopt};
+  throw StatusException(
+      Status_GroupError("Unsupported group version " + std::to_string(version)));
 }
 
 const URI& Group::group_uri() const {

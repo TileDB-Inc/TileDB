@@ -99,8 +99,8 @@ class GroupMember {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
-  deserialize(Deserializer& deserializer);
+  static std::optional<tdb_shared_ptr<GroupMember>> deserialize(
+      Deserializer& deserializer);
 
  protected:
   /* ********************************* */

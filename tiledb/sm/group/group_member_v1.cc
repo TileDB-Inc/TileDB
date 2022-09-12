@@ -75,7 +75,7 @@ void GroupMemberV1::serialize(Serializer &serializer) {
   }
 }
 
-std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
+std::optional<tdb_shared_ptr<GroupMember>>
 GroupMemberV1::deserialize(Deserializer &deserializer) {
   uint8_t type_placeholder;
   type_placeholder = deserializer.read<uint8_t>();
@@ -108,7 +108,7 @@ GroupMemberV1::deserialize(Deserializer &deserializer) {
 
   tdb_shared_ptr<GroupMemberV1> group_member = tdb::make_shared<GroupMemberV1>(
       HERE(), URI(uri_string, !relative), type, relative, name);
-  return {Status::Ok(), group_member};
+  return group_member;
 }
 
 }  // namespace sm
