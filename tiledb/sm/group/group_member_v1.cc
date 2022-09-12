@@ -75,7 +75,7 @@ void GroupMemberV1::serialize(Serializer &serializer) {
   }
 }
 
-std::optional<tdb_shared_ptr<GroupMember>>
+tdb_shared_ptr<GroupMember>
 GroupMemberV1::deserialize(Deserializer &deserializer) {
   uint8_t type_placeholder;
   type_placeholder = deserializer.read<uint8_t>();

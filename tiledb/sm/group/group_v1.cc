@@ -56,7 +56,7 @@ void GroupV1::serialize(Serializer &serializer) {
   }
 }
 
-std::optional<tdb_shared_ptr<Group>> GroupV1::deserialize(
+tdb_shared_ptr<Group> GroupV1::deserialize(
     Deserializer &deserializer, const URI& group_uri, StorageManager* storage_manager) {
   tdb_shared_ptr<GroupV1> group =
       tdb::make_shared<GroupV1>(HERE(), group_uri, storage_manager);
@@ -65,7 +65,7 @@ std::optional<tdb_shared_ptr<Group>> GroupV1::deserialize(
   member_count = deserializer.read<uint64_t>();
   for (uint64_t i = 0; i < member_count; i++) {
     auto&& member = GroupMember::deserialize(deserializer);
-    group->add_member(member.value());
+    group->add_member(member);
   }
 
   return group;
