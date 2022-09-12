@@ -1719,7 +1719,6 @@ Status ReaderBase::unfilter_tile_nullable(
 }
 
 uint64_t ReaderBase::offsets_bytesize() const {
-  assert(offsets_bitsize_ == 32 || offsets_bitsize_ == 64);
   return offsets_bitsize_ == 32 ? sizeof(uint32_t) :
                                   constants::cell_var_offset_size;
 }
