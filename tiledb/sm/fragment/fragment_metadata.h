@@ -1422,12 +1422,12 @@ class FragmentMetadata {
   /**
    * Loads the min max sum null count values for the fragment.
    */
-  Status load_fragment_min_max_sum_null_count(ConstBuffer* buff);
+  void load_fragment_min_max_sum_null_count(Deserializer& deserializer);
 
   /**
    * Loads the processed conditions for the fragment.
    */
-  Status load_processed_conditions(Deserializer& deserializer);
+  void load_processed_conditions(Deserializer& deserializer);
 
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
@@ -1655,9 +1655,8 @@ class FragmentMetadata {
    * @param num The number of attributes.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written.
-   * @return Status
    */
-  Status store_fragment_min_max_sum_null_count(
+  void store_fragment_min_max_sum_null_count(
       uint64_t num, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**

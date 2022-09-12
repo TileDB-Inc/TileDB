@@ -861,7 +861,7 @@ void FragmentMetadata::store(const EncryptionKey& encryption_key) {
     } else if (version_ <= 14) {
       throw_if_not_ok(store_v12_v14(encryption_key));
     } else {
-      store_v15_or_higher(encryption_key);
+      throw_if_not_ok(store_v15_or_higher(encryption_key));
     }
     return;
   } catch (...) {
@@ -1022,15 +1022,15 @@ Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
 
   // Store R-Tree
   gt_offsets_.rtree_ = offset;
-  RETURN_NOT_OK_ELSE(store_rtree(encryption_key, &nbytes), clean_up());
+  throw_if_not_ok(store_rtree(encryption_key, &nbytes));
   offset += nbytes;
 
   // Store tile offsets
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_offsets(i, encryption_key, &nbytes), clean_up());
+    throw_if_not_ok(
+        store_tile_offsets(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1038,8 +1038,8 @@ Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_var_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_var_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_var_offsets(i, encryption_key, &nbytes), clean_up());
+    throw_if_not_ok(
+        store_tile_var_offsets(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1047,8 +1047,8 @@ Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_var_sizes_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_var_sizes_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_var_sizes(i, encryption_key, &nbytes), clean_up());
+    throw_if_not_ok(
+        store_tile_var_sizes(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1056,8 +1056,8 @@ Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_validity_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_validity_offsets_[i] = offset;
-    RETURN_NOT_OK_ELSE(
-        store_tile_validity_offsets(i, encryption_key, &nbytes), clean_up());
+    throw_if_not_ok(
+        store_tile_validity_offsets(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -1095,13 +1095,11 @@ Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
 
   // Store fragment min, max, sum and null count
   gt_offsets_.fragment_min_max_sum_null_count_offset_ = offset;
-  RETURN_NOT_OK_ELSE(
-      store_fragment_min_max_sum_null_count(num, encryption_key, &nbytes),
-      clean_up());
+  store_fragment_min_max_sum_null_count(num, encryption_key, &nbytes);
   offset += nbytes;
 
   // Store footer
-  RETURN_NOT_OK_ELSE(store_footer(encryption_key), clean_up());
+  throw_if_not_ok(store_footer(encryption_key));
 
   // Close file
   return storage_manager_->close_file(fragment_metadata_uri);
@@ -1185,8 +1183,7 @@ Status FragmentMetadata::store_v15_or_higher(
 
   // Store fragment min, max, sum and null count
   gt_offsets_.fragment_min_max_sum_null_count_offset_ = offset;
-  throw_if_not_ok(
-      store_fragment_min_max_sum_null_count(num, encryption_key, &nbytes));
+  store_fragment_min_max_sum_null_count(num, encryption_key, &nbytes);
   offset += nbytes;
 
   // Store processed condition
@@ -1532,8 +1529,8 @@ Status FragmentMetadata::load_fragment_min_max_sum_null_count(
   storage_manager_->stats()->add_counter(
       "read_fragment_min_max_sum_null_count_size", tile.size());
 
-  ConstBuffer cbuff(tile.data(), tile.size());
-  RETURN_NOT_OK(load_fragment_min_max_sum_null_count(&cbuff));
+  Deserializer deserializer(tile.data(), tile.size());
+  load_fragment_min_max_sum_null_count(deserializer);
 
   loaded_metadata_.fragment_min_max_sum_null_count_ = true;
 
@@ -1561,7 +1558,7 @@ Status FragmentMetadata::load_processed_conditions(
       "read_processed_conditions_size", tile.size());
 
   Deserializer deserializer(tile.data(), tile.size());
-  RETURN_NOT_OK(load_processed_conditions(deserializer));
+  load_processed_conditions(deserializer);
 
   loaded_metadata_.processed_conditions_ = true;
 
@@ -3386,64 +3383,31 @@ void FragmentMetadata::load_tile_null_count_values(
 // fragment_max_attr#<attribute_num-1> (max_size)
 // fragment_sum_attr#<attribute_num-1> (uint64_t)
 // fragment_null_count_attr#<attribute_num-1> (uint64_t)
-Status FragmentMetadata::load_fragment_min_max_sum_null_count(
-    ConstBuffer* buff) {
-  Status st;
+void FragmentMetadata::load_fragment_min_max_sum_null_count(
+    Deserializer& deserializer) {
   auto num = num_dims_and_attrs();
 
   for (unsigned int i = 0; i < num; ++i) {
     // Get min.
     uint64_t min_size;
-    st = buff->read(&min_size, sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                       " fragment min size failed"));
-    }
+    min_size = deserializer.read<uint64_t>();
 
     fragment_mins_[i].resize(min_size);
-    st = buff->read(fragment_mins_[i].data(), min_size);
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                       " fragment min failed"));
-    }
+    deserializer.read(fragment_mins_[i].data(), min_size);
 
     // Get max.
     uint64_t max_size;
-    st = buff->read(&max_size, sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                       " fragment max size failed"));
-    }
+    max_size = deserializer.read<uint64_t>();
 
     fragment_maxs_[i].resize(max_size);
-    st = buff->read(fragment_maxs_[i].data(), max_size);
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                       " fragment max failed"));
-    }
+    deserializer.read(fragment_maxs_[i].data(), max_size);
 
     // Get sum.
-    st = buff->read(&fragment_sums_[i], sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                       " sum failed"));
-    }
+    fragment_sums_[i] = deserializer.read<uint64_t>();
 
     // Get null count.
-    st = buff->read(&fragment_null_counts_[i], sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot load fragment metadata; Reading"
-                                       " null count failed"));
-    }
+    fragment_null_counts_[i] = deserializer.read<uint64_t>();
   }
-
-  return Status::Ok();
 }
 
 // ===== FORMAT =====
@@ -3453,7 +3417,7 @@ Status FragmentMetadata::load_fragment_min_max_sum_null_count(
 // ...
 // processed_condition_size#<condition_num-1> (uint64_t)
 // processed_condition#<condition_num-1>
-Status FragmentMetadata::load_processed_conditions(Deserializer& deserializer) {
+void FragmentMetadata::load_processed_conditions(Deserializer& deserializer) {
   // Get num conditions.
   uint64_t num;
   num = deserializer.read<uint64_t>();
@@ -3472,8 +3436,6 @@ Status FragmentMetadata::load_processed_conditions(Deserializer& deserializer) {
 
   processed_conditions_set_ = std::unordered_set<std::string>(
       processed_conditions_.begin(), processed_conditions_.end());
-
-  return Status::Ok();
 }
 
 Status FragmentMetadata::load_version(ConstBuffer* buff) {
@@ -4201,16 +4163,7 @@ Tile FragmentMetadata::write_rtree() {
   SizeComputationSerializer size_computation_serializer;
   rtree_.serialize(size_computation_serializer);
 
-  Tile tile;
-  if (!tile.init_unfiltered(
-               0,
-               constants::generic_tile_datatype,
-               size_computation_serializer.size(),
-               constants::generic_tile_cell_size,
-               0)
-           .ok()) {
-    throw FragmentMetadataStatusException("Cannot initialize tile");
-  }
+  Tile tile{Tile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   rtree_.serialize(serializer);
@@ -4623,67 +4576,45 @@ void FragmentMetadata::write_tile_null_counts(unsigned idx, Serializer &serializ
   }
 }
 
-Status FragmentMetadata::store_fragment_min_max_sum_null_count(
+void FragmentMetadata::store_fragment_min_max_sum_null_count(
     uint64_t num, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Status st;
   Buffer buff;
 
-  // Store all attributes.
-  for (unsigned int i = 0; i < num; ++i) {
-    // Store min.
-    uint64_t min_size = fragment_mins_[i].size();
-    st = buff.write(&min_size, sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot serialize fragment metadata; "
-                                       "Writing fragment min size failed"));
-    }
+  auto serialize_data = [&](Serializer& serializer) {
+    // Store all attributes.
+    for (unsigned int i = 0; i < num; ++i) {
+      // Store min.
+      uint64_t min_size = fragment_mins_[i].size();
+      serializer.write<uint64_t>(min_size);
 
-    st = buff.write(fragment_mins_[i].data(), min_size);
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot serialize fragment metadata; "
-                                       "Writing fragment min failed"));
-    }
+      serializer.write(fragment_mins_[i].data(), min_size);
 
-    // Store max.
-    uint64_t max_size = fragment_maxs_[i].size();
-    st = buff.write(&max_size, sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot serialize fragment metadata; "
-                                       "Writing fragment max size failed"));
-    }
+      // Store max.
+      uint64_t max_size = fragment_maxs_[i].size();
+      serializer.write<uint64_t>(max_size);
 
-    st = buff.write(fragment_maxs_[i].data(), max_size);
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot serialize fragment metadata; "
-                                       "Writing fragment max failed"));
-    }
+      serializer.write(fragment_maxs_[i].data(), max_size);
 
-    // Store sum.
-    st = buff.write(&fragment_sums_[i], sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot serialize fragment metadata; "
-                                       "Writing fragment sum failed"));
-    }
+      // Store sum.
+      serializer.write<uint64_t>(fragment_sums_[i]);
 
-    // Store null count.
-    st = buff.write(&fragment_null_counts_[i], sizeof(uint64_t));
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status_FragmentMetadataError("Cannot serialize fragment metadata; "
-                                       "Writing fragment null count failed"));
+      // Store null count.
+      serializer.write<uint64_t>(fragment_null_counts_[i]);
     }
-  }
+  };
 
-  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, buff, nbytes));
+  SizeComputationSerializer size_computation_serializer;
+  serialize_data(size_computation_serializer);
+
+  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+
+  Serializer serializer(tile.data(), tile.size());
+  serialize_data(serializer);
+
+  throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
 
   storage_manager_->stats()->add_counter("write_null_counts_size", *nbytes);
-
-  return Status::Ok();
 }
 
 void FragmentMetadata::store_processed_conditions(

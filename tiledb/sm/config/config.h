@@ -180,6 +180,9 @@ class Config {
    */
   static const std::string SM_MEMORY_BUDGET_VAR;
 
+  /** Set the dense reader in qc coords mode. */
+  static const std::string SM_QUERY_DENSE_QC_COORDS_MODE;
+
   /** Which reader to use for dense queries. */
   static const std::string SM_QUERY_DENSE_READER;
 

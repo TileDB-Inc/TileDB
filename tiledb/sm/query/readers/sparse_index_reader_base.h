@@ -301,8 +301,8 @@ class SparseIndexReaderBase : public ReaderBase {
   /** List of tiles to ignore. */
   std::unordered_set<IgnoredTile, ignored_tile_hash> ignored_tiles_;
 
-  /** Are we doing deletes consolidation. */
-  bool deletes_consolidation_;
+  /** Are we doing deletes consolidation (without purge option). */
+  bool deletes_consolidation_no_purge_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
