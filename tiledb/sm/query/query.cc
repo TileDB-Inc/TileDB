@@ -1079,7 +1079,9 @@ Status Query::process() {
   status_ = QueryStatus::INPROGRESS;
 
   // Process query
+  printf("CORE QUERY::PROCESS BEFORE DOWORK\n");
   Status st = strategy_->dowork();
+  printf("CORE QUERY::PROCESS AFTER DOWORK\n");
 
   // Handle error
   if (!st.ok()) {

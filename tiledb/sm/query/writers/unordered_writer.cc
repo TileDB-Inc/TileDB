@@ -102,18 +102,23 @@ UnorderedWriter::~UnorderedWriter() {
 /* ****************************** */
 
 Status UnorderedWriter::dowork() {
+  printf("CORE UNORDEREDWRITER::DOWORK ENTER\n");
   get_dim_attr_stats();
+  printf("CORE UNORDEREDWRITER::DOWORK 100\n");
 
   auto timer_se = stats_->start_timer("write");
 
   // In case the user has provided a coordinates buffer
   RETURN_NOT_OK(split_coords_buffer());
+  printf("CORE UNORDEREDWRITER::DOWORK 200\n");
 
   if (check_coord_oob_)
     RETURN_NOT_OK(check_coord_oob());
+  printf("CORE UNORDEREDWRITER::DOWORK 300\n");
 
   RETURN_NOT_OK(unordered_write());
 
+  printf("CORE UNORDEREDWRITER::DOWORK EXIT\n");
   return Status::Ok();
 }
 
@@ -328,14 +333,17 @@ Status UnorderedWriter::prepare_tiles(
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
     std::unordered_map<std::string, WriterTileVector>* tiles) const {
+  printf("UnorderedWriter::prepare_tiles ENTER\n");
   auto timer_se = stats_->start_timer("prepare_tiles");
 
   // Initialize attribute tiles
   tiles->clear();
+  printf("CORE UnorderedWriter::prepare_tiles 100\n");
   for (const auto& it : buffers_) {
     const auto& name = it.first;
     (*tiles).emplace(name, WriterTileVector());
   }
+  printf("CORE UnorderedWriter::prepare_tiles 200\n");
 
   // Prepare tiles for all attributes and coordinates
   auto buffer_num = buffers_.size();
@@ -344,13 +352,16 @@ Status UnorderedWriter::prepare_tiles(
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
         const auto& name = buff_it->first;
+        printf("CORE UnorderedWriter::prepare_tiles 301\n");
         RETURN_CANCEL_OR_ERROR(
             prepare_tiles(name, cell_pos, coord_dups, &((*tiles)[name])));
+        printf("CORE UnorderedWriter::prepare_tiles 302\n");
         return Status::Ok();
       });
 
   RETURN_NOT_OK(status);
 
+  printf("CORE UnorderedWriter::prepare_tiles EXIT\n");
   return Status::Ok();
 }
 
@@ -603,6 +614,7 @@ Status UnorderedWriter::sort_coords(std::vector<uint64_t>& cell_pos) const {
 }
 
 Status UnorderedWriter::unordered_write() {
+  printf("CORE UNORDERED_WRITE ENTER\n");
   // Applicable only to unordered write on sparse arrays
   assert(layout_ == Layout::UNORDERED);
   assert(!array_schema_.dense());
@@ -614,6 +626,7 @@ Status UnorderedWriter::unordered_write() {
   // Check for coordinate duplicates
   RETURN_CANCEL_OR_ERROR(check_coord_dups(cell_pos));
 
+  printf("CORE UNORDERED_WRITE 100\n");
   // Retrieve coordinate duplicates
   std::set<uint64_t> coord_dups;
   if (dedup_coords_)
@@ -624,46 +637,58 @@ Status UnorderedWriter::unordered_write() {
   RETURN_CANCEL_OR_ERROR(create_fragment(false, frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 
+  printf("CORE UNORDERED_WRITE 200\n");
   // Prepare tiles
   std::unordered_map<std::string, WriterTileVector> tiles;
+  printf("CORE UNORDERED_WRITE 210\n");
   RETURN_CANCEL_OR_ERROR_ELSE(
       prepare_tiles(cell_pos, coord_dups, &tiles), clean_up(uri));
+  printf("CORE UNORDERED_WRITE 220\n");
 
   // Clear the boolean vector for coordinate duplicates
   coord_dups.clear();
+  printf("CORE UNORDERED_WRITE 230\n");
 
   // No tiles
   if (tiles.empty() || tiles.begin()->second.empty()) {
     clean_up(uri);
     return Status::Ok();
   }
+  printf("CORE UNORDERED_WRITE 240\n");
 
   // Set the number of tiles in the metadata
   auto it = tiles.begin();
   auto tile_num = it->second.size();
   frag_meta->set_num_tiles(tile_num);
+  printf("CORE UNORDERED_WRITE 250\n");
 
   stats_->add_counter("tile_num", tile_num);
   stats_->add_counter("cell_num", cell_pos.size());
 
+  printf("CORE UNORDERED_WRITE 300\n");
   // Compute coordinates metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
       compute_coords_metadata(tiles, frag_meta), clean_up(uri));
+  printf("CORE UNORDERED_WRITE 310\n");
 
   // Compute tile metadata.
   RETURN_CANCEL_OR_ERROR_ELSE(
       compute_tiles_metadata(tile_num, tiles), clean_up(uri));
+  printf("CORE UNORDERED_WRITE 320\n");
 
   // Filter all tiles
   RETURN_CANCEL_OR_ERROR_ELSE(filter_tiles(&tiles), clean_up(uri));
 
+  printf("CORE UNORDERED_WRITE 400\n");
   // Write tiles for all attributes and coordinates
   RETURN_CANCEL_OR_ERROR_ELSE(
       write_all_tiles(frag_meta, &tiles), clean_up(uri));
+  printf("CORE UNORDERED_WRITE 410\n");
 
   // Compute fragment min/max/sum/null count
   RETURN_NOT_OK_ELSE(
       frag_meta->compute_fragment_min_max_sum_null_count(), clean_up(uri));
+  printf("CORE UNORDERED_WRITE 420\n");
 
   // Write the fragment metadata
   try {
@@ -673,6 +698,7 @@ Status UnorderedWriter::unordered_write() {
     throw;
   }
 
+  printf("CORE UNORDERED_WRITE 500\n");
   // Add written fragment info
   RETURN_NOT_OK_ELSE(add_written_fragment_info(uri), clean_up(uri));
 
@@ -682,6 +708,7 @@ Status UnorderedWriter::unordered_write() {
   RETURN_NOT_OK_ELSE(
       storage_manager_->vfs()->touch(commit_uri.value()), clean_up(uri));
 
+  printf("CORE UNORDERED_WRITE EXIT\n");
   return Status::Ok();
 }
 

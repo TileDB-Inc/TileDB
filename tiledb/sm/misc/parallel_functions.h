@@ -68,6 +68,7 @@ void parallel_sort(
   // To parallelize the algorithm, step #3 is modified to execute
   // the recursion on the thread pool.
   assert(tp);
+  printf("CORE PARALLEL_SORT ENTER\n");
 
   // Calculate the maximum height of the recursive call stack tree
   // where each leaf node can be assigned to a single level of
@@ -156,6 +157,7 @@ void parallel_sort(
 
   // Start the quicksort from the entire range.
   quick_sort(0, begin, end);
+  printf("CORE PARALLEL_SORT EXIT\n");
 }
 
 /**

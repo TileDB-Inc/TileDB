@@ -2985,6 +2985,7 @@ void tiledb_query_free(tiledb_query_t** query) {
 }
 
 int32_t tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  printf("CORE C API TILEDB_QUERY_SUBMIT ENTER\n");
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -2992,6 +2993,7 @@ int32_t tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   if (SAVE_ERROR_CATCH(ctx, query->query_->submit()))
     return TILEDB_ERR;
 
+  printf("CORE C API TILEDB_QUERY_SUBMIT EXIT\n");
   return TILEDB_OK;
 }
 
