@@ -42,6 +42,16 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class TileStatusException : public StatusException {
+ public:
+  explicit TileStatusException(const std::string& message)
+      : StatusException("Tile", message) {
+  }
+};
+
+void nop_free(void* const) {
+}
+
 /* ****************************** */
 /*           STATIC INIT          */
 /* ****************************** */
@@ -75,6 +85,20 @@ void Tile::set_max_tile_chunk_size(uint64_t max_tile_chunk_size) {
   max_tile_chunk_size_ = max_tile_chunk_size;
 }
 
+Tile Tile::from_generic(storage_size_t tile_size) {
+  Tile tile;
+  if (!tile.init_unfiltered(
+               0,
+               constants::generic_tile_datatype,
+               tile_size,
+               constants::generic_tile_cell_size,
+               0)
+           .ok()) {
+    throw TileStatusException("Cannot initialize tile");
+  }
+  return tile;
+}
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -95,7 +119,7 @@ Tile::Tile(
     const unsigned int zipped_coords_dim_num,
     void* const buffer,
     uint64_t size)
-    : data_(static_cast<char*>(buffer), tiledb_free)
+    : data_(static_cast<char*>(buffer), nop_free)
     , size_(size)
     , cell_size_(cell_size)
     , zipped_coords_dim_num_(zipped_coords_dim_num)
@@ -212,6 +236,25 @@ Status Tile::write(const void* data, uint64_t offset, uint64_t nbytes) {
   size_ = std::max(offset + nbytes, size_);
 
   return Status::Ok();
+}
+
+Status Tile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
+  if (size_ - offset < nbytes) {
+    auto new_alloc_size = size_ == 0 ? offset + nbytes : size_;
+    while (new_alloc_size < offset + nbytes)
+      new_alloc_size *= 2;
+
+    auto new_data =
+        static_cast<char*>(tdb_realloc(data_.release(), new_alloc_size));
+    if (new_data == nullptr) {
+      return LOG_STATUS(Status_TileError(
+          "Cannot reallocate buffer; Memory allocation failed"));
+    }
+    data_.reset(new_data);
+    size_ = new_alloc_size;
+  }
+
+  return write(data, offset, nbytes);
 }
 
 Status Tile::zip_coordinates() {

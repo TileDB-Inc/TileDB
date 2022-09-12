@@ -103,13 +103,12 @@ set(TILEDB_TEST_SUPPORT_SOURCES
   src/helpers.cc
   src/helpers-dimension.h
   src/vfs_helpers.cc
+  src/serialization_wrappers.cc
   )
 
 set(TILEDB_UNIT_TEST_SOURCES
   src/helpers.h
-  src/helpers.cc
   src/helpers-dimension.h
-  src/serialization_wrappers.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
@@ -149,6 +148,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
   src/unit-capi-string_dims.cc
+  src/unit-capi-update-queries.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
@@ -203,9 +203,13 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-consolidation.cc
     src/unit-cppapi-consolidation-with-timestamps.cc
     src/unit-cppapi-datetimes.cc
+    src/unit-cppapi-deletes.cc
+    src/unit-cppapi-dense-qc-coords-mode.cc
     src/unit-cppapi-time.cc
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
+    src/unit-cppapi-float-scaling-filter.cc
+    src/unit-cppapi-xor-filter.cc
     src/unit-cppapi-fragment_info.cc
     src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
@@ -217,6 +221,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-string-dims.cc
     src/unit-cppapi-subarray.cc
     src/unit-cppapi-type.cc
+    src/unit-cppapi-update-queries.cc
     src/unit-cppapi-updates.cc
     src/unit-cppapi-util.cc
     src/unit-cppapi-var-offsets.cc
@@ -229,6 +234,7 @@ if (TILEDB_SERIALIZATION)
     src/unit-capi-serialized_queries.cc
     src/unit-capi-serialized_queries_using_subarray.cc
     src/unit-QueryCondition-serialization.cc
+    src/unit-filter-serialization.cc
     src/unit-curl.cc
   )
 endif()
@@ -243,6 +249,14 @@ if (TILEDB_ARROW_TESTS)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-arrow.cc
     ${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
+  )
+endif()
+
+if (TILEDB_EXPERIMENTAL_FEATURES)
+  list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/test-capi-dimension_labels.cc
+    src/test-dimension_labels-read-consistency.cc
+    src/unit_intersect_fragments.cc
   )
 endif()
 
@@ -295,11 +309,15 @@ target_link_libraries(tiledb_unit
     tiledb_test_support_lib
 )
 
+target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)
+
 target_link_libraries(tiledb_test_support_lib
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
     Catch2::Catch2
 )
+
+target_link_libraries(tiledb_test_support_lib PRIVATE $<BUILD_INTERFACE:common>)
 
 # need to properly link the signal chaining library for catch to work with the jni hdfs interface
 # see: https://docs.oracle.com/javase/9/vm/signal-chaining.htm
@@ -394,3 +412,9 @@ add_custom_target(
 
 # CI tests
 add_subdirectory(ci)
+if(WIN32)
+  add_subdirectory(performance)
+endif()
+
+#add tests related to external items
+add_subdirectory(external)

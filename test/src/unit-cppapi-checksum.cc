@@ -30,8 +30,8 @@
  * Tests the C++ API for checksum validation.
  */
 
+#include <test/support/tdb_catch.h>
 #include <fstream>
-#include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
 
 static void check_filters(

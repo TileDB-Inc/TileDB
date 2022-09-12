@@ -60,3 +60,7 @@ website:
                 - href: "format_spec/consolidated_fragment_metadata_file.md"
                 - href: "format_spec/filter_pipeline.md"
                 - href: "format_spec/vacuum_file.md"
+
+        - section: 'Developer Docs'
+          contents:
+            - "doc/dev/style/index.md"

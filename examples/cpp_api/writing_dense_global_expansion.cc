@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -63,9 +63,10 @@ void create_array() {
 }
 
 void write_array_global() {
-  std::vector<int> subarray = {1, 4, 1, 2};
   Context ctx;
   Array array(ctx, array_name, TILEDB_WRITE);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 2);
   Query query(ctx, array);
   std::vector<int> data = {1, 2, 3, 4, 5, 6, 7, 8};
   query.set_layout(TILEDB_GLOBAL_ORDER)
@@ -77,9 +78,10 @@ void write_array_global() {
 }
 
 void write_array_row_major() {
-  std::vector<int> subarray = {1, 4, 3, 3};
   Context ctx;
   Array array(ctx, array_name, TILEDB_WRITE);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 4).add_range(1, 3, 3);
   Query query(ctx, array);
   std::vector<int> data = {9, 10, 11, 12};
   query.set_layout(TILEDB_ROW_MAJOR)
@@ -96,7 +98,8 @@ void read_array() {
   Array array(ctx, array_name, TILEDB_READ);
 
   // Read the entire array
-  const std::vector<int> subarray = {1, 4, 1, 3};
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 3);
 
   // Prepare the vector that will hold the result (of size 12 elements)
   std::vector<int> data(12);

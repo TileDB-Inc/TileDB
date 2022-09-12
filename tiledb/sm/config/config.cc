@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,8 +42,16 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
+
+/** Return a Config error class Status with a given message **/
+inline Status Status_ConfigError(const std::string& msg) {
+  return {"[TileDB::Config] Error", msg};
+}
+
+void throw_config_exception(const std::string& msg) {
+  throw StatusException(Status_ConfigError(msg));
+}
 
 /* ****************************** */
 /*        CONFIG DEFAULTS         */
@@ -64,7 +72,12 @@ const std::string Config::REST_RETRY_HTTP_CODES = "503";
 const std::string Config::REST_RETRY_COUNT = "25";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
+const std::string Config::REST_CURL_BUFFER_SIZE = "524288";
 const std::string Config::REST_CURL_VERBOSE = "false";
+const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
+const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
+const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "false";
+const std::string Config::SM_ALLOW_UPDATES_EXPERIMENTAL = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
 const std::string Config::SM_ENCRYPTION_TYPE = "NO_ENCRYPTION";
 const std::string Config::SM_DEDUP_COORDS = "false";
@@ -76,6 +89,7 @@ const std::string Config::SM_TILE_CACHE_SIZE = "10000000";
 const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
 const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
+const std::string Config::SM_QUERY_DENSE_QC_COORDS_MODE = "false";
 const std::string Config::SM_QUERY_DENSE_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
@@ -103,6 +117,7 @@ const std::string Config::SM_IO_CONCURRENCY_LEVEL =
 const std::string Config::SM_SKIP_CHECKSUM_VALIDATION = "false";
 const std::string Config::SM_CONSOLIDATION_AMPLIFICATION = "1.0";
 const std::string Config::SM_CONSOLIDATION_BUFFER_SIZE = "50000000";
+const std::string Config::SM_CONSOLIDATION_PURGE_DELETED_CELLS = "false";
 const std::string Config::SM_CONSOLIDATION_STEPS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_MIN_FRAGS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_MAX_FRAGS = "4294967295";
@@ -111,7 +126,6 @@ const std::string Config::SM_CONSOLIDATION_MODE = "fragments";
 const std::string Config::SM_CONSOLIDATION_TIMESTAMP_START = "0";
 const std::string Config::SM_CONSOLIDATION_TIMESTAMP_END =
     std::to_string(UINT64_MAX);
-const std::string Config::SM_CONSOLIDATION_WITH_TIMESTAMPS = "false";
 const std::string Config::SM_VACUUM_MODE = "fragments";
 const std::string Config::SM_VACUUM_TIMESTAMP_START = "0";
 const std::string Config::SM_VACUUM_TIMESTAMP_END = std::to_string(UINT64_MAX);
@@ -125,6 +139,7 @@ const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MAX_BATCH_SIZE = std::to_string(UINT64_MAX);
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
 const std::string Config::VFS_MIN_BATCH_SIZE = "20971520";
+const std::string Config::VFS_DISABLE_BATCHING = "false";
 const std::string Config::VFS_FILE_POSIX_FILE_PERMISSIONS = "644";
 const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
 const std::string Config::VFS_FILE_MAX_PARALLEL_OPS =
@@ -222,10 +237,19 @@ Config::Config() {
   param_values_["rest.retry_count"] = REST_RETRY_COUNT;
   param_values_["rest.retry_initial_delay_ms"] = REST_RETRY_INITIAL_DELAY_MS;
   param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
+  param_values_["rest.curl.buffer_size"] = REST_CURL_BUFFER_SIZE;
   param_values_["rest.curl.verbose"] = REST_CURL_VERBOSE;
+  param_values_["rest.load_metadata_on_array_open"] =
+      REST_LOAD_METADATA_ON_ARRAY_OPEN;
+  param_values_["rest.load_non_empty_domain_on_array_open"] =
+      REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN;
+  param_values_["rest.use_refactored_array_open"] =
+      REST_USE_REFACTORED_ARRAY_OPEN;
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
+  param_values_["sm.allow_updates_experimental"] =
+      SM_ALLOW_UPDATES_EXPERIMENTAL;
   param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   param_values_["sm.encryption_type"] = SM_ENCRYPTION_TYPE;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
@@ -238,6 +262,8 @@ Config::Config() {
       SM_SKIP_EST_SIZE_PARTITIONING;
   param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
+  param_values_["sm.query.dense.qc_coords_mode"] =
+      SM_QUERY_DENSE_QC_COORDS_MODE;
   param_values_["sm.query.dense.reader"] = SM_QUERY_DENSE_READER;
   param_values_["sm.query.sparse_global_order.reader"] =
       SM_QUERY_SPARSE_GLOBAL_ORDER_READER;
@@ -269,6 +295,8 @@ Config::Config() {
   param_values_["sm.consolidation.amplification"] =
       SM_CONSOLIDATION_AMPLIFICATION;
   param_values_["sm.consolidation.buffer_size"] = SM_CONSOLIDATION_BUFFER_SIZE;
+  param_values_["sm.consolidation.purge_deleted_cells"] =
+      SM_CONSOLIDATION_PURGE_DELETED_CELLS;
   param_values_["sm.consolidation.step_min_frags"] =
       SM_CONSOLIDATION_STEP_MIN_FRAGS;
   param_values_["sm.consolidation.step_max_frags"] =
@@ -281,8 +309,6 @@ Config::Config() {
       SM_CONSOLIDATION_TIMESTAMP_START;
   param_values_["sm.consolidation.timestamp_end"] =
       SM_CONSOLIDATION_TIMESTAMP_END;
-  param_values_["sm.consolidation.with_timestamps"] =
-      SM_CONSOLIDATION_WITH_TIMESTAMPS;
   param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
   param_values_["sm.var_offsets.bitsize"] = SM_OFFSETS_BITSIZE;
   param_values_["sm.var_offsets.extra_element"] = SM_OFFSETS_EXTRA_ELEMENT;
@@ -294,6 +320,7 @@ Config::Config() {
   param_values_["vfs.max_batch_size"] = VFS_MAX_BATCH_SIZE;
   param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
   param_values_["vfs.min_batch_size"] = VFS_MIN_BATCH_SIZE;
+  param_values_["vfs.disable_batching"] = VFS_DISABLE_BATCHING;
   param_values_["vfs.read_ahead_size"] = VFS_READ_AHEAD_SIZE;
   param_values_["vfs.read_ahead_cache_size"] = VFS_READ_AHEAD_CACHE_SIZE;
   param_values_["vfs.file.posix_file_permissions"] =
@@ -446,6 +473,36 @@ Status Config::set(const std::string& param, const std::string& value) {
   return Status::Ok();
 }
 
+optional<std::string> Config::get(const std::string& key) const {
+  bool found;
+  const char* val = get_from_config_or_env(key, &found);
+  if (found) {
+    return {std::string{val}};
+  } else {
+    return {nullopt};
+  }
+}
+
+template <class T>
+optional<T> Config::get(const std::string& key) const {
+  auto value{get(key)};
+  if (!value.has_value()) {
+    return {nullopt};
+  }
+  T converted_value;
+  /*
+   * `convert` is only declared for certain types. If the type argument to this
+   * function isn't one of them, this function won't compile.
+   */
+  auto status = utils::parse::convert(value.value(), &converted_value);
+  if (!status.ok()) {
+    throw_config_exception(
+        "Failed to convert configuration value '" + value.value() +
+        std::string("' for key '") + key + "'. Reason: " + status.to_string());
+  }
+  return {converted_value};
+}
+
 Status Config::get(const std::string& param, const char** value) const {
   bool found;
   const char* val = get_from_config_or_env(param, &found);
@@ -517,14 +574,28 @@ Status Config::unset(const std::string& param) {
     param_values_["rest.retry_initial_delay_ms"] = REST_RETRY_INITIAL_DELAY_MS;
   } else if (param == "rest.retry_delay_factor") {
     param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
+  } else if (param == "rest.curl.buffer_size") {
+    param_values_["rest.curl.buffer_size"] = REST_CURL_BUFFER_SIZE;
   } else if (param == "rest.curl.verbose") {
     param_values_["rest.curl.verbose"] = REST_CURL_VERBOSE;
+  } else if (param == "rest.load_metadata_on_array_open") {
+    param_values_["rest.load_metadata_on_array_open"] =
+        REST_LOAD_METADATA_ON_ARRAY_OPEN;
+  } else if (param == "rest.load_non_empty_domain_on_array_open") {
+    param_values_["rest.load_non_empty_domain_on_array_open"] =
+        REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN;
+  } else if (param == "rest.use_refactored_array_open") {
+    param_values_["rest.use_refactored_array_open"] =
+        REST_USE_REFACTORED_ARRAY_OPEN;
   } else if (param == "config.env_var_prefix") {
     param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   } else if (param == "config.logging_level") {
     param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   } else if (param == "config.logging_format") {
-    param_values_["config.logging_foramt"] = CONFIG_LOGGING_DEFAULT_FORMAT;
+    param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
+  } else if (param == "sm.allow_updates_experimental") {
+    param_values_["sm.allow_updates_experimental"] =
+        SM_ALLOW_UPDATES_EXPERIMENTAL;
   } else if (param == "sm.encryption_key") {
     param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   } else if (param == "sm.encryption_type") {
@@ -545,6 +616,9 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   } else if (param == "sm.memory_budget_var") {
     param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
+  } else if (param == "sm.query.dense.qc_coords_mode") {
+    param_values_["sm.query.dense.qc_coords_mode"] =
+        SM_QUERY_DENSE_QC_COORDS_MODE;
   } else if (param == "sm.query.dense.reader") {
     param_values_["sm.query.dense.reader"] = SM_QUERY_DENSE_READER;
   } else if (param == "sm.query.sparse_global_order.reader") {
@@ -601,6 +675,9 @@ Status Config::unset(const std::string& param) {
   } else if (param == "sm.consolidation.buffer_size") {
     param_values_["sm.consolidation.buffer_size"] =
         SM_CONSOLIDATION_BUFFER_SIZE;
+  } else if (param == "sm.consolidation.purge_deleted_cells") {
+    param_values_["sm.consolidation.steps"] =
+        SM_CONSOLIDATION_PURGE_DELETED_CELLS;
   } else if (param == "sm.consolidation.steps") {
     param_values_["sm.consolidation.steps"] = SM_CONSOLIDATION_STEPS;
   } else if (param == "sm.consolidation.step_min_frags") {
@@ -620,9 +697,6 @@ Status Config::unset(const std::string& param) {
   } else if (param == "sm.consolidation.timestamp_end") {
     param_values_["sm.consolidation.timestamp_end"] =
         SM_CONSOLIDATION_TIMESTAMP_END;
-  } else if (param == "sm.consolidation.with_timestamps") {
-    param_values_["sm.consolidation.with_timestamps"] =
-        SM_CONSOLIDATION_WITH_TIMESTAMPS;
   } else if (param == "sm.vacuum.mode") {
     param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
   } else if (param == "sm.var_offsets.bitsize") {
@@ -645,6 +719,8 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
   } else if (param == "vfs.min_batch_size") {
     param_values_["vfs.min_batch_size"] = VFS_MIN_BATCH_SIZE;
+  } else if (param == "vfs.disable_batching") {
+    param_values_["vfs.disable_batching"] = VFS_DISABLE_BATCHING;
   } else if (param == "vfs.read_ahead_size") {
     param_values_["vfs.read_ahead_size"] = VFS_READ_AHEAD_SIZE;
   } else if (param == "vfs.read_ahead_cache_size") {
@@ -818,6 +894,8 @@ Status Config::sanity_check(
     if (value != "DEFAULT" && value != "JSON")
       return LOG_STATUS(
           Status_ConfigError("Invalid logging format parameter value"));
+  } else if (param == "sm.allow_updates_experimental") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.dedup_coords") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_coord_dups") {
@@ -842,6 +920,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vf));
   } else if (param == "sm.consolidation.buffer_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
+  } else if (param == "sm.consolidation.purge_deleted_cells") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.consolidation.steps") {
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "sm.consolidation.step_min_frags") {
@@ -866,6 +946,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.min_batch_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
+  } else if (param == "vfs.disable_batching") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.read_ahead_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.read_ahead_cache_size") {
@@ -981,8 +1063,8 @@ const char* Config::get_from_config_or_env(
     return value_config;
   }
 
-  // Check env if not found in config or if it was found in the config but is a
-  // default value
+  // Check env if not found in config or if it was found in the config but is
+  // a default value
   const char* value_env = get_from_env(param, found);
   if (*found)
     return value_env;
@@ -1014,5 +1096,12 @@ template Status Config::get<double>(
 template Status Config::get_vector<uint32_t>(
     const std::string& param, std::vector<uint32_t>* value, bool* found) const;
 
-}  // namespace sm
-}  // namespace tiledb
+template optional<bool> Config::get<bool>(const std::string&) const;
+template optional<int> Config::get<int>(const std::string&) const;
+template optional<uint32_t> Config::get<uint32_t>(const std::string&) const;
+template optional<int64_t> Config::get<int64_t>(const std::string&) const;
+template optional<uint64_t> Config::get<uint64_t>(const std::string&) const;
+template optional<float> Config::get<float>(const std::string&) const;
+template optional<double> Config::get<double>(const std::string&) const;
+
+}  // namespace tiledb::sm

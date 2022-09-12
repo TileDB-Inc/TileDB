@@ -60,25 +60,37 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+ConsistencyController& controller() {
+  static ConsistencyController controller;
+  return controller;
+}
+
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Array::Array(const URI& array_uri, StorageManager* storage_manager)
+Array::Array(
+    const URI& array_uri,
+    StorageManager* storage_manager,
+    ConsistencyController& cc)
     : array_schema_latest_(nullptr)
     , array_uri_(array_uri)
     , array_dir_()
     , array_uri_serialized_(array_uri)
     , encryption_key_(make_shared<EncryptionKey>(HERE()))
     , is_open_(false)
+    , is_opening_or_closing_(false)
     , timestamp_start_(0)
     , timestamp_end_(UINT64_MAX)
     , timestamp_end_opened_at_(UINT64_MAX)
     , storage_manager_(storage_manager)
     , config_(storage_manager_->config())
     , remote_(array_uri.is_tiledb())
+    , metadata_()
     , metadata_loaded_(false)
-    , non_empty_domain_computed_(false) {
+    , non_empty_domain_computed_(false)
+    , consistency_controller_(cc)
+    , consistency_sentry_(nullopt) {
 }
 
 /* ********************************* */
@@ -96,6 +108,11 @@ const ArraySchema& Array::array_schema_latest() const {
 
 shared_ptr<const ArraySchema> Array::array_schema_latest_ptr() const {
   return array_schema_latest_;
+}
+
+void Array::set_array_schemas_all(
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>& all_schemas) {
+  array_schemas_all_ = all_schemas;
 }
 
 const URI& Array::array_uri() const {
@@ -119,64 +136,81 @@ Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  Status st;
   // Checks
-  if (is_open_)
+  if (is_open()) {
     return LOG_STATUS(Status_ArrayError(
         "Cannot open array without fragments; Array already open"));
-  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
+  }
+  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION) {
     return LOG_STATUS(
         Status_ArrayError("Cannot open array without fragments; encrypted "
                           "remote arrays are not supported."));
-  if (!remote_) {
-    bool is_array = false;
-    RETURN_NOT_OK(storage_manager_->is_array(array_uri_, &is_array));
-    if (!is_array)
-      return LOG_STATUS(Status_ArrayError(
-          "Cannot open array without fragments; Array does not exist"));
   }
-
-  // Copy the key bytes.
-  RETURN_NOT_OK(
-      encryption_key_->set_key(encryption_type, encryption_key, key_length));
 
   metadata_.clear();
   metadata_loaded_ = false;
   non_empty_domain_computed_ = false;
 
-  if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
-      return LOG_STATUS(Status_ArrayError(
-          "Cannot open array; remote array with no REST client."));
-    auto&& [st, array_schema_latest] =
-        rest_client->get_array_schema_from_rest(array_uri_);
-    RETURN_NOT_OK(st);
-    array_schema_latest_ = array_schema_latest.value();
-  } else {
-    try {
+  /* Note: query_type_ MUST be set before calling set_array_open()
+    because it will be examined by the ConsistencyController. */
+  query_type_ = QueryType::READ;
+
+  /* Note: the open status MUST be exception safe. If anything interrupts the
+   * opening process, it will throw and the array will be set as closed. */
+  try {
+    set_array_open(query_type_);
+
+    // Copy the key bytes.
+    st = encryption_key_->set_key(encryption_type, encryption_key, key_length);
+    if (!st.ok()) {
+      throw StatusException(st);
+    }
+
+    if (remote_) {
+      auto rest_client = storage_manager_->rest_client();
+      if (rest_client == nullptr) {
+        throw Status_ArrayError(
+            "Cannot open array; remote array with no REST client.");
+      }
+      /* #TODO Change get_array_schema_from_rest function signature to
+        throw instead of return Status */
+      if (!use_refactored_array_open()) {
+        auto&& [st, array_schema_latest] =
+            rest_client->get_array_schema_from_rest(array_uri_);
+        if (!st.ok()) {
+          throw StatusException(st);
+        }
+        array_schema_latest_ = array_schema_latest.value();
+      } else {
+        auto st = rest_client->post_array_from_rest(array_uri_, this);
+        if (!st.ok()) {
+          throw StatusException(st);
+        }
+      }
+    } else {
       array_dir_ = ArrayDirectory(
           storage_manager_->vfs(),
           storage_manager_->compute_tp(),
           array_uri_,
           0,
           UINT64_MAX,
-          consolidation_with_timestamps_config_enabled(),
-          ArrayDirectoryMode::SCHEMA_ONLY);
-    } catch (const std::logic_error& le) {
-      return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
+          ArrayDirectoryMode::READ);
+
+      auto&& [st, array_schema, array_schemas] =
+          storage_manager_->array_open_for_reads_without_fragments(this);
+      if (!st.ok())
+        throw StatusException(st);
+
+      array_schema_latest_ = array_schema.value();
+      array_schemas_all_ = array_schemas.value();
     }
-
-    auto&& [st, array_schema, array_schemas] =
-        storage_manager_->array_open_for_reads_without_fragments(this);
-    RETURN_NOT_OK(st);
-
-    array_schema_latest_ = array_schema.value();
-    array_schemas_all_ = array_schemas.value();
+  } catch (std::exception& e) {
+    set_array_closed();
+    throw Status_ArrayError(e.what());
   }
 
-  is_open_ = true;
-  query_type_ = QueryType::READ;
-
+  is_opening_or_closing_ = false;
   return Status::Ok();
 }
 
@@ -187,6 +221,34 @@ Status Array::load_fragments(
   RETURN_NOT_OK(st);
 
   fragment_metadata_ = std::move(fragment_metadata.value());
+
+  return Status::Ok();
+}
+
+Status Array::delete_fragments(
+    const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
+  // Check that query type is MODIFY_EXCLUSIVE
+  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+    return LOG_STATUS(Status_ArrayError(
+        "[Array::delete_fragments] Query type must be MODIFY_EXCLUSIVE"));
+  }
+
+  // Check that array is open
+  if (!is_open() && !controller().is_open(uri)) {
+    return LOG_STATUS(
+        Status_ArrayError("[Array::delete_fragments] Array is closed"));
+  }
+
+  // Check that array is not in the process of opening or closing
+  if (is_opening_or_closing_) {
+    return LOG_STATUS(Status_ArrayError(
+        "[Array::delete_fragments] "
+        "May not perform simultaneous open or close operations."));
+  }
+
+  // Vacuum fragments for deletes
+  RETURN_NOT_OK(storage_manager_->fragments_vacuum(
+      uri.c_str(), timestamp_start, timestamp_end, true));
 
   return Status::Ok();
 }
@@ -212,136 +274,191 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  Status st;
   // Checks
-  if (is_open_)
+  if (is_open()) {
     return LOG_STATUS(
         Status_ArrayError("Cannot open array; Array already open"));
-  if (!remote_) {
-    bool is_array = false;
-    RETURN_NOT_OK(storage_manager_->is_array(array_uri_, &is_array));
-    if (!is_array)
-      return LOG_STATUS(
-          Status_ArrayError("Cannot open array; Array does not exist"));
   }
-
-  // Get encryption key from config
-  std::string encryption_key_from_cfg;
-  if (!encryption_key) {
-    bool found = false;
-    encryption_key_from_cfg = config_.get("sm.encryption_key", &found);
-    assert(found);
-  }
-
-  if (!encryption_key_from_cfg.empty()) {
-    encryption_key = encryption_key_from_cfg.c_str();
-    std::string encryption_type_from_cfg;
-    bool found = false;
-    encryption_type_from_cfg = config_.get("sm.encryption_type", &found);
-    assert(found);
-    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
-    RETURN_NOT_OK(st);
-    encryption_type = et.value();
-
-    if (EncryptionKey::is_valid_key_length(
-            encryption_type,
-            static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-      const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-      if (unit_test_cfg.array_encryption_key_length.is_set()) {
-        key_length = unit_test_cfg.array_encryption_key_length.get();
-      } else {
-        key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-      }
-    } else {
-      encryption_key = nullptr;
-      key_length = 0;
-    }
-  }
-
-  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
-    return LOG_STATUS(Status_ArrayError(
-        "Cannot open array; encrypted remote arrays are not supported."));
-
-  // Copy the key bytes.
-  RETURN_NOT_OK(
-      encryption_key_->set_key(encryption_type, encryption_key, key_length));
 
   metadata_.clear();
   metadata_loaded_ = false;
   non_empty_domain_computed_ = false;
-
   timestamp_start_ = timestamp_start;
-
   timestamp_end_opened_at_ = timestamp_end;
-  if (timestamp_end_opened_at_ == UINT64_MAX) {
-    if (query_type == QueryType::READ) {
-      timestamp_end_opened_at_ = utils::time::timestamp_now_ms();
-    } else {
-      assert(query_type == QueryType::WRITE);
-      timestamp_end_opened_at_ = 0;
-    }
-  }
-  if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
-      return LOG_STATUS(Status_ArrayError(
-          "Cannot open array; remote array with no REST client."));
-    auto&& [st, array_schema_latest] =
-        rest_client->get_array_schema_from_rest(array_uri_);
-    RETURN_NOT_OK(st);
-    array_schema_latest_ = array_schema_latest.value();
-  } else if (query_type == QueryType::READ) {
-    try {
-      array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
-          array_uri_,
-          timestamp_start_,
-          timestamp_end_opened_at_,
-          consolidation_with_timestamps_config_enabled());
-    } catch (const std::logic_error& le) {
-      return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-    }
-
-    auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
-        storage_manager_->array_open_for_reads(this);
-    RETURN_NOT_OK(st);
-    // Set schemas
-    array_schema_latest_ = array_schema_latest.value();
-    array_schemas_all_ = array_schemas.value();
-    fragment_metadata_ = fragment_metadata.value();
-  } else {
-    try {
-      array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
-          array_uri_,
-          timestamp_start_,
-          timestamp_end_opened_at_,
-          consolidation_with_timestamps_config_enabled(),
-          ArrayDirectoryMode::SCHEMA_ONLY);
-    } catch (const std::logic_error& le) {
-      return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-    }
-
-    auto&& [st, array_schema_latest, array_schemas] =
-        storage_manager_->array_open_for_writes(this);
-    RETURN_NOT_OK(st);
-    // Set schemas
-    array_schema_latest_ = array_schema_latest.value();
-    array_schemas_all_ = array_schemas.value();
-
-    metadata_.reset(timestamp_end_opened_at_);
-  }
-
   query_type_ = query_type;
-  is_open_ = true;
 
+  /* Note: the open status MUST be exception safe. If anything interrupts the
+   * opening process, it will throw and the array will be set as closed. */
+  try {
+    set_array_open(query_type);
+
+    // Get encryption key from config
+    std::string encryption_key_from_cfg;
+    if (!encryption_key) {
+      bool found = false;
+      encryption_key_from_cfg = config_.get("sm.encryption_key", &found);
+      assert(found);
+    }
+
+    if (!encryption_key_from_cfg.empty()) {
+      encryption_key = encryption_key_from_cfg.c_str();
+      std::string encryption_type_from_cfg;
+      bool found = false;
+      encryption_type_from_cfg = config_.get("sm.encryption_type", &found);
+      assert(found);
+      auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+      if (!st.ok()) {
+        throw StatusException(st);
+      }
+      encryption_type = et.value();
+
+      if (EncryptionKey::is_valid_key_length(
+              encryption_type,
+              static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
+        const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
+        if (unit_test_cfg.array_encryption_key_length.is_set()) {
+          key_length = unit_test_cfg.array_encryption_key_length.get();
+        } else {
+          key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
+        }
+      } else {
+        encryption_key = nullptr;
+        key_length = 0;
+      }
+    }
+
+    if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION) {
+      throw Status_ArrayError(
+          "Cannot open array; encrypted remote arrays are not supported.");
+    }
+
+    // Copy the key bytes.
+    st = encryption_key_->set_key(encryption_type, encryption_key, key_length);
+    if (!st.ok()) {
+      throw StatusException(st);
+    }
+
+    if (timestamp_end_opened_at_ == UINT64_MAX) {
+      if (query_type == QueryType::READ) {
+        timestamp_end_opened_at_ = utils::time::timestamp_now_ms();
+      } else if (
+          query_type == QueryType::WRITE ||
+          query_type == QueryType::MODIFY_EXCLUSIVE ||
+          query_type == QueryType::DELETE) {
+        timestamp_end_opened_at_ = 0;
+      } else if (query_type == QueryType::UPDATE) {
+        bool found = false;
+        bool allow_updates = false;
+        if (!config_
+                 .get<bool>(
+                     "sm.allow_updates_experimental", &allow_updates, &found)
+                 .ok()) {
+          throw Status_ArrayError("Cannot get setting");
+        }
+        assert(found);
+
+        if (!allow_updates) {
+          throw Status_ArrayError(
+              "Cannot open array; Update query type is only experimental, do "
+              "not use.");
+        }
+      } else {
+        throw Status_ArrayError("Cannot open array; Unsupported query type.");
+      }
+    }
+
+    if (remote_) {
+      auto rest_client = storage_manager_->rest_client();
+      if (rest_client == nullptr) {
+        throw Status_ArrayError(
+            "Cannot open array; remote array with no REST client.");
+      }
+      if (!use_refactored_array_open()) {
+        auto&& [st, array_schema_latest] =
+            rest_client->get_array_schema_from_rest(array_uri_);
+        if (!st.ok()) {
+          throw StatusException(st);
+        }
+        array_schema_latest_ = array_schema_latest.value();
+      } else {
+        auto st = rest_client->post_array_from_rest(array_uri_, this);
+        if (!st.ok()) {
+          throw StatusException(st);
+        }
+      }
+    } else if (query_type == QueryType::READ) {
+      array_dir_ = ArrayDirectory(
+          storage_manager_->vfs(),
+          storage_manager_->compute_tp(),
+          array_uri_,
+          timestamp_start_,
+          timestamp_end_opened_at_);
+
+      auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
+          storage_manager_->array_open_for_reads(this);
+      if (!st.ok()) {
+        throw StatusException(st);
+      }
+      // Set schemas
+      array_schema_latest_ = array_schema_latest.value();
+      array_schemas_all_ = array_schemas.value();
+      fragment_metadata_ = fragment_metadata.value();
+    } else {
+      array_dir_ = ArrayDirectory(
+          storage_manager_->vfs(),
+          storage_manager_->compute_tp(),
+          array_uri_,
+          timestamp_start_,
+          timestamp_end_opened_at_,
+          ArrayDirectoryMode::SCHEMA_ONLY);
+
+      auto&& [st, array_schema_latest, array_schemas] =
+          storage_manager_->array_open_for_writes(this);
+      if (!st.ok()) {
+        throw StatusException(st);
+      }
+
+      // Set schemas
+      array_schema_latest_ = array_schema_latest.value();
+      array_schemas_all_ = array_schemas.value();
+
+      auto version = array_schema_latest_->version();
+      if (query_type == QueryType::DELETE &&
+          version < constants::deletes_min_version) {
+        std::stringstream err;
+        err << "Cannot open array for deletes; Array format version (";
+        err << version;
+        err << ") is smaller than the minimum supported version (";
+        err << constants::deletes_min_version << ").";
+        return LOG_STATUS(Status_ArrayError(err.str()));
+      }
+
+      if (query_type == QueryType::UPDATE &&
+          version < constants::deletes_min_version) {
+        std::stringstream err;
+        err << "Cannot open array for updates; Array format version (";
+        err << version;
+        err << ") is smaller than the minimum supported version (";
+        err << constants::updates_min_version << ").";
+        return LOG_STATUS(Status_ArrayError(err.str()));
+      }
+
+      metadata_.reset(timestamp_end_opened_at_);
+    }
+  } catch (std::exception& e) {
+    set_array_closed();
+    return LOG_STATUS(Status_ArrayError(e.what()));
+  }
+
+  is_opening_or_closing_ = false;
   return Status::Ok();
 }
 
 Status Array::close() {
+  Status st;
   // Check if array is open
-  if (!is_open_) {
+  if (!is_open()) {
     // If array is not open treat this as a no-op
     // This keeps existing behavior from TileDB 2.6 and older
     return Status::Ok();
@@ -352,37 +469,65 @@ Status Array::close() {
   clear_last_max_buffer_sizes();
   fragment_metadata_.clear();
 
-  if (remote_) {
-    // Update array metadata for write queries if metadata was written by the
-    // user
-    if (query_type_ == QueryType::WRITE && metadata_.num() > 0) {
-      // Set metadata loaded to be true so when serialization fetchs the
-      // metadata it won't trigger a deadlock
-      metadata_loaded_ = true;
-      auto rest_client = storage_manager_->rest_client();
-      if (rest_client == nullptr)
-        return LOG_STATUS(Status_ArrayError(
-            "Error closing array; remote array with no REST client."));
-      RETURN_NOT_OK(rest_client->post_array_metadata_to_rest(
-          array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
+  try {
+    set_array_closed();
+
+    if (remote_) {
+      // Update array metadata for write queries if metadata was written by the
+      // user
+      if ((query_type_ == QueryType::WRITE ||
+           query_type_ == QueryType::MODIFY_EXCLUSIVE) &&
+          metadata_.num() > 0) {
+        // Set metadata loaded to be true so when serialization fetchs the
+        // metadata it won't trigger a deadlock
+        metadata_loaded_ = true;
+        auto rest_client = storage_manager_->rest_client();
+        if (rest_client == nullptr)
+          throw Status_ArrayError(
+              "Error closing array; remote array with no REST client.");
+        st = rest_client->post_array_metadata_to_rest(
+            array_uri_, timestamp_start_, timestamp_end_opened_at_, this);
+        if (!st.ok())
+          throw StatusException(st);
+      }
+
+      // Storage manager does not own the array schema for remote arrays.
+      array_schema_latest_.reset();
+    } else {
+      array_schema_latest_.reset();
+      if (query_type_ == QueryType::READ) {
+        st = storage_manager_->array_close_for_reads(this);
+        if (!st.ok())
+          throw StatusException(st);
+      } else if (
+          query_type_ == QueryType::WRITE ||
+          query_type_ == QueryType::MODIFY_EXCLUSIVE) {
+        st = storage_manager_->array_close_for_writes(this);
+        if (!st.ok())
+          throw StatusException(st);
+      } else if (query_type_ == QueryType::DELETE) {
+        st = storage_manager_->array_close_for_deletes(this);
+        if (!st.ok())
+          throw StatusException(st);
+      } else if (query_type_ == QueryType::UPDATE) {
+        st = storage_manager_->array_close_for_updates(this);
+        if (!st.ok())
+          throw StatusException(st);
+      } else {
+        throw Status_ArrayError("Error closing array; Unsupported query type.");
+      }
     }
 
-    // Storage manager does not own the array schema for remote arrays.
-    array_schema_latest_.reset();
-  } else {
-    array_schema_latest_.reset();
-    if (query_type_ == QueryType::READ) {
-      RETURN_NOT_OK(storage_manager_->array_close_for_reads(this));
-    } else {
-      RETURN_NOT_OK(storage_manager_->array_close_for_writes(this));
-    }
+    array_schemas_all_.clear();
+    metadata_.clear();
+    metadata_loaded_ = false;
+
+  } catch (std::exception& e) {
+    is_opening_or_closing_ = false;
+    throw Status_ArrayError(e.what());
   }
 
-  array_schemas_all_.clear();
-  metadata_.clear();
-  metadata_loaded_ = false;
-  is_open_ = false;
-
+  is_opening_or_closing_ = false;
   return Status::Ok();
 }
 
@@ -390,7 +535,8 @@ bool Array::is_empty() const {
   return fragment_metadata_.empty();
 }
 
-bool Array::is_open() const {
+bool Array::is_open() {
+  std::lock_guard<std::mutex> lock(mtx_);
   return is_open_;
 }
 
@@ -413,62 +559,68 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> Array::get_array_schema()
   return {Status::Ok(), array_schema_latest_};
 }
 
-Status Array::get_query_type(QueryType* query_type) const {
+QueryType Array::get_query_type() const {
   // Error if the array is not open
-  if (!is_open_)
-    return LOG_STATUS(
+  if (!is_open_) {
+    throw StatusException(
         Status_ArrayError("Cannot get query_type; Array is not open"));
+  }
 
-  *query_type = query_type_;
-
-  return Status::Ok();
+  return query_type_;
 }
 
 Status Array::get_max_buffer_size(
     const char* name, const void* subarray, uint64_t* buffer_size) {
   // Check if array is open
-  if (!is_open_)
+  if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get max buffer size; Array is not open"));
+  }
 
   // Error if the array was not opened in read mode
-  if (query_type_ != QueryType::READ)
+  if (query_type_ != QueryType::READ) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get max buffer size; "
                           "Array was not opened in read mode"));
+  }
 
   // Check if name is null
-  if (name == nullptr)
+  if (name == nullptr) {
     return LOG_STATUS(Status_ArrayError(
         "Cannot get max buffer size; Attribute/Dimension name is null"));
+  }
 
   // Not applicable to heterogeneous domains
-  if (!array_schema_latest_->domain().all_dims_same_type())
+  if (!array_schema_latest_->domain().all_dims_same_type()) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get max buffer size; Function not "
                           "applicable to heterogeneous domains"));
+  }
 
   // Not applicable to variable-sized dimensions
-  if (!array_schema_latest_->domain().all_dims_fixed())
+  if (!array_schema_latest_->domain().all_dims_fixed()) {
     return LOG_STATUS(Status_ArrayError(
         "Cannot get max buffer size; Function not "
         "applicable to domains with variable-sized dimensions"));
+  }
 
   // Check if name is attribute or dimension
   bool is_dim = array_schema_latest_->is_dim(name);
   bool is_attr = array_schema_latest_->is_attr(name);
 
   // Check if attribute/dimension exists
-  if (name != constants::coords && !is_dim && !is_attr)
+  if (name != constants::coords && !is_dim && !is_attr) {
     return LOG_STATUS(Status_ArrayError(
         std::string("Cannot get max buffer size; Attribute/Dimension '") +
         name + "' does not exist"));
+  }
 
   // Check if attribute/dimension is fixed sized
-  if (array_schema_latest_->var_size(name))
+  if (array_schema_latest_->var_size(name)) {
     return LOG_STATUS(Status_ArrayError(
         std::string("Cannot get max buffer size; Attribute/Dimension '") +
         name + "' is var-sized"));
+  }
 
   RETURN_NOT_OK(compute_max_buffer_sizes(subarray));
 
@@ -486,47 +638,54 @@ Status Array::get_max_buffer_size(
     uint64_t* buffer_off_size,
     uint64_t* buffer_val_size) {
   // Check if array is open
-  if (!is_open_)
+  if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get max buffer size; Array is not open"));
+  }
 
   // Error if the array was not opened in read mode
-  if (query_type_ != QueryType::READ)
+  if (query_type_ != QueryType::READ) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get max buffer size; "
                           "Array was not opened in read mode"));
+  }
 
   // Check if name is null
-  if (name == nullptr)
+  if (name == nullptr) {
     return LOG_STATUS(Status_ArrayError(
         "Cannot get max buffer size; Attribute/Dimension name is null"));
+  }
 
   // Not applicable to heterogeneous domains
-  if (!array_schema_latest_->domain().all_dims_same_type())
+  if (!array_schema_latest_->domain().all_dims_same_type()) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get max buffer size; Function not "
                           "applicable to heterogeneous domains"));
+  }
 
   // Not applicable to variable-sized dimensions
-  if (!array_schema_latest_->domain().all_dims_fixed())
+  if (!array_schema_latest_->domain().all_dims_fixed()) {
     return LOG_STATUS(Status_ArrayError(
         "Cannot get max buffer size; Function not "
         "applicable to domains with variable-sized dimensions"));
+  }
 
   RETURN_NOT_OK(compute_max_buffer_sizes(subarray));
 
   // Check if attribute/dimension exists
   auto it = last_max_buffer_sizes_.find(name);
-  if (it == last_max_buffer_sizes_.end())
+  if (it == last_max_buffer_sizes_.end()) {
     return LOG_STATUS(Status_ArrayError(
         std::string("Cannot get max buffer size; Attribute/Dimension '") +
         name + "' does not exist"));
+  }
 
   // Check if attribute/dimension is var-sized
-  if (!array_schema_latest_->var_size(name))
+  if (!array_schema_latest_->var_size(name)) {
     return LOG_STATUS(Status_ArrayError(
         std::string("Cannot get max buffer size; Attribute/Dimension '") +
         name + "' is fixed-sized"));
+  }
 
   // Retrieve buffer sizes
   *buffer_off_size = it->second.first;
@@ -551,14 +710,16 @@ Status Array::reopen() {
 }
 
 Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
-  if (!is_open_)
+  if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot reopen array; Array is not open"));
+  }
 
-  if (query_type_ != QueryType::READ)
+  if (query_type_ != QueryType::READ) {
     return LOG_STATUS(
         Status_ArrayError("Cannot reopen array; Array was "
                           "not opened in read mode"));
+  }
 
   clear_last_max_buffer_sizes();
 
@@ -589,7 +750,6 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
         array_uri_,
         timestamp_start_,
         timestamp_end_opened_at_,
-        consolidation_with_timestamps_config_enabled(),
         query_type_ == QueryType::READ ? ArrayDirectoryMode::READ :
                                          ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
@@ -645,20 +805,24 @@ Status Array::set_uri_serialized(const std::string& uri) {
 
 Status Array::delete_metadata(const char* key) {
   // Check if array is open
-  if (!is_open_)
+  if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot delete metadata. Array is not open"));
+  }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE)
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(
         Status_ArrayError("Cannot delete metadata. Array was "
-                          "not opened in write mode"));
+                          "not opened in write or modify_exclusive mode"));
+  }
 
   // Check if key is null
-  if (key == nullptr)
+  if (key == nullptr) {
     return LOG_STATUS(
         Status_ArrayError("Cannot delete metadata. Key cannot be null"));
+  }
 
   RETURN_NOT_OK(metadata_.del(key));
 
@@ -671,25 +835,30 @@ Status Array::put_metadata(
     uint32_t value_num,
     const void* value) {
   // Check if array is open
-  if (!is_open_)
+  if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot put metadata; Array is not open"));
+  }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE)
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(
         Status_ArrayError("Cannot put metadata; Array was "
-                          "not opened in write mode"));
+                          "not opened in write or modify_exclusive mode"));
+  }
 
   // Check if key is null
-  if (key == nullptr)
+  if (key == nullptr) {
     return LOG_STATUS(
         Status_ArrayError("Cannot put metadata; Key cannot be null"));
+  }
 
   // Check if value type is ANY
-  if (value_type == Datatype::ANY)
+  if (value_type == Datatype::ANY) {
     return LOG_STATUS(
         Status_ArrayError("Cannot put metadata; Value type cannot be ANY"));
+  }
 
   RETURN_NOT_OK(metadata_.put(key, value_type, value_num, value));
 
@@ -702,24 +871,28 @@ Status Array::get_metadata(
     uint32_t* value_num,
     const void** value) {
   // Check if array is open
-  if (!is_open_)
+  if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get metadata; Array is not open"));
+  }
 
   // Check mode
-  if (query_type_ != QueryType::READ)
+  if (query_type_ != QueryType::READ) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get metadata; Array was "
                           "not opened in read mode"));
+  }
 
   // Check if key is null
-  if (key == nullptr)
+  if (key == nullptr) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get metadata; Key cannot be null"));
+  }
 
   // Load array metadata, if not loaded yet
-  if (!metadata_loaded_)
+  if (!metadata_loaded_) {
     RETURN_NOT_OK(load_metadata());
+  }
 
   RETURN_NOT_OK(metadata_.get(key, value_type, value_num, value));
 
@@ -734,19 +907,22 @@ Status Array::get_metadata(
     uint32_t* value_num,
     const void** value) {
   // Check if array is open
-  if (!is_open_)
+  if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get metadata; Array is not open"));
+  }
 
   // Check mode
-  if (query_type_ != QueryType::READ)
+  if (query_type_ != QueryType::READ) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get metadata; Array was "
                           "not opened in read mode"));
+  }
 
   // Load array metadata, if not loaded yet
-  if (!metadata_loaded_)
+  if (!metadata_loaded_) {
     RETURN_NOT_OK(load_metadata());
+  }
 
   RETURN_NOT_OK(
       metadata_.get(index, key, key_len, value_type, value_num, value));
@@ -756,19 +932,22 @@ Status Array::get_metadata(
 
 Status Array::get_metadata_num(uint64_t* num) {
   // Check if array is open
-  if (!is_open_)
+  if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get number of metadata; Array is not open"));
+  }
 
   // Check mode
-  if (query_type_ != QueryType::READ)
+  if (query_type_ != QueryType::READ) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get number of metadata; Array was "
                           "not opened in read mode"));
+  }
 
   // Load array metadata, if not loaded yet
-  if (!metadata_loaded_)
+  if (!metadata_loaded_) {
     RETURN_NOT_OK(load_metadata());
+  }
 
   *num = metadata_.num();
 
@@ -778,24 +957,28 @@ Status Array::get_metadata_num(uint64_t* num) {
 Status Array::has_metadata_key(
     const char* key, Datatype* value_type, bool* has_key) {
   // Check if array is open
-  if (!is_open_)
+  if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get metadata; Array is not open"));
+  }
 
   // Check mode
-  if (query_type_ != QueryType::READ)
+  if (query_type_ != QueryType::READ) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get metadata; Array was "
                           "not opened in read mode"));
+  }
 
   // Check if key is null
-  if (key == nullptr)
+  if (key == nullptr) {
     return LOG_STATUS(
         Status_ArrayError("Cannot get metadata; Key cannot be null"));
+  }
 
   // Load array metadata, if not loaded yet
-  if (!metadata_loaded_)
+  if (!metadata_loaded_) {
     RETURN_NOT_OK(load_metadata());
+  }
 
   RETURN_NOT_OK(metadata_.has_key(key, value_type, has_key));
 
@@ -808,12 +991,17 @@ Metadata* Array::unsafe_metadata() {
 
 Status Array::metadata(Metadata** metadata) {
   // Load array metadata for array opened for reads, if not loaded yet
-  if (query_type_ == QueryType::READ && !metadata_loaded_)
+  if (query_type_ == QueryType::READ && !metadata_loaded_) {
     RETURN_NOT_OK(load_metadata());
+  }
 
   *metadata = &metadata_;
 
   return Status::Ok();
+}
+
+NDRange* Array::loaded_non_empty_domain() {
+  return &non_empty_domain_;
 }
 
 tuple<Status, optional<const NDRange>> Array::non_empty_domain() {
@@ -821,6 +1009,7 @@ tuple<Status, optional<const NDRange>> Array::non_empty_domain() {
     // Compute non-empty domain
     RETURN_NOT_OK_TUPLE(compute_non_empty_domain(), nullopt);
   }
+
   return {Status::Ok(), non_empty_domain_};
 }
 
@@ -930,23 +1119,27 @@ Status Array::compute_max_buffer_sizes(
         buffer_sizes) const {
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
+    if (rest_client == nullptr) {
       return LOG_STATUS(Status_ArrayError(
           "Cannot get max buffer sizes; remote array with no REST client."));
+    }
+
     return rest_client->get_array_max_buffer_sizes(
         array_uri_, *(array_schema_latest_.get()), subarray, buffer_sizes);
   }
 
   // Return if there are no metadata
-  if (fragment_metadata_.empty())
+  if (fragment_metadata_.empty()) {
     return Status::Ok();
+  }
 
   // First we calculate a rough upper bound. Especially for dense
   // arrays, this will not be accurate, as it accounts only for the
   // non-empty regions of the subarray.
-  for (auto& meta : fragment_metadata_)
+  for (auto& meta : fragment_metadata_) {
     RETURN_NOT_OK(
         meta->add_max_buffer_sizes(*encryption_key_, subarray, buffer_sizes));
+  }
 
   // Prepare an NDRange for the subarray
   auto dim_num = array_schema_latest_->dim_num();
@@ -991,8 +1184,9 @@ Status Array::compute_max_buffer_sizes(
           uint64_t new_size =
               cell_num * array_schema_latest_->cell_size(it.first);
           if (new_size / array_schema_latest_->cell_size((it.first)) !=
-              cell_num)
+              cell_num) {
             continue;
+          }
 
           // Potentially rectify size
           it.second.first = std::min(it.second.first, new_size);
@@ -1007,9 +1201,10 @@ Status Array::compute_max_buffer_sizes(
 Status Array::load_metadata() {
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
+    if (rest_client == nullptr) {
       return LOG_STATUS(Status_ArrayError(
           "Cannot load metadata; remote array with no REST client."));
+    }
     RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
         array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
   } else {
@@ -1024,9 +1219,10 @@ Status Array::load_metadata() {
 Status Array::load_remote_non_empty_domain() {
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
+    if (rest_client == nullptr) {
       return LOG_STATUS(Status_ArrayError(
           "Cannot load metadata; remote array with no REST client."));
+    }
     RETURN_NOT_OK(rest_client->get_array_non_empty_domain(
         this, timestamp_start_, timestamp_end_opened_at_));
     non_empty_domain_computed_ = true;
@@ -1049,10 +1245,10 @@ Status Array::compute_non_empty_domain() {
       // corruption or other out-of-band activity can cause the fragment to be
       // corrupt for these cases we want to check to prevent any segfaults
       // later.
-      if (!meta_dom.empty())
+      if (!meta_dom.empty()) {
         array_schema_latest_->domain().expand_ndrange(
             meta_dom, &non_empty_domain_);
-      else {
+      } else {
         // If the fragment's non-empty domain is indeed empty, lets log it so
         // the user gets a message warning that this fragment might be corrupt
         // Note: LOG_STATUS only prints if TileDB is built in verbose mode.
@@ -1066,19 +1262,88 @@ Status Array::compute_non_empty_domain() {
   return Status::Ok();
 }
 
-bool Array::consolidation_with_timestamps_config_enabled() const {
+void Array::set_array_open(const QueryType& query_type) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  if (is_opening_or_closing_) {
+    is_opening_or_closing_ = false;
+    throw std::runtime_error(
+        "[Array::set_array_open] "
+        "May not perform simultaneous open or close operations.");
+  }
+  is_opening_or_closing_ = true;
+  /**
+   * Note: there is no danger in passing *this here;
+   * only the pointer value is used and nothing is called on the Array objects.
+   */
+  consistency_sentry_.emplace(
+      consistency_controller_.make_sentry(array_uri_, *this, query_type));
+  is_open_ = true;
+}
+
+void Array::set_array_closed() {
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  /* Note: if the opening process is interrupted, the array must be closed. */
+  if (is_opening_or_closing_) {
+    is_opening_or_closing_ = false;
+    if (!is_open_) {
+      throw std::runtime_error(
+          "[Array::set_array_closed] "
+          "May not perform simultaneous open or close operations.");
+    }
+  } else {
+    is_opening_or_closing_ = true;
+  }
+
+  /* Note: the Sentry object will also be released upon Array destruction. */
+  consistency_sentry_.reset();
+  is_open_ = false;
+}
+
+bool Array::use_refactored_array_open() const {
   auto found = false;
-  auto consolidation_with_timestamps = false;
+  auto refactored_array_open = false;
   auto status = config_.get<bool>(
-      "sm.consolidation.with_timestamps",
-      &consolidation_with_timestamps,
+      "rest.use_refactored_array_open", &refactored_array_open, &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get use_refactored_array_open configuration option from "
+        "config");
+  }
+
+  return refactored_array_open;
+}
+
+bool Array::serialize_non_empty_domain() const {
+  auto found = false;
+  auto serialize_ned_array_open = false;
+  auto status = config_.get<bool>(
+      "rest.load_non_empty_domain_on_array_open",
+      &serialize_ned_array_open,
       &found);
   if (!status.ok() || !found) {
     throw std::runtime_error(
-        "Cannot get with_timestamps configuration option from config");
+        "Cannot get rest.load_non_empty_domain_on_array_open configuration "
+        "option from config");
   }
 
-  return consolidation_with_timestamps;
+  return serialize_ned_array_open;
+}
+
+bool Array::serialize_metadata() const {
+  auto found = false;
+  auto serialize_metadata_array_open = false;
+  auto status = config_.get<bool>(
+      "rest.load_metadata_on_array_open",
+      &serialize_metadata_array_open,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get rest.load_metadata_on_array_open configuration option from "
+        "config");
+  }
+
+  return serialize_metadata_array_open;
 }
 }  // namespace sm
 }  // namespace tiledb

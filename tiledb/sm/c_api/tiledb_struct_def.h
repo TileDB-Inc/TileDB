@@ -34,6 +34,7 @@
 #ifndef TILEDB_C_API_STRUCT_DEF_H
 #define TILEDB_C_API_STRUCT_DEF_H
 
+#include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
@@ -47,6 +48,7 @@
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
@@ -77,10 +79,6 @@ struct tiledb_config_iter_t {
   tiledb::sm::ConfigIter* config_iter_ = nullptr;
 };
 
-struct tiledb_ctx_t {
-  tiledb::sm::Context* ctx_ = nullptr;
-};
-
 struct tiledb_error_t {
   std::string errmsg_;
 };
@@ -103,10 +101,6 @@ struct tiledb_dimension_t {
 
 struct tiledb_domain_t {
   tiledb::sm::Domain* domain_ = nullptr;
-};
-
-struct tiledb_filter_t {
-  tiledb::sm::Filter* filter_ = nullptr;
 };
 
 struct tiledb_filter_list_t {

@@ -55,12 +55,30 @@ enum class SerializationType : uint8_t;
 namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
+/**
+ * Serialize a filter to cap'n proto object
+ *
+ * @param filter Filter to serialize.
+ * @param filter_builder Cap'n proto class.
+ * @return Status
+ */
+Status filter_to_capnp(
+    const Filter* filter, capnp::Filter::Builder* filter_builder);
+
+/**
+ * Deserialize a filter from a cap'n proto object
+ *
+ * @param filter_reader Cap'n proto object
+ * @return Status
+ */
+tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
+    const capnp::Filter::Reader& filter_reader);
 
 /**
  * Serialize an array schema to cap'n proto object
  *
  * @param array_schema Array schema to serialize
- * @param array_schema_builder Cap' proto class
+ * @param array_schema_builder Cap'n proto class
  * @param client_side unused
  * @return Status
  */
@@ -73,12 +91,11 @@ Status array_schema_to_capnp(
  * Deserialize an array schema from a cap'n proto object
  *
  * @param schema_reader Cap'n proto object
- * @param array_schema array schema to deserialize to
- * @return Status
+ * @param uri A URI object
+ * @return a new ArraySchema
  */
-Status array_schema_from_capnp(
-    const capnp::ArraySchema::Reader& schema_reader,
-    tdb_unique_ptr<ArraySchema>* array_schema);
+ArraySchema array_schema_from_capnp(
+    const capnp::ArraySchema::Reader& schema_reader, const URI& uri);
 
 #endif  // TILEDB_SERIALIZATION
 
@@ -97,7 +114,7 @@ Status array_schema_serialize(
     Buffer* serialized_buffer,
     const bool client_side);
 
-tuple<Status, optional<shared_ptr<ArraySchema>>> array_schema_deserialize(
+ArraySchema array_schema_deserialize(
     SerializationType serialize_type, const Buffer& serialized_buffer);
 
 Status nonempty_domain_serialize(

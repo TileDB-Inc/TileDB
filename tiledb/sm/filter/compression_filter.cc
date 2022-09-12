@@ -458,10 +458,6 @@ CompressionFilter::create_input_view(
 }
 
 uint8_t CompressionFilter::compute_bytesize(uint64_t param_length) {
-  if (param_length == 0) {
-    throw std::logic_error("Cannot compute bytesize for zero length");
-  }
-
   if (param_length <= std::numeric_limits<uint8_t>::max()) {
     return 1;
   } else if (param_length <= std::numeric_limits<uint16_t>::max()) {
@@ -644,15 +640,13 @@ uint64_t CompressionFilter::overhead(const Tile& tile, uint64_t nbytes) const {
   }
 }
 
-Status CompressionFilter::serialize_impl(Buffer* buff) const {
+void CompressionFilter::serialize_impl(Serializer& serializer) const {
   if (compressor_ == Compressor::NO_COMPRESSION) {
-    return Status::Ok();
+    return;
   }
   auto compressor_char = static_cast<uint8_t>(compressor_);
-  RETURN_NOT_OK(buff->write(&compressor_char, sizeof(uint8_t)));
-  RETURN_NOT_OK(buff->write(&level_, sizeof(int32_t)));
-
-  return Status::Ok();
+  serializer.write<uint8_t>(compressor_char);
+  serializer.write<int32_t>(level_);
 }
 
 void CompressionFilter::init_compression_resource_pool(uint64_t size) {

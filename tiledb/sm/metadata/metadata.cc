@@ -45,6 +45,11 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+/** Return a Metadata error class Status with a given message **/
+inline Status Status_MetadataError(const std::string& msg) {
+  return {"[TileDB::Metadata] Error", msg};
+}
+
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -115,11 +120,11 @@ Status Metadata::generate_uri(const URI& array_uri) {
   return Status::Ok();
 }
 
-tuple<Status, optional<shared_ptr<Metadata>>> Metadata::deserialize(
+Metadata Metadata::deserialize(
     const std::vector<shared_ptr<Buffer>>& metadata_buffs) {
-  std::map<std::string, MetadataValue> metadata_map;
   if (metadata_buffs.empty())
-    return {Status::Ok(), make_shared<Metadata>(HERE())};
+    return Metadata();
+  std::map<std::string, MetadataValue> metadata_map;
 
   Status st;
   uint32_t key_len;
@@ -129,10 +134,10 @@ tuple<Status, optional<shared_ptr<Metadata>>> Metadata::deserialize(
     // Iterate over all items
     buff->reset_offset();
     while (buff->offset() != buff->size()) {
-      RETURN_NOT_OK_TUPLE(buff->read(&key_len, sizeof(uint32_t)), nullopt);
+      throw_if_not_ok(buff->read(&key_len, sizeof(uint32_t)));
       std::string key((const char*)buff->cur_data(), key_len);
       buff->advance_offset(key_len);
-      RETURN_NOT_OK_TUPLE(buff->read(&del, sizeof(char)), nullopt);
+      throw_if_not_ok(buff->read(&del, sizeof(char)));
 
       metadata_map.erase(key);
 
@@ -142,17 +147,15 @@ tuple<Status, optional<shared_ptr<Metadata>>> Metadata::deserialize(
 
       MetadataValue value_struct;
       value_struct.del_ = del;
-      RETURN_NOT_OK_TUPLE(
-          buff->read(&value_struct.type_, sizeof(char)), nullopt);
-      RETURN_NOT_OK_TUPLE(
-          buff->read(&value_struct.num_, sizeof(uint32_t)), nullopt);
+      throw_if_not_ok(buff->read(&value_struct.type_, sizeof(char)));
+      throw_if_not_ok(buff->read(&value_struct.num_, sizeof(uint32_t)));
 
       if (value_struct.num_) {
         value_len = value_struct.num_ *
                     datatype_size(static_cast<Datatype>(value_struct.type_));
         value_struct.value_.resize(value_len);
-        RETURN_NOT_OK_TUPLE(
-            buff->read((void*)value_struct.value_.data(), value_len), nullopt);
+        throw_if_not_ok(
+            buff->read((void*)value_struct.value_.data(), value_len));
       }
 
       // Insert to metadata
@@ -160,7 +163,7 @@ tuple<Status, optional<shared_ptr<Metadata>>> Metadata::deserialize(
     }
   }
 
-  return {Status::Ok(), make_shared<Metadata>(HERE(), metadata_map)};
+  return Metadata(metadata_map);
 }
 
 Status Metadata::serialize(Buffer* buff) const {
@@ -197,6 +200,7 @@ Status Metadata::del(const char* key) {
   MetadataValue value;
   value.del_ = 1;
   metadata_map_.emplace(std::make_pair(std::string(key), std::move(value)));
+  build_metadata_index();
 
   return Status::Ok();
 }
@@ -226,6 +230,7 @@ Status Metadata::put(
   metadata_map_.erase(std::string(key));
   metadata_map_.emplace(
       std::make_pair(std::string(key), std::move(value_struct)));
+  build_metadata_index();
 
   return Status::Ok();
 }

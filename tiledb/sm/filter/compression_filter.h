@@ -148,7 +148,7 @@ class CompressionFilter : public Filter {
   int level_;
 
   /** The format version. */
-  int version_;
+  uint32_t version_;
 
   /** The default filter compression level. */
   static constexpr int default_level_ = -30000;
@@ -230,7 +230,7 @@ class CompressionFilter : public Filter {
   Status set_option_impl(FilterOption option, const void* value) override;
 
   /** Serializes this filter's metadata to the given buffer. */
-  Status serialize_impl(Buffer* buff) const override;
+  void serialize_impl(Serializer& serializer) const override;
 
   /** Initializes the compression resource pool */
   void init_compression_resource_pool(uint64_t size) override;

@@ -33,13 +33,13 @@
  * on the capi functionality.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
-#include "tiledb/sm/query/reader.h"
-#include "tiledb/sm/query/writer_base.h"
+#include "tiledb/sm/query/legacy/reader.h"
+#include "tiledb/sm/query/writers/writer_base.h"
 #include "tiledb/sm/serialization/query.h"
 
 #ifdef _WIN32

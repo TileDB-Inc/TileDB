@@ -35,8 +35,8 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query_buffer.h"
-#include "tiledb/sm/query/sparse_index_reader_base.h"
-#include "tiledb/sm/query/sparse_unordered_with_dups_reader.h"
+#include "tiledb/sm/query/readers/sparse_index_reader_base.h"
+#include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -44,7 +44,7 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 
 using namespace tiledb::sm;
 using namespace tiledb::test;
@@ -770,9 +770,9 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
-  // Two result tile (2 * ~505) will be bigger than the budget (800).
+  // Two result tile (2 * ~1208) will be bigger than the budget (1500).
   total_budget_ = "10000";
-  ratio_coords_ = "0.08";
+  ratio_coords_ = "0.15";
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -1094,8 +1094,8 @@ TEST_CASE_METHOD(
   CHECK(status == TILEDB_COMPLETED);
 
   // Should read last tile (1 value).
-  CHECK(4 == data_r_size);
-  CHECK(4 == coords_r_size);
+  CHECK(sizeof(int) == data_r_size);
+  CHECK(sizeof(int) == coords_r_size);
 
   int coords_c_3[] = {5};
   int data_c_3[] = {5};
@@ -1188,8 +1188,8 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Should read two tile (6 values).
-  CHECK(24 == data_r_size);
-  CHECK(24 == coords_r_size);
+  CHECK(6 * sizeof(int) == data_r_size);
+  CHECK(6 * sizeof(int) == coords_r_size);
 
   int coords_c[] = {1, 2, 3, 4, 5, 6};
   int data_c[] = {1, 2, 3, 4, 5, 6};
@@ -1245,8 +1245,8 @@ TEST_CASE_METHOD(
   CHECK(status == TILEDB_INCOMPLETE);
 
   // Should only read one cell (1 values).
-  CHECK(4 == data_r_size);
-  CHECK(4 == coords_r_size);
+  CHECK(sizeof(int) == data_r_size);
+  CHECK(sizeof(int) == coords_r_size);
 
   int coords_c_1[] = {1};
   int data_c_1[] = {1};
@@ -1262,8 +1262,8 @@ TEST_CASE_METHOD(
   CHECK(status == TILEDB_COMPLETED);
 
   // Should read last cell (1 values).
-  CHECK(4 == data_r_size);
-  CHECK(4 == coords_r_size);
+  CHECK(sizeof(int) == data_r_size);
+  CHECK(sizeof(int) == coords_r_size);
 
   int coords_c_2[] = {2};
   int data_c_2[] = {2};
@@ -1303,16 +1303,15 @@ TEST_CASE_METHOD(
   auto&& [array, fragments] = open_default_array_1d_with_fragments();
 
   // Make a vector of tiles.
-  ResultTileWithBitmap<uint64_t> result_tile(
-      0, 0, array->array_->array_schema_latest());
-  std::vector<ResultTileWithBitmap<uint64_t>> rt;
+  UnorderedWithDupsResultTile<uint64_t> result_tile(0, 0, *fragments[0]);
+  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
   rt.push_back(std::move(result_tile));
 
   SECTION("- No bitmap") {
   }
 
   SECTION("- With bitmap") {
-    rt[0].bitmap_.resize(5, 1);
+    rt[0].alloc_bitmap();
   }
 
   // Create the result_tiles pointer vector.
@@ -1371,12 +1370,10 @@ TEST_CASE_METHOD(
   auto&& [array, fragments] = open_default_array_1d_with_fragments();
 
   // Make a vector of tiles.
-  ResultTileWithBitmap<uint64_t> result_tile(
-      0, 0, array->array_->array_schema_latest());
-  std::vector<ResultTileWithBitmap<uint64_t>> rt;
+  UnorderedWithDupsResultTile<uint64_t> result_tile(0, 0, *fragments[0]);
+  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
   rt.push_back(std::move(result_tile));
-  rt[0].bitmap_.resize(5);
-  rt[0].bitmap_ = {0, 1, 2, 0, 2};
+  rt[0].bitmap() = {0, 1, 2, 0, 2};
 
   // Create the result_tiles pointer vector.
   std::vector<ResultTile*> result_tiles(rt.size());
@@ -1433,16 +1430,15 @@ TEST_CASE_METHOD(
   auto&& [array, fragments] = open_default_array_1d_with_fragments();
 
   // Make a vector of tiles.
-  ResultTileWithBitmap<uint64_t> result_tile(
-      0, 0, array->array_->array_schema_latest());
-  std::vector<ResultTileWithBitmap<uint64_t>> rt;
+  UnorderedWithDupsResultTile<uint64_t> result_tile(0, 0, *fragments[0]);
+  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
   rt.push_back(std::move(result_tile));
 
   SECTION("- No bitmap") {
   }
 
   SECTION("- With bitmap") {
-    rt[0].bitmap_.resize(5, 1);
+    rt[0].alloc_bitmap();
   }
 
   // Create the result_tiles pointer vector.

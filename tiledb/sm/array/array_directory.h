@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- This file defines class ArrayDirectory.
+ * This file defines class ArrayDirectory.
  */
 
 #ifndef TILEDB_ARRAY_DIRECTORY_H
@@ -37,6 +37,7 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <unordered_map>
 
@@ -67,7 +68,162 @@ class ArrayDirectory {
    */
   friend class WhiteboxArrayDirectory;
 
+  /**
+   * Class to return the URIs that need to be processed after the schema have
+   * been created.
+   */
+  class FilteredFragmentUris {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+
+    /**
+     * Constructor.
+     */
+    FilteredFragmentUris(
+        std::vector<URI> fragment_uris_to_vacuum,
+        std::vector<URI> commit_uris_to_vacuum,
+        std::vector<URI> commit_uris_to_ignore,
+        std::vector<URI> fragment_vac_uris_to_vacuum,
+        std::vector<TimestampedURI> fragment_uris)
+        : fragment_uris_to_vacuum_(fragment_uris_to_vacuum)
+        , commit_uris_to_vacuum_(commit_uris_to_vacuum)
+        , commit_uris_to_ignore_(commit_uris_to_ignore)
+        , fragment_vac_uris_to_vacuum_(fragment_vac_uris_to_vacuum)
+        , fragment_uris_(fragment_uris) {
+    }
+
+    /** Destructor. */
+    ~FilteredFragmentUris() = default;
+
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+
+    /** Returns the fragment URIs to vacuum. */
+    const std::vector<URI>& fragment_uris_to_vacuum() const {
+      return fragment_uris_to_vacuum_;
+    };
+
+    /** Returns the commit URIs to vacuum for fragment vacuuming. */
+    const std::vector<URI>& commit_uris_to_vacuum() const {
+      return commit_uris_to_vacuum_;
+    }
+
+    /** Returns the commit URIs to ignore for fragment vacuuming. */
+    const std::vector<URI>& commit_uris_to_ignore() const {
+      return commit_uris_to_ignore_;
+    };
+
+    /** Returns the vacuum file URIs to vacuum for fragments. */
+    const std::vector<URI>& fragment_vac_uris_to_vacuum() const {
+      return fragment_vac_uris_to_vacuum_;
+    };
+
+    /** Returns the filtered fragment URIs. */
+    const std::vector<TimestampedURI>& fragment_uris() const {
+      return fragment_uris_;
+    };
+
+   private:
+    /* ********************************* */
+    /*         PRIVATE ATTRIBUTES        */
+    /* ********************************* */
+
+    /** The fragment URIs to vacuum. */
+    std::vector<URI> fragment_uris_to_vacuum_;
+
+    /** The URIs of the commits files to vacuum. */
+    std::vector<URI> commit_uris_to_vacuum_;
+
+    /** The commit URIs to ignore after fragment vacuum. */
+    std::vector<URI> commit_uris_to_ignore_;
+
+    /** The URIs of the fragment vac files to vacuum. */
+    std::vector<URI> fragment_vac_uris_to_vacuum_;
+
+    /**
+     * The filtered fragment URIs, after removing the ones that
+     * need to be vacuum and those that do not fall inside range
+     * [`timestamp_start_`, `timestamp_end_`].
+     */
+    std::vector<TimestampedURI> fragment_uris_;
+  };
+
  public:
+  /**
+   * Class to return a location of a delete tile, which is file URI/offset.
+   */
+  class DeleteTileLocation {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+
+    /**
+     * Constructor.
+     */
+    DeleteTileLocation(
+        const URI& uri,
+        const std::string condition_marker,
+        const storage_size_t offset)
+        : uri_(uri)
+        , condition_marker_(condition_marker)
+        , offset_(offset) {
+      std::pair<uint64_t, uint64_t> timestamps;
+      if (!utils::parse::get_timestamp_range(URI(condition_marker), &timestamps)
+               .ok()) {
+        throw std::logic_error("Error parsing uri.");
+      }
+
+      timestamp_ = timestamps.first;
+    }
+
+    /** Destructor. */
+    ~DeleteTileLocation() = default;
+
+    bool operator<(const DeleteTileLocation& rhs) const {
+      return (timestamp_ < rhs.timestamp_);
+    }
+
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+    inline const URI& uri() const {
+      return uri_;
+    }
+
+    inline const std::string& condition_marker() const {
+      return condition_marker_;
+    }
+
+    inline uint64_t offset() const {
+      return offset_;
+    }
+
+    inline uint64_t timestamp() const {
+      return timestamp_;
+    }
+
+   private:
+    /* ********************************* */
+    /*         PRIVATE ATTRIBUTES        */
+    /* ********************************* */
+
+    /** The URIs of the file. */
+    URI uri_;
+
+    /** The condition marker. */
+    std::string condition_marker_;
+
+    /** The offset within the file. */
+    uint64_t offset_;
+
+    /** Stores the timestamp of the delete for sorting. */
+    uint64_t timestamp_;
+  };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -89,8 +245,6 @@ class ArrayDirectory {
    *     were created within timestamp range
    *    [`timestamp_start`, `timestamp_end`] will be considered when
    *     fetching URIs.
-   * @param consolidation_with_timestamps_config Ture if consolidation with
-   * timestamps is enabled in config, false if not enabled or not relevant
    * @param mode The mode to load the array directory in.
    */
   ArrayDirectory(
@@ -99,7 +253,6 @@ class ArrayDirectory {
       const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
-      bool consolidation_with_timestamps_config,
       ArrayDirectoryMode mode = ArrayDirectoryMode::READ);
 
   /** Destructor. */
@@ -136,23 +289,11 @@ class ArrayDirectory {
   /** Returns the filtered array metadata URIs. */
   const std::vector<TimestampedURI>& array_meta_uris() const;
 
-  /** Returns the fragment URIs to vacuum. */
-  const std::vector<URI>& fragment_uris_to_vacuum() const;
-
-  /** Returns the commit URIs to vacuum during fragment vacuuming. */
-  const std::vector<URI>& fragment_commit_uris_to_vacuum() const;
-
-  /** Returns the commit URIs to ignore for fragment vacuuming. */
-  const std::vector<URI>& commit_uris_to_ignore() const;
-
-  /** Returns the vacuum file URIs to vacuum for fragments. */
-  const std::vector<URI>& fragment_vac_uris_to_vacuum() const;
-
-  /** Returns the filtered fragment URIs. */
-  const std::vector<TimestampedURI>& fragment_uris() const;
-
   /** Returns the URIs of the consolidated fragment metadata files. */
   const std::vector<URI>& fragment_meta_uris() const;
+
+  /** Returns the location of delete tiles. */
+  const std::vector<DeleteTileLocation>& delete_tiles_location() const;
 
   /** Returns the URI to store fragments. */
   URI get_fragments_dir(uint32_t write_version) const;
@@ -167,7 +308,7 @@ class ArrayDirectory {
   tuple<Status, optional<URI>> get_commit_uri(const URI& fragment_uri) const;
 
   /** Returns the URI for a vacuum file. */
-  tuple<Status, optional<URI>> get_vaccum_uri(const URI& fragment_uri) const;
+  tuple<Status, optional<URI>> get_vacuum_uri(const URI& fragment_uri) const;
 
   /**
    * The new fragment name is computed
@@ -178,6 +319,9 @@ class ArrayDirectory {
 
   /** Returns `true` if `load` has been run. */
   bool loaded() const;
+
+  const FilteredFragmentUris filtered_fragment_uris(
+      const bool full_overlap_only) const;
 
  private:
   /* ********************************* */
@@ -192,6 +336,12 @@ class ArrayDirectory {
 
   /** A thread pool used for parallelism. */
   ThreadPool* tp_;
+
+  /** Fragment URIs. */
+  std::vector<URI> unfiltered_fragment_uris_;
+
+  /** Consolidated commit URI set. */
+  std::unordered_set<std::string> consolidated_commit_uris_set_;
 
   /** The URIs of all the array schema files. */
   std::vector<URI> array_schema_uris_;
@@ -221,24 +371,11 @@ class ArrayDirectory {
    */
   std::vector<TimestampedURI> array_meta_uris_;
 
-  /** The fragment URIs to vacuum. */
-  std::vector<URI> fragment_uris_to_vacuum_;
-
-  /** The commit URIs to ignore after fragment vacuum. */
-  std::vector<URI> commit_uris_to_ignore_;
-
-  /** The URIs of the fragment vac files to vacuum. */
-  std::vector<URI> fragment_vac_uris_to_vacuum_;
-
-  /**
-   * The filtered fragment URIs, after removing the ones that
-   * need to be vacuum and those that do not fall inside range
-   * [`timestamp_start_`, `timestamp_end_`].
-   */
-  std::vector<TimestampedURI> fragment_uris_;
-
   /** The URIs of the consolidated fragment metadata files. */
   std::vector<URI> fragment_meta_uris_;
+
+  /** The location of delete tiles. */
+  std::vector<DeleteTileLocation> delete_tiles_location_;
 
   /**
    * Only array fragments, metadata, etc. that
@@ -262,9 +399,6 @@ class ArrayDirectory {
   /** True if `load` has been run. */
   bool loaded_;
 
-  /** True if consolidation with timestamps is enabled in config */
-  bool consolidation_with_timestamps_config_;
-
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -285,8 +419,7 @@ class ArrayDirectory {
    * @return Status, vector of fragment URIs.
    */
   tuple<Status, optional<std::vector<URI>>> load_root_dir_uris_v1_v11(
-      const std::vector<URI>& root_dir_uris,
-      const std::unordered_set<std::string>& consolidated_uris_set);
+      const std::vector<URI>& root_dir_uris);
 
   /**
    * List the commits directory uris for v12 or higher.
@@ -302,8 +435,7 @@ class ArrayDirectory {
    */
   tuple<Status, optional<std::vector<URI>>> load_commits_dir_uris_v12_or_higher(
       const std::vector<URI>& commits_dir_uris,
-      const std::vector<URI>& consolidated_uris,
-      const std::unordered_set<std::string>& consolidated_uris_set);
+      const std::vector<URI>& consolidated_uris);
 
   /**
    * Loads the fragment metadata directory uris for v12 or higher.
@@ -345,8 +477,7 @@ class ArrayDirectory {
    * versions 1 to 11.
    */
   tuple<Status, optional<std::vector<URI>>> compute_fragment_uris_v1_v11(
-      const std::vector<URI>& array_dir_uris,
-      const std::unordered_set<std::string>& consolidated_uris_set) const;
+      const std::vector<URI>& array_dir_uris) const;
 
   /**
    * Computes the fragment meta URIs from the input array directory.
@@ -357,23 +488,28 @@ class ArrayDirectory {
   /**
    * Computes the fragment URIs and vacuum URIs to vacuum.
    *
+   * @param full_overlap_only Only enable full overlap.
    * @param uris The URIs to calculate the URIs to vacuum from.
    * @return Status, a vector of the URIs to vacuum, a vector of
    *     the vac file URIs to vacuum.
    */
   tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
-  compute_uris_to_vacuum(const std::vector<URI>& uris) const;
+  compute_uris_to_vacuum(
+      const bool full_overlap_only, const std::vector<URI>& uris) const;
 
   /**
    * Computes the filtered URIs based on the input, which fall
    * in the timestamp range [`timestamp_start_`, `timestamp_end_`].
    *
+   * @param full_overlap_only Only enable full overlap.
    * @param uris The URIs to filter.
    * @param to_ignore The URIs to ignore (because they are vacuumed).
    * @return Status, vector of filtered timestamped URIs.
    */
   tuple<Status, optional<std::vector<TimestampedURI>>> compute_filtered_uris(
-      const std::vector<URI>& uris, const std::vector<URI>& to_ignore) const;
+      const bool full_overlap_only,
+      const std::vector<URI>& uris,
+      const std::vector<URI>& to_ignore) const;
 
   /**
    * Computes and sets the final vector of array schema URIs, and the

@@ -233,6 +233,30 @@ TILEDB_EXPORT int32_t tiledb_array_upgrade_version(
 /* ********************************* */
 
 /**
+ * Adds a query update values to be applied on an update.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value = 5;
+ * tiledb_query_add_update_value(
+ *   ctx, query, "longitude", &value, sizeof(value), &update_value);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param field_name The attribute name.
+ * @param update_value The value to set.
+ * @param update_value_size The byte size of `update_value`.
+ */
+TILEDB_EXPORT int32_t tiledb_query_add_update_value(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size) TILEDB_NOEXCEPT;
+
+/**
  * Adds point ranges to the given dimension index of the subarray
  * Effectively `add_range(x_i, x_i)` for `count` points in the
  * target array, but set in bulk to amortize expensive steps.
@@ -275,12 +299,26 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_point_ranges(
     const void* start,
     uint64_t count) TILEDB_NOEXCEPT;
 
+/**
+ * Get the number of relevant fragments from the subarray. Should only be
+ * called after size estimation was asked for.
+ *
+ * @param ctx The TileDB context.
+ * @param query The query to get the data fron.
+ * @param relevant_fragment_num Variable to receive the number of relevant
+ * fragments.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note Should only be called after size estimation was run.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_relevant_fragment_num(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    uint64_t* relevant_fragment_num) TILEDB_NOEXCEPT;
+
 /* ********************************* */
 /*        QUERY STATUS DETAILS       */
 /* ********************************* */
-
-/** This should move to c_api/tiledb.h when stabilized */
-typedef struct tiledb_query_status_details_t tiledb_query_status_details_t;
 
 /** TileDB query status details type. */
 typedef enum {
@@ -291,9 +329,9 @@ typedef enum {
 } tiledb_query_status_details_reason_t;
 
 /** This should move to c_api/tiledb_struct_defs.h when stabilized */
-struct tiledb_query_status_details_t {
+typedef struct tiledb_experimental_query_status_details_t {
   tiledb_query_status_details_reason_t incomplete_reason;
-};
+} tiledb_query_status_details_t;
 
 /**
  * Get extended query status details.

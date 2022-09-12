@@ -151,18 +151,13 @@ Status ArrayMetaConsolidator::vacuum(const char* array_name) {
   // Get the array metadata URIs and vacuum file URIs to be vacuum
   auto vfs = storage_manager_->vfs();
   auto compute_tp = storage_manager_->compute_tp();
-  ArrayDirectory array_dir;
-  try {
-    array_dir = ArrayDirectory(
-        vfs,
-        compute_tp,
-        URI(array_name),
-        0,
-        std::numeric_limits<uint64_t>::max(),
-        false);
-  } catch (const std::logic_error& le) {
-    return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
-  }
+
+  auto array_dir = ArrayDirectory(
+      vfs,
+      compute_tp,
+      URI(array_name),
+      0,
+      std::numeric_limits<uint64_t>::max());
 
   const auto& array_meta_uris_to_vacuum = array_dir.array_meta_uris_to_vacuum();
   const auto& vac_uris_to_vacuum = array_dir.array_meta_vac_uris_to_vacuum();

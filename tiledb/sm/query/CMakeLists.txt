@@ -28,6 +28,7 @@ include(common NO_POLICY_SCOPE)
 
 if (TILEDB_TESTS)
     add_subdirectory(ast)
+    add_subdirectory(deletes_and_updates)
     add_executable(unit_query EXCLUDE_FROM_ALL)
 
     # Sources for tests

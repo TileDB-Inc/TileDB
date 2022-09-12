@@ -134,12 +134,11 @@ class Attribute {
   /**
    * Populates the object members from the data in the input binary buffer.
    *
-   * @param buff The buffer to deserialize from.
+   * @param deserializer The deserializer to deserialize from.
    * @param version The format spec version.
-   * @return Status and Attribute
+   * @return Attribute
    */
-  static tuple<Status, optional<Attribute>> deserialize(
-      ConstBuffer* buff, uint32_t version);
+  static Attribute deserialize(Deserializer& deserializer, uint32_t version);
 
   /** Dumps the attribute contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
@@ -153,11 +152,11 @@ class Attribute {
   /**
    * Serializes the object members into a binary buffer.
    *
-   * @param buff The buffer to serialize the data into.
+   * @param serializer The object the attribute is serialized into.
    * @param version The format spec version.
    * @return Status
    */
-  const Status serialize(Buffer* buff, uint32_t version) const;
+  void serialize(Serializer& serializer, uint32_t version) const;
 
   /**
    * Sets the attribute number of values per cell. Note that if the attribute

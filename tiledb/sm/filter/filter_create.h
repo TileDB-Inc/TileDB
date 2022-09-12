@@ -53,13 +53,13 @@ class FilterCreate {
   /**
    * Deserializes a new Filter instance from the data in the given buffer.
    *
-   * @param buff The buffer to deserialize from.
+   * @param deserializer The deserializer to deserialize from.
    * @param encryption_key.
    * @param version Array schema version
-   * @return Status and Filter
+   * @return Filter
    */
-  static tuple<Status, optional<shared_ptr<Filter>>> deserialize(
-      ConstBuffer* buff,
+  static shared_ptr<Filter> deserialize(
+      Deserializer& deserializer,
       const EncryptionKey& encryption_key,
       const uint32_t version);
 
@@ -68,10 +68,10 @@ class FilterCreate {
    *
    * @param buff The buffer to deserialize from.
    * @param version Array schema version
-   * @return Status and Filter
+   * @return Filter
    */
-  static tuple<Status, optional<shared_ptr<Filter>>> deserialize(
-      ConstBuffer* buff, const uint32_t version);
+  static shared_ptr<Filter> deserialize(
+      Deserializer& deserializer, const uint32_t version);
 };
 
 }  // namespace tiledb::sm

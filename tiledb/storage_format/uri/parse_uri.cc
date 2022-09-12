@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/storage_format/parse_uri.cc
+ * @file tiledb/sm/storage_format/uri/parse_uri.cc
  *
  * @section LICENSE
  *
@@ -87,7 +87,8 @@ Status get_fragment_name_version(const std::string& name, uint32_t* version) {
     // version is greater than or equal to 10, we have a footer version of 5.
     // version is greater than or equal to 7, we have a footer version of 4.
     // Otherwise, it is version 3.
-    const int frag_version = std::stoi(name.substr(name.find_last_of('_') + 1));
+    const uint32_t frag_version =
+        std::stoul(name.substr(name.find_last_of('_') + 1));
     if (frag_version >= 10)
       *version = 5;
     else if (frag_version >= 7)
@@ -118,6 +119,18 @@ Status get_fragment_version(const std::string& name, uint32_t* version) {
   }
 
   return Status::Ok();
+}
+
+bool is_element_of(const URI uri, const URI intersecting_uri) {
+  std::string prefix = uri.to_string().substr(
+      0, std::string(uri.c_str()).size() - (uri.last_path_part()).size());
+
+  std::string intersecting_prefix = intersecting_uri.to_string().substr(
+      0,
+      std::string(intersecting_uri.c_str()).size() -
+          (intersecting_uri.last_path_part()).size());
+
+  return (prefix == intersecting_prefix);
 }
 
 }  // namespace tiledb::sm::utils::parse

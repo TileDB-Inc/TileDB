@@ -30,7 +30,7 @@
  * Tests the C API consolidation.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "test/src/helpers.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -4720,6 +4720,17 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
+  // Test purge deleted cells
+  rc = tiledb_config_set(
+      config, "sm.consolidation.purge_deleted_cells", "1", &error);
+  REQUIRE(rc == TILEDB_ERR);
+  REQUIRE(error != nullptr);
+  tiledb_error_free(&error);
+  rc = tiledb_config_set(
+      config, "sm.consolidation.purge_deleted_cells", "true", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
   // Test min frags
   rc = tiledb_config_set(
       config, "sm.consolidation.step_min_frags", "-1", &error);
@@ -6737,6 +6748,10 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse, commits, mixed versions",
     "[capi][consolidation][commits][mixed-versions]") {
+  if constexpr (is_experimental_build) {
+    return;
+  }
+
   remove_sparse_array();
 
   // Get the v11 sparse array.
@@ -6940,4 +6955,30 @@ TEST_CASE_METHOD(
 
   // Clean up
   remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidation, empty array",
+    "[capi][consolidation][empty]") {
+  auto sparse = GENERATE(true, false);
+  auto mode = GENERATE(
+      std::string("commits"),
+      std::string("fragment_meta"),
+      std::string("fragments"),
+      std::string("array_meta"));
+
+  if (sparse) {
+    remove_sparse_array();
+    create_sparse_array();
+    consolidate_sparse(mode);
+    vacuum_sparse(mode);
+    remove_sparse_array();
+  } else {
+    remove_dense_array();
+    create_dense_array();
+    consolidate_dense(mode);
+    vacuum_dense(mode);
+    remove_dense_array();
+  }
 }

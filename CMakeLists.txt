@@ -124,7 +124,9 @@ option(TILEDB_TOOLS "If true, enables building the TileDB tools" OFF)
 option(TILEDB_SERIALIZATION "If true, enables building with support for query serialization" OFF)
 option(TILEDB_CCACHE "If true, enables use of 'ccache' (if present)" OFF)
 option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit tests" OFF)
+option(TILEDB_CRC32 "If true, enables building crc32 and a simple linkage test" OFF)
 option(TILEDB_WEBP "If true, enables building webp and a simple linkage test" OFF)
+option(TILEDB_ABSEIL "If true, enables building abseil and a simple linkage test" OFF)
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
 option(TILEDB_EXPERIMENTAL_FEATURES "If true, build and include experimental features" OFF)
@@ -146,7 +148,7 @@ if (WIN32 AND NOT TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK)
 endif()
 
 # enable assertions by default for debug builds
-if (CMAKE_BUILD_TYPE EQUAL "Debug")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(TILEDB_ASSERTIONS TRUE)
 endif()
 include(TileDBAssertions)
@@ -204,6 +206,8 @@ set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 
 # Set compiler flags
 if (MSVC)
+  # Turn on standards-conformance mode
+  add_compile_options("/permissive-")
   # We disable some warnings that are not present in gcc/clang -Wall:
   #   C4101: unreferenced local variable
   #   C4146: unary minus operator applied to unsigned type
@@ -213,12 +217,18 @@ if (MSVC)
   #   C4457: local variable hiding function parameter
   #   C4702: unreachable code
   #   C4800: warning implicit cast int to bool
-  #   C4996: deprecation warning about e.g. sscanf.
-  add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800 /wd4996)
+  add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800)
   # Warnings as errors:
   if (TILEDB_WERROR)
     add_compile_options(/WX)
   endif()
+  # Turn off MSVC deprecation of certain standard library functions. This allows
+  # other deprecations to remain visible.
+  add_compile_definitions("_CRT_SECURE_NO_WARNINGS")
+  # We currently need to suppress warnings about deprecation (C4996) for two cases:
+  #   1. C++ API functions that call deprecated C API functions
+  #   2. two warnings in `test/src/helpers.cc` that call deprecated C API functions
+  add_compile_options(/wd4996)
   # Disable GDI (which we don't need, and causes some macro
   # re-definition issues if wingdi.h is included)
   add_compile_options(/DNOGDI)
@@ -262,6 +272,136 @@ if (COMPILER_SUPPORTS_AVX2)
   add_compile_options(${COMPILER_AVX2_FLAG})
 endif()
 
+#######################################################
+# Header Files
+#######################################################
+#
+# Legacy headers: All headers for both C and C++ API in a single directory.
+#
+# Public header structure. Users of the library see this view. External source
+# code uses these names; they should be considered unchangeable.
+# - `<root>/`
+#     `tiledb/`
+#       - C API headers
+#         `tiledb.h`
+#         `tiledb_experimental.h`
+#          other `tiledb_*.h`
+#       - C++ API headers
+#         `tiledb`
+#         `tiledb_experimental`
+#          other `tiledb_*`
+#
+# Headers assume `-I<root>`. To wit, for the C API use this:
+# ```C
+# #include <tiledb/tiledb.h>
+# ```
+# For the C++ API use this:
+# ```C++
+# #include <tiledb/tiledb>
+# ```
+
+# Private header structure. The compiler of a user program sees this view. Only
+# TileDB source uses these names. They can be changed at will, but installation
+# will also have to changed, as may other aspects of the build.
+# - `<root>/`
+#     `tiledb/`
+#         `api/`
+#             `c_api/`
+#                 `api_external_common.h`
+#                 `tiledb_export.h` (auto-generated)
+#                 `<section>/` (multiple)
+#                     `<section>_api_external.h`
+
+##################################
+# C API include files
+##################################
+#
+# FILENAME headers are copied only as their file name to ${INCLUDE_BASE}/tiledb
+# RELATIVE headers are copied as their path from RELATIVE_HEADER_BASE to ${INCLUDE_BASE}
+# In all cases the included path begins with `tiledb/`
+# The export header is handled separatedly below.
+
+list(APPEND TILEDB_C_API_FILENAME_HEADERS
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_experimental.h"
+)
+list(APPEND TILEDB_C_API_RELATIVE_HEADERS
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/context/context_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_external.h"
+)
+set(TILEDB_C_API_RELATIVE_HEADER_BASE "${CMAKE_CURRENT_SOURCE_DIR}")
+
+##################################
+# Export Header
+##################################
+# The export header is automatically generated later in the build (using the
+# main library target). When installed, it's in the same directory as the
+# compiler-visible, interface-hidden header `api_external_common.h`.
+
+set(TILEDB_EXPORT_HEADER_DIR "${CMAKE_BINARY_DIR}/tiledb")
+set(TILEDB_EXPORT_HEADER_NAME "tiledb_export.h")
+set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER_DIR}/${TILEDB_EXPORT_HEADER_NAME}")
+set(TILEDB_EXPORT_HEADER_LOCALINSTALL_PATH "tiledb/api/c_api/${TILEDB_EXPORT_HEADER_NAME}")
+
+##################################
+# Local install
+##################################
+#
+# User code within this project requires manual installation that mimics a
+# an installation from a distribution artifact. It's required by examples,
+# integration tests, and regression tests.
+#
+# Caveat: The "installation" is done at _configuration_ time, not at _build_ time.
+# This is a side-effect of using `configure_file`. It's not necessary and it may
+# be desirable to change it to operate at build time in the future.
+
+set(TILEDB_LOCALINSTALL_DIR "${CMAKE_BINARY_DIR}/dist-in-build")
+set(TILEDB_LOCALINSTALL_INCLUDE "${TILEDB_LOCALINSTALL_DIR}/include")
+
+#####################
+# C API
+#####################
+foreach(HEADER ${TILEDB_C_API_FILENAME_HEADERS})
+  cmake_path(GET HEADER FILENAME HEADER_STRIPPED)
+  configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/tiledb/${HEADER_STRIPPED} COPYONLY)
+endforeach()
+foreach(HEADER ${TILEDB_C_API_RELATIVE_HEADERS})
+  cmake_path(RELATIVE_PATH HEADER
+      BASE_DIRECTORY ${TILEDB_C_API_RELATIVE_HEADER_BASE}
+      OUTPUT_VARIABLE HEADER_STRIPPED
+      )
+  configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/${HEADER_STRIPPED} COPYONLY)
+endforeach()
+# `configure_file` for the export header happens after it's been generated
+
+
+#####################
+# C++ API
+#####################
+file(GLOB TILEDB_CPP_HEADERS
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/*.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/tiledb"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/tiledb_experimental"
+    )
+foreach(HEADER ${TILEDB_CPP_HEADERS})
+  string(REGEX
+      REPLACE "^${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/" ""
+      HEADER_STRIPPED ${HEADER}
+      )
+  configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/tiledb/${HEADER_STRIPPED} COPYONLY)
+endforeach()
+
+#####################
+# Interface library
+#####################
+add_library(local_install INTERFACE)
+target_include_directories(local_install INTERFACE ${TILEDB_LOCALINSTALL_INCLUDE})
 
 ############################################################
 # Enable testing and add subdirectories
@@ -269,6 +409,9 @@ endif()
 
 # Enable testing
 enable_testing()
+
+# Aggregate all link-completeness targets
+add_custom_target(all_link_complete)
 
 # Build the TileDB library experimental features
 add_subdirectory(experimental)
@@ -288,14 +431,28 @@ if (TILEDB_TESTS)
   add_dependencies(tests tiledb_unit)
 
   add_dependencies(tests unit_buffer unit_datum unit_dynamic_memory)
-  add_dependencies(tests unit_exception unit_interval unit_thread_pool)
+  add_dependencies(tests unit_exception unit_interval unit_thread_pool unit_experimental)
   add_dependencies(tests unit_array_schema unit_filter_create unit_filter_pipeline unit_metadata)
   add_dependencies(tests unit_compressors unit_query unit_misc unit_vfs unit_array)
+  add_dependencies(tests unit_config)
   add_dependencies(tests unit_range_subset)
+  add_dependencies(tests unit_consistency)
   add_dependencies(tests unit_range)
+  add_dependencies(tests unit_capi_handle unit_capi_filter)
+  add_dependencies(tests unit_delete_update_condition)
+  add_dependencies(tests unit_ast)
+  add_dependencies(tests unit_serializers)
+
+  if (TILEDB_CRC32)
+    add_dependencies(tests unit_link_crc32)
+  endif()
 
   if (TILEDB_WEBP)
     add_dependencies(tests unit_link_webp)
+  endif()
+
+  if (TILEDB_ABSEIL)
+    add_dependencies(tests unit_link_absl)
   endif()
 
   if (ENABLE_MAGIC_TEST)

@@ -40,9 +40,9 @@
 
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
-#include "tiledb/sm/query/domain_buffer.h"
-#include "tiledb/sm/query/result_coords.h"
-#include "tiledb/sm/query/sparse_global_order_reader.h"
+#include "tiledb/sm/query/readers/result_coords.h"
+#include "tiledb/sm/query/readers/sparse_global_order_reader.h"
+#include "tiledb/sm/query/writers/domain_buffer.h"
 
 using namespace tiledb::common;
 
@@ -56,10 +56,21 @@ class CellCmpBase {
   /** The number of dimensions. */
   unsigned dim_num_;
 
+  /** Use timestamps or not during comparison. */
+  bool use_timestamps_;
+
+  /** Pointer to access fragment metadata. */
+  const std::vector<shared_ptr<FragmentMetadata>>* frag_md_;
+
  public:
-  explicit CellCmpBase(const Domain& domain)
+  explicit CellCmpBase(
+      const Domain& domain,
+      const bool use_timestamps = false,
+      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
       : domain_(domain)
-      , dim_num_(domain.dim_num()) {
+      , dim_num_(domain.dim_num())
+      , use_timestamps_(use_timestamps)
+      , frag_md_(frag_md) {
   }
 
   template <class RCType>
@@ -69,6 +80,20 @@ class CellCmpBase {
     auto v1{a.dimension_datum(dim, d)};
     auto v2{b.dimension_datum(dim, d)};
     return domain_.cell_order_cmp(d, v1, v2);
+  }
+
+  template <class RCType>
+  uint64_t get_timestamp(const RCType& rc) const {
+    const auto f = rc.tile_->frag_idx();
+    if ((*frag_md_)[f]->has_timestamps()) {
+      return rc.tile_->timestamp(rc.pos_);
+    } else {
+      return (*frag_md_)[f]->timestamp_range().first;
+    }
+  }
+
+  inline void use_timestamps(bool enable) {
+    use_timestamps_ = enable;
   }
 };
 
@@ -136,11 +161,14 @@ class ColCmp : CellCmpBase {
 };
 
 /** Wrapper of comparison function for sorting coords on Hilbert values. */
-class HilbertCmp : protected CellCmpBase {
+class HilbertCmp : public CellCmpBase {
  public:
   /** Constructor. */
-  HilbertCmp(const Domain& domain)
-      : CellCmpBase(domain) {
+  HilbertCmp(
+      const Domain& domain,
+      const bool use_timestamps = false,
+      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
+      : CellCmpBase(domain, use_timestamps, frag_md) {
   }
 
   /**
@@ -172,6 +200,11 @@ class HilbertCmp : protected CellCmpBase {
       // else same tile on dimension d --> continue
     }
 
+    // Compare timestamps
+    if (use_timestamps_ && get_timestamp(a) > get_timestamp(b)) {
+      return true;
+    }
+
     return false;
   }
 };
@@ -186,9 +219,14 @@ class HilbertCmpReverse {
    * Constructor.
    *
    * @param domain The array domain.
+   * @param use_timestamps Use timestamps or not for this comparator.
+   * @param frag_md Pointer to the fragment metadata.
    */
-  HilbertCmpReverse(const Domain& domain)
-      : cmp_(domain) {
+  HilbertCmpReverse(
+      const Domain& domain,
+      const bool use_timestamps = false,
+      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
+      : cmp_(domain, use_timestamps, frag_md) {
   }
 
   /**
@@ -201,6 +239,10 @@ class HilbertCmpReverse {
   template <class RCType>
   bool operator()(const RCType& a, const RCType& b) const {
     return !cmp_.operator()(a, b);
+  }
+
+  inline void use_timestamps(bool enable) {
+    cmp_.use_timestamps(enable);
   }
 
  private:
@@ -264,17 +306,19 @@ class HilbertCmpRCI : protected CellCmpBase {
  * Wrapper of comparison function for sorting coords on the global order
  * of some domain.
  */
-class GlobalCmp : protected CellCmpBase {
+class GlobalCmp : public CellCmpBase {
  public:
   /**
    * Constructor.
    *
    * @param domain The array domain.
-   * @param buff The buffer containing the actual values, used
-   *     in positional comparisons.
+   * @param frag_md Pointer to the fragment metadata.
    */
-  explicit GlobalCmp(const Domain& domain)
-      : CellCmpBase(domain) {
+  explicit GlobalCmp(
+      const Domain& domain,
+      const bool use_timestamps = false,
+      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
+      : CellCmpBase(domain, use_timestamps, frag_md) {
     tile_order_ = domain.tile_order();
     cell_order_ = domain.cell_order();
   }
@@ -343,6 +387,11 @@ class GlobalCmp : protected CellCmpBase {
       }
     }
 
+    // Compare timestamps
+    if (use_timestamps_ && get_timestamp(a) > get_timestamp(b)) {
+      return true;
+    }
+
     return false;
   }
 
@@ -363,11 +412,14 @@ class GlobalCmpReverse {
    * Constructor.
    *
    * @param domain The array domain.
-   * @param buff The buffer containing the actual values, used
-   *     in positional comparisons.
+   * @param use_timestamps Use timestamps or not for this comparator.
+   * @param frag_md Pointer to the fragment metadata.
    */
-  explicit GlobalCmpReverse(const Domain& domain)
-      : cmp_(domain) {
+  explicit GlobalCmpReverse(
+      const Domain& domain,
+      const bool use_timestamps = false,
+      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
+      : cmp_(domain, use_timestamps, frag_md) {
   }
 
   /**
@@ -380,6 +432,10 @@ class GlobalCmpReverse {
   template <class RCType>
   bool operator()(const RCType& a, const RCType& b) const {
     return !cmp_.operator()(a, b);
+  }
+
+  inline void use_timestamps(bool enable) {
+    cmp_.use_timestamps(enable);
   }
 
  private:

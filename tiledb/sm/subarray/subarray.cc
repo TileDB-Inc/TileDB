@@ -42,6 +42,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -52,7 +53,7 @@
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
-#include "tiledb/sm/query/sparse_index_reader_base.h"
+#include "tiledb/sm/query/readers/sparse_index_reader_base.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -113,9 +114,10 @@ Subarray::Subarray(
     , est_result_size_computed_(false)
     , coalesce_ranges_(coalesce_ranges)
     , ranges_sorted_(false) {
-  if (!parent_stats && !storage_manager)
+  if (!parent_stats && !storage_manager) {
     throw std::runtime_error(
         "Subarray(): missing parent_stats requires live storage_manager!");
+  }
   add_default_ranges();
 }
 
@@ -153,12 +155,129 @@ Subarray& Subarray::operator=(Subarray&& subarray) noexcept {
 /*               API              */
 /* ****************************** */
 
+void Subarray::add_label_range(
+    const DimensionLabelReference& dim_label_ref,
+    Range&& range,
+    const bool read_range_oob_error) {
+  const auto dim_idx = dim_label_ref.dimension_id();
+  if (label_range_subset_[dim_idx].has_value()) {
+    // A label range has already been set on this dimension. Do the following:
+    //  * Check this label is the same label that rangers were already set.
+    if (dim_label_ref.name() != label_range_subset_[dim_idx].value().name) {
+      throw StatusException(Status_SubarrayError(
+          "Cannot add label range; Dimension is already to set to use "
+          "dimension label '" +
+          label_range_subset_[dim_idx].value().name));
+    }
+  } else {
+    // A label range has not yet been set on this dimension. Do the following:
+    //  * Verify no ranges explicitly set on the dimension.
+    //  * Construct LabelRangeSubset for this dimension label.
+    //  * Clear implicitly set range from the dimension ranges.
+    //  * Update is_default (tracks if the range on the dimension is the default
+    //    value of the entire domain).
+    if (range_subset_[dim_label_ref.dimension_id()]
+            .is_explicitly_initialized()) {
+      throw StatusException(Status_SubarrayError(
+          "Cannot add label range; Dimension '" + std::to_string(dim_idx) +
+          "' already has ranges set to it."));
+    }
+    label_range_subset_[dim_idx] =
+        LabelRangeSubset(dim_label_ref, coalesce_ranges_);
+    range_subset_[dim_label_ref.dimension_id()].clear();
+    is_default_[dim_idx] = false;  // Only need to clear default once.
+  }
+
+  // Must reset the result size and tile overlap
+  est_result_size_computed_ = false;
+  tile_overlap_.clear();
+
+  // Restrict the range to the dimension domain and add.
+  auto&& [error_status, oob_warning] =
+      label_range_subset_[dim_idx].value().ranges.add_range(
+          range, read_range_oob_error);
+  if (!error_status.ok()) {
+    throw StatusException(Status_SubarrayError(
+        "Cannot add label range for dimension label '" + dim_label_ref.name() +
+        "'; " + error_status.message()));
+  }
+  if (oob_warning.has_value()) {
+    LOG_WARN(
+        oob_warning.value() + " for dimension label '" + dim_label_ref.name() +
+        "'");
+  }
+}
+
+void Subarray::add_label_range(
+    const std::string& label_name,
+    const void* start,
+    const void* end,
+    const void* stride) {
+  // Check input range data is valid data.
+  if (start == nullptr || end == nullptr) {
+    throw StatusException(
+        Status_SubarrayError("Cannot add label range; Invalid range"));
+  }
+  if (stride != nullptr) {
+    throw StatusException(
+        Status_SubarrayError("Cannot add label range; Setting range stride is "
+                             "currently unsupported"));
+  }
+  // Get dimension label range and check the label is in fact fixed-sized.
+  const auto& dim_label_ref =
+      array_->array_schema_latest().dimension_label_reference(label_name);
+  if (dim_label_ref.label_cell_val_num() == constants::var_num) {
+    throw StatusException(
+        Status_SubarrayError("Cannot add label range; Cannot add a fixed-sized "
+                             "range to a variable sized dimension label"));
+  }
+  // Add the label range to this subarray.
+  return this->add_label_range(
+      dim_label_ref,
+      Range(start, end, datatype_size(dim_label_ref.label_type())),
+      err_on_range_oob_);
+}
+
+void Subarray::add_label_range_var(
+    const std::string& label_name,
+    const void* start,
+    uint64_t start_size,
+    const void* end,
+    uint64_t end_size) {
+  // Check the input range data is valid.
+  if ((start == nullptr && start_size != 0) ||
+      (end == nullptr && end_size != 0)) {
+    throw StatusException(
+        Status_SubarrayError("Cannot add range; Invalid range"));
+  }
+  // Get the dimension label range and check the label is in fact
+  // variable-sized.
+  const auto& dim_label_ref =
+      array_->array_schema_latest().dimension_label_reference(label_name);
+  if (dim_label_ref.label_cell_val_num() != constants::var_num) {
+    throw StatusException(Status_SubarrayError(
+        "Cannot add label range; Cannot add a variable-sized range to a "
+        "fixed-sized dimension label"));
+  }
+  // Add the label range to this subarray.
+  return this->add_label_range(
+      dim_label_ref,
+      Range(start, start_size, end, end_size),
+      err_on_range_oob_);
+}
+
 Status Subarray::add_range(
     uint32_t dim_idx, Range&& range, const bool read_range_oob_error) {
   auto dim_num = array_->array_schema_latest().dim_num();
-  if (dim_idx >= dim_num)
+  if (dim_idx >= dim_num) {
     return logger_->status(Status_SubarrayError(
         "Cannot add range to dimension; Invalid dimension index"));
+  }
+  if (label_range_subset_[dim_idx].has_value()) {
+    return logger_->status(Status_SubarrayError(
+        "Cannot add range to to dimension; A range is already set on a "
+        "dimension label for this dimension"));
+  }
 
   // Must reset the result size and tile overlap
   est_result_size_computed_ = false;
@@ -234,18 +353,26 @@ Status Subarray::add_range(
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
 
-  QueryType array_query_type;
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == tiledb::sm::QueryType::WRITE) {
+  QueryType array_query_type{array_->get_query_type()};
+  if (array_query_type == QueryType::WRITE ||
+      array_query_type == QueryType::MODIFY_EXCLUSIVE) {
     if (!array_->array_schema_latest().dense()) {
       return LOG_STATUS(Status_SubarrayError(
-          "Adding a subarray range to a write query is not "
+          "Adding a subarray range to a write or modify_exclusive query is not "
           "supported in sparse arrays"));
     }
-    if (this->is_set(dim_idx))
+    if (this->is_set(dim_idx)) {
       return LOG_STATUS(
           Status_SubarrayError("Cannot add range; Multi-range dense writes "
                                "are not supported"));
+    }
+  }
+
+  if (array_query_type != QueryType::READ &&
+      array_query_type != QueryType::WRITE &&
+      array_query_type != QueryType::MODIFY_EXCLUSIVE) {
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add range; Unsupported query type"));
   }
 
   if (start == nullptr || end == nullptr)
@@ -277,34 +404,45 @@ Status Subarray::add_range(
 
 Status Subarray::add_point_ranges(
     unsigned dim_idx, const void* start, uint64_t count) {
-  if (dim_idx >= this->array_->array_schema_latest().dim_num())
+  if (dim_idx >= this->array_->array_schema_latest().dim_num()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
+  }
 
-  QueryType array_query_type;
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == tiledb::sm::QueryType::WRITE) {
+  QueryType array_query_type{array_->get_query_type()};
+  if (array_query_type == QueryType::WRITE ||
+      array_query_type == QueryType::MODIFY_EXCLUSIVE) {
     if (!array_->array_schema_latest().dense()) {
       return LOG_STATUS(Status_SubarrayError(
-          "Adding a subarray range to a write query is not "
+          "Adding a subarray range to a write or modify_exclsuive query is not "
           "supported in sparse arrays"));
     }
-    if (this->is_set(dim_idx))
+    if (this->is_set(dim_idx)) {
       return LOG_STATUS(
           Status_SubarrayError("Cannot add range; Multi-range dense writes "
                                "are not supported"));
+    }
   }
 
-  if (start == nullptr)
+  if (array_query_type != QueryType::READ &&
+      array_query_type != QueryType::WRITE &&
+      array_query_type != QueryType::MODIFY_EXCLUSIVE) {
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add range; Unsupported query type"));
+  }
+
+  if (start == nullptr) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add ranges; Invalid start pointer"));
+  }
 
   if (this->array_->array_schema_latest()
           .domain()
           .dimension_ptr(dim_idx)
-          ->var_size())
+          ->var_size()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Range must be fixed-sized"));
+  }
 
   // Prepare a temp range
   std::vector<uint8_t> range;
@@ -346,36 +484,40 @@ Status Subarray::add_range_var(
     uint64_t start_size,
     const void* end,
     uint64_t end_size) {
-  if (dim_idx >= array_->array_schema_latest().dim_num())
+  if (dim_idx >= array_->array_schema_latest().dim_num()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
+  }
 
   if ((start == nullptr && start_size != 0) ||
-      (end == nullptr && end_size != 0))
+      (end == nullptr && end_size != 0)) {
     return LOG_STATUS(Status_SubarrayError("Cannot add range; Invalid range"));
+  }
 
   if (!array_->array_schema_latest()
            .domain()
            .dimension_ptr(dim_idx)
-           ->var_size())
+           ->var_size()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Range must be variable-sized"));
+  }
 
-  QueryType array_query_type;
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == tiledb::sm::QueryType::WRITE)
+  QueryType array_query_type{array_->get_query_type()};
+  if (array_query_type != QueryType::READ) {
     return LOG_STATUS(Status_SubarrayError(
         "Cannot add range; Function applicable only to reads"));
+  }
 
   // Get read_range_oob config setting
   bool found = false;
   std::string read_range_oob = config_.get("sm.read_range_oob", &found);
   assert(found);
 
-  if (read_range_oob != "error" && read_range_oob != "warn")
+  if (read_range_oob != "error" && read_range_oob != "warn") {
     return LOG_STATUS(Status_SubarrayError(
         "Invalid value " + read_range_oob +
         " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
+  }
 
   // Add range
   Range r;
@@ -396,13 +538,83 @@ Status Subarray::add_range_var_by_name(
   return add_range_var(dim_idx, start, start_size, end, end_size);
 }
 
+void Subarray::get_label_range(
+    const std::string& label_name,
+    uint64_t range_idx,
+    const void** start,
+    const void** end,
+    const void** stride) const {
+  auto dim_idx = array_->array_schema_latest()
+                     .dimension_label_reference(label_name)
+                     .dimension_id();
+  if (!label_range_subset_[dim_idx].has_value() ||
+      label_range_subset_[dim_idx].value().name != label_name) {
+    throw StatusException(Status_SubarrayError(
+        "Cannot get label range; No ranges set on dimension label '" +
+        label_name + "'"));
+  }
+  const auto& range = label_range_subset_[dim_idx].value().ranges[range_idx];
+  *start = range.start_fixed();
+  *end = range.end_fixed();
+  *stride = nullptr;
+}
+
+void Subarray::get_label_range_num(
+    const std::string& label_name, uint64_t* range_num) const {
+  auto dim_idx = array_->array_schema_latest()
+                     .dimension_label_reference(label_name)
+                     .dimension_id();
+  *range_num = (label_range_subset_[dim_idx].has_value() &&
+                label_range_subset_[dim_idx].value().name == label_name) ?
+                   label_range_subset_[dim_idx].value().ranges.num_ranges() :
+                   0;
+}
+
+void Subarray::get_label_range_var(
+    const std::string& label_name,
+    uint64_t range_idx,
+    void* start,
+    void* end) const {
+  auto dim_idx = array_->array_schema_latest()
+                     .dimension_label_reference(label_name)
+                     .dimension_id();
+  if (!label_range_subset_[dim_idx].has_value() ||
+      label_range_subset_[dim_idx].value().name != label_name) {
+    throw StatusException(Status_SubarrayError(
+        "Cannot get label range; No ranges set on dimension label '" +
+        label_name + "'"));
+  }
+  const auto& range = label_range_subset_[dim_idx].value().ranges[range_idx];
+  std::memcpy(start, range.start_str().data(), range.start_size());
+  std::memcpy(end, range.end_str().data(), range.end_size());
+}
+
+void Subarray::get_label_range_var_size(
+    const std::string& label_name,
+    uint64_t range_idx,
+    uint64_t* start_size,
+    uint64_t* end_size) const {
+  auto dim_idx = array_->array_schema_latest()
+                     .dimension_label_reference(label_name)
+                     .dimension_id();
+  if (!label_range_subset_[dim_idx].has_value() ||
+      label_range_subset_[dim_idx].value().name != label_name) {
+    throw StatusException(Status_SubarrayError(
+        "Cannot get label range size; No ranges set on dimension label '" +
+        label_name + "'"));
+  }
+  const auto& range = label_range_subset_[dim_idx].value().ranges[range_idx];
+  *start_size = range.start_size();
+  *end_size = range.end_size();
+}
+
 Status Subarray::get_range_var(
     unsigned dim_idx, uint64_t range_idx, void* start, void* end) const {
-  QueryType array_query_type;
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == tiledb::sm::QueryType::WRITE)
+  QueryType array_query_type{array_->get_query_type()};
+  if (array_query_type != QueryType::READ) {
     return LOG_STATUS(Status_SubarrayError(
-        "Getting a var range for a write query is not applicable"));
+        "Getting a var range for an unsupported query type"));
+  }
 
   uint64_t start_size = 0;
   uint64_t end_size = 0;
@@ -435,13 +647,19 @@ Status Subarray::get_range(
     const void** start,
     const void** end,
     const void** stride) const {
-  QueryType array_query_type;
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == tiledb::sm::QueryType::WRITE) {
+  QueryType array_query_type{array_->get_query_type()};
+  if (array_query_type == QueryType::WRITE ||
+      array_query_type == QueryType::MODIFY_EXCLUSIVE) {
     if (!array_->array_schema_latest().dense())
-      return LOG_STATUS(
-          Status_SubarrayError("Getting a range from a write query is not "
-                               "applicable to sparse arrays"));
+      return LOG_STATUS(Status_SubarrayError(
+          "Getting a range from a write or modify_exclsuive query is not "
+          "applicable to sparse arrays"));
+  }
+
+  if (array_query_type != QueryType::READ &&
+      array_query_type != QueryType::WRITE) {
+    return LOG_STATUS(
+        Status_SubarrayError("Getting a range for an unsupported query type"));
   }
 
   *stride = nullptr;
@@ -587,6 +805,7 @@ uint64_t Subarray::cell_num(const std::vector<uint64_t>& range_coords) const {
 void Subarray::clear() {
   range_offsets_.clear();
   range_subset_.clear();
+  label_range_subset_.clear();
   is_default_.clear();
   est_result_size_computed_ = false;
   tile_overlap_.clear();
@@ -643,12 +862,12 @@ bool Subarray::empty() const {
   return range_num() == 0;
 }
 
-Status Subarray::get_query_type(QueryType* type) const {
+QueryType Subarray::get_query_type() const {
   if (array_ == nullptr)
-    return logger_->status(Status_SubarrayError(
+    throw StatusException(Status_SubarrayError(
         "Cannot get query type from array; Invalid array"));
 
-  return array_->get_query_type(type);
+  return array_->get_query_type();
 }
 
 Status Subarray::get_range(
@@ -734,13 +953,21 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
     return LOG_STATUS(Status_SubarrayError(msg.str()));
   }
 
-  QueryType array_query_type;
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
-  if (array_query_type == tiledb::sm::QueryType::WRITE &&
+  QueryType array_query_type{array_->get_query_type()};
+  if ((array_query_type == QueryType::WRITE ||
+       array_query_type == QueryType::MODIFY_EXCLUSIVE) &&
       !array_->array_schema_latest().dense()) {
+    return LOG_STATUS(Status_SubarrayError(
+        "Getting the number of ranges from a write or modify_exclusive query "
+        "is not applicable to sparse arrays"));
+  }
+
+  if (array_query_type != QueryType::READ &&
+      array_query_type != QueryType::WRITE &&
+      array_query_type != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(
-        Status_SubarrayError("Getting the number of ranges from a write query "
-                             "is not applicable to sparse arrays"));
+        Status_SubarrayError("Getting the number of ranges for an unsupported "
+                             "query type"));
   }
 
   *range_num = range_subset_[dim_idx].num_ranges();
@@ -833,10 +1060,9 @@ void Subarray::set_layout(Layout layout) {
 Status Subarray::set_config(const Config& config) {
   config_ = config;
 
-  QueryType array_query_type;
-  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  QueryType array_query_type{array_->get_query_type()};
 
-  if (array_query_type == tiledb::sm::QueryType::READ) {
+  if (array_query_type == QueryType::READ) {
     bool found = false;
     std::string read_range_oob_str = config.get("sm.read_range_oob", &found);
     assert(found);
@@ -891,15 +1117,17 @@ Status Subarray::get_est_result_size_internal(
     const Config* const config,
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
-  if (name == nullptr)
+  if (name == nullptr) {
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute/Dimension name cannot be null"));
+  }
 
   // Check size pointer
-  if (size == nullptr)
+  if (size == nullptr) {
     return logger_->status(Status_SubarrayError(
         "Cannot get estimated result size; Input size cannot be null"));
+  }
 
   // Check if name is attribute or dimension
   const auto& array_schema = array_->array_schema_latest();
@@ -907,23 +1135,25 @@ Status Subarray::get_est_result_size_internal(
   const bool is_attr = array_schema.is_attr(name);
 
   // Check if attribute/dimension exists
-  if (name != constants::coords && name != constants::timestamps && !is_dim &&
-      !is_attr)
+  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
     return logger_->status(Status_SubarrayError(
         std::string("Cannot get estimated result size; Attribute/Dimension '") +
         name + "' does not exist"));
+  }
 
   // Check if the attribute/dimension is fixed-sized
-  if (array_schema.var_size(name))
+  if (array_schema.var_size(name)) {
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute/Dimension must be fixed-sized"));
+  }
 
   // Check if attribute/dimension is nullable
-  if (array_schema.is_nullable(name))
+  if (array_schema.is_nullable(name)) {
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute/Dimension must not be nullable"));
+  }
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
@@ -940,37 +1170,39 @@ Status Subarray::get_est_result_size_internal(
 
 Status Subarray::get_est_result_size(
     const char* name, uint64_t* size, StorageManager* storage_manager) {
-  QueryType type;
   // Note: various items below expect array open, get_query_type() providing
   // that audit.
-  RETURN_NOT_OK(array_->get_query_type(&type));
-
-  if (type == QueryType::WRITE)
+  QueryType array_query_type{array_->get_query_type()};
+  if (array_query_type != QueryType::READ) {
     return LOG_STATUS(Status_SubarrayError(
-        "Cannot get estimated result size; Operation currently "
-        "unsupported for write queries"));
+        "Cannot get estimated result size; unsupported query type"));
+  }
 
-  if (name == nullptr)
+  if (name == nullptr) {
     return LOG_STATUS(Status_SubarrayError(
         "Cannot get estimated result size; Name cannot be null"));
+  }
 
   if (name == constants::coords &&
-      !array_->array_schema_latest().domain().all_dims_same_type())
+      !array_->array_schema_latest().domain().all_dims_same_type()) {
     return LOG_STATUS(Status_SubarrayError(
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with heterogeneous domain"));
+  }
 
   if (name == constants::coords &&
-      !array_->array_schema_latest().domain().all_dims_fixed())
+      !array_->array_schema_latest().domain().all_dims_fixed()) {
     return LOG_STATUS(Status_SubarrayError(
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with domains with variable-sized dimensions"));
+  }
 
-  if (array_->array_schema_latest().is_nullable(name))
+  if (array_->array_schema_latest().is_nullable(name)) {
     return LOG_STATUS(Status_SubarrayError(
         std::string(
             "Cannot get estimated result size; Input attribute/dimension '") +
         name + "' is nullable"));
+  }
 
   if (array_->is_remote()) {
     return LOG_STATUS(Status_SubarrayError(
@@ -989,15 +1221,17 @@ Status Subarray::get_est_result_size(
     const Config* const config,
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
-  if (name == nullptr)
+  if (name == nullptr) {
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute/Dimension name cannot be null"));
+  }
 
   // Check size pointer
-  if (size_off == nullptr || size_val == nullptr)
+  if (size_off == nullptr || size_val == nullptr) {
     return logger_->status(Status_SubarrayError(
         "Cannot get estimated result size; Input sizes cannot be null"));
+  }
 
   // Check if name is attribute or dimension
   const auto& array_schema = array_->array_schema_latest();
@@ -1005,23 +1239,25 @@ Status Subarray::get_est_result_size(
   const bool is_attr = array_schema.is_attr(name);
 
   // Check if attribute/dimension exists
-  if (name != constants::coords && name != constants::timestamps && !is_dim &&
-      !is_attr)
+  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
     return logger_->status(Status_SubarrayError(
         std::string("Cannot get estimated result size; Attribute/Dimension '") +
         name + "' does not exist"));
+  }
 
   // Check if the attribute/dimension is var-sized
-  if (!array_schema.var_size(name))
+  if (!array_schema.var_size(name)) {
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute/Dimension must be var-sized"));
+  }
 
   // Check if attribute/dimension is nullable
-  if (array_schema.is_nullable(name))
+  if (array_schema.is_nullable(name)) {
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute/Dimension must not be nullable"));
+  }
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
@@ -1209,22 +1445,24 @@ Status Subarray::get_max_memory_size(
   bool is_attr = array_schema.is_attr(name);
 
   // Check if attribute/dimension exists
-  if (name != constants::coords && name != constants::timestamps && !is_dim &&
-      !is_attr)
+  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
     return logger_->status(Status_SubarrayError(
         std::string("Cannot get max memory size; Attribute/Dimension '") +
         name + "' does not exist"));
+  }
 
   // Check if the attribute/dimension is fixed-sized
-  if (name != constants::coords && array_schema.var_size(name))
+  if (name != constants::coords && array_schema.var_size(name)) {
     return logger_->status(Status_SubarrayError(
         "Cannot get max memory size; Attribute/Dimension must be fixed-sized"));
+  }
 
   // Check if attribute/dimension is nullable
-  if (array_schema.is_nullable(name))
+  if (array_schema.is_nullable(name)) {
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute/Dimension must not be nullable"));
+  }
 
   // Compute tile overlap for each fragment
   compute_est_result_size(config, compute_tp);
@@ -1255,7 +1493,7 @@ Status Subarray::get_max_memory_size(
   bool is_attr = array_schema.is_attr(name);
 
   // Check if attribute/dimension exists
-  if (name != constants::coords && !is_dim && !is_attr)
+  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr)
     return logger_->status(Status_SubarrayError(
         std::string("Cannot get max memory size; Attribute/Dimension '") +
         name + "' does not exist"));
@@ -1847,6 +2085,8 @@ void Subarray::add_default_ranges() {
         dim->type(), dim->domain(), true, coalesce_ranges_));
   }
   is_default_.resize(dim_num, true);
+  label_range_subset_.clear();
+  label_range_subset_.resize(dim_num, nullopt);
 }
 
 void Subarray::compute_range_offsets() {
@@ -2478,6 +2718,7 @@ Subarray Subarray::clone() const {
   clone.range_subset_ = range_subset_;
   clone.is_default_ = is_default_;
   clone.range_offsets_ = range_offsets_;
+  clone.label_range_subset_ = label_range_subset_;
   clone.tile_overlap_ = tile_overlap_;
   clone.est_result_size_computed_ = est_result_size_computed_;
   clone.coalesce_ranges_ = coalesce_ranges_;
@@ -2622,6 +2863,7 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(layout_, subarray.layout_);
   std::swap(cell_order_, subarray.cell_order_);
   std::swap(range_subset_, subarray.range_subset_);
+  std::swap(label_range_subset_, subarray.label_range_subset_);
   std::swap(is_default_, subarray.is_default_);
   std::swap(range_offsets_, subarray.range_offsets_);
   std::swap(tile_overlap_, subarray.tile_overlap_);
@@ -3145,6 +3387,17 @@ template void Subarray::crop_to_tile<float>(
     Subarray* ret, const float* tile_coords, Layout layout) const;
 template void Subarray::crop_to_tile<double>(
     Subarray* ret, const double* tile_coords, Layout layout) const;
+
+/* ********************************* */
+/*         LABEL RANGE SUBSET        */
+/* ********************************* */
+
+Subarray::LabelRangeSubset::LabelRangeSubset(
+    const DimensionLabelReference& ref, bool coalesce_ranges)
+    : name{ref.name()}
+    , ranges{RangeSetAndSuperset(
+          ref.label_type(), ref.label_domain(), false, coalesce_ranges)} {
+}
 
 }  // namespace sm
 }  // namespace tiledb

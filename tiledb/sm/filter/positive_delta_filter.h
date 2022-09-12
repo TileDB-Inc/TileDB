@@ -163,7 +163,7 @@ class PositiveDeltaFilter : public Filter {
   Status set_option_impl(FilterOption option, const void* value) override;
 
   /** Serializes this filter's metadata to the given buffer. */
-  Status serialize_impl(Buffer* buff) const override;
+  void serialize_impl(Serializer& serializer) const override;
 };
 
 }  // namespace sm

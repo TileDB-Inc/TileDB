@@ -30,7 +30,7 @@
  * Tests class Hilbert.
  */
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/misc/hilbert.h"
 
 using namespace tiledb::sm;

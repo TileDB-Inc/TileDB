@@ -28,11 +28,13 @@
 include(common NO_POLICY_SCOPE)
 
 # Range library
-add_library(range OBJECT range.h)
+add_library(range OBJECT range.cc)
 target_link_libraries(range PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(range PUBLIC constants $<TARGET_OBJECTS:constants>)
 
 # Test-compile of object library ensures link-completeness
 add_executable(compile_range EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_range)
 target_sources(compile_range PRIVATE test/compile_range_main.cc)
 target_link_libraries(compile_range PRIVATE range)
 

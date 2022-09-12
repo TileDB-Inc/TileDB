@@ -122,10 +122,25 @@ class FragmentConsolidator : public Consolidator {
   /**
    * Performs the vacuuming operation.
    *
-   * @param array_name URI of array to consolidate.
+   * @param array_name URI of array to vacuum.
    * @return Status
    */
   Status vacuum(const char* array_name);
+
+  /**
+   * Performs the vacuuming operation.
+   *
+   * @param array_name URI of array to vacuum.
+   * @param timestamp_start The start timestamp at which to vacuum.
+   * @param timestamp_end The end timestamp at which to vacuum.
+   * @param for_deletes True if vacuumuming for deletion of fragments.
+   * @return Status
+   */
+  Status vacuum(
+      const char* array_name,
+      uint64_t timestamp_start = 0,
+      uint64_t timestamp_end = std::numeric_limits<uint64_t>::max(),
+      bool for_deletes = false);
 
  private:
   /* ********************************* */
@@ -138,6 +153,10 @@ class FragmentConsolidator : public Consolidator {
      * Include timestamps in the consolidated fragment or not.
      */
     bool with_timestamps_;
+    /**
+     * Include delete metadata in the consolidated fragment or not.
+     */
+    bool with_delete_meta_;
     /**
      * The factor by which the size of the dense fragment resulting
      * from consolidating a set of fragments (containing at least one
@@ -166,6 +185,8 @@ class FragmentConsolidator : public Consolidator {
     float size_ratio_;
     /** Is the refactored reader in use or not */
     bool use_refactored_reader_;
+    /** Purge deleted cells or not. */
+    bool purge_deleted_cells_;
   };
 
   /* ********************************* */

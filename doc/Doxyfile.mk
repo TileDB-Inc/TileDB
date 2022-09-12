@@ -1957,7 +1957,9 @@ INCLUDE_FILE_PATTERNS  =
 # recursively expanded use the := operator instead of the = operator.
 # This tag requires that the tag ENABLE_PREPROCESSING is set to YES.
 
-PREDEFINED             = TILEDB_EXPORT:= TILEDB_DEPRECATED_EXPORT
+PREDEFINED             = "TILEDB_EXPORT=" \
+						 "TILEDB_DEPRECATED_EXPORT=" \
+						 "TILEDB_NOEXCEPT="
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then this
 # tag can be used to specify a list of macro names that should be expanded. The

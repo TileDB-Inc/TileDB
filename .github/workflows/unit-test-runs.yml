@@ -1,19 +1,6 @@
 name: unit-test-standalone
 on:
-  push:
-    paths-ignore:
-      - '_quarto.yml'
-      - 'quarto-materials/*'
-      - '**/.md'
-      - 'doc/source/conf.py'
-      - 'tiledb/sm/c_api/tiledb_version.h'
-  pull_request:
-    paths-ignore:
-      - '_quarto.yml'
-      - 'quarto-materials/*'
-      - '**/.md'
-      - 'doc/source/conf.py'
-      - 'tiledb/sm/c_api/tiledb_version.h'
+  workflow_call:
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
@@ -45,14 +32,6 @@ jobs:
           echo "uname -v: " $(uname -v)
           printenv
         shell: bash
-
-      - name: 'Install system headers (OSX 10.14 only)'
-        run: |
-          set -e pipefail
-          open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
-          sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
-        shell: bash
-        if: ${{ runner.os == 'macOS' && env.imageName == 'macOS-10.14' }}
 
       - name: 'Build and run standalone unit tests'
         id: test

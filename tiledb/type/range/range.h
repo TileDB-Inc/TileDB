@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/sm/enums/datatype.h"
 
 #include <cmath>
 #include <cstring>
@@ -74,6 +75,21 @@ class Range {
     set_range(range, range_size, range_start_size);
   }
 
+  /** Constructs a range and sets fixed data. */
+  Range(const void* start, const void* end, uint64_t type_size)
+      : Range() {
+    set_range_fixed(start, end, type_size);
+  }
+
+  /** Constructs a range and sets variable data. */
+  Range(
+      const void* start,
+      uint64_t start_size,
+      const void* end,
+      uint64_t end_size)
+      : Range() {
+    set_range_var(start, start_size, end, end_size);
+  }
   /** Copy constructor. */
   Range(const Range&) = default;
 
@@ -104,6 +120,21 @@ class Range {
     var_size_ = true;
   }
 
+  /**
+   * Sets a fixed-sixed range with start and end serialized separately.
+   *
+   * @param start Location of serialized starting element
+   * @param end Location of serialixed ending element
+   * @param type_size The size of a single element of the deserialized data.
+   */
+  void set_range_fixed(const void* start, const void* end, uint64_t type_size) {
+    range_.resize(2 * type_size);
+    std::memcpy(&range_[0], start, type_size);
+    std::memcpy(&range_[type_size], end, type_size);
+    range_start_size_ = type_size;
+    var_size_ = false;
+  }
+
   /** Sets a var-sized range `[r1, r2]`. */
   void set_range_var(
       const void* r1, uint64_t r1_size, const void* r2, uint64_t r2_size) {
@@ -130,6 +161,16 @@ class Range {
   /** Returns the pointer to the range flattened bytes. */
   inline const void* data() const {
     return range_.empty() ? nullptr : range_.data();
+  }
+
+  /**
+   * Returns the pointer to the range as flattened bytes of the requested type.
+   */
+  template <typename T>
+  inline const T* typed_data() const {
+    assert(!var_size_);
+    assert(range_.empty() || (range_.size() == 2 * sizeof(T)));
+    return range_.empty() ? nullptr : (T*)range_.data();
   }
 
   /** Returns a pointer to the start of the range. */
@@ -348,6 +389,13 @@ void crop_range(const Range& bounds, Range& range) {
   range_data[0] = std::max(bounds_data[0], range_data[0]);
   range_data[1] = std::min(bounds_data[1], range_data[1]);
 };
+
+/**
+ * Returns a string representation of the range.
+ *
+ * @param range The range to get a string representation of.
+ */
+std::string range_str(const Range& range, const tiledb::sm::Datatype type);
 
 }  // namespace tiledb::type
 

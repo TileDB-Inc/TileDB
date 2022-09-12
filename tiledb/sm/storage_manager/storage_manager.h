@@ -65,6 +65,7 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class ArrayDirectory;
 class ArraySchema;
 class ArraySchemaEvolution;
 class Buffer;
@@ -78,9 +79,9 @@ class Metadata;
 class OpenArray;
 class MemoryTracker;
 class Query;
+class QueryCondition;
 class RestClient;
 class VFS;
-class ArrayDirectory;
 
 enum class EncryptionType : uint8_t;
 enum class ObjectType : uint8_t;
@@ -150,6 +151,22 @@ class StorageManager {
   Status array_close_for_writes(Array* array);
 
   /**
+   * Closes an array opened for deletes.
+   *
+   * @param array The array to be closed.
+   * @return Status
+   */
+  Status array_close_for_deletes(Array* array);
+
+  /**
+   * Closes an array opened for updates.
+   *
+   * @param array The array to be closed.
+   * @return Status
+   */
+  Status array_close_for_updates(Array* array);
+
+  /**
    * Closes an group opened for reads.
    *
    * @param group The group to be closed.
@@ -173,6 +190,17 @@ class StorageManager {
       const tdb_shared_ptr<GroupDirectory>& group_dir,
       const EncryptionKey& encryption_key,
       Metadata* metadata);
+
+  /**
+   * Load data from persistent storage.
+   *
+   * @param uri The object URI.
+   * @param offset The offset into the file to read from.
+   * @param encryption_key The encryption key to use.
+   * @return Status, Tile with the data.
+   */
+  tuple<Status, optional<Tile>> load_data_from_generic_tile(
+      const URI& uri, uint64_t offset, const EncryptionKey& encryption_key);
 
   /**
    * Load a group detail from URI
@@ -389,6 +417,21 @@ class StorageManager {
       uint32_t key_length,
       const std::vector<std::string> fragment_uris,
       const Config* config);
+
+  /**
+   * Cleans up the array fragments.
+   *
+   * @param array_name The name of the array to be vacuumed.
+   * @param timestamp_start The start timestamp at which to vacuum.
+   * @param timestamp_end The end timestamp at which to vacuum.
+   * @param for_deletes True if vacuumuming for deletion of fragments.
+   * @return Status
+   */
+  Status fragments_vacuum(
+      const char* array_name,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      bool for_deletes);
 
   /**
    * Cleans up the array, such as its consolidated fragments and array
@@ -757,6 +800,15 @@ class StorageManager {
       const EncryptionKey& encryption_key,
       Metadata* metadata);
 
+  /**
+   * Loads the delete conditions from storage.
+   *
+   * @param array The array.
+   * @return Status, vector of the delete conditions.
+   */
+  tuple<Status, optional<std::vector<QueryCondition>>> load_delete_conditions(
+      const Array& array);
+
   /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;
 
@@ -940,6 +992,32 @@ class StorageManager {
   Status store_metadata(
       const URI& uri, const EncryptionKey& encryption_key, Metadata* metadata);
 
+  /**
+   * Stores data into persistent storage.
+   *
+   * @param data Data to store.
+   * @param size Size of the data.
+   * @param uri The object URI.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  Status store_data_to_generic_tile(
+      void* data,
+      const size_t size,
+      const URI& uri,
+      const EncryptionKey& encryption_key);
+
+  /**
+   * Stores data into persistent storage.
+   *
+   * @param tile Tile to store.
+   * @param uri The object URI.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  Status store_data_to_generic_tile(
+      Tile& tile, const URI& uri, const EncryptionKey& encryption_key);
+
   /** Closes a file, flushing its contents to persistent storage. */
   Status close_file(const URI& uri);
 
@@ -963,15 +1041,6 @@ class StorageManager {
    */
   Status write_to_cache(
       const URI& uri, uint64_t offset, const FilteredBuffer& buffer) const;
-
-  /**
-   * Writes the contents of a buffer into a URI file.
-   *
-   * @param uri The file to write into.
-   * @param buffer The buffer to write.
-   * @return Status.
-   */
-  Status write(const URI& uri, Buffer* buffer) const;
 
   /**
    * Writes the input data into a URI file.
@@ -1175,9 +1244,11 @@ class StorageManager {
    * @return Status, vector from the fragment name to the offset in `f_buff`
    *     where the basic fragment metadata starts.
    */
-  tuple<Status, optional<std::vector<std::pair<std::string, uint64_t>>>>
-  load_consolidated_fragment_meta(
-      const URI& uri, const EncryptionKey& enc_key, Buffer* f_buff);
+  tuple<
+      Status,
+      optional<Buffer>,
+      optional<std::vector<std::pair<std::string, uint64_t>>>>
+  load_consolidated_fragment_meta(const URI& uri, const EncryptionKey& enc_key);
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();

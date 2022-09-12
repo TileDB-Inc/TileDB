@@ -214,6 +214,11 @@ void read_array_with_qc(tiledb_ctx_t* ctx, tiledb_query_condition_t* qc) {
   tiledb_array_alloc(ctx, array_name, &array);
   tiledb_array_open(ctx, array, TILEDB_READ);
 
+  tiledb_subarray_t* subarray;
+  tiledb_subarray_alloc(ctx, array, &subarray);
+  int subarray_v[] = {0, num_elems - 1};
+  tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
+
   // Execute the read query.
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
@@ -226,8 +231,7 @@ void read_array_with_qc(tiledb_ctx_t* ctx, tiledb_query_condition_t* qc) {
       ctx, query, "b", b_data_offsets, &b_offsets_size);
   tiledb_query_set_data_buffer(ctx, query, "c", c_data, &c_size);
   tiledb_query_set_data_buffer(ctx, query, "d", d_data, &d_size);
-  int dims[] = {0, num_elems - 1};
-  tiledb_query_set_subarray(ctx, query, dims);
+  tiledb_query_set_subarray_t(ctx, query, subarray);
 
   if (qc) {
     tiledb_query_set_condition(ctx, query, qc);
@@ -260,6 +264,7 @@ void read_array_with_qc(tiledb_ctx_t* ctx, tiledb_query_condition_t* qc) {
   tiledb_query_finalize(ctx, query);
   tiledb_array_close(ctx, array);
 
+  tiledb_subarray_free(&subarray);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
 }
@@ -293,6 +298,7 @@ int main() {
   tiledb_query_condition_alloc(ctx, &qc);
   tiledb_query_condition_init(ctx, qc, "a", NULL, 0, TILEDB_EQ);
   read_array_with_qc(ctx, qc);
+  tiledb_query_condition_free(&qc);
   printf("\n");
 
   // Execute a read query with query condition `b < "eve"`.
@@ -302,6 +308,7 @@ int main() {
   const char* eve = "eve";
   tiledb_query_condition_init(ctx, qc1, "b", eve, strlen(eve), TILEDB_LT);
   read_array_with_qc(ctx, qc1);
+  tiledb_query_condition_free(&qc1);
   printf("\n");
 
   // Execute a read query with query condition `c >= 1`.
@@ -311,6 +318,7 @@ int main() {
   int val = 1;
   tiledb_query_condition_init(ctx, qc2, "c", &val, sizeof(int), TILEDB_GE);
   read_array_with_qc(ctx, qc2);
+  tiledb_query_condition_free(&qc2);
   printf("\n");
 
   // Execute a read query with query condition `3.0f <= d AND d <= 4.0f`.
@@ -328,6 +336,9 @@ int main() {
   tiledb_query_condition_alloc(ctx, &qc5);
   tiledb_query_condition_combine(ctx, qc3, qc4, TILEDB_AND, &qc5);
   read_array_with_qc(ctx, qc5);
+  tiledb_query_condition_free(&qc3);
+  tiledb_query_condition_free(&qc4);
+  tiledb_query_condition_free(&qc5);
   printf("\n");
 
   // Execute a read query with query condition `3.0f <= d AND d <= 4.0f AND a !=
@@ -345,6 +356,9 @@ int main() {
   tiledb_query_condition_alloc(ctx, &qc8);
   tiledb_query_condition_combine(ctx, qc7, qc1, TILEDB_AND, &qc8);
   read_array_with_qc(ctx, qc8);
+  tiledb_query_condition_free(&qc6);
+  tiledb_query_condition_free(&qc7);
+  tiledb_query_condition_free(&qc8);
   printf("\n");
 
   // Cleanup.

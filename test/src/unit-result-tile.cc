@@ -34,7 +34,7 @@
 #include "tiledb/sm/misc/types.h"
 
 #include "test/src/helpers.h"
-#include "tiledb/sm/query/sparse_index_reader_base.h"
+#include "tiledb/sm/query/readers/sparse_index_reader_base.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -42,7 +42,7 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #include <numeric>
 
 using namespace tiledb::sm;
@@ -59,6 +59,7 @@ struct CResultTileFx {
   std::string array_name_;
   const char* ARRAY_NAME = "test_result_coords";
   tiledb_array_t* array_;
+  std::unique_ptr<FragmentMetadata> frag_md_;
 
   CResultTileFx();
   ~CResultTileFx();
@@ -98,13 +99,21 @@ CResultTileFx::CResultTileFx() {
       {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      100000);
+      100);
 
   // Open array for reading.
   auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array_);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array_, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
+
+  frag_md_.reset(new FragmentMetadata(
+      nullptr,
+      nullptr,
+      array_->array_->array_schema_latest_ptr(),
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      false));
 }
 
 CResultTileFx::~CResultTileFx() {
@@ -117,7 +126,8 @@ CResultTileFx::~CResultTileFx() {
   tiledb_vfs_free(&vfs_);
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    CResultTileFx,
     "ResultTileWithBitmap: result_num_between_pos and "
     "pos_with_given_result_sum test",
     "[resulttilewithbitmap][pos_with_given_result_sum][pos_with_given_result_"
@@ -149,25 +159,21 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
   tiledb_domain_free(&domain);
 
-  ResultTileWithBitmap<uint8_t> tile(
-      0, 0, *(array_schema->array_schema_.get()));
-  tile.bitmap_result_num_ = 100;
+  UnorderedWithDupsResultTile<uint8_t> tile(0, 0, *frag_md_);
 
   // Check the function with an empty bitmap.
   CHECK(tile.result_num_between_pos(2, 10) == 8);
   CHECK(tile.pos_with_given_result_sum(2, 8) == 9);
 
   // Check the functions with a bitmap.
-  tile.bitmap_.resize(100, 1);
+  tile.alloc_bitmap();
   CHECK(tile.result_num_between_pos(2, 10) == 8);
   CHECK(tile.pos_with_given_result_sum(2, 8) == 9);
 
-  tile.bitmap_result_num_ = 99;
-  tile.bitmap_[6] = 0;
+  tile.bitmap()[6] = 0;
+  tile.count_cells();
   CHECK(tile.result_num_between_pos(2, 10) == 7);
   CHECK(tile.pos_with_given_result_sum(2, 8) == 10);
-
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(
@@ -183,9 +189,9 @@ TEST_CASE_METHOD(
 
   // Make sure cell_num() will return the correct value.
   if (!first_dim) {
-    rt.init_coord_tile("d1", 0);
+    rt.init_coord_tile("d1", true, 0);
     auto tile_tuple = rt.tile_tuple("d1");
-    Tile* const t = &std::get<0>(*tile_tuple);
+    Tile* const t = &tile_tuple->fixed_tile();
     t->init_unfiltered(
         constants::format_version,
         constants::cell_var_offset_type,
@@ -194,10 +200,10 @@ TEST_CASE_METHOD(
         0);
   }
 
-  rt.init_coord_tile(dim_name, dim_idx);
+  rt.init_coord_tile(dim_name, true, dim_idx);
   auto tile_tuple = rt.tile_tuple(dim_name);
-  Tile* const t = &std::get<0>(*tile_tuple);
-  Tile* const t_var = &std::get<1>(*tile_tuple);
+  Tile* const t = &tile_tuple->fixed_tile();
+  Tile* const t_var = &tile_tuple->var_tile();
 
   // Initialize offsets, use 1 character strings.
   t->init_unfiltered(
@@ -273,9 +279,9 @@ TEST_CASE_METHOD(
 
   // Make sure cell_num() will return the correct value.
   if (!first_dim) {
-    rt.init_coord_tile("d1", 0);
+    rt.init_coord_tile("d1", true, 0);
     auto tile_tuple = rt.tile_tuple("d1");
-    Tile* const t = &std::get<0>(*tile_tuple);
+    Tile* const t = &tile_tuple->fixed_tile();
     t->init_unfiltered(
         constants::format_version,
         constants::cell_var_offset_type,
@@ -284,10 +290,10 @@ TEST_CASE_METHOD(
         0);
   }
 
-  rt.init_coord_tile(dim_name, dim_idx);
+  rt.init_coord_tile(dim_name, true, dim_idx);
   auto tile_tuple = rt.tile_tuple(dim_name);
-  Tile* const t = &std::get<0>(*tile_tuple);
-  Tile* const t_var = &std::get<1>(*tile_tuple);
+  Tile* const t = &tile_tuple->fixed_tile();
+  Tile* const t_var = &tile_tuple->var_tile();
 
   // Initialize offsets, use 1 character strings.
   t->init_unfiltered(

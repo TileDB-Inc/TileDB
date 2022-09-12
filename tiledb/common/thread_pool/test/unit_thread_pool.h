@@ -28,4 +28,4 @@
  * @section DESCRIPTION
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>

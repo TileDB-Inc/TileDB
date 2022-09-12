@@ -31,14 +31,11 @@ add_custom_target(examples_cpp DEPENDS tiledb_shared)
 # Function that builds an executable per example
 function(build_TileDB_example_cppapi TARGET)
   add_executable(${TARGET}_cpp EXCLUDE_FROM_ALL ${TARGET}.cc)
-  target_include_directories(${TARGET}_cpp PUBLIC
-    "${CMAKE_CURRENT_BINARY_DIR}/../"
-  )
-  target_link_libraries(${TARGET}_cpp tiledb_shared)
+  target_link_libraries(${TARGET}_cpp PUBLIC local_install tiledb_shared)
   if (NOT WIN32)
     # On Linux, must explicitly link -lpthread -ldl in order for static linking
     # to libzstd or libcurl to work.
-    target_link_libraries(${TARGET}_cpp pthread dl)
+    target_link_libraries(${TARGET}_cpp PUBLIC pthread dl)
   endif()
   add_dependencies(examples_cpp ${TARGET}_cpp)
 endfunction()
