@@ -87,10 +87,7 @@ struct DeletesFx {
   void consolidate_sparse(bool vacuum = false);
   void consolidate_commits_sparse(bool vacuum);
   void write_delete_condition(
-      QueryCondition& qc,
-      uint64_t timestamp,
-      bool encrypt = false,
-      bool error_expected = false);
+      QueryCondition& qc, uint64_t timestamp, bool encrypt = false);
   void check_delete_conditions(
       std::vector<QueryCondition> qcs,
       uint64_t timestamp,
@@ -309,7 +306,7 @@ void DeletesFx::consolidate_commits_sparse(bool vacuum) {
 }
 
 void DeletesFx::write_delete_condition(
-    QueryCondition& qc, uint64_t timestamp, bool encrypt, bool error_expected) {
+    QueryCondition& qc, uint64_t timestamp, bool encrypt) {
   // Open array.
   std::unique_ptr<Array> array;
   if (encrypt) {
@@ -329,20 +326,8 @@ void DeletesFx::write_delete_condition(
   Query query(ctx_, *array, TILEDB_DELETE);
 
   query.set_condition(qc);
-
-  try {
-    query.submit();
-  } catch (std::exception&) {
-    CHECK(error_expected);
-  }
-
-  if (error_expected) {
-    CHECK(
-        (query.query_status() == Query::Status::FAILED ||
-         query.query_status() == Query::Status::INPROGRESS));
-  } else {
-    CHECK(query.query_status() == Query::Status::COMPLETE);
-  }
+  query.submit();
+  CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Close array.
   array->close();
@@ -436,7 +421,7 @@ TEST_CASE_METHOD(
   int32_t val = 4;
   qc.init("b", &val, sizeof(int32_t), TILEDB_LT);
 
-  write_delete_condition(qc, 1, false, true);
+  REQUIRE_THROWS_AS(write_delete_condition(qc, 1, false), tiledb::TileDBError);
 
   remove_sparse_array();
 }
@@ -1534,8 +1519,8 @@ TEST_CASE_METHOD(
   uint64_t val2 = 3;
   qc2.init("d2", &val2, sizeof(uint64_t), TILEDB_EQ);
 
-  // Write condition and specify an error is expected.
-  write_delete_condition(qc2, 2, false, true);
+  // Try to write condition.
+  REQUIRE_THROWS_AS(write_delete_condition(qc2, 2, false), tiledb::TileDBError);
 
   remove_sparse_array();
 }

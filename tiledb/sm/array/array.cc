@@ -417,9 +417,7 @@ Status Array::open(
 
       auto&& [st, array_schema_latest, array_schemas] =
           storage_manager_->array_open_for_writes(this);
-      if (!st.ok()) {
-        throw StatusException(st);
-      }
+      throw_if_not_ok(st);
 
       // Set schemas
       array_schema_latest_ = array_schema_latest.value();
@@ -438,9 +436,7 @@ Status Array::open(
 
       auto&& [st, array_schema_latest, array_schemas] =
           storage_manager_->array_open_for_writes(this);
-      if (!st.ok()) {
-        throw StatusException(st);
-      }
+      throw_if_not_ok(st);
 
       // Set schemas
       array_schema_latest_ = array_schema_latest.value();
