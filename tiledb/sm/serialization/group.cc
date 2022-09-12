@@ -169,7 +169,7 @@ Status group_details_from_capnp(
     for (auto member : group_details_reader.getMembers()) {
       auto&& [st, group_member] = group_member_from_capnp(&member);
       RETURN_NOT_OK(st);
-      RETURN_NOT_OK(group->add_member(group_member.value()));
+      group->add_member(group_member.value());
     }
   }
 

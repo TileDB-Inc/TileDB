@@ -270,7 +270,7 @@ class Group {
    * @param group_member to add
    * @return Status
    */
-  Status add_member(const tdb_shared_ptr<GroupMember>& group_member);
+  void add_member(const tdb_shared_ptr<GroupMember>& group_member);
 
   /**
    * Serializes the object members into a binary buffer.
@@ -288,7 +288,7 @@ class Group {
    * @param version The format spec version.
    * @return Status
    */
-  Status apply_and_serialize(Serializer& serializer);
+  void apply_and_serialize(Serializer& serializer);
 
   /**
    * Returns a Group object from the data in the input binary buffer.

@@ -63,20 +63,10 @@ std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> GroupV1::deserialize(
 
   uint64_t member_count = 0;
   member_count = deserializer.read<uint64_t>();
-  try {
-
-    for (uint64_t i = 0; i < member_count; i++) {
-      auto&& [st, member] = GroupMember::deserialize(deserializer);
-      RETURN_NOT_OK_TUPLE(st, std::nullopt);
-      RETURN_NOT_OK_TUPLE(group->add_member(member.value()), std::nullopt);
-    }
-
-  } catch (const std::exception& e) {
-    throw std::runtime_error(
-        std::string("GroupV1::deserialize() error reading member_count ") + e.what());
-  } catch (...) {
-    throw std::runtime_error(
-        "GroupV1::deserialize() error reading member_count, unknown exception");
+  for (uint64_t i = 0; i < member_count; i++) {
+    auto&& [st, member] = GroupMember::deserialize(deserializer);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
+    group->add_member(member.value());
   }
 
   return {Status::Ok(), group};

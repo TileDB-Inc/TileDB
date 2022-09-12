@@ -503,7 +503,7 @@ Status Group::clear() {
   return Status::Ok();
 }
 
-Status Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
+void Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   const std::string& uri = group_member->uri().to_string();
   members_.emplace(uri, group_member);
@@ -511,8 +511,6 @@ Status Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
   if (group_member->name().has_value()) {
     members_by_name_.emplace(group_member->name().value(), group_member);
   }
-
-  return Status::Ok();
 }
 
 Status Group::mark_member_for_addition(
@@ -664,10 +662,9 @@ void Group::serialize(Serializer &) {
   throw StatusException(Status_GroupError("Invalid call to Group::serialize"));
 }
 
-Status Group::apply_and_serialize(Serializer& serializer) {
-  RETURN_NOT_OK(apply_pending_changes());
+void Group::apply_and_serialize(Serializer& serializer) {
+  throw_if_not_ok(apply_pending_changes());
   serialize(serializer);
-  return Status::Ok();
 }
 
 std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> Group::deserialize(
