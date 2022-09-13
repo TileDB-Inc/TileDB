@@ -503,7 +503,7 @@ Status Group::clear() {
   return Status::Ok();
 }
 
-Status Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
+void Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   const std::string& uri = group_member->uri().to_string();
   members_.emplace(uri, group_member);
@@ -511,8 +511,6 @@ Status Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
   if (group_member->name().has_value()) {
     members_by_name_.emplace(group_member->name().value(), group_member);
   }
-
-  return Status::Ok();
 }
 
 Status Group::mark_member_for_addition(
@@ -660,26 +658,25 @@ Group::members() const {
   return members_;
 }
 
-Status Group::serialize(Buffer*) {
-  return Status_GroupError("Invalid call to Group::serialize");
+void Group::serialize(Serializer &) {
+  throw StatusException(Status_GroupError("Invalid call to Group::serialize"));
 }
 
-Status Group::apply_and_serialize(Buffer* buff) {
-  RETURN_NOT_OK(apply_pending_changes());
-  return serialize(buff);
+void Group::apply_and_serialize(Serializer& serializer) {
+  throw_if_not_ok(apply_pending_changes());
+  serialize(serializer);
 }
 
-std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> Group::deserialize(
-    ConstBuffer* buff, const URI& group_uri, StorageManager* storage_manager) {
+std::optional<tdb_shared_ptr<Group>> Group::deserialize(
+    Deserializer &deserializer, const URI& group_uri, StorageManager* storage_manager) {
   uint32_t version = 0;
-  RETURN_NOT_OK_TUPLE(buff->read(&version, sizeof(uint32_t)), std::nullopt);
+  version = deserializer.read<uint32_t>();
   if (version == 1) {
-    return GroupV1::deserialize(buff, group_uri, storage_manager);
+    return GroupV1::deserialize(deserializer, group_uri, storage_manager);
   }
 
-  return {
-      Status_GroupError("Unsupported group version " + std::to_string(version)),
-      std::nullopt};
+  throw StatusException(
+      Status_GroupError("Unsupported group version " + std::to_string(version)));
 }
 
 const URI& Group::group_uri() const {

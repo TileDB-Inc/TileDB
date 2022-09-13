@@ -153,6 +153,12 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Are we in elements mode. */
   bool elements_mode_;
 
+  /**
+   * Reading mode that only sets the coordinates of the cells that match the
+   * query condition.
+   */
+  bool qc_coords_mode_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -265,6 +271,136 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
 
   /** Perform necessary checks before exiting a read loop */
   Status complete_read_loop();
+
+  /**
+   * Fills the coordinate buffer with coordinates. Applicable only to dense
+   * arrays when the user explicitly requests the coordinates to be
+   * materialized.
+   *
+   * @tparam T Domain type.
+   * @param subarray Input subarray.
+   * @param qc_results Results from the query condition.
+   */
+  template <class T>
+  void fill_dense_coords(
+      const Subarray& subarray,
+      const optional<std::vector<uint8_t>> qc_results);
+
+  /**
+   * Fills the coordinate buffers with coordinates. Applicable only to dense
+   * arrays when the user explicitly requests the coordinates to be
+   * materialized. Also applicable only to global order.
+   *
+   * @tparam T Domain type.
+   * @param subarray Input subarray.
+   * @param qc_results Results from the query condition.
+   * @param qc_results_index Current index in the `qc_results` buffer.
+   * @param dim_idx Dimension indices of the corresponding `buffers`.
+   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
+   *     contain a single element and `dim_idx` contains `dim_num` as the
+   *     dimension index.
+   * @param buffers Buffers to copy from. It could be the special zipped
+   *     coordinates or separate coordinate buffers.
+   * @param offsets Offsets that will be used eventually to update the buffer
+   *     sizes, determining the useful results written in the buffers.
+   */
+  template <class T>
+  void fill_dense_coords_global(
+      const Subarray& subarray,
+      const optional<std::vector<uint8_t>> qc_results,
+      uint64_t& qc_results_index,
+      const std::vector<unsigned>& dim_idx,
+      const std::vector<QueryBuffer*>& buffers,
+      std::vector<uint64_t>& offsets);
+
+  /**
+   * Fills the coordinate buffers with coordinates. Applicable only to dense
+   * arrays when the user explicitly requests the coordinates to be
+   * materialized. Also applicable only to row-/col-major order.
+   *
+   * @tparam T Domain type.
+   * @param subarray Input subarray.
+   * @param qc_results Results from the query condition.
+   * @param qc_results_index Current index in the `qc_results` buffer.
+   * @param dim_idx Dimension indices of the corresponding `buffers`.
+   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
+   *     contain a single element and `dim_idx` contains `dim_num` as
+   *     the dimension index.
+   * @param buffers Buffers to copy from. It could be the special zipped
+   *     coordinates or separate coordinate buffers.
+   * @param offsets Offsets that will be used eventually to update the buffer
+   *     sizes, determining the useful results written in the buffers.
+   */
+  template <class T>
+  void fill_dense_coords_row_col(
+      const Subarray& subarray,
+      const optional<std::vector<uint8_t>> qc_results,
+      uint64_t& qc_results_index,
+      const std::vector<unsigned>& dim_idx,
+      const std::vector<QueryBuffer*>& buffers,
+      std::vector<uint64_t>& offsets);
+
+  /**
+   * Fills coordinates in the input buffers for a particular cell slab,
+   * following a row-major layout. For instance, if the starting coordinate are
+   * [3, 1] and the number of coords to be written is 3, this function will
+   * write to the input buffer (starting at the input offset) coordinates
+   * [3, 1], [3, 2], and [3, 3].
+   *
+   * @tparam T Domain type.
+   * @param start Starting coordinates in the slab.
+   * @param qc_results Results from the query condition.
+   * @param qc_results_index Current index in the `qc_results` buffer.
+   * @param num Number of coords to be written.
+   * @param dim_idx Dimension indices of the corresponding `buffers`.
+   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
+   *     contain a single element and `dim_idx` contains `dim_num` as
+   *     the dimension index.
+   * @param buffers Buffers to copy from. It could be the special zipped
+   *     coordinates or separate coordinate buffers.
+   * @param offsets Offsets that will be used eventually to update the buffer
+   *     sizes, determining the useful results written in the buffers.
+   */
+  template <class T>
+  void fill_dense_coords_row_slab(
+      const T* start,
+      const optional<std::vector<uint8_t>> qc_results,
+      uint64_t& qc_results_index,
+      uint64_t num,
+      const std::vector<unsigned>& dim_idx,
+      const std::vector<QueryBuffer*>& buffers,
+      std::vector<uint64_t>& offsets) const;
+
+  /**
+   * Fills coordinates in the input buffers for a particular cell slab,
+   * following a col-major layout. For instance, if the starting coordinate are
+   * [3, 1] and the number of coords to be written is 3, this function will
+   * write to the input buffer (starting at the input offset) coordinates
+   * [4, 1], [5, 1], and [6, 1].
+   *
+   * @tparam T Domain type.
+   * @param start Starting coordinates in the slab.
+   * @param qc_results Results from the query condition.
+   * @param qc_results_index Current index in the `qc_results` buffer.
+   * @param num Number of coords to be written.
+   * @param dim_idx Dimension indices of the corresponding `buffers`.
+   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
+   *     contain a single element and `dim_idx` contains `dim_num` as
+   *     the dimension index.
+   * @param buffers Buffers to copy from. It could be the special zipped
+   *     coordinates or separate coordinate buffers.
+   * @param offsets Offsets that will be used eventually to update the buffer
+   *     sizes, determining the useful results written in the buffers.
+   */
+  template <class T>
+  void fill_dense_coords_col_slab(
+      const T* start,
+      const optional<std::vector<uint8_t>> qc_results,
+      uint64_t& qc_results_index,
+      uint64_t num,
+      const std::vector<unsigned>& dim_idx,
+      const std::vector<QueryBuffer*>& buffers,
+      std::vector<uint64_t>& offsets) const;
 };
 
 }  // namespace sm

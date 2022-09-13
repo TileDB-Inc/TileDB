@@ -184,6 +184,11 @@ void ResultTile::init_attr_tile(
     return;
   }
 
+  if (name == constants::delete_condition_index) {
+    delete_condition_index_tile_ = TileTuple(false, false);
+    return;
+  }
+
   // Handle attributes
   for (auto& at : attr_tiles_) {
     if (at.first == name && at.second == nullopt) {
@@ -218,6 +223,11 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   if (delete_timestamps_tile_.has_value() &&
       name == constants::delete_timestamps) {
     return &delete_timestamps_tile_.value();
+  }
+
+  if (delete_condition_index_tile_.has_value() &&
+      name == constants::delete_condition_index) {
+    return &delete_condition_index_tile_.value();
   }
 
   // Handle attribute tile
@@ -790,7 +800,7 @@ void ResultTile::compute_results_count_sparse_string_range(
     uint64_t c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
                                              buff_str_size - c_offset;
 
-    std::string_view str(buff_str + c_offset, c_size);
+    const std::string_view str(buff_str + c_offset, c_size);
 
     // Binary search to find the first range containing the cell.
     auto it = std::lower_bound(
@@ -830,9 +840,8 @@ void ResultTile::compute_results_count_sparse_string_range(
     // dim.
     uint64_t count = 0;
     for (uint64_t j = start_range_idx; j < end_range_idx; ++j) {
-      auto& range = cached_ranges[j];
-      count += str_coord_intersects(
-          c_offset, c_size, buff_str, range.first, range.second);
+      const auto& range = cached_ranges[j];
+      count += str >= range.first && str <= range.second;
     }
 
     // Multiply the past count by this dimension's count.

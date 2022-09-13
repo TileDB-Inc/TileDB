@@ -130,6 +130,26 @@ Status Deletes::dowork() {
       storage_format::generate_fragment_name(timestamp, write_version) +
       constants::delete_file_suffix;
 
+  // Check that the delete isn't in the middle of a fragment consolidated
+  // without timestamps.
+  auto& frag_uris = array_->array_directory().unfiltered_fragment_uris();
+  for (auto& uri : frag_uris) {
+    uint32_t version;
+    auto name = uri.remove_trailing_slash().last_path_part();
+    RETURN_NOT_OK(utils::parse::get_fragment_version(name, &version));
+    if (version < constants::consolidation_with_timestamps_min_version) {
+      std::pair<uint64_t, uint64_t> fragment_timestamp_range;
+      RETURN_NOT_OK(
+          utils::parse::get_timestamp_range(uri, &fragment_timestamp_range));
+      if (timestamp >= fragment_timestamp_range.first &&
+          timestamp <= fragment_timestamp_range.second) {
+        throw DeleteStatusException(
+            "Cannot write a delete in the middle of a fragment consolidated "
+            "without timestamps.");
+      }
+    }
+  }
+
   // Get the delete URI.
   auto& array_dir = array_->array_directory();
   auto commit_uri = array_dir.get_commits_dir(write_version);

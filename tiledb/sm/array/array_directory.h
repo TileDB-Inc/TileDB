@@ -271,6 +271,9 @@ class ArrayDirectory {
   /** Returns the latest array schema URI. */
   const URI& latest_array_schema_uri() const;
 
+  /** Returns the unfiltered fragment uris. */
+  const std::vector<URI>& unfiltered_fragment_uris() const;
+
   /** Returns the URIs of the array metadata files to vacuum. */
   const std::vector<URI>& array_meta_uris_to_vacuum() const;
 
@@ -320,6 +323,7 @@ class ArrayDirectory {
   /** Returns `true` if `load` has been run. */
   bool loaded() const;
 
+  /** Returns the filtered fragment URIs struct. */
   const FilteredFragmentUris filtered_fragment_uris(
       const bool full_overlap_only) const;
 

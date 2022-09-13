@@ -74,10 +74,20 @@ class UpdateValue {
   DISABLE_COPY_ASSIGN(UpdateValue);
   DISABLE_MOVE_ASSIGN(UpdateValue);
 
+  /** Returns the field name. */
+  inline const std::string& field_name() const {
+    return field_name_;
+  }
+
+  /** Returns the view. */
+  inline const UntypedDatumView& view() const {
+    return update_value_view_;
+  }
+
   /**
    * Verifies that the object respects the array schema.
    *
-   * @param array_schema The current array schena.
+   * @param array_schema The current array schema.
    * @return Status
    */
   Status check(const ArraySchema& array_schema) const;

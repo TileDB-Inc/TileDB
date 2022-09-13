@@ -404,7 +404,9 @@ Status Array::open(
       array_schema_latest_ = array_schema_latest.value();
       array_schemas_all_ = array_schemas.value();
       fragment_metadata_ = fragment_metadata.value();
-    } else {
+    } else if (
+        query_type == QueryType::WRITE ||
+        query_type == QueryType::MODIFY_EXCLUSIVE) {
       array_dir_ = ArrayDirectory(
           storage_manager_->vfs(),
           storage_manager_->compute_tp(),
@@ -415,9 +417,26 @@ Status Array::open(
 
       auto&& [st, array_schema_latest, array_schemas] =
           storage_manager_->array_open_for_writes(this);
-      if (!st.ok()) {
-        throw StatusException(st);
-      }
+      throw_if_not_ok(st);
+
+      // Set schemas
+      array_schema_latest_ = array_schema_latest.value();
+      array_schemas_all_ = array_schemas.value();
+
+      metadata_.reset(timestamp_end_opened_at_);
+    } else if (
+        query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
+      array_dir_ = ArrayDirectory(
+          storage_manager_->vfs(),
+          storage_manager_->compute_tp(),
+          array_uri_,
+          timestamp_start_,
+          timestamp_end_opened_at_,
+          ArrayDirectoryMode::READ);
+
+      auto&& [st, array_schema_latest, array_schemas] =
+          storage_manager_->array_open_for_writes(this);
+      throw_if_not_ok(st);
 
       // Set schemas
       array_schema_latest_ = array_schema_latest.value();
@@ -432,10 +451,9 @@ Status Array::open(
         err << ") is smaller than the minimum supported version (";
         err << constants::deletes_min_version << ").";
         return LOG_STATUS(Status_ArrayError(err.str()));
-      }
-
-      if (query_type == QueryType::UPDATE &&
-          version < constants::deletes_min_version) {
+      } else if (
+          query_type == QueryType::UPDATE &&
+          version < constants::updates_min_version) {
         std::stringstream err;
         err << "Cannot open array for updates; Array format version (";
         err << version;
@@ -445,6 +463,8 @@ Status Array::open(
       }
 
       metadata_.reset(timestamp_end_opened_at_);
+    } else {
+      throw Status_ArrayError("Cannot open array; Unsupported query type.");
     }
   } catch (std::exception& e) {
     set_array_closed();
@@ -998,6 +1018,10 @@ Status Array::metadata(Metadata** metadata) {
   *metadata = &metadata_;
 
   return Status::Ok();
+}
+
+NDRange* Array::loaded_non_empty_domain() {
+  return &non_empty_domain_;
 }
 
 tuple<Status, optional<const NDRange>> Array::non_empty_domain() {

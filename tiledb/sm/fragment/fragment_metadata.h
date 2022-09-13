@@ -1400,33 +1400,34 @@ class FragmentMetadata {
   /**
    * Loads the min values for the input attribute from the input buffer.
    */
-  Status load_tile_min_values(unsigned idx, ConstBuffer* buff);
+  void load_tile_min_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the max values for the input attribute from the input buffer.
    */
-  Status load_tile_max_values(unsigned idx, ConstBuffer* buff);
+  // Status load_tile_max_values(unsigned idx, ConstBuffer* buff);
+  void load_tile_max_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the sum values for the input attribute from the input buffer.
    */
-  Status load_tile_sum_values(unsigned idx, ConstBuffer* buff);
+  void load_tile_sum_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the null count values for the input attribute from the input
    * buffer.
    */
-  Status load_tile_null_count_values(unsigned idx, ConstBuffer* buff);
+  void load_tile_null_count_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the min max sum null count values for the fragment.
    */
-  Status load_fragment_min_max_sum_null_count(ConstBuffer* buff);
+  void load_fragment_min_max_sum_null_count(Deserializer& deserializer);
 
   /**
    * Loads the processed conditions for the fragment.
    */
-  Status load_processed_conditions(Deserializer& deserializer);
+  void load_processed_conditions(Deserializer& deserializer);
 
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
@@ -1592,13 +1593,13 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the mins.
    * @return Status
    */
-  Status store_tile_mins(
+  void store_tile_mins(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the mins of the input attribute idx to the input buffer.
    */
-  Status write_tile_mins(unsigned idx, Buffer* buff);
+  void write_tile_mins(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the maxs of the input attribute to storage.
@@ -1608,13 +1609,13 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the maxs.
    * @return Status
    */
-  Status store_tile_maxs(
+  void store_tile_maxs(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the maxs of the input attribute idx to the input buffer.
    */
-  Status write_tile_maxs(unsigned idx, Buffer* buff);
+  void write_tile_maxs(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the sums of the input attribute to storage.
@@ -1624,13 +1625,13 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the sums.
    * @return Status
    */
-  Status store_tile_sums(
+  void store_tile_sums(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the sums of the input attribute idx to the input buffer.
    */
-  Status write_tile_sums(unsigned idx, Buffer* buff);
+  void write_tile_sums(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the null counts of the input attribute to storage.
@@ -1640,13 +1641,13 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the null counts.
    * @return Status
    */
-  Status store_tile_null_counts(
+  void store_tile_null_counts(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the null counts of the input attribute idx to the input buffer.
    */
-  Status write_tile_null_counts(unsigned idx, Buffer* buff);
+  void write_tile_null_counts(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the fragment min, max, sum and null count to storage.
@@ -1654,9 +1655,8 @@ class FragmentMetadata {
    * @param num The number of attributes.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written.
-   * @return Status
    */
-  Status store_fragment_min_max_sum_null_count(
+  void store_fragment_min_max_sum_null_count(
       uint64_t num, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
