@@ -1362,8 +1362,7 @@ class FragmentMetadata {
    * Loads the tile offsets for the input attribute from the input buffer.
    * Applicable to versions 1 and 2
    */
-  // TBD: This is used in series with multiple other routines still using ConstBuffer...
-  Status load_tile_offsets(ConstBuffer *cbuff);
+  Status load_tile_offsets(ConstBuffer* cbuff);
 
   /**
    * Loads the tile offsets for the input attribute or dimension from the
@@ -1381,7 +1380,7 @@ class FragmentMetadata {
    * Loads the variable tile offsets for the input attribute or dimension from
    * the input buffer.
    */
-  void load_tile_var_offsets(unsigned idx, Deserializer &deserializer);
+  void load_tile_var_offsets(unsigned idx, Deserializer& deserializer);
 
   /** Loads the variable tile sizes from the input buffer. */
   Status load_tile_var_sizes(ConstBuffer* buff);
@@ -1390,7 +1389,7 @@ class FragmentMetadata {
    * Loads the variable tile sizes for the input attribute or dimension
    * from the input buffer.
    */
-  void load_tile_var_sizes(unsigned idx, Deserializer &deserializer);
+  void load_tile_var_sizes(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the validity tile offsets for the input attribute from the
@@ -1529,7 +1528,7 @@ class FragmentMetadata {
    * Writes the tile offsets of the input attribute or dimension idx to the
    * input buffer.
    */
-  void write_tile_offsets(unsigned idx, Serializer &serializer);
+  void write_tile_offsets(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the variable tile offsets of the input attribute or dimension
@@ -1547,7 +1546,7 @@ class FragmentMetadata {
    * Writes the variable tile offsets of the input attribute or dimension idx
    * to the buffer.
    */
-  void write_tile_var_offsets(unsigned idx, Serializer &serializer);
+  void write_tile_var_offsets(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the variable tile sizes for the input attribute or dimension to
@@ -1565,7 +1564,7 @@ class FragmentMetadata {
    * Writes the variable tile sizes for the input attribute or dimension
    * to storage.
    */
-  void write_tile_var_sizes(unsigned idx, Serializer &serializer);
+  void write_tile_var_sizes(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the validity tile offsets of the input attribute to storage.

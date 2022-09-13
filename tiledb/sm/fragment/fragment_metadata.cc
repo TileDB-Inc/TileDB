@@ -940,7 +940,7 @@ Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_offsets_[i] = offset;
-    store_tile_offsets(i, encryption_key, &nbytes), clean_up();
+    store_tile_offsets(i, encryption_key, &nbytes);
     offset += nbytes;
   }
 
@@ -948,7 +948,7 @@ Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_var_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_var_offsets_[i] = offset;
-    store_tile_var_offsets(i, encryption_key, &nbytes), clean_up();
+    store_tile_var_offsets(i, encryption_key, &nbytes);
     offset += nbytes;
   }
 
@@ -2908,7 +2908,7 @@ Status FragmentMetadata::load_non_empty_domain_v5_or_higher(ConstBuffer* buff) {
 }
 
 // Applicable only to versions 1 and 2
-Status FragmentMetadata::load_tile_offsets(ConstBuffer *buff) {
+Status FragmentMetadata::load_tile_offsets(ConstBuffer* buff) {
   Status st;
   uint64_t tile_offsets_num = 0;
   unsigned int attribute_num = array_schema_->attribute_num();
@@ -2965,12 +2965,6 @@ void FragmentMetadata::load_tile_offsets(unsigned idx, Deserializer &deserialize
   if (tile_offsets_num != 0) {
     auto size = tile_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr && !memory_tracker_->take_memory(size)) {
-      // return LOG_STATUS(Status_FragmentMetadataError(
-      //     "Cannot load tile offsets; Insufficient memory budget; Needed " +
-      //     std::to_string(size) + " but only had " +
-      //     std::to_string(memory_tracker_->get_memory_available()) +
-      //     " from budget " +
-      //     std::to_string(memory_tracker_->get_memory_budget())));
       throw std::runtime_error(
           "Cannot load tile offsets; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
@@ -2981,8 +2975,6 @@ void FragmentMetadata::load_tile_offsets(unsigned idx, Deserializer &deserialize
 
     tile_offsets_[idx].resize(tile_offsets_num);
     deserializer.read(&tile_offsets_[idx][0], size);  }
-
-  //return Status::Ok();
 }
 
 // ===== FORMAT =====
