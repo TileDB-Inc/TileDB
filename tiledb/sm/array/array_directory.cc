@@ -84,6 +84,10 @@ const URI& ArrayDirectory::latest_array_schema_uri() const {
   return latest_array_schema_uri_;
 }
 
+const std::vector<URI>& ArrayDirectory::unfiltered_fragment_uris() const {
+  return unfiltered_fragment_uris_;
+}
+
 const std::vector<URI>& ArrayDirectory::array_meta_uris_to_vacuum() const {
   return array_meta_uris_to_vacuum_;
 }
