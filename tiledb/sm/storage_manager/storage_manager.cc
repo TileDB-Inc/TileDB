@@ -1901,10 +1901,16 @@ Status StorageManager::store_group_detail(
   RETURN_NOT_OK(st);
 
   // Serialize
-  Buffer buff;
-  RETURN_NOT_OK(group->serialize(&buff));
+  SizeComputationSerializer size_computation_serializer;
+  group->serialize(size_computation_serializer);
 
-  stats_->add_counter("write_group_size", buff.size());
+  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+
+  Serializer serializer(tile.data(), tile.size());
+  group->serialize(serializer);
+
+
+  stats_->add_counter("write_group_size", tile.size());
 
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
@@ -1914,7 +1920,7 @@ Status StorageManager::store_group_detail(
     RETURN_NOT_OK(create_dir(group_detail_folder_uri));
 
   RETURN_NOT_OK(store_data_to_generic_tile(
-      buff.data(), buff.size(), *group_detail_uri, encryption_key));
+      tile.data(), tile.size(), *group_detail_uri, encryption_key));
 
   return st;
 }
@@ -2088,8 +2094,10 @@ tuple<Status, optional<shared_ptr<Group>>> StorageManager::load_group_from_uri(
   stats_->add_counter("read_group_size", tile.size());
 
   // Deserialize
-  ConstBuffer cbuff(tile.data(), tile.size());
-  return Group::deserialize(&cbuff, group_uri, this);
+  Deserializer deserializer(tile.data(), tile.size());
+  auto opt_group = Group::deserialize(deserializer, group_uri, this);
+  return {Status::Ok(), opt_group};
+
 }
 
 tuple<Status, optional<shared_ptr<Group>>> StorageManager::load_group_details(
