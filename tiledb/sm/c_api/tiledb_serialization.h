@@ -501,6 +501,39 @@ TILEDB_EXPORT int32_t tiledb_deserialize_config(
     tiledb_config_t** config) TILEDB_NOEXCEPT;
 
 /**
+ * Serializes the fragment info into the given buffer.
+ *
+ * @note The caller must free the returned `tiledb_buffer_t`.
+ *
+ * @param ctx The TileDB context.
+ * @param fragment_info Fragment info to serialize.
+ * @param serialization_type Type of serialization to use
+ * @param buffer Will be set to a newly allocated buffer containing the
+ *      serialized fragment info.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_serialize_fragment_info(
+    tiledb_ctx_t* ctx,
+    const tiledb_fragment_info_t* fragment_info,
+    tiledb_serialization_type_t serialization_type,
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
+
+/**
+ * Populates the fragment info by deserializing from the given buffer.
+ *
+ * @param ctx The TileDB context.
+ * @param buffer Buffer containing serialized fragment info.
+ * @param serialization_type Type of serialization to use
+ * @param fragment_info Fragment info to deserialize into.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_deserialize_fragment_info(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    tiledb_fragment_info_t* fragment_info) TILEDB_NOEXCEPT;
+
+/**
  * Serializes the given group.
  *
  * Where possible the serialization is zero-copy. The returned buffer list

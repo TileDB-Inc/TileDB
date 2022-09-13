@@ -6384,6 +6384,61 @@ int32_t tiledb_deserialize_config(
   return TILEDB_OK;
 }
 
+int32_t tiledb_serialize_fragment_info(
+    tiledb_ctx_t* ctx,
+    const tiledb_fragment_info_t* fragment_info,
+    tiledb_serialization_type_t serialize_type,
+    tiledb_buffer_t** buffer) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Allocate buffer
+  if (detail::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Serialize
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::fragment_info_serialize(
+              *fragment_info->fragment_info_,
+              (tiledb::sm::SerializationType)serialize_type,
+              (*buffer)->buffer_))) {
+    detail::tiledb_buffer_free(buffer);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_fragment_info(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    tiledb_fragment_info_t* fragment_info) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::fragment_info_deserialize(
+              fragment_info->fragment_info_,
+              (tiledb::sm::SerializationType)serialize_type,
+              *buffer->buffer_))) {
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*            C++ API             */
 /* ****************************** */
@@ -9863,6 +9918,24 @@ int32_t tiledb_deserialize_config(
     tiledb_config_t** config) noexcept {
   return api_entry<detail::tiledb_deserialize_config>(
       ctx, buffer, serialize_type, client_side, config);
+}
+
+int32_t tiledb_serialize_fragment_info(
+    tiledb_ctx_t* ctx,
+    const tiledb_fragment_info_t* fragment_info,
+    tiledb_serialization_type_t serialize_type,
+    tiledb_buffer_t** buffer) noexcept {
+  return api_entry<detail::tiledb_serialize_fragment_info>(
+      ctx, fragment_info, serialize_type, buffer);
+}
+
+int32_t tiledb_deserialize_fragment_info(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    tiledb_fragment_info_t* fragment_info) noexcept {
+  return api_entry<detail::tiledb_deserialize_fragment_info>(
+      ctx, buffer, serialize_type, fragment_info);
 }
 
 /* ****************************** */
