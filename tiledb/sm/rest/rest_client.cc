@@ -1295,6 +1295,11 @@ Status RestClient::finalize_query_to_rest(const URI&, Query*) {
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
+Status RestClient::submit_and_finalize_query_to_rest(const URI&, Query*) {
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
 Status RestClient::get_query_est_result_sizes(const URI&, Query*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
