@@ -308,10 +308,10 @@ class ArrayDirectory {
   URI get_commits_dir(uint32_t write_version) const;
 
   /** Returns the URI for either an ok file or wrt file. */
-  tuple<Status, optional<URI>> get_commit_uri(const URI& fragment_uri) const;
+  URI get_commit_uri(const URI& fragment_uri) const;
 
   /** Returns the URI for a vacuum file. */
-  tuple<Status, optional<URI>> get_vacuum_uri(const URI& fragment_uri) const;
+  URI get_vacuum_uri(const URI& fragment_uri) const;
 
   /**
    * The new fragment name is computed

@@ -597,15 +597,11 @@ Status StorageManager::delete_fragments(
   std::vector<URI> commit_uris_to_delete;
   std::vector<URI> commit_uris_to_ignore;
   for (auto& fragment : fragment_uris) {
-    auto&& [st, commit_uri] = array_dir.get_commit_uri(fragment.uri_);
-    if (!st.ok()) {
-      throw std::logic_error(st.message());
-    }
-
-    commit_uris_to_delete.emplace_back(commit_uri.value());
-    if (array_dir.consolidated_commit_uris_set().count(
-            commit_uri.value().c_str()) != 0) {
-      commit_uris_to_ignore.emplace_back(commit_uri.value());
+    auto commit_uri = array_dir.get_commit_uri(fragment.uri_);
+    commit_uris_to_delete.emplace_back(commit_uri);
+    if (array_dir.consolidated_commit_uris_set().count(commit_uri.c_str()) !=
+        0) {
+      commit_uris_to_ignore.emplace_back(commit_uri);
     }
   }
 

@@ -439,12 +439,15 @@ Status FragmentConsolidator::consolidate_internal(
   }
 
   // Get the vacuum URI
-  auto&& [st_vac_uri, vac_uri] =
-      array_for_reads->array_directory().get_vacuum_uri(*new_fragment_uri);
-  if (!st_vac_uri.ok()) {
+  URI vac_uri;
+  try {
+    vac_uri =
+        array_for_reads->array_directory().get_vacuum_uri(*new_fragment_uri);
+  } catch (std::exception& e) {
     tdb_delete(query_r);
     tdb_delete(query_w);
-    return st_vac_uri;
+    std::throw_with_nested(
+        std::logic_error("[FragmentConsolidator::consolidate_internal] "));
   }
 
   // Read from one array and write to the other
@@ -469,7 +472,7 @@ Status FragmentConsolidator::consolidate_internal(
   }
 
   // Write vacuum file
-  st = write_vacuum_file(vac_uri.value(), to_consolidate);
+  st = write_vacuum_file(vac_uri, to_consolidate);
   if (!st.ok()) {
     tdb_delete(query_r);
     tdb_delete(query_w);
