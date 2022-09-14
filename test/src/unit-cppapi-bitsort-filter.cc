@@ -87,8 +87,7 @@ void bitsort_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
     }
   }
 
-  tiledb_layout_t layout_type =
-      array_type == TILEDB_SPARSE ? TILEDB_UNORDERED : TILEDB_ROW_MAJOR;
+  tiledb_layout_t layout_type = TILEDB_UNORDERED; // TODO: change
 
   Array array_w(ctx, bitsort_array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
@@ -102,7 +101,6 @@ void bitsort_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
   query_w.finalize();
   array_w.close();
 
-/*
   // Open and read the entire array.
   std::vector<T> a_data_read(bitsort_dim_hi * bitsort_dim_hi, 0);
   Array array_r(ctx, bitsort_array_name, TILEDB_READ);
@@ -131,7 +129,6 @@ void bitsort_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
 
   query_r.finalize();
   array_r.close();
-  */
 }
 
 TEMPLATE_TEST_CASE(
@@ -141,6 +138,7 @@ TEMPLATE_TEST_CASE(
     int16_t,
     int32_t,
     int64_t) {
+
   // Setup.
   Context ctx;
   VFS vfs(ctx);
@@ -148,7 +146,7 @@ TEMPLATE_TEST_CASE(
   if (vfs.is_dir(bitsort_array_name))
     vfs.remove_dir(bitsort_array_name);
 
-  auto array_type = GENERATE(TILEDB_SPARSE, TILEDB_DENSE);
+  auto array_type = TILEDB_SPARSE; // TODO: change
   bitsort_filter_api_test<TestType>(ctx, array_type);
 
   // Teardown.

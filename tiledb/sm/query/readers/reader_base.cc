@@ -1296,6 +1296,8 @@ Status ReaderBase::unfilter_tile_chunk_range(
       tile_chunk_data.chunk_offsets_.size(), num_range_threads, thread_idx);
 
   // Reverse the tile filters.
+  auto dim_tiles_arg = std::optional<std::reference_wrapper<std::vector<Tile*>>>{dim_tiles};
+
   RETURN_NOT_OK(filters.run_reverse_chunk_range(
       stats_,
       tile,
@@ -1304,7 +1306,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
       t_max,
       storage_manager_->compute_tp()->concurrency_level(),
       storage_manager_->config(),
-      dim_tiles));
+      dim_tiles_arg));
 
   return Status::Ok();
 }
@@ -1629,7 +1631,20 @@ Status ReaderBase::unfilter_tiles(
           // 't_var' for var-sized tiles.
           if (!var_size) {
             if (!nullable) {
-              RETURN_NOT_OK(unfilter_tile(name, t));
+              if (array_schema_.has_bitsort_filter()) {
+                // Collect dim tiles.
+                std::vector<Tile*> dim_tiles;
+                for (const auto &dim_name : array_schema_.dim_names()) {
+                  auto dim_tile_tuple = tile->tile_tuple(dim_name);
+                  dim_tiles.push_back(&dim_tile_tuple->fixed_tile());
+                }
+
+                RETURN_NOT_OK(unfilter_tile(name, t, dim_tiles));
+
+              } else {
+                RETURN_NOT_OK(unfilter_tile(name, t));
+              }
+
             } else {
               RETURN_NOT_OK(unfilter_tile_nullable(name, t, t_validity));
             }
@@ -1645,6 +1660,24 @@ Status ReaderBase::unfilter_tiles(
       });
 
   RETURN_CANCEL_OR_ERROR(status);
+
+  return Status::Ok();
+}
+
+Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile, std::vector<Tile*> &dim_tiles) const {
+  FilterPipeline filters = array_schema_.filters(name);
+
+  // Append an encryption unfilter when necessary.
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &filters, array_->get_encryption_key()));
+
+  // Reverse the tile filters.
+  RETURN_NOT_OK(filters.run_reverse<std::vector<Tile*>>(
+      stats_,
+      tile,
+      dim_tiles,
+      storage_manager_->compute_tp(),
+      storage_manager_->config()));
 
   return Status::Ok();
 }

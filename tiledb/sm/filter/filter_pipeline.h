@@ -33,7 +33,9 @@
 #ifndef TILEDB_FILTER_PIPELINE_H
 #define TILEDB_FILTER_PIPELINE_H
 
+#include <functional>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -49,6 +51,9 @@
 #include "tiledb/sm/tile/filtered_buffer.h"
 
 using namespace tiledb::common;
+
+template <typename T> 
+using OptionalRef = std::optional<std::reference_wrapper<T>>;
 
 namespace tiledb {
 namespace sm {
@@ -266,6 +271,18 @@ class FilterPipeline {
       ThreadPool* compute_tp,
       const Config& config) const;
 
+    template <
+      typename T = Tile*,
+      typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type* =
+          nullptr>
+  Status run_reverse(
+      stats::Stats* writer_stats,
+      Tile* tile,
+      T const support_tiles,
+      ThreadPool* compute_tp,
+      const Config& config) const;
+  
+
   /**
    * Run the given chunk range in reverse through the pipeline.
    *
@@ -276,16 +293,9 @@ class FilterPipeline {
    * @param max_chunk_index The chunk range index to end at
    * @param concurrency_level The maximum level of concurrency
    * @param config The global config.
+   * TODO: add nullopt
    * @return Status
    */
-  Status run_reverse_chunk_range(
-      stats::Stats* const reader_stats,
-      Tile* const tile,
-      const ChunkData& chunk_data,
-      const uint64_t min_chunk_index,
-      const uint64_t max_chunk_index,
-      uint64_t concurrency_level,
-      const Config& config) const;
 
   Status run_reverse_chunk_range(
       stats::Stats* const reader_stats,
@@ -295,7 +305,7 @@ class FilterPipeline {
       const uint64_t max_chunk_index,
       uint64_t concurrency_level,
       const Config& config,
-      std::vector<Tile*>& dim_tiles) const;
+      std::optional<std::reference_wrapper<std::vector<Tile*>>> dim_tiles = std::nullopt) const;
 
   /**
    * Serializes the pipeline metadata into a binary buffer.
@@ -415,9 +425,11 @@ class FilterPipeline {
    * @param config The global config.
    * @return Status
    */
+
+  template <typename T>
   Status filter_chunks_reverse(
       Tile& tile,
-      Tile* const offsets_tile,
+      T const support_tiles,
       const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
       ThreadPool* const compute_tp,
       const Config& config) const;
@@ -431,10 +443,11 @@ class FilterPipeline {
    * @param config The global config.
    * @return Status
    */
+  template <typename T>
   Status run_reverse_internal(
       stats::Stats* reader_stats,
       Tile* const tile,
-      Tile* const offsets_tile,
+      T const support_tiles,
       ThreadPool* compute_tp,
       const Config& config) const;
 };

@@ -48,6 +48,7 @@
 #include "tiledb/sm/tile/tile.h"
 
 #include <memory>
+#include <optional>
 
 using namespace tiledb::common;
 
@@ -339,9 +340,10 @@ Status FilterPipeline::filter_chunks_forward(
   return Status::Ok();
 }
 
+template <typename T>
 Status FilterPipeline::filter_chunks_reverse(
     Tile& tile,
-    Tile* const offsets_tile,
+    T const support_tiles,
     const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
     ThreadPool* const compute_tp,
     const Config& config) const {
@@ -415,14 +417,38 @@ Status FilterPipeline::filter_chunks_reverse(
 
       f->init_decompression_resource_pool(compute_tp->concurrency_level());
 
-      RETURN_NOT_OK(f->run_reverse(
+      if constexpr (std::is_same<T, std::vector<Tile*>>::value) {
+        if (f->type() == FilterType::FILTER_BITSORT) {
+          auto bitsort_filter = reinterpret_cast<const BitSortFilter*>(f.get());
+          RETURN_NOT_OK(
+              bitsort_filter->run_reverse(
+                      tile,
+                      support_tiles,
+                      &input_metadata,
+                      &input_data,
+                      &output_metadata,
+                      &output_data,
+                      config));
+        } else {
+          RETURN_NOT_OK(f->run_reverse(
           tile,
-          offsets_tile,
+          support_tiles,
           &input_metadata,
           &input_data,
           &output_metadata,
           &output_data,
           config));
+        }
+      } else {
+         RETURN_NOT_OK(f->run_reverse(
+          tile,
+          support_tiles,
+          &input_metadata,
+          &input_data,
+          &output_metadata,
+          &output_data,
+          config));
+      }
 
       input_data.set_read_only(false);
       input_metadata.set_read_only(false);
@@ -523,84 +549,6 @@ Status FilterPipeline::run_forward(
   return Status::Ok();
 }
 
-Status FilterPipeline::run_reverse_chunk_range(
-    stats::Stats* const reader_stats,
-    Tile* const tile,
-    const ChunkData& chunk_data,
-    const uint64_t min_chunk_index,
-    const uint64_t max_chunk_index,
-    uint64_t concurrency_level,
-    const Config& config) const {
-  // Run each chunk through the entire pipeline.
-  for (size_t i = min_chunk_index; i < max_chunk_index; i++) {
-    auto& chunk = chunk_data.filtered_chunks_[i];
-    FilterStorage storage;
-    FilterBuffer input_data(&storage), output_data(&storage);
-    FilterBuffer input_metadata(&storage), output_metadata(&storage);
-
-    // First filter's input is the filtered chunk data.
-    RETURN_NOT_OK(input_metadata.init(
-        chunk.filtered_metadata_, chunk.filtered_metadata_size_));
-    RETURN_NOT_OK(
-        input_data.init(chunk.filtered_data_, chunk.filtered_data_size_));
-
-    // If the pipeline is empty, just copy input to output.
-    if (filters_.empty()) {
-      void* output_chunk_buffer =
-          static_cast<char*>(tile->data()) + chunk_data.chunk_offsets_[i];
-      RETURN_NOT_OK(input_data.copy_to(output_chunk_buffer));
-      continue;
-    }
-
-    // Apply the filters sequentially in reverse.
-    for (int64_t filter_idx = (int64_t)filters_.size() - 1; filter_idx >= 0;
-         filter_idx--) {
-      auto& f = filters_[filter_idx];
-
-      // Clear and reset I/O buffers
-      input_data.reset_offset();
-      input_data.set_read_only(true);
-      input_metadata.reset_offset();
-      input_metadata.set_read_only(true);
-
-      output_data.clear();
-      output_metadata.clear();
-
-      // Final filter: output directly into the shared output buffer.
-      bool last_filter = filter_idx == 0;
-      if (last_filter) {
-        void* output_chunk_buffer =
-            static_cast<char*>(tile->data()) + chunk_data.chunk_offsets_[i];
-        RETURN_NOT_OK(output_data.set_fixed_allocation(
-            output_chunk_buffer, chunk.unfiltered_data_size_));
-        reader_stats->add_counter(
-            "read_unfiltered_byte_num", chunk.unfiltered_data_size_);
-      }
-
-      f->init_decompression_resource_pool(concurrency_level);
-
-      RETURN_NOT_OK(f->run_reverse(
-          *tile,
-          nullptr,
-          &input_metadata,
-          &input_data,
-          &output_metadata,
-          &output_data,
-          config));
-
-      input_data.set_read_only(false);
-      input_metadata.set_read_only(false);
-
-      if (!last_filter) {
-        input_data.swap(output_data);
-        input_metadata.swap(output_metadata);
-        // Next input (input_buffers) now stores this output (output_buffers).
-      }
-    }
-  }
-
-  return Status::Ok();
-}
 
 Status FilterPipeline::run_reverse_chunk_range(
       stats::Stats* const reader_stats,
@@ -610,7 +558,7 @@ Status FilterPipeline::run_reverse_chunk_range(
       const uint64_t max_chunk_index,
       uint64_t concurrency_level,
       const Config& config,
-      std::vector<Tile*> &dim_tiles) const {
+      std::optional<std::reference_wrapper<std::vector<Tile*>>> dim_tiles) const {
         // Run each chunk through the entire pipeline.
   for (size_t i = min_chunk_index; i < max_chunk_index; i++) {
     auto& chunk = chunk_data.filtered_chunks_[i];
@@ -660,12 +608,14 @@ Status FilterPipeline::run_reverse_chunk_range(
       f->init_decompression_resource_pool(concurrency_level);
 
        if (f->type() == FilterType::FILTER_BITSORT) {
+         // Access dim_tiles
+
           RETURN_NOT_OK(
               std::dynamic_pointer_cast<const shared_ptr<BitSortFilter>>(f)
                   ->get()
                   ->run_reverse(
                       *tile,
-                      dim_tiles,
+                      dim_tiles.value().get(),
                       &input_metadata,
                       &input_data,
                       &output_metadata,
@@ -704,14 +654,29 @@ Status FilterPipeline::run_reverse(
     const Config& config) const {
   assert(tile->filtered());
 
-  return run_reverse_internal(
+  return run_reverse_internal<Tile*>(
       reader_stats, tile, offsets_tile, compute_tp, config);
 }
 
-Status FilterPipeline::run_reverse_internal(
+template <typename T,
+ typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type*>
+Status FilterPipeline::run_reverse(
     stats::Stats* const reader_stats,
     Tile* const tile,
     Tile* const offsets_tile,
+    ThreadPool* const compute_tp,
+    const Config& config) const {
+  assert(tile->filtered());
+
+  return run_reverse_internal<T>(
+      reader_stats, tile, offsets_tile, compute_tp, config);
+}
+
+template <typename T>
+Status FilterPipeline::run_reverse_internal(
+    stats::Stats* const reader_stats,
+    Tile* const tile,
+    T const support_tiles,
     ThreadPool* const compute_tp,
     const Config& config) const {
   auto filtered_buffer_data = tile->filtered_buffer().data();

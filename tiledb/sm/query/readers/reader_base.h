@@ -606,6 +606,10 @@ class ReaderBase : public StrategyBase {
    */
   Status unfilter_tile(const std::string& name, Tile* tile) const;
 
+
+  // TODO: dim tiles
+  Status unfilter_tile(const std::string& name, Tile* tile, std::vector<Tile*> &dim_tiles);
+
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
    * the filter pipeline. The tile buffer is modified to contain the output of

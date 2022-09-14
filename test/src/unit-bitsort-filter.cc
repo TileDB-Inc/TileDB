@@ -33,9 +33,11 @@
 #include "test/src/helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/query/readers/reader_base.h"
 #include "tiledb/sm/filter/bitsort_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/sm/misc/types.h"
 
 #include <test/support/tdb_catch.h>
 #include <random>
@@ -43,6 +45,64 @@
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
+
+tuple<Status, optional<uint64_t>> test_load_chunk_data(
+    Tile* const tile, ChunkData* unfiltered_tile) {
+  assert(tile);
+  assert(unfiltered_tile);
+  assert(tile->filtered());
+
+  Status st = Status::Ok();
+  auto filtered_buffer_data = tile->filtered_buffer().data();
+  if (filtered_buffer_data == nullptr) {
+    return {st, nullopt};
+  }
+
+  // Make a pass over the tile to get the chunk information.
+  uint64_t num_chunks;
+  memcpy(&num_chunks, filtered_buffer_data, sizeof(uint64_t));
+  filtered_buffer_data += sizeof(uint64_t);
+
+  auto& filtered_chunks = unfiltered_tile->filtered_chunks_;
+  auto& chunk_offsets = unfiltered_tile->chunk_offsets_;
+  filtered_chunks.resize(num_chunks);
+  chunk_offsets.resize(num_chunks);
+  uint64_t total_orig_size = 0;
+  for (uint64_t i = 0; i < num_chunks; i++) {
+    auto& chunk = filtered_chunks[i];
+    memcpy(
+        &(chunk.unfiltered_data_size_), filtered_buffer_data, sizeof(uint32_t));
+    filtered_buffer_data += sizeof(uint32_t);
+
+    memcpy(
+        &(chunk.filtered_data_size_), filtered_buffer_data, sizeof(uint32_t));
+    filtered_buffer_data += sizeof(uint32_t);
+
+    memcpy(
+        &(chunk.filtered_metadata_size_),
+        filtered_buffer_data,
+        sizeof(uint32_t));
+    filtered_buffer_data += sizeof(uint32_t);
+
+    chunk.filtered_metadata_ = filtered_buffer_data;
+    chunk.filtered_data_ = static_cast<char*>(chunk.filtered_metadata_) +
+                           chunk.filtered_metadata_size_;
+
+    chunk_offsets[i] = total_orig_size;
+    total_orig_size += chunk.unfiltered_data_size_;
+
+    filtered_buffer_data +=
+        chunk.filtered_metadata_size_ + chunk.filtered_data_size_;
+  }
+
+  if (total_orig_size != tile->size()) {
+    return {Status_ReaderError(
+                "Error incorrect unfiltered tile size allocated."),
+            nullopt};
+  }
+
+  return {Status::Ok(), total_orig_size};
+}
 
 /*
  Defining distribution types to pass into the testing_bitsort_filter function.
@@ -79,16 +139,22 @@ void testing_bitsort_filter(Datatype t) {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(BitSortFilter()).ok());
+  REQUIRE(pipeline.add_filter(BitSortFilter()).ok());
 
   std::vector<Tile*> dim_tiles_dummy;
-  CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, dim_tiles_dummy, &tp).ok());
+  REQUIRE(pipeline.run_forward(&test::g_helper_stats, &tile, dim_tiles_dummy, &tp).ok());
 
-/*
   // Check new size and number of chunks
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
   CHECK(tile.alloc_data(nelts * sizeof(T)).ok());
+
+  ChunkData chunk_data;
+  auto && [chunk_data_status, total_orig_size] {test_load_chunk_data(&tile, &chunk_data)};
+  REQUIRE(chunk_data_status.ok());
+  
+/*
+
   CHECK(pipeline.run_reverse_chunk_range(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
   for (uint64_t i = 0; i < nelts; i++) {
