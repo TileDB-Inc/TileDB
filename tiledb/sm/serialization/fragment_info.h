@@ -67,8 +67,8 @@ Status fragment_info_from_capnp(
 /**
  * Convert Fragment Info to Cap'n Proto message
  *
- * @param fragment_info_reader cap'n proto class
  * @param fragment_info fragment info to serialize
+ * @param fragment_info_builder cap'n proto class
  * @return Status
  */
 Status fragment_info_to_capnp(

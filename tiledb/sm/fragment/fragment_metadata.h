@@ -214,26 +214,36 @@ class FragmentMetadata {
   std::vector<std::pair<uint64_t, double>> compute_overlapping_tile_ids_cov(
       const T* subarray) const;
 
+  /** Retrieves the fragment size. */
+  Status fragment_size(uint64_t* size) const;
+
   /**
    * Returns true if the corresponding fragment is dense, and false if it
    * is sparse.
    */
-  bool dense() const;
+  inline bool dense() const {
+    return dense_;
+  }
 
   /** Returns the (expanded) domain in which the fragment is constrained. */
-  const NDRange& domain() const;
+  inline const NDRange& domain() const {
+    return domain_;
+  }
 
   /** Returns the format version of this fragment. */
-  uint32_t format_version() const;
-
-  /** Retrieves the fragment size. */
-  Status fragment_size(uint64_t* size) const;
+  inline uint32_t format_version() const {
+    return version_;
+  }
 
   /** Returns the fragment URI. */
-  const URI& fragment_uri() const;
+  inline const URI& fragment_uri() const {
+    return fragment_uri_;
+  }
 
   /** Returns true if the metadata footer is consolidated. */
-  bool has_consolidated_footer() const;
+  inline bool has_consolidated_footer() const {
+    return has_consolidated_footer_;
+  }
 
   /** Returns true if the fragment has timestamps. */
   inline bool has_timestamps() const {
@@ -243,6 +253,122 @@ class FragmentMetadata {
   /** Returns true if the fragment has delete metadata. */
   inline bool has_delete_meta() const {
     return has_delete_meta_;
+  }
+
+  /** Returns the sizes of each attribute file. */
+  inline const std::vector<uint64_t>& file_sizes() const {
+    return file_sizes_;
+  }
+
+  /** Returns the sizes of each variable attribute file. */
+  inline const std::vector<uint64_t>& file_var_sizes() const {
+    return file_var_sizes_;
+  }
+
+  /** Returns the sizes of each validity attribute file. */
+  inline const std::vector<uint64_t>& file_validity_sizes() const {
+    return file_validity_sizes_;
+  }
+
+  /** Returns the number of sparse tiles. */
+  inline const uint64_t& sparse_tile_num() const {
+    return sparse_tile_num_;
+  }
+
+  /** Returns the tile index base value. */
+  inline const uint64_t& tile_index_base() const {
+    return tile_index_base_;
+  }
+
+  /** Returns the tile offsets. */
+  inline const std::vector<std::vector<uint64_t>>& tile_offsets() const {
+    return tile_offsets_;
+  }
+
+  /** Returns the variable tile offsets. */
+  inline const std::vector<std::vector<uint64_t>>& tile_var_offsets() const {
+    return tile_var_offsets_;
+  }
+
+  /** Returns the sizes of the uncompressed variable tiles. */
+  inline const std::vector<std::vector<uint64_t>>& tile_var_sizes() const {
+    return tile_var_sizes_;
+  }
+
+  /** Returns the validity tile offsets. */
+  inline const std::vector<std::vector<uint64_t>>& tile_validity_offsets()
+      const {
+    return tile_validity_offsets_;
+  }
+
+  /** Returns the tile min buffers. */
+  inline const std::vector<std::vector<uint8_t>>& tile_min_buffer() const {
+    return tile_min_buffer_;
+  }
+
+  /** Returns the tile min buffers variable length data. */
+  inline const std::vector<std::vector<char>>& tile_min_var_buffer() const {
+    return tile_min_var_buffer_;
+  }
+
+  /** Returns the tile max buffers. */
+  inline const std::vector<std::vector<uint8_t>>& tile_max_buffer() const {
+    return tile_max_buffer_;
+  }
+
+  /** Returns the tile max buffers variable length data. */
+  inline const std::vector<std::vector<char>>& tile_max_var_buffer() const {
+    return tile_max_var_buffer_;
+  }
+
+  /** Returns the tile sum values for fixed sized data. */
+  inline const std::vector<std::vector<uint8_t>>& tile_sums() const {
+    return tile_sums_;
+  }
+
+  /** Returns the tile null count values for attributes/dimensions. */
+  inline const std::vector<std::vector<uint64_t>>& tile_null_counts() const {
+    return tile_null_counts_;
+  }
+
+  /** Returns the fragment mins. */
+  inline const std::vector<std::vector<uint8_t>>& fragment_mins() const {
+    return fragment_mins_;
+  }
+
+  /** Returns the fragment maxs. */
+  inline const std::vector<std::vector<uint8_t>>& fragment_maxs() const {
+    return fragment_maxs_;
+  }
+
+  /** Returns the fragment sums. */
+  inline const std::vector<uint64_t>& fragment_sums() const {
+    return fragment_sums_;
+  }
+
+  /** Returns the fragment null counts. */
+  inline const std::vector<uint64_t>& fragment_null_counts() const {
+    return fragment_null_counts_;
+  }
+
+  /** Returns the fragment timestamp range. */
+  inline const std::pair<uint64_t, uint64_t>& timestamp_range() const {
+    return timestamp_range_;
+  }
+
+  /** Returns the number of cells in the last tile. */
+  inline const uint64_t& last_tile_cell_num() const {
+    return last_tile_cell_num_;
+  }
+
+  /** Returns the non-empty domain of the fragment. */
+  inline const NDRange& non_empty_domain() const {
+    return non_empty_domain_;
+  }
+
+  /** Returns an RTree for the MBRs. */
+  inline const RTree& rtree() const {
+    return rtree_;
   }
 
   /**
@@ -272,9 +398,6 @@ class FragmentMetadata {
    * Initializes the fragment's internal domain and non-empty domain members
    */
   Status init_domain(const NDRange& non_empty_domain);
-
-  /** Returns the number of cells in the last tile. */
-  uint64_t last_tile_cell_num() const;
 
   /**
    * Loads the basic metadata from storage or `f_buff` for later
@@ -515,9 +638,6 @@ class FragmentMetadata {
   /** Sets the internal dense_ field*/
   void set_dense(bool dense);
 
-  /** Returns the tile index base value. */
-  uint64_t tile_index_base() const;
-
   /** Returns the number of tiles in the fragment. */
   uint64_t tile_num() const;
 
@@ -746,9 +866,6 @@ class FragmentMetadata {
 
   /** Returns the first timestamp of the fragment timestamp range. */
   uint64_t first_timestamp() const;
-
-  /** Returns the fragment timestamp range. */
-  const std::pair<uint64_t, uint64_t>& timestamp_range() const;
 
   /**
    * Returns `true` if the timestamp of the first operand is smaller,

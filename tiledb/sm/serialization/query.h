@@ -194,6 +194,16 @@ Status query_est_result_size_deserialize(
     const Buffer& serialized_buffer);
 
 #ifdef TILEDB_SERIALIZATION
+
+Status fragment_metadata_from_capnp(
+    const shared_ptr<const ArraySchema>& array_schema,
+    const capnp::FragmentMetadata::Reader& frag_meta_reader,
+    shared_ptr<FragmentMetadata> frag_meta);
+
+Status fragment_metadata_to_capnp(
+    const FragmentMetadata& frag_meta,
+    capnp::FragmentMetadata::Builder* frag_meta_builder);
+
 Status global_write_state_to_capnp(
     const Query& query,
     GlobalOrderWriter& globalwriter,
