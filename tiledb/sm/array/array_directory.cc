@@ -331,10 +331,7 @@ URI ArrayDirectory::get_commits_dir(uint32_t write_version) const {
 URI ArrayDirectory::get_commit_uri(const URI& fragment_uri) const {
   auto name = fragment_uri.remove_trailing_slash().last_path_part();
   uint32_t version;
-  auto st{utils::parse::get_fragment_version(name, &version)};
-  if (!st.ok()) {
-    throw std::logic_error(st.message());
-  }
+  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
 
   if (version == UINT32_MAX || version < 12) {
     return URI(fragment_uri.to_string() + constants::ok_file_suffix);
@@ -348,10 +345,7 @@ URI ArrayDirectory::get_commit_uri(const URI& fragment_uri) const {
 URI ArrayDirectory::get_vacuum_uri(const URI& fragment_uri) const {
   auto name = fragment_uri.remove_trailing_slash().last_path_part();
   uint32_t version;
-  auto st{utils::parse::get_fragment_version(name, &version)};
-  if (!st.ok()) {
-    throw std::logic_error(st.message());
-  }
+  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
 
   if (version == UINT32_MAX || version < 12) {
     return URI(fragment_uri.to_string() + constants::vacuum_file_suffix);

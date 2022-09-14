@@ -871,72 +871,69 @@ TEST_CASE_METHOD(
     "[cppapi][consolidation_with_timestamps][fragments][delete]") {
   // Write fragments at timestamps 1, 3, 5, 7
   auto array = write_fragments();
+  uint32_t num_commits = 4;
+  int num_fragments = 4;
 
   // Consolidate fragments at timestamps 1 - 3
   auto config = ctx.config();
-  config["sm.consolidation.mode"] = "commits";
+  config["sm.consolidation.mode"] = "fragments";
   config["sm.consolidation.timestamp_start"] = "1";
   config["sm.consolidation.timestamp_end"] = "3";
   Array::consolidate(ctx, array_name, &config);
+  num_commits += 2;
+  num_fragments++;
 
   // Validate working directory
-  CHECK(tiledb::test::num_fragments(array_name) == 4);
+  CHECK(tiledb::test::num_fragments(array_name) == num_fragments);
   std::string commit_dir = tiledb::test::get_commit_dir(array_name);
   std::vector<std::string> commits{vfs.ls(commit_dir)};
-  CHECK(commits.size() == 5);
-  bool con_exists = false;
+  CHECK(commits.size() == num_commits);
+  bool vac_exists = false;
   for (auto commit : commits) {
     if (tiledb::sm::utils::parse::ends_with(
-            commit, tiledb::sm::constants::con_commits_file_suffix)) {
-      con_exists = true;
+            commit, tiledb::sm::constants::vacuum_file_suffix)) {
+      vac_exists = true;
     }
   }
-  CHECK(con_exists);
+  CHECK(vac_exists);
 
-  // Conditionally vacuum commits
+  // Conditionally vacuum fragments before deletion
   bool vacuum = GENERATE(true, false);
   if (vacuum) {
     auto config = ctx.config();
-    config["sm.vacuum.mode"] = "commits";
+    config["sm.vacuum.mode"] = "fragments";
     Array::vacuum(ctx, array_name, &config);
+    num_commits -= 3;
+    num_fragments -= 2;
 
     // Validate working directory
-    CHECK(tiledb::test::num_fragments(array_name) == 4);
+    CHECK(tiledb::test::num_fragments(array_name) == num_fragments);
     commits = vfs.ls(commit_dir);
-    CHECK(commits.size() == 1);
-    CHECK(tiledb::sm::utils::parse::ends_with(
-        commits[0], tiledb::sm::constants::con_commits_file_suffix));
+    CHECK(commits.size() == num_commits);
   }
 
   // Delete fragments at timestamps 2 - 4
   array.open(TILEDB_MODIFY_EXCLUSIVE);
   array.delete_fragments(array_name, 2, 4);
-  CHECK(tiledb::test::num_fragments(array_name) == 3);
+  if (!vacuum) {
+    // Vacuum after deletion
+    auto config = ctx.config();
+    config["sm.vacuum.mode"] = "fragments";
+    Array::vacuum(ctx, array_name, &config);
+    num_commits -= 3;
+    num_fragments -= 2;
+
+    // Validate working directory
+    CHECK(tiledb::test::num_fragments(array_name) == num_fragments);
+    commits = vfs.ls(commit_dir);
+    CHECK(commits.size() == num_commits);
+  }
   array.close();
 
-  // Check commits directory after deletion
-  int con_file_count = 0;
-  int ign_file_count = 0;
+  // Validate working directory
+  CHECK(tiledb::test::num_fragments(array_name) == num_fragments);
   commits = vfs.ls(commit_dir);
-  for (auto commit : commits) {
-    if (tiledb::sm::utils::parse::ends_with(
-            commit, tiledb::sm::constants::con_commits_file_suffix)) {
-      con_file_count++;
-    }
-    if (tiledb::sm::utils::parse::ends_with(
-            commit, tiledb::sm::constants::ignore_file_suffix)) {
-      ign_file_count++;
-    }
-  }
-  /* Note: An ignore file is written by delete_fragments if there are
-   * consolidated commits to be ignored by the delete. */
-  CHECK(con_file_count == 1);
-  CHECK(ign_file_count == 1);
-  if (vacuum) {
-    CHECK(commits.size() == 2);
-  } else {
-    CHECK(commits.size() == 5);
-  }
+  CHECK(commits.size() == num_commits);
 
   // Read from the array
   array.open(TILEDB_READ);
