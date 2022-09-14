@@ -49,6 +49,20 @@
 using namespace tiledb::sm;
 
 TEST_CASE(
+    "Filter serialization: Test noop filter", "[filter][noop][serialization]") {
+  Filter* f = FilterCreate::make(FilterType::FILTER_NONE);
+  ::capnp::MallocMessageBuilder message;
+  tiledb::sm::serialization::capnp::Filter::Builder filter_builder =
+      message.initRoot<tiledb::sm::serialization::capnp::Filter>();
+  REQUIRE(tiledb::sm::serialization::filter_to_capnp(f, &filter_builder).ok());
+
+  auto&& [st_f, filter_none]{
+      tiledb::sm::serialization::filter_from_capnp(filter_builder)};
+  REQUIRE(st_f.ok());
+  REQUIRE(filter_none == std::nullopt);
+}
+
+TEST_CASE(
     "Filter serialization: Test default float scaling filter",
     "[filter][float-scaling][serialization]") {
   Filter* f = FilterCreate::make(FilterType::FILTER_SCALE_FLOAT);

@@ -206,7 +206,7 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
               tiledb::common::make_shared<FloatScalingFilter>(HERE())};
     }
     case FilterType::FILTER_NONE:
-      break;
+      return {Status::Ok(), std::nullopt};
     case FilterType::FILTER_BITSHUFFLE: {
       return {Status::Ok(),
               tiledb::common::make_shared<BitshuffleFilter>(HERE())};
