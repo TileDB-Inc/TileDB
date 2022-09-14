@@ -868,7 +868,7 @@ void FragmentMetadata::store(const EncryptionKey& encryption_key) {
     clean_up();
     auto fragment_metadata_uri =
         fragment_uri_.join_path(constants::fragment_metadata_filename);
-    std::throw_with_nested(std::runtime_error(
+    std::throw_with_nested(FragmentMetadataStatusException(
         "FragmentMetadata::store() failed on " +
         fragment_metadata_uri.to_string()));
   }
@@ -2960,7 +2960,7 @@ void FragmentMetadata::load_tile_offsets(unsigned idx, Deserializer &deserialize
   if (tile_offsets_num != 0) {
     auto size = tile_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr && !memory_tracker_->take_memory(size)) {
-      throw std::runtime_error(
+      throw FragmentMetadataStatusException(
           "Cannot load tile offsets; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
@@ -3041,7 +3041,7 @@ void FragmentMetadata::load_tile_var_offsets(
   if (tile_var_offsets_num != 0) {
     auto size = tile_var_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr && !memory_tracker_->take_memory(size)) {
-      throw std::runtime_error("Cannot load tile var offsets; Insufficient memory budget; Needed " +
+      throw FragmentMetadataStatusException("Cannot load tile var offsets; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
@@ -3117,7 +3117,7 @@ void FragmentMetadata::load_tile_var_sizes(
   if (tile_var_sizes_num != 0) {
     auto size = tile_var_sizes_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr && !memory_tracker_->take_memory(size)) {
-      throw std::runtime_error("Cannot load tile var sizes; Insufficient memory budget; Needed " +
+      throw FragmentMetadataStatusException("Cannot load tile var sizes; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
