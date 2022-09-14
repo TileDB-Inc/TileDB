@@ -58,6 +58,7 @@
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter_create.h"
 #include "tiledb/sm/filter/float_scaling_filter.h"
+#include "tiledb/sm/filter/noop_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
 #include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/misc/constants.h"
@@ -205,8 +206,9 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
       return {Status::Ok(),
               tiledb::common::make_shared<FloatScalingFilter>(HERE())};
     }
-    case FilterType::FILTER_NONE:
-      return {Status::Ok(), std::nullopt};
+    case FilterType::FILTER_NONE: {
+      return {Status::Ok(), tiledb::common::make_shared<NoopFilter>(HERE())};
+    }
     case FilterType::FILTER_BITSHUFFLE: {
       return {Status::Ok(),
               tiledb::common::make_shared<BitshuffleFilter>(HERE())};

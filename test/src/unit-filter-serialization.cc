@@ -56,10 +56,10 @@ TEST_CASE(
       message.initRoot<tiledb::sm::serialization::capnp::Filter>();
   REQUIRE(tiledb::sm::serialization::filter_to_capnp(f, &filter_builder).ok());
 
-  auto&& [st_f, filter_none]{
+  auto&& [st_f, filter_noop]{
       tiledb::sm::serialization::filter_from_capnp(filter_builder)};
   REQUIRE(st_f.ok());
-  REQUIRE(filter_none == std::nullopt);
+  REQUIRE(filter_noop.value()->type() == FilterType::FILTER_NONE);
 }
 
 TEST_CASE(
