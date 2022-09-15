@@ -1165,6 +1165,12 @@ class Query {
    * This function should be called only for remote global order writes.
    */
   Status check_buffer_multipart_size() const;
+
+  /**
+   * Reset coord buffer markers at end of a global write submit.
+   * This will allow for the user to properly set the next write batch.
+   */
+  void reset_coords_markers();
 };
 
 }  // namespace sm

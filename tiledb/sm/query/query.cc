@@ -1198,15 +1198,6 @@ Status Query::process() {
     return st;
   }
 
-  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
-      layout_ == Layout::GLOBAL_ORDER) {
-    // reset coord buffer marker at end of global write
-    // this will allow for the user to properly set the next write batch
-    coord_buffer_is_set_ = false;
-    coord_data_buffer_is_set_ = false;
-    coord_offsets_buffer_is_set_ = false;
-  }
-
   // Check if the query is complete
   bool completed = !strategy_->incomplete();
 
@@ -2422,10 +2413,16 @@ Status Query::submit() {
     // Check that input buffers >5mb for remote global order writes
     RETURN_NOT_OK(check_buffer_multipart_size());
 
-    return rest_client->submit_query_to_rest(array_->array_uri(), this);
+    RETURN_NOT_OK(rest_client->submit_query_to_rest(array_->array_uri(), this));
+
+    reset_coords_markers();
+    return Status::Ok();
   }
   RETURN_NOT_OK(init());
-  return storage_manager_->query_submit(this);
+  RETURN_NOT_OK(storage_manager_->query_submit(this));
+
+  reset_coords_markers();
+  return Status::Ok();
 }
 
 Status Query::submit_async(
@@ -2572,6 +2569,15 @@ bool Query::is_dense() const {
 
 std::vector<WrittenFragmentInfo>& Query::get_written_fragment_info() {
   return written_fragment_info_;
+}
+
+void Query::reset_coords_markers() {
+  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
+      layout_ == Layout::GLOBAL_ORDER) {
+    coord_buffer_is_set_ = false;
+    coord_data_buffer_is_set_ = false;
+    coord_offsets_buffer_is_set_ = false;
+  }
 }
 
 /* ****************************** */
