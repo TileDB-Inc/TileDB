@@ -1032,9 +1032,9 @@ const char* Config::get_from_config_or_env(
   return *found ? value_config : "";
 }
 
-template <class T, bool must_find>
+template <class T, bool must_find_>
 optional<T> Config::get_internal(const std::string& key) const {
-  auto value = get_internal_string<must_find>(key);
+  auto value = get_internal_string<must_find_>(key);
   if (value.has_value()) {
     T converted_value;
     auto status = utils::parse::convert(value.value(), &converted_value);
@@ -1049,7 +1049,7 @@ optional<T> Config::get_internal(const std::string& key) const {
   return {nullopt};
 }
 
-template <bool must_find>
+template <bool must_find_>
 optional<std::string> Config::get_internal_string(
     const std::string& key) const {
   bool found;
@@ -1058,7 +1058,7 @@ optional<std::string> Config::get_internal_string(
     return {value};
   }
 
-  if constexpr (must_find) {
+  if constexpr (must_find_) {
     throw_config_exception("Failed to get config value for key: " + key);
   }
   return {nullopt};

@@ -701,10 +701,10 @@ class Config {
   const char* get_from_config_or_env(
       const std::string& param, bool* found) const;
 
-  template <class T, bool will_throw>
+  template <class T, bool must_find_>
   optional<T> get_internal(const std::string& key) const;
 
-  template <bool will_throw>
+  template <bool must_find_>
   optional<std::string> get_internal_string(const std::string& key) const;
 };
 
