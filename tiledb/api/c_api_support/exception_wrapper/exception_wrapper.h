@@ -108,8 +108,8 @@ class ExceptionActionImpl<Head, Tail...> : public Head,
                                            public ExceptionActionImpl<Tail...> {
  public:
   explicit ExceptionActionImpl(Head&& head, Tail&&... tail) noexcept
-      : ExceptionActionImpl<Tail...>{std::forward<Tail>(tail)...}
-      , Head(head) {
+      : Head(head)
+      , ExceptionActionImpl<Tail...>{std::forward<Tail>(tail)...} {
   }
   /**
    * Action to take upon catching an exception.
