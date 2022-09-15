@@ -214,7 +214,7 @@ class FilterPipeline {
       bool chunking = true) const;
 
   template <
-      typename T = Tile*,
+      typename T = Tile* const,
       typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type* =
           nullptr>
   Status run_forward(
@@ -272,7 +272,7 @@ class FilterPipeline {
       const Config& config) const;
 
     template <
-      typename T = Tile*,
+      typename T = Tile* const,
       typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type* =
           nullptr>
   Status run_reverse(
