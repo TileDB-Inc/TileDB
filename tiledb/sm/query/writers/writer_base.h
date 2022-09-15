@@ -44,6 +44,7 @@
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/query/writers/dense_tiler.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/tile/writer_tile.h"
 
 using namespace tiledb::common;
@@ -55,7 +56,6 @@ class Array;
 class DomainBuffersView;
 class FragmentMetadata;
 class TileMetadataGenerator;
-class StorageManager;
 
 using WriterTileVector = std::vector<WriterTile>;
 

@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/filter/filter_external.h
+ * @file tiledb/api/c_api/filter/filter_api_external.h
  *
  * @section LICENSE
  *

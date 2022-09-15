@@ -950,18 +950,16 @@ void ArraySchema::set_capacity(uint64_t capacity) {
   capacity_ = capacity;
 }
 
-Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline* pipeline) {
-  assert(pipeline);
-  RETURN_NOT_OK(check_string_compressor(*pipeline));
-  RETURN_NOT_OK(check_double_delta_compressor(*pipeline));
-
-  coords_filters_ = *pipeline;
+Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline& pipeline) {
+  RETURN_NOT_OK(check_string_compressor(pipeline));
+  RETURN_NOT_OK(check_double_delta_compressor(pipeline));
+  coords_filters_ = pipeline;
   return Status::Ok();
 }
 
 Status ArraySchema::set_cell_var_offsets_filter_pipeline(
-    const FilterPipeline* pipeline) {
-  cell_var_offsets_filters_ = *pipeline;
+    const FilterPipeline& pipeline) {
+  cell_var_offsets_filters_ = pipeline;
   return Status::Ok();
 }
 
@@ -977,8 +975,8 @@ Status ArraySchema::set_cell_order(Layout cell_order) {
 }
 
 Status ArraySchema::set_cell_validity_filter_pipeline(
-    const FilterPipeline* pipeline) {
-  cell_validity_filters_ = *pipeline;
+    const FilterPipeline& pipeline) {
+  cell_validity_filters_ = pipeline;
   return Status::Ok();
 }
 

@@ -40,6 +40,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 namespace tiledb {
 namespace sm {
@@ -47,7 +48,6 @@ namespace sm {
 class Array;
 class ArraySchema;
 class MemoryTracker;
-class StorageManager;
 class Subarray;
 
 class FragIdx {

@@ -172,9 +172,8 @@ TEST_CASE(
   ThreadPool tp_cpu(1);
   ThreadPool tp_io(1);
   stats::Stats stats("");
-  StorageManager sm(&tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""));
-  Status st = sm.init(config);
-  REQUIRE(st.ok());
+  StorageManager sm(
+      &tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""), config);
 
   // Register array
   tdb_unique_ptr<Array> array = x.open_array(uri, &sm);
@@ -201,9 +200,8 @@ TEST_CASE(
   ThreadPool tp_cpu(1);
   ThreadPool tp_io(1);
   stats::Stats stats("");
-  StorageManager sm(&tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""));
-  Status st = sm.init(config);
-  REQUIRE(st.ok());
+  StorageManager sm(
+      &tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""), config);
 
   std::vector<tdb_unique_ptr<Array>> arrays;
   std::vector<URI> uris = {URI("whitebox_array_vector_1"),
@@ -247,15 +245,14 @@ TEST_CASE(
   ThreadPool tp_cpu(1);
   ThreadPool tp_io(1);
   stats::Stats stats("");
-  StorageManager sm(&tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""));
-  Status st = sm.init(config);
-  REQUIRE(st.ok());
+  StorageManager sm(
+      &tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""), config);
 
   // Create an array
   tdb_unique_ptr<Array> array = x.create_array(uri, &sm);
 
   // Open an array for exclusive modification
-  st = array->open(
+  auto st = array->open(
       QueryType::MODIFY_EXCLUSIVE, EncryptionType::NO_ENCRYPTION, nullptr, 0);
   REQUIRE(st.ok());
   REQUIRE(x.registry_size() == 1);

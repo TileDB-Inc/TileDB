@@ -51,6 +51,7 @@
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 using namespace tiledb::common;
@@ -59,7 +60,6 @@ namespace tiledb {
 namespace sm {
 
 class Array;
-class StorageManager;
 
 enum class QueryStatus : uint8_t;
 enum class QueryType : uint8_t;
@@ -683,7 +683,7 @@ class Query {
    *
    * @return Config from query
    */
-  const Config* config() const;
+  const Config& config() const;
 
   /**
    * This is a deprecated API.

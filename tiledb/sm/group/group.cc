@@ -483,8 +483,8 @@ QueryType Group::query_type() const {
   return query_type_;
 }
 
-const Config* Group::config() const {
-  return &config_;
+const Config& Group::config() const {
+  return config_;
 }
 
 Status Group::set_config(Config config) {
@@ -658,7 +658,7 @@ Group::members() const {
   return members_;
 }
 
-void Group::serialize(Serializer &) {
+void Group::serialize(Serializer&) {
   throw StatusException(Status_GroupError("Invalid call to Group::serialize"));
 }
 
@@ -668,15 +668,17 @@ void Group::apply_and_serialize(Serializer& serializer) {
 }
 
 std::optional<tdb_shared_ptr<Group>> Group::deserialize(
-    Deserializer &deserializer, const URI& group_uri, StorageManager* storage_manager) {
+    Deserializer& deserializer,
+    const URI& group_uri,
+    StorageManager* storage_manager) {
   uint32_t version = 0;
   version = deserializer.read<uint32_t>();
   if (version == 1) {
     return GroupV1::deserialize(deserializer, group_uri, storage_manager);
   }
 
-  throw StatusException(
-      Status_GroupError("Unsupported group version " + std::to_string(version)));
+  throw StatusException(Status_GroupError(
+      "Unsupported group version " + std::to_string(version)));
 }
 
 const URI& Group::group_uri() const {

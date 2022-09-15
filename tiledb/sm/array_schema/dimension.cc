@@ -1368,33 +1368,28 @@ Status Dimension::set_domain_unsafe(const void* domain) {
   return Status::Ok();
 }
 
-Status Dimension::set_filter_pipeline(const FilterPipeline* pipeline) {
-  if (pipeline == nullptr)
-    return LOG_STATUS(Status_DimensionError(
-        "Cannot set filter pipeline to dimension; Pipeline cannot be null"));
-
-  for (unsigned i = 0; i < pipeline->size(); ++i) {
+Status Dimension::set_filter_pipeline(const FilterPipeline& pipeline) {
+  for (unsigned i = 0; i < pipeline.size(); ++i) {
     if (datatype_is_real(type_) &&
-        pipeline->get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
+        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
       return LOG_STATUS(
           Status_DimensionError("Cannot set DOUBLE DELTA filter to a "
                                 "dimension with a real datatype"));
   }
 
-  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline->size() > 1) {
-    if (pipeline->has_filter(FilterType::FILTER_RLE)) {
+  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline.size() > 1) {
+    if (pipeline.has_filter(FilterType::FILTER_RLE)) {
       return LOG_STATUS(Status_DimensionError(
           "RLE filter cannot be combined with other filters when applied to "
           "variable length string dimensions"));
-    } else if (pipeline->has_filter(FilterType::FILTER_DICTIONARY)) {
+    } else if (pipeline.has_filter(FilterType::FILTER_DICTIONARY)) {
       return LOG_STATUS(Status_AttributeError(
           "Dictionary-encoding filter cannot be combined with other filters "
           "when applied to variable length string dimensions"));
     }
   }
 
-  filters_ = *pipeline;
-
+  filters_ = pipeline;
   return Status::Ok();
 }
 

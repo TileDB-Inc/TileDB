@@ -45,6 +45,7 @@
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/rtree/rtree.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 using namespace tiledb::type;
@@ -60,7 +61,6 @@ class ArraySchema;
 class Buffer;
 class EncryptionKey;
 class MemoryTracker;
-class StorageManager;
 
 /** Stores the metadata structures of a fragment. */
 class FragmentMetadata {

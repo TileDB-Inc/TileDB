@@ -2110,7 +2110,7 @@ Status Query::set_subarray(const void* subarray) {
       // Get read_range_oob config setting
       bool found = false;
       std::string read_range_oob_str =
-          config()->get("sm.read_range_oob", &found);
+          config().get("sm.read_range_oob", &found);
       assert(found);
       if (read_range_oob_str != "error" && read_range_oob_str != "warn")
         return logger_->status(Status_QueryError(
@@ -2311,8 +2311,8 @@ QueryType Query::type() const {
   return type_;
 }
 
-const Config* Query::config() const {
-  return &config_;
+const Config& Query::config() const {
+  return config_;
 }
 
 stats::Stats* Query::stats() const {

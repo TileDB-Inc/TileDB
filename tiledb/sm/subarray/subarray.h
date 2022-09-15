@@ -44,6 +44,7 @@
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/range_subset.h"
 #include "tiledb/sm/subarray/subarray_tile_overlap.h"
 
@@ -71,7 +72,6 @@ class DimensionLabelReference;
 class EncryptionKey;
 class FragIdx;
 class FragmentMetadata;
-class StorageManager;
 
 enum class Layout : uint8_t;
 enum class QueryType : uint8_t;
