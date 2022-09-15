@@ -1178,9 +1178,11 @@ TEST_CASE_METHOD(
     SerializationFx,
     "Global order writes serialization",
     "[global-order-write][serialization][dense]") {
+  uint64_t tile_extent = 2;
   ArraySchema schema(ctx, TILEDB_DENSE);
   Domain domain(ctx);
-  domain.add_dimension(Dimension::create<uint64_t>(ctx, "d1", {0, 200}, 2));
+  domain.add_dimension(
+      Dimension::create<uint64_t>(ctx, "d1", {0, 200}, tile_extent));
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<uint32_t>(ctx, "a1"));
   schema.add_attribute(
@@ -1190,6 +1192,9 @@ TEST_CASE_METHOD(
 
   // Build input data
   uint64_t ncells = 100;
+  // This needs to be tile-aligned
+  uint64_t chunk_size = 4;
+
   std::vector<uint32_t> a1;
   std::vector<uint32_t> a2;
   std::vector<uint8_t> a2_nullable;
@@ -1201,7 +1206,7 @@ TEST_CASE_METHOD(
     a2.push_back(2 * i);
     a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
     std::string a3 = "abcd";
-    a3_offsets.push_back(i % 2 * 4);
+    a3_offsets.push_back(i % chunk_size * a3.size());
     a3_data.insert(a3_data.end(), a3.begin(), a3.end());
   }
 
@@ -1210,12 +1215,10 @@ TEST_CASE_METHOD(
   Subarray subarray(ctx, array);
   query.set_layout(TILEDB_GLOBAL_ORDER);
 
-  // This needs to be tile-aligned
-  uint64_t chunk_size = 2;
-
   uint64_t last_space_tile =
-      (ncells / chunk_size + static_cast<uint64_t>(ncells % chunk_size != 0)) *
-          chunk_size -
+      (ncells / tile_extent +
+       static_cast<uint64_t>(ncells % tile_extent != 0)) *
+          tile_extent -
       1;
   subarray.add_range(0, static_cast<uint64_t>(0), last_space_tile);
   query.set_subarray(subarray);
