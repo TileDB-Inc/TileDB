@@ -94,11 +94,11 @@ StorageManagerCanonical::StorageManagerCanonical(
     : stats_(parent_stats->create_child("StorageManager"))
     , logger_(logger)
     , cancellation_in_progress_(false)
+    , config_(config)
     , queries_in_progress_(0)
     , compute_tp_(compute_tp)
     , io_tp_(io_tp)
-    , vfs_(nullptr)
-    , config_(config) {
+    , vfs_(nullptr) {
   /*
    * This is a transitional version the implementation of this constructor. To
    * complete the transition, the `init` member function must disappear.
