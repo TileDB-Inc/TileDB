@@ -155,7 +155,7 @@ FilterPipeline::get_var_chunk_sizes(
   return {Status::Ok(), std::move(chunk_offsets)};
 }
 
-template <typename T = Tile*>
+template <typename T = Tile* const>
 Status FilterPipeline::filter_chunks_forward(
     const Tile& tile,
     T support_tiles,
@@ -340,10 +340,10 @@ Status FilterPipeline::filter_chunks_forward(
   return Status::Ok();
 }
 
-template <typename T>
+template <typename T = Tile* const>
 Status FilterPipeline::filter_chunks_reverse(
     Tile& tile,
-    T const support_tiles,
+    T support_tiles,
     const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
     ThreadPool* const compute_tp,
     const Config& config) const {
@@ -432,7 +432,7 @@ Status FilterPipeline::filter_chunks_reverse(
         } else {
           RETURN_NOT_OK(f->run_reverse(
           tile,
-          support_tiles,
+          nullptr,
           &input_metadata,
           &input_data,
           &output_metadata,
@@ -663,13 +663,13 @@ template <typename T,
 Status FilterPipeline::run_reverse(
     stats::Stats* const reader_stats,
     Tile* const tile,
-    Tile* const offsets_tile,
+    T const support_tiles,
     ThreadPool* const compute_tp,
     const Config& config) const {
   assert(tile->filtered());
 
   return run_reverse_internal<T>(
-      reader_stats, tile, offsets_tile, compute_tp, config);
+      reader_stats, tile, support_tiles, compute_tp, config);
 }
 
 template <typename T>
@@ -710,11 +710,16 @@ Status FilterPipeline::run_reverse_internal(
   reader_stats->add_counter("read_unfiltered_byte_num", total_orig_size);
 
   const Status st = filter_chunks_reverse(
-      *tile, offsets_tile, filtered_chunks, compute_tp, config);
+      *tile, support_tiles, filtered_chunks, compute_tp, config);
+  
   if (!st.ok()) {
     tile->clear_data();
-    if (offsets_tile) {
-      offsets_tile->clear_data();
+
+    // TODO yeet
+    if constexpr (std::is_same<T, Tile*>::value) {
+      if (support_tiles) {
+      support_tiles->clear_data();
+    }
     }
     return st;
   }
@@ -723,8 +728,10 @@ Status FilterPipeline::run_reverse_internal(
   // 'tile->buffer()'.
   tile->filtered_buffer().clear();
   // If unfiltering also included offsets, clear their filtered buffer too
-  if (offsets_tile) {
-    offsets_tile->filtered_buffer().clear();
+  if constexpr (std::is_same<T, Tile*>::value) {
+    if (support_tiles) {
+     support_tiles->filtered_buffer().clear();
+    }
   }
 
   // Zip the coords.
@@ -869,6 +876,21 @@ template Status FilterPipeline::run_forward<std::vector<Tile*>>(
       std::vector<Tile*> const support_tiles,
       ThreadPool* compute_tp,
       bool chunking) const;
+
+template Status FilterPipeline::run_reverse<Tile*>(
+      stats::Stats* writer_stats,
+      Tile* tile,
+      Tile* const support_tiles,
+      ThreadPool* compute_tp,
+      const Config& config) const;
+
+template Status FilterPipeline::run_reverse<std::vector<Tile*>>(
+      stats::Stats* writer_stats,
+      Tile* tile,
+      std::vector<Tile*> const support_tiles,
+      ThreadPool* compute_tp,
+      const Config& config) const;
+
 
 }  // namespace sm
 }  // namespace tiledb
