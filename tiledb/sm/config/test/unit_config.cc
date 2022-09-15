@@ -43,97 +43,71 @@ using tiledb::sm::utils::parse::convert;
  */
 using config_types = std::
     tuple<bool, int, uint32_t, int64_t, uint64_t, float, double, std::string>;
-/*
- * Config types that are convertable by utils::parse::convert
- */
-using config_types_convertable =
-    std::tuple<bool, int, uint32_t, int64_t, uint64_t, float, double>;
+using config_types_integral = std::tuple<int, uint32_t, int64_t, uint64_t>;
+using config_types_floating = std::tuple<float, double>;
 
-TEMPLATE_LIST_TEST_CASE(
-    "Config::get<T> - found", "[config]", config_types_convertable) {
-  Config c{};
-  std::string key{"the_key"};
-  CHECK(c.set(key, "1").ok());
-  REQUIRE_NOTHROW(c.get<TestType>(key));
-  auto found_value{c.get<TestType>(key)};
-  CHECK(found_value.has_value());
-  TestType expected_value;
-  CHECK(convert("1", &expected_value).ok());
-  CHECK(found_value.value() == expected_value);
-
-  // Check setting a new value to existing config key; Check bool is false
-  CHECK(c.set(key, "0").ok());
-  REQUIRE_NOTHROW(c.get<TestType>(key));
-  found_value = c.get<TestType>(key);
-  CHECK(found_value.has_value());
-  CHECK(convert("0", &expected_value).ok());
-  CHECK(found_value.value() == expected_value);
-}
+template <typename T>
+struct TestConfig {
+  static void check_expected(
+      T expected, const Config& c, const std::string& key) {
+    SECTION(" must_find = true") {
+      REQUIRE_NOTHROW(c.get<T>(key, Config::must_find));
+      auto found_value{c.get<T>(key, Config::must_find)};
+      CHECK(found_value == expected);
+    }
+    SECTION(" must_find = false") {
+      REQUIRE_NOTHROW(c.get<T>(key));
+      auto found_value{c.get<T>(key)};
+      CHECK(found_value.has_value());
+      CHECK(found_value.value() == expected);
+    }
+  }
+};
 
 TEMPLATE_LIST_TEST_CASE(
     "Config::get<T> - not found", "[config]", config_types) {
   Config c{};
   std::string key{"the_key"};
-  REQUIRE_NOTHROW(c.get<TestType>(key));
-  auto found_value{c.get<TestType>(key)};
-  CHECK(!found_value.has_value());
+  SECTION(" must_find = true") {
+    REQUIRE_THROWS(c.get<TestType>(key, Config::must_find));
+  }
+  SECTION(" must_find = false") {
+    REQUIRE_NOTHROW(c.get<TestType>(key));
+    auto found_value{c.get<TestType>(key)};
+    CHECK(!found_value.has_value());
+  }
 }
 
-TEST_CASE("Config::get<std::string> - not found", "[config]") {
+TEST_CASE("Config::get<bool> - found bool", "[config]") {
   Config c{};
   std::string key{"the_key"};
-  REQUIRE_NOTHROW(c.get<std::string>(key));
+  bool expected_value = GENERATE(true, false);
+  CHECK(c.set(key, expected_value ? "true" : "false").ok());
+  TestConfig<bool>::check_expected(expected_value, c, key);
+}
+
+TEMPLATE_LIST_TEST_CASE(
+    "Config::get<T> - found integral", "[config]", config_types_integral) {
+  Config c{};
+  std::string key{"the_key"};
+  TestType expected_value = 1;
+  CHECK(c.set(key, "1").ok());
+  TestConfig<TestType>::check_expected(expected_value, c, key);
+}
+
+TEMPLATE_LIST_TEST_CASE(
+    "Config::get<T> - found floating", "[config]", config_types_floating) {
+  Config c{};
+  std::string key{"the_key"};
+  TestType expected_value = 1.0;
+  CHECK(c.set(key, "1.0").ok());
+  TestConfig<TestType>::check_expected(expected_value, c, key);
 }
 
 TEST_CASE("Config::get<std::string> - found and matched", "[config]") {
   Config c{};
   std::string key{"the_key"};
-  std::string value{"the_value"};
-  c.set(key, value);
-  REQUIRE_NOTHROW(c.get<std::string>(key));
-  auto found_value{c.get<std::string>(key)};
-  CHECK(found_value.value() == value);
-}
-
-TEMPLATE_LIST_TEST_CASE(
-    "Config::get<T> - must_find found", "[config]", config_types_convertable) {
-  Config c{};
-  std::string key{"the_key"};
-  c.set(key, "1");
-  REQUIRE_NOTHROW(c.get<TestType>(key, Config::must_find));
-  auto found_value{c.get<TestType>(key, Config::must_find)};
-  TestType expected_value{};
-  CHECK(convert("1", &expected_value).ok());
-  CHECK(found_value == expected_value);
-
-  // Check setting a new value to existing config key; Check bool is false
-  c.set(key, "0");
-  REQUIRE_NOTHROW(c.get<TestType>(key, Config::must_find));
-  found_value = c.get<TestType>(key, Config::must_find);
-  CHECK(convert("0", &expected_value).ok());
-  CHECK(found_value == expected_value);
-}
-
-TEMPLATE_LIST_TEST_CASE(
-    "Config::get<T> - must_find not found", "[config]", config_types) {
-  Config c{};
-  std::string key{"the_key"};
-  REQUIRE_THROWS(c.get<TestType>(key, Config::must_find));
-}
-
-TEST_CASE("Config::get<std::string> - must_find not found", "[config]") {
-  Config c{};
-  std::string key{"the_key"};
-  REQUIRE_THROWS(c.get<std::string>(key, Config::must_find));
-}
-
-TEST_CASE(
-    "Config::get<std::string> - must_find found and matched", "[config]") {
-  Config c{};
-  std::string key{"the_key"};
-  std::string value{"the_value"};
-  c.set(key, value);
-  REQUIRE_NOTHROW(c.get<std::string>(key, Config::must_find));
-  auto found_value{c.get<std::string>(key, Config::must_find)};
-  CHECK(found_value == value);
+  std::string expected_value = GENERATE("test", "true", "0", "1.5");
+  CHECK(c.set(key, expected_value).ok());
+  TestConfig<std::string>::check_expected(expected_value, c, key);
 }

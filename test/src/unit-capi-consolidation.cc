@@ -4722,7 +4722,7 @@ TEST_CASE_METHOD(
 
   // Test purge deleted cells
   rc = tiledb_config_set(
-      config, "sm.consolidation.purge_deleted_cells", "-1", &error);
+      config, "sm.consolidation.purge_deleted_cells", "1", &error);
   REQUIRE(rc == TILEDB_ERR);
   REQUIRE(error != nullptr);
   tiledb_error_free(&error);

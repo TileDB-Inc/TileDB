@@ -576,7 +576,7 @@ class Config {
 
   /**
    * Retrieves the value of the given parameter in the templated type.
-   * Throws Status_ConfigError if config value could not be found
+   * Throws StatusException if config value could not be found
    *
    * @param key The name of the configuration parameter
    * @return The value of the configuration parameter

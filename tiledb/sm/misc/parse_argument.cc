@@ -168,9 +168,9 @@ Status convert(const std::string& str, double* value) {
 Status convert(const std::string& str, bool* value) {
   std::string lvalue = str;
   std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::tolower);
-  if (lvalue == "true" || lvalue == "1") {
+  if (lvalue == "true") {
     *value = true;
-  } else if (lvalue == "false" || lvalue == "0") {
+  } else if (lvalue == "false") {
     *value = false;
   } else {
     return LOG_STATUS(Status_UtilsError(
