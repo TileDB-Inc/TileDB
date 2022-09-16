@@ -1644,14 +1644,21 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
       });
   RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), nullopt);
 
-  if (max_cs_idx == 0)
+  if (max_cs_idx == 0) {
     return {Status_SparseUnorderedWithDupsReaderError(
                 "Unable to copy one slab with current budget/buffers"),
             nullopt};
+  }
 
   // Resize the result tiles vector.
   buffers_full_ &= max_cs_idx == result_cell_slabs.size();
-  result_cell_slabs.resize(max_cs_idx);
+  while (result_cell_slabs.size() > max_cs_idx) {
+    // Revert progress for this slab in read state, and pop it.
+    auto& last_rcs = result_cell_slabs.back();
+    read_state_.frag_idx_[last_rcs.tile_->frag_idx()] =
+        FragIdx(last_rcs.tile_->tile_idx(), last_rcs.start_);
+    result_cell_slabs.pop_back();
+  }
 
   return {Status::Ok(), std::move(total_mem_usage_per_attr)};
 }
