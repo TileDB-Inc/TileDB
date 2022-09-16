@@ -988,3 +988,85 @@ TEST_CASE(
     vfs.remove_dir(array_name);
   }
 }
+
+TEST_CASE(
+    "Sparse global order reader: attribute copy memory limit",
+    "[sparse-global-order][attribute-copy][memory-limit]") {
+  std::string array_name = "test_sparse_global_order";
+  Config config;
+  config["sm.mem.total_budget"] = "10000";
+  Context ctx(config);
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create array with var-sized attribute.
+  Domain dom(ctx);
+  dom.add_dimension(Dimension::create<int64_t>(ctx, "d1", {{1, 4}}, 2));
+
+  Attribute attr(ctx, "a", TILEDB_STRING_ASCII);
+  attr.set_cell_val_num(TILEDB_VAR_NUM);
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.add_attribute(attr);
+  schema.set_tile_order(TILEDB_ROW_MAJOR);
+  schema.set_cell_order(TILEDB_ROW_MAJOR);
+  schema.set_domain(dom);
+  schema.set_allows_dups(true);
+  schema.set_capacity(4);
+
+  Array::create(array_name, schema);
+
+  // Write a fragment with two tiles of 4 cells each. The var size tiles will
+  // have a size of 5000.
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_layout(TILEDB_GLOBAL_ORDER);
+  std::vector<int64_t> d1 = {1, 1, 2, 2, 3, 3, 4, 4};
+  std::string a1_data;
+  a1_data.resize(10000);
+  for (uint64_t i = 0; i < 10000; i++) {
+    a1_data[i] = '0' + i % 10;
+  }
+  std::vector<uint64_t> a1_offsets{0, 1250, 2500, 3750, 5000, 6250, 7500, 8750};
+
+  query.set_data_buffer("d1", d1);
+  query.set_data_buffer("a", a1_data);
+  query.set_offsets_buffer("a", a1_offsets);
+  CHECK_NOTHROW(query.submit());
+  CHECK_NOTHROW(query.finalize());
+
+  // Read using a budget that can only fit one of the var size tiles.
+  Array array2(ctx, array_name, TILEDB_READ);
+  Query query2(ctx, array2, TILEDB_READ);
+
+  std::string attr_val;
+  attr_val.resize(5000);
+  std::vector<uint64_t> attr_off(sizeof(uint64_t));
+
+  query2.set_layout(TILEDB_GLOBAL_ORDER);
+  query2.set_data_buffer("a", (char*)attr_val.data(), attr_val.size());
+  query2.set_offsets_buffer("a", attr_off);
+
+  // Submit and validate we only get 4 cells back (one tile).
+  auto st = query2.submit();
+  CHECK(st == Query::Status::INCOMPLETE);
+
+  auto result_num = (int)query2.result_buffer_elements()["a"].first;
+  CHECK(result_num == 4);
+
+  // Submit and validate we get the last 4 cells back.
+  st = query2.submit();
+  CHECK(st == Query::Status::COMPLETE);
+
+  result_num = (int)query2.result_buffer_elements()["a"].first;
+  CHECK(result_num == 4);
+
+  array2.close();
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}
