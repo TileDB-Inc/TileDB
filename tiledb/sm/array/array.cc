@@ -225,34 +225,6 @@ Status Array::load_fragments(
   return Status::Ok();
 }
 
-Status Array::delete_fragments(
-    const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
-  // Check that query type is MODIFY_EXCLUSIVE
-  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(Status_ArrayError(
-        "[Array::delete_fragments] Query type must be MODIFY_EXCLUSIVE"));
-  }
-
-  // Check that array is open
-  if (!is_open() && !controller().is_open(uri)) {
-    return LOG_STATUS(
-        Status_ArrayError("[Array::delete_fragments] Array is closed"));
-  }
-
-  // Check that array is not in the process of opening or closing
-  if (is_opening_or_closing_) {
-    return LOG_STATUS(Status_ArrayError(
-        "[Array::delete_fragments] "
-        "May not perform simultaneous open or close operations."));
-  }
-
-  // Delete fragments
-  RETURN_NOT_OK(storage_manager_->delete_fragments(
-      uri.c_str(), timestamp_start, timestamp_end));
-
-  return Status::Ok();
-}
-
 Status Array::open(
     QueryType query_type,
     EncryptionType encryption_type,
@@ -498,6 +470,34 @@ Status Array::close() {
   }
 
   is_opening_or_closing_ = false;
+  return Status::Ok();
+}
+
+Status Array::delete_fragments(
+    const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
+  // Check that query type is MODIFY_EXCLUSIVE
+  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+    return LOG_STATUS(Status_ArrayError(
+        "[Array::delete_fragments] Query type must be MODIFY_EXCLUSIVE"));
+  }
+
+  // Check that array is open
+  if (!is_open() && !controller().is_open(uri)) {
+    return LOG_STATUS(
+        Status_ArrayError("[Array::delete_fragments] Array is closed"));
+  }
+
+  // Check that array is not in the process of opening or closing
+  if (is_opening_or_closing_) {
+    return LOG_STATUS(Status_ArrayError(
+        "[Array::delete_fragments] "
+        "May not perform simultaneous open or close operations."));
+  }
+
+  // Delete fragments
+  RETURN_NOT_OK(storage_manager_->delete_fragments(
+      uri.c_str(), timestamp_start, timestamp_end));
+
   return Status::Ok();
 }
 
