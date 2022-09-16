@@ -36,7 +36,7 @@
     /** Write query */
     TILEDB_QUERY_TYPE_ENUM(WRITE) = 1,
     /** Delete query */
-    #if (_MSC_VER)
+    #if (_WIN32 && defined(DELETE))
     // note: 'DELETE' is #define'd somewhere within windows headers as
     // something resolving to '(0x00010000L)', which causes problems with
     // query_type.h which does not qualify the 'id' like tiledb.h does.
