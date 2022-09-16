@@ -637,7 +637,7 @@ void StringDimsFx::write_array_1d(
   rc = tiledb_query_set_layout(ctx, query, layout);
   REQUIRE(rc == TILEDB_OK);
   if (layout != TILEDB_GLOBAL_ORDER || !serialize_) {
-    rc = tiledb_query_submit_wrapper(ctx, query, array_name);
+    rc = tiledb_query_submit(ctx, query);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_finalize(ctx, query);
     REQUIRE(rc == TILEDB_OK);
@@ -691,10 +691,14 @@ void StringDimsFx::write_array_2d(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, layout);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit_wrapper(ctx, query, array_name);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
-  REQUIRE(rc == TILEDB_OK);
+  if (layout != TILEDB_GLOBAL_ORDER || !serialize_) {
+    rc = tiledb_query_submit(ctx, query);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx, query);
+    REQUIRE(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx, array);
@@ -1148,7 +1152,6 @@ void StringDimsFx::read_array_2d_default_string_range(
   rc = tiledb_query_set_layout(ctx, query, layout);
   REQUIRE(rc == TILEDB_OK);
 
-  // Submit query
   const char* array_uri;
   rc = tiledb_array_get_uri(ctx, array, &array_uri);
   CHECK(rc == TILEDB_OK);
@@ -1177,7 +1180,9 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+#endif
   }
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -1285,7 +1290,9 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+#endif
   }
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -1358,7 +1365,9 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+#endif
   }
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -1432,7 +1441,9 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+#endif
   }
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -1505,7 +1516,9 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+#endif
   }
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -1624,7 +1637,9 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+#endif
   }
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -1863,7 +1878,9 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+#endif
   }
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -2050,7 +2067,9 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+#endif
   }
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -2161,7 +2180,9 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+#endif
   }
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -2289,7 +2310,9 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+#endif
   }
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -2551,7 +2574,9 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+#endif
   }
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -2572,7 +2597,7 @@ TEST_CASE_METHOD(
       {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      3,
+      1,
       false,
       false);
 
@@ -2602,19 +2627,24 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-  // rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
-  // REQUIRE(rc == TILEDB_OK);
-  tiledb_query_submit_and_finalize(ctx_, query);
-
+  if (serialize_) {
+    submit_serialized_query(ctx_, query);
+  } else {
+    rc = tiledb_query_submit(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
+  }
   // Write "b, 2"
   d_data[0] = 'b';
   a_data[0] = 2;
-  // rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
-  // REQUIRE(rc == TILEDB_OK);
 
-  // rc = tiledb_query_finalize(ctx_, query);
-  // REQUIRE(rc == TILEDB_OK);
-  tiledb_query_submit_and_finalize(ctx_, query);
+  if (serialize_) {
+    submit_and_finalize_serialized_query(ctx_, query);
+  } else {
+    rc = tiledb_query_submit(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2671,7 +2701,9 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+#endif
   }
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -2692,7 +2724,7 @@ TEST_CASE_METHOD(
       {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      3,
+      1,
       false,
       false);
 
@@ -2722,16 +2754,23 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-  // rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
-  // REQUIRE(rc == TILEDB_OK);
-  tiledb_query_submit_and_finalize(ctx_, query);
 
+  if (serialize_) {
+    submit_serialized_query(ctx_, query);
+  } else {
+    rc = tiledb_query_submit(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
+  }
   // Write "b, 2"
   d_data[0] = 'b';
   a_data[0] = 2;
-  // rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
-  // REQUIRE(rc == TILEDB_OK);
-  tiledb_query_submit_and_finalize(ctx_, query);
+
+  if (serialize_) {
+    submit_serialized_query(ctx_, query);
+  } else {
+    rc = tiledb_query_submit(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
+  }
 
   // Write c, 3; d, 4 and e, 5.
   d_data[0] = 'c';
@@ -2743,12 +2782,15 @@ TEST_CASE_METHOD(
   a_data[1] = 4;
   a_data[2] = 5;
   a_size = 3 * sizeof(int32_t);
-  // rc = tiledb_query_submit_wrapper(ctx_, query, array_name);
-  // REQUIRE(rc == TILEDB_OK);
 
-  // rc = tiledb_query_finalize(ctx_, query);
-  // REQUIRE(rc == TILEDB_OK);
-  tiledb_query_submit_and_finalize(ctx_, query);
+  if (serialize_) {
+    submit_and_finalize_serialized_query(ctx_, query);
+  } else {
+    rc = tiledb_query_submit(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2805,7 +2847,9 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+#endif
   }
   SupportedFsLocal local_fs;
   std::string array_name =

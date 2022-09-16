@@ -92,7 +92,7 @@ struct ConsolidationWithTimestampsFx {
   void remove_sparse_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
-  bool serialized_writes;
+  bool serialized_writes = false;
 };
 
 ConsolidationWithTimestampsFx::ConsolidationWithTimestampsFx()

@@ -224,6 +224,8 @@ NullableArrayFx::NullableArrayFx() {
   REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
 
   tiledb_config_free(&config);
+
+  serialized_writes = false;
 }
 
 NullableArrayFx::~NullableArrayFx() {

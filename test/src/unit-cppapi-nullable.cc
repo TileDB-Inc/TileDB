@@ -132,7 +132,7 @@ class NullableArrayCppFx {
       tiledb_layout_t tile_order,
       tiledb_layout_t write_order);
 
-  bool serialized_writes_;
+  bool serialized_writes_ = false;
 
  private:
   /** The C++ API context object. */

@@ -1771,7 +1771,7 @@ std::optional<S3::MultiPartUploadState> S3::multipart_upload_state(
   MultiPartUploadState rv_state = std::move(state_iter->second);
   multipart_upload_states_.erase(state_iter);
 
-  return std::move(rv_state);
+  return rv_state;
 }
 
 Status S3::set_multipart_upload_state(

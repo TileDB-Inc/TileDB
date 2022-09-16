@@ -730,7 +730,9 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+#endif
   }
 
   SupportedFsLocal local_fs;
