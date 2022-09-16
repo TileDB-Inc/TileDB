@@ -1,5 +1,5 @@
 /**
- * @file   unit-cppapi-array_deletes.cc
+ * @file   unit-cppapi-array-deletes.cc
  *
  * @section LICENSE
  *
@@ -102,7 +102,7 @@ struct CPPArrayDeletesFx {
 TEST_CASE_METHOD(
     CPPArrayDeletesFx,
     "C++ API: Deletion of invalid fragment writes",
-    "[cppapi][array_deletes][fragments][invalid]") {
+    "[cppapi][array-deletes][fragments][invalid]") {
   /* Note: An array must be open in MODIFY_EXCLUSIVE mode to delete_fragments */
   std::vector<int> data = {0, 1};
   uint64_t timestamp_start = 0;
@@ -126,7 +126,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPArrayDeletesFx,
     "C++ API: Deletion of valid fragment writes",
-    "[cppapi][array_deletes][fragments][valid]") {
+    "[cppapi][array-deletes][fragments][valid]") {
   // Write fragments at timestamps 1, 3, 5, 7
   auto array = write_fragments();
   std::string commit_dir = tiledb::test::get_commit_dir(array_name);
@@ -224,7 +224,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPArrayDeletesFx,
     "C++ API: Deletion of fragment writes consolidated with timestamps",
-    "[cppapi][array_deletes][fragments][consolidation_with_timestamps]") {
+    "[cppapi][array-deletes][fragments][consolidation_with_timestamps]") {
   // Write fragments at timestamps 1, 3, 5, 7
   auto array = write_fragments();
   uint32_t num_commits = 4;
