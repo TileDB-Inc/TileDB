@@ -648,7 +648,6 @@ int32_t tiledb_group_vacuum_metadata(
 
 }  // namespace tiledb::common::detail
 
-using tiledb::api::api_entry_plain;
 template <auto f>
 constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
 

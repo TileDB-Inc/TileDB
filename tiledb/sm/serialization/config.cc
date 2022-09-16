@@ -212,7 +212,7 @@ Status config_deserialize(
 
 #else
 
-Status config_serialize(const Config*, SerializationType, Buffer*, const bool) {
+Status config_serialize(const Config&, SerializationType, Buffer*, const bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
