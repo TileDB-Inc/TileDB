@@ -1203,6 +1203,11 @@ Status Query::check_buffer_names() {
 Status Query::create_strategy(bool skip_checks_serialization) {
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
+      if (!array_schema_->dense()) {
+        return Status_QueryError(
+            "Cannot create strategy; sparse writes do not support layout " +
+            layout_str(layout_));
+      }
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           OrderedWriter,
           stats_->create_child("Writer"),
@@ -1218,6 +1223,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::UNORDERED) {
+      if (array_schema_->dense()) {
+        return Status_QueryError(
+            "Cannot create strategy; dense writes do not support layout " +
+            layout_str(layout_));
+      }
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           UnorderedWriter,
           stats_->create_child("Writer"),
