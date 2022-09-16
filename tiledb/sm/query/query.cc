@@ -92,11 +92,7 @@ Query::Query(
   assert(array->is_open());
   type_ = array->get_query_type();
 
-  if (type_ != QueryType::READ) {
-    subarray_ = Subarray(array_, stats_, logger_);
-  } else {
-    subarray_ = Subarray(array_, Layout::ROW_MAJOR, stats_, logger_);
-  }
+  subarray_ = Subarray(array_, layout_, stats_, logger_);
 
   fragment_metadata_ = array->fragment_metadata();
 
