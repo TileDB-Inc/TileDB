@@ -95,6 +95,11 @@ GlobalOrderWriter::GlobalOrderWriter(
           fragment_name,
           skip_checks_serialization)
     , processed_conditions_(processed_conditions) {
+  if (layout != Layout::GLOBAL_ORDER) {
+    throw StatusException(Status_WriterError(
+        "Failed to initialize global order writer. Layout " +
+        layout_str(layout) + " is not global order."));
+  }
 }
 
 GlobalOrderWriter::~GlobalOrderWriter() {
@@ -249,8 +254,8 @@ Status GlobalOrderWriter::check_global_order() const {
   auto& domain{array_schema_.domain()};
   DomainBuffersView domain_buffs{array_schema_, buffers_};
   if (global_write_state_->cells_written_.begin()->second > 0) {
-    DomainBuffersView last_cell_buffs{array_schema_,
-                                      *global_write_state_->last_cell_coords_};
+    DomainBuffersView last_cell_buffs{
+        array_schema_, *global_write_state_->last_cell_coords_};
     auto left{last_cell_buffs.domain_ref_at(domain, 0)};
     auto right{domain_buffs.domain_ref_at(domain, 0)};
 

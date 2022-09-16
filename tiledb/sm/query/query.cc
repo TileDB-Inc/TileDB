@@ -1250,7 +1250,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           fragment_name_,
           skip_checks_serialization));
     } else {
-      assert(false);
+      return Status_QueryError(
+          "Cannot create strategy; unsupported layout " + layout_str(layout_));
     }
   } else if (type_ == QueryType::READ) {
     bool use_default = true;

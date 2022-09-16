@@ -92,6 +92,17 @@ OrderedWriter::OrderedWriter(
           coords_info,
           fragment_name,
           skip_checks_serialization) {
+  if (layout != Layout::ROW_MAJOR && layout != Layout::COL_MAJOR) {
+    throw StatusException(Status_WriterError(
+        "Failed to initialize OrderedWriter; The ordered writer does not "
+        "support layout " +
+        layout_str(layout)));
+  }
+  if (!array_schema_.dense()) {
+    throw StatusException(
+        Status_WriterError("Failed to initialize OrderedWriter; The ordered "
+                           "writer does not support sparse arrays."));
+  }
 }
 
 OrderedWriter::~OrderedWriter() {

@@ -92,6 +92,17 @@ UnorderedWriter::UnorderedWriter(
           coords_info,
           fragment_name,
           skip_checks_serialization) {
+  if (layout != Layout::UNORDERED) {
+    throw StatusException(Status_WriterError(
+        "Failed to initialize UnorderedWriter; The unordered writer does not "
+        "support layout " +
+        layout_str(layout)));
+  }
+  if (array_schema_.dense()) {
+    throw StatusException(Status_WriterError(
+        "Failed to initialize UnorderedWriter; The unordered "
+        "writer does not support dense arrays."));
+  }
 }
 
 UnorderedWriter::~UnorderedWriter() {
