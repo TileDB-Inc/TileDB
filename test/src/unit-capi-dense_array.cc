@@ -1266,10 +1266,11 @@ void DenseArrayFx::check_simultaneous_writes(const std::string& path) {
 
   // Pre-generate buffers to write
   for (int i = 0; i < nthreads; i++) {
-    subarrays.push_back({{domain_0_lo,
-                          domain_0_lo + tile_extent_0 - 1,
-                          domain_1_lo,
-                          domain_1_lo + tile_extent_1 - 1}});
+    subarrays.push_back(
+        {{domain_0_lo,
+          domain_0_lo + tile_extent_0 - 1,
+          domain_1_lo,
+          domain_1_lo + tile_extent_1 - 1}});
     buffer_sizes.push_back({{tile_extent_0 * tile_extent_1 * sizeof(int)}});
     buffers.push_back(new int[buffer_sizes.back()[0] / sizeof(int)]);
   }
@@ -1327,16 +1328,17 @@ void DenseArrayFx::check_cancel_and_retry_writes(const std::string& path) {
       cell_order,
       tile_order);
 
-  int64_t subarray[] = {domain_0_lo,
-                        domain_0_lo + tile_extent_0 - 1,
-                        domain_1_lo,
-                        domain_1_lo + tile_extent_1 - 1};
+  int64_t subarray[] = {
+      domain_0_lo,
+      domain_0_lo + tile_extent_0 - 1,
+      domain_1_lo,
+      domain_1_lo + tile_extent_1 - 1};
   uint64_t buffer_sizes[] = {tile_extent_0 * tile_extent_1 * sizeof(int)};
   auto buffer = new int[buffer_sizes[0] / sizeof(int)];
 
   // Prepare buffer
-  int64_t subarray_length[2] = {subarray[1] - subarray[0] + 1,
-                                subarray[3] - subarray[2] + 1};
+  int64_t subarray_length[2] = {
+      subarray[1] - subarray[0] + 1, subarray[3] - subarray[2] + 1};
   int64_t cell_num_in_subarray = subarray_length[0] * subarray_length[1];
   int64_t index = 0;
   for (int64_t r = 0; r < subarray_length[0]; ++r)
@@ -2592,18 +2594,19 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_row(
   int c_buffer_a1[] = {9, 12, 13, 11, 14, 15};
   uint64_t c_buffer_a2_off[] = {0, 2, 3, 5, 9, 12};
   char c_buffer_a2_val[] = "jjmnnllllooopppp";
-  float c_buffer_a3[] = {9.1f,
-                         9.2f,
-                         12.1f,
-                         12.2f,
-                         13.1f,
-                         13.2f,
-                         11.1f,
-                         11.2f,
-                         14.1f,
-                         14.2f,
-                         15.1f,
-                         15.2f};
+  float c_buffer_a3[] = {
+      9.1f,
+      9.2f,
+      12.1f,
+      12.2f,
+      13.1f,
+      13.2f,
+      11.1f,
+      11.2f,
+      14.1f,
+      14.2f,
+      15.1f,
+      15.2f};
   uint64_t c_buffer_coords_dim1[] = {3, 3, 3, 4, 4, 4};
   uint64_t c_buffer_coords_dim2[] = {2, 3, 4, 2, 3, 4};
   uint64_t c_buffer_d1[] = {3, 3, 3, 4, 4, 4};
@@ -2736,18 +2739,19 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
   int c_buffer_a1[] = {9, 11, 12, 14, 13, 15};
   uint64_t c_buffer_a2_off[] = {0, 2, 6, 7, 10, 12};
   char c_buffer_a2_val[] = "jjllllmooonnpppp";
-  float c_buffer_a3[] = {9.1f,
-                         9.2f,
-                         11.1f,
-                         11.2f,
-                         12.1f,
-                         12.2f,
-                         14.1f,
-                         14.2f,
-                         13.1f,
-                         13.2f,
-                         15.1f,
-                         15.2f};
+  float c_buffer_a3[] = {
+      9.1f,
+      9.2f,
+      11.1f,
+      11.2f,
+      12.1f,
+      12.2f,
+      14.1f,
+      14.2f,
+      13.1f,
+      13.2f,
+      15.1f,
+      15.2f};
   uint64_t c_buffer_coords_dim1[] = {3, 4, 3, 4, 3, 4};
   uint64_t c_buffer_coords_dim2[] = {2, 2, 3, 3, 4, 4};
   uint64_t c_buffer_d1[] = {3, 4, 3, 4, 3, 4};
@@ -3976,22 +3980,23 @@ TEST_CASE_METHOD(
 
   // Read whole array
   uint64_t subarray_read[] = {1, 4, 1, 4};
-  int c_a1[] = {INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                1,
-                2,
-                INT_MIN,
-                INT_MIN,
-                3,
-                4,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN};
+  int c_a1[] = {
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      1,
+      2,
+      INT_MIN,
+      INT_MIN,
+      3,
+      4,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN};
   int read_a1[16];
   uint64_t read_a1_size = sizeof(read_a1);
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
@@ -4067,22 +4072,23 @@ TEST_CASE_METHOD(
 
   // Read whole array
   uint64_t subarray_read[] = {1, 4, 1, 4};
-  int c_a1[] = {INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                1,
-                2,
-                INT_MIN,
-                INT_MIN,
-                3,
-                4,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN};
+  int c_a1[] = {
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      1,
+      2,
+      INT_MIN,
+      INT_MIN,
+      3,
+      4,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN};
   int read_a1[16];
   uint64_t read_a1_size = sizeof(read_a1);
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
@@ -4180,22 +4186,23 @@ TEST_CASE_METHOD(
 
   // Read whole array
   uint64_t subarray_read[] = {1, 4, 1, 4};
-  int c_a[] = {1,
-               2,
-               3,
-               4,
-               5,
-               101,
-               102,
-               8,
-               INT_MIN,
-               103,
-               104,
-               INT_MIN,
-               INT_MIN,
-               INT_MIN,
-               INT_MIN,
-               INT_MIN};
+  int c_a[] = {
+      1,
+      2,
+      3,
+      4,
+      5,
+      101,
+      102,
+      8,
+      INT_MIN,
+      103,
+      104,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN};
   int read_a[16];
   uint64_t read_a_size = sizeof(read_a);
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
@@ -5244,4 +5251,64 @@ TEST_CASE_METHOD(
   CHECK(!memcmp(c_a1, a1.data(), sizeof(c_a1)));
 
   remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    TemporaryDirectoryFixture,
+    "C API: Test dense array write without setting layout",
+    "[capi][query]") {
+  // Create the array.
+  uint64_t x_tile_extent{4};
+  uint64_t domain[2]{0, 3};
+  auto array_schema = create_array_schema(
+      ctx,
+      TILEDB_DENSE,
+      {"x"},
+      {TILEDB_UINT64},
+      {&domain[0]},
+      {&x_tile_extent},
+      {"a"},
+      {TILEDB_FLOAT64},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      4096,
+      false);
+  auto array_name = create_temporary_array("dense_array_1", array_schema);
+  tiledb_array_schema_free(&array_schema);
+
+  // Open array for writing.
+  tiledb_array_t* array;
+  require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
+  require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_WRITE));
+
+  // Create subarray.
+  tiledb_subarray_t* subarray;
+  require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
+  require_tiledb_ok(tiledb_subarray_add_range(
+      ctx, subarray, 0, &domain[0], &domain[1], nullptr));
+
+  // Define data for writing.
+  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
+  uint64_t attr_data_size{input_attr_data.size() * sizeof(double)};
+
+  // Create write query.
+  tiledb_query_t* query;
+  require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query));
+  require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
+  if (attr_data_size != 0) {
+    require_tiledb_ok(tiledb_query_set_data_buffer(
+        ctx, query, "a", input_attr_data.data(), &attr_data_size));
+  }
+
+  // Submit write query.
+  require_tiledb_ok(tiledb_query_submit(ctx, query));
+  tiledb_query_status_t query_status;
+  require_tiledb_ok(tiledb_query_get_status(ctx, query, &query_status));
+  REQUIRE(query_status == TILEDB_COMPLETED);
+
+  // Clean-up.
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
 }
