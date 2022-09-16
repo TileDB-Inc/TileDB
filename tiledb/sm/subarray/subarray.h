@@ -361,6 +361,14 @@ class Subarray {
       uint64_t end_size);
 
   /**
+   * Retrieves reference to attribute ranges.
+   *
+   * @param attr_name Name of the attribute to get ragnes for.
+   */
+  const std::vector<Range>& get_attribute_ranges(
+      const std::string& attr_name) const;
+
+  /**
    * Retrieves a range from a dimension label name in the form (start, end,
    * stride).
    *
@@ -898,6 +906,21 @@ class Subarray {
   }
 
   /**
+   * Adds ranges for an attribute.
+   *
+   * This method is designed to copy label ranges from a parent subarray to
+   * attribute ranges in a dimension label array. The ranges will only be
+   * accessed by the dimension label readers, and it is assumed all checks on
+   * validity of the ranges has already been ran when adding the label ranges to
+   * the parent subarray.
+   *
+   * @param attr_name Name of the attribute to add the ranges for.
+   * @param ranges Ranges to add.
+   */
+  void set_attribute_ranges(
+      const std::string& attr_name, const std::vector<Range>& ranges);
+
+  /**
    * Directly sets the `Range` vector for the given dimension index, making
    * a deep copy.
    *
@@ -1206,6 +1229,11 @@ class Subarray {
    * Stores LabelRangeSubset objects for handling ranges on dimension labels.
    */
   std::vector<optional<LabelRangeSubset>> label_range_subset_;
+
+  /**
+   * Stores ranges for attributes.
+   */
+  std::unordered_map<std::string, std::vector<Range>> attr_range_subset_;
 
   /**
    * Flag storing if each dimension is a default value or not.
