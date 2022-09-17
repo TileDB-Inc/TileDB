@@ -2341,12 +2341,7 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 }
 
 Status Query::check_buffers_correctness() {
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::MODIFY_EXCLUSIVE && type_ != QueryType::DELETE &&
-      type_ != QueryType::UPDATE) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot check buffers; Unsupported query type."));
-  }
+  ensure_query_type_is_valid(type_);
 
   // Iterate through each attribute
   for (auto& attr : buffer_names()) {
