@@ -27,8 +27,6 @@
 
 include(common NO_POLICY_SCOPE)
 
-include(common NO_POLICY_SCOPE)
-
 ################################################################
 # Include subdirectory with unit tests                         #
 ################################################################
