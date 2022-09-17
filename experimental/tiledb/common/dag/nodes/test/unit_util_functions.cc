@@ -390,9 +390,9 @@ TEST_CASE(
     Edge(producer_node, consumer_node);
 
     auto a = std::async(
-        std::launch::async, [&producer_node]() { producer_node.run(10); });
+        std::launch::async, [&producer_node]() { producer_node.run_for(10); });
     auto b = std::async(std::launch::async, [&consumer_node, offset]() {
-      consumer_node.run(10 + offset);
+      consumer_node.run_for(10 + offset);
     });
 
     b.wait();
@@ -421,9 +421,9 @@ TEST_CASE(
     Edge(producer_node, consumer_node);
 
     auto a = std::async(
-        std::launch::async, [&producer_node]() { producer_node.run(10); });
+        std::launch::async, [&producer_node]() { producer_node.run_for(10); });
     auto b = std::async(std::launch::async, [&consumer_node, offset]() {
-      consumer_node.run(10 + offset);
+      consumer_node.run_for(10 + offset);
     });
 
     b.wait();
