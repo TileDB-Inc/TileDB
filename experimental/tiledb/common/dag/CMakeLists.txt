@@ -27,11 +27,12 @@
 
 message(STATUS "+++++++ in dag")
 
-add_subdirectory(utils)
-add_subdirectory(execution)
-add_subdirectory(state_machine)
-add_subdirectory(ports)
 add_subdirectory(data_block)
 add_subdirectory(edge)
+add_subdirectory(execution)
 add_subdirectory(nodes)
+add_subdirectory(ports)
+add_subdirectory(state_machine)
+add_subdirectory(utils)
+
 # add_subdirectory(graph)
