@@ -1,5 +1,5 @@
 #
-# experimental/tiledb/common/nodes/test/CMakeLists.txt
+# experimental/tiledb/common/dag/nodes/test/CMakeLists.txt
 #
 #
 # The MIT License
@@ -27,7 +27,7 @@
 
 
 #
-# Define unit tests 
+# Define unit tests
 #
 dag_add_header_only_unit_test(general_node)
 dag_add_header_only_unit_test(simple_node)
