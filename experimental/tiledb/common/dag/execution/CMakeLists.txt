@@ -64,105 +64,52 @@ add_dependencies(all_link_complete compile_threadpool)
 target_link_libraries(compile_threadpool PRIVATE threadpool)
 target_sources(compile_threadpool PRIVATE test/compile_threadpool_main.cc)
 
-if (YACK)
+
+################################################################
+# Define the stop_token object library                         #
+################################################################
+
+list(APPEND STOP_TOKEN_SOURCES
+  stop_token.cc
+)
+gather_sources(${STOP_TOKEN_SOURCES})
+
+#
+# Object library for other units to depend upon
+#
+add_library(stop_token OBJECT ${STOP_TOKEN_SOURCES})
+
+#
+# Test-compile of object library ensures link-completeness
+#
+# NOTE: stop_token is header only
+#
+add_executable(compile_stop_token EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_stop_token)
+target_link_libraries(compile_stop_token PRIVATE stop_token)
+target_sources(compile_stop_token PRIVATE test/compile_stop_token_main.cc)
 
 
-if (TILEDB_TESTS)
-    add_executable(unit_execution EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_execution PUBLIC execution)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_execution PUBLIC Catch2::Catch2)
-#    target_link_libraries(unit_execution PUBLIC $<TARGET_OBJECTS:thread_pool>)
+################################################################
+# Define the bountiful object library                          #
+################################################################
 
-    # Sources for code elsewhere required for tests
-    target_sources(unit_execution PUBLIC ${DEPENDENT_SOURCES})
+list(APPEND BOUNTIFUL_SOURCES
+  bountiful.cc
+)
+gather_sources(${BOUNTIFUL_SOURCES})
 
-    # Sources for tests
-    target_sources(unit_execution PUBLIC
-            test/main.cc
-            test/unit_execution.cc
-            )
+#
+# Object library for other units to depend upon
+#
+add_library(bountiful OBJECT ${BOUNTIFUL_SOURCES})
 
-    add_test(
-            NAME "unit_execution"
-            COMMAND $<TARGET_FILE:unit_execution> --durations=yes
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-	    )
-
-endif()
-
-if (TILEDB_TESTS)
-
-    add_executable(unit_threadpool EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_threadpool PUBLIC execution)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_threadpool PUBLIC Catch2::Catch2)
-#    target_link_libraries(unit_threadpool PUBLIC $<TARGET_OBJECTS:thread_pool>)
-
-    # Sources for code elsewhere required for tests
-    target_sources(unit_threadpool PUBLIC ${DEPENDENT_SOURCES})
-
-    # Sources for tests
-    target_sources(unit_threadpool PUBLIC
-            test/main.cc
-            test/unit_threadpool.cc
-            )
-
-    add_test(
-            NAME "unit_threadpool"
-            COMMAND $<TARGET_FILE:unit_threadpool> --durations=yes
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-
-	    )
-
-endif()
-
-if (TILEDB_TESTS)
-    add_executable(unit_bountiful EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_bountiful PUBLIC execution)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_bountiful PUBLIC Catch2::Catch2)
-#    target_link_libraries(unit_bountiful PUBLIC $<TARGET_OBJECTS:thread_pool>)
-
-    # Sources for code elsewhere required for tests
-    target_sources(unit_bountiful PUBLIC ${DEPENDENT_SOURCES})
-
-    # Sources for tests
-    target_sources(unit_bountiful PUBLIC
-            test/main.cc
-            test/unit_bountiful.cc
-            )
-
-    add_test(
-            NAME "unit_bountiful"
-            COMMAND $<TARGET_FILE:unit_bountiful> --durations=yes
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-
-	    )
-
-endif()
-
-if (TILEDB_TESTS)
-    add_executable(unit_stop_token EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_stop_token PUBLIC execution)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_stop_token PUBLIC Catch2::Catch2)
-#    target_link_libraries(unit_stop_token PUBLIC $<TARGET_OBJECTS:thread_pool>)
-
-    # Sources for code elsewhere required for tests
-    target_sources(unit_stop_token PUBLIC ${DEPENDENT_SOURCES})
-
-    # Sources for tests
-    target_sources(unit_stop_token PUBLIC
-            test/main.cc
-            test/unit_stop_token.cc
-            )
-
-    add_test(
-            NAME "unit_stop_token"
-            COMMAND $<TARGET_FILE:unit_stop_token> --durations=yes
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-
-	    )
-endif()
-endif()
+#
+# Test-compile of object library ensures link-completeness
+#
+# NOTE: bountiful is header only
+#
+add_executable(compile_bountiful EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_bountiful)
+target_link_libraries(compile_bountiful PRIVATE bountiful)
+target_sources(compile_bountiful PRIVATE test/compile_bountiful_main.cc)
