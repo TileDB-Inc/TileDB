@@ -91,3 +91,35 @@ if (TILEDB_TESTS)
     )
 
 endif()
+
+
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_bounded_buffer EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_bounded_buffer)
+target_sources(compile_bounded_buffer PRIVATE test/compile_bounded_buffer_main.cc)
+
+if (TILEDB_TESTS)
+
+    add_executable(unit_bounded_buffer EXCLUDE_FROM_ALL)
+    target_link_libraries(unit_bounded_buffer PUBLIC utils)
+    find_package(Catch_EP REQUIRED)
+    target_link_libraries(unit_bounded_buffer PUBLIC Catch2::Catch2)
+#    target_link_libraries(unit_bounded_buffer PUBLIC $<TARGET_OBJECTS:thread_pool>)
+
+    # Sources for code elsewhere required for tests
+#    target_sources(unit_bounded_buffer PUBLIC ${DEPENDENT_SOURCES})
+
+    # Sources for tests
+    target_sources(unit_bounded_buffer PUBLIC
+            test/unit_bounded_buffer.cc
+            )
+
+    add_test(
+            NAME "unit_bounded_buffer"
+            COMMAND $<TARGET_FILE:unit_bounded_buffer> --durations=yes
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+endif()
