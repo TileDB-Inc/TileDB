@@ -27,24 +27,45 @@
 
 include(common NO_POLICY_SCOPE)
 
-list(APPEND SOURCES
+################################################################
+# Include subdirectory with unit tests                         #
+################################################################
+if (TILEDB_TESTS)
+    #
+    # All unit tests depend on Catch
+    #
+    find_package(Catch_EP REQUIRED)
+    add_subdirectory(test)
+endif()
+
+
+################################################################
+# Define the threadpool object library                         #
+################################################################
+
+list(APPEND THREADPOOL_SOURCES
   threadpool.cc
 )
-gather_sources(${SOURCES})
+gather_sources(${THREADPOOL_SOURCES})
 
 #
 # Object library for other units to depend upon
 #
-add_library(execution OBJECT ${SOURCES})
-# target_link_libraries(execution PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+add_library(threadpool OBJECT ${THREADPOOL_SOURCES})
 
 #
 # Test-compile of object library ensures link-completeness
 #
-add_executable(compile_execution EXCLUDE_FROM_ALL)
-add_dependencies(all_link_complete compile_execution)
-target_link_libraries(compile_execution PRIVATE execution)
-target_sources(compile_execution PRIVATE test/compile_execution_main.cc)
+# NOTE: threadpool depends on bounded_buffer object library,
+# which is header only.
+#
+add_executable(compile_threadpool EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_threadpool)
+target_link_libraries(compile_threadpool PRIVATE threadpool)
+target_sources(compile_threadpool PRIVATE test/compile_threadpool_main.cc)
+
+if (YACK)
+
 
 if (TILEDB_TESTS)
     add_executable(unit_execution EXCLUDE_FROM_ALL)
@@ -143,5 +164,5 @@ if (TILEDB_TESTS)
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 
 	    )
-
+endif()
 endif()

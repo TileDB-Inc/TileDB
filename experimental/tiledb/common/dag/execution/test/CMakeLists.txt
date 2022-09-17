@@ -1,5 +1,5 @@
 #
-# experimental/tiledb/common/edge/CMakeLists.txt
+# experimental/tiledb/common/execution/test/CMakeLists.txt
 #
 #
 # The MIT License
@@ -24,43 +24,3 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-
-include(common NO_POLICY_SCOPE)
-
-################################################################
-# Include subdirectory with unit tests                         #
-################################################################
-if (TILEDB_TESTS)
-    #
-    # All unit tests depend on Catch
-    #
-    find_package(Catch_EP REQUIRED)
-    add_subdirectory(test)
-endif()
-
-
-################################################################
-# Define the edge object library                               #
-################################################################
-
-#
-# Sources for the object library
-#
-list(APPEND EDGE_SOURCES
-    edge.cc
-)
-gather_sources(${EDGE_SOURCES})
-
-#
-# Object library for other units to depend upon
-#
-add_library(edge OBJECT ${EDGE_SOURCES})
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_edge EXCLUDE_FROM_ALL)
-add_dependencies(all_link_complete compile_edge)
-target_link_libraries(compile_edge PRIVATE edge)
-target_sources(compile_edge PRIVATE test/compile_edge_main.cc)
-
