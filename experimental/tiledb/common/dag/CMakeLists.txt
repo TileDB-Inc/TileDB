@@ -25,7 +25,68 @@
 # THE SOFTWARE.
 #
 
-message(STATUS "+++++++ in dag")
+
+#
+# Define helper macro for many header only object libraries
+#
+macro (dag_add_header_only_object_library OBJLIBNAME)
+  list(APPEND ${OBJLIBNAME}_SOURCES
+      ${OBJLIBNAME}.cc
+  )
+  gather_sources(${${OBJLIBNAME}_SOURCES})
+  #
+  # Object library for other units to depend upon
+  #
+  add_library(${OBJLIBNAME} OBJECT ${${OBJLIBNAME}_SOURCES})
+  #
+  # Test-compile of object library ensures link-completeness
+  #
+  add_executable(compile_${OBJLIBNAME} EXCLUDE_FROM_ALL)
+  add_dependencies(all_link_complete compile_${OBJLIBNAME})
+  target_link_libraries(compile_${OBJLIBNAME} PRIVATE ${OBJLIBNAME})
+  target_sources(compile_${OBJLIBNAME} PRIVATE test/compile_${OBJLIBNAME}_main.cc)
+endmacro (dag_add_header_only_object_library)
+
+
+#
+# Define helper macro for many header only tests
+#
+macro (dag_add_header_only_unit_test TESTNAME)
+    #
+    # Define unit test
+    #
+    add_executable(unit_${TESTNAME} EXCLUDE_FROM_ALL)
+    #
+    # Required libraries
+    #
+    target_link_libraries(unit_${TESTNAME} PUBLIC Catch2::Catch2)
+    #
+    # Define sources for test
+    #
+    target_sources(unit_${TESTNAME} PUBLIC
+        main.cc
+        unit_${TESTNAME}.cc
+    )
+    #
+    # Sources for code elsewhere required for tests
+    #
+    target_sources(unit_${TESTNAME} PUBLIC ${DEPENDENT_SOURCES})
+    #
+    # Add unit test to global suite of unit tests
+    #
+    add_test(
+        NAME "unit_${TESTNAME}"
+        COMMAND $<TARGET_FILE:unit_${TESTNAME}> --durations=yes
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endmacro(dag_add_header_only_unit_test)
+
+if (TILEDB_TESTS)
+    #
+    # All unit tests depend on Catch
+    #
+    find_package(Catch_EP REQUIRED)
+endif()
 
 add_subdirectory(data_block)
 add_subdirectory(edge)

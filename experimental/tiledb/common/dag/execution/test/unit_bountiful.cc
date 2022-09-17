@@ -43,7 +43,10 @@ std::atomic<size_t> i_;
 
 struct super_simple {
   explicit super_simple() = default;
-  super_simple(const super_simple&) = delete;
+  // super_simple(const super_simple&) = delete;
+  // To make movable :-/
+  super_simple(const super_simple&) {
+  }
   super_simple(super_simple&&) = default;
 
   void operator()() {

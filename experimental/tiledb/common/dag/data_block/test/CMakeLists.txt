@@ -25,112 +25,11 @@
 # THE SOFTWARE.
 #
 
-################################################################
-# Unit test for pool_allocator                                 #
-################################################################
 
 #
-# Define unit test
+# Define unit tests for pool_allocator, data_block, and blocks_and_ports
 #
-add_executable(unit_pool_allocator EXCLUDE_FROM_ALL)
+dag_add_header_only_unit_test(pool_allocator)
+dag_add_header_only_unit_test(data_block)
+dag_add_header_only_unit_test(blocks_and_ports)
 
-#
-# Required libraries, notably the associated object library
-#
-# NOTE: pool_allocator is header only
-#
-# target_link_libraries(unit_pool_allocator PUBLIC pool_allocator)
-target_link_libraries(unit_pool_allocator PUBLIC Catch2::Catch2)
-
-#
-# Define sources for test
-#
-target_sources(unit_pool_allocator PUBLIC
-        main.cc
-        unit_pool_allocator.cc
-)
-
-#
-# Add unit test to global suite of unit tests
-#
-add_test(
-        NAME "unit_pool_allocator"
-        COMMAND $<TARGET_FILE:unit_pool_allocator> --durations=yes
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-
-################################################################
-# Unit test for data_block                                     #
-################################################################
-
-#
-# Define unit test
-#
-add_executable(unit_data_block EXCLUDE_FROM_ALL)
-
-#
-# Required libraries, notably the associated object library
-#
-# NOTE: data_block is header only
-# 
-# target_link_libraries(unit_data_block PUBLIC data_block)
-# ?? target_link_libraries(unit_data_block PUBLIC pool_allocator)
-target_link_libraries(unit_data_block PUBLIC Catch2::Catch2)
-
-#
-# Define sources for test
-#
-target_sources(unit_data_block PUBLIC
-        main.cc
-        unit_data_block.cc
-)
-
-#
-# Add unit test to global suite of unit tests
-#
-add_test(
-        NAME "unit_data_block"
-        COMMAND $<TARGET_FILE:unit_data_block> --durations=yes
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-
-################################################################
-# Unit test for transferring data_block with task graph ports  #
-################################################################
-
-#
-# Define unit test
-#
-add_executable(unit_blocks_and_ports EXCLUDE_FROM_ALL)
-
-#
-# Required libraries, notably the associated object libraries
-#
-# NOTE: This test does require ports and data_block (and 
-# pool_allocator), which are currently header only libraries.
-# So there is nothing to link against.
-#
-# target_link_libraries(unit_data_block PUBLIC ports)
-# target_link_libraries(unit_data_block PUBLIC data_block)
-# ?? target_link_libraries(unit_data_block PUBLIC pool_allocator)
-#
-target_link_libraries(unit_blocks_and_ports PUBLIC Catch2::Catch2)
-
-#
-# Define sources for test
-#
-target_sources(unit_blocks_and_ports PUBLIC
-        main.cc
-        unit_blocks_and_ports.cc
-)
-
-#
-# Add unit test to global suite of unit tests
-#
-add_test(
-        NAME "unit_blocks_and_ports"
-        COMMAND $<TARGET_FILE:unit_data_block> --durations=yes
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
