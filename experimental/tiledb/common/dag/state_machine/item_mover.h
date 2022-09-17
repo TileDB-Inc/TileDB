@@ -171,13 +171,13 @@ class BaseMover<Mover, three_stage, Block> {
     switch (state) {
       case PortState::st_101:
       case PortState::xt_101:
-        CHECK(*(items_[0]) != EMPTY_SINK);
+        //        CHECK(*(items_[0]) != EMPTY_SINK);
         std::swap(*items_[0], *items_[1]);
         break;
 
       case PortState::st_010:
       case PortState::xt_010:
-        CHECK(*(items_[1]) != EMPTY_SINK);
+        // CHECK(*(items_[1]) != EMPTY_SINK);
         std::swap(*items_[1], *items_[2]);
         break;
 
@@ -189,9 +189,9 @@ class BaseMover<Mover, three_stage, Block> {
 
       case PortState::st_110:
       case PortState::xt_110:
-        CHECK(*(items_[1]) != EMPTY_SINK);
+        //        CHECK(*(items_[1]) != EMPTY_SINK);
         std::swap(*items_[1], *items_[2]);
-        CHECK(*(items_[0]) != EMPTY_SINK);
+        //        CHECK(*(items_[0]) != EMPTY_SINK);
         std::swap(*items_[0], *items_[1]);
         break;
 
@@ -248,6 +248,15 @@ class BaseMover<Mover, three_stage, Block> {
 
   auto& sink_item() {
     return *items_[2];
+  }
+
+  bool is_stopping() {
+    auto st = static_cast<Mover*>(this)->state();
+    auto nst = static_cast<Mover*>(this)->next_state();
+    return (
+        (st >= three_stage::xt_000 && st <= three_stage::xt_111) ||
+        (nst >= three_stage::xt_000 && nst <= three_stage::xt_111) ||
+        st == three_stage::done);
   }
 
   bool is_done() {
@@ -331,7 +340,6 @@ class BaseMover<Mover, two_stage, Block> {
   inline void on_move(std::atomic<int>& event) {
     auto state = static_cast<Mover*>(this)->state();
     bool debug = static_cast<Mover*>(this)->debug_enabled();
-    CHECK(is_ready_to_move(state) == "");
 
     /**
      * Increment the move count.
@@ -407,6 +415,15 @@ class BaseMover<Mover, two_stage, Block> {
     return *items_[1];
   }
 
+  bool is_stopping() {
+    auto st = static_cast<Mover*>(this)->state();
+    auto nst = static_cast<Mover*>(this)->next_state();
+    return (
+        (st >= two_stage::xt_00 && st <= two_stage::xt_11) ||
+        (nst >= two_stage::xt_00 && nst <= two_stage::xt_11) ||
+        st == two_stage::done);
+  }
+
   bool is_done() {
     return static_cast<Mover*>(this)->state() == two_stage::done;
   }
@@ -449,6 +466,7 @@ class ItemMover
   using block_type = Block;
   constexpr inline static bool edgeful = Base::edgeful;
 
+#ifndef FXM
   /**
    * Invoke `source_fill` event
    */
@@ -484,7 +502,21 @@ class ItemMover
 
     this->event(PortEvent::sink_pull, msg);
   }
+#else
 
+  void do_inject(const std::string& msg = "") {
+    debug_msg("  -- injecting");
+
+    this->event(PortEvent::source_inject, msg);
+  }
+
+  void do_extract(const std::string& msg = "") {
+    debug_msg("  -- extracting");
+
+    this->event(PortEvent::sink_extract, msg);
+  }
+
+#endif
   /**
    * Invoke `stop` event
    */

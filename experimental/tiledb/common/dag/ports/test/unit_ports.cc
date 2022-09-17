@@ -111,7 +111,7 @@ TEST_CASE("Ports: Manual set source port values", "[ports]") {
     CHECK(source.extract().has_value() == true);
   }
   SECTION("set source in unbound source") {
-    CHECK(source.inject(9UL) == false);
+    CHECK_THROWS(source.inject(9UL) == false);
   }
   SECTION("set source that has value") {
     attach(source, sink);

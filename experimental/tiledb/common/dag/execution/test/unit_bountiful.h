@@ -30,5 +30,5 @@
 
 #ifndef TILEDB_UNIT_BOUNTIFUL_H
 #define TILEDB_UNIT_BOUNTIFUL_H
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #endif  // TILEDB_UNIT_BOUNTIFUL_H

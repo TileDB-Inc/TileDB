@@ -31,5 +31,4 @@
  */
 
 #define CATCH_CONFIG_MAIN
-#include "unit_block_edge.h"
-#include "unit_edge.h"
+#include <test/support/tdb_catch.h>

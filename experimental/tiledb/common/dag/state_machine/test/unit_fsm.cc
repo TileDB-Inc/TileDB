@@ -1501,3 +1501,373 @@ TEST_CASE("Pass a sequence of n integers, unified3", "[fsm]") {
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
   CHECK(str(a.state()) == "st_000");
 }
+
+TEST_CASE("Create a tuple, async", "[fsm]") {
+  [[maybe_unused]] constexpr bool debug = false;
+
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+
+  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
+
+  if (debug) {
+    a.enable_debug();
+  }
+
+  a.set_state(two_stage::st_00);
+
+  size_t rounds = 3379;
+  if (debug)
+    rounds = 33;
+
+  std::vector<size_t> input(rounds * 3);
+  std::vector<size_t> output(rounds * 3);
+
+  std::iota(input.begin(), input.end(), 19);
+  std::fill(output.begin(), output.end(), 0);
+  auto i = input.begin();
+  auto j = output.begin();
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
+
+  auto source_node = [&]() {
+    size_t n = rounds * 3;
+
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+
+      CHECK(is_source_empty(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_source_empty(a.state()) == "");
+
+      *(a.source_item()) = *i++;
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_source_empty(a.state()) == "");
+
+      a.do_fill();
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      a.do_push();
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      *(a.source_item()) = EMPTY_SOURCE;
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    }
+  };
+
+  auto sink_node = [&]() {
+    size_t n = rounds;
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+
+      a.do_pull();
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      *j++ = *(a.sink_item());  // This needs to be atomic with extract
+
+      a.do_drain();
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      a.do_pull();
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      *j++ = *(a.sink_item());  // This needs to be atomic with extract
+
+      a.do_drain();
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+      a.do_pull();
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      *j++ = *(a.sink_item());  // This needs to be atomic with extract
+
+      a.do_drain();
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    }
+  };
+
+  SECTION("launch source before sink, get source before sink") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch sink before source, get source before sink") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch source before sink, get sink before source") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  SECTION("launch sink before source, get sink before source") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  if (debug)
+    for (size_t i = 0; i < rounds; ++i) {
+      std::cout << i << " (" << input[i] << ", " << output[i] << ")"
+                << std::endl;
+    }
+
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    for (size_t j = 0; j < input.size(); ++j) {
+      if (input[j] != output[j]) {
+        std::cout << j << " (" << input[j] << ", " << output[j] << ")"
+                  << std::endl;
+      }
+    }
+  }
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    auto iter = std::find_first_of(
+        input.begin(),
+        input.end(),
+        output.begin(),
+        output.end(),
+        std::not_equal_to<size_t>());
+    if (iter != input.end()) {
+      size_t k = iter - input.begin();
+      std::cout << k << " (" << input[k] << ", " << output[k] << ")"
+                << std::endl;
+    } else {
+      std::cout << "this should not happen" << std::endl;
+    }
+  }
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()));
+  CHECK(str(a.state()) == "st_00");
+  CHECK((a.source_swaps() + a.sink_swaps()) == 3 * rounds);
+}
+
+TEST_CASE("Create a tuple2, async", "[fsm]") {
+  [[maybe_unused]] constexpr bool debug = false;
+
+  std::optional<size_t> source_item{0};
+  std::optional<size_t> sink_item{0};
+
+  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
+
+  if (debug) {
+    a.enable_debug();
+  }
+
+  a.set_state(two_stage::st_00);
+
+  size_t rounds = 3379;
+  if (debug)
+    rounds = 33;
+
+  std::vector<size_t> input(rounds * 3);
+  std::vector<size_t> output(rounds * 3);
+
+  std::iota(input.begin(), input.end(), 19);
+  std::fill(output.begin(), output.end(), 0);
+  auto i = input.begin();
+  auto j = output.begin();
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
+
+  auto source_node = [&]() {
+    size_t n = rounds * 3;
+
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+
+      CHECK(is_source_empty(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_source_empty(a.state()) == "");
+
+      *(a.source_item()) = *i++;
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_source_empty(a.state()) == "");
+
+      a.do_fill();
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      a.do_push();
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      *(a.source_item()) = EMPTY_SOURCE;
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    }
+  };
+
+  auto sink_node = [&]() {
+    size_t n = rounds;
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+
+      a.do_pull();
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      *j++ = *(a.sink_item());  // This needs to be atomic with extract
+
+      a.do_drain();
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      a.do_pull();
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      *j++ = *(a.sink_item());  // This needs to be atomic with extract
+
+      a.do_drain();
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+      a.do_pull();
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      CHECK(is_sink_full(a.state()) == "");
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+
+      *j++ = *(a.sink_item());  // This needs to be atomic with extract
+
+      a.do_drain();
+
+      std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    }
+  };
+
+  SECTION("launch source before sink, get source before sink") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch sink before source, get source before sink") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("launch source before sink, get sink before source") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  SECTION("launch sink before source, get sink before source") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+
+    fut_b.get();
+    fut_a.get();
+  }
+
+  if (debug)
+    for (size_t i = 0; i < rounds; ++i) {
+      std::cout << i << " (" << input[i] << ", " << output[i] << ")"
+                << std::endl;
+    }
+
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    for (size_t j = 0; j < input.size(); ++j) {
+      if (input[j] != output[j]) {
+        std::cout << j << " (" << input[j] << ", " << output[j] << ")"
+                  << std::endl;
+      }
+    }
+  }
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    auto iter = std::find_first_of(
+        input.begin(),
+        input.end(),
+        output.begin(),
+        output.end(),
+        std::not_equal_to<size_t>());
+    if (iter != input.end()) {
+      size_t k = iter - input.begin();
+      std::cout << k << " (" << input[k] << ", " << output[k] << ")"
+                << std::endl;
+    } else {
+      std::cout << "this should not happen" << std::endl;
+    }
+  }
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()));
+  CHECK(str(a.state()) == "st_00");
+  CHECK((a.source_swaps() + a.sink_swaps()) == 3 * rounds);
+}
