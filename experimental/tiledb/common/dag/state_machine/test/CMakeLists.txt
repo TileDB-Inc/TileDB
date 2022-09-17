@@ -1,5 +1,5 @@
 #
-# experimental/tiledb/common/state_machine/CMakeLists.txt
+# experimental/tiledb/dag/common/state_machine/CMakeLists.txt
 #
 #
 # The MIT License
@@ -25,15 +25,10 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
-
-include(common NO_POLICY_SCOPE)
-
-################################################################
-# Include subdirectory with unit tests                         #
-################################################################
-if (TILEDB_TESTS)
-    add_subdirectory(test)
-endif()
-
-dag_add_header_only_object_library(fsm)
+dag_add_header_only_unit_test(fsm)
+dag_add_header_only_unit_test(fxm)
+dag_add_header_only_unit_test(sched)
+dag_add_header_only_unit_test(proof)
+dag_add_header_only_unit_test(policies)
+dag_add_header_only_unit_test(item_mover)
+dag_add_header_only_unit_test(stop)
