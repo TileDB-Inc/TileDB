@@ -1697,16 +1697,15 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::tile_var_size(
   return {Status::Ok(), tile_size};
 }
 
-tuple<Status, optional<void*>, optional<uint64_t>>
-FragmentMetadata::get_tile_min(const std::string& name, uint64_t tile_idx) {
+template <typename T>
+tuple<T*, uint64_t> FragmentMetadata::get_tile_min_as(
+    const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_min_[idx]) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt,
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not loaded");
   }
 
   const auto type = array_schema_->type(name);
@@ -1715,10 +1714,8 @@ FragmentMetadata::get_tile_min(const std::string& name, uint64_t tile_idx) {
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num)) {
-    return {Status_FragmentMetadataError(
-                "Trying to access metadata that's not present"),
-            nullopt,
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not present");
   }
 
   if (var_size) {
@@ -1729,24 +1726,23 @@ FragmentMetadata::get_tile_min(const std::string& name, uint64_t tile_idx) {
                     tile_min_var_buffer_[idx].size() - min_offset :
                     offsets[tile_idx + 1] - min_offset;
     void* min = &tile_min_var_buffer_[idx][min_offset];
-    return {Status::Ok(), min, size};
+    return {static_cast<T*>(min), size};
   } else {
     auto size = array_schema_->cell_size(name);
     void* min = &tile_min_buffer_[idx][tile_idx * size];
-    return {Status::Ok(), min, size};
+    return {static_cast<T*>(min), size};
   }
 }
 
-tuple<Status, optional<void*>, optional<uint64_t>>
-FragmentMetadata::get_tile_max(const std::string& name, uint64_t tile_idx) {
+template <typename T>
+tuple<T*, uint64_t> FragmentMetadata::get_tile_max_as(
+    const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_max_[idx]) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt,
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not loaded");
   }
 
   const auto type = array_schema_->type(name);
@@ -1755,10 +1751,8 @@ FragmentMetadata::get_tile_max(const std::string& name, uint64_t tile_idx) {
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num)) {
-    return {Status_FragmentMetadataError(
-                "Trying to access metadata that's not present"),
-            nullopt,
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not present");
   }
 
   if (var_size) {
@@ -1769,68 +1763,61 @@ FragmentMetadata::get_tile_max(const std::string& name, uint64_t tile_idx) {
                     tile_max_var_buffer_[idx].size() - max_offset :
                     offsets[tile_idx + 1] - max_offset;
     void* max = &tile_max_var_buffer_[idx][max_offset];
-    return {Status::Ok(), max, size};
+    return {static_cast<T*>(max), size};
   } else {
     auto size = array_schema_->cell_size(name);
     void* max = &tile_max_buffer_[idx][tile_idx * size];
-    return {Status::Ok(), max, size};
+    return {static_cast<T*>(max), size};
   }
 }
 
-tuple<Status, optional<void*>> FragmentMetadata::get_tile_sum(
+void* FragmentMetadata::get_tile_sum(
     const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_sum_[idx]) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not loaded");
   }
 
   auto type = array_schema_->type(name);
   auto var_size = array_schema_->var_size(name);
   auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num)) {
-    return {Status_FragmentMetadataError(
-                "Trying to access metadata that's not present"),
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not present");
   }
 
   void* sum = &tile_sums_[idx][tile_idx * sizeof(uint64_t)];
-  return {Status::Ok(), sum};
+  return sum;
 }
 
-tuple<Status, optional<uint64_t>> FragmentMetadata::get_tile_null_count(
+uint64_t FragmentMetadata::get_tile_null_count(
     const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_null_count_[idx]) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not loaded");
   }
 
   if (!array_schema_->is_nullable(name)) {
-    return {Status_FragmentMetadataError(
-                "Trying to access metadata that's not present"),
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not present");
   }
 
-  uint64_t null_count = tile_null_counts_[idx][tile_idx];
-  return {Status::Ok(), null_count};
+  return tile_null_counts_[idx][tile_idx];
 }
 
-tuple<Status, optional<std::vector<uint8_t>>> FragmentMetadata::get_min(
-    const std::string& name) {
+std::vector<uint8_t>& FragmentMetadata::get_min(const std::string& name) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not loaded");
   }
 
   const auto type = array_schema_->type(name);
@@ -1839,23 +1826,20 @@ tuple<Status, optional<std::vector<uint8_t>>> FragmentMetadata::get_min(
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num)) {
-    return {Status_FragmentMetadataError(
-                "Trying to access metadata that's not present"),
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not present");
   }
 
-  return {Status::Ok(), fragment_mins_[idx]};
+  return fragment_mins_[idx];
 }
 
-tuple<Status, optional<std::vector<uint8_t>>> FragmentMetadata::get_max(
-    const std::string& name) {
+std::vector<uint8_t>& FragmentMetadata::get_max(const std::string& name) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not loaded");
   }
 
   const auto type = array_schema_->type(name);
@@ -1864,55 +1848,48 @@ tuple<Status, optional<std::vector<uint8_t>>> FragmentMetadata::get_max(
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num)) {
-    return {Status_FragmentMetadataError(
-                "Trying to access metadata that's not present"),
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not present");
   }
 
-  return {Status::Ok(), fragment_maxs_[idx]};
+  return fragment_maxs_[idx];
 }
 
-tuple<Status, optional<void*>> FragmentMetadata::get_sum(
-    const std::string& name) {
+void* FragmentMetadata::get_sum(const std::string& name) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not loaded");
   }
 
   const auto type = array_schema_->type(name);
   const auto var_size = array_schema_->var_size(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num)) {
-    return {Status_FragmentMetadataError(
-                "Trying to access metadata that's not present"),
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not present");
   }
 
-  return {Status::Ok(), &fragment_sums_[idx]};
+  return &fragment_sums_[idx];
 }
 
-tuple<Status, optional<uint64_t>> FragmentMetadata::get_null_count(
-    const std::string& name) {
+uint64_t FragmentMetadata::get_null_count(const std::string& name) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not loaded");
   }
 
   if (!array_schema_->is_nullable(name)) {
-    return {Status_FragmentMetadataError(
-                "Trying to access metadata that's not present"),
-            nullopt};
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not present");
   }
 
-  return {Status::Ok(), fragment_null_counts_[idx]};
+  return fragment_null_counts_[idx];
 }
 
 void FragmentMetadata::set_processed_conditions(
@@ -4985,6 +4962,54 @@ FragmentMetadata::compute_overlapping_tile_ids_cov<float>(
 template std::vector<std::pair<uint64_t, double>>
 FragmentMetadata::compute_overlapping_tile_ids_cov<double>(
     const double* subarray) const;
+template tuple<int8_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<uint8_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<int16_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<uint16_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<int32_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<uint32_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<int64_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<uint64_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<char*, uint64_t> FragmentMetadata::get_tile_min_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<float*, uint64_t> FragmentMetadata::get_tile_min_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<double*, uint64_t> FragmentMetadata::get_tile_min_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<std::byte*, uint64_t> FragmentMetadata::get_tile_min_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<int8_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<uint8_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<int16_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<uint16_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<int32_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<uint32_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<int64_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<uint64_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<char*, uint64_t> FragmentMetadata::get_tile_max_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<float*, uint64_t> FragmentMetadata::get_tile_max_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<double*, uint64_t> FragmentMetadata::get_tile_max_as(
+    const std::string& name, uint64_t tile_idx);
+template tuple<std::byte*, uint64_t> FragmentMetadata::get_tile_max_as(
+    const std::string& name, uint64_t tile_idx);
 
 }  // namespace sm
 }  // namespace tiledb

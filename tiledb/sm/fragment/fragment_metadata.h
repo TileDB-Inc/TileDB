@@ -648,20 +648,23 @@ class FragmentMetadata {
    *
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @return Status, value, size.
+   * @return Value, size.
    */
-  tuple<Status, optional<void*>, optional<uint64_t>> get_tile_min(
+  template <typename T>
+  tuple<T*, uint64_t> get_tile_min_as(
       const std::string& name, uint64_t tile_idx);
 
   /**
    * Retrieves the tile max value for a given attribute or dimension and tile
    * index.
    *
+   * @tparam Type to return the data as.
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @return Status, value, size.
+   * @return Value, size.
    */
-  tuple<Status, optional<void*>, optional<uint64_t>> get_tile_max(
+  template <typename T>
+  tuple<T*, uint64_t> get_tile_max_as(
       const std::string& name, uint64_t tile_idx);
 
   /**
@@ -670,10 +673,9 @@ class FragmentMetadata {
    *
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @return Status, sum.
+   * @return Sum.
    */
-  tuple<Status, optional<void*>> get_tile_sum(
-      const std::string& name, uint64_t tile_idx);
+  void* get_tile_sum(const std::string& name, uint64_t tile_idx);
 
   /**
    * Retrieves the tile null count value for a given attribute or dimension
@@ -681,44 +683,41 @@ class FragmentMetadata {
    *
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @return Status, count.
+   * @return Count.
    */
-  tuple<Status, optional<uint64_t>> get_tile_null_count(
-      const std::string& name, uint64_t tile_idx);
+  uint64_t get_tile_null_count(const std::string& name, uint64_t tile_idx);
 
   /**
    * Retrieves the min value for a given attribute or dimension.
    *
    * @param name The input attribute/dimension.
-   * @return Status, value.
+   * @return Value.
    */
-  tuple<Status, optional<std::vector<uint8_t>>> get_min(
-      const std::string& name);
+  std::vector<uint8_t>& get_min(const std::string& name);
 
   /**
    * Retrieves the max value for a given attribute or dimension.
    *
    * @param name The input attribute/dimension.
-   * @return Status, value.
+   * @return Value.
    */
-  tuple<Status, optional<std::vector<uint8_t>>> get_max(
-      const std::string& name);
+  std::vector<uint8_t>& get_max(const std::string& name);
 
   /**
    * Retrieves the sum value for a given attribute or dimension.
    *
    * @param name The input attribute/dimension.
-   * @return Status, sum.
+   * @return Sum.
    */
-  tuple<Status, optional<void*>> get_sum(const std::string& name);
+  void* get_sum(const std::string& name);
 
   /**
    * Retrieves the null count value for a given attribute or dimension.
    *
    * @param name The input attribute/dimension.
-   * @return Status, count.
+   * @return Count.
    */
-  tuple<Status, optional<uint64_t>> get_null_count(const std::string& name);
+  uint64_t get_null_count(const std::string& name);
 
   /**
    * Set the processed conditions. The processed conditions is the list

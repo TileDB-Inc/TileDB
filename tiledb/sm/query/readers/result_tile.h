@@ -1045,6 +1045,62 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
   }
 };
 
+/** Result tile used for ordered dimension labels. */
+class OrderedDimLabelResultTile : public ResultTile {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+  OrderedDimLabelResultTile() = default;
+
+  OrderedDimLabelResultTile(
+      unsigned frag_idx,
+      uint64_t tile_idx,
+      const ArraySchema& array_schema,
+      const bool covered)
+      : ResultTile(frag_idx, tile_idx, array_schema)
+      , covered_(covered) {
+  }
+
+  /** Move constructor. */
+  OrderedDimLabelResultTile(OrderedDimLabelResultTile&& other) noexcept {
+    // Swap with the argument
+    swap(other);
+  }
+
+  /** Move-assign operator. */
+  OrderedDimLabelResultTile& operator=(OrderedDimLabelResultTile&& other) {
+    // Swap with the argument
+    swap(other);
+
+    return *this;
+  }
+
+  DISABLE_COPY_AND_COPY_ASSIGN(OrderedDimLabelResultTile);
+
+  /* ********************************* */
+  /*          PUBLIC METHODS           */
+  /* ********************************* */
+
+  /** Returns true if the tile is covered by another in a later fragment. */
+  inline bool covered() {
+    return covered_;
+  }
+
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(OrderedDimLabelResultTile& tile) {
+    ResultTile::swap(tile);
+    std::swap(covered_, tile.covered_);
+  }
+
+ private:
+  /* ********************************* */
+  /*        PRIVATE ATTRIBUTES         */
+  /* ********************************* */
+  /** Is the tile is covered by another in a later fragment? */
+  bool covered_;
+};
+
 }  // namespace sm
 }  // namespace tiledb
 

@@ -170,6 +170,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
   src/unit-lru_cache.cc
+  src/unit-ordered-dim-label-reader.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
   src/unit-bytevecvalue.cc

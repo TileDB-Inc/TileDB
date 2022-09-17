@@ -947,6 +947,13 @@ class Query {
   /** Called from serialization to mark the query as remote */
   void set_remote_query();
 
+  /**
+   * Set a flag to specify we are doing an ordered dimension label read.
+   *
+   * @param increaging_order Is the query on an array with increasing order?
+   */
+  void set_dimension_label_ordered_read(bool increaging_order);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -1083,6 +1090,12 @@ class Query {
 
   /** It tracks if this is a remote query */
   bool remote_query_;
+
+  /** Flag to specify we are doing a dimension label ordered read. */
+  bool is_dimension_label_ordered_read_;
+
+  /** Is the dimension label ordered read on an array with increasing order? */
+  bool dimension_label_increasing_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

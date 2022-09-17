@@ -41,5 +41,22 @@ std::string ByteVecValue::rvalue_as<std::string>() const {
       reinterpret_cast<const std::string::value_type*>(x_.data()), x_.size());
 }
 
+// Explicit template instantiations
+template <class T>
+T ByteVecValue::rvalue_as() const {
+  return *static_cast<const T*>(static_cast<const void*>(x_.data()));
+}
+
+// Explicit template instantiations
+template char ByteVecValue::rvalue_as<char>() const;
+template int8_t ByteVecValue::rvalue_as<int8_t>() const;
+template uint8_t ByteVecValue::rvalue_as<uint8_t>() const;
+template int16_t ByteVecValue::rvalue_as<int16_t>() const;
+template uint16_t ByteVecValue::rvalue_as<uint16_t>() const;
+template int ByteVecValue::rvalue_as<int>() const;
+template uint32_t ByteVecValue::rvalue_as<uint32_t>() const;
+template int64_t ByteVecValue::rvalue_as<int64_t>() const;
+template uint64_t ByteVecValue::rvalue_as<uint64_t>() const;
+
 }  // namespace sm
 }  // namespace tiledb
