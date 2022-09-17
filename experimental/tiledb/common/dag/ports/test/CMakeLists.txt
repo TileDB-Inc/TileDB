@@ -1,5 +1,5 @@
 #
-# experimental/tiledb/dag/common/ports/CMakeLists.txt
+# experimental/tiledb/common/dag/ports/test/CMakeLists.txt
 #
 #
 # The MIT License
@@ -25,13 +25,34 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
 
-################################################################
-# Include subdirectory with unit tests                         #
-################################################################
-if (TILEDB_TESTS)
-    add_subdirectory(test)
-endif()
+#
+# Define unit tests for pool_allocator, data_block, and blocks_and_ports
+#
+dag_add_header_only_unit_test(pseudo_nodes)
+dag_add_header_only_unit_test(concurrency)
+#
+# Define sieve test -- it is not catch-based
+#
+# Define unit test
+#
+add_executable(unit_ports_sieve EXCLUDE_FROM_ALL)
+#
+# Required libraries
+#
+#
+# Define sources for test
+#
+target_sources(unit_ports_sieve PUBLIC
+    unit_ports_sieve.cc
+)
+#
+# Add unit test to global suite of unit tests
+#
+add_test(
+    NAME "unit_ports_sieve"
+    COMMAND $<TARGET_FILE:unit_ports_sieve> --durations=yes
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
 
-dag_add_header_only_object_library(ports)
+
