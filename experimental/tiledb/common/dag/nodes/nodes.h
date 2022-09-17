@@ -36,6 +36,6 @@
 
 #include "experimental/tiledb/common/dag/nodes/base.h"
 // #include "experimental/tiledb/common/dag/nodes/general.h"
-#include "experimental/tiledb/common/dag/nodes/simple.h"
+#include "experimental/tiledb/common/dag/nodes/simple_node.h"
 
 #endif  // TILEDB_DAG_NODE_H

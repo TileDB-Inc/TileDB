@@ -30,6 +30,5 @@
 
 #ifndef TILEDB_UNIT_STOP_SOURCE_H
 #define TILEDB_UNIT_STOP_SOURCE_H
-#define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
 #endif  // TILEDB_UNIT_STOP_SOURCE_H

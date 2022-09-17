@@ -37,7 +37,7 @@
 #include <functional>
 #include <type_traits>
 
-#include "experimental/tiledb/common/dag/execution/stop_token.hpp"
+#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/ports/ports.h"
 
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
@@ -67,8 +67,7 @@ class GeneralGraphNode {
 };
 
 template <>
-class GeneralGraphNode<void> : GeneralGraphNode<std::monostate> {
-};
+class GeneralGraphNode<void> : GeneralGraphNode<std::monostate> {};
 
 using GraphNode = GeneralGraphNode<void>;
 }  // namespace tiledb::common

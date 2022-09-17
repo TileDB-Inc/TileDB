@@ -27,6 +27,18 @@
 
 include(common NO_POLICY_SCOPE)
 
+################################################################
+# Include subdirectory with unit tests                         #
+################################################################
+if (TILEDB_TESTS)
+    add_subdirectory(test)
+endif()
+
+dag_add_header_only_object_library(simple_node)
+dag_add_header_only_object_library(general_node)
+
+
+if (YACK)
 #list(APPEND SOURCES
 #    nodes.cc
 #)
@@ -214,4 +226,5 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_stop_source> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+endif()
 endif()

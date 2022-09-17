@@ -30,6 +30,7 @@
 # Define helper macro for many header only object libraries
 #
 macro (dag_add_header_only_object_library OBJLIBNAME)
+
   list(APPEND ${OBJLIBNAME}_SOURCES
       ${OBJLIBNAME}.cc
   )
@@ -43,13 +44,16 @@ macro (dag_add_header_only_object_library OBJLIBNAME)
   #
   add_executable(compile_${OBJLIBNAME} EXCLUDE_FROM_ALL)
   add_dependencies(all_link_complete compile_${OBJLIBNAME})
+
+message("==== ${OBJLIBNAME}")
+message("====---- compile_${OBJLIBNAME} PRIVATE ${OBJLIBNAME}")
   target_link_libraries(compile_${OBJLIBNAME} PRIVATE ${OBJLIBNAME})
   target_sources(compile_${OBJLIBNAME} PRIVATE test/compile_${OBJLIBNAME}_main.cc)
 endmacro (dag_add_header_only_object_library)
 
 
 #
-# Define helper macro for many header only tests
+# Define helper macro for many catch-based header-only tests
 #
 macro (dag_add_header_only_unit_test TESTNAME)
     #

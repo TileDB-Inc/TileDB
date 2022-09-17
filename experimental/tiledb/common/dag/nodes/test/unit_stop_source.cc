@@ -34,7 +34,7 @@
 #include <atomic>
 #include <future>
 #include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/execution/stop_token.hpp"
+#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/nodes/consumer.h"
 #include "experimental/tiledb/common/dag/nodes/generator.h"
 #include "experimental/tiledb/common/dag/nodes/nodes.h"
