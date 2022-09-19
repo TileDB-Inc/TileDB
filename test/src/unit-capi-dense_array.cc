@@ -5302,6 +5302,7 @@ TEST_CASE_METHOD(
   REQUIRE(query_status == TILEDB_COMPLETED);
 
   // Clean-up.
+  tiledb_subarray_free(&subarray);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
 }

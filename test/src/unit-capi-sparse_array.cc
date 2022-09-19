@@ -6997,3 +6997,55 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
+
+TEST_CASE_METHOD(
+    TemporaryDirectoryFixture,
+    "Write sparse array without setting layout",
+    "[capi][query]") {
+  // Create the array.
+  uint64_t domain[2]{0, 3};
+  uint64_t x_tile_extent{4};
+  auto array_schema = create_array_schema(
+      ctx,
+      TILEDB_SPARSE,
+      {"x"},
+      {TILEDB_UINT64},
+      {&domain[0]},
+      {&x_tile_extent},
+      {"a"},
+      {TILEDB_FLOAT64},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      4096,
+      false);
+  auto array_name = create_temporary_array("sparse_array1", array_schema);
+  tiledb_array_schema_free(&array_schema);
+
+  // Open array for writing.
+  tiledb_array_t* array;
+  require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
+  require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_WRITE));
+
+  // Define input data and write.
+  std::vector<uint64_t> input_dim_data{0, 1, 2, 3};
+  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
+  uint64_t dim_data_size{input_dim_data.size() * sizeof(uint64_t)};
+  uint64_t attr_data_size{input_attr_data.size() * sizeof(double)};
+
+  // Create write query.
+  tiledb_query_t* query;
+  require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query));
+  require_tiledb_ok(tiledb_query_set_data_buffer(
+      ctx, query, "x", input_dim_data.data(), &dim_data_size));
+  require_tiledb_ok(tiledb_query_set_data_buffer(
+      ctx, query, "a", input_attr_data.data(), &attr_data_size));
+
+  // Submit write query.
+  require_tiledb_ok(tiledb_query_submit(ctx, query));
+
+  // Clean-up.
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+}
