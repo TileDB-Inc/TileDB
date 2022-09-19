@@ -53,7 +53,7 @@ capi_return_t tiledb_error_message(
   ensure_error_is_valid(err);
   ensure_output_pointer_is_valid(errmsg);
 
-  const auto error_message{err->message()};
+  const auto& error_message{err->message()};
   if (error_message.empty()) {
     *errmsg = nullptr;
   } else {
