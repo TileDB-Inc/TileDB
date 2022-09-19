@@ -98,6 +98,7 @@ UnorderedWriter::UnorderedWriter(
         "support layout " +
         layout_str(layout)));
   }
+
   if (array_schema_.dense()) {
     throw StatusException(Status_WriterError(
         "Failed to initialize UnorderedWriter; The unordered "

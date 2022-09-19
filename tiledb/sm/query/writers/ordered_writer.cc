@@ -98,6 +98,7 @@ OrderedWriter::OrderedWriter(
         "support layout " +
         layout_str(layout)));
   }
+
   if (!array_schema_.dense()) {
     throw StatusException(
         Status_WriterError("Failed to initialize OrderedWriter; The ordered "
