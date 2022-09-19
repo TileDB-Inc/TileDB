@@ -429,6 +429,17 @@ class CAPIFunction<f, H> {
    * @return
    */
   static capi_return_t function(H& h, Args... args) {
+    /*
+     * The order of the catch blocks is not arbitrary:
+     * - `std::bad_alloc` comes first because it overrides other problems
+     * - `InvalidContextException` and `InvalidErrorException` come next,
+     *    because they have return codes that override the generic `TILEDB_ERR`
+     * - `StatusException` is derived from `std::exception`, so it must precede
+     *   it in order to be caught separately
+     * - `std::exception` is for all other expected exceptions
+     * - `...` is only for ultimate exception safety. This catch block should
+     *   never execute.
+     */
     try {
       /*
        * If error-handling arguments are invalid, `validate` will throw and the
