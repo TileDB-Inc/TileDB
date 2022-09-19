@@ -66,7 +66,7 @@ struct tiledb_error_handle_t
       : errmsg_{message} {
   }
 
-  [[nodiscard]] inline std::string message() const {
+  [[nodiscard]] inline const std::string& message() const {
     return errmsg_;
   }
 };
