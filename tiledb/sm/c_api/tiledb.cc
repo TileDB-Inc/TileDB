@@ -3583,7 +3583,6 @@ int32_t tiledb_array_get_config(
   if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
   api::ensure_output_pointer_is_valid(config);
-  api::ensure_config_is_valid(*config);
   *config = tiledb_config_handle_t::make_handle(array->array_->config());
   return TILEDB_OK;
 }
