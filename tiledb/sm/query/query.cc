@@ -2023,26 +2023,42 @@ Status Query::set_est_result_size(
 }
 
 Status Query::set_layout(Layout layout) {
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot set layout; Unsupported query type."));
-  }
+  switch (type_) {
+    case (QueryType::READ):
+      if (status_ != QueryStatus::UNINITIALIZED) {
+        return logger_->status(
+            Status_QueryError("Cannot set layout after initialization"));
+      }
 
-  if (type_ == QueryType::READ && status_ != QueryStatus::UNINITIALIZED) {
-    return logger_->status(
-        Status_QueryError("Cannot set layout after initialization"));
+      break;
+
+    case (QueryType::WRITE):
+    case (QueryType::MODIFY_EXCLUSIVE):
+      if (array_schema_->dense()) {
+        // Check layout for dense writes is valid.
+        if (layout == Layout::UNORDERED) {
+          return logger_->status(Status_QueryError(
+              "Unordered writes are only possible for sparse arrays"));
+        }
+      } else {
+        // Check layout for sparse writes is valid.
+        if (layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR) {
+          return logger_->status(
+              Status_QueryError("Row-major and column-major writes are only "
+                                "possible for dense arrays"));
+        }
+      }
+
+      break;
+
+    default:
+      return LOG_STATUS(Status_SerializationError(
+          "Cannot set layout; Unsupported query type."));
   }
 
   if (layout == Layout::HILBERT) {
     return logger_->status(Status_QueryError(
         "Cannot set layout; Hilbert order is not applicable to queries"));
-  }
-
-  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
-      array_schema_->dense() && layout == Layout::UNORDERED) {
-    return logger_->status(Status_QueryError(
-        "Unordered writes are only possible for sparse arrays"));
   }
 
   layout_ = layout;
