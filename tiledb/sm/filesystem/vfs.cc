@@ -1918,19 +1918,6 @@ Status VFS::flush_multipart_file_buffer(const URI& uri) {
 #else
     return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
 #endif
-  } else if (uri.is_azure()) {
-#ifdef HAVE_AZURE
-    return LOG_STATUS(Status_VFSError("Not yet supported for Azure"));
-#else
-    return LOG_STATUS(
-        Status_VFSError("TileDB was built without Azure support"));
-#endif
-  } else if (uri.is_gcs()) {
-#ifdef HAVE_GCS
-    return LOG_STATUS(Status_VFSError("Not yet supported for GCS"));
-#else
-    return LOG_STATUS(Status_VFSError("TileDB was built without GCS support"));
-#endif
   }
 
   return Status::Ok();
