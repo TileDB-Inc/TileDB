@@ -38,6 +38,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 namespace tiledb {
 namespace sm {
@@ -45,7 +46,6 @@ namespace sm {
 class Array;
 class ArraySchema;
 enum class Layout : uint8_t;
-class StorageManager;
 class Subarray;
 class QueryBuffer;
 

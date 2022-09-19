@@ -394,7 +394,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
  *     no error).
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_ctx_alloc_with_error(
+TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
     tiledb_config_t* config,
     tiledb_ctx_t** ctx,
     tiledb_error_t** error) TILEDB_NOEXCEPT;

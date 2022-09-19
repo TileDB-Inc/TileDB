@@ -27,8 +27,8 @@
  */
 
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
+#include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
-#include "tiledb/sm/c_api/api_exception_safety.h"
 #include "tiledb/sm/c_api/experimental/api_exception_safety.h"
 #include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -232,6 +232,9 @@ int32_t tiledb_subarray_get_label_range_var_size(
 
 }  // namespace tiledb::common::detail
 
+template <auto f>
+constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
+
 int32_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
@@ -275,8 +278,8 @@ int32_t tiledb_dimension_label_schema_alloc(
 
 void tiledb_dimension_label_schema_free(
     tiledb_dimension_label_schema_t** dim_label_schema) noexcept {
-  return api_entry_void<detail::tiledb_dimension_label_schema_free>(
-      dim_label_schema);
+  return tiledb::api::api_entry_void<
+      detail::tiledb_dimension_label_schema_free>(dim_label_schema);
 }
 
 int32_t tiledb_subarray_add_label_range(

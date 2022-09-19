@@ -39,11 +39,8 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/buffer/buffer_list.h"
-#include "tiledb/sm/config/config.h"
-#include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
 #include "tiledb/sm/filter/compression_filter.h"
-#include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/query/query.h"
@@ -71,18 +68,6 @@ struct tiledb_buffer_list_t {
   tiledb::sm::BufferList* buffer_list_ = nullptr;
 };
 
-struct tiledb_config_t {
-  tiledb::sm::Config* config_ = nullptr;
-};
-
-struct tiledb_config_iter_t {
-  tiledb::sm::ConfigIter* config_iter_ = nullptr;
-};
-
-struct tiledb_error_t {
-  std::string errmsg_;
-};
-
 struct tiledb_attribute_t {
   tiledb::sm::Attribute* attr_ = nullptr;
 };
@@ -101,10 +86,6 @@ struct tiledb_dimension_t {
 
 struct tiledb_domain_t {
   tiledb::sm::Domain* domain_ = nullptr;
-};
-
-struct tiledb_filter_list_t {
-  tiledb::sm::FilterPipeline* pipeline_ = nullptr;
 };
 
 struct tiledb_query_t {

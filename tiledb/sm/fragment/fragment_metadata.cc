@@ -1047,8 +1047,7 @@ Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_validity_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_validity_offsets_[i] = offset;
-    throw_if_not_ok(
-        store_tile_validity_offsets(i, encryption_key, &nbytes));
+    throw_if_not_ok(store_tile_validity_offsets(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -3180,8 +3179,8 @@ Status FragmentMetadata::load_tile_validity_offsets(
 // tile_min_values#<attribute_num-1>_buffer
 // tile_min_values#<attribute_num-1>_buffer_var
 void FragmentMetadata::load_tile_min_values(
-      unsigned idx, Deserializer &deserializer) {
-    Status st;
+    unsigned idx, Deserializer& deserializer) {
+  Status st;
   uint64_t buffer_size = 0;
   uint64_t var_buffer_size = 0;
 
@@ -3223,7 +3222,8 @@ void FragmentMetadata::load_tile_min_values(
 // tile_max_values#<attribute_num-1>_size_buffer_var (uint64_t)
 // tile_max_values#<attribute_num-1>_buffer
 // tile_max_values#<attribute_num-1>_buffer_var
-void FragmentMetadata::load_tile_max_values(unsigned idx, Deserializer &deserializer) {
+void FragmentMetadata::load_tile_max_values(
+    unsigned idx, Deserializer& deserializer) {
   Status st;
   uint64_t buffer_size = 0;
   uint64_t var_buffer_size = 0;
@@ -3263,7 +3263,8 @@ void FragmentMetadata::load_tile_max_values(unsigned idx, Deserializer &deserial
 // tile_sum_values_attr#<attribute_num-1>_num (uint64_t)
 // tile_sum_value_attr#<attribute_num-1>_#1 (uint64_t)
 //     tile_sum_value_attr#<attribute_num-1>_#2 (uint64_t) ...
-void FragmentMetadata::load_tile_sum_values(unsigned idx, Deserializer &deserializer) {
+void FragmentMetadata::load_tile_sum_values(
+    unsigned idx, Deserializer& deserializer) {
   uint64_t tile_sum_num = 0;
 
   // Get number of tile sums
@@ -3294,7 +3295,7 @@ void FragmentMetadata::load_tile_sum_values(unsigned idx, Deserializer &deserial
 // tile_nc_value_attr#<attribute_num-1>_#1 (uint64_t)
 //     tile_nc_value_attr#<attribute_num-1>_#2 (uint64_t) ...
 void FragmentMetadata::load_tile_null_count_values(
-    unsigned idx, Deserializer &deserializer) {
+    unsigned idx, Deserializer& deserializer) {
   uint64_t tile_null_count_num = 0;
 
   // Get number of tile null counts
@@ -4382,7 +4383,7 @@ void FragmentMetadata::store_tile_mins(
   storage_manager_->stats()->add_counter("write_mins_size", *nbytes);
 }
 
-void FragmentMetadata::write_tile_mins(unsigned idx, Serializer &serializer) {
+void FragmentMetadata::write_tile_mins(unsigned idx, Serializer& serializer) {
   Status st;
 
   // Write size of buffer
@@ -4392,7 +4393,6 @@ void FragmentMetadata::write_tile_mins(unsigned idx, Serializer &serializer) {
   // Write size of buffer var
   uint64_t tile_mins_var_buffer_size = tile_min_var_buffer_[idx].size();
   serializer.write<uint64_t>(tile_mins_var_buffer_size);
-
 
   // Write tile buffer
   if (tile_mins_buffer_size != 0) {
@@ -4420,7 +4420,7 @@ void FragmentMetadata::store_tile_maxs(
   storage_manager_->stats()->add_counter("write_maxs_size", *nbytes);
 }
 
-void FragmentMetadata::write_tile_maxs(unsigned idx, Serializer &serializer) {
+void FragmentMetadata::write_tile_maxs(unsigned idx, Serializer& serializer) {
   Status st;
 
   // Write size of buffer
@@ -4444,7 +4444,6 @@ void FragmentMetadata::write_tile_maxs(unsigned idx, Serializer &serializer) {
 
 void FragmentMetadata::store_tile_sums(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
-
   SizeComputationSerializer size_computation_serializer;
   write_tile_sums(idx, size_computation_serializer);
 
@@ -4458,7 +4457,7 @@ void FragmentMetadata::store_tile_sums(
   storage_manager_->stats()->add_counter("write_sums_size", *nbytes);
 }
 
-void FragmentMetadata::write_tile_sums(unsigned idx, Serializer &serializer) {
+void FragmentMetadata::write_tile_sums(unsigned idx, Serializer& serializer) {
   // Write number of tile sums
   uint64_t tile_sums_num = tile_sums_[idx].size() / sizeof(uint64_t);
   serializer.write<uint64_t>(tile_sums_num);
@@ -4471,7 +4470,6 @@ void FragmentMetadata::write_tile_sums(unsigned idx, Serializer &serializer) {
 
 void FragmentMetadata::store_tile_null_counts(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
-
   SizeComputationSerializer size_computation_serializer;
   write_tile_null_counts(idx, size_computation_serializer);
 
@@ -4485,15 +4483,16 @@ void FragmentMetadata::store_tile_null_counts(
   storage_manager_->stats()->add_counter("write_null_counts_size", *nbytes);
 }
 
-void FragmentMetadata::write_tile_null_counts(unsigned idx, Serializer &serializer) {
+void FragmentMetadata::write_tile_null_counts(
+    unsigned idx, Serializer& serializer) {
   // Write number of tile null counts
   uint64_t tile_null_counts_num = tile_null_counts_[idx].size();
   serializer.write<uint64_t>(tile_null_counts_num);
 
   // Write tile null counts
   if (tile_null_counts_num != 0) {
-     serializer.write(
-         &tile_null_counts_[idx][0], tile_null_counts_num * sizeof(uint64_t));
+    serializer.write(
+        &tile_null_counts_[idx][0], tile_null_counts_num * sizeof(uint64_t));
   }
 }
 

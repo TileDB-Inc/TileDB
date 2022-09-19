@@ -34,12 +34,11 @@
 #ifndef TILEDB_CAPI_HELPERS_H
 #define TILEDB_CAPI_HELPERS_H
 
-#include "tiledb/api/c_api/filter/filter_api_internal.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api_support/argument_validation.h"
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/enums/filter_type.h"
 
 /* ********************************* */
 /*         AUXILIARY FUNCTIONS       */
@@ -54,19 +53,7 @@ namespace tiledb::api {
  */
 inline void ensure_array_is_valid(const tiledb_array_t* array) {
   if (array == nullptr) {
-    action_invalid_object("array");
-  }
-}
-
-/**
- * Returns after successfully validating a filter list.
- *
- * @param filter_list Possibly-valid pointer to filter list
- */
-inline void ensure_filter_list_is_valid(
-    const tiledb_filter_list_t* filter_list) {
-  if (filter_list == nullptr) {
-    action_invalid_object("filter list");
+    throw CAPIStatusException("Invalid TileDB array object");
   }
 }
 
@@ -115,75 +102,17 @@ inline int32_t sanity_check(
   return TILEDB_OK;
 }
 
-inline int32_t sanity_check(tiledb_config_t* config, tiledb_error_t** error) {
-  if (config == nullptr || config->config_ == nullptr) {
-    auto st = Status_Error("Cannot set config; Invalid config object");
-    LOG_STATUS(st);
-    create_error(error, st);
-    return TILEDB_ERR;
-  }
-
-  *error = nullptr;
-  return TILEDB_OK;
-}
-
-inline int32_t sanity_check(tiledb_ctx_t* ctx, tiledb_config_t* config) {
-  if (config == nullptr || config->config_ == nullptr) {
-    auto st = Status_Error("Cannot set config; Invalid config object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  return TILEDB_OK;
-}
-
-inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_config_t* config) {
-  if (config == nullptr || config->config_ == nullptr) {
-    auto st = Status_Error("Cannot set config; Invalid config object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  return TILEDB_OK;
-}
-
-inline int32_t sanity_check(
-    tiledb_config_iter_t* config_iter, tiledb_error_t** error) {
-  if (config_iter == nullptr || config_iter->config_iter_ == nullptr) {
-    auto st = Status_Error("Cannot set config; Invalid config iterator object");
-    LOG_STATUS(st);
-    create_error(error, st);
-    return TILEDB_ERR;
-  }
-
-  *error = nullptr;
-  return TILEDB_OK;
-}
-
 /**
  * This function is dead code. Validity of the context is now checked in the
  * exception wrapper.
  */
-inline int32_t sanity_check(tiledb_ctx_t*) {
+inline constexpr int32_t sanity_check(tiledb_ctx_t*) {
   return TILEDB_OK;
 }
 
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_attribute_t* attr) {
   if (attr == nullptr || attr->attr_ == nullptr) {
     auto st = Status_Error("Invalid TileDB attribute object");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
-inline int32_t sanity_check(
-    tiledb_ctx_t* ctx, const tiledb_filter_list_t* filter_list) {
-  if (filter_list == nullptr || filter_list->pipeline_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB filter list object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;

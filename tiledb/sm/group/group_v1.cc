@@ -47,7 +47,7 @@ GroupV1::GroupV1(const URI& group_uri, StorageManager* storage_manager)
 //   group_member #1
 //   group_member #2
 //   ...
-void GroupV1::serialize(Serializer &serializer) {
+void GroupV1::serialize(Serializer& serializer) {
   serializer.write<uint32_t>(GroupV1::format_version_);
   uint64_t group_member_num = members_.size();
   serializer.write<uint64_t>(group_member_num);
@@ -57,7 +57,9 @@ void GroupV1::serialize(Serializer &serializer) {
 }
 
 tdb_shared_ptr<Group> GroupV1::deserialize(
-    Deserializer &deserializer, const URI& group_uri, StorageManager* storage_manager) {
+    Deserializer& deserializer,
+    const URI& group_uri,
+    StorageManager* storage_manager) {
   tdb_shared_ptr<GroupV1> group =
       tdb::make_shared<GroupV1>(HERE(), group_uri, storage_manager);
 
