@@ -111,15 +111,6 @@
     TILEDB_SERIALIZATION_TYPE_ENUM(CAPNP),
 #endif
 
-/** TileDB VFS mode */
-#ifdef TILEDB_VFS_MODE_ENUM
-    /** Read mode */
-    TILEDB_VFS_MODE_ENUM(VFS_READ) = 0,
-    /** Write mode */
-    TILEDB_VFS_MODE_ENUM(VFS_WRITE) = 1,
-    /** Append mode */
-    TILEDB_VFS_MODE_ENUM(VFS_APPEND) = 2,
-#endif
 
 #ifdef TILEDB_MIME_TYPE_ENUM
     /** Unspecified MIME type*/
