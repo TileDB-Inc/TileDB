@@ -107,14 +107,10 @@ void write_sparse_array(
   query.set_data_buffer("attr", data.data(), data.size());
   query.set_offsets_buffer(
       "attr",
-      reinterpret_cast<uint32_t*>(data_offsets.data()),
+      reinterpret_cast<uint64_t*>(data_offsets.data()),
       data_offsets.size());
-  if (!serialized_writes || layout != TILEDB_GLOBAL_ORDER) {
-    CHECK_NOTHROW(query.submit());
-    query.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query);
-  }
+  CHECK_NOTHROW(query.submit());
+  query.finalize();
 
   array.close();
 }
