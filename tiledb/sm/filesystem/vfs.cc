@@ -104,13 +104,7 @@ VFS::VFS(
   supported_fs_.insert(Filesystem::GCS);
   st = gcs_.init(config_, io_tp_);
   if (!st.ok()) {
-    // We should print some warning here, LOG_STATUS only prints in
-    // verbose mode. Since this is called in the init of the context, we
-    // can't return the error through the normal set it on the context.
-    throw StatusException(Status_GCSError(
-        "GCS failed to initialize, GCS support will not be available in this "
-        "context: " +
-        st.message()));
+    throw std::runtime_error("[VFS::VFS] Failed to initialize GCS backend.");
   }
 #endif
 
