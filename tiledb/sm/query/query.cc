@@ -74,7 +74,11 @@ Query::Query(
     : array_shared_(array)
     , array_(array_shared_.get())
     , array_schema_(array->array_schema_latest_ptr())
-    , layout_(Layout::ROW_MAJOR)
+    , type_(array_->get_query_type())
+    , layout_(
+          (type_ == QueryType::READ || array_schema_->dense()) ?
+              Layout::ROW_MAJOR :
+              Layout::UNORDERED)
     , storage_manager_(storage_manager)
     , stats_(storage_manager_->stats()->create_child("Query"))
     , logger_(storage_manager->logger()->clone("Query", ++logger_id_))
@@ -90,7 +94,6 @@ Query::Query(
     , force_legacy_reader_(false)
     , fragment_name_(fragment_name) {
   assert(array->is_open());
-  type_ = array->get_query_type();
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
 
@@ -1109,7 +1112,7 @@ Status Query::process() {
 
 IQueryStrategy* Query::strategy(bool skip_checks_serialization) {
   if (strategy_ == nullptr) {
-    create_strategy(skip_checks_serialization);
+    throw_if_not_ok(create_strategy(skip_checks_serialization));
   }
   return strategy_.get();
 }

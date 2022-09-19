@@ -954,6 +954,9 @@ class Query {
   /** The data input to the callback function. */
   void* callback_data_;
 
+  /** The query type. */
+  QueryType type_;
+
   /** The layout of the cells in the result of the subarray. */
   Layout layout_;
 
@@ -965,9 +968,6 @@ class Query {
 
   /** The storage manager. */
   StorageManager* storage_manager_;
-
-  /** The query type. */
-  QueryType type_;
 
   /** The query strategy. */
   tdb_unique_ptr<IQueryStrategy> strategy_;
