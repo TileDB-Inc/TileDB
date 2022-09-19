@@ -91,7 +91,6 @@ TEST_CASE_METHOD(
   // Create write query.
   tiledb_query_t* query;
   require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query));
-  //  require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED));
   require_tiledb_ok(tiledb_query_set_data_buffer(
       ctx, query, "x", input_dim_data.data(), &dim_data_size));
   require_tiledb_ok(tiledb_query_set_data_buffer(
@@ -100,11 +99,7 @@ TEST_CASE_METHOD(
   // Submit write query.
   auto rc = tiledb_query_submit(ctx, query);
   REQUIRE(rc != TILEDB_OK);
-  /**
-   tiledb_query_status_t query_status;
-   require_tiledb_ok(tiledb_query_get_status(ctx, query, &query_status));
-   REQUIRE(query_status == TILEDB_COMPLETED);
- */
+
   // Clean-up.
   tiledb_query_free(&query);
   tiledb_array_free(&array);
