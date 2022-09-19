@@ -159,8 +159,8 @@ struct SerializationFx {
   void create_array(tiledb_array_type_t type) {
     ArraySchema schema(ctx, type);
     Domain domain(ctx);
-    domain.add_dimension(Dimension::create<uint64_t>(ctx, "d1", {0, 100}, 2))
-        .add_dimension(Dimension::create<uint64_t>(ctx, "d2", {0, 10}, 2));
+    domain.add_dimension(Dimension::create<int32_t>(ctx, "d1", {0, 100}, 2))
+        .add_dimension(Dimension::create<int32_t>(ctx, "d2", {0, 10}, 2));
     schema.set_domain(domain);
 
     schema.add_attribute(Attribute::create<uint32_t>(ctx, "a1"));
