@@ -441,7 +441,14 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_range_subset)
   add_dependencies(tests unit_consistency)
   add_dependencies(tests unit_range)
-  add_dependencies(tests unit_capi_handle unit_capi_filter)
+
+  # C API support
+  add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
+  # C API basics
+  add_dependencies(tests unit_capi_error unit_capi_config unit_capi_context)
+  # C API array schema
+  add_dependencies(tests unit_capi_filter unit_capi_filter_list)
+
   add_dependencies(tests unit_delete_update_condition)
   add_dependencies(tests unit_ast)
   add_dependencies(tests unit_serializers)
