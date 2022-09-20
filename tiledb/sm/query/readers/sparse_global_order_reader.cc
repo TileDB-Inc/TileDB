@@ -1336,9 +1336,50 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
         const auto tile_tuple = stores_zipped_coords ?
                                     rt->tile_tuple(constants::coords) :
                                     rt->tile_tuple(name);
-        if (tile_tuple == NULL) {
+
+        const bool is_dim = array_schema_.is_dim(name);
+        const bool is_attr = array_schema_.is_attr(name);
+        const bool split_buffer_for_zipped_coords =
+            is_dim && rcs.tile_->stores_zipped_coords();
+        uint64_t buffer_offset = 0;
+        std::vector<uint64_t> rcs_offsets(result_cell_slabs.size());
+        for (uint64_t j = 0; j < rcs_offsets.size(); j++) {
+          const auto& rcs_temp = result_cell_slabs[j];
+          auto cs_length = rcs_temp.length_;
+          auto bytes_to_copy = cs_length * cell_size;
+          rcs_offsets[j] = buffer_offset;
+          buffer_offset += bytes_to_copy;
+        }
+
+        if (((is_dim && is_attr) || tile_tuple == NULL) &&
+            !split_buffer_for_zipped_coords) {
+          auto it = buffers_.find(name);
+          auto attr_buffer = (unsigned char*)it->second.buffer_;
+          ByteVecValue fill_value = array_schema_.attribute(name)->fill_value();
+          uint8_t fill_value_validity =
+              array_schema_.attribute(name)->fill_value_validity();
+          auto fill_value_size = (uint64_t)fill_value.size();
+          auto rcs_length = rcs.length_;
+          uint64_t bytes_to_copy = rcs_length * cell_size;
+          uint64_t fill_num = bytes_to_copy / fill_value_size;
+          auto buffer_validity =
+              (unsigned char*)it->second.validity_vector_.buffer();
+          uint64_t offset = rcs_offsets[i];
+          for (uint64_t j = 0; j < fill_num; ++j) {
+            std::memcpy(
+                attr_buffer + offset, fill_value.data(), fill_value_size);
+            if (nullable) {
+              std::memset(
+                  buffer_validity +
+                      (offset / cell_size * constants::cell_validity_size),
+                  fill_value_validity,
+                  constants::cell_validity_size);
+            }
+            offset += fill_value_size;
+          }
           return Status::Ok();
         }
+
         const auto& t = tile_tuple->fixed_tile();
         const auto src_buff = t.template data_as<uint8_t>();
 
