@@ -74,7 +74,11 @@ Query::Query(
     : array_shared_(array)
     , array_(array_shared_.get())
     , array_schema_(array->array_schema_latest_ptr())
-    , layout_(Layout::ROW_MAJOR)
+    , type_(array_->get_query_type())
+    , layout_(
+          (type_ == QueryType::READ || array_schema_->dense()) ?
+              Layout::ROW_MAJOR :
+              Layout::UNORDERED)
     , storage_manager_(storage_manager)
     , stats_(storage_manager_->stats()->create_child("Query"))
     , logger_(storage_manager->logger()->clone("Query", ++logger_id_))
@@ -90,13 +94,8 @@ Query::Query(
     , force_legacy_reader_(false)
     , fragment_name_(fragment_name) {
   assert(array->is_open());
-  type_ = array->get_query_type();
 
-  if (type_ != QueryType::READ) {
-    subarray_ = Subarray(array_, stats_, logger_);
-  } else {
-    subarray_ = Subarray(array_, Layout::ROW_MAJOR, stats_, logger_);
-  }
+  subarray_ = Subarray(array_, layout_, stats_, logger_);
 
   fragment_metadata_ = array->fragment_metadata();
 
@@ -1113,7 +1112,7 @@ Status Query::process() {
 
 IQueryStrategy* Query::strategy(bool skip_checks_serialization) {
   if (strategy_ == nullptr) {
-    create_strategy(skip_checks_serialization);
+    throw_if_not_ok(create_strategy(skip_checks_serialization));
   }
   return strategy_.get();
 }
@@ -1207,6 +1206,11 @@ Status Query::check_buffer_names() {
 Status Query::create_strategy(bool skip_checks_serialization) {
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
+      if (!array_schema_->dense()) {
+        return Status_QueryError(
+            "Cannot create strategy; sparse writes do not support layout " +
+            layout_str(layout_));
+      }
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           OrderedWriter,
           stats_->create_child("Writer"),
@@ -1222,6 +1226,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::UNORDERED) {
+      if (array_schema_->dense()) {
+        return Status_QueryError(
+            "Cannot create strategy; dense writes do not support layout " +
+            layout_str(layout_));
+      }
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           UnorderedWriter,
           stats_->create_child("Writer"),
@@ -1254,7 +1263,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           fragment_name_,
           skip_checks_serialization));
     } else {
-      assert(false);
+      return Status_QueryError(
+          "Cannot create strategy; unsupported layout " + layout_str(layout_));
     }
   } else if (type_ == QueryType::READ) {
     bool use_default = true;
@@ -2013,26 +2023,42 @@ Status Query::set_est_result_size(
 }
 
 Status Query::set_layout(Layout layout) {
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot set layout; Unsupported query type."));
-  }
+  switch (type_) {
+    case (QueryType::READ):
+      if (status_ != QueryStatus::UNINITIALIZED) {
+        return logger_->status(
+            Status_QueryError("Cannot set layout after initialization"));
+      }
 
-  if (type_ == QueryType::READ && status_ != QueryStatus::UNINITIALIZED) {
-    return logger_->status(
-        Status_QueryError("Cannot set layout after initialization"));
+      break;
+
+    case (QueryType::WRITE):
+    case (QueryType::MODIFY_EXCLUSIVE):
+      if (array_schema_->dense()) {
+        // Check layout for dense writes is valid.
+        if (layout == Layout::UNORDERED) {
+          return logger_->status(Status_QueryError(
+              "Unordered writes are only possible for sparse arrays"));
+        }
+      } else {
+        // Check layout for sparse writes is valid.
+        if (layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR) {
+          return logger_->status(
+              Status_QueryError("Row-major and column-major writes are only "
+                                "possible for dense arrays"));
+        }
+      }
+
+      break;
+
+    default:
+      return LOG_STATUS(Status_SerializationError(
+          "Cannot set layout; Unsupported query type."));
   }
 
   if (layout == Layout::HILBERT) {
     return logger_->status(Status_QueryError(
         "Cannot set layout; Hilbert order is not applicable to queries"));
-  }
-
-  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
-      array_schema_->dense() && layout == Layout::UNORDERED) {
-    return logger_->status(Status_QueryError(
-        "Unordered writes are only possible for sparse arrays"));
   }
 
   layout_ = layout;

@@ -5245,3 +5245,64 @@ TEST_CASE_METHOD(
 
   remove_temp_dir(temp_dir);
 }
+
+TEST_CASE_METHOD(
+    TemporaryDirectoryFixture,
+    "C API: Test dense array write without setting layout",
+    "[capi][query]") {
+  // Create the array.
+  uint64_t x_tile_extent{4};
+  uint64_t domain[2]{0, 3};
+  auto array_schema = create_array_schema(
+      ctx,
+      TILEDB_DENSE,
+      {"x"},
+      {TILEDB_UINT64},
+      {&domain[0]},
+      {&x_tile_extent},
+      {"a"},
+      {TILEDB_FLOAT64},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      4096,
+      false);
+  auto array_name = create_temporary_array("dense_array_1", array_schema);
+  tiledb_array_schema_free(&array_schema);
+
+  // Open array for writing.
+  tiledb_array_t* array;
+  require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
+  require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_WRITE));
+
+  // Create subarray.
+  tiledb_subarray_t* subarray;
+  require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
+  require_tiledb_ok(tiledb_subarray_add_range(
+      ctx, subarray, 0, &domain[0], &domain[1], nullptr));
+
+  // Define data for writing.
+  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
+  uint64_t attr_data_size{input_attr_data.size() * sizeof(double)};
+
+  // Create write query.
+  tiledb_query_t* query;
+  require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query));
+  require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
+  if (attr_data_size != 0) {
+    require_tiledb_ok(tiledb_query_set_data_buffer(
+        ctx, query, "a", input_attr_data.data(), &attr_data_size));
+  }
+
+  // Submit write query.
+  require_tiledb_ok(tiledb_query_submit(ctx, query));
+  tiledb_query_status_t query_status;
+  require_tiledb_ok(tiledb_query_get_status(ctx, query, &query_status));
+  REQUIRE(query_status == TILEDB_COMPLETED);
+
+  // Clean-up.
+  tiledb_subarray_free(&subarray);
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+}

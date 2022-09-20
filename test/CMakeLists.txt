@@ -109,6 +109,7 @@ set(TILEDB_TEST_SUPPORT_SOURCES
 set(TILEDB_UNIT_TEST_SOURCES
   src/helpers.h
   src/helpers-dimension.h
+  src/test-capi-query-error-handling.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc

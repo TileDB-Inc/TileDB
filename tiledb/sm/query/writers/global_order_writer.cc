@@ -95,6 +95,11 @@ GlobalOrderWriter::GlobalOrderWriter(
           fragment_name,
           skip_checks_serialization)
     , processed_conditions_(processed_conditions) {
+  if (layout != Layout::GLOBAL_ORDER) {
+    throw StatusException(Status_WriterError(
+        "Failed to initialize global order writer. Layout " +
+        layout_str(layout) + " is not global order."));
+  }
 }
 
 GlobalOrderWriter::~GlobalOrderWriter() {
