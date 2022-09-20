@@ -30,6 +30,6 @@ On read, the float scaling filter will reverse the scale factor and offset, rest
 
 The filter enum value for the float scaling filter is `15` (TILEDB_FILTER_SCALE_FLOAT enum).
 
-# Input and Output Layout
+### Input and Output Layout
 
 The input and output data layout is identical for the XOR filter.
