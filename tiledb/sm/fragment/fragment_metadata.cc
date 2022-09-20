@@ -913,8 +913,7 @@ Status FragmentMetadata::store_v7_v10(const EncryptionKey& encryption_key) {
   gt_offsets_.tile_validity_offsets_.resize(num);
   for (unsigned int i = 0; i < num; ++i) {
     gt_offsets_.tile_validity_offsets_[i] = offset;
-    throw_if_not_ok(
-        store_tile_validity_offsets(i, encryption_key, &nbytes));
+    throw_if_not_ok(store_tile_validity_offsets(i, encryption_key, &nbytes));
     offset += nbytes;
   }
 
@@ -2949,7 +2948,8 @@ Status FragmentMetadata::load_tile_offsets(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-void FragmentMetadata::load_tile_offsets(unsigned idx, Deserializer &deserializer) {
+void FragmentMetadata::load_tile_offsets(
+    unsigned idx, Deserializer& deserializer) {
   uint64_t tile_offsets_num = 0;
 
   // Get number of tile offsets
@@ -2968,7 +2968,8 @@ void FragmentMetadata::load_tile_offsets(unsigned idx, Deserializer &deserialize
     }
 
     tile_offsets_[idx].resize(tile_offsets_num);
-    deserializer.read(&tile_offsets_[idx][0], size);  }
+    deserializer.read(&tile_offsets_[idx][0], size);
+  }
 }
 
 // ===== FORMAT =====
@@ -3030,17 +3031,18 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
 }
 
 void FragmentMetadata::load_tile_var_offsets(
-    unsigned idx, Deserializer &deserializer) {
+    unsigned idx, Deserializer& deserializer) {
   uint64_t tile_var_offsets_num = 0;
 
   // Get number of tile offsets
-  tile_var_offsets_num = deserializer.read<uint64_t>(); 
+  tile_var_offsets_num = deserializer.read<uint64_t>();
 
   // Get variable tile offsets
   if (tile_var_offsets_num != 0) {
     auto size = tile_var_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr && !memory_tracker_->take_memory(size)) {
-      throw FragmentMetadataStatusException("Cannot load tile var offsets; Insufficient memory budget; Needed " +
+      throw FragmentMetadataStatusException(
+          "Cannot load tile var offsets; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
@@ -3116,7 +3118,8 @@ void FragmentMetadata::load_tile_var_sizes(
   if (tile_var_sizes_num != 0) {
     auto size = tile_var_sizes_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr && !memory_tracker_->take_memory(size)) {
-      throw FragmentMetadataStatusException("Cannot load tile var sizes; Insufficient memory budget; Needed " +
+      throw FragmentMetadataStatusException(
+          "Cannot load tile var sizes; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
@@ -4248,7 +4251,7 @@ Status FragmentMetadata::write_footer_to_file(Buffer* buff) const {
 void FragmentMetadata::store_tile_offsets(
     unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   SizeComputationSerializer size_computation_serializer;
-  write_tile_offsets(idx,size_computation_serializer);
+  write_tile_offsets(idx, size_computation_serializer);
 
   Tile tile{Tile::from_generic(size_computation_serializer.size())};
 
@@ -4260,14 +4263,16 @@ void FragmentMetadata::store_tile_offsets(
   storage_manager_->stats()->add_counter("write_tile_offsets_size", *nbytes);
 }
 
-void FragmentMetadata::write_tile_offsets(unsigned idx, Serializer &serializer) {
+void FragmentMetadata::write_tile_offsets(
+    unsigned idx, Serializer& serializer) {
   // Write number of tile offsets
   uint64_t tile_offsets_num = tile_offsets_[idx].size();
   serializer.write<uint64_t>(tile_offsets_num);
 
   // Write tile offsets
   if (tile_offsets_num != 0) {
-    serializer.write(&tile_offsets_[idx][0], tile_offsets_num * sizeof(uint64_t));
+    serializer.write(
+        &tile_offsets_[idx][0], tile_offsets_num * sizeof(uint64_t));
   }
 }
 
@@ -4287,8 +4292,8 @@ void FragmentMetadata::store_tile_var_offsets(
       "write_tile_var_offsets_size", *nbytes);
 }
 
-void FragmentMetadata::write_tile_var_offsets(unsigned idx, Serializer &serializer) {
-
+void FragmentMetadata::write_tile_var_offsets(
+    unsigned idx, Serializer& serializer) {
   // Write tile offsets for each attribute
   // Write number of offsets
   uint64_t tile_var_offsets_num = tile_var_offsets_[idx].size();
@@ -4316,7 +4321,8 @@ void FragmentMetadata::store_tile_var_sizes(
   storage_manager_->stats()->add_counter("write_tile_var_sizes_size", *nbytes);
 }
 
-void FragmentMetadata::write_tile_var_sizes(unsigned idx, Serializer &serializer) {
+void FragmentMetadata::write_tile_var_sizes(
+    unsigned idx, Serializer& serializer) {
   // Write number of sizes
   uint64_t tile_var_sizes_num = tile_var_sizes_[idx].size();
   serializer.write<uint64_t>(tile_var_sizes_num);
