@@ -56,16 +56,27 @@ struct Sum {
    * Compute the sum of a tile.
    *
    * @param tile Fixed data tile.
+   * @param start Start cell index.
+   * @param end End cell index.
+   * @param sum The current sum.
    */
-  static ByteVec sum(Tile& tile);
+  static void sum(Tile& tile, uint64_t start, uint64_t end, ByteVec& sum);
 
   /**
    * Compute the sum of a nullable tile.
    *
    * @param tile Fixed data tile.
    * @param tile_validity Validity tile.
+   * @param start Start cell index.
+   * @param end End cell index.
+   * @param sum The current sum.
    */
-  static ByteVec sum_nullable(const Tile& tile, const Tile& tile_validity);
+  static void sum_nullable(
+      const Tile& tile,
+      const Tile& tile_validity,
+      uint64_t start,
+      uint64_t end,
+      ByteVec& sum);
 };
 
 /**
@@ -73,8 +84,13 @@ struct Sum {
  */
 template <typename T>
 struct Sum<T, int64_t> {
-  static ByteVec sum(const Tile& tile);
-  static ByteVec sum_nullable(const Tile& tile, const Tile& tile_validity);
+  static void sum(const Tile& tile, uint64_t start, uint64_t end, ByteVec& sum);
+  static void sum_nullable(
+      const Tile& tile,
+      const Tile& tile_validity,
+      uint64_t start,
+      uint64_t end,
+      ByteVec& sum);
 };
 
 /**
@@ -82,8 +98,13 @@ struct Sum<T, int64_t> {
  */
 template <typename T>
 struct Sum<T, uint64_t> {
-  static ByteVec sum(const Tile& tile);
-  static ByteVec sum_nullable(const Tile& tile, const Tile& tile_validity);
+  static void sum(const Tile& tile, uint64_t start, uint64_t end, ByteVec& sum);
+  static void sum_nullable(
+      const Tile& tile,
+      const Tile& tile_validity,
+      uint64_t start,
+      uint64_t end,
+      ByteVec& sum);
 };
 
 /**
@@ -91,8 +112,13 @@ struct Sum<T, uint64_t> {
  */
 template <typename T>
 struct Sum<T, double> {
-  static ByteVec sum(const Tile& tile);
-  static ByteVec sum_nullable(const Tile& tile, const Tile& tile_validity);
+  static void sum(const Tile& tile, uint64_t start, uint64_t end, ByteVec& sum);
+  static void sum_nullable(
+      const Tile& tile,
+      const Tile& tile_validity,
+      uint64_t start,
+      uint64_t end,
+      ByteVec& sum);
 };
 
 // Declare static values to point to min/max default values.
@@ -158,38 +184,12 @@ class TileMetadataGenerator {
   static bool has_sum_metadata(
       const Datatype type, const bool var_size, const uint64_t cell_val_num);
 
-  /**
-   * Returns the min and max of a fixed data tile.
-   *
-   * @param type_data Type data struct.
-   * @param tile Tile to process.
-   * @param cell_size Cell size.
-   *
-   * @return minimum, maximum.
-   */
-  template <class T>
-  static const tuple<void*, void*> min_max(
-      const Tile& tile, const uint64_t cell_size);
-
-  /**
-   * Returns the min and max of a fixed data tile with nullable values.
-   *
-   * @param type_data Type data struct.
-   * @param tile Tile to process.
-   * @param tile_validity Validity tile.
-   * @param cell_size Cell size.
-   *
-   * @return minimum, maximum, null count.
-   */
-  template <class T>
-  static const tuple<void*, void*, uint64_t> min_max_nullable(
-      const Tile& tile, const Tile& tile_validity, const uint64_t cell_size);
-
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /**
+   * @param tile Writer tile.
    * @param type Data type.
    * @param is_dim Is it a dimension.
    * @param var_size Is the attribute/dimension var size?
@@ -197,6 +197,7 @@ class TileMetadataGenerator {
    * @param cell_val_num Number of values per cell.
    */
   TileMetadataGenerator(
+      WriterTile& tile,
       const Datatype type,
       const bool is_dim,
       const bool var_size,
@@ -207,17 +208,35 @@ class TileMetadataGenerator {
   /*                API                */
   /* ********************************* */
 
+  /** Compute metatada for full tile. */
+  void process_full_tile();
+
   /**
-   * Compute metatada.
+   * Compute metatada for a slab.
    *
-   * @param tile The tile.
+   * @param start Start cell index.
+   * @param end End cell index.
    */
-  void process_tile(WriterTile& tile);
+  void process_cell_slab(uint64_t start, uint64_t end);
+
+  /**
+   * Copies the metadata to the tile once done processing slabs.
+   */
+  void finalize();
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** Fixed tile. */
+  WriterTile& tile_;
+
+  /** Is this a var tile. */
+  bool var_size_;
+
+  /** Is this a nullable tile. */
+  bool nullable_;
 
   /** The data type. */
   Datatype type_;
@@ -254,21 +273,50 @@ class TileMetadataGenerator {
   /* ********************************* */
 
   /**
-   * Process var size attribute.
+   * Returns the min and max of a fixed data tile.
    *
-   * @param tile The tile.
-   */
-
-  void process_tile_var(WriterTile& tile);
-
-  /**
-   * Process fixed size attribute.
+   * @param tile Tile to process.
+   * @param start Start cell index.
+   * @param end End cell index.
    *
-   * @param tile The fixed size tile.
-   * @param tile_validity The validity tile.
+   * @return minimum, maximum.
    */
   template <class T>
-  void process_tile(WriterTile& tile);
+  void min_max(const Tile& tile, uint64_t start, uint64_t end);
+
+  /**
+   * Returns the min and max of a fixed data tile with nullable values.
+   *
+   * @param tile Tile to process.
+   * @param tile_validity Validity tile.
+   * @param start Start cell index.
+   * @param end End cell index.
+   *
+   * @return minimum, maximum, null count.
+   */
+  template <class T>
+  void min_max_nullable(
+      const Tile& tile,
+      const Tile& tile_validity,
+      uint64_t start,
+      uint64_t end);
+
+  /**
+   * Process cell range for var size attribute.
+   *
+   * @param start Start index.
+   * @param end End index.
+   */
+  void process_cell_range_var(uint64_t start, uint64_t end);
+
+  /**
+   * Process cell range for fixed size attribute.
+   *
+   * @param start Start index.
+   * @param end End index.
+   */
+  template <class T>
+  void process_cell_range(uint64_t start, uint64_t end);
 
   /**
    * Min max function for var sized attributes.
