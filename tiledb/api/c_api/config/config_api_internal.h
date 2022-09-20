@@ -110,6 +110,19 @@ inline void ensure_config_is_valid(const tiledb_config_handle_t* config) {
 /**
  * Returns after successfully validating an error. Throws otherwise.
  *
+ * @param config A possibly-valid configuration handle
+ */
+inline void ensure_config_is_valid_if_present(const tiledb_config_handle_t* config) {
+  if (config == nullptr) {
+    return;
+  }
+  ensure_handle_is_valid(config);
+}
+
+
+/**
+ * Returns after successfully validating an error. Throws otherwise.
+ *
  * @param config-iter A possibly-valid configuration-iterator handle
  */
 inline void ensure_config_iter_is_valid(

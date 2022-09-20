@@ -3810,7 +3810,7 @@ int32_t tiledb_array_create_with_key(
 
 int32_t tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
-  api::ensure_config_is_valid(config);
+  api::ensure_config_is_valid_if_present(config);
   throw_if_not_ok(ctx->storage_manager()->array_consolidate(
       array_uri,
       static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
