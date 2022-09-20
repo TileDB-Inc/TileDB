@@ -608,12 +608,9 @@ Status FilterPipeline::run_reverse_chunk_range(
       f->init_decompression_resource_pool(concurrency_level);
 
        if (f->type() == FilterType::FILTER_BITSORT) {
-         // Access dim_tiles
-
+         auto bitsort_filter = reinterpret_cast<const BitSortFilter*>(f.get());
           RETURN_NOT_OK(
-              std::dynamic_pointer_cast<const shared_ptr<BitSortFilter>>(f)
-                  ->get()
-                  ->run_reverse(
+              bitsort_filter->run_reverse(
                       *tile,
                       dim_tiles.value().get(),
                       &input_metadata,

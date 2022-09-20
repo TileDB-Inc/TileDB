@@ -30,6 +30,7 @@
  * Tests the C++ API for bitsort filter related functions.
  */
 
+#include <iostream>
 #include <random>
 #include <vector>
 
@@ -43,7 +44,7 @@ std::string bitsort_array_name = "cpp_unit_array";
 int bitsort_dim_hi = 10;
 
 template <typename T>
-void bitsort_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
+void bitsort_filter_api_test(Context& ctx) {
   Domain domain(ctx);
   auto d1 = Dimension::create<int>(ctx, "x", {{1, bitsort_dim_hi}}, 4);
   auto d2 = Dimension::create<int>(ctx, "y", {{1, bitsort_dim_hi}}, 4);
@@ -58,7 +59,7 @@ void bitsort_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
   auto a = Attribute::create<T>(ctx, "a");
   a.set_filter_list(filters);
 
-  ArraySchema schema(ctx, array_type);
+  ArraySchema schema(ctx, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.add_attribute(a);
   Array::create(bitsort_array_name, schema);
@@ -68,22 +69,40 @@ void bitsort_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
   std::uniform_int_distribution<int64_t> dis(
       std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
 
+  std::cout << "Writing the following data, in this order...\n";
+
   std::vector<int> x_dims;
   std::vector<int> y_dims;
   std::vector<int> z_dims;
   std::vector<T> a_write;
   std::vector<T> expected_a;
-  for (int x = 0; x < bitsort_dim_hi; ++x) {
-    for (int y = 0; y < bitsort_dim_hi; ++y) {
-        for (int z = 0; z < bitsort_dim_hi; ++z) {
-            x_dims.push_back(x + 1);
-            y_dims.push_back(y + 1);
-            z_dims.push_back(z + 1);
+  for (int x_tile = 0; x_tile < bitsort_dim_hi; x_tile += 4) {
+    for (int y_tile = 0; y_tile < bitsort_dim_hi; y_tile += 4) {
+      for (int z_tile = 0; z_tile < bitsort_dim_hi; z_tile += 4) {
+        for (int x = x_tile; x < x_tile + 4; ++x) {
+          if (x >= bitsort_dim_hi) {
+            break;
+          }
+          for (int y = y_tile; y < y_tile + 4; ++y) {
+            if (y >= bitsort_dim_hi) {
+              break;
+            }
+            for (int z = z_tile; z < z_tile + 4; ++z) {
+              if (z >= bitsort_dim_hi) {
+                break;
+              }
 
-            T f = static_cast<T>(dis(gen));
-            a_write.push_back(f);
-            expected_a.push_back(f);
+              x_dims.push_back(x + 1);
+              y_dims.push_back(y + 1);
+              z_dims.push_back(z + 1);
+
+              T f = static_cast<T>(dis(gen));
+              a_write.push_back(f);
+              expected_a.push_back(f);
+            }
+          }
         }
+      }
     }
   }
 
@@ -93,36 +112,27 @@ void bitsort_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
   Query query_w(ctx, array_w);
   query_w.set_layout(layout_type).set_data_buffer("a", a_write);
 
-  if (array_type == TILEDB_SPARSE) {
-    query_w.set_data_buffer("x", x_dims).set_data_buffer("y", y_dims).set_data_buffer("z", z_dims);
-  }
+  query_w.set_data_buffer("x", x_dims).set_data_buffer("y", y_dims).set_data_buffer("z", z_dims);
 
   query_w.submit();
   query_w.finalize();
   array_w.close();
 
   // Open and read the entire array.
-  std::vector<T> a_data_read(bitsort_dim_hi * bitsort_dim_hi, 0);
+  std::vector<T> a_data_read(bitsort_dim_hi * bitsort_dim_hi * bitsort_dim_hi, 0);
   Array array_r(ctx, bitsort_array_name, TILEDB_READ);
   Query query_r(ctx, array_r);
-  query_r.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", a_data_read);
-
-  if (array_type == TILEDB_DENSE) {
-    int range[] = {1, bitsort_dim_hi};
-    query_r.add_range("x", range[0], range[1])
-        .add_range("y", range[0], range[1])
-        .add_range("z", range[0], range[1]);
-  }
-
+  query_r.set_layout(TILEDB_UNORDERED).set_data_buffer("a", a_data_read);
   query_r.submit();
 
   // Check for results.
-  size_t total_num_elements = static_cast<size_t>(bitsort_dim_hi * bitsort_dim_hi);
+  size_t total_num_elements = static_cast<size_t>(bitsort_dim_hi * bitsort_dim_hi * bitsort_dim_hi);
   auto table = query_r.result_buffer_elements();
   REQUIRE(table.size() == 1);
   REQUIRE(table["a"].first == 0);
   REQUIRE(table["a"].second == total_num_elements);
 
+  std::cout << "Reading the following data, in this order...\n";
   for (size_t i = 0; i < total_num_elements; ++i) {
     CHECK(a_data_read[i] == expected_a[i]);
   }
@@ -146,8 +156,7 @@ TEMPLATE_TEST_CASE(
   if (vfs.is_dir(bitsort_array_name))
     vfs.remove_dir(bitsort_array_name);
 
-  auto array_type = TILEDB_SPARSE; // TODO: change
-  bitsort_filter_api_test<TestType>(ctx, array_type);
+  bitsort_filter_api_test<TestType>(ctx);
 
   // Teardown.
   if (vfs.is_dir(bitsort_array_name))
