@@ -35,11 +35,8 @@ gather_sources(${SOURCES})
 # Object library for other units to depend upon
 #
 add_library(capi_vfs OBJECT ${SOURCES})
-target_link_libraries(capi_vfs PUBLIC baseline)
 target_link_libraries(capi_vfs PUBLIC export)
-find_package(Zstd_EP REQUIRED)
-target_link_libraries(capi_vfs PUBLIC Zstd::Zstd)
-add_dependencies(capi_vfs vfs)
+target_link_libraries(capi_vfs PUBLIC vfs $<TARGET_OBJECTS:vfs>)
 
 #
 # UNFINISHED
