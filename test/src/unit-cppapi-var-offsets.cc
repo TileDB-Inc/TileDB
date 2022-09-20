@@ -109,6 +109,14 @@ void write_sparse_array(
       "attr",
       reinterpret_cast<uint64_t*>(data_offsets.data()),
       data_offsets.size());
+  /* TODO: enable this when sc21681 is fixed
+  if (!serialized_writes || layout != TILEDB_GLOBAL_ORDER) {
+    CHECK_NOTHROW(query.submit());
+    query.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query);
+  }
+  */
   CHECK_NOTHROW(query.submit());
   query.finalize();
 
@@ -354,11 +362,13 @@ void write_dense_array(
   SECTION("no serialization") {
     serialized_writes = false;
   }
+  /* TODO: enable this when sc21681 is fixed
   SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
     serialized_writes = true;
 #endif
   }
+  */
   if (!serialized_writes || layout != TILEDB_GLOBAL_ORDER) {
     CHECK_NOTHROW(query.submit());
     query.finalize();
