@@ -828,10 +828,10 @@ Status StorageManager::array_upgrade_version(
   // Get encryption key from config
   bool found = false;
   std::string encryption_key_from_cfg =
-      config_.get("sm.encryption_key", &found);
+      config->get("sm.encryption_key", &found);
   assert(found);
   std::string encryption_type_from_cfg =
-      config_.get("sm.encryption_type", &found);
+      config->get("sm.encryption_type", &found);
   assert(found);
   auto [st1, etc] = encryption_type_enum(encryption_type_from_cfg);
   RETURN_NOT_OK(st1);
