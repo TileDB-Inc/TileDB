@@ -52,7 +52,7 @@
 
 using namespace tiledb::common;
 
-template <typename T> 
+template <typename T>
 using OptionalRef = std::optional<std::reference_wrapper<T>>;
 
 namespace tiledb {
@@ -271,7 +271,7 @@ class FilterPipeline {
       ThreadPool* compute_tp,
       const Config& config) const;
 
-    template <
+  template <
       typename T = Tile* const,
       typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type* =
           nullptr>
@@ -281,7 +281,6 @@ class FilterPipeline {
       T const support_tiles,
       ThreadPool* compute_tp,
       const Config& config) const;
-  
 
   /**
    * Run the given chunk range in reverse through the pipeline.
@@ -305,7 +304,8 @@ class FilterPipeline {
       const uint64_t max_chunk_index,
       uint64_t concurrency_level,
       const Config& config,
-      std::optional<std::reference_wrapper<std::vector<Tile*>>> dim_tiles = std::nullopt) const;
+      std::optional<std::reference_wrapper<std::vector<Tile*>>> dim_tiles =
+          std::nullopt) const;
 
   /**
    * Serializes the pipeline metadata into a binary buffer.
