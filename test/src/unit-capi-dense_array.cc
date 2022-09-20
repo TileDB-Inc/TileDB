@@ -814,7 +814,14 @@ void DenseArrayFx::write_dense_subarray_2D(
     rc = tiledb_query_finalize(ctx_, query);
     REQUIRE_SAFE(rc == TILEDB_OK);
   } else {
+#ifdef TILEDB_SERIALIZATION
     submit_and_finalize_serialized_query(ctx_, query);
+#else
+    rc = tiledb_query_submit(ctx_, query);
+    REQUIRE_SAFE(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    REQUIRE_SAFE(rc == TILEDB_OK);
+#endif
   }
 
   // Close array
