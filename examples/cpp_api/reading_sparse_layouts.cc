@@ -34,126 +34,119 @@
 
 #include <iostream>
 #include <tiledb/tiledb>
-#include <tiledb/tiledb_experimental>
 
 using namespace tiledb;
 
-template <typename T>
-void print_buffer(const std::string & name, const std::vector<T> & buffer) {
-  std::cout << name << ": ";
-  for (size_t i = 0; i < buffer.size(); i++) {
-    std::cout << buffer[i];
-    if (i < buffer.size() - 1) std::cout << ", ";
-    else std::cout << std::endl;
-  }
-}
+// Name of array.
+std::string array_name("reading_sparse_layouts_array");
 
-void read_array(const Context& ctx, const std::string& array_name) {
-  std::vector<int32_t> a1_read(16);
-
-  Array array_read(ctx, array_name, TILEDB_READ);
-  Subarray subarray(ctx, array_read);
-  subarray.add_range("rows", 1, 4);
-  subarray.add_range("cols", 1, 4);
-
-  Query query_read(ctx, array_read);
-  query_read.set_layout(TILEDB_UNORDERED);
-  query_read.set_data_buffer("a1", a1_read)
-      .set_subarray(subarray);
-  query_read.submit();
-
-  assert(query_read.query_status() == tiledb::Query::Status::COMPLETE);
-  print_buffer("a1", a1_read);
-}
-
-int main() {
-  std::string array_name = "array-schema-evolution";
+void create_array() {
+  // Create a TileDB context.
   Context ctx;
 
-  VFS vfs(ctx);
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
+  // Create domain
   Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int32_t>(ctx, "rows", {{1, 4}}));
-  domain.add_dimension(Dimension::create<int32_t>(ctx, "cols", {{1, 4}}));
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 2))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 2));
+
+  // The array will be sparse.
   ArraySchema schema(ctx, TILEDB_SPARSE);
-  schema.set_domain(domain);
-  Attribute a1 = Attribute::create<int32_t>(ctx, "a1");
-  schema.add_attribute(a1);
-  schema.check();
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+
+  // Add a single attribute "a" so each (i,j) cell can store an integer.
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+
+  // Create the (empty) array on disk.
   Array::create(array_name, schema);
+}
 
-  // Write to array
-  {
-    std::vector<int32_t> rows_data = { 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4 };
-    std::vector<int32_t> cols_data = { 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4 };
-    std::vector<int32_t> a1_data = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+void write_array() {
+  Context ctx;
 
-    Array array_write(ctx, array_name, TILEDB_WRITE);
-    Query query_write(ctx, array_write);
-    query_write.set_layout(TILEDB_UNORDERED)
-        .set_data_buffer("a1", a1_data)
-        .set_data_buffer("rows", rows_data)
-        .set_data_buffer("cols", cols_data);
-    query_write.submit();
+  // Prepare data for writing.
+  std::vector<int> coords_rows = {1, 1, 2, 1, 2, 2};
+  std::vector<int> coords_cols = {1, 2, 2, 4, 3, 4};
+  std::vector<int> data = {1, 2, 3, 4, 5, 6};
 
-    assert(query_write.query_status() == tiledb::Query::Status::COMPLETE);
+  // Open the array for writing and create the query.
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array);
+  query.set_layout(TILEDB_GLOBAL_ORDER)
+      .set_data_buffer("a", data)
+      .set_data_buffer("rows", coords_rows)
+      .set_data_buffer("cols", coords_cols);
 
-    // Read array
-    read_array(ctx, array_name);
+  // Perform the write and close the array.
+  query.submit();
+  query.finalize();
+  array.close();
+}
 
-    // Evolve array
-    ArraySchemaEvolution se(ctx);
-    double val = -1.0;
-    auto attr = Attribute::create<double>(ctx, "a2")
-        .set_fill_value(&val, sizeof(val));
-    se.add_attribute(attr);
-    se.array_evolve(array_name);
+void read_array(tiledb_layout_t layout) {
+  Context ctx;
+
+  // Prepare the array for reading
+  Array array(ctx, array_name, TILEDB_READ);
+
+  // Print non-empty domain
+  auto non_empty_domain = array.non_empty_domain<int>();
+  std::cout << "Non-empty domain: ";
+  std::cout << "[" << non_empty_domain[0].second.first << ","
+            << non_empty_domain[0].second.second << "], ["
+            << non_empty_domain[1].second.first << ","
+            << non_empty_domain[1].second.second << "]\n";
+
+  // Slice only rows 1, 2 and cols 2, 3, 4
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 2).add_range(1, 2, 4);
+
+  // Prepare buffers that will hold the results
+  std::vector<int> data(6);
+  std::vector<int> coords_rows(6);
+  std::vector<int> coords_cols(6);
+
+  // Prepare the query
+  Query query(ctx, array, TILEDB_READ);
+  query.set_subarray(subarray)
+      .set_layout(layout)
+      .set_data_buffer("a", data)
+      .set_data_buffer("rows", coords_rows)
+      .set_data_buffer("cols", coords_cols);
+
+  // Submit the query and close the array.
+  query.submit();
+  array.close();
+
+  // Print out the results.
+  auto result_num = (int)query.result_buffer_elements()["a"].second;
+  for (int r = 0; r < result_num; r++) {
+    int i = coords_rows[r];
+    int j = coords_cols[r];
+    int a = data[r];
+    std::cout << "Cell (" << i << ", " << j << ") has data " << a << "\n";
+  }
+}
+
+int main(int argc, char* argv[]) {
+  Context ctx;
+
+  // Create and write the array only if it does not exist
+  if (Object::object(ctx, array_name).type() != Object::Type::Array) {
+    create_array();
+    write_array();
   }
 
-
-  // Write to array at (1, 1)
-  {
-    std::vector<int32_t> rows_data = { 1 };
-    std::vector<int32_t> cols_data = { 1 };
-    std::vector<int32_t> a1_data = { 1 };
-    std::vector<double> a2_data = { 1.0 };
-
-    Array array_write(ctx, array_name, TILEDB_WRITE);
-    Query query_write(ctx, array_write);
-    query_write.set_layout(TILEDB_UNORDERED)
-        .set_data_buffer("a1", a1_data)
-        .set_data_buffer("a2", a2_data)
-        .set_data_buffer("rows", rows_data)
-        .set_data_buffer("cols", cols_data);
-    query_write.submit();
-
-    assert(query_write.query_status() == tiledb::Query::Status::COMPLETE);
+  // Choose a layout (default is row-major)
+  tiledb_layout_t layout = TILEDB_ROW_MAJOR;
+  if (argc > 1) {
+    if (argv[1] == std::string("row"))
+      layout = TILEDB_ROW_MAJOR;
+    else if (argv[1] == std::string("col"))
+      layout = TILEDB_COL_MAJOR;
+    else if (argv[1] == std::string("global"))
+      layout = TILEDB_GLOBAL_ORDER;
   }
 
-  {
-    Array array_read(ctx, array_name, TILEDB_READ);
-    ArraySchema s(ctx, array_name);
-
-    std::vector<int32_t> a1_read(16);
-    std::vector<double> a2_read(16);
-
-    Subarray subarray(ctx, array_read);
-    subarray.add_range("rows", 1, 4);
-    subarray.add_range("cols", 1, 4);
-
-    Query query_read(ctx, array_read);
-    query_read.set_layout(TILEDB_UNORDERED);
-    query_read.set_subarray(subarray)
-        .set_data_buffer("a1", a1_read)
-        .set_data_buffer("a2", a2_read);
-    query_read.submit();
-
-    assert(tiledb::Query::Status::COMPLETE == query_read.query_status());
-
-    print_buffer("a1", a1_read);
-    print_buffer("a2", a2_read);
-  }
+  read_array(layout);
+  return 0;
 }
