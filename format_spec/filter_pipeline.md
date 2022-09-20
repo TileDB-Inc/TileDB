@@ -63,7 +63,7 @@ The filter options for `TILEDB_FILTER_SCALE_FLOAT` has internal format:
 | :--- | :--- | :--- |
 | Scale | `double` | Scale parameter used for float scaling filter conversion |
 | Offset | `double` | Offset parameter used for float scaling filter conversion |
-| Byte width | `double` | Width of the stored integer data in bytes |
+| Byte width | `uint64_t` | Width of the stored integer data in bytes |
 
 ### Positive Delta Options
 
