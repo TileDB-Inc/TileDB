@@ -365,6 +365,21 @@ Status ArraySchema::check() const {
             label->name() + "' is not compatible with the array schema."));
     }
   }
+
+  bool bitsort_filter_exists = false;
+  for (const auto &attr : attributes_) {
+    // Check that it exists only once
+    if (attr->filters().has_filter(FilterType::FILTER_BITSORT)) {
+      if (bitsort_filter_exists) {
+        return LOG_STATUS(Status_ArraySchemaError("Array schema check failed; Bitsort filter cannot exist multiple times in an array schema."));
+      }
+      bitsort_filter_exists = true;
+    }
+  }
+
+  if (bitsort_filter_exists && array_type_ != ArrayType::SPARSE) {
+    return LOG_STATUS(Status_ArraySchemaError("Array schema check failed; Bitsort filter cannot be applied on an array that is not sparse."));
+  }
   // Success
   return Status::Ok();
 }

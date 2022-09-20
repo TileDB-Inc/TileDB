@@ -123,6 +123,7 @@ class BitSortFilter : public Filter {
    */
   template <typename T>
   Status run_reverse(
+      std::vector<Tile*>& dim_tiles,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -137,11 +138,17 @@ class BitSortFilter : public Filter {
       const ConstBuffer* input_buffer,
       Buffer* output_buffer) const;
 
+   template <typename T, typename W>
+   Status rewrite_dim_tile_forward(const std::vector<std::pair<T, uint32_t>> &elements, Tile *dim_tile) const;
+
   /**
    * TODO: comment
    */
   template <typename T>
-  Status unsort_part(ConstBuffer* input_buffer, Buffer* output_buffer) const;
+  Status unsort_part(std::vector<Tile*> &dim_tiles, ConstBuffer* input_buffer, Buffer* output_buffer) const;
+
+  template <typename T>
+  Status rewrite_dim_tile_reverse(Tile *dim_tile, std::vector<uint32_t> &positions) const;
 };
 
 };  // namespace sm
