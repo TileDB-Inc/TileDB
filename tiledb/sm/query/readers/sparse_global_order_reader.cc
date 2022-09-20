@@ -1336,6 +1336,9 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
         const auto tile_tuple = stores_zipped_coords ?
                                     rt->tile_tuple(constants::coords) :
                                     rt->tile_tuple(name);
+        if (tile_tuple == NULL) {
+          return Status::Ok();
+        }
         const auto& t = tile_tuple->fixed_tile();
         const auto src_buff = t.template data_as<uint8_t>();
 
@@ -1611,6 +1614,10 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
             // delete metadata.
             if (name == constants::delete_condition_index &&
                 !fragment_metadata_[f]->has_delete_meta()) {
+              continue;
+            }
+
+            if (!fragment_metadata_[f]->array_schema()->is_field(name)) {
               continue;
             }
 
