@@ -26,7 +26,7 @@ On read, the float scaling filter will reverse the scale factor and offset, rest
      restored_data[i] = (new_data_b[i] * scale) + offset
    ```
 
-# Filter Enum Value
+### Filter Enum Value
 
 The filter enum value for the float scaling filter is `15` (TILEDB_FILTER_SCALE_FLOAT enum).
 
