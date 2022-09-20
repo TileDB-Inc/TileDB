@@ -944,6 +944,9 @@ class Query {
   /** Returns a reference to the internal WrittenFragmentInfo list */
   std::vector<WrittenFragmentInfo>& get_written_fragment_info();
 
+  /** Called from serialization to mark the query as remote */
+  void set_remote_query();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -1077,6 +1080,9 @@ class Query {
    * timestamp and a generated UUID.
    */
   optional<std::string> fragment_name_;
+
+  /** It tracks if this is a remote query */
+  bool remote_query_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

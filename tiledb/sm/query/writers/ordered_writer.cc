@@ -76,6 +76,7 @@ OrderedWriter::OrderedWriter(
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
+    bool remote_query,
     optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
@@ -90,6 +91,7 @@ OrderedWriter::OrderedWriter(
           written_fragment_info,
           false,
           coords_info,
+          remote_query,
           fragment_name,
           skip_checks_serialization) {
   if (layout != Layout::ROW_MAJOR && layout != Layout::COL_MAJOR) {

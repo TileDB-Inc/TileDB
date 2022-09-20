@@ -85,6 +85,7 @@ WriterBase::WriterBase(
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
+    bool remote_query,
     optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : StrategyBase(
@@ -102,7 +103,8 @@ WriterBase::WriterBase(
     , check_coord_oob_(false)
     , check_global_order_(false)
     , dedup_coords_(false)
-    , written_fragment_info_(written_fragment_info) {
+    , written_fragment_info_(written_fragment_info)
+    , remote_query_(remote_query) {
   // Sanity checks
   if (storage_manager_ == nullptr) {
     throw WriterBaseStatusException(
@@ -1054,8 +1056,13 @@ Status WriterBase::write_tiles(
     }
     for (auto& u : closing_uris) {
       if (layout_ == Layout::GLOBAL_ORDER) {
-        // TODO: how to not flush on local S3 global order writes
-        RETURN_NOT_OK(storage_manager_->vfs()->flush_multipart_file_buffer(u));
+        // Flushing the multipart buffers after each write stage is a
+        // requirement of remote global order writes, it should only be
+        // done if this code is executed as a result of a remote query
+        if (remote_query()) {
+          RETURN_NOT_OK(
+              storage_manager_->vfs()->flush_multipart_file_buffer(u));
+        }
       } else {
         RETURN_NOT_OK(storage_manager_->close_file(u));
       }
@@ -1063,6 +1070,10 @@ Status WriterBase::write_tiles(
   }
 
   return Status::Ok();
+}
+
+bool WriterBase::remote_query() const {
+  return remote_query_;
 }
 
 }  // namespace sm

@@ -1420,6 +1420,16 @@ Status query_from_capnp(
   // Deserialize array instance.
   RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
 
+  // Marks the query as remote
+  // Needs to happen before the reset strategy call below so that the marker
+  // propagates to the underlying strategy. Also this marker needs to live
+  // on the Query not on the strategy because for the first remote submit,
+  // the strategy gets reset once more during query submit on the server side
+  // (much later).
+  if (context == SerializationContext::SERVER) {
+    query->set_remote_query();
+  }
+
   // Make sure we have the right query strategy in place.
   bool force_legacy_reader =
       query_type == QueryType::READ && query_reader.hasReader();

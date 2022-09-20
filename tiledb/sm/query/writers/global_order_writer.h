@@ -111,6 +111,7 @@ class GlobalOrderWriter : public WriterBase {
       bool disable_checks_consolidation,
       std::vector<std::string>& processed_conditions,
       Query::CoordsInfo& coords_info_,
+      bool remote_query,
       optional<std::string> fragment_name = nullopt,
       bool skip_checks_serialization = false);
 

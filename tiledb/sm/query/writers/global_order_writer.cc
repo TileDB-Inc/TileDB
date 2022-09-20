@@ -77,6 +77,7 @@ GlobalOrderWriter::GlobalOrderWriter(
     bool disable_checks_consolidation,
     std::vector<std::string>& processed_conditions,
     Query::CoordsInfo& coords_info,
+    bool remote_query,
     optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
@@ -91,6 +92,7 @@ GlobalOrderWriter::GlobalOrderWriter(
           written_fragment_info,
           disable_checks_consolidation,
           coords_info,
+          remote_query,
           fragment_name,
           skip_checks_serialization)
     , processed_conditions_(processed_conditions) {

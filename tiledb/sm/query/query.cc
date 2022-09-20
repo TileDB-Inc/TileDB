@@ -92,7 +92,8 @@ Query::Query(
     , disable_checks_consolidation_(false)
     , consolidation_with_timestamps_(false)
     , force_legacy_reader_(false)
-    , fragment_name_(fragment_name) {
+    , fragment_name_(fragment_name)
+    , remote_query_(false) {
   assert(array->is_open());
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
@@ -1326,6 +1327,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           written_fragment_info_,
           coords_info_,
+          remote_query_,
           fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::UNORDERED) {
@@ -1346,6 +1348,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           written_fragment_info_,
           coords_info_,
+          remote_query_,
           fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::GLOBAL_ORDER) {
@@ -1363,6 +1366,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           disable_checks_consolidation_,
           processed_conditions_,
           coords_info_,
+          remote_query_,
           fragment_name_,
           skip_checks_serialization));
     } else {
@@ -2578,6 +2582,10 @@ void Query::reset_coords_markers() {
     coord_data_buffer_is_set_ = false;
     coord_offsets_buffer_is_set_ = false;
   }
+}
+
+void Query::set_remote_query() {
+  remote_query_ = true;
 }
 
 /* ****************************** */
