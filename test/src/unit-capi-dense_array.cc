@@ -808,10 +808,14 @@ void DenseArrayFx::write_dense_subarray_2D(
   REQUIRE_SAFE(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(array_name, query);
-  REQUIRE_SAFE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
-  REQUIRE_SAFE(rc == TILEDB_OK);
+  if (!serialize_query_ || query_layout != TILEDB_GLOBAL_ORDER) {
+    rc = submit_query_wrapper(array_name, query);
+    REQUIRE_SAFE(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    REQUIRE_SAFE(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
