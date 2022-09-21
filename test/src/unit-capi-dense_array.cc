@@ -1227,13 +1227,9 @@ void DenseArrayFx::check_invalid_cell_num_in_dense_writes(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  if (!serialize_query_) {
-    rc = submit_query_wrapper(array_name, query);
-    REQUIRE(rc == TILEDB_ERR);
-    rc = tiledb_query_finalize(ctx_, query);
-  } else {
-    submit_and_finalize_serialized_query(ctx_, query);
-  }
+  rc = submit_query_wrapper(array_name, query);
+  REQUIRE(rc == TILEDB_ERR);
+  rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
   tiledb_query_free(&query);
 
@@ -3318,9 +3314,7 @@ TEST_CASE_METHOD(
     serialize_query_ = false;
   }
   SECTION("- Serialization") {
-#ifdef TILEDB_SERIALIZATION
     serialize_query_ = true;
-#endif
   }
 
   // TODO: refactor for each supported FS.
