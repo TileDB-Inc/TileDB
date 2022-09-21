@@ -59,6 +59,7 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class ArrayDimensionLabelQueries;
 class StorageManager;
 
 enum class QueryStatus : uint8_t;
@@ -439,6 +440,14 @@ class Query {
   Status get_data_buffer(
       const char* name, void** buffer, uint64_t** buffer_size) const;
 
+  /** TODO */
+  void get_label_data_buffer(
+      const std::string& name, void** buffer, uint64_t** buffer_size) const;
+
+  /** TODO */
+  void get_label_offsets_buffer(
+      const std::string& name, uint64_t** buffer, uint64_t** buffer_size) const;
+
   /**
    * Retrieves the offset buffer for a var-sized attribute/dimension.
    *
@@ -642,6 +651,34 @@ class Query {
       const std::string& name,
       void* const buffer,
       uint64_t* const buffer_size,
+      const bool check_null_buffers = true);
+
+  /**
+   * Wrapper to set the internal buffer for a dimension or attribute from a
+   * QueryBuffer.
+   *
+   * This function is intended to be a convenience method for use setting
+   * buffers for dimesnion labels.
+   *
+   * @WARNING Does not check for or copy validity data.
+   *
+   * @param name Name of the dimension or attribute to set the buffer for.
+   * @param buffer The query buffer to get the data from.
+   **/
+  void set_buffer(const std::string& name, const QueryBuffer& buffer);
+
+  /** TODO */
+  void set_label_data_buffer(
+      const std::string& name,
+      void* const buffer,
+      uint64_t* const buffer_size,
+      const bool check_null_buffers = true);
+
+  /** TODO */
+  void set_label_offsets_buffer(
+      const std::string& name,
+      uint64_t* const buffer_offsets,
+      uint64_t* const buffer_offsets_size,
       const bool check_null_buffers = true);
 
   /**
@@ -1006,6 +1043,12 @@ class Query {
    * */
   std::unordered_map<std::string, QueryBuffer> buffers_;
 
+  /** Maps label names to their buffers. */
+  std::unordered_map<std::string, QueryBuffer> label_buffers_;
+
+  /** Dimension label queries that are part of the main query. */
+  tdb_unique_ptr<ArrayDimensionLabelQueries> dim_label_queries_;
+
   /** Keeps track of the coords data. */
   CoordsInfo coords_info_;
 
@@ -1107,6 +1150,11 @@ class Query {
    * @return Status
    */
   Status check_buffers_correctness();
+
+  /**
+   * Returns true if only querying dimension labels.
+   */
+  bool only_dim_label_query() const;
 
   /**
    * This is a deprecated API.

@@ -265,9 +265,10 @@ class ExampleFixedDimensionLabel : public TemporaryDirectoryFixture {
       const DimensionLabel& dimension_label,
       const tiledb::sm::QueryBuffer& label_data_buffer,
       const std::string& fragment_name) {
-    Query query{ctx->storage_manager(),
-                dimension_label.labelled_array(),
-                fragment_name};
+    Query query{
+        ctx->storage_manager(),
+        dimension_label.labelled_array(),
+        fragment_name};
 
     // Create index query buffer.
     std::vector<uint64_t> index_data(ncells_, 0);

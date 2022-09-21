@@ -78,7 +78,7 @@ typedef struct tiledb_dimension_label_schema_t tiledb_dimension_label_schema_t;
 TILEDB_EXPORT int32_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    uint32_t dim_id,
+    const uint32_t dim_id,
     const char* name,
     tiledb_dimension_label_schema_t* dim_label_schema) TILEDB_NOEXCEPT;
 
@@ -180,6 +180,126 @@ TILEDB_EXPORT int32_t tiledb_dimension_label_schema_alloc(
  */
 TILEDB_EXPORT void tiledb_dimension_label_schema_free(
     tiledb_dimension_label_schema_t** dim_label_schema) TILEDB_NOEXCEPT;
+
+/**
+ * Sets the buffer for an dimension label to a query, which will
+ * either hold the values to be written (if it is a write query), or will hold
+ * the results from a read query.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int32_t label1[100];
+ * uint64_t label1_size = sizeof(label1);
+ * tiledb_query_set_label_data_buffer(
+ *     ctx, query, "label1", label1, &label1_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param name The name of the dimension label to set the buffer for.
+ * @param buffer The buffer that either have the input data to be written,
+ *     or will hold the data to be read.
+ * @param buffer_size In the case of writes, this is the size of `buffer`
+ *     in bytes. In the case of reads, this initially contains the allocated
+ *     size of `buffer`, but after the termination of the query
+ *     it will contain the size of the useful (read) data in `buffer`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_set_label_data_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void* buffer,
+    uint64_t* buffer_size) TILEDB_NOEXCEPT;
+
+/**
+ * Sets the starting offsets of each cell value in the data buffer.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t label1[100];
+ * uint64_t label1_size = sizeof(label1);
+ * tiledb_query_set_label_offsets_buffer(
+ *     ctx, query, "label1", label1, &label1_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param name The name of the dimension label to set the buffer for.
+ * @param buffer This buffer holds the starting offsets of each cell value in
+ *     the buffer set by `tiledb_query_set_label_data_buffer`.
+ * @param buffer_size In the case of writes, it is the size of `buffer_off`
+ *     in bytes. In the case of reads, this initially contains the allocated
+ *     size of `buffer_off`, but after the *end of the query*
+ *     (`tiledb_query_submit`) it will contain the size of the useful (read)
+ *     data in `buffer_off`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_set_label_offsets_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    uint64_t* buffer,
+    uint64_t* buffer_size) TILEDB_NOEXCEPT;
+
+/**
+ * Gets the buffer of a fixed-sized dimension label from a query. If the
+ * buffer has not been set, then `buffer` is set to `nullptr`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int* label1;
+ * uint64_t* label1_size;
+ * tiledb_query_get_label_data_buffer(
+ *     ctx, query, "label1", &label1, &label1_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param name The name of the dimension label to get the buffer for.
+ * @param buffer The buffer to retrieve.
+ * @param buffer_size A pointer to the size of the buffer. Note that this is
+ *     a double pointer and returns the original variable address from
+ *     `tiledb_query_set_label_data_buffer`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_label_data_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void** buffer,
+    uint64_t** buffer_size) TILEDB_NOEXCEPT;
+
+/**
+ * Gets the starting offsets of each cell value in the data buffer.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int* label1;
+ * uint64_t* label1_size;
+ * tiledb_query_get_label_offsets_buffer(
+ *     ctx, query, "label1", &label1, &label1_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param name The name of the dimension label to get the buffer for.
+ * @param buffer The buffer to retrieve.
+ * @param buffer_size A pointer to the size of the buffer. Note that this is
+ *     a double pointer and returns the original variable address from
+ *     `tiledb_query_set_label_offsets_buffer`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_label_offsets_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    uint64_t** buffer,
+    uint64_t** buffer_size) TILEDB_NOEXCEPT;
 
 /**
  * Adds a 1D range along a subarray for a dimension label, which is in the form
