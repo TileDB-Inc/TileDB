@@ -1179,11 +1179,11 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
         const uint64_t* src_buff = nullptr;
         const uint8_t* src_var_buff = nullptr;
         bool use_fill_value = false;
-        OffType fill_value_size =
-            array_schema_.attribute(name)->fill_value().size();
+        OffType fill_value_size = 0;
         uint64_t t_var_size = 0;
         if (tile_tuple == nullptr) {
           use_fill_value = true;
+          fill_value_size = array_schema_.attribute(name)->fill_value().size();
           src_var_buff = array_schema_.attribute(name)->fill_value().data();
         } else {
           const auto& t = tile_tuple->fixed_tile();
