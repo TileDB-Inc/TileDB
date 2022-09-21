@@ -139,6 +139,9 @@ class DimensionLabel {
   /** Returns the query type the dimension label was opened with. */
   QueryType query_type() const;
 
+  /** Returns a reference to the dimension label schema. */
+  const DimensionLabelSchema& schema() const;
+
  private:
   /**********************/
   /* Private attributes */

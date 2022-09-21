@@ -237,6 +237,14 @@ QueryType DimensionLabel::query_type() const {
       "not been opened");
 }
 
+const DimensionLabelSchema& DimensionLabel::schema() const {
+  if (!schema_) {
+    throw std::logic_error(
+        "DimensionLabel schema does not exist. DimensionLabel must be opened.");
+  }
+  return *schema_;
+}
+
 void create_dimension_label(
     const URI& uri,
     StorageManager& storage_manager,
