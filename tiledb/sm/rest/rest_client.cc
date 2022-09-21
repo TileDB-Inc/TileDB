@@ -1038,11 +1038,18 @@ Status RestClient::post_array_schema_evolution_to_rest(
   return sc;
 }
 
-Status RestClient::get_fragment_info(
+Status RestClient::post_fragment_info_from_rest(
     const URI& uri, FragmentInfo* fragment_info) {
   if (fragment_info == nullptr)
     return LOG_STATUS(Status_RestError(
         "Error getting fragment info from REST; fragment info is null."));
+
+  Buffer buff;
+  RETURN_NOT_OK(serialization::fragment_info_request_serialize(
+      *fragment_info, serialization_type_, &buff));
+  // Wrap in a list
+  BufferList serialized;
+  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1056,8 +1063,13 @@ Status RestClient::get_fragment_info(
 
   // Get the data
   Buffer returned_data;
-  RETURN_NOT_OK(curlc.get_data(
-      stats_, url, serialization_type_, &returned_data, cache_key));
+  RETURN_NOT_OK(curlc.post_data(
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(Status_RestError(
         "Error getting fragment info from REST; server returned no data."));

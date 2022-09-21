@@ -235,7 +235,8 @@ class RestClient {
    * @param fragment_info Fragment info object to store the incoming info
    * @return Status Ok() on success Error() on failures
    */
-  Status get_fragment_info(const URI& uri, FragmentInfo* fragment_info);
+  Status post_fragment_info_from_rest(
+      const URI& uri, FragmentInfo* fragment_info);
 
   /**
    * Gets the group's metadata from the REST server (and updates the in-memory

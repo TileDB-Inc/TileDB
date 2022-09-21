@@ -57,6 +57,147 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
+// TODO : group together ser/deser and to/from_capnp
+
+Status fragment_info_request_to_capnp(
+    const FragmentInfo& fragment_info,
+    capnp::FragmentInfoRequest::Builder* fragment_info_req_builder) {
+  // Set config
+  auto config_builder = fragment_info_req_builder->initConfig();
+  auto config = fragment_info.config();
+  RETURN_NOT_OK(config_to_capnp(&config, &config_builder));
+
+  return Status::Ok();
+}
+
+Status fragment_info_request_from_capnp(
+    const capnp::FragmentInfoRequest::Reader& fragment_info_req_reader,
+    FragmentInfo* fragment_info) {
+  if (fragment_info == nullptr) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error deserializing fragment info request; fragment_info is null."));
+  }
+
+  if (fragment_info_req_reader.hasConfig()) {
+    tdb_unique_ptr<Config> decoded_config = nullptr;
+    RETURN_NOT_OK(config_from_capnp(
+        fragment_info_req_reader.getConfig(), &decoded_config));
+    RETURN_NOT_OK(fragment_info->set_config(*decoded_config));
+  }
+
+  return Status::Ok();
+}
+
+Status fragment_info_request_serialize(
+    const FragmentInfo& fragment_info,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    capnp::FragmentInfoRequest::Builder fragment_info_req_builder =
+        message.initRoot<capnp::FragmentInfoRequest>();
+    RETURN_NOT_OK(fragment_info_request_to_capnp(
+        fragment_info, &fragment_info_req_builder));
+
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(fragment_info_req_builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
+        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
+        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status_SerializationError(
+            "Error serializing fragment info request; Unknown serialization "
+            "type "
+            "passed: " +
+            std::to_string(static_cast<uint8_t>(serialize_type))));
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing fragment info request; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing fragment info request; exception " +
+        std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
+Status fragment_info_request_deserialize(
+    FragmentInfo* fragment_info,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer) {
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        json.handleByAnnotation<capnp::FragmentInfoRequest>();
+        ::capnp::MallocMessageBuilder message_builder;
+        capnp::FragmentInfoRequest::Builder fragment_info_req_builder =
+            message_builder.initRoot<capnp::FragmentInfoRequest>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            fragment_info_req_builder);
+        capnp::FragmentInfoRequest::Reader fragment_info_req_reader =
+            fragment_info_req_builder.asReader();
+        RETURN_NOT_OK(fragment_info_request_from_capnp(
+            fragment_info_req_reader, fragment_info));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes =
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
+        ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_buffer.size() / sizeof(::capnp::word)));
+        capnp::FragmentInfoRequest::Reader fragment_info_req_reader =
+            reader.getRoot<capnp::FragmentInfoRequest>();
+        RETURN_NOT_OK(fragment_info_request_from_capnp(
+            fragment_info_req_reader, fragment_info));
+        break;
+      }
+      default: {
+        return LOG_STATUS(
+            Status_SerializationError("Error deserializing fragment info "
+                                      "request; Unknown serialization type "
+                                      "passed"));
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error deserializing fragment info request; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error deserializing fragment info request; exception " +
+        std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
 // TODO: make a separate function for single_fragment_info_to_capnp that is for
 // now inline
 std::tuple<Status, std::optional<SingleFragmentInfo>>
@@ -312,6 +453,18 @@ Status fragment_info_serialize(
 
 Status fragment_info_deserialize(
     FragmentInfo*, SerializationType, const URI&, const Buffer&) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot deserialize; serialization not enabled."));
+}
+
+Status fragment_info_request_serialize(
+    const FragmentInfo&, SerializationType, Buffer*) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot serialize; serialization not enabled."));
+}
+
+Status fragment_info_request_deserialize(
+    FragmentInfo*, SerializationType, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

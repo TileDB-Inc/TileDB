@@ -321,30 +321,35 @@ class FragmentInfo {
     return array_schemas_all_;
   }
 
+  /** Returns the config. */
+  inline const Config& config() const {
+    return config_;
+  }
+
   // Accessors
 
-  /** array_schemas_all accessor */
+  /** array_schemas_all accessor. */
   inline std::unordered_map<std::string, shared_ptr<ArraySchema>>&
   array_schemas_all() {
     return array_schemas_all_;
   }
 
-  /** single_fragment_info_vec_ accessor */
+  /** single_fragment_info_vec_ accessor. */
   inline std::vector<SingleFragmentInfo>& single_fragment_info_vec() {
     return single_fragment_info_vec_;
   }
 
-  /** to_vacuum_ accessor */
+  /** to_vacuum_ accessor. */
   inline std::vector<URI>& to_vacuum() {
     return to_vacuum_;
   }
 
-  /** to_vacuum_ accessor */
+  /** array_uri_ accessor. */
   inline URI& array_uri() {
     return array_uri_;
   }
 
-  /** unconsolidated_metadata_num_ accessor */
+  /** unconsolidated_metadata_num_ accessor. */
   inline uint32_t& unconsolidated_metadata_num() {
     return unconsolidated_metadata_num_;
   }

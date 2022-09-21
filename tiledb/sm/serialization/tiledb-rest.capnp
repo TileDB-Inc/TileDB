@@ -64,7 +64,6 @@ struct ArrayOpen {
   # Config
 }
 
-
 struct ArraySchema {
 # ArraySchema during creation or retrieval
     arrayType @0 :Text;
@@ -686,6 +685,11 @@ struct EstimatedResultSize {
 
   resultSizes @0 :Map(Text, ResultSize);
   memorySizes @1 :Map(Text, MemorySize);
+}
+
+struct FragmentInfoRequest {
+  config @0 :Config;
+  # Config
 }
 
 struct SingleFragmentInfo {

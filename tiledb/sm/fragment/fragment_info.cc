@@ -852,7 +852,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
           "Cannot load fragment info; remote array with no REST client."));
     }
 
-    return rest_client->get_fragment_info(array_uri_, this);
+    return rest_client->post_fragment_info_from_rest(array_uri_, this);
   }
 
   // Get the array schemas and fragment metadata.

@@ -78,6 +78,15 @@ Status fragment_info_to_capnp(
     capnp::FragmentInfo::Builder* fragment_info_builder,
     const bool client_side);
 
+// TODO: Docstrings + add single fragment info here too
+Status fragment_info_request_to_capnp(
+    const FragmentInfo& fragment_info,
+    capnp::FragmentInfoRequest::Builder* fragment_info_req_builder);
+
+Status fragment_info_request_from_capnp(
+    const capnp::FragmentInfoRequest::Reader& fragment_info_req_reader,
+    FragmentInfo* fragment_info);
+
 #endif
 
 /**
@@ -108,6 +117,17 @@ Status fragment_info_deserialize(
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
     const URI& uri,
+    const Buffer& serialized_buffer);
+
+// TODO: add Docstring
+Status fragment_info_request_serialize(
+    const FragmentInfo& fragment_info,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer);
+
+Status fragment_info_request_deserialize(
+    FragmentInfo* fragment_info,
+    SerializationType serialize_type,
     const Buffer& serialized_buffer);
 
 }  // namespace serialization
