@@ -295,6 +295,8 @@ class AsyncPolicy
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;
 
+  std::array<size_t, 2> moves_{0, 0};
+
  public:
   AsyncPolicy() = default;
   AsyncPolicy(const AsyncPolicy&) {
@@ -318,6 +320,7 @@ class AsyncPolicy
         std::to_string(event++) + "    source moving (on_source_move) with " +
         str(this->state()) + " and " + str(this->next_state()));
 
+    moves_[0]++;
     static_cast<Mover*>(this)->on_move(event);
   }
 
@@ -331,7 +334,16 @@ class AsyncPolicy
         std::to_string(event++) + "    sink moving (on_sink_move) with " +
         str(this->state()) + " and " + str(this->next_state()));
 
+    moves_[1]++;
     static_cast<Mover*>(this)->on_move(event);
+  }
+
+  size_t source_swaps() const {
+    return moves_[0];
+  }
+
+  size_t sink_swaps() const {
+    return moves_[1];
   }
 
   /**

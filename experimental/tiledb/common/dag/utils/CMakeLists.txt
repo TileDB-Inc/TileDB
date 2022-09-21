@@ -35,6 +35,7 @@ if (TILEDB_TESTS)
 endif()
 
 dag_add_header_only_object_library(bounded_buffer)
+dag_add_header_only_object_library(concurrent_set)
 dag_add_header_only_object_library(range_join)
 dag_add_header_only_object_library(spinlock)
 

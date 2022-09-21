@@ -1,11 +1,11 @@
 /**
- * @file   range_join.cc
+ * @file   concurrent_set.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,6 @@
  *
  * @section DESCRIPTION
  *
+ * This file declares the DataBlock class for dag.
  */
-
-#include "range_join.h"
+#include "concurrent_set.h"

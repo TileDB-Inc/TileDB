@@ -1,11 +1,11 @@
 /**
- * @file   range_join.cc
+ * @file unit_concurrent_set.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,9 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
  */
 
-#include "range_join.h"
+#ifndef TILEDB_UNIT_CONCURRENT_SET_H
+#define TILEDB_UNIT_CONCURRENT_SET_H
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_UNIT_CONCURRENT_SET_H

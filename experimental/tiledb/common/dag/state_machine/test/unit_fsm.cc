@@ -866,7 +866,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
   size_t rounds = 3379;
   if (debug)
-    rounds = 33333;
+    rounds = 33;
 
   std::vector<size_t> input(rounds);
   std::vector<size_t> output(rounds);
@@ -1017,6 +1017,9 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
   CHECK(std::equal(input.begin(), input.end(), output.begin()));
   CHECK(str(a.state()) == "st_00");
   CHECK((a.source_swaps() + a.sink_swaps()) == rounds);
+
+  //  std::cout << "source " << a.source_swaps() << " sink " << a.sink_swaps()
+  //            << std::endl;
 }
 
 /**

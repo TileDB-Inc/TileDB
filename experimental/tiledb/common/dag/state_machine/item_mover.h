@@ -78,7 +78,7 @@ class BaseMover<Mover, three_stage, Block> {
    * Record keeping of how many moves are made.  Used for diagnostics and
    * debugging.
    */
-  std::array<size_t, 3> moves_;
+  std::array<size_t, 3> moves_{0, 0, 0};
 
  public:
   using PortState = three_stage;
@@ -234,6 +234,7 @@ class BaseMover<Mover, three_stage, Block> {
     return false;
   }
 
+#if 0
   size_t source_swaps() const {
     return moves_[0];
   }
@@ -241,6 +242,7 @@ class BaseMover<Mover, three_stage, Block> {
   size_t sink_swaps() const {
     return moves_[2];
   }
+#endif
 
   auto& source_item() {
     return *items_[0];
@@ -396,6 +398,8 @@ class BaseMover<Mover, two_stage, Block> {
     return true;
   }
 
+#if 0
+
   /**
    * Diagnostic functions for counting numbers of swaps (moves).
    */
@@ -406,6 +410,8 @@ class BaseMover<Mover, two_stage, Block> {
   size_t sink_swaps() const {
     return moves_[1];
   }
+
+#endif
 
   auto& source_item() {
     return *items_[0];
