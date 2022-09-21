@@ -122,43 +122,57 @@ class ArrayDimensionLabelQueries {
   }
 
  private:
-  /** TODO: docs */
+  /** The storage manager. */
+  StorageManager* storage_manager_;
+
+  /** Map from label name to dimension label opened by this query. */
   std::unordered_map<std::string, tdb_unique_ptr<DimensionLabel>>
       dimension_labels_;
 
-  /** TODO: docs */
+  /** Map from label name to dimension label range query. */
   std::unordered_map<std::string, tdb_unique_ptr<DimensionLabelQuery>>
       range_queries_map_;
 
-  /** TODO: docs */
+  /**
+   * Non-owning vector for accesing query by dimension index.
+   *
+   * Note: This vector is always sized to the number of dimensions in the array.
+   * There can be at most on query per dimension. If there is no query on the
+   * dimension, it contains a nullpointer.
+   */
   std::vector<DimensionLabelQuery*> range_queries_;
 
-  /** TODO: docs */
-  std::unordered_map<std::string, tdb_unique_ptr<DimensionLabelQuery>>
-      data_queries_;
+  /**
+   * Dimension label data queries.
+   *
+   * Note: For the data queries, the element order to the queries is
+   * unimportant and does not correspond to dimension index or any other value.
+   */
+  std::vector<tdb_unique_ptr<DimensionLabelQuery>> data_queries_;
 
-  /** TODO: docs */
+  /** Non-owning map from label name to dimension label data query. */
+  std::unordered_map<std::string, DimensionLabelQuery*> data_queries_map_;
+
+  /** The status of the range queries. */
   QueryStatus range_query_status_;
+
+  optional<std::string> fragment_name_;
 
   /** TODO: docs */
   void add_data_queries_for_read(
-      StorageManager* storage_manager,
       Array* array,
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers);
 
   /** TODO: docs */
   void add_data_queries_for_write(
-      StorageManager* storage_manager,
       Array* array,
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers,
-      const std::unordered_map<std::string, QueryBuffer>& array_buffers,
-      const std::string& fragment_name);
+      const std::unordered_map<std::string, QueryBuffer>& array_buffers);
 
   /** TODO: docs */
   void add_range_queries(
-      StorageManager* storage_manager,
       Array* array,
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers,
@@ -166,7 +180,6 @@ class ArrayDimensionLabelQueries {
 
   /** TODO: docs */
   DimensionLabel* open_dimension_label(
-      StorageManager* storage_manager,
       Array* array,
       const DimensionLabelReference& dim_label_ref,
       const QueryType& query_type,

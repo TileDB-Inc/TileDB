@@ -56,31 +56,28 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
     const std::unordered_map<std::string, QueryBuffer>& label_buffers,
     const std::unordered_map<std::string, QueryBuffer>& array_buffers,
     const optional<std::string>& fragment_name)
-    : range_queries_(subarray.dim_num(), nullptr)
-    , range_query_status_{QueryStatus::UNINITIALIZED} {
+    : storage_manager_(storage_manager)
+    , range_queries_(subarray.dim_num(), nullptr)
+    , range_query_status_{QueryStatus::UNINITIALIZED}
+    , fragment_name_{fragment_name} {
   switch (array->get_query_type()) {
     case (QueryType::READ):
-      add_range_queries(
-          storage_manager, array, subarray, label_buffers, array_buffers);
-      add_data_queries_for_read(
-          storage_manager, array, subarray, label_buffers);
+      // Add necessary dimension label queries.
+      add_range_queries(array, subarray, label_buffers, array_buffers);
+      add_data_queries_for_read(array, subarray, label_buffers);
       break;
 
     case (QueryType::WRITE):
+      // If fragment name is not set, set it.
+      if (!fragment_name_.has_value()) {
+        fragment_name_ = storage_format::generate_fragment_name(
+            array->timestamp_end_opened_at(),
+            array->array_schema_latest().write_version());
+      }
 
-      add_range_queries(
-          storage_manager, array, subarray, label_buffers, array_buffers);
-      add_data_queries_for_write(
-          storage_manager,
-          array,
-          subarray,
-          label_buffers,
-          array_buffers,
-          fragment_name.has_value() ?
-              fragment_name.value() :
-              storage_format::generate_fragment_name(
-                  array->timestamp_end_opened_at(),
-                  array->array_schema_latest().write_version()));
+      // Add dimesnion label queries.
+      add_range_queries(array, subarray, label_buffers, array_buffers);
+      add_data_queries_for_write(array, subarray, label_buffers, array_buffers);
       break;
 
     case (QueryType::DELETE):
@@ -104,37 +101,77 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
 }
 
 void ArrayDimensionLabelQueries::cancel() {
-  for (auto& [label_name, query] : range_queries_map_) {
-    query->cancel();
-  }
-  for (auto& [label_name, query] : data_queries_) {
-    query->cancel();
-  }
+  // Cancel range queries.
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      range_queries_.size(),
+      [&](const size_t dim_idx) {
+        if (range_queries_[dim_idx]) {
+          range_queries_[dim_idx]->cancel();
+        }
+        return Status::Ok();
+      }));
+
+  // Cancel data queries.
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      data_queries_.size(),
+      [&](const size_t query_idx) {
+        data_queries_[query_idx]->cancel();
+        return Status::Ok();
+      }));
 }
 
 void ArrayDimensionLabelQueries::finalize() {
-  for (auto& [label_name, query] : range_queries_map_) {
-    query->finalize();
-  }
-  for (auto& [label_name, query] : data_queries_) {
-    query->finalize();
-  }
+  // Finalize range queries.
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      range_queries_.size(),
+      [&](const size_t dim_idx) {
+        if (range_queries_[dim_idx]) {
+          range_queries_[dim_idx]->finalize();
+        }
+        return Status::Ok();
+      }));
+
+  // Finalize data queries.
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      data_queries_.size(),
+      [&](const size_t query_idx) {
+        data_queries_[query_idx]->finalize();
+        return Status::Ok();
+      }));
 }
 
 void ArrayDimensionLabelQueries::process_data_queries() {
-  // TODO: Parallel?
-  for (auto& [label_name, query] : data_queries_) {
-    query->process();
-  }
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      data_queries_.size(),
+      [&](const size_t query_idx) {
+        data_queries_[query_idx]->process();
+        return Status::Ok();
+      }));
 }
 
 void ArrayDimensionLabelQueries::process_range_queries(Subarray& subarray) {
-  // TODO: Parallel?
-  for (auto& [label_name, query] : range_queries_map_) {
-    query->process();
-  }
+  // Process range queries before updating any of the subarray ranges.
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      range_queries_.size(),
+      [&](const size_t dim_idx) {
+        if (range_queries_[dim_idx]) {
+          range_queries_[dim_idx]->process();
+        }
+        return Status::Ok();
+      }));
 
-  // TODO: Do something smart for throwing errors and setting ranges.
   // Update the subarray.
   for (dimension_size_type dim_idx{0}; dim_idx < subarray.dim_num();
        ++dim_idx) {
@@ -153,7 +190,6 @@ void ArrayDimensionLabelQueries::process_range_queries(Subarray& subarray) {
 }
 
 void ArrayDimensionLabelQueries::add_data_queries_for_read(
-    StorageManager* storage_manager,
     Array* array,
     const Subarray& subarray,
     const std::unordered_map<std::string, QueryBuffer>& label_buffers) {
@@ -172,26 +208,25 @@ void ArrayDimensionLabelQueries::add_data_queries_for_read(
 
     // Open the indexed array.
     auto* dim_label = open_dimension_label(
-        storage_manager, array, dim_label_ref, QueryType::READ, true, false);
+        array, dim_label_ref, QueryType::READ, true, false);
 
     // Create the data query.
-    data_queries_[label_name] = tdb_unique_ptr<DimensionLabelQuery>(tdb_new(
+    data_queries_.emplace_back(tdb_unique_ptr<DimensionLabelQuery>(tdb_new(
         DimensionLabelReadDataQuery,
-        storage_manager,
+        storage_manager_,
         dim_label,
         subarray,
         label_buffer,
-        dim_label_ref.dimension_id()));
+        dim_label_ref.dimension_id())));
+    data_queries_map_[label_name] = data_queries_.back().get();
   }
 }
 
 void ArrayDimensionLabelQueries::add_data_queries_for_write(
-    StorageManager* storage_manager,
     Array* array,
     const Subarray& subarray,
     const std::unordered_map<std::string, QueryBuffer>& label_buffers,
-    const std::unordered_map<std::string, QueryBuffer>& array_buffers,
-    const std::string& fragment_name) {
+    const std::unordered_map<std::string, QueryBuffer>& array_buffers) {
   for (const auto& [label_name, label_buffer] : label_buffers) {
     // Skip adding a new query if this dimension label was already used to
     // add a range query above.
@@ -205,7 +240,7 @@ void ArrayDimensionLabelQueries::add_data_queries_for_write(
 
     // Open both arrays in the dimension label.
     auto* dim_label = open_dimension_label(
-        storage_manager, array, dim_label_ref, QueryType::WRITE, true, true);
+        array, dim_label_ref, QueryType::WRITE, true, true);
 
     // Get the index_buffer from the array buffers.
     const auto& dim_name = array->array_schema_latest()
@@ -217,24 +252,26 @@ void ArrayDimensionLabelQueries::add_data_queries_for_write(
       case (LabelOrder::INCREASING_LABELS):
       case (LabelOrder::DECREASING_LABELS):
         if (index_buffer_pair == array_buffers.end()) {
-          data_queries_[label_name] =
+          data_queries_.emplace_back(
               tdb_unique_ptr<DimensionLabelQuery>(tdb_new(
                   OrderedWriteDataQuery,
-                  storage_manager,
+                  storage_manager_,
                   dim_label,
                   subarray,
                   label_buffer,
                   dim_label_ref.dimension_id(),
-                  fragment_name));
+                  fragment_name_)));
+          data_queries_map_[label_name] = data_queries_.back().get();
         } else {
-          data_queries_[label_name] =
+          data_queries_.emplace_back(
               tdb_unique_ptr<DimensionLabelQuery>(tdb_new(
                   OrderedWriteDataQuery,
-                  storage_manager,
+                  storage_manager_,
                   dim_label,
                   index_buffer_pair->second,
                   label_buffer,
-                  fragment_name));
+                  fragment_name_)));
+          data_queries_map_[label_name] = data_queries_.back().get();
         }
         break;
 
@@ -244,13 +281,14 @@ void ArrayDimensionLabelQueries::add_data_queries_for_write(
               "Cannot read range data from unordered label '" + label_name +
               "'; Missing a data buffer for dimension '" + dim_name + "'."));
         }
-        data_queries_[label_name] = tdb_unique_ptr<DimensionLabelQuery>(tdb_new(
+        data_queries_.emplace_back(tdb_unique_ptr<DimensionLabelQuery>(tdb_new(
             UnorderedWriteDataQuery,
-            storage_manager,
+            storage_manager_,
             dim_label,
             index_buffer_pair->second,
             label_buffer,
-            fragment_name));
+            fragment_name_)));
+        data_queries_map_[label_name] = data_queries_.back().get();
         break;
 
       default:
@@ -264,7 +302,6 @@ void ArrayDimensionLabelQueries::add_data_queries_for_write(
 }
 
 void ArrayDimensionLabelQueries::add_range_queries(
-    StorageManager*,
     Array*,
     const Subarray& subarray,
     const std::unordered_map<std::string, QueryBuffer>&,
@@ -293,13 +330,12 @@ bool ArrayDimensionLabelQueries::completed() const {
              range_queries_map_.cend(),
              [](const auto& query) { return query.second->completed(); }) &&
          std::all_of(
-             data_queries_.cbegin(),
-             data_queries_.cend(),
+             data_queries_map_.cbegin(),
+             data_queries_map_.cend(),
              [](const auto& query) { return query.second->completed(); });
 }
 
 DimensionLabel* ArrayDimensionLabelQueries::open_dimension_label(
-    StorageManager* storage_manager,
     Array* array,
     const DimensionLabelReference& dim_label_ref,
     const QueryType& query_type,
@@ -312,7 +348,7 @@ DimensionLabel* ArrayDimensionLabelQueries::open_dimension_label(
 
   // Create dimension label.
   dimension_labels_[dim_label_ref.name()] = tdb_unique_ptr<DimensionLabel>(
-      tdb_new(DimensionLabel, dim_label_uri, storage_manager));
+      tdb_new(DimensionLabel, dim_label_uri, storage_manager_));
   auto* dim_label = dimension_labels_[dim_label_ref.name()].get();
 
   // Currently there is no way to open just one of these arrays. This is a
