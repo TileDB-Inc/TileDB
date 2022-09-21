@@ -1153,7 +1153,7 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     const std::vector<uint64_t>& cell_offsets,
     QueryBuffer& query_buffer,
-    std::vector<void*>& var_data) {
+    std::vector<const void*>& var_data) {
   auto timer_se = stats_->start_timer("copy_offsets_tiles");
 
   // Process all tiles/cells in parallel.
@@ -1170,13 +1170,28 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
             result_cell_slabs[i].tile_);
 
         // Get source buffers.
-        const auto tile_tuple = rt->tile_tuple(name);
-        const auto& t = tile_tuple->fixed_tile();
-        const auto& t_var = tile_tuple->var_tile();
-        const auto src_buff = t.template data_as<uint64_t>();
-        const auto src_var_buff = t_var.template data_as<char>();
         const auto cell_num =
             fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+        const auto tile_tuple = rt->tile_tuple(name);
+
+        // If the tile_tuple is null, this is a field added in schema
+        // evolution. Use the fill value.
+        const uint64_t* src_buff = nullptr;
+        const uint8_t* src_var_buff = nullptr;
+        bool use_fill_value = false;
+        OffType fill_value_size =
+            array_schema_.attribute(name)->fill_value().size();
+        uint64_t t_var_size = 0;
+        if (tile_tuple == nullptr) {
+          use_fill_value = true;
+          src_var_buff = array_schema_.attribute(name)->fill_value().data();
+        } else {
+          const auto& t = tile_tuple->fixed_tile();
+          const auto& t_var = tile_tuple->var_tile();
+          t_var_size = t_var.size();
+          src_buff = t.template data_as<uint64_t>();
+          src_var_buff = t_var.template data_as<uint8_t>();
+        }
 
         // Compute parallelization parameters.
         auto&& [min_pos, max_pos, dest_cell_offset, skip_copy] =
@@ -1197,28 +1212,45 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
         auto var_data_buffer = &var_data[dest_cell_offset - cell_offsets[0]];
 
         // Copy full tile. Last cell might be taken out for vectorization.
-        uint64_t end = (max_pos == cell_num) ? max_pos - 1 : max_pos;
-        for (uint64_t c = min_pos; c < end; c++) {
-          *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
-          buffer++;
-          *var_data_buffer = src_var_buff + src_buff[c];
-          var_data_buffer++;
+        uint64_t end =
+            (max_pos == cell_num && !use_fill_value) ? max_pos - 1 : max_pos;
+        if (!use_fill_value) {
+          for (uint64_t c = min_pos; c < end; c++) {
+            *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
+            buffer++;
+            *var_data_buffer = src_var_buff + src_buff[c];
+            var_data_buffer++;
+          }
+        } else {
+          for (uint64_t c = min_pos; c < end; c++) {
+            *buffer = fill_value_size / offset_div;
+            buffer++;
+            *var_data_buffer = src_var_buff;
+            var_data_buffer++;
+          }
         }
 
         // Copy last cell.
-        if (max_pos == cell_num) {
-          *buffer =
-              (OffType)(t_var.size() - src_buff[max_pos - 1]) / offset_div;
+        if (max_pos == cell_num && !use_fill_value) {
+          *buffer = (OffType)(t_var_size - src_buff[max_pos - 1]) / offset_div;
           *var_data_buffer = src_var_buff + src_buff[max_pos - 1];
         }
 
         // Copy nullable values.
         if (nullable) {
-          const auto& t_val = tile_tuple->validity_tile();
-          const auto src_val_buff = t_val.template data_as<uint8_t>();
-          for (uint64_t c = min_pos; c < max_pos; c++) {
-            *val_buffer = src_val_buff[c];
-            val_buffer++;
+          if (!use_fill_value) {
+            const auto& t_val = tile_tuple->validity_tile();
+            const auto src_val_buff = t_val.template data_as<uint8_t>();
+            for (uint64_t c = min_pos; c < max_pos; c++) {
+              *val_buffer = src_val_buff[c];
+              val_buffer++;
+            }
+          } else {
+            uint8_t v = array_schema_.attribute(name)->fill_value_validity();
+            for (uint64_t c = min_pos; c < max_pos; c++) {
+              *val_buffer = v;
+              val_buffer++;
+            }
           }
         }
 
@@ -1238,7 +1270,7 @@ Status SparseGlobalOrderReader<BitmapType>::copy_var_data_tiles(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     const std::vector<uint64_t>& cell_offsets,
     QueryBuffer& query_buffer,
-    const std::vector<void*>& var_data) {
+    std::vector<const void*>& var_data) {
   auto timer_se = stats_->start_timer("copy_var_tiles");
 
   // For easy reference.
@@ -1337,51 +1369,17 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
                                     rt->tile_tuple(constants::coords) :
                                     rt->tile_tuple(name);
 
-        const bool is_dim = array_schema_.is_dim(name);
-        const bool is_attr = array_schema_.is_attr(name);
-        const bool split_buffer_for_zipped_coords =
-            is_dim && rcs.tile_->stores_zipped_coords();
-        uint64_t buffer_offset = 0;
-        std::vector<uint64_t> rcs_offsets(result_cell_slabs.size());
-        for (uint64_t j = 0; j < rcs_offsets.size(); j++) {
-          const auto& rcs_temp = result_cell_slabs[j];
-          auto cs_length = rcs_temp.length_;
-          auto bytes_to_copy = cs_length * cell_size;
-          rcs_offsets[j] = buffer_offset;
-          buffer_offset += bytes_to_copy;
+        // If the tile_tuple is null, this is a field added in schema
+        // evolution. Use the fill value.
+        const uint8_t* src_buff = nullptr;
+        bool use_fill_value = false;
+        if (tile_tuple == nullptr) {
+          use_fill_value = true;
+          src_buff = array_schema_.attribute(name)->fill_value().data();
+        } else {
+          const auto& t = tile_tuple->fixed_tile();
+          src_buff = t.template data_as<uint8_t>();
         }
-
-        if (((is_dim && is_attr) || tile_tuple == NULL) &&
-            !split_buffer_for_zipped_coords) {
-          auto it = buffers_.find(name);
-          auto attr_buffer = (unsigned char*)it->second.buffer_;
-          ByteVecValue fill_value = array_schema_.attribute(name)->fill_value();
-          uint8_t fill_value_validity =
-              array_schema_.attribute(name)->fill_value_validity();
-          auto fill_value_size = (uint64_t)fill_value.size();
-          auto rcs_length = rcs.length_;
-          uint64_t bytes_to_copy = rcs_length * cell_size;
-          uint64_t fill_num = bytes_to_copy / fill_value_size;
-          auto buffer_validity =
-              (unsigned char*)it->second.validity_vector_.buffer();
-          uint64_t offset = rcs_offsets[i];
-          for (uint64_t j = 0; j < fill_num; ++j) {
-            std::memcpy(
-                attr_buffer + offset, fill_value.data(), fill_value_size);
-            if (nullable) {
-              std::memset(
-                  buffer_validity +
-                      (offset / cell_size * constants::cell_validity_size),
-                  fill_value_validity,
-                  constants::cell_validity_size);
-            }
-            offset += fill_value_size;
-          }
-          return Status::Ok();
-        }
-
-        const auto& t = tile_tuple->fixed_tile();
-        const auto src_buff = t.template data_as<uint8_t>();
 
         // Compute parallelization parameters.
         auto&& [min_pos, max_pos, dest_cell_offset, skip_copy] =
@@ -1402,11 +1400,19 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
             query_buffer.validity_vector_.buffer() + dest_cell_offset;
 
         if (!stores_zipped_coords) {
-          // Copy tile.
-          memcpy(
-              buffer,
-              src_buff + min_pos * cell_size,
-              (max_pos - min_pos) * cell_size);
+          if (!use_fill_value) {
+            // Copy tile.
+            memcpy(
+                buffer,
+                src_buff + min_pos * cell_size,
+                (max_pos - min_pos) * cell_size);
+          } else {
+            // Copy tile using the fill value.
+            for (uint64_t i = 0; i < max_pos - min_pos; i++) {
+              memcpy(buffer, src_buff, cell_size);
+              buffer += cell_size;
+            }
+          }
         } else {  // Copy for zipped coords.
           const auto dim_num = rt->domain()->dim_num();
           for (uint64_t c = min_pos; c < max_pos; c++) {
@@ -1417,9 +1423,19 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
         }
 
         if (nullable) {
-          const auto& t_val = tile_tuple->validity_tile();
-          const auto src_val_buff = t_val.template data_as<uint8_t>();
-          memcpy(val_buffer, src_val_buff + min_pos, max_pos - min_pos);
+          if (!use_fill_value) {
+            // Copy validity values from tile.
+            const auto& t_val = tile_tuple->validity_tile();
+            const auto src_val_buff = t_val.template data_as<uint8_t>();
+            memcpy(val_buffer, src_val_buff + min_pos, max_pos - min_pos);
+          } else {
+            // Copy the fill value for validity.
+            uint8_t v = array_schema_.attribute(name)->fill_value_validity();
+            for (uint64_t i = 0; i < max_pos - min_pos; i++) {
+              *val_buffer = v;
+              val_buffer++;
+            }
+          }
         }
 
         return Status::Ok();
@@ -1658,6 +1674,7 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
               continue;
             }
 
+            // Skip for fields added in schema evolution.
             if (!fragment_metadata_[f]->array_schema()->is_field(name)) {
               continue;
             }
@@ -1862,7 +1879,7 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
       }
 
       // Pointers to var size data, generated when offsets are processed.
-      std::vector<void*> var_data;
+      std::vector<const void*> var_data;
       if (var_sized) {
         var_data.resize(
             cell_offsets[result_cell_slabs.size()] - cell_offsets[0]);
