@@ -59,27 +59,26 @@ Status fragment_metadata_from_capnp(
     const capnp::FragmentMetadata::Reader& frag_meta_reader,
     shared_ptr<FragmentMetadata> frag_meta) {
   if (frag_meta_reader.hasFileSizes()) {
-    frag_meta->file_sizes().resize(frag_meta_reader.getFileSizes().size());
-    std::copy(
-        frag_meta_reader.getFileSizes().begin(),
-        frag_meta_reader.getFileSizes().end(),
-        frag_meta->file_sizes().begin());
+    frag_meta->file_sizes().reserve(frag_meta_reader.getFileSizes().size());
+    for (const auto& file_size : frag_meta_reader.getFileSizes()) {
+      frag_meta->file_sizes().emplace_back(file_size);
+    }
   }
   if (frag_meta_reader.hasFileVarSizes()) {
-    frag_meta->file_var_sizes().resize(
+    frag_meta->file_var_sizes().reserve(
         frag_meta_reader.getFileVarSizes().size());
-    std::copy(
-        frag_meta_reader.getFileVarSizes().begin(),
-        frag_meta_reader.getFileVarSizes().end(),
-        frag_meta->file_var_sizes().begin());
+    for (const auto& file_var_size : frag_meta_reader.getFileVarSizes()) {
+      frag_meta->file_var_sizes().emplace_back(file_var_size);
+    }
   }
   if (frag_meta_reader.hasFileValiditySizes()) {
-    frag_meta->file_validity_sizes().resize(
+    frag_meta->file_validity_sizes().reserve(
         frag_meta_reader.getFileValiditySizes().size());
-    std::copy(
-        frag_meta_reader.getFileValiditySizes().begin(),
-        frag_meta_reader.getFileValiditySizes().end(),
-        frag_meta->file_validity_sizes().begin());
+
+    for (const auto& file_validity_size :
+         frag_meta_reader.getFileValiditySizes()) {
+      frag_meta->file_validity_sizes().emplace_back(file_validity_size);
+    }
   }
   if (frag_meta_reader.hasFragmentUri()) {
     frag_meta->fragment_uri() = URI(frag_meta_reader.getFragmentUri().cStr());
@@ -90,91 +89,126 @@ Status fragment_metadata_from_capnp(
   frag_meta->tile_index_base() = frag_meta_reader.getTileIndexBase();
   if (frag_meta_reader.hasTileOffsets()) {
     for (const auto& t : frag_meta_reader.getTileOffsets()) {
-      auto& last = frag_meta->tile_offsets().emplace_back(t.size());
-      std::copy(t.begin(), t.end(), last.begin());
+      auto& last = frag_meta->tile_offsets().emplace_back();
+      last.reserve(t.size());
+      for (const auto& v : t) {
+        last.emplace_back(v);
+      }
     }
   }
   if (frag_meta_reader.hasTileVarOffsets()) {
     for (const auto& t : frag_meta_reader.getTileVarOffsets()) {
-      auto& last = frag_meta->tile_var_offsets().emplace_back(t.size());
-      std::copy(t.begin(), t.end(), last.begin());
+      auto& last = frag_meta->tile_var_offsets().emplace_back();
+      last.reserve(t.size());
+      for (const auto& v : t) {
+        last.emplace_back(v);
+      }
     }
   }
   if (frag_meta_reader.hasTileVarSizes()) {
     for (const auto& t : frag_meta_reader.getTileVarSizes()) {
-      auto& last = frag_meta->tile_var_sizes().emplace_back(t.size());
-      std::copy(t.begin(), t.end(), last.begin());
+      auto& last = frag_meta->tile_var_sizes().emplace_back();
+      last.reserve(t.size());
+      for (const auto& v : t) {
+        last.emplace_back(v);
+      }
     }
   }
   if (frag_meta_reader.hasTileValidityOffsets()) {
     for (const auto& t : frag_meta_reader.getTileValidityOffsets()) {
-      auto& last = frag_meta->tile_validity_offsets().emplace_back(t.size());
-      std::copy(t.begin(), t.end(), last.begin());
+      auto& last = frag_meta->tile_validity_offsets().emplace_back();
+      last.reserve(t.size());
+      for (const auto& v : t) {
+        last.emplace_back(v);
+      }
     }
   }
   if (frag_meta_reader.hasTileMinBuffer()) {
     for (const auto& t : frag_meta_reader.getTileMinBuffer()) {
-      auto& last = frag_meta->tile_min_buffer().emplace_back(t.size());
-      std::copy(t.begin(), t.end(), last.begin());
+      auto& last = frag_meta->tile_min_buffer().emplace_back();
+      last.reserve(t.size());
+      for (const auto& v : t) {
+        last.emplace_back(v);
+      }
     }
   }
   if (frag_meta_reader.hasTileMinVarBuffer()) {
     for (const auto& t : frag_meta_reader.getTileMinVarBuffer()) {
-      auto& last = frag_meta->tile_min_var_buffer().emplace_back(t.size());
-      std::copy(t.begin(), t.end(), last.begin());
+      auto& last = frag_meta->tile_min_var_buffer().emplace_back();
+      last.reserve(t.size());
+      for (const auto& v : t) {
+        last.emplace_back(v);
+      }
     }
   }
   if (frag_meta_reader.hasTileMaxBuffer()) {
     for (const auto& t : frag_meta_reader.getTileMaxBuffer()) {
-      auto& last = frag_meta->tile_max_buffer().emplace_back(t.size());
-      std::copy(t.begin(), t.end(), last.begin());
+      auto& last = frag_meta->tile_max_buffer().emplace_back();
+      last.reserve(t.size());
+      for (const auto& v : t) {
+        last.emplace_back(v);
+      }
     }
   }
   if (frag_meta_reader.hasTileMaxVarBuffer()) {
     for (const auto& t : frag_meta_reader.getTileMaxVarBuffer()) {
-      auto& last = frag_meta->tile_max_var_buffer().emplace_back(t.size());
-      std::copy(t.begin(), t.end(), last.begin());
+      auto& last = frag_meta->tile_max_var_buffer().emplace_back();
+      last.reserve(t.size());
+      for (const auto& v : t) {
+        last.emplace_back(v);
+      }
     }
   }
   if (frag_meta_reader.hasTileSums()) {
     for (const auto& t : frag_meta_reader.getTileSums()) {
-      auto& last = frag_meta->tile_sums().emplace_back(t.size());
-      std::copy(t.begin(), t.end(), last.begin());
+      auto& last = frag_meta->tile_sums().emplace_back();
+      last.reserve(t.size());
+      for (const auto& v : t) {
+        last.emplace_back(v);
+      }
     }
   }
   if (frag_meta_reader.hasTileNullCounts()) {
     for (const auto& t : frag_meta_reader.getTileNullCounts()) {
-      auto& last = frag_meta->tile_null_counts().emplace_back(t.size());
-      std::copy(t.begin(), t.end(), last.begin());
+      auto& last = frag_meta->tile_null_counts().emplace_back();
+      last.reserve(t.size());
+      for (const auto& v : t) {
+        last.emplace_back(v);
+      }
     }
   }
   if (frag_meta_reader.hasFragmentMins()) {
     for (const auto& t : frag_meta_reader.getFragmentMins()) {
-      auto& last = frag_meta->fragment_mins().emplace_back(t.size());
-      std::copy(t.begin(), t.end(), last.begin());
+      auto& last = frag_meta->fragment_mins().emplace_back();
+      last.reserve(t.size());
+      for (const auto& v : t) {
+        last.emplace_back(v);
+      }
     }
   }
   if (frag_meta_reader.hasFragmentMaxs()) {
     for (const auto& t : frag_meta_reader.getFragmentMaxs()) {
-      auto& last = frag_meta->fragment_maxs().emplace_back(t.size());
-      std::copy(t.begin(), t.end(), last.begin());
+      auto& last = frag_meta->fragment_maxs().emplace_back();
+      last.reserve(t.size());
+      for (const auto& v : t) {
+        last.emplace_back(v);
+      }
     }
   }
   if (frag_meta_reader.hasFragmentSums()) {
-    frag_meta->fragment_sums().resize(
+    frag_meta->fragment_sums().reserve(
         frag_meta_reader.getFragmentSums().size());
-    std::copy(
-        frag_meta_reader.getFragmentSums().begin(),
-        frag_meta_reader.getFragmentSums().end(),
-        frag_meta->fragment_sums().begin());
+    for (const auto& fragment_sum : frag_meta_reader.getFragmentSums()) {
+      frag_meta->fragment_sums().emplace_back(fragment_sum);
+    }
   }
   if (frag_meta_reader.hasFragmentNullCounts()) {
-    frag_meta->fragment_null_counts().resize(
+    frag_meta->fragment_null_counts().reserve(
         frag_meta_reader.getFragmentNullCounts().size());
-    std::copy(
-        frag_meta_reader.getFragmentNullCounts().begin(),
-        frag_meta_reader.getFragmentNullCounts().end(),
-        frag_meta->fragment_null_counts().begin());
+    for (const auto& fragment_null_count :
+         frag_meta_reader.getFragmentNullCounts()) {
+      frag_meta->fragment_null_counts().emplace_back(fragment_null_count);
+    }
   }
   frag_meta->version() = frag_meta_reader.getVersion();
   if (frag_meta_reader.hasTimestampRange()) {
@@ -200,6 +234,8 @@ Status fragment_metadata_from_capnp(
   frag_meta->set_schema_name(array_schema->name());
   frag_meta->set_dense(array_schema->dense());
 
+  // It's important to do this here as init_domain depends on some fields
+  // above to be properly initialized
   if (frag_meta_reader.hasNonEmptyDomain()) {
     auto reader = frag_meta_reader.getNonEmptyDomain();
     auto&& [status, ndrange] = utils::deserialize_non_empty_domain_rv(reader);
