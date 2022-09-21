@@ -508,6 +508,8 @@ TILEDB_EXPORT int32_t tiledb_deserialize_config(
  * @param ctx The TileDB context.
  * @param fragment_info Fragment info to serialize.
  * @param serialization_type Type of serialization to use
+ * @param client_side If set to 1, serialize from "client-side" perspective.
+ *    Else, "server-side."
  * @param buffer Will be set to a newly allocated buffer containing the
  *      serialized fragment info.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
@@ -516,6 +518,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_fragment_info(
     tiledb_ctx_t* ctx,
     const tiledb_fragment_info_t* fragment_info,
     tiledb_serialization_type_t serialization_type,
+    int32_t client_side,
     tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**

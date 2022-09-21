@@ -45,6 +45,8 @@
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/serialization/fragment_info.h"
+#include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/serialization/fragment_metadata.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
@@ -55,28 +57,152 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
+// TODO: make a separate function for single_fragment_info_to_capnp that is for
+// now inline
+std::tuple<Status, std::optional<SingleFragmentInfo>>
+single_fragment_info_from_capnp(
+    const capnp::SingleFragmentInfo::Reader& single_frag_info_reader,
+    const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+        array_schemas) {
+  std::string schema_name;
+  if (single_frag_info_reader.hasArraySchemaName()) {
+    schema_name = single_frag_info_reader.getArraySchemaName().cStr();
+  } else {
+    return {
+        Status_SerializationError(
+            "Missing array schema name from single fragment info capnp reader"),
+        nullopt};
+  }
+
+  // Use the array schema name to find the corresponding array schema
+  auto schema = array_schemas.find(schema_name);
+  if (schema == array_schemas.end()) {
+    return {Status_SerializationError(
+                "Could not find schema" + schema_name +
+                "in map of deserialized schemas."),
+            nullopt};
+  }
+
+  SingleFragmentInfo single_frag_info{};
+  if (single_frag_info_reader.hasMeta()) {
+    auto frag_meta_reader = single_frag_info_reader.getMeta();
+    auto st = fragment_metadata_from_capnp(
+        schema->second, frag_meta_reader, single_frag_info.meta());
+  } else {
+    return {
+        Status_SerializationError(
+            "Missing fragment metadata from single fragment info capnp reader"),
+        nullopt};
+  }
+
+  return {Status::Ok(), single_frag_info};
+}
+
 Status fragment_info_from_capnp(
     const capnp::FragmentInfo::Reader& fragment_info_reader,
+    const URI& array_uri,
     FragmentInfo* fragment_info) {
+  // Get array_schemas_all from capnp
+  if (fragment_info_reader.hasArraySchemasAll()) {
+    auto all_schemas_reader = fragment_info_reader.getArraySchemasAll();
+
+    if (all_schemas_reader.hasEntries()) {
+      auto entries = fragment_info_reader.getArraySchemasAll().getEntries();
+      for (auto array_schema_build : entries) {
+        auto schema{
+            array_schema_from_capnp(array_schema_build.getValue(), array_uri)};
+        fragment_info->array_schemas_all()[array_schema_build.getKey()] =
+            make_shared<ArraySchema>(HERE(), schema);
+      }
+    }
+  }
+
+  // Get single_fragment_info from capnp
+  if (fragment_info_reader.hasFragmentInfo()) {
+    for (auto single_frag_info_reader :
+         fragment_info_reader.getFragmentInfo()) {
+      auto&& [st, single_frag_info] = single_fragment_info_from_capnp(
+          single_frag_info_reader, fragment_info->array_schemas_all());
+      RETURN_NOT_OK(st);
+      fragment_info->single_fragment_info_vec().emplace_back(
+          single_frag_info.value());
+    }
+  }
+
+  // Get uris to vacuum from capnp
+  if (fragment_info_reader.hasToVacuum()) {
+    for (auto uri : fragment_info_reader.getToVacuum()) {
+      fragment_info->to_vacuum().emplace_back(uri.cStr());
+    }
+  }
+
+  // Fill in the rest of values of fragment info class using the above
+  // deserialized values
+  fragment_info->array_uri() = array_uri;
+  fragment_info->unconsolidated_metadata_num() = 0;
+  for (const auto& f : fragment_info->single_fragment_info_vec()) {
+    fragment_info->unconsolidated_metadata_num() +=
+        (uint32_t)!f.has_consolidated_footer();
+  }
+  // TODO: do we need anterior_ndrange_?
+
   return Status::Ok();
 }
 
 Status fragment_info_to_capnp(
     const FragmentInfo& fragment_info,
-    capnp::FragmentInfo::Builder* fragment_info_builder) {
+    capnp::FragmentInfo::Builder* fragment_info_builder,
+    const bool client_side) {
+  // set array_schema_all
+  const auto& array_schemas_all = fragment_info.array_schemas_all();
+  auto array_schemas_all_builder = fragment_info_builder->initArraySchemasAll();
+  auto entries_builder =
+      array_schemas_all_builder.initEntries(array_schemas_all.size());
+  uint64_t i = 0;
+  for (const auto& schema : array_schemas_all) {
+    auto entry = entries_builder[i++];
+    entry.setKey(schema.first);
+    auto schema_builder = entry.initValue();
+    RETURN_NOT_OK(array_schema_to_capnp(
+        *(schema.second.get()), &schema_builder, client_side));
+  }
+
+  // set single fragment info list
+  const auto& frag_info = fragment_info.single_fragment_info_vec();
+  auto frag_info_builder =
+      fragment_info_builder->initFragmentInfo(frag_info.size());
+  i = 0;
+  for (const auto& single_frag_info : frag_info) {
+    auto single_info_builder = frag_info_builder[i++];
+    single_info_builder.setArraySchemaName(
+        single_frag_info.array_schema_name());
+    auto frag_meta_builder = single_info_builder.initMeta();
+    RETURN_NOT_OK(fragment_metadata_to_capnp(
+        *single_frag_info.meta(), &frag_meta_builder));
+  }
+
+  // set fragment uris to vacuum
+  const auto& uris_to_vacuum = fragment_info.to_vacuum();
+  auto vacuum_uris_builder =
+      fragment_info_builder->initToVacuum(uris_to_vacuum.size());
+  for (size_t i = 0; i < uris_to_vacuum.size(); i++) {
+    vacuum_uris_builder.set(i, uris_to_vacuum[i]);
+  }
+
   return Status::Ok();
 }
 
 Status fragment_info_serialize(
     const FragmentInfo& fragment_info,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    Buffer* serialized_buffer,
+    const bool client_side) {
   try {
     // Serialize
     ::capnp::MallocMessageBuilder message;
     auto builder = message.initRoot<capnp::FragmentInfo>();
 
-    RETURN_NOT_OK(fragment_info_to_capnp(fragment_info, &builder));
+    RETURN_NOT_OK(fragment_info_to_capnp(fragment_info, &builder, client_side));
 
     // Copy to buffer
     serialized_buffer->reset_size();
@@ -123,6 +249,7 @@ Status fragment_info_serialize(
 Status fragment_info_deserialize(
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
+    const URI& uri,
     const Buffer& serialized_buffer) {
   if (fragment_info == nullptr)
     return LOG_STATUS(
@@ -141,7 +268,7 @@ Status fragment_info_deserialize(
         auto reader = builder.asReader();
 
         // Deserialize
-        RETURN_NOT_OK(fragment_info_from_capnp(reader, fragment_info));
+        RETURN_NOT_OK(fragment_info_from_capnp(reader, uri, fragment_info));
         break;
       }
       case SerializationType::CAPNP: {
@@ -153,7 +280,7 @@ Status fragment_info_deserialize(
         auto reader = msg_reader.getRoot<capnp::FragmentInfo>();
 
         // Deserialize
-        RETURN_NOT_OK(fragment_info_from_capnp(reader, fragment_info));
+        RETURN_NOT_OK(fragment_info_from_capnp(reader, uri, fragment_info));
         break;
       }
       default: {
@@ -178,13 +305,13 @@ Status fragment_info_deserialize(
 #else
 
 Status fragment_info_serialize(
-    const FragmentInfo&, SerializationType, Buffer*) {
+    const FragmentInfo&, SerializationType, Buffer*, bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status fragment_info_deserialize(
-    FragmentInfo*, SerializationType, const Buffer&) {
+    FragmentInfo*, SerializationType, const URI&, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

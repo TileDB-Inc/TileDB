@@ -54,53 +54,60 @@ namespace serialization {
 #ifdef TILEDB_SERIALIZATION
 
 /**
- * Convert Cap'n Proto message to Fragment Info
+ * Convert Cap'n Proto message to Fragment Info.
  *
- * @param fragment_info_reader cap'n proto class
- * @param fragment_info fragment info object to deserialize into
+ * @param fragment_info_reader cap'n proto class.
+ * @param fragment_info fragment info object to deserialize into.
  * @return Status
  */
 Status fragment_info_from_capnp(
     const capnp::FragmentInfo::Reader& fragment_info_reader,
+    const URI& uri,
     FragmentInfo* fragment_info);
 
 /**
- * Convert Fragment Info to Cap'n Proto message
+ * Convert Fragment Info to Cap'n Proto message.
  *
- * @param fragment_info fragment info to serialize
- * @param fragment_info_builder cap'n proto class
+ * @param fragment_info fragment info to serialize.
+ * @param fragment_info_builder cap'n proto class.
+ * @param client_side indicate if client or server side.
  * @return Status
  */
 Status fragment_info_to_capnp(
     const FragmentInfo& fragment_info,
-    capnp::FragmentInfo::Builder* fragment_info_builder);
+    capnp::FragmentInfo::Builder* fragment_info_builder,
+    const bool client_side);
 
 #endif
 
 /**
- * Serialize a fragment info object via Cap'n Proto
+ * Serialize a fragment info object via Cap'n Proto.
  *
- * @param fragment_info fragment info object to serialize
- * @param serialize_type format to serialize into Cap'n Proto or JSON
- * @param serialized_buffer buffer to store serialized bytes in
+ * @param fragment_info fragment info object to serialize.
+ * @param serialize_type format to serialize into Cap'n Proto or JSON.
+ * @param serialized_buffer buffer to store serialized bytes in.
+ * @param client_side indicate if client or server side.
  * @return Status
  */
 Status fragment_info_serialize(
     const FragmentInfo& fragment_info,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    Buffer* serialized_buffer,
+    const bool client_side);
 
 /**
- * Deserialize a Cap'n Proto message into a fragment info object
+ * Deserialize a Cap'n Proto message into a fragment info object.
  *
- * @param fragment_info fragment info object to deserialize into
- * @param serialize_type format the data is serialized in: Cap'n Proto of JSON
- * @param serialized_buffer buffer to read serialized bytes from
+ * @param fragment_info fragment info object to deserialize into.
+ * @param serialize_type format the data is serialized in: Cap'n Proto of JSON.
+ * @param uri array uri that the fragment belongs to
+ * @param serialized_buffer buffer to read serialized bytes from.
  * @return Status
  */
 Status fragment_info_deserialize(
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
+    const URI& uri,
     const Buffer& serialized_buffer);
 
 }  // namespace serialization

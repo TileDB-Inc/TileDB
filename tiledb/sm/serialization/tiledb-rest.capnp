@@ -689,21 +689,21 @@ struct EstimatedResultSize {
 }
 
 struct SingleFragmentInfo {
-  meta @0 :FragmentMetadata;
+  arraySchemaName @0 :Text;
+  # array schema name
+
+  meta @1 :FragmentMetadata;
   # fragment metadata
 }
 
 struct FragmentInfo {
-  arraySchemaLatest @0 :ArraySchema;
-  # latest array schema
-
-  arraySchemasAll @1 :Map(Text, ArraySchema);
+  arraySchemasAll @0 :Map(Text, ArraySchema);
   # map of all array schemas
 
-  fragmentInfo @2 :List(SingleFragmentInfo);
+  fragmentInfo @1 :List(SingleFragmentInfo);
   # information about fragments in the array
 
-  toVacuum @3 :List(Text);
+  toVacuum @2 :List(Text);
   # the URIs of the fragments to vacuum
 }
 
