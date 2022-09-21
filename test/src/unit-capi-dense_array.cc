@@ -746,7 +746,7 @@ void DenseArrayFx::write_dense_array_by_tiles(
       buffer_size = k * l * sizeof(int);
       buffer_sizes[0] = buffer_size;
 
-      auto rc{submit_query_wrapper(array_name, query)};
+      auto rc{tiledb_query_submit(ctx_, query)};
 
       const char* msg = "unset";
       tiledb_error_t* err{nullptr};
@@ -1227,9 +1227,13 @@ void DenseArrayFx::check_invalid_cell_num_in_dense_writes(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = submit_query_wrapper(array_name, query);
-  REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_query_finalize(ctx_, query);
+  if (!serialize_query_) {
+    rc = submit_query_wrapper(array_name, query);
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_query_finalize(ctx_, query);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
   REQUIRE(rc == TILEDB_OK);
   tiledb_query_free(&query);
 
@@ -1722,13 +1726,17 @@ void DenseArrayFx::write_dense_array(const std::string& array_name) {
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
-  // Submit query
-  rc = submit_query_wrapper(array_name, query);
-  CHECK(rc == TILEDB_OK);
+  if (!serialize_query_) {
+    // Submit query
+    rc = submit_query_wrapper(array_name, query);
+    CHECK(rc == TILEDB_OK);
 
-  // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+    // Finalize query
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -1862,13 +1870,17 @@ void DenseArrayFx::write_partial_dense_array(const std::string& array_name) {
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
-  // Submit query
-  rc = submit_query_wrapper(array_name, query);
-  CHECK(rc == TILEDB_OK);
+  if (!serialize_query_) {
+    // Submit query
+    rc = submit_query_wrapper(array_name, query);
+    CHECK(rc == TILEDB_OK);
 
-  // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+    // Finalize query
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -3306,7 +3318,9 @@ TEST_CASE_METHOD(
     serialize_query_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_query_ = true;
+#endif
   }
 
   // TODO: refactor for each supported FS.
@@ -3399,7 +3413,9 @@ TEST_CASE_METHOD(
     }
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_query_ = true;
+#endif
 
     SECTION("-- zipped coordinates") {
       split_coords = false;
@@ -3425,7 +3441,9 @@ TEST_CASE_METHOD(
     serialize_query_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_query_ = true;
+#endif
   }
 
   SupportedFsLocal local_fs;
@@ -3444,7 +3462,9 @@ TEST_CASE_METHOD(
     serialize_query_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_query_ = true;
+#endif
   }
 
   SupportedFsLocal local_fs;
@@ -3719,7 +3739,9 @@ TEST_CASE_METHOD(
     serialize_query_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_query_ = true;
+#endif
   }
 
   SupportedFsLocal local_fs;
@@ -3788,7 +3810,9 @@ TEST_CASE_METHOD(
     serialize_query_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_query_ = true;
+#endif
   }
 
   SupportedFsLocal local_fs;
@@ -3843,10 +3867,14 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   CHECK(status == TILEDB_UNINITIALIZED);
 
-  rc = submit_query_wrapper(array_name, query);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  if (!serialize_query_) {
+    rc = submit_query_wrapper(array_name, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
   rc = tiledb_query_get_status(ctx_, query, &status);
   CHECK(rc == TILEDB_OK);
   CHECK(status == TILEDB_COMPLETED);
@@ -3899,7 +3927,9 @@ TEST_CASE_METHOD(
     serialize_query_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_query_ = true;
+#endif
   }
 
   SupportedFsLocal local_fs;
@@ -4318,7 +4348,9 @@ TEST_CASE_METHOD(
     serialize_query_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_query_ = true;
+#endif
   }
 
   SupportedFsLocal local_fs;
@@ -4346,10 +4378,14 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, wq1, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-  rc = submit_query_wrapper(array_name, wq1);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, wq1);
-  REQUIRE(rc == TILEDB_OK);
+  if (!serialize_query_) {
+    rc = submit_query_wrapper(array_name, wq1);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, wq1);
+    REQUIRE(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, wq1);
+  }
 
   // Clean up
   rc = tiledb_array_close(ctx_, array);
@@ -4715,7 +4751,9 @@ TEST_CASE_METHOD(
     serialize_query_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_query_ = true;
+#endif
   }
 
   SupportedFsLocal local_fs;
@@ -4785,7 +4823,9 @@ TEST_CASE_METHOD(
     serialize_query_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_query_ = true;
+#endif
   }
 
   SupportedFsLocal local_fs;
