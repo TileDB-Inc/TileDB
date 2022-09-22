@@ -1216,28 +1216,48 @@ Status Query::init() {
 
     RETURN_NOT_OK(check_buffer_names());
 
-    // Create the dimension label queries. Remove label ranges from subarray.
-    // TODO: Decide if the dimension label query object should be created
-    // whether or not there are dimension labels.
-    // TODO: Throw capnp serialization error if the dimension label query object
-    // exists.
-    if (!label_buffers_.empty() || subarray_.has_label_ranges()) {
-      dim_label_queries_ = tdb_unique_ptr<ArrayDimensionLabelQueries>(tdb_new(
-          ArrayDimensionLabelQueries,
-          storage_manager_,
-          array_,
-          subarray_,
-          label_buffers_,
-          buffers_,
-          fragment_name_));
+    // Cache if dimension label queries are needed.
+    bool uses_labels = uses_dimension_labels();
+    bool only_labels = uses_labels && only_dim_label_query();
+
+    // Create dimension label queries and remove labels from subarray.
+    if (uses_labels) {
+      // Initialize the dimension label queries.
+      try {
+        dim_label_queries_ = tdb_unique_ptr<ArrayDimensionLabelQueries>(tdb_new(
+            ArrayDimensionLabelQueries,
+            storage_manager_,
+            array_,
+            subarray_,
+            label_buffers_,
+            buffers_,
+            fragment_name_));
+      } catch (...) {
+        std::throw_with_nested(StatusException(
+            Status_QueryError("Cannot initialize query; Failed to initialize "
+                              "dimension label queries.")));
+      }
+
+      // Do not allow reading data from dimension labels for sparse arrays
+      // unless we are only returning the dimension label data. Otherwise, the
+      // dimension label data needs to be processed to match the COO format of
+      // any returned attribute or coordinate data, and this has not yet been
+      // implemented.
+      if (!only_labels && type_ == QueryType::READ && !array_schema_->dense() &&
+          dim_label_queries_->has_data_query()) {
+        return logger_->status(Status_QueryError(
+            "Cannot initialize query; Reading dimension label data is not yet "
+            "supported on sparse arrays."));
+      }
+
+      // Clear label ranges for the subarray.
       subarray_.remove_label_ranges();
     }
 
     // Create the query strategy if possible. May need to wait for range queries
     // to complete and the subarray is updated.
-    if (!dim_label_queries_ ||
-        (dim_label_queries_->range_query_status() == QueryStatus::COMPLETED &&
-         !only_dim_label_query())) {
+    if (!uses_labels ||
+        (!only_labels && dim_label_queries_->completed_range_queries())) {
       RETURN_NOT_OK(create_strategy());
     }
   }
@@ -1245,7 +1265,7 @@ Status Query::init() {
   status_ = QueryStatus::INPROGRESS;
 
   return Status::Ok();
-}
+}  // namespace sm
 
 URI Query::first_fragment_uri() const {
   if (type_ != QueryType::READ || fragment_metadata_.empty()) {
@@ -1294,17 +1314,20 @@ Status Query::process() {
 
   // Check if we need to process label ranges and update subarray before
   // continuing to the main query.
-  if (dim_label_queries_ &&
-      dim_label_queries_->range_query_status() != QueryStatus::COMPLETED) {
+  if (dim_label_queries_ && dim_label_queries_->completed_range_queries()) {
     // Process the dimension label queries.
-    // TODO: Catch and re-throw errors for better error messages.
-    // TODO: Get detailed failed reason back to user.
-    dim_label_queries_->process_range_queries(subarray_);
+    try {
+      dim_label_queries_->process_range_queries(subarray_);
+    } catch (...) {
+      std::throw_with_nested(StatusException(
+          Status_QueryError("Cannot process query; Failed to read data from "
+                            "dimension label ranges.")));
+    }
 
     // The dimension label query did not complete. For now, we are failing on
     // this step. In the future, this may be updated to allow incomplete
     // dimension label queries.
-    if (dim_label_queries_->range_query_status() != QueryStatus::COMPLETED) {
+    if (!dim_label_queries_->completed_range_queries()) {
       status_ = QueryStatus::FAILED;
       return logger_->status(
           Status_QueryError("Cannot process query; Failed to read data from "
@@ -1383,6 +1406,11 @@ Status Query::reset_strategy_with_layout(
   RETURN_NOT_OK(create_strategy(true));
 
   return Status::Ok();
+}
+
+bool Query::uses_dimension_labels() const {
+  return !label_buffers_.empty() || subarray_.has_label_ranges() ||
+         dim_label_queries_;
 }
 
 Status Query::disable_checks_consolidation() {

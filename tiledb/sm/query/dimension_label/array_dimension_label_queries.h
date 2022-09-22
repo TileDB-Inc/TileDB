@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
+#include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/query/dimension_label/dimension_label_query.h"
 
 #include <unordered_map>
@@ -51,7 +52,6 @@ class StorageManager;
 class Subarray;
 
 enum class QueryType : uint8_t;
-enum class QueryStatus : uint8_t;
 
 /**
  * Return a Status_DimensionQueryError error class Status with a given
@@ -97,10 +97,25 @@ class ArrayDimensionLabelQueries {
   bool completed() const;
 
   /** TODO: docs */
+  inline bool completed_range_queries() const {
+    return range_query_status_ == QueryStatus::COMPLETED;
+  }
+
+  /** TODO: docs */
   void cancel();
 
   /** TODO: docs */
   void finalize();
+
+  /** TODO: docs */
+  inline bool has_data_query() const {
+    return !data_queries_.empty();
+  }
+
+  /** TODO: docs */
+  inline bool has_range_query() const {
+    return !range_queries_map_.empty();
+  }
 
   /** TODO: docs */
   inline bool has_range_query(dimension_size_type dim_idx) const {
@@ -115,11 +130,6 @@ class ArrayDimensionLabelQueries {
    * Updates subarray with data.
    **/
   void process_range_queries(Subarray& subarray);
-
-  /** TODO: docs */
-  inline QueryStatus range_query_status() const {
-    return range_query_status_;
-  }
 
  private:
   /** The storage manager. */

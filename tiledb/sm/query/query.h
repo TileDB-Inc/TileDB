@@ -579,6 +579,11 @@ class Query {
    */
   const std::vector<UpdateValue>& update_values() const;
 
+  /**
+   * Returns true if this query requires the use of dimension labels.
+   */
+  bool uses_dimension_labels() const;
+
   /** Processes a query. */
   Status process();
 

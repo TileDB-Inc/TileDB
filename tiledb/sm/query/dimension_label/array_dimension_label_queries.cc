@@ -1,5 +1,5 @@
 /**
- * @file dimension_label_queries.cc
+ * @file array_dimension_label_queries.cc
  *
  * @section LICENSE
  *
@@ -35,7 +35,6 @@
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/label_order.h"
-#include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -124,6 +123,14 @@ void ArrayDimensionLabelQueries::cancel() {
       }));
 }
 
+bool ArrayDimensionLabelQueries::completed() const {
+  return range_query_status_ == QueryStatus::COMPLETED &&
+         std::all_of(
+             data_queries_map_.cbegin(),
+             data_queries_map_.cend(),
+             [](const auto& query) { return query.second->completed(); });
+}
+
 void ArrayDimensionLabelQueries::finalize() {
   // Finalize range queries.
   throw_if_not_ok(parallel_for(
@@ -187,7 +194,13 @@ void ArrayDimensionLabelQueries::process_range_queries(Subarray& subarray) {
     throw StatusException(Status_DimensionLabelQueryError(
         "Support for querying arrays by label ranges is not yet implemented."));
   }
+
+  range_query_status_ = QueryStatus::COMPLETED;
 }
+
+/*******************/
+/* PRIVATE METHODS */
+/*******************/
 
 void ArrayDimensionLabelQueries::add_data_queries_for_read(
     Array* array,
@@ -322,17 +335,6 @@ void ArrayDimensionLabelQueries::add_range_queries(
         "Querying arrays by dimension label ranges has not yet been "
         "implemented."));
   }
-}
-
-bool ArrayDimensionLabelQueries::completed() const {
-  return std::all_of(
-             range_queries_map_.cbegin(),
-             range_queries_map_.cend(),
-             [](const auto& query) { return query.second->completed(); }) &&
-         std::all_of(
-             data_queries_map_.cbegin(),
-             data_queries_map_.cend(),
-             [](const auto& query) { return query.second->completed(); });
 }
 
 DimensionLabel* ArrayDimensionLabelQueries::open_dimension_label(

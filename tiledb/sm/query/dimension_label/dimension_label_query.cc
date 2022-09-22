@@ -1,5 +1,5 @@
 /**
- * @file dimension_label_data_query.cc
+ * @file dimension_label_query.cc
  *
  * @section LICENSE
  *
