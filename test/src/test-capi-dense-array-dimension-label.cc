@@ -59,6 +59,14 @@ using namespace tiledb::test;
 /**
  * Create a small dense array with a dimension label.
  *
+ * Array Summary:
+ *  * Array Type: Dense
+ *  * Dimensions:
+ *    - x: (type=UINT64, domain=[1, 4], tile=4)
+ *  * Attributes:
+ *    - a: (type=FLOAT64)
+ *  * Dimension labels:
+ *    - x: (label_order=label_order_t, dim_idx=0, type=FLOAT64)
  */
 class DenseArrayExample1 : public DimensionLabelFixture {
  public:

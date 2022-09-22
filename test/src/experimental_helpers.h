@@ -49,7 +49,21 @@ namespace tiledb::test {
 /**
  * Helper method for adding an internal dimension label to an array schema.
  *
- * TODO: Add param docs
+ * @param ctx TileDB context.
+ * @param array_schema The array schema to add the dimension label to.
+ * @param label_name The name of the dimension label.
+ * @param dim_idx The dimension index to add the label on.
+ * @param label_order The label order for the dimension label.
+ * @param label_domain The dimension label domain.
+ * @param label_tile_extent The dimension tile extent for the label.
+ * @param index_tile_extent The dimension label tile extent for the index.
+ * @param label_cell_val_num Optional label cell vall num.
+ * @param label_filters Optional filters for the label attr/dim on the dimension
+ *     label.
+ * @param index_filters Optional filters for the index attr/dim on the dimension
+ *     label.
+ * @param capacity Optional capacity size for the dimension label.
+ * @param allow_dups Optional allow dups for the dimension label.
  */
 void add_dimension_label(
     tiledb_ctx_t* ctx,
@@ -74,7 +88,16 @@ void add_dimension_label(
 class DimensionLabelFixture : public TemporaryDirectoryFixture {
  public:
   /**
-   * TODO docs.
+   * Read data from the indexed array.
+   *
+   * Temporary hard-coded method for checking array data in the dimension label
+   * until update dimension label readers/writers are implemented.
+   *
+   * @param dim_label_uri URI of the dimension label.
+   * @param ncells The number of cells to read.
+   * @param start Starting index range value.
+   * @param end Ending index range value.
+   * @returns Vector of label values read from index array.
    */
   template <typename label_data_type>
   std::vector<label_data_type> read_indexed_array(
@@ -120,7 +143,17 @@ class DimensionLabelFixture : public TemporaryDirectoryFixture {
   }
 
   /**
-   * TODO: add docs
+   * Read data from the labelled array.
+   *
+   * Temporary hard-coded method for checking array data in the dimension label
+   * until update dimension label readers/writers are implemented.
+   *
+   * @param dim_label_uri URI of the dimension label.
+   * @param ncells The number of cells to read.
+   * @param start Starting label range value.
+   * @param end Ending label range value.
+   * @returns Vector of index values and vector of label values read from the
+   *     labelled array.
    */
   template <typename index_data_type, typename label_data_type>
   std::tuple<std::vector<index_data_type>, std::vector<label_data_type>>

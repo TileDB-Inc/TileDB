@@ -59,7 +59,14 @@ using namespace tiledb::test;
 /**
  * Create a small sparse array with a dimension label.
  *
- *  TODO: Add array summary
+ * Array Summary:
+ *  * Array Type: Sparse
+ *  * Dimensions:
+ *    - x: (type=UINT64, domain=[1, 4], tile=4)
+ *  * Attributes:
+ *    - a: (type=FLOAT64)
+ *  * Dimension labels:
+ *    - x: (label_order=label_order_t, dim_idx=0, type=FLOAT64)
  */
 class SparseArrayExample1 : public DimensionLabelFixture {
  public:
