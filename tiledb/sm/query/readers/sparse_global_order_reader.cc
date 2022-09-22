@@ -1092,11 +1092,11 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
               array_schema_.attribute(name)->fill_value().size());
           src_var_buff = array_schema_.attribute(name)->fill_value().data();
         } else {
-          const auto& t = tile_tuple->fixed_tile();
-          const auto& t_var = tile_tuple->var_tile();
-          t_var_size = t_var.size();
-          src_buff = t.template data_as<uint64_t>();
-          src_var_buff = t_var.template data_as<uint8_t>();
+          const auto t = &std::get<0>(*tile_tuple);
+          const auto t_var = &std::get<1>(*tile_tuple);
+          t_var_size = t_var->size();
+          src_buff = t->template data_as<uint64_t>();
+          src_var_buff = t_var->template data_as<uint8_t>();
         }
 
         // Compute parallelization parameters.
@@ -1138,6 +1138,7 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
 
         // Copy last cell.
         if (max_pos == cell_num && !use_fill_value) {
+          if (t_var_size == 0) throw std::runtime_error("Unexpected zero size");
           *buffer = (OffType)(t_var_size - src_buff[max_pos - 1]) / offset_div;
           *var_data_buffer = src_var_buff + src_buff[max_pos - 1];
         }
@@ -1145,7 +1146,7 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
         // Copy nullable values.
         if (nullable) {
           if (!use_fill_value) {
-            const auto& t_val = tile_tuple->validity_tile();
+            const auto& t_val = std::get<2>(*tile_tuple);
             const auto src_val_buff = t_val.template data_as<uint8_t>();
             for (uint64_t c = min_pos; c < max_pos; c++) {
               *val_buffer = src_val_buff[c];
@@ -1283,7 +1284,7 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
           use_fill_value = true;
           src_buff = array_schema_.attribute(name)->fill_value().data();
         } else {
-          const auto& t = tile_tuple->fixed_tile();
+          const auto& t = std::get<0>(*tile_tuple);
           src_buff = t.template data_as<uint8_t>();
         }
 
@@ -1331,7 +1332,7 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
         if (nullable) {
           if (!use_fill_value) {
             // Copy validity values from tile.
-            const auto& t_val = tile_tuple->validity_tile();
+            const auto& t_val = std::get<2>(*tile_tuple);
             const auto src_val_buff = t_val.template data_as<uint8_t>();
             memcpy(val_buffer, src_val_buff + min_pos, max_pos - min_pos);
           } else {
@@ -1458,7 +1459,7 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
             accounted_tiles.emplace(id);
 
             // Skip for fields added in schema evolution.
-            if (!fragment_metadata_[f]->array_schema()->is_field(name)) {
+            if (!fragment_metadata_[rt->frag_idx()]->array_schema()->is_field(name)) {
               continue;
             }
 
