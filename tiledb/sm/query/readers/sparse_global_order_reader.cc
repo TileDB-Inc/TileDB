@@ -1138,7 +1138,6 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
 
         // Copy last cell.
         if (max_pos == cell_num && !use_fill_value) {
-          if (t_var_size == 0) throw std::runtime_error("Unexpected zero size");
           *buffer = (OffType)(t_var_size - src_buff[max_pos - 1]) / offset_div;
           *var_data_buffer = src_var_buff + src_buff[max_pos - 1];
         }
@@ -1459,7 +1458,8 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
             accounted_tiles.emplace(id);
 
             // Skip for fields added in schema evolution.
-            if (!fragment_metadata_[rt->frag_idx()]->array_schema()->is_field(name)) {
+            if (!fragment_metadata_[rt->frag_idx()]->array_schema()->is_field(
+                    name)) {
               continue;
             }
 
