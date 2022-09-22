@@ -53,7 +53,7 @@ class WriterTile;
 template <typename T, typename SUM_T>
 struct Sum {
   /**
-   * Add the cells from [start, end[ to the current sum.
+   * Add the sum of cells from [start, end] to the current sum.
    *
    * @param tile Fixed data tile.
    * @param start Start cell index.
