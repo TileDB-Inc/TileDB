@@ -487,7 +487,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_config(
  *
  * @param ctx The TileDB context.
  * @param buffer Buffer to deserialize from
- * @param serialization_type Type of serialization to use
+ * @param serialization_type Type of serialization to use.
  * @param client_side If set to 1, deserialize from "client-side" perspective.
  *    Else, "server-side.". Currently unused for config
  * @param config Will be set to a newly allocated config.
@@ -501,15 +501,58 @@ TILEDB_EXPORT int32_t tiledb_deserialize_config(
     tiledb_config_t** config) TILEDB_NOEXCEPT;
 
 /**
+ * Serializes the fragment info request into the given buffer.
+ *
+ * @note The caller must free the returned `tiledb_buffer_t`.
+ *
+ * @param ctx The TileDB context.
+ * @param fragment_info Fragment info to get the info to serialize.
+ * @param serialization_type Type of serialization to use.
+ * @param client_side Allows to specify different behavior depending on who is
+ * serializing, the client (1) or the Cloud server (0). This is sometimes needed
+ * since they are both using the same Core library APIs for serialization.
+ * @param buffer Will be set to a newly allocated buffer containing the
+ *      serialized fragment info request.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_serialize_fragment_info_request(
+    tiledb_ctx_t* ctx,
+    const tiledb_fragment_info_t* fragment_info,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
+
+/**
+ * Populates fragment info by deserializing the fragment info request from the
+ * given buffer.
+ *
+ * @param ctx The TileDB context.
+ * @param buffer Buffer containing serialized fragment info request.
+ * @param serialization_type Type of serialization to use.
+ * @param client_side Allows to specify different behavior depending on who is
+ * serializing, the client (1) or the Cloud server (0). This is sometimes needed
+ * since they are both using the same Core library APIs for serialization.
+ * @param fragment_info Fragment info object to deserialize the info into.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_deserialize_fragment_info_request(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_fragment_info_t* fragment_info) TILEDB_NOEXCEPT;
+
+/**
  * Serializes the fragment info into the given buffer.
  *
  * @note The caller must free the returned `tiledb_buffer_t`.
  *
  * @param ctx The TileDB context.
  * @param fragment_info Fragment info to serialize.
- * @param serialization_type Type of serialization to use
- * @param client_side If set to 1, serialize from "client-side" perspective.
- *    Else, "server-side."
+ * @param serialization_type Type of serialization to use.
+ * @param client_side Allows to specify different behavior depending on who is
+ * serializing, the client (1) or the Cloud server (0). This is sometimes needed
+ * since they are both using the same Core library APIs for serialization.
  * @param buffer Will be set to a newly allocated buffer containing the
  *      serialized fragment info.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
@@ -527,6 +570,9 @@ TILEDB_EXPORT int32_t tiledb_serialize_fragment_info(
  * @param ctx The TileDB context.
  * @param buffer Buffer containing serialized fragment info.
  * @param serialization_type Type of serialization to use
+ * @param client_side Allows to specify different behavior depending on who is
+ * serializing, the client (1) or the Cloud server (0). This is sometimes needed
+ * since they are both using the same Core library APIs for serialization.
  * @param fragment_info Fragment info to deserialize into.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
@@ -534,6 +580,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_fragment_info(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
     tiledb_fragment_info_t* fragment_info) TILEDB_NOEXCEPT;
 
 /**

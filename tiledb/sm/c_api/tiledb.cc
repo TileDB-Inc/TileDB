@@ -6384,6 +6384,69 @@ int32_t tiledb_deserialize_config(
   return TILEDB_OK;
 }
 
+int32_t tiledb_serialize_fragment_info_request(
+    tiledb_ctx_t* ctx,
+    const tiledb_fragment_info_t* fragment_info,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer) {
+  // Currently no different behaviour is required if fragment info request is
+  // serialized by the client or the Cloud server, so the variable is unused
+  (void)client_side;
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Allocate a buffer list
+  if (detail::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::fragment_info_request_serialize(
+              *fragment_info->fragment_info_,
+              (tiledb::sm::SerializationType)serialize_type,
+              (*buffer)->buffer_))) {
+    detail::tiledb_buffer_free(buffer);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_fragment_info_request(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_fragment_info_t* fragment_info) {
+  // Currently no different behaviour is required if fragment info request is
+  // serialized by the client or the Cloud server, so the variable is unused
+  (void)client_side;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::fragment_info_request_deserialize(
+              fragment_info->fragment_info_,
+              (tiledb::sm::SerializationType)serialize_type,
+              *buffer->buffer_))) {
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_serialize_fragment_info(
     tiledb_ctx_t* ctx,
     const tiledb_fragment_info_t* fragment_info,
@@ -6422,7 +6485,12 @@ int32_t tiledb_deserialize_fragment_info(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     const char* array_uri,
+    int32_t client_side,
     tiledb_fragment_info_t* fragment_info) {
+  // Currently no different behaviour is required if fragment info is
+  // deserialized by the client or the Cloud server, so the variable is unused
+  (void)client_side;
+
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, fragment_info) == TILEDB_ERR ||
@@ -9934,6 +10002,26 @@ int32_t tiledb_deserialize_config(
       ctx, buffer, serialize_type, client_side, config);
 }
 
+int32_t tiledb_serialize_fragment_info_request(
+    tiledb_ctx_t* ctx,
+    const tiledb_fragment_info_t* fragment_info,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer) noexcept {
+  return api_entry<detail::tiledb_serialize_fragment_info_request>(
+      ctx, fragment_info, serialize_type, client_side, buffer);
+}
+
+int32_t tiledb_deserialize_fragment_info_request(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_fragment_info_t* fragment_info) noexcept {
+  return api_entry<detail::tiledb_deserialize_fragment_info_request>(
+      ctx, buffer, serialize_type, client_side, fragment_info);
+}
+
 int32_t tiledb_serialize_fragment_info(
     tiledb_ctx_t* ctx,
     const tiledb_fragment_info_t* fragment_info,
@@ -9949,9 +10037,10 @@ int32_t tiledb_deserialize_fragment_info(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     const char* array_uri,
+    int32_t client_side,
     tiledb_fragment_info_t* fragment_info) noexcept {
   return api_entry<detail::tiledb_deserialize_fragment_info>(
-      ctx, buffer, serialize_type, array_uri, fragment_info);
+      ctx, buffer, serialize_type, array_uri, client_side, fragment_info);
 }
 
 /* ****************************** */

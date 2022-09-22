@@ -57,8 +57,6 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
-// TODO : group together ser/deser and to/from_capnp
-
 Status fragment_info_request_to_capnp(
     const FragmentInfo& fragment_info,
     capnp::FragmentInfoRequest::Builder* fragment_info_req_builder) {
@@ -239,6 +237,17 @@ single_fragment_info_from_capnp(
   return {Status::Ok(), single_frag_info};
 }
 
+Status single_fragment_info_to_capnp(
+    const SingleFragmentInfo& single_frag_info,
+    capnp::SingleFragmentInfo::Builder* single_frag_info_builder) {
+  single_frag_info_builder->setArraySchemaName(
+      single_frag_info.array_schema_name());
+  auto frag_meta_builder = single_frag_info_builder->initMeta();
+  RETURN_NOT_OK(
+      fragment_metadata_to_capnp(*single_frag_info.meta(), &frag_meta_builder));
+  return Status::Ok();
+}
+
 Status fragment_info_from_capnp(
     const capnp::FragmentInfo::Reader& fragment_info_reader,
     const URI& array_uri,
@@ -299,7 +308,7 @@ Status fragment_info_to_capnp(
   auto array_schemas_all_builder = fragment_info_builder->initArraySchemasAll();
   auto entries_builder =
       array_schemas_all_builder.initEntries(array_schemas_all.size());
-  uint64_t i = 0;
+  size_t i = 0;
   for (const auto& schema : array_schemas_all) {
     auto entry = entries_builder[i++];
     entry.setKey(schema.first);
@@ -312,14 +321,9 @@ Status fragment_info_to_capnp(
   const auto& frag_info = fragment_info.single_fragment_info_vec();
   auto frag_info_builder =
       fragment_info_builder->initFragmentInfo(frag_info.size());
-  i = 0;
-  for (const auto& single_frag_info : frag_info) {
-    auto single_info_builder = frag_info_builder[i++];
-    single_info_builder.setArraySchemaName(
-        single_frag_info.array_schema_name());
-    auto frag_meta_builder = single_info_builder.initMeta();
-    RETURN_NOT_OK(fragment_metadata_to_capnp(
-        *single_frag_info.meta(), &frag_meta_builder));
+  for (size_t i = 0; i < frag_info.size(); i++) {
+    auto single_info_builder = frag_info_builder[i];
+    single_fragment_info_to_capnp(frag_info[i], &single_info_builder);
   }
 
   // set fragment uris to vacuum
