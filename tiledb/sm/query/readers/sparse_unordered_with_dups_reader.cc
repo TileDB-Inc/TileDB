@@ -633,7 +633,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
     src_var_buff = t_var->template data_as<uint8_t>();
   }
 
-  if (!rt->has_bmp() || use_fill_value) {
+  if (rt->has_bmp() || use_fill_value) {
     // Process all cells. Last cell might be taken out for vectorization.
     uint64_t end = (src_max_pos == cell_num && !use_fill_value) ?
                        src_max_pos - 1 :
@@ -1004,11 +1004,11 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
     use_fill_value = true;
     src_buff = array_schema_.attribute(name)->fill_value().data();
   } else {
-    const auto& t = std::get<0>(*tile_tuple);;
+    const auto& t = std::get<0>(*tile_tuple);
     src_buff = t.template data_as<uint8_t>();
   }
 
-  if (!rt->has_bmp() || use_fill_value) {
+  if (rt->has_bmp() || use_fill_value) {
     // Copy values.
     if (!stores_zipped_coords) {
       if (!use_fill_value) {
