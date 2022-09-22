@@ -294,7 +294,7 @@ TileMetadataGenerator::TileMetadataGenerator(
 void TileMetadataGenerator::process_full_tile() {
   uint64_t cell_num = tile_.cell_num();
   process_cell_slab(0, cell_num);
-  finalize();
+  set_tile_metadata();
 }
 
 void TileMetadataGenerator::process_cell_slab(uint64_t start, uint64_t end) {
@@ -371,7 +371,7 @@ void TileMetadataGenerator::process_cell_slab(uint64_t start, uint64_t end) {
   }
 }
 
-void TileMetadataGenerator::finalize() {
+void TileMetadataGenerator::set_tile_metadata() {
   tile_.set_metadata(min_, min_size_, max_, max_size_, sum_, null_count_);
 }
 
@@ -412,6 +412,7 @@ void TileMetadataGenerator::min_max<char>(
   if (min_ == nullptr) {
     min_ = data + start * cell_size_;
     max_ = data + start * cell_size_;
+    start++;
   }
 
   // Process all cells, starting at the second value.

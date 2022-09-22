@@ -53,7 +53,7 @@ class WriterTile;
 template <typename T, typename SUM_T>
 struct Sum {
   /**
-   * Compute the sum of a tile.
+   * Add the cells from [start, end[ to the current sum.
    *
    * @param tile Fixed data tile.
    * @param start Start cell index.
@@ -63,7 +63,7 @@ struct Sum {
   static void sum(Tile& tile, uint64_t start, uint64_t end, ByteVec& sum);
 
   /**
-   * Compute the sum of a nullable tile.
+   * Add the cells from [start, end[ to the current sum for a nullable tile.
    *
    * @param tile Fixed data tile.
    * @param tile_validity Validity tile.
@@ -222,7 +222,7 @@ class TileMetadataGenerator {
   /**
    * Copies the metadata to the tile once done processing slabs.
    */
-  void finalize();
+  void set_tile_metadata();
 
  private:
   /* ********************************* */

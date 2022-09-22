@@ -483,8 +483,9 @@ std::vector<std::array<T, 2>> DenseTiler<T>::tile_subarray(uint64_t id) const {
 
   // Get the tile coordinates in the array tile domain
   std::vector<uint64_t> tile_coords_in_dom(dim_num);
-  for (unsigned d = 0; d < dim_num; ++d)
+  for (unsigned d = 0; d < dim_num; ++d) {
     tile_coords_in_dom[d] = tile_coords_in_sub[d] + first_sub_tile_coords_[d];
+  }
 
   // Calculate tile subarray based on the tile coordinates in the domain
   std::vector<std::array<T, 2>> ret(dim_num);
@@ -511,11 +512,13 @@ Status DenseTiler<T>::copy_tile(
   auto tile_offset = copy_plan.tile_start_el_ * cell_size;
   auto copy_nbytes = copy_plan.copy_el_ * cell_size;
   auto sub_strides_nbytes = copy_plan.sub_strides_el_;
-  for (auto& bsn : sub_strides_nbytes)
+  for (auto& bsn : sub_strides_nbytes) {
     bsn *= cell_size;
+  }
   auto tile_strides_nbytes = copy_plan.tile_strides_el_;
-  for (auto& tsn : tile_strides_nbytes)
+  for (auto& tsn : tile_strides_nbytes) {
     tsn *= cell_size;
+  }
   const auto& dim_ranges = copy_plan.dim_ranges_;
   auto first_d = copy_plan.first_d_;
   auto dim_num = (int64_t)dim_ranges.size();
@@ -523,14 +526,17 @@ Status DenseTiler<T>::copy_tile(
 
   // Auxiliary information needed in the copy loop
   std::vector<uint64_t> tile_offsets(dim_num);
-  for (int64_t i = 0; i < dim_num; ++i)
+  for (int64_t i = 0; i < dim_num; ++i) {
     tile_offsets[i] = tile_offset;
+  }
   std::vector<uint64_t> sub_offsets(dim_num);
-  for (int64_t i = 0; i < dim_num; ++i)
+  for (int64_t i = 0; i < dim_num; ++i) {
     sub_offsets[i] = sub_offset;
+  }
   std::vector<uint64_t> cell_coords(dim_num);
-  for (int64_t i = 0; i < dim_num; ++i)
+  for (int64_t i = 0; i < dim_num; ++i) {
     cell_coords[i] = dim_ranges[i][0];
+  }
 
   // Perform the tile copy (always in row-major order)
   auto d = dim_num - 1;
@@ -543,15 +549,17 @@ Status DenseTiler<T>::copy_tile(
     auto last_dim_changed = d;
     for (; last_dim_changed >= 0; --last_dim_changed) {
       ++cell_coords[last_dim_changed];
-      if (cell_coords[last_dim_changed] > dim_ranges[last_dim_changed][1])
+      if (cell_coords[last_dim_changed] > dim_ranges[last_dim_changed][1]) {
         cell_coords[last_dim_changed] = dim_ranges[last_dim_changed][0];
-      else
+      } else {
         break;
+      }
     }
 
     // Check if copy loop is done
-    if (last_dim_changed < 0)
+    if (last_dim_changed < 0) {
       break;
+    }
 
     // Update the offsets
     tile_offsets[last_dim_changed] +=
@@ -592,11 +600,13 @@ Status DenseTiler<T>::compute_tile_metadata(
 
   // Auxiliary information needed in the copy loop
   std::vector<uint64_t> tile_offsets(dim_num);
-  for (int64_t i = 0; i < dim_num; ++i)
+  for (int64_t i = 0; i < dim_num; ++i) {
     tile_offsets[i] = tile_offset;
+  }
   std::vector<uint64_t> cell_coords(dim_num);
-  for (int64_t i = 0; i < dim_num; ++i)
+  for (int64_t i = 0; i < dim_num; ++i) {
     cell_coords[i] = dim_ranges[i][0];
+  }
 
   // Perform the tile copy (always in row-major order)
   auto d = dim_num - 1;
@@ -609,15 +619,17 @@ Status DenseTiler<T>::compute_tile_metadata(
     auto last_dim_changed = d;
     for (; last_dim_changed >= 0; --last_dim_changed) {
       ++cell_coords[last_dim_changed];
-      if (cell_coords[last_dim_changed] > dim_ranges[last_dim_changed][1])
+      if (cell_coords[last_dim_changed] > dim_ranges[last_dim_changed][1]) {
         cell_coords[last_dim_changed] = dim_ranges[last_dim_changed][0];
-      else
+      } else {
         break;
+      }
     }
 
     // Check if copy loop is done
-    if (last_dim_changed < 0)
+    if (last_dim_changed < 0) {
       break;
+    }
 
     // Update the offsets
     tile_offsets[last_dim_changed] +=
@@ -627,7 +639,7 @@ Status DenseTiler<T>::compute_tile_metadata(
     }
   }
 
-  md_generator.finalize();
+  md_generator.set_tile_metadata();
   return Status::Ok();
 }
 

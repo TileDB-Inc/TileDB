@@ -65,7 +65,7 @@ struct CPPFixedTileMetadataFx {
     tiledb_ctx_alloc(NULL, &ctx);
 
     // The array will be one dimension "d", with domain [0,999].
-    uint32_t dim_domain[] = {0, 999};
+    uint32_t dim_domain[]{0, 999};
     tiledb_dimension_t* d;
     tiledb_dimension_alloc(
         ctx, "d", TILEDB_UINT32, &dim_domain[0], &tile_extent_, &d);
@@ -1069,7 +1069,7 @@ struct CPPFixedTileMetadataPartialFx {
     tiledb_ctx_alloc(NULL, &ctx);
 
     // The array will be two dimension "d1" and "d2", with domain [1,8].
-    uint32_t dim_domain[] = {1, 8};
+    uint32_t dim_domain[]{1, 8};
     tiledb_dimension_t* d1;
     tiledb_dimension_alloc(
         ctx, "d1", TILEDB_UINT32, &dim_domain[0], &tile_extent_, &d1);
@@ -1115,27 +1115,27 @@ struct CPPFixedTileMetadataPartialFx {
     // Write a 4x4 square intersecting the 4 tiles of the array. Writting a 2x2
     // square to each tile.
     Subarray subarray(ctx_, array);
-    uint32_t r[2] = {3, 6};
+    uint32_t r[2]{3, 6};
     subarray.add_range(0, r[0], r[1]);
     subarray.add_range(1, r[0], r[1]);
     query.set_subarray(subarray);
 
-    std::vector<double> a = {1.7,
-                             1.1,
-                             2.2,
-                             2.5,
-                             1.5,
-                             1.3,
-                             2.1,
-                             2.6,
-                             3.4,
-                             3.8,
-                             4.1,
-                             4.2,
-                             3.5,
-                             3.2,
-                             4.9,
-                             4.6};
+    std::vector<double> a{1.7,
+                          1.1,
+                          2.2,
+                          2.5,
+                          1.5,
+                          1.3,
+                          2.1,
+                          2.6,
+                          3.4,
+                          3.8,
+                          4.1,
+                          4.2,
+                          3.5,
+                          3.2,
+                          4.9,
+                          4.6};
     query.set_layout(TILEDB_ROW_MAJOR);
     query.set_data_buffer("a", a);
 
@@ -1209,9 +1209,9 @@ struct CPPFixedTileMetadataPartialFx {
         enc_key, std::move(names_null_count));
     CHECK(st.ok());
 
-    std::vector<double> correct_tile_mins = {1.1, 2.1, 3.2, 4.1};
-    std::vector<double> correct_tile_maxs = {1.7, 2.6, 3.8, 4.9};
-    std::vector<double> correct_tile_sums = {5.6, 9.4, 13.9, 17.8};
+    std::vector<double> correct_tile_mins{1.1, 2.1, 3.2, 4.1};
+    std::vector<double> correct_tile_maxs{1.7, 2.6, 3.8, 4.9};
+    std::vector<double> correct_tile_sums{5.6, 9.4, 13.9, 17.8};
 
     // Validate attribute metadta.
     for (uint64_t tile_idx = 0; tile_idx < 4; tile_idx++) {
@@ -1284,7 +1284,7 @@ struct CPPVarTileMetadataPartialFx {
     tiledb_ctx_alloc(NULL, &ctx);
 
     // The array will be two dimension "d1" and "d2", with domain [1,8].
-    uint32_t dim_domain[] = {1, 8};
+    uint32_t dim_domain[]{1, 8};
     tiledb_dimension_t* d1;
     tiledb_dimension_alloc(
         ctx, "d1", TILEDB_UINT32, &dim_domain[0], &tile_extent_, &d1);
@@ -1331,13 +1331,13 @@ struct CPPVarTileMetadataPartialFx {
     // Write a 4x4 square intersecting the 4 tiles of the array. Writting a 2x2
     // square to each tile.
     Subarray subarray(ctx_, array);
-    uint32_t r[2] = {3, 6};
+    uint32_t r[2]{3, 6};
     subarray.add_range(0, r[0], r[1]);
     subarray.add_range(1, r[0], r[1]);
     query.set_subarray(subarray);
 
     std::string a = "1.71.12.22.51.51.32.12.63.43.84.14.23.53.24.94.6";
-    std::vector<uint64_t> offsets = {
+    std::vector<uint64_t> offsets{
         0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45};
     query.set_layout(TILEDB_ROW_MAJOR);
     query.set_data_buffer("a", a).set_offsets_buffer("a", offsets);
@@ -1402,8 +1402,8 @@ struct CPPVarTileMetadataPartialFx {
         enc_key, std::move(names_null_count));
     CHECK(st.ok());
 
-    std::vector<std::string> correct_tile_mins = {"1.1", "2.1", "3.2", "4.1"};
-    std::vector<std::string> correct_tile_maxs = {"1.7", "2.6", "3.8", "4.9"};
+    std::vector<std::string> correct_tile_mins{"1.1", "2.1", "3.2", "4.1"};
+    std::vector<std::string> correct_tile_maxs{"1.7", "2.6", "3.8", "4.9"};
 
     // Validate attribute metadta.
     for (uint64_t tile_idx = 0; tile_idx < 4; tile_idx++) {
