@@ -63,7 +63,7 @@ struct Sum {
   static void sum(Tile& tile, uint64_t start, uint64_t end, ByteVec& sum);
 
   /**
-   * Add the cells from [start, end[ to the current sum for a nullable tile.
+   * Add the sum cells of from [start, end] to the current sum for a nullable tile.
    *
    * @param tile Fixed data tile.
    * @param tile_validity Validity tile.
