@@ -446,7 +446,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
   const auto dim_num = array_schema_.dim_num();
   const auto cell_order = array_schema_.cell_order();
 
-  // No subarray set or empry result tiles, return.
+  // No subarray set or empty result tiles, return.
   if (!subarray_.is_set() || result_tiles.empty()) {
     return Status::Ok();
   }
