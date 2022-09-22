@@ -286,6 +286,9 @@ class ArrayDirectory {
   /** Returns the URIs of the commit files to vacuum. */
   const std::vector<URI>& commit_uris_to_vacuum() const;
 
+  /** Returns the consolidated commit URI set. */
+  const std::unordered_set<std::string>& consolidated_commit_uris_set() const;
+
   /** Returns the URIs of the consolidated commit files to vacuum. */
   const std::vector<URI>& consolidated_commits_uris_to_vacuum() const;
 
@@ -308,10 +311,10 @@ class ArrayDirectory {
   URI get_commits_dir(uint32_t write_version) const;
 
   /** Returns the URI for either an ok file or wrt file. */
-  tuple<Status, optional<URI>> get_commit_uri(const URI& fragment_uri) const;
+  URI get_commit_uri(const URI& fragment_uri) const;
 
   /** Returns the URI for a vacuum file. */
-  tuple<Status, optional<URI>> get_vacuum_uri(const URI& fragment_uri) const;
+  URI get_vacuum_uri(const URI& fragment_uri) const;
 
   /**
    * The new fragment name is computed

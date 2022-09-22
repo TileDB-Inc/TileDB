@@ -419,19 +419,24 @@ class StorageManager {
       const Config* config);
 
   /**
+   * Writes a commit ignore file.
+   *
+   * @param array_dir The ArrayDirectory where the data is stored.
+   * @param commit_uris_to_ignore The commit files that are to be ignored.
+   */
+  Status write_commit_ignore_file(
+      ArrayDirectory array_dir, const std::vector<URI>& commit_uris_to_ignore);
+
+  /**
    * Cleans up the array fragments.
    *
    * @param array_name The name of the array to be vacuumed.
    * @param timestamp_start The start timestamp at which to vacuum.
    * @param timestamp_end The end timestamp at which to vacuum.
-   * @param for_deletes True if vacuumuming for deletion of fragments.
    * @return Status
    */
-  Status fragments_vacuum(
-      const char* array_name,
-      uint64_t timestamp_start,
-      uint64_t timestamp_end,
-      bool for_deletes);
+  Status delete_fragments(
+      const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /**
    * Cleans up the array, such as its consolidated fragments and array

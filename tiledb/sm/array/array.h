@@ -179,19 +179,6 @@ class Array {
   Status load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
 
   /**
-   * Deletes the fragments from the Array with given URI.
-   *
-   * @param uri The uri of the Array whose fragments are to be deleted.
-   * @param timestamp_start The start timestamp at which to delete fragments.
-   * @param timestamp_end The end timestamp at which to delete fragments.
-   * @return Status
-   *
-   * @pre The Array must be open for exclusive writes
-   */
-  Status delete_fragments(
-      const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
-
-  /**
    * Opens the array for reading.
    *
    * @param query_type The query type. This should always be READ. It
@@ -216,6 +203,19 @@ class Array {
 
   /** Closes the array and frees all memory. */
   Status close();
+
+  /**
+   * Deletes the fragments from the Array with given URI.
+   *
+   * @param uri The uri of the Array whose fragments are to be deleted.
+   * @param timestamp_start The start timestamp at which to delete fragments.
+   * @param timestamp_end The end timestamp at which to delete fragments.
+   * @return Status
+   *
+   * @pre The Array must be open for exclusive writes
+   */
+  Status delete_fragments(
+      const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;

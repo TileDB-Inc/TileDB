@@ -104,6 +104,11 @@ const std::vector<URI>& ArrayDirectory::commit_uris_to_vacuum() const {
   return commit_uris_to_vacuum_;
 }
 
+const std::unordered_set<std::string>&
+ArrayDirectory::consolidated_commit_uris_set() const {
+  return consolidated_commit_uris_set_;
+}
+
 const std::vector<URI>& ArrayDirectory::consolidated_commits_uris_to_vacuum()
     const {
   return consolidated_commits_uris_to_vacuum_;
@@ -268,16 +273,11 @@ ArrayDirectory::filtered_fragment_uris(const bool full_overlap_only) const {
   std::vector<URI> commit_uris_to_ignore;
   if (mode_ == ArrayDirectoryMode::VACUUM_FRAGMENTS) {
     for (auto& uri : fragment_uris_to_vacuum.value()) {
-      auto&& [st, commit_uri] = get_commit_uri(uri);
-      if (!st.ok()) {
-        throw std::logic_error(st.message());
-      }
-
-      if (consolidated_commit_uris_set_.count(commit_uri.value().c_str()) ==
-          0) {
-        commit_uris_to_vacuum.emplace_back(commit_uri.value());
+      auto commit_uri = get_commit_uri(uri);
+      if (consolidated_commit_uris_set_.count(commit_uri.c_str()) == 0) {
+        commit_uris_to_vacuum.emplace_back(commit_uri);
       } else {
-        commit_uris_to_ignore.emplace_back(commit_uri.value());
+        commit_uris_to_ignore.emplace_back(commit_uri);
       }
     }
   }
@@ -332,40 +332,32 @@ URI ArrayDirectory::get_commits_dir(uint32_t write_version) const {
   return uri_.join_path(constants::array_commits_dir_name);
 }
 
-tuple<Status, optional<URI>> ArrayDirectory::get_commit_uri(
-    const URI& fragment_uri) const {
+URI ArrayDirectory::get_commit_uri(const URI& fragment_uri) const {
   auto name = fragment_uri.remove_trailing_slash().last_path_part();
   uint32_t version;
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_fragment_version(name, &version), nullopt);
+  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
 
   if (version == UINT32_MAX || version < 12) {
-    return {Status::Ok(),
-            URI(fragment_uri.to_string() + constants::ok_file_suffix)};
+    return URI(fragment_uri.to_string() + constants::ok_file_suffix);
   }
 
   auto temp_uri =
       uri_.join_path(constants::array_commits_dir_name).join_path(name);
-  return {Status::Ok(),
-          URI(temp_uri.to_string() + constants::write_file_suffix)};
+  return URI(temp_uri.to_string() + constants::write_file_suffix);
 }
 
-tuple<Status, optional<URI>> ArrayDirectory::get_vacuum_uri(
-    const URI& fragment_uri) const {
+URI ArrayDirectory::get_vacuum_uri(const URI& fragment_uri) const {
   auto name = fragment_uri.remove_trailing_slash().last_path_part();
   uint32_t version;
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_fragment_version(name, &version), nullopt);
+  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
 
   if (version == UINT32_MAX || version < 12) {
-    return {Status::Ok(),
-            URI(fragment_uri.to_string() + constants::vacuum_file_suffix)};
+    return URI(fragment_uri.to_string() + constants::vacuum_file_suffix);
   }
 
   auto temp_uri =
       uri_.join_path(constants::array_commits_dir_name).join_path(name);
-  return {Status::Ok(),
-          URI(temp_uri.to_string() + constants::vacuum_file_suffix)};
+  return URI(temp_uri.to_string() + constants::vacuum_file_suffix);
 }
 
 tuple<Status, optional<std::string>> ArrayDirectory::compute_new_fragment_name(
