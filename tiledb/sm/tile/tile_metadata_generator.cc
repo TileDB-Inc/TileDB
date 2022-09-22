@@ -266,15 +266,12 @@ bool TileMetadataGenerator::has_sum_metadata(
 /* ****************************** */
 
 TileMetadataGenerator::TileMetadataGenerator(
-    WriterTile& tile,
     const Datatype type,
     const bool is_dim,
     const bool var_size,
     const uint64_t cell_size,
     const uint64_t cell_val_num)
-    : tile_(tile)
-    , var_size_(var_size)
-    , nullable_(tile.nullable())
+    : var_size_(var_size)
     , type_(type)
     , min_(nullptr)
     , min_size_(0)
@@ -291,46 +288,46 @@ TileMetadataGenerator::TileMetadataGenerator(
 /*               API              */
 /* ****************************** */
 
-void TileMetadataGenerator::process_full_tile() {
-  uint64_t cell_num = tile_.cell_num();
-  process_cell_slab(0, cell_num);
-  set_tile_metadata();
+void TileMetadataGenerator::process_full_tile(const WriterTile& tile) {
+  uint64_t cell_num = tile.cell_num();
+  process_cell_slab(tile, 0, cell_num);
 }
 
-void TileMetadataGenerator::process_cell_slab(uint64_t start, uint64_t end) {
+void TileMetadataGenerator::process_cell_slab(
+    const WriterTile& tile, uint64_t start, uint64_t end) {
   if (!var_size_) {
     // Switch depending on datatype.
     switch (type_) {
       case Datatype::INT8:
-        process_cell_range<int8_t>(start, end);
+        process_cell_range<int8_t>(tile, start, end);
         break;
       case Datatype::INT16:
-        process_cell_range<int16_t>(start, end);
+        process_cell_range<int16_t>(tile, start, end);
         break;
       case Datatype::INT32:
-        process_cell_range<int32_t>(start, end);
+        process_cell_range<int32_t>(tile, start, end);
         break;
       case Datatype::INT64:
-        process_cell_range<int64_t>(start, end);
+        process_cell_range<int64_t>(tile, start, end);
         break;
       case Datatype::BOOL:
       case Datatype::UINT8:
-        process_cell_range<uint8_t>(start, end);
+        process_cell_range<uint8_t>(tile, start, end);
         break;
       case Datatype::UINT16:
-        process_cell_range<uint16_t>(start, end);
+        process_cell_range<uint16_t>(tile, start, end);
         break;
       case Datatype::UINT32:
-        process_cell_range<uint32_t>(start, end);
+        process_cell_range<uint32_t>(tile, start, end);
         break;
       case Datatype::UINT64:
-        process_cell_range<uint64_t>(start, end);
+        process_cell_range<uint64_t>(tile, start, end);
         break;
       case Datatype::FLOAT32:
-        process_cell_range<float>(start, end);
+        process_cell_range<float>(tile, start, end);
         break;
       case Datatype::FLOAT64:
-        process_cell_range<double>(start, end);
+        process_cell_range<double>(tile, start, end);
         break;
       case Datatype::DATETIME_YEAR:
       case Datatype::DATETIME_MONTH:
@@ -354,25 +351,25 @@ void TileMetadataGenerator::process_cell_slab(uint64_t start, uint64_t end) {
       case Datatype::TIME_PS:
       case Datatype::TIME_FS:
       case Datatype::TIME_AS:
-        process_cell_range<int64_t>(start, end);
+        process_cell_range<int64_t>(tile, start, end);
         break;
       case Datatype::STRING_ASCII:
       case Datatype::CHAR:
-        process_cell_range<char>(start, end);
+        process_cell_range<char>(tile, start, end);
         break;
       case Datatype::BLOB:
-        process_cell_range<std::byte>(start, end);
+        process_cell_range<std::byte>(tile, start, end);
         break;
       default:
         break;
     }
   } else {
-    process_cell_range_var(start, end);
+    process_cell_range_var(tile, start, end);
   }
 }
 
-void TileMetadataGenerator::set_tile_metadata() {
-  tile_.set_metadata(min_, min_size_, max_, max_size_, sum_, null_count_);
+void TileMetadataGenerator::set_tile_metadata(WriterTile& tile) {
+  tile.set_metadata(min_, min_size_, max_, max_size_, sum_, null_count_);
 }
 
 /* ****************************** */
@@ -477,12 +474,13 @@ void TileMetadataGenerator::min_max_nullable<char>(
 }
 
 template <class T>
-void TileMetadataGenerator::process_cell_range(uint64_t start, uint64_t end) {
+void TileMetadataGenerator::process_cell_range(
+    const WriterTile& tile, uint64_t start, uint64_t end) {
   min_size_ = max_size_ = cell_size_;
-  const auto& fixed_tile = tile_.fixed_tile();
+  const auto& fixed_tile = tile.fixed_tile();
 
   // Fixed size attribute, non nullable
-  if (!nullable_) {
+  if (!tile.nullable()) {
     if (has_min_max_) {
       min_max<T>(fixed_tile, start, end);
     }
@@ -492,12 +490,12 @@ void TileMetadataGenerator::process_cell_range(uint64_t start, uint64_t end) {
           fixed_tile, start, end, sum_);
     }
   } else {  // Fixed size attribute, nullable.
-    const auto& validity_tile = tile_.validity_tile();
+    const auto& validity_tile = tile.validity_tile();
     auto validity_value = validity_tile.data_as<uint8_t>();
     if (has_min_max_) {
       min_max_nullable<T>(fixed_tile, validity_tile, start, end);
     } else {
-      auto cell_num = tile_.cell_num();
+      auto cell_num = tile.cell_num();
       for (uint64_t c = 0; c < cell_num; c++) {
         auto is_null = *validity_value == 0;
         null_count_ += (uint64_t)is_null;
@@ -513,11 +511,11 @@ void TileMetadataGenerator::process_cell_range(uint64_t start, uint64_t end) {
 }
 
 void TileMetadataGenerator::process_cell_range_var(
-    uint64_t start, uint64_t end) {
-  assert(tile_.var_size());
+    const WriterTile& tile, uint64_t start, uint64_t end) {
+  assert(tile.var_size());
 
-  const auto& offset_tile = tile_.offset_tile();
-  const auto& var_tile = tile_.var_tile();
+  const auto& offset_tile = tile.offset_tile();
+  const auto& var_tile = tile.var_tile();
 
   // Handle empty tile.
   if (!has_min_max_ || offset_tile.size() == 0) {
@@ -527,10 +525,10 @@ void TileMetadataGenerator::process_cell_range_var(
   // Get pointers to the data and cell num.
   auto offset_value = offset_tile.data_as<uint64_t>() + start;
   auto var_data = var_tile.data_as<char>();
-  auto cell_num = tile_.cell_num();
+  auto cell_num = tile.cell_num();
 
   // Var size attribute, non nullable.
-  if (!nullable_) {
+  if (!tile.nullable()) {
     if (min_ == nullptr) {
       min_ = &var_data[*offset_value];
       max_ = &var_data[*offset_value];
@@ -549,7 +547,7 @@ void TileMetadataGenerator::process_cell_range_var(
       offset_value++;
     }
   } else {  // Var size attribute, nullable.
-    const auto& validity_tile = tile_.validity_tile();
+    const auto& validity_tile = tile.validity_tile();
     auto validity_value = validity_tile.data_as<uint8_t>();
 
     for (uint64_t c = start; c < end; c++) {

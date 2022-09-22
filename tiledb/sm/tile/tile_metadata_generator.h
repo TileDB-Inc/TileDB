@@ -189,7 +189,6 @@ class TileMetadataGenerator {
   /* ********************************* */
 
   /**
-   * @param tile Writer tile.
    * @param type Data type.
    * @param is_dim Is it a dimension.
    * @param var_size Is the attribute/dimension var size?
@@ -197,7 +196,6 @@ class TileMetadataGenerator {
    * @param cell_val_num Number of values per cell.
    */
   TileMetadataGenerator(
-      WriterTile& tile,
       const Datatype type,
       const bool is_dim,
       const bool var_size,
@@ -208,35 +206,36 @@ class TileMetadataGenerator {
   /*                API                */
   /* ********************************* */
 
-  /** Compute metatada for full tile. */
-  void process_full_tile();
+  /**
+   * Compute metatada for full tile.
+   *
+   * @param tile Writer tile that contains the data.
+   */
+  void process_full_tile(const WriterTile& tile);
 
   /**
    * Compute metatada for a slab.
    *
+   * @param tile Writer tile that contains the data.
    * @param start Start cell index.
    * @param end End cell index.
    */
-  void process_cell_slab(uint64_t start, uint64_t end);
+  void process_cell_slab(const WriterTile& tile, uint64_t start, uint64_t end);
 
   /**
    * Copies the metadata to the tile once done processing slabs.
+   *
+   * @param tile Writer tile to copy the metadata to.
    */
-  void set_tile_metadata();
+  void set_tile_metadata(WriterTile& tile);
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** Fixed tile. */
-  WriterTile& tile_;
-
   /** Is this a var tile. */
   bool var_size_;
-
-  /** Is this a nullable tile. */
-  bool nullable_;
 
   /** The data type. */
   Datatype type_;
@@ -304,19 +303,22 @@ class TileMetadataGenerator {
   /**
    * Process cell range for var size attribute.
    *
+   * @param tile Writer tile that contains the data.
    * @param start Start index.
    * @param end End index.
    */
-  void process_cell_range_var(uint64_t start, uint64_t end);
+  void process_cell_range_var(
+      const WriterTile& tile, uint64_t start, uint64_t end);
 
   /**
    * Process cell range for fixed size attribute.
    *
+   * @param tile Writer tile that contains the data.
    * @param start Start index.
    * @param end End index.
    */
   template <class T>
-  void process_cell_range(uint64_t start, uint64_t end);
+  void process_cell_range(const WriterTile& tile, uint64_t start, uint64_t end);
 
   /**
    * Min max function for var sized attributes.
