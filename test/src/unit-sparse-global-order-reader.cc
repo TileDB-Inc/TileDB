@@ -282,7 +282,6 @@ int32_t CSparseGlobalOrderFx::read(
 
   // Submit query.
   auto ret = tiledb_query_submit(ctx_, query);
-
   if (query_ret == nullptr || array_ret == nullptr) {
     // Clean up.
     rc = tiledb_array_close(ctx_, array);
@@ -465,7 +464,6 @@ TEST_CASE_METHOD(
   tiledb_query_get_status(ctx_, query, &status);
   CHECK(status == TILEDB_COMPLETED);
 
-  // Should only read one tile (2 values).
   CHECK(40 == data_r_size);
   CHECK(40 == coords_r_size);
 
@@ -661,7 +659,6 @@ TEST_CASE_METHOD(
   tiledb_query_get_status(ctx_, query, &status);
   CHECK(status == TILEDB_COMPLETED);
 
-  // Should only read one tile (2 values).
   CHECK(uint64_t(num_frags * 20) == data_r_size);
   CHECK(uint64_t(num_frags * 20) == coords_r_size);
 
@@ -1069,4 +1066,92 @@ TEST_CASE(
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
   }
+}
+
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: no new coords tile",
+    "[sparse-global-order][no-new-coords-tile]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
+
+  bool use_subarray = false;
+  SECTION("- No subarray") {
+    use_subarray = false;
+  }
+  SECTION("- Subarray") {
+    use_subarray = true;
+  }
+
+  int num_frags = 2;
+  for (int i = 1; i < num_frags + 1; i++) {
+    // Write a fragment.
+    int coords[] = {i,
+                    num_frags + i,
+                    2 * num_frags + i,
+                    3 * num_frags + i,
+                    4 * num_frags + i};
+    uint64_t coords_size = sizeof(coords);
+    int data[] = {i,
+                  num_frags + i,
+                  2 * num_frags + i,
+                  3 * num_frags + i,
+                  4 * num_frags + i};
+    uint64_t data_size = sizeof(data);
+    write_1d_fragment(coords, &coords_size, data, &data_size);
+  }
+
+  // Two result tile (2 * (~1200 + 8) will be bigger than the per fragment
+  // budget (1000).
+  total_budget_ = "10000";
+  ratio_coords_ = "0.30";
+  update_config();
+
+  tiledb_array_t* array = nullptr;
+  tiledb_query_t* query = nullptr;
+
+  // Try to read.
+  int coords_r[1];
+  int data_r[1];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
+  tiledb_query_status_t status;
+  uint32_t rc = read(
+      use_subarray,
+      false,
+      coords_r,
+      &coords_r_size,
+      data_r,
+      &data_r_size,
+      &query,
+      &array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_INCOMPLETE);
+
+  uint64_t loop_idx = 1;
+  CHECK(4 == data_r_size);
+  CHECK(4 == coords_r_size);
+  CHECK(!std::memcmp(&loop_idx, coords_r, coords_r_size));
+  CHECK(!std::memcmp(&loop_idx, data_r, data_r_size));
+  loop_idx++;
+
+  while (status == TILEDB_INCOMPLETE && rc == TILEDB_OK) {
+    rc = tiledb_query_submit(ctx_, query);
+    tiledb_query_get_status(ctx_, query, &status);
+    CHECK(4 == data_r_size);
+    CHECK(4 == coords_r_size);
+    CHECK(!std::memcmp(&loop_idx, coords_r, coords_r_size));
+    CHECK(!std::memcmp(&loop_idx, data_r, data_r_size));
+    loop_idx++;
+  }
+  CHECK(loop_idx == 11);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up.
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
 }
