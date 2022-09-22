@@ -33,6 +33,7 @@
 #ifndef TILEDB_BITSORT_FILTER_H
 #define TILEDB_BITSORT_FILTER_H
 
+#include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
@@ -86,7 +87,7 @@ class BitSortFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      std::vector<Tile*>& dim_tiles,
+      BitSortFilterMetadataType &pair,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -123,7 +124,7 @@ class BitSortFilter : public Filter {
    */
   template <typename T>
   Status run_reverse(
-      std::vector<Tile*>& dim_tiles,
+      BitSortFilterMetadataType &pair,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

@@ -44,6 +44,7 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/types.h"
@@ -220,7 +221,7 @@ class FilterPipeline {
   Status run_forward(
       stats::Stats* writer_stats,
       Tile* tile,
-      T const support_tiles,
+      T support_tiles,
       ThreadPool* compute_tp,
       bool chunking = true) const;
 
@@ -304,8 +305,7 @@ class FilterPipeline {
       const uint64_t max_chunk_index,
       uint64_t concurrency_level,
       const Config& config,
-      std::optional<std::reference_wrapper<std::vector<Tile*>>> dim_tiles =
-          std::nullopt) const;
+      OptionalRef<BitSortFilterMetadataType> pair = std::nullopt) const;
 
   /**
    * Serializes the pipeline metadata into a binary buffer.
