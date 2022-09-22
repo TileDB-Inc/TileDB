@@ -63,7 +63,8 @@ struct Sum {
   static void sum(Tile& tile, uint64_t start, uint64_t end, ByteVec& sum);
 
   /**
-   * Add the sum cells of from [start, end] to the current sum for a nullable tile.
+   * Add the sum cells of from [start, end] to the current sum for a nullable
+   * tile.
    *
    * @param tile Fixed data tile.
    * @param tile_validity Validity tile.
@@ -282,14 +283,12 @@ class TileMetadataGenerator {
   void min_max(const Tile& tile, uint64_t start, uint64_t end);
 
   /**
-   * Returns the min and max of a fixed data tile with nullable values.
+   * Updates the min and max of a fixed data tile with nullable values.
    *
    * @param tile Tile to process.
    * @param tile_validity Validity tile.
    * @param start Start cell index.
    * @param end End cell index.
-   *
-   * @return minimum, maximum, null count.
    */
   template <class T>
   void min_max_nullable(
