@@ -272,13 +272,11 @@ class TileMetadataGenerator {
   /* ********************************* */
 
   /**
-   * Returns the min and max of a fixed data tile.
+   * Updates the min and max of a fixed data tile.
    *
    * @param tile Tile to process.
    * @param start Start cell index.
    * @param end End cell index.
-   *
-   * @return minimum, maximum.
    */
   template <class T>
   void min_max(const Tile& tile, uint64_t start, uint64_t end);
