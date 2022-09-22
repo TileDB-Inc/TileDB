@@ -124,7 +124,6 @@ DimensionLabelReadDataQuery::DimensionLabelReadDataQuery(
 tdb_unique_ptr<IndexData> create_index_data(
     const Datatype type, const Range& input_range) {
   // Create index data if it is not provided.
-  // TODO: add if statement in here.
   switch (type) {
     case Datatype::INT8:
       return tdb_unique_ptr<IndexData>(

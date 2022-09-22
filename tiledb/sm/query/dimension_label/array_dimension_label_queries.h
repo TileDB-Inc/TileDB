@@ -74,9 +74,6 @@ class ArrayDimensionLabelQueries {
    */
   using dimension_size_type = unsigned int;
 
-  /** TODO */
-  using range_size_type = uint64_t;
-
   /** Default constructor is not C.41 compliant. */
   ArrayDimensionLabelQueries() = delete;
 
@@ -93,42 +90,47 @@ class ArrayDimensionLabelQueries {
   DISABLE_COPY_AND_COPY_ASSIGN(ArrayDimensionLabelQueries);
   DISABLE_MOVE_AND_MOVE_ASSIGN(ArrayDimensionLabelQueries);
 
-  /** TODO: docs */
+  /** Returns ``true`` if all queries are completed. */
   bool completed() const;
 
-  /** TODO: docs */
+  /** Returns ``true`` if the range queries are completed. */
   inline bool completed_range_queries() const {
     return range_query_status_ == QueryStatus::COMPLETED;
   }
 
-  /** TODO: docs */
+  /** Cancels all dimension label queries. */
   void cancel();
 
-  /** TODO: docs */
+  /** Finalizes all dimension label queries. */
   void finalize();
 
-  /** TODO: docs */
+  /** Returns ``true`` if there are any data queries. */
   inline bool has_data_query() const {
     return !data_queries_.empty();
   }
 
-  /** TODO: docs */
+  /** Returns ``true`` if there are any range queries. */
   inline bool has_range_query() const {
     return !range_queries_map_.empty();
   }
 
-  /** TODO: docs */
+  /**
+   * Returns ``true`` if there is a range query on the requested dimension.
+   *
+   * @param dim_idx Index to check for a range query on.
+   */
   inline bool has_range_query(dimension_size_type dim_idx) const {
     return range_queries_[dim_idx] != nullptr;
   }
 
-  /** TODO: docs */
+  /** Process all data queries. */
   void process_data_queries();
 
-  /** TODO: docs
+  /**
+   * Process all data queries and updates the ranges on the parent subarray.
    *
-   * Updates subarray with data.
-   **/
+   * @param subarray The subarray to set the updated dimension ranges on.
+   */
   void process_range_queries(Subarray& subarray);
 
  private:
@@ -168,27 +170,55 @@ class ArrayDimensionLabelQueries {
 
   optional<std::string> fragment_name_;
 
-  /** TODO: docs */
+  /**
+   * Initializes all queries for reading label data.
+   *
+   * @param array The array for the parent query.
+   * @param subarray The subarray for the parent query.
+   * @param label_buffers A map of query buffers with label buffers.
+   */
   void add_data_queries_for_read(
       Array* array,
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers);
 
-  /** TODO: docs */
+  /**
+   * Initializes all queries for writing label data.
+   *
+   * @param array The array for the parent query.
+   * @param subarray The subarray for the parent query.
+   * @param label_buffers A map of query buffers with label buffers.
+   * @param array_buffers Non-label buffers set on the parent query.
+   */
   void add_data_queries_for_write(
       Array* array,
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers,
       const std::unordered_map<std::string, QueryBuffer>& array_buffers);
 
-  /** TODO: docs */
+  /**
+   * Initializes all queries for reading dimension ranges.
+   *
+   *
+   * @param array The array for the parent query.
+   * @param subarray The subarray for the parent query.
+   * @param label_buffers A map of query buffers with label buffers.
+   * @param array_buffers Non-label buffers set on the parent query.
+   */
   void add_range_queries(
       Array* array,
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers,
       const std::unordered_map<std::string, QueryBuffer>& array_buffers);
 
-  /** TODO: docs */
+  /**
+   * Opens a dimension label.
+   *
+   * @param array The array the dimension label is defined on.
+   * @param query_type The query type to open the dimension label as.
+   * @param open_indexed_array If ``true``, open the indexed array.
+   * @param open_labelled_array If ``true``, open the labelled array.
+   */
   DimensionLabel* open_dimension_label(
       Array* array,
       const DimensionLabelReference& dim_label_ref,

@@ -216,8 +216,6 @@ void ArrayDimensionLabelQueries::add_data_queries_for_read(
     // Get the dimension label reference from the array.
     const auto& dim_label_ref =
         array->array_schema_latest().dimension_label_reference(label_name);
-    // TODO: Ensure label order type is valid with
-    // ensure_label_order_is_valid.
 
     // Open the indexed array.
     auto* dim_label = open_dimension_label(
@@ -343,12 +341,13 @@ DimensionLabel* ArrayDimensionLabelQueries::open_dimension_label(
     const QueryType& query_type,
     const bool open_indexed_array,
     const bool open_labelled_array) {
+  // Get the URI fo the dimension label from the dimension label reference.
   const auto& uri = dim_label_ref.uri();
-  bool is_relative = true;  // TODO: Fix to move this to array
+  bool is_relative = true;
   auto dim_label_uri =
       is_relative ? array->array_uri().join_path(uri.to_string()) : uri;
 
-  // Create dimension label.
+  // Create the dimension label.
   dimension_labels_[dim_label_ref.name()] = tdb_unique_ptr<DimensionLabel>(
       tdb_new(DimensionLabel, dim_label_uri, storage_manager_));
   auto* dim_label = dimension_labels_[dim_label_ref.name()].get();
@@ -356,9 +355,8 @@ DimensionLabel* ArrayDimensionLabelQueries::open_dimension_label(
   // Currently there is no way to open just one of these arrays. This is a
   // placeholder for a single array open is implemented.
   if (open_indexed_array || open_labelled_array) {
-    // Open the dimension label.
-    // TODO: Fix how the encryption is handled.
-    // TODO: Fix the timestamps for writes.
+    // Open the dimension label. Handling encrypted dimension labels is not yet
+    // implemented.
     dim_label->open(
         query_type,
         array->timestamp_start(),
@@ -369,31 +367,45 @@ DimensionLabel* ArrayDimensionLabelQueries::open_dimension_label(
 
     // Check the dimension label schema matches the definition provided in
     // the dimension label reference.
-    // TODO: Move to array schema.
     const auto& label_schema = dim_label->schema();
     if (!label_schema.is_compatible_label(
             array->array_schema_latest().dimension_ptr(
                 dim_label_ref.dimension_id()))) {
-      throw StatusException(
-          Status_DimensionLabelQueryError("TODO: Add error msg."));
+      throw StatusException(Status_DimensionLabelQueryError(
+          "Error opening dimesnion label; Found dimension label does not match "
+          "array dimension."));
     }
     if (label_schema.label_order() != dim_label_ref.label_order()) {
-      throw StatusException(
-          Status_DimensionLabelQueryError("TODO: Add error msg."));
+      throw StatusException(Status_DimensionLabelQueryError(
+          "Error opening dimension label; The label order of the loaded "
+          "dimension label is " +
+          label_order_str(label_schema.label_order()) +
+          ", but the expected label order was " +
+          label_order_str(dim_label_ref.label_order()) + "."));
     }
     if (label_schema.label_dimension()->type() != dim_label_ref.label_type()) {
-      throw StatusException(
-          Status_DimensionLabelQueryError("TODO: Add error msg."));
+      throw StatusException(Status_DimensionLabelQueryError(
+          "Error opening dimension label; The label datatype of the loaded "
+          "dimension label is " +
+          datatype_str(label_schema.label_dimension()->type()) +
+          ", but the expected label datatype was " +
+          datatype_str(dim_label_ref.label_type()) + "."));
     }
     if (!(label_schema.label_dimension()->domain() ==
           dim_label_ref.label_domain())) {
-      throw StatusException(
-          Status_DimensionLabelQueryError("TODO: Add error msg."));
+      throw StatusException(Status_DimensionLabelQueryError(
+          "Error opening dimension label; The label domain of the loaded "
+          "dimension label does not match the expected domain."));
     }
     if (label_schema.label_dimension()->cell_val_num() !=
         dim_label_ref.label_cell_val_num()) {
-      throw StatusException(
-          Status_DimensionLabelQueryError("TODO: Add error msg."));
+      throw StatusException(Status_DimensionLabelQueryError(
+          "Error opening dimension label; The label cell value number of the "
+          "loaded "
+          "dimension label is " +
+          std::to_string(label_schema.label_dimension()->cell_val_num()) +
+          ", but the expected label cell value number was " +
+          std::to_string(dim_label_ref.label_cell_val_num()) + "."));
     }
   }
 

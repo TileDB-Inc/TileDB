@@ -54,7 +54,12 @@ class DimensionLabelQuery {
   /**
    * General constructor.
    *
-   * TODO finish docs
+   * @param storage_manager Storage manager object.
+   * @param dimension_label Opened dimension label for the query.
+   * @param add_indexed_query If ``true``, create a query on the indexed array.
+   * @param add_labelled_query If ``true``, create a query on the labelled
+   *     array.
+   * @param fragment_name Optional fragment name for writing fragments.
    */
   DimensionLabelQuery(
       StorageManager* storage_manager,
@@ -63,28 +68,34 @@ class DimensionLabelQuery {
       bool add_labelled_query,
       optional<std::string> fragment_name = nullopt);
 
+  /** Destructor. */
   virtual ~DimensionLabelQuery() = default;
 
-  /** TODO: docs */
+  /** Disable copy and move. */
+  DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelQuery);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelQuery);
+
+  /** Cancel both queries if they exist. */
   void cancel();
 
-  /** TODO: docs */
+  /** Returns ``true`` if the query status for both queries is completed. */
   bool completed() const;
 
-  /** TODO: docs */
+  /** Finalizes both queries if they exist. */
   void finalize();
 
-  /** TODO: docs */
+  /** Processes both queries if they exist. */
   void process();
 
-  /** TODO: docs */
+ protected:
+  /** Query on the dimension label indexed array. */
   tdb_unique_ptr<Query> indexed_array_query{nullptr};
 
-  /** TODO: docs */
+  /** Query on the dimension label labelled array. */
   tdb_unique_ptr<Query> labelled_array_query{nullptr};
 };
 
-/** TODO: Docs */
+/** Dimension label query for reading label data. */
 class DimensionLabelReadDataQuery : public DimensionLabelQuery {
  public:
   DimensionLabelReadDataQuery() = delete;
@@ -97,7 +108,7 @@ class DimensionLabelReadDataQuery : public DimensionLabelQuery {
       const uint32_t dim_idx);
 };
 
-/** TODO: Docs */
+/** Base class for internally managed index data. */
 class IndexData {
  public:
   virtual ~IndexData() = default;
@@ -105,12 +116,20 @@ class IndexData {
   virtual uint64_t* data_size() = 0;
 };
 
-/** TODO: Docs */
+/** Typed class for internally managed index data. */
 template <
     typename T,
     typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
 class TypedIndexData : public IndexData {
  public:
+  /**
+   * Constructor.
+   *
+   * This will create a vector of index values starting at the range lower bound
+   * and continuing to the range upper bound.
+   *
+   * @param range The range to create index data for.
+   */
   TypedIndexData(const type::Range& range)
       : data_{}
       , data_size_{0} {
@@ -129,26 +148,39 @@ class TypedIndexData : public IndexData {
     data_size_ = sizeof(T) * data_.size();
   }
 
+  /** Pointer access to index data. */
   void* data() override {
     return data_.data();
   }
 
+  /** Pointer access to data size. */
   uint64_t* data_size() override {
     return &data_size_;
   }
 
  private:
+  /** Vector of index data. */
   std::vector<T> data_;
+
+  /** Size of the index data. */
   uint64_t data_size_;
 };
 
-/** TODO: Docs */
+/** Dimension label query for writing ordered data. */
 class OrderedWriteDataQuery : public DimensionLabelQuery {
  public:
   /** Default constructor is not C.41 compliant. */
   OrderedWriteDataQuery() = delete;
 
-  /** Constructor for when index buffer is set. */
+  /**
+   * Constructor for when index buffer is set.
+   *
+   * @param storage_manager Storage manager object.
+   * @param dimension_label Opened dimension label for the query.
+   * @param index_buffer Query buffer for the index data.
+   * @param label_buffer Query buffer for the label data.
+   * @param fragment_name Name to use when writing the fragment.
+   */
   OrderedWriteDataQuery(
       StorageManager* storage_manager,
       DimensionLabel* dimension_label,
@@ -156,7 +188,17 @@ class OrderedWriteDataQuery : public DimensionLabelQuery {
       const QueryBuffer& label_buffer,
       optional<std::string> fragment_name);
 
-  /** Constructor for when index buffer is not set. */
+  /**
+   * Constructor for when index buffer is not set.
+   *
+   * @param storage_manager Storage manager object.
+   * @param dimension_label Opened dimension label for the query.
+   * @param parent_subarrray Subarray of the parent array.
+   * @param label_buffer Query buffer for the label data.
+   * @param dim_idx Index of the dimension on the parent array this dimension
+   *     label is for.
+   * @param fragment_name Name to use when writing the fragment.
+   */
   OrderedWriteDataQuery(
       StorageManager* storage_manager,
       DimensionLabel* dimension_label,
@@ -169,10 +211,21 @@ class OrderedWriteDataQuery : public DimensionLabelQuery {
   tdb_unique_ptr<IndexData> index_data_;
 };
 
-/** TODO: Docs */
+/** Writer for unordered dimension labels. */
 class UnorderedWriteDataQuery : public DimensionLabelQuery {
  public:
+  /** Default constructor is not C.41. */
   UnorderedWriteDataQuery() = delete;
+
+  /**
+   * Constructor.
+   *
+   * @param storage_manager Storage manager object.
+   * @param dimension_label Opened dimension label for the query.
+   * @param index_buffer Query buffer for the index data.
+   * @param label_buffer Query buffer for the label data.
+   * @param fragment_name Name to use when writing the fragment.
+   */
   UnorderedWriteDataQuery(
       StorageManager* storage_manager,
       DimensionLabel* dimension_label,
