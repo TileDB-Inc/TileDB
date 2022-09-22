@@ -1025,8 +1025,16 @@ Status ReaderBase::unfilter_tile_chunk_range(
             dim_tiles.push_back(&dim_tile_tuple->fixed_tile());
           }
 
+          const Domain &d = array_schema_.domain();
+
+          auto dim_tiles_ref = std::ref(dim_tiles);
+          auto domain_ref = std::ref(d);
+          
+          // Combine them into an argument.
+          BitSortFilterMetadataType pair = std::make_pair(dim_tiles_ref, domain_ref);
+
           RETURN_NOT_OK(unfilter_tile_chunk_range(
-            num_range_threads, range_thread_idx, name, t, tile_chunk_data, dim_tiles)); 
+            num_range_threads, range_thread_idx, name, t, tile_chunk_data, pair)); 
 
         } else {
           RETURN_NOT_OK(unfilter_tile_chunk_range(
@@ -1275,7 +1283,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
       const std::string& name,
       Tile* tile,
       const ChunkData& tile_chunk_data,
-      std::vector<Tile*> &dim_tiles) const {
+      BitSortFilterMetadataType &pair) const {
   assert(tile);
   // Prevent processing past the end of chunks in case there are more
   // threads than chunks.
@@ -1294,8 +1302,6 @@ Status ReaderBase::unfilter_tile_chunk_range(
       tile_chunk_data.chunk_offsets_.size(), num_range_threads, thread_idx);
 
   // Reverse the tile filters.
-  auto dim_tiles_arg = std::optional<std::reference_wrapper<std::vector<Tile*>>>{dim_tiles};
-
   RETURN_NOT_OK(filters.run_reverse_chunk_range(
       stats_,
       tile,
@@ -1304,7 +1310,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
       t_max,
       storage_manager_->compute_tp()->concurrency_level(),
       storage_manager_->config(),
-      dim_tiles_arg));
+      pair));
 
   return Status::Ok();
 }
@@ -1637,7 +1643,15 @@ Status ReaderBase::unfilter_tiles(
                   dim_tiles.push_back(&dim_tile_tuple->fixed_tile());
                 }
 
-                RETURN_NOT_OK(unfilter_tile(name, t, dim_tiles));
+                // Collect domain.
+                const Domain &d = array_schema_.domain();
+
+                auto dim_tiles_ref = std::ref(dim_tiles);
+                auto domain_ref = std::ref(d);
+          
+                // Combine them into an argument.
+                BitSortFilterMetadataType pair = std::make_pair(dim_tiles_ref, domain_ref);
+                RETURN_NOT_OK(unfilter_tile(name, t, pair));
 
               } else {
                 RETURN_NOT_OK(unfilter_tile(name, t));
@@ -1662,7 +1676,7 @@ Status ReaderBase::unfilter_tiles(
   return Status::Ok();
 }
 
-Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile, std::vector<Tile*> &dim_tiles) const {
+Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile, BitSortFilterMetadataType &pair) const {
   FilterPipeline filters = array_schema_.filters(name);
 
   // Append an encryption unfilter when necessary.
@@ -1670,10 +1684,10 @@ Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile, std::vecto
       &filters, array_->get_encryption_key()));
 
   // Reverse the tile filters.
-  RETURN_NOT_OK(filters.run_reverse<std::vector<Tile*>>(
+  RETURN_NOT_OK(filters.run_reverse<BitSortFilterMetadataType&>(
       stats_,
       tile,
-      dim_tiles,
+      pair,
       storage_manager_->compute_tp(),
       storage_manager_->config()));
 

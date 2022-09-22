@@ -241,7 +241,7 @@ Status BitSortFilter::rewrite_dim_tile_forward(const std::vector<std::pair<T, ui
  */
 Status BitSortFilter::run_reverse(
     const Tile& tile,
-    std::vector<Tile*> &dim_tiles,
+    BitSortFilterMetadataType &pair,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -253,19 +253,19 @@ Status BitSortFilter::run_reverse(
   switch (datatype_size(tile_type)) {
     case sizeof(int8_t): {
       return run_reverse<int8_t>(
-          dim_tiles, input_metadata, input, output_metadata, output);
+          pair, input_metadata, input, output_metadata, output);
     }
     case sizeof(int16_t): {
       return run_reverse<int16_t>(
-          dim_tiles, input_metadata, input, output_metadata, output);
+          pair, input_metadata, input, output_metadata, output);
     }
     case sizeof(int32_t): {
       return run_reverse<int32_t>(
-          dim_tiles, input_metadata, input, output_metadata, output);
+          pair, input_metadata, input, output_metadata, output);
     }
     case sizeof(int64_t): {
       return run_reverse<int64_t>(
-          dim_tiles, input_metadata, input, output_metadata, output);
+          pair, input_metadata, input, output_metadata, output);
     }
     default: {
       return Status_FilterError(
@@ -279,11 +279,15 @@ Status BitSortFilter::run_reverse(
 
 template <typename T>
 Status BitSortFilter::run_reverse(
-    std::vector<Tile*> &dim_tiles,
+    BitSortFilterMetadataType &pair,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
-    FilterBuffer* output) const {
+    FilterBuffer* output) const  {
+  
+  // TODO: change!
+  std::vector<Tile*> &dim_tiles = pair.first.get();
+
   // Get number of parts
   uint32_t num_parts;
   RETURN_NOT_OK(input_metadata->read(&num_parts, sizeof(uint32_t)));
@@ -321,6 +325,7 @@ Status BitSortFilter::unsort_part(
     std::vector<Tile*> &dim_tiles, ConstBuffer* input_buffer, Buffer* output_buffer) const {
   // Get positions vector from dim_tile.
   std::vector<uint32_t> positions;
+  // no idea if this is right
   Datatype tile_type = dim_tiles[0]->type();
   switch (tile_type) {
     case Datatype::INT8: {

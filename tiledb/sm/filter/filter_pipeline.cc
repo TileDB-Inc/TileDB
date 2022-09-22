@@ -417,7 +417,7 @@ Status FilterPipeline::filter_chunks_reverse(
 
       f->init_decompression_resource_pool(compute_tp->concurrency_level());
 
-      if constexpr (std::is_same<T, std::vector<Tile*>>::value) {
+      if constexpr (std::is_same<T, BitSortFilterMetadataType>::value) {
         if (f->type() == FilterType::FILTER_BITSORT) {
           auto bitsort_filter = reinterpret_cast<const BitSortFilter*>(f.get());
           RETURN_NOT_OK(
@@ -485,7 +485,7 @@ Status FilterPipeline::run_forward(
       Tile* const support_tiles,
       ThreadPool* compute_tp,
       bool chunking) const {
-  return run_forward<Tile*>(writer_stats, tile, support_tiles, compute_tp, chunking);
+  return run_forward<Tile* const>(writer_stats, tile, support_tiles, compute_tp, chunking);
 }
 
 template <typename T,
@@ -493,7 +493,7 @@ template <typename T,
 Status FilterPipeline::run_forward(
     stats::Stats* const writer_stats,
     Tile* const tile,
-    T const support_tiles,
+    T support_tiles,
     ThreadPool* const compute_tp,
     bool use_chunking) const {
   RETURN_NOT_OK(
@@ -558,7 +558,7 @@ Status FilterPipeline::run_reverse_chunk_range(
       const uint64_t max_chunk_index,
       uint64_t concurrency_level,
       const Config& config,
-      std::optional<std::reference_wrapper<std::vector<Tile*>>> dim_tiles) const {
+      OptionalRef<BitSortFilterMetadataType> dim_tiles) const {
         // Run each chunk through the entire pipeline.
   for (size_t i = min_chunk_index; i < max_chunk_index; i++) {
     auto& chunk = chunk_data.filtered_chunks_[i];
@@ -860,6 +860,13 @@ bool FilterPipeline::use_tile_chunking(
 }
 
 /** Explicit template instantiations of run_forward. */
+template Status FilterPipeline::run_forward<Tile* const>(
+      stats::Stats* writer_stats,
+      Tile* tile,
+      Tile* const support_tiles,
+      ThreadPool* compute_tp,
+      bool chunking) const;
+
 template Status FilterPipeline::run_forward<Tile*>(
       stats::Stats* writer_stats,
       Tile* tile,
@@ -874,17 +881,17 @@ template Status FilterPipeline::run_forward<std::vector<Tile*>>(
       ThreadPool* compute_tp,
       bool chunking) const;
 
-template Status FilterPipeline::run_reverse<Tile*>(
+template Status FilterPipeline::run_reverse<Tile* const>(
       stats::Stats* writer_stats,
       Tile* tile,
       Tile* const support_tiles,
       ThreadPool* compute_tp,
       const Config& config) const;
 
-template Status FilterPipeline::run_reverse<std::vector<Tile*>>(
+template Status FilterPipeline::run_reverse<BitSortFilterMetadataType&>(
       stats::Stats* writer_stats,
       Tile* tile,
-      std::vector<Tile*> const support_tiles,
+      BitSortFilterMetadataType& support_tiles,
       ThreadPool* compute_tp,
       const Config& config) const;
 

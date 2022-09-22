@@ -33,18 +33,21 @@
 #ifndef TILEDB_READER_BASE_H
 #define TILEDB_READER_BASE_H
 
-#include <queue>
 #include "../strategy_base.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
+#include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_space_tile.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
+
+#include <queue>
+#include <utility>
 
 namespace tiledb {
 namespace sm {
@@ -505,7 +508,7 @@ class ReaderBase : public StrategyBase {
       const std::string& name,
       Tile* tile,
       const ChunkData& tile_chunk_data,
-      std::vector<Tile*>& dim_tiles) const;
+      BitSortFilterMetadataType &pair) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -608,7 +611,7 @@ class ReaderBase : public StrategyBase {
 
   // TODO: dim tiles
   Status unfilter_tile(
-      const std::string& name, Tile* tile, std::vector<Tile*>& dim_tiles) const;
+      const std::string& name, Tile* tile, BitSortFilterMetadataType& pair) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
