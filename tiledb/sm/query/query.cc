@@ -1220,20 +1220,14 @@ Status Query::init() {
     // Create dimension label queries and remove labels from subarray.
     if (uses_labels) {
       // Initialize the dimension label queries.
-      try {
-        dim_label_queries_ = tdb_unique_ptr<ArrayDimensionLabelQueries>(tdb_new(
-            ArrayDimensionLabelQueries,
-            storage_manager_,
-            array_,
-            subarray_,
-            label_buffers_,
-            buffers_,
-            fragment_name_));
-      } catch (...) {
-        std::throw_with_nested(StatusException(
-            Status_QueryError("Cannot initialize query; Failed to initialize "
-                              "dimension label queries.")));
-      }
+      dim_label_queries_ = tdb_unique_ptr<ArrayDimensionLabelQueries>(tdb_new(
+          ArrayDimensionLabelQueries,
+          storage_manager_,
+          array_,
+          subarray_,
+          label_buffers_,
+          buffers_,
+          fragment_name_));
 
       // Do not allow reading data from dimension labels for sparse arrays
       // unless we are only returning the dimension label data. Otherwise, the
@@ -1313,13 +1307,7 @@ Status Query::process() {
   // continuing to the main query.
   if (dim_label_queries_ && dim_label_queries_->completed_range_queries()) {
     // Process the dimension label queries.
-    try {
-      dim_label_queries_->process_range_queries(subarray_);
-    } catch (...) {
-      std::throw_with_nested(StatusException(
-          Status_QueryError("Cannot process query; Failed to read data from "
-                            "dimension label ranges.")));
-    }
+    dim_label_queries_->process_range_queries(subarray_);
 
     // The dimension label query did not complete. For now, we are failing on
     // this step. In the future, this may be updated to allow incomplete
