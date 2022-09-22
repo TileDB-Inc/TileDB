@@ -33,11 +33,14 @@
 #ifndef TILEDB_BITSORT_FILTER_H
 #define TILEDB_BITSORT_FILTER_H
 
-#include "tiledb/sm/filter/bitsort_filter_type.h"
+ 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter.h"
+#include "tiledb/sm/misc/comparators.h"
 
 using namespace tiledb::common;
 
@@ -149,13 +152,16 @@ class BitSortFilter : public Filter {
    */
   template <typename T>
   Status unsort_part(
-      std::vector<Tile*>& dim_tiles,
+      const std::vector<uint64_t>& positions,
       ConstBuffer* input_buffer,
       Buffer* output_buffer) const;
 
+  Status rewrite_dim_tile_reverse(
+      Tile* dim_tile, GlobalCmp &comparator, std::optional<std::reference_wrapper<std::vector<uint64_t>>> positions_opt) const;
+  
   template <typename T>
   Status rewrite_dim_tile_reverse(
-      Tile* dim_tile, std::vector<uint32_t>& positions) const;
+      Tile* dim_tile, GlobalCmp &comparator, std::optional<std::reference_wrapper<std::vector<uint64_t>>> positions_opt) const;
 };
 
 };  // namespace sm

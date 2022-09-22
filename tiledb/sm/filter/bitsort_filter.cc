@@ -42,7 +42,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <numeric>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -285,7 +287,6 @@ Status BitSortFilter::run_reverse(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const  {
   
-  // TODO: change!
   std::vector<Tile*> &dim_tiles = pair.first.get();
 
   // Get number of parts
@@ -296,13 +297,28 @@ Status BitSortFilter::run_reverse(
   Buffer* output_buf = output->buffer_ptr(0);
   assert(output_buf != nullptr);
 
+  // Get the comparator.
+  const Domain &domain = pair.second.get();
+  GlobalCmp comparator(domain);
+
+  // Determine the positions vector.
+  std::vector<uint64_t> positions;
+  for (uint64_t i = 0; i < dim_tiles.size(); ++i) {
+    if (i == 0) {
+      auto positions_ref = std::ref(positions);
+      rewrite_dim_tile_reverse(dim_tiles[i], comparator, positions_ref);
+    } else {
+      rewrite_dim_tile_reverse(dim_tiles[i], comparator, std::nullopt);
+    }
+  }
+
   for (uint32_t i = 0; i < num_parts; i++) {
     uint32_t part_size;
     RETURN_NOT_OK(input_metadata->read(&part_size, sizeof(uint32_t)));
     ConstBuffer part(nullptr, 0);
     RETURN_NOT_OK(input->get_const_buffer(part_size, &part));
 
-    RETURN_NOT_OK(unsort_part<T>(dim_tiles, &part, output_buf));
+    RETURN_NOT_OK(unsort_part<T>(positions, &part, output_buf));
 
     if (output_buf->owns_data()) {
       output_buf->advance_size(part_size);
@@ -322,35 +338,7 @@ Status BitSortFilter::run_reverse(
 
 template <typename T>
 Status BitSortFilter::unsort_part(
-    std::vector<Tile*> &dim_tiles, ConstBuffer* input_buffer, Buffer* output_buffer) const {
-  // Get positions vector from dim_tile.
-  std::vector<uint32_t> positions;
-  // no idea if this is right
-  Datatype tile_type = dim_tiles[0]->type();
-  switch (tile_type) {
-    case Datatype::INT8: {
-      rewrite_dim_tile_reverse<int8_t>(dim_tiles[0], positions);
-    } break;
-    case Datatype::INT16: {
-      rewrite_dim_tile_reverse<int16_t>(dim_tiles[0], positions);
-    } break;
-    case Datatype::INT32: {
-      rewrite_dim_tile_reverse<int32_t>(dim_tiles[0], positions);
-    } break;
-    case Datatype::INT64: {
-      rewrite_dim_tile_reverse<int64_t>(dim_tiles[0], positions);
-    } break;
-    case Datatype::FLOAT32: {
-      rewrite_dim_tile_reverse<float>(dim_tiles[0], positions);
-    } break;
-    case Datatype::FLOAT64: {
-      rewrite_dim_tile_reverse<double>(dim_tiles[0], positions);
-    } break;
-    default: {
-      return Status_FilterError("BitSortFilter::unsort_part: unsupported dimension type.");
-    } break;
-  }
-
+    const std::vector<uint64_t> &positions, ConstBuffer* input_buffer, Buffer* output_buffer) const {
   // Read in data.
   uint32_t s = input_buffer->size();
   assert(s % sizeof(T) == 0);
@@ -371,8 +359,37 @@ Status BitSortFilter::unsort_part(
   return Status::Ok();
 }
 
+Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, GlobalCmp &comparator, std::optional<std::reference_wrapper<std::vector<uint64_t>>> positions_opt) const {
+  Datatype tile_type = dim_tile->type();
+  switch (tile_type) {
+    case Datatype::INT8: {
+      rewrite_dim_tile_reverse<int8_t>(dim_tile, comparator, positions_opt);
+    } break;
+    case Datatype::INT16: {
+      rewrite_dim_tile_reverse<int16_t>(dim_tile, comparator, positions_opt);
+    } break;
+    case Datatype::INT32: {
+      rewrite_dim_tile_reverse<int32_t>(dim_tile, comparator, positions_opt);
+    } break;
+    case Datatype::INT64: {
+      rewrite_dim_tile_reverse<int64_t>(dim_tile, comparator, positions_opt);
+    } break;
+    case Datatype::FLOAT32: {
+      rewrite_dim_tile_reverse<float>(dim_tile, comparator, positions_opt);
+    } break;
+    case Datatype::FLOAT64: {
+      rewrite_dim_tile_reverse<double>(dim_tile, comparator, positions_opt);
+    } break;
+    default: {
+      return Status_FilterError("BitSortFilter::unsort_part: unsupported dimension type.");
+    } break;
+  }
+
+  return Status::Ok();
+}
+
 template<typename T>
-Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, std::vector<uint32_t> &positions) const {
+Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, GlobalCmp &comparator, std::optional<std::reference_wrapper<std::vector<uint64_t>>> positions_opt) const {
   std::vector<std::pair<T, uint32_t>> dimension_vector;
 
   T* dim_tile_data = static_cast<T*>(dim_tile->data());
@@ -380,10 +397,18 @@ Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, std::vector<uint3
     dimension_vector.push_back(std::make_pair(dim_tile_data[i], i));
   }
 
-  std::sort(dimension_vector.begin(), dimension_vector.end());
+  auto comparison_function = [&comparator](const std::pair<T, uint32_t> &a, const std::pair<T, uint32_t> &b) {
+        bool result = comparator(a.first, b.first);
+        return result;
+    };
 
-  for (uint32_t i = 0; i < dim_tile->size_as<T>(); ++i) {
-    positions.push_back(dimension_vector[i].second);
+  std::sort(dimension_vector.begin(), dimension_vector.end(), comparison_function);
+
+  if (positions_opt) {
+    std::vector<uint64_t> &positions = positions_opt.value().get();
+    for (uint32_t i = 0; i < dim_tile->size_as<T>(); ++i) {
+      positions.push_back(dimension_vector[i].second);
+    }
   }
 
   return Status::Ok();
