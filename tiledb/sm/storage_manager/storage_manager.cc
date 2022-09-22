@@ -728,8 +728,7 @@ Status StorageManager::array_create(
   }
 
   // Check if array exists
-  bool exists = false;
-  RETURN_NOT_OK(is_array(array_uri, &exists));
+  bool exists = is_array(array_uri);
   if (exists)
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot create array; Array '") + array_uri.c_str() +
@@ -823,11 +822,9 @@ Status StorageManager::array_create(
 }
 
 Status StorageManager::array_evolve_schema(
-    const ArrayDirectory& array_dir,
+    const URI& array_uri,
     ArraySchemaEvolution* schema_evolution,
     const EncryptionKey& encryption_key) {
-  const URI& array_uri = array_dir.uri();
-
   // Check array schema
   if (schema_evolution == nullptr) {
     return logger_->status(Status_StorageManagerError(
@@ -839,13 +836,21 @@ Status StorageManager::array_evolve_schema(
         array_uri, schema_evolution);
   }
 
+  // Load URIs from the array directory
+  tiledb::sm::ArrayDirectory array_dir{
+      this->vfs(),
+      this->io_tp(),
+      array_uri,
+      0,
+      UINT64_MAX,
+      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY};
+
   // Check if array exists
-  bool exists = false;
-  RETURN_NOT_OK(is_array(array_uri, &exists));
-  if (!exists)
+  if (!is_array(array_uri)) {
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot evolve array; Array '") + array_uri.c_str() +
         "' not exists"));
+  }
 
   auto&& [st1, array_schema] =
       load_array_schema_latest(array_dir, encryption_key);
@@ -867,16 +872,21 @@ Status StorageManager::array_evolve_schema(
 }
 
 Status StorageManager::array_upgrade_version(
-    const ArrayDirectory& array_dir, const Config* config) {
-  const URI& array_uri = array_dir.uri();
-
+    const URI& array_uri, const Config* config) {
   // Check if array exists
-  bool exists = false;
-  RETURN_NOT_OK(is_array(array_uri, &exists));
-  if (!exists)
+  if (!is_array(array_uri))
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot upgrade array; Array '") + array_uri.c_str() +
         "' does not exist"));
+
+  // Load URIs from the array directory
+  tiledb::sm::ArrayDirectory array_dir{
+      this->vfs(),
+      this->io_tp(),
+      array_uri,
+      0,
+      UINT64_MAX,
+      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY};
 
   // If 'config' is unset, use the 'config_' that was set during initialization
   // of this StorageManager instance.
@@ -1468,29 +1478,31 @@ void StorageManager::increment_in_progress() {
   queries_in_progress_cv_.notify_all();
 }
 
-Status StorageManager::is_array(const URI& uri, bool* is_array) const {
+bool StorageManager::is_array(const URI& uri) const {
   // Handle remote array
   if (uri.is_tiledb()) {
     auto&& [st, exists] = rest_client_->check_array_exists_from_rest(uri);
-    RETURN_NOT_OK(st);
-    *is_array = *exists;
+    throw_if_not_ok(st);
+    assert(exists.has_value());
+    return exists.value();
   } else {
     // Check if the schema directory exists or not
-    bool is_dir = false;
-    // Since is_dir could return NOT Ok status, we will not use RETURN_NOT_OK
-    // here
-    Status st =
-        vfs_->is_dir(uri.join_path(constants::array_schema_dir_name), &is_dir);
-    if (st.ok() && is_dir) {
-      *is_array = true;
-      return Status::Ok();
+    bool dir_exists = false;
+    throw_if_not_ok(vfs_->is_dir(
+        uri.join_path(constants::array_schema_dir_name), &dir_exists));
+
+    if (dir_exists) {
+      return true;
     }
 
+    bool schema_exists = false;
     // If there is no schema directory, we check schema file
-    RETURN_NOT_OK(vfs_->is_file(
-        uri.join_path(constants::array_schema_filename), is_array));
+    throw_if_not_ok(vfs_->is_file(
+        uri.join_path(constants::array_schema_filename), &schema_exists));
+    return schema_exists;
   }
-  return Status::Ok();
+
+  // TODO: mark unreachable
 }
 
 Status StorageManager::is_file(const URI& uri, bool* is_file) const {
@@ -1727,8 +1739,7 @@ Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
       return Status::Ok();
     }
   }
-  bool exists = false;
-  RETURN_NOT_OK(is_array(uri, &exists));
+  bool exists = is_array(uri);
   if (exists) {
     *type = ObjectType::ARRAY;
     return Status::Ok();
@@ -1968,7 +1979,6 @@ Status StorageManager::store_group_detail(
   Serializer serializer(tile.data(), tile.size());
   group->serialize(serializer);
 
-
   stats_->add_counter("write_group_size", tile.size());
 
   // Check if the array schema directory exists
@@ -2156,7 +2166,6 @@ tuple<Status, optional<shared_ptr<Group>>> StorageManager::load_group_from_uri(
   Deserializer deserializer(tile.data(), tile.size());
   auto opt_group = Group::deserialize(deserializer, group_uri, this);
   return {Status::Ok(), opt_group};
-
 }
 
 tuple<Status, optional<shared_ptr<Group>>> StorageManager::load_group_details(

@@ -493,7 +493,7 @@ class StorageManager {
    * @return Status
    */
   Status array_evolve_schema(
-      const ArrayDirectory& array_dir,
+      const URI& array_uri,
       ArraySchemaEvolution* array_schema,
       const EncryptionKey& encryption_key);
 
@@ -507,8 +507,7 @@ class StorageManager {
    *      this instance).
    * @return Status
    */
-  Status array_upgrade_version(
-      const ArrayDirectory& array_dir, const Config* config);
+  Status array_upgrade_version(const URI& array_uri, const Config* config);
 
   /**
    * Retrieves the non-empty domain from an array. This is the union of the
@@ -707,7 +706,7 @@ class StorageManager {
    * @param is_array Set to `true` if the URI is an array and `false` otherwise.
    * @return Status
    */
-  Status is_array(const URI& uri, bool* is_array) const;
+  bool is_array(const URI& uri) const;
 
   /**
    * Checks if the input URI represents a directory.
