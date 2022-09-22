@@ -63,16 +63,42 @@ DimensionLabelSchema::DimensionLabelSchema(
     const void* label_domain,
     const void* label_tile_extent)
     : label_order_(label_order)
-    , indexed_array_schema_(make_shared<ArraySchema>(HERE(), ArrayType::DENSE))
+    , indexed_array_schema_(make_shared<ArraySchema>(
+          HERE(),
+          label_order == LabelOrder::UNORDERED_LABELS ? ArrayType::SPARSE :
+                                                        ArrayType::DENSE))
     , labelled_array_schema_(
           make_shared<ArraySchema>(HERE(), ArrayType::SPARSE)) {
-  // Set-up indexed array
+  // Check the index data type is valid.
   if (!(datatype_is_integer(index_type) || datatype_is_datetime(index_type) ||
-        datatype_is_time(index_type)))
+        datatype_is_time(index_type))) {
     throw std::invalid_argument(
         "Failed to create dimension label schema; Currently labels are not "
         "support on dimensions with datatype Datatype::" +
         datatype_str(index_type));
+  }
+
+  // Check the label data type is valid.
+  try {
+    ensure_dimension_datatype_is_valid(label_type);
+  } catch (...) {
+    throw std::invalid_argument(
+        "Datatype Datatype::" + datatype_str(label_type) +
+        " is not a valid dimension datatype.");
+  }
+  if (datatype_is_string(label_type) &&
+      label_order != LabelOrder::UNORDERED_LABELS) {
+    throw std::invalid_argument(
+        "Failed to create dimension label schema; Datatype Datatype::" +
+        datatype_str(label_type) +
+        " is not supported on dimension labels with LabelOrder::" +
+        label_order_str(label_order));
+  }
+
+  // Create indexed array.
+  if (label_order == LabelOrder::UNORDERED_LABELS) {
+    throw_if_not_ok(indexed_array_schema_->set_allows_dups(true));
+  }
   std::vector<shared_ptr<Dimension>> index_dims{
       make_shared<Dimension>(HERE(), "index", index_type)};
   throw_if_not_ok(index_dims.back()->set_domain(index_domain));
@@ -84,7 +110,11 @@ DimensionLabelSchema::DimensionLabelSchema(
     label_attr->set_cell_val_num(constants::var_num);
   throw_if_not_ok(indexed_array_schema_->add_attribute(label_attr));
   throw_if_not_ok(indexed_array_schema_->check());
+
   // Set-up labelled array
+  if (label_order == LabelOrder::UNORDERED_LABELS) {
+    throw_if_not_ok(labelled_array_schema_->set_allows_dups(true));
+  }
   std::vector<shared_ptr<Dimension>> label_dims{
       make_shared<Dimension>(HERE(), "label", label_type)};
   throw_if_not_ok(label_dims.back()->set_domain(label_domain));
