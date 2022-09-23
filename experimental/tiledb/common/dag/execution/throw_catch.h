@@ -36,6 +36,7 @@
 #include <condition_variable>
 #include <functional>
 #include <future>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -180,17 +181,6 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
     return concurrency_level_;
   }
 
-  void submit(Task* t) {
-    t->set_node_state(TaskState::created);
-
-    std::cout << "Submitting " << t->name() << " node " << t->id()
-              << " with correspondent_ " << t->correspondent_->name()
-              << " node "
-              << " node " << t->correspondent_->id() << std::endl;
-
-    submission_queue_.push(t);
-  }
-
 #if 0
   /**
    * Schedule a new task to be executed. If the returned future object
@@ -244,6 +234,20 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
   void yield(Task*) {
   }
 
+  void submit(Task* t) {
+    t->set_node_state(TaskState::created);
+
+    if (debug_)
+      std::cout << "Submitting " << t->name() << " node " << t->id()
+                << " with correspondent_ " << t->correspondent_->name()
+                << " node "
+                << " node " << t->correspondent_->id() << std::endl;
+
+    ++num_submissions_;
+    ++num_tasks_;
+    submission_queue_.push(t);
+  }
+
   /**
    * Wait on all the given tasks to complete. Since tasks are started lazily,
    * they are not actually started on submit().  So, we first start all the
@@ -255,6 +259,7 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
    */
   void sync_wait_all() {
     submission_queue_.swap_data(runnable_queue_);
+
     start_cv_.notify_all();
 
     for (auto&& t : threads_) {
@@ -263,22 +268,36 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
     threads_.clear();
   }
 
+  void enable_debug() {
+    debug_ = true;
+  }
+
+  void disable_debug() {
+    debug_ = false;
+  }
+
+  bool debug() {
+    return debug_;
+  }
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
  private:
-  std::mutex mutex_;
-  std::condition_variable start_cv_;
-
   /** The worker thread routine */
   void worker() {
     //    thread_local static Scheduler* scheduler = this;
     [[maybe_unused]] thread_local static auto scheduler = this;
 
+    if (num_submissions_ == 0) {
+      std::cout << "No submissions, returning" << std::endl;
+      return;
+    }
+
     {
       std::unique_lock _(mutex_);
-      start_cv_.wait(_);
+      start_cv_.wait(_, [this]() { return runnable_queue_.size() != 0; });
     }
 
     while (true) {
@@ -289,12 +308,13 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
 
       if (waiting_set_.size() == 0 && runnable_queue_.size() == 0 &&
           running_set_.size() == 0) {
-        std::cout << "breaking with waiting_set_.size() = "
-                  << waiting_set_.size()
-                  << ", runnable_queue_.size() == " << runnable_queue_.size()
-                  << ", running_set_.size() == " << running_set_.size()
-                  << ", finished_queue_.size() == " << finished_queue_.size()
-                  << std::endl;
+        if (debug_)
+          std::cout << "breaking with waiting_set_.size() = "
+                    << waiting_set_.size()
+                    << ", runnable_queue_.size() == " << runnable_queue_.size()
+                    << ", running_set_.size() == " << running_set_.size()
+                    << ", finished_queue_.size() == " << finished_queue_.size()
+                    << std::endl;
 
         break;
       }
@@ -302,9 +322,10 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
       std::vector<Task*> notified_waiters_;
       notified_waiters_.reserve(waiting_set_.size());
       for (auto&& t : waiting_set_) {
-        std::cout << "Waiter found " << t->name() << " node " << t->id()
-                  << " with state " << str(t->node_state()) << " and event "
-                  << str(t->task_event()) << std::endl;
+        if (debug_)
+          std::cout << "Waiter found " << t->name() << " node " << t->id()
+                    << " with state " << str(t->node_state()) << " and event "
+                    << str(t->task_event()) << std::endl;
 
         if (t->task_event() == TaskEvent::notify) {
           notified_waiters_.push_back(t);
@@ -321,24 +342,30 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
       auto val = runnable_queue_.try_pop();
 
       if (!val) {
-        std::cout << "Nothing found in runnable_queue_, but " << std::endl;
-        std::cout << "waiting_set_.size() == " << waiting_set_.size()
-                  << ", runnable_queue_.size() == " << runnable_queue_.size()
-                  << ", running_set_.size() == " << running_set_.size()
-                  << ", finished_queue_.size() == " << finished_queue_.size()
-                  << std::endl;
+        if (debug_)
+          std::cout << "Nothing found in runnable_queue_, but " << std::endl;
+        if (debug_)
+          std::cout << "waiting_set_.size() == " << waiting_set_.size()
+                    << ", runnable_queue_.size() == " << runnable_queue_.size()
+                    << ", running_set_.size() == " << running_set_.size()
+                    << ", finished_queue_.size() == " << finished_queue_.size()
+                    << std::endl;
         continue;
       }
 
       if (val) {
         auto task_to_run = *val;
 
-        std::cout << "Worker popped " << task_to_run->name() << " node "
-                  << task_to_run->id() << " from runnable_queue_" << std::endl;
+        if (debug_)
+          std::cout << "Worker popped " << task_to_run->name() << " node "
+                    << task_to_run->id() << " from runnable_queue_"
+                    << std::endl;
 
         if (task_to_run->node_state() == TaskState::waiting) {
-          std::cout << "Worker found " << task_to_run->name() << " node "
-                    << task_to_run->id() << " with waiting state" << std::endl;
+          if (debug_)
+            std::cout << "Worker found " << task_to_run->name() << " node "
+                      << task_to_run->id() << " with waiting state"
+                      << std::endl;
           waiting_set_.insert(task_to_run);
 
           // Don't have time to figure out nesting of ifs for big blocks
@@ -375,21 +402,24 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
                 break;
               }
               n.value()->set_node_state(TaskState::waiting);
-              std::cout << n.value()->name() << " node " << n.value()->id()
-                        << " found in running with "
-                        << str(n.value()->node_state()) << " and "
-                        << str(n.value()->task_event()) << std::endl;
+              if (debug_)
+                std::cout << n.value()->name() << " node " << n.value()->id()
+                          << " found in running with "
+                          << str(n.value()->node_state()) << " and "
+                          << str(n.value()->task_event()) << std::endl;
               assert(n.value()->node_state() == TaskState::waiting);
             } else {
-              std::cout << "n not found in running set -- n has no value"
-                        << std::endl;
+              if (debug_)
+                std::cout << "n not found in running set -- n has no value"
+                          << std::endl;
               break;
             }
 
             assert(n);
 
-            std::cout << "Putting " << n.value()->name() << " node "
-                      << n.value()->id() << " onto waiting_set_" << std::endl;
+            if (debug_)
+              std::cout << "Putting " << n.value()->name() << " node "
+                        << n.value()->id() << " onto waiting_set_" << std::endl;
             waiting_set_.insert(n.value());
             break;
           }
@@ -402,42 +432,49 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
           case TaskEvent::exit: {
             auto n = running_set_.extract(task_to_run);
 
-            std::cout << "Putting " << n.value()->name() << " node "
-                      << n.value()->id() << " finished_queue_" << std::endl;
+            if (debug_)
+              std::cout << "Putting " << n.value()->name() << " node "
+                        << n.value()->id() << " finished_queue_" << std::endl;
 
             finished_queue_.push(n.value());
 
-            std::cout << "waiting_set_.size() == " << waiting_set_.size()
-                      << ", runnable_queue_.size() == "
-                      << runnable_queue_.size()
-                      << ", running_set_.size() == " << running_set_.size()
-                      << ", finished_queue_.size() == "
-                      << finished_queue_.size() << std::endl;
+            if (debug_)
+              std::cout << "waiting_set_.size() == " << waiting_set_.size()
+                        << ", runnable_queue_.size() == "
+                        << runnable_queue_.size()
+                        << ", running_set_.size() == " << running_set_.size()
+                        << ", finished_queue_.size() == "
+                        << finished_queue_.size() << std::endl;
 
             break;
           }
           default: {
           }
         }  // switch
-        std::cout << "Finished switch" << std::endl;
+        if (debug_)
+          std::cout << "Finished switch" << std::endl;
 
       if_val_bottom:;
       } else {
         break;
       }  // if (val)
-      std::cout << "Finished if (val)" << std::endl;
+      if (debug_)
+        std::cout << "Finished if (val)" << std::endl;
 
       if (!running_set_.empty()) {
-        std::cout << "Running_set_ not empty, continuing" << std::endl;
+        if (debug_)
+          std::cout << "Running_set_ not empty, continuing" << std::endl;
         continue;
       }
       if (!waiting_set_.empty()) {
-        std::cout << "Waiting_set_ not empty, continuing" << std::endl;
+        if (debug_)
+          std::cout << "Waiting_set_ not empty, continuing" << std::endl;
         continue;
       }
 
     }  // while(true);
-    std::cout << "Finished while (true)" << std::endl;
+    if (debug_)
+      std::cout << "Finished while (true)" << std::endl;
 
   }  // worker()
 
@@ -491,6 +528,19 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
 
   /** The maximum level of concurrency among all of the worker threads */
   std::atomic<size_t> concurrency_level_;
+
+  /** Debug flag */
+  bool debug_;
+
+  /** Track number of submissions */
+  std::atomic<size_t> num_submissions_;
+
+  /** Track number of tasks */
+  std::atomic<size_t> num_tasks_;
+
+  /** Synchronization variables */
+  std::mutex mutex_;
+  std::condition_variable start_cv_;
 };
 
 }  // namespace tiledb::common

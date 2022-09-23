@@ -84,6 +84,7 @@ struct cond_var {
 #endif
 
 struct node {
+  bool debug_{false};
   size_t id_;
   TaskState node_state_{TaskState::created};
   TaskEvent task_event_{TaskEvent::admitted};
@@ -122,12 +123,26 @@ struct node {
   virtual std::string name() {
     return {"abstract base"};
   }
+
+  void enable_debug() {
+    debug_ = true;
+  }
+
+  void disable_debug() {
+    debug_ = false;
+  }
+
+  bool debug() {
+    return debug_;
+  }
 };
 
 void connect(node& from, node& to) {
   from.correspondent_ = &to;
   to.correspondent_ = &from;
 }
+
+static size_t problem_size = 1337;
 
 std::atomic<size_t> id_counter{0};
 
@@ -143,11 +158,13 @@ struct producer_node : public node, public sender<T> {
   }
 
   void inject(T) {
-    std::cout << "producer_node " << id_ << " injecting" << std::endl;
+    if (debug_)
+      std::cout << "producer_node " << id_ << " injecting" << std::endl;
   }
 
   void fill() {
-    std::cout << "producer_node " << id_ << " filling" << std::endl;
+    if (debug_)
+      std::cout << "producer_node " << id_ << " filling" << std::endl;
   }
 
   std::string name() {
@@ -155,12 +172,14 @@ struct producer_node : public node, public sender<T> {
   }
 
   node* resume() {
-    std::cout << this->name() << " node " << this->id() << " resuming with "
-              << produced_items << " produced_items" << std::endl;
+    if (debug_)
+      std::cout << this->name() << " node " << this->id() << " resuming with "
+                << produced_items << " produced_items" << std::endl;
 
-    if (produced_items++ >= 3) {
-      std::cout << this->name() << " node " << this->id()
-                << " is done -- setting event to exit" << std::endl;
+    if (produced_items++ >= problem_size) {
+      if (debug_)
+        std::cout << this->name() << " node " << this->id()
+                  << " is done -- setting event to exit" << std::endl;
       this->task_event_ = TaskEvent::exit;
       notify(this->correspondent_);
       return this;
@@ -229,12 +248,14 @@ struct consumer_node : public node, public receiver<T> {
   }
 
   T extract() {
-    std::cout << "consumer_node " << id_ << " extracting" << std::endl;
+    if (debug_)
+      std::cout << "consumer_node " << id_ << " extracting" << std::endl;
     return {};
   }
 
   void drain() {
-    std::cout << "consumer_node " << id_ << " draining" << std::endl;
+    if (debug_)
+      std::cout << "consumer_node " << id_ << " draining" << std::endl;
   }
 
   std::string name() {
@@ -242,12 +263,16 @@ struct consumer_node : public node, public receiver<T> {
   }
 
   node* resume() {
-    std::cout << this->name() << " node " << this->id() << " resuming with "
-              << consumed_items << " consumed_items" << std::endl;
+    if (debug_)
 
-    if (consumed_items++ >= 3) {
-      std::cout << this->name() << " node " << this->id()
-                << " is done -- setting event to exit" << std::endl;
+      std::cout << this->name() << " node " << this->id() << " resuming with "
+                << consumed_items << " consumed_items" << std::endl;
+
+    if (consumed_items++ >= problem_size) {
+      if (debug_)
+
+        std::cout << this->name() << " node " << this->id()
+                  << " is done -- setting event to exit" << std::endl;
       this->task_event_ = TaskEvent::exit;
       return this;
     }
@@ -317,48 +342,56 @@ struct consumer_node : public node, public receiver<T> {
 };
 
 void pull(node* n) {
-  std::cout << n->name() << " node " << n->id() << " pulling with "
-            << str(n->node_state()) << " and " << str(n->task_event())
-            << std::endl;
+  if (n->debug_)
+    std::cout << n->name() << " node " << n->id() << " pulling with "
+              << str(n->node_state()) << " and " << str(n->task_event())
+              << std::endl;
 
   if (n->task_event() == TaskEvent::notify) {
-    std::cout << n->name() << " node " << n->id()
-              << " has been notifed -- setting state to dispatch" << std::endl;
+    if (n->debug_)
+      std::cout << n->name() << " node " << n->id()
+                << " has been notifed -- setting state to dispatch"
+                << std::endl;
 
     n->set_task_event(TaskEvent::dispatch);
     return;
   }
 
-  std::cout << n->name() << " node " << n->id()
-            << " setting to wait and throwing" << std::endl;
+  if (n->debug_)
+    std::cout << n->name() << " node " << n->id()
+              << " setting to wait and throwing" << std::endl;
 
   n->set_task_event(TaskEvent::wait);
   throw(n);
 }
 
 void push(node* n) {
-  std::cout << n->name() << " node " << n->id() << " pushing with "
-            << str(n->node_state()) << " and " << str(n->task_event())
-            << std::endl;
+  if (n->debug_)
+    std::cout << n->name() << " node " << n->id() << " pushing with "
+              << str(n->node_state()) << " and " << str(n->task_event())
+              << std::endl;
 
   if (n->task_event() == TaskEvent::notify) {
-    std::cout << n->name() << " node " << n->id() << " has been notifed "
-              << std::endl;
+    if (n->debug_)
+      std::cout << n->name() << " node " << n->id() << " has been notifed "
+                << std::endl;
     n->set_task_event(TaskEvent::dispatch);
     return;
   }
 
-  std::cout << n->name() << " node " << n->id()
-            << " setting to wait and throwing" << std::endl;
+  if (n->debug_)
+    std::cout << n->name() << " node " << n->id()
+              << " setting to wait and throwing" << std::endl;
 
   n->set_task_event(TaskEvent::wait);
   throw(n);
 }
 
 void notify(node* n) {
-  std::cout << n->name() << " node " << n->id() << " being notified with "
-            << str(n->node_state()) << " and " << str(n->task_event())
-            << std::endl;
+  if (n->debug_)
+    std::cout << n->name() << " node " << n->id() << " being notified with "
+              << str(n->node_state()) << " and " << str(n->task_event())
+              << std::endl;
   n->set_task_event(TaskEvent::notify);
 }
 
@@ -399,17 +432,23 @@ TEST_CASE("ThrowCatchScheduler: Test submit nodes", "[throw_catch]") {
 TEST_CASE("ThrowCatchScheduler: Test submit and wait nodes", "[throw_catch]") {
   [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(1);
 
-  auto p = producer_node<size_t>([]() {
-    std::cout << "Producing" << std::endl;
+  auto p = producer_node<size_t>([&sched]() {
+    if (sched.debug())
+      std::cout << "Producing" << std::endl;
     return 0;
   });
-  auto c = consumer_node<size_t>(
-      [](const size_t&) { std::cout << "Consuming" << std::endl; });
+  auto c = consumer_node<size_t>([&sched](const size_t&) {
+    if (sched.debug())
+      std::cout << "Consuming" << std::endl;
+  });
 
   connect(p, c);
   sched.submit(&p);
   sched.submit(&c);
   sched.sync_wait_all();
+
+  CHECK(produced_items == problem_size + 1);
+  CHECK(consumed_items == problem_size + 1);
 }
 
 TEST_CASE("ThrowCatchScheduler: Test run nodes", "[throw_catch]") {
