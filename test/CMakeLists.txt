@@ -295,7 +295,7 @@ target_include_directories(
   tiledb_unit BEFORE PRIVATE
     ${TILEDB_CORE_INCLUDE_DIR}
     ${TILEDB_EXPORT_HEADER_DIR}
-     ${TILEDB_SOURCE_ROOT_DIR}/test/support
+    ${TILEDB_SOURCE_ROOT}/test/support
 )
 target_include_directories(
   tiledb_test_support_lib BEFORE PRIVATE
