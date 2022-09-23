@@ -173,28 +173,14 @@ class OrderedWriteDataQuery : public DimensionLabelQuery {
   OrderedWriteDataQuery() = delete;
 
   /**
-   * Constructor for when index buffer is set.
-   *
-   * @param storage_manager Storage manager object.
-   * @param dimension_label Opened dimension label for the query.
-   * @param index_buffer Query buffer for the index data.
-   * @param label_buffer Query buffer for the label data.
-   * @param fragment_name Name to use when writing the fragment.
-   */
-  OrderedWriteDataQuery(
-      StorageManager* storage_manager,
-      DimensionLabel* dimension_label,
-      const QueryBuffer& index_buffer,
-      const QueryBuffer& label_buffer,
-      optional<std::string> fragment_name);
-
-  /**
    * Constructor for when index buffer is not set.
    *
    * @param storage_manager Storage manager object.
    * @param dimension_label Opened dimension label for the query.
    * @param parent_subarrray Subarray of the parent array.
    * @param label_buffer Query buffer for the label data.
+   * @param label_buffer Query buffer for the index data. May be empty if no
+   *     index buffer is set.
    * @param dim_idx Index of the dimension on the parent array this dimension
    *     label is for.
    * @param fragment_name Name to use when writing the fragment.
@@ -204,6 +190,7 @@ class OrderedWriteDataQuery : public DimensionLabelQuery {
       DimensionLabel* dimension_label,
       const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,
+      const QueryBuffer& index_buffer,
       const uint32_t dim_idx,
       optional<std::string> fragment_name);
 
@@ -229,9 +216,14 @@ class UnorderedWriteDataQuery : public DimensionLabelQuery {
   UnorderedWriteDataQuery(
       StorageManager* storage_manager,
       DimensionLabel* dimension_label,
-      const QueryBuffer& index_buffer,
+      const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,
+      const QueryBuffer& index_buffer,
+      const uint32_t dim_idx,
       optional<std::string> fragment_name);
+
+ private:
+  tdb_unique_ptr<IndexData> index_data_;
 };
 
 }  // namespace tiledb::sm

@@ -179,33 +179,9 @@ tdb_unique_ptr<IndexData> create_index_data(
   }
 }
 
-OrderedWriteDataQuery::OrderedWriteDataQuery(
-    StorageManager* storage_manager,
-    DimensionLabel* dimension_label,
-    const QueryBuffer& index_buffer,
-    const QueryBuffer& label_buffer,
-    optional<std::string> fragment_name)
-    : DimensionLabelQuery{
-          storage_manager, dimension_label, true, true, fragment_name} {
-  // Verify only one dimension label is set.
-  if (!dimension_label->labelled_array()->is_empty() ||
-      !dimension_label->indexed_array()->is_empty()) {
-    throw StatusException(Status_DimensionLabelQueryError(
-        "Cannot write to dimension label. Currently ordered dimension "
-        "labels can only be written to once."));
-  }
-  // TODO: Check sort
-  // Set-up labelled array query (sparse array)
-  throw_if_not_ok(labelled_array_query->set_layout(Layout::UNORDERED));
-  labelled_array_query->set_buffer(
-      dimension_label->label_attribute()->name(), label_buffer);
-  labelled_array_query->set_buffer(
-      dimension_label->index_attribute()->name(), index_buffer);
-
-  // Set-up indexed array query (dense array)
-  throw_if_not_ok(indexed_array_query->set_layout(Layout::ROW_MAJOR));
-  indexed_array_query->set_buffer(
-      dimension_label->label_attribute()->name(), label_buffer);
+bool is_sorted_buffer(const QueryBuffer&, const Datatype, bool) {
+  // TODO: Implement this.
+  return true;
 }
 
 OrderedWriteDataQuery::OrderedWriteDataQuery(
@@ -213,48 +189,93 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
+    const QueryBuffer& index_buffer,
     const uint32_t dim_idx,
     optional<std::string> fragment_name)
     : DimensionLabelQuery{
           storage_manager, dimension_label, true, true, fragment_name} {
-  // Verify only one dimension label is set.
+  // Verify that data isn't already written to the dimension label.
   if (!dimension_label->labelled_array()->is_empty() ||
       !dimension_label->indexed_array()->is_empty()) {
     throw StatusException(Status_DimensionLabelQueryError(
         "Cannot write to dimension label. Currently ordered dimension "
         "labels can only be written to once."));
   }
-  if (!parent_subarray.is_default(dim_idx)) {
-    const auto& ranges = parent_subarray.ranges_for_dim(dim_idx);
-    if (ranges.size() != 1) {
-      throw StatusException(Status_DimensionLabelQueryError(
-          "Failed to create dimension label query. Dimension label writes can "
-          "only be set for a single range ."));
+
+  // Verify the label data is sorted in the correct order.
+  if (!is_sorted_buffer(
+          label_buffer,
+          dimension_label->label_dimension()->type(),
+          dimension_label->label_order() == LabelOrder::INCREASING_LABELS)) {
+    throw StatusException(Status_DimensionLabelQueryError(
+        "Failed to create dimension label query. The label data is not in the "
+        "expected order."));
+  }
+
+  // Create locally stored index data if the index buff is empty. Otherwise,
+  // check the index buffer satisfies all write constraints.
+  bool use_local_index = index_buffer.buffer_ == nullptr;
+  if (use_local_index) {
+    // Check parent subarray satisfies all write constraints.
+    if (!parent_subarray.is_default(dim_idx)) {
+      // Check only one range is set.
+      const auto& ranges = parent_subarray.ranges_for_dim(dim_idx);
+      if (ranges.size() != 1) {
+        throw StatusException(Status_DimensionLabelQueryError(
+            "failed to create dimension label query. dimension label writes "
+            "can only be set for a single range ."));
+      }
+
+      // Check the range is equal to the whole domain.
+      const Range& input_range = ranges[0];
+      const Range& index_domain = dimension_label->index_dimension()->domain();
+      if (!(input_range == index_domain)) {
+        throw StatusException(Status_DimensionLabelQueryError(
+            "Failed to create dimension label query. Currently dimension "
+            "labels only support writing the full array."));
+      }
     }
-    const Range& input_range = ranges[0];
-    const Range& index_domain = dimension_label->index_dimension()->domain();
-    if (!(input_range == index_domain)) {
+
+    // Create index data for attribute on sparse labelled array
+    index_data_ = create_index_data(
+        dimension_label->index_dimension()->type(),
+        parent_subarray.ranges_for_dim(dim_idx)[0]);
+
+  } else {
+    const auto index_type = dimension_label->index_dimension()->type();
+
+    // Check that all the index data is included.
+    if (*index_buffer.buffer_size_ / datatype_size(index_type) !=
+        dimension_label->index_dimension()->domain_range(
+            dimension_label->index_dimension()->domain())) {
       throw StatusException(Status_DimensionLabelQueryError(
           "Failed to create dimension label query. Currently dimension "
           "labels only support writing the full array."));
     }
-  }
-  // TODO: Check sort
 
-  // Create index data for attribute on sparse labelled array
-  index_data_ = create_index_data(
-      dimension_label->index_dimension()->type(),
-      parent_subarray.ranges_for_dim(dim_idx)[0]);
+    // Check the index data is sorted in increasing order.
+    if (!is_sorted_buffer(index_buffer, index_type, true)) {
+      throw StatusException(Status_DimensionLabelQueryError(
+          "Failed to create dimension label query. The input data on "
+          "dimension " +
+          std::to_string(dim_idx) + " must be strictly increasing."));
+    }
+  }
 
   // Set-up labelled array query (sparse array)
   throw_if_not_ok(labelled_array_query->set_layout(Layout::UNORDERED));
   labelled_array_query->set_buffer(
       dimension_label->label_attribute()->name(), label_buffer);
-  labelled_array_query->set_data_buffer(
-      dimension_label->index_attribute()->name(),
-      index_data_->data(),
-      index_data_->data_size(),
-      true);
+  if (use_local_index) {
+    throw_if_not_ok(labelled_array_query->set_data_buffer(
+        dimension_label->index_attribute()->name(),
+        index_data_->data(),
+        index_data_->data_size(),
+        true));
+  } else {
+    labelled_array_query->set_buffer(
+        dimension_label->index_attribute()->name(), index_buffer);
+  }
 
   // Set-up indexed array query (dense array)
   throw_if_not_ok(indexed_array_query->set_layout(Layout::ROW_MAJOR));
@@ -265,24 +286,61 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
 UnorderedWriteDataQuery::UnorderedWriteDataQuery(
     StorageManager* storage_manager,
     DimensionLabel* dimension_label,
-    const QueryBuffer& index_buffer,
+    const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
+    const QueryBuffer& index_buffer,
+    const uint32_t dim_idx,
     optional<std::string> fragment_name)
     : DimensionLabelQuery{
           storage_manager, dimension_label, true, true, fragment_name} {
+  // Create locally stored index data if the index buffer is empty.
+  bool use_local_index = index_buffer.buffer_ == nullptr;
+  if (use_local_index) {
+    // Check only one range on the subarray is set.
+    if (!parent_subarray.is_default(dim_idx)) {
+      const auto& ranges = parent_subarray.ranges_for_dim(dim_idx);
+      if (ranges.size() != 1) {
+        throw StatusException(Status_DimensionLabelQueryError(
+            "failed to create dimension label query. dimension label writes "
+            "can only be set for a single range ."));
+      }
+    }
+
+    // Create the index data.
+    index_data_ = create_index_data(
+        dimension_label->index_dimension()->type(),
+        parent_subarray.ranges_for_dim(dim_idx)[0]);
+  }
+
   // Set-up labelled array (sparse array)
   throw_if_not_ok(labelled_array_query->set_layout(Layout::UNORDERED));
   labelled_array_query->set_buffer(
       dimension_label->label_dimension()->name(), label_buffer);
-  labelled_array_query->set_buffer(
-      dimension_label->index_attribute()->name(), index_buffer);
+  if (use_local_index) {
+    throw_if_not_ok(labelled_array_query->set_data_buffer(
+        dimension_label->index_attribute()->name(),
+        index_data_->data(),
+        index_data_->data_size(),
+        true));
+  } else {
+    labelled_array_query->set_buffer(
+        dimension_label->index_attribute()->name(), index_buffer);
+  }
 
   // Set-up indexed array query (sparse array)
   throw_if_not_ok(indexed_array_query->set_layout(Layout::UNORDERED));
   indexed_array_query->set_buffer(
       dimension_label->label_attribute()->name(), label_buffer);
-  indexed_array_query->set_buffer(
-      dimension_label->index_dimension()->name(), index_buffer);
+  if (use_local_index) {
+    throw_if_not_ok(indexed_array_query->set_data_buffer(
+        dimension_label->index_dimension()->name(),
+        index_data_->data(),
+        index_data_->data_size(),
+        true));
+  } else {
+    indexed_array_query->set_buffer(
+        dimension_label->index_dimension()->name(), index_buffer);
+  }
 }
 
 }  // namespace tiledb::sm

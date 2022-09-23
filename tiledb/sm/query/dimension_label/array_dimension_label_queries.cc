@@ -262,42 +262,33 @@ void ArrayDimensionLabelQueries::add_data_queries_for_write(
     switch (dim_label_ref.label_order()) {
       case (LabelOrder::INCREASING_LABELS):
       case (LabelOrder::DECREASING_LABELS):
-        if (index_buffer_pair == array_buffers.end()) {
-          data_queries_.emplace_back(
-              tdb_unique_ptr<DimensionLabelQuery>(tdb_new(
-                  OrderedWriteDataQuery,
-                  storage_manager_,
-                  dim_label,
-                  subarray,
-                  label_buffer,
-                  dim_label_ref.dimension_id(),
-                  fragment_name_)));
-          data_queries_map_[label_name] = data_queries_.back().get();
-        } else {
-          data_queries_.emplace_back(
-              tdb_unique_ptr<DimensionLabelQuery>(tdb_new(
-                  OrderedWriteDataQuery,
-                  storage_manager_,
-                  dim_label,
-                  index_buffer_pair->second,
-                  label_buffer,
-                  fragment_name_)));
-          data_queries_map_[label_name] = data_queries_.back().get();
-        }
+        // Create order label writer.
+        data_queries_.emplace_back(tdb_unique_ptr<DimensionLabelQuery>(tdb_new(
+            OrderedWriteDataQuery,
+            storage_manager_,
+            dim_label,
+            subarray,
+            label_buffer,
+            (index_buffer_pair == array_buffers.end()) ?
+                QueryBuffer() :
+                index_buffer_pair->second,
+            dim_label_ref.dimension_id(),
+            fragment_name_)));
+        data_queries_map_[label_name] = data_queries_.back().get();
         break;
 
       case (LabelOrder::UNORDERED_LABELS):
-        if (index_buffer_pair == array_buffers.end()) {
-          throw StatusException(Status_DimensionLabelQueryError(
-              "Cannot read range data from unordered label '" + label_name +
-              "'; Missing a data buffer for dimension '" + dim_name + "'."));
-        }
+        // Create unordered label writer.
         data_queries_.emplace_back(tdb_unique_ptr<DimensionLabelQuery>(tdb_new(
             UnorderedWriteDataQuery,
             storage_manager_,
             dim_label,
-            index_buffer_pair->second,
+            subarray,
             label_buffer,
+            (index_buffer_pair == array_buffers.end()) ?
+                QueryBuffer() :
+                index_buffer_pair->second,
+            dim_label_ref.dimension_id(),
             fragment_name_)));
         data_queries_map_[label_name] = data_queries_.back().get();
         break;
