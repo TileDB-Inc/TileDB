@@ -35,18 +35,18 @@
 include(TileDBCommon)
 
 # Search the path set during the superbuild for the EP.
-message(VERBOSE "searching for catch in ${TILEDB_EP_SOURCE_DIR}")
-set(CATCH_PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_EP_SOURCE_DIR}/ep_catch/src)
+message(VERBOSE "searching for catch in ${TILEDB_EP_INSTALL_PREFIX}")
+set(CATCH_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
 if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CATCH_EP_BUILT)
   find_path(CATCH_INCLUDE_DIR
     NAMES catch2/catch_all.hpp
     PATHS ${CATCH_PATHS}
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+#    ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 endif()
 
-find_package(Catch2
+find_package(Catch2 3.1
   HINTS
     ${CATCH_PATHS}
   )
@@ -55,13 +55,12 @@ if(Catch2_FOUND)
   set(CATCH_LIBRARIES ${Catch2_LIBRARIES})
 endif()
 
-message("CATCH_INCLUDE_DIR is \"${CATCH_INCLUDE_DIR}\", CATCH_LIBRARIES is \"${CATCH_LIBRARIES}\"")
+message(VERBOSE "CATCH_INCLUDE_DIR is \"${CATCH_INCLUDE_DIR}\", CATCH_LIBRARIES is \"${CATCH_LIBRARIES}\"")
 
 if(Catch2_FOUND)
-  set(TILEDB_CATCH2_SOURCES_DIR ${TILEDB_EP_SOURCE_DIR}/ep_catch/src/catch2)
-  message("Catch2_FOUND is ${Catch2_FOUND}, CATCH_INCLUDE_DIR is \"${CATCH_INCLUDE_DIR}\", CATCH_LIBRARIES is \"${CATCH_LIBRARIES}\"")
+  message(VERBOSE "Catch2_FOUND is ${Catch2_FOUND}, CATCH_INCLUDE_DIR is \"${CATCH_INCLUDE_DIR}\", CATCH_LIBRARIES is \"${CATCH_LIBRARIES}\"")
 else()
-  message("TILEDB_SUPERBUILD is ${TILEDB_SUPERBUILD}, Catch2_FOUND is ${Catch2_FOUND}, CATCH2_FOUND is ${CATCH2_FOUND}")
+  message(VERBOSE "TILEDB_SUPERBUILD is ${TILEDB_SUPERBUILD}, Catch2_FOUND is ${Catch2_FOUND}, CATCH2_FOUND is ${CATCH2_FOUND}")
 endif()
 
 if (NOT CATCH2_FOUND AND TILEDB_SUPERBUILD)
@@ -88,11 +87,7 @@ if (NOT CATCH2_FOUND AND TILEDB_SUPERBUILD)
   )
 endif()
 
-if (CATCH2_FOUND AND NOT TARGET Catch2::Catch2)
-  add_library(Catch2::Catch2 INTERFACE IMPORTED)
-  set_target_properties(Catch2::Catch2 PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES 
-      "${CATCH_INCLUDE_DIR}"
-      "${CATCH_INCLUDE_DIR}/.."
-  )
-endif()
+# Many tiledb Find...s check for an expected target here and
+# create tiledb's own pseudo version of it if not found.  Since
+# this Find... is now requesting a specific version or higher the
+# target need should always be satisfied.
