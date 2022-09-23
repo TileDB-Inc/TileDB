@@ -37,7 +37,6 @@ if (FALSE AND TILEDB_TESTS) # reserved for later
 
     add_executable(unit_governor EXCLUDE_FROM_ALL)
     target_link_libraries(unit_governor PUBLIC Catch2::Catch2WithMain)
-    target_include_directories(unit_governor PUBLIC ${TILEDB_EP_INSTALL_PREFIX}/include)
 
     # Sources for code under test
     target_sources(unit_dynamic_memory PUBLIC

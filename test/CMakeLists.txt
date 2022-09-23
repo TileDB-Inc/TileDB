@@ -271,7 +271,6 @@ target_link_libraries(tiledb_test_support_lib INTERFACE Catch2::Catch2WithMain)
 
 target_include_directories(tiledb_test_support_lib
   PRIVATE
-    $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
      Catch2::Catch2
 )
 

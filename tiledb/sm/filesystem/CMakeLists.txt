@@ -61,7 +61,6 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_vfs PRIVATE vfs)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_vfs PUBLIC Catch2::Catch2WithMain)
-    target_include_directories(unit_vfs PUBLIC ${TILEDB_EP_INSTALL_PREFIX}/include)
 
     # Sources for tests
     target_sources(unit_vfs PUBLIC test/main.cc test/unit_uri.cc)

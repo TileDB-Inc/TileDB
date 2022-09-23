@@ -51,7 +51,6 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_thread_pool PUBLIC thread_pool)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_thread_pool PUBLIC Catch2::Catch2WithMain)
-    target_include_directories(unit_thread_pool PUBLIC ${TILEDB_EP_INSTALL_PREFIX}/include )#Catch2::Catch2)
     target_link_libraries(unit_thread_pool PUBLIC $<TARGET_OBJECTS:cancelable_tasks>)
 
     # Sources for code elsewhere required for tests

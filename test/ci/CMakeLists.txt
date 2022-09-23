@@ -11,7 +11,6 @@ add_executable(
 target_include_directories(test_assert
   PRIVATE
     "${TILEDB_CORE_INCLUDE_DIR}"
-    $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
     Catch2::Catch2
 )
 

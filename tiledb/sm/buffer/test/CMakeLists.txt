@@ -31,9 +31,6 @@ target_link_libraries(unit_buffer
     PRIVATE buffer
     PUBLIC Catch2::Catch2WithMain
 )
-target_include_directories(unit_buffer
-    PUBLIC ${TILEDB_EP_INSTALL_PREFIX}/include
-)
 target_sources(unit_buffer PUBLIC main.cc unit_buffer.cc)
 
 add_test(

@@ -41,10 +41,6 @@ if (TILEDB_TESTS)
 
     add_executable(unit_dynamic_memory EXCLUDE_FROM_ALL)
     target_link_libraries(unit_dynamic_memory PUBLIC Catch2::Catch2WithMain)
-    target_include_directories(unit_dynamic_memory 
-      PUBLIC
-      ${TILEDB_EP_INSTALL_PREFIX}/include
-      )
     # Link to Threads::Threads if library or flag needed to enable threading.
     # The heap_profiler dependency requires threads. The dependency should be
     # moved to heap_profiler if/when it is added to its own object library.

@@ -37,10 +37,6 @@ if (TILEDB_TESTS)
 
     add_executable(unit_exception EXCLUDE_FROM_ALL)
     target_link_libraries(unit_exception PUBLIC Catch2::Catch2WithMain)
-    target_include_directories(unit_exception 
-      PUBLIC
-      ${TILEDB_EP_INSTALL_PREFIX}/include
-      )
     target_link_libraries(unit_exception PUBLIC baseline)
 
     # Sources for code under test

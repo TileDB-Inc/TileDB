@@ -49,7 +49,6 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_metadata PRIVATE metadata)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_metadata PUBLIC Catch2::Catch2WithMain)
-    target_include_directories(unit_metadata PUBLIC ${TILEDB_EP_INSTALL_PREFIX}/include)
 
     # Sources for tests
     target_sources(unit_metadata PUBLIC test/main.cc test/unit_metadata.cc)

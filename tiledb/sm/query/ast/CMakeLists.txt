@@ -67,11 +67,6 @@ if (TILEDB_TESTS)
 
     find_package(Catch_EP REQUIRED)
 
-    target_include_directories(ast_test_support_lib
-      PUBLIC
-      $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
-      ${TILEDB_EP_INSTALL_PREFIX}/include
-    )
 
     # We want tests to continue as normal even as the API is changing,
     # so don't warn for deprecations, since they'll be escalated to errors.

@@ -30,7 +30,6 @@ if (TILEDB_TESTS)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_delete_update_condition PUBLIC Catch2::Catch2WithMain)
     target_link_libraries(unit_delete_update_condition PUBLIC ast_test_support_lib)
-    target_include_directories(unit_delete_update_condition PUBLIC ${TILEDB_EP_INSTALL_PREFIX}/include)
 
     # Sources for tests
     target_sources(unit_delete_update_condition PUBLIC test/main.cc test/unit_delete_condition.cc test/unit_update_condition.cc)

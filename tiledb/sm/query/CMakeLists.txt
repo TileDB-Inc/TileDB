@@ -40,7 +40,6 @@ if (TILEDB_TESTS)
 
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_query PUBLIC Catch2::Catch2WithMain)
-    target_include_directories(unit_query PUBLIC ${TILEDB_EP_INSTALL_PREFIX}/include)
     target_link_libraries(unit_query PUBLIC ast_test_support_lib)
 
     # We want tests to continue as normal even as the API is changing,
