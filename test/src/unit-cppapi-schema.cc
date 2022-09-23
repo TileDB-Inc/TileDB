@@ -432,6 +432,12 @@ TEST_CASE(
   using namespace tiledb;
   Context ctx;
   VFS vfs(ctx);
+  auto layout = GENERATE(
+      TILEDB_ROW_MAJOR,
+      TILEDB_COL_MAJOR,
+      TILEDB_UNORDERED,
+      TILEDB_GLOBAL_ORDER);
+  bool duplicates = GENERATE(true, false);
 
   std::string array_uri = "test_schema_evolution_array_read";
 
@@ -446,6 +452,8 @@ TEST_CASE(
 
     ArraySchema schema(ctx, TILEDB_SPARSE);
     schema.set_domain(domain);
+    schema.set_allows_dups(duplicates);
+    CHECK(duplicates == schema.allows_dups());
     schema.add_attribute(a);
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
@@ -493,7 +501,7 @@ TEST_CASE(
     Query query(ctx, array, TILEDB_READ);
     query.add_range(0, 1, 4)
         .add_range(1, 1, 4)
-        .set_layout(TILEDB_ROW_MAJOR)
+        .set_layout(layout)
         .set_data_buffer("a", data)
         .set_data_buffer("d1", d1_data)
         .set_data_buffer("d2", d2_data);
@@ -505,6 +513,7 @@ TEST_CASE(
     // Compare the results.
     auto result_num = (int)query.result_buffer_elements()["a"].second;
     CHECK(result_num == 3);
+    // Same result buffers for all layouts
     CHECK_THAT(data, Catch::Matchers::Equals(std::vector<int>{1, 3, 2}));
     CHECK_THAT(d1_data, Catch::Matchers::Equals(std::vector<int>{1, 2, 2}));
     CHECK_THAT(d2_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 4}));
@@ -555,7 +564,7 @@ TEST_CASE(
 
   // Write again
   {
-    // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
+    // Write some simple data to cell (3, 1)
     std::vector<int> d1_data = {3};
     std::vector<int> d2_data = {1};
     std::vector<int> a_data = {4};
@@ -613,7 +622,7 @@ TEST_CASE(
     Query query(ctx, array, TILEDB_READ);
     query.add_range(0, 1, 4)
         .add_range(1, 1, 4)
-        .set_layout(TILEDB_ROW_MAJOR)
+        .set_layout(layout)
         .set_data_buffer("a", a_data)
         .set_data_buffer("b", b_data)
         .set_data_buffer("c", c_data)
@@ -633,27 +642,307 @@ TEST_CASE(
     // Compare the results.
     auto result_num = (int)query.result_buffer_elements()["a"].second;
     CHECK(result_num == 4);
-    CHECK_THAT(a_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 2, 4}));
-    CHECK_THAT(
-        b_data, Catch::Matchers::Equals(std::vector<uint32_t>{1, 1, 1, 4}));
-    CHECK_THAT(
-        c_data, Catch::Matchers::Equals(std::vector<uint32_t>{2, 2, 2, 40}));
-    CHECK_THAT(
-        c_validity, Catch::Matchers::Equals(std::vector<uint8_t>{0, 0, 0, 1}));
-    CHECK_THAT(
-        d_data,
-        Catch::Matchers::Equals(std::vector<char>{
-            't', 'e', 's', 't', 't', 'e', 's', 't', 't', 'e', 's', 't', 'd'}));
-    CHECK_THAT(
-        d_offsets, Catch::Matchers::Equals(std::vector<uint64_t>{0, 4, 8, 12}));
-    CHECK_THAT(
-        e_data, Catch::Matchers::Equals(std::vector<char>{'n', 'n', 'n', 'e'}));
-    CHECK_THAT(
-        e_offsets, Catch::Matchers::Equals(std::vector<uint64_t>{0, 1, 2, 3}));
-    CHECK_THAT(
-        e_validity, Catch::Matchers::Equals(std::vector<uint8_t>{0, 0, 0, 1}));
-    CHECK_THAT(d1_data, Catch::Matchers::Equals(std::vector<int>{1, 2, 2, 3}));
-    CHECK_THAT(d2_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 4, 1}));
+    if (layout == TILEDB_COL_MAJOR) {
+      CHECK_THAT(a_data, Catch::Matchers::Equals(std::vector<int>{1, 4, 3, 2}));
+      CHECK_THAT(
+          b_data, Catch::Matchers::Equals(std::vector<uint32_t>{1, 4, 1, 1}));
+      CHECK_THAT(
+          c_data, Catch::Matchers::Equals(std::vector<uint32_t>{2, 40, 2, 2}));
+      CHECK_THAT(
+          c_validity,
+          Catch::Matchers::Equals(std::vector<uint8_t>{0, 1, 0, 0}));
+      CHECK_THAT(
+          d_data,
+          Catch::Matchers::Equals(std::vector<char>{'t',
+                                                    'e',
+                                                    's',
+                                                    't',
+                                                    'd',
+                                                    't',
+                                                    'e',
+                                                    's',
+                                                    't',
+                                                    't',
+                                                    'e',
+                                                    's',
+                                                    't'}));
+      CHECK_THAT(
+          d_offsets,
+          Catch::Matchers::Equals(std::vector<uint64_t>{0, 4, 5, 9}));
+      CHECK_THAT(
+          e_data,
+          Catch::Matchers::Equals(std::vector<char>{'n', 'e', 'n', 'n'}));
+      CHECK_THAT(
+          e_offsets,
+          Catch::Matchers::Equals(std::vector<uint64_t>{0, 1, 2, 3}));
+      CHECK_THAT(
+          e_validity,
+          Catch::Matchers::Equals(std::vector<uint8_t>{0, 1, 0, 0}));
+      CHECK_THAT(
+          d1_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 2, 2}));
+      CHECK_THAT(
+          d2_data, Catch::Matchers::Equals(std::vector<int>{1, 1, 3, 4}));
+    } else {
+      // Check values for unordered, global, and row-major
+      CHECK_THAT(a_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 2, 4}));
+      CHECK_THAT(
+          b_data, Catch::Matchers::Equals(std::vector<uint32_t>{1, 1, 1, 4}));
+      CHECK_THAT(
+          c_data, Catch::Matchers::Equals(std::vector<uint32_t>{2, 2, 2, 40}));
+      CHECK_THAT(
+          c_validity,
+          Catch::Matchers::Equals(std::vector<uint8_t>{0, 0, 0, 1}));
+      CHECK_THAT(
+          d_data,
+          Catch::Matchers::Equals(std::vector<char>{'t',
+                                                    'e',
+                                                    's',
+                                                    't',
+                                                    't',
+                                                    'e',
+                                                    's',
+                                                    't',
+                                                    't',
+                                                    'e',
+                                                    's',
+                                                    't',
+                                                    'd'}));
+      CHECK_THAT(
+          d_offsets,
+          Catch::Matchers::Equals(std::vector<uint64_t>{0, 4, 8, 12}));
+      CHECK_THAT(
+          e_data,
+          Catch::Matchers::Equals(std::vector<char>{'n', 'n', 'n', 'e'}));
+      CHECK_THAT(
+          e_offsets,
+          Catch::Matchers::Equals(std::vector<uint64_t>{0, 1, 2, 3}));
+      CHECK_THAT(
+          e_validity,
+          Catch::Matchers::Equals(std::vector<uint8_t>{0, 0, 0, 1}));
+      CHECK_THAT(
+          d1_data, Catch::Matchers::Equals(std::vector<int>{1, 2, 2, 3}));
+      CHECK_THAT(
+          d2_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 4, 1}));
+    }
+  }
+
+  // Read using overlapping multi-range query
+  // + Global order does not support multi-range subarrays
+  if (layout != TILEDB_GLOBAL_ORDER) {
+    Array array(ctx, array_uri, TILEDB_READ);
+
+    std::vector<int> a_data(8);
+    std::vector<uint32_t> b_data(8);
+    std::vector<uint32_t> c_data(8);
+    std::vector<uint8_t> c_validity(8);
+    std::vector<char> d_data(26);
+    std::vector<uint64_t> d_offsets(8);
+    std::vector<char> e_data(8);
+    std::vector<uint8_t> e_validity(8);
+    std::vector<uint64_t> e_offsets(8);
+    std::vector<int> d1_data(8);
+    std::vector<int> d2_data(8);
+
+    // Resize buffers for multi-range unordered read
+    if (layout == TILEDB_UNORDERED) {
+      a_data.resize(16);
+      b_data.resize(16);
+      c_data.resize(16);
+      c_validity.resize(16);
+      d_data.resize(52);
+      d_offsets.resize(16);
+      e_data.resize(16);
+      e_validity.resize(16);
+      e_offsets.resize(16);
+      d1_data.resize(16);
+      d2_data.resize(16);
+    }
+
+    // Prepare the query
+    Query query(ctx, array, TILEDB_READ);
+    query.add_range(0, 1, 4)
+        .add_range(0, 1, 4)
+        .add_range(1, 1, 4)
+        .add_range(1, 1, 4)
+        .set_layout(layout)
+        .set_data_buffer("a", a_data)
+        .set_data_buffer("b", b_data)
+        .set_data_buffer("c", c_data)
+        .set_validity_buffer("c", c_validity)
+        .set_data_buffer("d", d_data)
+        .set_offsets_buffer("d", d_offsets)
+        .set_data_buffer("e", e_data)
+        .set_offsets_buffer("e", e_offsets)
+        .set_validity_buffer("e", e_validity)
+        .set_data_buffer("d1", d1_data)
+        .set_data_buffer("d2", d2_data);
+
+    // Submit the query and close the array.
+    query.submit();
+    array.close();
+
+    // Compare the results.
+    if (layout == TILEDB_COL_MAJOR) {
+      auto result_num = (int)query.result_buffer_elements()["a"].second;
+      CHECK(result_num == 8);
+
+      CHECK_THAT(
+          a_data,
+          Catch::Matchers::Equals(std::vector<int>{1, 1, 4, 4, 3, 3, 2, 2}));
+      CHECK_THAT(
+          b_data,
+          Catch::Matchers::Equals(
+              std::vector<uint32_t>{1, 1, 4, 4, 1, 1, 1, 1}));
+      CHECK_THAT(
+          c_data,
+          Catch::Matchers::Equals(
+              std::vector<uint32_t>{2, 2, 40, 40, 2, 2, 2, 2}));
+      CHECK_THAT(
+          c_validity,
+          Catch::Matchers::Equals(
+              std::vector<uint8_t>{0, 0, 1, 1, 0, 0, 0, 0}));
+      CHECK_THAT(
+          d_data,
+          Catch::Matchers::Equals(
+              std::vector<char>{'t', 'e', 's', 't', 't', 'e', 's', 't', 'd',
+                                'd', 't', 'e', 's', 't', 't', 'e', 's', 't',
+                                't', 'e', 's', 't', 't', 'e', 's', 't'}));
+      CHECK_THAT(
+          d_offsets,
+          Catch::Matchers::Equals(
+              std::vector<uint64_t>{0, 4, 8, 9, 10, 14, 18, 22}));
+      CHECK_THAT(
+          e_data,
+          Catch::Matchers::Equals(
+              std::vector<char>{'n', 'n', 'e', 'e', 'n', 'n', 'n', 'n'}));
+      CHECK_THAT(
+          e_offsets,
+          Catch::Matchers::Equals(
+              std::vector<uint64_t>{0, 1, 2, 3, 4, 5, 6, 7}));
+      CHECK_THAT(
+          e_validity,
+          Catch::Matchers::Equals(
+              std::vector<uint8_t>{0, 0, 1, 1, 0, 0, 0, 0}));
+      CHECK_THAT(
+          d1_data,
+          Catch::Matchers::Equals(std::vector<int>{1, 1, 3, 3, 2, 2, 2, 2}));
+      CHECK_THAT(
+          d2_data,
+          Catch::Matchers::Equals(std::vector<int>{1, 1, 1, 1, 3, 3, 4, 4}));
+    } else if (layout == TILEDB_ROW_MAJOR) {
+      auto result_num = (int)query.result_buffer_elements()["a"].second;
+      CHECK(result_num == 8);
+
+      CHECK_THAT(
+          a_data,
+          Catch::Matchers::Equals(std::vector<int>{1, 1, 3, 3, 2, 2, 4, 4}));
+      CHECK_THAT(
+          b_data,
+          Catch::Matchers::Equals(
+              std::vector<uint32_t>{1, 1, 1, 1, 1, 1, 4, 4}));
+      CHECK_THAT(
+          c_data,
+          Catch::Matchers::Equals(
+              std::vector<uint32_t>{2, 2, 2, 2, 2, 2, 40, 40}));
+      CHECK_THAT(
+          c_validity,
+          Catch::Matchers::Equals(
+              std::vector<uint8_t>{0, 0, 0, 0, 0, 0, 1, 1}));
+      CHECK_THAT(
+          d_data,
+          Catch::Matchers::Equals(
+              std::vector<char>{'t', 'e', 's', 't', 't', 'e', 's', 't', 't',
+                                'e', 's', 't', 't', 'e', 's', 't', 't', 'e',
+                                's', 't', 't', 'e', 's', 't', 'd', 'd'}));
+      CHECK_THAT(
+          d_offsets,
+          Catch::Matchers::Equals(
+              std::vector<uint64_t>{0, 4, 8, 12, 16, 20, 24, 25}));
+      CHECK_THAT(
+          e_data,
+          Catch::Matchers::Equals(
+              std::vector<char>{'n', 'n', 'n', 'n', 'n', 'n', 'e', 'e'}));
+      CHECK_THAT(
+          e_offsets,
+          Catch::Matchers::Equals(
+              std::vector<uint64_t>{0, 1, 2, 3, 4, 5, 6, 7}));
+      CHECK_THAT(
+          e_validity,
+          Catch::Matchers::Equals(
+              std::vector<uint8_t>{0, 0, 0, 0, 0, 0, 1, 1}));
+      CHECK_THAT(
+          d1_data,
+          Catch::Matchers::Equals(std::vector<int>{1, 1, 2, 2, 2, 2, 3, 3}));
+      CHECK_THAT(
+          d2_data,
+          Catch::Matchers::Equals(std::vector<int>{1, 1, 3, 3, 4, 4, 1, 1}));
+    } else if (layout == TILEDB_UNORDERED) {
+      auto result_num = (int)query.result_buffer_elements()["a"].second;
+      CHECK(result_num == 16);
+
+      CHECK_THAT(
+          a_data,
+          Catch::Matchers::Equals(std::vector<int>{
+              1, 1, 1, 1, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4}));
+      CHECK_THAT(
+          b_data,
+          Catch::Matchers::Equals(std::vector<uint32_t>{
+              1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 4, 4, 4}));
+      CHECK_THAT(
+          c_data,
+          Catch::Matchers::Equals(std::vector<uint32_t>{
+              2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 40, 40, 40, 40}));
+      CHECK_THAT(
+          c_validity,
+          Catch::Matchers::Equals(std::vector<uint8_t>{
+              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1}));
+      CHECK_THAT(
+          d_data,
+          Catch::Matchers::Equals(std::vector<char>{
+              't', 'e', 's', 't', 't', 'e', 's', 't', 't', 'e', 's',
+              't', 't', 'e', 's', 't', 't', 'e', 's', 't', 't', 'e',
+              's', 't', 't', 'e', 's', 't', 't', 'e', 's', 't', 't',
+              'e', 's', 't', 't', 'e', 's', 't', 't', 'e', 's', 't',
+              't', 'e', 's', 't', 'd', 'd', 'd', 'd'}));
+      CHECK_THAT(
+          d_offsets,
+          Catch::Matchers::Equals(std::vector<uint64_t>{
+              0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 49, 50, 51}));
+      CHECK_THAT(
+          e_data,
+          Catch::Matchers::Equals(std::vector<char>{'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'e',
+                                                    'e',
+                                                    'e',
+                                                    'e'}));
+      CHECK_THAT(
+          e_offsets,
+          Catch::Matchers::Equals(std::vector<uint64_t>{
+              0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}));
+      CHECK_THAT(
+          e_validity,
+          Catch::Matchers::Equals(std::vector<uint8_t>{
+              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1}));
+      CHECK_THAT(
+          d1_data,
+          Catch::Matchers::Equals(std::vector<int>{
+              1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3}));
+      CHECK_THAT(
+          d2_data,
+          Catch::Matchers::Equals(std::vector<int>{
+              1, 1, 1, 1, 3, 3, 3, 3, 4, 4, 4, 4, 1, 1, 1, 1}));
+    }
   }
 
   // Clean up
