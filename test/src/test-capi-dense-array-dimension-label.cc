@@ -251,122 +251,112 @@ class DenseArrayExample1 : public DimensionLabelFixture {
 
 TEST_CASE_METHOD(
     DenseArrayExample1,
-    "Round trip dimension label and array data for dense 1d array",
-    "[capi][query][DimensionLabel]") {
-  // Define the input data values.
-  std::vector<double> input_label_data{};
-  std::vector<double> input_attr_data{};
-
-  // Define the expected output values.
-  std::vector<double> expected_label_data_sorted{};
-  std::vector<uint64_t> expected_index_data{};
-
-  SECTION("Write increasing labels", "[IncreasingLabels]") {
-    // Create the array.
-    create_example(TILEDB_INCREASING_LABELS);
-
-    // Set the input  values.
-    input_label_data = {-1.0, 0.0, 0.5, 1.0};
-    input_attr_data = {0.5, 1.0, 1.5, 2.0};
-
-    // Define expected output data.
-    expected_label_data_sorted = input_label_data;
-    expected_index_data = {0, 1, 2, 3};
-  }
-
-  SECTION("Write decreasing labels", "[DecreasingLabels]") {
-    // Create the array.
-    create_example(TILEDB_DECREASING_LABELS);
-
-    // Set the data values.
-    input_label_data = {1.0, 0.0, -0.5, -1.0};
-    input_attr_data = {0.5, 1.0, 1.5, 2.0};
-
-    // Define expected output data.
-    expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
-    expected_index_data = {3, 2, 1, 0};
-  }
-
-  SECTION("Write unordered labels", "[UnorderedLabels]") {
-    // Create the array.
-    create_example(TILEDB_DECREASING_LABELS);
-
-    // Set the data values.
-    input_label_data = {-0.5, 1.0, 0.0, -1.0};
-    input_attr_data = {0.5, 1.0, 1.5, 2.0};
-
-    // Define expected output data.
-    expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
-    expected_index_data = {3, 0, 2, 1};
-  }
-
-  // Write the array.
-  write_array_with_label(input_attr_data, input_label_data);
-
-  // Check the dimension label arrays have the correct data.
-  check_indexed_array_data(input_label_data);
-  check_labelled_array_data(expected_index_data, expected_label_data_sorted);
-
-  // Check data reader.
-  check_values_from_data_reader(input_label_data);
-}
-
-TEST_CASE_METHOD(
-    DenseArrayExample1,
     "Round trip dimension label data for dense 1d array",
     "[capi][query][DimensionLabel]") {
-  // Define the input data values.
+  // Vectors for input data.
   std::vector<double> input_label_data{};
   std::vector<double> input_attr_data{};
 
-  // Define the expected output values.
-  std::vector<double> expected_label_data_sorted{};
-  std::vector<uint64_t> expected_index_data{};
+  // Vectors for expected output data.
+  std::vector<double> label_data_sorted_by_label{};
+  std::vector<uint64_t> index_data_sorted_by_label{};
 
-  SECTION("Write increasing labels", "[IncreasingLabels]") {
-    // Create the array.
-    create_example(TILEDB_INCREASING_LABELS);
+  // Dimension label parameters.
+  tiledb_label_order_t label_order;
+
+  SECTION("Write increasing labels and array", "[IncreasingLabels]") {
+    // Set the label order.
+    label_order = TILEDB_INCREASING_LABELS;
+
+    // Set the data values.
+    input_label_data = {-1.0, 0.0, 0.5, 1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+
+    // Define expected output data.
+    label_data_sorted_by_label = input_label_data;
+    index_data_sorted_by_label = {0, 1, 2, 3};
+  }
+
+  SECTION("Write increasing labels only", "[IncreasingLabels]") {
+    // Set the label order.
+    label_order = TILEDB_INCREASING_LABELS;
 
     // Set the data values.
     input_label_data = {-1.0, 0.0, 0.5, 1.0};
 
     // Define expected output data.
-    expected_label_data_sorted = input_label_data;
-    expected_index_data = {0, 1, 2, 3};
+    label_data_sorted_by_label = input_label_data;
+    index_data_sorted_by_label = {0, 1, 2, 3};
   }
 
   SECTION("Write decreasing labels", "[DecreasingLabels]") {
-    // Create the array.
-    create_example(TILEDB_DECREASING_LABELS);
+    // Set the label order.
+    label_order = TILEDB_DECREASING_LABELS;
+
+    // Set the data values.
+    input_label_data = {1.0, 0.0, -0.5, -1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+
+    // Define expected output data.
+    label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
+    index_data_sorted_by_label = {3, 2, 1, 0};
+  }
+
+  SECTION("Write decreasing labels only", "[DecreasingLabels]") {
+    // Set the label order.
+    label_order = TILEDB_DECREASING_LABELS;
 
     // Set the data values.
     input_label_data = {1.0, 0.0, -0.5, -1.0};
 
     // Define expected output data.
-    expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
-    expected_index_data = {3, 2, 1, 0};
+    label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
+    index_data_sorted_by_label = {3, 2, 1, 0};
   }
 
-  SECTION("Write unordered labels", "[UnorderedLabels]") {
-    // Create the array.
-    create_example(TILEDB_DECREASING_LABELS);
+  SECTION("Write unordered labels and array", "[UnorderedLabels]") {
+    // Set the label order.
+    label_order = TILEDB_UNORDERED_LABELS;
 
     // Set the data values.
     input_label_data = {-0.5, 1.0, 0.0, -1.0};
     input_attr_data = {0.5, 1.0, 1.5, 2.0};
 
     // Define expected output data.
-    expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
-    expected_index_data = {3, 0, 2, 1};
+    label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
+    index_data_sorted_by_label = {3, 0, 2, 1};
   }
 
-  // Write the array.
+  SECTION("Write unordered labels only", "[UnorderedLabels]") {
+    // Set the label order.
+    label_order = TILEDB_UNORDERED_LABELS;
+
+    // Set the data values.
+    input_label_data = {-0.5, 1.0, 0.0, -1.0};
+
+    // Define expected output data.
+    label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
+    index_data_sorted_by_label = {3, 0, 2, 1};
+  }
+
+  // Create and write the array.
+  create_example(label_order);
   write_array_with_label(input_attr_data, input_label_data);
 
   // Check the dimension label arrays have the correct data.
-  check_indexed_array_data(input_label_data);
-  check_labelled_array_data(expected_index_data, expected_label_data_sorted);
+  {
+    INFO("Check indexed array data");
+    check_indexed_array_data(input_label_data);
+  }
+  {
+    INFO("Check labelled array data");
+    check_labelled_array_data(
+        index_data_sorted_by_label, label_data_sorted_by_label);
+  }
 
   // Check data reader.
-  check_values_from_data_reader(input_label_data);
+  {
+    INFO("Check data readed value");
+    check_values_from_data_reader(input_label_data);
+  }
 }
