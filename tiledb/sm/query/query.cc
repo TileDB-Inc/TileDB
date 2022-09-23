@@ -1820,9 +1820,7 @@ void Query::set_buffer(const std::string& name, const QueryBuffer& buffer) {
     throw_if_not_ok(
         set_data_buffer(name, buffer.buffer_var_, buffer.buffer_var_size_));
     throw_if_not_ok(set_offsets_buffer(
-        name,
-        static_cast<uint64_t* const>(buffer.buffer_),
-        buffer.buffer_size_));
+        name, static_cast<uint64_t*>(buffer.buffer_), buffer.buffer_size_));
   } else {
     // Fixed-length buffer. Set data buffer only.
     throw_if_not_ok(set_data_buffer(name, buffer.buffer_, buffer.buffer_size_));
