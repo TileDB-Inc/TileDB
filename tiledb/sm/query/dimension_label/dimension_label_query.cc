@@ -34,6 +34,9 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/subarray/subarray.h"
 
+#include <algorithm>
+#include <functional>
+
 using namespace tiledb::common;
 
 namespace tiledb::sm {
@@ -172,15 +175,123 @@ tdb_unique_ptr<IndexData> create_index_data(
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
       return tdb_unique_ptr<IndexData>(
-          tdb_new(TypedIndexData<uint8_t>, input_range));
+          tdb_new(TypedIndexData<int64_t>, input_range));
     default:
       throw StatusException(Status_DimensionLabelQueryError(
           "Unexpected dimension datatype " + datatype_str(type)));
   }
 }
 
-bool is_sorted_buffer(const QueryBuffer&, const Datatype, bool) {
-  // TODO: Implement this.
+template <
+    typename T,
+    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+bool is_sorted_buffer_impl(
+    const T* buffer, const uint64_t* buffer_size, bool increasing) {
+  uint64_t N = *buffer_size / sizeof(T);
+  if (increasing) {
+    for (uint64_t ii{0}; ii < N - 1; ++ii) {
+      if (buffer[ii + 1] < buffer[ii]) {
+        return false;
+      }
+    }
+  } else {
+    for (uint64_t ii{0}; ii < N - 1; ++ii) {
+      if (buffer[ii + 1] > buffer[ii]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * This is a placeholder function to check the sort of the ordered dimension
+ * labels. This should be pushed down to an ordered dimension label writer.
+ */
+bool is_sorted_buffer(
+    const QueryBuffer& buffer, const Datatype type, bool increasing) {
+  switch (type) {
+    case Datatype::INT8:
+      return is_sorted_buffer_impl<int8_t>(
+          static_cast<const int8_t*>(buffer.buffer_),
+          buffer.buffer_size_,
+          increasing);
+    case Datatype::UINT8:
+      return is_sorted_buffer_impl<uint8_t>(
+          static_cast<const uint8_t*>(buffer.buffer_),
+          buffer.buffer_size_,
+          increasing);
+    case Datatype::INT16:
+      return is_sorted_buffer_impl<int16_t>(
+          static_cast<const int16_t*>(buffer.buffer_),
+          buffer.buffer_size_,
+          increasing);
+    case Datatype::UINT16:
+      return is_sorted_buffer_impl<uint16_t>(
+          static_cast<const uint16_t*>(buffer.buffer_),
+          buffer.buffer_size_,
+          increasing);
+    case Datatype::INT32:
+      return is_sorted_buffer_impl<int32_t>(
+          static_cast<const int32_t*>(buffer.buffer_),
+          buffer.buffer_size_,
+          increasing);
+    case Datatype::UINT32:
+      return is_sorted_buffer_impl<uint32_t>(
+          static_cast<const uint32_t*>(buffer.buffer_),
+          buffer.buffer_size_,
+          increasing);
+    case Datatype::INT64:
+      return is_sorted_buffer_impl<int64_t>(
+          static_cast<const int64_t*>(buffer.buffer_),
+          buffer.buffer_size_,
+          increasing);
+    case Datatype::UINT64:
+      return is_sorted_buffer_impl<uint64_t>(
+          static_cast<const uint64_t*>(buffer.buffer_),
+          buffer.buffer_size_,
+          increasing);
+    case Datatype::FLOAT32:
+      return is_sorted_buffer_impl<float>(
+          static_cast<const float*>(buffer.buffer_),
+          buffer.buffer_size_,
+          increasing);
+    case Datatype::FLOAT64:
+      return is_sorted_buffer_impl<double>(
+          static_cast<const double*>(buffer.buffer_),
+          buffer.buffer_size_,
+          increasing);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+      return is_sorted_buffer_impl<int64_t>(
+          static_cast<const int64_t*>(buffer.buffer_),
+          buffer.buffer_size_,
+          increasing);
+    default:
+      // This catch should never be hit.
+      throw std::runtime_error("Unexpected datatype " + datatype_str(type));
+  }
+
   return true;
 }
 
