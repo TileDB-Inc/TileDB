@@ -1086,7 +1086,7 @@ struct SingleFragmentInfo {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(d42e7b38b33e3d29, 0, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(d42e7b38b33e3d29, 1, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -8985,6 +8985,8 @@ class SingleFragmentInfo::Reader {
   inline ::tiledb::sm::serialization::capnp::FragmentMetadata::Reader getMeta()
       const;
 
+  inline ::uint64_t getFragmentSize() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -9043,6 +9045,9 @@ class SingleFragmentInfo::Builder {
           value);
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FragmentMetadata>
   disownMeta();
+
+  inline ::uint64_t getFragmentSize();
+  inline void setFragmentSize(::uint64_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -20634,6 +20639,20 @@ SingleFragmentInfo::Builder::disownMeta() {
       ::tiledb::sm::serialization::capnp::FragmentMetadata>::
       disown(
           _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline ::uint64_t SingleFragmentInfo::Reader::getFragmentSize() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t SingleFragmentInfo::Builder::getFragmentSize() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void SingleFragmentInfo::Builder::setFragmentSize(::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool FragmentInfo::Reader::hasArraySchemasAll() const {

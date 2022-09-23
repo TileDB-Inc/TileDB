@@ -196,13 +196,12 @@ Status fragment_info_request_deserialize(
   return Status::Ok();
 }
 
-// TODO: make a separate function for single_fragment_info_to_capnp that is for
-// now inline
 std::tuple<Status, std::optional<SingleFragmentInfo>>
 single_fragment_info_from_capnp(
     const capnp::SingleFragmentInfo::Reader& single_frag_info_reader,
     const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
         array_schemas) {
+  // Get array schema name
   std::string schema_name;
   if (single_frag_info_reader.hasArraySchemaName()) {
     schema_name = single_frag_info_reader.getArraySchemaName().cStr();
@@ -222,11 +221,17 @@ single_fragment_info_from_capnp(
             nullopt};
   }
 
+  // Get list of single fragment info
   SingleFragmentInfo single_frag_info{};
   if (single_frag_info_reader.hasMeta()) {
     auto frag_meta_reader = single_frag_info_reader.getMeta();
+    single_frag_info.meta() = make_shared<FragmentMetadata>(HERE());
     auto st = fragment_metadata_from_capnp(
         schema->second, frag_meta_reader, single_frag_info.meta());
+    // This is needed so that we don't try to load rtee from disk
+    single_frag_info.meta()->set_rtree_loaded();
+    // set the rest of single_frag_info from meta()
+    single_frag_info.set_info_from_meta();
   } else {
     return {
         Status_SerializationError(
@@ -234,17 +239,26 @@ single_fragment_info_from_capnp(
         nullopt};
   }
 
+  // Get fragment size
+  single_frag_info.fragment_size() = single_frag_info_reader.getFragmentSize();
+
   return {Status::Ok(), single_frag_info};
 }
 
 Status single_fragment_info_to_capnp(
     const SingleFragmentInfo& single_frag_info,
     capnp::SingleFragmentInfo::Builder* single_frag_info_builder) {
+  // set array schema name
   single_frag_info_builder->setArraySchemaName(
       single_frag_info.array_schema_name());
+
+  // set fragment metadata
   auto frag_meta_builder = single_frag_info_builder->initMeta();
   RETURN_NOT_OK(
       fragment_metadata_to_capnp(*single_frag_info.meta(), &frag_meta_builder));
+
+  // set fragment size
+  single_frag_info_builder->setFragmentSize(single_frag_info.fragment_size());
   return Status::Ok();
 }
 

@@ -1128,6 +1128,11 @@ class FragmentMetadata {
     storage_manager_ = sm;
   }
 
+  /** loaded_metadata_.rtree_ accessor */
+  void set_rtree_loaded() {
+    loaded_metadata_.rtree_ = true;
+  }
+
  private:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */

@@ -698,6 +698,9 @@ struct SingleFragmentInfo {
 
   meta @1 :FragmentMetadata;
   # fragment metadata
+
+  fragmentSize @2 : UInt64;
+  # the size of the entire fragment directory
 }
 
 struct FragmentInfo {

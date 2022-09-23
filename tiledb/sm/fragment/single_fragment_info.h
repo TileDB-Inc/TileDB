@@ -181,6 +181,11 @@ class SingleFragmentInfo {
     return meta_;
   }
 
+  /** Returns the array schema name. */
+  const std::string& array_schema_name() const {
+    return array_schema_name_;
+  }
+
   /** Returns the non-empty domain in string format. */
   std::string non_empty_domain_str(
       const std::vector<Datatype>& dim_types) const {
@@ -267,9 +272,33 @@ class SingleFragmentInfo {
     return ss.str();
   }
 
-  /** Returns the array schema name. */
-  const std::string& array_schema_name() const {
-    return array_schema_name_;
+  /** Accessor to the fragment size. */
+  uint64_t& fragment_size() {
+    return fragment_size_;
+  }
+
+  /** Accessor to the metadata pointer. */
+  shared_ptr<FragmentMetadata>& meta() {
+    return meta_;
+  }
+
+  void set_info_from_meta() {
+    if (meta_ == nullptr) {
+      throw std::logic_error("Cannot set info from empty fragment metadata.");
+    }
+    uri_ = meta_->fragment_uri();
+    version_ = meta_->format_version();
+    sparse_ = !meta_->dense();
+    timestamp_range_ = meta_->timestamp_range();
+    cell_num_ = meta_->cell_num();
+    has_consolidated_footer_ = meta_->has_consolidated_footer();
+    array_schema_name_ = meta_->array_schema_name();
+    non_empty_domain_ = meta_->non_empty_domain();
+    expanded_non_empty_domain_ = non_empty_domain_;
+    if (!sparse_) {
+      meta_->array_schema()->domain().expand_to_tiles(
+          &expanded_non_empty_domain_);
+    }
   }
 
  private:
