@@ -1,3 +1,14 @@
+# TileDB v2.11.3 Release Notes
+
+## Improvements
+* Backport changes from #3326 to add experimental docs to stable [#3526](https://github.com/TileDB-Inc/TileDB/pull/3526)
+
+## Defects removed
+* Memory tracker: using the correct type for setting default budget. [#3509](https://github.com/TileDB-Inc/TileDB/pull/3509)
+* Sparse global order reader: incomplete reads when hitting memory limits. [#3518](https://github.com/TileDB-Inc/TileDB/pull/3518)
+* Fix segfault after schema evolution when reading using `TILEDB_UNORDERED` [#3528](https://github.com/TileDB-Inc/TileDB/pull/3528)
+* Sparse GO reader: issue when no tile progress because user buffers full. [#3531](https://github.com/TileDB-Inc/TileDB/pull/3531)
+
 # TileDB v2.11.2 Release Notes
 
 ## Improvements
