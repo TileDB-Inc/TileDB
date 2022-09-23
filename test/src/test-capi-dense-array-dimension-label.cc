@@ -32,7 +32,6 @@
 
 #include "test/src/experimental_helpers.h"
 #include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
@@ -42,12 +41,6 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/encryption_type.h"
-
-#ifdef _WIN32
-#include "tiledb/sm/filesystem/win.h"
-#else
-#include "tiledb/sm/filesystem/posix.h"
-#endif
 
 #include <test/support/tdb_catch.h>
 #include <iostream>
@@ -114,7 +107,8 @@ class DenseArrayExample1 : public DimensionLabelFixture {
 
   void write_array_with_label(
       std::vector<double>& input_attr_data,
-      std::vector<double>& input_label_data) {
+      std::vector<double>& input_label_data,
+      bool error_on_write = false) {
     // Open array for writing.
     tiledb_array_t* array;
     require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
@@ -145,10 +139,15 @@ class DenseArrayExample1 : public DimensionLabelFixture {
     }
 
     // Submit write query.
-    require_tiledb_ok(tiledb_query_submit(ctx, query));
-    tiledb_query_status_t query_status;
-    require_tiledb_ok(tiledb_query_get_status(ctx, query, &query_status));
-    REQUIRE(query_status == TILEDB_COMPLETED);
+    if (error_on_write) {
+      auto rc = tiledb_query_submit(ctx, query);
+      REQUIRE(rc != TILEDB_OK);
+    } else {
+      require_tiledb_ok(tiledb_query_submit(ctx, query));
+      tiledb_query_status_t query_status;
+      require_tiledb_ok(tiledb_query_get_status(ctx, query, &query_status));
+      REQUIRE(query_status == TILEDB_COMPLETED);
+    }
 
     // Clean-up.
     tiledb_query_free(&query);
@@ -359,4 +358,44 @@ TEST_CASE_METHOD(
     INFO("Check data readed value");
     check_values_from_data_reader(input_label_data);
   }
+}
+
+TEST_CASE_METHOD(
+    DenseArrayExample1,
+    "Test error on bad dimension label order for dense array",
+    "[capi][query][DimensionLabel]") {
+  // Vectors for input data.
+  std::vector<double> input_label_data{};
+  std::vector<double> input_attr_data{};
+
+  // Dimension label parameters.
+  tiledb_label_order_t label_order;
+
+  SECTION("Increasing labels with bad order", "[IncreasingLabels]") {
+    label_order = TILEDB_INCREASING_LABELS;
+    input_label_data = {1.0, 0.0, -0.5, -1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+  }
+
+  SECTION("Increasing labels with duplicate values", "[IncreasingLabels]") {
+    label_order = TILEDB_INCREASING_LABELS;
+    input_label_data = {-1.0, 0.0, 0.0, 1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+  }
+
+  SECTION("Decreasing labels with bad order", "[IncreasingLabels]") {
+    label_order = TILEDB_DECREASING_LABELS;
+    input_label_data = {-1.0, -0.5, 0.0, 1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+  }
+
+  SECTION("Decreasing labels with duplicate values", "[IncreasingLabels]") {
+    label_order = TILEDB_DECREASING_LABELS;
+    input_label_data = {1.0, 0.0, 0.0, -1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+  }
+
+  // Create the array.
+  create_example(label_order);
+  write_array_with_label(input_attr_data, input_label_data, true);
 }
