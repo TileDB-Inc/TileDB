@@ -59,6 +59,7 @@ namespace tiledb::common {
  *
  * @tparam Mover_T The type of item mover to be used with the
  * `ProducerNode`. It is a template template to be composed with `Block`.
+ *
  * @tparam Block The type of data to be produced by the `ProducerNode` and
  * sent through the item mover.
  *
@@ -144,8 +145,8 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
    * by the enclosed function.
    */
   void run_once() {
-    auto state_machine = this->get_mover();
-    if (state_machine->is_stopping()) {
+    auto mover = this->get_mover();
+    if (mover->is_stopping()) {
       throw std::runtime_error("Trying to stop a stopping producer");
     }
 
@@ -176,10 +177,10 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
         throw std::logic_error("Impossible index for variant");
     }
     if (stop_source_.stop_requested()) {
-      if (state_machine->debug_enabled()) {
+      if (mover->debug_enabled()) {
         std::cout << "run_once stopping" << std::endl;
       }
-      state_machine->do_stop();
+      mover->do_stop();
       return;
     }
 
@@ -187,21 +188,21 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
      * { state = 00 ∧ items = 10 }                  ∨
      * { state = 01 ∧ ( items = 10 ∨ items = 11 ) }
      */
-    state_machine->do_fill();
+    mover->do_fill();
     /*
      * { state = 00 ∧ items = 00 }                  ∨
      * { state = 01 ∧ ( items = 00 ∨ items = 01 ) } ∨
      * { state = 10 ∧ items = 10 }                  ∨
      * { state = 11 ∧ ( items = 10 ∨ items = 11 ) }
      */
-    state_machine->do_push();
+    mover->do_push();
 
     /*
      * { state = 00 ∧ items = 00 }                  ∨
      * { state = 01 ∧ ( items = 00 ∨ items = 01 ) }
      */
 
-    if (state_machine->debug_enabled())
+    if (mover->debug_enabled())
       std::cout << "producer pushed " << std::endl;
   }
 
@@ -209,13 +210,13 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
    * Invoke `run_once` until stopped.
    */
   void run() {
-    auto state_machine = this->get_mover();
-    if (state_machine->debug_enabled()) {
+    auto mover = this->get_mover();
+    if (mover->debug_enabled()) {
       std::cout << "producer starting run on " << this->get_mover()
                 << std::endl;
     }
 
-    while (!state_machine->is_stopping()) {
+    while (!mover->is_stopping()) {
       run_once();
     }
     // run_once() will have to have invoked do_stop() to break out of the loop.
@@ -228,21 +229,21 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
    *  @param rounds The maximum number of times to invoke the producer function.
    */
   void run_for(size_t rounds) {
-    auto state_machine = this->get_mover();
+    auto mover = this->get_mover();
 
-    if (state_machine->debug_enabled()) {
+    if (mover->debug_enabled()) {
       std::cout << "producer starting "
                 << "run_for with " << rounds << " rounds on mover "
                 << this->get_mover() << std::endl;
     }
 
-    while (rounds-- && !state_machine->is_stopping()) {  // or stop_requested()?
+    while (rounds-- && !mover->is_stopping()) {  // or stop_requested()?
       run_once();
     }
 
-    if (!state_machine->is_stopping()) {  // or stop_requested()?
+    if (!mover->is_stopping()) {  // or stop_requested()?
       stop_source_.request_stop();
-      state_machine->do_stop();
+      mover->do_stop();
     }
   }
 
@@ -251,12 +252,12 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
    * debugging to encourage race conditions and deadlocks.
    */
   void run_for_with_delays(size_t rounds) {
-    auto state_machine = this->get_mover();
-    if (state_machine->debug_enabled())
+    auto mover = this->get_mover();
+    if (mover->debug_enabled())
       std::cout << this->get_mover() << std::endl;
 
     while (rounds--) {
-      if (state_machine->debug_enabled())
+      if (mover->debug_enabled())
         std::cout << "producer starting " << rounds << std::endl;
 
       // @todo Do inject() and fill() need to be atomic (use state machine
@@ -273,27 +274,27 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
           throw std::logic_error("Impossible index for variant");
       }
       if (stop_source_.stop_requested()) {
-        if (state_machine->debug_enabled()) {
+        if (mover->debug_enabled()) {
           std::cout << "run_once stopping" << std::endl;
         }
         break;
       }
 
-      if (state_machine->debug_enabled())
+      if (mover->debug_enabled())
         std::cout << "producer injected " << rounds << std::endl;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
-      state_machine->do_fill();
+      mover->do_fill();
 
-      if (state_machine->debug_enabled())
+      if (mover->debug_enabled())
         std::cout << "producer filled " << rounds << std::endl;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
-      state_machine->do_push();
+      mover->do_push();
 
-      if (state_machine->debug_enabled())
+      if (mover->debug_enabled())
         std::cout << "producer pushed " << rounds << std::endl;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
@@ -301,9 +302,9 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
 
     // Could have fallen through or gotten stop_requested()
     // Either way, need to calls do_stop
-    if (state_machine->debug_enabled())
+    if (mover->debug_enabled())
       std::cout << "run stopping" << std::endl;
-    state_machine->do_stop();
+    mover->do_stop();
   }
 };
 
@@ -375,7 +376,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
    * function on each item.
    */
   void run_once() {
-    auto state_machine = this->get_mover();
+    auto mover = this->get_mover();
 
     /*
      * { state = 00 ∧ ( items = 00 ∨ items = 10 ) } ∨
@@ -383,25 +384,25 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
      * { state = 10 ∧ items = 10 }                  ∨
      * { state = 11 ∧ items = 11 }
      */
-    state_machine->do_pull();
+    mover->do_pull();
     /*
      * { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨
      * { state = 11 ∧ items = 11 ) }
      */
 
-    if (state_machine->debug_enabled())
+    if (mover->debug_enabled())
       std::cout << "consumer pulled "
-                << " ( done: " << state_machine->is_done() << " )" << std::endl;
+                << " ( done: " << mover->is_done() << " )" << std::endl;
 
-    if (state_machine->is_done()) {
-      if (state_machine->debug_enabled())
+    if (mover->is_done()) {
+      if (mover->debug_enabled())
         std::cout << "consumer done i " << std::endl;
       return;
     }
 
-    if (state_machine->debug_enabled())
+    if (mover->debug_enabled())
       std::cout << "consumer checked done "
-                << " ( done: " << state_machine->is_done() << " )" << std::endl;
+                << " ( done: " << mover->is_done() << " )" << std::endl;
 
     // Returns an optional, may not be necessary given stop state
     // @todo Pass in b as parameter so assignment is atomic
@@ -413,10 +414,10 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
      * { state = 11 ∧ items = 01 ) }
      */
 
-    if (state_machine->debug_enabled())
+    if (mover->debug_enabled())
       std::cout << "consumer extracted, about to drain " << std::endl;
 
-    state_machine->do_drain();
+    mover->do_drain();
     /*
      * { state = 00 ∧ ( items = 00 ∨ items = 10 ) } ∨
      * { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨
@@ -424,7 +425,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
      * { state = 11 ∧ items = 11 ) }
      */
 
-    if (state_machine->debug_enabled())
+    if (mover->debug_enabled())
       std::cout << "consumer drained " << std::endl;
 
     //  CHECK(b.has_value());
@@ -437,7 +438,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
     f_(*b);
     // Deallocate b
 
-    if (state_machine->debug_enabled())
+    if (mover->debug_enabled())
       std::cout << "consumer ran function " << std::endl;
   }
 
@@ -445,13 +446,13 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
    * Invoke `run_once()` until the node is stopped.
    */
   void run() {
-    auto state_machine = this->get_mover();
-    if (state_machine->debug_enabled()) {
+    auto mover = this->get_mover();
+    if (mover->debug_enabled()) {
       std::cout << "consumer starting run on " << this->get_mover()
                 << std::endl;
     }
 
-    while (!state_machine->is_done()) {
+    while (!mover->is_done()) {
       run_once();
     }
   }
@@ -463,19 +464,19 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
    * @param rounds The maximum number of times to invoke the producer function.
    */
   void run_for(size_t rounds) {
-    auto state_machine = this->get_mover();
+    auto mover = this->get_mover();
 
-    if (state_machine->debug_enabled()) {
+    if (mover->debug_enabled()) {
       std::cout << "consumer starting "
                 << "run_for with " << rounds << " rounds on mover "
                 << this->get_mover() << std::endl;
     }
 
-    while (rounds-- && !state_machine->is_done()) {
+    while (rounds-- && !mover->is_done()) {
       run_once();
     }
-    if (!state_machine->is_done()) {
-      state_machine->do_pull();
+    if (!mover->is_done()) {
+      mover->do_pull();
     }
   }
 
@@ -484,54 +485,54 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
    * race conditions and deadlocks.
    */
   void run_for_with_delays(size_t rounds) {
-    auto state_machine = this->get_mover();
+    auto mover = this->get_mover();
 
-    if (state_machine->debug_enabled())
+    if (mover->debug_enabled())
       std::cout << "consumer starting for " << rounds << " on "
                 << this->get_mover() << std::endl;
 
     while (rounds--) {
-      state_machine->do_pull();
-      if (state_machine->debug_enabled())
+      mover->do_pull();
+      if (mover->debug_enabled())
         std::cout << "consumer pulled " << rounds << std::endl;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
-      if (state_machine->is_done()) {
+      if (mover->is_done()) {
         break;
       }
 
-      if (state_machine->debug_enabled())
+      if (mover->debug_enabled())
         std::cout << "consumer checked done " << rounds << std::endl;
 
       auto b = Base::extract();
 
-      if (state_machine->debug_enabled())
+      if (mover->debug_enabled())
         std::cout << "consumer extracted, about to drain " << rounds
                   << std::endl;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
-      state_machine->do_drain();
+      mover->do_drain();
 
-      if (state_machine->debug_enabled())
+      if (mover->debug_enabled())
         std::cout << "consumer drained " << rounds << std::endl;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
       f_(*b);
 
-      if (state_machine->debug_enabled())
+      if (mover->debug_enabled())
         std::cout << "consumer ran function " << rounds << std::endl;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
-      if (state_machine->is_done()) {
+      if (mover->is_done()) {
         break;
       }
     }
-    if (!state_machine->is_done()) {
-      state_machine->do_pull();
+    if (!mover->is_done()) {
+      mover->do_pull();
     }
   }
 };
@@ -617,74 +618,72 @@ class FunctionNode : public GraphNode,
    * stopped.
    */
   void run_once() {
-    auto source_state_machine = SourceBase::get_mover();
-    auto sink_state_machine = SinkBase::get_mover();
+    auto source_mover = SourceBase::get_mover();
+    auto sink_mover = SinkBase::get_mover();
 
-    sink_state_machine->do_pull();
+    sink_mover->do_pull();
 
-    if (sink_state_machine->debug_enabled())
+    if (sink_mover->debug_enabled())
       std::cout << "function pulled "
-                << " ( done: " << sink_state_machine->is_done() << " )"
-                << std::endl;
+                << " ( done: " << sink_mover->is_done() << " )" << std::endl;
 
     /*
      * The "other side" of the `Sink` state machine is a `Source`, which can be
      * stopped.  Similarly, the "other side" of the `Source` could be stopped.
      */
-    if (source_state_machine->is_done() || sink_state_machine->is_done()) {
-      if (sink_state_machine->debug_enabled())
+    if (source_mover->is_done() || sink_mover->is_done()) {
+      if (sink_mover->debug_enabled())
         std::cout << "function returning i " << std::endl;
       return;
     }
 
-    if (sink_state_machine->debug_enabled())
+    if (sink_mover->debug_enabled())
       std::cout << "function checked done "
-                << " ( done: " << sink_state_machine->is_done() << " )"
-                << std::endl;
+                << " ( done: " << sink_mover->is_done() << " )" << std::endl;
 
     // @todo as elsewhere, extract+drain should be atomic
     auto b = SinkBase::extract();
 
-    if (sink_state_machine->debug_enabled())
+    if (sink_mover->debug_enabled())
       std::cout << "function extracted, about to drain " << std::endl;
 
-    sink_state_machine->do_drain();
+    sink_mover->do_drain();
 
-    if (sink_state_machine->debug_enabled())
+    if (sink_mover->debug_enabled())
       std::cout << "function drained " << std::endl;
 
     //    if (b.has_value()) {
 
     auto j = f_(*b);
 
-    if (sink_state_machine->debug_enabled())
+    if (sink_mover->debug_enabled())
       std::cout << "function ran function " << std::endl;
 
     // @todo Should inject+fill be atomic? (No need.)
     SourceBase::inject(j);
-    if (source_state_machine->debug_enabled())
+    if (source_mover->debug_enabled())
       std::cout << "function injected " << std::endl;
 
-    source_state_machine->do_fill();
-    if (source_state_machine->debug_enabled())
+    source_mover->do_fill();
+    if (source_mover->debug_enabled())
       std::cout << "function filled " << std::endl;
 
-    source_state_machine->do_push();
-    if (source_state_machine->debug_enabled())
+    source_mover->do_push();
+    if (source_mover->debug_enabled())
       std::cout << "function pushed " << std::endl;
 
     //    } else {
-    //      if (source_state_machine->debug_enabled()) {
+    //      if (source_mover->debug_enabled()) {
     //        std::cout << "No value in function node @ " << std::endl;
-    //        std::cout << "State = " << str(sink_state_machine->state()) << " @
+    //        std::cout << "State = " << str(sink_mover->state()) << " @
     //        "
     //                  << std::endl;
     //      }
     //      return;
     //  }
 
-    if (source_state_machine->is_done() || sink_state_machine->is_done()) {
-      if (sink_state_machine->debug_enabled())
+    if (source_mover->is_done() || sink_mover->is_done()) {
+      if (sink_mover->debug_enabled())
         std::cout << "function break ii " << std::endl;
       return;
     }
@@ -697,21 +696,21 @@ class FunctionNode : public GraphNode,
    * @param rounds The maximum number of times to invoke the producer function.
    */
   void run_for(size_t rounds) {
-    auto source_state_machine = SourceBase::get_mover();
-    auto sink_state_machine = SinkBase::get_mover();
+    auto source_mover = SourceBase::get_mover();
+    auto sink_mover = SinkBase::get_mover();
 
     while (rounds--) {
-      if (sink_state_machine->is_done() || source_state_machine->is_done()) {
+      if (sink_mover->is_done() || source_mover->is_done()) {
         break;
       }
       run_once();
     }
-    if (!sink_state_machine->is_done()) {
-      if (sink_state_machine->debug_enabled())
+    if (!sink_mover->is_done()) {
+      if (sink_mover->debug_enabled())
         std::cout << "function final pull " << rounds << std::endl;
-      sink_state_machine->do_pull();
+      sink_mover->do_pull();
     }
-    source_state_machine->do_stop();
+    source_mover->do_stop();
   }
 
   /*
@@ -719,18 +718,18 @@ class FunctionNode : public GraphNode,
    *
    */
   void run() {
-    auto source_state_machine = SourceBase::get_mover();
-    auto sink_state_machine = SinkBase::get_mover();
+    auto source_mover = SourceBase::get_mover();
+    auto sink_mover = SinkBase::get_mover();
 
-    while (!sink_state_machine->is_done() && !source_state_machine->is_done()) {
+    while (!sink_mover->is_done() && !source_mover->is_done()) {
       run_once();
     }
-    if (!sink_state_machine->is_done()) {
-      if (sink_state_machine->debug_enabled())
+    if (!sink_mover->is_done()) {
+      if (sink_mover->debug_enabled())
         std::cout << "function final pull in run()" << std::endl;
-      sink_state_machine->do_pull();
+      sink_mover->do_pull();
     }
-    source_state_machine->do_stop();
+    source_mover->do_stop();
   }
 
   /**
@@ -738,24 +737,24 @@ class FunctionNode : public GraphNode,
    * operations to expose race conditions and deadlocks.
    */
   void run_for_with_delays(size_t rounds) {
-    auto source_state_machine = SourceBase::get_mover();
-    auto sink_state_machine = SinkBase::get_mover();
+    auto source_mover = SourceBase::get_mover();
+    auto sink_mover = SinkBase::get_mover();
 
     while (rounds--) {
-      sink_state_machine->do_pull();
+      sink_mover->do_pull();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
-      if (source_state_machine->is_done() || sink_state_machine->is_done()) {
+      if (source_mover->is_done() || sink_mover->is_done()) {
         break;
       }
 
-      CHECK(is_sink_full(sink_state_machine->state()) == "");
+      CHECK(is_sink_full(sink_mover->state()) == "");
       auto b = SinkBase::extract();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
-      sink_state_machine->do_drain();
+      sink_mover->do_drain();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
       if (b.has_value()) {
@@ -764,21 +763,21 @@ class FunctionNode : public GraphNode,
         SourceBase::inject(j);
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
-        source_state_machine->do_fill();
+        source_mover->do_fill();
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
-        source_state_machine->do_push();
+        source_mover->do_push();
 
       } else {
-        if (source_state_machine->debug_enabled())
+        if (source_mover->debug_enabled())
           std::cout << "No value in function node" << std::endl;
         break;
       }
       if (rounds == 0) {
-        sink_state_machine->do_pull();
+        sink_mover->do_pull();
       }
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
     }
-    source_state_machine->do_stop();
+    source_mover->do_stop();
   }
 };  // namespace tiledb::common
 

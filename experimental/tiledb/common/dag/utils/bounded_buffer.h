@@ -261,6 +261,15 @@ class BoundedBufferQ {
   }
 
   /**
+   * Swap only data contents.  Synchronization variables must all be empty.
+   */
+  void swap_data(BoundedBufferQ& rhs) {
+    std::scoped_lock lock{mutex_};
+    std::swap(max_size_, rhs.max_size_);
+    std::swap(queue_, rhs.queue_);
+  }
+
+  /**
    * Soft shutdown of the queue.  The queue is closed and all threads waiting on
    * items are notified.  Any threads waiting on pop() will then return nothing.
    */

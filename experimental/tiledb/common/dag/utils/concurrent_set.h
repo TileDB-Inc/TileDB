@@ -91,6 +91,11 @@ class ConcurrentSet : public std::set<Key, Compare, Allocator> {
     return Base::clear();
   }
 
+  std::pair<iterator, bool> insert(value_type& value) {
+    std::lock_guard _(mutex_);
+    return Base::insert(value);
+  }
+
   std::pair<iterator, bool> insert(value_type&& value) {
     std::lock_guard _(mutex_);
     return Base::insert(std::forward<value_type>(value));
