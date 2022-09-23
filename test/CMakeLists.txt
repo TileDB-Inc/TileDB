@@ -259,6 +259,7 @@ if (TILEDB_EXPERIMENTAL_FEATURES)
     src/experimental_helpers.cc
     src/test-capi-dimension_labels.cc
     src/test-capi-dense-array-dimension-label.cc
+    src/test-capi-dense-array-dimension-label-var.cc
     src/test-capi-sparse-array-dimension-label.cc
     src/test-dimension_labels-read-consistency.cc
     src/unit_intersect_fragments.cc
