@@ -269,10 +269,10 @@ add_library(tiledb_test_support_lib EXCLUDE_FROM_ALL
 )
 target_link_libraries(tiledb_test_support_lib INTERFACE Catch2::Catch2WithMain)
 
-target_include_directories(tiledb_test_support_lib
-  PRIVATE
-     Catch2::Catch2
-)
+#target_include_directories(tiledb_test_support_lib
+#  PRIVATE
+#     Catch2::Catch2
+#)
 
 # unit test executable
 add_executable(
