@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/common/status.h"
+#include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/filter/bitsort_filter.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -43,6 +44,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <iostream>
 #include <numeric>
 #include <optional>
 #include <utility>
@@ -98,7 +100,7 @@ Status BitSortFilter::run_reverse(
  */
 Status BitSortFilter::run_forward(
     const Tile& tile,
-    std::vector<Tile*>& dim_tiles,
+    BitSortFilterMetadataType &pair,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -108,19 +110,19 @@ Status BitSortFilter::run_forward(
   switch (datatype_size(tile_type)) {
     case sizeof(int8_t): {
       return run_forward<int8_t>(
-          dim_tiles, input_metadata, input, output_metadata, output);
+          pair, input_metadata, input, output_metadata, output);
     }
     case sizeof(int16_t): {
       return run_forward<int16_t>(
-         dim_tiles, input_metadata, input, output_metadata, output);
+         pair, input_metadata, input, output_metadata, output);
     }
     case sizeof(int32_t): {
       return run_forward<int32_t>(
-          dim_tiles, input_metadata, input, output_metadata, output);
+          pair, input_metadata, input, output_metadata, output);
     }
     case sizeof(int64_t): {
       return run_forward<int64_t>(
-          dim_tiles, input_metadata, input, output_metadata, output);
+          pair, input_metadata, input, output_metadata, output);
     }
     default: {
       return Status_FilterError(
@@ -134,7 +136,7 @@ Status BitSortFilter::run_forward(
 
 template <typename T>
 Status BitSortFilter::run_forward(
-    std::vector<Tile*> &dim_tiles,
+    BitSortFilterMetadataType &pair,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -156,7 +158,7 @@ Status BitSortFilter::run_forward(
   for (const auto& part : parts) {
     auto part_size = (uint32_t)part.size();
     RETURN_NOT_OK(output_metadata->write(&part_size, sizeof(uint32_t)));
-    RETURN_NOT_OK(sort_part<T>(dim_tiles, &part, output_buf));
+    RETURN_NOT_OK(sort_part<T>(pair, &part, output_buf));
   }
 
   return Status::Ok();
@@ -164,7 +166,7 @@ Status BitSortFilter::run_forward(
 
 template <typename T>
 Status BitSortFilter::sort_part(
-    std::vector<Tile*> &dim_tiles, const ConstBuffer* input_buffer, Buffer* output_buffer) const {
+    BitSortFilterMetadataType &pair, const ConstBuffer* input_buffer, Buffer* output_buffer) const {
   // Read in the data.
   uint32_t s = input_buffer->size();
   assert(s % sizeof(T) == 0);
@@ -176,6 +178,17 @@ Status BitSortFilter::sort_part(
 
   const T* part_array = static_cast<const T*>(input_buffer->data());
   std::vector<std::pair<T, uint32_t>> sorted_elements;
+  const Domain &domain = pair.second.get();
+
+  uint64_t dim_num = domain.dim_num();
+  uint64_t tile_size = 1;
+  (void)tile_size;
+  for (uint64_t i = 0; i < dim_num; ++i) {
+    const Dimension *dimension = domain.dimension_ptr(i);
+    (void)dimension;
+    // DETERMINE THE TILE EXTENT 
+    // MANUAL TILING WOO
+  }
 
   for (uint32_t i = 0; i < num_elems_in_part; ++i) {
     sorted_elements.push_back(std::make_pair(part_array[i], i));
@@ -183,6 +196,8 @@ Status BitSortFilter::sort_part(
 
   // Sort the data.
   std::sort(sorted_elements.begin(), sorted_elements.end());
+
+  std::vector<Tile*> &dim_tiles = pair.first.get();
 
   // Rewrite each of the dimension tile data with the new sort order.
   for (auto* dim_tile : dim_tiles) {
@@ -297,18 +312,17 @@ Status BitSortFilter::run_reverse(
   Buffer* output_buf = output->buffer_ptr(0);
   assert(output_buf != nullptr);
 
-  // Get the comparator.
+  // Get the domain.
   const Domain &domain = pair.second.get();
-  GlobalCmp comparator(domain);
 
   // Determine the positions vector.
   std::vector<uint64_t> positions;
   for (uint64_t i = 0; i < dim_tiles.size(); ++i) {
     if (i == 0) {
       auto positions_ref = std::ref(positions);
-      rewrite_dim_tile_reverse(dim_tiles[i], comparator, positions_ref);
+      rewrite_dim_tile_reverse(dim_tiles[i], i, domain, positions_ref);
     } else {
-      rewrite_dim_tile_reverse(dim_tiles[i], comparator, std::nullopt);
+      rewrite_dim_tile_reverse(dim_tiles[i], i, domain, std::nullopt);
     }
   }
 
@@ -359,26 +373,26 @@ Status BitSortFilter::unsort_part(
   return Status::Ok();
 }
 
-Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, GlobalCmp &comparator, std::optional<std::reference_wrapper<std::vector<uint64_t>>> positions_opt) const {
+Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, uint64_t i, const Domain &domain, std::optional<std::reference_wrapper<std::vector<uint64_t>>> positions_opt) const {
   Datatype tile_type = dim_tile->type();
   switch (tile_type) {
     case Datatype::INT8: {
-      rewrite_dim_tile_reverse<int8_t>(dim_tile, comparator, positions_opt);
+      rewrite_dim_tile_reverse<int8_t>(dim_tile, i, domain, positions_opt);
     } break;
     case Datatype::INT16: {
-      rewrite_dim_tile_reverse<int16_t>(dim_tile, comparator, positions_opt);
+      rewrite_dim_tile_reverse<int16_t>(dim_tile, i, domain, positions_opt);
     } break;
     case Datatype::INT32: {
-      rewrite_dim_tile_reverse<int32_t>(dim_tile, comparator, positions_opt);
+      rewrite_dim_tile_reverse<int32_t>(dim_tile, i, domain, positions_opt);
     } break;
     case Datatype::INT64: {
-      rewrite_dim_tile_reverse<int64_t>(dim_tile, comparator, positions_opt);
+      rewrite_dim_tile_reverse<int64_t>(dim_tile, i, domain, positions_opt);
     } break;
     case Datatype::FLOAT32: {
-      rewrite_dim_tile_reverse<float>(dim_tile, comparator, positions_opt);
+      rewrite_dim_tile_reverse<float>(dim_tile, i, domain, positions_opt);
     } break;
     case Datatype::FLOAT64: {
-      rewrite_dim_tile_reverse<double>(dim_tile, comparator, positions_opt);
+      rewrite_dim_tile_reverse<double>(dim_tile, i, domain, positions_opt);
     } break;
     default: {
       return Status_FilterError("BitSortFilter::unsort_part: unsupported dimension type.");
@@ -389,7 +403,7 @@ Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, GlobalCmp &compar
 }
 
 template<typename T>
-Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, GlobalCmp &comparator, std::optional<std::reference_wrapper<std::vector<uint64_t>>> positions_opt) const {
+Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, uint64_t i, const Domain &domain, std::optional<std::reference_wrapper<std::vector<uint64_t>>> positions_opt) const {
   std::vector<std::pair<T, uint32_t>> dimension_vector;
 
   T* dim_tile_data = static_cast<T*>(dim_tile->data());
@@ -397,12 +411,20 @@ Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, GlobalCmp &compar
     dimension_vector.push_back(std::make_pair(dim_tile_data[i], i));
   }
 
-  auto comparison_function = [&comparator](const std::pair<T, uint32_t> &a, const std::pair<T, uint32_t> &b) {
-        bool result = comparator(a.first, b.first);
-        return result;
+  auto comparison_function = [&domain, &i](const std::pair<T, uint32_t> &a, const std::pair<T, uint32_t> &b) {
+        UntypedDatumView a_datum(&a.first, sizeof(T));
+        UntypedDatumView b_datum(&b.first, sizeof(T));
+        
+        int result = domain.cell_order_cmp(i, a_datum, b_datum);
+        if (result <= 0) return false;
+        return true;
     };
 
+  std::cout << "before sort...\n";
+
   std::sort(dimension_vector.begin(), dimension_vector.end(), comparison_function);
+
+  std::cout << "after sort...\n";
 
   if (positions_opt) {
     std::vector<uint64_t> &positions = positions_opt.value().get();

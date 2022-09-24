@@ -38,6 +38,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
@@ -737,6 +738,7 @@ Status WriterBase::filter_tiles(
   } else if constexpr (std::is_same<std::vector<Tile*>, T>::value) {
     auto args_status = parallel_for(
     storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
+      // TODO: here? yeet
       auto& tile = (*tiles)[i];
       std::vector<Tile*> dim_tiles_temp;
       for (const auto& elem : dim_tiles) {
@@ -817,12 +819,24 @@ Status WriterBase::filter_tile(
       array_schema_.var_size(name), array_schema_.version(), tile->type());
 
   assert(!tile->filtered());
-  RETURN_NOT_OK(filters.run_forward<T>(
+  if constexpr (std::is_same<std::vector<Tile*>, T>::value) {
+    auto support_tiles_ref = std::ref(support_tiles);
+    auto domain_ref = std::ref(array_schema_.domain());
+    BitSortFilterMetadataType pair = std::make_pair(support_tiles_ref, domain_ref);
+    RETURN_NOT_OK(filters.run_forward<BitSortFilterMetadataType&>(
+      stats_,
+      tile,
+      pair,
+      storage_manager_->compute_tp(),
+      use_chunking));
+  } else {
+    RETURN_NOT_OK(filters.run_forward<T>(
       stats_,
       tile,
       support_tiles,
       storage_manager_->compute_tp(),
       use_chunking));
+  }
   assert(tile->filtered());
 
   return Status::Ok();
