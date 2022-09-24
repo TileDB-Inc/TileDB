@@ -216,7 +216,7 @@ Status FilterPipeline::filter_chunks_forward(
       output_metadata.clear();
 
       f->init_compression_resource_pool(compute_tp->concurrency_level());
-      if constexpr (std::is_same<T, std::vector<Tile*>>::value) {
+      if constexpr (std::is_same<T, BitSortFilterMetadataType>::value) {
         if (f->type() == FilterType::FILTER_BITSORT) {
           auto bitsort_filter = reinterpret_cast<const BitSortFilter*>(f.get());
           RETURN_NOT_OK(
@@ -870,14 +870,14 @@ template Status FilterPipeline::run_forward<Tile* const>(
 template Status FilterPipeline::run_forward<Tile*>(
       stats::Stats* writer_stats,
       Tile* tile,
-      Tile* const support_tiles,
+      Tile* support_tiles,
       ThreadPool* compute_tp,
       bool chunking) const;
 
-template Status FilterPipeline::run_forward<std::vector<Tile*>>(
+template Status FilterPipeline::run_forward<BitSortFilterMetadataType&>(
       stats::Stats* writer_stats,
       Tile* tile,
-      std::vector<Tile*> const support_tiles,
+      BitSortFilterMetadataType &support_tiles,
       ThreadPool* compute_tp,
       bool chunking) const;
 

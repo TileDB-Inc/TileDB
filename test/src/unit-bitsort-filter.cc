@@ -148,18 +148,6 @@ void testing_bitsort_filter(Datatype t) {
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
   CHECK(tile.alloc_data(nelts * sizeof(T)).ok());
-
-  ChunkData chunk_data;
-  auto && [chunk_data_status, total_orig_size] {test_load_chunk_data(&tile, &chunk_data)};
-  REQUIRE(chunk_data_status.ok());
-  
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, dim_tiles_dummy, &tp, config)
-            .ok());
-  for (uint64_t i = 0; i < nelts; i++) {
-    T elt = 0;
-    CHECK(tile.read(&elt, i * sizeof(T), sizeof(T)).ok());
-    CHECK(elt == results[i]);
-  }
 }
 
 TEST_CASE("Filter: Test BitSort", "[filter][bitsort]") {

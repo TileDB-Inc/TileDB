@@ -1019,10 +1019,15 @@ Status ReaderBase::unfilter_tile_chunk_range(
       if (!nullable) {
         if (array_schema_.has_bitsort_filter()) {
           // Collect dim tiles.
-          std::vector<Tile*> dim_tiles;
+          std::vector<Tile*> dim_tiles(array_schema_.dim_num());
           for (const auto &dim_name : array_schema_.dim_names()) {
+            unsigned int dimension_index;
+            RETURN_NOT_OK(array_schema_.domain().get_dimension_index(dim_name, &dimension_index));
             auto dim_tile_tuple = tile->tile_tuple(dim_name);
-            dim_tiles.push_back(&dim_tile_tuple->fixed_tile());
+            dim_tiles[dimension_index] = &dim_tile_tuple->fixed_tile();
+
+            // TODO: remove
+
           }
 
           const Domain &d = array_schema_.domain();
@@ -1637,10 +1642,12 @@ Status ReaderBase::unfilter_tiles(
             if (!nullable) {
               if (array_schema_.has_bitsort_filter()) {
                 // Collect dim tiles.
-                std::vector<Tile*> dim_tiles;
+                std::vector<Tile*> dim_tiles(array_schema_.dim_num());
                 for (const auto &dim_name : array_schema_.dim_names()) {
+                  unsigned int dimension_index;
+                  RETURN_NOT_OK(array_schema_.domain().get_dimension_index(dim_name, &dimension_index));
                   auto dim_tile_tuple = tile->tile_tuple(dim_name);
-                  dim_tiles.push_back(&dim_tile_tuple->fixed_tile());
+                  dim_tiles[dimension_index] = &dim_tile_tuple->fixed_tile();
                 }
 
                 // Collect domain.
