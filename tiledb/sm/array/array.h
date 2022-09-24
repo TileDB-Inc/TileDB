@@ -179,19 +179,6 @@ class Array {
   Status load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
 
   /**
-   * Deletes the fragments from the Array with given URI.
-   *
-   * @param uri The uri of the Array whose fragments are to be deleted.
-   * @param timestamp_start The start timestamp at which to delete fragments.
-   * @param timestamp_end The end timestamp at which to delete fragments.
-   * @return Status
-   *
-   * @pre The Array must be open for exclusive writes
-   */
-  Status delete_fragments(
-      const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
-
-  /**
    * Opens the array for reading.
    *
    * @param query_type The query type. This should always be READ. It
@@ -216,6 +203,19 @@ class Array {
 
   /** Closes the array and frees all memory. */
   Status close();
+
+  /**
+   * Deletes the fragments from the Array with given URI.
+   *
+   * @param uri The uri of the Array whose fragments are to be deleted.
+   * @param timestamp_start The start timestamp at which to delete fragments.
+   * @param timestamp_end The end timestamp at which to delete fragments.
+   * @return Status
+   *
+   * @pre The Array must be open for exclusive writes
+   */
+  Status delete_fragments(
+      const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
@@ -401,11 +401,27 @@ class Array {
     metadata_loaded_ = is_loaded;
   }
 
+  /** Check if array metadata is loaded already for this array or not */
+  inline bool& metadata_loaded() {
+    return metadata_loaded_;
+  }
+
+  /** Check if non emtpy domain is loaded already for this array or not */
+  inline bool& non_empty_domain_computed() {
+    return non_empty_domain_computed_;
+  }
+
   /** Returns the non-empty domain of the opened array.
    *  If the non_empty_domain has not been computed or loaded
    *  it will be loaded first
    * */
   tuple<Status, optional<const NDRange>> non_empty_domain();
+
+  /**
+   * Retrieves the array metadata object that is already loadad.
+   * If it's not yet loaded it will be empty.
+   */
+  NDRange* loaded_non_empty_domain();
 
   /** Returns the non-empty domain of the opened array. */
   void set_non_empty_domain(const NDRange& non_empty_domain);
@@ -425,6 +441,9 @@ class Array {
   /** Checks the config to see if metadata should be serialized on array open.
    */
   bool serialize_metadata() const;
+
+  /** Checks the config to see if refactored array open should be used. */
+  bool use_refactored_array_open() const;
 
  private:
   /* ********************************* */
@@ -603,9 +622,6 @@ class Array {
    * Note: the Sentry object will also be released upon Array destruction.
    **/
   void set_array_closed();
-
-  /** Checks the config to see if refactored array open should be used. */
-  bool use_refactored_array_open() const;
 };
 
 }  // namespace sm

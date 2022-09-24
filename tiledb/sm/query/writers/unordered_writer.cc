@@ -92,6 +92,18 @@ UnorderedWriter::UnorderedWriter(
           coords_info,
           fragment_name,
           skip_checks_serialization) {
+  if (layout != Layout::UNORDERED) {
+    throw StatusException(Status_WriterError(
+        "Failed to initialize UnorderedWriter; The unordered writer does not "
+        "support layout " +
+        layout_str(layout)));
+  }
+
+  if (array_schema_.dense()) {
+    throw StatusException(Status_WriterError(
+        "Failed to initialize UnorderedWriter; The unordered "
+        "writer does not support dense arrays."));
+  }
 }
 
 UnorderedWriter::~UnorderedWriter() {
@@ -677,10 +689,15 @@ Status UnorderedWriter::unordered_write() {
   RETURN_NOT_OK_ELSE(add_written_fragment_info(uri), clean_up(uri));
 
   // The following will make the fragment visible
-  auto&& [st, commit_uri] = array_->array_directory().get_commit_uri(uri);
-  RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
-  RETURN_NOT_OK_ELSE(
-      storage_manager_->vfs()->touch(commit_uri.value()), clean_up(uri));
+  URI commit_uri;
+  try {
+    commit_uri = array_->array_directory().get_commit_uri(uri);
+  } catch (std::exception& e) {
+    RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri));
+    std::throw_with_nested(
+        std::logic_error("[UnorderedWriter::unordered_write] "));
+  }
+  RETURN_NOT_OK_ELSE(storage_manager_->vfs()->touch(commit_uri), clean_up(uri));
 
   return Status::Ok();
 }

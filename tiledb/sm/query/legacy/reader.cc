@@ -951,12 +951,6 @@ void Reader::compute_fixed_cs_partitions(
   }
 }
 
-uint64_t ReaderBase::offsets_bytesize() const {
-  assert(offsets_bitsize_ == 32 || offsets_bitsize_ == 64);
-  return offsets_bitsize_ == 32 ? sizeof(uint32_t) :
-                                  constants::cell_var_offset_size;
-}
-
 Status Reader::copy_partitioned_fixed_cells(
     const size_t partition_idx,
     const std::string* const name,
@@ -2222,6 +2216,226 @@ bool Reader::belong_to_single_fragment(
   }
 
   return true;
+}
+
+template <class T>
+tuple<Status, optional<bool>> Reader::fill_dense_coords(
+    const Subarray& subarray) {
+  auto timer_se = stats_->start_timer("fill_dense_coords");
+
+  // Reading coordinates with a query condition is currently unsupported.
+  // Query conditions mutate the result cell slabs to filter attributes.
+  // This path does not use result cell slabs, which will fill coordinates
+  // for cells that should be filtered out.
+  if (!condition_.empty()) {
+    return {logger_->status(Status_ReaderError(
+                "Cannot read dense coordinates; dense coordinate "
+                "reads are unsupported with a query condition")),
+            nullopt};
+  }
+
+  // Prepare buffers
+  std::vector<unsigned> dim_idx;
+  std::vector<QueryBuffer*> buffers;
+  auto coords_it = buffers_.find(constants::coords);
+  auto dim_num = array_schema_.dim_num();
+  if (coords_it != buffers_.end()) {
+    buffers.emplace_back(&(coords_it->second));
+    dim_idx.emplace_back(dim_num);
+  } else {
+    for (unsigned d = 0; d < dim_num; ++d) {
+      const auto dim{array_schema_.dimension_ptr(d)};
+      auto it = buffers_.find(dim->name());
+      if (it != buffers_.end()) {
+        buffers.emplace_back(&(it->second));
+        dim_idx.emplace_back(d);
+      }
+    }
+  }
+  std::vector<uint64_t> offsets(buffers.size(), 0);
+
+  bool overflowed = false;
+  if (layout_ == Layout::GLOBAL_ORDER) {
+    auto&& [st, of] =
+        fill_dense_coords_global<T>(subarray, dim_idx, buffers, offsets);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
+    overflowed = *of;
+  } else {
+    assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
+    auto&& [st, of] =
+        fill_dense_coords_row_col<T>(subarray, dim_idx, buffers, offsets);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
+    overflowed = *of;
+  }
+
+  // Update buffer sizes
+  for (size_t i = 0; i < buffers.size(); ++i)
+    *(buffers[i]->buffer_size_) = offsets[i];
+
+  return {Status::Ok(), overflowed};
+}
+
+template <class T>
+tuple<Status, optional<bool>> Reader::fill_dense_coords_global(
+    const Subarray& subarray,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>& offsets) {
+  auto tile_coords = subarray.tile_coords();
+  auto cell_order = array_schema_.cell_order();
+
+  bool overflowed = false;
+  for (const auto& tc : tile_coords) {
+    auto tile_subarray = subarray.crop_to_tile((const T*)&tc[0], cell_order);
+    auto&& [st, of] =
+        fill_dense_coords_row_col<T>(tile_subarray, dim_idx, buffers, offsets);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
+    overflowed |= *of;
+  }
+
+  return {Status::Ok(), overflowed};
+}
+
+template <class T>
+tuple<Status, optional<bool>> Reader::fill_dense_coords_row_col(
+    const Subarray& subarray,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>& offsets) {
+  auto cell_order = array_schema_.cell_order();
+  auto dim_num = array_schema_.dim_num();
+
+  // Iterate over all coordinates, retrieved in cell slabs
+  CellSlabIter<T> iter(&subarray);
+  RETURN_CANCEL_OR_ERROR_TUPLE(iter.begin());
+  while (!iter.end()) {
+    auto cell_slab = iter.cell_slab();
+    auto coords_num = cell_slab.length_;
+
+    // Check for overflow
+    for (size_t i = 0; i < buffers.size(); ++i) {
+      auto idx = (dim_idx[i] == dim_num) ? 0 : dim_idx[i];
+      auto coord_size{array_schema_.domain().dimension_ptr(idx)->coord_size()};
+      coord_size = (dim_idx[i] == dim_num) ? coord_size * dim_num : coord_size;
+      auto buff_size = *(buffers[i]->buffer_size_);
+      auto offset = offsets[i];
+      if (coords_num * coord_size + offset > buff_size) {
+        return {Status::Ok(), true};
+      }
+    }
+
+    // Copy slab
+    if (layout_ == Layout::ROW_MAJOR ||
+        (layout_ == Layout::GLOBAL_ORDER && cell_order == Layout::ROW_MAJOR))
+      fill_dense_coords_row_slab(
+          &cell_slab.coords_[0], coords_num, dim_idx, buffers, offsets);
+    else
+      fill_dense_coords_col_slab(
+          &cell_slab.coords_[0], coords_num, dim_idx, buffers, offsets);
+
+    ++iter;
+  }
+
+  return {Status::Ok(), false};
+}
+
+template <class T>
+void Reader::fill_dense_coords_row_slab(
+    const T* start,
+    uint64_t num,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>& offsets) const {
+  // For easy reference
+  auto dim_num = array_schema_.dim_num();
+
+  // Special zipped coordinates
+  if (dim_idx.size() == 1 && dim_idx[0] == dim_num) {
+    auto c_buff = (char*)buffers[0]->buffer_;
+    auto offset = &offsets[0];
+
+    // Fill coordinates
+    for (uint64_t i = 0; i < num; ++i) {
+      // First dim-1 dimensions are copied as they are
+      if (dim_num > 1) {
+        auto bytes_to_copy = (dim_num - 1) * sizeof(T);
+        std::memcpy(c_buff + *offset, start, bytes_to_copy);
+        *offset += bytes_to_copy;
+      }
+
+      // Last dimension is incremented by `i`
+      auto new_coord = start[dim_num - 1] + i;
+      std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+      *offset += sizeof(T);
+    }
+  } else {  // Set of separate coordinate buffers
+    for (uint64_t i = 0; i < num; ++i) {
+      for (size_t b = 0; b < buffers.size(); ++b) {
+        auto c_buff = (char*)buffers[b]->buffer_;
+        auto offset = &offsets[b];
+
+        // First dim-1 dimensions are copied as they are
+        if (dim_num > 1 && dim_idx[b] < dim_num - 1) {
+          std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(T));
+          *offset += sizeof(T);
+        } else {
+          // Last dimension is incremented by `i`
+          auto new_coord = start[dim_num - 1] + i;
+          std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+          *offset += sizeof(T);
+        }
+      }
+    }
+  }
+}
+
+template <class T>
+void Reader::fill_dense_coords_col_slab(
+    const T* start,
+    uint64_t num,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>& offsets) const {
+  // For easy reference
+  auto dim_num = array_schema_.dim_num();
+
+  // Special zipped coordinates
+  if (dim_idx.size() == 1 && dim_idx[0] == dim_num) {
+    auto c_buff = (char*)buffers[0]->buffer_;
+    auto offset = &offsets[0];
+
+    // Fill coordinates
+    for (uint64_t i = 0; i < num; ++i) {
+      // First dimension is incremented by `i`
+      auto new_coord = start[0] + i;
+      std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+      *offset += sizeof(T);
+
+      // Last dim-1 dimensions are copied as they are
+      if (dim_num > 1) {
+        auto bytes_to_copy = (dim_num - 1) * sizeof(T);
+        std::memcpy(c_buff + *offset, &start[1], bytes_to_copy);
+        *offset += bytes_to_copy;
+      }
+    }
+  } else {  // Separate coordinate buffers
+    for (uint64_t i = 0; i < num; ++i) {
+      for (size_t b = 0; b < buffers.size(); ++b) {
+        auto c_buff = (char*)buffers[b]->buffer_;
+        auto offset = &offsets[b];
+
+        // First dimension is incremented by `i`
+        if (dim_idx[b] == 0) {
+          auto new_coord = start[0] + i;
+          std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+          *offset += sizeof(T);
+        } else {  // Last dim-1 dimensions are copied as they are
+          std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(T));
+          *offset += sizeof(T);
+        }
+      }
+    }
+  }
 }
 
 }  // namespace sm

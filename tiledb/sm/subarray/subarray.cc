@@ -104,7 +104,7 @@ Subarray::Subarray(
     StorageManager* storage_manager)
     : stats_(
           parent_stats ? parent_stats->create_child("Subarray") :
-                         storage_manager ?
+          storage_manager ?
                          storage_manager->stats()->create_child("subSubarray") :
                          nullptr)
     , logger_(logger->clone("Subarray", ++logger_id_))
@@ -536,6 +536,12 @@ Status Subarray::add_range_var_by_name(
       dim_name, &dim_idx));
 
   return add_range_var(dim_idx, start, start_size, end, end_size);
+}
+
+const std::vector<Range>& Subarray::get_attribute_ranges(
+    const std::string& attr_name) const {
+  const auto& ranges = attr_range_subset_.at(attr_name);
+  return ranges;
 }
 
 void Subarray::get_label_range(
@@ -1741,6 +1747,21 @@ NDRange Subarray::ndrange(const std::vector<uint64_t>& range_coords) const {
   for (unsigned d = 0; d < dim_num; ++d)
     ret.emplace_back(range_subset_[d][range_coords[d]]);
   return ret;
+}
+
+void Subarray::set_attribute_ranges(
+    const std::string& attr_name, const std::vector<Range>& ranges) {
+  if (!array_->array_schema_latest().is_attr(attr_name)) {
+    throw StatusException(Status_SubarrayError(
+        "Cannot add ranges; No attribute named " + attr_name + "'."));
+  }
+  auto search = attr_range_subset_.find(attr_name);
+  if (search != attr_range_subset_.end()) {
+    throw StatusException(Status_SubarrayError(
+        "Cannot add ranges; Ranges are already set for attribute '" +
+        attr_name + "'."));
+  }
+  attr_range_subset_[attr_name] = ranges;
 }
 
 Status Subarray::set_ranges_for_dim(

@@ -68,12 +68,14 @@ struct DeletesFx {
   void set_legacy();
   void set_purge_deleted_cells();
   void create_sparse_array(bool allows_dups = false, bool encrypt = false);
+  void create_sparse_array_v11();
   void write_sparse(
       std::vector<int> a1,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
       uint64_t timestamp,
       bool encrypt = false);
+  void write_sparse_v11(uint64_t timestamp);
   void read_sparse(
       std::vector<int>& a1,
       std::vector<uint64_t>& dim1,
@@ -85,10 +87,7 @@ struct DeletesFx {
   void consolidate_sparse(bool vacuum = false);
   void consolidate_commits_sparse(bool vacuum);
   void write_delete_condition(
-      QueryCondition& qc,
-      uint64_t timestamp,
-      bool encrypt = false,
-      bool error_expected = false);
+      QueryCondition& qc, uint64_t timestamp, bool encrypt = false);
   void check_delete_conditions(
       std::vector<QueryCondition> qcs,
       uint64_t timestamp,
@@ -167,6 +166,18 @@ void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
   }
 }
 
+void DeletesFx::create_sparse_array_v11() {
+  // Get the v11 sparse array.
+  std::string v11_arrays_dir =
+      std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays/sparse_array_v11";
+  REQUIRE(
+      tiledb_vfs_copy_dir(
+          ctx_.ptr().get(),
+          vfs_.ptr().get(),
+          v11_arrays_dir.c_str(),
+          SPARSE_ARRAY_NAME) == TILEDB_OK);
+}
+
 void DeletesFx::write_sparse(
     std::vector<int> a1,
     std::vector<uint64_t> dim1,
@@ -201,6 +212,36 @@ void DeletesFx::write_sparse(
 
   // Close array.
   array->close();
+}
+void DeletesFx::write_sparse_v11(uint64_t timestamp) {
+  // Prepare cell buffers.
+  std::vector<int> buffer_a1{0, 1, 2, 3};
+  std::vector<uint64_t> buffer_a2{0, 1, 3, 6};
+  std::string buffer_var_a2("abbcccdddd");
+  std::vector<float> buffer_a3{0.1f, 0.2f, 1.1f, 1.2f, 2.1f, 2.2f, 3.1f, 3.2f};
+  std::vector<uint64_t> buffer_coords_dim1{1, 1, 1, 2};
+  std::vector<uint64_t> buffer_coords_dim2{1, 2, 4, 3};
+
+  // Open array.
+  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE, timestamp);
+
+  // Create query.
+  Query query(ctx_, array, TILEDB_WRITE);
+  query.set_layout(TILEDB_GLOBAL_ORDER);
+  query.set_data_buffer("a1", buffer_a1);
+  query.set_data_buffer(
+      "a2", (void*)buffer_var_a2.c_str(), buffer_var_a2.size());
+  query.set_offsets_buffer("a2", buffer_a2);
+  query.set_data_buffer("a3", buffer_a3);
+  query.set_data_buffer("d1", buffer_coords_dim1);
+  query.set_data_buffer("d2", buffer_coords_dim2);
+
+  // Submit/finalize the query.
+  query.submit();
+  query.finalize();
+
+  // Close array.
+  array.close();
 }
 
 void DeletesFx::read_sparse(
@@ -265,7 +306,7 @@ void DeletesFx::consolidate_commits_sparse(bool vacuum) {
 }
 
 void DeletesFx::write_delete_condition(
-    QueryCondition& qc, uint64_t timestamp, bool encrypt, bool error_expected) {
+    QueryCondition& qc, uint64_t timestamp, bool encrypt) {
   // Open array.
   std::unique_ptr<Array> array;
   if (encrypt) {
@@ -285,16 +326,8 @@ void DeletesFx::write_delete_condition(
   Query query(ctx_, *array, TILEDB_DELETE);
 
   query.set_condition(qc);
-
-  try {
-    query.submit();
-  } catch (std::exception&) {
-    CHECK(error_expected);
-  }
-
-  CHECK(
-      query.query_status() ==
-      (error_expected ? Query::Status::FAILED : Query::Status::COMPLETE));
+  query.submit();
+  CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Close array.
   array->close();
@@ -388,7 +421,7 @@ TEST_CASE_METHOD(
   int32_t val = 4;
   qc.init("b", &val, sizeof(int32_t), TILEDB_LT);
 
-  write_delete_condition(qc, 1, false, true);
+  REQUIRE_THROWS_AS(write_delete_condition(qc, 1, false), tiledb::TileDBError);
 
   remove_sparse_array();
 }
@@ -1456,3 +1489,40 @@ TEST_CASE_METHOD(
 
   remove_sparse_array();
 }
+
+// TODO: remove once tiledb_vfs_copy_dir is implemented for windows.
+#ifndef _WIN32
+TEST_CASE_METHOD(
+    DeletesFx,
+    "CPP API: Test writing delete in middle of fragment consolidated without "
+    "timestamps",
+    "[cppapi][deletes][write][old-consolidated-fragment]") {
+  if constexpr (is_experimental_build) {
+    return;
+  }
+
+  remove_sparse_array();
+  create_sparse_array_v11();
+  // Write first fragment.
+  write_sparse_v11(1);
+
+  // Write second fragment.
+  write_sparse_v11(3);
+
+  // Consolidate.
+  consolidate_sparse();
+
+  // Upgrade to latest version.
+  Array::upgrade_version(ctx_, SPARSE_ARRAY_NAME);
+
+  // Define query condition (d2 == 3).
+  QueryCondition qc2(ctx_);
+  uint64_t val2 = 3;
+  qc2.init("d2", &val2, sizeof(uint64_t), TILEDB_EQ);
+
+  // Try to write condition.
+  REQUIRE_THROWS_AS(write_delete_condition(qc2, 2, false), tiledb::TileDBError);
+
+  remove_sparse_array();
+}
+#endif

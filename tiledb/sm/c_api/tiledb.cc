@@ -4902,33 +4902,11 @@ int32_t tiledb_array_evolve(
               0)))
     return TILEDB_ERR;
 
-  // For easy reference
-  auto storage_manager = ctx->storage_manager();
-  auto vfs = storage_manager->vfs();
-  auto tp = storage_manager->compute_tp();
-
-  // Load URIs from the array directory
-  tiledb::sm::ArrayDirectory array_dir;
-  try {
-    array_dir = tiledb::sm::ArrayDirectory(
-        vfs,
-        tp,
-        uri,
-        0,
-        UINT64_MAX,
-        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-  } catch (const std::logic_error& le) {
-    auto st = Status_ArrayDirectoryError(le.what());
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
   // Evolve schema
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->storage_manager()->array_evolve_schema(
-              array_dir, array_schema_evolution->array_schema_evolution_, key)))
+              uri, array_schema_evolution->array_schema_evolution_, key)))
     return TILEDB_ERR;
 
   // Success
@@ -4950,33 +4928,11 @@ int32_t tiledb_array_upgrade_version(
     return TILEDB_ERR;
   }
 
-  // For easy reference
-  auto storage_manager = ctx->storage_manager();
-  auto vfs = storage_manager->vfs();
-  auto tp = storage_manager->compute_tp();
-
-  // Load URIs from the array directory
-  tiledb::sm::ArrayDirectory array_dir;
-  try {
-    array_dir = tiledb::sm::ArrayDirectory(
-        vfs,
-        tp,
-        uri,
-        0,
-        UINT64_MAX,
-        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-  } catch (const std::logic_error& le) {
-    auto st = Status_ArrayDirectoryError(le.what());
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
   // Upgrade version
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->storage_manager()->array_upgrade_version(
-              array_dir,
+              uri,
               (config == nullptr) ? &ctx->storage_manager()->config() :
                                     config->config_)))
     return TILEDB_ERR;

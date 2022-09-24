@@ -38,12 +38,15 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
+
+#include <numeric>
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -402,6 +405,13 @@ Status DenseReader::dense_read() {
       num_range_threads);
   RETURN_CANCEL_OR_ERROR(st);
 
+  // For `qc_coords_mode` just fill in the coordinates and skip attribute
+  // processing.
+  if (qc_coords_mode_) {
+    fill_dense_coords<DimType>(subarray, qc_result);
+    return Status::Ok();
+  }
+
   // Process attributes.
   std::vector<std::string> to_read(1);
   for (auto& name : names) {
@@ -428,14 +438,13 @@ Status DenseReader::dense_read() {
     clear_tiles(name, result_tiles);
   }
 
-  if (read_state_.overflowed_)
-    Status::Ok();
+  if (read_state_.overflowed_) {
+    return Status::Ok();
+  }
 
   // Fill coordinates if the user requested them.
   if (!read_state_.overflowed_ && has_coords()) {
-    auto&& [st, overflowed] = fill_dense_coords<DimType>(subarray);
-    RETURN_CANCEL_OR_ERROR(st);
-    read_state_.overflowed_ = *overflowed;
+    fill_dense_coords<DimType>(subarray, nullopt);
   }
 
   return Status::Ok();
@@ -495,6 +504,18 @@ void DenseReader::init_read_state() {
         "configuration");
   }
   assert(found);
+
+  if (!config_
+           .get<bool>("sm.query.dense.qc_coords_mode", &qc_coords_mode_, &found)
+           .ok()) {
+    throw DenseReaderStatusException("Cannot get setting");
+  }
+  assert(found);
+
+  if (qc_coords_mode_ && condition_.empty()) {
+    throw DenseReaderStatusException(
+        "sm.query.dense.qc_coords_mode requires a query condition");
+  }
 
   // Consider the validity memory budget to be identical to `sm.memory_budget`
   // because the validity vector is currently a bytemap. When converted to a
@@ -719,8 +740,9 @@ uint64_t DenseReader::fix_offsets_buffer(
   // Set the output offset buffer sizes.
   *buffers_[name].buffer_size_ = cell_num * sizeof(OffType);
 
-  if (nullable)
+  if (nullable) {
     *buffers_[name].validity_vector_.buffer_size() = cell_num;
+  }
 
   // Return the buffer size.
   return offset;
@@ -1408,6 +1430,244 @@ Status DenseReader::add_extra_offset() {
   }
 
   return Status::Ok();
+}
+
+template <class T>
+void DenseReader::fill_dense_coords(
+    const Subarray& subarray, const optional<std::vector<uint8_t>> qc_results) {
+  auto timer_se = stats_->start_timer("fill_dense_coords");
+
+  // Count the number of cells.
+  auto cell_num = subarray.cell_num();
+  if (qc_results.has_value()) {
+    auto func = [](uint64_t res, const uint8_t v) { return res + v; };
+    cell_num = std::accumulate(
+        qc_results.value().begin(), qc_results.value().end(), 0, func);
+  }
+
+  // Prepare buffers.
+  std::vector<unsigned> dim_idx;
+  std::vector<QueryBuffer*> buffers;
+  auto coords_it = buffers_.find(constants::coords);
+  auto dim_num = array_schema_.dim_num();
+  if (coords_it != buffers_.end()) {
+    // Check for overflow.
+    if (coords_it->second.original_buffer_size_ <
+        cell_num * array_schema_.cell_size(constants::coords)) {
+      read_state_.overflowed_ = true;
+      return;
+    }
+    buffers.emplace_back(&(coords_it->second));
+    dim_idx.emplace_back(dim_num);
+  } else {
+    for (unsigned d = 0; d < dim_num; ++d) {
+      const auto dim{array_schema_.dimension_ptr(d)};
+      auto it = buffers_.find(dim->name());
+      if (it != buffers_.end()) {
+        // Check for overflow.
+        if (it->second.original_buffer_size_ <
+            cell_num * array_schema_.cell_size(dim->name())) {
+          read_state_.overflowed_ = true;
+          return;
+        }
+        buffers.emplace_back(&(it->second));
+        dim_idx.emplace_back(d);
+      }
+    }
+  }
+
+  uint64_t qc_results_index = 0;
+  std::vector<uint64_t> offsets(buffers.size(), 0);
+  if (layout_ == Layout::GLOBAL_ORDER) {
+    fill_dense_coords_global<T>(
+        subarray, qc_results, qc_results_index, dim_idx, buffers, offsets);
+  } else {
+    assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
+    fill_dense_coords_row_col<T>(
+        subarray, qc_results, qc_results_index, dim_idx, buffers, offsets);
+  }
+
+  // Update buffer sizes.
+  for (size_t i = 0; i < buffers.size(); ++i) {
+    *(buffers[i]->buffer_size_) = offsets[i];
+  }
+}
+
+template <class T>
+void DenseReader::fill_dense_coords_global(
+    const Subarray& subarray,
+    const optional<std::vector<uint8_t>> qc_results,
+    uint64_t& qc_results_index,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>& offsets) {
+  auto tile_coords = subarray.tile_coords();
+  auto cell_order = array_schema_.cell_order();
+
+  for (const auto& tc : tile_coords) {
+    auto tile_subarray = subarray.crop_to_tile((const T*)&tc[0], cell_order);
+    fill_dense_coords_row_col<T>(
+        tile_subarray, qc_results, qc_results_index, dim_idx, buffers, offsets);
+  }
+}
+
+template <class T>
+void DenseReader::fill_dense_coords_row_col(
+    const Subarray& subarray,
+    const optional<std::vector<uint8_t>> qc_results,
+    uint64_t& qc_results_index,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>& offsets) {
+  auto cell_order = array_schema_.cell_order();
+
+  // Iterate over all coordinates, retrieved in cell slabs.
+  CellSlabIter<T> iter(&subarray);
+  if (!iter.begin().ok()) {
+    throw DenseReaderStatusException("Cannot begin iteration");
+  }
+  while (!iter.end()) {
+    auto cell_slab = iter.cell_slab();
+    auto coords_num = cell_slab.length_;
+
+    // Copy slab.
+    if (layout_ == Layout::ROW_MAJOR ||
+        (layout_ == Layout::GLOBAL_ORDER && cell_order == Layout::ROW_MAJOR))
+      fill_dense_coords_row_slab(
+          &cell_slab.coords_[0],
+          qc_results,
+          qc_results_index,
+          coords_num,
+          dim_idx,
+          buffers,
+          offsets);
+    else
+      fill_dense_coords_col_slab(
+          &cell_slab.coords_[0],
+          qc_results,
+          qc_results_index,
+          coords_num,
+          dim_idx,
+          buffers,
+          offsets);
+
+    ++iter;
+  }
+}
+
+template <class T>
+void DenseReader::fill_dense_coords_row_slab(
+    const T* start,
+    const optional<std::vector<uint8_t>> qc_results,
+    uint64_t& qc_results_index,
+    uint64_t num,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>& offsets) const {
+  // For easy reference.
+  auto dim_num = array_schema_.dim_num();
+
+  // Special zipped coordinates.
+  if (dim_idx.size() == 1 && dim_idx[0] == dim_num) {
+    auto c_buff = (char*)buffers[0]->buffer_;
+    auto offset = &offsets[0];
+
+    // Fill coordinates.
+    for (uint64_t i = 0; i < num; ++i) {
+      if (!qc_results.has_value() || qc_results.value()[qc_results_index]) {
+        // First dim-1 dimensions are copied as they are.
+        if (dim_num > 1) {
+          auto bytes_to_copy = (dim_num - 1) * sizeof(T);
+          std::memcpy(c_buff + *offset, start, bytes_to_copy);
+          *offset += bytes_to_copy;
+        }
+
+        // Last dimension is incremented by `i`.
+        auto new_coord = start[dim_num - 1] + i;
+        std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+        *offset += sizeof(T);
+      }
+      qc_results_index++;
+    }
+  } else {  // Set of separate coordinate buffers.
+    for (uint64_t i = 0; i < num; ++i) {
+      for (size_t b = 0; b < buffers.size(); ++b) {
+        if (!qc_results.has_value() || qc_results.value()[qc_results_index]) {
+          auto c_buff = (char*)buffers[b]->buffer_;
+          auto offset = &offsets[b];
+
+          // First dim-1 dimensions are copied as they are.
+          if (dim_num > 1 && dim_idx[b] < dim_num - 1) {
+            std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(T));
+            *offset += sizeof(T);
+          } else {
+            // Last dimension is incremented by `i`.
+            auto new_coord = start[dim_num - 1] + i;
+            std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+            *offset += sizeof(T);
+          }
+        }
+      }
+      qc_results_index++;
+    }
+  }
+}
+
+template <class T>
+void DenseReader::fill_dense_coords_col_slab(
+    const T* start,
+    const optional<std::vector<uint8_t>> qc_results,
+    uint64_t& qc_results_index,
+    uint64_t num,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>& offsets) const {
+  // For easy reference.
+  auto dim_num = array_schema_.dim_num();
+
+  // Special zipped coordinates.
+  if (dim_idx.size() == 1 && dim_idx[0] == dim_num) {
+    auto c_buff = (char*)buffers[0]->buffer_;
+    auto offset = &offsets[0];
+
+    // Fill coordinates.
+    for (uint64_t i = 0; i < num; ++i) {
+      if (!qc_results.has_value() || qc_results.value()[qc_results_index]) {
+        // First dimension is incremented by `i`.
+        auto new_coord = start[0] + i;
+        std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+        *offset += sizeof(T);
+
+        // Last dim-1 dimensions are copied as they are.
+        if (dim_num > 1) {
+          auto bytes_to_copy = (dim_num - 1) * sizeof(T);
+          std::memcpy(c_buff + *offset, &start[1], bytes_to_copy);
+          *offset += bytes_to_copy;
+        }
+      }
+      qc_results_index++;
+    }
+  } else {  // Separate coordinate buffers.
+    for (uint64_t i = 0; i < num; ++i) {
+      for (size_t b = 0; b < buffers.size(); ++b) {
+        if (!qc_results.has_value() || qc_results.value()[qc_results_index]) {
+          auto c_buff = (char*)buffers[b]->buffer_;
+          auto offset = &offsets[b];
+
+          // First dimension is incremented by `i`.
+          if (dim_idx[b] == 0) {
+            auto new_coord = start[0] + i;
+            std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+            *offset += sizeof(T);
+          } else {  // Last dim-1 dimensions are copied as they are
+            std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(T));
+            *offset += sizeof(T);
+          }
+        }
+      }
+      qc_results_index++;
+    }
+  }
 }
 
 }  // namespace sm

@@ -562,18 +562,77 @@ Status StorageManager::fragments_consolidate(
       array_name, encryption_type, encryption_key, key_length, fragment_uris);
 }
 
-Status StorageManager::fragments_vacuum(
-    const char* array_name,
-    uint64_t timestamp_start,
-    uint64_t timestamp_end,
-    bool for_deletes) {
-  // Vacuum
-  auto consolidator =
-      Consolidator::create(ConsolidationMode::FRAGMENT, &config_, this);
-  auto fragment_consolidator =
-      dynamic_cast<FragmentConsolidator*>(consolidator.get());
-  return fragment_consolidator->vacuum(
-      array_name, timestamp_start, timestamp_end, for_deletes);
+Status StorageManager::write_commit_ignore_file(
+    ArrayDirectory array_dir, const std::vector<URI>& commit_uris_to_ignore) {
+  auto&& [st, name] = array_dir.compute_new_fragment_name(
+      commit_uris_to_ignore.front(),
+      commit_uris_to_ignore.back(),
+      constants::format_version);
+  RETURN_NOT_OK(st);
+
+  // Write URIs, relative to the array URI.
+  std::stringstream ss;
+  auto base_uri_size = array_dir.uri().to_string().size();
+  for (const auto& uri : commit_uris_to_ignore) {
+    ss << uri.to_string().substr(base_uri_size) << "\n";
+  }
+
+  // Write an ignore file to ensure consolidated WRT files still work
+  auto data = ss.str();
+  URI ignore_file_uri =
+      array_dir.get_commits_dir(constants::format_version)
+          .join_path(name.value() + constants::ignore_file_suffix);
+  RETURN_NOT_OK(vfs_->write(ignore_file_uri, data.c_str(), data.size()));
+  RETURN_NOT_OK(vfs_->close_file(ignore_file_uri));
+
+  return Status::Ok();
+}
+
+Status StorageManager::delete_fragments(
+    const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
+  Status st;
+  if (array_name == nullptr) {
+    throw Status_StorageManagerError(
+        "Cannot delete_fragments; Array name cannot be null");
+  }
+
+  auto array_dir = ArrayDirectory(
+      vfs_, compute_tp_, URI(array_name), timestamp_start, timestamp_end);
+
+  // Get the fragment URIs to be deleted
+  auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
+  const auto& fragment_uris = filtered_fragment_uris.fragment_uris();
+
+  // Retrieve commit uris to delete and ignore
+  std::vector<URI> commit_uris_to_delete;
+  std::vector<URI> commit_uris_to_ignore;
+  for (auto& fragment : fragment_uris) {
+    auto commit_uri = array_dir.get_commit_uri(fragment.uri_);
+    commit_uris_to_delete.emplace_back(commit_uri);
+    if (array_dir.consolidated_commit_uris_set().count(commit_uri.c_str()) !=
+        0) {
+      commit_uris_to_ignore.emplace_back(commit_uri);
+    }
+  }
+
+  // Write ignore file
+  if (commit_uris_to_ignore.size() != 0) {
+    RETURN_NOT_OK(write_commit_ignore_file(array_dir, commit_uris_to_ignore));
+  }
+
+  // Delete fragments and commits
+  st = parallel_for(compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
+    RETURN_NOT_OK(vfs_->remove_dir(fragment_uris[i].uri_));
+    bool is_file = false;
+    RETURN_NOT_OK(vfs_->is_file(commit_uris_to_delete[i], &is_file));
+    if (is_file) {
+      RETURN_NOT_OK(vfs_->remove_file(commit_uris_to_delete[i]));
+    }
+    return Status::Ok();
+  });
+  RETURN_NOT_OK(st);
+
+  return Status::Ok();
 }
 
 Status StorageManager::array_vacuum(
@@ -669,8 +728,7 @@ Status StorageManager::array_create(
   }
 
   // Check if array exists
-  bool exists = false;
-  RETURN_NOT_OK(is_array(array_uri, &exists));
+  bool exists = is_array(array_uri);
   if (exists)
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot create array; Array '") + array_uri.c_str() +
@@ -764,11 +822,9 @@ Status StorageManager::array_create(
 }
 
 Status StorageManager::array_evolve_schema(
-    const ArrayDirectory& array_dir,
+    const URI& array_uri,
     ArraySchemaEvolution* schema_evolution,
     const EncryptionKey& encryption_key) {
-  const URI& array_uri = array_dir.uri();
-
   // Check array schema
   if (schema_evolution == nullptr) {
     return logger_->status(Status_StorageManagerError(
@@ -780,13 +836,21 @@ Status StorageManager::array_evolve_schema(
         array_uri, schema_evolution);
   }
 
+  // Load URIs from the array directory
+  tiledb::sm::ArrayDirectory array_dir{
+      this->vfs(),
+      this->io_tp(),
+      array_uri,
+      0,
+      UINT64_MAX,
+      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY};
+
   // Check if array exists
-  bool exists = false;
-  RETURN_NOT_OK(is_array(array_uri, &exists));
-  if (!exists)
+  if (!is_array(array_uri)) {
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot evolve array; Array '") + array_uri.c_str() +
         "' not exists"));
+  }
 
   auto&& [st1, array_schema] =
       load_array_schema_latest(array_dir, encryption_key);
@@ -808,16 +872,21 @@ Status StorageManager::array_evolve_schema(
 }
 
 Status StorageManager::array_upgrade_version(
-    const ArrayDirectory& array_dir, const Config* config) {
-  const URI& array_uri = array_dir.uri();
-
+    const URI& array_uri, const Config* config) {
   // Check if array exists
-  bool exists = false;
-  RETURN_NOT_OK(is_array(array_uri, &exists));
-  if (!exists)
+  if (!is_array(array_uri))
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot upgrade array; Array '") + array_uri.c_str() +
         "' does not exist"));
+
+  // Load URIs from the array directory
+  tiledb::sm::ArrayDirectory array_dir{
+      this->vfs(),
+      this->io_tp(),
+      array_uri,
+      0,
+      UINT64_MAX,
+      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY};
 
   // If 'config' is unset, use the 'config_' that was set during initialization
   // of this StorageManager instance.
@@ -828,10 +897,10 @@ Status StorageManager::array_upgrade_version(
   // Get encryption key from config
   bool found = false;
   std::string encryption_key_from_cfg =
-      config_.get("sm.encryption_key", &found);
+      config->get("sm.encryption_key", &found);
   assert(found);
   std::string encryption_type_from_cfg =
-      config_.get("sm.encryption_type", &found);
+      config->get("sm.encryption_type", &found);
   assert(found);
   auto [st1, etc] = encryption_type_enum(encryption_type_from_cfg);
   RETURN_NOT_OK(st1);
@@ -1409,29 +1478,31 @@ void StorageManager::increment_in_progress() {
   queries_in_progress_cv_.notify_all();
 }
 
-Status StorageManager::is_array(const URI& uri, bool* is_array) const {
+bool StorageManager::is_array(const URI& uri) const {
   // Handle remote array
   if (uri.is_tiledb()) {
     auto&& [st, exists] = rest_client_->check_array_exists_from_rest(uri);
-    RETURN_NOT_OK(st);
-    *is_array = *exists;
+    throw_if_not_ok(st);
+    assert(exists.has_value());
+    return exists.value();
   } else {
     // Check if the schema directory exists or not
-    bool is_dir = false;
-    // Since is_dir could return NOT Ok status, we will not use RETURN_NOT_OK
-    // here
-    Status st =
-        vfs_->is_dir(uri.join_path(constants::array_schema_dir_name), &is_dir);
-    if (st.ok() && is_dir) {
-      *is_array = true;
-      return Status::Ok();
+    bool dir_exists = false;
+    throw_if_not_ok(vfs_->is_dir(
+        uri.join_path(constants::array_schema_dir_name), &dir_exists));
+
+    if (dir_exists) {
+      return true;
     }
 
+    bool schema_exists = false;
     // If there is no schema directory, we check schema file
-    RETURN_NOT_OK(vfs_->is_file(
-        uri.join_path(constants::array_schema_filename), is_array));
+    throw_if_not_ok(vfs_->is_file(
+        uri.join_path(constants::array_schema_filename), &schema_exists));
+    return schema_exists;
   }
-  return Status::Ok();
+
+  // TODO: mark unreachable
 }
 
 Status StorageManager::is_file(const URI& uri, bool* is_file) const {
@@ -1668,8 +1739,7 @@ Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
       return Status::Ok();
     }
   }
-  bool exists = false;
-  RETURN_NOT_OK(is_array(uri, &exists));
+  bool exists = is_array(uri);
   if (exists) {
     *type = ObjectType::ARRAY;
     return Status::Ok();
@@ -1901,10 +1971,15 @@ Status StorageManager::store_group_detail(
   RETURN_NOT_OK(st);
 
   // Serialize
-  Buffer buff;
-  RETURN_NOT_OK(group->serialize(&buff));
+  SizeComputationSerializer size_computation_serializer;
+  group->serialize(size_computation_serializer);
 
-  stats_->add_counter("write_group_size", buff.size());
+  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+
+  Serializer serializer(tile.data(), tile.size());
+  group->serialize(serializer);
+
+  stats_->add_counter("write_group_size", tile.size());
 
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
@@ -1914,7 +1989,7 @@ Status StorageManager::store_group_detail(
     RETURN_NOT_OK(create_dir(group_detail_folder_uri));
 
   RETURN_NOT_OK(store_data_to_generic_tile(
-      buff.data(), buff.size(), *group_detail_uri, encryption_key));
+      tile.data(), tile.size(), *group_detail_uri, encryption_key));
 
   return st;
 }
@@ -1928,17 +2003,7 @@ Status StorageManager::store_array_schema(
   SizeComputationSerializer size_computation_serializer;
   array_schema->serialize(size_computation_serializer);
 
-  Tile tile;
-  if (!tile.init_unfiltered(
-               0,
-               constants::generic_tile_datatype,
-               size_computation_serializer.size(),
-               constants::generic_tile_cell_size,
-               0)
-           .ok()) {
-    throw StatusException("StorageManager", "Cannot initialize tile");
-  }
-
+  Tile tile{Tile::from_generic(size_computation_serializer.size())};
   Serializer serializer(tile.data(), tile.size());
   array_schema->serialize(serializer);
 
@@ -2098,8 +2163,9 @@ tuple<Status, optional<shared_ptr<Group>>> StorageManager::load_group_from_uri(
   stats_->add_counter("read_group_size", tile.size());
 
   // Deserialize
-  ConstBuffer cbuff(tile.data(), tile.size());
-  return Group::deserialize(&cbuff, group_uri, this);
+  Deserializer deserializer(tile.data(), tile.size());
+  auto opt_group = Group::deserialize(deserializer, group_uri, this);
+  return {Status::Ok(), opt_group};
 }
 
 tuple<Status, optional<shared_ptr<Group>>> StorageManager::load_group_details(
