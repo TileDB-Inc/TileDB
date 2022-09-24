@@ -1,5 +1,5 @@
 /**
- * @file   throw_catch.h
+ * @file   frugal.h
  *
  * @section LICENSE
  *
@@ -30,8 +30,8 @@
  * This file declares a throw-catch scheduler for dag.
  */
 
-#ifndef TILEDB_DAG_THROW_CATCH_H
-#define TILEDB_DAG_THROW_CATCH_H
+#ifndef TILEDB_DAG_FRUGAL_H
+#define TILEDB_DAG_FRUGAL_H
 
 #include <condition_variable>
 #include <functional>
@@ -124,7 +124,7 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
     // testing error conditions in creating a context.
     if (concurrency_level_ >= 256 * std::thread::hardware_concurrency()) {
       std::string msg =
-          "Error initializing throw_catch scheduler of concurrency level " +
+          "Error initializing frugal scheduler of concurrency level " +
           std::to_string(concurrency_level_) + "; Requested size too large";
       throw std::runtime_error(msg);
     }
@@ -545,4 +545,4 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
 
 }  // namespace tiledb::common
 
-#endif  // TILEDB_DAG_THROW_CATCH_H
+#endif  // TILEDB_DAG_FRUGAL_H

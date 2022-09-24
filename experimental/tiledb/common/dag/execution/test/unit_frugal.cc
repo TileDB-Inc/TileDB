@@ -1,5 +1,5 @@
 /**
- * @file   unit_throw_catch.cc
+ * @file   unit_frugal.cc
  *
  * @section LICENSE
  *
@@ -30,12 +30,12 @@
  * This file declares a throw-catch scheduler for dag.
  */
 
-#include "unit_throw_catch.h"
+#include "unit_frugal.h"
 #include <atomic>
 #include <cassert>
 #include <iostream>
 #include <map>
-#include "../throw_catch.h"
+#include "../frugal.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
 
 using namespace tiledb::common;
@@ -396,19 +396,19 @@ void notify(node* n) {
 }
 
 #if 0
-TEST_CASE("ThrowCatchScheduler: Test construct", "[throw_catch]") {
+TEST_CASE("ThrowCatchScheduler: Test construct", "[frugal]") {
   [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(1);
   // sched goes out of scope and shuts down the scheduler
 }
 
-TEST_CASE("ThrowCatchScheduler: Test create nodes", "[throw_catch]") {
+TEST_CASE("ThrowCatchScheduler: Test create nodes", "[frugal]") {
   [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(1);
 
   auto p = producer_node<size_t>([]() { return 0; });
   auto c = consumer_node<size_t>([](const size_t&) {});
 }
 
-TEST_CASE("ThrowCatchScheduler: Test connect nodes", "[throw_catch]") {
+TEST_CASE("ThrowCatchScheduler: Test connect nodes", "[frugal]") {
   [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(1);
 
   auto p = producer_node<size_t>([]() { return 0; });
@@ -417,7 +417,7 @@ TEST_CASE("ThrowCatchScheduler: Test connect nodes", "[throw_catch]") {
   connect(p, c);
 }
 
-TEST_CASE("ThrowCatchScheduler: Test submit nodes", "[throw_catch]") {
+TEST_CASE("ThrowCatchScheduler: Test submit nodes", "[frugal]") {
   [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(1);
 
   auto p = producer_node<size_t>([]() { return 0; });
@@ -429,7 +429,7 @@ TEST_CASE("ThrowCatchScheduler: Test submit nodes", "[throw_catch]") {
 }
 #endif
 
-TEST_CASE("ThrowCatchScheduler: Test submit and wait nodes", "[throw_catch]") {
+TEST_CASE("ThrowCatchScheduler: Test submit and wait nodes", "[frugal]") {
   [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(1);
 
   auto p = producer_node<size_t>([&sched]() {
@@ -451,5 +451,5 @@ TEST_CASE("ThrowCatchScheduler: Test submit and wait nodes", "[throw_catch]") {
   CHECK(consumed_items == problem_size + 1);
 }
 
-TEST_CASE("ThrowCatchScheduler: Test run nodes", "[throw_catch]") {
+TEST_CASE("ThrowCatchScheduler: Test run nodes", "[frugal]") {
 }

@@ -1,5 +1,5 @@
 /**
- * @file experimental/tiledb/common/thread_pool/test/unit_throw_catch.h
+ * @file compile_frugal_main.cc
  *
  * @section LICENSE
  *
@@ -24,11 +24,12 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
  */
 
-#ifndef TILEDB_UNIT_THROW_CATCH_H
-#define TILEDB_UNIT_THROW_CATCH_H
-#include <test/support/tdb_catch.h>
-#endif  // TILEDB_UNIT_THROW_CATCH_H
+#include "../frugal.h"
+
+using namespace tiledb::common;
+
+int main() {
+  (void)sizeof(ThrowCatchScheduler<size_t>(1));
+}

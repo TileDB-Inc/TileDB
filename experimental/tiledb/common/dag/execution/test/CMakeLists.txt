@@ -27,9 +27,9 @@
 
 
 #
-# Define unit tests for threadpool, bountiful, stop_token, throw_catch
+# Define unit tests for threadpool, bountiful, stop_token, frugal
 #
 dag_add_header_only_unit_test(threadpool)
 dag_add_header_only_unit_test(bountiful)
 dag_add_header_only_unit_test(stop_token)
-dag_add_header_only_unit_test(throw_catch)
+dag_add_header_only_unit_test(frugal)
