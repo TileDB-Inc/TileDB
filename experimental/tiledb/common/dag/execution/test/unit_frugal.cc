@@ -195,6 +195,7 @@ struct producer_node : public node, public sender<T> {
         thing = f_();
       }
         [[fallthrough]];
+
       case 1: {
         program_counter_ = 2;
         inject(T{});
@@ -227,7 +228,7 @@ struct producer_node : public node, public sender<T> {
         // yield();
         break;
       }
-        [[fallthrough]];
+
       default:
         std::cout << "default " << str(this->node_state_) << std::endl;
     }

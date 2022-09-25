@@ -2,8 +2,8 @@
 Task Graph Node API
 ===================
 
-Nodes
------
+Terminology
+-----------
 
 A **task graph node** is a computational unit that applies user-provided functions to data flowing through the graph.  Data flows through the graph (and through the nodes) via **task graph ports**.  A **function node** takes input data from its **input port**, applies a user-defined function and creates output data  on its **output port**.  A **producer node** only creates output; a **consumer node** only takes input.  Output ports from one node connect to the input ports of another via an **edge**. A **simple** node takes one piece of data and produces on piece of data for each input.  A **simple MIMO** node may take multiple inputs and produce multiple outputs;  it creates its outputs using one piece of data from each input.  
 
@@ -12,163 +12,189 @@ A **task graph node** is a computational unit that applies user-provided functio
 
 ![mimo_node](./mimo_node.png)
 
-## API
+API
+---
+****Note:*** Based on feedback from Isaiah, the following updated API is proposed.
+The current API will be updated to reflect this new one over the course of the current sprint.*
+
+
+## Nodes
 
 
 ### `class ProducerNode`
 
 
 ```c++
-template <template <class> class Mover_T, class Block>
+template <class Item>
 class ProducerNode;
 ```
-  - `Mover_T` the type of data item mover to be used by the `ProducerNode`
-  - `Block` the type of data to be produced by the `ProducerNode`
+  - `Item` the type of data to be produced by the `ProducerNode`
 
 
-#### Constructors
-
-```c++
-  template <class Function>
-  ProducerNode(Function&& f);
-```
-
- - `Function` must meet the requirements of `std::function<Block())>`.
-
+#### **Constructors**
 
 ```c++
   template <class Function>
   ProducerNode(Function&& f);
 ```
 
- - `Function` must meet the requirements of `std::function<Block(std::stop_source))>`.
- - If this constructor is used, a `stop_source` variable is passed to the enclosed function.  If the enclosed function invokes `stop_source::request_stop()`, the `ProducerNode` will enter the stopping state, which will propagate throught its output port to the connected input port.  The connected node will the enter its shutdown state, and so on, thus stopping computation throughout the entire task graph.
+  - `Function` must meet the requirements of `std::function<Item())>` or of `std::function<Item(std::stop_source))>`.
+  - If the latter constructor is used, a `stop_source` variable is passed to the enclosed function.  If the enclosed function invokes `stop_source::request_stop()`, the `ProducerNode` will enter the stopping state, which will propagate throught its output port to the connected input port.  The connected node will the enter its shutdown state, and so on, thus stopping computation throughout the entire task graph.
+  - Class Template Argument Deduction (CTAD) guides have been specified so that explicit template arguments are not required to construct objects with the above constructor.  The CTAD guides work in the cases where `Function` is a regular function, a lambda, or a function object.  The current CTAD guides do not work when `Function` is a `bind` object; q template argument is still required in the case of `std::bind`.
+  - Note that in the case of a lambda, the unary `+` operator is required to decay the lambda into a normal function.  
 
-
- #### Invocation
- ```c++
-  void run_once();
-```
-- Invokes the function enclosed by the `ProducerNode` and sends it to the `Mover`.
-- The output port of the `ProducerNode` must be connected by an edge to an input port of another node.
 
 ### Example
 
 ```c++
-    size_t source_function();
-    ProducerNode<AsyncMover3, size_t> b{source_function};
+    // Create a `ProducerNode` with a function
+    size_t source_function(std::stop_source &);
+    auto a = ProducerNode {source_function};
+
+    // Nodes can also be created with function objects
+    class source_function_object {
+      size_t operator()(std::stop_source &);
+    }
+    source_function_object f;
+    auto b = ProducerNode {f};
+
+    // And with lambdas.  IMPORTANT: Note the unary `+`!
+    auto c = ProducerNode {+[]() { return 0UL; }};
+
+    // Bind requires specifying node type (so it seems)
+    auto g = std::bind([](double i) ->size_t { return 0UL;}, 0.0);
+    auto d = ProducerNode<size_t> (bb);
+
+    // Emulating bind will work, not requiring template type
+    size_t bind_function(double) { return 0UL; }
+    auto e = ProducerNode(+[]() -> size_t { return bind_function(0.0); });
 ```
+
+  - Note:  Future enhancements to the API will include variants to support one-shot or multi-shot (for a specified number of runs) operation, with an implicit stop following execution.  Using one-shot or multi-shot variants will obviate the need for the user to invoke the `stop_source`.
+
+In the following, we omit all of the variations for creating different kinds of nodes.  But it should be understood that all the constructor variants may be used for the node types below.
+
+
 ### `class ConsumerNode`
 
 ```c++
-template <template <class> class Mover_T, class Block>
+template <class Item>
 class ConsumerNode;
 ```
-  - `Mover_T` the type of data item mover to be used by the `ConsumerNode`
-  - `Block` the type of data to be produced by the `ConsumerNode`
+  - `Item` the type of data to be produced by the `ConsumerNode`
 
 
-#### Constructor
+#### **Constructor**
 
 ```c++
   template <class Function>
   ProducerNode(Function&& f);
+  - `Function` must meet the requirements of `std::function<void(const Item&)>`.
 ```
-  - `Function` must meet the requirements of `std::function<void(const Block&)>`.
-
-#### Invocation
-```c++
- void run_once();
-```
-
-- Invokes the function enclosed by the `ConsumerNode`, applying it to the `Block` obtained from the `Mover`.
-- The input port of the `ConsumerNode` must be connected by an edge to an output port of another node.
-
 ### Example
 
 ```c++
     void sink_function(const size_t&);
-    Consumer Node<AsyncMover3, size_t> b{sink_function};
+    Consumer Node b{sink_function};
 ```
 
 ### `class FunctionNode`
 
 ```c++
-template <template <class> class InMover_T, class InBlock, class <class> OutMover_T = InMover_T, class OutBlock=InBlock>
+template <class InItem, class OutItem = InItem>
 class FunctionNode;
 ```
-  - `InMover_T` the type of data item mover to be used for input data by the `FunctionNode`
-  - `InBlock` the type of data to be consumed on the input of the `FunctionNode`
-   - `OutMover_T` the type of data item mover to be used for output data of the `FunctionNode`
-  - `OutBlock` the type of data to be created on the output of the `FunctionNode`
+  - `InItem` the type of data to be consumed on the input of the `FunctionNode`
+  - `OutItem` the type of data to be created on the output of the `FunctionNode`
 
 
-#### Constructor
+#### **Constructor**
 
 ```c++
   template <class Function>
   ProducerNode(Function&& f);
 ```
-  - `Function` must meet the requirements of `std::function<OutBlock(const InBlock&)>`.
+  - `Function` must meet the requirements of `std::function<OutItem(const InItem&)>`.
 
-#### Invocation
-```c++
-void run_once();
-```
-- Applies the function enclosed by the `FunctionNode` to data obtained from the `InMover` and sends the result to the `OutMover`.
-- The input port of the `FunctionNode` must be connected to the output port of another node.  
-- The output port of the `FunctionNode` must be connected to the input port of another node.
 
-#### Example
+#### **Example**
 
 ```c++
     size_t function(const size_t&);
-    FunctionNode<AsyncMover3, size_t> b{function};
+    FunctionNode b{function};
 ```
 
 
 ### `class MIMOFunctionNode`
 ```c++
 template <
-    template <class> class SinkMover_T, class... BlocksIn,
-    template <class> class SourceMover_T, class... BlocksOut>
+    template <class> class SinkMover, class... ItemsIn,
+    template <class> class SourceMover, class... ItemsOut>
 class MimoFunctionNode;
 ```
-#### Constructor
+
+#### **Constructor**
 
 ```c++
   template <class Function>
-  explicit GeneralFunctionNode(Function&& f);
+  explicit MimoFunctionNode(Function&& f);
 ```
-  - `f` must meet the requirements of `std::function<std::tuple<BlocksOut...(std::tuple<BlocksIn...>)>;
+  - `f` must meet the requirements of `std::function<std::tuple<ItemsOut...(std::tuple<ItemsIn...>)>`f
+
+
+## Edges
 
 ### `class Edge`
 
-#### Constructor
+#### **Constructor**
 
 ```c++
-template <template <class> class Mover_T, class Block>
+template <template <class> class Mover, class Item>
 class Edge;
 ```
 
-- `Mover_T` the type of data item mover to be transferred by the `Edge`
-- `Block` the type of data to be transferred by the `Edge`
+  - `Mover` the type of data item mover to be transferred by the `Edge`
+  - `Item` the type of data to be transferred by the `Edge`
+  - Class Template Argument Deduction rules have been specified so that template argument for `Item` is not required.  The type of the `Mover` must still be explicitly specified.
+      
 
-**Note:** When connecting an output port to an input port, the Mover type and the Block type must be the same.
+**Note:** When connecting an output port to an input port, the Item types of the input port, output port, and edge must be the same.
 
-#### Example
+
+#### **Example**
 
 ```c++
-ProducerNode<AsyncMover3, size_t> a{source_function{}};
-ConsumerNode<AsyncMover3, size_t> b{sink_function{}};
+ProducerNode a{source_function{}};
+ConsumerNode b{sink_function{}};
 
-Edge e{a, b};
+Edge<AsyncMover3> e{a, b};
 
-ProducerNode<AsyncMover3, double> c{other_source_function{}};
-ConsumerNode<AsyncMover3, size_t> d{sink_function{}};
+double other_source_function() {
+  return 0.0;
+}
 
-Edge f{c, d};  // This will fail to compile because Block types of Producer and Consumer don't match.
+ProducerNode c {other_source_function{}};
+ConsumerNode d{sink_function{}};
+
+Edge<AsyncMover3> f{c, d};  // This will fail to compile because Item types of Producer and Consumer don't match.
 ```
+
+  - If we decide to use the same type of `Edge` throughout a given graph, we can make a type alias such as
+```c++
+template <class Item>
+using GraphEdge = Edge<AsyncMover3, Item>;
+```
+in which case we could simply invoke
+```c++
+ProducerNode a{source_function{}};
+ConsumerNode b{sink_function{}};
+
+GraphEdge e{a, b};
+```
+  - (Note that `AsyncMover3` is itself a type alias, using some specific types given to the more general `ItemMover` class.  This will likely be further generalized to include a `Scheduler`.  However, since a given graph will use a specified scheduler, we can likely hide this behind type aliases and specific types for certain template parameters.  In general, users will not need to see the `Scheduler` type in the API.
+
+
+## Schedulers
 
 ### `class Scheduler`
 
@@ -177,112 +203,254 @@ class Scheduler;
 ```
 - Base class for schedulers.
 
-#### Constructor
+#### **Constructor**
 ```c++
 Scheduler(size_t concurrency_level = std::thread::hardware_concurrency();
 ```
 
-#### Submitting Tasks
+#### **Submitting Tasks**
+```c++
 template <class... Tasks>
 Scheduler::submit(Tasks&&... tasks);
-- Submits `tasks` to internal scheduling member function.
+```
+  - Submits `tasks` to scheduler
+  - Note: Task execution is lazy.  Tasks do not begin execution until a `wait` function is called.
 
-## A Simple Graph
+
+#### **Waiting on Tasks**
+```c++
+template <class... Tasks>
+Scheduler::sync_wait_all();
+```
+  - Synchronously wait for tasks to complete.
+  - Note: Task execution is lazy.  Tasks previously submitted to `submit` will be launched on calling `sync_wait_all()`
+
+
+#### **Example**
+
+See also full example below;
+```c++
+// Define nodes
+ProducerNode a;
+ConsumerNode b;
+
+// Connect nodes
+Edge {a, b};
+
+BountifulScheduler sched;
+
+// Submit jobs
+sched.submit(a, b);
+
+// Wait on their completion
+sched.sync_wait_all();
+```
+
+#### **How nodes are scheduled**
+
+A node is repeatedly run until it is stopped.  It is expected that a simple node will produce one
+data item each time it is run.
+Suppose we wish to have a `ProducerNode` that generates a finite sequence of numbers.
+Consider the following.
+```c++
+size_t source_function_1(std::stop_source& stop_source) {
+  for (size_t i = 0; i < 42; ++i) {
+    return i;
+  }
+  stop_source.request_stop();
+  return 0UL;
+}
+source_function_1 src_1;
+auto a = ProducerNode { src_1; );
+```
+This node will not produce the desired result.  Each time it is called, it will return 10.  Moreover, it will never invoke `request_stop()`.
+
+A correctly behaving function would be something like
+```c++
+size_t source_function_2(std::stop_source& stop_source) {
+  static i = 0;
+  if (i < 42) {
+    return i++;
+  }
+  stop_source.request_stop();
+  return 0UL;
+}
+source_function_2 src_2;
+auto a = ProducerNode { src_2; );
+```
+Here. we make `i` static so that its value is saved across invocations of the node.  It will generate numbers from 0 to 41 and then stop.
+(Again note that the value returned after `request_stop()` is ignored.
+
+
+## Extended Example: Constructin and Executing a Primitive Graph
+
+
+### Define the Functions to be Executed
+
 
 ```c++
 
-// Nodes can use function objects as well as functions
-template <class Block = size_t>
+// This function object generates a sequence of numbers up to a specified limit
+// (non-inclusive), aftter which it invokes `std::stop_source::request_stop()`.
+// The stop will propagate and shut down the rest of the nodes. (The stop will
+// essentially propagate behind the data items in flight.  All of the
+// data items will complete transmission through the graph and all nodes
+// will continue to run until the data items are exhausted.
 class source_function {
  public:
-  Block operator()(std::stop_source& stopper) {
-    // When done
+  size_t operator()(std::stop_source& stopper) {
+    static size_t i = 0;
+    if (i < 42) {
+      return i++;
     stopper.request_stop();
-    return Block{};
+    return 0UL;
   }
 };
 
-template <class InBlock = size_t, class OutBlock = InBlock>
+// Function object to transform data items
+// This trivial function simply propagates its input to its output
+template <class InItem = size_t, class OutItem = InItem>
 class function {
  public:
-  OutBlock operator()(const InBlock&) {
-    return OutBlock{};
+  OutItem operator()(const InItem& in) {
+    return in;
   }
 };
 
-template <class Block = size_t>
+// Sink function object to absorb data items
+template <class Item = size_t>
 class sink_function {
  public:
-  void operator()(Block) {
+  void operator()(Item) {
   }
 };
 
-size_t actual_source_function() {
-  return 0UL;
+// Function to generate items.  Generates a sequence of numbers until a 
+// limit is reached, at which point a stop is requested.  See above
+// for description of stopping.
+size_t actual_source_function(std::stop_source stop_source) {
+  static size_t i = 0;
+  if (i < 42) {}
+    return i++;
+  }
+
+  // Initiate stopping execution of the graph
+  stop_source.request_stop();
+
+  // Return to make compiler happy. The return value is ignored and
+  // not sent into the graph
+  return 0;
 }
+```
 
-// Create nodes with `AsyncMover3`, a 3-stage item mover (i.e., that connects  
-// an output port to an input port with a one buffered block in between).
-ProducerNode<AsyncMover3, size_t> a{actual_source_function};
-FunctionNode<AsyncMover3, size_t> b{function{}};
-ConsumerNode<AsyncMover3, size_t> c{sink_function{}};
+### Create Graph Nodes
 
+```c++
+// Create nodes
+ProducerNode a{actual_source_function};
+FunctionNode b{function{}};
+FunctionNode c{[](size_t i) ( return i; };
+ConsumerNode d{sink_function{}};
+```
 
+### Connect Graph Nodes with Edges
+
+```c++
 // Connect a to b
-Edge g{a, b};
+Edge f{a, b};
 
 // Connect b to c
-Edge h{b, c};
+Edge g{b, c};
 
-size_t rounds = 42;
+// Connect c to d
+Edge h{c, d};
+```
+
+### Execute the Graph
+
+```c++
+// Run the primitive graph
+BountifulScheduler sched;  // Could also use FrugalSchedular
+
+// Until we have an actual `graph` class, we can submit a primitive
+// graph for execution by submitting its nodes
+sched.submit(a, b, c, d);
+
+// Wait on completion of the graph's execution
+sched.sync_wait_all();
+```
+
+### An Emulated Scheduler
+
+We can also emulate a bountiful scheduler, where we run each node
+inside of an asynchronous task.  The `run` member function of
+a node invokes the node continually until stop is invoked.
+
+
+```c++
 
 // Task to invoke `ProducerNode a`.  Invoke stop after `rounds` iterations.
 auto fun_a = [&]() {
-  size_t N = rounds;
-  while (N--) {
-    a.run_once();
-  }
+  a.run();
 };
 
 // Task to invoke `FunctionNode b`.  Run until stopped.
 auto fun_b = [&]() {
-  while (true) {
-    b.run_once();
-    if (b.stopped()) {
-      break;
-    }
-  }
+  b.run();
 };
 
 // Task to invoke `ConsumerNode c`.  Run until stopped.
 auto fun_c = [&]() {
-  while (true) {
-    c.run_once();
-    if (c.stopped()) {
-      break;
-    }
-  }
+  c.run();
 };
 
-// Emulate a bountiful scheduler
-// Run each node as an asynchronous task
+// Task to invoke `ConsumerNode c`.  Run until stopped.
+auto fun_d = [&]() {
+  d.run();
+};
+
 auto fut_a = std::async(std::launch::async, fun_a);
 auto fut_b = std::async(std::launch::async, fun_b);
 auto fut_c = std::async(std::launch::async, fun_c);
+auto fut_d = std::async(std::launch::async, fun_d);
 
 // Wait for completion
 fut_a.get();
 fut_b.get();
 fut_c.get();
-
-// Alternatively, the prototype API for schedulers supports the following,
-// which essentially provides the functionality of theemulated scheduler above.
-BountifulScheduler sched;
-
-// Launch nodes
-sched.submit(a, b, c);
-
-// Wait on their completion
-sched.sync_wait_all();
+fut_d.get();
 ```
+
+## Appendix
+
+The basic idea of the updated API is to allow task graph nodes to be created with following simplified syntax:
+```c++
+  template <class Item>
+  class ProducerNode;
+  auto node = ProducerNode{function};
+```
+where `function` is an appropriately defined function for execution in the task graphs.  Note that the template parameter for `ProducerNode` does not have to be explicitly specified.  Rather, it is deduced (via a library-defined deduction rule) from the type of `function`.
+
+The previous API for task graph nodes was
+```c++
+  template <template <class> class Mover, class Item>
+  class ProducerNode;
+  auto node = ProducerNode{function};
+```
+which would require the `Mover` type to be specified (`Item` could still be deduced).  There are two ways to achieve the simplified API.  One, as above, is to define task graph nodes as taking only one interface, and allowing the `Mover` to be an abstract base class within the node class, which would be set when the `Edge` connects two nodes.  This will add a small bit of overhead to each call to the `Mover`, which may or may not be significant.  There is also a slight entanglement of all of the node classes with the `Mover` class (a slight lessening of the separation of concerns).  In the templated case, the node classes do not need to "know" about the `Mover` class until instantiation time.
+
+With the templated API, the `Mover` does not need to be an abstract base class.  To eliminate having to specify the `Mover` at each node instantiation, we could do something like the following:
+The previous API for task graph nodes was
+```c++
+  template <template <class> class Mover, class Item>
+  class GraphProducerNode;
+
+  template <class Item>
+  using ProducerNode = GraphProducerNode<DefaultMover, Item>;
+
+  auto node = ProducerNode{function};
+```
+Here, `DefaultMover` is a concrete class.  With this approach, if one wanted to used different types of concrete `Mover` classes, one would need define type aliases for different instantiations with the `GraphProducerNode`.
+
+All in all, the first approach (using `Mover` as an abstract base class) seems to be the cleanest and will be the approach taken.  The task graph API will be revised accordingly.
 

@@ -68,7 +68,7 @@ class Edge : public GraphEdge {
   using mover_type = Mover_T<Block>;
 
   /**
-   * Indicates whether ther is a buffer item in the item mover, or if the
+   * Indicates whether there is a buffer item in the item mover, or if the
    * `Source` and `Sink` can be directly connected.
    */
   constexpr static bool edgeful = mover_type::edgeful;

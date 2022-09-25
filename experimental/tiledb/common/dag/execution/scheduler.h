@@ -39,26 +39,28 @@ namespace tiledb::common {
 
 /**
  * Scheduler for the graph.
- *
- * The scheduler owns a thread pool. It is also an active object; at least one
- * thread in its pool is dedicated to its own operation.
  */
-#if 0
-
-template <class Block>
+template <class Task>
 class Scheduler {
-  ThreadPool tp_;
+  /** Debug flag */
+  bool debug_{false};
 
  public:
-  void notify_alive(Source<Block>*);
-  void notify_quiescent(Source<Block>*);
-  void notify_alive(Sink<Block>*);
-  void notify_quiescent(Sink<Block>*);
-  // Possibly needed
-  // wakeup(Source *);
-  // wakeup(Sink *);
+  virtual void submit(Task* t) = 0;
+  virtual void sync_wait_all() = 0;
+
+  void enable_debug() {
+    debug_ = true;
+  }
+
+  void disable_debug() {
+    debug_ = false;
+  }
+
+  bool debug() {
+    return debug_;
+  }
 };
-#endif
 
 }  // namespace tiledb::common
 #endif  // TILEDB_DAG_SCHEDULER_H

@@ -268,18 +268,6 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
     threads_.clear();
   }
 
-  void enable_debug() {
-    debug_ = true;
-  }
-
-  void disable_debug() {
-    debug_ = false;
-  }
-
-  bool debug() {
-    return debug_;
-  }
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -528,9 +516,6 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
 
   /** The maximum level of concurrency among all of the worker threads */
   std::atomic<size_t> concurrency_level_;
-
-  /** Debug flag */
-  bool debug_;
 
   /** Track number of submissions */
   std::atomic<size_t> num_submissions_;
