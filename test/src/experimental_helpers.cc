@@ -25,6 +25,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
+ * This file declares some test suite helper functions for experimental
+ * features.
  */
 
 #include "experimental_helpers.h"
