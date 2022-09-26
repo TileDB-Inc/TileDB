@@ -471,9 +471,13 @@ TEST_CASE("C++ API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
     SECTION("no serialization") {
       serialized_load = false;
     }
+
     SECTION("serialization enabled fragment info load") {
 #ifdef TILEDB_SERIALIZATION
       serialized_load = true;
+      for (uint32_t fid = 0; fid < fragment_info.fragment_num(); ++fid) {
+        fragment_info.mbr_num(fid);
+      }
 #endif
     }
 
@@ -569,12 +573,17 @@ TEST_CASE(
     fragment_info.load();
 
     bool serialized_load = false;
+
     SECTION("no serialization") {
       serialized_load = false;
     }
+
     SECTION("serialization enabled fragment info load") {
 #ifdef TILEDB_SERIALIZATION
       serialized_load = true;
+      for (uint32_t fid = 0; fid < fragment_info.fragment_num(); ++fid) {
+        fragment_info.mbr_num(fid);
+      }
 #endif
     }
 

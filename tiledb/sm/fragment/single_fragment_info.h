@@ -282,6 +282,11 @@ class SingleFragmentInfo {
     return meta_;
   }
 
+  /** Accessor to the metadata pointer. */
+  NDRange& non_empty_domain() {
+    return non_empty_domain_;
+  }
+
   void set_info_from_meta() {
     if (meta_ == nullptr) {
       throw std::logic_error("Cannot set info from empty fragment metadata.");

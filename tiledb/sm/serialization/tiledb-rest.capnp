@@ -899,6 +899,9 @@ struct FragmentMetadata {
 
   rtree @26 :Data;
   # The RTree for the MBRs serialized as a blob
+
+  hasConsolidatedFooter @27 :Bool;
+  # if the fragment metadata footer appears in a consolidated file
 }
 
 struct MultiPartUploadState {

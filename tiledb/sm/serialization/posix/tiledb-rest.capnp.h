@@ -10701,6 +10701,8 @@ class FragmentMetadata::Reader {
   inline bool hasRtree() const;
   inline ::capnp::Data::Reader getRtree() const;
 
+  inline bool getHasConsolidatedFooter() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -11179,6 +11181,9 @@ class FragmentMetadata::Builder {
   inline ::capnp::Data::Builder initRtree(unsigned int size);
   inline void adoptRtree(::capnp::Orphan<::capnp::Data>&& value);
   inline ::capnp::Orphan<::capnp::Data> disownRtree();
+
+  inline bool getHasConsolidatedFooter();
+  inline void setHasConsolidatedFooter(bool value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -23758,6 +23763,17 @@ inline void FragmentMetadata::Builder::adoptRtree(
 inline ::capnp::Orphan<::capnp::Data> FragmentMetadata::Builder::disownRtree() {
   return ::capnp::_::PointerHelpers<::capnp::Data>::disown(
       _builder.getPointerField(::capnp::bounded<20>() * ::capnp::POINTERS));
+}
+
+inline bool FragmentMetadata::Reader::getHasConsolidatedFooter() const {
+  return _reader.getDataField<bool>(::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline bool FragmentMetadata::Builder::getHasConsolidatedFooter() {
+  return _builder.getDataField<bool>(::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void FragmentMetadata::Builder::setHasConsolidatedFooter(bool value) {
+  _builder.setDataField<bool>(::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
 }
 
 inline ::uint64_t MultiPartUploadState::Reader::getPartNumber() const {
