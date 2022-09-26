@@ -24,6 +24,10 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * Class for managing all dimension label queries in an array query.
  */
 
 #include "tiledb/sm/query/dimension_label/array_dimension_label_queries.h"
@@ -197,10 +201,6 @@ void ArrayDimensionLabelQueries::process_range_queries(Subarray& subarray) {
 
   range_query_status_ = QueryStatus::COMPLETED;
 }
-
-/*******************/
-/* PRIVATE METHODS */
-/*******************/
 
 void ArrayDimensionLabelQueries::add_data_queries_for_read(
     Array* array,

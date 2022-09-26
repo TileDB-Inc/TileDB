@@ -964,7 +964,8 @@ class Subarray {
   /**
    * Returns the `Range` vector for the given dimension label.
    *
-   * @param label_name The name of the label to return ranges for.
+   * @param label_name Name of the label to return ranges for.
+   * @returns Vector of ranges on the requested dimension label.
    */
   const std::vector<Range>& ranges_for_label(
       const std::string& label_name) const;

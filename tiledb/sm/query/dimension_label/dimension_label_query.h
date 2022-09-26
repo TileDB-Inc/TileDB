@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Classes for query a dimension label.
+ * Classes for querying a dimension label.
  */
 
 #ifndef TILEDB_DIMENSION_LABEL_QUERY_H
@@ -45,6 +45,14 @@ class Query;
 class QueryBuffer;
 class StorageManager;
 class Subarray;
+
+/**
+ * Return a Status_DimensionQueryError error class Status with a given
+ * message.
+ **/
+inline Status Status_DimensionLabelQueryError(const std::string& msg) {
+  return {"[TileDB::DimensionLabelQuery] Error", msg};
+}
 
 class DimensionLabelQuery {
  public:
@@ -98,14 +106,28 @@ class DimensionLabelQuery {
 /** Dimension label query for reading label data. */
 class DimensionLabelReadDataQuery : public DimensionLabelQuery {
  public:
+  /** Default constructor is not C.41 compliant. */
   DimensionLabelReadDataQuery() = delete;
 
+  /**
+   * Constructor.
+   *
+   * @param storage_manager Storage manager object.
+   * @param dimension_label Opened dimension label for the query.
+   * @param parent_subarrray Subarray of the parent array.
+   * @param label_buffer Query buffer for the label data.
+   * @param dim_idx Index of the dimension on the parent array this dimension
+   */
   DimensionLabelReadDataQuery(
       StorageManager* storage_manager,
       DimensionLabel* dimension_label,
       const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,
       const uint32_t dim_idx);
+
+  /** Disable copy and move. */
+  DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelReadDataQuery);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelReadDataQuery);
 };
 
 /** Base class for internally managed index data. */
@@ -122,6 +144,9 @@ template <
     typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
 class TypedIndexData : public IndexData {
  public:
+  /** Default constructor is not C.41 compliant. */
+  TypedIndexData() = delete;
+
   /**
    * Constructor.
    *
@@ -179,7 +204,7 @@ class OrderedWriteDataQuery : public DimensionLabelQuery {
    * @param dimension_label Opened dimension label for the query.
    * @param parent_subarrray Subarray of the parent array.
    * @param label_buffer Query buffer for the label data.
-   * @param label_buffer Query buffer for the index data. May be empty if no
+   * @param index_buffer Query buffer for the index data. May be empty if no
    *     index buffer is set.
    * @param dim_idx Index of the dimension on the parent array this dimension
    *     label is for.
@@ -194,6 +219,10 @@ class OrderedWriteDataQuery : public DimensionLabelQuery {
       const uint32_t dim_idx,
       optional<std::string> fragment_name);
 
+  /** Disable copy and move. */
+  DISABLE_COPY_AND_COPY_ASSIGN(OrderedWriteDataQuery);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(OrderedWriteDataQuery);
+
  private:
   tdb_unique_ptr<IndexData> index_data_;
 };
@@ -201,7 +230,7 @@ class OrderedWriteDataQuery : public DimensionLabelQuery {
 /** Writer for unordered dimension labels. */
 class UnorderedWriteDataQuery : public DimensionLabelQuery {
  public:
-  /** Default constructor is not C.41. */
+  /** Default constructor is not C.41 compliant. */
   UnorderedWriteDataQuery() = delete;
 
   /**
@@ -209,8 +238,12 @@ class UnorderedWriteDataQuery : public DimensionLabelQuery {
    *
    * @param storage_manager Storage manager object.
    * @param dimension_label Opened dimension label for the query.
-   * @param index_buffer Query buffer for the index data.
+   * @param parent_subarrray Subarray of the parent array.
    * @param label_buffer Query buffer for the label data.
+   * @param index_buffer Query buffer for the index data. May be empty if no
+   *     index buffer is set.
+   * @param dim_idx Index of the dimension on the parent array this dimension
+   *     label is for.
    * @param fragment_name Name to use when writing the fragment.
    */
   UnorderedWriteDataQuery(
@@ -221,6 +254,10 @@ class UnorderedWriteDataQuery : public DimensionLabelQuery {
       const QueryBuffer& index_buffer,
       const uint32_t dim_idx,
       optional<std::string> fragment_name);
+
+  /** Disable copy and move. */
+  DISABLE_COPY_AND_COPY_ASSIGN(UnorderedWriteDataQuery);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(UnorderedWriteDataQuery);
 
  private:
   tdb_unique_ptr<IndexData> index_data_;

@@ -82,9 +82,9 @@ DimensionLabelSchema::DimensionLabelSchema(
   try {
     ensure_dimension_datatype_is_valid(label_type);
   } catch (...) {
-    throw std::invalid_argument(
+    std::throw_with_nested(std::invalid_argument(
         "Datatype Datatype::" + datatype_str(label_type) +
-        " is not a valid dimension datatype.");
+        " is not a valid dimension datatype."));
   }
   if (datatype_is_string(label_type) &&
       label_order != LabelOrder::UNORDERED_LABELS) {

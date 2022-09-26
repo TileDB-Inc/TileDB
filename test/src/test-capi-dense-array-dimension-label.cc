@@ -55,7 +55,7 @@ using namespace tiledb::test;
  * Array Summary:
  *  * Array Type: Dense
  *  * Dimensions:
- *    - x: (type=UINT64, domain=[1, 4], tile=4)
+ *    - x: (type=UINT64, domain=[0, 3], tile=4)
  *  * Attributes:
  *    - a: (type=FLOAT64)
  *  * Dimension labels:

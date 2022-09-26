@@ -948,8 +948,8 @@ void Query::get_label_data_buffer(
     const std::string& name, void** buffer, uint64_t** buffer_size) const {
   // Check query type
   if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
-    throw StatusException(Status_SerializationError(
-        "Cannot get buffer; Unsupported query type."));
+    throw StatusException(
+        Status_QueryError("Cannot get buffer; Unsupported query type."));
   }
 
   // Check that dimension label exists
@@ -1229,24 +1229,24 @@ Status Query::init() {
           buffers_,
           fragment_name_));
 
+      // Clear the label ranges from the subarray. They are no longer needed.
+      subarray_.remove_label_ranges();
+
       // Do not allow reading data from dimension labels for sparse arrays
-      // unless we are only returning the dimension label data. Otherwise, the
-      // dimension label data needs to be processed to match the COO format of
-      // any returned attribute or coordinate data, and this has not yet been
-      // implemented.
+      // unless we are only returning the dimension label data. If returning
+      // data for the entire sparse array, the output for the dimension label
+      // data needs to be re-arranged to match the coordinate form we use for
+      // sparse reads. This has not yet been implemented.
       if (!only_labels && type_ == QueryType::READ && !array_schema_->dense() &&
           dim_label_queries_->has_data_query()) {
         return logger_->status(Status_QueryError(
             "Cannot initialize query; Reading dimension label data is not yet "
             "supported on sparse arrays."));
       }
-
-      // Clear label ranges for the subarray.
-      subarray_.remove_label_ranges();
     }
 
     // Create the query strategy if possible. May need to wait for range queries
-    // to complete and the subarray is updated.
+    // to be completed and for the subarray to be updated.
     if (!uses_labels ||
         (!only_labels && dim_label_queries_->completed_range_queries())) {
       RETURN_NOT_OK(create_strategy());
@@ -1442,16 +1442,16 @@ Status Query::check_buffer_names() {
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     // If the array is sparse, the coordinates must be provided
     if (!array_schema_->dense() && !coords_info_.has_coords_) {
-      return logger_->status(Status_WriterError(
-          "Sparse array writes expect the coordinates of the "
-          "cells to be written"));
+      return logger_->status(
+          Status_QueryError("Sparse array writes expect the coordinates of the "
+                            "cells to be written"));
     }
 
     // If the layout is unordered, the coordinates must be provided
     if (layout_ == Layout::UNORDERED && !coords_info_.has_coords_) {
       return logger_->status(
-          Status_WriterError("Unordered writes expect the coordinates of the "
-                             "cells to be written"));
+          Status_QueryError("Unordered writes expect the coordinates of the "
+                            "cells to be written"));
     }
 
     // All attributes/dimensions must be provided unless this query is only for
@@ -1469,7 +1469,7 @@ Status Query::check_buffer_names() {
                           array_schema_->dim_num() :
                           0;
       if (buffers_.size() != expected_num) {
-        return logger_->status(Status_WriterError(
+        return logger_->status(Status_QueryError(
             "Writes expect all attributes (and coordinates in "
             "the sparse/unordered case) to be set"));
       }
@@ -2784,8 +2784,7 @@ bool Query::use_refactored_dense_reader(
   // This facilitates backwards compatibility
   if (found) {
     logger_->warn(
-        "sm.use_refactored_readers config option is deprecated.\nPlease "
-        "use "
+        "sm.use_refactored_readers config option is deprecated.\nPlease use "
         "'sm.query.dense.reader' with value of 'refactored' or 'legacy'");
   } else {
     const std::string& val = config_.get("sm.query.dense.reader", &found);

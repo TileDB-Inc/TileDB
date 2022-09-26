@@ -53,16 +53,6 @@ class Subarray;
 
 enum class QueryType : uint8_t;
 
-/**
- * Return a Status_DimensionQueryError error class Status with a given
- * message.
- *
- * Note: Returns error as a QueryError.
- ***/
-inline Status Status_DimensionLabelQueryError(const std::string& msg) {
-  return {"[TileDB::Query] Error", msg};
-}
-
 class ArrayDimensionLabelQueries {
  public:
   /**
@@ -77,7 +67,16 @@ class ArrayDimensionLabelQueries {
   /** Default constructor is not C.41 compliant. */
   ArrayDimensionLabelQueries() = delete;
 
-  /** Constructor. */
+  /** Constructor.
+   *
+   * @param storage_manager Storage manager object.
+   * @param array Parent array the dimension labels are defined on.
+   * @param subarray Subarray for the query on the parent array.
+   * @param label_buffers A map of query buffers containing label data.
+   * @param array_bufffers A map of query buffers containing dimension and
+   *     attribute data for the parent array.
+   * @param fragment_name Optional fragment name for writing fragments.
+   */
   ArrayDimensionLabelQueries(
       StorageManager* storage_manager,
       Array* array,
@@ -118,6 +117,8 @@ class ArrayDimensionLabelQueries {
    * Returns ``true`` if there is a range query on the requested dimension.
    *
    * @param dim_idx Index to check for a range query on.
+   * @returns ``true if there is a range query on the requested dimension and
+   *     ``false`` otherwise.
    */
   inline bool has_range_query(dimension_size_type dim_idx) const {
     return range_queries_[dim_idx] != nullptr;
@@ -168,13 +169,19 @@ class ArrayDimensionLabelQueries {
   /** The status of the range queries. */
   QueryStatus range_query_status_;
 
+  /**
+   * The name of the new fragment to be created for writes.
+   *
+   * If not set, the fragment will be created usint the latest array timestamp
+   * and a generated UUID.
+   */
   optional<std::string> fragment_name_;
 
   /**
    * Initializes all queries for reading label data.
    *
-   * @param array The array for the parent query.
-   * @param subarray The subarray for the parent query.
+   * @param array Array for the parent query.
+   * @param subarray Subarray for the parent query.
    * @param label_buffers A map of query buffers with label buffers.
    */
   void add_data_queries_for_read(
@@ -185,8 +192,8 @@ class ArrayDimensionLabelQueries {
   /**
    * Initializes all queries for writing label data.
    *
-   * @param array The array for the parent query.
-   * @param subarray The subarray for the parent query.
+   * @param array Array for the parent query.
+   * @param subarray Subarray for the parent query.
    * @param label_buffers A map of query buffers with label buffers.
    * @param array_buffers Non-label buffers set on the parent query.
    */
@@ -200,8 +207,8 @@ class ArrayDimensionLabelQueries {
    * Initializes all queries for reading dimension ranges.
    *
    *
-   * @param array The array for the parent query.
-   * @param subarray The subarray for the parent query.
+   * @param array Array for the parent query.
+   * @param subarray Subarray for the parent query.
    * @param label_buffers A map of query buffers with label buffers.
    * @param array_buffers Non-label buffers set on the parent query.
    */
@@ -214,8 +221,8 @@ class ArrayDimensionLabelQueries {
   /**
    * Opens a dimension label.
    *
-   * @param array The array the dimension label is defined on.
-   * @param query_type The query type to open the dimension label as.
+   * @param array Array the dimension label is defined on.
+   * @param query_type Query type to open the dimension label as.
    * @param open_indexed_array If ``true``, open the indexed array.
    * @param open_labelled_array If ``true``, open the labelled array.
    */

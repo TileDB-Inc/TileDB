@@ -24,10 +24,15 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * Classes for querying a dimension label.
  */
 
 #include "tiledb/sm/query/dimension_label/dimension_label_query.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/unreachable.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/query/query.h"
@@ -40,10 +45,6 @@
 using namespace tiledb::common;
 
 namespace tiledb::sm {
-
-inline Status Status_DimensionLabelQueryError(const std::string& msg) {
-  return {"[TileDB::Query] Error", msg};
-}
 
 DimensionLabelQuery::DimensionLabelQuery(
     StorageManager* storage_manager,
@@ -124,9 +125,15 @@ DimensionLabelReadDataQuery::DimensionLabelReadDataQuery(
       dimension_label->label_attribute()->name(), label_buffer);
 }
 
+/**
+ * Creates a buffer to hold index data needed for dimension label write.
+ *
+ * @param Datatype of the index data to create.
+ * @param Range to create data for.
+ * @returns A pointer to an index data object.
+ */
 tdb_unique_ptr<IndexData> create_index_data(
     const Datatype type, const Range& input_range) {
-  // Create index data if it is not provided.
   switch (type) {
     case Datatype::INT8:
       return tdb_unique_ptr<IndexData>(
@@ -177,26 +184,33 @@ tdb_unique_ptr<IndexData> create_index_data(
       return tdb_unique_ptr<IndexData>(
           tdb_new(TypedIndexData<int64_t>, input_range));
     default:
-      throw StatusException(Status_DimensionLabelQueryError(
-          "Unexpected dimension datatype " + datatype_str(type)));
+      stdx::unreachable();
   }
 }
 
+/**
+ * Typed implementation to check if data is sorted.
+ *
+ * @param buffer Buffer to check for sort.
+ * @param buffer_size Total size of the buffer.
+ * @param increasing If ``true`` check if the data is stricly increasing. If
+ *     ``false``, check if the data is strictly decreasing.
+ */
 template <
     typename T,
     typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
 bool is_sorted_buffer_impl(
     const T* buffer, const uint64_t* buffer_size, bool increasing) {
-  uint64_t N = *buffer_size / sizeof(T);
+  uint64_t num_values = *buffer_size / sizeof(T);
   if (increasing) {
-    for (uint64_t ii{0}; ii < N - 1; ++ii) {
-      if (buffer[ii + 1] < buffer[ii]) {
+    for (uint64_t index{0}; index < num_values - 1; ++index) {
+      if (buffer[index + 1] < buffer[index]) {
         return false;
       }
     }
   } else {
-    for (uint64_t ii{0}; ii < N - 1; ++ii) {
-      if (buffer[ii + 1] > buffer[ii]) {
+    for (uint64_t index{0}; index < num_values - 1; ++index) {
+      if (buffer[index + 1] > buffer[index]) {
         return false;
       }
     }
@@ -205,8 +219,12 @@ bool is_sorted_buffer_impl(
 }
 
 /**
- * This is a placeholder function to check the sort of the ordered dimension
- * labels. This should be pushed down to an ordered dimension label writer.
+ * Checks if the input buffer is sorted.
+ *
+ * @param buffer Buffer to check for sort.
+ * @param type Datatype of the input buffer.
+ * @param increasing If ``true`` check if the data is strictly increasing. If
+ *     ``false``, check if the data is strictly decreasing.
  */
 bool is_sorted_buffer(
     const QueryBuffer& buffer, const Datatype type, bool increasing) {
@@ -288,8 +306,7 @@ bool is_sorted_buffer(
           buffer.buffer_size_,
           increasing);
     default:
-      // This catch should never be hit.
-      throw std::runtime_error("Unexpected datatype " + datatype_str(type));
+      stdx::unreachable();
   }
 
   return true;
@@ -305,7 +322,8 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
     optional<std::string> fragment_name)
     : DimensionLabelQuery{
           storage_manager, dimension_label, true, true, fragment_name} {
-  // Verify that data isn't already written to the dimension label.
+  // Verify that data isn't already written to the dimension label. This check
+  // is only needed until the new ordered dimension label reader is implemented.
   if (!dimension_label->labelled_array()->is_empty() ||
       !dimension_label->indexed_array()->is_empty()) {
     throw StatusException(Status_DimensionLabelQueryError(
@@ -333,8 +351,8 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
       const auto& ranges = parent_subarray.ranges_for_dim(dim_idx);
       if (ranges.size() != 1) {
         throw StatusException(Status_DimensionLabelQueryError(
-            "failed to create dimension label query. dimension label writes "
-            "can only be set for a single range ."));
+            "Failed to create dimension label query. Dimension label writes "
+            "can only be set for a single range."));
       }
 
       // Check the range is equal to the whole domain.
@@ -412,8 +430,8 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
       const auto& ranges = parent_subarray.ranges_for_dim(dim_idx);
       if (ranges.size() != 1) {
         throw StatusException(Status_DimensionLabelQueryError(
-            "failed to create dimension label query. dimension label writes "
-            "can only be set for a single range ."));
+            "Failed to create dimension label query. Dimension label writes "
+            "can only be set for a single range."));
       }
     }
 
@@ -423,7 +441,7 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
         parent_subarray.ranges_for_dim(dim_idx)[0]);
   }
 
-  // Set-up labelled array (sparse array)
+  // Set-up labelled array (sparse array).
   throw_if_not_ok(labelled_array_query->set_layout(Layout::UNORDERED));
   labelled_array_query->set_buffer(
       dimension_label->label_dimension()->name(), label_buffer);
@@ -438,7 +456,7 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
         dimension_label->index_attribute()->name(), index_buffer);
   }
 
-  // Set-up indexed array query (sparse array)
+  // Set-up indexed array query (sparse array).
   throw_if_not_ok(indexed_array_query->set_layout(Layout::UNORDERED));
   indexed_array_query->set_buffer(
       dimension_label->label_attribute()->name(), label_buffer);

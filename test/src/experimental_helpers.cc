@@ -40,13 +40,8 @@ void add_dimension_label(
     tiledb_datatype_t label_datatype,
     const void* label_domain,
     const void* label_tile_extent,
-    const void* index_tile_extent,
-    optional<uint32_t> label_cell_val_num,
-    optional<std::pair<tiledb_filter_type_t, int>> label_filters,
-    optional<std::pair<tiledb_filter_type_t, int>> index_filters,
-    optional<uint64_t> capacity,
-    optional<bool> allows_dups) {
-  // Get definition of the dimension the label is being added to.
+    const void* index_tile_extent) {
+  // Get the dimension type and domain from the array schema.
   const auto* dim = array_schema->array_schema_->dimension_ptr(dim_idx);
   auto dim_type = dim->type();
   const auto& dim_domain = dim->domain();
@@ -63,18 +58,6 @@ void add_dimension_label(
       label_domain,
       label_tile_extent,
       &dim_label_schema));
-
-  // Update the proprerties of the dimension label.
-  UNSCOPED_INFO("API for adding label cell value number not yet implemented.");
-  REQUIRE(!label_cell_val_num.has_value());
-  UNSCOPED_INFO("API for adding label filters not yet implemented.");
-  REQUIRE(!label_filters.has_value());
-  UNSCOPED_INFO("API for adding index filters not yet implemented.");
-  REQUIRE(!index_filters.has_value());
-  UNSCOPED_INFO("API for adding capacity not yet implemented.");
-  REQUIRE(!capacity.has_value());
-  UNSCOPED_INFO("API for allowing duplicates not yet implemented.");
-  REQUIRE(!allows_dups.has_value());
 
   // Add the dimension label to the array schema.
   REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(

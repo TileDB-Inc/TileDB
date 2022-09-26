@@ -57,13 +57,6 @@ namespace tiledb::test {
  * @param label_domain The dimension label domain.
  * @param label_tile_extent The dimension tile extent for the label.
  * @param index_tile_extent The dimension label tile extent for the index.
- * @param label_cell_val_num Optional label cell vall num.
- * @param label_filters Optional filters for the label attr/dim on the dimension
- *     label.
- * @param index_filters Optional filters for the index attr/dim on the dimension
- *     label.
- * @param capacity Optional capacity size for the dimension label.
- * @param allow_dups Optional allow dups for the dimension label.
  */
 void add_dimension_label(
     tiledb_ctx_t* ctx,
@@ -74,12 +67,7 @@ void add_dimension_label(
     tiledb_datatype_t label_datatype,
     const void* label_domain,
     const void* label_tile_extent,
-    const void* index_tile_extent,
-    optional<uint32_t> label_cell_val_num = nullopt,
-    optional<std::pair<tiledb_filter_type_t, int>> label_filters = nullopt,
-    optional<std::pair<tiledb_filter_type_t, int>> index_filters = nullopt,
-    optional<uint64_t> capacity = nullopt,
-    optional<bool> allows_dups = nullopt);
+    const void* index_tile_extent);
 
 /**
  * Extension of the TemporaryDirectoryFixture that adds helper functions for

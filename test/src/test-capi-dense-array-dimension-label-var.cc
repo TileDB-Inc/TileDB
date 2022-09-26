@@ -55,7 +55,7 @@ using namespace tiledb::test;
  * Array Summary:
  *  * Array Type: Dense
  *  * Dimensions:
- *    - x: (type=UINT64, domain=[1, 4], tile=4)
+ *    - x: (type=UINT64, domain=[0, 3], tile=4)
  *  * Attributes:
  *    - a: (type=FLOAT64)
  *  * Dimension labels:
@@ -101,7 +101,7 @@ class ArrayExample : public DimensionLabelFixture {
 
   void write_array_with_label(
       std::vector<double>& input_attr_data,
-      std::vector<char>& input_label_data,
+      std::string& input_label_data,
       std::vector<uint64_t>& input_label_offsets) {
     // Open array for writing.
     tiledb_array_t* array;
@@ -152,7 +152,7 @@ class ArrayExample : public DimensionLabelFixture {
    * @param expected_label_data A vector of the expected label values.
    */
   void check_values_from_data_reader(
-      const std::vector<char>& expected_label_data,
+      const std::string& expected_label_data,
       const std::vector<uint64_t>& expected_label_offsets) {
     // Open array for reading.
     tiledb_array_t* array;
@@ -219,24 +219,7 @@ TEST_CASE_METHOD(
     "[capi][query][DimensionLabel]") {
   // Define the input data values.
   std::vector<double> input_attr_data{1.0, 2.5, -1.0, 0.0};
-  std::vector<char> input_label_data{'r',
-                                     'e',
-                                     'd',
-                                     'y',
-                                     'e',
-                                     'l',
-                                     'l',
-                                     'o',
-                                     'w',
-                                     'g',
-                                     'r',
-                                     'e',
-                                     'e',
-                                     'n',
-                                     'b',
-                                     'l',
-                                     'u',
-                                     'e'};
+  std::string input_label_data{"redyellowgreenblue"};
   std::vector<uint64_t> input_label_offsets{0, 4, 10, 15};
 
   // Write the array.
