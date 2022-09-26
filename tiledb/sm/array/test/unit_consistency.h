@@ -57,7 +57,8 @@ class ConsistencySentry;
 
 namespace tiledb::sm {
 
-using entry_type = std::multimap<const URI, Array&>::const_iterator;
+using entry_type = std::
+    multimap<const URI, std::tuple<Array&, const QueryType>>::const_iterator;
 
 class WhiteboxConsistencyController : public ConsistencyController {
  public:
@@ -65,7 +66,7 @@ class WhiteboxConsistencyController : public ConsistencyController {
   ~WhiteboxConsistencyController() = default;
 
   entry_type register_array(
-      const URI uri, Array& array, const QueryType& query_type) {
+      const URI uri, Array& array, const QueryType query_type) {
     return ConsistencyController::register_array(uri, array, query_type);
   }
 
@@ -74,7 +75,7 @@ class WhiteboxConsistencyController : public ConsistencyController {
   }
 
   ConsistencySentry make_sentry(
-      const URI uri, Array& array, const QueryType& query_type) {
+      const URI uri, Array& array, const QueryType query_type) {
     return ConsistencyController::make_sentry(uri, array, query_type);
   }
 
