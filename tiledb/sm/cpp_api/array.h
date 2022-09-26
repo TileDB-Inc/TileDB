@@ -393,6 +393,15 @@ class Array {
   }
 
   /**
+   * Deletes the data written to the array with the input uri.
+   */
+  void delete_array(const std::string& uri) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(
+        tiledb_array_delete_array(ctx.ptr().get(), array_.get(), uri.c_str()));
+  }
+
+  /**
    * Deletes the fragments written between the input timestamps of an array
    * with the input uri.
    */

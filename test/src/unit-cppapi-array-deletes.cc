@@ -66,6 +66,36 @@ struct CPPArrayDeletesFx {
       vfs.remove_dir(array_name);
   }
 
+  void read_array(tiledb::Array array) {
+    // Read from the array
+    array.open(TILEDB_READ);
+    std::vector<int> subarray = {0, 1};
+    std::vector<int> a_read(2);
+    Query query_r(ctx, array);
+    query_r.set_subarray(subarray)
+        .set_layout(TILEDB_ROW_MAJOR)
+        .set_data_buffer("a", a_read);
+    query_r.submit();
+    array.close();
+
+    for (int i = 0; i < 2; i++) {
+      REQUIRE(a_read[i] == i);
+    }
+  }
+
+  Array write_array() {
+    std::vector<int> data = {0, 1};
+    auto array = tiledb::Array(ctx, array_name, TILEDB_MODIFY_EXCLUSIVE);
+    auto query = tiledb::Query(ctx, array, TILEDB_MODIFY_EXCLUSIVE);
+    query.set_data_buffer("a", data).set_subarray({0, 1}).submit();
+    query.set_data_buffer("a", data).set_subarray({2, 3}).submit();
+    query.set_data_buffer("a", data).set_subarray({4, 5}).submit();
+    query.set_data_buffer("a", data).set_subarray({6, 7}).submit();
+    CHECK(tiledb::test::num_fragments(array_name) == 4);
+    array.close();
+    return array;
+  }
+
   Array write_fragments() {
     std::vector<int> data = {0, 1};
 
@@ -101,12 +131,10 @@ struct CPPArrayDeletesFx {
 
 TEST_CASE_METHOD(
     CPPArrayDeletesFx,
-    "C++ API: Deletion of invalid fragment writes",
-    "[cppapi][array-deletes][fragments][invalid]") {
-  /* Note: An array must be open in MODIFY_EXCLUSIVE mode to delete_fragments */
+    "C++ API: Deletion of invalid writes",
+    "[cppapi][array-deletes][invalid]") {
+  /* Note: An array must be open in MODIFY_EXCLUSIVE mode to delete data */
   std::vector<int> data = {0, 1};
-  uint64_t timestamp_start = 0;
-  uint64_t timestamp_end = UINT64_MAX;
   auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
   auto query = tiledb::Query(ctx, array, TILEDB_WRITE);
   query.set_data_buffer("a", data).set_subarray({0, 1}).submit();
@@ -114,19 +142,31 @@ TEST_CASE_METHOD(
   query.set_data_buffer("a", data).set_subarray({4, 5}).submit();
   query.finalize();
 
-  // Delete fragments
+  // Ensure expected data was written
+  CHECK(tiledb::test::num_commits(array_name) == 3);
   CHECK(tiledb::test::num_fragments(array_name) == 3);
+  auto schemas =
+      vfs.ls(array_name + "/" + tiledb::sm::constants::array_schema_dir_name);
+  CHECK(schemas.size() == 1);
+
+  // Try to delete data
   REQUIRE_THROWS_WITH(
-      array.delete_fragments(array_name, timestamp_start, timestamp_end),
-      Catch::Matchers::ContainsSubstring("Query type must be MODIFY_EXCLUSIVE"));
-  CHECK(tiledb::test::num_fragments(array_name) == 3);
+      array.delete_array(array_name),
+      Catch::Contains("Query type must be MODIFY_EXCLUSIVE"));
   array.close();
+
+  // Ensure nothing was deleted
+  CHECK(tiledb::test::num_commits(array_name) == 3);
+  CHECK(tiledb::test::num_fragments(array_name) == 3);
+  schemas =
+      vfs.ls(array_name + "/" + tiledb::sm::constants::array_schema_dir_name);
+  CHECK(schemas.size() == 1);
 }
 
 TEST_CASE_METHOD(
     CPPArrayDeletesFx,
-    "C++ API: Deletion of valid fragment writes",
-    "[cppapi][array-deletes][fragments][valid]") {
+    "C++ API: Deletion of fragment writes",
+    "[cppapi][array-deletes][fragments]") {
   // Write fragments at timestamps 1, 3, 5, 7
   auto array = write_fragments();
   std::string commit_dir = tiledb::test::get_commit_dir(array_name);
@@ -206,19 +246,7 @@ TEST_CASE_METHOD(
   }
 
   // Read from the array
-  array.open(TILEDB_READ);
-  std::vector<int> subarray = {0, 1};
-  std::vector<int> a_read(2);
-  Query query_r(ctx, array);
-  query_r.set_subarray(subarray)
-      .set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer("a", a_read);
-  query_r.submit();
-  array.close();
-
-  for (int i = 0; i < 2; i++) {
-    REQUIRE(a_read[i] == i);
-  }
+  read_array(array);
 }
 
 TEST_CASE_METHOD(
@@ -292,17 +320,110 @@ TEST_CASE_METHOD(
   CHECK(commits.size() == num_commits);
 
   // Read from the array
-  array.open(TILEDB_READ);
-  std::vector<int> subarray = {0, 1};
-  std::vector<int> a_read(2);
-  Query query_r(ctx, array);
-  query_r.set_subarray(subarray)
-      .set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer("a", a_read);
-  query_r.submit();
+  read_array(array);
+}
+
+TEST_CASE_METHOD(
+    CPPArrayDeletesFx,
+    "C++ API: Deletion of array data",
+    "[cppapi][array-deletes][array]") {
+  // Write array data
+  auto array = write_array();
+  std::string extraneous_file_path = array_name + "/extraneous_file";
+  vfs.touch(extraneous_file_path);
+
+  // Write metadata
+  array.open(TILEDB_MODIFY_EXCLUSIVE);
+  int v = 100;
+  array.put_metadata("aaa", TILEDB_INT32, 1, &v);
   array.close();
 
-  for (int i = 0; i < 2; i++) {
-    REQUIRE(a_read[i] == i);
+  // Check write
+  CHECK(tiledb::test::num_commits(array_name) == 4);
+  CHECK(tiledb::test::num_fragments(array_name) == 4);
+  auto schemas =
+      vfs.ls(array_name + "/" + tiledb::sm::constants::array_schema_dir_name);
+  CHECK(schemas.size() == 1);
+  auto meta =
+      vfs.ls(array_name + "/" + tiledb::sm::constants::array_metadata_dir_name);
+  CHECK(meta.size() == 1);
+
+  // Conditionally consolidate
+  /* Note: there's no need to vacuum; delete_array will delete all fragments */
+  bool consolidate = GENERATE(true, false);
+  std::string commit_dir = tiledb::test::get_commit_dir(array_name);
+  std::vector<std::string> commits{vfs.ls(commit_dir)};
+
+  if (consolidate) {
+    // Consolidate commits
+    auto config = ctx.config();
+    config["sm.consolidation.mode"] = "commits";
+    Array::consolidate(ctx, array_name, &config);
+
+    // Consolidate fragment metadata
+    config["sm.consolidation.mode"] = "fragment_meta";
+    Array::consolidate(ctx, array_name, &config);
+
+    // Validate working directory
+    CHECK(tiledb::test::num_fragments(array_name) == 4);
+    auto frag_meta = vfs.ls(
+        array_name + "/" + tiledb::sm::constants::array_fragment_meta_dir_name);
+    CHECK(frag_meta.size() == 1);
+    commits = vfs.ls(commit_dir);
+    CHECK(commits.size() == 5);
+    bool con_exists = false;
+    for (auto commit : commits) {
+      if (tiledb::sm::utils::parse::ends_with(
+              commit, tiledb::sm::constants::con_commits_file_suffix)) {
+        con_exists = true;
+      }
+    }
+    CHECK(con_exists);
   }
+
+  // Delete array data
+  array.open(TILEDB_MODIFY_EXCLUSIVE);
+  array.delete_array(array_name);
+  array.close();
+
+  // Check working directory after delete
+  REQUIRE(vfs.is_file(extraneous_file_path));
+  CHECK(tiledb::test::num_fragments(array_name) == 0);
+  schemas =
+      vfs.ls(array_name + "/" + tiledb::sm::constants::array_schema_dir_name);
+  CHECK(schemas.size() == 0);
+  meta =
+      vfs.ls(array_name + "/" + tiledb::sm::constants::array_metadata_dir_name);
+  CHECK(meta.size() == 0);
+  auto frag_meta = vfs.ls(
+      array_name + "/" + tiledb::sm::constants::array_fragment_meta_dir_name);
+  CHECK(frag_meta.size() == 0);
+
+  // Check commit directory after delete
+  if (consolidate) {
+    int con_file_count = 0;
+    int ign_file_count = 0;
+    commits = vfs.ls(commit_dir);
+    for (auto commit : commits) {
+      if (tiledb::sm::utils::parse::ends_with(
+              commit, tiledb::sm::constants::con_commits_file_suffix)) {
+        con_file_count++;
+      }
+      if (tiledb::sm::utils::parse::ends_with(
+              commit, tiledb::sm::constants::ignore_file_suffix)) {
+        ign_file_count++;
+      }
+    }
+    /* Note: An ignore file is written by delete_fragments if there are
+     * consolidated commits to be ignored by the delete. */
+    CHECK(con_file_count == 1);
+    CHECK(ign_file_count == 1);
+    CHECK(tiledb::test::num_commits(array_name) == 2);
+  } else {
+    CHECK(tiledb::test::num_commits(array_name) == 0);
+  }
+
+  // Try to read array
+  REQUIRE_THROWS_WITH(
+      array.open(TILEDB_READ), Catch::Contains("Array does not exist"));
 }

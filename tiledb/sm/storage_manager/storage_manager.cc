@@ -665,12 +665,63 @@ void StorageManager::write_consolidated_commits_file(
   throw_if_not_ok(this->vfs()->close_file(consolidated_commits_uri));
 }
 
+Status StorageManager::delete_array(const char* array_name) {
+  Status st;
+  if (array_name == nullptr) {
+    throw Status_StorageManagerError(
+        "[delete_array] Array name cannot be null");
+  }
+
+  // Delete fragments and commits
+  RETURN_NOT_OK(
+      delete_fragments(array_name, 0, std::numeric_limits<uint64_t>::max()));
+
+  auto array_dir = ArrayDirectory(
+      vfs_,
+      compute_tp_,
+      URI(array_name),
+      0,
+      std::numeric_limits<uint64_t>::max());
+
+  // Get the metadata and schema uris to be deleted
+  /* Note: metadata files may not be present, try to delete anyway */
+  const auto& array_meta_uris = array_dir.array_meta_uris();
+  const auto& fragment_meta_uris = array_dir.fragment_meta_uris();
+  const auto& array_schema_uris = array_dir.array_schema_uris();
+
+  // Delete array metadata files
+  auto status =
+      parallel_for(compute_tp_, 0, array_meta_uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(array_meta_uris[i].uri_));
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(status);
+
+  // Delete fragment metadata files
+  status =
+      parallel_for(compute_tp_, 0, fragment_meta_uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(fragment_meta_uris[i]));
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(status);
+
+  // Delete array schema files
+  status =
+      parallel_for(compute_tp_, 0, array_schema_uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(array_schema_uris[i]));
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(status);
+
+  return Status::Ok();
+}
+
 Status StorageManager::delete_fragments(
     const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
   Status st;
   if (array_name == nullptr) {
     throw Status_StorageManagerError(
-        "Cannot delete_fragments; Array name cannot be null");
+        "[delete_fragments] Array name cannot be null");
   }
 
   auto array_dir = ArrayDirectory(

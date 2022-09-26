@@ -3441,6 +3441,17 @@ int32_t tiledb_array_get_open_timestamp_end(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_delete_array(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, array->array_->delete_array(tiledb::sm::URI(uri))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_delete_fragments(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
@@ -8259,6 +8270,11 @@ int32_t tiledb_array_get_open_timestamp_end(
     uint64_t* timestamp_end) noexcept {
   return api_entry<tiledb::api::tiledb_array_get_open_timestamp_end>(
       ctx, array, timestamp_end);
+}
+
+int32_t tiledb_array_delete_array(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) noexcept {
+  return api_entry<detail::tiledb_array_delete_array>(ctx, array, uri);
 }
 
 int32_t tiledb_array_delete_fragments(

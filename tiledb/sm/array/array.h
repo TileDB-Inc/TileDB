@@ -205,6 +205,16 @@ class Array {
   Status close();
 
   /**
+   * Deletes the Array data with given URI.
+   *
+   * @param uri The uri of the Array whose data is to be deleted.
+   * @return Status
+   *
+   * @pre The Array must be open for exclusive writes
+   */
+  Status delete_array(const URI& uri);
+
+  /**
    * Deletes the fragments from the Array with given URI.
    *
    * @param uri The uri of the Array whose fragments are to be deleted.
