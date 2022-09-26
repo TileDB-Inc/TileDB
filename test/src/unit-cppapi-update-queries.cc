@@ -43,31 +43,6 @@
 
 using namespace tiledb;
 
-class UpdateValue {
- public:
-  UpdateValue(const std::string& field_name, uint64_t val)
-      : field_name_(field_name)
-      , val_(sizeof(uint64_t)) {
-    memcpy(val_.data(), &val, sizeof(uint64_t));
-  }
-
-  std::string field_name() {
-    return field_name_;
-  }
-
-  void* val() {
-    return val_.data();
-  }
-
-  size_t val_size() {
-    return val_.size();
-  }
-
- private:
-  std::string field_name_;
-  std::vector<uint8_t> val_;
-};
-
 struct UpdatesFx {
   // Constants.
   const char* SPARSE_ARRAY_NAME = "test_updates_array";
@@ -88,13 +63,13 @@ struct UpdatesFx {
   void create_sparse_array(bool allows_dups = false, bool encrypt = false);
   void write_update_condition(
       QueryCondition& qc,
-      std::vector<UpdateValue>& uvs,
+      std::vector<sm::UpdateValue>& uvs,
       uint64_t timestamp,
       bool encrypt = false,
       bool error_expected = false);
   void check_update_conditions(
       std::vector<QueryCondition> qcs,
-      std::vector<std::vector<UpdateValue>> uvs,
+      std::vector<std::vector<sm::UpdateValue>> uvs,
       uint64_t timestamp,
       bool encrypt = false);
   void remove_sparse_array();
@@ -153,7 +128,7 @@ void UpdatesFx::create_sparse_array(bool allows_dups, bool encrypt) {
 
 void UpdatesFx::write_update_condition(
     QueryCondition& qc,
-    std::vector<UpdateValue>& uvs,
+    std::vector<sm::UpdateValue>& uvs,
     uint64_t timestamp,
     bool encrypt,
     bool error_expected) {
@@ -178,7 +153,11 @@ void UpdatesFx::write_update_condition(
   query.set_condition(qc);
   for (auto& uv : uvs) {
     QueryExperimental::add_update_value_to_query(
-        ctx_, query, uv.field_name().c_str(), uv.val(), uv.val_size());
+        ctx_,
+        query,
+        uv.field_name().c_str(),
+        uv.view().content(),
+        uv.view().size());
   }
 
   try {
@@ -197,7 +176,7 @@ void UpdatesFx::write_update_condition(
 
 void UpdatesFx::check_update_conditions(
     std::vector<QueryCondition> qcs,
-    std::vector<std::vector<UpdateValue>> uvs,
+    std::vector<std::vector<sm::UpdateValue>> uvs,
     uint64_t timestamp,
     bool encrypt) {
   // Open array.
@@ -301,8 +280,9 @@ TEST_CASE_METHOD(
   qc.init("a1", &val, sizeof(int32_t), TILEDB_LT);
 
   // Define update values for first condition.
-  std::vector<UpdateValue> uvs;
-  uvs.emplace_back("a1", 1);
+  std::vector<sm::UpdateValue> uvs;
+  val = 1;
+  uvs.emplace_back("a1", &val, sizeof(int32_t));
 
   // Define query condition (a1 > 8).
   QueryCondition qc2(ctx_);
@@ -310,9 +290,11 @@ TEST_CASE_METHOD(
   qc2.init("a1", &val2, sizeof(int32_t), TILEDB_GT);
 
   // Define update values for second condition.
-  std::vector<UpdateValue> uvs2;
-  uvs2.emplace_back("a1", 2);
-  uvs2.emplace_back("d1", 1);
+  std::vector<sm::UpdateValue> uvs2;
+  val = 2;
+  uvs2.emplace_back("a1", &val, sizeof(int32_t));
+  val = 1;
+  uvs2.emplace_back("d1", &val, sizeof(int32_t));
 
   write_update_condition(qc, uvs, 1, encrypt);
   check_update_conditions({qc}, {uvs}, 2, encrypt);

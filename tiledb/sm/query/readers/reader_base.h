@@ -161,7 +161,11 @@ class ReaderBase : public StrategyBase {
   /** The query condition. */
   QueryCondition& condition_;
 
-  /** The delete and update conditions. */
+  /**
+   * The delete and update conditions.
+   *
+   * Note: These will be ordered by timestamps.
+   */
   std::vector<QueryCondition> delete_and_update_conditions_;
 
   /**
@@ -170,6 +174,9 @@ class ReaderBase : public StrategyBase {
    * the timestamp of the condition. It will be used to process fragments with
    * timestamps when a delete or update condition timestamp falls within the
    * fragment timestamps.
+   *
+   * Note: These should have the same order as in the
+   * `delete_and_update_conditions_` vector.
    */
   std::vector<QueryCondition> timestamped_delete_and_update_conditions_;
 

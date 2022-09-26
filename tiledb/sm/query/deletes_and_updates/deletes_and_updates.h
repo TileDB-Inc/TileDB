@@ -104,7 +104,7 @@ class DeletesAndUpdates : public StrategyBase, public IQueryStrategy {
   /** The query condition. */
   QueryCondition& condition_;
 
-  /** The update values. */
+  /** The update values, owned by the query. */
   std::vector<UpdateValue>& update_values_;
 
   /** UID of the logger instance */
