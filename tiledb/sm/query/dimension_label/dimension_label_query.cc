@@ -121,7 +121,7 @@ DimensionLabelReadDataQuery::DimensionLabelReadDataQuery(
   throw_if_not_ok(indexed_array_query->set_subarray(subarray));
 
   // Set the label data buffer.
-  indexed_array_query->set_buffer(
+  indexed_array_query->set_dimension_label_buffer(
       dimension_label->label_attribute()->name(), label_buffer);
 }
 
@@ -393,7 +393,7 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
 
   // Set-up labelled array query (sparse array)
   throw_if_not_ok(labelled_array_query->set_layout(Layout::UNORDERED));
-  labelled_array_query->set_buffer(
+  labelled_array_query->set_dimension_label_buffer(
       dimension_label->label_attribute()->name(), label_buffer);
   if (use_local_index) {
     throw_if_not_ok(labelled_array_query->set_data_buffer(
@@ -402,13 +402,13 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
         index_data_->data_size(),
         true));
   } else {
-    labelled_array_query->set_buffer(
+    labelled_array_query->set_dimension_label_buffer(
         dimension_label->index_attribute()->name(), index_buffer);
   }
 
   // Set-up indexed array query (dense array)
   throw_if_not_ok(indexed_array_query->set_layout(Layout::ROW_MAJOR));
-  indexed_array_query->set_buffer(
+  indexed_array_query->set_dimension_label_buffer(
       dimension_label->label_attribute()->name(), label_buffer);
 }
 
@@ -443,7 +443,7 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
 
   // Set-up labelled array (sparse array).
   throw_if_not_ok(labelled_array_query->set_layout(Layout::UNORDERED));
-  labelled_array_query->set_buffer(
+  labelled_array_query->set_dimension_label_buffer(
       dimension_label->label_dimension()->name(), label_buffer);
   if (use_local_index) {
     throw_if_not_ok(labelled_array_query->set_data_buffer(
@@ -452,13 +452,13 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
         index_data_->data_size(),
         true));
   } else {
-    labelled_array_query->set_buffer(
+    labelled_array_query->set_dimension_label_buffer(
         dimension_label->index_attribute()->name(), index_buffer);
   }
 
   // Set-up indexed array query (sparse array).
   throw_if_not_ok(indexed_array_query->set_layout(Layout::UNORDERED));
-  indexed_array_query->set_buffer(
+  indexed_array_query->set_dimension_label_buffer(
       dimension_label->label_attribute()->name(), label_buffer);
   if (use_local_index) {
     throw_if_not_ok(indexed_array_query->set_data_buffer(
@@ -467,7 +467,7 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
         index_data_->data_size(),
         true));
   } else {
-    indexed_array_query->set_buffer(
+    indexed_array_query->set_dimension_label_buffer(
         dimension_label->index_dimension()->name(), index_buffer);
   }
 }

@@ -1812,7 +1812,8 @@ Status Query::set_buffer(
   return Status::Ok();
 }
 
-void Query::set_buffer(const std::string& name, const QueryBuffer& buffer) {
+void Query::set_dimension_label_buffer(
+    const std::string& name, const QueryBuffer& buffer) {
   if (buffer.buffer_var_ || buffer.buffer_var_size_) {
     // Variable-length buffer. Set data buffer and offsets buffer.
     throw_if_not_ok(

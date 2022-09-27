@@ -682,7 +682,8 @@ class Query {
    * @param name Name of the dimension or attribute to set the buffer for.
    * @param buffer The query buffer to get the data from.
    **/
-  void set_buffer(const std::string& name, const QueryBuffer& buffer);
+  void set_dimension_label_buffer(
+      const std::string& name, const QueryBuffer& buffer);
 
   /**
    * Sets the label data buffer for fixed or variable sized dimension labels.
