@@ -962,13 +962,12 @@ void Query::get_label_data_buffer(
   // Return the buffer
   auto it = label_buffers_.find(name);
   if (it != label_buffers_.end()) {
-    if (array_schema_->dimension_label_reference(name).label_cell_val_num() !=
-        constants::var_num) {
-      *buffer = it->second.buffer_;
-      *buffer_size = it->second.buffer_size_;
-    } else {
+    if (array_schema_->dimension_label_reference(name).is_var()) {
       *buffer = it->second.buffer_var_;
       *buffer_size = it->second.buffer_var_size_;
+    } else {
+      *buffer = it->second.buffer_;
+      *buffer_size = it->second.buffer_size_;
     }
     return;
   }
@@ -996,8 +995,7 @@ void Query::get_label_offsets_buffer(
   }
 
   // Error if it is fixed-sized
-  if (array_schema_->dimension_label_reference(name).label_cell_val_num() !=
-      constants::var_num) {
+  if (!array_schema_->dimension_label_reference(name).is_var()) {
     throw StatusException(Status_QueryError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is fixed-sized"));
@@ -1961,8 +1959,7 @@ void Query::set_label_data_buffer(
 
   // Set dimension label buffer on the appropriate buffer depending if the label
   // is fixed or variable length.
-  (array_schema_->dimension_label_reference(name).label_cell_val_num() ==
-   constants::var_num) ?
+  array_schema_->dimension_label_reference(name).is_var() ?
       label_buffers_[name].set_data_var_buffer(buffer, buffer_size) :
       label_buffers_[name].set_data_buffer(buffer, buffer_size);
 }
@@ -1999,8 +1996,7 @@ void Query::set_label_offsets_buffer(
   }
 
   // Check the dimension labe is in fact variable length.
-  if (array_schema_->dimension_label_reference(name).label_cell_val_num() !=
-      constants::var_num) {
+  if (!array_schema_->dimension_label_reference(name).is_var()) {
     throw StatusException(Status_QueryError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is fixed-sized"));

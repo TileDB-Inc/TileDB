@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 #include "tiledb/type/range/range.h"
 
@@ -146,6 +147,13 @@ class DimensionLabelReference {
    */
   inline bool is_external() const {
     return is_external_;
+  }
+
+  /**
+   * Returns ``true`` is the label cells are variable length.
+   */
+  inline bool is_var() const {
+    return label_cell_val_num_ == constants::var_num;
   }
 
   /**
