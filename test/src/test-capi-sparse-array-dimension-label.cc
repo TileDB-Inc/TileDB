@@ -27,7 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * Tests the DimensionLabel API
+ * Test the dimension label API with a sparse array using fixed size dimension
+ * labels.
  */
 
 #include "test/src/experimental_helpers.h"
@@ -69,6 +70,11 @@ class SparseArrayExample1 : public DimensionLabelFixture {
       , label_domain_{-1, 1} {
   }
 
+  /**
+   * Create the example array with a dimension label.
+   *
+   * @param label_order Label order for the dimension label.
+   */
   void create_example(tiledb_label_order_t label_order) {
     // Create an array schema
     uint64_t x_tile_extent{4};
@@ -105,6 +111,17 @@ class SparseArrayExample1 : public DimensionLabelFixture {
     tiledb_array_schema_free(&array_schema);
   }
 
+  /**
+   * Write data to the array and dimension label.
+   *
+   * @param input_index_data Coordinate data for the array. If empty, the
+   *     coordinate data is not added to the query.
+   * @param input_attr_data Data to write to the array attribute. If empty, the
+   *     attribute data is not added to the query..
+   * @param input_label_data Data to write to the dimension label. If empty, the
+   *     dimension label dadta is not added to the query.
+   * @param error_on_write If true, require the query returns a failed status.
+   */
   void write_array_with_label(
       std::vector<uint64_t>& input_index_data,
       std::vector<double>& input_attr_data,
@@ -201,6 +218,11 @@ class SparseArrayExample1 : public DimensionLabelFixture {
     }
   }
 
+  /**
+   * Check the value in the indexed array is correct.
+   *
+   * @param expected_label_data The expected label data in the indexed array.
+   */
   void check_indexed_array_data(
       const std::vector<double>& expected_label_data) {
     // Read back the data.
@@ -217,6 +239,12 @@ class SparseArrayExample1 : public DimensionLabelFixture {
     }
   }
 
+  /**
+   * Check the value in the labelled array is correct.
+   *
+   * @param expected_index_data The expected index data in the labelled array.
+   * @param expected_label_data The expected label data in the labelled array.
+   */
   void check_labelled_array_data(
       const std::vector<uint64_t>& expected_index_data,
       const std::vector<double>& expected_label_data) {

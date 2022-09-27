@@ -78,7 +78,7 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
             array->array_schema_latest().write_version());
       }
 
-      // Add dimesnion label queries.
+      // Add dimension label queries.
       add_range_queries(array, subarray, label_buffers, array_buffers);
       add_data_queries_for_write(array, subarray, label_buffers, array_buffers);
       break;

@@ -27,7 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * Tests the DimensionLabel API
+ * Test the dimension label API with a dense array using variable size dimension
+ * labels.
  */
 
 #include "test/src/experimental_helpers.h"
@@ -99,6 +100,16 @@ class ArrayExample : public DimensionLabelFixture {
     tiledb_array_schema_free(&array_schema);
   }
 
+  /**
+   * Write data to the array and its dimension label.
+   *
+   * @param input_attr_data Data to write to the array attribute. If empty, the
+   *     attribute is not written to.
+   * @param input_label_data Data to write to the dimension label. If empty, the
+   *     dimension label is not written to.
+   * @param input_label_offsets Data to write to the dimension label. If
+   *     `input_label_data` is emtpy, this data is not set.
+   */
   void write_array_with_label(
       std::vector<double>& input_attr_data,
       std::string& input_label_data,
@@ -150,6 +161,7 @@ class ArrayExample : public DimensionLabelFixture {
    * Read back full array with a data query and check the values.
    *
    * @param expected_label_data A vector of the expected label values.
+   * @param expected_label_offsets A vector of the expected label offsets.
    */
   void check_values_from_data_reader(
       const std::string& expected_label_data,
@@ -225,12 +237,7 @@ TEST_CASE_METHOD(
   // Write the array.
   write_array_with_label(
       input_attr_data, input_label_data, input_label_offsets);
-  /**
-  // Check the dimension label arrays have the correct data.
-  check_indexed_array_data(input_label_data);
-  check_labelled_array_data(expected_index_data, expected_label_data_sorted);
 
   // Check data reader.
-  check_values_from_data_reader(input_label_data);
-  **/
+  check_values_from_data_reader(input_label_data, input_label_offsets);
 }

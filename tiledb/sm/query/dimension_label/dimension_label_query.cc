@@ -27,7 +27,15 @@
  *
  * @section DESCRIPTION
  *
- * Classes for querying a dimension label.
+ * Classes for querying (reading/writing) a dimension label.
+ *
+ * Note: The current implementation uses a class that stores two `Query` objects
+ * and all operations check if each of the query is initialized or is `nullptr`.
+ * This is to support the temporary dual-array dimension label design. Once a
+ * reader for the ordered dimension label is implemented and the projections for
+ * the unordered dimension label are implemented, each `DimensionLabelQuery`
+ * will only contain a single `Query` object that must be constructed on
+ * initialization.
  */
 
 #include "tiledb/sm/query/dimension_label/dimension_label_query.h"
@@ -190,6 +198,10 @@ tdb_unique_ptr<IndexData> create_index_data(
 
 /**
  * Typed implementation to check if data is sorted.
+ *
+ * TODO: This is a quick-and-dirty implementation while we decide where sorting
+ * is handled for ordered dimension labels. If we keep this design, we should
+ * consider optimizing (parallelizing?) the loops in this check.
  *
  * @param buffer Buffer to check for sort.
  * @param buffer_size Total size of the buffer.

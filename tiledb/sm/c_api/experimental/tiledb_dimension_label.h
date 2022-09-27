@@ -230,11 +230,10 @@ TILEDB_EXPORT int32_t tiledb_query_set_label_data_buffer(
  * @param name The name of the dimension label to set the buffer for.
  * @param buffer This buffer holds the starting offsets of each cell value in
  *     the buffer set by `tiledb_query_set_label_data_buffer`.
- * @param buffer_size In the case of writes, it is the size of `buffer_off`
- *     in bytes. In the case of reads, this initially contains the allocated
- *     size of `buffer_off`, but after the *end of the query*
- *     (`tiledb_query_submit`) it will contain the size of the useful (read)
- *     data in `buffer_off`.
+ * @param buffer_size In the case of writes, it is the size of `buffer` in
+ *     bytes. In the case of reads, this initially contains the allocated size
+ *     of `buffer`, but after the *end of the query* (`tiledb_query_submit`)
+ *     it will contain the size of the useful (read) data in `buffer`.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_set_label_offsets_buffer(

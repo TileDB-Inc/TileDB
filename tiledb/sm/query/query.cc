@@ -1982,6 +1982,7 @@ void Query::set_label_offsets_buffer(
       throw StatusException(
           Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
     }
+
     // Check buffer size
     if (buffer_offsets_size == nullptr) {
       throw StatusException(Status_QueryError(

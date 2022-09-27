@@ -27,7 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * Tests the DimensionLabel API
+ * Test the dimension label API by writing many dimension labels to a dense
+ * array.
  */
 
 #include "test/src/experimental_helpers.h"
@@ -185,6 +186,18 @@ class ExampleArray : public DimensionLabelFixture {
     tiledb_array_schema_free(&array_schema);
   }
 
+  /**
+   * Write data to the array and all of the dimensions.
+   *
+   * @param a1 Data for the array attribute.
+   * @param x1 Data for the first x label.
+   * @param x2 Data for the second x label.
+   * @param y1 Data for the first y label.
+   * @param y2 Data for the second y label.
+   * @param z1 Data for the first z label.
+   * @param z2 Data for the second z label.
+   * @param time Data for the time data.
+   */
   void write_array_with_labels(
       std::vector<double>& a1,
       std::vector<double>& x1,
@@ -381,10 +394,19 @@ class ExampleArray : public DimensionLabelFixture {
   std::string array_name;
 
  private:
+  /** Domain for dimensions x, y, and z. */
   uint64_t domain_[2];
+
+  /** Domain for dimension t. */
   uint64_t t_domain_[2];
+
+  /** Domain for the dimension label on dimension t. */
   int64_t temporal_label_domain_[2];
+
+  /** Domain for the dimension labels x, y, and z. */
   double spatial_label1_domain_[2];
+
+  /** Domain for the dimension labels x_shifted, y_shifted, and z_shifted. */
   double spatial_label2_domain_[2];
 };
 
