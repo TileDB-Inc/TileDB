@@ -427,3 +427,84 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS_WITH(
       array.open(TILEDB_READ), Catch::Contains("Array does not exist"));
 }
+
+// TODO: remove once tiledb_vfs_copy_dir is implemented for windows.
+#ifndef _WIN32
+TEST_CASE(
+    "C++ API: Deletion of older-versioned array data",
+    "[cppapi][array-deletes][array][older_version]") {
+  // Get the v11 array
+  const std::string array_name = "cpp_unit_array_deletes_v11";
+  Context ctx;
+  VFS vfs(ctx);
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+  std::string v11_arrays_dir =
+      std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays/sparse_array_v11";
+  vfs.copy_dir(v11_arrays_dir.c_str(), array_name);
+
+  // Prepare buffers
+  std::vector<int> buffer_a1{0, 1, 2, 3};
+  std::vector<uint64_t> buffer_a2{0, 1, 3, 6};
+  std::string buffer_var_a2("abbcccdddd");
+  std::vector<float> buffer_a3{0.1f, 0.2f, 1.1f, 1.2f, 2.1f, 2.2f, 3.1f, 3.2f};
+  std::vector<uint64_t> buffer_coords_dim1{1, 1, 1, 2};
+  std::vector<uint64_t> buffer_coords_dim2{1, 2, 4, 3};
+
+  // Write array
+  auto array = tiledb::Array(ctx, array_name, TILEDB_MODIFY_EXCLUSIVE);
+  auto query = tiledb::Query(ctx, array, TILEDB_MODIFY_EXCLUSIVE);
+  query.set_data_buffer("a1", buffer_a1);
+  query.set_data_buffer(
+      "a2", (void*)buffer_var_a2.c_str(), buffer_var_a2.size());
+  query.set_offsets_buffer("a2", buffer_a2);
+  query.set_data_buffer("a3", buffer_a3);
+  query.set_data_buffer("d1", buffer_coords_dim1);
+  query.set_data_buffer("d2", buffer_coords_dim2);
+  query.submit();
+  query.finalize();
+  array.close();
+  std::string extraneous_file_path = array_name + "/extraneous_file";
+  vfs.touch(extraneous_file_path);
+
+  // Check write
+  auto schemas =
+      vfs.ls(array_name + "/" + tiledb::sm::constants::array_schema_dir_name);
+  CHECK(schemas.size() == 1);
+  auto uris = vfs.ls(array_name);
+  bool ok_exists = false;
+  std::string ok_prefix;
+  for (auto uri : uris) {
+    if (tiledb::sm::utils::parse::ends_with(
+            uri, tiledb::sm::constants::ok_file_suffix)) {
+      ok_exists = true;
+      ok_prefix = uri.substr(0, uri.find_last_of("."));
+    }
+  }
+  CHECK(ok_exists);
+  auto tdb_dir = vfs.ls(ok_prefix);
+  CHECK(tdb_dir.size() == 7);
+  for (auto tdb : tdb_dir) {
+    CHECK(tiledb::sm::utils::parse::ends_with(
+        tdb, tiledb::sm::constants::file_suffix));
+  }
+
+  // Delete array data
+  array.open(TILEDB_MODIFY_EXCLUSIVE);
+  array.delete_array(array_name);
+  array.close();
+
+  // Check working directory after delete
+  uris = vfs.ls(array_name);
+  for (auto uri : uris) {
+    CHECK(!tiledb::sm::utils::parse::starts_with(uri, ok_prefix));
+  }
+  REQUIRE(vfs.is_file(extraneous_file_path));
+  schemas =
+      vfs.ls(array_name + "/" + tiledb::sm::constants::array_schema_dir_name);
+  CHECK(schemas.size() == 0);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+#endif
