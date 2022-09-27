@@ -1361,12 +1361,12 @@ Status Query::process() {
   // Check if the query is completed or not.
   if ((only_dim_label_query() || !strategy_->incomplete()) &&
       (!dim_label_queries_ || dim_label_queries_->completed())) {
-    // Main query and dimension label query are both completed. Set status to
-    // complete and handle the callback.
-    status_ = QueryStatus::COMPLETED;
+    // Main query and dimension label query are both completed. Handle the
+    // callback, then set status to complete.
     if (callback_ != nullptr) {
       callback_(callback_data_);
     }
+    status_ = QueryStatus::COMPLETED;
   } else {
     // Either the main query or the dimension lable query are incomplete.
     status_ = QueryStatus::INCOMPLETE;
