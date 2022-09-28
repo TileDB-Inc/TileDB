@@ -117,6 +117,15 @@ class RestClient {
       const URI& uri, const ArraySchema& array_schema);
 
   /**
+   * Deletes all written data from array at the given URI from the REST server.
+   *
+   * #TODO Implement API endpoint on TileDBCloud.
+   * @param uri Array URI to delete
+   * @return Status
+   */
+  Status delete_array_from_rest(const URI& uri);
+
+  /**
    * Deregisters an array at the given URI from the REST server.
    *
    * @param uri Array URI to deregister

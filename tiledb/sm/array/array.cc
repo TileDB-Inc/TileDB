@@ -546,7 +546,16 @@ Status Array::delete_array(const URI& uri) {
   }
 
   // Delete array data
-  RETURN_NOT_OK(storage_manager_->delete_array(uri.c_str()));
+  if (remote_) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr) {
+      throw Status_ArrayError(
+          "[Array::delete_array] Remote array with no REST client.");
+    }
+    RETURN_NOT_OK(rest_client->delete_array_from_rest(uri));
+  } else {
+    RETURN_NOT_OK(storage_manager_->delete_array(uri.c_str()));
+  }
 
   return Status::Ok();
 }
