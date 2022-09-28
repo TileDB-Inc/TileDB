@@ -98,11 +98,11 @@ TEST_CASE(
     SECTION("no serialization") {
       serialized_load = false;
     }
-    SECTION("serialization enabled fragment info load") {
 #ifdef TILEDB_SERIALIZATION
+    SECTION("serialization enabled fragment info load") {
       serialized_load = true;
-#endif
     }
+#endif
 
     if (serialized_load) {
       FragmentInfo deserialized_fragment_info(ctx, array_name);
@@ -167,22 +167,22 @@ TEST_CASE(
       TILEDB_ROW_MAJOR,
       2);
 
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
   {
     // Create fragment info object
     FragmentInfo fragment_info(ctx, array_name);
 
     // Load fragment info
     fragment_info.load();
-
-    bool serialized_load = false;
-    SECTION("no serialization") {
-      serialized_load = false;
-    }
-    SECTION("serialization enabled fragment info load") {
-#ifdef TILEDB_SERIALIZATION
-      serialized_load = true;
-#endif
-    }
 
     if (serialized_load) {
       FragmentInfo deserialized_fragment_info(ctx, array_name);
@@ -215,16 +215,6 @@ TEST_CASE(
 
     // Load fragment info again
     fragment_info.load();
-
-    bool serialized_load = false;
-    SECTION("no serialization") {
-      serialized_load = false;
-    }
-    SECTION("serialization enabled fragment info load") {
-#ifdef TILEDB_SERIALIZATION
-      serialized_load = true;
-#endif
-    }
 
     if (serialized_load) {
       FragmentInfo deserialized_fragment_info(ctx, array_name);
@@ -277,17 +267,13 @@ TEST_CASE(
     // Load fragment info again
     fragment_info.load();
 
-    bool serialized_load = false;
-    SECTION("no serialization") {
-      serialized_load = false;
-    }
-    SECTION("serialization enabled fragment info load") {
-#ifdef TILEDB_SERIALIZATION
-      serialized_load = true;
-#endif
-    }
-
     if (serialized_load) {
+      // force loading of the rtrees so that they are included in serialized
+      // fragment info (by default rtree loading is lazy).
+      for (uint32_t fid = 0; fid < fragment_info.fragment_num(); ++fid) {
+        fragment_info.mbr_num(fid);
+      }
+      // serialize and deserialize back fragment info
       FragmentInfo deserialized_fragment_info(ctx, array_name);
       tiledb_fragment_info_serialize(
           ctx.ptr().get(),
@@ -471,15 +457,16 @@ TEST_CASE("C++ API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
     SECTION("no serialization") {
       serialized_load = false;
     }
-
-    SECTION("serialization enabled fragment info load") {
 #ifdef TILEDB_SERIALIZATION
+    SECTION("serialization enabled fragment info load") {
       serialized_load = true;
+      // force loading of the rtrees so that they are included in serialized
+      // fragment info (by default rtree loading is lazy).
       for (uint32_t fid = 0; fid < fragment_info.fragment_num(); ++fid) {
         fragment_info.mbr_num(fid);
       }
-#endif
     }
+#endif
 
     if (serialized_load) {
       FragmentInfo deserialized_fragment_info(ctx, array_name);
@@ -577,15 +564,16 @@ TEST_CASE(
     SECTION("no serialization") {
       serialized_load = false;
     }
-
-    SECTION("serialization enabled fragment info load") {
 #ifdef TILEDB_SERIALIZATION
+    SECTION("serialization enabled fragment info load") {
       serialized_load = true;
+      // force loading of the rtrees so that they are included in serialized
+      // fragment info (by default rtree loading is lazy).
       for (uint32_t fid = 0; fid < fragment_info.fragment_num(); ++fid) {
         fragment_info.mbr_num(fid);
       }
-#endif
     }
+#endif
 
     if (serialized_load) {
       FragmentInfo deserialized_fragment_info(ctx, array_name);
@@ -674,22 +662,22 @@ TEST_CASE(
   write_array(
       ctx.ptr().get(), array_name, 2, subarray, TILEDB_ROW_MAJOR, buffers);
 
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
   {
     // Create fragment info object
     FragmentInfo fragment_info(ctx, array_name);
 
     // Load fragment info
     fragment_info.load();
-
-    bool serialized_load = false;
-    SECTION("no serialization") {
-      serialized_load = false;
-    }
-    SECTION("serialization enabled fragment info load") {
-#ifdef TILEDB_SERIALIZATION
-      serialized_load = true;
-#endif
-    }
 
     if (serialized_load) {
       FragmentInfo deserialized_fragment_info(ctx, array_name);
@@ -725,16 +713,6 @@ TEST_CASE(
 
     // Load fragment info
     fragment_info.load();
-
-    bool serialized_load = false;
-    SECTION("no serialization") {
-      serialized_load = false;
-    }
-    SECTION("serialization enabled fragment info load") {
-#ifdef TILEDB_SERIALIZATION
-      serialized_load = true;
-#endif
-    }
 
     if (serialized_load) {
       FragmentInfo deserialized_fragment_info(ctx, array_name);
@@ -773,16 +751,6 @@ TEST_CASE(
 
     // Load fragment info
     fragment_info.load();
-
-    bool serialized_load = false;
-    SECTION("no serialization") {
-      serialized_load = false;
-    }
-    SECTION("serialization enabled fragment info load") {
-#ifdef TILEDB_SERIALIZATION
-      serialized_load = true;
-#endif
-    }
 
     if (serialized_load) {
       FragmentInfo deserialized_fragment_info(ctx, array_name);
@@ -863,22 +831,22 @@ TEST_CASE(
   write_array(
       ctx.ptr().get(), array_name, 2, subarray, TILEDB_ROW_MAJOR, buffers);
 
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
   {
     // Create fragment info object
     FragmentInfo fragment_info(ctx, array_name);
 
     // Load fragment info
     fragment_info.load();
-
-    bool serialized_load = false;
-    SECTION("no serialization") {
-      serialized_load = false;
-    }
-    SECTION("serialization enabled fragment info load") {
-#ifdef TILEDB_SERIALIZATION
-      serialized_load = true;
-#endif
-    }
 
     if (serialized_load) {
       FragmentInfo deserialized_fragment_info(ctx, array_name);
@@ -911,16 +879,6 @@ TEST_CASE(
 
     // Load fragment info
     fragment_info.load();
-
-    bool serialized_load = false;
-    SECTION("no serialization") {
-      serialized_load = false;
-    }
-    SECTION("serialization enabled fragment info load") {
-#ifdef TILEDB_SERIALIZATION
-      serialized_load = true;
-#endif
-    }
 
     if (serialized_load) {
       FragmentInfo deserialized_fragment_info(ctx, array_name);
@@ -962,16 +920,6 @@ TEST_CASE(
     // Load fragment info
     fragment_info.load();
 
-    bool serialized_load = false;
-    SECTION("no serialization") {
-      serialized_load = false;
-    }
-    SECTION("serialization enabled fragment info load") {
-#ifdef TILEDB_SERIALIZATION
-      serialized_load = true;
-#endif
-    }
-
     if (serialized_load) {
       FragmentInfo deserialized_fragment_info(ctx, array_name);
       tiledb_fragment_info_serialize(
@@ -997,16 +945,6 @@ TEST_CASE(
 
     // Load fragment info
     fragment_info.load();
-
-    bool serialized_load = false;
-    SECTION("no serialization") {
-      serialized_load = false;
-    }
-    SECTION("serialization enabled fragment info load") {
-#ifdef TILEDB_SERIALIZATION
-      serialized_load = true;
-#endif
-    }
 
     if (serialized_load) {
       FragmentInfo deserialized_fragment_info(ctx, array_name);
@@ -1112,11 +1050,11 @@ TEST_CASE(
     SECTION("no serialization") {
       serialized_load = false;
     }
-    SECTION("serialization enabled fragment info load") {
 #ifdef TILEDB_SERIALIZATION
+    SECTION("serialization enabled fragment info load") {
       serialized_load = true;
-#endif
     }
+#endif
 
     if (serialized_load) {
       FragmentInfo deserialized_fragment_info(ctx, array_name);

@@ -31,6 +31,7 @@
  */
 
 #include "test/src/helpers.h"
+#include "test/src/serialization_wrappers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 
@@ -117,6 +118,31 @@ TEST_CASE(
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
 
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
+  if (serialized_load) {
+    tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
+
   // Get fragment URI
   const char* uri;
   rc = tiledb_fragment_info_get_fragment_uri(ctx, fragment_info, 1, &uri);
@@ -194,6 +220,31 @@ TEST_CASE(
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
 
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
+  tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
+
   // No fragments yet
   uint32_t fragment_num;
   rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
@@ -211,6 +262,20 @@ TEST_CASE(
   // Load fragment info again
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
+
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
 
   // Get fragment num again
   rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
@@ -255,6 +320,20 @@ TEST_CASE(
   // Load fragment info again
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
+
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
 
   // Get fragment num again
   rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
@@ -444,7 +523,45 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
   CHECK(rc == TILEDB_OK);
-  tiledb_config_free(&cfg);
+  // tiledb_config_free(&cfg);
+
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+    // force load rtrees so that they are included in serialized
+    // fragment info (by default rtree loading is lazy).
+    uint64_t mbr_num = 0;
+    uint32_t fragment_num = 0;
+    rc = tiledb_fragment_info_get_fragment_num(
+        ctx, fragment_info, &fragment_num);
+    CHECK(rc == TILEDB_OK);
+    for (uint32_t fid = 0; fid < fragment_num; ++fid) {
+      rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, fid, &mbr_num);
+      CHECK(rc == TILEDB_OK);
+    }
+  }
+#endif
+
+  tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_fragment_info_set_config(ctx, deserialized_fragment_info, cfg);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
 
   // No fragments yet
   uint32_t fragment_num;
@@ -472,6 +589,22 @@ TEST_CASE(
   // Load fragment info again
   rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
   CHECK(rc == TILEDB_OK);
+
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_fragment_info_set_config(ctx, deserialized_fragment_info, cfg);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
 
   // Get fragment num again
   rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
@@ -517,7 +650,23 @@ TEST_CASE(
   // Load fragment info again
   rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
   CHECK(rc == TILEDB_OK);
-  tiledb_ctx_free(&ctx_correct_key);
+  // tiledb_ctx_free(&ctx_correct_key);
+
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_fragment_info_set_config(ctx, deserialized_fragment_info, cfg);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
 
   // Get fragment num again
   rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
@@ -757,6 +906,42 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&cfg);
 
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+    // force load rtrees so that they are included in serialized
+    // fragment info (by default rtree loading is lazy).
+    uint64_t mbr_num = 0;
+    uint32_t fragment_num = 0;
+    rc = tiledb_fragment_info_get_fragment_num(
+        ctx, fragment_info, &fragment_num);
+    CHECK(rc == TILEDB_OK);
+    for (uint32_t fid = 0; fid < fragment_num; ++fid) {
+      rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, fid, &mbr_num);
+      CHECK(rc == TILEDB_OK);
+    }
+  }
+#endif
+
+  tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
+
   // Get fragment num
   uint32_t fragment_num;
   rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
@@ -849,6 +1034,42 @@ TEST_CASE(
   // Load fragment info
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
+
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+    // force load rtrees so that they are included in serialized
+    // fragment info (by default rtree loading is lazy).
+    uint64_t mbr_num = 0;
+    uint32_t fragment_num = 0;
+    rc = tiledb_fragment_info_get_fragment_num(
+        ctx, fragment_info, &fragment_num);
+    CHECK(rc == TILEDB_OK);
+    for (uint32_t fid = 0; fid < fragment_num; ++fid) {
+      rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, fid, &mbr_num);
+      CHECK(rc == TILEDB_OK);
+    }
+  }
+#endif
+
+  tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
 
   // Load non-empty domain var size - error
   uint64_t domain[2];
@@ -1002,6 +1223,31 @@ TEST_CASE(
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
 
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
+  tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
+
   // Check for consolidated metadata
   int32_t has;
   rc = tiledb_fragment_info_has_consolidated_metadata(
@@ -1041,6 +1287,20 @@ TEST_CASE(
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
 
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
+
   // Check for consolidated metadata
   rc = tiledb_fragment_info_has_consolidated_metadata(
       ctx, fragment_info, 0, &has);
@@ -1068,6 +1328,20 @@ TEST_CASE(
   // Load fragment info
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
+
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
 
   // Check for consolidated metadata
   rc = tiledb_fragment_info_has_consolidated_metadata(
@@ -1161,6 +1435,31 @@ TEST_CASE(
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
 
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
+  tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
+
   // Get number of fragments to vacuum
   uint32_t to_vacuum_num;
   rc = tiledb_fragment_info_get_to_vacuum_num(
@@ -1191,6 +1490,20 @@ TEST_CASE(
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
 
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
+
   // Get consolidated fragment URI
   const char* uri;
   rc = tiledb_fragment_info_get_fragment_uri(ctx, fragment_info, 0, &uri);
@@ -1220,6 +1533,20 @@ TEST_CASE(
   // Load fragment info
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
+
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
 
   // Get number of fragments to vacuum
   rc = tiledb_fragment_info_get_to_vacuum_num(
@@ -1320,6 +1647,31 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
   // Load fragment info
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
+
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
+  tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
 
   // Get fragment array schemas
   tiledb_array_schema_t* frag1_array_schema = nullptr;
@@ -1503,6 +1855,31 @@ TEST_CASE(
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
 
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
+  tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
+
   // Get consolidated fragment URI
   const char* uri;
   rc = tiledb_fragment_info_get_fragment_uri(ctx, fragment_info, 0, &uri);
@@ -1592,6 +1969,31 @@ TEST_CASE(
   // Load fragment info
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
+
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
+  tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
 
   // Check dump
   const auto ver = std::to_string(tiledb::sm::constants::format_version);
@@ -1688,6 +2090,31 @@ TEST_CASE(
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
 
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
+  tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
+
   // Get fragment URI
   const char* frag_uri;
   rc = tiledb_fragment_info_get_fragment_uri(ctx, fragment_info, 0, &frag_uri);
@@ -1778,6 +2205,31 @@ TEST_CASE(
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
 
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
+  tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
+
   // Check for consolidated metadata
   int32_t has;
   rc = tiledb_fragment_info_has_consolidated_metadata(
@@ -1845,6 +2297,20 @@ TEST_CASE(
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
 
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
+
   // Check for consolidated metadata
   rc = tiledb_fragment_info_has_consolidated_metadata(
       ctx, fragment_info, 0, &has);
@@ -1872,6 +2338,20 @@ TEST_CASE(
   // Load fragment info
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
+
+  if (serialized_load) {
+    rc = tiledb_fragment_info_alloc(
+        ctx, array_name.c_str(), &deserialized_fragment_info);
+    CHECK(rc == TILEDB_OK);
+    tiledb_fragment_info_serialize(
+        ctx,
+        array_name.c_str(),
+        fragment_info,
+        deserialized_fragment_info,
+        tiledb_serialization_type_t(0));
+    tiledb_fragment_info_free(&fragment_info);
+    fragment_info = deserialized_fragment_info;
+  }
 
   // Check again
   rc = tiledb_fragment_info_has_consolidated_metadata(
