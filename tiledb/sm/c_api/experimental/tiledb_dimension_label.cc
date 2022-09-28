@@ -286,7 +286,7 @@ int32_t tiledb_array_schema_add_dimension_label(
     const uint32_t dim_id,
     const char* name,
     tiledb_dimension_label_schema_t* dim_label_schema) noexcept {
-  return api_entry<detail::tiledb_array_schema_add_dimension_label>(
+  return api_entry_context<detail::tiledb_array_schema_add_dimension_label>(
       ctx, array_schema, dim_id, name, dim_label_schema);
 }
 
@@ -295,7 +295,7 @@ int32_t tiledb_array_schema_has_dimension_label(
     const tiledb_array_schema_t* array_schema,
     const char* name,
     int32_t* has_dim_label) noexcept {
-  return api_entry<detail::tiledb_array_schema_has_dimension_label>(
+  return api_entry_context<detail::tiledb_array_schema_has_dimension_label>(
       ctx, array_schema, name, has_dim_label);
 }
 
@@ -309,7 +309,7 @@ int32_t tiledb_dimension_label_schema_alloc(
     const void* label_domain,
     const void* label_tile_extent,
     tiledb_dimension_label_schema_t** dim_label_schema) noexcept {
-  return api_entry<detail::tiledb_dimension_label_schema_alloc>(
+  return api_entry_context<detail::tiledb_dimension_label_schema_alloc>(
       ctx,
       label_order,
       index_type,
@@ -333,7 +333,7 @@ int32_t tiledb_query_set_label_data_buffer(
     const char* name,
     void* buffer,
     uint64_t* buffer_size) noexcept {
-  return api_entry<detail::tiledb_query_set_label_data_buffer>(
+  return api_entry_context<detail::tiledb_query_set_label_data_buffer>(
       ctx, query, name, buffer, buffer_size);
 }
 
@@ -343,7 +343,7 @@ int32_t tiledb_query_set_label_offsets_buffer(
     const char* name,
     uint64_t* buffer,
     uint64_t* buffer_size) noexcept {
-  return api_entry<detail::tiledb_query_set_label_offsets_buffer>(
+  return api_entry_context<detail::tiledb_query_set_label_offsets_buffer>(
       ctx, query, name, buffer, buffer_size);
 }
 
@@ -353,7 +353,7 @@ int32_t tiledb_query_get_label_data_buffer(
     const char* name,
     void** buffer,
     uint64_t** buffer_size) noexcept {
-  return api_entry<detail::tiledb_query_get_label_data_buffer>(
+  return api_entry_context<detail::tiledb_query_get_label_data_buffer>(
       ctx, query, name, buffer, buffer_size);
 }
 
@@ -363,7 +363,7 @@ int32_t tiledb_query_get_label_offsets_buffer(
     const char* name,
     uint64_t** buffer,
     uint64_t** buffer_size) noexcept {
-  return api_entry<detail::tiledb_query_get_label_offsets_buffer>(
+  return api_entry_context<detail::tiledb_query_get_label_offsets_buffer>(
       ctx, query, name, buffer, buffer_size);
 }
 
