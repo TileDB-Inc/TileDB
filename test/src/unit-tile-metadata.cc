@@ -64,9 +64,8 @@ struct CPPFixedTileMetadataFx {
     tiledb_ctx_t* ctx;
     tiledb_ctx_alloc(NULL, &ctx);
 
-    // The array will be 4x4 with dimensions "rows" and "cols", with domain
-    // [1,4].
-    uint32_t dim_domain[] = {0, 999};
+    // The array will be one dimension "d", with domain [0,999].
+    uint32_t dim_domain[]{0, 999};
     tiledb_dimension_t* d;
     tiledb_dimension_alloc(
         ctx, "d", TILEDB_UINT32, &dim_domain[0], &tile_extent_, &d);
@@ -1050,4 +1049,404 @@ TEST_CASE_METHOD(
     // Check metadata.
     CPPVarTileMetadataFx::check_metadata(f, layout, nullable, all_null);
   }
+}
+
+struct CPPFixedTileMetadataPartialFx {
+  CPPFixedTileMetadataPartialFx()
+      : vfs_(ctx_) {
+    if (vfs_.is_dir(ARRAY_NAME))
+      vfs_.remove_dir(ARRAY_NAME);
+  }
+
+  ~CPPFixedTileMetadataPartialFx() {
+    if (vfs_.is_dir(ARRAY_NAME))
+      vfs_.remove_dir(ARRAY_NAME);
+  }
+
+  void create_array() {
+    // Create TileDB context
+    tiledb_ctx_t* ctx;
+    tiledb_ctx_alloc(NULL, &ctx);
+
+    // The array will be two dimension "d1" and "d2", with domain [1,8].
+    uint32_t dim_domain[]{1, 8};
+    tiledb_dimension_t* d1;
+    tiledb_dimension_alloc(
+        ctx, "d1", TILEDB_UINT32, &dim_domain[0], &tile_extent_, &d1);
+    tiledb_dimension_t* d2;
+    tiledb_dimension_alloc(
+        ctx, "d2", TILEDB_UINT32, &dim_domain[0], &tile_extent_, &d2);
+
+    // Create domain
+    tiledb_domain_t* domain;
+    tiledb_domain_alloc(ctx, &domain);
+    tiledb_domain_add_dimension(ctx, domain, d1);
+    tiledb_domain_add_dimension(ctx, domain, d2);
+
+    // Create a single attribute "a" so each (i,j) cell can store a double.
+    tiledb_attribute_t* a;
+    tiledb_attribute_alloc(ctx, "a", TILEDB_FLOAT64, &a);
+
+    // Create array schema
+    tiledb_array_schema_t* array_schema;
+    tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
+    tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+    tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+    tiledb_array_schema_set_domain(ctx, array_schema, domain);
+    tiledb_array_schema_add_attribute(ctx, array_schema, a);
+
+    // Create array
+    tiledb_array_create(ctx, ARRAY_NAME, array_schema);
+
+    // Clean up
+    tiledb_attribute_free(&a);
+    tiledb_dimension_free(&d1);
+    tiledb_dimension_free(&d2);
+    tiledb_domain_free(&domain);
+    tiledb_array_schema_free(&array_schema);
+    tiledb_ctx_free(&ctx);
+  }
+
+  void write_fragment() {
+    // Write to the array.
+    auto array = tiledb::Array(ctx_, ARRAY_NAME, TILEDB_WRITE);
+    auto query = tiledb::Query(ctx_, array, TILEDB_WRITE);
+
+    // Write a 4x4 square intersecting the 4 tiles of the array. Writting a 2x2
+    // square to each tile.
+    Subarray subarray(ctx_, array);
+    uint32_t r[2]{3, 6};
+    subarray.add_range(0, r[0], r[1]);
+    subarray.add_range(1, r[0], r[1]);
+    query.set_subarray(subarray);
+
+    std::vector<double> a{1.7,
+                          1.1,
+                          2.2,
+                          2.5,
+                          1.5,
+                          1.3,
+                          2.1,
+                          2.6,
+                          3.4,
+                          3.8,
+                          4.1,
+                          4.2,
+                          3.5,
+                          3.2,
+                          4.9,
+                          4.6};
+    query.set_layout(TILEDB_ROW_MAJOR);
+    query.set_data_buffer("a", a);
+
+    query.submit();
+    query.finalize();
+    array.close();
+  }
+
+  void check_metadata() {
+    // Open array.
+    tiledb_ctx_t* ctx;
+    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_array_t* array;
+    int rc = tiledb_array_alloc(ctx, ARRAY_NAME, &array);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx, array, TILEDB_READ);
+    CHECK(rc == TILEDB_OK);
+
+    // Load fragment metadata.
+    auto frag_meta = array->array_->fragment_metadata();
+    auto& enc_key = array->array_->get_encryption_key();
+    auto st = frag_meta[0]->load_fragment_min_max_sum_null_count(enc_key);
+    CHECK(st.ok());
+
+    // Do fragment metadata first for attribute.
+    {
+      // Validate min.
+      auto&& [st_min, min] = frag_meta[0]->get_min("a");
+      CHECK(st_min.ok());
+      if (st_min.ok()) {
+        CHECK((*min).size() == sizeof(double));
+
+        double correct_min = 1.1;
+        CHECK(0 == memcmp((*min).data(), &correct_min, (*min).size()));
+      }
+
+      // Validate max.
+      auto&& [st_max, max] = frag_meta[0]->get_max("a");
+      CHECK(st_max.ok());
+      if (st_max.ok()) {
+        CHECK((*max).size() == sizeof(double));
+
+        double correct_max = 4.9;
+        CHECK(0 == memcmp((*max).data(), &correct_max, (*max).size()));
+      }
+
+      // Validate sum.
+      auto&& [st_sum, sum] = frag_meta[0]->get_sum("a");
+      CHECK(st_sum.ok());
+      if (st_sum.ok()) {
+        double correct_sum = 46.7;
+        CHECK(*(double*)*sum - correct_sum < 0.0001);
+      }
+    }
+
+    // Load attribute metadata.
+    std::vector<std::string> names_min{"a"};
+    st = frag_meta[0]->load_tile_min_values(enc_key, std::move(names_min));
+    CHECK(st.ok());
+
+    std::vector<std::string> names_max{"a"};
+    st = frag_meta[0]->load_tile_max_values(enc_key, std::move(names_max));
+    CHECK(st.ok());
+
+    std::vector<std::string> names_sum{"a"};
+    st = frag_meta[0]->load_tile_sum_values(enc_key, std::move(names_sum));
+    CHECK(st.ok());
+
+    std::vector<std::string> names_null_count{"a"};
+    st = frag_meta[0]->load_tile_null_count_values(
+        enc_key, std::move(names_null_count));
+    CHECK(st.ok());
+
+    std::vector<double> correct_tile_mins{1.1, 2.1, 3.2, 4.1};
+    std::vector<double> correct_tile_maxs{1.7, 2.6, 3.8, 4.9};
+    std::vector<double> correct_tile_sums{5.6, 9.4, 13.9, 17.8};
+
+    // Validate attribute metadta.
+    for (uint64_t tile_idx = 0; tile_idx < 4; tile_idx++) {
+      // Validate min.
+      auto&& [st_min, min, min_size] =
+          frag_meta[0]->get_tile_min("a", tile_idx);
+      CHECK(st_min.ok());
+      if (st_min.ok()) {
+        CHECK(*min_size == sizeof(double));
+        CHECK(0 == memcmp(*min, &correct_tile_mins[tile_idx], *min_size));
+      }
+
+      // Validate max.
+      auto&& [st_max, max, max_size] =
+          frag_meta[0]->get_tile_max("a", tile_idx);
+      CHECK(st_max.ok());
+      if (st_max.ok()) {
+        CHECK(*max_size == sizeof(double));
+        CHECK(0 == memcmp(*max, &correct_tile_maxs[tile_idx], *max_size));
+      }
+
+      // Validate sum.
+      auto&& [st_sum, sum] = frag_meta[0]->get_tile_sum("a", tile_idx);
+      CHECK(st_sum.ok());
+      if (st_sum.ok()) {
+        CHECK(*(double*)*sum - correct_tile_sums[tile_idx] < 0.0001);
+      }
+    }
+
+    // Close array.
+    rc = tiledb_array_close(ctx, array);
+    CHECK(rc == TILEDB_OK);
+
+    // Clean up.
+    tiledb_array_free(&array);
+    tiledb_ctx_free(&ctx);
+  }
+
+  const char* ARRAY_NAME = "tile_metadata_unit_array";
+  const uint64_t tile_extent_ = 4;
+  tiledb::Context ctx_;
+  tiledb::VFS vfs_;
+};
+
+TEST_CASE_METHOD(
+    CPPFixedTileMetadataPartialFx,
+    "TileMetadata: partial tile fixed",
+    "[tile-metadata][fixed][partial]") {
+  // Create the array.
+  create_array();
+  write_fragment();
+  check_metadata();
+}
+
+struct CPPVarTileMetadataPartialFx {
+  CPPVarTileMetadataPartialFx()
+      : vfs_(ctx_) {
+    if (vfs_.is_dir(ARRAY_NAME))
+      vfs_.remove_dir(ARRAY_NAME);
+  }
+
+  ~CPPVarTileMetadataPartialFx() {
+    if (vfs_.is_dir(ARRAY_NAME))
+      vfs_.remove_dir(ARRAY_NAME);
+  }
+
+  void create_array() {
+    // Create TileDB context
+    tiledb_ctx_t* ctx;
+    tiledb_ctx_alloc(NULL, &ctx);
+
+    // The array will be two dimension "d1" and "d2", with domain [1,8].
+    uint32_t dim_domain[]{1, 8};
+    tiledb_dimension_t* d1;
+    tiledb_dimension_alloc(
+        ctx, "d1", TILEDB_UINT32, &dim_domain[0], &tile_extent_, &d1);
+    tiledb_dimension_t* d2;
+    tiledb_dimension_alloc(
+        ctx, "d2", TILEDB_UINT32, &dim_domain[0], &tile_extent_, &d2);
+
+    // Create domain
+    tiledb_domain_t* domain;
+    tiledb_domain_alloc(ctx, &domain);
+    tiledb_domain_add_dimension(ctx, domain, d1);
+    tiledb_domain_add_dimension(ctx, domain, d2);
+
+    // Create a single attribute "a" so each (i,j) cell can store an integer
+    tiledb_attribute_t* a;
+    tiledb_attribute_alloc(ctx, "a", TILEDB_STRING_ASCII, &a);
+    tiledb_attribute_set_cell_val_num(ctx, a, TILEDB_VAR_NUM);
+
+    // Create array schema
+    tiledb_array_schema_t* array_schema;
+    tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
+    tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+    tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+    tiledb_array_schema_set_domain(ctx, array_schema, domain);
+    tiledb_array_schema_add_attribute(ctx, array_schema, a);
+
+    // Create array
+    tiledb_array_create(ctx, ARRAY_NAME, array_schema);
+
+    // Clean up
+    tiledb_attribute_free(&a);
+    tiledb_dimension_free(&d1);
+    tiledb_dimension_free(&d2);
+    tiledb_domain_free(&domain);
+    tiledb_array_schema_free(&array_schema);
+    tiledb_ctx_free(&ctx);
+  }
+
+  void write_fragment() {
+    // Write to the array.
+    auto array = tiledb::Array(ctx_, ARRAY_NAME, TILEDB_WRITE);
+    auto query = tiledb::Query(ctx_, array, TILEDB_WRITE);
+
+    // Write a 4x4 square intersecting the 4 tiles of the array. Writting a 2x2
+    // square to each tile.
+    Subarray subarray(ctx_, array);
+    uint32_t r[2]{3, 6};
+    subarray.add_range(0, r[0], r[1]);
+    subarray.add_range(1, r[0], r[1]);
+    query.set_subarray(subarray);
+
+    std::string a = "1.71.12.22.51.51.32.12.63.43.84.14.23.53.24.94.6";
+    std::vector<uint64_t> offsets{
+        0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45};
+    query.set_layout(TILEDB_ROW_MAJOR);
+    query.set_data_buffer("a", a).set_offsets_buffer("a", offsets);
+
+    query.submit();
+    query.finalize();
+    array.close();
+  }
+
+  void check_metadata() {
+    // Open array.
+    tiledb_ctx_t* ctx;
+    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_array_t* array;
+    int rc = tiledb_array_alloc(ctx, ARRAY_NAME, &array);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx, array, TILEDB_READ);
+    CHECK(rc == TILEDB_OK);
+
+    // Load fragment metadata.
+    auto frag_meta = array->array_->fragment_metadata();
+    auto& enc_key = array->array_->get_encryption_key();
+    auto st = frag_meta[0]->load_fragment_min_max_sum_null_count(enc_key);
+    CHECK(st.ok());
+
+    // Do fragment metadata first for attribute.
+    {
+      // Validate min.
+      auto&& [st_min, min] = frag_meta[0]->get_min("a");
+      CHECK(st_min.ok());
+      if (st_min.ok()) {
+        std::string correct_min = "1.1";
+        CHECK((*min).size() == correct_min.size());
+        CHECK(0 == memcmp((*min).data(), correct_min.data(), (*min).size()));
+      }
+
+      // Validate max.
+      auto&& [st_max, max] = frag_meta[0]->get_max("a");
+      CHECK(st_max.ok());
+      if (st_max.ok()) {
+        std::string correct_max = "4.9";
+        CHECK((*max).size() == correct_max.size());
+        CHECK(0 == memcmp((*max).data(), correct_max.data(), (*max).size()));
+      }
+    }
+
+    // Load attribute metadata.
+    std::vector<std::string> names_min{"a"};
+    st = frag_meta[0]->load_tile_min_values(enc_key, std::move(names_min));
+    CHECK(st.ok());
+
+    std::vector<std::string> names_max{"a"};
+    st = frag_meta[0]->load_tile_max_values(enc_key, std::move(names_max));
+    CHECK(st.ok());
+
+    std::vector<std::string> names_sum{"a"};
+    st = frag_meta[0]->load_tile_sum_values(enc_key, std::move(names_sum));
+    CHECK(st.ok());
+
+    std::vector<std::string> names_null_count{"a"};
+    st = frag_meta[0]->load_tile_null_count_values(
+        enc_key, std::move(names_null_count));
+    CHECK(st.ok());
+
+    std::vector<std::string> correct_tile_mins{"1.1", "2.1", "3.2", "4.1"};
+    std::vector<std::string> correct_tile_maxs{"1.7", "2.6", "3.8", "4.9"};
+
+    // Validate attribute metadta.
+    for (uint64_t tile_idx = 0; tile_idx < 4; tile_idx++) {
+      // Validate min.
+      auto&& [st_min, min, min_size] =
+          frag_meta[0]->get_tile_min("a", tile_idx);
+      CHECK(st_min.ok());
+      if (st_min.ok()) {
+        CHECK(*min_size == correct_tile_mins[tile_idx].size());
+        CHECK(0 == memcmp(*min, correct_tile_mins[tile_idx].data(), *min_size));
+      }
+
+      // Validate max.
+      auto&& [st_max, max, max_size] =
+          frag_meta[0]->get_tile_max("a", tile_idx);
+      CHECK(st_max.ok());
+      if (st_max.ok()) {
+        CHECK(*max_size == correct_tile_maxs[tile_idx].size());
+        CHECK(0 == memcmp(*max, correct_tile_maxs[tile_idx].data(), *max_size));
+      }
+    }
+
+    // Close array.
+    rc = tiledb_array_close(ctx, array);
+    CHECK(rc == TILEDB_OK);
+
+    // Clean up.
+    tiledb_array_free(&array);
+    tiledb_ctx_free(&ctx);
+  }
+
+  const char* ARRAY_NAME = "tile_metadata_unit_array";
+  const uint64_t tile_extent_ = 4;
+  tiledb::Context ctx_;
+  tiledb::VFS vfs_;
+};
+
+TEST_CASE_METHOD(
+    CPPVarTileMetadataPartialFx,
+    "TileMetadata: partial tile var",
+    "[tile-metadata][var][partial]") {
+  // Create the array.
+  create_array();
+  write_fragment();
+  check_metadata();
 }

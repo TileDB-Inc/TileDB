@@ -104,7 +104,7 @@ Subarray::Subarray(
     StorageManager* storage_manager)
     : stats_(
           parent_stats ? parent_stats->create_child("Subarray") :
-          storage_manager ?
+                         storage_manager ?
                          storage_manager->stats()->create_child("subSubarray") :
                          nullptr)
     , logger_(logger->clone("Subarray", ++logger_id_))
@@ -2740,6 +2740,7 @@ Subarray Subarray::clone() const {
   clone.is_default_ = is_default_;
   clone.range_offsets_ = range_offsets_;
   clone.label_range_subset_ = label_range_subset_;
+  clone.attr_range_subset_ = attr_range_subset_;
   clone.tile_overlap_ = tile_overlap_;
   clone.est_result_size_computed_ = est_result_size_computed_;
   clone.coalesce_ranges_ = coalesce_ranges_;
@@ -2885,6 +2886,7 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(cell_order_, subarray.cell_order_);
   std::swap(range_subset_, subarray.range_subset_);
   std::swap(label_range_subset_, subarray.label_range_subset_);
+  std::swap(attr_range_subset_, subarray.attr_range_subset_);
   std::swap(is_default_, subarray.is_default_);
   std::swap(range_offsets_, subarray.range_offsets_);
   std::swap(tile_overlap_, subarray.tile_overlap_);

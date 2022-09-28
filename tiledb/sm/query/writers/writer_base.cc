@@ -585,10 +585,11 @@ Status WriterBase::compute_tiles_metadata(
       const auto var_size = array_schema_.var_size(attr);
       const auto cell_size = array_schema_.cell_size(attr);
       const auto cell_val_num = array_schema_.cell_val_num(attr);
-      TileMetadataGenerator md_generator(
-          type, is_dim, var_size, cell_size, cell_val_num);
       for (auto& tile : attr_tiles) {
-        md_generator.process_tile(tile);
+        TileMetadataGenerator md_generator(
+            type, is_dim, var_size, cell_size, cell_val_num);
+        md_generator.process_full_tile(tile);
+        md_generator.set_tile_metadata(tile);
       }
 
       return Status::Ok();
@@ -606,7 +607,8 @@ Status WriterBase::compute_tiles_metadata(
       auto st = parallel_for(compute_tp, 0, tile_num, [&](uint64_t t) {
         TileMetadataGenerator md_generator(
             type, is_dim, var_size, cell_size, cell_val_num);
-        md_generator.process_tile(attr_tiles[t]);
+        md_generator.process_full_tile(attr_tiles[t]);
+        md_generator.set_tile_metadata(attr_tiles[t]);
 
         return Status::Ok();
       });
