@@ -57,8 +57,8 @@ class ConsistencySentry;
 
 namespace tiledb::sm {
 
-using entry_type = std::
-    multimap<const URI, std::tuple<Array&, const QueryType>>::const_iterator;
+using array_entry = std::tuple<Array&, const QueryType>;
+using entry_type = std::multimap<const URI, array_entry>::const_iterator;
 
 class WhiteboxConsistencyController : public ConsistencyController {
  public:

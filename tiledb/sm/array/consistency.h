@@ -69,8 +69,15 @@ class ConsistencyController {
   friend class WhiteboxConsistencyController;
 
  public:
-  using entry_type = std::
-      multimap<const URI, std::tuple<Array&, const QueryType>>::const_iterator;
+  /**
+   * Note: array openness and registration are not fully atomic. Upon array
+   * registration, the array is considered to be only partially opened, so
+   * requesting array data is prohibited. However, in order to maintain
+   * consistency, registration must access the array's QueryType. As such, the
+   * QueryType is stored in the multimap alongside its corresponding Array.
+   */
+  using array_entry = std::tuple<Array&, const QueryType>;
+  using entry_type = std::multimap<const URI, array_entry>::const_iterator;
 
   /**
    * Constructor.
@@ -114,9 +121,10 @@ class ConsistencyController {
    * Note: this function is private because it may only be called by the
    * ConsistencySentry constructor.
    *
+   * Note: this function must not request any data from an array because array
+   * openness and registration are not yet fully atomic.
+   *
    * @pre the given URI is the root directory of the Array and is not empty.
-   * @pre until array openness and registration are fully atomic, this
-   * function may not request data from an array that is not yet fully opened.
    */
   entry_type register_array(
       const URI uri, Array& array, const QueryType query_type);
@@ -135,10 +143,11 @@ class ConsistencyController {
   /**
    * The open array registry.
    *
-   * Note: until array openness and registration are fully atomic, QueryType
-   * must be stored in the multimap to meet the register_array precondition.
+   * Note: QueryType must be stored in the multimap to avoid requesting data
+   * from partially-opened arrays because array openness and registration are
+   * not yet fully atomic.
    **/
-  std::multimap<const URI, std::tuple<Array&, const QueryType>> array_registry_;
+  std::multimap<const URI, array_entry> array_registry_;
 
   /**
    * Mutex that protects atomicity between the existence of a

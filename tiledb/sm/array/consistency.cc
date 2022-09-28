@@ -86,8 +86,7 @@ ConsistencyController::entry_type ConsistencyController::register_array(
     }
   }
 
-  return array_registry_.insert(
-      {uri, std::tuple<Array&, const QueryType>(array, query_type)});
+  return array_registry_.insert({uri, array_entry(array, query_type)});
 }
 
 void ConsistencyController::deregister_array(
