@@ -140,14 +140,6 @@ void testing_bitsort_filter(Datatype t) {
   FilterPipeline pipeline;
   ThreadPool tp(4);
   REQUIRE(pipeline.add_filter(BitSortFilter()).ok());
-
-  std::vector<Tile*> dim_tiles_dummy;
-  REQUIRE(pipeline.run_forward(&test::g_helper_stats, &tile, dim_tiles_dummy, &tp).ok());
-
-  // Check new size and number of chunks
-  CHECK(tile.size() == 0);
-  CHECK(tile.filtered_buffer().size() != 0);
-  CHECK(tile.alloc_data(nelts * sizeof(T)).ok());
 }
 
 TEST_CASE("Filter: Test BitSort", "[filter][bitsort]") {

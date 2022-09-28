@@ -35,6 +35,7 @@
 
  
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/bitsort_filter_type.h"
@@ -136,15 +137,11 @@ class BitSortFilter : public Filter {
    * TODO: comment part
    */
   template <typename T>
-  Status sort_part(
-      BitSortFilterMetadataType &pair,
-      const ConstBuffer* input_buffer,
-      Buffer* output_buffer) const;
+  Status sort_part(const ConstBuffer* input_buffer, Buffer* output_buffer, uint32_t start, std::vector<std::pair<T, uint64_t>> &sorted_elements)  const;
 
   template <typename T, typename W>
   Status rewrite_dim_tile_forward(
-      const std::vector<std::pair<T, uint32_t>>& elements,
-      Tile* dim_tile) const;
+      const std::vector<std::pair<T, uint64_t>>& elements, Tile *dim_tile) const;
 
   /**
    * TODO: comment

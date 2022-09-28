@@ -50,6 +50,8 @@
 #include <utility>
 #include <vector>
 
+#include <stdio.h> // TODO REMOVE
+
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -155,51 +157,24 @@ Status BitSortFilter::run_forward(
   RETURN_NOT_OK(output_metadata->write(&num_parts, sizeof(uint32_t)));
 
   // Sort all parts
+  std::vector<uint32_t> offsets;
+  uint32_t total_size = 0;
   for (const auto& part : parts) {
     auto part_size = (uint32_t)part.size();
+    offsets.push_back(total_size);
+    total_size += part_size;
+  }
+
+  std::vector<std::pair<T, uint64_t>> sorted_elements(total_size);
+  for (uint64_t i = 0; i < num_parts; ++i) {
+    const auto &part = parts[i];
+    auto part_size = static_cast<uint32_t>(part.size());
     RETURN_NOT_OK(output_metadata->write(&part_size, sizeof(uint32_t)));
-    RETURN_NOT_OK(sort_part<T>(pair, &part, output_buf));
+    RETURN_NOT_OK(sort_part<T>(&part, output_buf, offsets[i], sorted_elements));
   }
-
-  return Status::Ok();
-}
-
-template <typename T>
-Status BitSortFilter::sort_part(
-    BitSortFilterMetadataType &pair, const ConstBuffer* input_buffer, Buffer* output_buffer) const {
-  // Read in the data.
-  uint32_t s = input_buffer->size();
-  assert(s % sizeof(T) == 0);
-  uint32_t num_elems_in_part = s / sizeof(T);
-
-  if (num_elems_in_part == 0) {
-    return Status::Ok();
-  }
-
-  const T* part_array = static_cast<const T*>(input_buffer->data());
-  std::vector<std::pair<T, uint32_t>> sorted_elements;
-  const Domain &domain = pair.second.get();
-
-  uint64_t dim_num = domain.dim_num();
-  uint64_t tile_size = 1;
-  (void)tile_size;
-  for (uint64_t i = 0; i < dim_num; ++i) {
-    const Dimension *dimension = domain.dimension_ptr(i);
-    (void)dimension;
-    // DETERMINE THE TILE EXTENT 
-    // MANUAL TILING WOO
-  }
-
-  for (uint32_t i = 0; i < num_elems_in_part; ++i) {
-    sorted_elements.push_back(std::make_pair(part_array[i], i));
-  }
-
-  // Sort the data.
-  std::sort(sorted_elements.begin(), sorted_elements.end());
-
-  std::vector<Tile*> &dim_tiles = pair.first.get();
 
   // Rewrite each of the dimension tile data with the new sort order.
+  std::vector<Tile*> &dim_tiles = pair.first.get();
   for (auto* dim_tile : dim_tiles) {
     Datatype tile_type = dim_tile->type();
     // TODO: return_not_ok doesn't work here...
@@ -224,9 +199,32 @@ Status BitSortFilter::sort_part(
     }
   }
 
+  return Status::Ok();
+}
+
+template <typename T>
+Status BitSortFilter::sort_part(const ConstBuffer* input_buffer, Buffer* output_buffer, uint32_t start, std::vector<std::pair<T, uint64_t>> &sorted_elements) const {
+  // Read in the data.
+  uint32_t s = input_buffer->size();
+  assert(s % sizeof(T) == 0);
+  uint32_t num_elems_in_part = s / sizeof(T);
+
+  if (num_elems_in_part == 0) {
+    return Status::Ok();
+  }
+
+  const T* part_array = static_cast<const T*>(input_buffer->data());
+
+  for (uint32_t i = 0; i < num_elems_in_part; ++i) {
+    sorted_elements[start + i] = std::make_pair(part_array[i], start + i);
+  }
+
+  // Sort the data.
+  std::sort(sorted_elements.begin() + start, sorted_elements.begin() + start + num_elems_in_part);
+
   // Write in the sorted order to output.
   for (uint32_t j = 0; j < num_elems_in_part; ++j) {
-    T value = sorted_elements[j].first;
+    T value = sorted_elements[start + j].first;
     RETURN_NOT_OK(output_buffer->write(&value, sizeof(T)));
 
     if (j != num_elems_in_part - 1) {
@@ -238,7 +236,7 @@ Status BitSortFilter::sort_part(
 }
 
 template <typename T, typename W>
-Status BitSortFilter::rewrite_dim_tile_forward(const std::vector<std::pair<T, uint32_t>> &elements, Tile *dim_tile) const {
+Status BitSortFilter::rewrite_dim_tile_forward(const std::vector<std::pair<T, uint64_t>> &elements, Tile *dim_tile) const {
   uint64_t elements_size = elements.size();
   std::vector<W> tile_data_vec(elements_size);
   W *tile_data = static_cast<W*>(dim_tile->data());
@@ -420,11 +418,7 @@ Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, uint64_t i, const
         return true;
     };
 
-  std::cout << "before sort...\n";
-
   std::sort(dimension_vector.begin(), dimension_vector.end(), comparison_function);
-
-  std::cout << "after sort...\n";
 
   if (positions_opt) {
     std::vector<uint64_t> &positions = positions_opt.value().get();
