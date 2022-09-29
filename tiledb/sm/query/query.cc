@@ -1243,10 +1243,8 @@ Status Query::init() {
       }
     }
 
-    // Create the query strategy if possible. May need to wait for range queries
-    // to be completed and for the subarray to be updated.
-    if (!uses_labels ||
-        (!only_labels && dim_label_queries_->completed_range_queries())) {
+    // Create the query strategy if querying main array.
+    if (!only_labels) {
       RETURN_NOT_OK(create_strategy());
     }
   }
@@ -1327,12 +1325,6 @@ Status Query::process() {
             "Cannot process query; No range set on dimension " +
             std::to_string(dim_idx) + " after update dimension label ranges."));
       }
-    }
-
-    // Label queries are completed and the subarray is fully updated. We can
-    // create the query strategy now.
-    if (!only_dim_label_query()) {
-      RETURN_NOT_OK(create_strategy());
     }
   }
 
