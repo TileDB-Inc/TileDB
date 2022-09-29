@@ -48,6 +48,7 @@
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/subarray/subarray.h"
 
+#include <iostream> // TODO: DELETE
 #include <variant>
 
 namespace tiledb {
@@ -972,6 +973,43 @@ ReaderBase::load_tile_chunk_data(
           unfiltered_tile_validity_size};
 }
 
+template<typename T>
+void print_tile_reader(Tile *tile) {
+  T *tile_data = static_cast<T*>(tile->data());
+  size_t num_cells = tile->size_as<T>();
+  for (size_t i = 0; i < num_cells; ++i) {
+    std::cout << tile_data[i] << " ";
+  }
+  std::cout << "\n";
+}
+
+void print_tile_reader(Tile *tile) {
+  auto tile_type = tile->type();
+  switch (tile_type) {
+    case Datatype::INT8: {
+      print_tile_reader<int8_t>(tile);
+    } break;
+    case Datatype::INT16: {
+      print_tile_reader<int16_t>(tile);
+    } break;
+    case Datatype::INT32: {
+      print_tile_reader<int32_t>(tile);
+    } break;
+    case Datatype::INT64: {
+      print_tile_reader<int64_t>(tile);
+    } break;
+    case Datatype::FLOAT32: {
+      print_tile_reader<float>(tile);
+    } break;
+    case Datatype::FLOAT64: {
+      print_tile_reader<double>(tile);
+    } break;
+    default: {
+      std::cout << "invalid tile type: " << datatype_str(tile_type) << "\n";
+    } break;
+  }
+}
+
 // TODO: pass here?
 Status ReaderBase::unfilter_tile_chunk_range(
     const std::string& name,
@@ -1030,6 +1068,11 @@ Status ReaderBase::unfilter_tile_chunk_range(
 
             // TODO: remove
 
+          }
+
+          std::cout << "printing out dim_tiles in step 3\n";
+          for (auto *dim_tile : dim_tiles) {
+            print_tile_reader(dim_tile);
           }
 
           const Domain &d = array_schema_.domain();
