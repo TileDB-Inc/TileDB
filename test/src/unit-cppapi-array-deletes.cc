@@ -433,6 +433,9 @@ TEST_CASE_METHOD(
 TEST_CASE(
     "C++ API: Deletion of older-versioned array data",
     "[cppapi][array-deletes][array][older_version]") {
+  if constexpr (is_experimental_build) {
+    return;
+  }
   // Get the v11 array
   const std::string array_name = "cpp_unit_array_deletes_v11";
   Context ctx;
