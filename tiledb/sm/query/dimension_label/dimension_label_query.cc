@@ -56,11 +56,13 @@ namespace tiledb::sm {
 
 DimensionLabelQuery::DimensionLabelQuery(
     StorageManager* storage_manager,
+    stats::Stats* stats,
     DimensionLabel* dimension_label,
     bool add_indexed_query,
     bool add_labelled_query,
     optional<std::string> fragment_name)
-    : indexed_array_query{add_indexed_query ?
+    : stats_(stats)
+    , indexed_array_query{add_indexed_query ?
                               tdb_unique_ptr<Query>(tdb_new(
                                   Query,
                                   storage_manager,
@@ -114,11 +116,13 @@ void DimensionLabelQuery::process() {
 
 DimensionLabelReadDataQuery::DimensionLabelReadDataQuery(
     StorageManager* storage_manager,
+    stats::Stats* stats,
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
     const uint32_t dim_idx)
-    : DimensionLabelQuery{storage_manager, dimension_label, true, false} {
+    : DimensionLabelQuery{
+          storage_manager, stats, dimension_label, true, false} {
   // Set the layout (ordered, 1D).
   throw_if_not_ok(indexed_array_query->set_layout(Layout::ROW_MAJOR));
 
@@ -212,7 +216,11 @@ template <
     typename T,
     typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
 bool is_sorted_buffer_impl(
-    const T* buffer, const uint64_t* buffer_size, bool increasing) {
+    stats::Stats* stats,
+    const T* buffer,
+    const uint64_t* buffer_size,
+    bool increasing) {
+  auto timer_se = stats->start_timer("check_data_sort");
   uint64_t num_values = *buffer_size / sizeof(T);
   if (increasing) {
     for (uint64_t index{0}; index < num_values - 1; ++index) {
@@ -239,55 +247,68 @@ bool is_sorted_buffer_impl(
  *     ``false``, check if the data is strictly decreasing.
  */
 bool is_sorted_buffer(
-    const QueryBuffer& buffer, const Datatype type, bool increasing) {
+    stats::Stats* stats,
+    const QueryBuffer& buffer,
+    const Datatype type,
+    bool increasing) {
   switch (type) {
     case Datatype::INT8:
       return is_sorted_buffer_impl<int8_t>(
+          stats,
           static_cast<const int8_t*>(buffer.buffer_),
           buffer.buffer_size_,
           increasing);
     case Datatype::UINT8:
       return is_sorted_buffer_impl<uint8_t>(
+          stats,
           static_cast<const uint8_t*>(buffer.buffer_),
           buffer.buffer_size_,
           increasing);
     case Datatype::INT16:
       return is_sorted_buffer_impl<int16_t>(
+          stats,
           static_cast<const int16_t*>(buffer.buffer_),
           buffer.buffer_size_,
           increasing);
     case Datatype::UINT16:
       return is_sorted_buffer_impl<uint16_t>(
+          stats,
           static_cast<const uint16_t*>(buffer.buffer_),
           buffer.buffer_size_,
           increasing);
     case Datatype::INT32:
       return is_sorted_buffer_impl<int32_t>(
+          stats,
           static_cast<const int32_t*>(buffer.buffer_),
           buffer.buffer_size_,
           increasing);
     case Datatype::UINT32:
       return is_sorted_buffer_impl<uint32_t>(
+          stats,
           static_cast<const uint32_t*>(buffer.buffer_),
           buffer.buffer_size_,
           increasing);
     case Datatype::INT64:
       return is_sorted_buffer_impl<int64_t>(
+          stats,
           static_cast<const int64_t*>(buffer.buffer_),
           buffer.buffer_size_,
           increasing);
     case Datatype::UINT64:
       return is_sorted_buffer_impl<uint64_t>(
+          stats,
           static_cast<const uint64_t*>(buffer.buffer_),
           buffer.buffer_size_,
           increasing);
     case Datatype::FLOAT32:
       return is_sorted_buffer_impl<float>(
+          stats,
           static_cast<const float*>(buffer.buffer_),
           buffer.buffer_size_,
           increasing);
     case Datatype::FLOAT64:
       return is_sorted_buffer_impl<double>(
+          stats,
           static_cast<const double*>(buffer.buffer_),
           buffer.buffer_size_,
           increasing);
@@ -314,6 +335,7 @@ bool is_sorted_buffer(
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
       return is_sorted_buffer_impl<int64_t>(
+          stats,
           static_cast<const int64_t*>(buffer.buffer_),
           buffer.buffer_size_,
           increasing);
@@ -326,6 +348,7 @@ bool is_sorted_buffer(
 
 OrderedWriteDataQuery::OrderedWriteDataQuery(
     StorageManager* storage_manager,
+    stats::Stats* stats,
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
@@ -333,7 +356,7 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
     const uint32_t dim_idx,
     optional<std::string> fragment_name)
     : DimensionLabelQuery{
-          storage_manager, dimension_label, true, true, fragment_name} {
+          storage_manager, stats, dimension_label, true, true, fragment_name} {
   // Verify that data isn't already written to the dimension label. This check
   // is only needed until the new ordered dimension label reader is implemented.
   if (!dimension_label->labelled_array()->is_empty() ||
@@ -345,6 +368,7 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
 
   // Verify the label data is sorted in the correct order.
   if (!is_sorted_buffer(
+          stats_,
           label_buffer,
           dimension_label->label_dimension()->type(),
           dimension_label->label_order() == LabelOrder::INCREASING_LABELS)) {
@@ -395,7 +419,7 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
     }
 
     // Check the index data is sorted in increasing order.
-    if (!is_sorted_buffer(index_buffer, index_type, true)) {
+    if (!is_sorted_buffer(stats, index_buffer, index_type, true)) {
       throw StatusException(Status_DimensionLabelQueryError(
           "Failed to create dimension label query. The input data on "
           "dimension " +
@@ -426,6 +450,7 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
 
 UnorderedWriteDataQuery::UnorderedWriteDataQuery(
     StorageManager* storage_manager,
+    stats::Stats* stats,
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
@@ -433,7 +458,7 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
     const uint32_t dim_idx,
     optional<std::string> fragment_name)
     : DimensionLabelQuery{
-          storage_manager, dimension_label, true, true, fragment_name} {
+          storage_manager, stats, dimension_label, true, true, fragment_name} {
   // Create locally stored index data if the index buffer is empty.
   bool use_local_index = index_buffer.buffer_ == nullptr;
   if (use_local_index) {

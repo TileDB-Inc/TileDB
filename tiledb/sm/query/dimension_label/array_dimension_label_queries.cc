@@ -54,12 +54,14 @@ namespace tiledb::sm {
 
 ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
     StorageManager* storage_manager,
+    stats::Stats* stats,
     Array* array,
     const Subarray& subarray,
     const std::unordered_map<std::string, QueryBuffer>& label_buffers,
     const std::unordered_map<std::string, QueryBuffer>& array_buffers,
     const optional<std::string>& fragment_name)
     : storage_manager_(storage_manager)
+    , stats_(stats)
     , range_queries_(subarray.dim_num(), nullptr)
     , range_query_status_{QueryStatus::UNINITIALIZED}
     , fragment_name_{fragment_name} {
@@ -225,6 +227,7 @@ void ArrayDimensionLabelQueries::add_data_queries_for_read(
     data_queries_.emplace_back(tdb_new(
         DimensionLabelReadDataQuery,
         storage_manager_,
+        stats_->create_child("DimensionLabelQuery"),
         dim_label,
         subarray,
         label_buffer,
@@ -266,6 +269,7 @@ void ArrayDimensionLabelQueries::add_data_queries_for_write(
         data_queries_.emplace_back(tdb_new(
             OrderedWriteDataQuery,
             storage_manager_,
+            stats_->create_child("DimensionLabelQuery"),
             dim_label,
             subarray,
             label_buffer,
@@ -282,6 +286,7 @@ void ArrayDimensionLabelQueries::add_data_queries_for_write(
         data_queries_.emplace_back(tdb_new(
             UnorderedWriteDataQuery,
             storage_manager_,
+            stats_->create_child("DimensionLabelQuery"),
             dim_label,
             subarray,
             label_buffer,

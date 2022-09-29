@@ -1,4 +1,4 @@
-/**
+/*
  * @file array_dimension_label_queries.h
  *
  * @section LICENSE
@@ -37,6 +37,7 @@
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/query/dimension_label/dimension_label_query.h"
+#include "tiledb/sm/stats/global_stats.h"
 
 #include <unordered_map>
 
@@ -79,6 +80,7 @@ class ArrayDimensionLabelQueries {
    */
   ArrayDimensionLabelQueries(
       StorageManager* storage_manager,
+      stats::Stats* stats,
       Array* array,
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers,
@@ -137,6 +139,9 @@ class ArrayDimensionLabelQueries {
  private:
   /** The storage manager. */
   StorageManager* storage_manager_;
+
+  /** TODO: Docs */
+  stats::Stats* stats_;
 
   /** Map from label name to dimension label opened by this query. */
   std::unordered_map<std::string, tdb_unique_ptr<DimensionLabel>>

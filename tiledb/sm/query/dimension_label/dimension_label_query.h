@@ -42,6 +42,7 @@
 #define TILEDB_DIMENSION_LABEL_QUERY_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;
@@ -64,8 +65,8 @@ inline Status Status_DimensionLabelQueryError(const std::string& msg) {
 
 class DimensionLabelQuery {
  public:
-  /** Default constructor. */
-  DimensionLabelQuery() = default;
+  /** Default constructor is not C.41 compliant. */
+  DimensionLabelQuery() = delete;
 
   /**
    * General constructor.
@@ -79,6 +80,7 @@ class DimensionLabelQuery {
    */
   DimensionLabelQuery(
       StorageManager* storage_manager,
+      stats::Stats* stats,
       DimensionLabel* dimension_label,
       bool add_indexed_query,
       bool add_labelled_query,
@@ -104,6 +106,9 @@ class DimensionLabelQuery {
   void process();
 
  protected:
+  /** TODO: Docs */
+  stats::Stats* stats_;
+
   /** Query on the dimension label indexed array. */
   tdb_unique_ptr<Query> indexed_array_query{nullptr};
 
@@ -128,6 +133,7 @@ class DimensionLabelReadDataQuery : public DimensionLabelQuery {
    */
   DimensionLabelReadDataQuery(
       StorageManager* storage_manager,
+      stats::Stats* stats,
       DimensionLabel* dimension_label,
       const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,
@@ -220,6 +226,7 @@ class OrderedWriteDataQuery : public DimensionLabelQuery {
    */
   OrderedWriteDataQuery(
       StorageManager* storage_manager,
+      stats::Stats* stats,
       DimensionLabel* dimension_label,
       const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,
@@ -256,6 +263,7 @@ class UnorderedWriteDataQuery : public DimensionLabelQuery {
    */
   UnorderedWriteDataQuery(
       StorageManager* storage_manager,
+      stats::Stats* stats,
       DimensionLabel* dimension_label,
       const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,
