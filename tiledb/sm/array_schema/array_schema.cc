@@ -374,6 +374,10 @@ Status ArraySchema::check() const {
         return LOG_STATUS(Status_ArraySchemaError("Array schema check failed; Bitsort filter cannot exist multiple times in an array schema."));
       }
       bitsort_filter_exists = true;
+
+      if (attr->nullable()) {
+        return LOG_STATUS(Status_ArraySchemaError("Bitsort filter does not work for nullable attributes."));
+      }
     }
   }
 

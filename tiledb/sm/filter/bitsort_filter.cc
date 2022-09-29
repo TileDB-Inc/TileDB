@@ -97,6 +97,44 @@ void print_tile(Tile *tile) {
   }
 }
 
+template<typename T>
+void print_tile_filtered(Tile *tile) {
+  FilteredBuffer &fb = tile->filtered_buffer();
+  T *tile_data = reinterpret_cast<T*>(fb.data());
+  size_t num_cells = fb.size() / sizeof(T);
+  for (size_t i = 0; i < num_cells; ++i) {
+    std::cout << tile_data[i] << " ";
+  }
+  std::cout << "\n";
+}
+
+void print_tile_filtered(Tile *tile) {
+  auto tile_type = tile->type();
+  switch (tile_type) {
+    case Datatype::INT8: {
+      print_tile_filtered<int8_t>(tile);
+    } break;
+    case Datatype::INT16: {
+      print_tile_filtered<int16_t>(tile);
+    } break;
+    case Datatype::INT32: {
+      print_tile_filtered<int32_t>(tile);
+    } break;
+    case Datatype::INT64: {
+      print_tile_filtered<int64_t>(tile);
+    } break;
+    case Datatype::FLOAT32: {
+      print_tile_filtered<float>(tile);
+    } break;
+    case Datatype::FLOAT64: {
+      print_tile_filtered<double>(tile);
+    } break;
+    default: {
+      std::cout << "invalid tile type: " << datatype_str(tile_type) << "\n";
+    } break;
+  }
+}
+
 void BitSortFilter::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
@@ -298,6 +336,9 @@ Status BitSortFilter::rewrite_dim_tile_forward(const std::vector<std::pair<T, ui
 
   // Overwrite the tile.
   RETURN_NOT_OK(dim_tile->write(tile_data_vec.data(), 0, sizeof(W) * elements_size));
+  FilteredBuffer &filtered_buffer = dim_tile->filtered_buffer();
+  filtered_buffer.expand(elements_size * sizeof(W));
+  memcpy(filtered_buffer.data(), tile_data_vec.data(), sizeof(W) * elements_size);
 
   return Status::Ok();
 }
@@ -362,7 +403,7 @@ Status BitSortFilter::run_reverse(
   std::vector<Tile*> &dim_tiles = pair.first.get();
   std::cout << "printing out dim_tiles in step 3\n";
   for (auto* dim_tile : dim_tiles) {
-    print_tile(dim_tile);
+    print_tile_filtered(dim_tile);
   }
 
   std::vector<uint64_t> positions;
@@ -388,6 +429,11 @@ Status BitSortFilter::run_reverse(
   auto md_offset = input_metadata->offset();
   RETURN_NOT_OK(output_metadata->append_view(
       input_metadata, md_offset, input_metadata->size() - md_offset));
+
+  std::cout << "printing out dim_tiles in step 4\n";
+  for (auto* dim_tile : dim_tiles) {
+    print_tile_filtered(dim_tile);
+  }
 
   return Status::Ok();
 }
@@ -447,6 +493,12 @@ Status BitSortFilter::rewrite_dim_tiles_reverse(BitSortFilterMetadataType &pair,
 
   std::sort(positions.begin(), positions.end(), cmp_fn);
 
+  std::cout << "printing out positions...\n";
+  for (uint64_t i = 0; i < positions.size(); ++i) {
+    std::cout << positions[i] << " ";
+  }
+  std::cout << std::endl;
+
   // Rewrite the individual tiles with the position vector.
   for (auto *dim_tile : dim_tiles) {
     Datatype tile_type = dim_tile->type();
@@ -479,14 +531,16 @@ template<typename T>
 Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, std::vector<uint64_t> &positions) const {
   uint64_t positions_size = positions.size();
   std::vector<T> tile_data_vec(positions_size);
-  T *tile_data = static_cast<T*>(dim_tile->data());
+  FilteredBuffer &filtered_buffer = dim_tile->filtered_buffer();
+  T *tile_data = reinterpret_cast<T*>(filtered_buffer.data());
 
   for (uint64_t i = 0; i < positions_size; ++i) {
     tile_data_vec[i] = tile_data[positions[i]];
   }
 
   // Overwrite the tile.
-  RETURN_NOT_OK(dim_tile->write(tile_data_vec.data(), 0, sizeof(T) * positions_size));
+  filtered_buffer.expand(positions_size * sizeof(T));
+  memcpy(filtered_buffer.data(), tile_data_vec.data(), sizeof(T) * positions_size);
 
   return Status::Ok();
 }
