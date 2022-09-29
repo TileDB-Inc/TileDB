@@ -973,43 +973,6 @@ ReaderBase::load_tile_chunk_data(
           unfiltered_tile_validity_size};
 }
 
-template<typename T>
-void print_tile_reader(Tile *tile) {
-  T *tile_data = static_cast<T*>(tile->data());
-  size_t num_cells = tile->size_as<T>();
-  for (size_t i = 0; i < num_cells; ++i) {
-    std::cout << tile_data[i] << " ";
-  }
-  std::cout << "\n";
-}
-
-void print_tile_reader(Tile *tile) {
-  auto tile_type = tile->type();
-  switch (tile_type) {
-    case Datatype::INT8: {
-      print_tile_reader<int8_t>(tile);
-    } break;
-    case Datatype::INT16: {
-      print_tile_reader<int16_t>(tile);
-    } break;
-    case Datatype::INT32: {
-      print_tile_reader<int32_t>(tile);
-    } break;
-    case Datatype::INT64: {
-      print_tile_reader<int64_t>(tile);
-    } break;
-    case Datatype::FLOAT32: {
-      print_tile_reader<float>(tile);
-    } break;
-    case Datatype::FLOAT64: {
-      print_tile_reader<double>(tile);
-    } break;
-    default: {
-      std::cout << "invalid tile type: " << datatype_str(tile_type) << "\n";
-    } break;
-  }
-}
-
 // TODO: pass here?
 Status ReaderBase::unfilter_tile_chunk_range(
     const std::string& name,
@@ -1065,11 +1028,6 @@ Status ReaderBase::unfilter_tile_chunk_range(
             RETURN_NOT_OK(array_schema_.domain().get_dimension_index(dim_name, &dimension_index));
             auto dim_tile_tuple = tile->tile_tuple(dim_name);
             dim_tiles[dimension_index] = &dim_tile_tuple->fixed_tile();
-          }
-
-          std::cout << "printing out dim_tiles in step 3\n";
-          for (auto *dim_tile : dim_tiles) {
-            print_tile_reader(dim_tile);
           }
 
           const Domain &d = array_schema_.domain();
@@ -1575,6 +1533,11 @@ Status ReaderBase::unfilter_tiles(
   auto var_size = array_schema_.var_size(name);
   auto nullable = array_schema_.is_nullable(name);
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
+
+  if (array_schema_.is_dim(name) && array_schema_.has_bitsort_filter()) {
+    // Omitting running unfilter_tiles when there is a dimension.
+    return Status::Ok();
+  }
 
   auto chunking = true;
   if (var_size) {
