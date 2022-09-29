@@ -46,7 +46,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
-#include <iostream>
+#include <iostream> // TODO GET RID OF
 #include <numeric>
 #include <optional>
 #include <unordered_map>
@@ -59,6 +59,43 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+template<typename T>
+void print_tile(Tile *tile) {
+  T *tile_data = static_cast<T*>(tile->data());
+  size_t num_cells = tile->size_as<T>();
+  for (size_t i = 0; i < num_cells; ++i) {
+    std::cout << tile_data[i] << " ";
+  }
+  std::cout << "\n";
+}
+
+void print_tile(Tile *tile) {
+  auto tile_type = tile->type();
+  switch (tile_type) {
+    case Datatype::INT8: {
+      print_tile<int8_t>(tile);
+    } break;
+    case Datatype::INT16: {
+      print_tile<int16_t>(tile);
+    } break;
+    case Datatype::INT32: {
+      print_tile<int32_t>(tile);
+    } break;
+    case Datatype::INT64: {
+      print_tile<int64_t>(tile);
+    } break;
+    case Datatype::FLOAT32: {
+      print_tile<float>(tile);
+    } break;
+    case Datatype::FLOAT64: {
+      print_tile<double>(tile);
+    } break;
+    default: {
+      std::cout << "invalid tile type: " << datatype_str(tile_type) << "\n";
+    } break;
+  }
+}
 
 void BitSortFilter::dump(FILE* out) const {
   if (out == nullptr)
@@ -113,20 +150,20 @@ Status BitSortFilter::run_forward(
 
   auto tile_type = tile.type();
   switch (datatype_size(tile_type)) {
-    case sizeof(int8_t): {
-      return run_forward<int8_t>(
+    case sizeof(uint8_t): {
+      return run_forward<uint8_t>(
           pair, input_metadata, input, output_metadata, output);
     }
-    case sizeof(int16_t): {
-      return run_forward<int16_t>(
+    case sizeof(uint16_t): {
+      return run_forward<uint16_t>(
          pair, input_metadata, input, output_metadata, output);
     }
-    case sizeof(int32_t): {
-      return run_forward<int32_t>(
+    case sizeof(uint32_t): {
+      return run_forward<uint32_t>(
           pair, input_metadata, input, output_metadata, output);
     }
-    case sizeof(int64_t): {
-      return run_forward<int64_t>(
+    case sizeof(uint64_t): {
+      return run_forward<uint64_t>(
           pair, input_metadata, input, output_metadata, output);
     }
     default: {
@@ -168,7 +205,7 @@ Status BitSortFilter::run_forward(
     total_size += part_size;
   }
 
-  std::vector<std::pair<T, uint64_t>> sorted_elements(total_size);
+  std::vector<std::pair<T, uint64_t>> sorted_elements(total_size / sizeof(T));
   for (uint64_t i = 0; i < num_parts; ++i) {
     const auto &part = parts[i];
     auto part_size = static_cast<uint32_t>(part.size());
@@ -178,21 +215,27 @@ Status BitSortFilter::run_forward(
 
   // Rewrite each of the dimension tile data with the new sort order.
   std::vector<Tile*> &dim_tiles = pair.first.get();
+  std::cout << "printing out dim_tiles in step 1\n";
+  for (auto* dim_tile : dim_tiles) {
+    print_tile(dim_tile);
+  }
+
+
   for (auto* dim_tile : dim_tiles) {
     Datatype tile_type = dim_tile->type();
     // TODO: return_not_ok doesn't work here...
     switch (datatype_size(tile_type)) {
-      case sizeof(int8_t): {
-        rewrite_dim_tile_forward<T, int8_t>(sorted_elements, dim_tile);
+      case sizeof(uint8_t): {
+        rewrite_dim_tile_forward<T, uint8_t>(sorted_elements, dim_tile);
       } break;
-      case sizeof(int16_t): {
-        rewrite_dim_tile_forward<T, int16_t>(sorted_elements, dim_tile);
+      case sizeof(uint16_t): {
+        rewrite_dim_tile_forward<T, uint16_t>(sorted_elements, dim_tile);
       } break;
-      case sizeof(int32_t): {
-        rewrite_dim_tile_forward<T, int32_t>(sorted_elements, dim_tile);
+      case sizeof(uint32_t): {
+        rewrite_dim_tile_forward<T, uint32_t>(sorted_elements, dim_tile);
       } break;
-      case sizeof(int64_t): {
-        rewrite_dim_tile_forward<T, int64_t>(sorted_elements, dim_tile);
+      case sizeof(uint64_t): {
+        rewrite_dim_tile_forward<T, uint64_t>(sorted_elements, dim_tile);
       } break;
       default: {
         return Status_FilterError(
@@ -200,6 +243,11 @@ Status BitSortFilter::run_forward(
           "size");
       }
     }
+  }
+
+  std::cout << "printing out dim_tiles in step 2\n";
+  for (auto* dim_tile : dim_tiles) {
+    print_tile(dim_tile);
   }
 
   return Status::Ok();
@@ -269,20 +317,20 @@ Status BitSortFilter::run_reverse(
   (void)config;
   auto tile_type = tile.type();
   switch (datatype_size(tile_type)) {
-    case sizeof(int8_t): {
-      return run_reverse<int8_t>(
+    case sizeof(uint8_t): {
+      return run_reverse<uint8_t>(
           pair, input_metadata, input, output_metadata, output);
     }
-    case sizeof(int16_t): {
-      return run_reverse<int16_t>(
+    case sizeof(uint16_t): {
+      return run_reverse<uint16_t>(
           pair, input_metadata, input, output_metadata, output);
     }
-    case sizeof(int32_t): {
-      return run_reverse<int32_t>(
+    case sizeof(uint32_t): {
+      return run_reverse<uint32_t>(
           pair, input_metadata, input, output_metadata, output);
     }
-    case sizeof(int64_t): {
-      return run_reverse<int64_t>(
+    case sizeof(uint64_t): {
+      return run_reverse<uint64_t>(
           pair, input_metadata, input, output_metadata, output);
     }
     default: {
@@ -311,6 +359,12 @@ Status BitSortFilter::run_reverse(
   assert(output_buf != nullptr);
 
   // Determine the positions vector.
+  std::vector<Tile*> &dim_tiles = pair.first.get();
+  std::cout << "printing out dim_tiles in step 3\n";
+  for (auto* dim_tile : dim_tiles) {
+    print_tile(dim_tile);
+  }
+
   std::vector<uint64_t> positions;
   rewrite_dim_tiles_reverse(pair, positions);
 
@@ -387,7 +441,7 @@ Status BitSortFilter::rewrite_dim_tiles_reverse(BitSortFilterMetadataType &pair,
     return cell_cmp == -1;
   };
 
-  for (uint64_t i = 0; i < dim_tiles[i]->cell_num(); ++i) {
+  for (uint64_t i = 0; i < dim_tiles[0]->cell_num(); ++i) {
     positions.push_back(i);
   }
 
@@ -398,17 +452,17 @@ Status BitSortFilter::rewrite_dim_tiles_reverse(BitSortFilterMetadataType &pair,
     Datatype tile_type = dim_tile->type();
     // TODO: return_not_ok doesn't work here...
     switch (datatype_size(tile_type)) {
-      case sizeof(int8_t): {
-        rewrite_dim_tile_reverse<int8_t>(dim_tile, positions);
+      case sizeof(uint8_t): {
+        rewrite_dim_tile_reverse<uint8_t>(dim_tile, positions);
       } break;
-      case sizeof(int16_t): {
-        rewrite_dim_tile_reverse<int16_t>(dim_tile, positions);
+      case sizeof(uint16_t): {
+        rewrite_dim_tile_reverse<uint16_t>(dim_tile, positions);
       } break;
-      case sizeof(int32_t): {
-        rewrite_dim_tile_reverse<int32_t>(dim_tile, positions);
+      case sizeof(uint32_t): {
+        rewrite_dim_tile_reverse<uint32_t>(dim_tile, positions);
       } break;
-      case sizeof(int64_t): {
-        rewrite_dim_tile_reverse<int64_t>(dim_tile, positions);
+      case sizeof(uint64_t): {
+        rewrite_dim_tile_reverse<uint64_t>(dim_tile, positions);
       } break;
       default: {
         return Status_FilterError(

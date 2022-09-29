@@ -131,12 +131,13 @@ void bitsort_filter_api_test_2d(Context& ctx) {
   REQUIRE(table["y"].first == 0);
   REQUIRE(table["y"].second == total_num_elements);
 
-/*
+
   std::cout << "Reading the following data, in this order...\n";
   for (size_t i = 0; i < total_num_elements; ++i) {
     // CHECK(a_data_read[i] == expected_a[i]);
     std::cout << x_read[i] << ", " << y_read[i] << std::endl;
   }
+  /*
 
   std::vector<T> a_data_read_copy(a_data_read.begin(), a_data_read.end());
   std::vector<T> expected_a_copy(expected_a.begin(), expected_a.end());
@@ -153,6 +154,7 @@ void bitsort_filter_api_test_2d(Context& ctx) {
   array_r.close();
 }
 
+/*
 TEST_CASE("C++ API, SOBBBB FLOAT READ THINGos", "[cppapi][filter][bitsort][yeet]") {
   Context ctx;
   VFS vfs(ctx);
@@ -221,6 +223,7 @@ TEST_CASE("C++ API, SOBBBB FLOAT READ THINGos", "[cppapi][filter][bitsort][yeet]
   if (vfs.is_dir(bitsort_array_name))
     vfs.remove_dir(bitsort_array_name);
 }
+*/
 
 TEMPLATE_TEST_CASE(
     "C++ API: Bitsort Filter list on array, 2D",
