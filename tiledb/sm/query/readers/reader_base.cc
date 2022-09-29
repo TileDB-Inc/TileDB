@@ -1063,9 +1063,6 @@ Status ReaderBase::unfilter_tile_chunk_range(
             RETURN_NOT_OK(array_schema_.domain().get_dimension_index(dim_name, &dimension_index));
             auto dim_tile_tuple = tile->tile_tuple(dim_name);
             dim_tiles[dimension_index] = &dim_tile_tuple->fixed_tile();
-
-            // TODO: remove
-
           }
 
           std::cout << "printing out dim_tiles in step 3\n";
