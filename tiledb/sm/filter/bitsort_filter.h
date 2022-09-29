@@ -152,12 +152,11 @@ class BitSortFilter : public Filter {
       ConstBuffer* input_buffer,
       Buffer* output_buffer) const;
 
-  Status rewrite_dim_tile_reverse(
-      Tile* dim_tile, uint64_t i, const Domain &domain, std::optional<std::reference_wrapper<std::vector<uint64_t>>> positions_opt) const;
-  
-  template <typename T>
-  Status rewrite_dim_tile_reverse(
-      Tile* dim_tile, uint64_t i, const Domain &domain, std::optional<std::reference_wrapper<std::vector<uint64_t>>> positions_opt) const;
+
+  Status rewrite_dim_tiles_reverse(BitSortFilterMetadataType &pair, std::vector<uint64_t> &positions) const;
+
+  template<typename T>
+  Status rewrite_dim_tile_reverse(Tile *dim_tile, std::vector<uint64_t> &positions) const;
 };
 
 };  // namespace sm

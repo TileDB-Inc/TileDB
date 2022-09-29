@@ -40,6 +40,8 @@
 #include "tiledb/sm/filter/filter_storage.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/sm/query/query_buffer.h"
+#include "tiledb/sm/query/writers/domain_buffer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -47,6 +49,7 @@
 #include <iostream>
 #include <numeric>
 #include <optional>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -299,9 +302,6 @@ Status BitSortFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const  {
-  
-  std::vector<Tile*> &dim_tiles = pair.first.get();
-
   // Get number of parts
   uint32_t num_parts;
   RETURN_NOT_OK(input_metadata->read(&num_parts, sizeof(uint32_t)));
@@ -310,19 +310,9 @@ Status BitSortFilter::run_reverse(
   Buffer* output_buf = output->buffer_ptr(0);
   assert(output_buf != nullptr);
 
-  // Get the domain.
-  const Domain &domain = pair.second.get();
-
   // Determine the positions vector.
   std::vector<uint64_t> positions;
-  for (uint64_t i = 0; i < dim_tiles.size(); ++i) {
-    if (i == 0) {
-      auto positions_ref = std::ref(positions);
-      rewrite_dim_tile_reverse(dim_tiles[i], i, domain, positions_ref);
-    } else {
-      rewrite_dim_tile_reverse(dim_tiles[i], i, domain, std::nullopt);
-    }
-  }
+  rewrite_dim_tiles_reverse(pair, positions);
 
   for (uint32_t i = 0; i < num_parts; i++) {
     uint32_t part_size;
@@ -371,61 +361,78 @@ Status BitSortFilter::unsort_part(
   return Status::Ok();
 }
 
-Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, uint64_t i, const Domain &domain, std::optional<std::reference_wrapper<std::vector<uint64_t>>> positions_opt) const {
-  Datatype tile_type = dim_tile->type();
-  switch (tile_type) {
-    case Datatype::INT8: {
-      rewrite_dim_tile_reverse<int8_t>(dim_tile, i, domain, positions_opt);
-    } break;
-    case Datatype::INT16: {
-      rewrite_dim_tile_reverse<int16_t>(dim_tile, i, domain, positions_opt);
-    } break;
-    case Datatype::INT32: {
-      rewrite_dim_tile_reverse<int32_t>(dim_tile, i, domain, positions_opt);
-    } break;
-    case Datatype::INT64: {
-      rewrite_dim_tile_reverse<int64_t>(dim_tile, i, domain, positions_opt);
-    } break;
-    case Datatype::FLOAT32: {
-      rewrite_dim_tile_reverse<float>(dim_tile, i, domain, positions_opt);
-    } break;
-    case Datatype::FLOAT64: {
-      rewrite_dim_tile_reverse<double>(dim_tile, i, domain, positions_opt);
-    } break;
-    default: {
-      return Status_FilterError("BitSortFilter::unsort_part: unsupported dimension type.");
-    } break;
+Status BitSortFilter::rewrite_dim_tiles_reverse(BitSortFilterMetadataType &pair, std::vector<uint64_t> &positions) const {
+  std::vector<Tile*> &dim_tiles = pair.first.get();
+  const Domain &domain = pair.second.get();
+
+  std::vector<uint64_t> dim_data_sizes(domain.dim_num(), 0);
+  std::unordered_map<std::string, QueryBuffer> dim_data_map;
+  for (size_t i = 0; i < domain.dim_num(); ++i) {
+    const std::string &dim_name = domain.dimension_ptr(i)->name();
+    dim_data_sizes[i] = dim_tiles[i]->size();
+    QueryBuffer dim_query_buffer{dim_tiles[i]->data(), nullptr, &dim_data_sizes[i], nullptr};
+    dim_data_map.insert(std::make_pair(dim_name, dim_query_buffer));
+  }
+
+  DomainBuffersView domain_buffs{domain, dim_data_map};
+  auto cmp_fn = [&domain_buffs, &domain](const uint64_t &a_idx, const uint64_t &b_idx){
+    auto a{domain_buffs.domain_ref_at(domain, a_idx)};
+    auto b{domain_buffs.domain_ref_at(domain, b_idx)};
+    auto tile_cmp = domain.tile_order_cmp(a, b);
+
+    if (tile_cmp == -1) return true;
+    else if (tile_cmp == 1) return false;
+
+    auto cell_cmp = domain.cell_order_cmp(a, b);
+    return cell_cmp == -1;
+  };
+
+  for (uint64_t i = 0; i < dim_tiles[i]->cell_num(); ++i) {
+    positions.push_back(i);
+  }
+
+  std::sort(positions.begin(), positions.end(), cmp_fn);
+
+  // Rewrite the individual tiles with the position vector.
+  for (auto *dim_tile : dim_tiles) {
+    Datatype tile_type = dim_tile->type();
+    // TODO: return_not_ok doesn't work here...
+    switch (datatype_size(tile_type)) {
+      case sizeof(int8_t): {
+        rewrite_dim_tile_reverse<int8_t>(dim_tile, positions);
+      } break;
+      case sizeof(int16_t): {
+        rewrite_dim_tile_reverse<int16_t>(dim_tile, positions);
+      } break;
+      case sizeof(int32_t): {
+        rewrite_dim_tile_reverse<int32_t>(dim_tile, positions);
+      } break;
+      case sizeof(int64_t): {
+        rewrite_dim_tile_reverse<int64_t>(dim_tile, positions);
+      } break;
+      default: {
+        return Status_FilterError(
+          "BitSortFilter::rewrite_dim_tiles_reverse: dimension datatype does not have an appropriate "
+          "size");
+      }
+    }
   }
 
   return Status::Ok();
 }
 
 template<typename T>
-Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, uint64_t i, const Domain &domain, std::optional<std::reference_wrapper<std::vector<uint64_t>>> positions_opt) const {
-  std::vector<std::pair<T, uint32_t>> dimension_vector;
+Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, std::vector<uint64_t> &positions) const {
+  uint64_t positions_size = positions.size();
+  std::vector<T> tile_data_vec(positions_size);
+  T *tile_data = static_cast<T*>(dim_tile->data());
 
-  T* dim_tile_data = static_cast<T*>(dim_tile->data());
-  for (uint32_t i = 0; i < dim_tile->size_as<T>(); ++i) {
-    dimension_vector.push_back(std::make_pair(dim_tile_data[i], i));
+  for (uint64_t i = 0; i < positions_size; ++i) {
+    tile_data_vec[i] = tile_data[positions[i]];
   }
 
-  auto comparison_function = [&domain, &i](const std::pair<T, uint32_t> &a, const std::pair<T, uint32_t> &b) {
-        UntypedDatumView a_datum(&a.first, sizeof(T));
-        UntypedDatumView b_datum(&b.first, sizeof(T));
-        
-        int result = domain.cell_order_cmp(i, a_datum, b_datum);
-        if (result <= 0) return false;
-        return true;
-    };
-
-  std::sort(dimension_vector.begin(), dimension_vector.end(), comparison_function);
-
-  if (positions_opt) {
-    std::vector<uint64_t> &positions = positions_opt.value().get();
-    for (uint32_t i = 0; i < dim_tile->size_as<T>(); ++i) {
-      positions.push_back(dimension_vector[i].second);
-    }
-  }
+  // Overwrite the tile.
+  RETURN_NOT_OK(dim_tile->write(tile_data_vec.data(), 0, sizeof(T) * positions_size));
 
   return Status::Ok();
 }

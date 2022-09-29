@@ -201,8 +201,7 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
   /**
    * Constructor
    *
-   * TODO: Change argument from `ArraySchema` to `Domain`. The current type is
-   * the result of code refactoring.
+   * TODO: Remove this constructor. The current type is the result of code refactoring.
    *
    * @param schema the schema of an open array
    * @param buffers a buffer map for each dimension of the domain
@@ -214,6 +213,23 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
     auto n_dimensions{schema.dim_num()};
     for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
       const auto& name{schema.dimension_ptr(i)->name()};
+      qb_[i] = &buffers.at(name);
+    }
+  }
+
+  /**
+   * Constructor
+   *
+   * @param domain the domain of an open array
+   * @param buffers a buffer map for each dimension of the domain
+   */
+  DomainBuffersView(
+      const Domain& domain,
+      const std::unordered_map<std::string, QueryBuffer>& buffers)
+      : qb_(domain.dim_num()) {
+    auto n_dimensions{domain.dim_num()};
+    for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
+      const auto& name{domain.dimension_ptr(i)->name()};
       qb_[i] = &buffers.at(name);
     }
   }
