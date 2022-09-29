@@ -222,13 +222,13 @@ void ArrayDimensionLabelQueries::add_data_queries_for_read(
         array, dim_label_ref, QueryType::READ, true, false);
 
     // Create the data query.
-    data_queries_.emplace_back(tdb_unique_ptr<DimensionLabelQuery>(tdb_new(
+    data_queries_.emplace_back(tdb_new(
         DimensionLabelReadDataQuery,
         storage_manager_,
         dim_label,
         subarray,
         label_buffer,
-        dim_label_ref.dimension_id())));
+        dim_label_ref.dimension_id()));
     data_queries_map_[label_name] = data_queries_.back().get();
   }
 }
@@ -263,7 +263,7 @@ void ArrayDimensionLabelQueries::add_data_queries_for_write(
       case (LabelOrder::INCREASING_LABELS):
       case (LabelOrder::DECREASING_LABELS):
         // Create order label writer.
-        data_queries_.emplace_back(tdb_unique_ptr<DimensionLabelQuery>(tdb_new(
+        data_queries_.emplace_back(tdb_new(
             OrderedWriteDataQuery,
             storage_manager_,
             dim_label,
@@ -273,13 +273,13 @@ void ArrayDimensionLabelQueries::add_data_queries_for_write(
                 QueryBuffer() :
                 index_buffer_pair->second,
             dim_label_ref.dimension_id(),
-            fragment_name_)));
+            fragment_name_));
         data_queries_map_[label_name] = data_queries_.back().get();
         break;
 
       case (LabelOrder::UNORDERED_LABELS):
         // Create unordered label writer.
-        data_queries_.emplace_back(tdb_unique_ptr<DimensionLabelQuery>(tdb_new(
+        data_queries_.emplace_back(tdb_new(
             UnorderedWriteDataQuery,
             storage_manager_,
             dim_label,
@@ -289,7 +289,7 @@ void ArrayDimensionLabelQueries::add_data_queries_for_write(
                 QueryBuffer() :
                 index_buffer_pair->second,
             dim_label_ref.dimension_id(),
-            fragment_name_)));
+            fragment_name_));
         data_queries_map_[label_name] = data_queries_.back().get();
         break;
 
@@ -334,9 +334,9 @@ DimensionLabel* ArrayDimensionLabelQueries::open_dimension_label(
     const bool open_labelled_array) {
   // Get the URI fo the dimension label from the dimension label reference.
   const auto& uri = dim_label_ref.uri();
-  bool is_relative = true;
-  auto dim_label_uri =
-      is_relative ? array->array_uri().join_path(uri.to_string()) : uri;
+  auto dim_label_uri = dim_label_ref.uri_is_relative() ?
+                           array->array_uri().join_path(uri.to_string()) :
+                           uri;
 
   // Create the dimension label.
   dimension_labels_[dim_label_ref.name()] = tdb_unique_ptr<DimensionLabel>(
@@ -363,7 +363,7 @@ DimensionLabel* ArrayDimensionLabelQueries::open_dimension_label(
             array->array_schema_latest().dimension_ptr(
                 dim_label_ref.dimension_id()))) {
       throw StatusException(Status_DimensionLabelQueryError(
-          "Error opening dimesnion label; Found dimension label does not match "
+          "Error opening dimension label; Found dimension label does not match "
           "array dimension."));
     }
     if (label_schema.label_order() != dim_label_ref.label_order()) {

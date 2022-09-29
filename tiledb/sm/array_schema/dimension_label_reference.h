@@ -211,6 +211,11 @@ class DimensionLabelReference {
     return uri_;
   }
 
+  /** Returns ``true`` if the URI is relative to the array URI. */
+  inline bool uri_is_relative() const {
+    return relative_uri_;
+  }
+
  private:
   /** The index of the dimension the labels are attached to. */
   dimension_size_type dim_id_;
