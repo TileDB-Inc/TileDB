@@ -198,7 +198,6 @@ set(TILEDB_UNIT_TEST_SOURCES
 
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
-    src/unit-cppapi-array-deletes.cc
     src/unit-cppapi-array.cc
     src/unit-cppapi-checksum.cc
     src/unit-cppapi-config.cc
