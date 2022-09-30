@@ -773,6 +773,12 @@ struct GlobalWriteState {
   # last hilbert value written
 
   multiPartUploadStates@4 :Map(Text, MultiPartUploadState);
+  # A mapping of URIs to multipart upload states
+  # Each file involved in a remote global order write (attr files,
+  # offsets files, etc) is partially written as a multipart upload part
+  # with each partial global order write operation (submit,
+  # submit_and_finalize). This mapping makes the multipart upload info
+  # available between partile global order write operations on the cloud side.
 }
 
 struct SingleCoord {
@@ -788,50 +794,112 @@ struct SingleCoord {
 
 struct FragmentMetadata {
   fileSizes @0 :List(UInt64);
+  # The size of each attribute file
+
   fileVarSizes @1 :List(UInt64);
+  # The size of each var attribute file
+
   fileValiditySizes @2 :List(UInt64);
+  # The size of each validity attribute file
+
   fragmentUri @3 :Text;
+  # The uri of the fragment this metadata belongs to
+
   hasTimestamps @4 :Bool;
+  # True if the fragment has timestamps
+
   hasDeleteMeta @5 :Bool;
+  # True if the fragment has delete metadata
+
   sparseTileNum @6 :UInt64;
+  # The number of sparse tiles
+
   tileIndexBase@7 :UInt64;
+  # Used to track the tile index base between global order writes
+
   tileOffsets @8 :List(List(UInt64));
+  # Tile offsets in their attribute files
+
   tileVarOffsets @9 :List(List(UInt64));
+  # Variable tile offsets in their attribute files
+
   tileVarSizes @10 :List(List(UInt64));
+  # The sizes of the uncompressed variable tiles
+
   tileValidityOffsets @11 :List(List(UInt64));
+  # Validity tile offests in their attribute files
+
   tileMinBuffer @12 :List(List(UInt8));
+  # tile min buffers
+
   tileMinVarBuffer @13 :List(List(UInt8));
+  # tile min buffers for var length data
+
   tileMaxBuffer @14 :List(List(UInt8));
+  # tile max buffers
+
   tileMaxVarBuffer @15 :List(List(UInt8));
+  # tile max buffers for var length data
+
   tileSums @16 :List(List(UInt8));
+  # tile sum values
+
   tileNullCounts @17 :List(List(UInt64));
+  # tile null count values
+
   fragmentMins @18 :List(List(UInt8));
+  # fragment min values
+
   fragmentMaxs @19 :List(List(UInt8));
+  # fragment max values
+
   fragmentSums @20 :List(UInt64);
+  # fragment sum values
+
   fragmentNullCounts @21 :List(UInt64);
+  # fragment null count values
+
   version @22 :UInt32;
+  # the format version of this metadata
+
   timestampRange @23 :List(UInt64);
   # A pair of timestamps for fragment
 
   lastTileCellNum @24 :UInt64;
+  # The number of cells in the last tile
 
   nonEmptyDomain @25 :NonEmptyDomainList;
-  # non empty domain
+  # The non empty domain of the fragment
 
   rtree @26 :Data;
+  # The RTree for the MBRs serialized as a blob
 }
 
 struct MultiPartUploadState {
   partNumber@0 :UInt64;
+  # The index of the next part in a multipart upload process
+
   uploadId@1 :Text;
+  # S3 specific ID identifying a multipart upload process for a file
+
   bucket@2 :Text;
+  # The S3 bucket name
+
   s3Key@3 :Text;
+  # S3 specific multipart upload key
+
   status@4 :Text;
+  # Status field used to signal an error in a multipart upload process
+
   completedParts@5 :List(CompletedPart);
+  # A list of parts that are already uploaded
 }
 struct CompletedPart {
   eTag@0 :Text;
+  # S3 specific hash for the uploaded part
+
   partNumber@1 :UInt64;
+  # The index of the uploaded part
 }
 
 struct WrittenFragmentInfo {
