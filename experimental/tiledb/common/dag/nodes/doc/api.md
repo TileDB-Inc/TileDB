@@ -40,7 +40,7 @@ class ProducerNode;
 
   - `Function` must meet the requirements of `std::function<Item())>` or of `std::function<Item(std::stop_source))>`.
   - If the latter constructor is used, a `stop_source` variable is passed to the enclosed function.  If the enclosed function invokes `stop_source::request_stop()`, the `ProducerNode` will enter the stopping state, which will propagate throught its output port to the connected input port.  The connected node will the enter its shutdown state, and so on, thus stopping computation throughout the entire task graph.
-  - Class Template Argument Deduction (CTAD) guides have been specified so that explicit template arguments are not required to construct objects with the above constructor.  The CTAD guides work in the cases where `Function` is a regular function, a lambda, or a function object.  The current CTAD guides do not work when `Function` is a `bind` object; q template argument is still required in the case of `std::bind`.
+  - Class Template Argument Deduction (CTAD) guides have been specified so that explicit template arguments are not required to construct objects with the above constructor.  The CTAD guides work in the cases where `Function` is a regular function, a lambda, or a function object.  The current CTAD guides do not work when `Function` is a `bind` object; a template argument is still required in the case of `std::bind`.
   - Note that in the case of a lambda, the unary `+` operator is required to decay the lambda into a normal function.  
 
 
@@ -282,7 +282,7 @@ Here. we make `i` static so that its value is saved across invocations of the no
 (Again note that the value returned after `request_stop()` is ignored.
 
 
-## Extended Example: Constructin and Executing a Primitive Graph
+## Extended Example: Constructing and Executing a Primitive Graph
 
 
 ### Define the Functions to be Executed

@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a throw-catch scheduler for dag.
+ * This file declares a frugal (static threadpool) scheduler for dag.
  */
 
 #ifndef TILEDB_DAG_FRUGAL_H
@@ -37,62 +37,350 @@
 #include <functional>
 #include <future>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
+#include "experimental/tiledb/common/dag/execution/scheduler.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#include "experimental/tiledb/common/dag/state_machine/item_mover.h"
 #include "experimental/tiledb/common/dag/utils/bounded_buffer.h"
 #include "experimental/tiledb/common/dag/utils/concurrent_set.h"
 #include "experimental/tiledb/common/dag/utils/print_types.h"
 
 namespace tiledb::common {
 
-/*
- * Below we just use standard OS scheduling terminology.  For our purposes a
- * "Task" is a node.
- */
+namespace detail {
+class frugal_exception {};
 
-enum class TaskState { created, ready, running, waiting, terminated, last };
+class frugal_exit {};
 
-constexpr unsigned short to_index(TaskState x) {
-  return static_cast<unsigned short>(x);
-}
+class frugal_wait {};
 
-namespace {
-std::vector<std::string> task_state_strings{
-    "created", "ready", "running", "waiting", "terminated", "last"};
-}
+class frugal_notify {};
+}  // namespace detail
 
-static inline auto str(TaskState st) {
-  return task_state_strings[to_index(st)];
-}
+constexpr const detail::frugal_exit frugal_exit;
+constexpr const detail::frugal_wait frugal_wait;
+constexpr const detail::frugal_notify frugal_notify;
 
-enum class TaskEvent { admitted, dispatch, wait, notify, exit, yield, last };
+template <class Mover, class PortState = typename Mover::PortState>
+class FrugalPortPolicy : public PortFiniteStateMachine<
+                             FrugalPortPolicy<Mover, PortState>,
+                             PortState> {
+  using state_machine_type =
+      PortFiniteStateMachine<FrugalPortPolicy<Mover, PortState>, PortState>;
+  using lock_type = typename state_machine_type::lock_type;
 
-constexpr unsigned short to_index(TaskEvent x) {
-  return static_cast<unsigned short>(x);
-}
+  using mover_type = Mover;
 
-namespace {
-std::vector<std::string> task_event_strings{
-    "admitted", "dispatch", "wait", "notify", "exit", "yield", "last"};
-}
-static inline auto str(TaskEvent st) {
-  return task_event_strings[to_index(st)];
-}
+ public:
+  FrugalPortPolicy() {
+    if constexpr (std::is_same_v<PortState, two_stage>) {
+      CHECK(str(static_cast<Mover*>(this)->state()) == "st_00");
+    } else if constexpr (std::is_same_v<PortState, three_stage>) {
+      CHECK(str(static_cast<Mover*>(this)->state()) == "st_000");
+    }
+  }
+
+  inline void on_ac_return(lock_type&, std::atomic<int>&) {
+    debug_msg("ScheduledPolicy Action return");
+  }
+
+  inline void on_source_move(lock_type&, std::atomic<int>& event) {
+    static_cast<Mover*>(this)->on_move(event);
+  }
+
+  inline void on_sink_move(lock_type&, std::atomic<int>& event) {
+    static_cast<Mover*>(this)->on_move(event);
+  }
+
+  inline void on_notify_source(lock_type&, std::atomic<int>&) {
+    debug_msg("ScheduledPolicy Action notify source");
+    throw(frugal_notify);
+  }
+
+  inline void on_notify_sink(lock_type&, std::atomic<int>&) {
+    debug_msg("ScheduledPolicy Action notify source");
+    throw(frugal_notify);
+  }
+
+  inline void on_source_wait(lock_type&, std::atomic<int>&) {
+    debug_msg("ScheduledPolicy Action source wait");
+    throw(frugal_wait);
+  }
+
+  inline void on_sink_wait(lock_type&, std::atomic<int>&) {
+    debug_msg("ScheduledPolicy Action sink wait");
+    throw(frugal_wait);
+  }
+
+  inline void on_source_done(lock_type&, std::atomic<int>&) {
+    debug_msg("ScheduledPolicy Action source done");
+    throw(frugal_exit);
+  }
+
+  inline void on_sink_done(lock_type&, std::atomic<int>&) {
+    debug_msg("ScheduledPolicy Action sink done");
+    throw(frugal_exit);
+  }
+
+ private:
+  void debug_msg(const std::string& msg) {
+    if (static_cast<Mover*>(this)->debug_enabled()) {
+      std::cout << msg << "\n";
+    }
+  }
+};
+
+template <class T>
+using FrugalMover3 = ItemMover<FrugalPortPolicy, three_stage, T>;
+template <class T>
+using FrugalMover2 = ItemMover<FrugalPortPolicy, two_stage, T>;
+
+template <class Node>
+class FrugalScheduler;
 
 template <class Task>
-class SchedulerBase {
-  virtual void submit(Task*) = 0;
-  virtual void wait(Task*) = 0;
-  virtual void notify(Task*) = 0;
-  virtual void yield(Task*) = 0;
+class FrugalSchedulerPolicy;
+
+template <typename T>
+struct SchedulerTraits<FrugalSchedulerPolicy<T>> {
+  using task_type = T;
+  using task_handle_type = std::shared_ptr<T>;
 };
 
 template <class Task>
-class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
-  using Scheduler = ThrowCatchScheduler<Task>;
+class FrugalSchedulerPolicy
+    : public SchedulerStateMachine<FrugalSchedulerPolicy<Task>> {
+  using state_machine_type = SchedulerStateMachine<FrugalSchedulerPolicy<Task>>;
+  using lock_type = typename state_machine_type::lock_type;
+
+ public:
+  using task_type =
+      typename SchedulerTraits<FrugalSchedulerPolicy<Task>>::task_type;
+  using task_handle_type =
+      typename SchedulerTraits<FrugalSchedulerPolicy<Task>>::task_handle_type;
+
+  ~FrugalSchedulerPolicy() {
+    std::cout << "policy destructor\n";
+    waiting_set_.clear();
+    runnable_queue_.drain();
+    running_set_.clear();
+    finished_queue_.drain();
+  }
+
+  void on_create(task_handle_type& task) {
+    if (this->debug())
+      std::cout << "calling on_create"
+                << "\n";
+    this->submission_queue_.push(task);
+  }
+
+  void on_stop_create(task_handle_type&) {
+    if (this->debug())
+      std::cout << "calling on_stop_create"
+                << "\n";
+  }
+
+  void on_make_runnable(task_handle_type& task) {
+    if (this->debug())
+      std::cout << "calling on_make_runnable"
+                << "\n";
+    this->runnable_queue_.push(task);
+  }
+
+  void on_stop_runnable(task_handle_type&) {
+    if (this->debug())
+      std::cout << "calling on_stop_runnable"
+                << "\n";
+  }
+
+  void on_make_running(task_handle_type& task) {
+    if (this->debug())
+      std::cout << "calling on_make_runninge"
+                << "\n";
+    this->running_set_.insert(task);
+  }
+
+  void on_stop_running(task_handle_type& task) {
+    if (this->debug())
+      std::cout << "calling on_stop_running"
+                << "\n";
+    auto n = this->running_set_.extract(task);
+  }
+
+  void on_make_waiting(task_handle_type& task) {
+    if (this->debug())
+      std::cout << "calling on_make_waiting"
+                << "\n";
+    this->waiting_set_.insert(task);
+  }
+
+  void on_stop_waiting(task_handle_type& task) {
+    if (this->debug())
+      std::cout << "calling on_stop_waiting"
+                << "\n";
+    auto n = this->waiting_set_.extract(task);
+  }
+
+  void on_terminate(task_handle_type& task) {
+    if (this->debug())
+      std::cout << "calling on_terminate"
+                << "\n";
+    this->finished_queue_.push(task);
+  }
+
+  void launch() {
+    if (this->debug()) {
+      this->dump_queue_state("Launching start");
+    }
+    while (true) {
+      auto s = submission_queue_.try_pop();
+      if (!s)
+        break;
+      (*s).dump_task_state("Admitting");
+      this->do_admit(*s);
+    }
+    if (this->debug()) {
+      this->dump_queue_state("Launching end");
+    }
+  }
+
+  auto get_runnable_task() {
+    return runnable_queue_.pop();
+  }
+
+  void p_shutdown() {
+    std::cout << "policy shutdown\n";
+
+    size_t loops = waiting_set_.size();
+
+    for (size_t i = 0; i < loops; ++i) {
+      std::vector<Task> notified_waiters_;
+      notified_waiters_.reserve(waiting_set_.size());
+
+      for (auto t : waiting_set_) {
+        this->do_notify(t);
+      }
+
+      for (auto&& t : notified_waiters_) {
+        this->do_dispatch(t);
+        waiting_set_.erase(t);
+        runnable_queue_.push(t);
+      }
+      notified_waiters_.clear();
+    }
+
+    // all waiters must have been notified
+    assert(waiting_set_.empty());
+
+    runnable_queue_.drain();
+    finished_queue_.drain();
+
+    waiting_set_.clear();
+    running_set_.clear();
+  }
+
+  void dump_queue_state(const std::string& msg = "") {
+    std::string preface = (msg != "" ? msg + "\n" : "");
+
+    std::cout << preface + "    runnable_queue_.size() = " +
+                     std::to_string(runnable_queue_.size()) + "\n" +
+                     "    running_set_.size() = " +
+                     std::to_string(running_set_.size()) + "\n" +
+                     "    waiting_set_.size() = " +
+                     std::to_string(waiting_set_.size()) + "\n" +
+                     "    finished_queue_.size() = " +
+                     std::to_string(finished_queue_.size()) + "\n" + "\n";
+  }
+
+ private:
+#if 0
+  ConcurrentSet<Task> waiting_set_;
+  ConcurrentSet<Task> running_set_;
+  BoundedBufferQ<Task, std::queue<Task>, false> submission_queue_;
+  BoundedBufferQ<Task, std::queue<Task>, false> runnable_queue_;
+  BoundedBufferQ<Task, std::queue<Task>, false> finished_queue_;
+#else
+  ConcurrentSet<std::shared_ptr<Task>> waiting_set_;
+  ConcurrentSet<std::shared_ptr<Task>> running_set_;
+  BoundedBufferQ<
+      std::shared_ptr<Task>,
+      std::queue<std::shared_ptr<Task>>,
+      false>
+      submission_queue_;
+  BoundedBufferQ<
+      std::shared_ptr<Task>,
+      std::queue<std::shared_ptr<Task>>,
+      false>
+      runnable_queue_;
+  BoundedBufferQ<
+      std::shared_ptr<Task>,
+      std::queue<std::shared_ptr<Task>>,
+      false>
+      finished_queue_;
+#endif
+};
+
+template <class Node>
+class FrugalTaskImpl {
+  using scheduler = FrugalScheduler<Node>;
+  scheduler* scheduler_{nullptr};
+  TaskState state_{TaskState::created};
+
+ public:
+  FrugalTaskImpl() = default;
+  FrugalTaskImpl(const FrugalTaskImpl&) = default;
+  FrugalTaskImpl(FrugalTaskImpl&&) = default;
+  FrugalTaskImpl& operator=(const FrugalTaskImpl&) = default;
+  FrugalTaskImpl& operator=(FrugalTaskImpl&&) = default;
+
+  void set_scheduler(scheduler* sched) {
+    scheduler_ = sched;
+  }
+
+  TaskState state() {
+    return state_;
+  }
+
+  TaskState set_state(TaskState state) {
+    state_ = state;
+    return state_;
+  }
+
+  virtual ~FrugalTaskImpl() = default;
+
+  void dump_task_state(const std::string msg = "") {
+    std::string preface = (msg != "" ? msg + "\n" : "");
+
+    std::cout << preface + "    " + (*this)->name() + " with id " +
+                     std::to_string((*this)->id()) + "\n" +
+                     "    state = " + str(this->state()) + "\n";
+  }
+};
+
+template <class Node>
+class FrugalTask : public FrugalTaskImpl<Node>, public Node {
+  using Base = Node;
+  using Base::Base;
+
+ public:
+  FrugalTask(Node& node)
+      : Node(node) {
+  }
+  FrugalTask(const FrugalTask& rhs) = default;
+  FrugalTask(FrugalTask&& rhs) = default;
+  FrugalTask& operator=(const FrugalTask& rhs) = default;
+  FrugalTask& operator=(FrugalTask&& rhs) = default;
+};
+
+template <class Node>
+class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
+  using Scheduler = FrugalScheduler<Node>;
+  using Policy = FrugalSchedulerPolicy<FrugalTask<Node>>;
 
  public:
   /* ********************************* */
@@ -104,24 +392,20 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
    *
    * @param n The number of threads to be spawned for the thread pool.  This
    * should be a value between 1 and 256 * hardware_concurrency.  A value of
-   * zero will construct the thread pool in its shutdown state--constructed but
-   * not accepting nor executing any tasks.  A value of 256*hardware_concurrency
-   * or larger is an error.
+   * zero will construct the thread pool in its shutdown state--constructed
+   * but not accepting nor executing any tasks.  A value of
+   * 256*hardware_concurrency or larger is an error.
    */
-  ThrowCatchScheduler(size_t n)
+  FrugalScheduler(size_t n)
       : concurrency_level_(n) {
     // If concurrency_level_ is set to zero, construct the thread pool in
     // shutdown state.  Explicitly shut down the task queue as well.
     if (concurrency_level_ == 0) {
-      waiting_set_.clear();
-      runnable_queue_.drain();
-      running_set_.clear();
-      finished_queue_.drain();
       return;
     }
 
-    // Set an upper limit on number of threads per core.  One use for this is in
-    // testing error conditions in creating a context.
+    // Set an upper limit on number of threads per core.  One use for this is
+    // in testing error conditions in creating a context.
     if (concurrency_level_ >= 256 * std::thread::hardware_concurrency()) {
       std::string msg =
           "Error initializing frugal scheduler of concurrency level " +
@@ -141,7 +425,7 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
       size_t tries = 3;
       while (tries--) {
         try {
-          tmp = std::thread(&ThrowCatchScheduler::worker, this);
+          tmp = std::thread(&FrugalScheduler::worker, this);
         } catch (const std::system_error& e) {
           if (e.code() != std::errc::resource_unavailable_try_again ||
               tries == 0) {
@@ -165,10 +449,12 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
   }
 
   /** Deleted default constructor */
-  ThrowCatchScheduler() = delete;
+  FrugalScheduler() = delete;
+  FrugalScheduler(const FrugalScheduler&) = delete;
 
   /** Destructor. */
-  ~ThrowCatchScheduler() {
+  ~FrugalScheduler() {
+    std::cout << "scheduler destructor\n";
     shutdown();
   }
 
@@ -181,87 +467,70 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
     return concurrency_level_;
   }
 
-#if 0
-  /**
-   * Schedule a new task to be executed. If the returned future object
-   * is valid, `f` is execute asynchronously. To avoid deadlock, `f`
-   * should not acquire non-recursive locks held by the calling thread.
-   *
-   * @param f Callable object to call
-   * @param args... Parameters to pass to f
-   * @return std::future referring to the shared state created by this call
-   */
+  std::atomic<bool> debug_{false};
 
-  template <class Fn, class... Args>
-  auto async(Fn&& f, Args&&... args) {
-    if (concurrency_level_ == 0) {
-      Task invalid_future;
-      return invalid_future;
+  void enable_debug() {
+    debug_.store(true);
+  }
+  void disable_debug() {
+    debug_.store(false);
+  }
+
+  bool debug() {
+    return debug_.load();
+  }
+
+ private:
+  //  std::map<Key, Value> dict;
+  std::map<std::shared_ptr<Node>, FrugalTask<Node>> node_to_task;
+
+ public:
+  void submit(FrugalTask<Node> t) {
+    t.set_scheduler(this);
+
+    node_to_task[t] = t;
+
+    this->do_create(t);
+
+    if (this->debug()) {
+      t.dump_task_state("Submitting");
+      std::cout << "    with correspondent " + t->correspondent_->name() +
+                       " node with id " +
+                       std::to_string(t->correspondent_->id()) + "\n";
     }
-
-    using R = std::invoke_result_t<std::decay_t<Fn>, std::decay_t<Args>...>;
-
-    auto task = std::make_shared<std::packaged_task<R()>>(
-        [f = std::forward<Fn>(f),
-         args = std::make_tuple(std::forward<Args>(args)...)]() mutable {
-          return std::apply(std::move(f), std::move(args));
-        });
-
-    std::future<R> future = task->get_future();
-
-    runnable_queue_.push(task);
-
-    return future;
-  }
-
-  /**
-   * Alias for async()
-   *
-   * @param f Callable object to call
-   * @param args... Parameters to pass to f
-   * @return std::future referring to the shared state created by this call
-   */
-  template <class Fn, class... Args>
-  auto execute(Fn&& f, Args&&... args) {
-    return async(std::forward<Fn>(f), std::forward<Args>(args)...);
-  }
-#endif
-
-  void wait(Task*) {
-  }
-  void notify(Task*) {
-  }
-  void yield(Task*) {
-  }
-
-  void submit(Task* t) {
-    t->set_node_state(TaskState::created);
-
-    if (debug_)
-      std::cout << "Submitting " << t->name() << " node " << t->id()
-                << " with correspondent_ " << t->correspondent_->name()
-                << " node "
-                << " node " << t->correspondent_->id() << std::endl;
-
-    ++num_submissions_;
-    ++num_tasks_;
-    submission_queue_.push(t);
   }
 
   /**
    * Wait on all the given tasks to complete. Since tasks are started lazily,
    * they are not actually started on submit().  So, we first start all the
-   * submitted jobs and then wait on them.
+   * submitted jobs and then wait on them to all be started before
+   * transferring them from the submitted queue to the runnable queue.
    *
-   * @param tasks Task list to wait on.
-   * @return Status::Ok if all tasks returned Status::Ok, otherwise the first
-   * error status is returned
+   * After the
    */
   void sync_wait_all() {
-    submission_queue_.swap_data(runnable_queue_);
+    /*
+     * Swap the submission queue (where all the submitted tasks are) with the
+     * runnable queue, making all the tasks runnable.
+     */
+    Policy::launch();
 
-    start_cv_.notify_all();
+    this->make_ready_to_run();
+    /*
+     * Once we have put all of tasks into the runnable queue, we release the
+     * worker threads.
+     */
+    {
+      std::unique_lock _(mutex_);
+      start_cv_.notify_all();
+    }
 
+    /*
+     * Then we wait for the worker threads to complete.
+     *
+     * @todo switch to using tasks with `std::async` so we can catch
+     * exceptions.
+     */
     for (auto&& t : threads_) {
       t.join();
     }
@@ -274,242 +543,340 @@ class ThrowCatchScheduler /* : public SchedulerBase<Task> */ {
 
  private:
   /** The worker thread routine */
+
+  std::atomic<bool> ready_to_run_{false};
+  void make_ready_to_run() {
+    ready_to_run_.store(true);
+  }
+
+  bool ready_to_run() {
+    return ready_to_run_.load();
+  }
+
   void worker() {
-    //    thread_local static Scheduler* scheduler = this;
     [[maybe_unused]] thread_local static auto scheduler = this;
 
+    /*
+     * The worker threads wait on a condition variable until they are released
+     * by a call to `sync_wait_all` (e.g.)
+     */
+    {
+      std::unique_lock _(mutex_);
+      start_cv_.wait(_, [this]() { return this->ready_to_run(); });
+    }
+
     if (num_submissions_ == 0) {
-      std::cout << "No submissions, returning" << std::endl;
+      std::cout << "No submissions, returning\n";
       return;
     }
 
-    {
-      std::unique_lock _(mutex_);
-      start_cv_.wait(_, [this]() { return runnable_queue_.size() != 0; });
-    }
-
     while (true) {
-      // Make any waiting tasks runnable
-      // @todo this doesn't seem very efficient, but we
-      // need to avoid doing a throw for every notify?
-      // nodes should maybe have more access to scheduler itself
+      /*
+       * Get a runnable task.
+       * This is a blocking call, unless finished
+       */
 
-      if (waiting_set_.size() == 0 && runnable_queue_.size() == 0 &&
-          running_set_.size() == 0) {
-        if (debug_)
-          std::cout << "breaking with waiting_set_.size() = "
-                    << waiting_set_.size()
-                    << ", runnable_queue_.size() == " << runnable_queue_.size()
-                    << ", running_set_.size() == " << running_set_.size()
-                    << ", finished_queue_.size() == " << finished_queue_.size()
-                    << std::endl;
+      this->dump_queue_state("About to get task");
 
+      auto val = this->get_runnable_task();
+
+      if (!val) {
+        this->dump_queue_state("breaking with empty val");
         break;
       }
 
-      std::vector<Task*> notified_waiters_;
-      notified_waiters_.reserve(waiting_set_.size());
-      for (auto&& t : waiting_set_) {
-        if (debug_)
-          std::cout << "Waiter found " << t->name() << " node " << t->id()
-                    << " with state " << str(t->node_state()) << " and event "
-                    << str(t->task_event()) << std::endl;
+      auto task_to_run = *val;
 
-        if (t->task_event() == TaskEvent::notify) {
-          notified_waiters_.push_back(t);
-        }
-      }
+      //      print_types(task_to_run, val, *val);
 
-      for (auto&& t : notified_waiters_) {
-        t->set_node_state(TaskState::ready);
-        waiting_set_.erase(t);
-        runnable_queue_.push(t);
-      }
-      notified_waiters_.clear();
+      {
+        std::unique_lock _(mutex_);
 
-      auto val = runnable_queue_.try_pop();
-
-      if (!val) {
-        if (debug_)
-          std::cout << "Nothing found in runnable_queue_, but " << std::endl;
-        if (debug_)
-          std::cout << "waiting_set_.size() == " << waiting_set_.size()
-                    << ", runnable_queue_.size() == " << runnable_queue_.size()
-                    << ", running_set_.size() == " << running_set_.size()
-                    << ", finished_queue_.size() == " << finished_queue_.size()
-                    << std::endl;
-        continue;
-      }
-
-      if (val) {
-        auto task_to_run = *val;
-
-        if (debug_)
-          std::cout << "Worker popped " << task_to_run->name() << " node "
-                    << task_to_run->id() << " from runnable_queue_"
-                    << std::endl;
-
-        if (task_to_run->node_state() == TaskState::waiting) {
-          if (debug_)
-            std::cout << "Worker found " << task_to_run->name() << " node "
-                      << task_to_run->id() << " with waiting state"
-                      << std::endl;
-          waiting_set_.insert(task_to_run);
-
-          // Don't have time to figure out nesting of ifs for big blocks
-          goto if_val_bottom;
+        if (this->debug()) {
+          this->dump_queue_state("Pre dispatch");
+          task_to_run->dump_task_state();
         }
 
-        running_set_.insert(task_to_run);
+        this->do_dispatch(task_to_run);
+
+        if (this->debug()) {
+          this->dump_queue_state("Post dispatch");
+          task_to_run.dump_task_state();
+        }
 
         try {
-          task_to_run->resume();
+          if (this->debug())
+            task_to_run.dump_task_state("About to resume");
 
-        } catch (Task* t) {
-          task_to_run = t;
+          _.unlock();
+          task_to_run->resume();
+          _.lock();
+
+          if (this->debug())
+            task_to_run.dump_task_state("Returning from resume");
+        } catch (detail::frugal_wait) {
+          if (this->debug())
+            task_to_run.dump_task_state("Caught wait");
+
+          this->do_wait(task_to_run);
+
+          if (this->debug())
+            task_to_run.dump_task_state("Post wait");
+
+        } catch (detail::frugal_notify) {
+          if (this->debug())
+            task_to_run.dump_task_state("Caught notify");
+
+          auto bb =
+              node_to_task[task_to_run
+                               ->correspondent_];  // std::shared_ptr<node>
+          // print_types(bb, task_to_run);
+          this->do_notify(bb);
+
+          if (this->debug()) {
+            task_to_run.dump_task_state("Post notify");
+            bb.dump_task_state("Correspondent task");
+          }
+
+        } catch (detail::frugal_exit) {
+          if (this->debug())
+            task_to_run.dump_task_state("Caught exit");
+
+          this->do_exit(task_to_run);
+
+          if (this->debug())
+            task_to_run.dump_task_state("Post exit");
 
         } catch (...) {
           throw;
         }
 
-        switch (task_to_run->task_event()) {
-          case TaskEvent::yield: {
-            auto n = running_set_.extract(task_to_run);
-            n.value()->set_node_state(TaskState::ready);
-            runnable_queue_.push(n.value());
-            break;
-          }
+        if (this->debug()) {
+          this->dump_queue_state("Pre yield");
+          task_to_run.dump_task_state();
+        }
 
-          case TaskEvent::wait: {
-            auto n = running_set_.extract(task_to_run);
+        this->do_yield(task_to_run);
 
-            if (n) {
-              if (n.value()->task_event() == TaskEvent::notify) {
-                n.value()->set_node_state(TaskState::ready);
-                runnable_queue_.push(n.value());
-                break;
-              }
-              n.value()->set_node_state(TaskState::waiting);
-              if (debug_)
-                std::cout << n.value()->name() << " node " << n.value()->id()
-                          << " found in running with "
-                          << str(n.value()->node_state()) << " and "
-                          << str(n.value()->task_event()) << std::endl;
-              assert(n.value()->node_state() == TaskState::waiting);
-            } else {
-              if (debug_)
-                std::cout << "n not found in running set -- n has no value"
-                          << std::endl;
-              break;
-            }
-
-            assert(n);
-
-            if (debug_)
-              std::cout << "Putting " << n.value()->name() << " node "
-                        << n.value()->id() << " onto waiting_set_" << std::endl;
-            waiting_set_.insert(n.value());
-            break;
-          }
-          case TaskEvent::notify: {
-            auto n = waiting_set_.extract(task_to_run);
-            n.value()->set_node_state(TaskState::ready);
-            runnable_queue_.push(n.value());
-            break;
-          }
-          case TaskEvent::exit: {
-            auto n = running_set_.extract(task_to_run);
-
-            if (debug_)
-              std::cout << "Putting " << n.value()->name() << " node "
-                        << n.value()->id() << " finished_queue_" << std::endl;
-
-            finished_queue_.push(n.value());
-
-            if (debug_)
-              std::cout << "waiting_set_.size() == " << waiting_set_.size()
-                        << ", runnable_queue_.size() == "
-                        << runnable_queue_.size()
-                        << ", running_set_.size() == " << running_set_.size()
-                        << ", finished_queue_.size() == "
-                        << finished_queue_.size() << std::endl;
-
-            break;
-          }
-          default: {
-          }
-        }  // switch
-        if (debug_)
-          std::cout << "Finished switch" << std::endl;
-
-      if_val_bottom:;
-      } else {
-        break;
-      }  // if (val)
-      if (debug_)
-        std::cout << "Finished if (val)" << std::endl;
-
-      if (!running_set_.empty()) {
-        if (debug_)
-          std::cout << "Running_set_ not empty, continuing" << std::endl;
-        continue;
+        if (this->debug()) {
+          this->dump_queue_state("Post yield");
+          task_to_run.dump_task_state();
+        }
       }
-      if (!waiting_set_.empty()) {
-        if (debug_)
-          std::cout << "Waiting_set_ not empty, continuing" << std::endl;
-        continue;
-      }
-
     }  // while(true);
-    if (debug_)
-      std::cout << "Finished while (true)" << std::endl;
+    if (this->debug())
+      std::cout << "Finished while (true)\n";
 
   }  // worker()
 
-  /** Terminate threads in the thread pool */
-  void shutdown() {
-    size_t loops = waiting_set_.size();
+#if 0
 
-    for (size_t i = 0; i < loops; ++i) {
-      std::vector<Task*> notified_waiters_;
-      notified_waiters_.reserve(waiting_set_.size());
-      for (auto&& t : waiting_set_) {
-        if (t->task_event() == TaskEvent::notify) {
-          notified_waiters_.push_back(t);
+      /*
+       * If all of the queues are empty, stop the worker.
+       *
+       * @todo There may be a race condition here between all of the queues,
+       * since we transfer jobs from queue to queue, so we need to protect
+       * transfer and lock here with the same lock.
+       */
+
+      {
+        std::unique_lock _(mutex_);
+        if (waiting_set_.size() == 0 && runnable_queue_.size() == 0 &&
+            running_set_.size() == 0) {
+          if (this->debug())
+	    dump_queue_state("Stopping worker");
+          break;
+        }
+
+        /*
+         * Make any waiting tasks runnable.  Check if there are any waiting
+         * tasks that have been notified.
+         *
+         * @todo this doesn't seem very efficient, but is more efficient than
+         * doing a throw for every notify? We could (should) also have local
+         * queues for each `Mover` (Edge). Not throwing would require letting
+         * Nodes have more access to scheduler itself.
+         *
+         * @todo Attach a condition function to check if the notified task
+         * should actually be run, or if it should continue to wait.
+         */
+        std::vector<Node*> notified_waiters_;
+        notified_waiters_.reserve(waiting_set_.size());
+        for (auto&& t : waiting_set_) {
+          if (this->debug())
+	    t->dump_task_state("Waiter found");
+
+          if (t->task_event() == NodeEvent::notify) {
+            notified_waiters_.push_back(t);
+          }
+        }
+
+        /*
+         * Put the notified tasks into the runnable queue.
+         */
+        for (auto&& t : notified_waiters_) {
+          t->set_node_state(NodeState::runnable);
+          waiting_set_.erase(t);
+          runnable_queue_.push(t);
+        }
+        notified_waiters_.clear();
+
+        auto val = runnable_queue_.try_pop();
+
+        if (!val) {
+          if (this->debug())
+	    this->dump_queue_state("Nothing found in runnable_queue_, but ");
+          continue;
+        }
+
+        if (val) {
+          auto task_to_run = *val;
+
+          if (this->debug())
+	    task_to_run->dump_task_state("Worker popped");
+
+          if (task_to_run->node_state() == NodeState::waiting) {
+	    task_to_run->dump_task_state("Worker found waiting");
+
+            waiting_set_.insert(task_to_run);
+
+            // Don't have time to figure out nesting of ifs for big blocks
+            goto if_val_bottom;
+          }
+
+          running_set_.insert(task_to_run);
+
+          try {
+
+            if (this->debug())
+	      task_to_run->dump_task_state("About to resume");
+
+	    _.unlock();
+            task_to_run->resume();
+	    _.lock();
+
+            if (this->debug())
+	      task_to_run->dump_task_state("Returning from resume");
+
+          } catch (Node* t) {
+            if (this->debug())
+	      task_to_run->dump_task_state("Caught");
+            task_to_run = t;
+
+          } catch (...) {
+            throw;
+          }
+
+          _.lock();
+
+          switch (task_to_run->task_event()) {
+            case NodeEvent::yield: {
+              auto n = running_set_.extract(task_to_run);
+              n.value()->set_node_state(NodeState::runnable);
+              runnable_queue_.push(n.value());
+              break;
+            }
+
+            case NodeEvent::wait: {
+              auto n = running_set_.extract(task_to_run);
+
+              if (n) {
+		n->dump_task_state("got wait event");
+
+                if (n.value()->task_event() == NodeEvent::notify) {
+                  n.value()->set_node_state(NodeState::runnable);
+                  runnable_queue_.push(n.value());
+                  break;
+                }
+                n.value()->set_node_state(NodeState::waiting);
+                if (this->debug())
+		  n->dump_task_state("Found in running");
+
+                assert(n.value()->node_state() == NodeState::waiting);
+              } else {
+                if (this->debug())
+                  std::cout << "n not found in running set -- n has no value\n";
+                break;
+              }
+
+              assert(n);
+
+              if (this->debug())
+                std::cout << "Putting " + n.value()->name() + " node "
+                          + n.value()->id() + " onto waiting_set_ with "
+                          + str(n.value()->node_state()) + " and "
+                          + str(n.value()->task_event()) + "\n";
+              waiting_set_.insert(n.value());
+              break;
+            }
+
+            case NodeEvent::notify: {
+              auto n = waiting_set_.extract(task_to_run);
+
+              if (!n.empty()) {
+		if (this->debug())
+		  n->dump_task_state("Notified");
+
+                n.value()->set_node_state(NodeState::runnable);
+                runnable_queue_.push(n.value());
+              }
+              break;
+            }
+
+            case NodeEvent::exit: {
+              auto n = running_set_.extract(task_to_run);
+
+              if (this->debug())
+		  n->dump_task_state("Quitting");
+
+              finished_queue_.push(n.value());
+
+              if (this->debug())
+		this->dump_queue_state();
+              break;
+            }
+            default: {
+            }
+          }  // switch
+          if (this->debug())
+            std::cout << "Finished switch\n";
+
+        if_val_bottom:;
+        } else {
+          break;
+        }  // if (val)
+        if (this->debug())
+          std::cout << "Finished if (val)\n";
+
+        if (!running_set_.empty()) {
+          if (this->debug())
+            std::cout << "Running_set_ not empty, continuing\n";
+          continue;
+        }
+        if (!waiting_set_.empty()) {
+          if (this->debug())
+            std::cout << "Waiting_set_ not empty, continuing\n";
+          continue;
         }
       }
+#endif
 
-      for (auto&& t : notified_waiters_) {
-        t->set_node_state(TaskState::ready);
-        waiting_set_.erase(t);
-        runnable_queue_.push(t);
-      }
-      notified_waiters_.clear();
-    }
+  /** Terminate threads in the thread pool */
+  void shutdown() {
+    std::cout << "scheduler shutdown\n";
 
-    // all waiters must have been notified
-    assert(waiting_set_.empty());
+    this->make_ready_to_run();
+    start_cv_.notify_all();
+
+    Policy::p_shutdown();
 
     concurrency_level_.store(0);
-
-    runnable_queue_.drain();
-    finished_queue_.drain();
-
-    waiting_set_.clear();
-    running_set_.clear();
 
     for (auto&& t : threads_) {
       t.join();
     }
     threads_.clear();
   }
-
-  /** Producer-consumer queue where functions to be executed are kept */
-  ConcurrentSet<Task*> waiting_set_;
-  ConcurrentSet<Task*> running_set_;
-  BoundedBufferQ<Task*, std::queue<Task*>, false> submission_queue_;
-  BoundedBufferQ<Task*, std::queue<Task*>, false> runnable_queue_;
-  BoundedBufferQ<Task*, std::queue<Task*>, false> finished_queue_;
 
   /** The worker threads */
   std::vector<std::thread> threads_;

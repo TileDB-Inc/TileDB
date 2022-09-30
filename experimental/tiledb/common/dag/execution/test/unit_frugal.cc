@@ -36,7 +36,13 @@
 #include <iostream>
 #include <map>
 #include "../frugal.h"
+#include "experimental/tiledb/common/dag/edge/edge.h"
+#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
+#include "experimental/tiledb/common/dag/execution/scheduler.h"
+#include "experimental/tiledb/common/dag/nodes/consumer.h"
+#include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
+#include "experimental/tiledb/common/dag/state_machine/test/types.h"
 
 using namespace tiledb::common;
 
@@ -51,14 +57,6 @@ struct sender;
 template <class T>
 struct receiver;
 
-void wait(node* n);
-
-void notify(node* n);
-
-void push(node* n);
-
-void pull(node* n);
-
 template <class T>
 struct port {};
 
@@ -68,47 +66,34 @@ struct sender : public port<T> {};
 template <class T>
 struct receiver : public port<T> {};
 
-#if 0
-template <class Task>
-struct cond_var {
-  std::queue<node*> waiters;
-  ThrowCatchScheduler* scheduler;
-
-  template <class Lock>
-  void wait(node* n, Lock* lock) {
-  }
-
-  void signal_one() {
-  }
-};
-#endif
-
 struct node {
   bool debug_{false};
+
   size_t id_;
-  TaskState node_state_{TaskState::created};
-  TaskEvent task_event_{TaskEvent::admitted};
   size_t program_counter_{0};
 
-  node* correspondent_{nullptr};
+  std::shared_ptr<node> correspondent_{nullptr};
 
-  inline TaskState node_state() const {
-    return node_state_;
+  node(node&&) = default;
+  node(const node&) {
+    std::cout << "Nonsense copy constructor" << std::endl;
   }
 
-  inline TaskState set_node_state(TaskState st) {
-    node_state_ = st;
-    return st;
-  }
+  virtual ~node() = default;
 
-  inline TaskEvent task_event() const {
-    return task_event_;
-  }
+  //  inline TaskState set_node_state(TaskState st) {
+  //    node_state_ = st;
+  //    return st;
+  //  }
 
-  inline TaskEvent set_task_event(TaskEvent ev) {
-    task_event_ = ev;
-    return task_event_;
-  }
+  //  inline TaskEvent task_event() const {
+  //    return task_event_;
+  //  }
+
+  //  inline TaskEvent set_task_event(TaskEvent ev) {
+  //    task_event_ = ev;
+  //    return task_event_;
+  //  }
 
   inline size_t id() const {
     return id_;
@@ -137,34 +122,52 @@ struct node {
   }
 };
 
-void connect(node& from, node& to) {
-  from.correspondent_ = &to;
-  to.correspondent_ = &from;
+template <class From, class To>
+void connect(From& from, To& to) {
+  from->correspondent_ = to;
+  to->correspondent_ = from;
 }
 
-static size_t problem_size = 1337;
+static size_t problem_size = 7;  // 1337;
 
 std::atomic<size_t> id_counter{0};
 
-static std::atomic<size_t> produced_items{0};
-template <class T>
-struct producer_node : public node, public sender<T> {
-  std::function<T()> f_;
+std::atomic<bool> item_{false};
 
-  template <class Function>
-  producer_node(Function&& f)
-      : node(id_counter++)
-      , f_{std::forward<Function>(f)} {
+template <template <class> class Mover, class T>
+struct producer_node_impl : public node,
+                            public sender<T>,
+                            public Source<Mover, T> {
+  using mover_type = Mover<T>;
+  void set_item_mover(std::shared_ptr<mover_type> mover) {
+    this->item_mover_ = mover;
   }
 
+  std::function<T(std::stop_source&)> f_;
+
+  std::atomic<size_t> produced_items_{0};
+
+  size_t produced_items() {
+    return produced_items_.load();
+  }
+
+  template <class Function>
+  producer_node_impl(Function&& f)
+      : node(id_counter++)
+      , f_{std::forward<Function>(f)}
+      , produced_items_{0} {
+  }
+
+  producer_node_impl(producer_node_impl&& rhs) = default;
+
   void inject(T) {
-    if (debug_)
-      std::cout << "producer_node " << id_ << " injecting" << std::endl;
+    if (this->debug())
+      std::cout << "producer_node " + std::to_string(id_) + " injecting" + "\n";
   }
 
   void fill() {
-    if (debug_)
-      std::cout << "producer_node " << id_ << " filling" << std::endl;
+    if (this->debug())
+      std::cout << "producer_node " + std::to_string(id_) + " filling" + "\n";
   }
 
   std::string name() {
@@ -172,27 +175,39 @@ struct producer_node : public node, public sender<T> {
   }
 
   node* resume() {
-    if (debug_)
-      std::cout << this->name() << " node " << this->id() << " resuming with "
-                << produced_items << " produced_items" << std::endl;
+    auto mover = this->get_mover();
 
-    if (produced_items++ >= problem_size) {
-      if (debug_)
-        std::cout << this->name() << " node " << this->id()
-                  << " is done -- setting event to exit" << std::endl;
-      this->task_event_ = TaskEvent::exit;
-      notify(this->correspondent_);
-      return this;
-    }
+    std::cout << "producer resuming\n";
+
+    if (this->debug())
+      std::cout << this->name() + " node " + std::to_string(this->id()) +
+                       " resuming with " + std::to_string(produced_items_) +
+                       " produced_items" + "\n";
 
     [[maybe_unused]] std::thread::id this_id = std::this_thread::get_id();
 
-    decltype(f_()) thing;
+    std::stop_source st;
+    decltype(f_(st)) thing;
+
+    std::stop_source stop_source_;
 
     switch (program_counter_) {
       case 0: {
         program_counter_ = 1;
-        thing = f_();
+
+        if (produced_items_++ >= problem_size) {
+          if (this->debug())
+            std::cout << this->name() + " node " + std::to_string(this->id()) +
+                             " is done -- setting event to exit" + "\n";
+          mover->do_stop();
+          break;
+        }
+
+        thing = f_(stop_source_);
+        if (stop_source_.stop_requested()) {
+          mover->do_stop();
+          break;
+        }
       }
         [[fallthrough]];
 
@@ -204,59 +219,70 @@ struct producer_node : public node, public sender<T> {
 
       case 2: {
         program_counter_ = 3;
-        fill();
+        mover->do_fill();
       }
         [[fallthrough]];
 
       case 3: {
         program_counter_ = 4;
-        assert(this->correspondent_ != nullptr);
-        notify(this->correspondent_);
       }
         [[fallthrough]];
 
       case 4: {
         program_counter_ = 5;
-        push(this);
+        mover->do_push();
       }
         [[fallthrough]];
 
         // @todo Should skip yield if push waited;
       case 5: {
         program_counter_ = 0;
-        task_event_ = TaskEvent::yield;
+        //        this->do_yield(*this);
         // yield();
         break;
       }
 
       default:
-        std::cout << "default " << str(this->node_state_) << std::endl;
+        break;
     }
     return this;
   }
 };
 
-static std::atomic<size_t> consumed_items{0};
+template <template <class> class Mover, class T>
+struct consumer_node_impl : public node,
+                            public receiver<T>,
+                            public Sink<Mover, T> {
+  using mover_type = Mover<T>;
+  void set_item_mover(std::shared_ptr<mover_type> mover) {
+    this->item_mover_ = mover;
+  }
 
-template <class T>
-struct consumer_node : public node, public receiver<T> {
   std::function<void(const T&)> f_;
 
+  std::atomic<size_t> consumed_items_{0};
+
+  size_t consumed_items() {
+    return consumed_items_.load();
+  }
+
   template <class Function>
-  consumer_node(Function&& f)
+  consumer_node_impl(Function&& f)
       : node(id_counter++)
-      , f_{std::forward<Function>(f)} {
+      , f_{std::forward<Function>(f)}
+      , consumed_items_{0} {
   }
 
   T extract() {
-    if (debug_)
-      std::cout << "consumer_node " << id_ << " extracting" << std::endl;
+    if (this->debug())
+      std::cout << "consumer_node " + std::to_string(id_) + " extracting" +
+                       "\n";
     return {};
   }
 
   void drain() {
-    if (debug_)
-      std::cout << "consumer_node " << id_ << " draining" << std::endl;
+    if (this->debug())
+      std::cout << "consumer_node " + std::to_string(id_) + " draining" + "\n";
   }
 
   std::string name() {
@@ -264,19 +290,13 @@ struct consumer_node : public node, public receiver<T> {
   }
 
   node* resume() {
-    if (debug_)
+    auto mover = this->get_mover();
 
-      std::cout << this->name() << " node " << this->id() << " resuming with "
-                << consumed_items << " consumed_items" << std::endl;
+    if (this->debug())
 
-    if (consumed_items++ >= problem_size) {
-      if (debug_)
-
-        std::cout << this->name() << " node " << this->id()
-                  << " is done -- setting event to exit" << std::endl;
-      this->task_event_ = TaskEvent::exit;
-      return this;
-    }
+      std::cout << this->name() + " node " + std::to_string(this->id()) +
+                       " resuming with " + std::to_string(consumed_items_) +
+                       " consumed_items" + "\n";
 
     [[maybe_unused]] std::thread::id this_id = std::this_thread::get_id();
 
@@ -285,7 +305,7 @@ struct consumer_node : public node, public receiver<T> {
     switch (program_counter_) {
       case 0: {
         ++program_counter_;
-        pull(this);
+        mover->do_pull();
       }
         [[fallthrough]];
 
@@ -303,7 +323,7 @@ struct consumer_node : public node, public receiver<T> {
       case 2: {
         ++program_counter_;
 
-        drain();
+        mover->do_drain();
       }
         [[fallthrough]];
 
@@ -311,12 +331,18 @@ struct consumer_node : public node, public receiver<T> {
         ++program_counter_;
 
         assert(this->correspondent_ != nullptr);
-        notify(this->correspondent_);
       }
         [[fallthrough]];
 
       case 4: {
         ++program_counter_;
+
+        if (consumed_items_++ >= problem_size) {
+          if (this->debug())
+            std::cout << this->name() + " node " + std::to_string(this->id()) +
+                             " is done -- setting event to exit" + "\n";
+          return this;
+        }
 
         f_(thing);
       }
@@ -325,132 +351,413 @@ struct consumer_node : public node, public receiver<T> {
       case 5: {
         ++program_counter_;
 
-        pull(this);
+        mover->do_pull();
       }
 
       case 6: {
         program_counter_ = 1;
-        task_event_ = TaskEvent::yield;
+        //        this->do_yield(*this);
         // yield();
         break;
       }
       default: {
-        std::cout << "default " << str(this->node_state_) << std::endl;
+        break;
       }
     }
     return this;
   }
 };
 
-void pull(node* n) {
-  if (n->debug_)
-    std::cout << n->name() << " node " << n->id() << " pulling with "
-              << str(n->node_state()) << " and " << str(n->task_event())
-              << std::endl;
+template <template <class> class Mover, class T>
+struct producer_node : std::shared_ptr<producer_node_impl<Mover, T>> {
+  using Base = std::shared_ptr<producer_node_impl<Mover, T>>;
+  using Base::Base;
 
-  if (n->task_event() == TaskEvent::notify) {
-    if (n->debug_)
-      std::cout << n->name() << " node " << n->id()
-                << " has been notifed -- setting state to dispatch"
-                << std::endl;
+  template <class Function>
+  producer_node(Function&& f)
+      : Base{std::make_shared<producer_node_impl<Mover, T>>(
+            std::forward<Function>(f))} {
+  }
+};
 
-    n->set_task_event(TaskEvent::dispatch);
-    return;
+template <template <class> class Mover, class T>
+struct consumer_node : std::shared_ptr<consumer_node_impl<Mover, T>> {
+  using Base = std::shared_ptr<consumer_node_impl<Mover, T>>;
+  using Base::Base;
+
+  template <class Function>
+  consumer_node(Function&& f)
+      : Base{std::make_shared<consumer_node_impl<Mover, T>>(
+            std::forward<Function>(f))} {
+  }
+};
+
+TEST_CASE("FrugalScheduler: Test create nodes", "[frugal]") {
+  auto p =
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto c = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+}
+
+TEST_CASE("FrugalScheduler: Test assigning nodes", "[frugal]") {
+  auto p =
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto c = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+
+  std::shared_ptr<node> q = p;
+  std::shared_ptr<node> d = c;
+  q->correspondent_ = p;
+  q->correspondent_ = c;
+  d->correspondent_ = p;
+  d->correspondent_ = c;
+}
+
+TEST_CASE("FrugalScheduler: Test connect nodes", "[frugal]") {
+  auto p =
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto c = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+
+  //  print_types(p, c, p->correspondent_, c->correspondent_);
+
+  p->correspondent_ = c;
+  c->correspondent_ = p;
+
+  connect(p, c);
+  Edge(*p, *c);
+}
+
+TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
+  auto p =
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto c = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+
+  // This doesn't work any longer -- took out converting constructor
+  // auto q = FrugalTask(p);
+  // auto d = FrugalTask(c);
+
+  auto q = FrugalTask(p);
+  auto d = FrugalTask(c);
+
+  auto r = FrugalTask(p);
+  auto e = FrugalTask(c);
+
+  CHECK(c->name() == "consumer");
+  CHECK(p->name() == "producer");
+  CHECK(d->name() == "consumer");
+  CHECK(q->name() == "producer");
+  CHECK(e->name() == "consumer");
+  CHECK(r->name() == "producer");
+
+  auto s = r;
+  auto t = s;
+
+  SECTION("Node Equality") {
+    // Not comparable
+    // CHECK(p != c);
+
+    // Not constructible
+    // consumer_node<FrugalMover3, size_t> i{c};
+
+    // Not constructible
+    // auto j = p;
+
+    // This is brilliant
+    std::shared_ptr<node> a = p;
+    std::shared_ptr<node> b = c;
+
+    CHECK(a == p);
+    CHECK(b == c);
+    CHECK(a != b);
+
+    // Not comparable
+    // CHECK(*a == *p);
   }
 
-  if (n->debug_)
-    std::cout << n->name() << " node " << n->id()
-              << " setting to wait and throwing" << std::endl;
+  SECTION("FrugalTask Equality") {
+    CHECK(reinterpret_cast<void*>(&c) != reinterpret_cast<void*>(&d));
+    CHECK(reinterpret_cast<void*>(&c) != reinterpret_cast<void*>(&e));
+    CHECK(reinterpret_cast<void*>(&e) != reinterpret_cast<void*>(&d));
 
-  n->set_task_event(TaskEvent::wait);
-  throw(n);
-}
+    CHECK(&s != &r);
+    CHECK(&s != &t);
+    CHECK(&r != &t);
 
-void push(node* n) {
-  if (n->debug_)
-    std::cout << n->name() << " node " << n->id() << " pushing with "
-              << str(n->node_state()) << " and " << str(n->task_event())
-              << std::endl;
+    CHECK(c == d);
+    CHECK(e == e);
+    CHECK(e == c);
 
-  if (n->task_event() == TaskEvent::notify) {
-    if (n->debug_)
-      std::cout << n->name() << " node " << n->id() << " has been notifed "
-                << std::endl;
-    n->set_task_event(TaskEvent::dispatch);
-    return;
+    CHECK(q == p);
+    CHECK(q == r);
+    CHECK(s == r);
+    CHECK(s == t);
+    CHECK(r == t);
   }
 
-  if (n->debug_)
-    std::cout << n->name() << " node " << n->id()
-              << " setting to wait and throwing" << std::endl;
+  SECTION("Node and FrugalTask Equality") {
+    std::shared_ptr<node> a = p;  // q
+    std::shared_ptr<node> b = c;  // d
 
-  n->set_task_event(TaskEvent::wait);
-  throw(n);
+    CHECK(a == q);
+    CHECK(b == d);
+    CHECK(b != a);
+
+    auto u = FrugalTask(c);
+    auto v = FrugalTask(p);
+
+    CHECK(u == c);
+    u = c;
+    v = p;
+
+    std::shared_ptr<node> x{c};
+    std::shared_ptr<node> y{p};
+
+    // u = x;
+    y = v;
+
+    // CHECK(u == c);
+    CHECK(y == p);
+    // CHECK(c == u);
+    CHECK(p == y);
+  }
+
+  SECTION("Queue") {
+    std::queue<decltype(q)> q_;
+    q_.push(q);
+    auto u = q_.front();
+    q_.pop();
+    CHECK(q == u);
+  }
+
+  SECTION("Set") {
+    std::set<FrugalTask<std::shared_ptr<node>>> q_;
+    // s == r == t
+    // q != d
+
+    q_.insert(q);
+    q_.insert(r);
+    q_.insert(d);
+    q_.insert(c);
+    q_.insert(s);
+    q_.insert(t);
+    q_.insert(e);
+
+    auto n = q_.extract(s);
+    CHECK(!n.empty());
+    CHECK(q == n.value());
+
+    auto m = q_.extract(r);
+    CHECK(m.empty());
+    auto l = q_.extract(q);
+    CHECK(l.empty());
+    auto k = q_.extract(t);
+    CHECK(k.empty());
+
+    auto u = q_.extract(c);
+    CHECK(!u.empty());
+    auto v = q_.extract(c);
+    CHECK(v.empty());
+    auto w = q_.extract(s);
+    CHECK(w.empty());
+    auto x = q_.extract(e);
+    CHECK(x.empty());
+    auto y = q_.extract(d);
+    CHECK(y.empty());
+  }
+
+  SECTION("Map") {
+    std::map<FrugalTask<node>, std::shared_ptr<node>> m_;
+
+    m_[r] = c;
+    m_[e] = q;
+
+    CHECK(m_[t] == e);
+    CHECK(m_[c] == s);
+
+    std::map<std::shared_ptr<node>, FrugalTask<node>> n_;
+
+    n_[r] = c;
+    n_[e] = q;
+
+    CHECK(n_[t] == e);
+    CHECK(n_[c] == s);
+
+    std::map<std::shared_ptr<node>, std::shared_ptr<node>> o_;
+
+    auto x = std::shared_ptr<node>{c};
+
+    o_[r] = c;
+    o_[e] = q;
+
+    CHECK(o_[t] == e);
+    CHECK(o_[c] == s);
+    CHECK(o_[c] != d);
+    CHECK(o_[c] != e);
+    CHECK(o_[t] != r);
+    CHECK(o_[t] != q);
+
+    CHECK(m_[c] == n_[d]);
+    CHECK(o_[d] == n_[e]);
+    CHECK(o_[q] == m_[p]);
+    CHECK(o_[t] == m_[r]);
+  }
 }
 
-void notify(node* n) {
-  if (n->debug_)
-    std::cout << n->name() << " node " << n->id() << " being notified with "
-              << str(n->node_state()) << " and " << str(n->task_event())
-              << std::endl;
-  n->set_task_event(TaskEvent::notify);
-}
-
-#if 0
-TEST_CASE("ThrowCatchScheduler: Test construct", "[frugal]") {
-  [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(1);
+TEST_CASE("FrugalScheduler: Test construct scheduler", "[frugal]") {
+  [[maybe_unused]] auto sched = FrugalScheduler<node>(1);
   // sched goes out of scope and shuts down the scheduler
 }
 
-TEST_CASE("ThrowCatchScheduler: Test create nodes", "[frugal]") {
-  [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(1);
+TEST_CASE("FrugalScheduler: Test FrugalTask state changes", "[frugal]") {
+  [[maybe_unused]] auto sched =
+      SchedulerStateMachine<EmptySchedulerPolicy<FrugalTask<node>>>{};
 
-  auto p = producer_node<size_t>([]() { return 0; });
-  auto c = consumer_node<size_t>([](const size_t&) {});
+  auto p =
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto c = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+
+  auto q = FrugalTask<node>{p};
+  auto d = FrugalTask<node>{c};
+
+  CHECK(p == q);
+  CHECK(d != q);
+
+  auto e = d;
+  CHECK(e == d);
+
+  // Cannot do this
+  // auto r = p;
+  // CHECK(r == p);
+
+  auto s = q;
+  CHECK(s == q);
+
+  // Cannot do this
+  // p.dump_task_state();
+
+  // Can to this
+  // q.dump_task_state();
+
+  SECTION("Admit") {
+    // Cannot do this
+    // sched.do_admit(p);
+    // CHECK(str(p.state()) == "runnable");
+
+    // Can do this
+    sched.do_admit(q);
+    CHECK(str(q.state()) == "runnable");
+    CHECK(str(s.state()) == "runnable");
+
+    CHECK(p == q);
+    CHECK(s == q);
+  }
 }
 
-TEST_CASE("ThrowCatchScheduler: Test connect nodes", "[frugal]") {
-  [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(1);
+TEST_CASE("FrugalScheduler: Test submit nodes", "[frugal]") {
+  [[maybe_unused]] auto sched = FrugalScheduler<node>(1);
 
-  auto p = producer_node<size_t>([]() { return 0; });
-  auto c = consumer_node<size_t>([](const size_t&) {});
+  auto p =
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto c = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
 
   connect(p, c);
+  Edge(*p, *c);
+  sched.submit(p);
+  sched.submit(c);
 }
 
-TEST_CASE("ThrowCatchScheduler: Test submit nodes", "[frugal]") {
-  [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(1);
+TEST_CASE("FrugalScheduler: Test submit and wait nodes", "[frugal]") {
+  bool debug{true};
 
-  auto p = producer_node<size_t>([]() { return 0; });
-  auto c = consumer_node<size_t>([](const size_t&) {});
+  // auto num_threads = GENERATE(1, 2, 3, 4);
 
-  connect(p, c);
-  sched.submit(&p);
-  sched.submit(&c);
+  //  auto num_threads = 2UL;
+  auto num_threads = 1UL;
+
+  SECTION("With " + std::to_string(num_threads) + " threads") {
+    [[maybe_unused]] auto sched = FrugalScheduler<node>(num_threads);
+
+    if (debug) {
+      sched.enable_debug();
+    }
+
+    auto p = producer_node<FrugalMover3, size_t>([&sched](std::stop_source&) {
+      if (sched.debug())
+        std::cout << "Producing"
+                     "\n";
+      return 0;
+    });
+    auto c = consumer_node<FrugalMover3, size_t>([&sched](const size_t&) {
+      if (sched.debug())
+        std::cout << "Consuming"
+                     "\n";
+    });
+
+    if (debug) {
+      p->enable_debug();
+      c->enable_debug();
+    }
+
+    connect(p, c);
+    Edge(*p, *c);
+    sched.submit(p);
+    sched.submit(c);
+    sched.sync_wait_all();
+
+    CHECK(p->produced_items() == problem_size + num_threads);
+    CHECK(c->consumed_items() == problem_size + num_threads);
+  }
+}
+
+#if 0
+
+TEST_CASE("FrugalScheduler: Test passing integers", "[frugal]") {
+  bool debug = true;
+
+  //  auto num_threads = GENERATE(1, 2, 3, 4);
+  auto num_threads = 1;
+  auto rounds = problem_size;
+
+  std::vector<size_t> input(rounds);
+  std::vector<size_t> output(rounds);
+
+  std::iota(input.begin(), input.end(), 19);
+  std::fill(output.begin(), output.end(), 0);
+  auto i = input.begin();
+  auto j = output.begin();
+
+  if (rounds != 0) {
+    CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
+  }
+
+  SECTION(
+      "With " + std::to_string(num_threads) + " threads and " +
+      std::to_string(rounds) + " integers") {
+    [[maybe_unused]] auto sched = FrugalScheduler<node>(num_threads);
+
+    if (debug) {
+      sched.enable_debug();
+    }
+
+    auto p =
+        producer_node<FrugalMover3, size_t>([&sched, &i](std::stop_source&) {
+          if (sched.debug())
+            std::cout << "Producing"
+                         "\n";
+          return *i++;
+        });
+    auto c = consumer_node<FrugalMover3, size_t>(consumer{j});
+
+    connect(p, c);
+    sched.submit(p);
+    sched.submit(c);
+    sched.sync_wait_all();
+  }
+  CHECK(rounds != 0);
+  CHECK(rounds == problem_size);
+
+  CHECK(input.begin() != i);
+  CHECK(input.size() == rounds);
+  CHECK(output.size() == rounds);
+  CHECK(std::equal(input.begin(), i, output.begin()));
+  CHECK(std::distance(input.begin(), i) == static_cast<long>(rounds));
 }
 #endif
-
-TEST_CASE("ThrowCatchScheduler: Test submit and wait nodes", "[frugal]") {
-  [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(1);
-
-  auto p = producer_node<size_t>([&sched]() {
-    if (sched.debug())
-      std::cout << "Producing" << std::endl;
-    return 0;
-  });
-  auto c = consumer_node<size_t>([&sched](const size_t&) {
-    if (sched.debug())
-      std::cout << "Consuming" << std::endl;
-  });
-
-  connect(p, c);
-  sched.submit(&p);
-  sched.submit(&c);
-  sched.sync_wait_all();
-
-  CHECK(produced_items == problem_size + 1);
-  CHECK(consumed_items == problem_size + 1);
-}
-
-TEST_CASE("ThrowCatchScheduler: Test run nodes", "[frugal]") {
-}
