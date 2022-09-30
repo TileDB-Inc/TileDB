@@ -325,7 +325,7 @@ struct Writer {
   stats @5 :Stats;
   # Stats object
 
-  globalWriteState @6 :GlobalWriteState;
+  globalWriteStateV1 @6 :GlobalWriteState;
   # All the state necessary for global writes to work in TileDB Cloud
 }
 

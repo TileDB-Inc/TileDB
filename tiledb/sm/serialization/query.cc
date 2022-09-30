@@ -1187,7 +1187,7 @@ Status writer_to_capnp(
     // invoked. Once GlobalOrderWriter becomes C41 compliant, we can delete this
     // check.
     if (globalstate) {
-      auto global_state_builder = writer_builder->initGlobalWriteState();
+      auto global_state_builder = writer_builder->initGlobalWriteStateV1();
       RETURN_NOT_OK(global_write_state_to_capnp(
           query, globalwriter, &global_state_builder));
     }
@@ -1214,7 +1214,7 @@ Status writer_from_capnp(
   }
 
   if (query.layout() == Layout::GLOBAL_ORDER &&
-      writer_reader.hasGlobalWriteState()) {
+      writer_reader.hasGlobalWriteStateV1()) {
     auto global_writer = dynamic_cast<GlobalOrderWriter*>(writer);
 
     // global_write_state is not allocated when deserializing into a
@@ -1224,7 +1224,7 @@ Status writer_from_capnp(
       RETURN_NOT_OK(global_writer->init_global_write_state());
     }
     RETURN_NOT_OK(global_write_state_from_capnp(
-        query, writer_reader.getGlobalWriteState(), global_writer));
+        query, writer_reader.getGlobalWriteStateV1(), global_writer));
   }
 
   return Status::Ok();

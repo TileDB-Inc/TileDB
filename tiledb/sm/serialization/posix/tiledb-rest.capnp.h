@@ -5155,9 +5155,9 @@ class Writer::Reader {
   inline bool hasStats() const;
   inline ::tiledb::sm::serialization::capnp::Stats::Reader getStats() const;
 
-  inline bool hasGlobalWriteState() const;
+  inline bool hasGlobalWriteStateV1() const;
   inline ::tiledb::sm::serialization::capnp::GlobalWriteState::Reader
-  getGlobalWriteState() const;
+  getGlobalWriteStateV1() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -5239,18 +5239,18 @@ class Writer::Builder {
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Stats>
   disownStats();
 
-  inline bool hasGlobalWriteState();
+  inline bool hasGlobalWriteStateV1();
   inline ::tiledb::sm::serialization::capnp::GlobalWriteState::Builder
-  getGlobalWriteState();
-  inline void setGlobalWriteState(
+  getGlobalWriteStateV1();
+  inline void setGlobalWriteStateV1(
       ::tiledb::sm::serialization::capnp::GlobalWriteState::Reader value);
   inline ::tiledb::sm::serialization::capnp::GlobalWriteState::Builder
-  initGlobalWriteState();
-  inline void adoptGlobalWriteState(
+  initGlobalWriteStateV1();
+  inline void adoptGlobalWriteStateV1(
       ::capnp::Orphan<::tiledb::sm::serialization::capnp::GlobalWriteState>&&
           value);
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::GlobalWriteState>
-  disownGlobalWriteState();
+  disownGlobalWriteStateV1();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -5279,7 +5279,7 @@ class Writer::Pipeline {
   getSubarrayRanges();
   inline ::tiledb::sm::serialization::capnp::Stats::Pipeline getStats();
   inline ::tiledb::sm::serialization::capnp::GlobalWriteState::Pipeline
-  getGlobalWriteState();
+  getGlobalWriteStateV1();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -15874,34 +15874,34 @@ Writer::Builder::disownStats() {
           _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
 }
 
-inline bool Writer::Reader::hasGlobalWriteState() const {
+inline bool Writer::Reader::hasGlobalWriteStateV1() const {
   return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool Writer::Builder::hasGlobalWriteState() {
+inline bool Writer::Builder::hasGlobalWriteStateV1() {
   return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::tiledb::sm::serialization::capnp::GlobalWriteState::Reader
-Writer::Reader::getGlobalWriteState() const {
+Writer::Reader::getGlobalWriteStateV1() const {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::GlobalWriteState>::get(
           _reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
 }
 inline ::tiledb::sm::serialization::capnp::GlobalWriteState::Builder
-Writer::Builder::getGlobalWriteState() {
+Writer::Builder::getGlobalWriteStateV1() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::GlobalWriteState>::get(
           _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
 }
 #if !CAPNP_LITE
 inline ::tiledb::sm::serialization::capnp::GlobalWriteState::Pipeline
-Writer::Pipeline::getGlobalWriteState() {
+Writer::Pipeline::getGlobalWriteStateV1() {
   return ::tiledb::sm::serialization::capnp::GlobalWriteState::Pipeline(
       _typeless.getPointerField(3));
 }
 #endif  // !CAPNP_LITE
-inline void Writer::Builder::setGlobalWriteState(
+inline void Writer::Builder::setGlobalWriteStateV1(
     ::tiledb::sm::serialization::capnp::GlobalWriteState::Reader value) {
   ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::GlobalWriteState>::set(
@@ -15909,12 +15909,12 @@ inline void Writer::Builder::setGlobalWriteState(
           value);
 }
 inline ::tiledb::sm::serialization::capnp::GlobalWriteState::Builder
-Writer::Builder::initGlobalWriteState() {
+Writer::Builder::initGlobalWriteStateV1() {
   return ::capnp::_::PointerHelpers<
       ::tiledb::sm::serialization::capnp::GlobalWriteState>::
       init(_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
 }
-inline void Writer::Builder::adoptGlobalWriteState(
+inline void Writer::Builder::adoptGlobalWriteStateV1(
     ::capnp::Orphan<::tiledb::sm::serialization::capnp::GlobalWriteState>&&
         value) {
   ::capnp::_::PointerHelpers<
@@ -15924,7 +15924,7 @@ inline void Writer::Builder::adoptGlobalWriteState(
           kj::mv(value));
 }
 inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::GlobalWriteState>
-Writer::Builder::disownGlobalWriteState() {
+Writer::Builder::disownGlobalWriteStateV1() {
   return ::capnp::_::PointerHelpers<
       ::tiledb::sm::serialization::capnp::GlobalWriteState>::
       disown(
