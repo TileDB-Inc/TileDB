@@ -307,7 +307,8 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   std::vector<std::unordered_map<uint64_t, OrderedDimLabelResultTile>>
       result_tiles_;
 
-  /** Tile index (inside of the domain) of the first tile of each fragments.
+  /**
+   * Tile index (inside of the domain) of the first tile of each fragments.
    */
   std::vector<uint64_t> domain_tile_idx_;
 
@@ -336,30 +337,26 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   void label_read();
 
   /**
-   * Compute the tile index (inside of the full domain) of the first tile of
-   * each fragments.
-   *
-   * @tparam The index type.
-   */
-  template <typename IndexType>
-  void compute_domain_tile_indexes();
-
-  /**
-   * Compute the tile indexes (min/max) that can potentially contain the label
-   * value for each range start/end.
-   *
-   * @tparam The index type.
-   */
-  template <typename IndexType>
-  void compute_range_tile_indexes();
-
-  /**
-   * Compute the non empty domain for the index dimension.
+   * Compute the non empty domain for the index dimension. Also caches the non
+   * empty domain of each fragments for future use and saves the non empty
+   * domain in tile indexes in `tile_idx_min_` and `tile_idx_max_`.
    *
    * @tparam The index type.
    */
   template <typename IndexType>
   void compute_non_empty_domain();
+
+  /**
+   * Compute the tile index (inside of the full dimension domain) of the first
+   * tile of each fragments.
+   *
+   * Also compute the tile indexes (min/max) that can potentially contain the
+   * label value for each range start/end.
+   *
+   * @tparam The index type.
+   */
+  template <typename IndexType>
+  void compute_tile_indexes();
 
   /** Load the tile min max values for the index attribute. */
   void load_label_min_max_values();
@@ -467,7 +464,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
    * @param r Range to compute indexes for.
    */
   template <typename IndexType, typename LabelType>
-  void compute_range_indexes_fixed(IndexType* dest, uint64_t r);
+  void compute_and_copy_range_indexes_fixed(IndexType* dest, uint64_t r);
 
   /**
    * Compute and copy the range indexes for a specific range, for fixed size
@@ -478,7 +475,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
    * @param r Range index to compute/copy.
    */
   template <typename IndexType>
-  void copy_range_indexes_fixed(uint64_t buffer_offset, uint64_t r);
+  void compute_and_copy_range_indexes_fixed(uint64_t buffer_offset, uint64_t r);
 
   /**
    * Get the var label value at a specific index.
@@ -524,8 +521,8 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
    * @param r Range index to compute/copy.
    */
   template <typename IndexType>
-  void copy_range_indexes_var(uint64_t buffer_offset, uint64_t r);
-};  // namespace sm
+  void compute_and_copy_range_indexes_var(uint64_t buffer_offset, uint64_t r);
+};
 
 }  // namespace sm
 }  // namespace tiledb

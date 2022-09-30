@@ -950,9 +950,10 @@ class Query {
   /**
    * Set a flag to specify we are doing an ordered dimension label read.
    *
-   * @param increaging_order Is the query on an array with increasing order?
+   * @param increasing_order Is the query on an array with increasing order? If
+   * not assume decreasing order.
    */
-  void set_dimension_label_ordered_read(bool increaging_order);
+  void set_dimension_label_ordered_read(bool increasing_order);
 
  private:
   /* ********************************* */
@@ -1094,7 +1095,12 @@ class Query {
   /** Flag to specify we are doing a dimension label ordered read. */
   bool is_dimension_label_ordered_read_;
 
-  /** Is the dimension label ordered read on an array with increasing order? */
+  /**
+   * Is the dimension label ordered read on an array with increasing order? If
+   * not assume decreasing order.
+   *
+   * NOTE: Only used when is_dimension_label_order_read_ == true.
+   */
   bool dimension_label_increasing_;
 
   /* ********************************* */

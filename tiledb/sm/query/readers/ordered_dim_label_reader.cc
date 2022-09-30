@@ -139,6 +139,11 @@ OrderedDimLabelReader::OrderedDimLabelReader(
         "Cannot initialize ordered dim label reader; Subarray is set");
   }
 
+  if (!condition_.empty()) {
+    throw OrderedDimLabelReaderStatusException(
+        "Ordered dimension laber reader cannot process query condition");
+  }
+
   bool found = false;
   if (!config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found)
            .ok()) {
@@ -174,7 +179,6 @@ Status OrderedDimLabelReader::initialize_memory_budget() {
 
 Status OrderedDimLabelReader::dowork() {
   auto timer_se = stats_->start_timer("dowork");
-  assert(condition_.empty());
 
   get_dim_attr_stats();
   reset_buffer_sizes();
@@ -255,9 +259,8 @@ void OrderedDimLabelReader::label_read() {
   assert(std::is_integral<IndexType>::value);
 
   // Precompute data.
-  compute_domain_tile_indexes<IndexType>();
   compute_non_empty_domain<IndexType>();
-  compute_range_tile_indexes<IndexType>();
+  compute_tile_indexes<IndexType>();
 
   // Save the offsets into the user buffer if we make more than one iteration
   // because of memory budgetting.
@@ -284,17 +287,9 @@ void OrderedDimLabelReader::label_read() {
     throw_if_not_ok(parallel_for(
         storage_manager_->compute_tp(), 0, max_range, [&](uint64_t r) {
           if (!label_var_size_) {
-            if (increasing_labels_) {
-              copy_range_indexes_fixed<IndexType>(buffer_offset, r);
-            } else {
-              copy_range_indexes_fixed<IndexType>(buffer_offset, r);
-            }
+            compute_and_copy_range_indexes_fixed<IndexType>(buffer_offset, r);
           } else {
-            if (increasing_labels_) {
-              copy_range_indexes_var<IndexType>(buffer_offset, r);
-            } else {
-              copy_range_indexes_var<IndexType>(buffer_offset, r);
-            }
+            compute_and_copy_range_indexes_var<IndexType>(buffer_offset, r);
           }
           return Status::Ok();
         }));
@@ -313,8 +308,34 @@ void OrderedDimLabelReader::label_read() {
 }
 
 template <typename IndexType>
-void OrderedDimLabelReader::compute_domain_tile_indexes() {
-  auto timer_se = stats_->start_timer("compute_domain_tile_indexes");
+void OrderedDimLabelReader::compute_non_empty_domain() {
+  auto timer_se = stats_->start_timer("compute_non_empty_domain");
+
+  IndexType min = std::numeric_limits<IndexType>::max();
+  IndexType max = std::numeric_limits<IndexType>::min();
+
+  for (unsigned f = 0; f < fragment_metadata_.size(); f++) {
+    non_empty_domains_[f] = fragment_metadata_[f]->non_empty_domain()[0].data();
+    auto frag_non_empty_domain =
+        static_cast<const IndexType*>(non_empty_domains_[f]);
+    min = std::min(min, frag_non_empty_domain[0]);
+    max = std::max(max, frag_non_empty_domain[1]);
+  }
+
+  non_empty_domain_ = Range(&min, &max, sizeof(IndexType));
+
+  // Save the minimum/maximum tile indexes (in the full domain) to be used
+  // later.
+  auto tile_extent = index_dim_->tile_extent().rvalue_as<IndexType>();
+  const IndexType* dim_dom =
+      static_cast<const IndexType*>(index_dim_->domain().data());
+  tile_idx_min_ = index_dim_->tile_idx(min, dim_dom[0], tile_extent);
+  tile_idx_max_ = index_dim_->tile_idx(max, dim_dom[0], tile_extent);
+}
+
+template <typename IndexType>
+void OrderedDimLabelReader::compute_tile_indexes() {
+  auto timer_se = stats_->start_timer("compute_tile_indexes");
 
   // Compute the tile index (inside of the full domain) of the first tile for
   // each fragments.
@@ -326,19 +347,12 @@ void OrderedDimLabelReader::compute_domain_tile_indexes() {
       0,
       fragment_metadata_.size(),
       [&](uint64_t f) {
-        non_empty_domains_[f] =
-            fragment_metadata_[f]->non_empty_domain()[0].data();
         const IndexType* non_empty_domain =
             static_cast<const IndexType*>(non_empty_domains_[f]);
         domain_tile_idx_[f] = index_dim_->tile_idx<IndexType>(
             non_empty_domain[0], dim_dom[0], tile_extent);
         return Status::Ok();
       }));
-}
-
-template <typename IndexType>
-void OrderedDimLabelReader::compute_range_tile_indexes() {
-  auto timer_se = stats_->start_timer("compute_range_tile_indexes");
 
   // Compute the tile (by index) where the label values include each range
   // start and end. This is stored in the following value, by fragment/range.
@@ -368,31 +382,6 @@ void OrderedDimLabelReader::compute_range_tile_indexes() {
             tile_idx_min_, tile_idx_max_, per_fragment_range_tile_indexes[r]);
         return Status::Ok();
       }));
-}
-
-template <typename IndexType>
-void OrderedDimLabelReader::compute_non_empty_domain() {
-  auto timer_se = stats_->start_timer("compute_non_empty_domain");
-
-  IndexType min = std::numeric_limits<IndexType>::max();
-  IndexType max = std::numeric_limits<IndexType>::min();
-
-  for (unsigned f = 0; f < fragment_metadata_.size(); f++) {
-    auto frag_non_empty_domain =
-        static_cast<const IndexType*>(non_empty_domains_[f]);
-    min = std::min(min, frag_non_empty_domain[0]);
-    max = std::max(max, frag_non_empty_domain[1]);
-  }
-
-  non_empty_domain_ = Range(&min, &max, sizeof(IndexType));
-
-  // Save the minimum/maximum tile indexes (in the full domain) to be used
-  // later.
-  auto tile_extent = index_dim_->tile_extent().rvalue_as<IndexType>();
-  const IndexType* dim_dom =
-      static_cast<const IndexType*>(index_dim_->domain().data());
-  tile_idx_min_ = index_dim_->tile_idx(min, dim_dom[0], tile_extent);
-  tile_idx_max_ = index_dim_->tile_idx(max, dim_dom[0], tile_extent);
 }
 
 void OrderedDimLabelReader::load_label_min_max_values() {
@@ -861,7 +850,7 @@ IndexType OrderedDimLabelReader::search_for_range_fixed(
 }
 
 template <typename IndexType, typename LabelType>
-void OrderedDimLabelReader::compute_range_indexes_fixed(
+void OrderedDimLabelReader::compute_and_copy_range_indexes_fixed(
     IndexType* dest, uint64_t r) {
   // For easy reference.
   auto tile_extent = index_dim_->tile_extent().rvalue_as<IndexType>();
@@ -891,42 +880,42 @@ void OrderedDimLabelReader::compute_range_indexes_fixed(
 }
 
 template <typename IndexType>
-void OrderedDimLabelReader::copy_range_indexes_fixed(
+void OrderedDimLabelReader::compute_and_copy_range_indexes_fixed(
     uint64_t buffer_offset, uint64_t r) {
-  auto timer_se = stats_->start_timer("copy_range_indexes_fixed");
+  auto timer_se = stats_->start_timer("compute_and_copy_range_indexes_fixed");
 
   auto dest = static_cast<IndexType*>(buffers_[index_dim_->name()].buffer_) +
               (buffer_offset + r) * 2;
   switch (label_type_) {
     case Datatype::INT8:
-      compute_range_indexes_fixed<IndexType, int8_t>(dest, r);
+      compute_and_copy_range_indexes_fixed<IndexType, int8_t>(dest, r);
       break;
     case Datatype::UINT8:
-      compute_range_indexes_fixed<IndexType, uint8_t>(dest, r);
+      compute_and_copy_range_indexes_fixed<IndexType, uint8_t>(dest, r);
       break;
     case Datatype::INT16:
-      compute_range_indexes_fixed<IndexType, int16_t>(dest, r);
+      compute_and_copy_range_indexes_fixed<IndexType, int16_t>(dest, r);
       break;
     case Datatype::UINT16:
-      compute_range_indexes_fixed<IndexType, uint16_t>(dest, r);
+      compute_and_copy_range_indexes_fixed<IndexType, uint16_t>(dest, r);
       break;
     case Datatype::INT32:
-      compute_range_indexes_fixed<IndexType, int32_t>(dest, r);
+      compute_and_copy_range_indexes_fixed<IndexType, int32_t>(dest, r);
       break;
     case Datatype::UINT32:
-      compute_range_indexes_fixed<IndexType, uint32_t>(dest, r);
+      compute_and_copy_range_indexes_fixed<IndexType, uint32_t>(dest, r);
       break;
     case Datatype::INT64:
-      compute_range_indexes_fixed<IndexType, int64_t>(dest, r);
+      compute_and_copy_range_indexes_fixed<IndexType, int64_t>(dest, r);
       break;
     case Datatype::UINT64:
-      compute_range_indexes_fixed<IndexType, uint64_t>(dest, r);
+      compute_and_copy_range_indexes_fixed<IndexType, uint64_t>(dest, r);
       break;
     case Datatype::FLOAT32:
-      compute_range_indexes_fixed<IndexType, float>(dest, r);
+      compute_and_copy_range_indexes_fixed<IndexType, float>(dest, r);
       break;
     case Datatype::FLOAT64:
-      compute_range_indexes_fixed<IndexType, double>(dest, r);
+      compute_and_copy_range_indexes_fixed<IndexType, double>(dest, r);
       break;
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
@@ -950,7 +939,7 @@ void OrderedDimLabelReader::copy_range_indexes_fixed(
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
-      compute_range_indexes_fixed<IndexType, int64_t>(dest, r);
+      compute_and_copy_range_indexes_fixed<IndexType, int64_t>(dest, r);
       break;
     default:
       throw OrderedDimLabelReaderStatusException("Invalid dimension type");
@@ -1052,9 +1041,9 @@ IndexType OrderedDimLabelReader::search_for_range_var(
 }
 
 template <typename IndexType>
-void OrderedDimLabelReader::copy_range_indexes_var(
+void OrderedDimLabelReader::compute_and_copy_range_indexes_var(
     uint64_t buffer_offset, uint64_t r) {
-  auto timer_se = stats_->start_timer("copy_range_indexes_var");
+  auto timer_se = stats_->start_timer("compute_and_copy_range_indexes_var");
 
   // For easy reference.
   auto dest = static_cast<IndexType*>(buffers_[index_dim_->name()].buffer_) +

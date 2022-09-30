@@ -1378,15 +1378,12 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           "Cannot create strategy; unsupported layout " + layout_str(layout_));
     }
   } else if (type_ == QueryType::READ) {
-    bool use_default = true;
     bool all_dense = true;
     for (auto& frag_md : fragment_metadata_) {
       all_dense &= frag_md->dense();
     }
 
     if (is_dimension_label_ordered_read_) {
-      use_default = false;
-
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           OrderedDimLabelReader,
           stats_->create_child("Reader"),
@@ -1402,8 +1399,6 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           skip_checks_serialization));
     } else if (use_refactored_sparse_unordered_with_dups_reader(
                    layout_, *array_schema_)) {
-      use_default = false;
-
       auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
       RETURN_NOT_OK(st);
 
@@ -1440,8 +1435,6 @@ Status Query::create_strategy(bool skip_checks_serialization) {
         !array_schema_->dense() &&
         (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED)) {
       // Using the reader for unordered queries to do deduplication.
-      use_default = false;
-
       auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
       RETURN_NOT_OK(st);
 
@@ -1476,7 +1469,6 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             skip_checks_serialization));
       }
     } else if (use_refactored_dense_reader(*array_schema_, all_dense)) {
-      use_default = false;
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           DenseReader,
           stats_->create_child("Reader"),
@@ -1489,9 +1481,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           condition_,
           skip_checks_serialization));
-    }
-
-    if (use_default) {
+    } else {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           Reader,
           stats_->create_child("Reader"),
@@ -2604,9 +2594,9 @@ void Query::set_remote_query() {
   remote_query_ = true;
 }
 
-void Query::set_dimension_label_ordered_read(bool increaging_order) {
+void Query::set_dimension_label_ordered_read(bool increasing_order) {
   is_dimension_label_ordered_read_ = true;
-  dimension_label_increasing_ = increaging_order;
+  dimension_label_increasing_ = increasing_order;
 }
 
 /* ****************************** */
