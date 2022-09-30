@@ -43,6 +43,7 @@
 #include "tiledb/common/unreachable.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/query_status.h"
+#include "tiledb/sm/query/dimension_label/index_data.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -109,77 +110,23 @@ DimensionLabelReadDataQuery::DimensionLabelReadDataQuery(
   throw_if_not_ok(indexed_array_query->set_layout(Layout::ROW_MAJOR));
 
   // Set the subarray.
-  Subarray subarray{*indexed_array_query->subarray()};
-  throw_if_not_ok(
-      subarray.set_ranges_for_dim(0, parent_subarray.ranges_for_dim(dim_idx)));
-  throw_if_not_ok(indexed_array_query->set_subarray(subarray));
+  if (!parent_subarray.is_default(dim_idx)) {
+    Subarray subarray{*indexed_array_query->subarray()};
+    throw_if_not_ok(subarray.set_ranges_for_dim(
+        0, parent_subarray.ranges_for_dim(dim_idx)));
+    throw_if_not_ok(indexed_array_query->set_subarray(subarray));
+  }
 
   // Set the label data buffer.
   indexed_array_query->set_dimension_label_buffer(
       dimension_label->label_attribute()->name(), label_buffer);
 }
 
-/**
- * Creates a buffer to hold index data needed for dimension label write.
- *
- * @param Datatype of the index data to create.
- * @param Range to create data for.
- * @returns A pointer to an index data object.
- */
-tdb_unique_ptr<IndexData> create_index_data(
-    const Datatype type, const Range& input_range) {
-  switch (type) {
-    case Datatype::INT8:
-      return tdb_unique_ptr<IndexData>(
-          tdb_new(TypedIndexData<int8_t>, input_range));
-    case Datatype::UINT8:
-      return tdb_unique_ptr<IndexData>(
-          tdb_new(TypedIndexData<uint8_t>, input_range));
-    case Datatype::INT16:
-      return tdb_unique_ptr<IndexData>(
-          tdb_new(TypedIndexData<int16_t>, input_range));
-    case Datatype::UINT16:
-      return tdb_unique_ptr<IndexData>(
-          tdb_new(TypedIndexData<uint16_t>, input_range));
-    case Datatype::INT32:
-      return tdb_unique_ptr<IndexData>(
-          tdb_new(TypedIndexData<int32_t>, input_range));
-    case Datatype::UINT32:
-      return tdb_unique_ptr<IndexData>(
-          tdb_new(TypedIndexData<uint32_t>, input_range));
-    case Datatype::INT64:
-      return tdb_unique_ptr<IndexData>(
-          tdb_new(TypedIndexData<int64_t>, input_range));
-    case Datatype::UINT64:
-      return tdb_unique_ptr<IndexData>(
-          tdb_new(TypedIndexData<uint64_t>, input_range));
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return tdb_unique_ptr<IndexData>(
-          tdb_new(TypedIndexData<int64_t>, input_range));
-    default:
-      stdx::unreachable();
-  }
+void DimensionLabelReadDataQuery::add_index_ranges_from_label(
+    const bool is_point_ranges, const void* start, const uint64_t count) {
+  Subarray subarray{*indexed_array_query->subarray()};
+  subarray.add_index_ranges_from_label(0, is_point_ranges, start, count);
+  throw_if_not_ok(indexed_array_query->set_subarray(subarray));
 }
 
 /**
@@ -384,9 +331,9 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
     }
 
     // Create index data for attribute on sparse labelled array
-    index_data_ = create_index_data(
+    index_data_ = tdb_unique_ptr<IndexData>(IndexDataCreate::make_index_data(
         dimension_label->index_dimension()->type(),
-        parent_subarray.ranges_for_dim(dim_idx)[0]);
+        parent_subarray.ranges_for_dim(dim_idx)[0]));
 
   } else {
     const auto index_type = dimension_label->index_dimension()->type();
@@ -430,6 +377,12 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
       dimension_label->label_attribute()->name(), label_buffer);
 }
 
+void OrderedWriteDataQuery::add_index_ranges_from_label(
+    const bool, const void*, const uint64_t) {
+  throw StatusException(Status_DimensionLabelQueryError(
+      "Updating index ranges is not supported on writes."));
+}
+
 UnorderedWriteDataQuery::UnorderedWriteDataQuery(
     StorageManager* storage_manager,
     stats::Stats* stats,
@@ -455,9 +408,9 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
     }
 
     // Create the index data.
-    index_data_ = create_index_data(
+    index_data_ = tdb_unique_ptr<IndexData>(IndexDataCreate::make_index_data(
         dimension_label->index_dimension()->type(),
-        parent_subarray.ranges_for_dim(dim_idx)[0]);
+        parent_subarray.ranges_for_dim(dim_idx)[0]));
   }
 
   // Set-up labelled array (sparse array).
@@ -489,6 +442,12 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
     indexed_array_query->set_dimension_label_buffer(
         dimension_label->index_dimension()->name(), index_buffer);
   }
+}
+
+void UnorderedWriteDataQuery::add_index_ranges_from_label(
+    const bool, const void*, const uint64_t) {
+  throw StatusException(Status_DimensionLabelQueryError(
+      "Updating index ranges is not supported on writes."));
 }
 
 }  // namespace tiledb::sm

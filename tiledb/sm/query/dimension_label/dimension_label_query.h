@@ -54,6 +54,7 @@ class Query;
 class QueryBuffer;
 class StorageManager;
 class Subarray;
+class IndexData;
 
 /**
  * Return a Status_DimensionQueryError error class Status with a given
@@ -99,8 +100,19 @@ class DimensionLabelQuery {
   /** Processes both queries if they exist. */
   void process();
 
+  /**
+   * Adds ranges to a query initialize with label ranges.
+   *
+   * @param is_point_ranges If ``true`` the data contains point ranges.
+   *     Otherwise, it contains standard ranges.
+   * @param start Pointer to the start of the range array.
+   * @param count Number of total elements in the range array.
+   */
+  virtual void add_index_ranges_from_label(
+      const bool is_point_range, const void* start, const uint64_t count) = 0;
+
  protected:
-  /** TODO: Docs */
+  /** Class stats object for timing. */
   stats::Stats* stats_;
 
   /** Query on the dimension label indexed array. */
@@ -136,67 +148,17 @@ class DimensionLabelReadDataQuery : public DimensionLabelQuery {
   /** Disable copy and move. */
   DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelReadDataQuery);
   DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelReadDataQuery);
-};
-
-/** Base class for internally managed index data. */
-class IndexData {
- public:
-  virtual ~IndexData() = default;
-  virtual void* data() = 0;
-  virtual uint64_t* data_size() = 0;
-};
-
-/** Typed class for internally managed index data. */
-template <
-    typename T,
-    typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
-class TypedIndexData : public IndexData {
- public:
-  /** Default constructor is not C.41 compliant. */
-  TypedIndexData() = delete;
 
   /**
-   * Constructor.
+   * Adds ranges to a query initialize with label ranges.
    *
-   * This will create a vector of index values starting at the range lower bound
-   * and continuing to the range upper bound.
-   *
-   * @param range The range to create index data for.
+   * @param is_point_ranges If ``true`` the data contains point ranges.
+   *     Otherwise, it contains standard ranges.
+   * @param start Pointer to the start of the range array.
+   * @param count Number of total elements in the range array.
    */
-  TypedIndexData(const type::Range& range)
-      : data_{}
-      , data_size_{0} {
-    auto range_data = static_cast<const T*>(range.data());
-    T min_value = range_data[0];
-    T max_value = range_data[1];
-    if (max_value < min_value) {
-      throw std::invalid_argument(
-          "Invalid range - cannot have lower bound greater than the upper "
-          "bound.");
-    }
-    data_.reserve(max_value - min_value + 1);
-    for (T val = min_value; val <= max_value; ++val) {
-      data_.push_back(val);
-    }
-    data_size_ = sizeof(T) * data_.size();
-  }
-
-  /** Pointer access to index data. */
-  void* data() override {
-    return data_.data();
-  }
-
-  /** Pointer access to data size. */
-  uint64_t* data_size() override {
-    return &data_size_;
-  }
-
- private:
-  /** Vector of index data. */
-  std::vector<T> data_;
-
-  /** Size of the index data. */
-  uint64_t data_size_;
+  void add_index_ranges_from_label(
+      const bool is_point_range, const void* start, const uint64_t count);
 };
 
 /** Dimension label query for writing ordered data. */
@@ -232,7 +194,15 @@ class OrderedWriteDataQuery : public DimensionLabelQuery {
   DISABLE_COPY_AND_COPY_ASSIGN(OrderedWriteDataQuery);
   DISABLE_MOVE_AND_MOVE_ASSIGN(OrderedWriteDataQuery);
 
+  /**
+   * Adds ranges to a query initialize with label ranges. Not valid on write
+   * query.
+   */
+  void add_index_ranges_from_label(
+      const bool is_point_range, const void* start, const uint64_t count);
+
  private:
+  /** Internally managed index data for sparse write to labelled array. */
   tdb_unique_ptr<IndexData> index_data_;
 };
 
@@ -269,7 +239,15 @@ class UnorderedWriteDataQuery : public DimensionLabelQuery {
   DISABLE_COPY_AND_COPY_ASSIGN(UnorderedWriteDataQuery);
   DISABLE_MOVE_AND_MOVE_ASSIGN(UnorderedWriteDataQuery);
 
+  /**
+   * Adds ranges to a query initialize with label ranges. Not valid on write
+   * query.
+   */
+  void add_index_ranges_from_label(
+      const bool is_point_range, const void* start, const uint64_t count);
+
  private:
+  /** Internally managed index data for sparse write to labelled array. */
   tdb_unique_ptr<IndexData> index_data_;
 };
 
