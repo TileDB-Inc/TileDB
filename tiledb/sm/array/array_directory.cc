@@ -131,10 +131,6 @@ const uint64_t& ArrayDirectory::timestamp_end() const {
   return timestamp_end_;
 }
 
-const ArrayDirectoryMode& ArrayDirectory::mode() const {
-  return mode_;
-}
-
 Status ArrayDirectory::load() {
   assert(!loaded_);
 

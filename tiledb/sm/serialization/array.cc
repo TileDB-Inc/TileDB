@@ -200,8 +200,6 @@ Status array_directory_to_capnp(
       del_tile_location_builder.setConditionMarker(
           delete_tiles_location[i].condition_marker());
       del_tile_location_builder.setOffset(delete_tiles_location[i].offset());
-      del_tile_location_builder.setTimestamp(
-          delete_tiles_location[i].timestamp());
     }
   }
 
@@ -210,6 +208,122 @@ Status array_directory_to_capnp(
 
   // set timestamp end
   array_directory_builder->setTimestampEnd(array_directory.timestamp_end());
+
+  return Status::Ok();
+}
+
+Status array_directory_from_capnp(
+    const capnp::ArrayDirectory::Reader& array_directory_reader,
+    const URI& array_uri,
+    ArrayDirectory* array_directory) {
+  if (array_directory == nullptr) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing array directory; array directory instance is null"));
+  }
+
+  // Array uri
+  array_directory->uri() = array_uri;
+
+  // Get unfiltered fragment uris
+  if (array_directory_reader.hasUnfilteredFragmentUris()) {
+    for (auto uri : array_directory_reader.getUnfilteredFragmentUris()) {
+      array_directory->unfiltered_fragment_uris().emplace_back(uri.cStr());
+    }
+  }
+
+  // Get consolidated commit uris
+  if (array_directory_reader.hasConsolidatedCommitUris()) {
+    for (auto uri : array_directory_reader.getConsolidatedCommitUris()) {
+      array_directory->consolidated_commit_uris_set().emplace(uri.cStr());
+    }
+  }
+
+  // Get array schema uris
+  if (array_directory_reader.hasArraySchemaUris()) {
+    for (auto uri : array_directory_reader.getArraySchemaUris()) {
+      array_directory->array_schema_uris().emplace_back(uri.cStr());
+    }
+  }
+
+  // Get latest array schema uri
+  if (array_directory_reader.hasLatestArraySchemaUri()) {
+    array_directory->latest_array_schema_uri() =
+        URI(array_directory_reader.getLatestArraySchemaUri().cStr());
+  }
+
+  // Get array meta uris to vacuum
+  if (array_directory_reader.hasArrayMetaUrisToVacuum()) {
+    for (auto uri : array_directory_reader.getArrayMetaUrisToVacuum()) {
+      array_directory->array_meta_uris_to_vacuum().emplace_back(uri.cStr());
+    }
+  }
+
+  // Get array meta vac uris to vacuum
+  if (array_directory_reader.hasArrayMetaVacUrisToVacuum()) {
+    for (auto uri : array_directory_reader.getArrayMetaVacUrisToVacuum()) {
+      array_directory->array_meta_vac_uris_to_vacuum().emplace_back(uri.cStr());
+    }
+  }
+
+  // Get commit uris to consolidate
+  if (array_directory_reader.hasCommitUrisToConsolidate()) {
+    for (auto uri : array_directory_reader.getCommitUrisToConsolidate()) {
+      array_directory->commit_uris_to_consolidate().emplace_back(uri.cStr());
+    }
+  }
+
+  // Get commit uris to vacuum
+  if (array_directory_reader.hasCommitUrisToVacuum()) {
+    for (auto uri : array_directory_reader.getCommitUrisToVacuum()) {
+      array_directory->commit_uris_to_vacuum().emplace_back(uri.cStr());
+    }
+  }
+
+  // Get consolidated commit uris to vacuum
+  if (array_directory_reader.hasConsolidatedCommitUrisToVacuum()) {
+    for (auto uri :
+         array_directory_reader.getConsolidatedCommitUrisToVacuum()) {
+      array_directory->consolidated_commits_uris_to_vacuum().emplace_back(
+          uri.cStr());
+    }
+  }
+
+  // Get array meta uris
+  if (array_directory_reader.hasArrayMetaUris()) {
+    for (auto timestamp_reader : array_directory_reader.getArrayMetaUris()) {
+      array_directory->array_meta_uris().emplace_back(
+          URI(timestamp_reader.getUri().cStr()),
+          std::make_pair<uint64_t, uint64_t>(
+              timestamp_reader.getTimestampStart(),
+              timestamp_reader.getTimestampEnd()));
+    }
+  }
+
+  // Get fragment meta uris
+  if (array_directory_reader.hasFragmentMetaUris()) {
+    for (auto uri : array_directory_reader.getFragmentMetaUris()) {
+      array_directory->fragment_meta_uris().emplace_back(uri.cStr());
+    }
+  }
+
+  // Get delete tiles location
+  if (array_directory_reader.hasDeleteTilesLocation()) {
+    for (auto del_tile_reader :
+         array_directory_reader.getDeleteTilesLocation()) {
+      array_directory->delete_tiles_location().emplace_back(
+          URI(del_tile_reader.getUri().cStr()),
+          del_tile_reader.getConditionMarker(),
+          del_tile_reader.getOffset());
+    }
+  }
+
+  // Get timestamp start and end
+  array_directory->timestamp_start() =
+      array_directory_reader.getTimestampStart();
+  array_directory->timestamp_end() = array_directory_reader.getTimestampEnd();
+
+  // Set the array directory as loaded
+  array_directory->loaded() = true;
 
   return Status::Ok();
 }

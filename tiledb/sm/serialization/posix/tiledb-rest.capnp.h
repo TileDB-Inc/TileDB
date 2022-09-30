@@ -1021,7 +1021,7 @@ struct ArrayDirectory {
   struct DeleteTileLocation;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(9317f20ce509d918, 2, 13)
+    CAPNP_DECLARE_STRUCT_HEADER(9317f20ce509d918, 2, 12)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1055,7 +1055,7 @@ struct ArrayDirectory::DeleteTileLocation {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(e49c69137e9b3d04, 2, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(e49c69137e9b3d04, 1, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -8648,9 +8648,6 @@ class ArrayDirectory::Reader {
 
   inline ::uint64_t getTimestampEnd() const;
 
-  inline bool hasMode() const;
-  inline ::capnp::Text::Reader getMode() const;
-
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -8883,13 +8880,6 @@ class ArrayDirectory::Builder {
   inline ::uint64_t getTimestampEnd();
   inline void setTimestampEnd(::uint64_t value);
 
-  inline bool hasMode();
-  inline ::capnp::Text::Builder getMode();
-  inline void setMode(::capnp::Text::Reader value);
-  inline ::capnp::Text::Builder initMode(unsigned int size);
-  inline void adoptMode(::capnp::Orphan<::capnp::Text>&& value);
-  inline ::capnp::Orphan<::capnp::Text> disownMode();
-
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -9053,8 +9043,6 @@ class ArrayDirectory::DeleteTileLocation::Reader {
 
   inline ::uint64_t getOffset() const;
 
-  inline ::uint64_t getTimestamp() const;
-
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -9110,9 +9098,6 @@ class ArrayDirectory::DeleteTileLocation::Builder {
 
   inline ::uint64_t getOffset();
   inline void setOffset(::uint64_t value);
-
-  inline ::uint64_t getTimestamp();
-  inline void setTimestamp(::uint64_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -21706,44 +21691,6 @@ inline void ArrayDirectory::Builder::setTimestampEnd(::uint64_t value) {
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool ArrayDirectory::Reader::hasMode() const {
-  return !_reader.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline bool ArrayDirectory::Builder::hasMode() {
-  return !_builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::capnp::Text::Reader ArrayDirectory::Reader::getMode() const {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _reader.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS));
-}
-inline ::capnp::Text::Builder ArrayDirectory::Builder::getMode() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS));
-}
-inline void ArrayDirectory::Builder::setMode(::capnp::Text::Reader value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::set(
-      _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS),
-      value);
-}
-inline ::capnp::Text::Builder ArrayDirectory::Builder::initMode(
-    unsigned int size) {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
-      _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS),
-      size);
-}
-inline void ArrayDirectory::Builder::adoptMode(
-    ::capnp::Orphan<::capnp::Text>&& value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
-      _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS),
-      kj::mv(value));
-}
-inline ::capnp::Orphan<::capnp::Text> ArrayDirectory::Builder::disownMode() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
-      _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS));
-}
-
 inline bool ArrayDirectory::TimestampedURI::Reader::hasUri() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -21918,22 +21865,6 @@ inline void ArrayDirectory::DeleteTileLocation::Builder::setOffset(
     ::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
-}
-
-inline ::uint64_t ArrayDirectory::DeleteTileLocation::Reader::getTimestamp()
-    const {
-  return _reader.getDataField<::uint64_t>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
-}
-
-inline ::uint64_t ArrayDirectory::DeleteTileLocation::Builder::getTimestamp() {
-  return _builder.getDataField<::uint64_t>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
-}
-inline void ArrayDirectory::DeleteTileLocation::Builder::setTimestamp(
-    ::uint64_t value) {
-  _builder.setDataField<::uint64_t>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool EstimatedResultSize::Reader::hasResultSizes() const {

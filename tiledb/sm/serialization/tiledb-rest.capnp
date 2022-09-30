@@ -685,7 +685,6 @@ struct ArrayDirectory {
     uri @0 :Text;
     conditionMarker @1 :Text;
     offset @2 :UInt64;
-    timestamp @3 :UInt64;
   }
 
   unfilteredFragmentUris @0 :List(Text); 
@@ -731,9 +730,6 @@ struct ArrayDirectory {
 
   timestampEnd @13 :UInt64;
   # Only the files created before timestamp_end are listed 
-
-  # mode @14 :Text;
-  # mode for the array directory: is this needed?
 }
 
 
