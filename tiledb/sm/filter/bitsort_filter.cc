@@ -476,6 +476,8 @@ Status BitSortFilter::rewrite_dim_tiles_reverse(BitSortFilterMetadataType &pair,
   }
 
   DomainBuffersView domain_buffs{domain, dim_data_map};
+
+  /// TODO: determine if this needs to take the query layout into account
   auto cmp_fn = [&domain_buffs, &domain](const uint64_t &a_idx, const uint64_t &b_idx){
     auto a{domain_buffs.domain_ref_at(domain, a_idx)};
     auto b{domain_buffs.domain_ref_at(domain, b_idx)};
