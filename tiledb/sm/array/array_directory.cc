@@ -88,6 +88,11 @@ const std::vector<URI>& ArrayDirectory::unfiltered_fragment_uris() const {
   return unfiltered_fragment_uris_;
 }
 
+const std::unordered_set<std::string>&
+ArrayDirectory::consolidated_commit_uris_set() const {
+  return consolidated_commit_uris_set_;
+}
+
 const std::vector<URI>& ArrayDirectory::array_meta_uris_to_vacuum() const {
   return array_meta_uris_to_vacuum_;
 }
@@ -116,6 +121,18 @@ const std::vector<URI>& ArrayDirectory::consolidated_commits_uris_to_vacuum()
 
 const std::vector<TimestampedURI>& ArrayDirectory::array_meta_uris() const {
   return array_meta_uris_;
+}
+
+const uint64_t& ArrayDirectory::timestamp_start() const {
+  return timestamp_start_;
+}
+
+const uint64_t& ArrayDirectory::timestamp_end() const {
+  return timestamp_end_;
+}
+
+const ArrayDirectoryMode& ArrayDirectory::mode() const {
+  return mode_;
 }
 
 Status ArrayDirectory::load() {

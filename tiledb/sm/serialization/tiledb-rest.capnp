@@ -675,6 +675,12 @@ struct ArrayMetadata {
 struct ArrayDirectory {
   # object representing an array directory
 
+  struct TimestampedURI {
+    uri @0 :Text;
+    timestampStart @1 :UInt64;
+    timestampEnd @2 :UInt64;
+  }
+
   struct DeleteTileLocation {
     uri @0 :Text;
     conditionMarker @1 :Text;
@@ -709,7 +715,7 @@ struct ArrayDirectory {
   consolidatedCommitUrisToVacuum @8 :List(Text);
   # the consolidated commit files to vacuum
 
-  arrayMetaUris @9 :List(Text);
+  arrayMetaUris @9 :List(TimestampedURI);
   # the timestamped filtered array metadata URIs, after removing
   # the ones that need to be vacuumed and those that do not fall within
   # [timestamp_start, timestamp_end]
@@ -726,8 +732,8 @@ struct ArrayDirectory {
   timestampEnd @13 :UInt64;
   # Only the files created before timestamp_end are listed 
 
-  mode @14 :Text;
-  # mode for the array directory
+  # mode @14 :Text;
+  # mode for the array directory: is this needed?
 }
 
 

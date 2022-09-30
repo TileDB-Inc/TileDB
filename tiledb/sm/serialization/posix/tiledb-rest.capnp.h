@@ -66,6 +66,7 @@ CAPNP_DECLARE_SCHEMA(f01116579e9ea98e);
 CAPNP_DECLARE_SCHEMA(9737dcafdfce31bb);
 CAPNP_DECLARE_SCHEMA(926fe1c3b12ed651);
 CAPNP_DECLARE_SCHEMA(9317f20ce509d918);
+CAPNP_DECLARE_SCHEMA(d9d27c082dec9e26);
 CAPNP_DECLARE_SCHEMA(e49c69137e9b3d04);
 CAPNP_DECLARE_SCHEMA(8cd4e323f1feea3b);
 CAPNP_DECLARE_SCHEMA(92c8467685565269);
@@ -1016,10 +1017,28 @@ struct ArrayDirectory {
   class Reader;
   class Builder;
   class Pipeline;
+  struct TimestampedURI;
   struct DeleteTileLocation;
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(9317f20ce509d918, 2, 13)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct ArrayDirectory::TimestampedURI {
+  TimestampedURI() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(d9d27c082dec9e26, 2, 1)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -8610,7 +8629,9 @@ class ArrayDirectory::Reader {
   getConsolidatedCommitUrisToVacuum() const;
 
   inline bool hasArrayMetaUris() const;
-  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+      ::capnp::Kind::STRUCT>::Reader
   getArrayMetaUris() const;
 
   inline bool hasFragmentMetaUris() const;
@@ -8797,18 +8818,25 @@ class ArrayDirectory::Builder {
   disownConsolidatedCommitUrisToVacuum();
 
   inline bool hasArrayMetaUris();
-  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+      ::capnp::Kind::STRUCT>::Builder
   getArrayMetaUris();
   inline void setArrayMetaUris(
-      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
-  inline void setArrayMetaUris(
-      ::kj::ArrayPtr<const ::capnp::Text::Reader> value);
-  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+      ::capnp::List<
+          ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+          ::capnp::Kind::STRUCT>::Reader value);
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+      ::capnp::Kind::STRUCT>::Builder
   initArrayMetaUris(unsigned int size);
   inline void adoptArrayMetaUris(
-      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
-          value);
-  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+      ::capnp::Orphan<::capnp::List<
+          ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+          ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+      ::capnp::Kind::STRUCT>>
   disownArrayMetaUris();
 
   inline bool hasFragmentMetaUris();
@@ -8875,6 +8903,113 @@ class ArrayDirectory::Builder {
 class ArrayDirectory::Pipeline {
  public:
   typedef ArrayDirectory Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class ArrayDirectory::TimestampedURI::Reader {
+ public:
+  typedef TimestampedURI Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasUri() const;
+  inline ::capnp::Text::Reader getUri() const;
+
+  inline ::uint64_t getTimestampStart() const;
+
+  inline ::uint64_t getTimestampEnd() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class ArrayDirectory::TimestampedURI::Builder {
+ public:
+  typedef TimestampedURI Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasUri();
+  inline ::capnp::Text::Builder getUri();
+  inline void setUri(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initUri(unsigned int size);
+  inline void adoptUri(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownUri();
+
+  inline ::uint64_t getTimestampStart();
+  inline void setTimestampStart(::uint64_t value);
+
+  inline ::uint64_t getTimestampEnd();
+  inline void setTimestampEnd(::uint64_t value);
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class ArrayDirectory::TimestampedURI::Pipeline {
+ public:
+  typedef TimestampedURI Pipelines;
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -21347,52 +21482,70 @@ inline bool ArrayDirectory::Builder::hasArrayMetaUris() {
   return !_builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS)
               .isNull();
 }
-inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+    ::capnp::Kind::STRUCT>::Reader
 ArrayDirectory::Reader::getArrayMetaUris() const {
-  return ::capnp::_::
-      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
-          _reader.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+      ::capnp::Kind::STRUCT>>::get(_reader
+                                       .getPointerField(
+                                           ::capnp::bounded<9>() *
+                                           ::capnp::POINTERS));
 }
-inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+    ::capnp::Kind::STRUCT>::Builder
 ArrayDirectory::Builder::getArrayMetaUris() {
-  return ::capnp::_::
-      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
-          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+      ::capnp::Kind::STRUCT>>::get(_builder
+                                       .getPointerField(
+                                           ::capnp::bounded<9>() *
+                                           ::capnp::POINTERS));
 }
 inline void ArrayDirectory::Builder::setArrayMetaUris(
-    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
-  ::capnp::_::
-      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
-          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
+    ::capnp::List<
+        ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+        ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+      ::capnp::Kind::STRUCT>>::
+      set(_builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
           value);
 }
-inline void ArrayDirectory::Builder::setArrayMetaUris(
-    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
-  ::capnp::_::
-      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
-          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
-          value);
-}
-inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+    ::capnp::Kind::STRUCT>::Builder
 ArrayDirectory::Builder::initArrayMetaUris(unsigned int size) {
-  return ::capnp::_::
-      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+      ::capnp::Kind::STRUCT>>::
+      init(
           _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
           size);
 }
 inline void ArrayDirectory::Builder::adoptArrayMetaUris(
-    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
-        value) {
-  ::capnp::_::
-      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+    ::capnp::Orphan<::capnp::List<
+        ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+        ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+      ::capnp::Kind::STRUCT>>::
+      adopt(
           _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
           kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+inline ::capnp::Orphan<::capnp::List<
+    ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+    ::capnp::Kind::STRUCT>>
 ArrayDirectory::Builder::disownArrayMetaUris() {
-  return ::capnp::_::
-      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
-          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::TimestampedURI,
+      ::capnp::Kind::STRUCT>>::disown(_builder
+                                          .getPointerField(
+                                              ::capnp::bounded<9>() *
+                                              ::capnp::POINTERS));
 }
 
 inline bool ArrayDirectory::Reader::hasFragmentMetaUris() const {
@@ -21589,6 +21742,80 @@ inline void ArrayDirectory::Builder::adoptMode(
 inline ::capnp::Orphan<::capnp::Text> ArrayDirectory::Builder::disownMode() {
   return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
       _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDirectory::TimestampedURI::Reader::hasUri() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDirectory::TimestampedURI::Builder::hasUri() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader ArrayDirectory::TimestampedURI::Reader::getUri()
+    const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder
+ArrayDirectory::TimestampedURI::Builder::getUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void ArrayDirectory::TimestampedURI::Builder::setUri(
+    ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder ArrayDirectory::TimestampedURI::Builder::initUri(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      size);
+}
+inline void ArrayDirectory::TimestampedURI::Builder::adoptUri(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+ArrayDirectory::TimestampedURI::Builder::disownUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline ::uint64_t ArrayDirectory::TimestampedURI::Reader::getTimestampStart()
+    const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t ArrayDirectory::TimestampedURI::Builder::getTimestampStart() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void ArrayDirectory::TimestampedURI::Builder::setTimestampStart(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t ArrayDirectory::TimestampedURI::Reader::getTimestampEnd()
+    const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t ArrayDirectory::TimestampedURI::Builder::getTimestampEnd() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void ArrayDirectory::TimestampedURI::Builder::setTimestampEnd(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool ArrayDirectory::DeleteTileLocation::Reader::hasUri() const {

@@ -57,6 +57,163 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
+Status array_directory_to_capnp(
+    const ArrayDirectory& array_directory,
+    capnp::ArrayDirectory::Builder* array_directory_builder) {
+  // set unfiltered fragment uris
+  const auto& unfiltered_fragment_uris =
+      array_directory.unfiltered_fragment_uris();
+  if (!unfiltered_fragment_uris.empty()) {
+    auto unfiltered_uris_builder =
+        array_directory_builder->initUnfilteredFragmentUris(
+            unfiltered_fragment_uris.size());
+    for (size_t i = 0; i < unfiltered_fragment_uris.size(); i++) {
+      unfiltered_uris_builder.set(i, unfiltered_fragment_uris[i]);
+    }
+  }
+
+  // set consolidated commit uris
+  const auto& consolidated_commit_uris =
+      array_directory.consolidated_commit_uris_set();
+  if (!consolidated_commit_uris.empty()) {
+    auto consolidated_commit_uris_builder =
+        array_directory_builder->initConsolidatedCommitUris(
+            consolidated_commit_uris.size());
+    size_t i = 0;
+    for (auto& uri : consolidated_commit_uris) {
+      consolidated_commit_uris_builder.set(i++, uri);
+    }
+  }
+
+  // set array schema uris
+  const auto& array_schema_uris = array_directory.array_schema_uris();
+  if (!array_schema_uris.empty()) {
+    auto array_schema_uris_builder =
+        array_directory_builder->initArraySchemaUris(array_schema_uris.size());
+    for (size_t i = 0; i < array_schema_uris.size(); i++) {
+      array_schema_uris_builder.set(i, array_schema_uris[i]);
+    }
+  }
+
+  // set latest array schema uri
+  if (!array_directory.latest_array_schema_uri().to_string().empty()) {
+    array_directory_builder->setLatestArraySchemaUri(
+        array_directory.latest_array_schema_uri());
+  }
+
+  // set array meta uris to vacuum
+  const auto& array_meta_uris_to_vacuum =
+      array_directory.array_meta_uris_to_vacuum();
+  if (!array_meta_uris_to_vacuum.empty()) {
+    auto array_meta_uris_to_vacuum_builder =
+        array_directory_builder->initArrayMetaUrisToVacuum(
+            array_meta_uris_to_vacuum.size());
+    for (size_t i = 0; i < array_meta_uris_to_vacuum.size(); i++) {
+      array_meta_uris_to_vacuum_builder.set(i, array_meta_uris_to_vacuum[i]);
+    }
+  }
+
+  // set array meta vac uris to vacuum
+  const auto& array_meta_vac_uris_to_vacuum =
+      array_directory.array_meta_vac_uris_to_vacuum();
+  if (!array_meta_vac_uris_to_vacuum.empty()) {
+    auto array_meta_vac_uris_to_vacuum_builder =
+        array_directory_builder->initArrayMetaVacUrisToVacuum(
+            array_meta_vac_uris_to_vacuum.size());
+    for (size_t i = 0; i < array_meta_vac_uris_to_vacuum.size(); i++) {
+      array_meta_vac_uris_to_vacuum_builder.set(
+          i, array_meta_vac_uris_to_vacuum[i]);
+    }
+  }
+
+  // set commit uris to consolidate
+  const auto& commit_uris_to_consolidate =
+      array_directory.commit_uris_to_consolidate();
+  if (!commit_uris_to_consolidate.empty()) {
+    auto commit_uris_to_consolidate_builder =
+        array_directory_builder->initCommitUrisToConsolidate(
+            commit_uris_to_consolidate.size());
+    for (size_t i = 0; i < commit_uris_to_consolidate.size(); i++) {
+      commit_uris_to_consolidate_builder.set(i, commit_uris_to_consolidate[i]);
+    }
+  }
+
+  // set commit uris to vacuum
+  const auto& commit_uris_to_vacuum = array_directory.commit_uris_to_vacuum();
+  if (!commit_uris_to_vacuum.empty()) {
+    auto commit_uris_to_vacuum_builder =
+        array_directory_builder->initCommitUrisToVacuum(
+            commit_uris_to_vacuum.size());
+    for (size_t i = 0; i < commit_uris_to_vacuum.size(); i++) {
+      commit_uris_to_vacuum_builder.set(i, commit_uris_to_vacuum[i]);
+    }
+  }
+
+  // set consolidated commit uris to vacuum
+  const auto& consolidated_commit_uris_to_vacuum =
+      array_directory.consolidated_commits_uris_to_vacuum();
+  if (!consolidated_commit_uris_to_vacuum.empty()) {
+    auto consolidated_commit_uris_to_vacuum_builder =
+        array_directory_builder->initConsolidatedCommitUrisToVacuum(
+            consolidated_commit_uris_to_vacuum.size());
+    for (size_t i = 0; i < consolidated_commit_uris_to_vacuum.size(); i++) {
+      consolidated_commit_uris_to_vacuum_builder.set(
+          i, consolidated_commit_uris_to_vacuum[i]);
+    }
+  }
+
+  // set array meta uris
+  const auto& array_meta_uris = array_directory.array_meta_uris();
+  if (!array_meta_uris.empty()) {
+    auto array_meta_uris_builder =
+        array_directory_builder->initArrayMetaUris(array_meta_uris.size());
+    for (size_t i = 0; i < array_meta_uris.size(); i++) {
+      auto timestamped_uri_builder = array_meta_uris_builder[i];
+      timestamped_uri_builder.setUri(array_meta_uris[i].uri_);
+      timestamped_uri_builder.setTimestampStart(
+          array_meta_uris[i].timestamp_range_.first);
+      timestamped_uri_builder.setTimestampEnd(
+          array_meta_uris[i].timestamp_range_.second);
+    }
+  }
+
+  // set fragment meta uris
+  const auto& fragment_meta_uris = array_directory.fragment_meta_uris();
+  if (!fragment_meta_uris.empty()) {
+    auto fragment_meta_uris_builder =
+        array_directory_builder->initFragmentMetaUris(
+            fragment_meta_uris.size());
+    for (size_t i = 0; i < fragment_meta_uris.size(); i++) {
+      fragment_meta_uris_builder.set(i, fragment_meta_uris[i]);
+    }
+  }
+
+  // set delete tiles location
+  const auto& delete_tiles_location = array_directory.delete_tiles_location();
+  if (!delete_tiles_location.empty()) {
+    auto delete_tiles_location_builder =
+        array_directory_builder->initDeleteTilesLocation(
+            delete_tiles_location.size());
+    for (size_t i = 0; i < delete_tiles_location.size(); i++) {
+      auto del_tile_location_builder = delete_tiles_location_builder[i];
+      del_tile_location_builder.setUri(delete_tiles_location[i].uri());
+      del_tile_location_builder.setConditionMarker(
+          delete_tiles_location[i].condition_marker());
+      del_tile_location_builder.setOffset(delete_tiles_location[i].offset());
+      del_tile_location_builder.setTimestamp(
+          delete_tiles_location[i].timestamp());
+    }
+  }
+
+  // set timestamp start
+  array_directory_builder->setTimestampStart(array_directory.timestamp_start());
+
+  // set timestamp end
+  array_directory_builder->setTimestampEnd(array_directory.timestamp_end());
+
+  return Status::Ok();
+}
+
 Status metadata_to_capnp(
     const Metadata* metadata,
     capnp::ArrayMetadata::Builder* array_metadata_builder) {

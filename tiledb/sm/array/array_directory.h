@@ -275,6 +275,9 @@ class ArrayDirectory {
   /** Returns the unfiltered fragment uris. */
   const std::vector<URI>& unfiltered_fragment_uris() const;
 
+  /** Returns the consolidated commits uri fragment uris. */
+  const std::unordered_set<std::string>& consolidated_commit_uris_set() const;
+
   /** Returns the URIs of the array metadata files to vacuum. */
   const std::vector<URI>& array_meta_uris_to_vacuum() const;
 
@@ -334,6 +337,15 @@ class ArrayDirectory {
   /** Returns the filtered fragment URIs struct. */
   const FilteredFragmentUris filtered_fragment_uris(
       const bool full_overlap_only) const;
+
+  /** Returns the start timestamp of the files to be considered */
+  const uint64_t& timestamp_start() const;
+
+  /** Returns the end timestamp of the files to be considered */
+  const uint64_t& timestamp_end() const;
+
+  /** Returns the mode for the array directory */
+  const ArrayDirectoryMode& mode() const;
 
  private:
   /* ********************************* */
