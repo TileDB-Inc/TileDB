@@ -432,7 +432,7 @@ Status BitSortFilter::run_reverse(
 
   std::cout << "printing out dim_tiles in step 4\n";
   for (auto* dim_tile : dim_tiles) {
-    print_tile_filtered(dim_tile);
+    print_tile(dim_tile);
   }
 
   return Status::Ok();
@@ -455,7 +455,7 @@ Status BitSortFilter::unsort_part(
 
   // Write in data in original order.
   for (uint32_t i = 0; i < num_elems_in_part; ++i) {
-    output_array[positions[i]] = input_array[i];
+    output_array[i] = input_array[positions[i]];
   }
 
   return Status::Ok();
@@ -469,8 +469,9 @@ Status BitSortFilter::rewrite_dim_tiles_reverse(BitSortFilterMetadataType &pair,
   std::unordered_map<std::string, QueryBuffer> dim_data_map;
   for (size_t i = 0; i < domain.dim_num(); ++i) {
     const std::string &dim_name = domain.dimension_ptr(i)->name();
-    dim_data_sizes[i] = dim_tiles[i]->size();
-    QueryBuffer dim_query_buffer{dim_tiles[i]->data(), nullptr, &dim_data_sizes[i], nullptr};
+    auto &filtered_buffer = dim_tiles[i]->filtered_buffer();
+    dim_data_sizes[i] = filtered_buffer.size();
+    QueryBuffer dim_query_buffer{filtered_buffer.data(), nullptr, &dim_data_sizes[i], nullptr};
     dim_data_map.insert(std::make_pair(dim_name, dim_query_buffer));
   }
 
@@ -540,7 +541,7 @@ Status BitSortFilter::rewrite_dim_tile_reverse(Tile *dim_tile, std::vector<uint6
 
   // Overwrite the tile.
   filtered_buffer.expand(positions_size * sizeof(T));
-  memcpy(filtered_buffer.data(), tile_data_vec.data(), sizeof(T) * positions_size);
+  memcpy(dim_tile->data(), tile_data_vec.data(), sizeof(T) * positions_size);
 
   return Status::Ok();
 }
