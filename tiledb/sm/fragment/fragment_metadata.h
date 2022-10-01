@@ -648,11 +648,10 @@ class FragmentMetadata {
    *
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @return Value, size.
+   * @return Value.
    */
   template <typename T>
-  tuple<T*, uint64_t> get_tile_min_as(
-      const std::string& name, uint64_t tile_idx);
+  T get_tile_min_as(const std::string& name, uint64_t tile_idx);
 
   /**
    * Retrieves the tile max value for a given attribute or dimension and tile
@@ -661,11 +660,10 @@ class FragmentMetadata {
    * @tparam Type to return the data as.
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @return Value, size.
+   * @return Value.
    */
   template <typename T>
-  tuple<T*, uint64_t> get_tile_max_as(
-      const std::string& name, uint64_t tile_idx);
+  T get_tile_max_as(const std::string& name, uint64_t tile_idx);
 
   /**
    * Retrieves the tile sum value for a given attribute or dimension and tile

@@ -491,34 +491,30 @@ struct CPPFixedTileMetadataFx {
         if constexpr (std::is_same<TestType, char>::value) {
           for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
             // Validate min.
-            auto&& [min, min_size] =
-                frag_meta[f]->get_tile_min_as<TestType>("a", tile_idx);
-            CHECK(min_size == cell_val_num);
+            const auto min =
+                frag_meta[f]->get_tile_min_as<std::string_view>("a", tile_idx);
+            CHECK(min.size() == cell_val_num);
 
             // For strings, the index is stored in a signed value, switch to
             // the index to unsigned.
             int64_t idx = (int64_t)correct_tile_mins_[f][tile_idx] -
                           (int64_t)std::numeric_limits<char>::min();
             CHECK(
-                0 == strncmp(
-                         (const char*)min,
-                         string_ascii_[idx].c_str(),
-                         cell_val_num));
+                0 ==
+                strncmp(min.data(), string_ascii_[idx].c_str(), cell_val_num));
 
             // Validate max.
-            auto&& [max, max_size] =
-                frag_meta[f]->get_tile_max_as<TestType>("a", tile_idx);
-            CHECK(max_size == cell_val_num);
+            const auto max =
+                frag_meta[f]->get_tile_max_as<std::string_view>("a", tile_idx);
+            CHECK(max.size() == cell_val_num);
 
             // For strings, the index is stored in a signed value, switch to
             // the index to unsigned.
             idx = (int64_t)correct_tile_maxs_[f][tile_idx] -
                   (int64_t)std::numeric_limits<char>::min();
             CHECK(
-                0 == strncmp(
-                         (const char*)max,
-                         string_ascii_[idx].c_str(),
-                         cell_val_num));
+                0 ==
+                strncmp(max.data(), string_ascii_[idx].c_str(), cell_val_num));
 
             // Validate no sum.
             CHECK_THROWS_WITH(
@@ -530,16 +526,20 @@ struct CPPFixedTileMetadataFx {
           (void)cell_val_num;
           for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
             // Validate min.
-            auto&& [min, min_size] =
+            const auto min =
                 frag_meta[f]->get_tile_min_as<TestType>("a", tile_idx);
-            CHECK(min_size == sizeof(TestType));
-            CHECK(0 == memcmp(min, &correct_tile_mins_[f][tile_idx], min_size));
+            CHECK(
+                0 ==
+                memcmp(
+                    &min, &correct_tile_mins_[f][tile_idx], sizeof(TestType)));
 
             // Validate max.
-            auto&& [max, max_size] =
+            const auto max =
                 frag_meta[f]->get_tile_max_as<TestType>("a", tile_idx);
-            CHECK(max_size == sizeof(TestType));
-            CHECK(0 == memcmp(max, &correct_tile_maxs_[f][tile_idx], max_size));
+            CHECK(
+                0 ==
+                memcmp(
+                    &max, &correct_tile_maxs_[f][tile_idx], sizeof(TestType)));
 
             if constexpr (!std::is_same<TestType, unsigned char>::value) {
               // Validate sum.
@@ -862,12 +862,12 @@ struct CPPVarTileMetadataFx {
 
           // Validate no min.
           CHECK_THROWS_WITH(
-              frag_meta[f]->get_tile_min_as<char>("d", tile_idx),
+              frag_meta[f]->get_tile_min_as<uint32_t>("d", tile_idx),
               "FragmentMetadata: Trying to access metadata that's not present");
 
           // Validate no max.
           CHECK_THROWS_WITH(
-              frag_meta[f]->get_tile_max_as<char>("d", tile_idx),
+              frag_meta[f]->get_tile_max_as<uint32_t>("d", tile_idx),
               "FragmentMetadata: Trying to access metadata that's not present");
 
           // Validate sum.
@@ -940,18 +940,22 @@ struct CPPVarTileMetadataFx {
     if (!all_null) {
       for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
         // Validate min.
-        auto&& [min, min_size] =
-            frag_meta[f]->get_tile_min_as<char>("a", tile_idx);
+        const auto min =
+            frag_meta[f]->get_tile_min_as<std::string_view>("a", tile_idx);
         int idx = correct_tile_mins_[f][tile_idx];
-        CHECK(min_size == strings_[idx].size());
-        CHECK(0 == strncmp(min, strings_[idx].c_str(), strings_[idx].size()));
+        CHECK(min.size() == strings_[idx].size());
+        CHECK(
+            0 ==
+            strncmp(min.data(), strings_[idx].c_str(), strings_[idx].size()));
 
         // Validate max.
-        auto&& [max, max_size] =
-            frag_meta[f]->get_tile_max_as<char>("a", tile_idx);
+        const auto max =
+            frag_meta[f]->get_tile_max_as<std::string_view>("a", tile_idx);
         idx = correct_tile_maxs_[f][tile_idx];
-        CHECK(max_size == strings_[idx].size());
-        CHECK(0 == strncmp(max, strings_[idx].c_str(), strings_[idx].size()));
+        CHECK(max.size() == strings_[idx].size());
+        CHECK(
+            0 ==
+            strncmp(max.data(), strings_[idx].c_str(), strings_[idx].size()));
 
         // Validate no sum.
         CHECK_THROWS_WITH(
@@ -1182,16 +1186,12 @@ struct CPPFixedTileMetadataPartialFx {
     // Validate attribute metadta.
     for (uint64_t tile_idx = 0; tile_idx < 4; tile_idx++) {
       // Validate min.
-      auto&& [min, min_size] =
-          frag_meta[0]->get_tile_min_as<char>("a", tile_idx);
-      CHECK(min_size == sizeof(double));
-      CHECK(0 == memcmp(min, &correct_tile_mins[tile_idx], min_size));
+      const auto min = frag_meta[0]->get_tile_min_as<double>("a", tile_idx);
+      CHECK(0 == memcmp(&min, &correct_tile_mins[tile_idx], sizeof(double)));
 
       // Validate max.
-      auto&& [max, max_size] =
-          frag_meta[0]->get_tile_max_as<char>("a", tile_idx);
-      CHECK(max_size == sizeof(double));
-      CHECK(0 == memcmp(max, &correct_tile_maxs[tile_idx], max_size));
+      const auto max = frag_meta[0]->get_tile_max_as<double>("a", tile_idx);
+      CHECK(0 == memcmp(&max, &correct_tile_maxs[tile_idx], sizeof(double)));
 
       // Validate sum.
       auto sum = frag_meta[0]->get_tile_sum("a", tile_idx);
@@ -1359,16 +1359,20 @@ struct CPPVarTileMetadataPartialFx {
     // Validate attribute metadta.
     for (uint64_t tile_idx = 0; tile_idx < 4; tile_idx++) {
       // Validate min.
-      auto&& [min, min_size] =
-          frag_meta[0]->get_tile_min_as<char>("a", tile_idx);
-      CHECK(min_size == correct_tile_mins[tile_idx].size());
-      CHECK(0 == memcmp(min, correct_tile_mins[tile_idx].data(), min_size));
+      const auto min =
+          frag_meta[0]->get_tile_min_as<std::string_view>("a", tile_idx);
+      CHECK(min.size() == correct_tile_mins[tile_idx].size());
+      CHECK(
+          0 ==
+          memcmp(min.data(), correct_tile_mins[tile_idx].data(), min.size()));
 
       // Validate max.
-      auto&& [max, max_size] =
-          frag_meta[0]->get_tile_max_as<char>("a", tile_idx);
-      CHECK(max_size == correct_tile_maxs[tile_idx].size());
-      CHECK(0 == memcmp(max, correct_tile_maxs[tile_idx].data(), max_size));
+      const auto max =
+          frag_meta[0]->get_tile_max_as<std::string_view>("a", tile_idx);
+      CHECK(max.size() == correct_tile_maxs[tile_idx].size());
+      CHECK(
+          0 ==
+          memcmp(max.data(), correct_tile_maxs[tile_idx].data(), max.size()));
     }
 
     // Close array.

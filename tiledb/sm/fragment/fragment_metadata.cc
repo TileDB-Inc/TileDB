@@ -1698,8 +1698,14 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::tile_var_size(
 }
 
 template <typename T>
-tuple<T*, uint64_t> FragmentMetadata::get_tile_min_as(
+T FragmentMetadata::get_tile_min_as(
     const std::string& name, uint64_t tile_idx) {
+  const auto var_size = array_schema_->var_size(name);
+  if (var_size) {
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata as wrong type");
+  }
+
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -1710,7 +1716,37 @@ tuple<T*, uint64_t> FragmentMetadata::get_tile_min_as(
 
   const auto type = array_schema_->type(name);
   const auto is_dim = array_schema_->is_dim(name);
+  const auto cell_val_num = array_schema_->cell_val_num(name);
+  if (!TileMetadataGenerator::has_min_max_metadata(
+          type, is_dim, var_size, cell_val_num)) {
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not present");
+  }
+
+  auto size = array_schema_->cell_size(name);
+  void* min = &tile_min_buffer_[idx][tile_idx * size];
+  return *static_cast<T*>(min);
+}
+
+template <>
+std::string_view FragmentMetadata::get_tile_min_as<std::string_view>(
+    const std::string& name, uint64_t tile_idx) {
+  const auto type = array_schema_->type(name);
   const auto var_size = array_schema_->var_size(name);
+  if (!var_size && type != Datatype::STRING_ASCII && type != Datatype::CHAR) {
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata as wrong type");
+  }
+
+  auto it = idx_map_.find(name);
+  assert(it != idx_map_.end());
+  auto idx = it->second;
+  if (!loaded_metadata_.tile_min_[idx]) {
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not loaded");
+  }
+
+  const auto is_dim = array_schema_->is_dim(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num)) {
@@ -1725,18 +1761,24 @@ tuple<T*, uint64_t> FragmentMetadata::get_tile_min_as(
     auto size = tile_idx == tile_num - 1 ?
                     tile_min_var_buffer_[idx].size() - min_offset :
                     offsets[tile_idx + 1] - min_offset;
-    void* min = &tile_min_var_buffer_[idx][min_offset];
-    return {static_cast<T*>(min), size};
+    char* min = &tile_min_var_buffer_[idx][min_offset];
+    return {min, size};
   } else {
     auto size = array_schema_->cell_size(name);
     void* min = &tile_min_buffer_[idx][tile_idx * size];
-    return {static_cast<T*>(min), size};
+    return {static_cast<char*>(min), size};
   }
 }
 
 template <typename T>
-tuple<T*, uint64_t> FragmentMetadata::get_tile_max_as(
+T FragmentMetadata::get_tile_max_as(
     const std::string& name, uint64_t tile_idx) {
+  const auto var_size = array_schema_->var_size(name);
+  if (var_size) {
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata as wrong type");
+  }
+
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -1747,7 +1789,37 @@ tuple<T*, uint64_t> FragmentMetadata::get_tile_max_as(
 
   const auto type = array_schema_->type(name);
   const auto is_dim = array_schema_->is_dim(name);
+  const auto cell_val_num = array_schema_->cell_val_num(name);
+  if (!TileMetadataGenerator::has_min_max_metadata(
+          type, is_dim, var_size, cell_val_num)) {
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not present");
+  }
+
+  auto size = array_schema_->cell_size(name);
+  void* max = &tile_max_buffer_[idx][tile_idx * size];
+  return *static_cast<T*>(max);
+}
+
+template <>
+std::string_view FragmentMetadata::get_tile_max_as<std::string_view>(
+    const std::string& name, uint64_t tile_idx) {
+  const auto type = array_schema_->type(name);
   const auto var_size = array_schema_->var_size(name);
+  if (!var_size && type != Datatype::STRING_ASCII && type != Datatype::CHAR) {
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata as wrong type");
+  }
+
+  auto it = idx_map_.find(name);
+  assert(it != idx_map_.end());
+  auto idx = it->second;
+  if (!loaded_metadata_.tile_max_[idx]) {
+    throw FragmentMetadataStatusException(
+        "Trying to access metadata that's not loaded");
+  }
+
+  const auto is_dim = array_schema_->is_dim(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
   if (!TileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num)) {
@@ -1762,12 +1834,12 @@ tuple<T*, uint64_t> FragmentMetadata::get_tile_max_as(
     auto size = tile_idx == tile_num - 1 ?
                     tile_max_var_buffer_[idx].size() - max_offset :
                     offsets[tile_idx + 1] - max_offset;
-    void* max = &tile_max_var_buffer_[idx][max_offset];
-    return {static_cast<T*>(max), size};
+    char* max = &tile_max_var_buffer_[idx][max_offset];
+    return {max, size};
   } else {
     auto size = array_schema_->cell_size(name);
     void* max = &tile_max_buffer_[idx][tile_idx * size];
-    return {static_cast<T*>(max), size};
+    return {static_cast<char*>(max), size};
   }
 }
 
@@ -4962,53 +5034,53 @@ FragmentMetadata::compute_overlapping_tile_ids_cov<float>(
 template std::vector<std::pair<uint64_t, double>>
 FragmentMetadata::compute_overlapping_tile_ids_cov<double>(
     const double* subarray) const;
-template tuple<int8_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+template int8_t FragmentMetadata::get_tile_min_as<int8_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<uint8_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+template uint8_t FragmentMetadata::get_tile_min_as<uint8_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<int16_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+template int16_t FragmentMetadata::get_tile_min_as<int16_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<uint16_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+template uint16_t FragmentMetadata::get_tile_min_as<uint16_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<int32_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+template int32_t FragmentMetadata::get_tile_min_as<int32_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<uint32_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+template uint32_t FragmentMetadata::get_tile_min_as<uint32_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<int64_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+template int64_t FragmentMetadata::get_tile_min_as<int64_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<uint64_t*, uint64_t> FragmentMetadata::get_tile_min_as(
+template char FragmentMetadata::get_tile_min_as<char>(
     const std::string& name, uint64_t tile_idx);
-template tuple<char*, uint64_t> FragmentMetadata::get_tile_min_as(
+template uint64_t FragmentMetadata::get_tile_min_as<uint64_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<float*, uint64_t> FragmentMetadata::get_tile_min_as(
+template float FragmentMetadata::get_tile_min_as<float>(
     const std::string& name, uint64_t tile_idx);
-template tuple<double*, uint64_t> FragmentMetadata::get_tile_min_as(
+template double FragmentMetadata::get_tile_min_as<double>(
     const std::string& name, uint64_t tile_idx);
-template tuple<std::byte*, uint64_t> FragmentMetadata::get_tile_min_as(
+template std::byte FragmentMetadata::get_tile_min_as<std::byte>(
     const std::string& name, uint64_t tile_idx);
-template tuple<int8_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+template int8_t FragmentMetadata::get_tile_max_as<int8_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<uint8_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+template uint8_t FragmentMetadata::get_tile_max_as<uint8_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<int16_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+template int16_t FragmentMetadata::get_tile_max_as<int16_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<uint16_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+template uint16_t FragmentMetadata::get_tile_max_as<uint16_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<int32_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+template int32_t FragmentMetadata::get_tile_max_as<int32_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<uint32_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+template uint32_t FragmentMetadata::get_tile_max_as<uint32_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<int64_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+template int64_t FragmentMetadata::get_tile_max_as<int64_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<uint64_t*, uint64_t> FragmentMetadata::get_tile_max_as(
+template uint64_t FragmentMetadata::get_tile_max_as<uint64_t>(
     const std::string& name, uint64_t tile_idx);
-template tuple<char*, uint64_t> FragmentMetadata::get_tile_max_as(
+template float FragmentMetadata::get_tile_max_as<float>(
     const std::string& name, uint64_t tile_idx);
-template tuple<float*, uint64_t> FragmentMetadata::get_tile_max_as(
+template double FragmentMetadata::get_tile_max_as<double>(
     const std::string& name, uint64_t tile_idx);
-template tuple<double*, uint64_t> FragmentMetadata::get_tile_max_as(
+template std::byte FragmentMetadata::get_tile_max_as<std::byte>(
     const std::string& name, uint64_t tile_idx);
-template tuple<std::byte*, uint64_t> FragmentMetadata::get_tile_max_as(
+template char FragmentMetadata::get_tile_max_as<char>(
     const std::string& name, uint64_t tile_idx);
 
 }  // namespace sm
