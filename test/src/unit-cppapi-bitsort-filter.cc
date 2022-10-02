@@ -30,7 +30,6 @@
  * Tests the C++ API for bitsort filter related functions.
  */
 
-#include <iostream>
 #include <random>
 #include <vector>
 
@@ -104,6 +103,7 @@ void set_3d_dim_buffers(std::vector<T> &x_dims, std::vector<T> &y_dims, std::vec
   }
 }
 
+/// TODO: document checking invariant, esp regarding index
 template<typename T>
 void check_2d_row_major(std::vector<T> &global_a, std::vector<T> &a_data_read) {
   REQUIRE(global_a.size() == a_data_read.size());
@@ -160,7 +160,12 @@ void check_3d_row_major(std::vector<T> &global_a, std::vector<T> &a_data_read) {
 
 // t is the attribute type, w is the dimension type (TODO: add into comment)
 template <typename T, typename W, typename AttributeDistribution>
-void bitsort_filter_api_test(Context& ctx, uint64_t num_dims) {
+void bitsort_filter_api_test(Context& ctx, VFS &vfs) {
+  // Setup.
+  if (vfs.is_dir(bitsort_array_name))
+    vfs.remove_dir(bitsort_array_name);
+
+  uint64_t num_dims = GENERATE(1, 2, 3);
   Domain domain(ctx);
 
   // Add first dimension.
@@ -192,8 +197,11 @@ void bitsort_filter_api_test(Context& ctx, uint64_t num_dims) {
 
   // Setting up the random number generator for the bitsort filter testing.
   std::mt19937_64 gen(0xADA65ED6);
-  AttributeDistribution dis(
-      std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
+  T low = 0;
+  if constexpr (std::is_signed<T>::value) {
+    low = std::numeric_limits<T>::min();
+  }
+  AttributeDistribution dis(low, std::numeric_limits<T>::max());
 
   std::vector<T> a_write;
   std::vector<T> global_a;
@@ -241,64 +249,68 @@ void bitsort_filter_api_test(Context& ctx, uint64_t num_dims) {
   Query query_r(ctx, array_r);
   query_r.set_data_buffer("a", a_data_read);
 
-/*
-  SECTION("Global order") {
-    auto read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
-    query_r.set_layout(read_layout);
-    query_r.submit();
+  auto read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+  query_r.set_layout(read_layout);
+  query_r.submit();
 
-    // Check for results.
-    auto table = query_r.result_buffer_elements();
-    REQUIRE(table.size() == 1);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == number_elements);
-    
-    for (size_t i = 0; i < number_elements; ++i) {
-      CHECK(a_data_read[i] == global_a[i]);
-    }
+  // Check for results.
+  auto table = query_r.result_buffer_elements();
+  REQUIRE(table.size() == 1);
+  REQUIRE(table["a"].first == 0);
+  REQUIRE(table["a"].second == number_elements);
+  
+  for (size_t i = 0; i < number_elements; ++i) {
+    CHECK(a_data_read[i] == global_a[i]);
   }
-  */
 
-  SECTION("Row major order") {
-    query_r.set_layout(TILEDB_ROW_MAJOR);
-    query_r.submit();
-
-    // Check for results.
-    auto table = query_r.result_buffer_elements();
-    REQUIRE(table.size() == 1);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == number_elements);
-
-    if (num_dims == 1) {
-      for (size_t i = 0; i < number_elements; ++i) {
-        CHECK(a_data_read[i] == global_a[i]);
-      }
-    } else if (num_dims == 2) {
-        check_2d_row_major(global_a, a_data_read);
-    }
-  }  
-
-  /// TODO: column major.
+  /// TODO: Add tests for row and column major reads.
 
   query_r.finalize();
   array_r.close();
-}
-
-TEST_CASE("Seeing if templated dims works", "[cppapi][filter][bitsort][whee]") {
-  // Setup.
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(bitsort_array_name))
-    vfs.remove_dir(bitsort_array_name);
-
-  SECTION("2D") {
-    bitsort_filter_api_test<int, float, IntDistribution>(ctx, 2);
-  }
-
-  /// TODO: add templating + 1d 3d.
 
   // Teardown.
   if (vfs.is_dir(bitsort_array_name))
     vfs.remove_dir(bitsort_array_name);
+}
+
+TEMPLATE_TEST_CASE("Seeing if templated dims works", "[cppapi][filter][bitsort][whee]", int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double) {
+  // Setup.
+  Context ctx;
+  VFS vfs(ctx);
+
+  // Run tests.
+  if constexpr (std::is_floating_point<TestType>::value) {
+    bitsort_filter_api_test<TestType, int8_t, FloatDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, int16_t, FloatDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, int32_t, FloatDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, int64_t, FloatDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, uint8_t, FloatDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, uint16_t, FloatDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, uint32_t, FloatDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, uint64_t, FloatDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, float, FloatDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, double, FloatDistribution>(ctx, vfs);
+  } else if constexpr (std::is_unsigned<TestType>::value) {
+    bitsort_filter_api_test<TestType, int8_t, UnsignedIntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, int16_t, UnsignedIntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, int32_t, UnsignedIntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, int64_t, UnsignedIntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, uint8_t, UnsignedIntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, uint16_t, UnsignedIntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, uint32_t, UnsignedIntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, uint64_t, UnsignedIntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, float, UnsignedIntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, double, UnsignedIntDistribution>(ctx, vfs);
+  } else if constexpr (std::is_signed<TestType>::value) {
+    bitsort_filter_api_test<TestType, int8_t, IntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, int16_t, IntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, int32_t, IntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, int64_t, IntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, uint8_t, IntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, uint16_t, IntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, uint32_t, IntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, uint64_t, IntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, float, IntDistribution>(ctx, vfs);
+    bitsort_filter_api_test<TestType, double, IntDistribution>(ctx, vfs);
+  }
 }

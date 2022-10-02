@@ -48,7 +48,6 @@
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/subarray/subarray.h"
 
-#include <iostream> // TODO: DELETE
 #include <variant>
 
 namespace tiledb {
