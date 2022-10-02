@@ -35,6 +35,7 @@
 #include <cassert>
 #include <iostream>
 #include <map>
+#include <type_traits>
 #include "../frugal.h"
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
@@ -46,64 +47,32 @@
 
 using namespace tiledb::common;
 
-struct node;
+struct node_base {
+  using node_type = std::shared_ptr<node_base>;
 
-template <class T>
-struct port;
-
-template <class T>
-struct sender;
-
-template <class T>
-struct receiver;
-
-template <class T>
-struct port {};
-
-template <class T>
-struct sender : public port<T> {};
-
-template <class T>
-struct receiver : public port<T> {};
-
-struct node {
   bool debug_{false};
 
   size_t id_;
   size_t program_counter_{0};
 
-  std::shared_ptr<node> correspondent_{nullptr};
+  std::shared_ptr<node_base> correspondent_{nullptr};
 
-  node(node&&) = default;
-  node(const node&) {
+  node_base(node_base&&) = default;
+  node_base(const node_base&) {
     std::cout << "Nonsense copy constructor" << std::endl;
   }
 
-  virtual ~node() = default;
-
-  //  inline TaskState set_node_state(TaskState st) {
-  //    node_state_ = st;
-  //    return st;
-  //  }
-
-  //  inline TaskEvent task_event() const {
-  //    return task_event_;
-  //  }
-
-  //  inline TaskEvent set_task_event(TaskEvent ev) {
-  //    task_event_ = ev;
-  //    return task_event_;
-  //  }
+  virtual ~node_base() = default;
 
   inline size_t id() const {
     return id_;
   }
 
-  node(size_t id)
+  node_base(size_t id)
       : id_{id} {
   }
 
-  virtual node* resume() = 0;
+  virtual void resume() = 0;
 
   virtual std::string name() {
     return {"abstract base"};
@@ -122,6 +91,8 @@ struct node {
   }
 };
 
+using node = std::shared_ptr<node_base>;
+
 template <class From, class To>
 void connect(From& from, To& to) {
   from->correspondent_ = to;
@@ -135,9 +106,7 @@ std::atomic<size_t> id_counter{0};
 std::atomic<bool> item_{false};
 
 template <template <class> class Mover, class T>
-struct producer_node_impl : public node,
-                            public sender<T>,
-                            public Source<Mover, T> {
+struct producer_node_impl : public node_base, public Source<Mover, T> {
   using mover_type = Mover<T>;
   void set_item_mover(std::shared_ptr<mover_type> mover) {
     this->item_mover_ = mover;
@@ -152,8 +121,12 @@ struct producer_node_impl : public node,
   }
 
   template <class Function>
-  producer_node_impl(Function&& f)
-      : node(id_counter++)
+  producer_node_impl(
+      Function&& f,
+      std::enable_if_t<
+          std::is_invocable_r_v<T, Function, std::stop_source&>,
+          void**> = nullptr)
+      : node_base(id_counter++)
       , f_{std::forward<Function>(f)}
       , produced_items_{0} {
   }
@@ -174,7 +147,7 @@ struct producer_node_impl : public node,
     return {"producer"};
   }
 
-  node* resume() {
+  void resume() {
     auto mover = this->get_mover();
 
     std::cout << "producer resuming\n";
@@ -245,14 +218,11 @@ struct producer_node_impl : public node,
       default:
         break;
     }
-    return this;
   }
 };
 
 template <template <class> class Mover, class T>
-struct consumer_node_impl : public node,
-                            public receiver<T>,
-                            public Sink<Mover, T> {
+struct consumer_node_impl : public node_base, public Sink<Mover, T> {
   using mover_type = Mover<T>;
   void set_item_mover(std::shared_ptr<mover_type> mover) {
     this->item_mover_ = mover;
@@ -267,8 +237,12 @@ struct consumer_node_impl : public node,
   }
 
   template <class Function>
-  consumer_node_impl(Function&& f)
-      : node(id_counter++)
+  consumer_node_impl(
+      Function&& f,
+      std::enable_if_t<
+          std::is_invocable_r_v<void, Function, const T&>,
+          void**> = nullptr)
+      : node_base(id_counter++)
       , f_{std::forward<Function>(f)}
       , consumed_items_{0} {
   }
@@ -289,7 +263,7 @@ struct consumer_node_impl : public node,
     return {"consumer"};
   }
 
-  node* resume() {
+  void resume() {
     auto mover = this->get_mover();
 
     if (this->debug())
@@ -341,7 +315,7 @@ struct consumer_node_impl : public node,
           if (this->debug())
             std::cout << this->name() + " node " + std::to_string(this->id()) +
                              " is done -- setting event to exit" + "\n";
-          return this;
+          return;
         }
 
         f_(thing);
@@ -364,12 +338,11 @@ struct consumer_node_impl : public node,
         break;
       }
     }
-    return this;
   }
 };
 
 template <template <class> class Mover, class T>
-struct producer_node : std::shared_ptr<producer_node_impl<Mover, T>> {
+struct producer_node : public std::shared_ptr<producer_node_impl<Mover, T>> {
   using Base = std::shared_ptr<producer_node_impl<Mover, T>>;
   using Base::Base;
 
@@ -378,10 +351,14 @@ struct producer_node : std::shared_ptr<producer_node_impl<Mover, T>> {
       : Base{std::make_shared<producer_node_impl<Mover, T>>(
             std::forward<Function>(f))} {
   }
+
+  producer_node(producer_node_impl<Mover, T>& impl)
+      : Base{std::make_shared<producer_node_impl<Mover, T>>(std::move(impl))} {
+  }
 };
 
 template <template <class> class Mover, class T>
-struct consumer_node : std::shared_ptr<consumer_node_impl<Mover, T>> {
+struct consumer_node : public std::shared_ptr<consumer_node_impl<Mover, T>> {
   using Base = std::shared_ptr<consumer_node_impl<Mover, T>>;
   using Base::Base;
 
@@ -389,6 +366,10 @@ struct consumer_node : std::shared_ptr<consumer_node_impl<Mover, T>> {
   consumer_node(Function&& f)
       : Base{std::make_shared<consumer_node_impl<Mover, T>>(
             std::forward<Function>(f))} {
+  }
+
+  consumer_node(consumer_node_impl<Mover, T>& impl)
+      : Base{std::make_shared<consumer_node_impl<Mover, T>>(std::move(impl))} {
   }
 };
 
@@ -403,8 +384,8 @@ TEST_CASE("FrugalScheduler: Test assigning nodes", "[frugal]") {
       producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
   auto c = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
 
-  std::shared_ptr<node> q = p;
-  std::shared_ptr<node> d = c;
+  node q = p;
+  node d = c;
   q->correspondent_ = p;
   q->correspondent_ = c;
   d->correspondent_ = p;
@@ -425,112 +406,487 @@ TEST_CASE("FrugalScheduler: Test connect nodes", "[frugal]") {
   Edge(*p, *c);
 }
 
-TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
-  auto p =
+/*
+ * Define some helpers
+ */
+template <template <class> class T, class N>
+struct hm {
+  T<N> operator()(const N& n) {
+    return {n};
+  }
+};
+
+template <template <class> class T>
+struct hm<T, node> {
+  auto operator()(const node& n) {
+    return FrugalTask{n};
+  }
+};
+
+template <class N>
+FrugalTask<node> task_from_node(N& n) {
+  return {n};
+}
+
+template <class N>
+TaskState task_state(const FrugalTask<N>& t) {
+  return t.task_state();
+}
+
+template <class N>
+TaskState& task_state(FrugalTask<N>& t) {
+  return t.task_state();
+}
+
+template <class T>
+T& task_handle(T& task) {
+  return task;
+}
+
+auto hm_ = hm<FrugalTask, node>{};
+
+bool two_nodes(node_base&, node_base&) {
+  return true;
+}
+
+bool two_nodes(const node&, const node&) {
+  return true;
+}
+
+TEST_CASE("FrugalScheduler: Construct nodes and impls", "[frugal]") {
+  auto pro_node_impl = producer_node_impl<FrugalMover3, size_t>(
+      [](std::stop_source&) { return 0; });
+  auto con_node_impl =
+      consumer_node_impl<FrugalMover3, size_t>([](const size_t&) {});
+
+  auto pro_node =
       producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
-  auto c = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+  auto con_node = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
 
-  // This doesn't work any longer -- took out converting constructor
-  // auto q = FrugalTask(p);
-  // auto d = FrugalTask(c);
+  //  auto pro_specified =
+  //      producer_node<FrugalMover3, size_t>(pro_node_impl);  // bad
+  //  auto pro_deduced = producer_node(pro_node_impl);
+  //  pro_deduced->fill();
 
-  auto q = FrugalTask(p);
-  auto d = FrugalTask(c);
+  // producer_node_impl<FrugalMover3, size_t>
+  //   ::producer_node_impl<producer_node_impl<FrugalMover3, size_t>>
 
-  auto r = FrugalTask(p);
-  auto e = FrugalTask(c);
+  //  auto con_specified = consumer_node<FrugalMover3, size_t>(con_node_impl);
+  //  // bad
+  //  auto con_deduced = consumer_node(con_node_impl);
 
-  CHECK(c->name() == "consumer");
-  CHECK(p->name() == "producer");
-  CHECK(d->name() == "consumer");
-  CHECK(q->name() == "producer");
-  CHECK(e->name() == "consumer");
-  CHECK(r->name() == "producer");
+  // The types will print?
+  // print_types(pro_deduced, con_deduced);
+  //   producer_node<FrugalMover3, unsigned long>
+  //   consumer_node<FrugalMover3, unsigned long>
 
-  auto s = r;
-  auto t = s;
+  // print_types(pro_specified, con_specified);
+  //   producer_node<FrugalMover3, unsigned long>
+  //   consumer_node<FrugalMover3, unsigned long>
+
+  SECTION("Check specified and deduced are same types") {
+    //    CHECK(std::is_same_v<decltype(pro_specified), decltype(pro_deduced)>);
+    //    CHECK(std::is_same_v<decltype(con_specified), decltype(con_deduced)>);
+  }
+
+  SECTION("Check polymorphism to node&") {
+    CHECK(two_nodes(pro_node_impl, con_node_impl));
+
+    // No conversion from producer_node to node
+    CHECK(two_nodes(pro_node, con_node));
+
+    // No conversion from producer_node to node&
+    //    CHECK(two_shared_nodes(pro_node, con_node));
+  }
+
+  SECTION("Checks with FrugalTask and node (godbolt)") {
+    auto shared_pro = node{pro_node};
+    auto shared_con = node{con_node};
+
+    auto shared_nil = node{};
+    shared_nil = shared_pro;
+    CHECK(shared_nil == shared_pro);
+  }
+
+  SECTION("I think this works (godbolt)", "[frugal]") {
+    auto frugal_pro = FrugalTask<node>{pro_node};
+    auto frugal_con = FrugalTask<node>{con_node};
+
+    auto frugal_from_pro = task_from_node(pro_node);
+    auto frugal_from_con = task_from_node(con_node);
+
+    auto frugal_hm_pro = hm_(pro_node);
+    auto frugal_hm_con = hm_(con_node);
+
+    /**
+     * @todo Unify producer and consumer cases via TEMPLATE_TEST_CASE
+     */
+
+    /*
+     * Producer case
+     */
+
+    /*
+     * Tasks constructed from same nodes are unique
+     * Though maybe we should not allow this?
+     */
+
+    auto frugal_pro_1 = FrugalTask<node>{pro_node};
+    auto frugal_pro_2 = FrugalTask<node>{pro_node};
+    auto frugal_pro_3 = task_from_node(pro_node);
+    auto frugal_pro_4 = hm_(pro_node);
+    auto frugal_pro_5 = frugal_pro_1;
+    auto frugal_pro_6 = frugal_pro_3;
+
+    CHECK(frugal_pro_1 != frugal_pro_2);
+    CHECK(frugal_pro_2 != frugal_pro_3);
+    CHECK(frugal_pro_3 != frugal_pro_4);
+    CHECK(frugal_pro_4 != frugal_pro_5);
+    CHECK(frugal_pro_5 != frugal_pro_6);
+
+    FrugalTask<node> frugal_pro_7{frugal_pro_2};
+    FrugalTask frugal_pro_8{frugal_pro_2};
+
+    CHECK(frugal_pro_6 != frugal_pro_7);
+    CHECK(frugal_pro_7 == frugal_pro_2);
+    CHECK(frugal_pro_7 == frugal_pro_8);
+    CHECK(frugal_pro_8 != frugal_pro_1);
+
+    auto frugal_pro_1_x = frugal_pro_1;
+    CHECK(frugal_pro_1 == frugal_pro_1);
+    CHECK(frugal_pro_1_x == frugal_pro_1);
+    CHECK(frugal_pro_1 == frugal_pro_1_x);
+
+    auto frugal_pro_5_x = frugal_pro_5;
+    CHECK(frugal_pro_5_x == frugal_pro_5);
+
+    // Warning danger -- don't use frugal_pro_5 after the move
+    FrugalTask<node> frugal_pro_5_moved{std::move(frugal_pro_5)};
+    CHECK(frugal_pro_5_moved == frugal_pro_5_x);
+
+    /*
+     * Consumer case
+     */
+    auto frugal_con_1 = FrugalTask<node>{con_node};
+    auto frugal_con_2 = FrugalTask<node>{con_node};
+    auto frugal_con_3 = task_from_node(con_node);
+    auto frugal_con_4 = hm_(con_node);
+    auto frugal_con_5 = frugal_con_1;
+    auto frugal_con_6 = frugal_con_3;
+
+    CHECK(frugal_con_1 != frugal_con_2);
+    CHECK(frugal_con_2 != frugal_con_3);
+    CHECK(frugal_con_3 != frugal_con_4);
+    CHECK(frugal_con_4 != frugal_con_5);
+    CHECK(frugal_con_5 != frugal_con_6);
+
+    FrugalTask<node> frugal_con_7{frugal_con_2};
+    FrugalTask frugal_con_8{frugal_con_2};
+
+    CHECK(frugal_con_6 != frugal_con_7);
+    CHECK(frugal_con_7 == frugal_con_2);
+    CHECK(frugal_con_7 == frugal_con_8);
+    CHECK(frugal_con_8 != frugal_con_1);
+
+    auto frugal_con_1_x = frugal_con_1;
+    CHECK(frugal_con_1 == frugal_con_1);
+    CHECK(frugal_con_1_x == frugal_con_1);
+    CHECK(frugal_con_1 == frugal_con_1_x);
+
+    auto frugal_con_5_x = frugal_con_5;
+    CHECK(frugal_con_5_x == frugal_con_5);
+
+    // Warning danger -- don't use frugal_con_5 after the move
+    FrugalTask<node> frugal_con_5_moved{std::move(frugal_con_5)};
+    CHECK(frugal_con_5_moved == frugal_con_5_x);
+  }
+
+  SECTION("Check states") {
+    auto frugal_pro = FrugalTask<node>{pro_node};
+    auto frugal_con = FrugalTask<node>{con_node};
+
+    auto frugal_from_pro = task_from_node(pro_node);
+    auto frugal_from_con = task_from_node(con_node);
+
+    auto frugal_hm_pro = hm_(pro_node);
+    auto frugal_hm_con = hm_(con_node);
+
+    CHECK(str(task_state(frugal_pro)) == "created");
+    CHECK(str(task_state(frugal_from_pro)) == "created");
+    CHECK(str(task_state(frugal_hm_pro)) == "created");
+
+    CHECK(str(task_state(frugal_con)) == "created");
+    CHECK(str(task_state(frugal_from_con)) == "created");
+    CHECK(str(task_state(frugal_hm_con)) == "created");
+
+    /*
+     * No aliasing of tasks
+     */
+    task_state(frugal_pro) = TaskState::running;
+    CHECK(str(task_state(frugal_pro)) == "running");
+
+    CHECK(str(task_state(frugal_from_pro)) == "created");
+    CHECK(str(task_state(frugal_hm_pro)) == "created");
+    CHECK(str(task_state(frugal_con)) == "created");
+    CHECK(str(task_state(frugal_from_con)) == "created");
+    CHECK(str(task_state(frugal_hm_con)) == "created");
+
+    task_state(frugal_pro) = TaskState::created;
+    CHECK(str(task_state(frugal_pro)) == "created");
+
+    CHECK(str(task_state(frugal_from_pro)) == "created");
+    CHECK(str(task_state(frugal_hm_pro)) == "created");
+    CHECK(str(task_state(frugal_con)) == "created");
+    CHECK(str(task_state(frugal_from_con)) == "created");
+    CHECK(str(task_state(frugal_hm_con)) == "created");
+
+    task_state(frugal_con) = TaskState::running;
+    CHECK(str(task_state(frugal_con)) == "running");
+
+    CHECK(str(task_state(frugal_pro)) == "created");
+    CHECK(str(task_state(frugal_from_pro)) == "created");
+    CHECK(str(task_state(frugal_hm_pro)) == "created");
+    CHECK(str(task_state(frugal_from_con)) == "created");
+    CHECK(str(task_state(frugal_hm_con)) == "created");
+  }
+}
+
+TEST_CASE("FrugalScheduler: I think this works (godbolt)", "[frugal]") {
+#if 0
+  auto b = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+  auto d =
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+
+  auto i = node{b};
+  auto z = node{};
+  z = b;
+  z = i;
+  auto y = FrugalTask<node>{d};
+
+  auto n = task_from_node(d);
+  auto m = hm_(d);
+  m = y;
+  n = y;
+  m = n;
+
+  // Can only make tasks from node, not node_impl
+  // auto c = consumer_node_impl<FrugalMover3, size_t>([](const size_t&) {});
+  // auto x = FrugalTask<node>{c};
+  auto w = FrugalTask<node>{b};
+
+  //  std::cout << std::boolalpha;
+  // Compare producer_node with FrugalTask
+  CHECK(d == y);
+  CHECK(d != w);
+
+  auto x = y;
+  CHECK(x == y);  // Shallow copy
+
+  CHECK(str(task_state(x)) == "created");
+  CHECK(str(task_state(y)) == "created");
+  task_state(y) = TaskState::running;
+  CHECK(str(task_state(x)) == "running");
+  CHECK(str(task_state(y)) == "running");
+  CHECK(x == y);  // Shallow copy
+#endif
+}
+
+namespace tiledb::common {
+FrugalTask(node)->FrugalTask<node>;
+FrugalTask(node&)->FrugalTask<node>;
+FrugalTask(const node&)->FrugalTask<node>;
+
+template <template <class> class M, class T>
+FrugalTask(producer_node<M, T>)->FrugalTask<node>;
+template <template <class> class M, class T>
+FrugalTask(consumer_node<M, T>)->FrugalTask<node>;
+}  // namespace tiledb::common
+
+TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
+  auto pro_node =
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto con_node = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+
+  auto pro_node_2 =
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto con_node_2 = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+
+  auto pro_task = FrugalTask(pro_node);
+  auto con_task = FrugalTask(con_node);
+
+  auto pro_task_assign = pro_task;
+  auto con_task_assign = con_task;
+
+  auto pro_task_copy = FrugalTask(pro_task);
+  auto con_task_copy = FrugalTask(con_task);
+
+  auto pro_task_2 = FrugalTask(pro_node_2);
+  auto con_task_2 = FrugalTask(con_node_2);
+
+  SECTION("Names") {
+    CHECK(con_node->name() == "consumer");
+    CHECK(pro_node->name() == "producer");
+    CHECK(con_task->name() == "consumer task");
+    CHECK(pro_task->name() == "producer task");
+    CHECK(con_task_2->name() == "consumer task");
+    CHECK(pro_task_2->name() == "producer task");
+  }
 
   SECTION("Node Equality") {
-    // Not comparable
-    // CHECK(p != c);
-
-    // Not constructible
-    // consumer_node<FrugalMover3, size_t> i{c};
-
-    // Not constructible
-    // auto j = p;
-
     // This is brilliant
-    std::shared_ptr<node> a = p;
-    std::shared_ptr<node> b = c;
+    node node_pro = pro_node;
+    node node_con = con_node;
 
-    CHECK(a == p);
-    CHECK(b == c);
-    CHECK(a != b);
+    CHECK(node_pro == pro_node);
+    CHECK(node_con == con_node);
+    CHECK(node_pro != node_con);
 
-    // Not comparable
-    // CHECK(*a == *p);
+    CHECK(static_cast<void*>(&(*node_pro)) == static_cast<void*>(&(*node_pro)));
+    CHECK(static_cast<void*>(&(*node_pro)) == static_cast<void*>(&(*pro_node)));
   }
 
   SECTION("FrugalTask Equality") {
-    CHECK(reinterpret_cast<void*>(&c) != reinterpret_cast<void*>(&d));
-    CHECK(reinterpret_cast<void*>(&c) != reinterpret_cast<void*>(&e));
-    CHECK(reinterpret_cast<void*>(&e) != reinterpret_cast<void*>(&d));
-
-    CHECK(&s != &r);
-    CHECK(&s != &t);
-    CHECK(&r != &t);
-
-    CHECK(c == d);
-    CHECK(e == e);
-    CHECK(e == c);
-
-    CHECK(q == p);
-    CHECK(q == r);
-    CHECK(s == r);
-    CHECK(s == t);
-    CHECK(r == t);
   }
 
   SECTION("Node and FrugalTask Equality") {
-    std::shared_ptr<node> a = p;  // q
-    std::shared_ptr<node> b = c;  // d
-
-    CHECK(a == q);
-    CHECK(b == d);
-    CHECK(b != a);
-
-    auto u = FrugalTask(c);
-    auto v = FrugalTask(p);
-
-    CHECK(u == c);
-    u = c;
-    v = p;
-
-    std::shared_ptr<node> x{c};
-    std::shared_ptr<node> y{p};
-
-    // u = x;
-    y = v;
-
-    // CHECK(u == c);
-    CHECK(y == p);
-    // CHECK(c == u);
-    CHECK(p == y);
   }
 
   SECTION("Queue") {
-    std::queue<decltype(q)> q_;
-    q_.push(q);
-    auto u = q_.front();
-    q_.pop();
-    CHECK(q == u);
+    auto pro_task = FrugalTask(pro_node);
+    auto con_task = FrugalTask(con_node);
+
+    auto pro_node_i = producer_node<FrugalMover3, size_t>(
+        [](std::stop_source&) { return 0; });
+    auto pro_node_j = producer_node<FrugalMover3, size_t>(
+        [](std::stop_source&) { return 0; });
+    auto pro_node_k = producer_node_impl<FrugalMover3, size_t>(
+        [](std::stop_source&) { return 0; });
+
+    auto con_node_i = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+    auto con_node_j = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+    auto con_node_k = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+
+    auto pro_task_i = FrugalTask<node>{pro_node_i};
+    auto pro_task_j = FrugalTask<node>{pro_node_j};
+    auto pro_task_i_deduced = FrugalTask{pro_node_i};
+    auto pro_task_j_deduced = FrugalTask{pro_node_j};
+    auto pro_task_i_tfn = task_from_node(pro_node_i);
+    auto pro_task_j_tfn = task_from_node(pro_node_j);
+
+    auto con_task_i = FrugalTask<node>{con_node_i};
+    auto con_task_j = FrugalTask<node>{con_node_j};
+    auto con_task_i_deduced = FrugalTask{con_node_i};
+    auto con_task_j_deduced = FrugalTask{con_node_j};
+    auto con_task_i_tfn = task_from_node(con_node_i);
+    auto con_task_j_tfn = task_from_node(con_node_j);
+
+    CHECK(pro_task_i != pro_task_i_deduced);
+    CHECK(pro_task_j != pro_task_j_deduced);
+
+    std::queue<node> node_queue;
+    node_queue.push(pro_node);
+    node_queue.push(con_node);
+
+    std::queue<FrugalTask<node>> task_queue;
+
+    task_queue.push(pro_task_i);
+    task_queue.push(con_task_i);
+    task_queue.push(pro_task_j);
+    task_queue.push(con_task_j);
+
+    task_queue.push(pro_task_i_tfn);
+    task_queue.push(con_task_i_tfn);
+
+    task_queue.push(pro_task_i_deduced);
+    task_queue.push(con_task_i_deduced);
+    task_queue.push(pro_task_j_deduced);
+    task_queue.push(con_task_j_deduced);
+
+    CHECK(task_queue.front() == pro_task_i);
+    task_queue.pop();
+    CHECK(task_queue.front() == con_task_i);
+    task_queue.pop();
+    CHECK(task_queue.front() == pro_task_j);
+    task_queue.pop();
+    CHECK(task_queue.front() == con_task_j);
+    task_queue.pop();
+
+    CHECK(task_queue.front() == pro_task_i_tfn);
+    task_queue.pop();
+    CHECK(task_queue.front() == con_task_i_tfn);
+    task_queue.pop();
+
+    CHECK(task_queue.front() == pro_task_i_deduced);
+    task_queue.pop();
+    CHECK(task_queue.front() == con_task_i_deduced);
+    task_queue.pop();
+    CHECK(task_queue.front() == pro_task_j_deduced);
+    task_queue.pop();
+    CHECK(task_queue.front() == con_task_j_deduced);
+    task_queue.pop();
+    CHECK(task_queue.empty());
+
+    auto pro_task_copy = pro_task;
+    CHECK(pro_task == pro_task);
+    CHECK(pro_task_copy == pro_task_copy);
+    CHECK(pro_task_copy == pro_task);
+    CHECK(pro_task == pro_task_copy);
+
+    auto empty_queue = std::queue<FrugalTask<node>>{};
+    task_queue.swap(empty_queue);
+    CHECK(task_queue.empty());
+
+    // Check that we get same task back when we push and pop
+    task_queue.push(pro_task_copy);
+    CHECK(!task_queue.empty());
+
+    auto pro_task_front = task_queue.front();
+
+    CHECK(pro_task == pro_task_copy);
+    CHECK(pro_task == pro_task_front);
+    task_queue.pop();
+    CHECK(pro_task == pro_task_copy);
+    CHECK(pro_task == pro_task_front);
+
+    CHECK(str(task_state(pro_task)) == "created");
+    CHECK(str(task_state(pro_task_copy)) == "created");
+    CHECK(str(task_state(pro_task_front)) == "created");
+
+    /*
+     * Check that copies are shallow
+     */
+    task_state(pro_task_copy) = TaskState::running;
+    CHECK(str(task_state(pro_task_copy)) == "running");
+    CHECK(str(task_state(pro_task_copy)) == "running");
+    CHECK(str(task_state(pro_task_front)) == "running");
+
+    task_queue.push(pro_task_copy);
+    auto pro_task_front_running = task_queue.front();
+    CHECK(str(task_state(pro_task_front_running)) == "running");
+
+    task_state(pro_task_copy) = TaskState::runnable;
+    task_queue.push(pro_task_copy);
+    CHECK(task_queue.front() == pro_task_copy);
+    CHECK(task_state(task_queue.front()) == TaskState::runnable);
+    CHECK(str(task_state(task_queue.front())) == "runnable");
+
+    task_queue.pop();
+    task_queue.pop();
+    CHECK(task_queue.empty());
   }
 
+#if 0
   SECTION("Set") {
-    std::set<FrugalTask<std::shared_ptr<node>>> q_;
-    // s == r == t
-    // q != d
+    std::set<FrugalTask<node>> task_set;
+
+
+
+    lp = q;
+    auto lq = q;
+    lq = lp;
+
+    // FrugalTask<producer_node_impl>, FrugalTask<node>
+    print_types(q, lp, (typename decltype(q_)::value_type){}, FrugalTask<node>);
 
     q_.insert(q);
     q_.insert(r);
@@ -564,7 +920,7 @@ TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
   }
 
   SECTION("Map") {
-    std::map<FrugalTask<node>, std::shared_ptr<node>> m_;
+    std::map<FrugalTask<node>, node> m_;
 
     m_[r] = c;
     m_[e] = q;
@@ -572,7 +928,7 @@ TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
     CHECK(m_[t] == e);
     CHECK(m_[c] == s);
 
-    std::map<std::shared_ptr<node>, FrugalTask<node>> n_;
+    std::map<node, FrugalTask<node>> n_;
 
     n_[r] = c;
     n_[e] = q;
@@ -580,9 +936,9 @@ TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
     CHECK(n_[t] == e);
     CHECK(n_[c] == s);
 
-    std::map<std::shared_ptr<node>, std::shared_ptr<node>> o_;
+    std::map<node, node> o_;
 
-    auto x = std::shared_ptr<node>{c};
+    auto x = node{c};
 
     o_[r] = c;
     o_[e] = q;
@@ -599,8 +955,10 @@ TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
     CHECK(o_[q] == m_[p]);
     CHECK(o_[t] == m_[r]);
   }
+#endif
 }
 
+#if 0
 TEST_CASE("FrugalScheduler: Test construct scheduler", "[frugal]") {
   [[maybe_unused]] auto sched = FrugalScheduler<node>(1);
   // sched goes out of scope and shuts down the scheduler
@@ -706,7 +1064,7 @@ TEST_CASE("FrugalScheduler: Test submit and wait nodes", "[frugal]") {
     CHECK(c->consumed_items() == problem_size + num_threads);
   }
 }
-
+#endif
 #if 0
 
 TEST_CASE("FrugalScheduler: Test passing integers", "[frugal]") {

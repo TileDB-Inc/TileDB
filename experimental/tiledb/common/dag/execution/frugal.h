@@ -331,7 +331,13 @@ class FrugalTaskImpl {
   scheduler* scheduler_{nullptr};
   TaskState state_{TaskState::created};
 
+  Node node_;
+
  public:
+  FrugalTaskImpl(const Node& n)
+      : node_{n} {
+  }
+
   FrugalTaskImpl() = default;
   FrugalTaskImpl(const FrugalTaskImpl&) = default;
   FrugalTaskImpl(FrugalTaskImpl&&) = default;
@@ -342,13 +348,12 @@ class FrugalTaskImpl {
     scheduler_ = sched;
   }
 
-  TaskState state() {
+  TaskState& task_state() {
     return state_;
   }
 
-  TaskState set_state(TaskState state) {
-    state_ = state;
-    return state_;
+  std::string name() {
+    return node_->name() + " task";
   }
 
   virtual ~FrugalTaskImpl() = default;
@@ -363,18 +368,24 @@ class FrugalTaskImpl {
 };
 
 template <class Node>
-class FrugalTask : public FrugalTaskImpl<Node>, public Node {
-  using Base = Node;
-  using Base::Base;
+class FrugalTask : public std::shared_ptr<FrugalTaskImpl<Node>> {
+  using Base = std::shared_ptr<FrugalTaskImpl<Node>>;
 
  public:
-  FrugalTask(Node& node)
-      : Node(node) {
+  FrugalTask(const Node& n)
+      : Base{std::make_shared<FrugalTaskImpl<Node>>(n)} {
   }
+
+  FrugalTask() = default;
+
   FrugalTask(const FrugalTask& rhs) = default;
   FrugalTask(FrugalTask&& rhs) = default;
   FrugalTask& operator=(const FrugalTask& rhs) = default;
   FrugalTask& operator=(FrugalTask&& rhs) = default;
+
+  TaskState& task_state() {
+    return (*this)->task_state();
+  }
 };
 
 template <class Node>
