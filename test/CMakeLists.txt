@@ -112,7 +112,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/test-capi-query-error-handling.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
-  src/unit-bitsort-filter.cc
   src/unit-bufferlist.cc
   src/unit-capi-any.cc
   src/unit-capi-array.cc
