@@ -55,7 +55,7 @@ struct node_base {
   size_t id_;
   size_t program_counter_{0};
 
-  std::shared_ptr<node_base> correspondent_{nullptr};
+  node_type correspondent_{nullptr};
 
   node_base(node_base&&) = default;
   node_base(const node_base&) {
@@ -651,46 +651,6 @@ TEST_CASE("FrugalScheduler: Construct nodes and impls", "[frugal]") {
   }
 }
 
-TEST_CASE("FrugalScheduler: I think this works (godbolt)", "[frugal]") {
-#if 0
-  auto b = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
-  auto d =
-      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
-
-  auto i = node{b};
-  auto z = node{};
-  z = b;
-  z = i;
-  auto y = FrugalTask<node>{d};
-
-  auto n = task_from_node(d);
-  auto m = hm_(d);
-  m = y;
-  n = y;
-  m = n;
-
-  // Can only make tasks from node, not node_impl
-  // auto c = consumer_node_impl<FrugalMover3, size_t>([](const size_t&) {});
-  // auto x = FrugalTask<node>{c};
-  auto w = FrugalTask<node>{b};
-
-  //  std::cout << std::boolalpha;
-  // Compare producer_node with FrugalTask
-  CHECK(d == y);
-  CHECK(d != w);
-
-  auto x = y;
-  CHECK(x == y);  // Shallow copy
-
-  CHECK(str(task_state(x)) == "created");
-  CHECK(str(task_state(y)) == "created");
-  task_state(y) = TaskState::running;
-  CHECK(str(task_state(x)) == "running");
-  CHECK(str(task_state(y)) == "running");
-  CHECK(x == y);  // Shallow copy
-#endif
-}
-
 namespace tiledb::common {
 FrugalTask(node)->FrugalTask<node>;
 FrugalTask(node&)->FrugalTask<node>;
@@ -752,9 +712,6 @@ TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
   }
 
   SECTION("Queue") {
-    auto pro_task = FrugalTask(pro_node);
-    auto con_task = FrugalTask(con_node);
-
     auto pro_node_i = producer_node<FrugalMover3, size_t>(
         [](std::stop_source&) { return 0; });
     auto pro_node_j = producer_node<FrugalMover3, size_t>(
@@ -874,10 +831,109 @@ TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
     task_queue.pop();
     CHECK(task_queue.empty());
   }
+}
+
+SCENARIO(
+    "Tasks can be pushed and popped into a queue without invalidating "
+    "references to them") {
+  auto pro_node =
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto con_node = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+
+  auto pro_task = FrugalTask(pro_node);
+  auto con_task = FrugalTask(con_node);
+
+  GIVEN("Tasks pro_task and pro_task_copy (copy of pro_task)") {
+    auto pro_task_assign = pro_task;
+    auto con_task_assign = con_task;
+
+    auto pro_task_copy = FrugalTask(pro_task);
+    auto con_task_copy = FrugalTask(con_task);
+    THEN("pro_task == pro_task_copy") {
+      CHECK(pro_task_assign == pro_task);
+      CHECK(con_task_assign == con_task);
+
+      CHECK(pro_task_copy == pro_task);
+      CHECK(con_task_copy == con_task);
+
+      CHECK(pro_task != con_task);
+    }
+    WHEN("Task with copy is pushed onto a queue") {
+      std::queue<FrugalTask<node>> task_queue;
+      auto pro_task_to_push = FrugalTask(pro_task);
+      CHECK(pro_task_to_push == pro_task);
+      task_queue.push(pro_task_to_push);
+
+      THEN("The front of the queue is still equal to original task") {
+        CHECK(task_queue.front() == pro_task);
+        AND_THEN("A task copied from the front is equal to original task") {
+          auto front_pro_task = task_queue.front();
+          CHECK(task_queue.front() == pro_task);
+          CHECK(front_pro_task == pro_task);
+        }
+      }
+      AND_WHEN("The task is popped") {
+        auto popped_pro_task = task_queue.front();
+        task_queue.pop();
+        THEN("The popped task is still equal to the original task") {
+          CHECK(popped_pro_task == pro_task);
+        }
+      }
+      AND_WHEN("We push tasks onto the queue") {
+        std::queue<FrugalTask<node>> created_queue;
+        std::queue<FrugalTask<node>> submitted_queue;
+
+        auto created_pro_task_i = FrugalTask(pro_node);
+        auto created_pro_task_j = FrugalTask(pro_node);
+        auto created_pro_task_k = FrugalTask(pro_node);
+
+        auto copied_pro_task_i = created_pro_task_i;
+        auto copied_pro_task_j = created_pro_task_j;
+        auto copied_pro_task_k = created_pro_task_k;
+
+        created_queue.push(created_pro_task_i);
+        created_queue.push(created_pro_task_j);
+        created_queue.push(created_pro_task_k);
+        AND_WHEN("Task state is changed") {
+          auto popped_pro_task_i = created_queue.front();
+          created_queue.pop();
+          CHECK(task_state(popped_pro_task_i) == TaskState::created);
+          auto popped_pro_task_j = created_queue.front();
+          created_queue.pop();
+          CHECK(task_state(popped_pro_task_j) == TaskState::created);
+          auto popped_pro_task_k = created_queue.front();
+          created_queue.pop();
+          CHECK(task_state(popped_pro_task_k) == TaskState::created);
+
+          task_state(popped_pro_task_i) = TaskState::runnable;
+          submitted_queue.push(popped_pro_task_i);
+          task_state(popped_pro_task_j) = TaskState::running;
+          submitted_queue.push(popped_pro_task_j);
+          task_state(popped_pro_task_k) = TaskState::terminated;
+          submitted_queue.push(popped_pro_task_k);
+
+          THEN("The property of the original changes also") {
+            CHECK(task_state(copied_pro_task_i) == TaskState::runnable);
+            CHECK(task_state(copied_pro_task_j) == TaskState::running);
+            CHECK(task_state(copied_pro_task_k) == TaskState::terminated);
+
+            CHECK(str(task_state(copied_pro_task_i)) == "runnable");
+            CHECK(str(task_state(copied_pro_task_j)) == "running");
+            CHECK(str(task_state(copied_pro_task_k)) == "terminated");
+          }
+        }
+      }
+    }
+  }
+}
 
 #if 0
   SECTION("Set") {
     std::set<FrugalTask<node>> task_set;
+
+    task_set.insert(pro_task);
+    task_set.insert(con_task);
+
 
 
 
@@ -917,8 +973,10 @@ TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
     CHECK(x.empty());
     auto y = q_.extract(d);
     CHECK(y.empty());
-  }
 
+  }
+#endif
+#if 0
   SECTION("Map") {
     std::map<FrugalTask<node>, node> m_;
 
@@ -955,8 +1013,8 @@ TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
     CHECK(o_[q] == m_[p]);
     CHECK(o_[t] == m_[r]);
   }
-#endif
 }
+#endif
 
 #if 0
 TEST_CASE("FrugalScheduler: Test construct scheduler", "[frugal]") {
