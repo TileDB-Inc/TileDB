@@ -88,11 +88,6 @@ const std::vector<URI>& ArrayDirectory::unfiltered_fragment_uris() const {
   return unfiltered_fragment_uris_;
 }
 
-const std::unordered_set<std::string>&
-ArrayDirectory::consolidated_commit_uris_set() const {
-  return consolidated_commit_uris_set_;
-}
-
 const std::vector<URI>& ArrayDirectory::array_meta_uris_to_vacuum() const {
   return array_meta_uris_to_vacuum_;
 }

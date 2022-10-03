@@ -275,9 +275,6 @@ class ArrayDirectory {
   /** Returns the unfiltered fragment uris. */
   const std::vector<URI>& unfiltered_fragment_uris() const;
 
-  /** Returns the consolidated commits uri fragment uris. */
-  const std::unordered_set<std::string>& consolidated_commit_uris_set() const;
-
   /** Returns the URIs of the array metadata files to vacuum. */
   const std::vector<URI>& array_meta_uris_to_vacuum() const;
 
