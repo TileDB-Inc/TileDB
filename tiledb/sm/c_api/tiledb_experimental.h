@@ -316,7 +316,6 @@ TILEDB_EXPORT int32_t tiledb_query_get_relevant_fragment_num(
     const tiledb_query_t* query,
     uint64_t* relevant_fragment_num) TILEDB_NOEXCEPT;
 
-
 /* ********************************* */
 /*        QUERY STATUS DETAILS       */
 /* ********************************* */
