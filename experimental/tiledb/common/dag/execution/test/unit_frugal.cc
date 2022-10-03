@@ -927,94 +927,154 @@ SCENARIO(
   }
 }
 
-#if 0
-  SECTION("Set") {
-    std::set<FrugalTask<node>> task_set;
+SCENARIO(
+    "Tasks can be inserted into and extracted from a set without invalidating "
+    "references to them") {
+  auto pro_node =
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto con_node = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
 
-    task_set.insert(pro_task);
-    task_set.insert(con_task);
+  auto pro_task = FrugalTask(pro_node);
+  auto con_task = FrugalTask(con_node);
 
+  GIVEN("Tasks pro_task and pro_task_copy (copy of pro_task)") {
+    auto pro_task_assign = pro_task;
+    auto con_task_assign = con_task;
 
+    auto pro_task_copy = FrugalTask(pro_task);
+    auto con_task_copy = FrugalTask(con_task);
 
+    THEN("pro_task == pro_task_copy") {
+      CHECK(pro_task_assign == pro_task);
+      CHECK(con_task_assign == con_task);
 
-    lp = q;
-    auto lq = q;
-    lq = lp;
+      CHECK(pro_task_copy == pro_task);
+      CHECK(con_task_copy == con_task);
 
-    // FrugalTask<producer_node_impl>, FrugalTask<node>
-    print_types(q, lp, (typename decltype(q_)::value_type){}, FrugalTask<node>);
+      CHECK(pro_task != con_task);
+    }
+    WHEN("Task with copy is inserted into a set") {
+      std::set<FrugalTask<node>> task_set;
 
-    q_.insert(q);
-    q_.insert(r);
-    q_.insert(d);
-    q_.insert(c);
-    q_.insert(s);
-    q_.insert(t);
-    q_.insert(e);
+      auto pro_task_to_insert = FrugalTask(pro_task);
+      CHECK(pro_task_to_insert == pro_task);
+      task_set.insert(pro_task_to_insert);
 
-    auto n = q_.extract(s);
-    CHECK(!n.empty());
-    CHECK(q == n.value());
+      THEN("The inserted task can be found using original") {
+        CHECK(task_set.find(pro_task_to_insert) != end(task_set));
+        CHECK(task_set.find(pro_task) != end(task_set));
 
-    auto m = q_.extract(r);
-    CHECK(m.empty());
-    auto l = q_.extract(q);
-    CHECK(l.empty());
-    auto k = q_.extract(t);
-    CHECK(k.empty());
+        AND_THEN("A task extracted from the set is equal to original task") {
+          auto extracted_pro_task_handle = task_set.extract(pro_task_to_insert);
+          CHECK(!extracted_pro_task_handle.empty());
+          CHECK(extracted_pro_task_handle.value() == pro_task);
+        }
+      }
 
-    auto u = q_.extract(c);
-    CHECK(!u.empty());
-    auto v = q_.extract(c);
-    CHECK(v.empty());
-    auto w = q_.extract(s);
-    CHECK(w.empty());
-    auto x = q_.extract(e);
-    CHECK(x.empty());
-    auto y = q_.extract(d);
-    CHECK(y.empty());
+      AND_WHEN("We insert multiple tasks into a set") {
+        std::set<FrugalTask<node>> created_set;
+        std::set<FrugalTask<node>> submitted_set;
 
-  }
-#endif
-#if 0
-  SECTION("Map") {
-    std::map<FrugalTask<node>, node> m_;
+        auto created_pro_task_i = FrugalTask(pro_node);
+        auto created_pro_task_j = FrugalTask(pro_node);
+        auto created_pro_task_k = FrugalTask(pro_node);
 
-    m_[r] = c;
-    m_[e] = q;
+        auto copied_pro_task_i = created_pro_task_i;
+        auto copied_pro_task_j = created_pro_task_j;
+        auto copied_pro_task_k = created_pro_task_k;
 
-    CHECK(m_[t] == e);
-    CHECK(m_[c] == s);
+        created_set.insert(created_pro_task_i);
+        created_set.insert(created_pro_task_j);
+        created_set.insert(created_pro_task_k);
 
-    std::map<node, FrugalTask<node>> n_;
+        AND_WHEN("Task state is changed") {
+          auto extracted_pro_task_i =
+              created_set.extract(created_pro_task_i).value();
+          CHECK(task_state(extracted_pro_task_i) == TaskState::created);
+          auto extracted_pro_task_j =
+              created_set.extract(created_pro_task_j).value();
+          CHECK(task_state(extracted_pro_task_j) == TaskState::created);
+          auto extracted_pro_task_k =
+              created_set.extract(created_pro_task_k).value();
+          CHECK(task_state(extracted_pro_task_k) == TaskState::created);
 
-    n_[r] = c;
-    n_[e] = q;
+          task_state(extracted_pro_task_i) = TaskState::runnable;
+          task_state(extracted_pro_task_j) = TaskState::running;
+          task_state(extracted_pro_task_k) = TaskState::terminated;
 
-    CHECK(n_[t] == e);
-    CHECK(n_[c] == s);
+          submitted_set.insert(copied_pro_task_i);
+          submitted_set.insert(created_pro_task_j);
+          submitted_set.insert(extracted_pro_task_k);
 
-    std::map<node, node> o_;
+          THEN("The property of the original changes also") {
+            CHECK(task_state(copied_pro_task_i) == TaskState::runnable);
+            CHECK(task_state(copied_pro_task_j) == TaskState::running);
+            CHECK(task_state(copied_pro_task_k) == TaskState::terminated);
 
-    auto x = node{c};
+            CHECK(str(task_state(copied_pro_task_i)) == "runnable");
+            CHECK(str(task_state(copied_pro_task_j)) == "running");
+            CHECK(str(task_state(copied_pro_task_k)) == "terminated");
 
-    o_[r] = c;
-    o_[e] = q;
+            CHECK(str(task_state(created_pro_task_i)) == "runnable");
+            CHECK(str(task_state(created_pro_task_j)) == "running");
+            CHECK(str(task_state(created_pro_task_k)) == "terminated");
 
-    CHECK(o_[t] == e);
-    CHECK(o_[c] == s);
-    CHECK(o_[c] != d);
-    CHECK(o_[c] != e);
-    CHECK(o_[t] != r);
-    CHECK(o_[t] != q);
+            CHECK(
+                submitted_set.extract(created_pro_task_i).value() ==
+                created_pro_task_i);
+            CHECK(
+                submitted_set.extract(copied_pro_task_j).value() ==
+                created_pro_task_j);
+            CHECK(
+                submitted_set.extract(extracted_pro_task_k).value() ==
+                created_pro_task_k);
 
-    CHECK(m_[c] == n_[d]);
-    CHECK(o_[d] == n_[e]);
-    CHECK(o_[q] == m_[p]);
-    CHECK(o_[t] == m_[r]);
+            CHECK(str(task_state(created_pro_task_i)) == "runnable");
+            CHECK(str(task_state(created_pro_task_j)) == "running");
+            CHECK(str(task_state(created_pro_task_k)) == "terminated");
+          }
+        }
+      }
+    }
   }
 }
-#endif
+
+/**
+ * @todo Completely repeat scenarios for std::queue and std::map
+ */
+SCENARIO(
+    "Tasks can be inserted into and looked up from a map, using nodes as "
+    "keys") {
+  auto pro_node =
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto con_node = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+
+  auto pro_task = FrugalTask(pro_node);
+  auto con_task = FrugalTask(con_node);
+
+  GIVEN("A node to task map") {
+    std::map<node, FrugalTask<node>> node_to_task_map;
+
+    WHEN("Insert node-task pair into map") {
+      auto pro_task_copy = FrugalTask(pro_task);
+
+      node_to_task_map[pro_node] = pro_task;
+
+      THEN("Retrieved task is equal to inserted task") {
+        CHECK(node_to_task_map[pro_node] == pro_task_copy);
+      }
+      THEN("Changing retrieved task state changes inserted task state") {
+        auto retrieved_pro_task = node_to_task_map[pro_node];
+        CHECK(retrieved_pro_task == pro_task_copy);
+        CHECK(retrieved_pro_task == pro_task);
+        CHECK(task_state(retrieved_pro_task) == TaskState::created);
+        task_state(retrieved_pro_task) = TaskState::running;
+        CHECK(task_state(retrieved_pro_task) == TaskState::running);
+        CHECK(task_state(pro_task) == TaskState::running);
+      }
+    }
+  }
+}
 
 #if 0
 TEST_CASE("FrugalScheduler: Test construct scheduler", "[frugal]") {
