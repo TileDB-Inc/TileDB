@@ -108,13 +108,13 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
     /* ********************************* */
 
     /** Stores the tile indexes. */
-    std::vector<uint64_t> indexes_;
+    std::array<uint64_t, 2> indexes_;
 
     /**
      * Stores if the indexes values are an equal, greater than or less than
      * values.
      */
-    std::vector<IndexValueType> value_types_;
+    std::array<IndexValueType, 2> value_types_;
   };
 
   /**
@@ -305,7 +305,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   /**
    * Tile index (inside of the domain) of the first tile of each fragments.
    */
-  std::vector<uint64_t> domain_tile_idx_;
+  std::vector<uint64_t> array_tile_idx_per_frag_;
 
   /**
    * Stores the tile indexes (min/max) that can potentially contain the label

@@ -99,7 +99,7 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     , tile_idx_min_(std::numeric_limits<uint64_t>::max())
     , tile_idx_max_(std::numeric_limits<uint64_t>::min())
     , result_tiles_(fragment_metadata_.size())
-    , domain_tile_idx_(fragment_metadata_.size()) {
+    , array_tile_idx_per_frag_(fragment_metadata_.size()) {
   // Sanity checks.
   if (storage_manager_ == nullptr) {
     throw OrderedDimLabelReaderStatusException(
@@ -348,7 +348,7 @@ void OrderedDimLabelReader::compute_array_tile_indexes_for_ranges() {
       [&](uint64_t f) {
         const IndexType* non_empty_domain =
             static_cast<const IndexType*>(non_empty_domains_[f]);
-        domain_tile_idx_[f] = index_dim_->tile_idx<IndexType>(
+        array_tile_idx_per_frag_[f] = index_dim_->tile_idx<IndexType>(
             non_empty_domain[0], dim_dom[0], tile_extent);
         return Status::Ok();
       }));
@@ -499,9 +499,9 @@ OrderedDimLabelReader::get_array_tile_indexes_for_range(
   }
 
   return FragmentRangeTileIndexes(
-      start_index + domain_tile_idx_[f],
+      start_index + array_tile_idx_per_frag_[f],
       start_val_type,
-      end_index + domain_tile_idx_[f],
+      end_index + array_tile_idx_per_frag_[f],
       end_val_type);
 }
 
@@ -612,11 +612,12 @@ uint64_t OrderedDimLabelReader::create_result_tiles() {
         for (uint64_t i = per_range_array_tile_indexes_[r].min(range_index);
              i <= per_range_array_tile_indexes_[r].max(range_index);
              i++) {
-          if ((i >= domain_tile_idx_[f]) &&
-              (i < domain_tile_idx_[f] + fragment_metadata_[f]->tile_num()) &&
+          if ((i >= array_tile_idx_per_frag_[f]) &&
+              (i < array_tile_idx_per_frag_[f] +
+                       fragment_metadata_[f]->tile_num()) &&
               (result_tiles_[f].count(i) == 0)) {
             // Make sure the tile can fit in the budget.
-            uint64_t frag_tile_idx = i - domain_tile_idx_[f];
+            uint64_t frag_tile_idx = i - array_tile_idx_per_frag_[f];
             uint64_t tile_size = label_tile_size(f, frag_tile_idx);
             bool covered =
                 tile_overwritten<IndexType>(f, i, dim_dom[0], tile_extent);
