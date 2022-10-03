@@ -48,6 +48,8 @@ using namespace tiledb::sm;
 using namespace tiledb::type;
 
 TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
+  
+  // Setup an Array needed to construct the Subarray for testing add_ranges_list.
   std::shared_ptr<tiledb::sm::Dimension> sp_dim1 =
       make_shared<tiledb::sm::Dimension>(HERE(), "d1", Datatype::INT64);
   std::shared_ptr<tiledb::sm::Dimension> sp_dim2 =
@@ -78,6 +80,7 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
   CHECK(ctx.storage_manager()->array_create(a.array_uri(), sp_as, ek).ok());
   CHECK(a.open(tiledb::sm::QueryType::READ, tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0).ok());
 
+  // The Subarray used to test add_ranges_list.
   tiledb::sm::Subarray sa(
       &a, &test::g_helper_stats, test::g_helper_logger(), true, ctx.storage_manager());
 

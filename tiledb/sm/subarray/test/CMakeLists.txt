@@ -26,6 +26,12 @@ target_include_directories(unit_add_ranges_list
   PRIVATE "$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>"
 )
 
+# We want tests to continue as normal even as the API is changing,
+# so don't warn for deprecations, since they'll be escalated to errors.
+if (NOT MSVC)
+  target_compile_options(unit_add_ranges_list PRIVATE -Wno-deprecated-declarations)
+endif()
+
 add_test(
     NAME "unit_add_ranges_list"
     COMMAND $<TARGET_FILE:unit_add_ranges_list>
