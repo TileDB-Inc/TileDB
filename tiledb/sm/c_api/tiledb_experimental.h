@@ -269,24 +269,6 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_point_ranges(
     uint64_t count) TILEDB_NOEXCEPT;
 
 /**
- * Adds point ranges to the given dimension index of the subarray
- * Effectively `add_range(x_begin, x_end)` for `count` point pairs in the
- * target array, but set in bulk to amortize expensive steps.
- *
- * @param ctx The TileDB context.
- * @param dim_idx The index of the dimension to add the range to.
- * @param start The start of the ranges {begin,end} array.
- * @param count Number of ranges to add.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_add_ranges_list(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    const void* start,
-    uint64_t count) TILEDB_NOEXCEPT;
-
-/**
  * Adds a set of point ranges along subarray dimension index. Each value
  * in the target array is added as `add_range(x,x)` for count elements.
  * The datatype of the range components must be the same as the type of
@@ -334,36 +316,6 @@ TILEDB_EXPORT int32_t tiledb_query_get_relevant_fragment_num(
     const tiledb_query_t* query,
     uint64_t* relevant_fragment_num) TILEDB_NOEXCEPT;
 
-/**
- * Adds a set of ranges along subarray dimension index. Each range
- * in the target array is added as `add_range(begin,end)` for count elements.
- * The datatype of the range components must be the same as the type of
- * the dimension of the array in the query.
- *
- * **Example:**
- *
- * @code{.c}
- * uint32_t dim_idx = 2;
- * int64_t ranges[] = { 20, 21, 25, 31}
- * tiledb_query_add_ranges_list(ctx, query, dim_idx, &ranges, 4);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The query to add the range to.
- * @param dim_idx The index of the dimension to add the range to.
- * @param start The start of the ranges {begin,end} array.
- * @param count Number of ranges to add.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note The stride is currently unsupported. Use `nullptr` as the
- *     stride argument.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_ranges_list(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    uint32_t dim_idx,
-    const void* start,
-    uint64_t count) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*        QUERY STATUS DETAILS       */
