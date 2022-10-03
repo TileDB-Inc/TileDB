@@ -51,20 +51,11 @@ Status Win32CNG::get_random_bytes(unsigned num_bytes, Buffer* output) {
   if (output->free_space() < num_bytes)
     RETURN_NOT_OK(output->realloc(output->alloced_size() + num_bytes));
 
-  BCRYPT_ALG_HANDLE alg_handle;
-  if (!NT_SUCCESS(BCryptOpenAlgorithmProvider(
-          &alg_handle, BCRYPT_RNG_ALGORITHM, nullptr, 0)))
-    return Status_EncryptionError(
-        "Win32CNG error; generating random bytes: error opening algorithm.");
-
   if (!NT_SUCCESS(BCryptGenRandom(
-          alg_handle, (unsigned char*)output->cur_data(), num_bytes, 0))) {
-    BCryptCloseAlgorithmProvider(alg_handle, 0);
+          nullptr, (unsigned char*)output->cur_data(), num_bytes, BCRYPT_USE_SYSTEM_PREFERRED_RNG))) {
     return Status_EncryptionError(
         "Win32CNG error; generating random bytes: error generating bytes.");
   }
-
-  BCryptCloseAlgorithmProvider(alg_handle, 0);
 
   output->advance_size(num_bytes);
   output->advance_offset(num_bytes);
