@@ -199,6 +199,7 @@ class FilterPipeline {
    * The given Tile's underlying buffer is modified to contain the filtered
    * data.
    *
+   * @tparam T The type of the support data given to the filter.
    * @param tile Tile to filter.
    * @param offsets_tile Offets tile for tile to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
@@ -206,18 +207,7 @@ class FilterPipeline {
    * filtering, false if not.
    * @return Status
    */
-
-  Status run_forward(
-      stats::Stats* writer_stats,
-      Tile* tile,
-      Tile* const support_tiles,
-      ThreadPool* compute_tp,
-      bool chunking = true) const;
-
-  template <
-      typename T = Tile* const,
-      typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type* =
-          nullptr>
+  template <typename T = Tile* const>
   Status run_forward(
       stats::Stats* writer_stats,
       Tile* tile,
@@ -257,6 +247,7 @@ class FilterPipeline {
    * The length of tile_data will be the sum of all chunkI_orig_len for I in 0
    * to N.
    *
+   * @tparam T The type of the support data given to the filter.
    * @param reader_stats Reader stats
    * @param tile Tile to unfilter
    * @param offsets_tile Offsets tile to unfilter, null if it will be unfilered
@@ -265,17 +256,7 @@ class FilterPipeline {
    * @param config The global config.
    * @return Status
    */
-  Status run_reverse(
-      stats::Stats* reader_stats,
-      Tile* const tile,
-      Tile* const offsets_tile,
-      ThreadPool* compute_tp,
-      const Config& config) const;
-
-  template <
-      typename T = Tile* const,
-      typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type* =
-          nullptr>
+  template <typename T = Tile* const>
   Status run_reverse(
       stats::Stats* writer_stats,
       Tile* tile,
@@ -286,6 +267,8 @@ class FilterPipeline {
   /**
    * Run the given chunk range in reverse through the pipeline.
    *
+   * @tparam HasBitSortFilter Stores within the template whether the bitsort
+   * parameter exists.
    * @param reader_stats Stats to record in the function
    * @param tile Current tile on which the filter pipeline is being run
    * @param chunk_data The tile chunk info, buffers and offsets
@@ -297,6 +280,7 @@ class FilterPipeline {
    * @return Status
    */
 
+  template <bool HasBitSortFilter = false>
   Status run_reverse_chunk_range(
       stats::Stats* const reader_stats,
       Tile* const tile,
@@ -392,6 +376,7 @@ class FilterPipeline {
   /**
    * Run the given buffer forward through the pipeline.
    *
+   * @tparam T The type of the support data given to the filter.
    * @param tile Current tile on which the filter pipeline is being run.
    * @param offsets_tile Current offsets tile for var sized attributes.
    * @param input buffer to process.
@@ -402,7 +387,6 @@ class FilterPipeline {
    * @param compute_tp The thread pool for compute-bound tasks.
    * @return Status
    */
-
   template <typename T>
   Status filter_chunks_forward(
       const Tile& tile,
@@ -415,6 +399,7 @@ class FilterPipeline {
   /**
    * Run the given list of chunks in reverse through the pipeline.
    *
+   * @tparam T The type of the support data given to the filter.
    * @param tile Current tile on which the filter pipeline is being run
    * @param offsets_tile Current offsets tile for var sized
    * attributes/dimensions.
@@ -425,7 +410,6 @@ class FilterPipeline {
    * @param config The global config.
    * @return Status
    */
-
   template <typename T>
   Status filter_chunks_reverse(
       Tile& tile,
@@ -437,6 +421,7 @@ class FilterPipeline {
   /**
    * The internal work routine for `run_reverse`.
    *
+   * @tparam T The type of the support data given to the filter.
    * @param tile Tile to filter
    * @param offsets_tile Offsets tile for var sized tile to filter.
    * @param compute_tp The thread pool for compute-bound tasks.

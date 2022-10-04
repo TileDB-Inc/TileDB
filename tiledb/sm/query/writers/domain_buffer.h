@@ -201,7 +201,8 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
   /**
    * Constructor
    *
-   * TODO: Remove this constructor. The current type is the result of code refactoring.
+   * TODO: Remove this constructor. The current type is the result of code
+   * refactoring.
    *
    * @param schema the schema of an open array
    * @param buffers a buffer map for each dimension of the domain

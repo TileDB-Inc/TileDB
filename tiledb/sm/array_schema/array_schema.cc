@@ -368,7 +368,7 @@ Status ArraySchema::check() const {
 
   bool bitsort_filter_exists = false;
   for (const auto &attr : attributes_) {
-    // Check that it exists only once
+    // Check that the bitsort filter exists only once within a schema.
     if (attr->filters().has_filter(FilterType::FILTER_BITSORT)) {
       if (bitsort_filter_exists) {
         return LOG_STATUS(Status_ArraySchemaError("Array schema check failed; Bitsort filter cannot exist multiple times in an array schema."));

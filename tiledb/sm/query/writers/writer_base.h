@@ -295,6 +295,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * pipeline. The tile buffer is modified to contain the output of the
    * pipeline.
    *
+   * @tparam T Type of the support argument passed to the filter pipeline.
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be filtered.
    * @param offsets_tile The offsets tile in case of a var tile, or null.
