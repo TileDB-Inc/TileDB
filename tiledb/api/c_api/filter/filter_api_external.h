@@ -65,6 +65,18 @@ typedef enum {
 #undef TILEDB_FILTER_OPTION_ENUM
 } tiledb_filter_option_t;
 
+#ifdef TILEDB_WEBP
+/**
+ * WebP filter input format enum
+ */
+typedef enum {
+/** Selection macro for defining webp filter format type enum. */
+#define TILEDB_FILTER_WEBP_FORMAT(id) TILEDB_##id
+#include "filter_api_enum.h"
+#undef TILEDB_FILTER_WEBP_FORMAT
+} tiledb_filter_webp_format_t;
+#endif  // TILEDB_WEBP
+
 /**
  * Returns a string representation of the given filter type.
  *

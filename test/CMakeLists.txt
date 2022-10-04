@@ -226,6 +226,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-util.cc
     src/unit-cppapi-var-offsets.cc
     src/unit-cppapi-vfs.cc
+    src/unit-cppapi-webp-filter.cc
     src/unit-cppapi-xor-filter.cc
   )
 endif()
@@ -340,6 +341,10 @@ if (TILEDB_ARROW_TESTS)
 
   # install the python helper next to the executable for import
   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/unit_arrow.py" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
+endif()
+
+if (TILEDB_WEBP)
+  target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_WEBP)
 endif()
 
 # This is necessary only because we are linking directly to the core objects.

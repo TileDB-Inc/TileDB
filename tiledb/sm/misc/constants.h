@@ -388,6 +388,9 @@ extern const std::string filter_xor_str;
 /** String describing FILTER_BITSORT. */
 extern const std::string filter_bitsort_str;
 
+/** String describing FILTER_WEBP. */
+extern const std::string filter_webp_str;
+
 /** The string representation for FilterOption type compression_level. */
 extern const std::string filter_option_compression_level_str;
 
@@ -406,6 +409,12 @@ extern const std::string filter_option_scale_float_factor;
 
 /** The string representation for FilterOption type scale_float_offset. */
 extern const std::string filter_option_scale_float_offset;
+
+/** The string representation for FilterOption type webp_quality. */
+extern const std::string filter_option_webp_quality;
+
+/** The string representation for FilterOption type webp_input_format. */
+extern const std::string filter_option_webp_input_format;
 
 /** The string representation for type int32. */
 extern const std::string int32_str;

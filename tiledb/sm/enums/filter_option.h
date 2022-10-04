@@ -52,6 +52,12 @@ enum class FilterOption : uint8_t {
 #undef TILEDB_FILTER_OPTION_ENUM
 };
 
+enum class WebpInputFormat : uint8_t {
+#define TILEDB_FILTER_WEBP_FORMAT(id) id
+#include "tiledb/api/c_api/filter/filter_api_enum.h"
+#undef TILEDB_FILTER_WEBP_FORMAT
+};
+
 /** Returns the string representation of the input FilterOption type. */
 inline const std::string& filter_option_str(FilterOption filter_option_) {
   switch (filter_option_) {
@@ -67,6 +73,10 @@ inline const std::string& filter_option_str(FilterOption filter_option_) {
       return constants::filter_option_scale_float_factor;
     case FilterOption::SCALE_FLOAT_OFFSET:
       return constants::filter_option_scale_float_offset;
+    case FilterOption::WEBP_QUALITY:
+      return constants::filter_option_webp_quality;
+    case FilterOption::WEBP_INPUT_FORMAT:
+      return constants::filter_option_webp_input_format;
     default:
       return constants::empty_str;
   }
@@ -90,6 +100,10 @@ inline Status filter_option_enum(
     *filter_option_ = FilterOption::SCALE_FLOAT_FACTOR;
   else if (filter_option_str == constants::filter_option_scale_float_offset)
     *filter_option_ = FilterOption::SCALE_FLOAT_OFFSET;
+  else if (filter_option_str == constants::filter_option_webp_quality)
+    *filter_option_ = FilterOption::WEBP_QUALITY;
+  else if (filter_option_str == constants::filter_option_webp_input_format)
+    *filter_option_ = FilterOption::WEBP_INPUT_FORMAT;
   else
     return Status_Error("Invalid FilterOption " + filter_option_str);
 
