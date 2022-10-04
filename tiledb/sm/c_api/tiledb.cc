@@ -6624,6 +6624,32 @@ int32_t tiledb_fragment_info_set_config(
   return TILEDB_OK;
 }
 
+int32_t tiledb_fragment_info_get_config(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    tiledb_config_t** config) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a new config struct
+  *config = new (std::nothrow) tiledb_config_t;
+  if (*config == nullptr)
+    return TILEDB_OOM;
+
+  // Get the array config
+  (*config)->config_ = new (std::nothrow) tiledb::sm::Config();
+  *((*config)->config_) = fragment_info->fragment_info_->config();
+  if ((*config)->config_ == nullptr) {
+    delete (*config);
+    *config = nullptr;
+    return TILEDB_OOM;
+  }
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info) {
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -10077,6 +10103,14 @@ int32_t tiledb_fragment_info_set_config(
     tiledb_fragment_info_t* fragment_info,
     tiledb_config_t* config) noexcept {
   return api_entry<detail::tiledb_fragment_info_set_config>(
+      ctx, fragment_info, config);
+}
+
+int32_t tiledb_fragment_info_get_config(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    tiledb_config_t** config) noexcept {
+  return api_entry<detail::tiledb_fragment_info_get_config>(
       ctx, fragment_info, config);
 }
 

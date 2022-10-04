@@ -7691,6 +7691,27 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_set_config(
     tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /**
+ * Retrieves the config from fragment info.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_config_t* config;
+ * tiledb_fragment_info_get_config(ctx, vfs, &config);
+ * // Make sure to free the retrieved config
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param fragment_info The fragment info object.
+ * @param config The config to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_config(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    tiledb_config_t** config) TILEDB_NOEXCEPT;
+
+/**
  * Loads the fragment info.
  *
  * **Example:**
