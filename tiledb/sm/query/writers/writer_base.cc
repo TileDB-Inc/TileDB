@@ -726,6 +726,7 @@ Status WriterBase::filter_tiles(
   // Process all tiles, minus offsets, they get processed separately.
   std::vector<std::tuple<Tile*, T, bool, bool>> args;
   if constexpr (std::is_same<Tile*, T>::value) {
+    (void)dim_tiles;
     args.reserve(tile_num * (1 + nullable));
     for (auto& tile : *tiles) {
       if (var_size) {
@@ -786,7 +787,7 @@ template<typename T,
 Status WriterBase::filter_tile(
     const std::string& name,
     Tile* const tile,
-    T const support_tiles, 
+    T support_tiles, 
     const bool offsets,
     const bool nullable) {
   auto timer_se = stats_->start_timer("filter_tile");
