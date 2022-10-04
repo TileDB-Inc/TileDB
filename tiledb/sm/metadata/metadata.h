@@ -42,6 +42,8 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/tile/tile.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
 
@@ -121,10 +123,11 @@ class Metadata {
    * deleted or overwritten metadata items considering the order.
    */
   static Metadata deserialize(
-      const std::vector<shared_ptr<Buffer>>& metadata_buffs);
+      const std::vector<shared_ptr<Tile>>& metadata_tiles);
 
   /** Serializes all key-value metadata items into the input buffer. */
-  Status serialize(Buffer* buff) const;
+  // Status serialize(Buffer* buff) const;
+  void serialize(Serializer& serializer) const;
 
   /** Returns the timestamp range. */
   const std::pair<uint64_t, uint64_t>& timestamp_range() const;

@@ -36,6 +36,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/uuid.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 #include <iostream>
 #include <sstream>
@@ -121,8 +122,8 @@ Status Metadata::generate_uri(const URI& array_uri) {
 }
 
 Metadata Metadata::deserialize(
-    const std::vector<shared_ptr<Buffer>>& metadata_buffs) {
-  if (metadata_buffs.empty())
+    const std::vector<shared_ptr<Tile>>& metadata_tiles) {
+  if (metadata_tiles.empty())
     return Metadata();
   std::map<std::string, MetadataValue> metadata_map;
 
@@ -130,14 +131,13 @@ Metadata Metadata::deserialize(
   uint32_t key_len;
   char del;
   size_t value_len;
-  for (const auto& buff : metadata_buffs) {
+  for (const auto& tile : metadata_tiles) {
     // Iterate over all items
-    buff->reset_offset();
-    while (buff->offset() != buff->size()) {
-      throw_if_not_ok(buff->read(&key_len, sizeof(uint32_t)));
-      std::string key((const char*)buff->cur_data(), key_len);
-      buff->advance_offset(key_len);
-      throw_if_not_ok(buff->read(&del, sizeof(char)));
+    Deserializer deserializer(tile->data(), tile->size());
+    while (deserializer.remaining_bytes()) {
+      key_len = deserializer.read<uint32_t>();
+      std::string key((const char*)deserializer.get_ptr<char>(key_len), key_len);
+      deserializer.read(&del, sizeof(char));
 
       metadata_map.erase(key);
 
@@ -147,15 +147,14 @@ Metadata Metadata::deserialize(
 
       MetadataValue value_struct;
       value_struct.del_ = del;
-      throw_if_not_ok(buff->read(&value_struct.type_, sizeof(char)));
-      throw_if_not_ok(buff->read(&value_struct.num_, sizeof(uint32_t)));
+      deserializer.read(&value_struct.type_, sizeof(char));
+      value_struct.num_ = deserializer.read<uint32_t>();
 
       if (value_struct.num_) {
         value_len = value_struct.num_ *
                     datatype_size(static_cast<Datatype>(value_struct.type_));
         value_struct.value_.resize(value_len);
-        throw_if_not_ok(
-            buff->read((void*)value_struct.value_.data(), value_len));
+        deserializer.read((void*)value_struct.value_.data(), value_len);
       }
 
       // Insert to metadata
@@ -166,26 +165,24 @@ Metadata Metadata::deserialize(
   return Metadata(metadata_map);
 }
 
-Status Metadata::serialize(Buffer* buff) const {
-  // Do nothing if there are no metadata to serialize
+void Metadata::serialize(Serializer& serializer) const {
+    // Do nothing if there are no metadata to serialize
   if (metadata_map_.empty())
-    return Status::Ok();
+    return;
 
   for (const auto& meta : metadata_map_) {
     auto key_len = (uint32_t)meta.first.size();
-    RETURN_NOT_OK(buff->write(&key_len, sizeof(uint32_t)));
-    RETURN_NOT_OK(buff->write(meta.first.data(), meta.first.size()));
+    serializer.write<uint32_t>(key_len);
+    serializer.write(meta.first.data(), meta.first.size());
     const auto& value = meta.second;
-    RETURN_NOT_OK(buff->write(&value.del_, sizeof(char)));
+    serializer.write(&value.del_, sizeof(char));
     if (!value.del_) {
-      RETURN_NOT_OK(buff->write(&value.type_, sizeof(char)));
-      RETURN_NOT_OK(buff->write(&value.num_, sizeof(uint32_t)));
+      serializer.write(&value.type_, sizeof(char));
+      serializer.write<uint32_t>(value.num_);
       if (value.num_)
-        RETURN_NOT_OK(buff->write(value.value_.data(), value.value_.size()));
+        serializer.write(value.value_.data(), value.value_.size());
     }
   }
-
-  return Status::Ok();
 }
 
 const std::pair<uint64_t, uint64_t>& Metadata::timestamp_range() const {
