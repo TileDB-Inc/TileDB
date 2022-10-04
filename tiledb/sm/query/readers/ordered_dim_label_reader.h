@@ -79,6 +79,22 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
     /* ********************************* */
     FragmentRangeTileIndexes() = default;
 
+    /**
+     * Construct a new Fragment Range Tile Indexes object.
+     *
+     * @param start_idx If `start_value_type` is contained, the array tile index
+     * where the start range can be located. Or a hint that it will be found in
+     * a tile with index greater or lesser than this value.
+     * @param start_value_type IndexValueType::CONTAINED if the start range was
+     * found in the tile at `start_idx`. IndexValueType::GT or LT if we only
+     * got a hint that the tile at index greater than or less than `start_idx`.
+     * @param end_idx If `end_value_type` is contained, the array tile index
+     * where the end range can be located. Or a hint that it will be found in a
+     * tile with index greater or lesser than this value.
+     * @param end_value_type IndexValueType::CONTAINED if the end range was
+     * found in the tile at `end_idx`. IndexValueType::GT or LT if we only got
+     * a hint that the tile at index greater than or less than `end_idx`.
+     */
     FragmentRangeTileIndexes(
         uint64_t start_idx,
         IndexValueType start_value_type,
@@ -92,12 +108,20 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
     /*                 API               */
     /* ********************************* */
 
-    /** Returns the start tile index. */
+    /**
+     * Returns the start tile index.
+     *
+     * @param range_index 0 for start range, 1  for end range.
+     */
     inline uint64_t idx(uint8_t range_index) {
       return indexes_[range_index];
     }
 
-    /** Index value type for the start index. */
+    /**
+     * Index value type for the start index.
+     *
+     * @param range_index 0 for start range, 1  for end range.
+     */
     inline IndexValueType val_type(uint8_t range_index) {
       return value_types_[range_index];
     }
@@ -129,10 +153,19 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
     /* ********************************* */
     RangeTileIndexes() = default;
 
+    /**
+     * Construct a new Range Tile Indexes object.
+     *
+     * @param tile_idx_min Minimum possible tile index.
+     * @param tile_idx_max Maximum possible tile index.
+     * @param per_range_array_tile_indexes Per fragment vector (for a range) of
+     * FragmentRangeTileIndexes objects defining the tiles where we need to
+     * look to find the start and end range values.
+     */
     RangeTileIndexes(
         uint64_t tile_idx_min,
         uint64_t tile_idx_max,
-        std::vector<FragmentRangeTileIndexes>& per_range_array_tile_indexes) {
+        std::vector<FragmentRangeTileIndexes>& range_array_tile_indexes) {
       // Uses the values computed per fragments to compute the min/max.
       std::array<uint64_t, 2> min = {std::numeric_limits<uint64_t>::max(),
                                      std::numeric_limits<uint64_t>::max()};
@@ -140,7 +173,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
                                      std::numeric_limits<uint64_t>::min()};
 
       // While processing the tiles that we know to possibly contain the
-      // searched values (IndexValueType::EQUAL), also compute the minimum
+      // searched values (IndexValueType::CONTAINED), also compute the minimum
       // and maximum values that we see that hint where we can find the values
       // (IndexValueType::GT or IndexValueType::LT). When a searched value is
       // contained between two tiles, that is all we will have to find the
@@ -149,22 +182,26 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
       std::array<uint64_t, 2> gt = {tile_idx_min, tile_idx_min};
 
       // Go through all fragments.
-      for (unsigned f = 0; f < per_range_array_tile_indexes.size(); f++) {
+      for (unsigned f = 0; f < range_array_tile_indexes.size(); f++) {
         for (uint8_t range_index = 0; range_index < 2; range_index++) {
-          auto idx = per_range_array_tile_indexes[f].idx(range_index);
-          auto val_type = per_range_array_tile_indexes[f].val_type(range_index);
+          auto idx = range_array_tile_indexes[f].idx(range_index);
+          auto val_type = range_array_tile_indexes[f].val_type(range_index);
 
           // Expand the range of min/max when we see a tile that we know
           // contains the value.
-          if (val_type == IndexValueType::CONTAINED) {
-            min[range_index] = std::min(idx, min[range_index]);
-            max[range_index] = std::max(idx, max[range_index]);
-          } else if (val_type == IndexValueType::GT) {
-            // Save the last tile that we know to be greater then the start.
-            gt[range_index] = std::max(idx, gt[range_index]);
-          } else {
-            // Save the first tile that we know to be less than the start.
-            lt[range_index] = std::min(idx, lt[range_index]);
+          switch (val_type) {
+            case IndexValueType::CONTAINED:
+              min[range_index] = std::min(idx, min[range_index]);
+              max[range_index] = std::max(idx, max[range_index]);
+              break;
+            case IndexValueType::GT:
+              // Save the last tile that we know to be greater then the start.
+              gt[range_index] = std::max(idx, gt[range_index]);
+              break;
+            case IndexValueType::LT:
+              // Save the first tile that we know to be less than the start.
+              lt[range_index] = std::min(idx, lt[range_index]);
+              break;
           }
         }
       }
@@ -289,10 +326,10 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   /** Non empty domain for the array. */
   Range non_empty_domain_;
 
-  /** Minimum tile index in the full domain. */
+  /** Minimum array tile index of the non-empty domain. */
   uint64_t tile_idx_min_;
 
-  /** Maximum tile index in the full domain. */
+  /** Maximum array tile index of the non-empty domain. */
   uint64_t tile_idx_max_;
 
   /**
@@ -304,7 +341,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   /**
    * Tile index (inside of the domain) of the first tile of each fragments.
    */
-  std::vector<uint64_t> array_tile_idx_per_frag_;
+  std::vector<uint64_t> frag_first_array_tile_idx_;
 
   /**
    * Stores the tile indexes (min/max) that can potentially contain the label
@@ -341,7 +378,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   void compute_non_empty_domain();
 
   /**
-   * Compute the tile indexes (min/max) that can potentially contain thev label
+   * Compute the tile indexes (min/max) that can potentially contain the label
    * value for each range start/end.
    *
    * Also compute the tile index (inside of the full dimension domain) of the

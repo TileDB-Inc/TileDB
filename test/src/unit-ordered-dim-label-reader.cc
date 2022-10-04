@@ -376,8 +376,6 @@ TEST_CASE_METHOD(
   write_labels(26, 35, {1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0});
   write_labels(36, 45, {2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0});
   write_labels(46, 55, {3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0});
-  write_labels(56, 65, {4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5.0});
-  write_labels(66, 75, {5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 6.0});
   read_all_possible_labels();
 }
 
@@ -387,8 +385,6 @@ TEST_CASE_METHOD(
     "decreasing",
     "[ordered-dim-label-reader][fixed][double][lots-of-fragment][decreasing]") {
   increasing_labels_ = false;
-  write_labels(16, 25, {6.0, 5.9, 5.8, 5.7, 5.6, 5.5, 5.4, 5.3, 5.2, 5.1});
-  write_labels(26, 35, {5.0, 4.9, 4.8, 4.7, 4.6, 4.5, 4.4, 4.3, 4.2, 4.1});
   write_labels(36, 45, {4.0, 3.9, 3.8, 3.7, 3.6, 3.5, 3.4, 3.3, 3.2, 3.1});
   write_labels(46, 55, {3.0, 2.9, 2.8, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1});
   write_labels(56, 65, {2.0, 1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1});
@@ -725,8 +721,6 @@ TEST_CASE_METHOD(
   write_labels(26, 35, {1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0});
   write_labels(36, 45, {2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0});
   write_labels(46, 55, {3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0});
-  write_labels(56, 65, {4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5.0});
-  write_labels(66, 75, {5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 6.0});
   read_all_possible_labels();
 }
 
@@ -735,8 +729,6 @@ TEST_CASE_METHOD(
     "Ordered dimension label reader: var labels, lots of fragment, decreasing",
     "[ordered-dim-label-reader][var][lots-of-fragment][decreasing]") {
   increasing_labels_ = false;
-  write_labels(16, 25, {6.0, 5.9, 5.8, 5.7, 5.6, 5.5, 5.4, 5.3, 5.2, 5.1});
-  write_labels(26, 35, {5.0, 4.9, 4.8, 4.7, 4.6, 4.5, 4.4, 4.3, 4.2, 4.1});
   write_labels(36, 45, {4.0, 3.9, 3.8, 3.7, 3.6, 3.5, 3.4, 3.3, 3.2, 3.1});
   write_labels(46, 55, {3.0, 2.9, 2.8, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1});
   write_labels(56, 65, {2.0, 1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1});
