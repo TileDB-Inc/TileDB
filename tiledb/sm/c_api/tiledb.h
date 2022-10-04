@@ -4259,6 +4259,36 @@ TILEDB_EXPORT int32_t
 tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) TILEDB_NOEXCEPT;
 
 /**
+ * Submits and finalizes the query.
+ * This is applicable only to global layout writes. The function will
+ * error out if called on a query with non global layout.
+ * Its purpose is to submit the final chunk (partial or full tile) in
+ * a global order write query.
+ * `tiledb_query_submit_and_finalize` drops the tile alignment restriction
+ * of the buffers (i.e. compared to the regular global layout submit call)
+ * given the last chunk of a global order write is most frequently smaller
+ * in size than a tile.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_t* query;
+ * while (stop_condition) {
+ *   tiledb_query_set_buffer(ctx, query, attr, tile_aligned_buffer, &size);
+ *   tiledb_query_submit(ctx, query);
+ * }
+ * tiledb_query_set_buffer(ctx, query, attr, final_chunk, &size);
+ * tiledb_query_submit_and_finalize(ctx, query);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query object to be flushed.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_submit_and_finalize(
+    tiledb_ctx_t* ctx, tiledb_query_t* query) TILEDB_NOEXCEPT;
+
+/**
  * Frees a TileDB query object.
  *
  * **Example:**

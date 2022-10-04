@@ -268,6 +268,11 @@ class FragmentMetadata {
    */
   Status init(const NDRange& non_empty_domain);
 
+  /**
+   * Initializes the fragment's internal domain and non-empty domain members
+   */
+  Status init_domain(const NDRange& non_empty_domain);
+
   /** Returns the number of cells in the last tile. */
   uint64_t last_tile_cell_num() const;
 
@@ -311,9 +316,6 @@ class FragmentMetadata {
    * Applicable to format versions 15 or higher.
    */
   Status store_v15_or_higher(const EncryptionKey& encryption_key);
-
-  /** Returns the non-empty domain in which the fragment is constrained. */
-  const NDRange& non_empty_domain();
 
   /**
    * Simply sets the number of cells for the last tile.
@@ -506,6 +508,12 @@ class FragmentMetadata {
    * @return void
    */
   void set_array_schema(const shared_ptr<const ArraySchema>& array_schema);
+
+  /** Sets the array_schema name */
+  void set_schema_name(const std::string& name);
+
+  /** Sets the internal dense_ field*/
+  void set_dense(bool dense);
 
   /** Returns the tile index base value. */
   uint64_t tile_index_base() const;
@@ -865,6 +873,146 @@ class FragmentMetadata {
    * @return
    */
   const shared_ptr<const ArraySchema>& array_schema() const;
+
+  /** File sizes accessor */
+  std::vector<uint64_t>& file_sizes() {
+    return file_sizes_;
+  }
+
+  /** File var sizes accessor */
+  std::vector<uint64_t>& file_var_sizes() {
+    return file_var_sizes_;
+  }
+
+  /** File validity sizes accessor */
+  std::vector<uint64_t>& file_validity_sizes() {
+    return file_validity_sizes_;
+  }
+
+  /** Fragment uri accessor */
+  URI& fragment_uri() {
+    return fragment_uri_;
+  }
+
+  /** has_timestamps accessor */
+  bool& has_timestamps() {
+    return has_timestamps_;
+  }
+
+  /** has_delete_meta accessor */
+  bool& has_delete_meta() {
+    return has_delete_meta_;
+  }
+
+  /** sparse_tile_num accessor */
+  uint64_t& sparse_tile_num() {
+    return sparse_tile_num_;
+  }
+
+  /** tile_index_base accessor */
+  uint64_t& tile_index_base() {
+    return tile_index_base_;
+  }
+
+  /** tile_offsets accessor */
+  std::vector<std::vector<uint64_t>>& tile_offsets() {
+    return tile_offsets_;
+  }
+
+  /** tile_var_offsets accessor */
+  std::vector<std::vector<uint64_t>>& tile_var_offsets() {
+    return tile_var_offsets_;
+  }
+
+  /** tile_var_sizes  accessor */
+  std::vector<std::vector<uint64_t>>& tile_var_sizes() {
+    return tile_var_sizes_;
+  }
+
+  /** tile_validity_offsets accessor */
+  std::vector<std::vector<uint64_t>>& tile_validity_offsets() {
+    return tile_validity_offsets_;
+  }
+
+  /** tile_min_buffer accessor */
+  std::vector<std::vector<uint8_t>>& tile_min_buffer() {
+    return tile_min_buffer_;
+  }
+
+  /** tile_min_var_buffer accessor */
+  std::vector<std::vector<char>>& tile_min_var_buffer() {
+    return tile_min_var_buffer_;
+  }
+
+  /** tile_max_buffer accessor */
+  std::vector<std::vector<uint8_t>>& tile_max_buffer() {
+    return tile_max_buffer_;
+  }
+
+  /** tile_max_var_buffer accessor */
+  std::vector<std::vector<char>>& tile_max_var_buffer() {
+    return tile_max_var_buffer_;
+  }
+
+  /** tile_sums accessor */
+  std::vector<std::vector<uint8_t>>& tile_sums() {
+    return tile_sums_;
+  }
+
+  /** tile_null_counts accessor */
+  std::vector<std::vector<uint64_t>>& tile_null_counts() {
+    return tile_null_counts_;
+  }
+
+  /** fragment_mins accessor */
+  std::vector<std::vector<uint8_t>>& fragment_mins() {
+    return fragment_mins_;
+  }
+
+  /** fragment_maxs accessor */
+  std::vector<std::vector<uint8_t>>& fragment_maxs() {
+    return fragment_maxs_;
+  }
+
+  /** fragment_sums accessor */
+  std::vector<uint64_t>& fragment_sums() {
+    return fragment_sums_;
+  }
+
+  /** fragment_null_counts accessor */
+  std::vector<uint64_t>& fragment_null_counts() {
+    return fragment_null_counts_;
+  }
+
+  /** version accessor */
+  uint32_t& version() {
+    return version_;
+  }
+
+  /** timestamp_range accessor */
+  std::pair<uint64_t, uint64_t>& timestamp_range() {
+    return timestamp_range_;
+  }
+
+  /** last_tile_cell_num accessor */
+  uint64_t& last_tile_cell_num() {
+    return last_tile_cell_num_;
+  }
+
+  /** non_empty_domain accessor */
+  NDRange& non_empty_domain() {
+    return non_empty_domain_;
+  }
+
+  /** rtree accessor */
+  RTree& rtree() {
+    return rtree_;
+  }
+
+  /** set the SM pointer during deserialization*/
+  void set_storage_manager(StorageManager* sm) {
+    storage_manager_ = sm;
+  }
 
  private:
   /* ********************************* */

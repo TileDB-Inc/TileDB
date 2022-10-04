@@ -250,11 +250,23 @@ void StringEmptyFx::write_array(const std::string& array_name) {
       ctx, query, "a4", buffer_a4_offsets, &buffer_a4_offsets_size);
   REQUIRE(rc == TILEDB_OK);
 
-  // Submit query
-  rc = tiledb_query_submit(ctx, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
-  REQUIRE(rc == TILEDB_OK);
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx, array);

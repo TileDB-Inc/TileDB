@@ -1303,6 +1303,224 @@ void check_counts(span<T> vals, std::vector<uint64_t> expected) {
     CHECK(counts[i] == expected[i]);
   }
 }
+void serialize_query(
+    const Context& ctx,
+    Query& query,
+    std::vector<uint8_t>* serialized,
+    bool clientside) {
+  ctx.handle_error(serialize_query(
+      ctx.ptr().get(), query.ptr().get(), serialized, clientside));
+}
+
+int serialize_query(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    std::vector<uint8_t>* serialized,
+    bool clientside) {
+  // Serialize
+  tiledb_buffer_list_t* buff_list;
+
+  if (tiledb_serialize_query(
+          ctx, query, TILEDB_CAPNP, clientside ? 1 : 0, &buff_list) !=
+      TILEDB_OK) {
+    return TILEDB_ERR;
+  }
+
+  // Flatten
+  tiledb_buffer_t* c_buff;
+  if (tiledb_buffer_list_flatten(ctx, buff_list, &c_buff) != TILEDB_OK) {
+    return TILEDB_ERR;
+  }
+
+  // Wrap in a safe pointer
+  auto deleter = [](tiledb_buffer_t* b) { tiledb_buffer_free(&b); };
+  std::unique_ptr<tiledb_buffer_t, decltype(deleter)> buff_ptr(c_buff, deleter);
+
+  // Copy into user vector
+  void* data;
+  uint64_t num_bytes;
+  if (tiledb_buffer_get_data(ctx, c_buff, &data, &num_bytes) != TILEDB_OK) {
+    return TILEDB_ERR;
+  }
+  serialized->clear();
+  serialized->insert(
+      serialized->end(),
+      static_cast<const uint8_t*>(data),
+      static_cast<const uint8_t*>(data) + num_bytes);
+
+  // Free buffer list
+  tiledb_buffer_list_free(&buff_list);
+
+  return TILEDB_OK;
+}
+
+void deserialize_query(
+    const Context& ctx,
+    std::vector<uint8_t>& serialized,
+    Query* query,
+    bool clientside) {
+  ctx.handle_error(deserialize_query(
+      ctx.ptr().get(), serialized, query->ptr().get(), clientside));
+}
+
+int deserialize_query(
+    tiledb_ctx_t* ctx,
+    std::vector<uint8_t>& serialized,
+    tiledb_query_t* query,
+    bool clientside) {
+  tiledb_buffer_t* c_buff;
+  if (tiledb_buffer_alloc(ctx, &c_buff) != TILEDB_OK) {
+    return TILEDB_ERR;
+  }
+
+  // Wrap in a safe pointer
+  auto deleter = [](tiledb_buffer_t* b) { tiledb_buffer_free(&b); };
+  std::unique_ptr<tiledb_buffer_t, decltype(deleter)> buff_ptr(c_buff, deleter);
+
+  if (tiledb_buffer_set_data(
+          ctx,
+          c_buff,
+          reinterpret_cast<void*>(&serialized[0]),
+          static_cast<uint64_t>(serialized.size())) != TILEDB_OK) {
+    return TILEDB_ERR;
+  }
+
+  // Deserialize
+  return tiledb_deserialize_query(
+      ctx, c_buff, TILEDB_CAPNP, clientside ? 1 : 0, query);
+}
+
+std::vector<void*> allocate_query_buffers(
+    const Context& ctx, const Array& array, Query* query) {
+  (void)array;
+  std::vector<void*> to_free;
+  void* unused1;
+  uint64_t* unused2;
+  uint8_t* unused3;
+  uint64_t *a1_size, *a2_size, *a2_validity_size, *a3_size, *a3_offset_size,
+      *coords_size;
+  ctx.handle_error(tiledb_query_get_data_buffer(
+      ctx.ptr().get(), query->ptr().get(), "a1", &unused1, &a1_size));
+  ctx.handle_error(tiledb_query_get_data_buffer(
+      ctx.ptr().get(), query->ptr().get(), "a2", &unused1, &a2_size));
+  ctx.handle_error(tiledb_query_get_validity_buffer(
+      ctx.ptr().get(), query->ptr().get(), "a2", &unused3, &a2_validity_size));
+  ctx.handle_error(tiledb_query_get_data_buffer(
+      ctx.ptr().get(), query->ptr().get(), "a3", &unused1, &a3_size));
+  ctx.handle_error(tiledb_query_get_offsets_buffer(
+      ctx.ptr().get(), query->ptr().get(), "a3", &unused2, &a3_offset_size));
+  ctx.handle_error(tiledb_query_get_data_buffer(
+      ctx.ptr().get(),
+      query->ptr().get(),
+      TILEDB_COORDS,
+      &unused1,
+      &coords_size));
+
+  if (a1_size != nullptr) {
+    void* buff = std::malloc(*a1_size);
+    ctx.handle_error(tiledb_query_set_data_buffer(
+        ctx.ptr().get(), query->ptr().get(), "a1", buff, a1_size));
+    to_free.push_back(buff);
+  }
+
+  if (a2_size != nullptr) {
+    void* buff = std::malloc(*a2_size);
+    uint8_t* validity = (uint8_t*)std::malloc(*a2_validity_size);
+    ctx.handle_error(tiledb_query_set_data_buffer(
+        ctx.ptr().get(), query->ptr().get(), "a2", buff, a2_size));
+    ctx.handle_error(tiledb_query_set_validity_buffer(
+        ctx.ptr().get(), query->ptr().get(), "a2", validity, a2_validity_size));
+    to_free.push_back(buff);
+    to_free.push_back(validity);
+  }
+
+  if (a3_size != nullptr) {
+    void* buff = std::malloc(*a3_size);
+    uint64_t* offsets = (uint64_t*)std::malloc(*a3_offset_size);
+    ctx.handle_error(tiledb_query_set_data_buffer(
+        ctx.ptr().get(), query->ptr().get(), "a3", buff, a3_size));
+    ctx.handle_error(tiledb_query_set_offsets_buffer(
+        ctx.ptr().get(), query->ptr().get(), "a3", offsets, a3_offset_size));
+    to_free.push_back(buff);
+    to_free.push_back(offsets);
+  }
+
+  if (coords_size != nullptr) {
+    void* buff = std::malloc(*coords_size);
+    ctx.handle_error(tiledb_query_set_data_buffer(
+        ctx.ptr().get(), query->ptr().get(), TILEDB_COORDS, buff, coords_size));
+    to_free.push_back(buff);
+  }
+
+  return to_free;
+}
+
+void submit_serialized_query(const Context& ctx, Query& query) {
+  submit_serialized_query(ctx.ptr().get(), query.ptr().get());
+}
+void finalize_serialized_query(const Context& ctx, Query& query) {
+  finalize_serialized_query(ctx.ptr().get(), query.ptr().get());
+}
+
+void submit_serialized_query(tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  Context context(ctx, false);
+
+  tiledb_query_type_t type;
+  tiledb_query_get_type(ctx, query, &type);
+  auto uri = query->query_->array()->array_uri().to_string();
+  Array copy_array(context, uri, type);
+  Query copy_query(context, copy_array);
+  std::vector<uint8_t> serialized;
+  context.handle_error(serialize_query(ctx, query, &serialized, true));
+  context.handle_error(
+      deserialize_query(ctx, serialized, copy_query.ptr().get(), false));
+  copy_query.submit();
+  context.handle_error(
+      serialize_query(ctx, copy_query.ptr().get(), &serialized, false));
+  context.handle_error(deserialize_query(ctx, serialized, query, true));
+}
+void finalize_serialized_query(tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  Context context(ctx, false);
+
+  tiledb_query_type_t type;
+  tiledb_query_get_type(ctx, query, &type);
+  auto uri = query->query_->array()->array_uri().to_string();
+  Array copy_array(context, uri, type);
+  Query copy_query(context, copy_array);
+  std::vector<uint8_t> serialized;
+  context.handle_error(serialize_query(ctx, query, &serialized, true));
+  context.handle_error(
+      deserialize_query(ctx, serialized, copy_query.ptr().get(), false));
+  copy_query.finalize();
+  context.handle_error(
+      serialize_query(ctx, copy_query.ptr().get(), &serialized, false));
+  context.handle_error(deserialize_query(ctx, serialized, query, true));
+}
+
+void submit_and_finalize_serialized_query(
+    tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  Context context(ctx, false);
+
+  tiledb_query_type_t type;
+  tiledb_query_get_type(ctx, query, &type);
+  auto uri = query->query_->array()->array_uri().to_string();
+  uint64_t timestamp = query->query_->array()->timestamp_end_opened_at();
+  Array copy_array(context, uri, type, timestamp);
+  Query copy_query(context, copy_array);
+  std::vector<uint8_t> serialized;
+  context.handle_error(serialize_query(ctx, query, &serialized, true));
+  context.handle_error(
+      deserialize_query(ctx, serialized, copy_query.ptr().get(), false));
+  copy_query.submit();
+  copy_query.finalize();
+  context.handle_error(
+      serialize_query(ctx, copy_query.ptr().get(), &serialized, false));
+  context.handle_error(deserialize_query(ctx, serialized, query, true));
+}
+
+void submit_and_finalize_serialized_query(const Context& ctx, Query& query) {
+  submit_and_finalize_serialized_query(ctx.ptr().get(), query.ptr().get());
+}
 
 template void check_subarray<int8_t>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<int8_t>& ranges);

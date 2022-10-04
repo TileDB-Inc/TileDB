@@ -1751,6 +1751,39 @@ Status S3::get_make_upload_part_req(
   return Status::Ok();
 }
 
+std::optional<S3::MultiPartUploadState> S3::multipart_upload_state(
+    const URI& uri) {
+  const Aws::Http::URI aws_uri(uri.c_str());
+  const std::string uri_path(aws_uri.GetPath().c_str());
+
+  // Lock the multipart states map for reads
+  UniqueReadLock unique_rl(&multipart_upload_rwlock_);
+  auto state_iter = multipart_upload_states_.find(uri_path);
+  if (state_iter == multipart_upload_states_.end()) {
+    return nullopt;
+  }
+
+  // Delete the multipart state from the internal map to avoid
+  // the upload being completed by S3::disconnect during Context
+  // destruction when cloud executors die. The multipart request should be
+  // completed only during query finalize for remote global order writes.
+  std::unique_lock<std::mutex> state_lck(state_iter->second.mtx);
+  MultiPartUploadState rv_state = std::move(state_iter->second);
+  multipart_upload_states_.erase(state_iter);
+
+  return rv_state;
+}
+
+Status S3::set_multipart_upload_state(
+    const URI& uri, const MultiPartUploadState& state) {
+  const Aws::Http::URI aws_uri(uri.c_str());
+  const std::string uri_path(aws_uri.GetPath().c_str());
+  UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
+  multipart_upload_states_[uri_path] = state;
+
+  return Status::Ok();
+}
+
 }  // namespace sm
 }  // namespace tiledb
 

@@ -361,6 +361,9 @@ class Query {
   /** Returns the array schema. */
   const ArraySchema& array_schema() const;
 
+  /** Returns the array schema as a shared_ptr */
+  const std::shared_ptr<const ArraySchema> array_schema_shared() const;
+
   /** Returns the names of the buffers set by the user for the query. */
   std::vector<std::string> buffer_names() const;
 
@@ -383,6 +386,12 @@ class Query {
    * layout writes. It has no effect for any other query type.
    */
   Status finalize();
+
+  /**
+   * Submits and finalizes a query, flushing all internal state. Applicable
+   * only to global layout writes, returns an error otherwise.
+   */
+  Status submit_and_finalize();
 
   /**
    * This is a deprecated API.
@@ -929,6 +938,15 @@ class Query {
   /** Returns if all ranges for this query are non overlapping. */
   tuple<Status, optional<bool>> non_overlapping_ranges();
 
+  /** Returns true if this is a dense query */
+  bool is_dense() const;
+
+  /** Returns a reference to the internal WrittenFragmentInfo list */
+  std::vector<WrittenFragmentInfo>& get_written_fragment_info();
+
+  /** Called from serialization to mark the query as remote */
+  void set_remote_query();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -1063,6 +1081,9 @@ class Query {
    */
   optional<std::string> fragment_name_;
 
+  /** It tracks if this is a remote query */
+  bool remote_query_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -1136,6 +1157,26 @@ class Query {
       void** buffer_val,
       uint64_t** buffer_val_size,
       const ValidityVector** validity_vector) const;
+
+  /**
+   * Check if input buffers are tile aligned. This function should be called
+   * only for remote global order writes and it should enforce tile alignment
+   * for both dense and sparse arrays.
+   */
+  Status check_tile_alignment() const;
+
+  /**
+   * Check if input buffers are bigger than 5MB. S3 multipart upload
+   * requires each part be bigger than 5MB, except the last part.
+   * This function should be called only for remote global order writes.
+   */
+  Status check_buffer_multipart_size() const;
+
+  /**
+   * Reset coord buffer markers at end of a global write submit.
+   * This will allow for the user to properly set the next write batch.
+   */
+  void reset_coords_markers();
 };
 
 }  // namespace sm
