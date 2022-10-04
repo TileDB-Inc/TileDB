@@ -48,8 +48,6 @@
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/subarray/subarray.h"
 
-#include <variant>
-
 namespace tiledb {
 namespace sm {
 
@@ -972,7 +970,6 @@ ReaderBase::load_tile_chunk_data(
           unfiltered_tile_validity_size};
 }
 
-// TODO: pass here?
 Status ReaderBase::unfilter_tile_chunk_range(
     const std::string& name,
     ResultTile* const tile,
@@ -1031,10 +1028,9 @@ Status ReaderBase::unfilter_tile_chunk_range(
 
           const Domain &d = array_schema_.domain();
 
+          // Combine them into an argument.
           auto dim_tiles_ref = std::ref(dim_tiles);
           auto domain_ref = std::ref(d);
-          
-          // Combine them into an argument.
           BitSortFilterMetadataType pair = std::make_pair(dim_tiles_ref, domain_ref);
 
           RETURN_NOT_OK(unfilter_tile_chunk_range(
@@ -1244,7 +1240,6 @@ tuple<uint64_t, uint64_t> ReaderBase::compute_chunk_min_max(
   return {t_min, t_max};
 }
 
-// TODO: pass here?
 Status ReaderBase::unfilter_tile_chunk_range(
     const uint64_t num_range_threads,
     const uint64_t thread_idx,
@@ -1306,7 +1301,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
       tile_chunk_data.chunk_offsets_.size(), num_range_threads, thread_idx);
 
   // Reverse the tile filters.
-  RETURN_NOT_OK(filters.run_reverse_chunk_range(
+  RETURN_NOT_OK(filters.run_reverse_chunk_range<true>(
       stats_,
       tile,
       tile_chunk_data,
@@ -1534,7 +1529,8 @@ Status ReaderBase::unfilter_tiles(
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
 
   if (array_schema_.is_dim(name) && array_schema_.has_bitsort_filter()) {
-    // Omitting running unfilter_tiles when there is a dimension.
+    // We omit running unfilter_tiles when there is a dimension, since we process the
+    // dimension tiles in the bitsort filter.
     return Status::Ok();
   }
 
@@ -1653,15 +1649,13 @@ Status ReaderBase::unfilter_tiles(
                   auto dim_tile_tuple = tile->tile_tuple(dim_name);
                   dim_tiles[dimension_index] = &dim_tile_tuple->fixed_tile();
                 }
-
-                // Collect domain.
                 const Domain &d = array_schema_.domain();
 
+                // Combine them into an argument.
                 auto dim_tiles_ref = std::ref(dim_tiles);
                 auto domain_ref = std::ref(d);
-          
-                // Combine them into an argument.
                 BitSortFilterMetadataType pair = std::make_pair(dim_tiles_ref, domain_ref);
+
                 RETURN_NOT_OK(unfilter_tile(name, t, pair));
 
               } else {

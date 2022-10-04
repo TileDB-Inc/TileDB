@@ -1,4 +1,4 @@
- /**
+/**
  * @file   bitsort_filter_type.h
  *
  * @section LICENSE
@@ -27,12 +27,17 @@
  *
  * @section DESCRIPTION
  *
- * This file defines the types that are used to pass auxiliary information to the filter pipeline.
+ * This file defines the BitSortFilterMetadataType. This type is used to pass
+ * auxiliary information to the bitsort filter from either the writer or the
+ * reader. We send a reference to both a vector of dimension tiles (that we plan
+ * to modify in the bitsort filter), and a reference to the domain, which will
+ * give us the dimension information.
+ *
  */
 
 #include <functional>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #ifndef TILEDB_BITSORT_FILTER_TYPE_H
 #define TILEDB_BITSORT_FILTER_TYPE_H
@@ -43,9 +48,11 @@ namespace sm {
 class Tile;
 class Domain;
 
-using BitSortFilterMetadataType = std::pair<std::reference_wrapper<std::vector<Tile*>>, std::reference_wrapper<const Domain>>;
+using BitSortFilterMetadataType = std::pair<
+    std::reference_wrapper<std::vector<Tile*>>,
+    std::reference_wrapper<const Domain>>;
 
-}
-}
+}  // namespace sm
+}  // namespace tiledb
 
-#endif // TILEDB_BITSORT_FILTER_TYPE_H
+#endif  // TILEDB_BITSORT_FILTER_TYPE_H

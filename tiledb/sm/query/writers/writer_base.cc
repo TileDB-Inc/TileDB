@@ -681,8 +681,9 @@ Status WriterBase::filter_tiles(
   auto timer_se = stats_->start_timer("filter_tiles");
 
   std::vector<WriterTileVector*> dim_tiles;
-  // has_bitsort_filter gives an attribute name and we pass in dim_tiles to only
-  // this attribute.
+  // Since the bitsort filter processes the dimension tiles, we pass the dimension
+  // tiles to be processed with the attribute containing the bitsort filter in its
+  // filter pipeline.
   auto attr_value = array_schema_.has_bitsort_filter();
   if (attr_value) {
     std::string attr_name = attr_value.value();
@@ -694,13 +695,15 @@ Status WriterBase::filter_tiles(
         filter_tiles<std::vector<Tile*>>(attr_name, &((*tiles)[attr_name]), dim_tiles));
   }
 
-  /// TODO: may affect performance
   auto num = buffers_.size();
   auto status =
       parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
         const auto& name = buff_it->first;
+        // We want to only process attributes and dimensions in parallel when there is no bitsort
+        // filter in the schema. Otherwise, we only want to process the other attributes that are
+        // not the attribute with the bitsort filter in parallel.
         if (!attr_value || (attr_value && array_schema_.is_attr(name) && name != attr_value.value())) {
           RETURN_CANCEL_OR_ERROR(filter_tiles<Tile*>(name, &((*tiles)[name])));
         }
@@ -738,8 +741,9 @@ Status WriterBase::filter_tiles(
   } else if constexpr (std::is_same<std::vector<Tile*>, T>::value) {
     auto args_status = parallel_for(
     storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
-      // TODO: here? yeet
       auto& tile = (*tiles)[i];
+
+      // Collect the dim tiles argument.
       std::vector<Tile*> dim_tiles_temp;
       for (const auto& elem : dim_tiles) {
         dim_tiles_temp.push_back(&((*elem)[i].fixed_tile()));
@@ -782,7 +786,7 @@ template<typename T,
 Status WriterBase::filter_tile(
     const std::string& name,
     Tile* const tile,
-    T const support_tiles, // dim_tiles or offset
+    T const support_tiles, 
     const bool offsets,
     const bool nullable) {
   auto timer_se = stats_->start_timer("filter_tile");
@@ -820,9 +824,11 @@ Status WriterBase::filter_tile(
 
   assert(!tile->filtered());
   if constexpr (std::is_same<std::vector<Tile*>, T>::value) {
+    // Construct the metadata argument.
     auto support_tiles_ref = std::ref(support_tiles);
     auto domain_ref = std::ref(array_schema_.domain());
     BitSortFilterMetadataType pair = std::make_pair(support_tiles_ref, domain_ref);
+    
     RETURN_NOT_OK(filters.run_forward<BitSortFilterMetadataType&>(
       stats_,
       tile,

@@ -57,7 +57,7 @@ Status XORFilter::run_forward(
     FilterBuffer* output) const {
   auto tile_type = tile.type();
 
-  // Since run_forward interprests the filter's data as integers, we case on
+  // Since run_forward interprets the filter's data as integers, we case on
   // the size of the type and pass in the corresponding integer type into
   // a templated function.
   switch (datatype_size(tile_type)) {
@@ -157,7 +157,7 @@ Status XORFilter::run_reverse(
     const Config& config) const {
   (void)config;
 
-  // Since run_reverse interprests the filter's data as integers, we case on
+  // Since run_reverse interprets the filter's data as integers, we case on
   // the size of the type and pass in the corresponding integer type into
   // a templated function.
   auto tile_type = tile.type();

@@ -27,19 +27,26 @@
  *
  * @section DESCRIPTION
  *
- * This file defines the bit sort filter class.
+ * This file defines the bit sort filter class. The bitsort filter takes in
+ * any fixed size, non-nullable input data and sorts it according to its
+ * input values, as integers, on write. Then on read, this filter restores
+ * the original order of the data.
+ *
+ * In order to prevent storing positions on write, this filter instead
+ * rewrites the dimension tiles, and uses the dimension tile information
+ * to store the positions in the sort. Then, in the read, the bitsort filter
+ * will sort the data in global order.
  */
 
 #ifndef TILEDB_BITSORT_FILTER_H
 #define TILEDB_BITSORT_FILTER_H
 
- 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/filter/filter.h"
 
 using namespace tiledb::common;
@@ -67,16 +74,24 @@ class BitSortFilter : public Filter {
   void dump(FILE* out) const override;
 
   /**
-   * Run forward. TODO: COMMENT
+   * @brief Run forward. Takes input data parts, and per part it stores
+   * the input values, sorted in bit order (ascending).
+   *
+   * @return Status
    */
   Status run_forward(
       const Tile& tile,
-      BitSortFilterMetadataType &pair,
+      BitSortFilterMetadataType& pair,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
       FilterBuffer* output) const;
 
+  /**
+   * @brief Dummy run forward to satisfy the Filter class requirements.
+   *
+   * @return Status_FilterError. This function should never be called.
+   */
   Status run_forward(
       const Tile& tile,
       Tile* const tile_offsets,
@@ -86,17 +101,25 @@ class BitSortFilter : public Filter {
       FilterBuffer* output) const override;
 
   /**
-   * Run reverse. TODO: comment
+   * @brief Run reverse. Takes output data parts, which should be sorted
+   * in bit order, and re-sorts them into global order.
+   *
+   * @return Status
    */
   Status run_reverse(
       const Tile& tile,
-      BitSortFilterMetadataType &pair,
+      BitSortFilterMetadataType& pair,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
       FilterBuffer* output,
       const Config& config) const;
 
+  /**
+   * @brief Dummy run reverse to satisfy the Filter class requirements.
+   *
+   * @return Status_FilterError. This function should never be called.
+   */
   Status run_reverse(
       const Tile& tile,
       Tile* const tile_offsets,
@@ -113,10 +136,9 @@ class BitSortFilter : public Filter {
   /**
    * Run forward, templated on the tile type.
    */
-
   template <typename T>
   Status run_forward(
-      BitSortFilterMetadataType &pair,
+      BitSortFilterMetadataType& pair,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -127,24 +149,42 @@ class BitSortFilter : public Filter {
    */
   template <typename T>
   Status run_reverse(
-      BitSortFilterMetadataType &pair,
+      BitSortFilterMetadataType& pair,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
       FilterBuffer* output) const;
 
   /**
-   * TODO: comment part
+   * @brief Sorts the input buffer by bit order and stores the positions
+   * of the sort in the vector sorted_elements.
+   *
+   * @return Status
    */
   template <typename T>
-  Status sort_part(const ConstBuffer* input_buffer, Buffer* output_buffer, uint32_t start, std::vector<std::pair<T, uint64_t>> &sorted_elements)  const;
-
-  template <typename T, typename W>
-  Status rewrite_dim_tile_forward(
-      const std::vector<std::pair<T, uint64_t>>& elements, Tile *dim_tile) const;
+  Status sort_part(
+      const ConstBuffer* input_buffer,
+      Buffer* output_buffer,
+      uint32_t start,
+      std::vector<std::pair<T, uint64_t>>& sorted_elements) const;
 
   /**
-   * TODO: comment
+   * @brief Given attribute type T and dimension type W, rewrites the dimension
+   * tile given the positions of the attributes.
+   *
+   * @return Status
+   */
+  template <typename T, typename W>
+  Status rewrite_dim_tile_forward(
+      const std::vector<std::pair<T, uint64_t>>& elements,
+      Tile* dim_tile) const;
+
+  /**
+   * @brief Unsorts the input buffer and restores the array by sorting the
+   * positions in global order, then using this order to rewrite the dimension
+   * tiles. It also writes the original array to the output buffer.
+   *
+   * @return Status
    */
   template <typename T>
   Status unsort_part(
@@ -152,11 +192,23 @@ class BitSortFilter : public Filter {
       ConstBuffer* input_buffer,
       Buffer* output_buffer) const;
 
+  /**
+   * @brief Rewrites the dimension tiles given the positions of the attributes.
+   *
+   * @return Status
+   */
+  Status rewrite_dim_tiles_reverse(
+      BitSortFilterMetadataType& pair, std::vector<uint64_t>& positions) const;
 
-  Status rewrite_dim_tiles_reverse(BitSortFilterMetadataType &pair, std::vector<uint64_t> &positions) const;
-
-  template<typename T>
-  Status rewrite_dim_tile_reverse(Tile *dim_tile, std::vector<uint64_t> &positions) const;
+  /**
+   * @brief Given the dimension type T, rewrites the dimension tile given the
+   * positions of the attributes.
+   *
+   * @return Status
+   */
+  template <typename T>
+  Status rewrite_dim_tile_reverse(
+      Tile* dim_tile, std::vector<uint64_t>& positions) const;
 };
 
 };  // namespace sm
