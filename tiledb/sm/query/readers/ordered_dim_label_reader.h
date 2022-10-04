@@ -299,8 +299,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
    * Per fragment map to hold the result tiles. The key for the maps is the
    * tile index.
    */
-  std::vector<std::unordered_map<uint64_t, OrderedDimLabelResultTile>>
-      result_tiles_;
+  std::vector<std::unordered_map<uint64_t, ResultTile>> result_tiles_;
 
   /**
    * Tile index (inside of the domain) of the first tile of each fragments.
@@ -411,7 +410,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
    * Creates the result tiles required to do the range to index search.
    *
    * @tparam Index type.
-   * @return Max range to process.
+   * @return Max range result tiles were processed for.
    */
   template <typename IndexType>
   uint64_t create_result_tiles();

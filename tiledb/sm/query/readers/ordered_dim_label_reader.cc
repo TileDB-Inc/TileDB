@@ -275,9 +275,7 @@ void OrderedDimLabelReader::label_read() {
     std::vector<ResultTile*> result_tiles;
     for (auto& result_tile_map : result_tiles_) {
       for (auto& result_tile : result_tile_map) {
-        if (!result_tile.second.covered()) {
-          result_tiles.push_back(&result_tile.second);
-        }
+        result_tiles.push_back(&result_tile.second);
       }
     }
 
@@ -603,31 +601,38 @@ uint64_t OrderedDimLabelReader::create_result_tiles() {
       static_cast<const IndexType*>(index_dim_->domain().data());
   auto tile_extent = index_dim_->tile_extent().rvalue_as<IndexType>();
 
+  // Set of covered tiles, per fragment. The unordered set is for tile indexes.
+  std::vector<std::unordered_set<uint64_t>> covered_tiles(
+      fragment_metadata_.size());
+
   // Process ranges one by one.
   for (uint64_t r = 0; r < ranges_.size(); r++) {
     // Add tiles for each fragments.
     for (unsigned f = 0; f < fragment_metadata_.size(); f++) {
       // Add the tiles for the start/end range.
       for (uint8_t range_index = 0; range_index < 2; range_index++) {
-        for (uint64_t i = per_range_array_tile_indexes_[r].min(range_index);
-             i <= per_range_array_tile_indexes_[r].max(range_index);
-             i++) {
-          if ((i >= array_tile_idx_per_frag_[f]) &&
-              (i < array_tile_idx_per_frag_[f] +
-                       fragment_metadata_[f]->tile_num()) &&
-              (result_tiles_[f].count(i) == 0)) {
+        for (uint64_t tile_idx =
+                 per_range_array_tile_indexes_[r].min(range_index);
+             tile_idx <= per_range_array_tile_indexes_[r].max(range_index);
+             tile_idx++) {
+          if ((tile_idx >= array_tile_idx_per_frag_[f]) &&
+              (tile_idx < array_tile_idx_per_frag_[f] +
+                              fragment_metadata_[f]->tile_num()) &&
+              (result_tiles_[f].count(tile_idx) == 0) &&
+              (covered_tiles[f].count(tile_idx) == 0)) {
             // Make sure the tile can fit in the budget.
-            uint64_t frag_tile_idx = i - array_tile_idx_per_frag_[f];
+            uint64_t frag_tile_idx = tile_idx - array_tile_idx_per_frag_[f];
             uint64_t tile_size = label_tile_size(f, frag_tile_idx);
-            bool covered =
-                tile_overwritten<IndexType>(f, i, dim_dom[0], tile_extent);
-            if (covered || total_mem_used + tile_size < memory_budget_) {
+            bool covered = tile_overwritten<IndexType>(
+                f, tile_idx, dim_dom[0], tile_extent);
+            if (covered) {
+              covered_tiles[f].emplace(tile_idx);
+            } else if (total_mem_used + tile_size < memory_budget_) {
               total_mem_used += tile_size;
               result_tiles_[f].emplace(
                   std::piecewise_construct,
-                  std::forward_as_tuple(i),
-                  std::forward_as_tuple(
-                      f, frag_tile_idx, array_schema_, covered));
+                  std::forward_as_tuple(tile_idx),
+                  std::forward_as_tuple(f, frag_tile_idx, array_schema_));
             } else {
               if (r == 0) {
                 throw OrderedDimLabelReaderStatusException(
@@ -675,8 +680,7 @@ LabelType OrderedDimLabelReader::get_value_at(
     const IndexType& domain_low,
     const IndexType& tile_extent) {
   // Start with the most recent fragment.
-  unsigned f = static_cast<unsigned>(fragment_metadata_.size() - 1);
-  while (true) {
+  for (auto f = static_cast<unsigned>(fragment_metadata_.size() - 1);; f--) {
     const IndexType* non_empty_domain =
         static_cast<const IndexType*>(non_empty_domains_[f]);
     // If the value is in the non empty domain for the fragment, get it.
@@ -697,9 +701,6 @@ LabelType OrderedDimLabelReader::get_value_at(
     if (f == 0) {
       throw OrderedDimLabelReaderStatusException("Couldn't find value");
     }
-
-    // Try the next fragment.
-    f--;
   }
 }
 
@@ -731,36 +732,39 @@ IndexType OrderedDimLabelReader::search_for_range_fixed(
   auto non_empty_domain =
       static_cast<const IndexType*>(non_empty_domain_.data());
   auto t_min = per_range_array_tile_indexes_[r].min(range_index);
-  auto left = std::max(
+  auto left_index = std::max(
       index_dim_->tile_coord_low(t_min, domain_low, tile_extent),
       non_empty_domain[0]);
 
   // Maximum index to look into.
   auto t_max = per_range_array_tile_indexes_[r].max(range_index);
-  auto right = std::min(
+  auto right_index = std::min(
       index_dim_->tile_coord_high(t_max, domain_low, tile_extent),
       non_empty_domain[1]);
 
   // Run a binary search.
   Op cmp;
-  while (left != right - 1) {
+  while (left_index < right_index - 1) {
     // Check against mid.
-    IndexType mid = left + (right - left) / 2;
+    IndexType mid = left_index + (right_index - left_index) / 2;
     if (cmp(get_value_at<IndexType, LabelType>(mid, domain_low, tile_extent),
             value)) {
-      right = mid;
+      right_index = mid;
     } else {
-      left = mid;
+      left_index = mid;
     }
   }
 
-  // Do one last comparison to decide to return left or right.
-  auto bound = range_index == 0 ? left : right;
+  // Do one last comparison to decide to return left or right. If finding the
+  // starting range index, check if the left bound is within the value range. If
+  // finding the ending range index, check if the right value is within the
+  // value range.
+  auto bound = range_index == 0 ? left_index : right_index;
   return (cmp(
              get_value_at<IndexType, LabelType>(bound, domain_low, tile_extent),
              value)) ?
-             left :
-             right;
+             left_index :
+             right_index;
 }
 
 template <typename IndexType, typename LabelType>
@@ -770,6 +774,8 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
   auto tile_extent = index_dim_->tile_extent().rvalue_as<IndexType>();
   const IndexType* dim_dom =
       static_cast<const IndexType*>(index_dim_->domain().data());
+  auto non_empty_domain =
+      static_cast<const IndexType*>(non_empty_domain_.data());
 
   // Set the results.
   if (increasing_labels_) {
@@ -777,17 +783,60 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
         IndexType,
         LabelType,
         std::greater_equal<LabelType>>(r, 0, dim_dom[0], tile_extent);
+
+    // If the result is the last index, make sure the range includes it.
+    if (dest[0] == non_empty_domain[1]) {
+      LabelType value = get_range_as<LabelType>(r, 0);
+      if (get_value_at<IndexType, LabelType>(dest[0], dim_dom[0], tile_extent) <
+          value) {
+        throw OrderedDimLabelReaderStatusException("Range contained no values");
+      }
+    }
+
     dest[1] =
         search_for_range_fixed<IndexType, LabelType, std::greater<LabelType>>(
             r, 1, dim_dom[0], tile_extent);
+
+    // If the result is the first index, make sure the range includes it.
+    if (dest[1] == non_empty_domain[0]) {
+      LabelType value = get_range_as<LabelType>(r, 1);
+      if (get_value_at<IndexType, LabelType>(dest[1], dim_dom[0], tile_extent) >
+          value) {
+        throw OrderedDimLabelReaderStatusException("Range contained no values");
+      }
+    }
   } else {
     dest[0] = search_for_range_fixed<
         IndexType,
         LabelType,
         std::less_equal<LabelType>>(r, 0, dim_dom[0], tile_extent);
+
+    // If the result is the last index, make sure the range includes it.
+    if (dest[0] == non_empty_domain[1]) {
+      LabelType value = get_range_as<LabelType>(r, 0);
+      if (get_value_at<IndexType, LabelType>(dest[0], dim_dom[0], tile_extent) >
+          value) {
+        throw OrderedDimLabelReaderStatusException("Range contained no values");
+      }
+    }
+
     dest[1] =
         search_for_range_fixed<IndexType, LabelType, std::less<LabelType>>(
             r, 1, dim_dom[0], tile_extent);
+
+    // If the result is the first index, make sure the range includes it.
+    if (dest[1] == non_empty_domain[0]) {
+      LabelType value = get_range_as<LabelType>(r, 1);
+      if (get_value_at<IndexType, LabelType>(dest[1], dim_dom[0], tile_extent) <
+          value) {
+        throw OrderedDimLabelReaderStatusException("Range contained no values");
+      }
+    }
+  }
+
+  // If the range provided contained no values, throw an error.
+  if (dest[0] > dest[1]) {
+    throw OrderedDimLabelReaderStatusException("Range contained no values");
   }
 }
 

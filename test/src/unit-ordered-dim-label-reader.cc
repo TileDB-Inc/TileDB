@@ -397,6 +397,46 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
+    CPPOrderedDimLabelReaderFixedDoubleFx,
+    "Ordered dimension label reader: fixed labels, empty range, increasing",
+    "[ordered-dim-label-reader][fixed][double][empty-range][increasing]") {
+  write_labels(1, 4, {1.0, 2.0, 3.0, 4.0});
+  REQUIRE_THROWS_WITH(
+      read_labels({2.1, 2.8}),
+      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
+      "contained no values");
+  REQUIRE_THROWS_WITH(
+      read_labels({-2.0, 0.0}),
+      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
+      "contained no values");
+  REQUIRE_THROWS_WITH(
+      read_labels({5.0, 6.0}),
+      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
+      "contained no values");
+}
+
+TEST_CASE_METHOD(
+    CPPOrderedDimLabelReaderFixedDoubleFx,
+    "Ordered dimension label reader: fixed labels, empty range, decreasing",
+    "[ordered-dim-label-reader][fixed][double][empty-range][decreasing]") {
+  increasing_labels_ = false;
+  write_labels(1, 4, {4.0, 3.0, 2.0, 1.0});
+  std::vector<double> ranges{2.1, 2.8};
+  REQUIRE_THROWS_WITH(
+      read_labels({2.8, 2.1}),
+      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
+      "contained no values");
+  REQUIRE_THROWS_WITH(
+      read_labels({0.0, -2.0}),
+      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
+      "contained no values");
+  REQUIRE_THROWS_WITH(
+      read_labels({6.0, 5.0}),
+      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
+      "contained no values");
+}
+
+TEST_CASE_METHOD(
     CPPOrderedDimLabelReaderFixedIntFx,
     "Ordered dimension label reader: fixed int labels, single fragment, "
     "increasing",
@@ -740,6 +780,46 @@ TEST_CASE_METHOD(
   increasing_labels_ = false;
   write_labels(16, 25, {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1});
   CHECK(read_labels({0.6, 0.5}) == std::vector({20, 21}));
+}
+
+TEST_CASE_METHOD(
+    CPPOrderedDimLabelReaderVarFx,
+    "Ordered dimension label reader: var labels, empty range, increasing",
+    "[ordered-dim-label-reader][var][empty-range][increasing]") {
+  write_labels(1, 4, {1.0, 2.0, 3.0, 4.0});
+  REQUIRE_THROWS_WITH(
+      read_labels({2.1, 2.8}),
+      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
+      "contained no values");
+  REQUIRE_THROWS_WITH(
+      read_labels({-2.0, 0.0}),
+      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
+      "contained no values");
+  REQUIRE_THROWS_WITH(
+      read_labels({5.0, 6.0}),
+      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
+      "contained no values");
+}
+
+TEST_CASE_METHOD(
+    CPPOrderedDimLabelReaderVarFx,
+    "Ordered dimension label reader: var labels, empty range, decreasing",
+    "[ordered-dim-label-reader][var][empty-range][decreasing]") {
+  increasing_labels_ = false;
+  write_labels(1, 4, {4.0, 3.0, 2.0, 1.0});
+  std::vector<double> ranges{2.1, 2.8};
+  REQUIRE_THROWS_WITH(
+      read_labels({2.8, 2.1}),
+      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
+      "contained no values");
+  REQUIRE_THROWS_WITH(
+      read_labels({0.0, -2.0}),
+      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
+      "contained no values");
+  REQUIRE_THROWS_WITH(
+      read_labels({6.0, 5.0}),
+      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
+      "contained no values");
 }
 
 TEST_CASE_METHOD(
