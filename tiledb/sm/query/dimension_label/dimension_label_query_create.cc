@@ -30,6 +30,7 @@
 
 #include "tiledb/sm/query/dimension_label/dimension_label_query_create.h"
 #include "tiledb/sm/enums/label_order.h"
+#include "tiledb/sm/query/query.h"
 
 using namespace tiledb::common;
 
