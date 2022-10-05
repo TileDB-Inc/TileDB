@@ -1150,15 +1150,15 @@ Status ArraySchema::check_double_delta_compressor(
 
 Status ArraySchema::check_string_compressor(
     const FilterPipeline& filters) const {
-  // There is no error if only 1 filter is used for RLE or Dictionary-encoding
+  // There is no error if only 1 filter is used
   if (filters.size() <= 1 ||
       !(filters.has_filter(FilterType::FILTER_RLE) ||
         filters.has_filter(FilterType::FILTER_DICTIONARY))) {
     return Status::Ok();
   }
 
-  // Error if there are also other filters set for a string dimension together
-  // with RLE or Dictionary-encoding
+  // If RLE or Dictionary-encoding is set for strings, they need to be
+  // the first filter in the list
   auto dim_num = domain_->dim_num();
   for (dimension_size_type d = 0; d < dim_num; ++d) {
     auto dim{domain_->dimension_ptr(d)};
@@ -1167,14 +1167,17 @@ Status ArraySchema::check_string_compressor(
     // list already set for that dimension (then coords_filters_ will be used)
     if (dim->type() == Datatype::STRING_ASCII && dim->var_size() &&
         dim_filters.empty()) {
-      if (filters.has_filter(FilterType::FILTER_RLE)) {
+      if (filters.has_filter(FilterType::FILTER_RLE) &&
+          filters.get_filter(0)->type() != FilterType::FILTER_RLE) {
         return LOG_STATUS(Status_ArraySchemaError(
-            "RLE filter cannot be combined with other filters when applied to "
+            "RLE filter must be the first filter to apply when used on "
             "variable length string dimensions"));
-      } else {
+      }
+      if (filters.has_filter(FilterType::FILTER_DICTIONARY) &&
+          filters.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
         return LOG_STATUS(Status_ArraySchemaError(
-            "Dictionary-encoding filter cannot be combined with other filters "
-            "when applied to variable length string dimensions"));
+            "Dictionary filter must be the first filter to apply when used on "
+            "variable length string dimensions"));
       }
     }
   }
