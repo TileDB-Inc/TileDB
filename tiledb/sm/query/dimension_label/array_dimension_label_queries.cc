@@ -43,6 +43,7 @@
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/query/dimension_label/dimension_label_query.h"
+#include "tiledb/sm/query/dimension_label/dimension_label_query_create.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
@@ -208,49 +209,19 @@ void ArrayDimensionLabelQueries::add_data_queries_for_write(
                                ->name();
     const auto& index_buffer_pair = array_buffers.find(dim_name);
 
-    switch (dim_label_ref.label_order()) {
-      case (LabelOrder::INCREASING_LABELS):
-      case (LabelOrder::DECREASING_LABELS):
-        // Create order label writer.
-        data_queries_.emplace_back(tdb_new(
-            OrderedWriteDataQuery,
-            storage_manager_,
-            stats_->create_child("DimensionLabelQuery"),
-            dim_label,
-            subarray,
-            label_buffer,
-            (index_buffer_pair == array_buffers.end()) ?
-                QueryBuffer() :
-                index_buffer_pair->second,
-            dim_label_ref.dimension_id(),
-            fragment_name_));
-        data_queries_map_[label_name] = data_queries_.back().get();
-        break;
-
-      case (LabelOrder::UNORDERED_LABELS):
-        // Create unordered label writer.
-        data_queries_.emplace_back(tdb_new(
-            UnorderedWriteDataQuery,
-            storage_manager_,
-            stats_->create_child("DimensionLabelQuery"),
-            dim_label,
-            subarray,
-            label_buffer,
-            (index_buffer_pair == array_buffers.end()) ?
-                QueryBuffer() :
-                index_buffer_pair->second,
-            dim_label_ref.dimension_id(),
-            fragment_name_));
-        data_queries_map_[label_name] = data_queries_.back().get();
-        break;
-
-      default:
-        // Invalid label order type.
-        throw StatusException(Status_DimensionLabelQueryError(
-            "Cannot initialize dimension label '" + label_name +
-            "'; Dimension label order " +
-            label_order_str(dim_label_ref.label_order()) + " not supported."));
-    }
+    data_queries_.emplace_back(DimensionLabelQueryCreate::make_write_query(
+        label_name,
+        dim_label_ref.label_order(),
+        storage_manager_,
+        stats_->create_child("DimensionLabelQuery"),
+        dim_label,
+        subarray,
+        label_buffer,
+        (index_buffer_pair == array_buffers.end()) ? QueryBuffer() :
+                                                     index_buffer_pair->second,
+        dim_label_ref.dimension_id(),
+        fragment_name_));
+    data_queries_map_[label_name] = data_queries_.back().get();
   }
 }
 
