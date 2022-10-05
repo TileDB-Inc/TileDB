@@ -71,8 +71,7 @@ Status WebpFilter::run_forward(
     FilterBuffer* output) const {
   auto input_parts = input->buffers();
   auto num_parts = static_cast<uint32_t>(input_parts.size());
-  uint32_t metadata_size = sizeof(uint32_t) + (num_parts * sizeof(uint32_t)) +
-                           (num_parts * sizeof(uint32_t));
+  uint32_t metadata_size = sizeof(uint32_t) + (num_parts * sizeof(uint32_t));
   RETURN_NOT_OK(output_metadata->append_view(input_metadata));
   RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
   RETURN_NOT_OK(output_metadata->write(&num_parts, sizeof(uint32_t)));
@@ -112,8 +111,6 @@ Status WebpFilter::run_forward(
     }
 
     // Write encoded data to output buffer
-    int32_t input_size = i.size();
-    RETURN_NOT_OK(output_metadata->write(&input_size, sizeof(uint32_t)));
     RETURN_NOT_OK(output_metadata->write(&enc_size, sizeof(uint32_t)));
     RETURN_NOT_OK(output->prepend_buffer(enc_size));
     RETURN_NOT_OK(output->write(result, enc_size));
@@ -145,8 +142,6 @@ Status WebpFilter::run_reverse(
   uint32_t num_parts;
   RETURN_NOT_OK(input_metadata->read(&num_parts, sizeof(uint32_t)));
   for (uint32_t i = 0; i < num_parts; i++) {
-    int32_t dec_size;
-    RETURN_NOT_OK(input_metadata->read(&dec_size, sizeof(uint32_t)));
     uint32_t enc_size;
     RETURN_NOT_OK(input_metadata->read(&enc_size, sizeof(uint32_t)));
     ConstBuffer part(nullptr, 0);
@@ -176,7 +171,8 @@ Status WebpFilter::run_reverse(
     if (!result) {
       return LOG_STATUS(Status_FilterError("Error decoding image data"));
     }
-    RETURN_NOT_OK(output->write(&result, dec_size));
+    RETURN_NOT_OK(output->write(result, output->size()));
+    WebPFree(result);
   }
 
   // Output metadata is a view on the input metadata, skipping what was used

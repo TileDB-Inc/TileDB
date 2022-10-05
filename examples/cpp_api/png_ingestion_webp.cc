@@ -184,7 +184,7 @@ void create_array(
       .add_dimension(
           Dimension::create<unsigned>(ctx, "y", {{1, (height)}}, height))
       .add_dimension(
-          Dimension::create<unsigned>(ctx, "x", {{1, (width)*4}}, width));
+          Dimension::create<unsigned>(ctx, "x", {{1, (width)*4}}, (width*4)));
 
   // To compress using webp we need RGBA in a single buffer
   ArraySchema schema(ctx, TILEDB_DENSE);
@@ -278,7 +278,7 @@ void read_png_array(
   query.set_layout(TILEDB_ROW_MAJOR).set_subarray(subarray);
 
   // Allocate buffer to read into.
-  std::vector<uint8_t> rgba(output_height * (output_width), 99);
+  std::vector<uint8_t> rgba(output_height * (output_width));
 
   // Set buffer
   query.set_data_buffer("rgba", rgba);
