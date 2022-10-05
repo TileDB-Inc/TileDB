@@ -1227,6 +1227,10 @@ class Subarray {
     LabelRangeSubset(
         const DimensionLabelReference& ref, bool coalesce_ranges = true);
 
+    inline const std::vector<Range>& get_ranges() const {
+      return ranges.ranges();
+    }
+
     /** Name of the dimension label. */
     std::string name;
 

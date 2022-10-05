@@ -152,7 +152,7 @@ class ArrayDimensionLabelQueries {
       range_queries_map_;
 
   /**
-   * Non-owning vector for accesing query by dimension index.
+   * Non-owning vector for accessing query by dimension index.
    *
    * Note: This vector is always sized to the number of dimensions in the array.
    * There can be at most on query per dimension. If there is no query on the
@@ -177,7 +177,7 @@ class ArrayDimensionLabelQueries {
   /**
    * The name of the new fragment to be created for writes.
    *
-   * If not set, the fragment will be created usint the latest array timestamp
+   * If not set, the fragment will be created using the latest array timestamp
    * and a generated UUID.
    */
   optional<std::string> fragment_name_;

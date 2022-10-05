@@ -1867,7 +1867,7 @@ const std::vector<Range>& Subarray::ranges_for_label(
         "Cannot get label ranges; No ranges set on dimension label '" +
         label_name + "'"));
   }
-  return label_range_subset_[dim_idx].value().ranges.ranges();
+  return label_range_subset_[dim_idx]->get_ranges();
 }
 
 Status Subarray::set_ranges_for_dim(

@@ -1211,12 +1211,8 @@ Status Query::init() {
 
     RETURN_NOT_OK(check_buffer_names());
 
-    // Cache if dimension label queries are needed.
-    bool uses_labels = uses_dimension_labels();
-    bool only_labels = uses_labels && only_dim_label_query();
-
     // Create dimension label queries and remove labels from subarray.
-    if (uses_labels) {
+    if (uses_dimension_labels()) {
       // Initialize the dimension label queries.
       dim_label_queries_ = tdb_unique_ptr<ArrayDimensionLabelQueries>(tdb_new(
           ArrayDimensionLabelQueries,
@@ -1236,8 +1232,8 @@ Status Query::init() {
       // data for the entire sparse array, the output for the dimension label
       // data needs to be re-arranged to match the coordinate form we use for
       // sparse reads. This has not yet been implemented.
-      if (!only_labels && type_ == QueryType::READ && !array_schema_->dense() &&
-          dim_label_queries_->has_data_query()) {
+      if (!only_dim_label_query() && type_ == QueryType::READ &&
+          !array_schema_->dense() && dim_label_queries_->has_data_query()) {
         return logger_->status(Status_QueryError(
             "Cannot initialize query; Reading dimension label data is not yet "
             "supported on sparse arrays."));
@@ -1245,7 +1241,7 @@ Status Query::init() {
     }
 
     // Create the query strategy if querying main array.
-    if (!only_labels) {
+    if (!only_dim_label_query()) {
       RETURN_NOT_OK(create_strategy());
     }
   }

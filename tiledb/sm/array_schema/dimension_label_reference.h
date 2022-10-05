@@ -150,7 +150,7 @@ class DimensionLabelReference {
   }
 
   /**
-   * Returns ``true`` is the label cells are variable length.
+   * Returns ``true`` if the label cells are variable length.
    */
   inline bool is_var() const {
     return label_cell_val_num_ == constants::var_num;

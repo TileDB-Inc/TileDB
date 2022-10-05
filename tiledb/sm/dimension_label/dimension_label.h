@@ -79,6 +79,15 @@ class DimensionLabel {
   /** Returns the index dimension in the indexed array. */
   const Dimension* index_dimension() const;
 
+  /**
+   * Throws an exception if the dimension label is not compatible with an input
+   * dimension label reference.
+   *
+   * @param dim_label_ref Dimension label reference to check compatibility with.
+   */
+  void is_compatible(
+      const DimensionLabelReference& dim_label_ref, const Dimension* dim) const;
+
   /** Returns the array with indices stored on the dimension. */
   inline shared_ptr<Array> indexed_array() const {
     return indexed_array_;
