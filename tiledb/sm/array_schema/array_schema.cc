@@ -138,11 +138,6 @@ ArraySchema::ArraySchema(
     dim_map_[dim->name()] = dim;
   }
 
-  if (array_type_ == ArrayType::SPARSE && capacity_ == 0)
-    throw StatusException(
-        Status_ArraySchemaError("Array schema check failed; Sparse arrays "
-                                "cannot have their capacity equal to zero."));
-
   // Create attribute map
   if (!attributes_.empty()) {
     for (auto attr_iter : attributes_) {
@@ -343,6 +338,11 @@ Status ArraySchema::check() const {
           "Array schema check failed; No attributes provided"));
     }
   }
+
+  if (array_type_ == ArrayType::SPARSE && capacity_ == 0)
+    return LOG_STATUS(
+        Status_ArraySchemaError("Array schema check failed; Sparse arrays "
+                                "cannot have their capacity equal to zero."));
 
   RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
   RETURN_NOT_OK(check_string_compressor(coords_filters()));
