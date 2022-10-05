@@ -138,11 +138,6 @@ Reader::Reader(
         "Cannot initialize reader; Dense reads must have a subarray set");
   }
 
-  if (array_schema_.has_bitsort_filter() != nullopt) {
-    throw ReaderStatusException(
-        "Cannot initialize reader; Bitsort filter not supported");
-  }
-
   // Check subarray
   check_subarray();
 
@@ -343,8 +338,14 @@ Status Reader::apply_query_condition(
   // To evaluate the query condition, we need to read tiles for the
   // attributes used in the query condition. Build a map of attribute
   // names to read.
+  const auto bitsort_attr = array_schema_.has_bitsort_filter();
   std::unordered_map<std::string, ProcessTileFlags> names;
   for (const auto& condition_name : qc_loaded_attr_names_set_) {
+    // Skip loading tiles for bitsort attribute.
+    if (bitsort_attr.has_value() && condition_name == bitsort_attr.value()) {
+      continue;
+    }
+
     names[condition_name] = ProcessTileFlag::READ;
   }
 
@@ -841,7 +842,11 @@ Status Reader::copy_attribute_values(
       break;
     }
 
-    if (name == constants::coords || array_schema_.is_dim(name)) {
+    const auto bitsort_attr = array_schema_.has_bitsort_filter();
+    const auto is_bitsort_attr =
+        bitsort_attr.has_value() && bitsort_attr.value() == name;
+    if (name == constants::coords || array_schema_.is_dim(name) ||
+        is_bitsort_attr) {
       continue;
     }
 
@@ -1658,6 +1663,18 @@ Status Reader::compute_result_coords(
   RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names, tmp_result_tiles));
   for (const auto& dim_name : dim_names) {
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles));
+  }
+
+  // If we have an attribute with bitsort filter, we need to run the filter on
+  // the attribute before we can use the coordinates.
+  const auto bitsort_attr = array_schema_.has_bitsort_filter();
+  if (bitsort_attr.has_value()) {
+    std::vector<std::string> bitsort_attr_name = {bitsort_attr.value()};
+    RETURN_CANCEL_OR_ERROR(load_tile_offsets(
+        read_state_.partitioner_.subarray(), bitsort_attr_name));
+    read_attribute_tiles(bitsort_attr_name, tmp_result_tiles);
+    RETURN_CANCEL_OR_ERROR(
+        unfilter_tiles(bitsort_attr.value(), tmp_result_tiles));
   }
 
   // Read and unfilter timestamps, if required.
