@@ -1213,6 +1213,12 @@ Status Query::init() {
 
     // Create dimension label queries and remove labels from subarray.
     if (uses_dimension_labels()) {
+      if (type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
+        return logger_->status(
+            Status_QueryError("Cannot init query; Querying dimension labels is "
+                              "not supported on global order writes"));
+      }
+
       // Initialize the dimension label queries.
       dim_label_queries_ = tdb_unique_ptr<ArrayDimensionLabelQueries>(tdb_new(
           ArrayDimensionLabelQueries,

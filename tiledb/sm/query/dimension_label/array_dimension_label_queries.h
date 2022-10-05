@@ -102,9 +102,6 @@ class ArrayDimensionLabelQueries {
   /** Cancels all dimension label queries. */
   void cancel();
 
-  /** Finalizes all dimension label queries. */
-  void finalize();
-
   /** Returns ``true`` if there are any data queries. */
   inline bool has_data_query() const {
     return !data_queries_.empty();

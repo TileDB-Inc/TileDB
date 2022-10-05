@@ -137,30 +137,6 @@ bool ArrayDimensionLabelQueries::completed() const {
              [](const auto& query) { return query.second->completed(); });
 }
 
-void ArrayDimensionLabelQueries::finalize() {
-  // Finalize range queries.
-  throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      range_queries_.size(),
-      [&](const size_t dim_idx) {
-        if (range_queries_[dim_idx]) {
-          range_queries_[dim_idx]->finalize();
-        }
-        return Status::Ok();
-      }));
-
-  // Finalize data queries.
-  throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      data_queries_.size(),
-      [&](const size_t query_idx) {
-        data_queries_[query_idx]->finalize();
-        return Status::Ok();
-      }));
-}
-
 void ArrayDimensionLabelQueries::process_data_queries() {
   throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),

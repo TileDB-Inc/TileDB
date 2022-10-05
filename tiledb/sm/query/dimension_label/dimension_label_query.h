@@ -99,9 +99,6 @@ class DimensionLabelQuery {
   /** Returns ``true`` if the query status for both queries is completed. */
   bool completed() const;
 
-  /** Finalizes both queries if they exist. */
-  void finalize();
-
   /** Processes both queries if they exist. */
   void process();
 

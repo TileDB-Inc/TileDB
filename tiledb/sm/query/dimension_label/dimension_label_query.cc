@@ -94,15 +94,6 @@ bool DimensionLabelQuery::completed() const {
           labelled_array_query->status() == QueryStatus::COMPLETED);
 }
 
-void DimensionLabelQuery::finalize() {
-  if (indexed_array_query) {
-    throw_if_not_ok(indexed_array_query->finalize());
-  }
-  if (labelled_array_query) {
-    throw_if_not_ok(labelled_array_query->finalize());
-  }
-}
-
 void DimensionLabelQuery::process() {
   if (indexed_array_query) {
     throw_if_not_ok(indexed_array_query->init());
