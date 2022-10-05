@@ -252,7 +252,12 @@ class DimensionLabelReference {
   /** The interval the labels are defined on. */
   Range label_domain_;
 
-  /** The dimension label schema */
+  /**
+   * The dimension label schema.
+   *
+   * The schema is used for creating the dimension label and is not included in
+   * the dimension label schema serialization and deserialization from disk.
+   */
   shared_ptr<const DimensionLabelSchema> schema_;
 
   /**
