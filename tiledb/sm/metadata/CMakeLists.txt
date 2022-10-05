@@ -24,25 +24,15 @@
 # THE SOFTWARE.
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
-# `constants` object library
+# `metadata` object library
 #
-add_library(metadata OBJECT metadata.cc)
-target_link_libraries(metadata PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(metadata PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-target_link_libraries(metadata PUBLIC constants $<TARGET_OBJECTS:constants>)
-target_link_libraries(metadata PUBLIC time $<TARGET_OBJECTS:time>)
-target_link_libraries(metadata PUBLIC uuid $<TARGET_OBJECTS:uuid>)
-target_link_libraries(metadata PUBLIC vfs $<TARGET_OBJECTS:vfs>)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_metadata EXCLUDE_FROM_ALL)
-add_dependencies(all_link_complete compile_metadata)
-target_link_libraries(compile_metadata PRIVATE metadata)
-target_sources(compile_metadata PRIVATE test/compile_metadata_main.cc)
-
+commence(object_library metadata)
+    this_target_sources(metadata.cc)
+    this_target_object_libraries(baseline buffer constants time uuid vfs)
+conclude(object_library)
 
 if (TILEDB_TESTS)
     add_executable(unit_metadata EXCLUDE_FROM_ALL)
