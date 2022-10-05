@@ -852,7 +852,20 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
           "Cannot load fragment info; remote array with no REST client."));
     }
 
+    // Overriding this config parameter is necessary to enable Cloud to load
+    // MBRs at the same time as the rest of fragment info and not lazily
+    // as it's the case for local fragment info load requests.
+    config_.set("sm.fragment_info.preload_mbrs", "true");
+
     return rest_client->post_fragment_info_from_rest(array_uri_, this);
+  }
+
+  // Check if we need to preload MBRs or not based on config
+  bool found = false, preload_rtrees = false;
+  auto status = config_.get<bool>(
+      "sm.fragment_info.preload_mbrs", &preload_rtrees, &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error("Cannot get fragment info config setting");
   }
 
   // Get the array schemas and fragment metadata.
@@ -870,7 +883,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
       storage_manager_->compute_tp(),
       0,
       fragment_num,
-      [this, &fragment_metadata_value, &sizes](uint64_t i) {
+      [this, &fragment_metadata_value, &sizes, preload_rtrees](uint64_t i) {
         // Get fragment size. Applicable only to relevant fragments, including
         // fragments that are in the range [timestamp_start_, timestamp_end_].
         auto meta = fragment_metadata_value[i];
@@ -879,6 +892,10 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
           uint64_t size;
           RETURN_NOT_OK(meta->fragment_size(&size));
           sizes[i] = size;
+        }
+
+        if (preload_rtrees) {
+          RETURN_NOT_OK(meta->load_rtree(enc_key_));
         }
 
         return Status::Ok();

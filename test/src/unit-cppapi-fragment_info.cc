@@ -261,22 +261,25 @@ TEST_CASE(
       ctx.ptr().get(), array_name, 3, subarray, TILEDB_ROW_MAJOR, buffers);
 
   {
+    tiledb::Config cfg;
+    if (serialized_load) {
+      // Set the config that forces preloading of MBRs in remote
+      // case instead of loading them lazily.
+      cfg["sm.fragment_info.preload_mbrs"] = "true";
+    }
+
+    Context ctx2(cfg);
     // Create fragment info object
-    FragmentInfo fragment_info(ctx, array_name);
+    FragmentInfo fragment_info(ctx2, array_name);
 
     // Load fragment info again
     fragment_info.load();
 
     if (serialized_load) {
-      // force loading of the rtrees so that they are included in serialized
-      // fragment info (by default rtree loading is lazy).
-      for (uint32_t fid = 0; fid < fragment_info.fragment_num(); ++fid) {
-        fragment_info.mbr_num(fid);
-      }
       // serialize and deserialize back fragment info
-      FragmentInfo deserialized_fragment_info(ctx, array_name);
+      FragmentInfo deserialized_fragment_info(ctx2, array_name);
       tiledb_fragment_info_serialize(
-          ctx.ptr().get(),
+          ctx2.ptr().get(),
           array_name.c_str(),
           fragment_info.ptr().get(),
           deserialized_fragment_info.ptr().get(),
@@ -448,30 +451,31 @@ TEST_CASE("C++ API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
       &written_frag_uri);
 
   {
-    // Create fragment info object
-    FragmentInfo fragment_info(ctx, array_name);
-    // Load fragment info
-    fragment_info.load();
-
+    tiledb::Config cfg;
     bool serialized_load = false;
+
     SECTION("no serialization") {
       serialized_load = false;
     }
 #ifdef TILEDB_SERIALIZATION
     SECTION("serialization enabled fragment info load") {
+      // Set the config that forces preloading of MBRs in remote
+      // case instead of loading them lazily.
+      cfg["sm.fragment_info.preload_mbrs"] = "true";
       serialized_load = true;
-      // force loading of the rtrees so that they are included in serialized
-      // fragment info (by default rtree loading is lazy).
-      for (uint32_t fid = 0; fid < fragment_info.fragment_num(); ++fid) {
-        fragment_info.mbr_num(fid);
-      }
     }
 #endif
 
+    Context ctx2(cfg);
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx2, array_name);
+    // Load fragment info
+    fragment_info.load();
+
     if (serialized_load) {
-      FragmentInfo deserialized_fragment_info(ctx, array_name);
+      FragmentInfo deserialized_fragment_info(ctx2, array_name);
       tiledb_fragment_info_serialize(
-          ctx.ptr().get(),
+          ctx2.ptr().get(),
           array_name.c_str(),
           fragment_info.ptr().get(),
           deserialized_fragment_info.ptr().get(),
@@ -553,12 +557,7 @@ TEST_CASE(
       &written_frag_uri);
 
   {
-    // Create fragment info object
-    FragmentInfo fragment_info(ctx, array_name);
-
-    // Load fragment info
-    fragment_info.load();
-
+    tiledb::Config cfg;
     bool serialized_load = false;
 
     SECTION("no serialization") {
@@ -566,19 +565,24 @@ TEST_CASE(
     }
 #ifdef TILEDB_SERIALIZATION
     SECTION("serialization enabled fragment info load") {
+      // Set the config that forces preloading of MBRs in remote
+      // case instead of loading them lazily.
+      cfg["sm.fragment_info.preload_mbrs"] = "true";
       serialized_load = true;
-      // force loading of the rtrees so that they are included in serialized
-      // fragment info (by default rtree loading is lazy).
-      for (uint32_t fid = 0; fid < fragment_info.fragment_num(); ++fid) {
-        fragment_info.mbr_num(fid);
-      }
     }
 #endif
 
+    Context ctx2(cfg);
+    // Create fragment info object
+    FragmentInfo fragment_info(ctx2, array_name);
+
+    // Load fragment info
+    fragment_info.load();
+
     if (serialized_load) {
-      FragmentInfo deserialized_fragment_info(ctx, array_name);
+      FragmentInfo deserialized_fragment_info(ctx2, array_name);
       tiledb_fragment_info_serialize(
-          ctx.ptr().get(),
+          ctx2.ptr().get(),
           array_name.c_str(),
           fragment_info.ptr().get(),
           deserialized_fragment_info.ptr().get(),

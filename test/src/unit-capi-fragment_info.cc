@@ -532,17 +532,6 @@ TEST_CASE(
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled fragment info load") {
     serialized_load = true;
-    // force load rtrees so that they are included in serialized
-    // fragment info (by default rtree loading is lazy).
-    uint64_t mbr_num = 0;
-    uint32_t fragment_num = 0;
-    rc = tiledb_fragment_info_get_fragment_num(
-        ctx, fragment_info, &fragment_num);
-    CHECK(rc == TILEDB_OK);
-    for (uint32_t fid = 0; fid < fragment_num; ++fid) {
-      rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, fid, &mbr_num);
-      CHECK(rc == TILEDB_OK);
-    }
   }
 #endif
 
@@ -895,16 +884,9 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   rc = tiledb_fragment_info_alloc(ctx, array_name.c_str(), &fragment_info);
   CHECK(rc == TILEDB_OK);
 
-  // Load fragment info
   rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
-  REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
-  rc = tiledb_fragment_info_set_config(ctx, fragment_info, cfg);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_fragment_info_load(ctx, fragment_info);
-  CHECK(rc == TILEDB_OK);
-  tiledb_config_free(&cfg);
 
   bool serialized_load = false;
   SECTION("no serialization") {
@@ -913,19 +895,22 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled fragment info load") {
     serialized_load = true;
-    // force load rtrees so that they are included in serialized
-    // fragment info (by default rtree loading is lazy).
-    uint64_t mbr_num = 0;
-    uint32_t fragment_num = 0;
-    rc = tiledb_fragment_info_get_fragment_num(
-        ctx, fragment_info, &fragment_num);
-    CHECK(rc == TILEDB_OK);
-    for (uint32_t fid = 0; fid < fragment_num; ++fid) {
-      rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, fid, &mbr_num);
-      CHECK(rc == TILEDB_OK);
-    }
+    // Set the config that forces preloading of MBRs in remote
+    // case instead of loading them lazily.
+    rc = tiledb_config_set(cfg, "sm.fragment_info.preload_mbrs", "true", &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
   }
 #endif
+
+  REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
+  rc = tiledb_fragment_info_set_config(ctx, fragment_info, cfg);
+  CHECK(rc == TILEDB_OK);
+
+  // Load fragment info
+  rc = tiledb_fragment_info_load(ctx, fragment_info);
+  CHECK(rc == TILEDB_OK);
+  tiledb_config_free(&cfg);
 
   tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
   if (serialized_load) {
@@ -1026,14 +1011,12 @@ TEST_CASE(
   std::string written_frag_uri;
   write_array(ctx, array_name, 1, TILEDB_UNORDERED, buffers, &written_frag_uri);
 
-  // Create fragment info object
-  tiledb_fragment_info_t* fragment_info = nullptr;
-  rc = tiledb_fragment_info_alloc(ctx, array_name.c_str(), &fragment_info);
-  CHECK(rc == TILEDB_OK);
-
-  // Load fragment info
-  rc = tiledb_fragment_info_load(ctx, fragment_info);
-  CHECK(rc == TILEDB_OK);
+  // Create config and context
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
 
   bool serialized_load = false;
   SECTION("no serialization") {
@@ -1042,19 +1025,28 @@ TEST_CASE(
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled fragment info load") {
     serialized_load = true;
-    // force load rtrees so that they are included in serialized
-    // fragment info (by default rtree loading is lazy).
-    uint64_t mbr_num = 0;
-    uint32_t fragment_num = 0;
-    rc = tiledb_fragment_info_get_fragment_num(
-        ctx, fragment_info, &fragment_num);
-    CHECK(rc == TILEDB_OK);
-    for (uint32_t fid = 0; fid < fragment_num; ++fid) {
-      rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, fid, &mbr_num);
-      CHECK(rc == TILEDB_OK);
-    }
+    // Set the config that forces preloading of MBRs in remote
+    // case instead of loading them lazily.
+    rc = tiledb_config_set(cfg, "sm.fragment_info.preload_mbrs", "true", &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
   }
 #endif
+
+  REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
+
+  // Create fragment info object
+  tiledb_fragment_info_t* fragment_info = nullptr;
+  rc = tiledb_fragment_info_alloc(ctx, array_name.c_str(), &fragment_info);
+  CHECK(rc == TILEDB_OK);
+
+  // Set the config
+  rc = tiledb_fragment_info_set_config(ctx, fragment_info, cfg);
+  CHECK(rc == TILEDB_OK);
+
+  // Load fragment info
+  rc = tiledb_fragment_info_load(ctx, fragment_info);
+  CHECK(rc == TILEDB_OK);
 
   tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
   if (serialized_load) {

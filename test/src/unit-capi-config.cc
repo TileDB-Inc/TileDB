@@ -257,6 +257,7 @@ void check_save_to_file() {
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.encryption_type NO_ENCRYPTION\n";
+  ss << "sm.fragment_info.preload_mbrs false\n";
   ss << "sm.group.timestamp_end 18446744073709551615\n";
   ss << "sm.group.timestamp_start 0\n";
   ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
@@ -564,6 +565,10 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
       config, "rest.use_refactored_array_open", "true", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.fragment_info.preload_mbrs", "true", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
 
   // Prepare maps
   std::map<std::string, std::string> all_param_values;
@@ -641,6 +646,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.var_offsets.extra_element"] = "true";
   all_param_values["sm.var_offsets.mode"] = "elements";
   all_param_values["sm.max_tile_overlap_size"] = "314572800";
+  all_param_values["sm.fragment_info.preload_mbrs"] = "true";
 
   all_param_values["vfs.disable_batching"] = "false";
   all_param_values["vfs.max_batch_size"] = std::to_string(UINT64_MAX);
