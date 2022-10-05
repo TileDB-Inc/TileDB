@@ -946,8 +946,13 @@ void ArraySchema::set_name(const std::string& name) {
   name_ = name;
 }
 
-void ArraySchema::set_capacity(uint64_t capacity) {
+Status ArraySchema::set_capacity(uint64_t capacity) {
+  if (array_type_ == ArrayType::SPARSE && capacity == 0)
+    return LOG_STATUS(Status_ArraySchemaError(
+        "Sparse arrays cannot have their capacity equal to zero."));
+
   capacity_ = capacity;
+  return Status::Ok();
 }
 
 Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline* pipeline) {

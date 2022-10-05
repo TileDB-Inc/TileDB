@@ -1728,7 +1728,10 @@ int32_t tiledb_array_schema_set_capacity(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_schema->array_schema_->set_capacity(capacity);
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array_schema->array_schema_->set_capacity(capacity)))
+    return TILEDB_ERR;
   return TILEDB_OK;
 }
 
