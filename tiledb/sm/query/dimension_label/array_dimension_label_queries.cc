@@ -105,30 +105,6 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
                                                      QueryStatus::INPROGRESS;
 }
 
-void ArrayDimensionLabelQueries::cancel() {
-  // Cancel range queries.
-  throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      range_queries_.size(),
-      [&](const size_t dim_idx) {
-        if (range_queries_[dim_idx]) {
-          range_queries_[dim_idx]->cancel();
-        }
-        return Status::Ok();
-      }));
-
-  // Cancel data queries.
-  throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      data_queries_.size(),
-      [&](const size_t query_idx) {
-        data_queries_[query_idx]->cancel();
-        return Status::Ok();
-      }));
-}
-
 bool ArrayDimensionLabelQueries::completed() const {
   return range_query_status_ == QueryStatus::COMPLETED &&
          std::all_of(

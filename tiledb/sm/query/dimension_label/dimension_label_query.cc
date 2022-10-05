@@ -78,15 +78,6 @@ DimensionLabelQuery::DimensionLabelQuery(
                                nullptr} {
 }
 
-void DimensionLabelQuery::cancel() {
-  if (indexed_array_query) {
-    throw_if_not_ok(indexed_array_query->cancel());
-  }
-  if (labelled_array_query) {
-    throw_if_not_ok(labelled_array_query->cancel());
-  }
-}
-
 bool DimensionLabelQuery::completed() const {
   return (!indexed_array_query ||
           indexed_array_query->status() == QueryStatus::COMPLETED) &&

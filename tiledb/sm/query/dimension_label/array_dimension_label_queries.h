@@ -99,9 +99,6 @@ class ArrayDimensionLabelQueries {
     return range_query_status_ == QueryStatus::COMPLETED;
   }
 
-  /** Cancels all dimension label queries. */
-  void cancel();
-
   /** Returns ``true`` if there are any data queries. */
   inline bool has_data_query() const {
     return !data_queries_.empty();

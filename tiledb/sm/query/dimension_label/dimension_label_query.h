@@ -93,9 +93,6 @@ class DimensionLabelQuery {
   DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelQuery);
   DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelQuery);
 
-  /** Cancel both queries if they exist. */
-  void cancel();
-
   /** Returns ``true`` if the query status for both queries is completed. */
   bool completed() const;
 
