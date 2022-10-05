@@ -396,7 +396,7 @@ class ArraySchema {
   Status set_coords_filter_pipeline(const FilterPipeline* pipeline);
 
   /** Sets the tile capacity. */
-  Status set_capacity(uint64_t capacity);
+  void set_capacity(uint64_t capacity);
 
   /** Sets the cell order. */
   Status set_cell_order(Layout cell_order);
