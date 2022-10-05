@@ -284,12 +284,12 @@ DimensionLabel* ArrayDimensionLabelQueries::open_dimension_label(
     const bool open_indexed_array,
     const bool open_labelled_array) {
   // Create the dimension label.
-  auto label_iter =
-      dimension_labels_.insert({dim_label_ref.name(),
-                                tdb_unique_ptr<DimensionLabel>(tdb_new(
-                                    DimensionLabel,
-                                    dim_label_ref.uri(array->array_uri()),
-                                    storage_manager_))});
+  auto label_iter = dimension_labels_.try_emplace(
+      dim_label_ref.name(),
+      tdb_new(
+          DimensionLabel,
+          dim_label_ref.uri(array->array_uri()),
+          storage_manager_));
   DimensionLabel* dim_label = (label_iter.first->second).get();
 
   // Currently there is no way to open just one of these arrays. This is a
