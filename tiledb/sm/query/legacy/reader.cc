@@ -138,6 +138,11 @@ Reader::Reader(
         "Cannot initialize reader; Dense reads must have a subarray set");
   }
 
+  if (array_schema_.has_bitsort_filter() != nullopt) {
+    throw ReaderStatusException(
+        "Cannot initialize reader; Bitsort filter not supported");
+  }
+
   // Check subarray
   check_subarray();
 

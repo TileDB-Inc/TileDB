@@ -249,6 +249,9 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Have we loaded all thiles for this fragment. */
   std::vector<uint8_t> all_tiles_loaded_;
 
+  /** Include coordinates when loading tiles. */
+  bool include_coords_;
+
   /** Dimension names. */
   std::vector<std::string> dim_names_;
 
@@ -304,6 +307,9 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Are we doing deletes consolidation (without purge option). */
   bool deletes_consolidation_no_purge_;
 
+  /** Optional string for a bitsort attribute. */
+  std::optional<std::string> bitsort_attribute_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -332,7 +338,6 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Get the coordinate tiles size for a dimension.
    *
-   * @param include_coords Include coordinates or not in the calculation.
    * @param dim_num Number of dimensions.
    * @param f Fragment index.
    * @param t Tile index.
@@ -341,26 +346,23 @@ class SparseIndexReaderBase : public ReaderBase {
    */
   template <class BitmapType>
   tuple<Status, optional<std::pair<uint64_t, uint64_t>>> get_coord_tiles_size(
-      bool include_coords, unsigned dim_num, unsigned f, uint64_t t);
+      unsigned dim_num, unsigned f, uint64_t t);
 
   /**
    * Load tile offsets and result tile ranges.
    *
-   * @param include_coords Are coords included.
    * @return Status.
    */
-  Status load_initial_data(bool include_coords);
+  Status load_initial_data();
 
   /**
    * Read and unfilter coord tiles.
    *
-   * @param include_coords Include coordinates or not.
    * @param result_tiles The result tiles to process.
    *
    * @return Status.
    */
-  Status read_and_unfilter_coords(
-      bool include_coords, const std::vector<ResultTile*>& result_tiles);
+  Status read_and_unfilter_coords(const std::vector<ResultTile*>& result_tiles);
 
   /**
    * Compute tile bitmaps.
