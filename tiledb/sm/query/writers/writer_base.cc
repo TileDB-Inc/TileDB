@@ -86,6 +86,7 @@ WriterBase::WriterBase(
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
+    bool remote_query,
     optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : StrategyBase(
@@ -103,7 +104,8 @@ WriterBase::WriterBase(
     , check_coord_oob_(false)
     , check_global_order_(false)
     , dedup_coords_(false)
-    , written_fragment_info_(written_fragment_info) {
+    , written_fragment_info_(written_fragment_info)
+    , remote_query_(remote_query) {
   // Sanity checks
   if (storage_manager_ == nullptr) {
     throw WriterBaseStatusException(
@@ -191,8 +193,8 @@ WriterBase::WriterBase(
     check_extra_element();
   }
 
-  check_subarray();
   if (!skip_checks_serialization) {
+    check_subarray();
     check_buffer_sizes();
   }
 
@@ -586,10 +588,11 @@ Status WriterBase::compute_tiles_metadata(
       const auto var_size = array_schema_.var_size(attr);
       const auto cell_size = array_schema_.cell_size(attr);
       const auto cell_val_num = array_schema_.cell_val_num(attr);
-      TileMetadataGenerator md_generator(
-          type, is_dim, var_size, cell_size, cell_val_num);
       for (auto& tile : attr_tiles) {
-        md_generator.process_tile(tile);
+        TileMetadataGenerator md_generator(
+            type, is_dim, var_size, cell_size, cell_val_num);
+        md_generator.process_full_tile(tile);
+        md_generator.set_tile_metadata(tile);
       }
 
       return Status::Ok();
@@ -607,7 +610,8 @@ Status WriterBase::compute_tiles_metadata(
       auto st = parallel_for(compute_tp, 0, tile_num, [&](uint64_t t) {
         TileMetadataGenerator md_generator(
             type, is_dim, var_size, cell_size, cell_val_num);
-        md_generator.process_tile(attr_tiles[t]);
+        md_generator.process_full_tile(attr_tiles[t]);
+        md_generator.set_tile_metadata(attr_tiles[t]);
 
         return Status::Ok();
       });
@@ -1086,25 +1090,44 @@ Status WriterBase::write_tiles(
     }
   }
 
-  // Close files, except in the case of global order
-  if (close_files && layout_ != Layout::GLOBAL_ORDER) {
+  // Close files or flush multipart upload buffers in case of global order
+  // writes
+  if (close_files) {
+    std::vector<URI> closing_uris;
     auto&& [st1, uri] = frag_meta->uri(name);
     RETURN_NOT_OK(st1);
+    closing_uris.push_back(*uri);
 
-    RETURN_NOT_OK(storage_manager_->close_file(*uri));
     if (var_size) {
       auto&& [st2, var_uri] = frag_meta->var_uri(name);
       RETURN_NOT_OK(st2);
-      RETURN_NOT_OK(storage_manager_->close_file(*var_uri));
+      closing_uris.push_back(*var_uri);
     }
     if (nullable) {
       auto&& [st2, validity_uri] = frag_meta->validity_uri(name);
       RETURN_NOT_OK(st2);
-      RETURN_NOT_OK(storage_manager_->close_file(*validity_uri));
+      closing_uris.push_back(*validity_uri);
+    }
+    for (auto& u : closing_uris) {
+      if (layout_ == Layout::GLOBAL_ORDER) {
+        // Flushing the multipart buffers after each write stage is a
+        // requirement of remote global order writes, it should only be
+        // done if this code is executed as a result of a remote query
+        if (remote_query()) {
+          RETURN_NOT_OK(
+              storage_manager_->vfs()->flush_multipart_file_buffer(u));
+        }
+      } else {
+        RETURN_NOT_OK(storage_manager_->close_file(u));
+      }
     }
   }
 
   return Status::Ok();
+}
+
+bool WriterBase::remote_query() const {
+  return remote_query_;
 }
 
 }  // namespace sm

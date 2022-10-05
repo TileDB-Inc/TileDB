@@ -238,6 +238,7 @@ void check_save_to_file() {
   ss << "rest.server_address https://api.tiledb.com\n";
   ss << "rest.server_serialization_format CAPNP\n";
   ss << "rest.use_refactored_array_open false\n";
+  ss << "sm.allow_updates_experimental false\n";
   ss << "sm.check_coord_dups true\n";
   ss << "sm.check_coord_oob true\n";
   ss << "sm.check_global_order true\n";
@@ -274,6 +275,7 @@ void check_save_to_file() {
   ss << "sm.mem.total_budget 10737418240\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
+  ss << "sm.query.dense.qc_coords_mode false\n";
   ss << "sm.query.dense.reader refactored\n";
   ss << "sm.query.sparse_global_order.reader refactored\n";
   ss << "sm.query.sparse_unordered_with_dups.reader refactored\n";
@@ -581,6 +583,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.load_metadata_on_array_open"] = "false";
   all_param_values["rest.load_non_empty_domain_on_array_open"] = "false";
   all_param_values["rest.use_refactored_array_open"] = "true";
+  all_param_values["sm.allow_updates_experimental"] = "false";
   all_param_values["sm.encryption_key"] = "";
   all_param_values["sm.encryption_type"] = "NO_ENCRYPTION";
   all_param_values["sm.dedup_coords"] = "false";
@@ -591,6 +594,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.skip_est_size_partitioning"] = "false";
   all_param_values["sm.memory_budget"] = "5368709120";
   all_param_values["sm.memory_budget_var"] = "10737418240";
+  all_param_values["sm.query.dense.qc_coords_mode"] = "false";
   all_param_values["sm.query.dense.reader"] = "refactored";
   all_param_values["sm.query.sparse_global_order.reader"] = "refactored";
   all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";

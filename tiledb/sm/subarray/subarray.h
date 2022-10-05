@@ -321,6 +321,19 @@ class Subarray {
   Status add_point_ranges(unsigned dim_idx, const void* start, uint64_t count);
 
   /**
+   * @brief Set ranges from an array of ranges (paired { begin,end } )
+   *
+   * @param dim_idx Dimension index
+   * @param start Pointer to start of the array
+   * @param count Number of pairs to add
+   * @return Status
+   * @note The pairs list is logically { {begin1,end1}, {begin2,end2}, ...} but
+   * because of typing considerations from the C api is simply presented as
+   * a linear list of individual items, though they should be multiple of 2
+   */
+  Status add_ranges_list(unsigned dim_idx, const void* start, uint64_t count);
+
+  /**
    * Adds a variable-sized range to the (read/write) query on the input
    * dimension by index, in the form of (start, end).
    */
@@ -359,6 +372,14 @@ class Subarray {
       uint64_t start_size,
       const void* end,
       uint64_t end_size);
+
+  /**
+   * Retrieves reference to attribute ranges.
+   *
+   * @param attr_name Name of the attribute to get ragnes for.
+   */
+  const std::vector<Range>& get_attribute_ranges(
+      const std::string& attr_name) const;
 
   /**
    * Retrieves a range from a dimension label name in the form (start, end,
@@ -898,6 +919,21 @@ class Subarray {
   }
 
   /**
+   * Adds ranges for an attribute.
+   *
+   * This method is designed to copy label ranges from a parent subarray to
+   * attribute ranges in a dimension label array. The ranges will only be
+   * accessed by the dimension label readers, and it is assumed all checks on
+   * validity of the ranges has already been ran when adding the label ranges to
+   * the parent subarray.
+   *
+   * @param attr_name Name of the attribute to add the ranges for.
+   * @param ranges Ranges to add.
+   */
+  void set_attribute_ranges(
+      const std::string& attr_name, const std::vector<Range>& ranges);
+
+  /**
    * Directly sets the `Range` vector for the given dimension index, making
    * a deep copy.
    *
@@ -1206,6 +1242,11 @@ class Subarray {
    * Stores LabelRangeSubset objects for handling ranges on dimension labels.
    */
   std::vector<optional<LabelRangeSubset>> label_range_subset_;
+
+  /**
+   * Stores ranges for attributes.
+   */
+  std::unordered_map<std::string, std::vector<Range>> attr_range_subset_;
 
   /**
    * Flag storing if each dimension is a default value or not.

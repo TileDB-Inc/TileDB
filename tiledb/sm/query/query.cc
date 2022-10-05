@@ -74,7 +74,11 @@ Query::Query(
     : array_shared_(array)
     , array_(array_shared_.get())
     , array_schema_(array->array_schema_latest_ptr())
-    , layout_(Layout::ROW_MAJOR)
+    , type_(array_->get_query_type())
+    , layout_(
+          (type_ == QueryType::READ || array_schema_->dense()) ?
+              Layout::ROW_MAJOR :
+              Layout::UNORDERED)
     , storage_manager_(storage_manager)
     , stats_(storage_manager_->stats()->create_child("Query"))
     , logger_(storage_manager->logger()->clone("Query", ++logger_id_))
@@ -88,15 +92,11 @@ Query::Query(
     , disable_checks_consolidation_(false)
     , consolidation_with_timestamps_(false)
     , force_legacy_reader_(false)
-    , fragment_name_(fragment_name) {
+    , fragment_name_(fragment_name)
+    , remote_query_(false) {
   assert(array->is_open());
-  type_ = array->get_query_type();
 
-  if (type_ != QueryType::READ) {
-    subarray_ = Subarray(array_, stats_, logger_);
-  } else {
-    subarray_ = Subarray(array_, Layout::ROW_MAJOR, stats_, logger_);
-  }
+  subarray_ = Subarray(array_, layout_, stats_, logger_);
 
   fragment_metadata_ = array->fragment_metadata();
 
@@ -620,6 +620,10 @@ const ArraySchema& Query::array_schema() const {
   return *(array_schema_.get());
 }
 
+const std::shared_ptr<const ArraySchema> Query::array_schema_shared() const {
+  return array_schema_;
+}
+
 std::vector<std::string> Query::buffer_names() const {
   std::vector<std::string> ret;
 
@@ -670,11 +674,119 @@ Status Query::finalize() {
       return logger_->status(Status_QueryError(
           "Error in query finalize; remote array with no rest client."));
 
+    if (type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
+      return logger_->status(Status_QueryError(
+          "Error in query finalize; remote global order writes are only "
+          "allowed to call submit_and_finalize to submit the last tile"));
+    }
     return rest_client->finalize_query_to_rest(array_->array_uri(), this);
   }
 
   RETURN_NOT_OK(strategy_->finalize());
   status_ = QueryStatus::COMPLETED;
+  return Status::Ok();
+}
+
+Status Query::submit_and_finalize() {
+  if (type_ != QueryType::WRITE || layout_ != Layout::GLOBAL_ORDER) {
+    return logger_->status(
+        Status_QueryError("Error in query submit_and_finalize; Call valid only "
+                          "in global_order writes."));
+  }
+
+  // Check attribute/dimensions buffers completeness before query submits
+  RETURN_NOT_OK(check_buffers_correctness());
+
+  if (array_->is_remote()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return logger_->status(
+          Status_QueryError("Error in query submit_and_finalize; remote array "
+                            "with no rest client."));
+
+    if (status_ == QueryStatus::UNINITIALIZED) {
+      RETURN_NOT_OK(create_strategy());
+    }
+    return rest_client->submit_and_finalize_query_to_rest(
+        array_->array_uri(), this);
+  }
+
+  RETURN_NOT_OK(init());
+  RETURN_NOT_OK(storage_manager_->query_submit(this));
+
+  RETURN_NOT_OK(strategy_->finalize());
+  status_ = QueryStatus::COMPLETED;
+
+  return Status::Ok();
+}
+
+Status Query::check_tile_alignment() const {
+  // Only applicable for remote global order writes
+  if (!array_->is_remote() || type_ != QueryType::WRITE ||
+      layout_ != Layout::GLOBAL_ORDER) {
+    return Status::Ok();
+  }
+
+  // It is enough to check for the first attr/dim only as we have
+  // previously checked in check_buffer_sizes that all the buffers
+  // have the same size
+  auto& first_buffer_name = buffers_.begin()->first;
+  auto& first_buffer = buffers_.begin()->second;
+  const bool is_var_size = array_schema_->var_size(first_buffer_name);
+
+  uint64_t cell_num_per_tile = array_schema_->dense() ?
+                                   array_schema_->domain().cell_num_per_tile() :
+                                   array_schema_->capacity();
+  bool buffers_tile_aligned = true;
+  if (is_var_size) {
+    auto offsets_buf_size = *first_buffer.buffer_size_;
+    if ((offsets_buf_size / constants::cell_var_offset_size) %
+        cell_num_per_tile) {
+      buffers_tile_aligned = false;
+    }
+  } else {
+    uint64_t cell_size = array_schema_->cell_size(first_buffer_name);
+    if ((*first_buffer.buffer_size_ / cell_size) % cell_num_per_tile) {
+      buffers_tile_aligned = false;
+    }
+  }
+
+  if (!buffers_tile_aligned) {
+    return Status_WriterError(
+        "Tile alignment check failed; Input buffers need to be tile-aligned "
+        "for remote global order writes.");
+  }
+
+  return Status::Ok();
+}
+
+Status Query::check_buffer_multipart_size() const {
+  // Only applicable for remote global order writes
+  if (!array_->is_remote() || type_ != QueryType::WRITE ||
+      layout_ != Layout::GLOBAL_ORDER) {
+    return Status::Ok();
+  }
+
+  const uint64_t s3_multipart_min_limit = 5242880;  // 5MB
+  for (const auto& it : buffers_) {
+    const auto& buf_name = it.first;
+    const bool is_var = array_schema_->var_size(buf_name);
+    const uint64_t buffer_size =
+        is_var ? *it.second.buffer_var_size_ : *it.second.buffer_size_;
+
+    uint64_t buffer_validity_size = s3_multipart_min_limit;
+    if (array_schema_->is_nullable(buf_name)) {
+      buffer_validity_size = *it.second.validity_vector_.buffer_size();
+    }
+
+    if (buffer_size < s3_multipart_min_limit ||
+        buffer_validity_size < s3_multipart_min_limit) {
+      return logger_->status(Status_WriterError(
+          "Remote global order writes require buffers to be of"
+          "minimum 5MB in size."));
+    }
+  }
+
   return Status::Ok();
 }
 
@@ -1053,12 +1165,18 @@ Layout Query::layout() const {
   return layout_;
 }
 
-const QueryCondition* Query::condition() const {
+const QueryCondition& Query::condition() const {
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
-    return nullptr;
+    throw std::runtime_error(
+        "Query condition is not available for write or modify exclusive "
+        "queries");
   }
 
-  return &condition_;
+  return condition_;
+}
+
+const std::vector<UpdateValue>& Query::update_values() const {
+  return update_values_;
 }
 
 Status Query::cancel() {
@@ -1081,15 +1199,6 @@ Status Query::process() {
     return st;
   }
 
-  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
-      layout_ == Layout::GLOBAL_ORDER) {
-    // reset coord buffer marker at end of global write
-    // this will allow for the user to properly set the next write batch
-    coord_buffer_is_set_ = false;
-    coord_data_buffer_is_set_ = false;
-    coord_offsets_buffer_is_set_ = false;
-  }
-
   // Check if the query is complete
   bool completed = !strategy_->incomplete();
 
@@ -1107,7 +1216,7 @@ Status Query::process() {
 
 IQueryStrategy* Query::strategy(bool skip_checks_serialization) {
   if (strategy_ == nullptr) {
-    create_strategy(skip_checks_serialization);
+    throw_if_not_ok(create_strategy(skip_checks_serialization));
   }
   return strategy_.get();
 }
@@ -1201,6 +1310,11 @@ Status Query::check_buffer_names() {
 Status Query::create_strategy(bool skip_checks_serialization) {
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
+      if (!array_schema_->dense()) {
+        return Status_QueryError(
+            "Cannot create strategy; sparse writes do not support layout " +
+            layout_str(layout_));
+      }
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           OrderedWriter,
           stats_->create_child("Writer"),
@@ -1213,9 +1327,15 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           written_fragment_info_,
           coords_info_,
+          remote_query_,
           fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::UNORDERED) {
+      if (array_schema_->dense()) {
+        return Status_QueryError(
+            "Cannot create strategy; dense writes do not support layout " +
+            layout_str(layout_));
+      }
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           UnorderedWriter,
           stats_->create_child("Writer"),
@@ -1228,6 +1348,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           written_fragment_info_,
           coords_info_,
+          remote_query_,
           fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::GLOBAL_ORDER) {
@@ -1245,10 +1366,12 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           disable_checks_consolidation_,
           processed_conditions_,
           coords_info_,
+          remote_query_,
           fragment_name_,
           skip_checks_serialization));
     } else {
-      assert(false);
+      return Status_QueryError(
+          "Cannot create strategy; unsupported layout " + layout_str(layout_));
     }
   } else if (type_ == QueryType::READ) {
     bool use_default = true;
@@ -2007,26 +2130,42 @@ Status Query::set_est_result_size(
 }
 
 Status Query::set_layout(Layout layout) {
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot set layout; Unsupported query type."));
-  }
+  switch (type_) {
+    case (QueryType::READ):
+      if (status_ != QueryStatus::UNINITIALIZED) {
+        return logger_->status(
+            Status_QueryError("Cannot set layout after initialization"));
+      }
 
-  if (type_ == QueryType::READ && status_ != QueryStatus::UNINITIALIZED) {
-    return logger_->status(
-        Status_QueryError("Cannot set layout after initialization"));
+      break;
+
+    case (QueryType::WRITE):
+    case (QueryType::MODIFY_EXCLUSIVE):
+      if (array_schema_->dense()) {
+        // Check layout for dense writes is valid.
+        if (layout == Layout::UNORDERED) {
+          return logger_->status(Status_QueryError(
+              "Unordered writes are only possible for sparse arrays"));
+        }
+      } else {
+        // Check layout for sparse writes is valid.
+        if (layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR) {
+          return logger_->status(
+              Status_QueryError("Row-major and column-major writes are only "
+                                "possible for dense arrays"));
+        }
+      }
+
+      break;
+
+    default:
+      return LOG_STATUS(Status_SerializationError(
+          "Cannot set layout; Unsupported query type."));
   }
 
   if (layout == Layout::HILBERT) {
     return logger_->status(Status_QueryError(
         "Cannot set layout; Hilbert order is not applicable to queries"));
-  }
-
-  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
-      array_schema_->dense() && layout == Layout::UNORDERED) {
-    return logger_->status(Status_QueryError(
-        "Unordered writes are only possible for sparse arrays"));
   }
 
   layout_ = layout;
@@ -2035,12 +2174,39 @@ Status Query::set_layout(Layout layout) {
 }
 
 Status Query::set_condition(const QueryCondition& condition) {
-  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)
+  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     return logger_->status(Status_QueryError(
         "Cannot set query condition; Operation not applicable "
         "to write queries"));
+  }
 
   condition_ = condition;
+  return Status::Ok();
+}
+
+Status Query::add_update_value(
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size) {
+  if (type_ != QueryType::UPDATE) {
+    return logger_->status(Status_QueryError(
+        "Cannot add query update value; Operation only applicable "
+        "to update queries"));
+  }
+
+  // Make sure the array is sparse.
+  if (array_schema_->dense()) {
+    return logger_->status(Status_QueryError(
+        "Setting update values is only valid for sparse arrays"));
+  }
+
+  if (attributes_with_update_value_.count(field_name) != 0) {
+    return logger_->status(
+        Status_QueryError("Update value already set for attribute"));
+  }
+
+  attributes_with_update_value_.emplace(field_name);
+  update_values_.emplace_back(field_name, update_value, update_value_size);
   return Status::Ok();
 }
 
@@ -2106,8 +2272,13 @@ Status Query::set_subarray(const void* subarray) {
       return logger_->status(
           Status_WriterError("Cannot set subarray; Multi-range dense writes "
                              "are not supported"));
-    if (strategy_ != nullptr)
+
+    // When executed from serialization, resetting the strategy will delete
+    // the fragment for global order writes. We need to prevent this, thus
+    // persist the fragment between remote global order write submits.
+    if (strategy_ != nullptr && layout_ != Layout::GLOBAL_ORDER) {
       strategy_->reset();
+    }
   }
 
   subarray_ = sub;
@@ -2178,7 +2349,8 @@ Status Query::check_buffers_correctness() {
   // Iterate through each attribute
   for (auto& attr : buffer_names()) {
     if (array_schema_->var_size(attr)) {
-      // Check for data buffer under buffer_var and offsets buffer under buffer
+      // Check for data buffer under buffer_var and offsets buffer under
+      // buffer
       if (type_ == QueryType::READ) {
         if (buffer(attr).buffer_var_ == nullptr) {
           return logger_->status(Status_QueryError(
@@ -2190,7 +2362,8 @@ Status Query::check_buffers_correctness() {
             *buffer(attr).buffer_var_size_ != 0) {
           return logger_->status(Status_QueryError(
               std::string("Var-Sized input attribute/dimension '") + attr +
-              "' is not set correctly. \nVar size buffer is not set and buffer "
+              "' is not set correctly. \nVar size buffer is not set and "
+              "buffer "
               "size if not 0."));
         }
       }
@@ -2237,10 +2410,23 @@ Status Query::submit() {
     if (status_ == QueryStatus::UNINITIALIZED) {
       RETURN_NOT_OK(create_strategy());
     }
-    return rest_client->submit_query_to_rest(array_->array_uri(), this);
+
+    // Check that input buffers are tile-aligned for remote global order writes
+    RETURN_NOT_OK(check_tile_alignment());
+
+    // Check that input buffers >5mb for remote global order writes
+    RETURN_NOT_OK(check_buffer_multipart_size());
+
+    RETURN_NOT_OK(rest_client->submit_query_to_rest(array_->array_uri(), this));
+
+    reset_coords_markers();
+    return Status::Ok();
   }
   RETURN_NOT_OK(init());
-  return storage_manager_->query_submit(this);
+  RETURN_NOT_OK(storage_manager_->query_submit(this));
+
+  reset_coords_markers();
+  return Status::Ok();
 }
 
 Status Query::submit_async(
@@ -2379,6 +2565,27 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader(
 
 tuple<Status, optional<bool>> Query::non_overlapping_ranges() {
   return subarray_.non_overlapping_ranges(storage_manager_->compute_tp());
+}
+
+bool Query::is_dense() const {
+  return !coords_info_.has_coords_;
+}
+
+std::vector<WrittenFragmentInfo>& Query::get_written_fragment_info() {
+  return written_fragment_info_;
+}
+
+void Query::reset_coords_markers() {
+  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
+      layout_ == Layout::GLOBAL_ORDER) {
+    coord_buffer_is_set_ = false;
+    coord_data_buffer_is_set_ = false;
+    coord_offsets_buffer_is_set_ = false;
+  }
+}
+
+void Query::set_remote_query() {
+  remote_query_ = true;
 }
 
 /* ****************************** */

@@ -109,6 +109,7 @@ set(TILEDB_TEST_SUPPORT_SOURCES
 set(TILEDB_UNIT_TEST_SOURCES
   src/helpers.h
   src/helpers-dimension.h
+  src/test-capi-query-error-handling.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
@@ -148,6 +149,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
   src/unit-capi-string_dims.cc
+  src/unit-capi-update-queries.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
@@ -195,6 +197,7 @@ set(TILEDB_UNIT_TEST_SOURCES
 
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/unit-cppapi-array-deletes.cc
     src/unit-cppapi-array.cc
     src/unit-cppapi-bitsort-filter.cc
     src/unit-cppapi-checksum.cc
@@ -204,6 +207,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-consolidation-with-timestamps.cc
     src/unit-cppapi-datetimes.cc
     src/unit-cppapi-deletes.cc
+    src/unit-cppapi-dense-qc-coords-mode.cc
     src/unit-cppapi-time.cc
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
@@ -219,6 +223,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-string-dims.cc
     src/unit-cppapi-subarray.cc
     src/unit-cppapi-type.cc
+    src/unit-cppapi-update-queries.cc
     src/unit-cppapi-updates.cc
     src/unit-cppapi-util.cc
     src/unit-cppapi-var-offsets.cc

@@ -268,6 +268,11 @@ class FragmentMetadata {
    */
   Status init(const NDRange& non_empty_domain);
 
+  /**
+   * Initializes the fragment's internal domain and non-empty domain members
+   */
+  Status init_domain(const NDRange& non_empty_domain);
+
   /** Returns the number of cells in the last tile. */
   uint64_t last_tile_cell_num() const;
 
@@ -311,9 +316,6 @@ class FragmentMetadata {
    * Applicable to format versions 15 or higher.
    */
   Status store_v15_or_higher(const EncryptionKey& encryption_key);
-
-  /** Returns the non-empty domain in which the fragment is constrained. */
-  const NDRange& non_empty_domain();
 
   /**
    * Simply sets the number of cells for the last tile.
@@ -506,6 +508,12 @@ class FragmentMetadata {
    * @return void
    */
   void set_array_schema(const shared_ptr<const ArraySchema>& array_schema);
+
+  /** Sets the array_schema name */
+  void set_schema_name(const std::string& name);
+
+  /** Sets the internal dense_ field*/
+  void set_dense(bool dense);
 
   /** Returns the tile index base value. */
   uint64_t tile_index_base() const;
@@ -865,6 +873,146 @@ class FragmentMetadata {
    * @return
    */
   const shared_ptr<const ArraySchema>& array_schema() const;
+
+  /** File sizes accessor */
+  std::vector<uint64_t>& file_sizes() {
+    return file_sizes_;
+  }
+
+  /** File var sizes accessor */
+  std::vector<uint64_t>& file_var_sizes() {
+    return file_var_sizes_;
+  }
+
+  /** File validity sizes accessor */
+  std::vector<uint64_t>& file_validity_sizes() {
+    return file_validity_sizes_;
+  }
+
+  /** Fragment uri accessor */
+  URI& fragment_uri() {
+    return fragment_uri_;
+  }
+
+  /** has_timestamps accessor */
+  bool& has_timestamps() {
+    return has_timestamps_;
+  }
+
+  /** has_delete_meta accessor */
+  bool& has_delete_meta() {
+    return has_delete_meta_;
+  }
+
+  /** sparse_tile_num accessor */
+  uint64_t& sparse_tile_num() {
+    return sparse_tile_num_;
+  }
+
+  /** tile_index_base accessor */
+  uint64_t& tile_index_base() {
+    return tile_index_base_;
+  }
+
+  /** tile_offsets accessor */
+  std::vector<std::vector<uint64_t>>& tile_offsets() {
+    return tile_offsets_;
+  }
+
+  /** tile_var_offsets accessor */
+  std::vector<std::vector<uint64_t>>& tile_var_offsets() {
+    return tile_var_offsets_;
+  }
+
+  /** tile_var_sizes  accessor */
+  std::vector<std::vector<uint64_t>>& tile_var_sizes() {
+    return tile_var_sizes_;
+  }
+
+  /** tile_validity_offsets accessor */
+  std::vector<std::vector<uint64_t>>& tile_validity_offsets() {
+    return tile_validity_offsets_;
+  }
+
+  /** tile_min_buffer accessor */
+  std::vector<std::vector<uint8_t>>& tile_min_buffer() {
+    return tile_min_buffer_;
+  }
+
+  /** tile_min_var_buffer accessor */
+  std::vector<std::vector<char>>& tile_min_var_buffer() {
+    return tile_min_var_buffer_;
+  }
+
+  /** tile_max_buffer accessor */
+  std::vector<std::vector<uint8_t>>& tile_max_buffer() {
+    return tile_max_buffer_;
+  }
+
+  /** tile_max_var_buffer accessor */
+  std::vector<std::vector<char>>& tile_max_var_buffer() {
+    return tile_max_var_buffer_;
+  }
+
+  /** tile_sums accessor */
+  std::vector<std::vector<uint8_t>>& tile_sums() {
+    return tile_sums_;
+  }
+
+  /** tile_null_counts accessor */
+  std::vector<std::vector<uint64_t>>& tile_null_counts() {
+    return tile_null_counts_;
+  }
+
+  /** fragment_mins accessor */
+  std::vector<std::vector<uint8_t>>& fragment_mins() {
+    return fragment_mins_;
+  }
+
+  /** fragment_maxs accessor */
+  std::vector<std::vector<uint8_t>>& fragment_maxs() {
+    return fragment_maxs_;
+  }
+
+  /** fragment_sums accessor */
+  std::vector<uint64_t>& fragment_sums() {
+    return fragment_sums_;
+  }
+
+  /** fragment_null_counts accessor */
+  std::vector<uint64_t>& fragment_null_counts() {
+    return fragment_null_counts_;
+  }
+
+  /** version accessor */
+  uint32_t& version() {
+    return version_;
+  }
+
+  /** timestamp_range accessor */
+  std::pair<uint64_t, uint64_t>& timestamp_range() {
+    return timestamp_range_;
+  }
+
+  /** last_tile_cell_num accessor */
+  uint64_t& last_tile_cell_num() {
+    return last_tile_cell_num_;
+  }
+
+  /** non_empty_domain accessor */
+  NDRange& non_empty_domain() {
+    return non_empty_domain_;
+  }
+
+  /** rtree accessor */
+  RTree& rtree() {
+    return rtree_;
+  }
+
+  /** set the SM pointer during deserialization*/
+  void set_storage_manager(StorageManager* sm) {
+    storage_manager_ = sm;
+  }
 
  private:
   /* ********************************* */
@@ -1362,13 +1510,13 @@ class FragmentMetadata {
    * Loads the tile offsets for the input attribute from the input buffer.
    * Applicable to versions 1 and 2
    */
-  Status load_tile_offsets(ConstBuffer* buff);
+  Status load_tile_offsets(ConstBuffer* cbuff);
 
   /**
    * Loads the tile offsets for the input attribute or dimension from the
    * input buffer.
    */
-  Status load_tile_offsets(unsigned idx, ConstBuffer* buff);
+  void load_tile_offsets(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the variable tile offsets from the input buffer.
@@ -1380,7 +1528,7 @@ class FragmentMetadata {
    * Loads the variable tile offsets for the input attribute or dimension from
    * the input buffer.
    */
-  Status load_tile_var_offsets(unsigned idx, ConstBuffer* buff);
+  void load_tile_var_offsets(unsigned idx, Deserializer& deserializer);
 
   /** Loads the variable tile sizes from the input buffer. */
   Status load_tile_var_sizes(ConstBuffer* buff);
@@ -1389,7 +1537,7 @@ class FragmentMetadata {
    * Loads the variable tile sizes for the input attribute or dimension
    * from the input buffer.
    */
-  Status load_tile_var_sizes(unsigned idx, ConstBuffer* buff);
+  void load_tile_var_sizes(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the validity tile offsets for the input attribute from the
@@ -1400,33 +1548,34 @@ class FragmentMetadata {
   /**
    * Loads the min values for the input attribute from the input buffer.
    */
-  Status load_tile_min_values(unsigned idx, ConstBuffer* buff);
+  void load_tile_min_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the max values for the input attribute from the input buffer.
    */
-  Status load_tile_max_values(unsigned idx, ConstBuffer* buff);
+  // Status load_tile_max_values(unsigned idx, ConstBuffer* buff);
+  void load_tile_max_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the sum values for the input attribute from the input buffer.
    */
-  Status load_tile_sum_values(unsigned idx, ConstBuffer* buff);
+  void load_tile_sum_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the null count values for the input attribute from the input
    * buffer.
    */
-  Status load_tile_null_count_values(unsigned idx, ConstBuffer* buff);
+  void load_tile_null_count_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the min max sum null count values for the fragment.
    */
-  Status load_fragment_min_max_sum_null_count(ConstBuffer* buff);
+  void load_fragment_min_max_sum_null_count(Deserializer& deserializer);
 
   /**
    * Loads the processed conditions for the fragment.
    */
-  Status load_processed_conditions(Deserializer& deserializer);
+  void load_processed_conditions(Deserializer& deserializer);
 
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
@@ -1521,14 +1670,14 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the tile offsets.
    * @return Status
    */
-  Status store_tile_offsets(
+  void store_tile_offsets(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the tile offsets of the input attribute or dimension idx to the
    * input buffer.
    */
-  Status write_tile_offsets(unsigned idx, Buffer* buff);
+  void write_tile_offsets(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the variable tile offsets of the input attribute or dimension
@@ -1539,14 +1688,14 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the tile var offsets.
    * @return Status
    */
-  Status store_tile_var_offsets(
+  void store_tile_var_offsets(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the variable tile offsets of the input attribute or dimension idx
    * to the buffer.
    */
-  Status write_tile_var_offsets(unsigned idx, Buffer* buff);
+  void write_tile_var_offsets(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the variable tile sizes for the input attribute or dimension to
@@ -1557,14 +1706,14 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the tile var sizes.
    * @return Status
    */
-  Status store_tile_var_sizes(
+  void store_tile_var_sizes(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the variable tile sizes for the input attribute or dimension
    * to storage.
    */
-  Status write_tile_var_sizes(unsigned idx, Buffer* buff);
+  void write_tile_var_sizes(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the validity tile offsets of the input attribute to storage.
@@ -1592,13 +1741,13 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the mins.
    * @return Status
    */
-  Status store_tile_mins(
+  void store_tile_mins(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the mins of the input attribute idx to the input buffer.
    */
-  Status write_tile_mins(unsigned idx, Buffer* buff);
+  void write_tile_mins(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the maxs of the input attribute to storage.
@@ -1608,13 +1757,13 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the maxs.
    * @return Status
    */
-  Status store_tile_maxs(
+  void store_tile_maxs(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the maxs of the input attribute idx to the input buffer.
    */
-  Status write_tile_maxs(unsigned idx, Buffer* buff);
+  void write_tile_maxs(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the sums of the input attribute to storage.
@@ -1624,13 +1773,13 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the sums.
    * @return Status
    */
-  Status store_tile_sums(
+  void store_tile_sums(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the sums of the input attribute idx to the input buffer.
    */
-  Status write_tile_sums(unsigned idx, Buffer* buff);
+  void write_tile_sums(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the null counts of the input attribute to storage.
@@ -1640,13 +1789,13 @@ class FragmentMetadata {
    * @param nbytes The total number of bytes written for the null counts.
    * @return Status
    */
-  Status store_tile_null_counts(
+  void store_tile_null_counts(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the null counts of the input attribute idx to the input buffer.
    */
-  Status write_tile_null_counts(unsigned idx, Buffer* buff);
+  void write_tile_null_counts(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the fragment min, max, sum and null count to storage.
@@ -1654,9 +1803,8 @@ class FragmentMetadata {
    * @param num The number of attributes.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written.
-   * @return Status
    */
-  Status store_fragment_min_max_sum_null_count(
+  void store_fragment_min_max_sum_null_count(
       uint64_t num, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**

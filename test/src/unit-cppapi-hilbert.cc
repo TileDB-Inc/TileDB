@@ -542,8 +542,21 @@ TEST_CASE(
   buff_a = {2, 3, 4, 1};
   buff_d1 = {1, 1, 5, 4};
   buff_d2 = {3, 1, 4, 2};
-  CHECK_NOTHROW(query_w.submit());
-  query_w.finalize();
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    CHECK_NOTHROW(query_w.submit());
+    query_w.finalize();
+  } else {
+    submit_and_finalize_serialized_query(ctx, query_w);
+  }
   array_w.close();
 
   // Remove array

@@ -91,8 +91,9 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
     , buffers_full_(false)
-    , deletes_consolidation_(false) {
-  read_state_.done_adding_result_tiles_ = false;
+    , deletes_consolidation_no_purge_(
+          buffers_.count(constants::delete_timestamps) != 0)
+    , bitsort_attribute_(array_schema_.has_bitsort_filter()) {
   disable_cache_ = true;
 }
 
@@ -163,7 +164,7 @@ void SparseIndexReaderBase::init(bool skip_checks_serialization) {
 bool SparseIndexReaderBase::has_post_deduplication_conditions(
     FragmentMetadata& frag_meta) {
   return frag_meta.has_delete_meta() || !condition_.empty() ||
-         (!delete_conditions_.empty() && !deletes_consolidation_);
+         (!delete_conditions_.empty() && !deletes_consolidation_no_purge_);
 }
 
 uint64_t SparseIndexReaderBase::cells_copied(
@@ -183,11 +184,11 @@ uint64_t SparseIndexReaderBase::cells_copied(
 template <class BitmapType>
 tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size(
-    bool include_coords, unsigned dim_num, unsigned f, uint64_t t) {
+    unsigned dim_num, unsigned f, uint64_t t) {
   uint64_t tiles_size = 0;
 
   // Add the coordinate tiles size.
-  if (include_coords) {
+  if (include_coords_) {
     for (unsigned d = 0; d < dim_num; d++) {
       tiles_size += fragment_metadata_[f]->tile_size(dim_names_[d], t);
 
@@ -210,6 +211,15 @@ SparseIndexReaderBase::get_coord_tiles_size(
         fragment_metadata_[f]->cell_num(t) * constants::timestamp_size;
   }
 
+  // Compute bitsort attribute tile size.
+  if (bitsort_attribute_.has_value()) {
+    // Calculate memory consumption for this tile.
+    auto&& [st, tile_size] =
+        get_attribute_tile_size(bitsort_attribute_.value(), f, t);
+    RETURN_NOT_OK_TUPLE(st, nullopt);
+    tiles_size += *tile_size;
+  }
+
   // Compute query condition tile sizes.
   uint64_t tiles_size_qc = 0;
   if (!qc_loaded_attr_names_.empty()) {
@@ -224,7 +234,7 @@ SparseIndexReaderBase::get_coord_tiles_size(
   return {Status::Ok(), std::make_pair(tiles_size, tiles_size_qc)};
 }
 
-Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
+Status SparseIndexReaderBase::load_initial_data() {
   if (initial_data_loaded_) {
     return Status::Ok();
   }
@@ -251,14 +261,14 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
   // Make a list of dim/attr that will be loaded for query condition.
   if (!condition_.empty()) {
     for (auto& name : condition_.field_names()) {
-      if (!array_schema_.is_dim(name) || !include_coords) {
+      if (!array_schema_.is_dim(name) || !include_coords_) {
         qc_loaded_attr_names_set_.insert(name);
       }
     }
   }
   for (auto delete_condition : delete_conditions_) {
     for (auto& name : delete_condition.field_names()) {
-      if (!array_schema_.is_dim(name) || !include_coords) {
+      if (!array_schema_.is_dim(name) || !include_coords_) {
         qc_loaded_attr_names_set_.insert(name);
       }
     }
@@ -372,6 +382,11 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
   // Load delete timestamps, always.
   attr_tile_offsets_to_load.emplace_back(constants::delete_timestamps);
 
+  // Load delete condition marker hashes for delete consolidation.
+  if (deletes_consolidation_no_purge_) {
+    attr_tile_offsets_to_load.emplace_back(constants::delete_condition_index);
+  }
+
   // Load tile offsets and var sizes for attributes.
   RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(subarray_, var_size_to_load));
   RETURN_CANCEL_OR_ERROR(
@@ -383,10 +398,10 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
 }
 
 Status SparseIndexReaderBase::read_and_unfilter_coords(
-    bool include_coords, const std::vector<ResultTile*>& result_tiles) {
+    const std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("read_and_unfilter_coords");
 
-  if (subarray_.is_set() || include_coords) {
+  if (include_coords_) {
     // Read and unfilter zipped coordinate tiles. Note that
     // this will ignore fragments with a version >= 5.
     std::vector<std::string> zipped_coords_names = {constants::coords};
@@ -404,11 +419,19 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
 
   // Compute attributes to load.
   std::vector<std::string> attr_to_load;
-  attr_to_load.reserve(1 + use_timestamps_ + qc_loaded_attr_names_.size());
+  attr_to_load.reserve(
+      1 + deletes_consolidation_no_purge_ + use_timestamps_ +
+      qc_loaded_attr_names_.size() + bitsort_attribute_.has_value());
+  if (bitsort_attribute_.has_value()) {
+    attr_to_load.emplace_back(bitsort_attribute_.value());
+  }
   if (use_timestamps_) {
     attr_to_load.emplace_back(constants::timestamps);
   }
   attr_to_load.emplace_back(constants::delete_timestamps);
+  if (deletes_consolidation_no_purge_) {
+    attr_to_load.emplace_back(constants::delete_condition_index);
+  }
   std::copy(
       qc_loaded_attr_names_.begin(),
       qc_loaded_attr_names_.end(),
@@ -435,8 +458,8 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
   const auto dim_num = array_schema_.dim_num();
   const auto cell_order = array_schema_.cell_order();
 
-  // No subarray set, return.
-  if (!subarray_.is_set()) {
+  // No subarray set or empty result tiles, return.
+  if (!subarray_.is_set() || result_tiles.empty()) {
     return Status::Ok();
   }
 
@@ -612,22 +635,29 @@ Status SparseIndexReaderBase::apply_query_condition(
 
           // Make sure we have a condition bitmap if needed.
           if (has_post_deduplication_conditions(*frag_meta) ||
-              deletes_consolidation_) {
+              deletes_consolidation_no_purge_) {
             rt->ensure_bitmap_for_query_condition();
           }
 
           // If the fragment has delete meta, process the delete timestamps.
-          if (frag_meta->has_delete_meta() && !deletes_consolidation_) {
+          if (frag_meta->has_delete_meta() &&
+              !deletes_consolidation_no_purge_) {
             // Remove cells deleted cells using the open timestamp.
             RETURN_NOT_OK(delete_timestamps_condition_.apply_sparse<BitmapType>(
-                *(frag_meta->array_schema().get()), *rt, rt->bitmap_with_qc()));
-            rt->count_cells();
+                *(frag_meta->array_schema().get()),
+                *rt,
+                rt->post_dedup_bitmap()));
+            if (array_schema_.allows_dups()) {
+              rt->count_cells();
+            }
           }
 
           // Compute the result of the query condition for this tile
           if (!condition_.empty()) {
             RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
-                *(frag_meta->array_schema().get()), *rt, rt->bitmap_with_qc()));
+                *(frag_meta->array_schema().get()),
+                *rt,
+                rt->post_dedup_bitmap()));
             if (array_schema_.allows_dups()) {
               rt->count_cells();
             }
@@ -638,7 +668,7 @@ Status SparseIndexReaderBase::apply_query_condition(
             // Allocate delete condition idx vector if required. This vector
             // is used to store which delete condition deleted a particular
             // cell.
-            if (deletes_consolidation_) {
+            if (deletes_consolidation_no_purge_) {
               rt->allocate_per_cell_delete_condition_vector();
             }
 
@@ -659,16 +689,16 @@ Status SparseIndexReaderBase::apply_query_condition(
                         delete_conditions_[i].apply_sparse<BitmapType>(
                             *(frag_meta->array_schema().get()),
                             *rt,
-                            rt->bitmap_with_qc()));
+                            rt->post_dedup_bitmap()));
                   } else {
                     RETURN_NOT_OK(timestamped_delete_conditions_[i]
                                       .apply_sparse<BitmapType>(
                                           *(frag_meta->array_schema().get()),
                                           *rt,
-                                          rt->bitmap_with_qc()));
+                                          rt->post_dedup_bitmap()));
                   }
 
-                  if (deletes_consolidation_) {
+                  if (deletes_consolidation_no_purge_) {
                     // This is a post processing step during deletes
                     // consolidation to set the delete condition pointer to
                     // the current delete condition if the cells was cleared
@@ -833,10 +863,10 @@ void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
 // Explicit template instantiations
 template tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size<uint64_t>(
-    bool, unsigned, unsigned, uint64_t);
+    unsigned, unsigned, uint64_t);
 template tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseIndexReaderBase::get_coord_tiles_size<uint8_t>(
-    bool, unsigned, unsigned, uint64_t);
+    unsigned, unsigned, uint64_t);
 template Status SparseIndexReaderBase::apply_query_condition<
     UnorderedWithDupsResultTile<uint64_t>,
     uint64_t>(std::vector<ResultTile*>&);

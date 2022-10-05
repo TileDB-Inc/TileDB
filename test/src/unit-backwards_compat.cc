@@ -1267,8 +1267,22 @@ TEST_CASE(
   query_write.set_data_buffer("d1", d1_write);
   query_write.set_data_buffer("d2", d2_write);
 
-  query_write.submit();
-  query_write.finalize();
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    query_write.submit();
+    query_write.finalize();
+  } else {
+    submit_and_finalize_serialized_query(ctx, query_write);
+  }
+
   array_write.close();
 
   FragmentInfo fragment_info(ctx, array_name);

@@ -37,8 +37,10 @@
     TILEDB_QUERY_TYPE_ENUM(WRITE) = 1,
     /** Delete query */
     TILEDB_QUERY_TYPE_ENUM(DELETE) = 2,
+    /** Update query */
+    TILEDB_QUERY_TYPE_ENUM(UPDATE) = 3,
     /** Exclusive Modification query */
-    TILEDB_QUERY_TYPE_ENUM(MODIFY_EXCLUSIVE) = 3,
+    TILEDB_QUERY_TYPE_ENUM(MODIFY_EXCLUSIVE) = 4,
 #endif
 // clang-format on
 

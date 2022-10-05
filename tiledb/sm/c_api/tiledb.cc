@@ -2976,6 +2976,22 @@ int32_t tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_submit_and_finalize(
+    tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  // Trivial case
+  if (query == nullptr)
+    return TILEDB_OK;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, query->query_->submit_and_finalize()))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 void tiledb_query_free(tiledb_query_t** query) {
   if (query != nullptr && *query != nullptr) {
     delete (*query)->query_;
@@ -3416,6 +3432,30 @@ int32_t tiledb_query_get_relevant_fragment_num(
   *relevant_fragment_num =
       query->query_->subarray()->relevant_fragments()->size();
 
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_add_update_value(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size) noexcept {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, query) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Add update value.
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          query->query_->add_update_value(
+              field_name, update_value, update_value_size))) {
+    return TILEDB_ERR;
+  }
+
+  // Success
   return TILEDB_OK;
 }
 
@@ -4878,33 +4918,11 @@ int32_t tiledb_array_evolve(
               0)))
     return TILEDB_ERR;
 
-  // For easy reference
-  auto storage_manager = ctx->storage_manager();
-  auto vfs = storage_manager->vfs();
-  auto tp = storage_manager->compute_tp();
-
-  // Load URIs from the array directory
-  tiledb::sm::ArrayDirectory array_dir;
-  try {
-    array_dir = tiledb::sm::ArrayDirectory(
-        vfs,
-        tp,
-        uri,
-        0,
-        UINT64_MAX,
-        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-  } catch (const std::logic_error& le) {
-    auto st = Status_ArrayDirectoryError(le.what());
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
   // Evolve schema
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->storage_manager()->array_evolve_schema(
-              array_dir, array_schema_evolution->array_schema_evolution_, key)))
+              uri, array_schema_evolution->array_schema_evolution_, key)))
     return TILEDB_ERR;
 
   // Success
@@ -4926,33 +4944,11 @@ int32_t tiledb_array_upgrade_version(
     return TILEDB_ERR;
   }
 
-  // For easy reference
-  auto storage_manager = ctx->storage_manager();
-  auto vfs = storage_manager->vfs();
-  auto tp = storage_manager->compute_tp();
-
-  // Load URIs from the array directory
-  tiledb::sm::ArrayDirectory array_dir;
-  try {
-    array_dir = tiledb::sm::ArrayDirectory(
-        vfs,
-        tp,
-        uri,
-        0,
-        UINT64_MAX,
-        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-  } catch (const std::logic_error& le) {
-    auto st = Status_ArrayDirectoryError(le.what());
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
   // Upgrade version
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->storage_manager()->array_upgrade_version(
-              array_dir,
+              uri,
               (config == nullptr) ? &ctx->storage_manager()->config() :
                                     config->config_)))
     return TILEDB_ERR;
@@ -8467,6 +8463,11 @@ int32_t tiledb_query_finalize(
   return api_entry<detail::tiledb_query_finalize>(ctx, query);
 }
 
+int32_t tiledb_query_submit_and_finalize(
+    tiledb_ctx_t* ctx, tiledb_query_t* query) noexcept {
+  return api_entry<detail::tiledb_query_submit_and_finalize>(ctx, query);
+}
+
 void tiledb_query_free(tiledb_query_t** query) noexcept {
   return api_entry_void<detail::tiledb_query_free>(query);
 }
@@ -8947,6 +8948,20 @@ int32_t tiledb_query_condition_combine(
     tiledb_query_condition_t** const combined_cond) noexcept {
   return api_entry<detail::tiledb_query_condition_combine>(
       ctx, left_cond, right_cond, combination_op, combined_cond);
+}
+
+/* ****************************** */
+/*         UPDATE CONDITION       */
+/* ****************************** */
+
+int32_t tiledb_query_add_update_value(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size) noexcept {
+  return api_entry<detail::tiledb_query_add_update_value>(
+      ctx, query, field_name, update_value, update_value_size);
 }
 
 /* ****************************** */

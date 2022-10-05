@@ -142,7 +142,7 @@ inline Status filter_type_enum(
   return Status::Ok();
 }
 
-/** Throws error if the input Filtertype enum is not between 0 and 15. */
+/** Throws error if the input Filtertype enum is not between 0 and 16. */
 inline void ensure_filtertype_is_valid(uint8_t type) {
   if (type > 17) {
     throw std::runtime_error(
@@ -150,7 +150,7 @@ inline void ensure_filtertype_is_valid(uint8_t type) {
   }
 }
 
-/** Throws error if the input Filtertype's enum is not between 0 and 14. */
+/** Throws error if the input Filtertype's enum is not between 0 and 16. */
 inline void ensure_filtertype_is_valid(FilterType type) {
   ensure_filtertype_is_valid(::stdx::to_underlying(type));
 }

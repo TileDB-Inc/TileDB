@@ -52,6 +52,7 @@ class Array;
 class Buffer;
 class BufferList;
 class Query;
+class GlobalOrderWriter;
 
 enum class SerializationType : uint8_t;
 
@@ -193,6 +194,16 @@ Status query_est_result_size_deserialize(
     const Buffer& serialized_buffer);
 
 #ifdef TILEDB_SERIALIZATION
+Status global_write_state_to_capnp(
+    const Query& query,
+    GlobalOrderWriter& globalwriter,
+    capnp::GlobalWriteState::Builder* state_builder);
+
+Status global_write_state_from_capnp(
+    const Query& query,
+    const capnp::GlobalWriteState::Reader& state_reader,
+    GlobalOrderWriter* globalwriter);
+
 Status condition_from_capnp(
     const capnp::Condition::Reader& condition_reader,
     QueryCondition* const condition);

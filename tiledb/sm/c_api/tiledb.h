@@ -522,7 +522,7 @@ typedef struct tiledb_vfs_fh_t tiledb_vfs_fh_t;
 /** A fragment info object. */
 typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
-/** An group object. */
+/** A group object. */
 typedef struct tiledb_group_t tiledb_group_t;
 
 /* ********************************* */
@@ -902,6 +902,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *
  * **Parameters**
  *
+ * - `sm.consolidation.allow_updates_experimental` <br>
+ *    **Experimental** <br>
+ *    Allow update queries. Experimental for testing purposes, do not use.<br>
+ *    **Default**: false
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
  *    fragment writes. Note that ties during deduplication are broken
@@ -1018,6 +1022,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The offsets format (`bytes` or `elements`) to be used for
  *    var-sized attributes.<br>
  *    **Default**: bytes
+ * - `sm.query.dense.qc_coords_mode` <br>
+ *    **Experimental** <br>
+ *    Reads only the coordinates of the dense query that matched the query
+ *    condition.<br>
+ *    **Default**: false
  * - `sm.query.dense.reader` <br>
  *    Which reader to use for dense queries. "refactored" or "legacy".<br>
  *    **Default**: refactored
@@ -4248,6 +4257,36 @@ TILEDB_EXPORT int32_t tiledb_query_set_condition(
  */
 TILEDB_EXPORT int32_t
 tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) TILEDB_NOEXCEPT;
+
+/**
+ * Submits and finalizes the query.
+ * This is applicable only to global layout writes. The function will
+ * error out if called on a query with non global layout.
+ * Its purpose is to submit the final chunk (partial or full tile) in
+ * a global order write query.
+ * `tiledb_query_submit_and_finalize` drops the tile alignment restriction
+ * of the buffers (i.e. compared to the regular global layout submit call)
+ * given the last chunk of a global order write is most frequently smaller
+ * in size than a tile.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_t* query;
+ * while (stop_condition) {
+ *   tiledb_query_set_buffer(ctx, query, attr, tile_aligned_buffer, &size);
+ *   tiledb_query_submit(ctx, query);
+ * }
+ * tiledb_query_set_buffer(ctx, query, attr, final_chunk, &size);
+ * tiledb_query_submit_and_finalize(ctx, query);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query object to be flushed.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_submit_and_finalize(
+    tiledb_ctx_t* ctx, tiledb_query_t* query) TILEDB_NOEXCEPT;
 
 /**
  * Frees a TileDB query object.

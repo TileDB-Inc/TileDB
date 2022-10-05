@@ -233,6 +233,30 @@ TILEDB_EXPORT int32_t tiledb_array_upgrade_version(
 /* ********************************* */
 
 /**
+ * Adds a query update values to be applied on an update.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value = 5;
+ * tiledb_query_add_update_value(
+ *   ctx, query, "longitude", &value, sizeof(value), &update_value);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param field_name The attribute name.
+ * @param update_value The value to set.
+ * @param update_value_size The byte size of `update_value`.
+ */
+TILEDB_EXPORT int32_t tiledb_query_add_update_value(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size) TILEDB_NOEXCEPT;
+
+/**
  * Adds point ranges to the given dimension index of the subarray
  * Effectively `add_range(x_i, x_i)` for `count` points in the
  * target array, but set in bulk to amortize expensive steps.

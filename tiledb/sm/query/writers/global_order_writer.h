@@ -37,6 +37,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
 #include "tiledb/sm/query/writers/writer_base.h"
 
@@ -110,6 +111,7 @@ class GlobalOrderWriter : public WriterBase {
       bool disable_checks_consolidation,
       std::vector<std::string>& processed_conditions,
       Query::CoordsInfo& coords_info_,
+      bool remote_query,
       optional<std::string> fragment_name = nullopt,
       bool skip_checks_serialization = false);
 
@@ -131,6 +133,29 @@ class GlobalOrderWriter : public WriterBase {
 
   /** Resets the writer object, rendering it incomplete. */
   void reset();
+
+  /** Alloc a new global_write_state and its associated fragment metadata */
+  Status alloc_global_write_state();
+
+  /** Initializes the global write state. */
+  Status init_global_write_state();
+
+  /** Returns a bare pointer to the global state. */
+  GlobalWriteState* get_global_state();
+
+  /**
+   * Used in serialization to share the multipart upload state
+   * among cloud executors
+   */
+  std::pair<Status, std::unordered_map<std::string, VFS::MultiPartUploadState>>
+  multipart_upload_state();
+
+  /**
+   * Used in serialization of global order writes to set the multipart upload
+   * state in the internal maps of cloud backends
+   */
+  Status set_multipart_upload_state(
+      const URI& uri, const VFS::MultiPartUploadState& state);
 
  private:
   /* ********************************* */
@@ -217,9 +242,6 @@ class GlobalOrderWriter : public WriterBase {
    * @return Status
    */
   Status global_write_handle_last_tile();
-
-  /** Initializes the global write state. */
-  Status init_global_write_state();
 
   /**
    * This deletes the global write state and deletes the potentially

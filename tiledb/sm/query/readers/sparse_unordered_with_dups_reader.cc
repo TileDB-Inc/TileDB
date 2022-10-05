@@ -87,6 +87,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           subarray,
           layout,
           condition) {
+  include_coords_ = subarray_.is_set() || bitsort_attribute_.has_value();
   SparseIndexReaderBase::init(skip_checks_serialization);
 
   // Initialize memory budget variables.
@@ -182,7 +183,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
 
   // Load initial data, if not loaded already. Coords are only included if the
   // subarray is set.
-  RETURN_NOT_OK(load_initial_data(subarray_.is_set()));
+  RETURN_NOT_OK(load_initial_data());
 
   // Attributes names to process.
   std::vector<std::string> names;
@@ -221,8 +222,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
 
     if (!result_tiles_created.empty()) {
       // Read and unfilter coords.
-      RETURN_NOT_OK(
-          read_and_unfilter_coords(subarray_.is_set(), result_tiles_created));
+      RETURN_NOT_OK(read_and_unfilter_coords(result_tiles_created));
 
       // Compute the tile bitmaps.
       RETURN_NOT_OK(compute_tile_bitmaps<BitmapType>(result_tiles_created));
@@ -295,8 +295,7 @@ tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
 SparseUnorderedWithDupsReader<BitmapType>::get_coord_tiles_size(
     unsigned dim_num, unsigned f, uint64_t t) {
   auto&& [st, tiles_sizes] =
-      SparseIndexReaderBase::get_coord_tiles_size<BitmapType>(
-          subarray_.is_set(), dim_num, f, t);
+      SparseIndexReaderBase::get_coord_tiles_size<BitmapType>(dim_num, f, t);
   RETURN_NOT_OK_TUPLE(st, nullopt);
 
   auto frag_meta = fragment_metadata_[f];
@@ -519,46 +518,85 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
     uint64_t src_max_pos,
     OffType* buffer,
     uint8_t* val_buffer,
-    void** var_data) {
+    const void** var_data) {
   // Get source buffers.
-  const auto tile_tuple = rt->tile_tuple(name);
-  const auto& t = tile_tuple->fixed_tile();
-  const auto& t_var = tile_tuple->var_tile();
-  const auto src_buff = t.data_as<uint64_t>();
-  const auto src_var_buff = t_var.data_as<char>();
   const auto cell_num =
       fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+  const auto tile_tuple = rt->tile_tuple(name);
 
-  // Process all cells. Last cell might be taken out for vectorization.
-  uint64_t end = (src_max_pos == cell_num) ? src_max_pos - 1 : src_max_pos;
-  for (uint64_t c = src_min_pos; c < end; c++) {
-    for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
-      *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
-      buffer++;
-      *var_data = src_var_buff + src_buff[c];
-      var_data++;
-    }
+  // If the tile_tuple is null, this is a field added in schema
+  // evolution. Use the fill value.
+  const uint64_t* src_buff = nullptr;
+  const uint8_t* src_var_buff = nullptr;
+  bool use_fill_value = false;
+  OffType fill_value_size = 0;
+  uint64_t t_var_size = 0;
+  if (tile_tuple == nullptr) {
+    use_fill_value = true;
+    fill_value_size = static_cast<OffType>(
+        array_schema_.attribute(name)->fill_value().size());
+    src_var_buff = array_schema_.attribute(name)->fill_value().data();
+  } else {
+    const auto& t = tile_tuple->fixed_tile();
+    const auto& t_var = tile_tuple->var_tile();
+    t_var_size = t_var.size();
+    src_buff = t.template data_as<uint64_t>();
+    src_var_buff = t_var.template data_as<uint8_t>();
   }
 
-  // Do last cell.
-  if (src_max_pos == cell_num) {
-    for (uint64_t i = 0; i < rt->bitmap()[src_max_pos - 1]; i++) {
-      *buffer =
-          (OffType)(t_var.size() - src_buff[src_max_pos - 1]) / offset_div;
-      buffer++;
-      *var_data = src_var_buff + src_buff[src_max_pos - 1];
-      var_data++;
+  // Process all cells. Last cell might be taken out for vectorization.
+  uint64_t end = (src_max_pos == cell_num && !use_fill_value) ?
+                     src_max_pos - 1 :
+                     src_max_pos;
+  if (!use_fill_value) {
+    for (uint64_t c = src_min_pos; c < end; c++) {
+      for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
+        *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
+        buffer++;
+        *var_data = src_var_buff + src_buff[c];
+        var_data++;
+      }
+    }
+
+    // Do last cell.
+    if (src_max_pos == cell_num) {
+      for (uint64_t i = 0; i < rt->bitmap()[src_max_pos - 1]; i++) {
+        *buffer =
+            (OffType)(t_var_size - src_buff[src_max_pos - 1]) / offset_div;
+        buffer++;
+        *var_data = src_var_buff + src_buff[src_max_pos - 1];
+        var_data++;
+      }
+    }
+  } else {
+    for (uint64_t c = src_min_pos; c < end; c++) {
+      for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
+        *buffer = fill_value_size / offset_div;
+        buffer++;
+        *var_data = src_var_buff;
+        var_data++;
+      }
     }
   }
 
   // Copy nullable values.
   if (nullable) {
-    const auto& t_val = tile_tuple->validity_tile();
-    const auto src_val_buff = t_val.data_as<uint8_t>();
-    for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-      for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
-        *val_buffer = src_val_buff[c];
-        val_buffer++;
+    if (!use_fill_value) {
+      const auto& t_val = tile_tuple->validity_tile();
+      const auto src_val_buff = t_val.data_as<uint8_t>();
+      for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+        for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
+          *val_buffer = src_val_buff[c];
+          val_buffer++;
+        }
+      }
+    } else {
+      uint8_t v = array_schema_.attribute(name)->fill_value_validity();
+      for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+        for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
+          *val_buffer = v;
+          val_buffer++;
+        }
       }
     }
   }
@@ -578,43 +616,82 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
     const uint64_t src_max_pos,
     OffType* buffer,
     uint8_t* val_buffer,
-    void** var_data) {
+    const void** var_data) {
   // Get source buffers.
-  const auto tile_tuple = rt->tile_tuple(name);
-  const auto& t = tile_tuple->fixed_tile();
-  const auto& t_var = tile_tuple->var_tile();
-  const auto src_buff = t.data_as<uint64_t>();
-  const auto src_var_buff = t_var.data_as<char>();
   const auto cell_num =
       fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+  const auto tile_tuple = rt->tile_tuple(name);
 
-  if (!rt->copy_full_tile()) {
+  // If the tile_tuple is null, this is a field added in schema
+  // evolution. Use the fill value.
+  const uint64_t* src_buff = nullptr;
+  const uint8_t* src_var_buff = nullptr;
+  bool use_fill_value = false;
+  OffType fill_value_size = 0;
+  uint64_t t_var_size = 0;
+  if (tile_tuple == nullptr) {
+    use_fill_value = true;
+    fill_value_size = static_cast<OffType>(
+        array_schema_.attribute(name)->fill_value().size());
+    src_var_buff = array_schema_.attribute(name)->fill_value().data();
+  } else {
+    const auto& t = tile_tuple->fixed_tile();
+    const auto& t_var = tile_tuple->var_tile();
+    t_var_size = t_var.size();
+    src_buff = t.template data_as<uint64_t>();
+    src_var_buff = t_var.template data_as<uint8_t>();
+  }
+
+  if (!rt->copy_full_tile() || use_fill_value) {
     // Process all cells. Last cell might be taken out for vectorization.
-    uint64_t end = (src_max_pos == cell_num) ? src_max_pos - 1 : src_max_pos;
-    for (uint64_t c = src_min_pos; c < end; c++) {
-      if (rt->bitmap()[c]) {
-        *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
-        buffer++;
-        *var_data = src_var_buff + src_buff[c];
-        var_data++;
+    uint64_t end = (src_max_pos == cell_num && !use_fill_value) ?
+                       src_max_pos - 1 :
+                       src_max_pos;
+    if (!use_fill_value) {
+      for (uint64_t c = src_min_pos; c < end; c++) {
+        if (rt->bitmap()[c]) {
+          *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
+          buffer++;
+          *var_data = src_var_buff + src_buff[c];
+          var_data++;
+        }
       }
-    }
 
-    // Do last cell.
-    if (src_max_pos == cell_num && rt->bitmap()[src_max_pos - 1]) {
-      *buffer =
-          (OffType)(t_var.size() - src_buff[src_max_pos - 1]) / offset_div;
-      *var_data = src_var_buff + src_buff[src_max_pos - 1];
+      // Do last cell.
+      if (src_max_pos == cell_num && rt->bitmap()[src_max_pos - 1]) {
+        *buffer =
+            (OffType)(t_var_size - src_buff[src_max_pos - 1]) / offset_div;
+        *var_data = src_var_buff + src_buff[src_max_pos - 1];
+      }
+    } else {
+      for (uint64_t c = src_min_pos; c < end; c++) {
+        if (!rt->has_bmp() || rt->bitmap()[c]) {
+          *buffer = fill_value_size / offset_div;
+          buffer++;
+          *var_data = src_var_buff;
+          var_data++;
+        }
+      }
     }
 
     // Copy nullable values.
     if (nullable) {
-      const auto& t_val = tile_tuple->validity_tile();
-      const auto src_val_buff = t_val.data_as<uint8_t>();
-      for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-        if (rt->bitmap()[c]) {
-          *val_buffer = src_val_buff[c];
-          val_buffer++;
+      if (!use_fill_value) {
+        const auto& t_val = tile_tuple->validity_tile();
+        const auto src_val_buff = t_val.data_as<uint8_t>();
+        for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+          if (rt->bitmap()[c]) {
+            *val_buffer = src_val_buff[c];
+            val_buffer++;
+          }
+        }
+      } else {
+        uint8_t v = array_schema_.attribute(name)->fill_value_validity();
+        for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+          if (rt->bitmap()[c]) {
+            *val_buffer = v;
+            val_buffer++;
+          }
         }
       }
     }
@@ -630,8 +707,7 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
 
     // Copy last cell.
     if (src_max_pos == cell_num) {
-      *buffer =
-          (OffType)(t_var.size() - src_buff[src_max_pos - 1]) / offset_div;
+      *buffer = (OffType)(t_var_size - src_buff[src_max_pos - 1]) / offset_div;
       *var_data = src_var_buff + src_buff[src_max_pos - 1];
     }
 
@@ -659,7 +735,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_offsets_tiles(
     const std::vector<ResultTile*>& result_tiles,
     const std::vector<uint64_t>& cell_offsets,
     QueryBuffer& query_buffer,
-    std::vector<void*>& var_data) {
+    std::vector<const void*>& var_data) {
   auto timer_se = stats_->start_timer("copy_offsets_tiles");
 
   // For easy reference.
@@ -770,7 +846,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_var_data_tiles(
     const std::vector<ResultTile*>& result_tiles,
     const std::vector<uint64_t>& cell_offsets,
     QueryBuffer& query_buffer,
-    std::vector<void*>& var_data) {
+    std::vector<const void*>& var_data) {
   auto timer_se = stats_->start_timer("copy_var_tiles");
 
   // For easy reference.
@@ -837,15 +913,34 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
   const auto tile_tuple = stores_zipped_coords ?
                               rt->tile_tuple(constants::coords) :
                               rt->tile_tuple(name);
-  const auto& t = tile_tuple->fixed_tile();
-  const auto src_buff = t.data_as<uint8_t>();
+
+  // If the tile_tuple is null, this is a field added in schema
+  // evolution. Use the fill value.
+  const uint8_t* src_buff = nullptr;
+  bool use_fill_value = false;
+  if (tile_tuple == nullptr) {
+    use_fill_value = true;
+    src_buff = array_schema_.attribute(name)->fill_value().data();
+  } else {
+    const auto& t = tile_tuple->fixed_tile();
+    src_buff = t.template data_as<uint8_t>();
+  }
 
   // Copy values.
   if (!stores_zipped_coords) {
-    for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-      for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
-        memcpy(buffer, src_buff + c * cell_size, cell_size);
-        buffer += cell_size;
+    if (!use_fill_value) {
+      for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+        for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
+          memcpy(buffer, src_buff + c * cell_size, cell_size);
+          buffer += cell_size;
+        }
+      }
+    } else {
+      for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+        for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
+          memcpy(buffer, src_buff, cell_size);
+          buffer += cell_size;
+        }
       }
     }
   } else {  // Copy for zipped coords.
@@ -861,12 +956,22 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_fixed_data_tile(
 
   // Copy nullable values.
   if (nullable) {
-    const auto& t_val = tile_tuple->validity_tile();
-    const auto src_val_buff = t_val.data_as<uint8_t>();
-    for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-      for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
-        *val_buffer = src_val_buff[c];
-        val_buffer++;
+    if (!use_fill_value) {
+      const auto& t_val = tile_tuple->validity_tile();
+      const auto src_val_buff = t_val.data_as<uint8_t>();
+      for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+        for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
+          *val_buffer = src_val_buff[c];
+          val_buffer++;
+        }
+      }
+    } else {
+      uint8_t v = array_schema_.attribute(name)->fill_value_validity();
+      for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+        for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
+          *val_buffer = v;
+          val_buffer++;
+        }
       }
     }
   }
@@ -892,34 +997,53 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
   const auto tile_tuple = stores_zipped_coords ?
                               rt->tile_tuple(constants::coords) :
                               rt->tile_tuple(name);
-  const auto& t = tile_tuple->fixed_tile();
-  const auto src_buff = t.data_as<uint8_t>();
 
-  if (!rt->copy_full_tile()) {
+  // If the tile_tuple is null, this is a field added in schema
+  // evolution. Use the fill value.
+  const uint8_t* src_buff = nullptr;
+  bool use_fill_value = false;
+  if (tile_tuple == nullptr) {
+    use_fill_value = true;
+    src_buff = array_schema_.attribute(name)->fill_value().data();
+  } else {
+    const auto& t = tile_tuple->fixed_tile();
+    src_buff = t.template data_as<uint8_t>();
+  }
+
+  if (!rt->copy_full_tile() || use_fill_value) {
     // Copy values.
     if (!stores_zipped_coords) {
-      // Go through bitmap, when there is a hole in cell contiguity, do a
-      // memcpy.
-      uint64_t length = 0;
-      uint64_t start = src_min_pos;
-      for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-        if (rt->bitmap()[c]) {
-          length++;
-        } else {
-          if (length != 0) {
-            memcpy(buffer, src_buff + start * cell_size, length * cell_size);
-            buffer += length * cell_size;
-            length = 0;
+      if (!use_fill_value) {
+        // Go through bitmap, when there is a hole in cell contiguity, do a
+        // memcpy.
+        uint64_t length = 0;
+        uint64_t start = src_min_pos;
+        for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+          if (rt->bitmap()[c]) {
+            length++;
+          } else {
+            if (length != 0) {
+              memcpy(buffer, src_buff + start * cell_size, length * cell_size);
+              buffer += length * cell_size;
+              length = 0;
+            }
+
+            start = c + 1;
           }
-
-          start = c + 1;
         }
-      }
 
-      // Do last memcpy.
-      if (length != 0) {
-        memcpy(buffer, src_buff + start * cell_size, length * cell_size);
-        buffer += length * cell_size;
+        // Do last memcpy.
+        if (length != 0) {
+          memcpy(buffer, src_buff + start * cell_size, length * cell_size);
+          buffer += length * cell_size;
+        }
+      } else {
+        for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+          if (!rt->has_bmp() || rt->bitmap()[c]) {
+            memcpy(buffer, src_buff, cell_size);
+            buffer += cell_size;
+          }
+        }
       }
     } else {  // Copy for zipped coords.
       const auto dim_num = rt->domain()->dim_num();
@@ -934,30 +1058,40 @@ Status SparseUnorderedWithDupsReader<uint8_t>::copy_fixed_data_tile(
 
     // Copy nullable values.
     if (nullable) {
-      // Go through bitmap, when there is a hole in cell contiguity, do a
-      // memcpy.
-      const auto& t_val = tile_tuple->validity_tile();
-      uint64_t length = 0;
-      uint64_t start = src_min_pos;
-      const auto src_val_buff = t_val.data_as<uint8_t>();
-      for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
-        if (rt->bitmap()[c]) {
-          length++;
-        } else {
-          if (length != 0) {
-            memcpy(val_buffer, src_val_buff + start, length);
-            val_buffer += length;
-            length = 0;
+      if (!use_fill_value) {
+        // Go through bitmap, when there is a hole in cell contiguity, do a
+        // memcpy.
+        const auto& t_val = tile_tuple->validity_tile();
+        uint64_t length = 0;
+        uint64_t start = src_min_pos;
+        const auto src_val_buff = t_val.data_as<uint8_t>();
+        for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+          if (rt->bitmap()[c]) {
+            length++;
+          } else {
+            if (length != 0) {
+              memcpy(val_buffer, src_val_buff + start, length);
+              val_buffer += length;
+              length = 0;
+            }
+
+            start = c + 1;
           }
-
-          start = c + 1;
         }
-      }
 
-      // Do last memcpy.
-      if (length != 0) {
-        memcpy(val_buffer, src_val_buff + start, length);
-        val_buffer += length;
+        // Do last memcpy.
+        if (length != 0) {
+          memcpy(val_buffer, src_val_buff + start, length);
+          val_buffer += length;
+        }
+      } else {
+        uint8_t v = array_schema_.attribute(name)->fill_value_validity();
+        for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
+          for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
+            *val_buffer = v;
+            val_buffer++;
+          }
+        }
       }
     }
   } else {  // Copy full tile.
@@ -1270,8 +1404,14 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
 
         // For dimensions, when we have a subarray, tiles are already all
         // loaded in memory.
-        if ((subarray_.is_set() && array_schema_.is_dim(name)) ||
+        if ((include_coords_ && array_schema_.is_dim(name)) ||
             qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps) {
+          return Status::Ok();
+        }
+
+        // Bitsort attribute is already loaded in memory.
+        if (bitsort_attribute_.has_value() &&
+            name == bitsort_attribute_.value()) {
           return Status::Ok();
         }
 
@@ -1280,6 +1420,12 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
         for (; idx < max_rt_idx; idx++) {
           // Size of the tile in memory.
           auto rt = (UnorderedWithDupsResultTile<BitmapType>*)result_tiles[idx];
+
+          // Skip for fields added in schema evolution.
+          if (!fragment_metadata_[rt->frag_idx()]->array_schema()->is_field(
+                  name)) {
+            continue;
+          }
 
           auto&& [st, tile_size] =
               get_attribute_tile_size(name, rt->frag_idx(), rt->tile_idx());
@@ -1453,7 +1599,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
       }
 
       // Pointers to var size data, generated when offsets are processed.
-      std::vector<void*> var_data;
+      std::vector<const void*> var_data;
       if (var_sized) {
         var_data.resize(cell_offsets[result_tiles.size()] - cell_offsets[0]);
       }
@@ -1505,8 +1651,12 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         for (const auto& idx : *index_to_copy) {
           const auto& name_to_clear = names[idx];
           const auto is_dim_to_clear = array_schema_.is_dim(name_to_clear);
-          if (qc_loaded_attr_names_set_.count(name_to_clear) == 0 &&
-              (!subarray_.is_set() || !is_dim_to_clear)) {
+          const auto is_bitsort_attr =
+              bitsort_attribute_.has_value() &&
+              bitsort_attribute_.value() == name_to_clear;
+          if (!is_bitsort_attr &&
+              qc_loaded_attr_names_set_.count(name_to_clear) == 0 &&
+              (!include_coords_ || !is_dim_to_clear)) {
             clear_tiles(name_to_clear, result_tiles, new_result_tiles_size);
           }
         }
@@ -1542,8 +1692,10 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         *query_buffer.validity_vector_.buffer_size() = total_cells;
 
       // Clear tiles from memory.
-      if (qc_loaded_attr_names_set_.count(name) == 0 &&
-          (!subarray_.is_set() || !is_dim) && name != constants::timestamps &&
+      const auto is_bitsort_attr =
+          bitsort_attribute_.has_value() && bitsort_attribute_.value() == name;
+      if (!is_bitsort_attr && qc_loaded_attr_names_set_.count(name) == 0 &&
+          (!include_coords_ || !is_dim) && name != constants::timestamps &&
           name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);
       }

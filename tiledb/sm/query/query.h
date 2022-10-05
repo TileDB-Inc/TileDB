@@ -49,6 +49,7 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/subarray/subarray.h"
 
@@ -360,6 +361,9 @@ class Query {
   /** Returns the array schema. */
   const ArraySchema& array_schema() const;
 
+  /** Returns the array schema as a shared_ptr */
+  const std::shared_ptr<const ArraySchema> array_schema_shared() const;
+
   /** Returns the names of the buffers set by the user for the query. */
   std::vector<std::string> buffer_names() const;
 
@@ -382,6 +386,12 @@ class Query {
    * layout writes. It has no effect for any other query type.
    */
   Status finalize();
+
+  /**
+   * Submits and finalizes a query, flushing all internal state. Applicable
+   * only to global layout writes, returns an error otherwise.
+   */
+  Status submit_and_finalize();
 
   /**
    * This is a deprecated API.
@@ -552,7 +562,13 @@ class Query {
    * Returns the condition for filtering results in a read query.
    * @return QueryCondition
    */
-  const QueryCondition* condition() const;
+  const QueryCondition& condition() const;
+
+  /**
+   * Returns the update values for an update query.
+   * @return UpdateValues
+   */
+  const std::vector<UpdateValue>& update_values() const;
 
   /** Processes a query. */
   Status process();
@@ -829,6 +845,19 @@ class Query {
   Status set_condition(const QueryCondition& condition);
 
   /**
+   * Adds an update value for an update query.
+   *
+   * @param field_name The attribute name.
+   * @param update_value The value to set.
+   * @param update_value_size The byte size of `update_value`.
+   * @return Status
+   */
+  Status add_update_value(
+      const char* field_name,
+      const void* update_value,
+      uint64_t update_value_size);
+
+  /**
    * Set query status, needed for json deserialization
    * @param status
    * @return Status
@@ -909,6 +938,15 @@ class Query {
   /** Returns if all ranges for this query are non overlapping. */
   tuple<Status, optional<bool>> non_overlapping_ranges();
 
+  /** Returns true if this is a dense query */
+  bool is_dense() const;
+
+  /** Returns a reference to the internal WrittenFragmentInfo list */
+  std::vector<WrittenFragmentInfo>& get_written_fragment_info();
+
+  /** Called from serialization to mark the query as remote */
+  void set_remote_query();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -934,6 +972,9 @@ class Query {
   /** The data input to the callback function. */
   void* callback_data_;
 
+  /** The query type. */
+  QueryType type_;
+
   /** The layout of the cells in the result of the subarray. */
   Layout layout_;
 
@@ -945,9 +986,6 @@ class Query {
 
   /** The storage manager. */
   StorageManager* storage_manager_;
-
-  /** The query type. */
-  QueryType type_;
 
   /** The query strategy. */
   tdb_unique_ptr<IQueryStrategy> strategy_;
@@ -976,6 +1014,12 @@ class Query {
 
   /** The query condition. */
   QueryCondition condition_;
+
+  /** The update values. */
+  std::vector<UpdateValue> update_values_;
+
+  /** Set of attributes that have an update value. */
+  std::set<std::string> attributes_with_update_value_;
 
   /** The fragment metadata that this query will focus on. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
@@ -1036,6 +1080,9 @@ class Query {
    * timestamp and a generated UUID.
    */
   optional<std::string> fragment_name_;
+
+  /** It tracks if this is a remote query */
+  bool remote_query_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -1110,6 +1157,26 @@ class Query {
       void** buffer_val,
       uint64_t** buffer_val_size,
       const ValidityVector** validity_vector) const;
+
+  /**
+   * Check if input buffers are tile aligned. This function should be called
+   * only for remote global order writes and it should enforce tile alignment
+   * for both dense and sparse arrays.
+   */
+  Status check_tile_alignment() const;
+
+  /**
+   * Check if input buffers are bigger than 5MB. S3 multipart upload
+   * requires each part be bigger than 5MB, except the last part.
+   * This function should be called only for remote global order writes.
+   */
+  Status check_buffer_multipart_size() const;
+
+  /**
+   * Reset coord buffer markers at end of a global write submit.
+   * This will allow for the user to properly set the next write batch.
+   */
+  void reset_coords_markers();
 };
 
 }  // namespace sm
