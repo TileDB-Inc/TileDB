@@ -283,17 +283,13 @@ DimensionLabel* ArrayDimensionLabelQueries::open_dimension_label(
     const QueryType& query_type,
     const bool open_indexed_array,
     const bool open_labelled_array) {
-  // Get the URI fo the dimension label from the dimension label reference.
-  const auto& uri = dim_label_ref.uri();
-  auto dim_label_uri = dim_label_ref.uri_is_relative() ?
-                           array->array_uri().join_path(uri.to_string()) :
-                           uri;
-
   // Create the dimension label.
-  auto label_iter = dimension_labels_.insert(
-      {dim_label_ref.name(),
-       tdb_unique_ptr<DimensionLabel>(
-           tdb_new(DimensionLabel, dim_label_uri, storage_manager_))});
+  auto label_iter =
+      dimension_labels_.insert({dim_label_ref.name(),
+                                tdb_unique_ptr<DimensionLabel>(tdb_new(
+                                    DimensionLabel,
+                                    dim_label_ref.uri(array->array_uri()),
+                                    storage_manager_))});
   DimensionLabel* dim_label = (label_iter.first->second).get();
 
   // Currently there is no way to open just one of these arrays. This is a
