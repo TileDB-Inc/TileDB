@@ -142,7 +142,7 @@ class Deserializer {
    */
   Deserializer(const void* data, storage_size_t size)
       : ptr_(static_cast<const uint8_t*>(data))
-      , size_(size) 
+      , size_(size)
       , orig_ptr_(ptr_)
       , orig_size_(size) {
   }
