@@ -307,8 +307,10 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
   }
 
   /**
-   * @brief Constructor for dim tiles. TODO: document
+   * Constructor
    *
+   * @param domain the domain of an open array
+   * @param buffers a buffer vector for each dimension of the domain
    */
   DomainBuffersView(const Domain& domain, std::vector<QueryBuffer>& qb_vector)
       : qb_(domain.dim_num())
