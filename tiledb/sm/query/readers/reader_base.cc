@@ -167,7 +167,8 @@ void ReaderBase::compute_result_space_tiles(
 bool ReaderBase::process_partial_timestamps(FragmentMetadata& frag_meta) const {
   return frag_meta.has_timestamps() &&
          frag_meta.partial_time_overlap(
-             array_->timestamp_start(), array_->timestamp_end_opened_at());
+             array_->timestamp_start(),
+             array_->opened_timestamp_end_or_current());
 }
 
 void ReaderBase::clear_tiles(
@@ -313,7 +314,8 @@ bool ReaderBase::partial_consolidated_fragment_overlap() const {
     auto& fragment = fragment_metadata_[frag_idx];
     if (fragment->has_timestamps() &&
         fragment->partial_time_overlap(
-            array_->timestamp_start(), array_->timestamp_end_opened_at())) {
+            array_->timestamp_start(),
+            array_->opened_timestamp_end_or_current())) {
       return true;
     }
   }
@@ -331,7 +333,7 @@ Status ReaderBase::add_partial_overlap_condition() {
       sizeof(uint64_t),
       QueryConditionOp::GE));
   QueryCondition timestamps_qc_end;
-  auto ts_end = array_->timestamp_end_opened_at();
+  auto ts_end = array_->opened_timestamp_end_or_current();
   RETURN_NOT_OK(timestamps_qc_end.init(
       std::string(constants::timestamps),
       &ts_end,
@@ -357,7 +359,7 @@ Status ReaderBase::add_delete_timestamps_condition() {
 
   // The delete timestamp condition uses the open timestamp to filter cells.
   if (add_delete_timestamps_condition) {
-    uint64_t open_ts = array_->timestamp_end_opened_at();
+    uint64_t open_ts = array_->opened_timestamp_end_or_current();
     RETURN_NOT_OK(delete_timestamps_condition_.init(
         std::string(constants::delete_timestamps),
         &open_ts,
@@ -373,7 +375,7 @@ Status ReaderBase::add_delete_timestamps_condition() {
 bool ReaderBase::include_timestamps(const unsigned f) const {
   auto frag_has_ts = fragment_metadata_[f]->has_timestamps();
   auto partial_overlap = fragment_metadata_[f]->partial_time_overlap(
-      array_->timestamp_start(), array_->timestamp_end_opened_at());
+      array_->timestamp_start(), array_->opened_timestamp_end_or_current());
   auto dups = array_schema_.allows_dups();
   auto timestamps_needed = timestamps_needed_for_deletes_[f];
 

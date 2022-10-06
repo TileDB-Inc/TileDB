@@ -27,7 +27,6 @@
  */
 
 #include "tiledb/storage_format/uri/generate_uri.h"
-#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/uuid.h"
 
 #include <sstream>
@@ -49,8 +48,6 @@ std::string generate_uri(
 
 std::string generate_fragment_name(
     uint64_t timestamp, uint32_t format_version) {
-  timestamp =
-      (timestamp != 0) ? timestamp : sm::utils::time::timestamp_now_ms();
   return generate_uri(timestamp, timestamp, format_version);
 }
 

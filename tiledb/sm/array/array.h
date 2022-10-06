@@ -290,8 +290,20 @@ class Array {
   /** Returns the end timestamp. */
   uint64_t timestamp_end() const;
 
-  /** Returns the timestamp at which the array was opened. */
-  uint64_t timestamp_end_opened_at() const;
+  /**
+   * Returns the timestamp at which the array was opened.
+   *
+   * * If the array was not yet opened, this will return ``UINT64_MAX``.
+   * * If the array was opened in a mode other than READ and it is set to
+   *   use the current time, it will return return ``0``.
+   */
+  uint64_t opened_timestamp_end_or_sentinel() const;
+
+  /**
+   * Returns the timestamp at which the array was opened or the current
+   * time if the array opened timestamp was not set.
+   */
+  uint64_t opened_timestamp_end_or_current() const;
 
   /** Directly set the timestamp start value. */
   Status set_timestamp_start(uint64_t timestamp_start);
@@ -502,20 +514,22 @@ class Array {
 
   /**
    * The ending timestamp between to open `open_array_` at.
+   *
    * In TileDB, timestamps are in ms elapsed since
-   * 1970-01-01 00:00:00 +0000 (UTC). A value of UINT64_T
-   * will be interpretted as the current timestamp.
+   * 1970-01-01 00:00:00 +0000 (UTC). A value of UINT64_T will be interpretted
+   * as the current timestamp. This value is only used for setting
+   * ``opened_timestamp_end_``.
    */
   uint64_t timestamp_end_;
 
   /**
-   * The ending timestamp that the array was last opened
-   * at. This is useful when `timestamp_end_` has been
-   * set to UINT64_T. In this scenario, this variable will
-   * store the timestamp for the time that the array was
-   * opened.
+   * The ending timestamp that the array was last opened at.
+   *
+   * In TileDB, timestamps are in ms elapsed since
+   * 1970-01-01 00:00:00 +0000 (UTC). If the array is set to use the current
+   * time and it was not opened in READ mode, then this will be set to 0.
    */
-  uint64_t timestamp_end_opened_at_;
+  uint64_t opened_timestamp_end_;
 
   /** TileDB storage manager. */
   StorageManager* storage_manager_;

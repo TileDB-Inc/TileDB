@@ -201,7 +201,7 @@ WriterBase::WriterBase(
   check_var_attr_offsets();
 
   // Get the timestamp the array was opened and the array write version.
-  uint64_t timestamp = array_->timestamp_end_opened_at();
+  uint64_t timestamp = array_->opened_timestamp_end_or_current();
   auto write_version = array_->array_schema_latest().write_version();
 
   // Set the fragment URI using either the provided fragment name or a generated
@@ -643,7 +643,7 @@ Status WriterBase::create_fragment(
   // Get write version, timestamp array was opened,  and a reference to the
   // array directory.
   auto write_version = array_->array_schema_latest().write_version();
-  uint64_t timestamp = array_->timestamp_end_opened_at();
+  uint64_t timestamp = array_->opened_timestamp_end_or_current();
   auto& array_dir = array_->array_directory();
 
   // Create the directories.

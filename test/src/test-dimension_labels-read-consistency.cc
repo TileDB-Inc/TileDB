@@ -188,9 +188,10 @@ class ExampleFixedDimensionLabel : public TemporaryDirectoryFixture {
         QueryType::WRITE, EncryptionType::NO_ENCRYPTION, nullptr, 0);
 
     // Generate single fragment name for queries.
-    auto timestamp = dimension_label.indexed_array()->timestamp_end_opened_at();
+    auto timestamp =
+        dimension_label.indexed_array()->opened_timestamp_end_or_sentinel();
     auto timestamp2 =
-        dimension_label.labelled_array()->timestamp_end_opened_at();
+        dimension_label.labelled_array()->opened_timestamp_end_or_sentinel();
     REQUIRE(timestamp == timestamp2);
     auto fragment_name = tiledb::storage_format::generate_fragment_name(
         timestamp, constants::format_version);

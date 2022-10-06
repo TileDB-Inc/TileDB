@@ -124,7 +124,7 @@ Status Deletes::dowork() {
   RETURN_NOT_OK(condition_.check(array_schema_));
 
   // Get a new fragment name for the delete.
-  uint64_t timestamp = array_->timestamp_end_opened_at();
+  uint64_t timestamp = array_->opened_timestamp_end_or_current();
   auto write_version = array_->array_schema_latest().write_version();
   auto new_fragment_str =
       storage_format::generate_fragment_name(timestamp, write_version) +

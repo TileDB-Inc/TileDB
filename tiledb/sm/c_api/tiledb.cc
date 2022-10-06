@@ -4012,7 +4012,7 @@ int32_t tiledb_array_get_open_timestamp_end(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *timestamp_end = array->array_->timestamp_end_opened_at();
+  *timestamp_end = array->array_->opened_timestamp_end_or_sentinel();
 
   return TILEDB_OK;
 }
@@ -4163,7 +4163,7 @@ int32_t tiledb_array_get_timestamp(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *timestamp = array->array_->timestamp_end_opened_at();
+  *timestamp = array->array_->opened_timestamp_end_or_sentinel();
 
   return TILEDB_OK;
 }

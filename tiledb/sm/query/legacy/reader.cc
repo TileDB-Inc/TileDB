@@ -1832,7 +1832,7 @@ Status Reader::get_all_result_coords(
   // Apply partial overlap condition, if required.
   const auto frag_meta = fragment_metadata_[tile->frag_idx()];
   const bool partial_overlap = frag_meta->partial_time_overlap(
-      array_->timestamp_start(), array_->timestamp_end_opened_at());
+      array_->timestamp_start(), array_->opened_timestamp_end_or_current());
   if (fragment_metadata_[tile->frag_idx()]->has_timestamps() &&
       partial_overlap) {
     std::vector<uint8_t> result_bitmap(coords_num, 1);
