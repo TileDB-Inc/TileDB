@@ -812,13 +812,9 @@ uint64_t FragmentMetadata::last_tile_cell_num() const {
 
 Status FragmentMetadata::load(
     const EncryptionKey& encryption_key,
-    // Buffer* f_buff,
     Tile* f_tile,
     uint64_t offset,
     std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
-
-  //if (f_tile)
-  //  __debugbreak();
 
   auto meta_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
@@ -2596,7 +2592,6 @@ Status FragmentMetadata::load_tile_null_count_values(
 void FragmentMetadata::load_bounding_coords(Deserializer& deserializer) {
   // Get number of bounding coordinates
   uint64_t bounding_coords_num = 0;
-  //RETURN_NOT_OK(buff->read(&bounding_coords_num, sizeof(uint64_t)));
   bounding_coords_num = deserializer.read<uint64_t>();
 
   // Get bounding coordinates
@@ -2607,19 +2602,14 @@ void FragmentMetadata::load_bounding_coords(Deserializer& deserializer) {
   bounding_coords_.resize(bounding_coords_num);
   for (uint64_t i = 0; i < bounding_coords_num; ++i) {
     bounding_coords_[i].resize(bounding_coords_size);
-    //RETURN_NOT_OK(buff->read(&bounding_coords_[i][0], bounding_coords_size));
     deserializer.read(&bounding_coords_[i][0], bounding_coords_size);
   }
-
-  //return Status::Ok();
 }
 
 void FragmentMetadata::load_file_sizes(Deserializer& deserializer) {
   if (version_ < 5)
-    //return load_file_sizes_v1_v4(buff);
     load_file_sizes_v1_v4(deserializer);
   else
-    //return load_file_sizes_v5_or_higher(buff);
     load_file_sizes_v5_or_higher(deserializer);
 }
 
@@ -2630,16 +2620,8 @@ void FragmentMetadata::load_file_sizes(Deserializer& deserializer) {
 void FragmentMetadata::load_file_sizes_v1_v4(Deserializer& deserializer) {
   auto attribute_num = array_schema_->attribute_num();
   file_sizes_.resize(attribute_num + 1);
-  //Status st =
-  //    buff->read(&file_sizes_[0], (attribute_num + 1) * sizeof(uint64_t));
   deserializer.read(&file_sizes_[0], (attribute_num + 1) * sizeof(uint64_t));
 
-  //if (!st.ok()) {
-  //  return LOG_STATUS(Status_FragmentMetadataError(
-  //      "Cannot load fragment metadata; Reading tile offsets failed"));
-  //}
-
-  //return Status::Ok();
 }
 
 // ===== FORMAT =====
@@ -2650,15 +2632,8 @@ void FragmentMetadata::load_file_sizes_v5_or_higher(
     Deserializer& deserializer) {
   auto num = num_dims_and_attrs();
   file_sizes_.resize(num);
-  //Status st = buff->read(&file_sizes_[0], num * sizeof(uint64_t));
   deserializer.read(&file_sizes_[0], num * sizeof(uint64_t));
 
-  //if (!st.ok()) {
-  //  return LOG_STATUS(Status_FragmentMetadataError(
-  //      "Cannot load fragment metadata; Reading tile offsets failed"));
-  //}
-
-  //return Status::Ok();
 }
 
 void FragmentMetadata::load_file_var_sizes(Deserializer& deserializer) {
@@ -2675,15 +2650,8 @@ void FragmentMetadata::load_file_var_sizes(Deserializer& deserializer) {
 void FragmentMetadata::load_file_var_sizes_v1_v4(Deserializer& deserializer) {
   auto attribute_num = array_schema_->attribute_num();
   file_var_sizes_.resize(attribute_num);
-  //Status st = buff->read(&file_var_sizes_[0], attribute_num * sizeof(uint64_t));
   deserializer.read(&file_var_sizes_[0], attribute_num * sizeof(uint64_t));
 
-  //if (!st.ok()) {
-  //  return LOG_STATUS(Status_FragmentMetadataError(
-  //      "Cannot load fragment metadata; Reading tile offsets failed"));
-  //}
-
-  //return Status::Ok();
 }
 
 // ===== FORMAT =====
@@ -2694,83 +2662,47 @@ void FragmentMetadata::load_file_var_sizes_v5_or_higher(
     Deserializer& deserializer) {
   auto num = num_dims_and_attrs();
   file_var_sizes_.resize(num);
-  //Status st = buff->read(&file_var_sizes_[0], num * sizeof(uint64_t));
   deserializer.read(&file_var_sizes_[0], num * sizeof(uint64_t));
-
-  //if (!st.ok()) {
-  //  return LOG_STATUS(Status_FragmentMetadataError(
-  //      "Cannot load fragment metadata; Reading tile offsets failed"));
-  //}
-
-  //return Status::Ok();
 }
 
 void FragmentMetadata::load_file_validity_sizes(Deserializer& deserializer) {
   if (version_ <= 6)
     return;
-  //Status::Ok();
 
   auto num = num_dims_and_attrs();
   file_validity_sizes_.resize(num);
-  //Status st = buff->read(&file_validity_sizes_[0], num * sizeof(uint64_t));
   deserializer.read(&file_validity_sizes_[0], num * sizeof(uint64_t));
-
-  //if (!st.ok()) {
-  //  return LOG_STATUS(Status_FragmentMetadataError(
-  //      "Cannot load fragment metadata; Reading tile offsets failed"));
-  //}
-
-  //return Status::Ok();
 }
 
 // ===== FORMAT =====
 // last_tile_cell_num (uint64_t)
 void FragmentMetadata::load_last_tile_cell_num(Deserializer& deserializer) {
   // Get last tile cell number
-  //Status st = buff->read(&last_tile_cell_num_, sizeof(uint64_t));
   last_tile_cell_num_ = deserializer.read<uint64_t>();
-  //if (!st.ok()) {
-  //  return LOG_STATUS(Status_FragmentMetadataError(
-  //      "Cannot load fragment metadata; Reading last tile cell number "
-  //      "failed"));
-  //}
-  //return Status::Ok();
 }
 
 // ===== FORMAT =====
 // has_timestamps (char)
 void FragmentMetadata::load_has_timestamps(Deserializer& deserializer) {
   // Get includes timestamps
-  //Status st = buff->read(&has_timestamps_, sizeof(char));
   has_timestamps_ = deserializer.read<char>();
-  //if (!st.ok()) {
-  //  return LOG_STATUS(Status_FragmentMetadataError(
-  //      "Cannot load fragment metadata; Reading include timestamps failed"));
-  //}
 
   // Rebuild index map
   if (has_timestamps_) {
     build_idx_map();
   }
-  //return Status::Ok();
 }
 
 // ===== FORMAT =====
 // has_delete_meta (char)
 void FragmentMetadata::load_has_delete_meta(Deserializer& deserializer) {
   // Get includes timestamps
-  //Status st = buff->read(&has_delete_meta_, sizeof(char));
   has_delete_meta_ = deserializer.read<char>();
-  //if (!st.ok()) {
-  //  return LOG_STATUS(Status_FragmentMetadataError(
-  //      "Cannot load fragment metadata; Reading include delete meta failed"));
-  //}
 
   // Rebuild index map
   if (has_delete_meta_) {
     build_idx_map();
   }
-  //return Status::Ok();
 }
 
 // ===== FORMAT =====
@@ -2781,7 +2713,6 @@ void FragmentMetadata::load_has_delete_meta(Deserializer& deserializer) {
 void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
   // Get number of MBRs
   uint64_t mbr_num = 0;
-  //RETURN_NOT_OK(buff->read(&mbr_num, sizeof(uint64_t)));
   mbr_num = deserializer.read<uint64_t>();
 
   // Set leaf level
@@ -2792,8 +2723,6 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
     NDRange mbr(dim_num);
     for (unsigned d = 0; d < dim_num; ++d) {
       uint64_t r_size{2 * domain.dimension_ptr(d)->coord_size()};
-      //mbr[d].set_range(buff->cur_data(), r_size);
-      //buff->advance_offset(r_size);
       mbr[d].set_range(deserializer.get_ptr<char>(r_size), r_size);
     }
     rtree_.set_leaf(m, mbr);
@@ -2805,16 +2734,12 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
   }
 
   sparse_tile_num_ = mbr_num;
-
-  //return Status::Ok();
 }
 
 void FragmentMetadata::load_non_empty_domain(Deserializer& deserializer) {
   if (version_ <= 2)
-    //return load_non_empty_domain_v1_v2(buff);
     load_non_empty_domain_v1_v2(deserializer);
   else if (version_ == 3 || version_ == 4)
-    //return load_non_empty_domain_v3_v4(buff);
     load_non_empty_domain_v3_v4(deserializer);
   else
     load_non_empty_domain_v5_or_higher(deserializer);
@@ -2827,14 +2752,12 @@ void FragmentMetadata::load_non_empty_domain_v1_v2(
     Deserializer& deserializer) {
   // Get domain size
   uint64_t domain_size = 0;
-  //RETURN_NOT_OK(buff->read(&domain_size, sizeof(uint64_t)));
   domain_size = deserializer.read<uint64_t>();
 
   // Get non-empty domain
   if (domain_size != 0) {
     auto dim_num = array_schema_->dim_num();
     std::vector<uint8_t> temp(domain_size);
-    //RETURN_NOT_OK(buff->read(&temp[0], domain_size));
     deserializer.read(&temp[0], domain_size);
     non_empty_domain_.resize(dim_num);
     uint64_t offset = 0;
@@ -2851,8 +2774,6 @@ void FragmentMetadata::load_non_empty_domain_v1_v2(
     domain_ = non_empty_domain_;
     array_schema_->domain().expand_to_tiles(&domain_);
   }
-
-//  return Status::Ok();
 }
 
 // ===== FORMAT =====
@@ -2861,7 +2782,6 @@ void FragmentMetadata::load_non_empty_domain_v1_v2(
 void FragmentMetadata::load_non_empty_domain_v3_v4(Deserializer& deserializer) {
   // Get null non-empty domain
   bool null_non_empty_domain = false;
-  //RETURN_NOT_OK(buff->read(&null_non_empty_domain, sizeof(char)));
   null_non_empty_domain = deserializer.read<char>();
 
   // Get non-empty domain
@@ -2871,7 +2791,6 @@ void FragmentMetadata::load_non_empty_domain_v3_v4(Deserializer& deserializer) {
     auto coord_size_0{array_schema_->domain().dimension_ptr(0)->coord_size()};
     auto domain_size = 2 * dim_num * coord_size_0;
     std::vector<uint8_t> temp(domain_size);
-    //RETURN_NOT_OK(buff->read(&temp[0], domain_size));
     deserializer.read(&temp[0], domain_size);
     non_empty_domain_.resize(dim_num);
     uint64_t offset = 0;
@@ -2888,8 +2807,6 @@ void FragmentMetadata::load_non_empty_domain_v3_v4(Deserializer& deserializer) {
     domain_ = non_empty_domain_;
     array_schema_->domain().expand_to_tiles(&domain_);
   }
-
-  //return Status::Ok();
 }
 
 // ===== FORMAT =====
@@ -2900,7 +2817,6 @@ void FragmentMetadata::load_non_empty_domain_v5_or_higher(
     Deserializer& deserializer) {
   // Get null non-empty domain
   char null_non_empty_domain = 0;
-  //RETURN_NOT_OK(buff->read(&null_non_empty_domain, sizeof(char)));
   null_non_empty_domain = deserializer.read<char>();
 
   auto& domain{array_schema_->domain()};
@@ -2911,15 +2827,9 @@ void FragmentMetadata::load_non_empty_domain_v5_or_higher(
       auto dim{domain.dimension_ptr(d)};
       if (!dim->var_size()) {  // Fixed-sized
         auto r_size = 2 * dim->coord_size();
-        //non_empty_domain_[d].set_range(buff->cur_data(), r_size);
-        //buff->advance_offset(r_size);
         non_empty_domain_[d].set_range(deserializer.get_ptr<char>(r_size), r_size);
       } else {  // Var-sized
         uint64_t r_size, start_size;
-        //RETURN_NOT_OK(buff->read(&r_size, sizeof(uint64_t)));
-        //RETURN_NOT_OK(buff->read(&start_size, sizeof(uint64_t)));
-        //non_empty_domain_[d].set_range(buff->cur_data(), r_size, start_size);
-        //buff->advance_offset(r_size);
         r_size = deserializer.read<uint64_t>();
         start_size = deserializer.read<uint64_t>();
         non_empty_domain_[d].set_range(deserializer.get_ptr<char>(r_size), r_size, start_size);
@@ -2932,8 +2842,6 @@ void FragmentMetadata::load_non_empty_domain_v5_or_higher(
     domain_ = non_empty_domain_;
     array_schema_->domain().expand_to_tiles(&domain_);
   }
-
-  //return Status::Ok();
 }
 
 // Applicable only to versions 1 and 2
@@ -2949,13 +2857,7 @@ void FragmentMetadata::load_tile_offsets(Deserializer& deserializer) {
   // For all attributes, get the tile offsets
   for (unsigned int i = 0; i < attribute_num + 1; ++i) {
     // Get number of tile offsets
-    //st = buff->read(&tile_offsets_num, sizeof(uint64_t));
     tile_offsets_num = deserializer.read<uint64_t>();
-    //if (!st.ok()) {
-    //  return LOG_STATUS(Status_FragmentMetadataError(
-    //      "Cannot load fragment metadata; Reading number of tile offsets "
-    //      "failed"));
-    //}
 
     if (tile_offsets_num == 0)
       continue;
@@ -2972,18 +2874,11 @@ void FragmentMetadata::load_tile_offsets(Deserializer& deserializer) {
 
     // Get tile offsets
     tile_offsets_[i].resize(tile_offsets_num);
-    //st = buff->read(&tile_offsets_[i][0], size);
     deserializer.read(&tile_offsets_[i][0], size);
-    //if (!st.ok()) {
-    //  return LOG_STATUS(Status_FragmentMetadataError(
-    //      "Cannot load fragment metadata; Reading tile offsets failed"));
-    //}
   }
 
   loaded_metadata_.tile_offsets_.resize(
       array_schema_->attribute_num() + 1, true);
-  
-  //return Status::Ok();
 }
 
 void FragmentMetadata::load_tile_offsets(
@@ -3030,14 +2925,7 @@ void FragmentMetadata::load_tile_var_offsets(Deserializer& deserializer) {
   // For all attributes, get the variable tile offsets
   for (unsigned int i = 0; i < attribute_num; ++i) {
     // Get number of tile offsets
-    //st = buff->read(&tile_var_offsets_num, sizeof(uint64_t));
     tile_var_offsets_num = deserializer.read<uint64_t>();
-    //if (!st.ok()) {
-    //  LOG_STATUS(st);
-    //  return LOG_STATUS(Status_FragmentMetadataError(
-    //      "Cannot load fragment metadata; Reading number of variable tile "
-    //      "offsets failed"));
-    //}
 
     if (tile_var_offsets_num == 0)
       continue;
@@ -3054,20 +2942,11 @@ void FragmentMetadata::load_tile_var_offsets(Deserializer& deserializer) {
 
     // Get variable tile offsets
     tile_var_offsets_[i].resize(tile_var_offsets_num);
-    //st = buff->read(&tile_var_offsets_[i][0], size);
     deserializer.read(&tile_var_offsets_[i][0], size);
-    //if (!st.ok()) {
-    //  LOG_STATUS(st);
-    //  return LOG_STATUS(Status_FragmentMetadataError(
-    //      "Cannot load fragment metadata; Reading variable tile offsets "
-    //      "failed"));
-    //}
   }
 
   loaded_metadata_.tile_var_offsets_.resize(
       array_schema_->attribute_num(), true);
-
-  //return Status::Ok();
 }
 
 void FragmentMetadata::load_tile_var_offsets(
@@ -3112,13 +2991,7 @@ void FragmentMetadata::load_tile_var_sizes(Deserializer& deserializer) {
   // For all attributes, get the variable tile sizes
   for (unsigned int i = 0; i < attribute_num; ++i) {
     // Get number of tile sizes
-    //st = buff->read(&tile_var_sizes_num, sizeof(uint64_t));
     tile_var_sizes_num = deserializer.read<uint64_t>();
-    //if (!st.ok()) {
-    //  return LOG_STATUS(Status_FragmentMetadataError(
-    //      "Cannot load fragment metadata; Reading number of variable tile "
-    //      "sizes failed"));
-    //}
 
     if (tile_var_sizes_num == 0)
       continue;
@@ -3135,18 +3008,10 @@ void FragmentMetadata::load_tile_var_sizes(Deserializer& deserializer) {
 
     // Get variable tile sizes
     tile_var_sizes_[i].resize(tile_var_sizes_num);
-    //st = buff->read(&tile_var_sizes_[i][0], size);
     deserializer.read(&tile_var_sizes_[i][0], size);
-    //if (!st.ok()) {
-    //  return LOG_STATUS(Status_FragmentMetadataError(
-    //      "Cannot load fragment metadata; Reading variable tile sizes "
-    //      "failed"));
-    //}
   }
 
   loaded_metadata_.tile_var_sizes_.resize(array_schema_->attribute_num(), true);
-
-  //return Status::Ok();
 }
 
 void FragmentMetadata::load_tile_var_sizes(
@@ -3434,20 +3299,14 @@ void FragmentMetadata::load_processed_conditions(Deserializer& deserializer) {
 }
 
 void FragmentMetadata::load_version(Deserializer& deserializer) {
-  //RETURN_NOT_OK(buff->read(&version_, sizeof(uint32_t)));
   version_ = deserializer.read<uint32_t>();
-  //return Status::Ok();
 }
 
 void  FragmentMetadata::load_dense(Deserializer& deserializer) {
-  //RETURN_NOT_OK(buff->read(&dense_, sizeof(char)));
-  //return Status::Ok();
   dense_ = deserializer.read<char>();
 }
 
 void FragmentMetadata::load_sparse_tile_num(Deserializer& deserializer) {
-  // RETURN_NOT_OK(buff->read(&sparse_tile_num_, sizeof(uint64_t)));
-  // return Status::Ok();
   sparse_tile_num_ = deserializer.read<uint64_t>();
 }
 
@@ -3470,14 +3329,12 @@ void FragmentMetadata::load_generic_tile_offsets(Deserializer& deserializer) {
 void FragmentMetadata::load_generic_tile_offsets_v3_v4(
     Deserializer& deserializer) {
   // Load R-Tree offset
-  //RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
   gt_offsets_.rtree_ = deserializer.read<uint64_t>();
 
   // Load offsets for tile offsets
   unsigned int attribute_num = array_schema_->attribute_num();
   gt_offsets_.tile_offsets_.resize(attribute_num + 1);
   for (unsigned i = 0; i < attribute_num + 1; ++i) {
-    //RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
     //TBD: Can these items be turned into a single read (no for loop) or do they need to be the separate reads?
     //ala, deserializer.read(&gt_offsets_.tile_offsets_[0], (attribute_num+1)*sizeof(uint64_t));
     gt_offsets_.tile_offsets_[i] = deserializer.read<uint64_t>();
@@ -3486,8 +3343,6 @@ void FragmentMetadata::load_generic_tile_offsets_v3_v4(
   // Load offsets for tile var offsets
   gt_offsets_.tile_var_offsets_.resize(attribute_num);
   for (unsigned i = 0; i < attribute_num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_var_offsets_[i], sizeof(uint64_t)));
     // TBD: single read (no for loop)?
     gt_offsets_.tile_var_offsets_[i] = deserializer.read<uint64_t>();
   }
@@ -3495,34 +3350,26 @@ void FragmentMetadata::load_generic_tile_offsets_v3_v4(
   // Load offsets for tile var sizes
   gt_offsets_.tile_var_sizes_.resize(attribute_num);
   for (unsigned i = 0; i < attribute_num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_var_sizes_[i], sizeof(uint64_t)));
     //TBD: single-read, no for loop?
     gt_offsets_.tile_var_sizes_[i] = deserializer.read<uint64_t>();
   }
-
-  //return Status::Ok();
 }
 
 void FragmentMetadata::load_generic_tile_offsets_v5_v6(
     Deserializer& deserializer) {
   // Load R-Tree offset
-  //RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
   gt_offsets_.rtree_ = deserializer.read<uint64_t>();
 
   // Load offsets for tile offsets
   auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile var offsets
   gt_offsets_.tile_var_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_var_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_var_offsets_[i] = deserializer.read<uint64_t>();
 
   }
@@ -3530,291 +3377,216 @@ void FragmentMetadata::load_generic_tile_offsets_v5_v6(
   // Load offsets for tile var sizes
   gt_offsets_.tile_var_sizes_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_var_sizes_[i], sizeof(uint64_t)));
     gt_offsets_.tile_var_sizes_[i] = deserializer.read<uint64_t>();
   }
-
-//  return Status::Ok();
 }
 
 void FragmentMetadata::load_generic_tile_offsets_v7_v10(
     Deserializer& deserializer) {
   // Load R-Tree offset
-  //RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
   gt_offsets_.rtree_ = deserializer.read<uint64_t>();
 
   // Load offsets for tile offsets
   auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile var offsets
   gt_offsets_.tile_var_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_var_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_var_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile var sizes
   gt_offsets_.tile_var_sizes_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_var_sizes_[i], sizeof(uint64_t)));
     gt_offsets_.tile_var_sizes_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile validity offsets
   gt_offsets_.tile_validity_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_validity_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_validity_offsets_[i] = deserializer.read<uint64_t>();
   }
-
-//  return Status::Ok();
 }
 
 void FragmentMetadata::load_generic_tile_offsets_v11(
     Deserializer& deserializer) {
   // Load R-Tree offset
-  //RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
   gt_offsets_.rtree_ = deserializer.read<uint64_t>();
 
   // Load offsets for tile offsets
   auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile var offsets
   gt_offsets_.tile_var_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_var_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_var_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile var sizes
   gt_offsets_.tile_var_sizes_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_var_sizes_[i], sizeof(uint64_t)));
     gt_offsets_.tile_var_sizes_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile validity offsets
   gt_offsets_.tile_validity_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_validity_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_validity_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile min offsets
   gt_offsets_.tile_min_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_min_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_min_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile max offsets
   gt_offsets_.tile_max_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_max_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_max_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile sum offsets
   gt_offsets_.tile_sum_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_sum_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_sum_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile null count offsets
   gt_offsets_.tile_null_count_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_null_count_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_null_count_offsets_[i] = deserializer.read<uint64_t>();
   }
-
-  //return Status::Ok();
 }
 
 void FragmentMetadata::load_generic_tile_offsets_v12_v15(
     Deserializer& deserializer) {
   // Load R-Tree offset
-  //RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
   gt_offsets_.rtree_ = deserializer.read<uint64_t>();
 
   // Load offsets for tile offsets
   auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile var offsets
   gt_offsets_.tile_var_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_var_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_var_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile var sizes
   gt_offsets_.tile_var_sizes_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_var_sizes_[i], sizeof(uint64_t)));
     gt_offsets_.tile_var_sizes_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile validity offsets
   gt_offsets_.tile_validity_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_validity_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_validity_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile min offsets
   gt_offsets_.tile_min_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_min_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_min_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile max offsets
   gt_offsets_.tile_max_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_max_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_max_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile sum offsets
   gt_offsets_.tile_sum_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_sum_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_sum_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile null count offsets
   gt_offsets_.tile_null_count_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_null_count_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_null_count_offsets_[i] = deserializer.read<uint64_t>();
   }
 
-  //RETURN_NOT_OK(buff->read(
-  //    &gt_offsets_.fragment_min_max_sum_null_count_offset_, sizeof(uint64_t)));
   gt_offsets_.fragment_min_max_sum_null_count_offset_ =
       deserializer.read<uint64_t>();
-
-  //return Status::Ok();
 }
 
 void FragmentMetadata::load_generic_tile_offsets_v16_or_higher(
     Deserializer& deserializer) {
   // Load R-Tree offset
-  //RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
   gt_offsets_.rtree_ = deserializer.read<uint64_t>();
 
   // Load offsets for tile offsets
   auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile var offsets
   gt_offsets_.tile_var_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_var_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_var_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile var sizes
   gt_offsets_.tile_var_sizes_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_var_sizes_[i], sizeof(uint64_t)));
     gt_offsets_.tile_var_sizes_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile validity offsets
   gt_offsets_.tile_validity_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_validity_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_validity_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile min offsets
   gt_offsets_.tile_min_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_min_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_min_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile max offsets
   gt_offsets_.tile_max_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_max_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_max_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile sum offsets
   gt_offsets_.tile_sum_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_sum_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_sum_offsets_[i] = deserializer.read<uint64_t>();
   }
 
   // Load offsets for tile null count offsets
   gt_offsets_.tile_null_count_offsets_.resize(num);
   for (unsigned i = 0; i < num; ++i) {
-    //RETURN_NOT_OK(
-    //    buff->read(&gt_offsets_.tile_null_count_offsets_[i], sizeof(uint64_t)));
     gt_offsets_.tile_null_count_offsets_[i] = deserializer.read<uint64_t>();
   }
 
-  //RETURN_NOT_OK(buff->read(
-  //    &gt_offsets_.fragment_min_max_sum_null_count_offset_, sizeof(uint64_t)));
   gt_offsets_.fragment_min_max_sum_null_count_offset_ =
       deserializer.read<uint64_t>();
 
-  //RETURN_NOT_OK(
-  //    buff->read(&gt_offsets_.processed_conditions_offsets_, sizeof(uint64_t)));
   gt_offsets_.processed_conditions_offsets_ = deserializer.read<uint64_t>();
-
-  //return Status::Ok();
 }
 
 void FragmentMetadata::load_array_schema_name(Deserializer& deserializer) {
   uint64_t size = 0;
-  //RETURN_NOT_OK(buff->read(&size, sizeof(uint64_t)));
   size = deserializer.read<uint64_t>();
   if (size == 0) {
     throw StatusException(Status_FragmentMetadataError(
@@ -3822,10 +3594,7 @@ void FragmentMetadata::load_array_schema_name(Deserializer& deserializer) {
   }
   array_schema_name_.resize(size);
 
-  //RETURN_NOT_OK(buff->read(&array_schema_name_[0], size));
   deserializer.read(&array_schema_name_[0], size);
-
-//  return Status::Ok();
 }
 
 Status FragmentMetadata::load_v1_v2(
@@ -3857,7 +3626,6 @@ Status FragmentMetadata::load_v1_v2(
   }
 
   // Deserialize
-  //ConstBuffer cbuff(tile.data(), tile.size());
   Deserializer deserializer(tile.data(), tile.size());
   load_version(deserializer);
   load_non_empty_domain(deserializer);
@@ -3900,23 +3668,17 @@ Status FragmentMetadata::load_footer(
   if (f_tile == nullptr) {
     has_consolidated_footer_ = false;
     RETURN_NOT_OK(read_file_footer(&buff, &footer_offset_, &footer_size_));
-    //cbuff = make_shared<ConstBuffer>(HERE(), &buff);
     deserializer = make_shared<Deserializer>(HERE(), buff.data(), buff.alloced_size());
   } else {
     footer_size_ = 0;
     footer_offset_ = offset;
     has_consolidated_footer_ = true;
-    //cbuff = make_shared<ConstBuffer>(HERE(), f_buff);
     deserializer = make_shared<Deserializer>(HERE(), f_tile->data(), f_tile->size());
-    // cbuff->set_offset(offset);
-    //TBD: How to assure offset at correct place for deserializer ???
     deserializer->set_offset(offset);
   }
 
-  //RETURN_NOT_OK(load_version(cbuff.get()));
   load_version(*deserializer.get());
   if (version_ >= 10) {
-    //RETURN_NOT_OK(load_array_schema_name(cbuff.get()));
     load_array_schema_name(*deserializer.get());
     auto schema = array_schemas.find(array_schema_name_);
     if (schema != array_schemas.end()) {
@@ -3941,10 +3703,6 @@ Status FragmentMetadata::load_footer(
           "Consider reloading the array to check for new array schemas."));
     }
   }
-  //RETURN_NOT_OK(load_dense(cbuff.get()));
-  //RETURN_NOT_OK(load_non_empty_domain(cbuff.get()));
-  //RETURN_NOT_OK(load_sparse_tile_num(cbuff.get()));
-  //RETURN_NOT_OK(load_last_tile_cell_num(cbuff.get()));
   load_dense(*deserializer.get());
   load_non_empty_domain(*deserializer.get());
   load_sparse_tile_num(*deserializer.get());
@@ -4000,7 +3758,6 @@ Status FragmentMetadata::load_footer(
   // If the footer_size is not set lets calculate from how much of the buffer we
   // read
   if (footer_size_ == 0)
-    //footer_size_ = cbuff->offset() - offset;
     footer_size_ = deserializer->offset() - offset;
 
   return Status::Ok();
@@ -4055,6 +3812,7 @@ void FragmentMetadata::write_generic_tile_offsets(Serializer& serializer) const 
 
   // Write tile offsets
   for (unsigned i = 0; i < num; ++i) {
+    //TBD: one write possible, no for loop? here and below...
     serializer.write<uint64_t>(gt_offsets_.tile_offsets_[i]);
   }
 

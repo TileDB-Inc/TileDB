@@ -222,7 +222,6 @@ StorageManager::load_array_schemas_and_fragment_metadata(
   const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
 
   // Get the consolidated fragment metadatas
-  //std::vector<Buffer> f_buffs(meta_uris.size());
   std::vector<Tile> f_tiles(meta_uris.size());
   std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
       meta_uris.size());
@@ -237,7 +236,6 @@ StorageManager::load_array_schemas_and_fragment_metadata(
   RETURN_NOT_OK_TUPLE(status, nullopt, nullopt, nullopt);
 
   // Get the unique fragment metadatas into a map.
-  //std::unordered_map<std::string, std::pair<Buffer*, uint64_t>> offsets;
   std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
   for (uint64_t i = 0; i < offsets_vectors.size(); i++) {
     for (auto& offset : offsets_vectors[i]) {
@@ -2393,7 +2391,6 @@ StorageManager::load_fragment_metadata(
 
     // Potentially find the basic fragment metadata in the consolidated
     // metadata buffer
-    //Buffer* f_buff = nullptr;
     Tile* f_tile = nullptr;
     uint64_t offset = 0;
 
@@ -2420,51 +2417,6 @@ StorageManager::load_fragment_metadata(
   return {Status::Ok(), fragment_metadata};
 }
 
-#if 0
-tuple<
-    Status,
-    optional<Buffer>,
-    optional<std::vector<std::pair<std::string, uint64_t>>>>
-StorageManager::load_consolidated_fragment_meta(
-    const URI& uri, const EncryptionKey& enc_key) {
-  auto timer_se = stats_->start_timer("read_load_consolidated_frag_meta");
-
-  // No consolidated fragment metadata file
-  if (uri.to_string().empty())
-    return {Status::Ok(), nullopt, nullopt};
-
-  auto&& [st, tile_opt] = load_data_from_generic_tile(uri, 0, enc_key);
-  RETURN_NOT_OK_TUPLE(st, nullopt, nullopt);
-  auto& tile = *tile_opt;
-
-  stats_->add_counter("consolidated_frag_meta_size", tile.size());
-
-  Buffer buffer;
-  RETURN_NOT_OK_TUPLE(buffer.realloc(tile.size()), nullopt, nullopt);
-  buffer.set_size(tile.size());
-  RETURN_NOT_OK_TUPLE(
-      tile.read(buffer.data(), 0, buffer.size()), nullopt, nullopt);
-
-  uint32_t fragment_num;
-  buffer.reset_offset();
-  buffer.read(&fragment_num, sizeof(uint32_t));
-
-  uint64_t name_size, offset;
-  std::string name;
-  std::vector<std::pair<std::string, uint64_t>> ret;
-  ret.reserve(fragment_num);
-  for (uint32_t f = 0; f < fragment_num; ++f) {
-    buffer.read(&name_size, sizeof(uint64_t));
-    name.resize(name_size);
-    buffer.read(&name[0], name_size);
-    buffer.read(&offset, sizeof(uint64_t));
-    ret.emplace_back(name, offset);
-  }
-
-  return {Status::Ok(), buffer, ret};
-}
-#endif
-
 tuple<
     Status,
     optional<Tile>,
@@ -2483,15 +2435,8 @@ StorageManager::load_consolidated_fragment_meta(
 
   stats_->add_counter("consolidated_frag_meta_size", tile.size());
 
-  //Buffer buffer;
-  //RETURN_NOT_OK_TUPLE(buffer.realloc(tile.size()), nullopt, nullopt);
-  //buffer.set_size(tile.size());
-  //RETURN_NOT_OK_TUPLE(
-  //    tile.read(buffer.data(), 0, buffer.size()), nullopt, nullopt);
 
   uint32_t fragment_num;
-//  buffer.reset_offset();
-//  buffer.read(&fragment_num, sizeof(uint32_t));
   Deserializer deserializer(tile.data(), tile.size());
   fragment_num = deserializer.read<uint32_t>();
 
@@ -2500,28 +2445,14 @@ StorageManager::load_consolidated_fragment_meta(
   std::vector<std::pair<std::string, uint64_t>> ret;
   ret.reserve(fragment_num);
   for (uint32_t f = 0; f < fragment_num; ++f) {
-    //buffer.read(&name_size, sizeof(uint64_t));
     name_size = deserializer.read<uint64_t>();
     name.resize(name_size);
-    //buffer.read(&name[0], name_size);
-    //buffer.read(&offset, sizeof(uint64_t));
     deserializer.read(&name[0], name_size);
     offset = deserializer.read<uint64_t>();
     ret.emplace_back(name, offset);
   }
 
-  //return {Status::Ok(), tile, ret};
   return {Status::Ok(), std::move(tile), ret};
-  //return tuple{Status::Ok(), optional<Tile>{tile}, ret};
-  //optional<Tile> opt_tile(std::move(tile));
-  //return {
-  //     Status::Ok(),
-  //     opt_tile,
-  //     ret};
-  // return {Status::Ok(), tile_opt, ret};
-  //return tuple{Status::Ok(), tile_opt, ret};
-  //auto retret = std::tuple{Status::Ok(), tile_opt, ret};
-  //return retret;
 }
 
 Status StorageManager::set_default_tags() {

@@ -1248,11 +1248,6 @@ class StorageManager {
    * @return Status, vector from the fragment name to the offset in `f_buff`
    *     where the basic fragment metadata starts.
    */
-//  tuple<
-//      Status,
-//      optional<Buffer>,
-//      optional<std::vector<std::pair<std::string, uint64_t>>>>
-//  load_consolidated_fragment_meta(const URI& uri, const EncryptionKey& enc_key);
   tuple<
       Status,
       optional<Tile>,
