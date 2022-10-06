@@ -836,7 +836,6 @@ TILEDB_EXPORT int32_t tiledb_group_get_is_relative_uri_by_name(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* name,
-    //char** uri,
     uint8_t *relative) TILEDB_NOEXCEPT {
   return api_entry<detail::tiledb_group_get_is_relative_uri_by_name>(
       ctx, group, name, relative);
