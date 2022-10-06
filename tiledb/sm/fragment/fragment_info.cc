@@ -802,6 +802,21 @@ Status FragmentInfo::load() {
   RETURN_NOT_OK(set_enc_key_from_config());
   RETURN_NOT_OK(set_default_timestamp_range());
 
+  if (array_uri_.is_tiledb()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr) {
+      return LOG_STATUS(Status_ArrayError(
+          "Cannot load fragment info; remote array with no REST client."));
+    }
+
+    // Overriding this config parameter is necessary to enable Cloud to load
+    // MBRs at the same time as the rest of fragment info and not lazily
+    // as it's the case for local fragment info load requests.
+    config_.set("sm.fragment_info.preload_mbrs", "true");
+
+    return rest_client->post_fragment_info_from_rest(array_uri_, this);
+  }
+
   // Create an ArrayDirectory object and load
   auto array_dir = ArrayDirectory(
       storage_manager_->vfs(),
@@ -845,21 +860,6 @@ Status FragmentInfo::load(
 }
 
 Status FragmentInfo::load(const ArrayDirectory& array_dir) {
-  if (array_uri_.is_tiledb()) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr) {
-      return LOG_STATUS(Status_ArrayError(
-          "Cannot load fragment info; remote array with no REST client."));
-    }
-
-    // Overriding this config parameter is necessary to enable Cloud to load
-    // MBRs at the same time as the rest of fragment info and not lazily
-    // as it's the case for local fragment info load requests.
-    config_.set("sm.fragment_info.preload_mbrs", "true");
-
-    return rest_client->post_fragment_info_from_rest(array_uri_, this);
-  }
-
   // Check if we need to preload MBRs or not based on config
   bool found = false, preload_rtrees = false;
   auto status = config_.get<bool>(
@@ -894,7 +894,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
           sizes[i] = size;
         }
 
-        if (preload_rtrees) {
+        if (preload_rtrees & !meta->dense()) {
           RETURN_NOT_OK(meta->load_rtree(enc_key_));
         }
 
