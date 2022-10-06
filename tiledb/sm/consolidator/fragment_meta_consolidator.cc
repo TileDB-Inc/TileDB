@@ -144,7 +144,14 @@ Status FragmentMetaConsolidator::consolidate(
   std::vector<Buffer> buffs(meta.size());
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, buffs.size(), [&](size_t i) {
-        RETURN_NOT_OK(meta[i]->write_footer(&buffs[i]));
+
+        SizeComputationSerializer size_computation_serializer;
+        meta[i]->write_footer(size_computation_serializer);
+        Tile tile{Tile::from_generic(size_computation_serializer.size())};
+        Serializer serializer(tile.data(), tile.size());
+        meta[i]->write_footer(serializer);
+
+        RETURN_NOT_OK(buffs[i].write(tile.data(), tile.size()));
         return Status::Ok();
       });
   RETURN_NOT_OK(status);

@@ -142,7 +142,9 @@ class Deserializer {
    */
   Deserializer(const void* data, storage_size_t size)
       : ptr_(static_cast<const uint8_t*>(data))
-      , size_(size) {
+      , size_(size) 
+      , orig_ptr_(ptr_)
+      , orig_size_(size) {
   }
 
   DISABLE_COPY_AND_COPY_ASSIGN(Deserializer);
@@ -213,12 +215,41 @@ class Deserializer {
     return size_;
   }
 
+  /**
+   * (re)set members to reflect a particular position within the Deserializer.
+   */
+  void set_offset(uint64_t offset) {
+    if (offset > size_) {
+      throw std::logic_error(
+          "Attempting illegal offset value " + std::to_string(offset) +
+          " for size_ " + std::to_string(size_) + ".");
+    }
+
+    ptr_ = orig_ptr_ + offset;
+    size_ = orig_size_ - offset;
+  }
+
+  /**
+   * Return the offset past what has been read.
+   *
+   * @return next offset to be read.
+   */
+  storage_size_t offset() {
+    return ptr_ - orig_ptr_;
+  }
+
  private:
   /* Pointer to the current data to be read. */
   const uint8_t* ptr_;
 
   /* Size left to be read. */
   storage_size_t size_;
+
+  /* initial buffer address */
+  const uint8_t* orig_ptr_;
+
+  /* original available to be read. */
+  storage_size_t orig_size_;
 };
 
 }  // namespace tiledb::sm
