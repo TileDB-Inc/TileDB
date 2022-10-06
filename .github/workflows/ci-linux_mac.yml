@@ -20,10 +20,10 @@ on:
         default: ''
         required: true
         type: string
-      runtime_minutes:
-        default: 90
-        required: false
-        type: string
+      #~ runtime_minutes:
+        #~ default: 90
+        #~ required: false
+        #~ type: string
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
