@@ -872,8 +872,8 @@ Status Group::load_metadata() {
     RETURN_NOT_OK(rest_client->post_group_metadata_from_rest(group_uri_, this));
   } else {
     assert(group_dir_->loaded());
-    RETURN_NOT_OK(storage_manager_->load_group_metadata(
-        group_dir_, *encryption_key_, &metadata_));
+    storage_manager_->load_group_metadata(
+        group_dir_, *encryption_key_, &metadata_);
   }
   metadata_loaded_ = true;
   return Status::Ok();

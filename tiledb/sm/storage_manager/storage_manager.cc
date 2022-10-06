@@ -1646,22 +1646,22 @@ StorageManager::load_all_array_schemas(
   return {Status::Ok(), array_schemas};
 }
 
-Status StorageManager::load_array_metadata(
+void StorageManager::load_array_metadata(
     const ArrayDirectory& array_dir,
     const EncryptionKey& encryption_key,
     Metadata* metadata) {
   auto timer_se = stats_->start_timer("sm_load_array_metadata");
 
   // Special case
-  if (metadata == nullptr)
-    return Status::Ok();
+  if (metadata == nullptr) {
+    return;
+  }
 
   // Determine which array metadata to load
   const auto& array_metadata_to_load = array_dir.array_meta_uris();
 
   auto metadata_num = array_metadata_to_load.size();
-  std::vector<shared_ptr<Tile>> metadata_tiles;
-  metadata_tiles.resize(metadata_num);
+  std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
   auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = array_metadata_to_load[m].uri_;
 
@@ -1672,20 +1672,19 @@ Status StorageManager::load_array_metadata(
 
     return Status::Ok();
   });
-  RETURN_NOT_OK(status);
+  throw_if_not_ok(status);
 
   // Compute array metadata size for the statistics
   uint64_t meta_size = 0;
-  for (const auto& t : metadata_tiles)
+  for (const auto& t : metadata_tiles) {
     meta_size += t->size();
+  }
   stats_->add_counter("read_array_meta_size", meta_size);
 
   *metadata = Metadata::deserialize(metadata_tiles);
 
   // Sets the loaded metadata URIs
-  RETURN_NOT_OK(metadata->set_loaded_metadata_uris(array_metadata_to_load));
-
-  return Status::Ok();
+  metadata->set_loaded_metadata_uris(array_metadata_to_load);
 }
 
 tuple<Status, optional<std::vector<QueryCondition>>>
@@ -2037,9 +2036,11 @@ Status StorageManager::store_metadata(
 
   SizeComputationSerializer size_computation_serializer;
   metadata->serialize(size_computation_serializer);
+
   // Do nothing if there are no metadata to write
-  if (0 == size_computation_serializer.size())
+  if (0 == size_computation_serializer.size()) {
     return Status::Ok();
+  }
   Tile tile{Tile::from_generic(size_computation_serializer.size())};
   Serializer serializer(tile.data(), tile.size());
   metadata->serialize(serializer);
@@ -2231,22 +2232,23 @@ StorageManager::group_open_for_writes(Group* group) {
   return {Status::Ok(), std::nullopt};
 }
 
-Status StorageManager::load_group_metadata(
+void StorageManager::load_group_metadata(
     const shared_ptr<GroupDirectory>& group_dir,
     const EncryptionKey& encryption_key,
     Metadata* metadata) {
   auto timer_se = stats_->start_timer("sm_load_group_metadata");
 
   // Special case
-  if (metadata == nullptr)
-    return Status::Ok();
+  if (metadata == nullptr) {
+    return;
+  }
 
   // Determine which group metadata to load
   const auto& group_metadata_to_load = group_dir->group_meta_uris();
 
   auto metadata_num = group_metadata_to_load.size();
-  std::vector<shared_ptr<Tile>> metadata_tiles;
-  metadata_tiles.resize(metadata_num);
+  // TBD: Might use DynamicArray when it is more capable.
+  std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
   auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = group_metadata_to_load[m].uri_;
 
@@ -2257,19 +2259,18 @@ Status StorageManager::load_group_metadata(
 
     return Status::Ok();
   });
-  RETURN_NOT_OK(status);
+  throw_if_not_ok(status);
 
   // Compute array metadata size for the statistics
   uint64_t meta_size = 0;
-  for (const auto& t : metadata_tiles)
+  for (const auto& t : metadata_tiles) {
     meta_size += t->size();
+  }
   stats_->add_counter("read_array_meta_size", meta_size);
 
   // Copy the deserialized metadata into the original Metadata object
   *metadata = Metadata::deserialize(metadata_tiles);
-  RETURN_NOT_OK(metadata->set_loaded_metadata_uris(group_metadata_to_load));
-
-  return Status::Ok();
+  metadata->set_loaded_metadata_uris(group_metadata_to_load);
 }
 
 tuple<Status, optional<Tile>> StorageManager::load_data_from_generic_tile(

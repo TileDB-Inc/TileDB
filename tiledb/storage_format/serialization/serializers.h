@@ -189,7 +189,7 @@ class Deserializer {
    *
    * @return remaining unread bytes in deserializer.
    */
-  storage_size_t remaining_bytes() {
+  storage_size_t remaining_bytes() const {
     return size_;
   }
 

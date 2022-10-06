@@ -49,7 +49,6 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_metadata PRIVATE metadata)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_metadata PUBLIC Catch2::Catch2)
-
     target_link_libraries(unit_metadata PRIVATE tile)
 
     # Sources for tests

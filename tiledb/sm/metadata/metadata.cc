@@ -123,8 +123,9 @@ Status Metadata::generate_uri(const URI& array_uri) {
 
 Metadata Metadata::deserialize(
     const std::vector<shared_ptr<Tile>>& metadata_tiles) {
-  if (metadata_tiles.empty())
+  if (metadata_tiles.empty()) {
     return Metadata();
+  }
   std::map<std::string, MetadataValue> metadata_map;
 
   Status st;
@@ -136,7 +137,7 @@ Metadata Metadata::deserialize(
     Deserializer deserializer(tile->data(), tile->size());
     while (deserializer.remaining_bytes()) {
       key_len = deserializer.read<uint32_t>();
-      std::string key((const char*)deserializer.get_ptr<char>(key_len), key_len);
+      std::string key(deserializer.get_ptr<char>(key_len), key_len);
       deserializer.read(&del, sizeof(char));
 
       metadata_map.erase(key);
@@ -147,7 +148,7 @@ Metadata Metadata::deserialize(
 
       MetadataValue value_struct;
       value_struct.del_ = del;
-      deserializer.read(&value_struct.type_, sizeof(char));
+      value_struct.type_ = deserializer.read<char>();
       value_struct.num_ = deserializer.read<uint32_t>();
 
       if (value_struct.num_) {
@@ -166,18 +167,19 @@ Metadata Metadata::deserialize(
 }
 
 void Metadata::serialize(Serializer& serializer) const {
-    // Do nothing if there are no metadata to serialize
-  if (metadata_map_.empty())
+  // Do nothing if there are no metadata to serialize
+  if (metadata_map_.empty()) {
     return;
+  }
 
   for (const auto& meta : metadata_map_) {
     auto key_len = (uint32_t)meta.first.size();
     serializer.write<uint32_t>(key_len);
     serializer.write(meta.first.data(), meta.first.size());
     const auto& value = meta.second;
-    serializer.write(&value.del_, sizeof(char));
+    serializer.write<char>(value.del_);
     if (!value.del_) {
-      serializer.write(&value.type_, sizeof(char));
+      serializer.write<char>(value.type_);
       serializer.write<uint32_t>(value.num_);
       if (value.num_)
         serializer.write(value.value_.data(), value.value_.size());
@@ -316,19 +318,19 @@ uint64_t Metadata::num() const {
   return metadata_map_.size();
 }
 
-Status Metadata::set_loaded_metadata_uris(
+void Metadata::set_loaded_metadata_uris(
     const std::vector<TimestampedURI>& loaded_metadata_uris) {
-  if (loaded_metadata_uris.empty())
-    return Status::Ok();
+  if (loaded_metadata_uris.empty()) {
+    return;
+  }
 
   loaded_metadata_uris_.clear();
-  for (const auto& uri : loaded_metadata_uris)
+  for (const auto& uri : loaded_metadata_uris) {
     loaded_metadata_uris_.push_back(uri.uri_);
+  }
 
   timestamp_range_.first = loaded_metadata_uris.front().timestamp_range_.first;
   timestamp_range_.second = loaded_metadata_uris.back().timestamp_range_.second;
-
-  return Status::Ok();
 }
 
 const std::vector<URI>& Metadata::loaded_metadata_uris() const {

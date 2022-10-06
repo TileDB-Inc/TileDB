@@ -126,7 +126,6 @@ class Metadata {
       const std::vector<shared_ptr<Tile>>& metadata_tiles);
 
   /** Serializes all key-value metadata items into the input buffer. */
-  // Status serialize(Buffer* buff) const;
   void serialize(Serializer& serializer) const;
 
   /** Returns the timestamp range. */
@@ -212,7 +211,7 @@ class Metadata {
    * Sets the URIs of the metadata files that have been loaded
    * to this object.
    */
-  Status set_loaded_metadata_uris(
+  void set_loaded_metadata_uris(
       const std::vector<TimestampedURI>& loaded_metadata_uris);
 
   /**
