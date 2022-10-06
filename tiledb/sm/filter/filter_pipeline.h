@@ -201,7 +201,7 @@ class FilterPipeline {
    *
    * @tparam T The type of the support data given to the filter.
    * @param tile Tile to filter.
-   * @param offsets_tile Offets tile for tile to filter.
+   * @param support_tiles Argument for support data passed given to filer.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param chunking True if the tile should be cut into chunks before
    * filtering, false if not.
@@ -250,8 +250,7 @@ class FilterPipeline {
    * @tparam T The type of the support data given to the filter.
    * @param reader_stats Reader stats
    * @param tile Tile to unfilter
-   * @param offsets_tile Offsets tile to unfilter, null if it will be unfilered
-   * separately
+   * @param support_tiles Argument for support data passed given to filer.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
    * @return Status
@@ -378,7 +377,7 @@ class FilterPipeline {
    *
    * @tparam T The type of the support data given to the filter.
    * @param tile Current tile on which the filter pipeline is being run.
-   * @param offsets_tile Current offsets tile for var sized attributes.
+   * @param support_tiles Argument for support data passed given to filer.
    * @param input buffer to process.
    * @param chunk_size chunk size.
    * @param chunk_offsets chunk offsets computed for var sized attributes.
@@ -401,8 +400,7 @@ class FilterPipeline {
    *
    * @tparam T The type of the support data given to the filter.
    * @param tile Current tile on which the filter pipeline is being run
-   * @param offsets_tile Current offsets tile for var sized
-   * attributes/dimensions.
+   * @param support_tiles Argument for support data passed given to filer.
    * @param input Filtered chunk buffers to reverse.
    * @param output Chunked buffer where output of the last stage
    *    will be written.
@@ -423,7 +421,7 @@ class FilterPipeline {
    *
    * @tparam T The type of the support data given to the filter.
    * @param tile Tile to filter
-   * @param offsets_tile Offsets tile for var sized tile to filter.
+   * @param support_tiles Argument for support data passed given to filer.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
    * @return Status

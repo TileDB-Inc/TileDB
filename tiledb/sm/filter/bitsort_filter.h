@@ -58,9 +58,6 @@ class Buffer;
 class ConstBuffer;
 class PreallocatedBuffer;
 
-/** Handles bit sorting!
- * TODO: comment more
- */
 class BitSortFilter : public Filter {
  public:
   /**
@@ -134,9 +131,9 @@ class BitSortFilter : public Filter {
 
  private:
   /**
-   * Run forward, templated on the tile type.
+   * Run forward, templated on the attribute tile type.
    */
-  template <typename T>
+  template <typename AttrType>
   Status run_forward(
       std::vector<Tile*>& dim_tiles,
       FilterBuffer* input_metadata,
@@ -145,9 +142,9 @@ class BitSortFilter : public Filter {
       FilterBuffer* output) const;
 
   /**
-   * Run reverse, templated on the tile type.
+   * Run reverse, templated on the attribute tile type.
    */
-  template <typename T>
+  template <typename AttrType>
   Status run_reverse(
       BitSortFilterMetadataType& pair,
       FilterBuffer* input_metadata,
@@ -161,12 +158,12 @@ class BitSortFilter : public Filter {
    *
    * @return Status
    */
-  template <typename T>
+  template <typename AttrType>
   Status sort_part(
       const ConstBuffer* input_buffer,
       Buffer* output_buffer,
       uint32_t start,
-      std::vector<std::pair<T, uint64_t>>& sorted_elements) const;
+      std::vector<std::pair<AttrType, uint64_t>>& sorted_elements) const;
 
   /**
    * @brief Given attribute type T and dimension type W, rewrites the dimension
@@ -174,9 +171,9 @@ class BitSortFilter : public Filter {
    *
    * @return Status
    */
-  template <typename T, typename W>
+  template <typename AttrType, typename DimType>
   Status rewrite_dim_tile_forward(
-      const std::vector<std::pair<T, uint64_t>>& elements,
+      const std::vector<std::pair<AttrType, uint64_t>>& elements,
       Tile* dim_tile) const;
 
   /**
@@ -186,7 +183,7 @@ class BitSortFilter : public Filter {
    *
    * @return Status
    */
-  template <typename T>
+  template <typename AttrType>
   Status unsort_part(
       const std::vector<uint64_t>& positions,
       ConstBuffer* input_buffer,
@@ -206,7 +203,7 @@ class BitSortFilter : public Filter {
    *
    * @return Status
    */
-  template <typename T>
+  template <typename DimType>
   Status rewrite_dim_tile_reverse(
       Tile* dim_tile, std::vector<uint64_t>& positions) const;
 };

@@ -83,6 +83,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
   version_ = constants::format_version;
   auto timestamp = utils::time::timestamp_now_ms();
   timestamp_range_ = std::make_pair(timestamp, timestamp);
+  bitsort_filter_attr_ = std::nullopt;
 
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
@@ -139,10 +140,14 @@ ArraySchema::ArraySchema(
   }
 
   // Create attribute map
+  bitsort_filter_attr_ = std::nullopt;
   if (!attributes_.empty()) {
     for (auto attr_iter : attributes_) {
       auto attr = attr_iter.get();
       attribute_map_[attr->name()] = attr;
+      if (attr->filters().has_filter(FilterType::FILTER_BITSORT)) {
+        bitsort_filter_attr_ = attr->name();
+      }
     }
   }
 
@@ -183,6 +188,7 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema) {
   coords_filters_ = array_schema.coords_filters_;
   tile_order_ = array_schema.tile_order_;
   version_ = array_schema.version_;
+  bitsort_filter_attr_ = array_schema.bitsort_filter_attr_;
 
   set_domain(array_schema.domain_);
 
@@ -381,6 +387,7 @@ Status ArraySchema::check() const {
     }
   }
 
+  // Check bitsort filter is only used with sparse arrays.
   if (bitsort_filter_exists && array_type_ != ArrayType::SPARSE) {
     return LOG_STATUS(Status_ArraySchemaError("Array schema check failed; Bitsort filter cannot be applied on an array that is not sparse."));
   }
@@ -1252,14 +1259,8 @@ Status ArraySchema::generate_uri(
   return Status::Ok();
 }
 
-std::optional<std::string> ArraySchema::has_bitsort_filter() const {
-  for (const auto& attr_it : attribute_map_) {
-    if (attr_it.second->filters().has_filter(FilterType::FILTER_BITSORT)) {
-      return attr_it.first;
-    }
-  }
-
-  return std::nullopt;
+std::optional<std::string> ArraySchema::bitsort_filter_attr() const {
+  return bitsort_filter_attr_;
 }
 
 }  // namespace sm

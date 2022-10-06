@@ -444,9 +444,10 @@ class ArraySchema {
   /** Generates a new array schema URI with specified timestamp range. */
   Status generate_uri(const std::pair<uint64_t, uint64_t>& timestamp_range);
 
-  /** Returns whether the array schema's list of filters contains the bitsort
-   * filter. */
-  std::optional<std::string> has_bitsort_filter() const;
+  /**
+   * Returns whether the array schema's list of filters contains the
+   * bitsort filter. */
+  std::optional<std::string> bitsort_filter_attr() const;
 
  private:
   /* ********************************* */
@@ -533,6 +534,10 @@ class ArraySchema {
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
+
+  /** Attribute with bitsort filter in its filter pipeline. Set to nullopt when
+   * none exists. */
+  std::optional<std::string> bitsort_filter_attr_;
 
   /**
    * Number of internal dimension labels - used for constructing label URI.

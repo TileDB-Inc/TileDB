@@ -1017,7 +1017,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
     // 't_var' for var-sized tiles.
     if (!var_size) {
       if (!nullable) {
-        if (array_schema_.has_bitsort_filter()) {
+        if (array_schema_.bitsort_filter_attr()) {
           std::vector<Tile*> dim_tiles(array_schema_.dim_num());
           std::vector<QueryBuffer> qb_vector;
           std::vector<uint64_t> dim_data_sizes(array_schema_.dim_num());
@@ -1545,7 +1545,7 @@ Status ReaderBase::unfilter_tiles(
   auto nullable = array_schema_.is_nullable(name);
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
 
-  if (array_schema_.is_dim(name) && array_schema_.has_bitsort_filter()) {
+  if (array_schema_.is_dim(name) && array_schema_.bitsort_filter_attr()) {
     // We omit running unfilter_tiles when there is a dimension, since we process the
     // dimension tiles in the bitsort filter.
     return Status::Ok();
@@ -1657,7 +1657,7 @@ Status ReaderBase::unfilter_tiles(
           // 't_var' for var-sized tiles.
           if (!var_size) {
             if (!nullable) {
-              if (array_schema_.has_bitsort_filter()) {
+              if (array_schema_.bitsort_filter_attr()) {
                 std::vector<Tile*> dim_tiles(array_schema_.dim_num());
                 std::vector<QueryBuffer> qb_vector;
                 std::vector<uint64_t> dim_data_sizes(array_schema_.dim_num());

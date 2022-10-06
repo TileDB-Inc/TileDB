@@ -288,7 +288,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @return Status
    */
 
-  template <typename T>
+  template <typename SupportTileType>
   Status filter_tiles(
       const std::string& name,
       WriterTileVector* tiles,
@@ -302,7 +302,8 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @tparam T Type of the support argument passed to the filter pipeline.
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be filtered.
-   * @param offsets_tile The offsets tile in case of a var tile, or null.
+   * @param support_tile The support tile argument passed to the filter
+   * pipeline.
    * @param offsets True if the tile to be filtered contains offsets for a
    *    var-sized attribute/dimension.
    * @param offsets True if the tile to be filtered contains validity values.

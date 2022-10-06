@@ -1,5 +1,5 @@
 /**
- * @file   bitsort_filter_type.h
+ * @file bitsort_filter_type.h
  *
  * @section LICENSE
  *

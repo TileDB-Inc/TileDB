@@ -338,7 +338,7 @@ Status Reader::apply_query_condition(
   // To evaluate the query condition, we need to read tiles for the
   // attributes used in the query condition. Build a map of attribute
   // names to read.
-  const auto bitsort_attr = array_schema_.has_bitsort_filter();
+  const auto bitsort_attr = array_schema_.bitsort_filter_attr();
   std::unordered_map<std::string, ProcessTileFlags> names;
   for (const auto& condition_name : qc_loaded_attr_names_set_) {
     // Skip loading tiles for bitsort attribute.
@@ -842,7 +842,7 @@ Status Reader::copy_attribute_values(
       break;
     }
 
-    const auto bitsort_attr = array_schema_.has_bitsort_filter();
+    const auto bitsort_attr = array_schema_.bitsort_filter_attr();
     const auto is_bitsort_attr =
         bitsort_attr.has_value() && bitsort_attr.value() == name;
     if (name == constants::coords || array_schema_.is_dim(name) ||
@@ -1667,7 +1667,7 @@ Status Reader::compute_result_coords(
 
   // If we have an attribute with bitsort filter, we need to run the filter on
   // the attribute before we can use the coordinates.
-  const auto bitsort_attr = array_schema_.has_bitsort_filter();
+  const auto bitsort_attr = array_schema_.bitsort_filter_attr();
   if (bitsort_attr.has_value()) {
     std::vector<std::string> bitsort_attr_name = {bitsort_attr.value()};
     RETURN_CANCEL_OR_ERROR(load_tile_offsets(

@@ -686,7 +686,7 @@ Status WriterBase::filter_tiles(
   // Since the bitsort filter processes the dimension tiles, we pass the dimension
   // tiles to be processed with the attribute containing the bitsort filter in its
   // filter pipeline.
-  auto attr_value = array_schema_.has_bitsort_filter();
+  auto attr_value = array_schema_.bitsort_filter_attr();
   if (attr_value) {
     std::string attr_name = attr_value.value();
     for (const auto& name : array_schema_.dim_names()) {
@@ -716,7 +716,7 @@ Status WriterBase::filter_tiles(
   return Status::Ok();
 }
 
-template<typename T>
+template<typename SupportTileType>
 Status WriterBase::filter_tiles(
     const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*>& dim_tiles) {
   const bool var_size = array_schema_.var_size(name);
@@ -726,8 +726,8 @@ Status WriterBase::filter_tiles(
   auto tile_num = tiles->size();
 
   // Process all tiles, minus offsets, they get processed separately.
-  std::vector<std::tuple<Tile*, T, bool, bool>> args;
-  if constexpr (std::is_same<Tile*, T>::value) {
+  std::vector<std::tuple<Tile*, SupportTileType, bool, bool>> args;
+  if constexpr (std::is_same<Tile*, SupportTileType>::value) {
     (void)dim_tiles;
     args.reserve(tile_num * (1 + nullable));
     for (auto& tile : *tiles) {
@@ -741,7 +741,7 @@ Status WriterBase::filter_tiles(
         args.emplace_back(&tile.validity_tile(), nullptr, false, true);
       }
     }
-  } else if constexpr (std::is_same<std::vector<Tile*>, T>::value) {
+  } else if constexpr (std::is_same<std::vector<Tile*>, SupportTileType>::value) {
     auto args_status = parallel_for(
     storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
       auto& tile = (*tiles)[i];
@@ -764,7 +764,7 @@ Status WriterBase::filter_tiles(
         const auto& [tile, support_tiles, contains_offsets, is_nullable] =
             args[i];
 
-       if constexpr (std::is_same<std::vector<Tile*>, T>::value) {
+       if constexpr (std::is_same<std::vector<Tile*>, SupportTileType>::value) {
           RETURN_NOT_OK(filter_tile<std::vector<Tile*>>(
             name, tile, support_tiles, contains_offsets, is_nullable));
         } else {

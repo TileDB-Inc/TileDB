@@ -93,7 +93,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , buffers_full_(false)
     , deletes_consolidation_no_purge_(
           buffers_.count(constants::delete_timestamps) != 0)
-    , bitsort_attribute_(array_schema_.has_bitsort_filter()) {
+    , bitsort_attribute_(array_schema_.bitsort_filter_attr()) {
   disable_cache_ = true;
 }
 
