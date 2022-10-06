@@ -15,7 +15,7 @@ Now we include a mechanism so that user-supplied function f can indicate it's ti
   bool token = false;
   auto tmp = f(token);
   if (token == stop) {
-    do_stop()
+    port_exhausted()
     return
   }
   source_fill()
@@ -46,8 +46,8 @@ Expanded and with proof outline
          state transition: { stop = 0 } → { stop = 1 }
 
          /* { state = 00 ∨ state = 01 } ∧ { stop = 1 } */
-         entry action: { state = 00 } → source_done
-                       { state = 01 } → source_done
+         entry action: { state = 00 } → term_source
+                       { state = 01 } → term_source
 
          /* { state = 00 ∨ state = 01 } ∧ { stop = 1 } */
      }
@@ -74,7 +74,7 @@ the sink until everything has been transferred and handled, i.e., until the stat
 00.  Basically, this means that everything continues in the same way regardless of
 whether we are in a stopping state -- except when { state == 00 } ∧ { stop = 1 } on
 the sink_pull event.  In that case, rather than waiting, we just continue, transition
-to { state = done }, and then invoke the sink_done action.
+to { state = done }, and then invoke the term_sink action.
 
 ```C
   init: { state = 00 } ∧ { stop = 0 }
@@ -95,7 +95,7 @@ to { state = done }, and then invoke the sink_done action.
                          { state = 01 ∨ state = 10 } ∧ { stop = 0 ∨ stop = 1 } → { state = 01 }   ∧ { stop = 0 ∨ stop = 1 }
                          { state = 11 }              ∧ { stop = 0 ∨ stop = 1 } → { state = 11 }   ∧ { stop = 0 ∨ stop = 1 }
 
-       entry action: { state = done }                                                   → sink_done
+       entry action: { state = done }                                                   → term_sink
                      { state = 10 }                           ∧ { stop = 0 ∨ stop = 1 } → sink_swap
                      { state = 00 ∨ state = 01 ∨ state = 11 } ∧ { stop = 0 ∨ stop = 1 } → none
 
@@ -143,7 +143,7 @@ An alternative would be to do it in sink_drain, as follows:
 
        entry action: { state = 00 ∨ state = 10 } ∧ { stop = 0 } → notify_source
                      { state = 10 }              ∧ { stop = 1 } → none
-                     { state = done }                           → sink_done
+                     { state = done }                           → term_sink
 
 
        /* { state = 01 ∨ state = 11 } ∧ { stop = 0 }

@@ -108,7 +108,7 @@ namespace tiledb::common {
  *   notify_sink: on_notify_sink()
  *   source_available: on_source_available()
  *   sink_available: on_sink_available()
- *   done: on_source_done(), on_sink_done()
+ *   done: on_term_source(), on_term_sink()
  *
  * NB: With our current approach, we seem to really only need single functions for 
  * wait, notify, and move, so we may be able to condense this in the future.
@@ -127,8 +127,8 @@ namespace tiledb::common {
  *   on_notify_sink(): notify source
  *   on_source_available(): put source into waiting
  *   on_sink_available(): put sink into waiting state
- *   on_source_done(): put source into waiting state
- *   on_sink_done(): put sink into waiting state
+ *   on_term_source(): put source into waiting state
+ *   on_term_sink(): put sink into waiting state
  *
  * The implementations of `AsyncStateMachine` and `UnifiedAsyncStateMachine` 
  * currently use locks and condition variable for effecting the wait (and notify) functions.
@@ -186,9 +186,9 @@ class NullPolicy
     return true;
   }
 #endif
-  inline void on_source_done(lock_type&, std::atomic<int>&) {
+  inline void on_term_source(lock_type&, std::atomic<int>&) {
   }
-  inline void on_sink_done(lock_type&, std::atomic<int>&) {
+  inline void on_term_sink(lock_type&, std::atomic<int>&) {
   }
 };
 
@@ -249,10 +249,10 @@ class ManualPolicy
     return true;
   }
 #endif
-  inline void on_source_done(lock_type&, std::atomic<int>&) {
+  inline void on_term_source(lock_type&, std::atomic<int>&) {
     debug_msg("Action source done");
   }
-  inline void on_sink_done(lock_type&, std::atomic<int>&) {
+  inline void on_term_sink(lock_type&, std::atomic<int>&) {
     debug_msg("Action sink done");
   }
 
@@ -458,10 +458,10 @@ class AsyncPolicy
 }
 
 /**
- * Function for handling `source_done` action.
+ * Function for handling `term_source` action.
  */
 inline void
-on_source_done(lock_type& _unused(lock), std::atomic<int>& event) {
+on_term_source(lock_type& _unused(lock), std::atomic<int>& event) {
   assert(lock.owns_lock());
 
   debug_msg(
@@ -470,9 +470,9 @@ on_source_done(lock_type& _unused(lock), std::atomic<int>& event) {
 }
 
 /**
- * Function for handling `sink_done` action.
+ * Function for handling `term_sink` action.
  */
-inline void on_sink_done(lock_type& _unused(lock), std::atomic<int>& event) {
+inline void on_term_sink(lock_type& _unused(lock), std::atomic<int>& event) {
   assert(lock.owns_lock());
 
   debug_msg(
@@ -541,26 +541,26 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
   /**
    * Single  notify function for source and sink.
    */
-  inline void do_notify(lock_type&, std::atomic<int>&) {
+  inline void task_notify(lock_type&, std::atomic<int>&) {
     cv_.notify_one();
   }
 
   /**
-   * Function for handling `notify_source` action, invoking a `do_notify`
+   * Function for handling `notify_source` action, invoking a `task_notify`
    * function.
    */
   inline void on_notify_source(lock_type& lock, std::atomic<int>& event) {
     debug_msg(std::to_string(event++) + "    sink notifying source");
-    do_notify(lock, event);
+    task_notify(lock, event);
   }
 
   /**
-   * Function for handling `notify_sink` action, invoking a `do_notify`
+   * Function for handling `notify_sink` action, invoking a `task_notify`
    * function.
    */
   inline void on_notify_sink(lock_type& lock, std::atomic<int>& event) {
     debug_msg(std::to_string(event++) + "    source notifying sink");
-    do_notify(lock, event);
+    task_notify(lock, event);
   }
 
 #ifndef FXM
@@ -600,9 +600,9 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
 #endif
 
   /**
-   * Function for handling `source_done` action.
+   * Function for handling `term_source` action.
    */
-  inline void on_source_done(lock_type& _unused(lock), std::atomic<int>&) {
+  inline void on_term_source(lock_type& _unused(lock), std::atomic<int>&) {
     assert(lock.owns_lock());
   }
 
@@ -610,8 +610,8 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
    * Function for handling `sink_available` action.  It simply calls the source
    * wait action.
    */
-  inline void on_sink_done(lock_type& lock, std::atomic<int>& event) {
-    on_source_done(lock, event);
+  inline void on_term_sink(lock_type& lock, std::atomic<int>& event) {
+    on_term_source(lock, event);
   }
 
  private:
@@ -680,11 +680,11 @@ class DebugPolicy
   }
 #endif
   template <class lock_type>
-  inline void on_source_done(lock_type&, std::atomic<int>&) {
+  inline void on_term_source(lock_type&, std::atomic<int>&) {
     debug_msg("    Action source wait");
   }
   template <class lock_type>
-  inline void on_sink_done(lock_type&, std::atomic<int>&) {
+  inline void on_term_sink(lock_type&, std::atomic<int>&) {
     debug_msg("    Action sink wait");
   }
 };
@@ -738,10 +738,10 @@ class DebugPolicyWithLock : public Mover {
     return true;
   }
 #endif
-  inline void on_source_done(lock_type&, std::atomic<int>&) {
+  inline void on_term_source(lock_type&, std::atomic<int>&) {
     debug_msg("    Action done source");
   }
-  inline void on_sink_done(lock_type&, std::atomic<int>&) {
+  inline void on_term_sink(lock_type&, std::atomic<int>&) {
     debug_msg("    Action done sink");
   }
 

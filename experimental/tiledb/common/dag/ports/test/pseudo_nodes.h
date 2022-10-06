@@ -147,10 +147,10 @@ class ProducerNode : public Source<Mover_T, Block> {
     auto state_machine = this->get_mover();
 
     Base::inject(f_());
-    state_machine->do_fill();
+    state_machine->port_fill();
     //  { state == st_10 ∨ state == st_11 }
 
-    state_machine->do_push();
+    state_machine->port_push();
     //  { state == st_01 ∨ state == st_00 }
   }
 
@@ -159,7 +159,7 @@ class ProducerNode : public Source<Mover_T, Block> {
    * behavior of `submit` and `try_submit` will depend on the policy associated
    * with the state machine.  Used by dag nodes and edges for transferring data.
    *
-   * @todo Investigate policy with non-blocking variant of `do_push`.  Will
+   * @todo Investigate policy with non-blocking variant of `port_push`.  Will
    * require addtional `try_push` events, `try_swap` methods, updated tables,
    * and `event()` will need to return a bool.
    *
@@ -173,10 +173,10 @@ class ProducerNode : public Source<Mover_T, Block> {
     //  { state == st_00 ∨ state == st_01 }
     //  produce source item
     //  inject source item
-    //  do_fill();
+    //  port_fill();
     //  { state == st_10 ∨ state == st_11 ∨ state == st_00
     //    ∨  state == st_01 }
-    //  do_push(); // could have non-blocking try_push() event, but that would
+    //  port_push(); // could have non-blocking try_push() event, but that would
     //             // leave the item  the item injected -- on failure, could
     //             // reject item -- would also need try_swap action.
     //  { state == st_01 ∨ state == st_00}
@@ -264,7 +264,7 @@ class ConsumerNode : public Sink<Mover_T, Block> {
     //  { state == st_00 ∨ state == st_10 }
     auto state_machine = this->get_mover();
 
-    state_machine->do_pull();
+    state_machine->port_pull();
     //  { state == st_01 ∨ state == st_11 }
     //  extract sink item
     //  invoke consumer function
@@ -272,7 +272,7 @@ class ConsumerNode : public Sink<Mover_T, Block> {
     CHECK(b.has_value());
     f_(*b);
 
-    state_machine->do_drain();
+    state_machine->port_drain();
     //  { state == st_00 ∨ state == st_10 ∨ state == st_01 ∨
     //  state == st_11 } return item;
   }
@@ -282,7 +282,7 @@ class ConsumerNode : public Sink<Mover_T, Block> {
    * and `try_retrieve` will depend on the policy associated with the state
    * machine.  Used by dag nodes and edges for transferring data.
    *
-   * @todo Investigate policy with non-blocking variant of `do_pull`.  Will
+   * @todo Investigate policy with non-blocking variant of `port_pull`.  Will
    * require addtional `try_pull` events, `try_swap` methods, updated tables,
    * and `event()` will need to return a bool.
    *
@@ -292,10 +292,10 @@ class ConsumerNode : public Sink<Mover_T, Block> {
   void try_put() {
     //  if (sink_is_empty()) {
     //    { state == st_00 ∨ state == st_10 }
-    //    do_pull();
+    //    port_pull();
     //    extract sink item
     //    invoke consumer function
-    //    do_drain();
+    //    port_drain();
     //    return item;
     //  }
   }
@@ -348,19 +348,19 @@ class FunctionNode : public Source<SourceMover_T, BlockOut>,
     auto source_state_machine = SourceBase::get_mover();
     auto sink_state_machine = SinkBase::get_mover();
 
-    sink_state_machine->do_pull();
+    sink_state_machine->port_pull();
 
     auto b = SinkBase::extract();
     CHECK(b.has_value());
 
     auto j = f_(*b);
 
-    sink_state_machine->do_drain();
+    sink_state_machine->port_drain();
 
     SourceBase::inject(j);
 
-    source_state_machine->do_fill();
-    source_state_machine->do_push();
+    source_state_machine->port_fill();
+    source_state_machine->port_push();
   }
 };
 

@@ -455,9 +455,9 @@ class BaseMover<Mover, two_stage, Block> {
  * `ItemMover` inherits from `Policy`, which takes `ItemMover` as a template
  * parameter (CRTP). `ItemMover` also inherits from `BaseMover`, which
  * implements all of the actual data movement. Clients of the `ItemMover`
- * activate its actions by calling the member functions `do_fill`,
- * `do_push`, `do_drain`, and `do_pull`, which correspond to actions in the
- * `PortFiniteStateMachine`.  `on_move` is handled by the base class.
+ * activate its actions by calling the member functions `port_fill`,
+ * `port_push`, `port_drain`, and `port_pull`, which correspond to actions in
+ * the `PortFiniteStateMachine`.  `on_move` is handled by the base class.
  */
 template <template <class, class> class Policy, class PortState, class Block>
 class ItemMover
@@ -476,7 +476,7 @@ class ItemMover
   /**
    * Invoke `source_fill` event
    */
-  void do_fill(const std::string& msg = "") {
+  void port_fill(const std::string& msg = "") {
     debug_msg("    -- filling");
 
     this->event(PortEvent::source_fill, msg);
@@ -485,7 +485,7 @@ class ItemMover
   /**
    * Invoke `source_push` event
    */
-  void do_push(const std::string& msg = "") {
+  void port_push(const std::string& msg = "") {
     debug_msg("  -- pushing");
 
     this->event(PortEvent::source_push, msg);
@@ -494,7 +494,7 @@ class ItemMover
   /**
    * Invoke `sink_drain` event
    */
-  void do_drain(const std::string& msg = "") {
+  void port_drain(const std::string& msg = "") {
     debug_msg("  -- draining");
 
     this->event(PortEvent::sink_drain, msg);
@@ -503,7 +503,7 @@ class ItemMover
   /**
    * Invoke `sink_pull` event
    */
-  void do_pull(const std::string& msg = "") {
+  void port_pull(const std::string& msg = "") {
     debug_msg("  -- pulling");
 
     this->event(PortEvent::sink_pull, msg);
@@ -524,10 +524,10 @@ class ItemMover
 
 #endif
   /**
-   * Invoke `stop` event
+   * Invoke `port_exhausted` event
    */
-  void do_stop(const std::string& msg = "") {
-    this->event(PortEvent::stop, msg);
+  void port_exhausted(const std::string& msg = "") {
+    this->event(PortEvent::exhausted, msg);
   }
 
  private:

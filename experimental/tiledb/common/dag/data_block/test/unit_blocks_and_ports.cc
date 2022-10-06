@@ -218,14 +218,14 @@ TEST_CASE(
     check_iotized(x);
 
     CHECK(source.inject(x) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
     auto b = sink.extract();
     CHECK(b.has_value() == true);
     CHECK(b->data() == dx);
     check_iotized(*b);
     CHECK(str(state_machine->state()) == "st_01");
-    state_machine->do_drain();
+    state_machine->port_drain();
     CHECK(str(state_machine->state()) == "st_00");
   }
 
@@ -234,27 +234,27 @@ TEST_CASE(
     check_zeroized(y);
 
     CHECK(source.inject(x) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
     auto b = sink.extract();
     CHECK(b.has_value() == true);
     CHECK(b->data() == x.data());
     check_iotized(*b);
     CHECK(str(state_machine->state()) == "st_01");
-    state_machine->do_drain();
+    state_machine->port_drain();
     CHECK(str(state_machine->state()) == "st_00");
     CHECK(sink.extract().has_value() == false);
 
     CHECK(source.inject(y) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
 
     auto c = sink.extract();
     CHECK(c.has_value() == true);
     CHECK(c->data() == dy);
     check_zeroized(*c);
     CHECK(str(state_machine->state()) == "st_01");
-    state_machine->do_drain();
+    state_machine->port_drain();
     CHECK(str(state_machine->state()) == "st_00");
     CHECK(sink.extract().has_value() == false);
   }
@@ -337,13 +337,13 @@ TEST_CASE(
 
   auto source_node = [&]() {
     CHECK(source.inject(x) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
   };
   auto sink_node = [&]() {
-    state_machine->do_pull();
+    state_machine->port_pull();
     b = sink.extract();
-    state_machine->do_drain();
+    state_machine->port_drain();
   };
 
   SECTION("test source launch, sink launch, source get, sink get") {
@@ -439,11 +439,11 @@ TEST_CASE("BlocksAndPorts: Async pass n blocks", "[blocks_and_ports]") {
 
       CHECK(is_source_empty(state_machine->state()) == "");
 
-      state_machine->do_fill(debug ? "async source node" : "");
+      state_machine->port_fill(debug ? "async source node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      state_machine->do_push(debug ? "async source node" : "");
+      state_machine->port_push(debug ? "async source node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -460,7 +460,7 @@ TEST_CASE("BlocksAndPorts: Async pass n blocks", "[blocks_and_ports]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      state_machine->do_pull(debug ? "async sink node" : "");
+      state_machine->port_pull(debug ? "async sink node" : "");
 
       CHECK(is_sink_full(state_machine->state()) == "");
 
@@ -478,7 +478,7 @@ TEST_CASE("BlocksAndPorts: Async pass n blocks", "[blocks_and_ports]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      state_machine->do_drain(debug ? "async sink node" : "");
+      state_machine->port_drain(debug ? "async sink node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }

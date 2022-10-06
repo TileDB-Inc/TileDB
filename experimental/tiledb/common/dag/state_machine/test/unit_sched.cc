@@ -124,11 +124,11 @@ TEST_CASE("Tuple maker: Test abundant pseudo-scheduler with fsm", "[sched]") {
 
       CHECK(is_source_empty(a.state()) == "");
 
-      a.do_fill();
+      a.port_fill();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      a.do_push();
+      a.port_push();
 
       CHECK(is_source_empty(a.state()) == "");
 
@@ -149,7 +149,7 @@ TEST_CASE("Tuple maker: Test abundant pseudo-scheduler with fsm", "[sched]") {
         std::cout << "source node iteration " << n << std::endl;
       }
 
-      a.do_pull();
+      a.port_pull();
 
       CHECK(is_sink_full(a.state()) == "");
 
@@ -162,11 +162,11 @@ TEST_CASE("Tuple maker: Test abundant pseudo-scheduler with fsm", "[sched]") {
       state.t0 = *(a.sink_item());
       *j_in++ = state.t0;
 
-      a.do_drain();
+      a.port_drain();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      a.do_pull();
+      a.port_pull();
 
       CHECK(is_sink_full(a.state()) == "");
 
@@ -179,10 +179,10 @@ TEST_CASE("Tuple maker: Test abundant pseudo-scheduler with fsm", "[sched]") {
       state.t1 = *(a.sink_item());
       *j_in++ = state.t1;
 
-      a.do_drain();
+      a.port_drain();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-      a.do_pull();
+      a.port_pull();
 
       CHECK(is_sink_full(a.state()) == "");
 
@@ -195,7 +195,7 @@ TEST_CASE("Tuple maker: Test abundant pseudo-scheduler with fsm", "[sched]") {
       auto item = *(a.sink_item());
       *j_in++ = item;
 
-      a.do_drain();
+      a.port_drain();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -208,11 +208,11 @@ TEST_CASE("Tuple maker: Test abundant pseudo-scheduler with fsm", "[sched]") {
       CHECK(is_source_empty(b.state()) == "");
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      b.do_fill();
+      b.port_fill();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      b.do_push();
+      b.port_push();
 
       CHECK(is_source_empty(b.state()) == "");
 
@@ -227,7 +227,7 @@ TEST_CASE("Tuple maker: Test abundant pseudo-scheduler with fsm", "[sched]") {
         std::cout << "source node iteration " << n << std::endl;
       }
 
-      b.do_pull();
+      b.port_pull();
 
       CHECK(is_sink_full(b.state()) == "");
 
@@ -239,7 +239,7 @@ TEST_CASE("Tuple maker: Test abundant pseudo-scheduler with fsm", "[sched]") {
 
       output.emplace_back(*(b.sink_item()));
 
-      b.do_drain();
+      b.port_drain();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
@@ -330,14 +330,15 @@ enum class state {
   exit
 };
 
-std::string strings[] = {"init",
-                         "top",
-                         "middle",
-                         "bottom",
-                         "alt_top",
-                         "alt_middle",
-                         "alt_bottom",
-                         "exit"};
+std::string strings[] = {
+    "init",
+    "top",
+    "middle",
+    "bottom",
+    "alt_top",
+    "alt_middle",
+    "alt_bottom",
+    "exit"};
 
 std::string str(state st) {
   return strings[static_cast<size_t>(st)];
@@ -552,7 +553,7 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
 
         CHECK(is_source_empty(a.state()) == "");
 
-        a.do_fill();
+        a.port_fill();
 
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -563,7 +564,7 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
         if (debug)
           std::cout << "source node bottom " << alt_state.n << std::endl;
 
-        a.do_try_push();
+        a.port_try_push();
         if (!empty_source(a.state())) {
           return alt_state.counter;
         }
@@ -613,7 +614,7 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
         if (debug)
           std::cout << "mid node top " << alt_state.n << std::endl;
 
-        a.do_try_pull();
+        a.port_try_pull();
         if (!full_sink(a.state())) {
           return alt_state.counter;
         }
@@ -629,7 +630,7 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
         alt_state.t0 = *(a.sink_item());
         *j_in++ = alt_state.t0;
 
-        a.do_drain();
+        a.port_drain();
       }
 
         alt_state.counter = state::middle;
@@ -641,7 +642,7 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
 
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-        a.do_try_pull();
+        a.port_try_pull();
         if (!full_sink(a.state())) {
           return alt_state.counter;
         }
@@ -657,7 +658,7 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
         alt_state.t1 = *(a.sink_item());
         *j_in++ = alt_state.t1;
 
-        a.do_drain();
+        a.port_drain();
       }
         alt_state.counter = state::bottom;
         [[fallthrough]];
@@ -667,7 +668,7 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
           std::cout << "mid node bottom " << alt_state.n << std::endl;
 
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-        a.do_try_pull();
+        a.port_try_pull();
         if (!full_sink(a.state())) {
           return alt_state.counter;
         }
@@ -689,7 +690,7 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
         auto item = *(a.sink_item());
         *j_in++ = item;
 
-        a.do_drain();
+        a.port_drain();
 
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -710,7 +711,7 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
         if (debug)
           std::cout << "mid node alt middle " << alt_state.n << std::endl;
 
-        b.do_fill();
+        b.port_fill();
 
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -721,7 +722,7 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
         if (debug)
           std::cout << "mid node alt bottom " << alt_state.n << std::endl;
 
-        b.do_try_push();
+        b.port_try_push();
         if (!empty_source(b.state())) {
           return alt_state.counter;
         }
@@ -765,7 +766,7 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
         if (debug)
           std::cout << "sink node top " << alt_state.n << std::endl;
 
-        b.do_try_pull();
+        b.port_try_pull();
         if (!full_sink(b.state())) {
           if (debug)
             std::cout << "sink node not full " << alt_state.n << std::endl;
@@ -796,7 +797,7 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
         if (debug)
           std::cout << "sink node bottom " << alt_state.n << std::endl;
 
-        b.do_drain();
+        b.port_drain();
 
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 

@@ -160,9 +160,9 @@ class InjectorNode : public Source<Mover_T, Block> {
    *
    * Will return if an item is present in the `Source`.
    *
-   * @note This is currently broken, as `do_push()` may still block.  Need to
+   * @note This is currently broken, as `port_push()` may still block.  Need to
    * implement something like 'is_pushable' because we don't want to inject and
-   * then find the `do_push` will block.
+   * then find the `port_push` will block.
    */
   bool try_put(const Block& input_item) {
     auto state_machine = this->get_mover();
@@ -173,8 +173,8 @@ class InjectorNode : public Source<Mover_T, Block> {
       return false;
     }
 
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
 
     return true;
   }
@@ -188,8 +188,8 @@ class InjectorNode : public Source<Mover_T, Block> {
       return false;
     }
     Base::inject(input_item);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
 
     return true;
   }
@@ -199,7 +199,7 @@ class InjectorNode : public Source<Mover_T, Block> {
    */
   void stop() {
     auto state_machine = this->get_mover();
-    state_machine->do_stop();
+    state_machine->port_exhausted();
   }
 };
 

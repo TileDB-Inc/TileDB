@@ -144,7 +144,7 @@ TEST_CASE(
       /*
        * Fill
        */
-      a.do_fill(debug ? "async source node" : "");
+      a.port_fill(debug ? "async source node" : "");
       if (delay)
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -156,7 +156,7 @@ TEST_CASE(
       /*
        * Push
        */
-      a.do_push(debug ? "async source node" : "");
+      a.port_push(debug ? "async source node" : "");
       if (delay)
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
@@ -169,7 +169,7 @@ TEST_CASE(
         std::cout << "source node iteration " << n << std::endl;
       }
 
-      a.do_pull(debug ? "async sink node" : "");
+      a.port_pull(debug ? "async sink node" : "");
 
       /* { state = 11 } ∧ { items = 11 } */
       /* { state = 01 } ∧ { items = 01 ∨ items = 11 } */
@@ -223,7 +223,7 @@ TEST_CASE(
       /*
        * Drain
        */
-      a.do_drain(debug ? "async sink node" : "");
+      a.port_drain(debug ? "async sink node" : "");
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
       /*
@@ -397,7 +397,7 @@ TEST_CASE(
       /*
        * Fill
        */
-      a.do_fill(debug ? "async source node" : "");
+      a.port_fill(debug ? "async source node" : "");
       if (delay)
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -409,7 +409,7 @@ TEST_CASE(
       /*
        * Push
        */
-      a.do_push(debug ? "async source node" : "");
+      a.port_push(debug ? "async source node" : "");
       if (delay)
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
@@ -425,7 +425,7 @@ TEST_CASE(
       /*
        * Pull
        */
-      a.do_pull(debug ? "async sink node pull" : "");
+      a.port_pull(debug ? "async sink node pull" : "");
       if (delay)
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -504,7 +504,7 @@ TEST_CASE(
       /*
        * Drain
        */
-      a.do_drain(debug ? "async sink node" : "");
+      a.port_drain(debug ? "async sink node" : "");
       if (delay)
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 

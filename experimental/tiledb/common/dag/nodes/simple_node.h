@@ -55,7 +55,7 @@ namespace tiledb::common {
  *
  * @tparam Mover_T The type of item mover to be used by this class.  The
  * class can invoke any of the functions in the mover.  The `ProducerNode`
- * will invoke `do_fill`, `do_push`, `inject`, and `do_stop`.
+ * will invoke `port_fill`, `port_push`, `inject`, and `port_exhausted`.
  *
  * @tparam Mover_T The type of item mover to be used with the
  * `ProducerNode`. It is a template template to be composed with `Block`.
@@ -151,7 +151,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
     }
 
     /**
-     * @todo Make inject and do_fill atomic (while properly separating
+     * @todo Make inject and port_fill atomic (while properly separating
      * concerns). Atomic on the mover would be the right thing.  There seems
      * to still be the problem that the function will have created the item
      * but is handing it off to the mover.  Need to do inject with an atomic
@@ -180,7 +180,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
       if (mover->debug_enabled()) {
         std::cout << "run_once stopping" << std::endl;
       }
-      mover->do_stop();
+      mover->port_exhausted();
       return;
     }
 
@@ -188,14 +188,14 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
      * { state = 00 ∧ items = 10 }                  ∨
      * { state = 01 ∧ ( items = 10 ∨ items = 11 ) }
      */
-    mover->do_fill();
+    mover->port_fill();
     /*
      * { state = 00 ∧ items = 00 }                  ∨
      * { state = 01 ∧ ( items = 00 ∨ items = 01 ) } ∨
      * { state = 10 ∧ items = 10 }                  ∨
      * { state = 11 ∧ ( items = 10 ∨ items = 11 ) }
      */
-    mover->do_push();
+    mover->port_push();
 
     /*
      * { state = 00 ∧ items = 00 }                  ∨
@@ -219,7 +219,8 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
     while (!mover->is_stopping()) {
       run_once();
     }
-    // run_once() will have to have invoked do_stop() to break out of the loop.
+    // run_once() will have to have invoked port_exhausted() to break out of the
+    // loop.
   }
 
   /**
@@ -243,7 +244,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
 
     if (!mover->is_stopping()) {  // or stop_requested()?
       stop_source_.request_stop();
-      mover->do_stop();
+      mover->port_exhausted();
     }
   }
 
@@ -285,14 +286,14 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
-      mover->do_fill();
+      mover->port_fill();
 
       if (mover->debug_enabled())
         std::cout << "producer filled " << rounds << std::endl;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
-      mover->do_push();
+      mover->port_push();
 
       if (mover->debug_enabled())
         std::cout << "producer pushed " << rounds << std::endl;
@@ -301,10 +302,10 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
     }
 
     // Could have fallen through or gotten stop_requested()
-    // Either way, need to calls do_stop
+    // Either way, need to calls port_exhausted
     if (mover->debug_enabled())
       std::cout << "run stopping" << std::endl;
-    mover->do_stop();
+    mover->port_exhausted();
   }
 };
 
@@ -314,7 +315,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
  *
  * @tparam Mover_T The type of item mover to be used by this class.  The class
  * can invoke any of the functions in the mover.  The `ConsumerNode` will invoke
- * `do_pull`, `do_drain`, and `extract`.
+ * `port_pull`, `port_drain`, and `extract`.
  *
  * @param Block The type of data to be obtained from the item mover and
  * consumed.
@@ -384,7 +385,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
      * { state = 10 ∧ items = 10 }                  ∨
      * { state = 11 ∧ items = 11 }
      */
-    mover->do_pull();
+    mover->port_pull();
     /*
      * { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨
      * { state = 11 ∧ items = 11 ) }
@@ -417,7 +418,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
     if (mover->debug_enabled())
       std::cout << "consumer extracted, about to drain " << std::endl;
 
-    mover->do_drain();
+    mover->port_drain();
     /*
      * { state = 00 ∧ ( items = 00 ∨ items = 10 ) } ∨
      * { state = 01 ∧ ( items = 01 ∨ items = 11 ) } ∨
@@ -476,7 +477,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
       run_once();
     }
     if (!mover->is_done()) {
-      mover->do_pull();
+      mover->port_pull();
     }
   }
 
@@ -492,7 +493,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
                 << this->get_mover() << std::endl;
 
     while (rounds--) {
-      mover->do_pull();
+      mover->port_pull();
       if (mover->debug_enabled())
         std::cout << "consumer pulled " << rounds << std::endl;
 
@@ -513,7 +514,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
-      mover->do_drain();
+      mover->port_drain();
 
       if (mover->debug_enabled())
         std::cout << "consumer drained " << rounds << std::endl;
@@ -532,7 +533,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
       }
     }
     if (!mover->is_done()) {
-      mover->do_pull();
+      mover->port_pull();
     }
   }
 };
@@ -544,8 +545,8 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
  *
  * @tparam SinkMover_T The type of item mover to be used by the `Sink` part of
  * this class.  The class can invoke any of the functions in the mover.  The
- * `Source` part of the `FunctionNode` will invoke `do_fill`, `do_push`,
- * `inject`, and `do_stop`.
+ * `Source` part of the `FunctionNode` will invoke `port_fill`, `port_push`,
+ * `inject`, and `port_exhausted`.
  *
  * @tparam SourceMover_T The type of item mover to be used with the
  * `ProducerNode` part of this class. It is a template template to be composed
@@ -621,7 +622,7 @@ class FunctionNode : public GraphNode,
     auto source_mover = SourceBase::get_mover();
     auto sink_mover = SinkBase::get_mover();
 
-    sink_mover->do_pull();
+    sink_mover->port_pull();
 
     if (sink_mover->debug_enabled())
       std::cout << "function pulled "
@@ -647,7 +648,7 @@ class FunctionNode : public GraphNode,
     if (sink_mover->debug_enabled())
       std::cout << "function extracted, about to drain " << std::endl;
 
-    sink_mover->do_drain();
+    sink_mover->port_drain();
 
     if (sink_mover->debug_enabled())
       std::cout << "function drained " << std::endl;
@@ -664,11 +665,11 @@ class FunctionNode : public GraphNode,
     if (source_mover->debug_enabled())
       std::cout << "function injected " << std::endl;
 
-    source_mover->do_fill();
+    source_mover->port_fill();
     if (source_mover->debug_enabled())
       std::cout << "function filled " << std::endl;
 
-    source_mover->do_push();
+    source_mover->port_push();
     if (source_mover->debug_enabled())
       std::cout << "function pushed " << std::endl;
 
@@ -708,9 +709,9 @@ class FunctionNode : public GraphNode,
     if (!sink_mover->is_done()) {
       if (sink_mover->debug_enabled())
         std::cout << "function final pull " << rounds << std::endl;
-      sink_mover->do_pull();
+      sink_mover->port_pull();
     }
-    source_mover->do_stop();
+    source_mover->port_exhausted();
   }
 
   /*
@@ -727,9 +728,9 @@ class FunctionNode : public GraphNode,
     if (!sink_mover->is_done()) {
       if (sink_mover->debug_enabled())
         std::cout << "function final pull in run()" << std::endl;
-      sink_mover->do_pull();
+      sink_mover->port_pull();
     }
-    source_mover->do_stop();
+    source_mover->port_exhausted();
   }
 
   /**
@@ -741,7 +742,7 @@ class FunctionNode : public GraphNode,
     auto sink_mover = SinkBase::get_mover();
 
     while (rounds--) {
-      sink_mover->do_pull();
+      sink_mover->port_pull();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
@@ -754,7 +755,7 @@ class FunctionNode : public GraphNode,
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
-      sink_mover->do_drain();
+      sink_mover->port_drain();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
       if (b.has_value()) {
@@ -763,9 +764,9 @@ class FunctionNode : public GraphNode,
         SourceBase::inject(j);
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
 
-        source_mover->do_fill();
+        source_mover->port_fill();
         std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
-        source_mover->do_push();
+        source_mover->port_push();
 
       } else {
         if (source_mover->debug_enabled())
@@ -773,11 +774,11 @@ class FunctionNode : public GraphNode,
         break;
       }
       if (rounds == 0) {
-        sink_mover->do_pull();
+        sink_mover->port_pull();
       }
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(555)));
     }
-    source_mover->do_stop();
+    source_mover->port_exhausted();
   }
 };  // namespace tiledb::common
 

@@ -58,7 +58,9 @@ enum class three_stage {
   xt_110,
   xt_111,
   done,
+  na,
   error,
+  unreach,
   last
 };
 
@@ -77,7 +79,9 @@ enum class two_stage {
   xt_10,
   xt_11,
   done,
+  na,
   error,
+  unreach,
   last
 };
 
@@ -114,23 +118,26 @@ template <class PortState>
 static std::vector<std::string> port_state_strings;
 
 template <>
-std::vector<std::string> port_state_strings<two_stage>{"st_00",
-                                                       "st_01",
-                                                       "st_10",
-                                                       "st_11",
-                                                       "xt_00",
-                                                       "xt_01",
-                                                       "xt_10",
-                                                       "xt_11",
-                                                       "done",
-                                                       "error",
-                                                       "last"};
+std::vector<std::string> port_state_strings<two_stage>{
+    "st_00",
+    "st_01",
+    "st_10",
+    "st_11",
+    "xt_00",
+    "xt_01",
+    "xt_10",
+    "xt_11",
+    "done",
+    "na",
+    "error",
+    "unreach",
+    "last"};
 
 template <>
 std::vector<std::string> port_state_strings<three_stage>{
-    "st_000", "st_001", "st_010", "st_011", "st_100", "st_101", "st_110",
-    "st_111", "xt_000", "xt_001", "xt_010", "xt_011", "xt_100", "xt_101",
-    "xt_110", "xt_111", "done",   "error",  "last",
+    "st_000", "st_001", "st_010", "st_011", "st_100", "st_101",  "st_110",
+    "st_111", "xt_000", "xt_001", "xt_010", "xt_011", "xt_100",  "xt_101",
+    "xt_110", "xt_111", "done",   "na",     "error",  "unreach", "last",
 };
 }  // namespace
 
@@ -161,13 +168,16 @@ inline auto str(two_stage st) {
  * states.
  */
 enum class PortEvent : unsigned short {
-  source_fill,
-  source_push,
-  try_push,
-  sink_drain,
-  sink_pull,
-  try_pull,
-  stop,
+  source_fill,  // Source has placed data into its output item_
+  source_push,  // Source wishes to send its data along the data channel, will
+                // block if state is st_11 (i.e., if channel is full)
+  try_push,     // Non-blocking version of source_push
+  sink_drain,   // Sink has taken data from its input item_
+  sink_pull,    // Sources wishes to receive data along the data channel, will
+                // block if state is st_00 (i.e., if channel is empty)
+  try_pull,     // Non-blocking version of sink_pull
+  exhausted,    // Source will not send any further data
+  last,         // Customary final enum
 };
 
 inline constexpr unsigned short to_index(PortEvent x) {
@@ -177,7 +187,7 @@ inline constexpr unsigned short to_index(PortEvent x) {
 /**
  * Number of events in the PortEvent state machine
  */
-constexpr unsigned int n_events = to_index(PortEvent::stop) + 1;
+constexpr unsigned int n_events = to_index(PortEvent::last) + 1;
 
 /**
  * Strings for each enum member, useful for debugging.
@@ -189,8 +199,8 @@ static std::vector<std::string> event_strings{
     "sink_drain",
     "sink_pull",
     "try_pull",
-    "stop",
-};
+    "exhausted",
+    "last"};
 
 /**
  * Function to convert event to a string.
@@ -248,16 +258,18 @@ static inline auto str(PortEvent ev) {
  */
 enum class PortAction : unsigned short {
   none,
-  ac_return,
-  source_move,
-  sink_move,
-  notify_source,
-  notify_sink,
-  source_wait,
-  sink_wait,
-  source_done,
-  sink_done,
-  error,
+  ac_return,      // To caller of event (likely item mover)
+  source_move,    // To item mover
+  sink_move,      // To item mover
+  notify_source,  // To scheduler
+  notify_sink,    // To scheduler
+  source_wait,    // To scheduler
+  sink_wait,      // To scheduler
+  term_source,    // To scheduler (terminate source)
+  term_sink,      // To scheduler (terminate source)
+  source_throw,   // Serious error condition
+  sink_throw,     // Serious error condition
+  error,          // General error condition in action table
   last,
 };
 
@@ -282,8 +294,10 @@ static std::vector<std::string> action_strings{
     "notify_sink",
     "source_wait",
     "sink_wait",
-    "source_done",
-    "sink_done",
+    "term_source",
+    "term_sink",
+    "source_throw",
+    "sink_throw",
     "error",
     "last",
 };

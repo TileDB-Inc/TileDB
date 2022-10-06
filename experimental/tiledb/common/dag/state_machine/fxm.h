@@ -36,8 +36,9 @@
  * is_*_available as an explicit state machine action. As a result, it neither
  * blocks nor moves data. This is incorrect behavior. The is_*_available
  * functions should block as well as move items.  Which is exactly equivalent to
- * do_push and do_pull. Hence, a correct fxm state machine will be equivalent to
- * the fsm state machine, obviating the need for this state machine.
+ * port_push and port_pull. Hence, a correct fxm state machine will be
+ * equivalent to the fsm state machine, obviating the need for this state
+ * machine.
  */
 
 #ifndef TILEDB_DAG_FXM_H
@@ -126,12 +127,12 @@ constexpr const PortAction entry_table<two_stage> [num_states<two_stage>][n_even
   /* st_10 */ { PortAction::none,        PortAction::none,          PortAction::none },
   /* st_11 */ { PortAction::notify_sink, PortAction::none,          PortAction::none },
 
-  /* xt_00 */ { PortAction::none,        PortAction::none,          PortAction::source_done },
-  /* xt_01 */ { PortAction::none,        PortAction::notify_source, PortAction::source_done },
-  /* xt_10 */ { PortAction::none,        PortAction::none,          PortAction::source_done },
-  /* xt_11 */ { PortAction::none,        PortAction::none,          PortAction::source_done },
+  /* xt_00 */ { PortAction::none,        PortAction::none,          PortAction::term_source },
+  /* xt_01 */ { PortAction::none,        PortAction::notify_source, PortAction::term_source },
+  /* xt_10 */ { PortAction::none,        PortAction::none,          PortAction::term_source },
+  /* xt_11 */ { PortAction::none,        PortAction::none,          PortAction::term_source },
 
-  /* done  */ { PortAction::none,        PortAction::sink_done,     PortAction::none },
+  /* done  */ { PortAction::none,        PortAction::term_sink,     PortAction::none },
   /* error */ { PortAction::none,        PortAction::none,          PortAction::none },
 
   /* last */  { PortAction::none,        PortAction::none,          PortAction::none },
@@ -216,16 +217,16 @@ constexpr const PortAction entry_table<three_stage>[num_states<three_stage>][n_e
   /* st_110 */ { PortAction::none,        PortAction::none, PortAction::none },
   /* st_111 */ { PortAction::none,        PortAction::notify_source,          PortAction::none },
 
-  /* xt_000 */ { PortAction::none,        PortAction::none,          PortAction::source_done },
-  /* xt_001 */ { PortAction::none,        PortAction::none,          PortAction::source_done },
-  /* xt_010 */ { PortAction::none,        PortAction::notify_source, PortAction::source_done },
-  /* xt_011 */ { PortAction::none,        PortAction::none,          PortAction::source_done },
-  /* xt_100 */ { PortAction::none,        PortAction::notify_source, PortAction::source_done },
-  /* xt_101 */ { PortAction::none,        PortAction::none,          PortAction::source_done },
-  /* xt_110 */ { PortAction::none,        PortAction::notify_source, PortAction::source_done },
-  /* xt_111 */ { PortAction::none,        PortAction::none,          PortAction::source_done },
+  /* xt_000 */ { PortAction::none,        PortAction::none,          PortAction::term_source },
+  /* xt_001 */ { PortAction::none,        PortAction::none,          PortAction::term_source },
+  /* xt_010 */ { PortAction::none,        PortAction::notify_source, PortAction::term_source },
+  /* xt_011 */ { PortAction::none,        PortAction::none,          PortAction::term_source },
+  /* xt_100 */ { PortAction::none,        PortAction::notify_source, PortAction::term_source },
+  /* xt_101 */ { PortAction::none,        PortAction::none,          PortAction::term_source },
+  /* xt_110 */ { PortAction::none,        PortAction::notify_source, PortAction::term_source },
+  /* xt_111 */ { PortAction::none,        PortAction::none,          PortAction::term_source },
 
-  /* done   */ { PortAction::none,        PortAction::sink_done,     PortAction::none },
+  /* done   */ { PortAction::none,        PortAction::term_sink,     PortAction::none },
   /* error  */ { PortAction::none,        PortAction::none,          PortAction::none },
 
   /* last   */ { PortAction::none,        PortAction::none,          PortAction::none },
@@ -415,19 +416,19 @@ class PortFiniteStateMachine {
         static_cast<Policy*>(this)->on_notify_sink(lock, event_counter);
         break;
 
-      case PortAction::source_done:
+      case PortAction::term_source:
         if (msg != "")
           std::cout << event_counter++
-                    << "      " + msg + " exit about to source_done"
+                    << "      " + msg + " exit about to term_source"
                     << std::endl;
-        static_cast<Policy*>(this)->on_source_done(lock, event_counter);
+        static_cast<Policy*>(this)->on_term_source(lock, event_counter);
         break;
 
-      case PortAction::sink_done:
+      case PortAction::term_sink:
         if (msg != "")
           std::cout << event_counter++
-                    << "      " + msg + " exit about to sink_done" << std::endl;
-        static_cast<Policy*>(this)->on_sink_done(lock, event_counter);
+                    << "      " + msg + " exit about to term_sink" << std::endl;
+        static_cast<Policy*>(this)->on_term_sink(lock, event_counter);
         break;
 
       default:
@@ -484,20 +485,20 @@ class PortFiniteStateMachine {
         static_cast<Policy*>(this)->on_notify_sink(lock, event_counter);
         break;
 
-      case PortAction::source_done:
+      case PortAction::term_source:
         if (msg != "")
           std::cout << event_counter++
-                    << "      " + msg + " entry about to source_done"
+                    << "      " + msg + " entry about to term_source"
                     << std::endl;
-        static_cast<Policy*>(this)->on_source_done(lock, event_counter);
+        static_cast<Policy*>(this)->on_term_source(lock, event_counter);
         break;
 
-      case PortAction::sink_done:
+      case PortAction::term_sink:
         if (msg != "")
           std::cout << event_counter++
-                    << "      " + msg + " entry about to sink_done"
+                    << "      " + msg + " entry about to term_sink"
                     << std::endl;
-        static_cast<Policy*>(this)->on_sink_done(lock, event_counter);
+        static_cast<Policy*>(this)->on_term_sink(lock, event_counter);
         break;
 
       default:
@@ -571,7 +572,7 @@ class PortFiniteStateMachine {
   /**
    * Invoke `stop` event
    */
-  void do_stop(const std::string& msg = "") {
+  void port_exhausted(const std::string& msg = "") {
     this->event(PortEvent::stop, msg);
   }
 

@@ -97,18 +97,19 @@ constexpr unsigned short num_states = to_index(NodeState::last) + 1;
  * A vector of strings corresponding to the states.  Useful for diagnostics,
  * testing, and debugging.
  */
-std::vector<std::string> node_state_strings{"init",
-                                            "input",
-                                            "compute",
-                                            "output",
-                                            "waiting",
-                                            "runnable",
-                                            "running",
-                                            "done",
-                                            "exit",
-                                            "error",
-                                            "abort",
-                                            "last"};
+std::vector<std::string> node_state_strings{
+    "init",
+    "input",
+    "compute",
+    "output",
+    "waiting",
+    "runnable",
+    "running",
+    "done",
+    "exit",
+    "error",
+    "abort",
+    "last"};
 }  // namespace
 
 /**
@@ -359,7 +360,7 @@ class GeneralFunctionNode<
   /**
    * Test that all sinks are in the done state.  Always false if producer.
    */
-  bool sink_done_all() {
+  bool term_sink_all() {
     if constexpr (is_producer_) {
       return false;
     }
@@ -372,7 +373,7 @@ class GeneralFunctionNode<
    * Test that at least one sink is in the done state.  Always false if
    * producer.
    */
-  bool sink_done_any() {
+  bool term_sink_any() {
     if constexpr (is_producer_) {
       return false;
     }
@@ -384,7 +385,7 @@ class GeneralFunctionNode<
   /**
    * Test that all sources are in the done state.  Always false if consumer.
    */
-  bool source_done_all() {
+  bool term_source_all() {
     if constexpr (is_consumer_) {
       return false;
     }
@@ -397,7 +398,7 @@ class GeneralFunctionNode<
    * Test that at least one source is in the done state.  Always false if
    * consumer.
    */
-  bool source_done_any() {
+  bool term_source_any() {
     if constexpr (is_consumer_) {
       return false;
     }
@@ -407,48 +408,48 @@ class GeneralFunctionNode<
   }
 
   /**
-   * Apply do_pull to every input port.  Make empty function if producer.
+   * Apply port_pull to every input port.  Make empty function if producer.
    */
   void pull_all() {
     if constexpr (is_producer_) {
       return;
     }
     std::apply(
-        [](auto&... sink) { (sink.get_mover()->do_pull(), ...); }, inputs_);
+        [](auto&... sink) { (sink.get_mover()->port_pull(), ...); }, inputs_);
   }
 
   /**
-   * Apply do_drain to every input port.  Make empty function if producer.
+   * Apply port_drain to every input port.  Make empty function if producer.
    */
   void drain_all() {
     if constexpr (is_producer_) {
       return;
     }
     std::apply(
-        [](auto&... sink) { (sink.get_mover()->do_drain(), ...); }, inputs_);
+        [](auto&... sink) { (sink.get_mover()->port_drain(), ...); }, inputs_);
   }
 
   /**
-   * Apply do_fill to every output port.  Make empty function if consumer.
+   * Apply port_fill to every output port.  Make empty function if consumer.
    */
   void fill_all() {
     if constexpr (is_consumer_) {
       return;
     }
     std::apply(
-        [](auto&... source) { (source.get_mover()->do_fill(), ...); },
+        [](auto&... source) { (source.get_mover()->port_fill(), ...); },
         outputs_);
   }
 
   /**
-   * Apply do_push to every output port.  Make empty function if consumer.
+   * Apply port_push to every output port.  Make empty function if consumer.
    */
   void push_all() {
     if constexpr (is_consumer_) {
       return;
     }
     std::apply(
-        [](auto&... source) { (source.get_mover()->do_push(), ...); },
+        [](auto&... source) { (source.get_mover()->port_push(), ...); },
         outputs_);
   }
 
@@ -457,7 +458,7 @@ class GeneralFunctionNode<
    */
   void stop_all() {
     std::apply(
-        [](auto&... source) { (source.get_mover()->do_stop(), ...); },
+        [](auto&... source) { (source.get_mover()->port_exhausted(), ...); },
         outputs_);
   }
 
@@ -470,18 +471,18 @@ class GeneralFunctionNode<
    * part of `GeneralNode` object and as interface to scheduler.
    *
    * @note Right now, yielding (waiting) may be done in `Mover` calls (via a
-   * `Policy`), i.e., `do_push` and `do_pull`.  Those should interface to the
-   * scheduler, e.g., and cause a return from `resume` or `run_once` that will
-   * then be started from when the scheduler is notified (again, down in the
-   * `Mover` policy).
+   * `Policy`), i.e., `port_push` and `port_pull`.  Those should interface to
+   * the scheduler, e.g., and cause a return from `resume` or `run_once` that
+   * will then be started from when the scheduler is notified (again, down in
+   * the `Mover` policy).
    *
    * @note It would be nice if this could be agnostic here as to what kind of
    * scheduler is being used, but it isn't clear how to do a return in the case
    * of a coroutine-like scheduler, or a condition-variable wait in the case of
    * an `std::async` (or similar) scheduler. Perhaps we could use a return value
-   * of `do_pull` or `do_push` to indicate what to do next (yield or continue).
-   * Or we could pass in a continuation?  Either approach seems to couple
-   * `Mover`, `Scheduler`, and `Node` too much.
+   * of `port_pull` or `port_push` to indicate what to do next (yield or
+   * continue). Or we could pass in a continuation?  Either approach seems to
+   * couple `Mover`, `Scheduler`, and `Node` too much.
    *
    * @todo Maybe we need a many-to-one and a one-to-many `ItemMover`.  We could
    * then put items in the mover rather than in the nodes -- though that would
@@ -516,7 +517,7 @@ class GeneralFunctionNode<
          * only some of the members of the tuple being done while others not).
          *
          */
-        if (sink_done_all() || source_done_all()) {
+        if (term_sink_all() || term_source_all()) {
           instruction_counter_ = NodeState::done;
           return instruction_counter_;
         }
@@ -589,14 +590,14 @@ class GeneralFunctionNode<
    */
   void run_for(size_t rounds) {
     while (rounds--) {
-      if (sink_done_all() || source_done_all()) {
+      if (term_sink_all() || term_source_all()) {
         break;
       }
 
       run_once();
       reset();
     }
-    if (!sink_done_all()) {
+    if (!term_sink_all()) {
       pull_all();
     }
     stop_all();
@@ -617,12 +618,12 @@ class GeneralFunctionNode<
      * @note Right now yielding is done inside of run_once.  Perhaps part (or
      * all) of Duff's device should happen here instead?
      */
-    while (!source_done_all() && !sink_done_all()) {
+    while (!term_source_all() && !term_sink_all()) {
       run_once(instruction_counter_);
       reset();
     }
 
-    if (!sink_done_all()) {
+    if (!term_sink_all()) {
       pull_all();
     }
     stop_all();

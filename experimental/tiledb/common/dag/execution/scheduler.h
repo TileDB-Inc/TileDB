@@ -27,7 +27,17 @@
  *
  * @section DESCRIPTION
  *
- * This file declares scheduler(s) for dag.
+ * This file defines the scheduler state machine for the TileDB task graph
+ * library.  The state machine manages state transitions of tasks executing in a
+ * task graph.
+ *
+ * Task states follow the typical OS 101 states and state transitions.  Our
+ * case is vastly simplified from the general OS case, however.  The tasks
+ * being executed are tasks within the TileDB task graph library.  Tasks
+ * execute specified functions and they send and receive data.  Tasks only
+ * need to wait when the task is unable to send or receive data on a channel.
+ * Tasks are handled at the user level and switching from one task to another
+ * is completely cooperative.
  */
 
 #ifndef TILEDB_DAG_SCHEDULER_H
@@ -109,6 +119,7 @@ enum class TaskAction {
   stop_running,
   make_waiting,
   stop_waiting,
+  ac_return,
   terminate,
   last
 };
@@ -127,6 +138,7 @@ std::vector<std::string> task_action_strings{"none",
                                              "stop_running",
                                              "make_waiting",
                                              "stop_waiting",
+                                             "ac_return",
                                              "terminate",
                                              "last"};
 }
@@ -152,10 +164,10 @@ namespace detail {
 
     /* state      */   /* create */         /* admit */          /* dispatch */      /* wait */          /* notify */         /* exit */             /* yield */
     /* created    */ { TaskState::created,  TaskState::runnable, TaskState::error,   TaskState::error,   TaskState::error,    TaskState::error,      TaskState::error,   },
-    /* runnable   */ { TaskState::error,    TaskState::error,    TaskState::running, TaskState::error,   TaskState::error,    TaskState::error,      TaskState::error,   },
+    /* runnable   */ { TaskState::error,    TaskState::error,    TaskState::running, TaskState::waiting, TaskState::runnable, TaskState::terminated,      TaskState::error,   },
     /* running    */ { TaskState::error,    TaskState::error,    TaskState::error,   TaskState::waiting, TaskState::running,  TaskState::terminated, TaskState::runnable,},
     /* waiting    */ { TaskState::error,    TaskState::error,    TaskState::error,   TaskState::error,   TaskState::runnable, TaskState::error,      TaskState::waiting, },
-    /* terminated */ { TaskState::error,    TaskState::error,    TaskState::error,   TaskState::error,   TaskState::error,    TaskState::error,      TaskState::error,   },
+    /* terminated */ { TaskState::error,    TaskState::error,    TaskState::terminated, TaskState::error,   TaskState::error,    TaskState::error,      TaskState::terminated,   },
     /* error      */ { TaskState::error,    TaskState::error,    TaskState::error,   TaskState::error,   TaskState::error,    TaskState::error,      TaskState::error,   },
     /* last       */ { TaskState::error,    TaskState::error,    TaskState::error,   TaskState::error,   TaskState::error,    TaskState::error,      TaskState::error,   },
 
@@ -164,10 +176,10 @@ namespace detail {
   constexpr const TaskAction exit_table[num_task_states][num_task_events]{
     /* state      */   /* create */               /* admit */                /* dispatch */             /* wait */                /* notify */               /* exit */                   /* yield */
     /* created    */ { TaskAction::none,          TaskAction::stop_create,   TaskAction::none,          TaskAction::none,         TaskAction::none,          TaskAction::none,            TaskAction::none,         },
-    /* runnable   */ { TaskAction::none,          TaskAction::none,          TaskAction::stop_runnable, TaskAction::none,         TaskAction::none,          TaskAction::none,            TaskAction::none,         },
+    /* runnable   */ { TaskAction::none,          TaskAction::none,          TaskAction::stop_runnable, TaskAction::none,         TaskAction::ac_return,     TaskAction::none,            TaskAction::none,         },
     /* running    */ { TaskAction::none,          TaskAction::none,          TaskAction::none,          TaskAction::stop_running, TaskAction::none,          TaskAction::stop_running,    TaskAction::stop_running, },
     /* waiting    */ { TaskAction::none,          TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::stop_waiting,  TaskAction::none,            TaskAction::none,         },
-    /* terminated */ { TaskAction::none,          TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::none,          TaskAction::none,            TaskAction::none,         },
+    /* terminated */ { TaskAction::none,          TaskAction::none,          TaskAction::stop_runnable, TaskAction::none,         TaskAction::none,          TaskAction::none,            TaskAction::none,         },
     /* error      */ { TaskAction::none,          TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::none,          TaskAction::none,            TaskAction::none,         },
     /* last       */ { TaskAction::none,          TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::none,          TaskAction::none,            TaskAction::none,         },
   };
@@ -177,12 +189,12 @@ namespace detail {
     /* created    */ { TaskAction::create,        TaskAction::none,          TaskAction::none,         TaskAction::none,         TaskAction::none,          TaskAction::none,           TaskAction::none,          },
     /* runnable   */ { TaskAction::none,          TaskAction::make_runnable, TaskAction::none,         TaskAction::none,         TaskAction::make_runnable, TaskAction::none,           TaskAction::make_runnable, },
     /* running    */ { TaskAction::none,          TaskAction::none,          TaskAction::make_running, TaskAction::none,         TaskAction::none,          TaskAction::none,           TaskAction::none,          },
-    /* waiting    */ { TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::make_waiting, TaskAction::none,          TaskAction::none,           TaskAction::none,          },
+    /* waiting    */ { TaskAction::none,          TaskAction::none,          TaskAction::make_waiting, TaskAction::make_waiting, TaskAction::none,          TaskAction::none,           TaskAction::none,          },
     /* terminated */ { TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::none,         TaskAction::none,          TaskAction::terminate,      TaskAction::none,          },
     /* error      */ { TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::none,         TaskAction::none,          TaskAction::none,           TaskAction::none,          },
     /* last       */ { TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::none,         TaskAction::none,          TaskAction::none,           TaskAction::none,          },
   };
-// clang-format on
+  // clang-format on
 }  // namespace detail
 
 // Declare a traits class.
@@ -216,14 +228,14 @@ class SchedulerStateMachine {
   void event(TaskEvent event, task_handle_type& task, const std::string&) {
     std::unique_lock lock(mutex_);
 
-    assert(is_valid_state(task.state()));
+    assert(is_valid_state(task->task_state()));
     assert(is_valid_event(event));
 
     auto next_state =
-        detail::transition_table[to_index(task.state())][to_index(event)];
+        detail::transition_table[to_index(task->task_state())][to_index(event)];
 
     auto exit_action{
-        detail::exit_table[to_index(task.state())][to_index(event)]};
+        detail::exit_table[to_index(task->task_state())][to_index(event)]};
 
     auto entry_action{
         detail::entry_table[to_index(next_state)][to_index(event)]};
@@ -266,6 +278,10 @@ class SchedulerStateMachine {
         static_cast<Policy*>(this)->on_stop_waiting(task);
         break;
 
+      case TaskAction::ac_return:
+        return;
+        break;
+
       case TaskAction::terminate:
         static_cast<Policy*>(this)->on_terminate(task);
         break;
@@ -276,7 +292,7 @@ class SchedulerStateMachine {
         throw(std::logic_error("Bad action"));
     }
 
-    task.set_state(next_state);
+    task->task_state() = next_state;
 
     switch (entry_action) {
       case TaskAction::none:
@@ -314,6 +330,10 @@ class SchedulerStateMachine {
         static_cast<Policy*>(this)->on_stop_waiting(task);
         break;
 
+      case TaskAction::ac_return:
+        return;
+        break;
+
       case TaskAction::terminate:
         static_cast<Policy*>(this)->on_terminate(task);
         break;
@@ -337,31 +357,31 @@ class SchedulerStateMachine {
   bool debug() {
     return debug_;
   }
-  void do_create(task_handle_type& task) {
+  void task_create(task_handle_type& task) {
     event(TaskEvent::create, task, "");
   }
 
-  void do_admit(task_handle_type& task) {
+  void task_admit(task_handle_type& task) {
     event(TaskEvent::admit, task, "");
   }
 
-  void do_dispatch(task_handle_type& task) {
+  void task_dispatch(task_handle_type& task) {
     event(TaskEvent::dispatch, task, "");
   }
 
-  void do_wait(task_handle_type& task) {
+  void task_wait(task_handle_type& task) {
     event(TaskEvent::wait, task, "");
   }
 
-  void do_notify(task_handle_type& task) {
+  void task_notify(task_handle_type& task) {
     event(TaskEvent::notify, task, "");
   }
 
-  void do_exit(task_handle_type& task) {
+  void task_exit(task_handle_type& task) {
     event(TaskEvent::exit, task, "");
   }
 
-  void do_yield(task_handle_type& task) {
+  void task_yield(task_handle_type& task) {
     event(TaskEvent::yield, task, "");
   }
 };
@@ -407,7 +427,7 @@ class SchedulerBase {
 template <typename T>
 struct SchedulerTraits<EmptySchedulerPolicy<T>> {
   using task_type = T;
-  using task_handle_type = std::shared_ptr<T>;
+  using task_handle_type = T;
 };
 
 template <class Task>
@@ -456,7 +476,7 @@ template <class Task>
 class DebugSchedulerPolicy
     : public SchedulerStateMachine<DebugSchedulerPolicy<Task>> {
  public:
-  using task_handle_type = std::shared_ptr<Task>;
+  using task_handle_type = Task;
 
   void on_create(Task&) {
     std::cout << "calling on_create" << std::endl;

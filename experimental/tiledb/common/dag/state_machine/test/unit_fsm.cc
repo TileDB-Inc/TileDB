@@ -92,16 +92,16 @@ TEST_CASE("Port FSM: Start up", "[fsm]") {
   CHECK(a.state() == two_stage::st_00);
 
   SECTION("start source") {
-    a.do_fill(debug ? "start source" : "");
+    a.port_fill(debug ? "start source" : "");
     CHECK(str(a.state()) == "st_10");
   }
 
   SECTION("start sink") {
-    a.do_fill(debug ? "start sink (fill)" : "");
+    a.port_fill(debug ? "start sink (fill)" : "");
     CHECK(str(a.state()) == "st_10");
-    a.do_push(debug ? "start sink (push)" : "");
+    a.port_push(debug ? "start sink (push)" : "");
     CHECK(is_source_empty(a.state()) == "");
-    a.do_drain(debug ? "start sink (drain)" : "");
+    a.port_drain(debug ? "start sink (drain)" : "");
     CHECK(is_sink_empty(a.state()) == "");
   }
 }
@@ -114,60 +114,60 @@ TEST_CASE("Port FSM: Basic manual sequence", "[fsm]") {
   [[maybe_unused]] auto a = DebugStateMachine2<size_t>{};
   CHECK(a.state() == two_stage::st_00);
 
-  a.do_fill();
+  a.port_fill();
   CHECK(str(a.state()) == "st_10");
-  a.do_push();
+  a.port_push();
   CHECK(str(a.state()) == "st_01");
-  a.do_fill();
+  a.port_fill();
   CHECK(str(a.state()) == "st_11");
-  a.do_drain();
+  a.port_drain();
   CHECK(str(a.state()) == "st_10");
-  a.do_push();
+  a.port_push();
   CHECK(str(a.state()) == "st_01");
 
-  a.do_drain();
+  a.port_drain();
   CHECK(str(a.state()) == "st_00");
 
-  a.do_fill();
+  a.port_fill();
   CHECK(str(a.state()) == "st_10");
-  a.do_pull();
+  a.port_pull();
   CHECK(str(a.state()) == "st_01");
-  a.do_fill();
+  a.port_fill();
   CHECK(str(a.state()) == "st_11");
-  a.do_drain();
+  a.port_drain();
   CHECK(str(a.state()) == "st_10");
-  a.do_pull();
+  a.port_pull();
   CHECK(str(a.state()) == "st_01");
 
-  a.do_drain();
+  a.port_drain();
   CHECK(a.state() == two_stage::st_00);
 
-  a.do_fill();
+  a.port_fill();
   CHECK(str(a.state()) == "st_10");
-  a.do_push();
+  a.port_push();
   CHECK(str(a.state()) == "st_01");
-  a.do_fill();
+  a.port_fill();
   CHECK(str(a.state()) == "st_11");
-  a.do_drain();
+  a.port_drain();
   CHECK(str(a.state()) == "st_10");
-  a.do_pull();
+  a.port_pull();
   CHECK(str(a.state()) == "st_01");
 
-  a.do_drain();
+  a.port_drain();
   CHECK(a.state() == two_stage::st_00);
 
-  a.do_fill();
+  a.port_fill();
   CHECK(str(a.state()) == "st_10");
-  a.do_pull();
+  a.port_pull();
   CHECK(str(a.state()) == "st_01");
-  a.do_fill();
+  a.port_fill();
   CHECK(str(a.state()) == "st_11");
-  a.do_drain();
+  a.port_drain();
   CHECK(str(a.state()) == "st_10");
-  a.do_push();
+  a.port_push();
   CHECK(str(a.state()) == "st_01");
 
-  a.do_drain();
+  a.port_drain();
   CHECK(a.state() == two_stage::st_00);
 }
 
@@ -180,110 +180,110 @@ TEST_CASE("Port FSM3: Basic manual sequence", "[fsm]") {
   CHECK(a.state() == three_stage::st_000);
 
   SECTION("Two element tests") {
-    a.do_fill();
+    a.port_fill();
     CHECK(str(a.state()) == "st_100");
-    a.do_push();
+    a.port_push();
     CHECK(str(a.state()) == "st_001");
-    a.do_fill();
+    a.port_fill();
     CHECK(str(a.state()) == "st_101");
-    a.do_drain();
+    a.port_drain();
     CHECK(str(a.state()) == "st_100");
-    a.do_push();
+    a.port_push();
     CHECK(str(a.state()) == "st_001");
 
-    a.do_drain();
+    a.port_drain();
     CHECK(str(a.state()) == "st_000");
 
-    a.do_fill();
+    a.port_fill();
     CHECK(str(a.state()) == "st_100");
-    a.do_pull();
+    a.port_pull();
     CHECK(str(a.state()) == "st_001");
-    a.do_fill();
+    a.port_fill();
     CHECK(str(a.state()) == "st_101");
-    a.do_drain();
+    a.port_drain();
     CHECK(str(a.state()) == "st_100");
-    a.do_pull();
+    a.port_pull();
     CHECK(str(a.state()) == "st_001");
 
-    a.do_drain();
+    a.port_drain();
     CHECK(str(a.state()) == "st_000");
 
-    a.do_fill();
+    a.port_fill();
     CHECK(str(a.state()) == "st_100");
-    a.do_push();
+    a.port_push();
     CHECK(str(a.state()) == "st_001");
-    a.do_fill();
+    a.port_fill();
     CHECK(str(a.state()) == "st_101");
-    a.do_push();
+    a.port_push();
     CHECK(str(a.state()) == "st_011");
-    a.do_drain();
+    a.port_drain();
     CHECK(str(a.state()) == "st_010");
-    a.do_push();
+    a.port_push();
     CHECK(str(a.state()) == "st_001");
 
-    a.do_drain();
+    a.port_drain();
     CHECK(str(a.state()) == "st_000");
 
-    a.do_fill();
+    a.port_fill();
     CHECK(str(a.state()) == "st_100");
-    a.do_pull();
+    a.port_pull();
     CHECK(str(a.state()) == "st_001");
-    a.do_fill();
+    a.port_fill();
     CHECK(str(a.state()) == "st_101");
-    a.do_pull();
+    a.port_pull();
     CHECK(str(a.state()) == "st_011");
-    a.do_drain();
+    a.port_drain();
     CHECK(str(a.state()) == "st_010");
-    a.do_pull();
+    a.port_pull();
     CHECK(str(a.state()) == "st_001");
 
-    a.do_drain();
+    a.port_drain();
     CHECK(str(a.state()) == "st_000");
   }
 
   SECTION("three element tests") {
-    a.do_fill();
+    a.port_fill();
     CHECK(str(a.state()) == "st_100");
-    a.do_push();
+    a.port_push();
     CHECK(str(a.state()) == "st_001");
-    a.do_fill();
+    a.port_fill();
     CHECK(str(a.state()) == "st_101");
-    a.do_push();
+    a.port_push();
     CHECK(str(a.state()) == "st_011");
-    a.do_fill();
+    a.port_fill();
     CHECK(str(a.state()) == "st_111");
-    a.do_drain();
+    a.port_drain();
     CHECK(str(a.state()) == "st_110");
-    a.do_push();
+    a.port_push();
     CHECK(str(a.state()) == "st_011");
-    a.do_drain();
+    a.port_drain();
     CHECK(str(a.state()) == "st_010");
-    a.do_push();
+    a.port_push();
     CHECK(str(a.state()) == "st_001");
 
-    a.do_drain();
+    a.port_drain();
     CHECK(str(a.state()) == "st_000");
 
-    a.do_fill();
+    a.port_fill();
     CHECK(str(a.state()) == "st_100");
-    a.do_pull();
+    a.port_pull();
     CHECK(str(a.state()) == "st_001");
-    a.do_fill();
+    a.port_fill();
     CHECK(str(a.state()) == "st_101");
-    a.do_pull();
+    a.port_pull();
     CHECK(str(a.state()) == "st_011");
-    a.do_fill();
+    a.port_fill();
     CHECK(str(a.state()) == "st_111");
-    a.do_drain();
+    a.port_drain();
     CHECK(str(a.state()) == "st_110");
-    a.do_pull();
+    a.port_pull();
     CHECK(str(a.state()) == "st_011");
-    a.do_drain();
+    a.port_drain();
     CHECK(str(a.state()) == "st_010");
-    a.do_pull();
+    a.port_pull();
     CHECK(str(a.state()) == "st_001");
 
-    a.do_drain();
+    a.port_drain();
     CHECK(str(a.state()) == "st_000");
   }
 }
@@ -303,9 +303,9 @@ TEST_CASE("AsynchronousPolicy: Asynchronous source and manual sink", "[fsm]") {
   a.set_state(two_stage::st_00);
 
   auto fut_a = std::async(std::launch::async, [&]() {
-    a.do_fill(debug ? "async source (fill)" : "");
+    a.port_fill(debug ? "async source (fill)" : "");
     CHECK(is_source_full(a.state()) == "");
-    a.do_push(debug ? "async source (push)" : "");
+    a.port_push(debug ? "async source (push)" : "");
     CHECK(is_source_empty(a.state()) == "");
   });
 
@@ -316,10 +316,10 @@ TEST_CASE("AsynchronousPolicy: Asynchronous source and manual sink", "[fsm]") {
 
   //  std::this_thread::sleep_for(std::chrono::microseconds(random_us(5000)));
 
-  a.do_pull(debug ? "manual sink (pull)" : "");
+  a.port_pull(debug ? "manual sink (pull)" : "");
   CHECK(str(a.state()) == "st_01");
 
-  a.do_drain(debug ? "manual sink (drain)" : "");
+  a.port_drain(debug ? "manual sink (drain)" : "");
 
   fut_a.get();
 
@@ -341,10 +341,10 @@ TEST_CASE("AsynchronousPolicy: Manual source and asynchronous sink", "[fsm]") {
   a.set_state(two_stage::st_00);
 
   auto fut_b = std::async(std::launch::async, [&]() {
-    a.do_pull(debug ? "async sink (pull)" : "");
+    a.port_pull(debug ? "async sink (pull)" : "");
     CHECK(is_sink_full(a.state()) == "");
 
-    a.do_drain(debug ? "async sink (drain)" : "");
+    a.port_drain(debug ? "async sink (drain)" : "");
   });
 
   //  std::this_thread::sleep_for(std::chrono::microseconds(random_us(5000)));
@@ -354,8 +354,8 @@ TEST_CASE("AsynchronousPolicy: Manual source and asynchronous sink", "[fsm]") {
 
   //  std::this_thread::sleep_for(std::chrono::microseconds(random_us(5000)));
 
-  a.do_fill(debug ? "manual source (fill)" : "");
-  a.do_push(debug ? "manual source (push)" : "");
+  a.port_fill(debug ? "manual source (fill)" : "");
+  a.port_push(debug ? "manual source (push)" : "");
 
   fut_b.get();
 
@@ -379,15 +379,15 @@ TEST_CASE(
   a.set_state(two_stage::st_00);
 
   auto fut_a = std::async(std::launch::async, [&]() {
-    a.do_fill(debug ? "manual async source (fill)" : "");
-    a.do_push(debug ? "manual async source (push)" : "");
+    a.port_fill(debug ? "manual async source (fill)" : "");
+    a.port_push(debug ? "manual async source (push)" : "");
   });
 
   if (debug)
     std::cout << "About to call drained" << std::endl;
 
-  a.do_pull(debug ? "manual async sink (pull)" : "");
-  a.do_drain(debug ? "manual async sink (drained)" : "");
+  a.port_pull(debug ? "manual async sink (pull)" : "");
+  a.port_drain(debug ? "manual async sink (drained)" : "");
 
   fut_a.get();
 
@@ -411,8 +411,8 @@ TEST_CASE(
   a.set_state(two_stage::st_00);
 
   auto fut_b = std::async(std::launch::async, [&]() {
-    a.do_pull(debug ? "manual async sink (pull)" : "");
-    a.do_drain(debug ? "manual async sink (drain)" : "");
+    a.port_pull(debug ? "manual async sink (pull)" : "");
+    a.port_drain(debug ? "manual async sink (drain)" : "");
   });
 
   //  std::this_thread::sleep_for(std::chrono::microseconds(random_us(5000)));
@@ -422,8 +422,8 @@ TEST_CASE(
 
   //  std::this_thread::sleep_for(std::chrono::microseconds(random_us(5000)));
 
-  a.do_fill(debug ? "manual async source (fill)" : "");
-  a.do_push(debug ? "manual async source (push)" : "");
+  a.port_fill(debug ? "manual async source (fill)" : "");
+  a.port_push(debug ? "manual async source (push)" : "");
 
   fut_b.get();
 
@@ -448,13 +448,13 @@ TEST_CASE(
 
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
-      a.do_fill(debug ? "async source (fill)" : "");
-      a.do_push(debug ? "async source (push)" : "");
+      a.port_fill(debug ? "async source (fill)" : "");
+      a.port_push(debug ? "async source (push)" : "");
     });
 
     auto fut_b = std::async(std::launch::async, [&]() {
-      a.do_pull(debug ? "async sink (pull)" : "");
-      a.do_drain(debug ? "async dsink (drain)" : "");
+      a.port_pull(debug ? "async sink (pull)" : "");
+      a.port_drain(debug ? "async dsink (drain)" : "");
     });
     fut_a.get();
     fut_b.get();
@@ -462,13 +462,13 @@ TEST_CASE(
 
   SECTION("launch source then sink, get sink then source") {
     auto fut_a = std::async(std::launch::async, [&]() {
-      a.do_fill(debug ? "async source (fill)" : "");
-      a.do_push(debug ? "async source (push)" : "");
+      a.port_fill(debug ? "async source (fill)" : "");
+      a.port_push(debug ? "async source (push)" : "");
     });
 
     auto fut_b = std::async(std::launch::async, [&]() {
-      a.do_pull(debug ? "async sink (pull)" : "");
-      a.do_drain(debug ? "async sink (drain)" : "");
+      a.port_pull(debug ? "async sink (pull)" : "");
+      a.port_drain(debug ? "async sink (drain)" : "");
     });
     fut_b.get();
     fut_a.get();
@@ -476,12 +476,12 @@ TEST_CASE(
 
   SECTION("launch sink then source, get source then sink") {
     auto fut_b = std::async(std::launch::async, [&]() {
-      a.do_pull(debug ? "async sink (pull)" : "");
-      a.do_drain(debug ? "async dsink (drain)" : "");
+      a.port_pull(debug ? "async sink (pull)" : "");
+      a.port_drain(debug ? "async dsink (drain)" : "");
     });
     auto fut_a = std::async(std::launch::async, [&]() {
-      a.do_fill(debug ? "async source (fill)" : "");
-      a.do_push(debug ? "async source (push)" : "");
+      a.port_fill(debug ? "async source (fill)" : "");
+      a.port_push(debug ? "async source (push)" : "");
     });
 
     fut_a.get();
@@ -489,12 +489,12 @@ TEST_CASE(
   }
   SECTION("launch sink then source, get source then sink") {
     auto fut_b = std::async(std::launch::async, [&]() {
-      a.do_pull(debug ? "async sink (pull)" : "");
-      a.do_drain(debug ? "async dsink (drain)" : "");
+      a.port_pull(debug ? "async sink (pull)" : "");
+      a.port_drain(debug ? "async dsink (drain)" : "");
     });
     auto fut_a = std::async(std::launch::async, [&]() {
-      a.do_fill(debug ? "async source (fill)" : "");
-      a.do_push(debug ? "async source (push)" : "");
+      a.port_fill(debug ? "async source (fill)" : "");
+      a.port_push(debug ? "async source (push)" : "");
     });
 
     fut_a.get();
@@ -503,13 +503,13 @@ TEST_CASE(
 
   SECTION("launch source then sink, get sink then source") {
     auto fut_a = std::async(std::launch::async, [&]() {
-      a.do_fill(debug ? "async source (fill)" : "");
-      a.do_push(debug ? "async source (push)" : "");
+      a.port_fill(debug ? "async source (fill)" : "");
+      a.port_push(debug ? "async source (push)" : "");
     });
 
     auto fut_b = std::async(std::launch::async, [&]() {
-      a.do_pull(debug ? "async sink (pull)" : "");
-      a.do_drain(debug ? "async sink (drain)" : "");
+      a.port_pull(debug ? "async sink (pull)" : "");
+      a.port_drain(debug ? "async sink (drain)" : "");
     });
     fut_b.get();
     fut_a.get();
@@ -539,13 +539,13 @@ TEST_CASE(
   SECTION("launch source then sink, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
       CHECK(str(a.state()) == "st_00");
-      a.do_fill(debug ? "async source (fill)" : "");
-      a.do_push(debug ? "async source (push)" : "");
+      a.port_fill(debug ? "async source (fill)" : "");
+      a.port_push(debug ? "async source (push)" : "");
     });
 
     auto fut_b = std::async(std::launch::async, [&]() {
-      a.do_pull(debug ? "async sink (pull)" : "");
-      a.do_drain(debug ? "async sink (drain)" : "");
+      a.port_pull(debug ? "async sink (pull)" : "");
+      a.port_drain(debug ? "async sink (drain)" : "");
     });
     fut_a.get();
     fut_b.get();
@@ -553,13 +553,13 @@ TEST_CASE(
 
   SECTION("launch source then sink, get sink then source") {
     auto fut_b = std::async(std::launch::async, [&]() {
-      a.do_pull(debug ? "async sink (pull)" : "");
-      a.do_drain(debug ? "async sink (drain)" : "");
+      a.port_pull(debug ? "async sink (pull)" : "");
+      a.port_drain(debug ? "async sink (drain)" : "");
     });
 
     auto fut_a = std::async(std::launch::async, [&]() {
-      a.do_fill(debug ? "async source (fill)" : "");
-      a.do_push(debug ? "async source (push)" : "");
+      a.port_fill(debug ? "async source (fill)" : "");
+      a.port_push(debug ? "async source (push)" : "");
     });
 
     fut_a.get();
@@ -568,13 +568,13 @@ TEST_CASE(
 
   SECTION("launch sink then source, get source then sink") {
     auto fut_a = std::async(std::launch::async, [&]() {
-      a.do_fill(debug ? "async source (fill)" : "");
-      a.do_push(debug ? "async source (push)" : "");
+      a.port_fill(debug ? "async source (fill)" : "");
+      a.port_push(debug ? "async source (push)" : "");
     });
 
     auto fut_b = std::async(std::launch::async, [&]() {
-      a.do_pull(debug ? "async sink (pull)" : "");
-      a.do_drain(debug ? "async sink (drain)" : "");
+      a.port_pull(debug ? "async sink (pull)" : "");
+      a.port_drain(debug ? "async sink (drain)" : "");
     });
 
     fut_b.get();
@@ -583,13 +583,13 @@ TEST_CASE(
 
   SECTION("launch sink then source, get sink then source") {
     auto fut_b = std::async(std::launch::async, [&]() {
-      a.do_pull(debug ? "async sink (pull)" : "");
-      a.do_drain(debug ? "async sink (drain)" : "");
+      a.port_pull(debug ? "async sink (pull)" : "");
+      a.port_drain(debug ? "async sink (drain)" : "");
     });
 
     auto fut_a = std::async(std::launch::async, [&]() {
-      a.do_fill(debug ? "async source (fill)" : "");
-      a.do_push(debug ? "async source (push)" : "");
+      a.port_fill(debug ? "async source (fill)" : "");
+      a.port_push(debug ? "async source (push)" : "");
     });
 
     fut_b.get();
@@ -631,8 +631,8 @@ TEST_CASE(
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-      a.do_fill(debug ? "async source node" : "");
-      a.do_push(debug ? "async source node" : "");
+      a.port_fill(debug ? "async source node" : "");
+      a.port_push(debug ? "async source node" : "");
     }
   };
 
@@ -642,8 +642,8 @@ TEST_CASE(
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-      a.do_pull(debug ? "async sink node" : "");
-      a.do_drain(debug ? "async sink node" : "");
+      a.port_pull(debug ? "async sink node" : "");
+      a.port_drain(debug ? "async sink node" : "");
     }
   };
 
@@ -714,8 +714,8 @@ TEST_CASE(
       }
       /* Emulate running a producer task. */
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-      a.do_fill(debug ? "async source node" : "");
-      a.do_push(debug ? "async source node" : "");
+      a.port_fill(debug ? "async source node" : "");
+      a.port_push(debug ? "async source node" : "");
     }
   };
 
@@ -725,9 +725,9 @@ TEST_CASE(
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-      a.do_pull(debug ? "async sink node" : "");
+      a.port_pull(debug ? "async sink node" : "");
       /* Emulate running a consumer task. */
-      a.do_drain(debug ? "async sink node" : "");
+      a.port_drain(debug ? "async sink node" : "");
     }
   };
 
@@ -791,8 +791,8 @@ TEST_CASE(
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-      a.do_fill(debug ? "async source node" : "");
-      a.do_push(debug ? "async source node" : "");
+      a.port_fill(debug ? "async source node" : "");
+      a.port_push(debug ? "async source node" : "");
     }
   };
 
@@ -802,8 +802,8 @@ TEST_CASE(
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-      a.do_pull(debug ? "async sink node" : "");
-      a.do_drain(debug ? "async sink node" : "");
+      a.port_pull(debug ? "async sink node" : "");
+      a.port_drain(debug ? "async sink node" : "");
     }
   };
 
@@ -852,12 +852,13 @@ TEST_CASE(
  * different interleavings of the tasks, we use all combinations of ordering for
  * launching the tasks and waiting on their futures.
  */
-TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
+TEMPLATE_TEST_CASE(
+    "Pass a sequence of n integers, async", "[fsm]", AsyncMover2<size_t>) {
   [[maybe_unused]] constexpr bool debug = false;
 
   std::optional<size_t> source_item{0};
   std::optional<size_t> sink_item{0};
-  [[maybe_unused]] auto a = AsyncMover2<size_t>{source_item, sink_item};
+  [[maybe_unused]] auto a = TestType{source_item, sink_item};
   if (debug) {
     a.enable_debug();
   }
@@ -900,11 +901,11 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
       CHECK(is_source_empty(a.state()) == "");
 
-      a.do_fill(debug ? "async source node" : "");
+      a.port_fill(debug ? "async source node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      a.do_push(debug ? "async source node" : "");
+      a.port_push(debug ? "async source node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -928,7 +929,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      a.do_pull(debug ? "async sink node" : "");
+      a.port_pull(debug ? "async sink node" : "");
 
       CHECK(is_sink_full(a.state()) == "");
 
@@ -946,7 +947,7 @@ TEST_CASE("Pass a sequence of n integers, async", "[fsm]") {
 
       *(a.sink_item()) = EMPTY_SINK;
 
-      a.do_drain(debug ? "async sink node" : "");
+      a.port_drain(debug ? "async sink node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
@@ -1064,8 +1065,8 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
       CHECK(is_source_empty(a.state()) == "");
 
       *(a.source_item()) = *i++;
-      a.do_fill(debug ? "async source node" : "");
-      a.do_push(debug ? "async source node" : "");
+      a.port_fill(debug ? "async source node" : "");
+      a.port_push(debug ? "async source node" : "");
 
       CHECK(is_source_empty(a.state()) == "");
 
@@ -1084,14 +1085,14 @@ TEST_CASE("Pass a sequence of n integers, unified", "[fsm]") {
       //             a.state() == two_stage::st_01)
       //        ;
 
-      a.do_pull(debug ? "async sink node" : "");
+      a.port_pull(debug ? "async sink node" : "");
 
       CHECK(is_sink_full(a.state()) == "");
 
       *j++ = *(a.sink_item());
       *(a.sink_item()) = EMPTY_SINK;
 
-      a.do_drain(debug ? "async sink node" : "");
+      a.port_drain(debug ? "async sink node" : "");
     }
   };
 
@@ -1177,22 +1178,22 @@ TEST_CASE("Port FSM3: Start up", "[fsm]") {
   SECTION("start source") {
     CHECK(a.state() == three_stage::st_000);
 
-    a.do_fill(debug ? "start source" : "");
+    a.port_fill(debug ? "start source" : "");
     CHECK(a.state() == three_stage::st_100);
   }
 
   SECTION("start sink") {
     CHECK(a.state() == three_stage::st_000);
 
-    a.do_fill(debug ? "start sink (fill)" : "");
+    a.port_fill(debug ? "start sink (fill)" : "");
 
     CHECK(str(a.state()) == "st_100");
 
-    a.do_push(debug ? "start sink (push)" : "");
+    a.port_push(debug ? "start sink (push)" : "");
     CHECK(str(a.state()) == "st_001");
     CHECK(is_source_empty(a.state()) == "");
 
-    a.do_drain(debug ? "start sink (drain)" : "");
+    a.port_drain(debug ? "start sink (drain)" : "");
 
     CHECK(str(a.state()) == "st_000");
     CHECK(is_sink_empty(a.state()) == "");
@@ -1259,11 +1260,11 @@ TEST_CASE("Pass a sequence of n integers, async 3", "[fsm]") {
 
       CHECK(is_source_empty(a.state()) == "");
 
-      a.do_fill(debug ? "async source node" : "");
+      a.port_fill(debug ? "async source node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      a.do_push(debug ? "async source node" : "");
+      a.port_push(debug ? "async source node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -1282,7 +1283,7 @@ TEST_CASE("Pass a sequence of n integers, async 3", "[fsm]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      a.do_pull(debug ? "async sink node" : "");
+      a.port_pull(debug ? "async sink node" : "");
 
       CHECK(is_sink_full(a.state()) == "");
 
@@ -1300,7 +1301,7 @@ TEST_CASE("Pass a sequence of n integers, async 3", "[fsm]") {
 
       *(a.sink_item()) = EMPTY_SINK;
 
-      a.do_drain(debug ? "async sink node" : "");
+      a.port_drain(debug ? "async sink node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
@@ -1413,8 +1414,8 @@ TEST_CASE("Pass a sequence of n integers, unified3", "[fsm]") {
       CHECK(is_source_empty(a.state()) == "");
 
       *(a.source_item()) = *i++;
-      a.do_fill(debug ? "async source node" : "");
-      a.do_push(debug ? "async source node" : "");
+      a.port_fill(debug ? "async source node" : "");
+      a.port_push(debug ? "async source node" : "");
 
       CHECK(is_source_empty(a.state()) == "");
 
@@ -1429,14 +1430,14 @@ TEST_CASE("Pass a sequence of n integers, unified3", "[fsm]") {
         std::cout << "sink node iteration " << n << std::endl;
       }
 
-      a.do_pull(debug ? "async sink node" : "");
+      a.port_pull(debug ? "async sink node" : "");
 
       CHECK(is_sink_full(a.state()) == "");
 
       *j++ = *(a.sink_item());
       *(a.sink_item()) = EMPTY_SINK;
 
-      a.do_drain(debug ? "async sink node" : "");
+      a.port_drain(debug ? "async sink node" : "");
     }
   };
 
@@ -1553,11 +1554,11 @@ TEST_CASE("Create a tuple, async", "[fsm]") {
 
       CHECK(is_source_empty(a.state()) == "");
 
-      a.do_fill();
+      a.port_fill();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      a.do_push();
+      a.port_push();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -1574,7 +1575,7 @@ TEST_CASE("Create a tuple, async", "[fsm]") {
         std::cout << "source node iteration " << n << std::endl;
       }
 
-      a.do_pull();
+      a.port_pull();
 
       CHECK(is_sink_full(a.state()) == "");
 
@@ -1586,11 +1587,11 @@ TEST_CASE("Create a tuple, async", "[fsm]") {
 
       *j++ = *(a.sink_item());  // This needs to be atomic with extract
 
-      a.do_drain();
+      a.port_drain();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      a.do_pull();
+      a.port_pull();
 
       CHECK(is_sink_full(a.state()) == "");
 
@@ -1602,10 +1603,10 @@ TEST_CASE("Create a tuple, async", "[fsm]") {
 
       *j++ = *(a.sink_item());  // This needs to be atomic with extract
 
-      a.do_drain();
+      a.port_drain();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-      a.do_pull();
+      a.port_pull();
 
       CHECK(is_sink_full(a.state()) == "");
 
@@ -1617,7 +1618,7 @@ TEST_CASE("Create a tuple, async", "[fsm]") {
 
       *j++ = *(a.sink_item());  // This needs to be atomic with extract
 
-      a.do_drain();
+      a.port_drain();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
@@ -1738,11 +1739,11 @@ TEST_CASE("Create a tuple2, async", "[fsm]") {
 
       CHECK(is_source_empty(a.state()) == "");
 
-      a.do_fill();
+      a.port_fill();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      a.do_push();
+      a.port_push();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -1759,7 +1760,7 @@ TEST_CASE("Create a tuple2, async", "[fsm]") {
         std::cout << "source node iteration " << n << std::endl;
       }
 
-      a.do_pull();
+      a.port_pull();
 
       CHECK(is_sink_full(a.state()) == "");
 
@@ -1771,11 +1772,11 @@ TEST_CASE("Create a tuple2, async", "[fsm]") {
 
       *j++ = *(a.sink_item());  // This needs to be atomic with extract
 
-      a.do_drain();
+      a.port_drain();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      a.do_pull();
+      a.port_pull();
 
       CHECK(is_sink_full(a.state()) == "");
 
@@ -1787,10 +1788,10 @@ TEST_CASE("Create a tuple2, async", "[fsm]") {
 
       *j++ = *(a.sink_item());  // This needs to be atomic with extract
 
-      a.do_drain();
+      a.port_drain();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
-      a.do_pull();
+      a.port_pull();
 
       CHECK(is_sink_full(a.state()) == "");
 
@@ -1802,7 +1803,7 @@ TEST_CASE("Create a tuple2, async", "[fsm]") {
 
       *j++ = *(a.sink_item());  // This needs to be atomic with extract
 
-      a.do_drain();
+      a.port_drain();
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
