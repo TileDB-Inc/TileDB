@@ -29,6 +29,7 @@
 #
 # Define unit tests 
 #
+dag_add_header_only_unit_test(concurrent_map)
 dag_add_header_only_unit_test(concurrent_set)
 dag_add_header_only_unit_test(bounded_buffer)
 dag_add_header_only_unit_test(range_join)

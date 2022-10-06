@@ -73,6 +73,7 @@
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/item_mover.h"
 #include "experimental/tiledb/common/dag/utils/bounded_buffer.h"
+#include "experimental/tiledb/common/dag/utils/concurrent_map.h"
 #include "experimental/tiledb/common/dag/utils/concurrent_set.h"
 #include "experimental/tiledb/common/dag/utils/print_types.h"
 
@@ -306,6 +307,9 @@ class FrugalSchedulerPolicy
       notified_waiters_.reserve(waiting_set_.size());
 
       for (auto t : waiting_set_) {
+
+	// Notify can change the waiting_set_
+	// But it should be empty by here?
         this->task_notify(t);
       }
 
@@ -554,7 +558,7 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
 
  private:
   /** @todo Need to make ConcurrentMap */
-  std::map<Node, FrugalTask<Node>> node_to_task;
+  ConcurrentMap<Node, FrugalTask<Node>> node_to_task;
 
  public:
   void submit(Node&& n) {
@@ -792,7 +796,10 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
     this->make_ready_to_run();
     start_cv_.notify_all();
 
-    Policy::p_shutdown();
+    // This doesn't seem to be necessary
+    // All queues should be empty by the time we come to shutdown
+
+    // Policy::p_shutdown();
 
     concurrency_level_.store(0);
 
@@ -803,24 +810,24 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
   }
 
   /** The worker threads */
-    std::vector<std::thread> threads_;
+  std::vector<std::thread> threads_;
 
-    /** The maximum level of concurrency among all of the worker threads */
-    std::atomic<size_t> concurrency_level_;
+  /** The maximum level of concurrency among all of the worker threads */
+  std::atomic<size_t> concurrency_level_;
 
-    /** Track number of tasks submited to scheduler */
-    std::atomic<size_t> num_submitted_tasks_{0};
+  /** Track number of tasks submited to scheduler */
+  std::atomic<size_t> num_submitted_tasks_{0};
 
-    /** Track number of tasks in the scheduler */
-    std::atomic<size_t> num_tasks_{0};
+  /** Track number of tasks in the scheduler */
+  std::atomic<size_t> num_tasks_{0};
 
-    /** Track number of tasks that have exited the scheduler */
-    std::atomic<size_t> num_exited_tasks_{0};
+  /** Track number of tasks that have exited the scheduler */
+  std::atomic<size_t> num_exited_tasks_{0};
 
-    /** Synchronization variables */
-    std::mutex mutex_;
-    std::condition_variable start_cv_;
-  };
+  /** Synchronization variables */
+  std::mutex mutex_;
+  std::condition_variable start_cv_;
+};
 
 }  // namespace tiledb::common
 
