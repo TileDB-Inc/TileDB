@@ -776,13 +776,15 @@ tuple<
     Status,
     optional<std::string>,
     optional<ObjectType>,
-    optional<std::string>>
+    optional<std::string>,
+    optional<bool>>
 Group::member_by_name(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   // Check if group is open
   if (!is_open_) {
     return {Status_GroupError("Cannot get member by name; Group is not open"),
+            std::nullopt,
             std::nullopt,
             std::nullopt,
             std::nullopt};
@@ -794,12 +796,14 @@ Group::member_by_name(const std::string& name) {
                 "Cannot get member; Group was not opened in read mode"),
             std::nullopt,
             std::nullopt,
+            std::nullopt,
             std::nullopt};
   }
 
   auto it = members_by_name_.find(name);
   if (it == members_by_name_.end()) {
     return {Status_GroupError(name + " does not exist in group"),
+            std::nullopt,
             std::nullopt,
             std::nullopt,
             std::nullopt};
@@ -811,7 +815,8 @@ Group::member_by_name(const std::string& name) {
     uri = group_uri_.join_path(member->uri().to_string()).to_string();
   }
 
-  return {Status::Ok(), uri, member->type(), member->name()};
+  return {
+      Status::Ok(), uri, member->type(), member->name(), member->relative()};
 }
 
 std::string Group::dump(

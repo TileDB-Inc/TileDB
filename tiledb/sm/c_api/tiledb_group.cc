@@ -478,7 +478,7 @@ int32_t tiledb_group_get_member_by_name(
     return TILEDB_ERR;
 
   try {
-    auto&& [st, uri_str, object_type, name_str] =
+    auto&& [st, uri_str, object_type, name_str, ignored_relative] =
         group->group_->member_by_name(name);
     if (!st.ok()) {
       save_error(ctx, st);
@@ -492,6 +492,39 @@ int32_t tiledb_group_get_member_by_name(
 
     std::memcpy(*uri, uri_str.value().data(), uri_str.value().size());
     (*uri)[uri_str.value().size()] = '\0';
+
+    return TILEDB_OK;
+  } catch (const std::exception& e) {
+    auto st = Status_Error(
+        std::string("Internal TileDB uncaught exception; ") + e.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_ERR;
+}
+
+int32_t tiledb_group_get_is_relative_uri_by_name(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* name,
+    uint8_t* is_relative) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
+    return TILEDB_ERR;
+  if (is_relative == nullptr)
+    return TILEDB_ERR;
+
+  try {
+    auto&& [st, uri_str, object_type, name_str, relative] =
+        group->group_->member_by_name(name);
+    if (!st.ok()) {
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    *is_relative = *relative ? 1 : 0;
 
     return TILEDB_OK;
   } catch (const std::exception& e) {
@@ -797,6 +830,16 @@ TILEDB_EXPORT int32_t tiledb_group_get_member_by_name(
     tiledb_object_t* type) TILEDB_NOEXCEPT {
   return api_entry<detail::tiledb_group_get_member_by_name>(
       ctx, group, name, uri, type);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_get_is_relative_uri_by_name(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* name,
+    //char** uri,
+    uint8_t *relative) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_get_is_relative_uri_by_name>(
+      ctx, group, name, relative);
 }
 
 TILEDB_EXPORT int32_t tiledb_group_is_open(

@@ -538,16 +538,16 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   rc =
-      tiledb_group_add_member(ctx_, group1, array1_uri.c_str(), false, nullptr);
+      tiledb_group_add_member(ctx_, group1, array1_uri.c_str(), false, "one");
   REQUIRE(rc == TILEDB_OK);
   rc =
-      tiledb_group_add_member(ctx_, group1, array2_uri.c_str(), false, nullptr);
+      tiledb_group_add_member(ctx_, group1, array2_uri.c_str(), false, "two");
   REQUIRE(rc == TILEDB_OK);
   rc =
-      tiledb_group_add_member(ctx_, group2, array3_uri.c_str(), false, nullptr);
+      tiledb_group_add_member(ctx_, group2, array3_uri.c_str(), false, "three");
   REQUIRE(rc == TILEDB_OK);
   rc =
-      tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), false, nullptr);
+      tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), false, "four");
   REQUIRE(rc == TILEDB_OK);
 
   // Close group from write mode
@@ -562,6 +562,27 @@ TEST_CASE_METHOD(
 
   rc = tiledb_group_open(ctx_, group2, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
+
+  uint8_t is_relative = 255;
+  rc = tiledb_group_get_is_relative_uri_by_name(
+      ctx_, group1, "one", &is_relative);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_relative == 0);
+  is_relative = 255;
+  rc = tiledb_group_get_is_relative_uri_by_name(
+      ctx_, group1, "two", &is_relative);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_relative == 0);
+  is_relative = 255;
+  rc = tiledb_group_get_is_relative_uri_by_name(
+      ctx_, group2, "three", &is_relative);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_relative == 0);
+  is_relative = 255;
+  rc = tiledb_group_get_is_relative_uri_by_name(
+      ctx_, group1, "four", &is_relative);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_relative == 0);
 
   std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> group1_received =
       read_group(group1);
@@ -795,16 +816,16 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   rc = tiledb_group_add_member(
-      ctx_, group1, array1_relative_uri.c_str(), true, nullptr);
+      ctx_, group1, array1_relative_uri.c_str(), true, "five");
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_group_add_member(
-      ctx_, group1, array2_relative_uri.c_str(), true, nullptr);
+      ctx_, group1, array2_relative_uri.c_str(), true, "six");
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_group_add_member(
-      ctx_, group2, array3_relative_uri.c_str(), true, nullptr);
+      ctx_, group2, array3_relative_uri.c_str(), true, "seven");
   REQUIRE(rc == TILEDB_OK);
   rc =
-      tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), false, nullptr);
+      tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), false, "eight");
   REQUIRE(rc == TILEDB_OK);
 
   // Close group from write mode
@@ -819,6 +840,27 @@ TEST_CASE_METHOD(
 
   rc = tiledb_group_open(ctx_, group2, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
+
+  uint8_t is_relative = 255;
+  rc = tiledb_group_get_is_relative_uri_by_name(
+      ctx_, group1, "five", &is_relative);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_relative == 1);
+  is_relative = 255;
+  rc = tiledb_group_get_is_relative_uri_by_name(
+      ctx_, group1, "six", &is_relative);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_relative == 1);
+  is_relative = 255;
+  rc = tiledb_group_get_is_relative_uri_by_name(
+      ctx_, group2, "seven", &is_relative);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_relative == 1);
+  is_relative = 255;
+  rc = tiledb_group_get_is_relative_uri_by_name(
+      ctx_, group1, "eight", &is_relative);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_relative == 0);
 
   std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> group1_received =
       read_group(group1);
