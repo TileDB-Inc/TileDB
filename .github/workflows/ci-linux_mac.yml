@@ -20,7 +20,7 @@ on:
         default: ''
         required: true
         type: string
-      runtime-minutes:
+      runtime_minutes:
         default: 90
         required: false
         type: string
@@ -41,7 +41,7 @@ jobs:
     runs-on: ${{matrix.os}}
 
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
-    timeout-minutes: ${{ inputs.runtime-minutes }}
+    timeout-minutes: ${{ inputs.runtime_minutes }}
     name: ${{matrix.os}} - ${{ inputs.ci_backend }}${{ inputs.ci_option }}
     steps:
       - uses: actions/checkout@v2
@@ -69,6 +69,7 @@ jobs:
         run: |
           set -e pipefail
 
+          echo " runtime_minutes ${{ runtime_minutes }} "
           ## ** NOTE: most of these steps must run in the same shell context **
 
 
