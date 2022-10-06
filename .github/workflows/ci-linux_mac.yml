@@ -41,7 +41,7 @@ jobs:
     runs-on: ${{matrix.os}}
 
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
-    timeout-minutes: ${{ inputs.runtime_minutes }}
+    timeout-minutes: 105 # ${{ inputs.runtime_minutes }}
     name: ${{matrix.os}} - ${{ inputs.ci_backend }}${{ inputs.ci_option }}
     steps:
       - uses: actions/checkout@v2
