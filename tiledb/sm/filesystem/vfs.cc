@@ -123,22 +123,6 @@ VFS::VFS(
   supported_fs_.insert(Filesystem::MEMFS);
 }
 
-VFS::~VFS() {
-  /**
-   * Note: if s3 fails to disconnect, the Status must be logged.
-   * Right now, there aren't means to adjust s3 issues that may cause
-   * disconnection failure.
-   * In the future, the Governor class may be invoked here as a means of
-   * handling s3 connection issues.
-   */
-  Status st;
-#ifdef HAVE_S3
-  st = s3_.disconnect();
-#endif
-  if (!st.ok())
-    LOG_STATUS(st);
-}
-
 /* ********************************* */
 /*                API                */
 /* ********************************* */

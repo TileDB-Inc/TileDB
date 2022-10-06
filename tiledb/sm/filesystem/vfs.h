@@ -162,7 +162,7 @@ class VFS {
       const Config& config);
 
   /** Destructor. */
-  ~VFS();
+  ~VFS() = default;
 
   DISABLE_COPY_AND_COPY_ASSIGN(VFS);
   DISABLE_MOVE_AND_MOVE_ASSIGN(VFS);
