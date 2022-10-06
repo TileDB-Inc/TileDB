@@ -417,6 +417,7 @@ class Group {
 
   /**
    * The starting timestamp between to open at.
+   *
    * In TileDB, timestamps are in ms elapsed since
    * 1970-01-01 00:00:00 +0000 (UTC).
    */
@@ -424,11 +425,14 @@ class Group {
 
   /**
    * The ending timestamp between to open at.
+   *
    * In TileDB, timestamps are in ms elapsed since
-   * 1970-01-01 00:00:00 +0000 (UTC). A value of UINT64_T
-   * will be interpreted as the current timestamp.
+   * 1970-01-01 00:00:00 +0000 (UTC).
+   *
+   * If timestamp is not set or it set to UINT64_MAX, the end timestamp will be
+   * interpreted as the current timestamp.
    */
-  uint64_t timestamp_end_;
+  optional<uint64_t> timestamp_end_;
 
   /**
    * The private encryption key used to encrypt the group.

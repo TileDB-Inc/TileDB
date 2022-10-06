@@ -78,17 +78,18 @@ Status Group::open(
 
   if (timestamp_end == UINT64_MAX) {
     if (query_type == QueryType::READ) {
-      timestamp_end = utils::time::timestamp_now_ms();
+      timestamp_end_ = utils::time::timestamp_now_ms();
     } else {
       assert(
           query_type == QueryType::WRITE ||
           query_type == QueryType::MODIFY_EXCLUSIVE);
-      timestamp_end = 0;
+      timestamp_end_ = nullopt;
     }
+  } else {
+    timestamp_end_ = timestamp_end;
   }
 
   timestamp_start_ = timestamp_start;
-  timestamp_end_ = timestamp_end;
 
   // Get encryption key from config
   std::string encryption_key_from_cfg;
@@ -155,7 +156,7 @@ Status Group::open(
           storage_manager_->compute_tp(),
           group_uri_,
           timestamp_start,
-          timestamp_end);
+          timestamp_end_.value());
     } catch (const std::logic_error& le) {
       return Status_GroupDirectoryError(le.what());
     }
@@ -182,8 +183,7 @@ Status Group::open(
           storage_manager_->compute_tp(),
           group_uri_,
           timestamp_start,
-          (timestamp_end != 0) ? timestamp_end :
-                                 utils::time::timestamp_now_ms());
+          timestamp_end_.value_or(utils::time::timestamp_now_ms()));
     } catch (const std::logic_error& le) {
       return Status_GroupDirectoryError(le.what());
     }
@@ -204,7 +204,7 @@ Status Group::open(
       }
     }
 
-    metadata_.reset(timestamp_end);
+    metadata_.reset(timestamp_end_.value_or(utils::time::timestamp_now_ms()));
   }
 
   query_type_ = query_type;
@@ -218,11 +218,12 @@ Status Group::open(QueryType query_type) {
   RETURN_NOT_OK(config_.get<uint64_t>(
       "sm.group.timestamp_start", &timestamp_start_, &found));
   assert(found);
+  uint64_t timestamp_end;
   RETURN_NOT_OK(
-      config_.get<uint64_t>("sm.group.timestamp_end", &timestamp_end_, &found));
+      config_.get<uint64_t>("sm.group.timestamp_end", &timestamp_end, &found));
   assert(found);
 
-  return Group::open(query_type, timestamp_start_, timestamp_end_);
+  return Group::open(query_type, timestamp_start_, timestamp_end);
 }
 
 Status Group::close() {
@@ -658,7 +659,7 @@ Group::members() const {
   return members_;
 }
 
-void Group::serialize(Serializer &) {
+void Group::serialize(Serializer&) {
   throw StatusException(Status_GroupError("Invalid call to Group::serialize"));
 }
 
@@ -668,15 +669,17 @@ void Group::apply_and_serialize(Serializer& serializer) {
 }
 
 std::optional<tdb_shared_ptr<Group>> Group::deserialize(
-    Deserializer &deserializer, const URI& group_uri, StorageManager* storage_manager) {
+    Deserializer& deserializer,
+    const URI& group_uri,
+    StorageManager* storage_manager) {
   uint32_t version = 0;
   version = deserializer.read<uint32_t>();
   if (version == 1) {
     return GroupV1::deserialize(deserializer, group_uri, storage_manager);
   }
 
-  throw StatusException(
-      Status_GroupError("Unsupported group version " + std::to_string(version)));
+  throw StatusException(Status_GroupError(
+      "Unsupported group version " + std::to_string(version)));
 }
 
 const URI& Group::group_uri() const {
@@ -855,8 +858,7 @@ tuple<Status, optional<std::string>> Group::generate_name() const {
   std::string uuid;
   RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), std::nullopt);
 
-  auto timestamp =
-      (timestamp_end_ != 0) ? timestamp_end_ : utils::time::timestamp_now_ms();
+  auto timestamp = timestamp_end_.value_or(utils::time::timestamp_now_ms());
   std::stringstream ss;
   ss << "__" << timestamp << "_" << timestamp << "_" << uuid;
 

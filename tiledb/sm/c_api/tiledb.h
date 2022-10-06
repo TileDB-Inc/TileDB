@@ -5748,9 +5748,9 @@ TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_start(
 
 /**
  * Gets the ending timestamp used when opening (and reopening) the array.
- * This is an inclusive bound. If UINT64_MAX was set, this will return
- * the timestamp at the time the array was opened. If the array has not
- * yet been opened, it will return UINT64_MAX.`
+ * This is an inclusive bound. If UINT64_MAX was set and opened in READ mode,
+ * this will return the timestamp at the time the array was opened. If the array
+ * has not yet been opened, it will return UINT64_MAX.`
  *
  * **Example:**
  *

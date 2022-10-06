@@ -385,18 +385,23 @@ class ArrayDirectory {
   std::vector<DeleteTileLocation> delete_tiles_location_;
 
   /**
-   * Only array fragments, metadata, etc. that
-   * were created within timestamp range
-   *    [`timestamp_start`, `timestamp_end`] will be considered when
-   *     fetching URIs.
+   * The start of the timestamp range to consider.
+   *
+   * Only array fragments, metadata, etc. that were created within timestamp
+   * range [`timestamp_start`, `timestamp_end`] will be considered when fetching
+   * URIs.
    */
   uint64_t timestamp_start_;
 
   /**
-   * Only array fragments, metadata, etc. that
-   * were created within timestamp range
-   *    [`timestamp_start`, `timestamp_end`] will be considered when
-   *     fetching URIs.
+   * The end of the timestamp range to consider.
+   *
+   * Only array fragments, metadata, etc. that were created within timestamp
+   * range [`timestamp_start`, `timestamp_end`] will be considered when fetching
+   * URIs.
+   *
+   * Note: For arrays opened in modes other than ``READ`` using the current
+   * timestamp, this will be set to ``UINT64_MAX``.
    */
   uint64_t timestamp_end_;
 

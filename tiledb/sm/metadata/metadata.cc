@@ -347,7 +347,6 @@ void Metadata::swap(Metadata* metadata) {
 
 void Metadata::reset(uint64_t timestamp) {
   clear();
-  timestamp = (timestamp != 0) ? timestamp : utils::time::timestamp_now_ms();
   timestamp_range_ = std::make_pair(timestamp, timestamp);
 }
 

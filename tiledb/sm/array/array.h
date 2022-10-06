@@ -291,17 +291,17 @@ class Array {
   uint64_t timestamp_end() const;
 
   /**
-   * Returns the timestamp at which the array was opened.
-   *
-   * * If the array was not yet opened, this will return ``UINT64_MAX``.
-   * * If the array was opened in a mode other than READ and it is set to
-   *   use the current time, it will return return ``0``.
+   * Returns the timestamp at which the array was opened or ``UINT64_MAX`` if
+   * the array is not yet opened or set to use the current time.
    */
   uint64_t opened_timestamp_end_or_sentinel() const;
 
   /**
    * Returns the timestamp at which the array was opened or the current
    * time if the array opened timestamp was not set.
+   *
+   * Note: This function is intended to be used after the array is opened. If
+   * called before the array is opened, it will return ``UINT64_MAX``.
    */
   uint64_t opened_timestamp_end_or_current() const;
 
@@ -516,8 +516,8 @@ class Array {
    * The ending timestamp between to open `open_array_` at.
    *
    * In TileDB, timestamps are in ms elapsed since
-   * 1970-01-01 00:00:00 +0000 (UTC). A value of UINT64_T will be interpretted
-   * as the current timestamp. This value is only used for setting
+   * 1970-01-01 00:00:00 +0000 (UTC). A value of ``UINT64_MAX`` will be
+   * interpretted as the current timestamp. This value is only used for setting
    * ``opened_timestamp_end_``.
    */
   uint64_t timestamp_end_;
@@ -526,10 +526,11 @@ class Array {
    * The ending timestamp that the array was last opened at.
    *
    * In TileDB, timestamps are in ms elapsed since
-   * 1970-01-01 00:00:00 +0000 (UTC). If the array is set to use the current
-   * time and it was not opened in READ mode, then this will be set to 0.
+   * 1970-01-01 00:00:00 +0000 (UTC). If the array is set to uee the current
+   * time and it was not opened in READ mode, then this will be set to nullop.
+   * Before the array is opened this will be ``UINT64_MAX``.
    */
-  uint64_t opened_timestamp_end_;
+  optional<uint64_t> opened_timestamp_end_;
 
   /** TileDB storage manager. */
   StorageManager* storage_manager_;

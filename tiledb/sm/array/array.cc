@@ -318,7 +318,7 @@ Status Array::open(
           query_type == QueryType::WRITE ||
           query_type == QueryType::MODIFY_EXCLUSIVE ||
           query_type == QueryType::DELETE) {
-        opened_timestamp_end_ = 0;
+        opened_timestamp_end_ = nullopt;
       } else if (query_type == QueryType::UPDATE) {
         bool found = false;
         bool allow_updates = false;
@@ -335,6 +335,8 @@ Status Array::open(
               "Cannot open array; Update query type is only experimental, do "
               "not use.");
         }
+
+        opened_timestamp_end_ = nullopt;
       } else {
         throw Status_ArrayError("Cannot open array; Unsupported query type.");
       }
@@ -365,7 +367,7 @@ Status Array::open(
           storage_manager_->compute_tp(),
           array_uri_,
           timestamp_start_,
-          opened_timestamp_end_);
+          opened_timestamp_end_.value());
 
       auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
           storage_manager_->array_open_for_reads(this);
@@ -384,7 +386,7 @@ Status Array::open(
           storage_manager_->compute_tp(),
           array_uri_,
           timestamp_start_,
-          opened_timestamp_end_,
+          opened_timestamp_end_.value_or(UINT64_MAX),
           ArrayDirectoryMode::SCHEMA_ONLY);
 
       auto&& [st, array_schema_latest, array_schemas] =
@@ -395,7 +397,7 @@ Status Array::open(
       array_schema_latest_ = array_schema_latest.value();
       array_schemas_all_ = array_schemas.value();
 
-      metadata_.reset(opened_timestamp_end_);
+      metadata_.reset(opened_timestamp_end_or_current());
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
       array_dir_ = ArrayDirectory(
@@ -403,7 +405,7 @@ Status Array::open(
           storage_manager_->compute_tp(),
           array_uri_,
           timestamp_start_,
-          opened_timestamp_end_,
+          opened_timestamp_end_.value_or(UINT64_MAX),
           ArrayDirectoryMode::READ);
 
       auto&& [st, array_schema_latest, array_schemas] =
@@ -434,7 +436,7 @@ Status Array::open(
         return LOG_STATUS(Status_ArrayError(err.str()));
       }
 
-      metadata_.reset(opened_timestamp_end_);
+      metadata_.reset(opened_timestamp_end_or_current());
     } else {
       throw Status_ArrayError("Cannot open array; Unsupported query type.");
     }
@@ -478,7 +480,10 @@ Status Array::close() {
           throw Status_ArrayError(
               "Error closing array; remote array with no REST client.");
         st = rest_client->post_array_metadata_to_rest(
-            array_uri_, timestamp_start_, opened_timestamp_end_, this);
+            array_uri_,
+            timestamp_start_,
+            opened_timestamp_end_.value_or(0),
+            this);
         if (!st.ok())
           throw StatusException(st);
       }
@@ -720,7 +725,7 @@ const EncryptionKey& Array::get_encryption_key() const {
 
 Status Array::reopen() {
   // Note: This is only for arrays opened in READ mode.
-  if (timestamp_end_ == opened_timestamp_end_) {
+  if (timestamp_end_ == opened_timestamp_end_.value_or(0)) {
     // The user has not set `timestamp_end_` since it was last opened.
     // In this scenario, re-open at the current timestamp.
     return reopen(timestamp_start_, utils::time::timestamp_now_ms());
@@ -745,16 +750,14 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   clear_last_max_buffer_sizes();
 
   timestamp_start_ = timestamp_start;
-  opened_timestamp_end_ = timestamp_end;
+  opened_timestamp_end_ = timestamp_end == UINT64_MAX ?
+                              utils::time::timestamp_now_ms() :
+                              timestamp_end;
   fragment_metadata_.clear();
   metadata_.clear();
   metadata_loaded_ = false;
   non_empty_domain_.clear();
   non_empty_domain_computed_ = false;
-
-  if (opened_timestamp_end_ == UINT64_MAX) {
-    opened_timestamp_end_ = utils::time::timestamp_now_ms();
-  }
 
   if (remote_) {
     return open(
@@ -770,7 +773,7 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
         storage_manager_->compute_tp(),
         array_uri_,
         timestamp_start_,
-        opened_timestamp_end_,
+        opened_timestamp_end_.value(),
         query_type_ == QueryType::READ ? ArrayDirectoryMode::READ :
                                          ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
@@ -807,12 +810,11 @@ uint64_t Array::timestamp_end() const {
 }
 
 uint64_t Array::opened_timestamp_end_or_sentinel() const {
-  return opened_timestamp_end_;
+  return opened_timestamp_end_.value_or(UINT64_MAX);
 }
 
 uint64_t Array::opened_timestamp_end_or_current() const {
-  return opened_timestamp_end_ == 0 ? utils::time::timestamp_now_ms() :
-                                      opened_timestamp_end_;
+  return opened_timestamp_end_.value_or(utils::time::timestamp_now_ms());
 }
 
 Status Array::set_config(Config config) {
@@ -1193,7 +1195,7 @@ Status Array::load_metadata() {
           "Cannot load metadata; remote array with no REST client."));
     }
     RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
-        array_uri_, timestamp_start_, opened_timestamp_end_, this));
+        array_uri_, timestamp_start_, opened_timestamp_end_.value_or(0), this));
   } else {
     assert(array_dir_.loaded());
     RETURN_NOT_OK(storage_manager_->load_array_metadata(
@@ -1211,7 +1213,7 @@ Status Array::load_remote_non_empty_domain() {
           "Cannot load metadata; remote array with no REST client."));
     }
     RETURN_NOT_OK(rest_client->get_array_non_empty_domain(
-        this, timestamp_start_, opened_timestamp_end_));
+        this, timestamp_start_, opened_timestamp_end_.value_or(0)));
     non_empty_domain_computed_ = true;
   }
   return Status::Ok();
