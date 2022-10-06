@@ -259,6 +259,7 @@ class FrugalSchedulerPolicy
     assert(!n.empty());
 
     // Try waited-on condition again
+    // @todo Is this the best place to be doing this?
     n.value()->decrement_program_counter();
   }
 
@@ -288,10 +289,15 @@ class FrugalSchedulerPolicy
   }
 
   auto get_runnable_task() {
+#if 1
     auto val = runnable_queue_.try_pop();
     while (val && ((*val)->task_state() == TaskState::terminated)) {
       val = runnable_queue_.try_pop();
     }
+    return val;
+#else
+    auto val = runnable_queue_.pop();
+#endif
     return val;
   }
 
@@ -586,10 +592,10 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
    * they are not actually started on submit().  So, we first start all the
    * submitted jobs and then wait on them to all be started before
    * transferring them from the submitted queue to the runnable queue.
-   *
-   * After the
    */
   void sync_wait_all() {
+    std::cout << "Starting sync_wait_all()\n";
+
     /*
      * Swap the submission queue (where all the submitted tasks are) with the
      * runnable queue, making all the tasks runnable.
@@ -597,6 +603,9 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
     Policy::launch();
 
     this->make_ready_to_run();
+
+    std::cout << "About to release worker threads\n";
+
     /*
      * Once we have put all of tasks into the runnable queue, we release the
      * worker threads.
@@ -623,8 +632,6 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
   /* ********************************* */
 
  private:
-  /** The worker thread routine */
-
   std::atomic<bool> ready_to_run_{false};
   void make_ready_to_run() {
     ready_to_run_.store(true);
@@ -634,6 +641,7 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
     return ready_to_run_.load();
   }
 
+  /** The worker thread routine */
   void worker() {
     [[maybe_unused]] thread_local static auto scheduler = this;
     thread_local FrugalTask<Node> this_task{nullptr};
@@ -656,6 +664,18 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
     while (true) {
       {
         std::unique_lock _(mutex_);
+
+        if (num_exited_tasks_ == num_submitted_tasks_) {
+          if (this->debug()) {
+            std::cout << "Breaking at top of while true with " +
+                             std::to_string(num_exited_tasks_) +
+                             " exited tasks and " +
+                             std::to_string(num_submitted_tasks_) +
+                             " submitted tasks\n";
+            this->dump_queue_state("Breaking at top of while true");
+          }
+          break;
+        }
 
         if (this->debug())
           this->dump_queue_state("About to get task");
@@ -777,57 +797,67 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
           task_to_run->dump_task_state();
         }
         if (num_exited_tasks_ == num_submitted_tasks_) {
+          if (this->debug()) {
+            std::cout << "Breaking at bottom of while true with " +
+                             std::to_string(num_exited_tasks_) +
+                             " exited tasks and " +
+                             std::to_string(num_submitted_tasks_) +
+                             " submitted tasks\n";
+            this->dump_queue_state("Breaking at bottom of while true");
+            task_to_run->dump_task_state();
+          }
+
           break;
         }
-      }  // end lock
+      }  // End lock
     }    // end while(true);
     if (this->debug())
       std::cout << "Finished while (true)\n";
 
   }  // worker()
 
-  /** Terminate threads in the thread pool */
-  void shutdown() {
-    if (this->debug())
-      std::cout << "scheduler shutdown\n";
+    /** Terminate threads in the thread pool */
+    void shutdown() {
+      if (this->debug())
+        std::cout << "scheduler shutdown\n";
 
-    /** Clear out any submitted tasks that haven't been put into the scheduler
-     */
-    this->make_ready_to_run();
-    start_cv_.notify_all();
+      /** Clear out any submitted tasks that haven't been put into the scheduler
+       */
+      this->make_ready_to_run();
+      start_cv_.notify_all();
 
-    // This doesn't seem to be necessary
-    // All queues should be empty by the time we come to shutdown
+      // This doesn't seem to be necessary
+      // All queues should be empty by the time we come to shutdown
 
-    // Policy::p_shutdown();
+      // Policy::p_shutdown();
 
-    concurrency_level_.store(0);
+      concurrency_level_.store(0);
 
-    for (auto&& t : threads_) {
-      t.join();
+      for (auto&& t : threads_) {
+        t.join();
+      }
+      threads_.clear();
     }
-    threads_.clear();
-  }
 
-  /** The worker threads */
-  std::vector<std::thread> threads_;
+    /** The worker threads */
+    std::vector<std::thread> threads_;
 
-  /** The maximum level of concurrency among all of the worker threads */
-  std::atomic<size_t> concurrency_level_;
+    /** The maximum level of concurrency among all of the worker threads */
+    std::atomic<size_t> concurrency_level_;
 
-  /** Track number of tasks submited to scheduler */
-  std::atomic<size_t> num_submitted_tasks_{0};
+    /** Track number of tasks submited to scheduler */
+    std::atomic<size_t> num_submitted_tasks_{0};
 
-  /** Track number of tasks in the scheduler */
-  std::atomic<size_t> num_tasks_{0};
+    /** Track number of tasks in the scheduler */
+    std::atomic<size_t> num_tasks_{0};
 
-  /** Track number of tasks that have exited the scheduler */
-  std::atomic<size_t> num_exited_tasks_{0};
+    /** Track number of tasks that have exited the scheduler */
+    std::atomic<size_t> num_exited_tasks_{0};
 
-  /** Synchronization variables */
-  std::mutex mutex_;
-  std::condition_variable start_cv_;
-};
+    /** Synchronization variables */
+    std::mutex mutex_;
+    std::condition_variable start_cv_;
+  };
 
 }  // namespace tiledb::common
 

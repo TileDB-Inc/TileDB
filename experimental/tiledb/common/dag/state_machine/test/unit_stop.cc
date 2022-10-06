@@ -94,7 +94,7 @@ TEST_CASE("Port FSM: Just stop, two stage", "[stop]") {
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_00");
   a.port_push();
-  CHECK(str(a.state()) == "xt_00");
+  CHECK(str(a.state()) == "error");
 
   a.set_state(two_stage::st_01);
   CHECK(str(a.state()) == "st_01");
@@ -669,6 +669,9 @@ TEST_CASE(
         break;
       }
     }
+
+    //    CHECK(is_done(a.state()) == "");
+
     if (!a.is_done()) {
       a.port_pull(debug ? "async sink (pull)" : "");
       CHECK(is_done(a.state()) == "");

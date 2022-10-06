@@ -109,7 +109,7 @@ void connect(From& from, To& to) {
 }
 
 static size_t problem_size = 1337;
-static size_t debug_problem_size = 13;
+static size_t debug_problem_size = 3;
 
 std::atomic<size_t> id_counter{0};
 
@@ -121,12 +121,17 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
   void set_item_mover(std::shared_ptr<mover_type> mover) {
     this->item_mover_ = mover;
   }
+  using SourceBase = Source<Mover, T>;
 
   std::function<T(std::stop_source&)> f_;
 
   std::atomic<size_t> produced_items_{0};
 
   size_t produced_items() {
+    if (this->debug())
+
+      std::cout << std::to_string(produced_items_.load())
+                << " produced items in produced_items()\n";
     return produced_items_.load();
   }
 
@@ -143,15 +148,15 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
 
   producer_node_impl(producer_node_impl&& rhs) = default;
 
-  void inject(T) {
-    if (this->debug())
-      std::cout << "producer_node " + std::to_string(id_) + " injecting" + "\n";
-  }
+  //  void inject(T) {
+  //    if (this->debug())
+  //      std::cout << "producer_node " + std::to_string(id_) + " injecting" + "\n";
+  //  }
 
-  void fill() {
-    if (this->debug())
-      std::cout << "producer_node " + std::to_string(id_) + " filling" + "\n";
-  }
+  //  void fill() {
+  //    if (this->debug())
+  //      std::cout << "producer_node " + std::to_string(id_) + " filling" + "\n";
+  //  }
 
   std::string name() {
     return {"producer"};
@@ -177,7 +182,7 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
     [[maybe_unused]] std::thread::id this_id = std::this_thread::get_id();
 
     std::stop_source st;
-    decltype(f_(st)) thing;
+    decltype(f_(st)) thing{};
 
     std::stop_source stop_source_;
 
@@ -188,16 +193,29 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
         if (produced_items_ >= problem_size) {
           if (this->debug())
             std::cout << this->name() + " node " + std::to_string(this->id()) +
-                             " is done -- calling port_exhausted" + "\n";
+                             " has produced enough items -- calling "
+                             "port_exhausted with " +
+                             std::to_string(produced_items_) +
+                             " produced items and " +
+                             std::to_string(problem_size) + " problem size\n";
           mover->port_exhausted();
           break;
         }
 
         thing = f_(stop_source_);
+
+        if (this->debug())
+
+          std::cout << "producer thing is " + std::to_string(thing) + "\n";
+
         if (stop_source_.stop_requested()) {
           if (this->debug())
-            std::cout << this->name() + " node " + std::to_string(this->id()) +
-                             " stop requested -- calling port_exhausted" + "\n";
+            std::cout
+                << this->name() + " node " + std::to_string(this->id()) +
+                       " has gotten stop -- calling port_exhausted with " +
+                       std::to_string(produced_items_) +
+                       " produced items and " + std::to_string(problem_size) +
+                       " problem size\n";
 
           mover->port_exhausted();
           break;
@@ -209,7 +227,8 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
 
       case 1: {
         program_counter_ = 2;
-        inject(T{});
+
+        SourceBase::inject(thing);
       }
         [[fallthrough]];
 
@@ -250,6 +269,7 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
   void set_item_mover(std::shared_ptr<mover_type> mover) {
     this->item_mover_ = mover;
   }
+  using SinkBase = Sink<Mover, T>;
 
   std::function<void(const T&)> f_;
 
@@ -270,17 +290,18 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
       , consumed_items_{0} {
   }
 
-  T extract() {
-    if (this->debug())
-      std::cout << "consumer_node " + std::to_string(id_) + " extracting" +
-                       "\n";
-    return {};
-  }
+  // T extract() {
+  //   if (this->debug())
+  //     std::cout << "consumer_node " + std::to_string(id_) + " extracting" +
+  //                      "\n";
+  //   return {};
+  // }
 
-  void drain() {
-    if (this->debug())
-      std::cout << "consumer_node " + std::to_string(id_) + " draining" + "\n";
-  }
+  // void drain() {
+  //   if (this->debug())
+  //     std::cout << "consumer_node " + std::to_string(id_) + " draining" +
+  //     "\n";
+  // }
 
   std::string name() {
     return {"consumer"};
@@ -292,6 +313,8 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
       this->item_mover_->enable_debug();
   }
 
+  T thing{};
+
   void resume() {
     auto mover = this->get_mover();
 
@@ -302,8 +325,6 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
                        " consumed_items" + "\n";
 
     [[maybe_unused]] std::thread::id this_id = std::this_thread::get_id();
-
-    T thing;
 
     switch (program_counter_) {
       case 0: {
@@ -319,7 +340,11 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
       case 1: {
         ++program_counter_;
 
-        thing = extract();
+        thing = *(SinkBase::extract());
+
+        if (this->debug())
+
+          std::cout << "consumer thing is " + std::to_string(thing) + "\n";
       }
         [[fallthrough]];
 
@@ -341,12 +366,21 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
         ++program_counter_;
 
         if (consumed_items_++ >= problem_size) {
-          if (this->debug())
-            std::cout << this->name() + " node " + std::to_string(this->id()) +
-                             " is done -- setting event to exit" + "\n";
+          //                    if (this->debug())
+          std::cout << "THIS SHOULD NOT HAPPEN " + this->name() + " node " +
+                           std::to_string(this->id()) +
+                           " has produced enough items -- calling "
+                           "port_exhausted with " +
+                           std::to_string(consumed_items_) +
+                           " consumed items and " +
+                           std::to_string(problem_size) + " problem size\n";
+          assert(false);
+
           mover->port_exhausted();
         }
 
+        if (this->debug())
+          std::cout << "next consumer thing is " + std::to_string(thing) + "\n";
         f_(thing);
       }
 
@@ -1177,14 +1211,36 @@ TEST_CASE("FrugalScheduler: Test submit nodes", "[frugal]") {
   sched.submit(c);
 }
 
-TEST_CASE("FrugalScheduler: Test submit and wait nodes", "[frugal]") {
+
+#if 0
+    (std::tuple<
+        InjectorNode<AsyncMover2, size_t>,
+        ConsumerNode<AsyncMover2, size_t>>),
+    (std::tuple<
+        InjectorNode<AsyncMover3, size_t>,
+        ConsumerNode<AsyncMover3, size_t>>)) {
+
+  using I = typename std::tuple_element<0, TestType>::type;
+  using C = typename std::tuple_element<1, TestType>::type;
+#endif
+
+TEMPLATE_TEST_CASE(
+    "FrugalScheduler: Test submit and wait nodes",
+    "[frugal]",
+    (std::tuple<
+        consumer_node<FrugalMover2, size_t>,
+        producer_node<FrugalMover2, size_t>>),
+    (std::tuple <
+     consumer_node<FrugalMover3, size_t>,producer_node<FrugalMover3, size_t>>)) {
+  using C = typename std::tuple_element<0, TestType>::type;
+  using P = typename std::tuple_element<1, TestType>::type;
+
+
   bool debug{false};
 
   auto num_threads = GENERATE(1, 2, 3, 4, 5, 8, 17);
 
-  // auto num_threads = 5UL;
-  // auto num_threads = 2UL;
-  // auto num_threads = 1UL;
+  // auto num_threads = 17UL;
 
   if (debug) {
     problem_size = debug_problem_size;
@@ -1197,13 +1253,13 @@ TEST_CASE("FrugalScheduler: Test submit and wait nodes", "[frugal]") {
       sched.enable_debug();
     }
 
-    auto p = producer_node<FrugalMover2, size_t>([&sched](std::stop_source&) {
+    auto p = P([&sched](std::stop_source&) {
       if (sched.debug())
         std::cout << "Producing"
                      "\n";
       return 0;
     });
-    auto c = consumer_node<FrugalMover2, size_t>([&sched](const size_t&) {
+    auto c = C([&sched](const size_t&) {
       if (sched.debug())
         std::cout << "Consuming"
                      "\n";
@@ -1217,9 +1273,23 @@ TEST_CASE("FrugalScheduler: Test submit and wait nodes", "[frugal]") {
       c->enable_debug();
     }
 
+    if (sched.debug())
+
+      std::cout << "==========================================================="
+                   "=====\n";
+
     sched.submit(p);
     sched.submit(c);
+    if (sched.debug())
+
+      std::cout << "-----------------------------------------------------------"
+                   "-----\n";
     sched.sync_wait_all();
+
+    if (sched.debug())
+
+      std::cout << "==========================================================="
+                   "=====\n";
 
     CHECK(p->produced_items() == problem_size);
     CHECK(c->consumed_items() == problem_size);
@@ -1231,15 +1301,19 @@ TEST_CASE("FrugalScheduler: Test submit and wait nodes", "[frugal]") {
     }
   }
 }
-#if 0
-#endif
-#if 0
+
+#if 1
 
 TEST_CASE("FrugalScheduler: Test passing integers", "[frugal]") {
-  bool debug = true;
+  bool debug{false};
 
   //  auto num_threads = GENERATE(1, 2, 3, 4);
   auto num_threads = 1;
+
+  if (debug) {
+    problem_size = debug_problem_size;
+  }
+
   auto rounds = problem_size;
 
   std::vector<size_t> input(rounds);
@@ -1263,16 +1337,41 @@ TEST_CASE("FrugalScheduler: Test passing integers", "[frugal]") {
       sched.enable_debug();
     }
 
-    auto p =
-        producer_node<FrugalMover3, size_t>([&sched, &i](std::stop_source&) {
+    auto p = producer_node<FrugalMover2, size_t>(
+        [&sched, &i, &input](std::stop_source& stop_source) {
           if (sched.debug())
-            std::cout << "Producing"
-                         "\n";
+            std::cout << "Producing " + std::to_string(*i) + " with distance " +
+                             std::to_string(std::distance(input.begin(), i)) +
+                             "\n";
+          if (std::distance(input.begin(), i) >=
+              static_cast<long>(problem_size)) {
+            if (sched.debug()) {
+              std::cout << "Requesting stop\n";
+            }
+
+            stop_source.request_stop();
+            return *(input.begin());
+          }
+
+          if (sched.debug())
+            std::cout << "producer function returning " + std::to_string(*i) +
+                             "\n";
+
           return *i++;
         });
-    auto c = consumer_node<FrugalMover3, size_t>(consumer{j});
+    auto c = consumer_node<FrugalMover2, size_t>(
+        [&j, &output, &debug](std::size_t k) {
+          if (debug)
+            std::cout << "Consuming " + std::to_string(k) + " with distance " +
+                             std::to_string(std::distance(output.begin(), j)) +
+                             "\n";
+
+          *j++ = k;
+        });
 
     connect(p, c);
+    Edge(*p, *c);
+
     sched.submit(p);
     sched.submit(c);
     sched.sync_wait_all();
@@ -1283,7 +1382,15 @@ TEST_CASE("FrugalScheduler: Test passing integers", "[frugal]") {
   CHECK(input.begin() != i);
   CHECK(input.size() == rounds);
   CHECK(output.size() == rounds);
+
+  if (debug)
+    std::cout << std::distance(input.begin(), i) << std::endl;
+
   CHECK(std::equal(input.begin(), i, output.begin()));
+
+  if (debug)
+    std::cout << *(input.begin()) << " " << *(output.begin()) << std::endl;
+
   CHECK(std::distance(input.begin(), i) == static_cast<long>(rounds));
 }
 #endif
