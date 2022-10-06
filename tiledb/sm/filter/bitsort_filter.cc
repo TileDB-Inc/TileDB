@@ -154,23 +154,31 @@ Status BitSortFilter::run_forward(
   RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
   RETURN_NOT_OK(output_metadata->write(&num_parts, sizeof(uint32_t)));
 
-  // Keep track of the starting offsets to write in positions for each part.
-  std::vector<uint32_t> offsets;
-  offsets.reserve(num_parts);
+  // Create a vector to store the attribute data with their respective positions.
+  // Then for each part of the input, collect this data into the sorted_elements vector.
+  std::vector<std::pair<AttrType, uint64_t>> sorted_elements;
   uint32_t total_size = 0;
-  for (const auto& part : parts) {
-    auto part_size = (uint32_t)part.size();
-    offsets.emplace_back(total_size);
-    total_size += part_size;
-  }
-
-  // Create a vector to store the order of the attributes with their positions.
-  std::vector<std::pair<AttrType, uint64_t>> sorted_elements(total_size / sizeof(AttrType));
   for (uint64_t i = 0; i < num_parts; ++i) {
     const auto &part = parts[i];
     auto part_size = static_cast<uint32_t>(part.size());
     RETURN_NOT_OK(output_metadata->write(&part_size, sizeof(uint32_t)));
-    RETURN_NOT_OK(sort_part<AttrType>(&part, output_buf, offsets[i], sorted_elements));
+    RETURN_NOT_OK(collect_part_data<AttrType>(&part, (total_size / sizeof(AttrType)), sorted_elements));
+    total_size += part_size;
+  }
+
+  // Sort all the attribute tile data by bit order, which is equivalent to sorting an
+  // unsigned integer type in ascending order.
+  std::sort(sorted_elements.begin(), sorted_elements.end());
+
+  // Write in the sorted order to output.
+  uint32_t num_elements = total_size / sizeof(AttrType);
+  for (uint32_t j = 0; j < num_elements; ++j) {
+    AttrType value = sorted_elements[j].first;
+    RETURN_NOT_OK(output_buf->write(&value, sizeof(AttrType)));
+
+    if (j != num_elements - 1) {
+      output_buf->advance_offset(sizeof(AttrType));
+    }
   }
 
   // Since run_forward_dim_tile is only moving around dimension data and 
@@ -204,7 +212,7 @@ Status BitSortFilter::run_forward(
 }
 
 template <typename AttrType>
-Status BitSortFilter::sort_part(const ConstBuffer* input_buffer, Buffer* output_buffer, uint32_t offset, std::vector<std::pair<AttrType, uint64_t>> &sorted_elements) const {
+Status BitSortFilter::collect_part_data(const ConstBuffer* input_buffer, uint32_t offset, std::vector<std::pair<AttrType, uint64_t>> &sorted_elements) const {
   // Read in the data.
   uint32_t buff_size = input_buffer->size();
   assert(buff_size % sizeof(AttrType) == 0);
@@ -213,24 +221,12 @@ Status BitSortFilter::sort_part(const ConstBuffer* input_buffer, Buffer* output_
   if (num_elems_in_part == 0) {
     return Status::Ok();
   }
-  const AttrType* part_array = static_cast<const AttrType*>(input_buffer->data());
 
-  // Create the array to sort by keeping track of elements and positions.
+  // Store the elements and their respective positions in the entire array in the sorted_elements vector.
+  sorted_elements.reserve(offset + num_elems_in_part);
+  const AttrType* input_data = static_cast<const AttrType*>(input_buffer->data());
   for (uint32_t i = 0; i < num_elems_in_part; ++i) {
-    sorted_elements[offset + i] = std::make_pair(part_array[i], offset + i);
-  }
-
-  // Sort the data.
-  std::sort(sorted_elements.begin() + offset, sorted_elements.begin() + offset + num_elems_in_part);
-
-  // Write in the sorted order to output.
-  for (uint32_t j = 0; j < num_elems_in_part; ++j) {
-    AttrType value = sorted_elements[offset + j].first;
-    RETURN_NOT_OK(output_buffer->write(&value, sizeof(AttrType)));
-
-    if (j != num_elems_in_part - 1) {
-      output_buffer->advance_offset(sizeof(AttrType));
-    }
+    sorted_elements.emplace_back(std::make_pair(input_data[i], offset + i));
   }
 
   return Status::Ok();

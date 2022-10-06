@@ -246,6 +246,29 @@ void check_3d_row_major(std::vector<AttrType>& global_a, std::vector<AttrType>& 
 }
 
 /**
+ * @brief Sets the subarrays to the entire array for a read query.
+ * Including this so we can test different code paths.
+ * 
+ * @tparam DimType The type of the dimension of the array.
+ * @param read_query The read query.
+ * @param num_dims The number of dimensions.
+ */
+template<typename DimType>
+void read_query_set_subarray(Query &read_query, int num_dims) {
+  DimType dim_lo = static_cast<DimType>(BITSORT_DIM_LO);
+  DimType dim_hi = static_cast<DimType>(BITSORT_DIM_HI);
+  read_query.add_range("x", dim_lo, dim_hi);
+
+  if (num_dims >= 2) {
+    read_query.add_range("y", dim_lo, dim_hi);
+  }
+
+  if (num_dims == 3) {
+     read_query.add_range("z", dim_lo, dim_hi);
+  }
+}
+
+/**
  * @brief Tests the bitsort filter, given the parameters passed in.
  * This function creates an array with num_dims dimensions and 
  * the bitsort filter. Then, it writes into this array with randomly
@@ -269,7 +292,8 @@ void bitsort_filter_api_test(
     const std::string& bitsort_array_name,
     uint64_t num_dims,
     tiledb_layout_t write_layout,
-    tiledb_layout_t read_layout) {
+    tiledb_layout_t read_layout,
+    bool has_subarray) {
   // Setup.
   if (vfs.is_dir(bitsort_array_name))
     vfs.remove_dir(bitsort_array_name);
@@ -368,6 +392,11 @@ void bitsort_filter_api_test(
   Query query_r(ctx, array_r);
   query_r.set_data_buffer("a", a_data_read);
   query_r.set_layout(read_layout);
+
+  if (has_subarray) {
+    read_query_set_subarray<DimType>(query_r, num_dims);
+  }
+
   query_r.submit();
 
   // Check for results.
@@ -400,6 +429,10 @@ void bitsort_filter_api_test(
   }
   if (num_dims == 3) {
     query_r_dims.set_data_buffer("z", z_dims_read);
+  }
+
+  if (has_subarray) {
+    read_query_set_subarray<DimType>(query_r_dims, num_dims);
   }
 
   query_r_dims.submit();
@@ -464,27 +497,28 @@ void bitsort_filter_api_test(
     const std::string& bitsort_array_name,
     uint64_t num_dims,
     tiledb_layout_t write_layout,
-    tiledb_layout_t read_layout) {
+    tiledb_layout_t read_layout,
+    bool has_subarray) {
   bitsort_filter_api_test<AttrType, int16_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout);
+      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
   bitsort_filter_api_test<AttrType, int8_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout);
+      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
   bitsort_filter_api_test<AttrType, int32_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout);
+      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
   bitsort_filter_api_test<AttrType, int64_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout);
+      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
   bitsort_filter_api_test<AttrType, uint8_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout);
+      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
   bitsort_filter_api_test<AttrType, uint16_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout);
+      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
   bitsort_filter_api_test<AttrType, uint32_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout);
+      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
   bitsort_filter_api_test<AttrType, uint64_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout);
+      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
   bitsort_filter_api_test<AttrType, float, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout);
+      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
   bitsort_filter_api_test<AttrType, double, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout);
+      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
 }
 
 TEMPLATE_TEST_CASE(
@@ -510,16 +544,17 @@ TEMPLATE_TEST_CASE(
   tiledb_layout_t write_layout =
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
   tiledb_layout_t read_layout = GENERATE(TILEDB_GLOBAL_ORDER, TILEDB_UNORDERED);
+  bool has_subarray = GENERATE(true, false);
 
   // Run tests.
   if constexpr (std::is_floating_point<TestType>::value) {
     bitsort_filter_api_test<TestType, FloatDistribution>(
-        ctx, vfs, array_name, num_dims, write_layout, read_layout);
+        ctx, vfs, array_name, num_dims, write_layout, read_layout, has_subarray);
   } else if constexpr (std::is_unsigned<TestType>::value) {
     bitsort_filter_api_test<TestType, UnsignedIntDistribution>(
-        ctx, vfs, array_name, num_dims, write_layout, read_layout);
+        ctx, vfs, array_name, num_dims, write_layout, read_layout, has_subarray);
   } else if constexpr (std::is_signed<TestType>::value) {
     bitsort_filter_api_test<TestType, IntDistribution>(
-        ctx, vfs, array_name, num_dims, write_layout, read_layout);
+        ctx, vfs, array_name, num_dims, write_layout, read_layout, has_subarray);
   }
 }

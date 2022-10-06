@@ -197,22 +197,19 @@ class BitSortFilter : public Filter {
       FilterBuffer* output) const;
 
   /**
-   * @brief Sorts the input buffer by bit order and stores the positions
-   * of the sort in the vector sorted_elements.
+   * @brief Collects the attribute data, per part, prior to sorting.
    *
    * @tparam AttrType The attribute tile type.
    * @param input_buffer The input buffer containing the attribute data for one
    * part.
-   * @param output_buffer The output buffer for all data in the input.
    * @param offset Offset of where to start storing positions in the sorted
    * elements vector.
    * @param sorted_elements Vector for storing positions of the sorted elements.
    * @return Status
    */
   template <typename AttrType>
-  Status sort_part(
+  Status collect_part_data(
       const ConstBuffer* input_buffer,
-      Buffer* output_buffer,
       uint32_t offset,
       std::vector<std::pair<AttrType, uint64_t>>& sorted_elements) const;
 
