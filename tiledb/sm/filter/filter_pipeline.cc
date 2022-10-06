@@ -221,13 +221,13 @@ Status FilterPipeline::filter_chunks_forward(
       // a bitsort filter in the attribute filtering pipeline. Wrapping this code
       // in a constexpr statement ensures the performance of the filter pipeline
       // without the bitsort filter is unaffected.
-      if constexpr (std::is_same<T, BitSortFilterMetadataType>::value) {
+      if constexpr (std::is_same<T, std::reference_wrapper<std::vector<Tile*>>>::value) {
         if (f->type() == FilterType::FILTER_BITSORT) {
           auto bitsort_filter = reinterpret_cast<const BitSortFilter*>(f.get());
           RETURN_NOT_OK(
               bitsort_filter->run_forward(
                       tile,
-                      support_tiles,
+                      support_tiles.get(),
                       &input_metadata,
                       &input_data,
                       &output_metadata,
@@ -511,7 +511,7 @@ Status FilterPipeline::run_forward(
   }
 
   // Get the chunk sizes for var size attributes.
-  if constexpr (!std::is_same<T, BitSortFilterMetadataType&>::value){
+  if constexpr (!std::is_same<T, std::reference_wrapper<std::vector<Tile*>>>::value){
     auto&& [st, chunk_offsets] =
       get_var_chunk_sizes(chunk_size, tile, support_tiles);
     RETURN_NOT_OK_ELSE(st, tile->filtered_buffer().clear());
@@ -874,10 +874,10 @@ template Status FilterPipeline::run_forward<Tile*>(
       ThreadPool* compute_tp,
       bool chunking) const;
 
-template Status FilterPipeline::run_forward<BitSortFilterMetadataType&>(
+template Status FilterPipeline::run_forward<std::reference_wrapper<std::vector<Tile*>>>(
       stats::Stats* writer_stats,
       Tile* tile,
-      BitSortFilterMetadataType &support_tiles,
+      std::reference_wrapper<std::vector<Tile*>> support_tiles,
       ThreadPool* compute_tp,
       bool chunking) const;
 

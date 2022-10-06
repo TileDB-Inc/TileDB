@@ -99,7 +99,7 @@ Status BitSortFilter::run_reverse(
 
 Status BitSortFilter::run_forward(
     const Tile& tile,
-    BitSortFilterMetadataType &pair,
+    std::vector<Tile*> &dim_tiles,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -112,19 +112,19 @@ Status BitSortFilter::run_forward(
   switch (datatype_size(tile_type)) {
     case sizeof(uint8_t): {
       return run_forward<uint8_t>(
-          pair, input_metadata, input, output_metadata, output);
+          dim_tiles, input_metadata, input, output_metadata, output);
     }
     case sizeof(uint16_t): {
       return run_forward<uint16_t>(
-         pair, input_metadata, input, output_metadata, output);
+         dim_tiles, input_metadata, input, output_metadata, output);
     }
     case sizeof(uint32_t): {
       return run_forward<uint32_t>(
-          pair, input_metadata, input, output_metadata, output);
+          dim_tiles, input_metadata, input, output_metadata, output);
     }
     case sizeof(uint64_t): {
       return run_forward<uint64_t>(
-          pair, input_metadata, input, output_metadata, output);
+          dim_tiles, input_metadata, input, output_metadata, output);
     }
     default: {
       return Status_FilterError(
@@ -138,7 +138,7 @@ Status BitSortFilter::run_forward(
 
 template <typename T>
 Status BitSortFilter::run_forward(
-    BitSortFilterMetadataType &pair,
+    std::vector<Tile*> &dim_tiles,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -173,9 +173,6 @@ Status BitSortFilter::run_forward(
     RETURN_NOT_OK(output_metadata->write(&part_size, sizeof(uint32_t)));
     RETURN_NOT_OK(sort_part<T>(&part, output_buf, offsets[i], sorted_elements));
   }
-
-  // Rewrite each of the dimension tile data with the new sort order.
-  std::vector<Tile*> &dim_tiles = pair.first.get();
 
   // Since rewrite_dim_tile_forward is only moving around dimension data and 
   // reordering it, the type becomes irrelevant and only the size of the type
@@ -371,34 +368,7 @@ Status BitSortFilter::unsort_part(
 
 Status BitSortFilter::rewrite_dim_tiles_reverse(BitSortFilterMetadataType &pair, std::vector<uint64_t> &positions) const {
   std::vector<Tile*> &dim_tiles = pair.first.get();
-  const Domain &domain = pair.second.get();
-
-  // Construct the domain buffer view object, which allows the code to read into the 
-  // dimension data that needs to be globally sorted.
-  std::vector<uint64_t> dim_data_sizes(domain.dim_num(), 0);
-  std::unordered_map<std::string, QueryBuffer> dim_data_map;
-  for (size_t i = 0; i < domain.dim_num(); ++i) {
-    const std::string &dim_name = domain.dimension_ptr(i)->name();
-    auto &filtered_buffer = dim_tiles[i]->filtered_buffer();
-    dim_data_sizes[i] = filtered_buffer.size();
-    QueryBuffer dim_query_buffer{filtered_buffer.data(), nullptr, &dim_data_sizes[i], nullptr};
-    dim_data_map.insert(std::make_pair(dim_name, dim_query_buffer));
-  }
-
-  DomainBuffersView domain_buffs{domain, dim_data_map};
-
-  // Construct the comparison function that sorts the dimension data into global order.
-  auto cmp_fn = [&domain_buffs, &domain](const uint64_t &a_idx, const uint64_t &b_idx){
-    auto a{domain_buffs.domain_ref_at(domain, a_idx)};
-    auto b{domain_buffs.domain_ref_at(domain, b_idx)};
-    auto tile_cmp = domain.tile_order_cmp(a, b);
-
-    if (tile_cmp == -1) return true;
-    else if (tile_cmp == 1) return false;
-
-    auto cell_cmp = domain.cell_order_cmp(a, b);
-    return cell_cmp == -1;
-  };
+  auto cmp_fn = pair.second;
 
   for (uint64_t i = 0; i < dim_tiles[0]->cell_num(); ++i) {
     positions.push_back(i);

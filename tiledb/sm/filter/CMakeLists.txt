@@ -172,6 +172,8 @@ target_sources(compile_xor_filters PRIVATE test/compile_xor_filter_main.cc)
 #
 add_library(bitsort_filters OBJECT bitsort_filter.cc)
 target_link_libraries(bitsort_filters PUBLIC filter $<TARGET_OBJECTS:filter>)
+target_link_libraries(bitsort_filters PUBLIC tile $<TARGET_OBJECTS:tile>)
+
 #
 # Test-compile of object library ensures link-completeness
 #

@@ -30,6 +30,8 @@
  * This file implements class WriterBase.
  */
 
+#include <functional>
+
 #include "tiledb/sm/query/writers/writer_base.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -761,8 +763,14 @@ Status WriterBase::filter_tiles(
       storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
         const auto& [tile, support_tiles, contains_offsets, is_nullable] =
             args[i];
-        RETURN_NOT_OK(filter_tile(
+
+       if constexpr (std::is_same<std::vector<Tile*>, T>::value) {
+          RETURN_NOT_OK(filter_tile<std::vector<Tile*>>(
             name, tile, support_tiles, contains_offsets, is_nullable));
+        } else {
+           RETURN_NOT_OK(filter_tile(
+            name, tile, support_tiles, contains_offsets, is_nullable));
+        }
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
@@ -825,24 +833,21 @@ Status WriterBase::filter_tile(
 
   assert(!tile->filtered());
   if constexpr (std::is_same<std::vector<Tile*>, T>::value) {
-    // Construct the metadata argument.
-    auto support_tiles_ref = std::ref(support_tiles);
-    auto domain_ref = std::ref(array_schema_.domain());
-    BitSortFilterMetadataType pair = std::make_pair(support_tiles_ref, domain_ref);
-    
-    RETURN_NOT_OK(filters.run_forward<BitSortFilterMetadataType&>(
-      stats_,
-      tile,
-      pair,
-      storage_manager_->compute_tp(),
-      use_chunking));
-  } else {
-    RETURN_NOT_OK(filters.run_forward<T>(
+    auto &dim_tiles = support_tiles;
+    TileVectorRef dim_tiles_ref = std::ref(dim_tiles);
+    RETURN_NOT_OK(filters.run_forward<TileVectorRef>(
       stats_,
       tile,
       support_tiles,
       storage_manager_->compute_tp(),
       use_chunking));
+  } else {
+    RETURN_NOT_OK(filters.run_forward<T>(
+    stats_,
+    tile,
+    support_tiles,
+    storage_manager_->compute_tp(),
+    use_chunking));
   }
   assert(tile->filtered());
 

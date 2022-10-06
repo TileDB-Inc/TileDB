@@ -81,7 +81,7 @@ class BitSortFilter : public Filter {
    */
   Status run_forward(
       const Tile& tile,
-      BitSortFilterMetadataType& pair,
+      std::vector<Tile*>& dim_tiles,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -138,7 +138,7 @@ class BitSortFilter : public Filter {
    */
   template <typename T>
   Status run_forward(
-      BitSortFilterMetadataType& pair,
+      std::vector<Tile*>& dim_tiles,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

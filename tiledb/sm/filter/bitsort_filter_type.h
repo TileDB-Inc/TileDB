@@ -46,11 +46,13 @@ namespace tiledb {
 namespace sm {
 
 class Tile;
-class Domain;
+class DomainBuffersView;
+
+using TileVectorRef = std::reference_wrapper<std::vector<Tile*>>;
 
 using BitSortFilterMetadataType = std::pair<
     std::reference_wrapper<std::vector<Tile*>>,
-    std::reference_wrapper<const Domain>>;
+    std::function<bool(const uint64_t, const uint64_t)>>;
 
 }  // namespace sm
 }  // namespace tiledb

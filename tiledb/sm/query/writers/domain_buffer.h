@@ -33,6 +33,7 @@
 #define TILEDB_QUERY_DOMAIN_BUFFER_H
 
 #include <new>
+
 #include "../query_buffer.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -236,6 +237,11 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
    */
   storage_type qb_;
 
+  /**
+   * Domain.
+   */
+  const Domain& domain_;
+
  public:
   /**
    * Default constructor is prohibited. An object in a view class is senseless
@@ -255,7 +261,8 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
   DomainBuffersView(
       const ArraySchema& schema,
       const std::unordered_map<std::string, QueryBuffer>& buffers)
-      : qb_(schema.dim_num()) {
+      : qb_(schema.dim_num())
+      , domain_(schema.domain()) {
     auto n_dimensions{schema.dim_num()};
     for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
       const auto& name{schema.dimension_ptr(i)->name()};
@@ -272,7 +279,8 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
   DomainBuffersView(
       const Domain& domain,
       const std::unordered_map<std::string, QueryBuffer>& buffers)
-      : qb_(domain.dim_num()) {
+      : qb_(domain.dim_num())
+      , domain_(domain) {
     auto n_dimensions{domain.dim_num()};
     for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
       const auto& name{domain.dimension_ptr(i)->name()};
@@ -290,10 +298,24 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
    * @param coord a single coordinate value
    */
   DomainBuffersView(const ArraySchema& schema, SingleCoord& coord)
-      : qb_(schema.dim_num()) {
+      : qb_(schema.dim_num())
+      , domain_(schema.domain()) {
     auto n_dimensions{schema.dim_num()};
     for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
       qb_[i] = coord.get_qb(i);
+    }
+  }
+
+  /**
+   * @brief Constructor for dim tiles. TODO: document
+   *
+   */
+  DomainBuffersView(const Domain& domain, std::vector<QueryBuffer>& qb_vector)
+      : qb_(domain.dim_num())
+      , domain_(domain) {
+    auto n_dimensions{domain.dim_num()};
+    for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
+      qb_[i] = &qb_vector[i];
     }
   }
 
