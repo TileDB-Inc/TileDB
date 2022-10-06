@@ -3334,28 +3334,15 @@ void FragmentMetadata::load_generic_tile_offsets_v3_v4(
   // Load offsets for tile offsets
   unsigned int attribute_num = array_schema_->attribute_num();
   gt_offsets_.tile_offsets_.resize(attribute_num + 1);
-//  for (unsigned i = 0; i < attribute_num + 1; ++i) {
-    //TBD: Can these items be turned into a single read (no for loop) or do they need to be the separate reads?
-    //ala, deserializer.read(&gt_offsets_.tile_offsets_[0], (attribute_num+1)*sizeof(uint64_t));
-//    gt_offsets_.tile_offsets_[i] = deserializer.read<uint64_t>();
-//  }
   deserializer.read(&gt_offsets_.tile_offsets_[0],
       (attribute_num + 1) * sizeof(uint64_t));
 
   // Load offsets for tile var offsets
   gt_offsets_.tile_var_offsets_.resize(attribute_num);
-//  for (unsigned i = 0; i < attribute_num; ++i) {
-    // TBD: single read (no for loop)?
-  //    gt_offsets_.tile_var_offsets_[i] = deserializer.read<uint64_t>();
-  //  }
   deserializer.read(&gt_offsets_.tile_var_offsets_[0], attribute_num*sizeof(uint64_t));
 
   // Load offsets for tile var sizes
   gt_offsets_.tile_var_sizes_.resize(attribute_num);
-//  for (unsigned i = 0; i < attribute_num; ++i) {
-    //TBD: single-read, no for loop?
-//    gt_offsets_.tile_var_sizes_[i] = deserializer.read<uint64_t>();
-//  }
   deserializer.read(
       &gt_offsets_.tile_var_sizes_[0], attribute_num * sizeof(uint64_t));
 }
@@ -3368,23 +3355,14 @@ void FragmentMetadata::load_generic_tile_offsets_v5_v6(
   // Load offsets for tile offsets
   auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile var offsets
   gt_offsets_.tile_var_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_var_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_var_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile var sizes
   gt_offsets_.tile_var_sizes_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_var_sizes_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_var_sizes_[0], num * sizeof(uint64_t));
 }
 
@@ -3396,30 +3374,18 @@ void FragmentMetadata::load_generic_tile_offsets_v7_v10(
   // Load offsets for tile offsets
   auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile var offsets
   gt_offsets_.tile_var_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_var_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_var_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile var sizes
   gt_offsets_.tile_var_sizes_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_var_sizes_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_var_sizes_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile validity offsets
   gt_offsets_.tile_validity_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_validity_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_validity_offsets_[0], num * sizeof(uint64_t));
 }
 
@@ -3431,58 +3397,34 @@ void FragmentMetadata::load_generic_tile_offsets_v11(
   // Load offsets for tile offsets
   auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile var offsets
   gt_offsets_.tile_var_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_var_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_var_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile var sizes
   gt_offsets_.tile_var_sizes_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_var_sizes_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_var_sizes_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile validity offsets
   gt_offsets_.tile_validity_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_validity_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_validity_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile min offsets
   gt_offsets_.tile_min_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_min_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_min_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile max offsets
   gt_offsets_.tile_max_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_max_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_max_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile sum offsets
   gt_offsets_.tile_sum_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_sum_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_sum_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile null count offsets
   gt_offsets_.tile_null_count_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_null_count_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_null_count_offsets_[0], num * sizeof(uint64_t));
 }
 
@@ -3494,58 +3436,34 @@ void FragmentMetadata::load_generic_tile_offsets_v12_v15(
   // Load offsets for tile offsets
   auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile var offsets
   gt_offsets_.tile_var_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_var_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_var_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile var sizes
   gt_offsets_.tile_var_sizes_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_var_sizes_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_var_sizes_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile validity offsets
   gt_offsets_.tile_validity_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_validity_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_validity_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile min offsets
   gt_offsets_.tile_min_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_min_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_min_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile max offsets
   gt_offsets_.tile_max_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_max_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_max_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile sum offsets
   gt_offsets_.tile_sum_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_sum_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_sum_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile null count offsets
   gt_offsets_.tile_null_count_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_null_count_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_null_count_offsets_[0], num * sizeof(uint64_t));
 
   gt_offsets_.fragment_min_max_sum_null_count_offset_ =
@@ -3560,58 +3478,34 @@ void FragmentMetadata::load_generic_tile_offsets_v16_or_higher(
   // Load offsets for tile offsets
   auto num = num_dims_and_attrs();
   gt_offsets_.tile_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile var offsets
   gt_offsets_.tile_var_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_var_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_var_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile var sizes
   gt_offsets_.tile_var_sizes_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_var_sizes_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_var_sizes_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile validity offsets
   gt_offsets_.tile_validity_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_validity_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_validity_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile min offsets
   gt_offsets_.tile_min_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_min_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_min_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile max offsets
   gt_offsets_.tile_max_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_max_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_max_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile sum offsets
   gt_offsets_.tile_sum_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_sum_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_sum_offsets_[0], num * sizeof(uint64_t));
 
   // Load offsets for tile null count offsets
   gt_offsets_.tile_null_count_offsets_.resize(num);
-  //for (unsigned i = 0; i < num; ++i) {
-  //  gt_offsets_.tile_null_count_offsets_[i] = deserializer.read<uint64_t>();
-  //}
   deserializer.read(&gt_offsets_.tile_null_count_offsets_[0], num * sizeof(uint64_t));
 
   gt_offsets_.fragment_min_max_sum_null_count_offset_ =
@@ -3846,61 +3740,36 @@ void FragmentMetadata::write_generic_tile_offsets(Serializer& serializer) const 
   serializer.write<uint64_t>(gt_offsets_.rtree_);
 
   // Write tile offsets
-  //for (unsigned i = 0; i < num; ++i) {
-  //  //tbd: one write possible, no for loop? here and below...
-  //  serializer.write<uint64_t>(gt_offsets_.tile_offsets_[i]);
-  //}
   serializer.write(&gt_offsets_.tile_offsets_[0], num * sizeof(uint64_t));
 
   // Write tile var offsets
-  //for (unsigned i = 0; i < num; ++i) {
-  //  serializer.write<uint64_t>(gt_offsets_.tile_var_offsets_[i]);
-  //}
   serializer.write(&gt_offsets_.tile_var_offsets_[0], num * sizeof(uint64_t));
 
   // Write tile var sizes
-  //for (unsigned i = 0; i < num; ++i) {
-  //  serializer.write<uint64_t>(gt_offsets_.tile_var_sizes_[i]);
-  //}
   serializer.write(&gt_offsets_.tile_var_sizes_[0], num * sizeof(uint64_t));
 
   // Write tile validity offsets
   if (version_ >= 7) {
-    //for (unsigned i = 0; i < num; ++i) {
-    //  serializer.write<uint64_t>(gt_offsets_.tile_validity_offsets_[i]);
-    //}
     serializer.write(&gt_offsets_.tile_validity_offsets_[0], num * sizeof(uint64_t));
   }
 
   // Write tile min offsets
   if (version_ >= 11) {
-    //for (unsigned i = 0; i < num; ++i) {
-    //  serializer.write<uint64_t>(gt_offsets_.tile_min_offsets_[i]);
-    //}
     serializer.write(&gt_offsets_.tile_min_offsets_[0], num * sizeof(uint64_t));
   }
 
   // Write tile max offsets
   if (version_ >= 11) {
-    //for (unsigned i = 0; i < num; ++i) {
-    //  serializer.write<uint64_t>(gt_offsets_.tile_max_offsets_[i]);
-    //}
     serializer.write(&gt_offsets_.tile_max_offsets_[0], num * sizeof(uint64_t));
   }
 
   // Write tile sum offsets
   if (version_ >= 11) {
-    //for (unsigned i = 0; i < num; ++i) {
-    //  serializer.write<uint64_t>(gt_offsets_.tile_sum_offsets_[i]);
-    //}
     serializer.write(&gt_offsets_.tile_sum_offsets_[0], num * sizeof(uint64_t));
   }
 
   // Write tile null count offsets
   if (version_ >= 11) {
-    //for (unsigned i = 0; i < num; ++i) {
-    //  serializer.write<uint64_t>(gt_offsets_.tile_null_count_offsets_[i]);
-    //}
     serializer.write(&gt_offsets_.tile_null_count_offsets_[0], num * sizeof(uint64_t));
   }
 
