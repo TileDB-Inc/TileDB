@@ -3592,7 +3592,6 @@ Status FragmentMetadata::load_footer(
     return Status::Ok();
 
   Buffer buff;
-  shared_ptr<ConstBuffer> cbuff = nullptr;
   shared_ptr<Deserializer> deserializer = nullptr;
   if (f_tile == nullptr) {
     has_consolidated_footer_ = false;
