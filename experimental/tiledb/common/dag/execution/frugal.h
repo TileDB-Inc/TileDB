@@ -764,8 +764,13 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
             this->dump_queue_state("Caught exit");
           }
 
-          // auto other_task = node_to_task[task_to_run->correspondent()];
-          // this->task_exit(other_task);
+          //          auto other_task =
+          //          node_to_task[task_to_run->correspondent()]; if
+          //          (other_task->task_state() == TaskState::waiting) {
+          //            this->task_notify(other_task);
+          //          }
+          //          this->task_exit(other_task);
+          //          this->task_notify(other_task);
 
           --num_tasks_;
           ++num_exited_tasks_;

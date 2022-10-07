@@ -191,13 +191,13 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
         program_counter_ = 1;
 
         if (produced_items_ >= problem_size) {
-          //          if (this->debug())
-          std::cout << this->name() + " node " + std::to_string(this->id()) +
-                           " has produced enough items -- calling "
-                           "port_exhausted with " +
-                           std::to_string(produced_items_) +
-                           " produced items and " +
-                           std::to_string(problem_size) + " problem size\n";
+          if (this->debug())
+            std::cout << this->name() + " node " + std::to_string(this->id()) +
+                             " has produced enough items -- calling "
+                             "port_exhausted with " +
+                             std::to_string(produced_items_) +
+                             " produced items and " +
+                             std::to_string(problem_size) + " problem size\n";
           mover->port_exhausted();
           break;
         }
@@ -209,12 +209,13 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
           std::cout << "producer thing is " + std::to_string(thing) + "\n";
 
         if (stop_source_.stop_requested()) {
-          //          if (this->debug())
-          std::cout << this->name() + " node " + std::to_string(this->id()) +
-                           " has gotten stop -- calling port_exhausted with " +
-                           std::to_string(produced_items_) +
-                           " produced items and " +
-                           std::to_string(problem_size) + " problem size\n";
+          if (this->debug())
+            std::cout
+                << this->name() + " node " + std::to_string(this->id()) +
+                       " has gotten stop -- calling port_exhausted with " +
+                       std::to_string(produced_items_) +
+                       " produced items and " + std::to_string(problem_size) +
+                       " problem size\n";
 
           mover->port_exhausted();
           break;
@@ -373,9 +374,10 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
                            std::to_string(consumed_items_) +
                            " consumed items and " +
                            std::to_string(problem_size) + " problem size\n";
-          assert(false);
+          //          assert(false);
 
           mover->port_exhausted();
+          break;
         }
 
         if (this->debug())

@@ -461,12 +461,16 @@ class AsyncPolicy
  * Function for handling `term_source` action.
  */
 inline void
-on_term_source(lock_type& _unused(lock), std::atomic<int>& event) {
+on_term_source(lock_type& lock, std::atomic<int>& event) {
   assert(lock.owns_lock());
 
   debug_msg(
       std::to_string(event++) + "    source done with " + str(this->state()) +
       " and " + str(this->next_state()));
+
+  // @note This is not optimal.  Have to notify sink when source is ending b/c
+  // can't do it with frugal in fsm.h
+  on_notify_sink(lock, event);
 }
 
 /**
@@ -602,8 +606,12 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
   /**
    * Function for handling `term_source` action.
    */
-  inline void on_term_source(lock_type& _unused(lock), std::atomic<int>&) {
+  inline void on_term_source(lock_type& lock, std::atomic<int>& event) {
     assert(lock.owns_lock());
+
+    // @note This is not optimal.  Have to notify sink when source is ending b/c
+    // can't do it with frugal in fsm.h
+    on_notify_sink(lock, event);
   }
 
   /**

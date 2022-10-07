@@ -121,6 +121,7 @@ constexpr const PortAction entry_table<two_stage> [num_states<two_stage>][n_even
   /* st_10 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,      PortAction::none,      PortAction::none },
   /* st_11 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::none },
 								                           						                            
+
   /* xt_00 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::term_source },
   /* xt_01 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::term_source },
   /* xt_10 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::source_throw },
@@ -211,8 +212,10 @@ constexpr const PortAction entry_table<three_stage>[num_states<three_stage>][n_e
   /* st_101 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::none },
   /* st_110 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,     PortAction::none,      PortAction::none },
   /* st_111 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::none },
-								   			   			                                                  
-  /* xt_000 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::notify_sink },
+
+  // Gaah!  need term_source for frugal but notify_sink for bountiful  (unit_frugal vs unit_stop)
+
+  /* xt_000 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::term_source },
   /* xt_001 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::term_source },
   /* xt_010 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::term_source },
   /* xt_011 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::term_source },
@@ -340,7 +343,7 @@ class PortFiniteStateMachine {
     next_state_ =
         transition_table<port_state>[to_index(state_)][to_index(event)];
 
-    assert(next_state_ != PortState::error);
+    //    assert(next_state_ != PortState::error);
 
     auto exit_action{exit_table<port_state>[to_index(state_)][to_index(event)]};
     auto entry_action{
