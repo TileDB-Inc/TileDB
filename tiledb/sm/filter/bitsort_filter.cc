@@ -46,6 +46,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <iostream> // TODO GONE
 #include <numeric>
 #include <optional>
 #include <unordered_map>
@@ -56,6 +57,81 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+template<typename T>
+void print_tile(Tile *tile) {
+  T *tile_data = static_cast<T*>(tile->data());
+  size_t num_cells = tile->size_as<T>();
+  for (size_t i = 0; i < num_cells; ++i) {
+    std::cout << tile_data[i] << " ";
+  }
+  std::cout << "\n";
+}
+
+void print_tile(Tile *tile) {
+  auto tile_type = tile->type();
+  switch (tile_type) {
+    case Datatype::INT8: {
+      print_tile<int8_t>(tile);
+    } break;
+    case Datatype::INT16: {
+      print_tile<int16_t>(tile);
+    } break;
+    case Datatype::INT32: {
+      print_tile<int32_t>(tile);
+    } break;
+    case Datatype::INT64: {
+      print_tile<int64_t>(tile);
+    } break;
+    case Datatype::FLOAT32: {
+      print_tile<float>(tile);
+    } break;
+    case Datatype::FLOAT64: {
+      print_tile<double>(tile);
+    } break;
+    default: {
+      std::cout << "invalid tile type: " << datatype_str(tile_type) << "\n";
+    } break;
+  }
+}
+
+template<typename T>
+void print_tile_filtered(Tile *tile) {
+  FilteredBuffer &fb = tile->filtered_buffer();
+  T *tile_data = reinterpret_cast<T*>(fb.data());
+  size_t num_cells = fb.size() / sizeof(T);
+  for (size_t i = 0; i < num_cells; ++i) {
+    std::cout << tile_data[i] << " ";
+  }
+  std::cout << "\n";
+}
+
+void print_tile_filtered(Tile *tile) {
+  auto tile_type = tile->type();
+  switch (tile_type) {
+    case Datatype::INT8: {
+      print_tile_filtered<int8_t>(tile);
+    } break;
+    case Datatype::INT16: {
+      print_tile_filtered<int16_t>(tile);
+    } break;
+    case Datatype::INT32: {
+      print_tile_filtered<int32_t>(tile);
+    } break;
+    case Datatype::INT64: {
+      print_tile_filtered<int64_t>(tile);
+    } break;
+    case Datatype::FLOAT32: {
+      print_tile_filtered<float>(tile);
+    } break;
+    case Datatype::FLOAT64: {
+      print_tile_filtered<double>(tile);
+    } break;
+    default: {
+      std::cout << "invalid tile type: " << datatype_str(tile_type) << "\n";
+    } break;
+  }
+}
 
 void BitSortFilter::dump(FILE* out) const {
   if (out == nullptr)
@@ -297,6 +373,12 @@ Status BitSortFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const  {
+
+  std::vector<Tile*> &dim_tiles = bitsort_metadata.first.get();
+  for (auto *tile : dim_tiles) {
+    print_tile_filtered(tile);
+  }
+
   // Get number of parts.
   uint32_t num_parts;
   RETURN_NOT_OK(input_metadata->read(&num_parts, sizeof(uint32_t)));
@@ -310,6 +392,7 @@ Status BitSortFilter::run_reverse(
   run_reverse_dim_tiles(bitsort_metadata, positions);
 
   // Unsort the attribute data with the positions determined by the dimension global sorting.
+  std::cout << "printing unsorted attr data\n";
   for (uint32_t i = 0; i < num_parts; i++) {
     uint32_t part_size;
     RETURN_NOT_OK(input_metadata->read(&part_size, sizeof(uint32_t)));
@@ -324,6 +407,7 @@ Status BitSortFilter::run_reverse(
     output_buf->advance_offset(part_size);
     input->advance_offset(part_size);
   }
+  std::cout << std::endl;
 
   // Output metadata is a view on the input metadata, skipping what was used
   // by this filter.
@@ -352,6 +436,7 @@ Status BitSortFilter::unsort_part(
   // Write in data in original order.
   for (uint32_t i = 0; i < num_elems_in_part; ++i) {
     output_array[i] = input_array[positions[i]];
+    std::cout << output_array[i] << " ";
   }
 
   return Status::Ok();

@@ -838,7 +838,7 @@ Status WriterBase::filter_tile(
     RETURN_NOT_OK(filters.run_forward<TileVectorRef>(
       stats_,
       tile,
-      support_tiles,
+      dim_tiles_ref,
       storage_manager_->compute_tp(),
       use_chunking));
   } else {

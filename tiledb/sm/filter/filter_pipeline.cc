@@ -155,7 +155,7 @@ FilterPipeline::get_var_chunk_sizes(
   return {Status::Ok(), std::move(chunk_offsets)};
 }
 
-template <typename T = Tile* const>
+template <typename T>
 Status FilterPipeline::filter_chunks_forward(
     const Tile& tile,
     T support_tiles,
@@ -345,7 +345,7 @@ Status FilterPipeline::filter_chunks_forward(
   return Status::Ok();
 }
 
-template <typename T = Tile* const>
+template <typename T>
 Status FilterPipeline::filter_chunks_reverse(
     Tile& tile,
     T support_tiles,

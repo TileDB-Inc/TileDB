@@ -392,6 +392,7 @@ Status ArraySchema::check() const {
     return LOG_STATUS(Status_ArraySchemaError("Array schema check failed; Bitsort filter cannot be applied on an array that is not sparse."));
   }
 
+  // Check that bitsort filter is only applied on an array with fixed size dimensions.
   if (bitsort_filter_exists && !domain_->all_dims_fixed()) {
     return LOG_STATUS(Status_ArraySchemaError("Array schema check failed; Bitsort filter cannot be applied on an array with variable sized dimensions."));
   }

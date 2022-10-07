@@ -386,7 +386,7 @@ class FilterPipeline {
    * @param compute_tp The thread pool for compute-bound tasks.
    * @return Status
    */
-  template <typename T>
+  template <typename T = Tile* const>
   Status filter_chunks_forward(
       const Tile& tile,
       T support_tiles,
@@ -408,7 +408,7 @@ class FilterPipeline {
    * @param config The global config.
    * @return Status
    */
-  template <typename T>
+  template <typename T = Tile* const>
   Status filter_chunks_reverse(
       Tile& tile,
       T const support_tiles,
