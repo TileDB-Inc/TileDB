@@ -73,7 +73,6 @@ jobs:
       ci_backend: GCS
       matrix_image: macos-11
       bootstrap_args: '--enable-gcs --enable-release-symbols'
-      #~ runtime_minutes: 105
   ci7:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
