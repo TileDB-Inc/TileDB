@@ -1019,7 +1019,39 @@ Status ReaderBase::unfilter_tile_chunk_range(
     if (!var_size) {
       if (!nullable) {
         if (array_schema_.bitsort_filter_attr().has_value()) {
-          auto bitsort_metadata = construct_bitsort_filter_argument(tile);
+          /// TODO: eliminate this and replace it with function
+          std::vector<Tile*> dim_tiles(array_schema_.dim_num());
+          std::vector<QueryBuffer> qb_vector;
+          std::vector<uint64_t> dim_data_sizes(array_schema_.dim_num());
+
+          for (size_t i = 0; i < array_schema_.dim_num(); ++i) {
+            const Dimension *dimension = array_schema_.domain().dimension_ptr(i);
+            auto dim_tile_tuple = tile->tile_tuple(dimension->name());
+            dim_tiles[i] = &dim_tile_tuple->fixed_tile();
+
+            auto &filtered_buffer = dim_tiles[i]->filtered_buffer();
+            dim_data_sizes[i] = filtered_buffer.size();
+            qb_vector.emplace_back(filtered_buffer.data(), nullptr, &dim_data_sizes[i], nullptr);
+          }
+
+          // Combine them into an argument.
+          auto dim_tiles_ref = std::ref(dim_tiles);
+          const Domain &domain = array_schema_.domain();
+          const auto &domain_buffs = DomainBuffersView(domain, qb_vector);
+          std::function<bool(const uint64_t, const uint64_t)> cmp_fn = [&domain_buffs, &domain](const uint64_t &a_idx, const uint64_t &b_idx){
+            auto a{domain_buffs.domain_ref_at(domain, a_idx)};
+            auto b{domain_buffs.domain_ref_at(domain, b_idx)};
+            auto tile_cmp = domain.tile_order_cmp(a, b);
+
+            if (tile_cmp == -1) return true;
+            else if (tile_cmp == 1) return false;
+
+            auto cell_cmp = domain.cell_order_cmp(a, b);
+            return cell_cmp == -1;
+          };
+
+          BitSortFilterMetadataType bitsort_metadata = std::make_pair(dim_tiles_ref, cmp_fn);
+
           RETURN_NOT_OK(unfilter_tile_chunk_range(
             num_range_threads, range_thread_idx, name, t, tile_chunk_data, bitsort_metadata)); 
 
@@ -1628,7 +1660,38 @@ Status ReaderBase::unfilter_tiles(
           if (!var_size) {
             if (!nullable) {
               if (array_schema_.bitsort_filter_attr().has_value()) {
-                auto bitsort_metadata = construct_bitsort_filter_argument(tile);
+                /// TODO: eliminate this and replace it with function
+                std::vector<Tile*> dim_tiles(array_schema_.dim_num());
+                std::vector<QueryBuffer> qb_vector;
+                std::vector<uint64_t> dim_data_sizes(array_schema_.dim_num());
+
+                for (size_t i = 0; i < array_schema_.dim_num(); ++i) {
+                  const Dimension *dimension = array_schema_.domain().dimension_ptr(i);
+                  auto dim_tile_tuple = tile->tile_tuple(dimension->name());
+                  dim_tiles[i] = &dim_tile_tuple->fixed_tile();
+
+                  auto &filtered_buffer = dim_tiles[i]->filtered_buffer();
+                  dim_data_sizes[i] = filtered_buffer.size();
+                  qb_vector.emplace_back(filtered_buffer.data(), nullptr, &dim_data_sizes[i], nullptr);
+                }
+
+                // Combine them into an argument.
+                auto dim_tiles_ref = std::ref(dim_tiles);
+                const Domain &domain = array_schema_.domain();
+                const auto &domain_buffs = DomainBuffersView(domain, qb_vector);
+                std::function<bool(const uint64_t, const uint64_t)> cmp_fn = [&domain_buffs, &domain](const uint64_t &a_idx, const uint64_t &b_idx){
+                  auto a{domain_buffs.domain_ref_at(domain, a_idx)};
+                  auto b{domain_buffs.domain_ref_at(domain, b_idx)};
+                  auto tile_cmp = domain.tile_order_cmp(a, b);
+
+                  if (tile_cmp == -1) return true;
+                  else if (tile_cmp == 1) return false;
+
+                  auto cell_cmp = domain.cell_order_cmp(a, b);
+                  return cell_cmp == -1;
+                };
+
+                BitSortFilterMetadataType bitsort_metadata = std::make_pair(dim_tiles_ref, cmp_fn);
                 RETURN_NOT_OK(unfilter_tile(name, t, bitsort_metadata));
 
               } else {
