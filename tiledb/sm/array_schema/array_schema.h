@@ -445,8 +445,9 @@ class ArraySchema {
   Status generate_uri(const std::pair<uint64_t, uint64_t>& timestamp_range);
 
   /**
-   * Returns whether the array schema's list of filters contains the
-   * bitsort filter. */
+   * Returns the name of the attribute in this schema with a bitsort filter.
+   * If none exists, then this function returns std::nullopt.
+   */
   std::optional<std::string> bitsort_filter_attr() const;
 
  private:
@@ -535,8 +536,10 @@ class ArraySchema {
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
 
-  /** Attribute with bitsort filter in its filter pipeline. Set to nullopt when
-   * none exists. */
+  /**
+   * Attribute with bitsort filter in its filter pipeline.
+   * Set to nullopt when none exists.
+   */
   std::optional<std::string> bitsort_filter_attr_;
 
   /**

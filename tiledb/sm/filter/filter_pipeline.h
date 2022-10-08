@@ -127,7 +127,7 @@ class FilterPipeline {
    * Returns pointer to the first instance of a filter in the pipeline with the
    * given filter subclass type.
    *
-   * @tparam T Subclass type of Filter to get
+   * @tparam SupportDataType Subclass type of Filter to get
    * @return Pointer to filter instance in the pipeline, or nullptr if not
    *    found.
    */
@@ -199,19 +199,19 @@ class FilterPipeline {
    * The given Tile's underlying buffer is modified to contain the filtered
    * data.
    *
-   * @tparam T The type of the support data given to the filter.
+   * @tparam SupportDataType The type of the support data given to the filter.
    * @param tile Tile to filter.
-   * @param support_tiles Argument for support data passed given to filer.
+   * @param support_tiles Argument for support data passed given to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param chunking True if the tile should be cut into chunks before
    * filtering, false if not.
    * @return Status
    */
-  template <typename T = Tile* const>
+  template <typename SupportDataType = Tile* const>
   Status run_forward(
       stats::Stats* writer_stats,
       Tile* tile,
-      T support_tiles,
+      SupportDataType support_tiles,
       ThreadPool* compute_tp,
       bool chunking = true) const;
 
@@ -247,19 +247,19 @@ class FilterPipeline {
    * The length of tile_data will be the sum of all chunkI_orig_len for I in 0
    * to N.
    *
-   * @tparam T The type of the support data given to the filter.
+   * @tparam SupportDataType The type of the support data given to the filter.
    * @param reader_stats Reader stats
    * @param tile Tile to unfilter
-   * @param support_tiles Argument for support data passed given to filer.
+   * @param support_tiles Argument for support data passed given to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
    * @return Status
    */
-  template <typename T = Tile* const>
+  template <typename SupportDataType = Tile* const>
   Status run_reverse(
       stats::Stats* writer_stats,
       Tile* tile,
-      T const support_tiles,
+      SupportDataType support_tiles,
       ThreadPool* compute_tp,
       const Config& config) const;
 
@@ -375,9 +375,9 @@ class FilterPipeline {
   /**
    * Run the given buffer forward through the pipeline.
    *
-   * @tparam T The type of the support data given to the filter.
+   * @tparam SupportDataType The type of the support data given to the filter.
    * @param tile Current tile on which the filter pipeline is being run.
-   * @param support_tiles Argument for support data passed given to filer.
+   * @param support_tiles Argument for support data passed given to filter.
    * @param input buffer to process.
    * @param chunk_size chunk size.
    * @param chunk_offsets chunk offsets computed for var sized attributes.
@@ -386,10 +386,10 @@ class FilterPipeline {
    * @param compute_tp The thread pool for compute-bound tasks.
    * @return Status
    */
-  template <typename T = Tile* const>
+  template <typename SupportDataType = Tile* const>
   Status filter_chunks_forward(
       const Tile& tile,
-      T support_tiles,
+      SupportDataType support_tiles,
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,
       FilteredBuffer& output,
@@ -398,9 +398,9 @@ class FilterPipeline {
   /**
    * Run the given list of chunks in reverse through the pipeline.
    *
-   * @tparam T The type of the support data given to the filter.
+   * @tparam SupportDataType The type of the support data given to the filter.
    * @param tile Current tile on which the filter pipeline is being run
-   * @param support_tiles Argument for support data passed given to filer.
+   * @param support_tiles Argument for support data passed given to filter.
    * @param input Filtered chunk buffers to reverse.
    * @param output Chunked buffer where output of the last stage
    *    will be written.
@@ -408,10 +408,10 @@ class FilterPipeline {
    * @param config The global config.
    * @return Status
    */
-  template <typename T = Tile* const>
+  template <typename SupportDataType = Tile* const>
   Status filter_chunks_reverse(
       Tile& tile,
-      T const support_tiles,
+      SupportDataType support_tiles,
       const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
       ThreadPool* const compute_tp,
       const Config& config) const;
@@ -419,18 +419,18 @@ class FilterPipeline {
   /**
    * The internal work routine for `run_reverse`.
    *
-   * @tparam T The type of the support data given to the filter.
+   * @tparam SupportDataType The type of the support data given to the filter.
    * @param tile Tile to filter
-   * @param support_tiles Argument for support data passed given to filer.
+   * @param support_tiles Argument for support data passed given to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
    * @return Status
    */
-  template <typename T>
+  template <typename SupportDataType = Tile* const>
   Status run_reverse_internal(
       stats::Stats* reader_stats,
       Tile* const tile,
-      T const support_tiles,
+      SupportDataType support_tiles,
       ThreadPool* compute_tp,
       const Config& config) const;
 };

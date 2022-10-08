@@ -683,14 +683,15 @@ Status WriterBase::filter_tiles(
   auto timer_se = stats_->start_timer("filter_tiles");
 
   std::vector<WriterTileVector*> dim_tiles;
+  dim_tiles.reserve(array_schema_.dim_num());
   // Since the bitsort filter processes the dimension tiles, we pass the dimension
   // tiles to be processed with the attribute containing the bitsort filter in its
   // filter pipeline.
-  auto attr_value = array_schema_.bitsort_filter_attr();
-  if (attr_value) {
+  const auto attr_value = array_schema_.bitsort_filter_attr();
+  if (attr_value.has_value()) {
     std::string attr_name = attr_value.value();
     for (const auto& name : array_schema_.dim_names()) {
-      dim_tiles.push_back(&((*tiles)[name]));
+      dim_tiles.emplace_back(&((*tiles)[name]));
     }
 
     RETURN_CANCEL_OR_ERROR(
@@ -718,7 +719,7 @@ Status WriterBase::filter_tiles(
 
 template<typename SupportTileType>
 Status WriterBase::filter_tiles(
-    const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*>& dim_tiles) {
+    const std::string& name, WriterTileVector* tiles, [[maybe_unused]] const std::vector<WriterTileVector*>& dim_tiles) {
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
 
@@ -728,7 +729,6 @@ Status WriterBase::filter_tiles(
   // Process all tiles, minus offsets, they get processed separately.
   std::vector<std::tuple<Tile*, SupportTileType, bool, bool>> args;
   if constexpr (std::is_same<Tile*, SupportTileType>::value) {
-    (void)dim_tiles;
     args.reserve(tile_num * (1 + nullable));
     for (auto& tile : *tiles) {
       if (var_size) {
@@ -748,8 +748,9 @@ Status WriterBase::filter_tiles(
 
       // Collect the dim tiles argument.
       std::vector<Tile*> dim_tiles_temp;
+      dim_tiles_temp.reserve(dim_tiles.size());
       for (const auto& elem : dim_tiles) {
-        dim_tiles_temp.push_back(&((*elem)[i].fixed_tile()));
+        dim_tiles_temp.emplace_back(&((*elem)[i].fixed_tile()));
       }
 
       args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp, false, false);

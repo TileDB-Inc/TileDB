@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines the bit sort filter class. The bitsort filter takes in
+ * This file declares the bitsort filter class. The bitsort filter takes in
  * any fixed size, non-nullable input data and sorts it according to its
  * input values, as integers, on write. Then on read, this filter restores
  * the original order of the data.
@@ -73,12 +73,12 @@ class BitSortFilter : public Filter {
    * the input values, sorted in bit order (ascending).
    *
    * @param tile Current attribute tile on which the filter is being run.
-   * @param dim_tiles Dimension tiles for the attribute tile.
+   * @param dim_tiles Dimension tiles of the schema.
    * @param input_metadata Buffer with metadata for `input`.
-   * @param input  Buffer with data to be filtered.
+   * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
    * @param output Buffer with filtered data.
-   * @return Status
+   * @return Status.
    */
   Status run_forward(
       const Tile& tile,
@@ -91,12 +91,12 @@ class BitSortFilter : public Filter {
   /**
    * @brief Dummy run forward to satisfy the Filter class requirements.
    *
-   * @param tile Current tile on which the filter is being run
+   * @param tile Current tile on which the filter is being run.
    * @param offsets_tile Offsets tile of the current tile on which the filter is
-   * being run
-   * @param input_metadata Buffer with metadata for `input`
+   * being run.
+   * @param input_metadata Buffer with metadata for `input`.
    * @param input Buffer with data to be filtered.
-   * @param output_metadata Buffer with metadata for filtered data
+   * @param output_metadata Buffer with metadata for filtered data.
    * @param output Buffer with filtered data (unused by in-place filters).
    * @return Status_FilterError. This function should never be called.
    */
@@ -113,11 +113,10 @@ class BitSortFilter : public Filter {
    * in bit order, and re-sorts them into global order.
    *
    * @param tile Current attribute tile on which the filter is being run.
-   * @param bitsort_metadata Contains the dimension tiles for the attribute tile
-   * and a comparison function in order to sort the dimension tiles in global
-   * order.
+   * @param bitsort_metadata Contains the dimension tiles of the schema and
+   * a comparison function in order to sort the dimension tiles in global order.
    * @param input_metadata Buffer with metadata for `input`.
-   * @param input  Buffer with data to be filtered.
+   * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
    * @param output Buffer with filtered data.
    * @return Status
@@ -134,12 +133,12 @@ class BitSortFilter : public Filter {
   /**
    * @brief Dummy run reverse to satisfy the Filter class requirements.
    *
-   * @param tile Current tile on which the filter is being run
+   * @param tile Current tile on which the filter is being run.
    * @param offsets_tile Offsets tile of the current tile on which the filter is
-   * being run
-   * @param input_metadata Buffer with metadata for `input`
+   * being run.
+   * @param input_metadata Buffer with metadata for `input`.
    * @param input Buffer with data to be filtered.
-   * @param output_metadata Buffer with metadata for filtered data
+   * @param output_metadata Buffer with metadata for filtered data.
    * @param output Buffer with filtered data (unused by in-place filters).
    * @return Status_FilterError. This function should never be called.
    */
@@ -159,10 +158,10 @@ class BitSortFilter : public Filter {
   /**
    * Run forward, templated on the attribute tile type.
    *
-   * @tparam AttrType The attribute tile type.
-   * @param dim_tiles Dimension tiles for the attribute tile.
+   * @tparam AttrType Attribute tile type.
+   * @param dim_tiles Dimension tiles of the schema.
    * @param input_metadata Buffer with metadata for `input`.
-   * @param input  Buffer with data to be filtered.
+   * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
    * @param output Buffer with filtered data.
    * @return Status
@@ -178,12 +177,11 @@ class BitSortFilter : public Filter {
   /**
    * Run reverse, templated on the attribute tile type.
    *
-   * @tparam AttrType The attribute tile type.
-   * @param bitsort_metadata Contains the dimension tiles for the attribute tile
-   * and a comparison function in order to sort the dimension tiles in global
-   * order.
+   * @tparam AttrType Attribute tile type.
+   * @param bitsort_metadata Contains the dimension tiles of the schema and
+   * a comparison function in order to sort the dimension tiles in global order.
    * @param input_metadata Buffer with metadata for `input`.
-   * @param input  Buffer with data to be filtered.
+   * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
    * @param output Buffer with filtered data.
    * @return Status
@@ -199,44 +197,39 @@ class BitSortFilter : public Filter {
   /**
    * @brief Collects the attribute data, per part, prior to sorting.
    *
-   * @tparam AttrType The attribute tile type.
-   * @param input_buffer The input buffer containing the attribute data for one
+   * @tparam AttrType Attribute tile type.
+   * @param input_buffer Input buffer containing the attribute data for one
    * part.
-   * @param offset Offset of where to start storing positions in the sorted
-   * elements vector.
-   * @param sorted_elements Vector for storing positions of the sorted elements.
+   * @param elements Vector for collecting elements.
    * @return Status
    */
   template <typename AttrType>
   Status collect_part_data(
-      const ConstBuffer* input_buffer,
-      uint32_t offset,
-      std::vector<std::pair<AttrType, uint64_t>>& sorted_elements) const;
+      const ConstBuffer* input_buffer, std::vector<AttrType>& elements) const;
 
   /**
    * @brief Rewrites the dimension tile given the positions of the attributes.
    *
-   * @tparam AttrType The attribute tile type.
-   * @tparam DimType The dimension tile type.
+   * @tparam AttrType Attribute tile type.
+   * @tparam DimType Dimension tile type.
    * @param positions Vector with the sorted positions of the attribute data.
    * @param dim_tile Dimension tile to rewrite.
    * @return Status
    */
-  template <typename AttrType, typename DimType>
+  template <typename DimType>
   Status run_forward_dim_tile(
-      const std::vector<std::pair<AttrType, uint64_t>>& positions,
-      Tile* dim_tile) const;
+      const std::vector<size_t>& positions, Tile* dim_tile) const;
 
   /**
    * @brief Unsorts the input buffer and restores the array by sorting the
    * positions in global order, then using this order to rewrite the dimension
    * tiles. It also writes the original array to the output buffer.
    *
-   * @tparam AttrType The attribute tile type.
+   * @tparam AttrType Attribute tile type.
    * @param positions Vector with the sorted positions of the attribute data.
-   * @param input_buffer The input buffer containing the sorted attribute data
+   * @param input_buffer Input buffer containing the sorted attribute data
    * for one part.
-   * @param output_buffer The output buffer for all data in the input.
+   * @param output_buffer Output buffer for all data in the input.
    * @return Status
    */
   template <typename AttrType>
@@ -248,9 +241,8 @@ class BitSortFilter : public Filter {
   /**
    * @brief Rewrites the dimension tiles given the positions of the attributes.
    *
-   * @param bitsort_metadata Contains the dimension tiles for the attribute tile
-   * and a comparison function in order to sort the dimension tiles in global
-   * order.
+   * @param bitsort_metadata Contains the dimension tiles of the schema and
+   * a comparison function in order to sort the dimension tiles in global order.
    * @param positions Vector for storing positions of the attribute data sorted
    * in global order.
    * @return Status
@@ -262,8 +254,8 @@ class BitSortFilter : public Filter {
   /**
    * @brief Rewrites the dimension tile given the positions of the attributes.
    *
-   * @tparam DimType The dimension tile type.
-   * @param dim_tile The dimension tile to rewrite.
+   * @tparam DimType Dimension tile type.
+   * @param dim_tile Dimension tile to rewrite.
    * @param positions Vector with the sorted positions of the attribute data.
    * @return Status
    */

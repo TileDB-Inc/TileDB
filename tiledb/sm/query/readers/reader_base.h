@@ -524,7 +524,7 @@ class ReaderBase : public StrategyBase {
       const std::string& name,
       Tile* tile,
       const ChunkData& tile_chunk_data,
-      BitSortFilterMetadataType& pair) const;
+      BitSortFilterMetadataType& bitsort_metadata) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -641,7 +641,7 @@ class ReaderBase : public StrategyBase {
   Status unfilter_tile(
       const std::string& name,
       Tile* tile,
-      BitSortFilterMetadataType& pair) const;
+      BitSortFilterMetadataType& bitsort_metadata) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -831,6 +831,10 @@ class ReaderBase : public StrategyBase {
       ResultTile* const tile,
       const bool var_size,
       const bool nullable) const;
+
+ private:
+  BitSortFilterMetadataType construct_bitsort_filter_argument(
+      ResultTile* const tile) const;
 };
 
 }  // namespace sm

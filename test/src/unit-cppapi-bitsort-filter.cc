@@ -31,6 +31,7 @@
  */
 
 #include <random>
+#include <tuple>
 #include <vector>
 
 #include "catch.hpp"
@@ -42,6 +43,7 @@ using namespace tiledb;
 const int BITSORT_DIM_LO = 1;
 const int BITSORT_DIM_HI = 10;
 const int TILE_EXTENT = 4;
+const int SEED = 0xADA65ED6;
 
 // Defining distribution parameters.
 typedef typename std::uniform_int_distribution<uint64_t>
@@ -49,57 +51,70 @@ typedef typename std::uniform_int_distribution<uint64_t>
 typedef typename std::uniform_int_distribution<int64_t> IntDistribution;
 typedef typename std::uniform_real_distribution<double> FloatDistribution;
 
+// Defining dimension vector storage type.
+template<typename DimType>
+using DimensionVectors = std::tuple<std::vector<DimType>, std::vector<DimType>, std::vector<DimType>>;
+
 /**
- * @brief Set the buffer with the appropriate dimensions for a 1D array.
+ * @brief Set the buffer with the appropriate dimension for a 1D array.
  *
  * @tparam DimType The type of the dimension.
- * @param x_dims The buffer that the function sets.
+ * @returns The dimension storage buffer.
  */
 template <typename DimType>
-void set_1d_dim_buffers(std::vector<DimType>& x_dims) {
+DimensionVectors<DimType> set_1d_dim_buffers() {
+  std::vector<DimType> x_dims_data;
   for (int x = BITSORT_DIM_LO; x <= BITSORT_DIM_HI; ++x) {
-    x_dims.push_back(static_cast<DimType>(x));
+    x_dims_data.push_back(static_cast<DimType>(x));
   }
+  return make_tuple(x_dims_data, std::vector<DimType>(), std::vector<DimType>());
 }
 
 /**
  * @brief Set the buffer with the appropriate dimensions for a 2D array.
  *
  * @tparam DimType The type of the dimension.
- * @param x_dims The first buffer that the function sets.
- * @param y_dims The second buffer that the function sets.
+ * @returns The dimension storage buffers.
  */
 template <typename DimType>
-void set_2d_dim_buffers(std::vector<DimType>& x_dims, std::vector<DimType>& y_dims) {
+DimensionVectors<DimType> set_2d_dim_buffers() {
+  std::vector<DimType> x_dims_data;
+  std::vector<DimType> y_dims_data;
+
   for (int tile_idx_x = BITSORT_DIM_LO; tile_idx_x <= BITSORT_DIM_HI; tile_idx_x += TILE_EXTENT) {
     for (int tile_idx_y = BITSORT_DIM_LO; tile_idx_y <= BITSORT_DIM_HI; tile_idx_y += TILE_EXTENT) {
       for (int x = tile_idx_x; x < tile_idx_x + TILE_EXTENT; ++x) {
         if (x > BITSORT_DIM_HI) {
           break;
         }
+
         for (int y = tile_idx_y; y < tile_idx_y + TILE_EXTENT; ++y) {
           if (y > BITSORT_DIM_HI) {
             break;
           }
-          x_dims.push_back(static_cast<DimType>(x));
-          y_dims.push_back(static_cast<DimType>(y));
+
+          x_dims_data.push_back(static_cast<DimType>(x));
+          y_dims_data.push_back(static_cast<DimType>(y));
         }
       }
     }
   }
+
+  return make_tuple(x_dims_data, y_dims_data, std::vector<DimType>());
 }
 
 /**
  * @brief Set the buffer with the appropriate dimensions for a 3D array.
  *
  * @tparam DimType The type of the dimension.
- * @param x_dims The first buffer that the function sets.
- * @param y_dims The second buffer that the function sets.
- * @param z_dims The third buffer that the function sets.
+ * @returns The dimension storage buffers.
  */
 template <typename DimType>
-void set_3d_dim_buffers(
-    std::vector<DimType>& x_dims, std::vector<DimType>& y_dims, std::vector<DimType>& z_dims) {
+DimensionVectors<DimType> set_3d_dim_buffers() {
+  std::vector<DimType> x_dims_data;
+  std::vector<DimType> y_dims_data;
+  std::vector<DimType> z_dims_data;
+
   for (int tile_idx_x = BITSORT_DIM_LO; tile_idx_x <= BITSORT_DIM_HI; tile_idx_x += TILE_EXTENT) {
     for (int tile_idx_y = BITSORT_DIM_LO; tile_idx_y <= BITSORT_DIM_HI; tile_idx_y += TILE_EXTENT) {
       for (int tile_idx_z = BITSORT_DIM_LO; tile_idx_z <= BITSORT_DIM_HI; tile_idx_z += TILE_EXTENT) {
@@ -107,52 +122,56 @@ void set_3d_dim_buffers(
           if (x > BITSORT_DIM_HI) {
             break;
           }
+
           for (int y = tile_idx_y; y < tile_idx_y + TILE_EXTENT; ++y) {
             if (y > BITSORT_DIM_HI) {
               break;
             }
+
             for (int z = tile_idx_z; z < tile_idx_z + TILE_EXTENT; ++z) {
               if (z > BITSORT_DIM_HI) {
                 break;
               }
 
-              x_dims.push_back(static_cast<DimType>(x));
-              y_dims.push_back(static_cast<DimType>(y));
-              z_dims.push_back(static_cast<DimType>(z));
+              x_dims_data.push_back(static_cast<DimType>(x));
+              y_dims_data.push_back(static_cast<DimType>(y));
+              z_dims_data.push_back(static_cast<DimType>(z));
             }
           }
         }
       }
     }
   }
+
+  return std::make_tuple(x_dims_data, y_dims_data, z_dims_data);
 }
 
 /**
- * @brief Check the dimension buffer to ensure it has the appropriate dimensions
+ * @brief Check the dimension buffer to ensure it has the appropriate data
  * for a 1D array.
  *
  * @tparam DimType The type of the dimension.
- * @param x_dims The buffer that this function checks.
+ * @param x_dims_data The buffer that this function checks.
  */
 template <typename DimType>
-void check_1d_dim_buffers(const std::vector<DimType>& x_dims) {
+void check_1d_dim_buffer(const std::vector<DimType>& x_dims_data) {
   size_t idx = 0;
   for (int x = BITSORT_DIM_LO; x <= BITSORT_DIM_HI; ++x) {
-    CHECK(x_dims[idx++] == static_cast<DimType>(x));
+    CHECK(x_dims_data[idx++] == static_cast<DimType>(x));
   }
 }
 
 /**
  * @brief  Check the dimension buffer to ensure it has the appropriate
- * dimensions for a 2D array read in global order.
+ * data for a 2D array read in global order.
  *
  * @tparam DimType The type of the dimension.
- * @param x_dims The first buffer that the function checks.
- * @param y_dims The second buffer that the function checks.
+ * @param x_dims_data The first buffer that the function checks.
+ * @param y_dims_data The second buffer that the function checks.
  */
 template <typename DimType>
 void check_2d_dim_buffers_global_read(
-    const std::vector<DimType>& x_dims, const std::vector<DimType>& y_dims) {
+    const std::vector<DimType>& x_dims_data, const std::vector<DimType>& y_dims_data) {
   size_t idx = 0;
   for (int tile_idx_x = BITSORT_DIM_LO; tile_idx_x <= BITSORT_DIM_HI; tile_idx_x += TILE_EXTENT) {
     for (int tile_idx_y = BITSORT_DIM_LO; tile_idx_y <= BITSORT_DIM_HI; tile_idx_y += TILE_EXTENT) {
@@ -160,14 +179,14 @@ void check_2d_dim_buffers_global_read(
         if (x > BITSORT_DIM_HI) {
           break;
         }
+
         for (int y = tile_idx_y; y < tile_idx_y + TILE_EXTENT; ++y) {
           if (y > BITSORT_DIM_HI) {
             break;
           }
 
-          CHECK(x_dims[idx] == static_cast<DimType>(x));
-          CHECK(y_dims[idx] == static_cast<DimType>(y));
-
+          CHECK(x_dims_data[idx] == static_cast<DimType>(x));
+          CHECK(y_dims_data[idx] == static_cast<DimType>(y));
           idx += 1;
         }
       }
@@ -177,20 +196,20 @@ void check_2d_dim_buffers_global_read(
 
 /**
  * @brief  Check the dimension buffer to ensure it has the appropriate
- * dimensions for a 2D array read in row major order.
+ * data for a 2D array read in row major order.
  *
  * @tparam DimType The type of the dimension.
- * @param x_dims The first buffer that the function checks.
- * @param y_dims The second buffer that the function checks.
+ * @param x_dims_data The first buffer that the function checks.
+ * @param y_dims_data The second buffer that the function checks.
  */
 template <typename DimType>
 void check_2d_dim_buffers_row_read(
-    const std::vector<DimType>& x_dims, const std::vector<DimType>& y_dims) {
+    const std::vector<DimType>& x_dims_data, const std::vector<DimType>& y_dims_data) {
   size_t idx = 0;
   for (int x = BITSORT_DIM_LO; x <= BITSORT_DIM_HI; ++x) {
     for (int y = BITSORT_DIM_LO; y <= BITSORT_DIM_HI; ++y) {
-      CHECK(x_dims[idx] == static_cast<DimType>(x));
-      CHECK(y_dims[idx] == static_cast<DimType>(y));
+      CHECK(x_dims_data[idx] == static_cast<DimType>(x));
+      CHECK(y_dims_data[idx] == static_cast<DimType>(y));
       idx += 1;
     }
   }
@@ -198,20 +217,20 @@ void check_2d_dim_buffers_row_read(
 
 /**
  * @brief  Check the dimension buffer to ensure it has the appropriate
- * dimensions for a 2D array read in column major order.
+ * data for a 2D array read in column major order.
  *
  * @tparam DimType The type of the dimension.
- * @param x_dims The first buffer that the function checks.
- * @param y_dims The second buffer that the function checks.
+ * @param x_dims_data The first buffer that the function checks.
+ * @param y_dims_data The second buffer that the function checks.
  */
 template <typename DimType>
 void check_2d_dim_buffers_col_read(
-    const std::vector<DimType>& x_dims, const std::vector<DimType>& y_dims) {
+    const std::vector<DimType>& x_dims_data, const std::vector<DimType>& y_dims_data) {
   size_t idx = 0;
   for (int y = BITSORT_DIM_LO; y <= BITSORT_DIM_HI; ++y) {
     for (int x = BITSORT_DIM_LO; x <= BITSORT_DIM_HI; ++x) {
-      CHECK(x_dims[idx] == static_cast<DimType>(x));
-      CHECK(y_dims[idx] == static_cast<DimType>(y));
+      CHECK(x_dims_data[idx] == static_cast<DimType>(x));
+      CHECK(y_dims_data[idx] == static_cast<DimType>(y));
       idx += 1;
     }
   }
@@ -219,19 +238,18 @@ void check_2d_dim_buffers_col_read(
 
 
 /**
- * @brief Check the dimension buffer to ensure it has the appropriate dimensions
- * for a 3D array.
+ * @brief Check the dimension buffer to ensure it has the appropriate data for a 3D array.
  *
  * @tparam DimType The type of the dimension.
- * @param x_dims The first buffer that the function checks.
- * @param y_dims The second buffer that the function checks.
- * @param z_dims The third buffer that the function checks.
+ * @param x_dims_data The first buffer that the function checks.
+ * @param y_dims_data The second buffer that the function checks.
+ * @param z_dims_data The third buffer that the function checks.
  */
 template <typename DimType>
 void check_3d_dim_buffers(
-    const std::vector<DimType>& x_dims,
-    const std::vector<DimType>& y_dims,
-    const std::vector<DimType>& z_dims) {
+    const std::vector<DimType>& x_dims_data,
+    const std::vector<DimType>& y_dims_data,
+    const std::vector<DimType>& z_dims_data) {
   size_t idx = 0;
   for (int tile_idx_x = BITSORT_DIM_LO; tile_idx_x <= BITSORT_DIM_HI; tile_idx_x += TILE_EXTENT) {
     for (int tile_idx_y = BITSORT_DIM_LO; tile_idx_y <= BITSORT_DIM_HI; tile_idx_y += TILE_EXTENT) {
@@ -240,19 +258,20 @@ void check_3d_dim_buffers(
           if (x > BITSORT_DIM_HI) {
             break;
           }
+
           for (int y = tile_idx_y; y < tile_idx_y + TILE_EXTENT; ++y) {
             if (y > BITSORT_DIM_HI) {
               break;
             }
+
             for (int z = tile_idx_z; z < tile_idx_z + TILE_EXTENT; ++z) {
               if (z > BITSORT_DIM_HI) {
                 break;
               }
 
-              CHECK(x_dims[idx] == static_cast<DimType>(x));
-              CHECK(y_dims[idx] == static_cast<DimType>(y));
-              CHECK(z_dims[idx] == static_cast<DimType>(z));
-
+              CHECK(x_dims_data[idx] == static_cast<DimType>(x));
+              CHECK(y_dims_data[idx] == static_cast<DimType>(y));
+              CHECK(z_dims_data[idx] == static_cast<DimType>(z));
               idx += 1;
             }
           }
@@ -281,6 +300,7 @@ void check_2d_row_major(std::vector<AttrType>& global_a, std::vector<AttrType>& 
         if (x > BITSORT_DIM_HI) {
           break;
         }
+
         for (int y = tile_idx_y; y < tile_idx_y + TILE_EXTENT; ++y) {
           if (y > BITSORT_DIM_HI) {
             break;
@@ -324,6 +344,19 @@ void check_3d_row_major(std::vector<AttrType>& global_a, std::vector<AttrType>& 
 }
 
 /**
+ * @brief Checks that the read query with column major layout returns the correct
+ * results for a 3D array.
+ *
+ * @tparam AttrType The type of the attribute of the array.
+ * @param global_a The attribute data in global order.
+ * @param a_data_read The attribute data in row-major order.
+ */
+template <typename AttrType>
+void check_3d_col_major(std::vector<AttrType>& global_a, std::vector<AttrType>& a_data_read) {
+  REQUIRE(global_a.size() == a_data_read.size());
+}
+
+/**
  * @brief Sets the subarrays to the entire array for a read query.
  * Including this so we can test different code paths.
  * 
@@ -357,32 +390,34 @@ void read_query_set_subarray(Query &read_query, int num_dims) {
  * @tparam DimType The type of the dimensions of the array.
  * @tparam AttributeDistribution The type of the random distribution used to
  * generate the attribute data.
- * @param ctx The context object.
- * @param vfs The VFS object.
+ * @param bitsort_array_name The array name.
  * @param num_dims The number of dimensions.
  * @param write_layout The layout of the write query.
  * @param read_layout The layout of the read query.
+ * @param set_subarray Whether the read query is called with a subarray encompassing the whole array.
  */
 template <typename AttrType, typename DimType, typename AttributeDistribution>
 void bitsort_filter_api_test(
-    Context& ctx,
-    VFS& vfs,
     const std::string& bitsort_array_name,
     uint64_t num_dims,
     tiledb_layout_t write_layout,
     tiledb_layout_t read_layout,
-    bool has_subarray) {
+    bool set_subarray) {
   // Setup.
-  if (vfs.is_dir(bitsort_array_name))
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(bitsort_array_name)) {
     vfs.remove_dir(bitsort_array_name);
+  }
 
   Domain domain(ctx);
 
   // Add first dimension.
   REQUIRE(num_dims >= 1);
   REQUIRE(num_dims <= 3);
-  size_t num_per_dim = (BITSORT_DIM_HI - BITSORT_DIM_LO + 1);
-  size_t number_elements = num_per_dim;
+  size_t num_element_per_dim = (BITSORT_DIM_HI - BITSORT_DIM_LO + 1);
+  size_t number_elements = num_element_per_dim;
   domain.add_dimension(Dimension::create<DimType>(
       ctx,
       "x",
@@ -395,7 +430,7 @@ void bitsort_filter_api_test(
         "y",
         {{static_cast<DimType>(BITSORT_DIM_LO), static_cast<DimType>(BITSORT_DIM_HI)}},
         static_cast<DimType>(TILE_EXTENT)));
-    number_elements *= num_per_dim;
+    number_elements *= num_element_per_dim;
   }
   if (num_dims == 3) {
     domain.add_dimension(Dimension::create<DimType>(
@@ -403,7 +438,7 @@ void bitsort_filter_api_test(
         "z",
         {{static_cast<DimType>(BITSORT_DIM_LO), static_cast<DimType>(BITSORT_DIM_HI)}},
         static_cast<DimType>(TILE_EXTENT)));
-    number_elements *= num_per_dim;
+    number_elements *= num_element_per_dim;
   }
 
   Filter f(ctx, TILEDB_FILTER_BITSORT);
@@ -419,7 +454,7 @@ void bitsort_filter_api_test(
   Array::create(bitsort_array_name, schema);
 
   // Setting up the random number generator for the bitsort filter testing.
-  std::mt19937_64 gen(0xADA65ED6);
+  std::mt19937_64 gen(SEED);
   AttrType low = 0;
   if constexpr (std::is_signed<AttrType>::value) {
     low = std::numeric_limits<AttrType>::min();
@@ -438,26 +473,16 @@ void bitsort_filter_api_test(
   Query query_w(ctx, array_w);
   query_w.set_layout(write_layout).set_data_buffer("a", a_write);
   // Dimension buffers.
-  std::vector<DimType> x_dims;
-  std::vector<DimType> y_dims;
-  std::vector<DimType> z_dims;
-
-  if (num_dims == 1) {
-    set_1d_dim_buffers(x_dims);
-  } else if (num_dims == 2) {
-    set_2d_dim_buffers(x_dims, y_dims);
-  } else {
-    set_3d_dim_buffers(x_dims, y_dims, z_dims);
-  }
+  auto&& [x_dims_data, y_dims_data, z_dims_data]{(num_dims == 1) ? set_1d_dim_buffers<DimType>() : ((num_dims == 2) ? set_2d_dim_buffers<DimType>() : set_3d_dim_buffers<DimType>())};
 
   // Setting data buffers.
-  query_w.set_data_buffer("x", x_dims);
+  query_w.set_data_buffer("x", x_dims_data);
 
   if (num_dims >= 2) {
-    query_w.set_data_buffer("y", y_dims);
+    query_w.set_data_buffer("y", y_dims_data);
   }
   if (num_dims == 3) {
-    query_w.set_data_buffer("z", z_dims);
+    query_w.set_data_buffer("z", z_dims_data);
   }
 
   query_w.submit();
@@ -471,7 +496,7 @@ void bitsort_filter_api_test(
   query_r.set_data_buffer("a", a_data_read);
   query_r.set_layout(read_layout);
 
-  if (has_subarray) {
+  if (set_subarray) {
     read_query_set_subarray<DimType>(query_r, num_dims);
   }
 
@@ -500,25 +525,25 @@ void bitsort_filter_api_test(
 
   // Set a query where we read the dimensions back.
   std::vector<AttrType> a_data_read_dims(number_elements, 0);
-  std::vector<DimType> x_dims_read(number_elements, 0);
-  std::vector<DimType> y_dims_read(number_elements, 0);
-  std::vector<DimType> z_dims_read(number_elements, 0);
+  std::vector<DimType> x_dims_data_read(number_elements, 0);
+  std::vector<DimType> y_dims_data_read(number_elements, 0);
+  std::vector<DimType> z_dims_data_read(number_elements, 0);
 
   Array array_r_dims(ctx, bitsort_array_name, TILEDB_READ);
   Query query_r_dims(ctx, array_r_dims);
   query_r_dims.set_data_buffer("a", a_data_read_dims);
   query_r_dims.set_layout(read_layout);
 
-  query_r_dims.set_data_buffer("x", x_dims_read);
+  query_r_dims.set_data_buffer("x", x_dims_data_read);
 
   if (num_dims >= 2) {
-    query_r_dims.set_data_buffer("y", y_dims_read);
+    query_r_dims.set_data_buffer("y", y_dims_data_read);
   }
   if (num_dims == 3) {
-    query_r_dims.set_data_buffer("z", z_dims_read);
+    query_r_dims.set_data_buffer("z", z_dims_data_read);
   }
 
-  if (has_subarray) {
+  if (set_subarray) {
     read_query_set_subarray<DimType>(query_r_dims, num_dims);
   }
 
@@ -557,25 +582,26 @@ void bitsort_filter_api_test(
 
   // Check the dimension data.
   if (num_dims == 1) {
-    check_1d_dim_buffers(x_dims_read);
+    check_1d_dim_buffer(x_dims_data_read);
   } else if (num_dims == 2) {
     if (read_layout == TILEDB_UNORDERED || read_layout == TILEDB_GLOBAL_ORDER) {
-      check_2d_dim_buffers_global_read(x_dims_read, y_dims_read);
+      check_2d_dim_buffers_global_read(x_dims_data_read, y_dims_data_read);
     } else if (read_layout == TILEDB_ROW_MAJOR) {
-      check_2d_dim_buffers_row_read(x_dims_read, y_dims_read);
+      check_2d_dim_buffers_row_read(x_dims_data_read, y_dims_data_read);
     } else if (read_layout == TILEDB_COL_MAJOR) {
-      check_2d_dim_buffers_col_read(x_dims_read, y_dims_read);
+      check_2d_dim_buffers_col_read(x_dims_data_read, y_dims_data_read);
     }
   } else if (num_dims == 3) {
-    check_3d_dim_buffers(x_dims_read, y_dims_read, z_dims_read);
+    check_3d_dim_buffers(x_dims_data_read, y_dims_data_read, z_dims_data_read);
   }
 
   query_r_dims.finalize();
   array_r_dims.close();
 
   // Teardown.
-  if (vfs.is_dir(bitsort_array_name))
+  if (vfs.is_dir(bitsort_array_name)) {
     vfs.remove_dir(bitsort_array_name);
+  }
 }
 
 /**
@@ -584,46 +610,44 @@ void bitsort_filter_api_test(
  * @tparam AttrType The type of the attribute data in the array.
  * @tparam AttributeDistribution The type of the random distribution used to
  * generate the attribute data.
- * @param ctx The context object.
- * @param vfs The VFS object.
+ * @param bitsort_array_name The array name.
  * @param num_dims The number of dimensions.
  * @param write_layout The layout of the write query.
  * @param read_layout The layout of the read query.
+ * @param set_subarray Whether the read query is called with a subarray encompassing the whole array.
  */
 template <typename AttrType, typename AttributeDistribution>
 void bitsort_filter_api_test(
-    Context& ctx,
-    VFS& vfs,
     const std::string& bitsort_array_name,
     uint64_t num_dims,
     tiledb_layout_t write_layout,
     tiledb_layout_t read_layout,
-    bool has_subarray) {
+    bool set_subarray) {
   bitsort_filter_api_test<AttrType, int16_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray);
   bitsort_filter_api_test<AttrType, int8_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray);
   bitsort_filter_api_test<AttrType, int32_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray);
   bitsort_filter_api_test<AttrType, int64_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray);
   bitsort_filter_api_test<AttrType, uint8_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray);
   bitsort_filter_api_test<AttrType, uint16_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray);
   bitsort_filter_api_test<AttrType, uint32_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray);
   bitsort_filter_api_test<AttrType, uint64_t, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray);
   bitsort_filter_api_test<AttrType, float, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray);
   bitsort_filter_api_test<AttrType, double, AttributeDistribution>(
-      ctx, vfs, bitsort_array_name, num_dims, write_layout, read_layout, has_subarray);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray);
 }
 
 TEMPLATE_TEST_CASE(
     "Bitsort Filter CPP API Tests",
-    "[cppapi][filter][bitsort]",
+    "[cppapi][filter][bitsort][global]",
     int8_t,
     int16_t,
     int32_t,
@@ -634,10 +658,6 @@ TEMPLATE_TEST_CASE(
     uint64_t,
     float,
     double) {
-  // Setup.
-  Context ctx;
-  VFS vfs(ctx);
-
   // Generate parameters.
   std::string array_name = "cpp_unit_bitsort_array";
   uint64_t num_dims = GENERATE(1, 2, 3);
@@ -645,30 +665,17 @@ TEMPLATE_TEST_CASE(
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
   // TODO: after debugging the other test, test row and column major here.
   tiledb_layout_t read_layout = GENERATE(TILEDB_GLOBAL_ORDER, TILEDB_UNORDERED);
-  bool has_subarray = GENERATE(true, false);
+  bool set_subarray = GENERATE(true, false);
 
   // Run tests.
   if constexpr (std::is_floating_point<TestType>::value) {
     bitsort_filter_api_test<TestType, FloatDistribution>(
-        ctx, vfs, array_name, num_dims, write_layout, read_layout, has_subarray);
+        array_name, num_dims, write_layout, read_layout, set_subarray);
   } else if constexpr (std::is_unsigned<TestType>::value) {
     bitsort_filter_api_test<TestType, UnsignedIntDistribution>(
-        ctx, vfs, array_name, num_dims, write_layout, read_layout, has_subarray);
+        array_name, num_dims, write_layout, read_layout, set_subarray);
   } else if constexpr (std::is_signed<TestType>::value) {
     bitsort_filter_api_test<TestType, IntDistribution>(
-        ctx, vfs, array_name, num_dims, write_layout, read_layout, has_subarray);
+        array_name, num_dims, write_layout, read_layout, set_subarray);
   }
-}
-
-TEST_CASE("bitsort filter debugging test", "[cppapi][filter][bitsort][whee][!mayfail]") {
-  Context ctx;
-  VFS vfs(ctx);
-
-  uint64_t num_dims = 1;
-  std::string array_name = "cpp_unit_bitsort_array";
-  tiledb_layout_t write_layout = TILEDB_GLOBAL_ORDER;
-  tiledb_layout_t read_layout = TILEDB_ROW_MAJOR;
-
-  bitsort_filter_api_test<int32_t, int16_t, IntDistribution>(
-        ctx, vfs, array_name, num_dims, write_layout, read_layout, false);
 }

@@ -438,18 +438,15 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
       (tiledb_filter_type_from_str("DICTIONARY_ENCODING", &filter_type) ==
            TILEDB_OK &&
        filter_type == TILEDB_FILTER_DICTIONARY));
-    
   REQUIRE(
     (tiledb_filter_type_from_str("SCALE_FLOAT", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_SCALE_FLOAT));
-
   REQUIRE(
       (tiledb_filter_type_from_str("XOR", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_XOR));
   REQUIRE(
       (tiledb_filter_type_from_str("BITSORT", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_BITSORT));
-
   REQUIRE(
       (tiledb_filter_type_from_str("BITSORT", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_BITSORT));

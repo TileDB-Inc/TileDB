@@ -146,6 +146,29 @@ ArraySchema::ArraySchema(
       auto attr = attr_iter.get();
       attribute_map_[attr->name()] = attr;
       if (attr->filters().has_filter(FilterType::FILTER_BITSORT)) {
+        if (bitsort_filter_attr_) {
+          throw StatusException(Status_ArraySchemaError(
+            "Array schema creation failed. More than one attribute has a bitsort filter."));
+        }
+
+        // An attribute with a bitsort filter must be not nullable.
+        if (attr->nullable()) {
+          throw StatusException(Status_ArraySchemaError(
+            "Array schema creation failed. Attribute with a bitsort filter must be not nullable."));
+        }
+
+        // An array with a bitsort filter must be sparse.
+        if (array_type != ArrayType::SPARSE) {
+          throw StatusException(Status_ArraySchemaError(
+            "Array schema creation failed. Array with a bitsort filter must be sparse."));
+        }
+
+        // An array with a bitsort filter must have only fixed size dimensions.
+        if (!domain_->all_dims_fixed()) {
+          throw StatusException(Status_ArraySchemaError(
+            "Array schema creation failed. Bitsort filter cannot be applied on an array with variable sized dimensions."));
+        }
+
         bitsort_filter_attr_ = attr->name();
       }
     }
@@ -370,31 +393,6 @@ Status ArraySchema::check() const {
             "label '" +
             label->name() + "' is not compatible with the array schema."));
     }
-  }
-
-  bool bitsort_filter_exists = false;
-  for (const auto &attr : attributes_) {
-    // Check that the bitsort filter exists only once within a schema.
-    if (attr->filters().has_filter(FilterType::FILTER_BITSORT)) {
-      if (bitsort_filter_exists) {
-        return LOG_STATUS(Status_ArraySchemaError("Array schema check failed; Bitsort filter cannot exist multiple times in an array schema."));
-      }
-      bitsort_filter_exists = true;
-
-      if (attr->nullable()) {
-        return LOG_STATUS(Status_ArraySchemaError("Bitsort filter does not work for nullable attributes."));
-      }
-    }
-  }
-
-  // Check bitsort filter is only used with sparse arrays.
-  if (bitsort_filter_exists && array_type_ != ArrayType::SPARSE) {
-    return LOG_STATUS(Status_ArraySchemaError("Array schema check failed; Bitsort filter cannot be applied on an array that is not sparse."));
-  }
-
-  // Check that bitsort filter is only applied on an array with fixed size dimensions.
-  if (bitsort_filter_exists && !domain_->all_dims_fixed()) {
-    return LOG_STATUS(Status_ArraySchemaError("Array schema check failed; Bitsort filter cannot be applied on an array with variable sized dimensions."));
   }
 
   // Success
