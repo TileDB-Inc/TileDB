@@ -186,7 +186,7 @@ class StorageManager {
    * Loads the group metadata from persistent storage based on
    * the input URI manager.
    */
-  Status load_group_metadata(
+  void load_group_metadata(
       const tdb_shared_ptr<GroupDirectory>& group_dir,
       const EncryptionKey& encryption_key,
       Metadata* metadata);
@@ -799,7 +799,7 @@ class StorageManager {
    * Loads the array metadata from persistent storage based on
    * the input URI manager.
    */
-  Status load_array_metadata(
+  void load_array_metadata(
       const ArrayDirectory& array_dir,
       const EncryptionKey& encryption_key,
       Metadata* metadata);

@@ -1190,8 +1190,8 @@ Status Array::load_metadata() {
         array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
   } else {
     assert(array_dir_.loaded());
-    RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_dir_, *encryption_key_, &metadata_));
+    storage_manager_->load_array_metadata(
+        array_dir_, *encryption_key_, &metadata_);
   }
   metadata_loaded_ = true;
   return Status::Ok();
