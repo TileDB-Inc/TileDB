@@ -658,7 +658,7 @@ Group::members() const {
   return members_;
 }
 
-void Group::serialize(Serializer &) {
+void Group::serialize(Serializer&) {
   throw StatusException(Status_GroupError("Invalid call to Group::serialize"));
 }
 
@@ -668,15 +668,17 @@ void Group::apply_and_serialize(Serializer& serializer) {
 }
 
 std::optional<tdb_shared_ptr<Group>> Group::deserialize(
-    Deserializer &deserializer, const URI& group_uri, StorageManager* storage_manager) {
+    Deserializer& deserializer,
+    const URI& group_uri,
+    StorageManager* storage_manager) {
   uint32_t version = 0;
   version = deserializer.read<uint32_t>();
   if (version == 1) {
     return GroupV1::deserialize(deserializer, group_uri, storage_manager);
   }
 
-  throw StatusException(
-      Status_GroupError("Unsupported group version " + std::to_string(version)));
+  throw StatusException(Status_GroupError(
+      "Unsupported group version " + std::to_string(version)));
 }
 
 const URI& Group::group_uri() const {
@@ -776,13 +778,15 @@ tuple<
     Status,
     optional<std::string>,
     optional<ObjectType>,
-    optional<std::string>>
+    optional<std::string>,
+    optional<bool>>
 Group::member_by_name(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   // Check if group is open
   if (!is_open_) {
     return {Status_GroupError("Cannot get member by name; Group is not open"),
+            std::nullopt,
             std::nullopt,
             std::nullopt,
             std::nullopt};
@@ -794,12 +798,14 @@ Group::member_by_name(const std::string& name) {
                 "Cannot get member; Group was not opened in read mode"),
             std::nullopt,
             std::nullopt,
+            std::nullopt,
             std::nullopt};
   }
 
   auto it = members_by_name_.find(name);
   if (it == members_by_name_.end()) {
     return {Status_GroupError(name + " does not exist in group"),
+            std::nullopt,
             std::nullopt,
             std::nullopt,
             std::nullopt};
@@ -811,7 +817,8 @@ Group::member_by_name(const std::string& name) {
     uri = group_uri_.join_path(member->uri().to_string()).to_string();
   }
 
-  return {Status::Ok(), uri, member->type(), member->name()};
+  return {
+      Status::Ok(), uri, member->type(), member->name(), member->relative()};
 }
 
 std::string Group::dump(
