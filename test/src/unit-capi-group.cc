@@ -632,7 +632,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    GroupFx, "C API: Group, write/read with named members", "[capi][group][metadata][read]") {
+    GroupFx,
+    "C API: Group, write/read with named members",
+    "[capi][group][metadata][read]") {
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
