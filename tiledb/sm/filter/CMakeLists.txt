@@ -232,15 +232,11 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_filter_create PUBLIC all_filters)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_filter_create PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_filter_create PUBLIC tile $<TARGET_OBJECTS:tile>)
-    target_link_libraries(unit_filter_create PUBLIC domain $<TARGET_OBJECTS:domain>)
 
     add_executable(unit_filter_pipeline EXCLUDE_FROM_ALL)
     target_link_libraries(unit_filter_pipeline PUBLIC filter_pipeline)
     find_package(Catch_EP REQUIRED)
     target_link_libraries(unit_filter_pipeline PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_filter_pipeline PUBLIC tile $<TARGET_OBJECTS:tile>)
-    target_link_libraries(unit_filter_pipeline PUBLIC domain $<TARGET_OBJECTS:domain>)
 
     # Sources for tests
     target_sources(unit_filter_create PUBLIC
