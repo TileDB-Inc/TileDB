@@ -20,8 +20,9 @@ on:
         default: ''
         required: true
         type: string
-      timeout: 90
-        descript: 'Job timeout (minutes)'
+      timeout:
+        default: 90
+        description: 'Job timeout (minutes)'
         required: false
         type: number
 
