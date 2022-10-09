@@ -31,5 +31,5 @@
 using namespace tiledb::common;
 
 int main() {
-  (void)sizeof(ThrowCatchScheduler<size_t>(1));
+  (void)sizeof(FrugalScheduler<size_t>(1));
 }

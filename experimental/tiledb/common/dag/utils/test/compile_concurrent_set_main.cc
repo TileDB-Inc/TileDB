@@ -28,10 +28,10 @@
 
 #include <deque>
 #include <queue>
-#include "../concurrent_set.h"
+#include "../concurrent_map.h"
 
 using namespace tiledb::common;
 
 int main() {
-  (void)sizeof(ConcurrentMap<size_t>);
+  (void)sizeof(ConcurrentMap<size_t, char*>);
 }

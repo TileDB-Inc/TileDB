@@ -39,6 +39,8 @@
 
 #include "experimental/tiledb/common/dag/utils/print_types.h"
 
+namespace tiledb::common {
+
 /**
  * Minimal implementation of a concurrent set class.  This currently only has
  * implementations of member functions required for the tiledb task graph
@@ -164,4 +166,5 @@ class ConcurrentSet : public std::set<Key, Compare, Allocator> {
   }
 };
 
+}  // namespace tiledb::common
 #endif  // TILEDB_CONCURRENT_SET_H
