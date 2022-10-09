@@ -80,18 +80,43 @@
 namespace tiledb::common {
 
 namespace detail {
-class frugal_exception {};
+
+enum class frugal_target { self, source, sink, last };
+
+class frugal_exception {
+  frugal_target target_{frugal_target::self};
+
+ public:
+  constexpr frugal_exception(frugal_target target)
+      : target_{target} {
+  }
+
+  frugal_target target() const {
+    return target_;
+  }
+};
 
 class frugal_exit {};
 
-class frugal_wait {};
+class frugal_wait : public frugal_exception {
+  using frugal_exception::frugal_exception;
+};
 
-class frugal_notify {};
+class frugal_notify : public frugal_exception {
+  using frugal_exception::frugal_exception;
+};
+
 }  // namespace detail
 
 constexpr const detail::frugal_exit frugal_exit;
-constexpr const detail::frugal_wait frugal_wait;
-constexpr const detail::frugal_notify frugal_notify;
+constexpr const detail::frugal_wait frugal_sink_wait{
+    detail::frugal_target::sink};
+constexpr const detail::frugal_wait frugal_source_wait{
+    detail::frugal_target::source};
+constexpr const detail::frugal_notify frugal_notify_sink{
+    detail::frugal_target::sink};
+constexpr const detail::frugal_notify frugal_notify_source{
+    detail::frugal_target::source};
 
 template <class Mover, class PortState = typename Mover::PortState>
 class FrugalPortPolicy : public PortFiniteStateMachine<
@@ -106,9 +131,9 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
  public:
   FrugalPortPolicy() {
     if constexpr (std::is_same_v<PortState, two_stage>) {
-      CHECK(str(static_cast<Mover*>(this)->state()) == "st_00");
+      assert(static_cast<Mover*>(this)->state() == PortState::st_00);
     } else if constexpr (std::is_same_v<PortState, three_stage>) {
-      CHECK(str(static_cast<Mover*>(this)->state()) == "st_000");
+      assert(static_cast<Mover*>(this)->state() == PortState::st_000);
     }
   }
 
@@ -126,22 +151,22 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
 
   inline void on_notify_source(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action notify source");
-    throw(frugal_notify);
+    throw(detail::frugal_notify{detail::frugal_target::source});
   }
 
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action notify sink");
-    throw(frugal_notify);
+    throw(detail::frugal_notify{detail::frugal_target::sink});
   }
 
   inline void on_source_wait(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action source wait");
-    throw(frugal_wait);
+    throw(detail::frugal_wait{detail::frugal_target::source});
   }
 
   inline void on_sink_wait(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action sink wait");
-    throw(frugal_wait);
+    throw(detail::frugal_wait{detail::frugal_target::sink});
   }
 
   inline void on_term_source(lock_type&, std::atomic<int>&) {
@@ -379,12 +404,15 @@ class FrugalSchedulerPolicy
 #endif
 };
 
+#if 0
 template <class Node>
 class FrugalTaskImpl {
   using scheduler = FrugalScheduler<Node>;
   scheduler* scheduler_{nullptr};
   TaskState state_{TaskState::created};
 
+  /** @todo Is there a way to derive from Node to be able to use statements like
+   * `using Node::resume` even though it is a `shared_ptr`? */
   Node node_;
 
  public:
@@ -414,15 +442,19 @@ class FrugalTaskImpl {
     node_->decrement_program_counter();
   }
 
-  Node correspondent() {
-    return node_->correspondent_;
+  Node* sink_correspondent() const {
+    return node_->sink_correspondent();
   }
 
-  std::string name() {
+  Node* source_correspondent() const {
+    return node_->source_correspondent();
+  }
+
+  std::string name() const {
     return node_->name() + " task";
   }
 
-  auto id() {
+  auto id() const {
     return node_->id();
   }
 
@@ -436,6 +468,73 @@ class FrugalTaskImpl {
                      "    state = " + str(this->task_state()) + "\n";
   }
 };
+
+#else
+template <class Node>
+class FrugalTaskImpl : Node {
+  using scheduler = FrugalScheduler<Node>;
+  scheduler* scheduler_{nullptr};
+  TaskState state_{TaskState::created};
+
+  /** @todo Is there a way to derive from Node to be able to use statements like
+   * `using Node::resume` even though it is a `shared_ptr`? */
+  //  Node node_;
+  using node_ = Node;
+
+ public:
+  FrugalTaskImpl(const Node& n)
+      : node_{n} {
+  }
+
+  FrugalTaskImpl() = default;
+  FrugalTaskImpl(const FrugalTaskImpl&) = default;
+  FrugalTaskImpl(FrugalTaskImpl&&) = default;
+  FrugalTaskImpl& operator=(const FrugalTaskImpl&) = default;
+  FrugalTaskImpl& operator=(FrugalTaskImpl&&) = default;
+
+  void set_scheduler(scheduler* sched) {
+    scheduler_ = sched;
+  }
+
+  TaskState& task_state() {
+    return state_;
+  }
+
+  void resume() {
+    this->resume();
+  }
+
+  void decrement_program_counter() {
+    this->decrement_program_counter();
+  }
+
+  Node* sink_correspondent() const {
+    return this->sink_correspondent();
+  }
+
+  Node* source_correspondent() const {
+    return this->source_correspondent();
+  }
+
+  std::string name() const {
+    return (*this)->name() + " task";
+  }
+
+  size_t id() const {
+    return this->id();
+  }
+
+  virtual ~FrugalTaskImpl() = default;
+
+  void dump_task_state(const std::string msg = "") {
+    std::string preface = (msg != "" ? msg + "\n" : "");
+
+    std::cout << preface + "    " + this->name() + " with id " +
+                     std::to_string(this->id()) + "\n" +
+                     "    state = " + str(this->task_state()) + "\n";
+  }
+};
+#endif
 
 template <class Node>
 class FrugalTask : public std::shared_ptr<FrugalTaskImpl<Node>> {
@@ -453,7 +552,7 @@ class FrugalTask : public std::shared_ptr<FrugalTaskImpl<Node>> {
   FrugalTask& operator=(const FrugalTask& rhs) = default;
   FrugalTask& operator=(FrugalTask&& rhs) = default;
 
-  TaskState& task_state() {
+  TaskState& task_state() const {
     return (*this)->task_state();
   }
 };
@@ -564,7 +663,8 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
 
  private:
   /** @todo Need to make ConcurrentMap */
-  ConcurrentMap<Node, FrugalTask<Node>> node_to_task;
+  //  ConcurrentMap<Node, FrugalTask<Node>> node_to_task;
+  //  ConcurrentMap<Node, FrugalTask<Node>> port_to_task;
 
  public:
   void submit(Node&& n) {
@@ -575,7 +675,7 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
 
     t->set_scheduler(this);
 
-    node_to_task[n] = t;
+    //    port_to_task[n] = t;
 
     this->task_create(t);
 
@@ -726,8 +826,12 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
           if (this->debug())
             task_to_run->dump_task_state("Returning from resume");
 
-        } catch (detail::frugal_wait) {
+        } catch (const detail::frugal_wait& w) {
           _.lock();
+
+          assert(
+              w.target() == detail::frugal_target::sink ||
+              w.target() == detail::frugal_target::source);
 
           if (this->debug())
             task_to_run->dump_task_state("Caught wait");
@@ -737,40 +841,45 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
           if (this->debug())
             task_to_run->dump_task_state("Post wait");
 
-        } catch (detail::frugal_notify) {
+        } catch (const detail::frugal_notify& n) {
           _.lock();
+
+          assert(
+              n.target() == detail::frugal_target::sink ||
+              n.target() == detail::frugal_target::source);
 
           if (this->debug())
             task_to_run->dump_task_state("Caught notify");
 
-          /*
-           * @note Notification goes to correspondent task of task_to_run
-           */
-          auto task_to_notify = node_to_task[task_to_run->correspondent()];
+          /** @note Notification goes to correspondent task of task_to_run */
+          // auto task_to_notify = port_to_task[task_to_run->correspondent()];
 
-          this->task_notify(task_to_notify);  // Need to retry what is being
-                                              // notified, e.g., pull
+          if (n.target() == detail::frugal_target::sink) {
+            auto task_to_notify = task_to_run->sink_correspondent();
+            this->task_notify(task_to_notify);
 
-          if (this->debug()) {
-            task_to_run->dump_task_state("Post notify");
-            task_to_notify->dump_task_state("Correspondent task");
+            if (this->debug()) {
+              task_to_run->dump_task_state("Post notify");
+              task_to_notify->dump_task_state("Correspondent task");
+            }
+
+          } else {
+            auto task_to_notify = task_to_run->source_correspondent();
+            this->task_notify(task_to_notify);
+
+            if (this->debug()) {
+              task_to_run->dump_task_state("Post notify");
+              task_to_notify->dump_task_state("Correspondent task");
+            }
           }
 
-        } catch (detail::frugal_exit) {
+        } catch (const detail::frugal_exit&) {
           _.lock();
 
           if (this->debug()) {
             task_to_run->dump_task_state("Caught exit");
             this->dump_queue_state("Caught exit");
           }
-
-          //          auto other_task =
-          //          node_to_task[task_to_run->correspondent()]; if
-          //          (other_task->task_state() == TaskState::waiting) {
-          //            this->task_notify(other_task);
-          //          }
-          //          this->task_exit(other_task);
-          //          this->task_notify(other_task);
 
           --num_tasks_;
           ++num_exited_tasks_;
@@ -780,9 +889,11 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
             task_to_run->dump_task_state("Post exit");
             this->dump_queue_state("Post exit");
           }
-          // break;
-          // continue;
 
+          /* Slight optimization to skip call to yield when exiting */
+          continue;
+
+          // break; // Don't do this
         } catch (...) {
           throw;
         }
@@ -793,7 +904,7 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
         }
 
         /*
-         * Perhaps deal with everything in yield?  Or dispatch?  Or both?
+         * @todo Perhaps deal with everything in yield?  Or dispatch?  Or both?
          */
         this->task_yield(task_to_run);
 

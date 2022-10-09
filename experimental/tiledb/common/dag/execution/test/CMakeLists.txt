@@ -34,3 +34,28 @@ dag_add_header_only_unit_test(bountiful)
 dag_add_header_only_unit_test(stop_token)
 dag_add_header_only_unit_test(frugal)
 dag_add_header_only_unit_test(scheduler)
+
+
+#
+# Define sieve test -- it is not catch-based
+#
+# Define unit test
+#
+add_executable(unit_frugal_sieve EXCLUDE_FROM_ALL)
+#
+# Required libraries
+#
+#
+# Define sources for test
+#
+target_sources(unit_frugal_sieve PUBLIC
+    unit_frugal_sieve.cc
+)
+#
+# Add unit test to global suite of unit tests
+#
+add_test(
+    NAME "unit_frugal_sieve"
+    COMMAND $<TARGET_FILE:unit_frugal_sieve> --durations=yes
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)

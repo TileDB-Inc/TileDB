@@ -129,7 +129,7 @@ class BaseMover<Mover, three_stage, Block> {
     //    auto state = this->state();
     auto state = static_cast<Mover*>(this)->state();
     bool debug = static_cast<Mover*>(this)->debug_enabled();
-    CHECK(is_ready_to_move(state) == "");
+    // CHECK(is_ready_to_move(state) == "");
 
     moves_[0]++;
 

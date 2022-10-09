@@ -165,6 +165,8 @@ class Source : public Port<Mover_T, Block> {
   Source& operator=(Source&& rhs) = delete;
 
  public:
+  using base_port_type = port_type;
+
   /**
    * Inject an item into the `Source`.  The `item_` will not be set if it
    * already contains a value.
@@ -236,6 +238,8 @@ class Sink : public Port<Mover_T, Block> {
   using sink_type = Sink<Mover_T, Block>;
 
  public:
+  using base_port_type = port_type;
+
   Sink() = default;
 
   Sink(const Sink& rhs) = delete;

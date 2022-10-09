@@ -81,7 +81,21 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
   std::variant<std::function<Block()>, std::function<Block(std::stop_source&)>>
       f_;
 
+  constexpr static inline bool is_source_port_ = true;
+  constexpr static inline bool is_sink_port_ = false;
+
  public:
+  using source_port_type = Base;
+  using base_port_type = Base::port_type;
+
+  bool is_source_port() {
+    return is_source_port;
+  }
+
+  bool is_sink_port() {
+    return is_sink_port;
+  }
+
   /**
    * Trivial default constructor, for testing.
    */
@@ -326,8 +340,22 @@ template <template <class> class Mover_T, class Block>
 class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
   std::function<void(const Block&)> f_;
 
+  constexpr static inline bool is_source_port_ = false;
+  constexpr static inline bool is_sink_port_ = true;
+
  public:
   using Base = Sink<Mover_T, Block>;
+
+  using sink_port_type = Base;
+  using base_port_type = Base::base_port_type;
+
+  bool is_sink_port() {
+    return is_sink_port;
+  }
+
+  bool is_sink_port() {
+    return is_sink_port;
+  }
 
  public:
   /**
@@ -573,7 +601,14 @@ class FunctionNode : public GraphNode,
   using SourceBase = Source<SourceMover_T, BlockOut>;
   using SinkBase = Sink<SinkMover_T, BlockIn>;
 
+  constexpr static inline bool is_source_port_ = true;
+  constexpr static inline bool is_sink_port_ = true;
+
  public:
+  using source_port_type = SourceBase;
+  using source_port_type = SinkBase;
+  using base_port_type = SinkBase::port_type;
+
   /**
    * Trivial default constructor, for testing.
    */
