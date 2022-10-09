@@ -104,11 +104,6 @@ StorageManager::~StorageManager() {
 
   if (vfs_ != nullptr) {
     cancel_all_tasks();
-    const Status st = vfs_->terminate();
-    if (!st.ok()) {
-      logger_->status(Status_StorageManagerError("Failed to terminate VFS."));
-    }
-
     tdb_delete(vfs_);
   }
 
@@ -1442,13 +1437,12 @@ Status StorageManager::init(const Config& config) {
   tile_cache_ =
       tdb_unique_ptr<BufferLRUCache>(tdb_new(BufferLRUCache, tile_cache_size));
 
-  // GlobalState must be initialized before `vfs->init` because S3::init calls
-  // GetGlobalState
+  // GlobalState must be initialized before initializing the VFS
+  // because S3::init calls GetGlobalState
   auto& global_state = global_state::GlobalState::GetGlobalState();
   RETURN_NOT_OK(global_state.init(config));
 
-  vfs_ = tdb_new(VFS);
-  RETURN_NOT_OK(vfs_->init(stats_, compute_tp_, io_tp_, &config_, nullptr));
+  vfs_ = tdb_new(VFS, stats_, compute_tp_, io_tp_, config_);
 #ifdef TILEDB_SERIALIZATION
   RETURN_NOT_OK(init_rest_client());
 #endif
