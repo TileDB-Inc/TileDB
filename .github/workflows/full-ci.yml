@@ -1,4 +1,4 @@
-name: "Full CI"
+name: "Full CI (actual)"
 on:
   push:
     branches:
