@@ -59,7 +59,7 @@ TEMPLATE_TEST_CASE(
         producer_node<FrugalMover2, size_t>>),
     (std::tuple<
         consumer_node<FrugalMover3, size_t>,
-        function_node<FrugalMover2, size_t>,
+        function_node<FrugalMover3, size_t>,
         producer_node<FrugalMover3, size_t>>)) {
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
@@ -69,8 +69,6 @@ TEMPLATE_TEST_CASE(
   auto f = F([](const size_t& i) { return i; });
   auto c = C([](const size_t&) {});
 }
-
-#if 0
 
 TEMPLATE_TEST_CASE(
     "FrugalScheduler: Test assigning nodes",
@@ -81,7 +79,7 @@ TEMPLATE_TEST_CASE(
         producer_node<FrugalMover2, size_t>>),
     (std::tuple<
         consumer_node<FrugalMover3, size_t>,
-        function_node<FrugalMover2, size_t>,
+        function_node<FrugalMover3, size_t>,
         producer_node<FrugalMover3, size_t>>)) {
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
@@ -94,19 +92,61 @@ TEMPLATE_TEST_CASE(
   node q = p;
   node d = c;
   node g = f;
-  q->correspondent_ = p;
-  q->correspondent_ = f;
-  q->correspondent_ = c;
 
-  d->correspondent_ = p;
-  d->correspondent_ = f;
-  d->correspondent_ = c;
+  q->source_correspondent_ = p;
+  CHECK(q->source_correspondent() == p);
 
-  g->correspondent_ = p;
-  g->correspondent_ = f;
-  g->correspondent_ = c;
+  q->sink_correspondent_ = p;
+  CHECK(q->sink_correspondent() == p);
+
+  q->source_correspondent_ = f;
+  CHECK(q->source_correspondent() == f);
+
+  q->sink_correspondent_ = f;
+  CHECK(q->sink_correspondent() == f);
+
+  q->source_correspondent_ = c;
+  CHECK(q->source_correspondent() == c);
+
+  q->sink_correspondent_ = c;
+  CHECK(q->sink_correspondent() == c);
+
+  d->source_correspondent_ = p;
+  CHECK(d->source_correspondent() == p);
+
+  d->sink_correspondent_ = p;
+  CHECK(d->sink_correspondent() == p);
+
+  d->source_correspondent_ = f;
+  CHECK(d->source_correspondent() == f);
+
+  d->sink_correspondent_ = f;
+  CHECK(d->sink_correspondent() == f);
+
+  d->source_correspondent_ = c;
+  CHECK(d->source_correspondent() == c);
+
+  d->sink_correspondent_ = c;
+  CHECK(d->sink_correspondent() == c);
+
+  g->source_correspondent_ = p;
+  CHECK(g->source_correspondent() == p);
+
+  g->sink_correspondent_ = p;
+  CHECK(g->sink_correspondent() == p);
+
+  g->source_correspondent_ = f;
+  CHECK(g->source_correspondent() == f);
+
+  g->sink_correspondent_ = f;
+  CHECK(g->sink_correspondent() == f);
+
+  g->source_correspondent_ = c;
+  CHECK(g->source_correspondent() == c);
+
+  g->sink_correspondent_ = c;
+  CHECK(g->sink_correspondent() == c);
 }
-
 
 TEMPLATE_TEST_CASE(
     "FrugalScheduler: Test connect nodes",
@@ -117,7 +157,7 @@ TEMPLATE_TEST_CASE(
         producer_node<FrugalMover2, size_t>>),
     (std::tuple<
         consumer_node<FrugalMover3, size_t>,
-        function_node<FrugalMover2, size_t>,
+        function_node<FrugalMover3, size_t>,
         producer_node<FrugalMover3, size_t>>)) {
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
@@ -131,35 +171,24 @@ TEMPLATE_TEST_CASE(
   node d = c;
   node g = f;
 
-  p->correspondent_ = f;
-  f->correspondent_ = c;
-
-  q->correspondent_ = f;
-  q->correspondent_ = c;
-
-  d->correspondent_ = p;
-  d->correspondent_ = f;
-  d->correspondent_ = c;
-
-  g->correspondent_ = p;
-  g->correspondent_ = f;
-  g->correspondent_ = c;
-}
-
-TEST_CASE("FrugalScheduler: Test connect nodes", "[frugal]") {
-  auto p =
-      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
-  auto c = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
-
-  //  print_types(p, c, p->correspondent_, c->correspondent_);
-
-  p->correspondent_ = c;
-  c->correspondent_ = p;
-
   connect(p, c);
+  CHECK(p->sink_correspondent() == c);
+  CHECK(c->source_correspondent() == p);
+
+  connect(p, f);
+  CHECK(p->sink_correspondent() == f);
+  CHECK(f->source_correspondent() == p);
+
+  connect(f, c);
+  CHECK(f->sink_correspondent() == c);
+  CHECK(c->source_correspondent() == f);
+
   Edge(*p, *c);
+  detach(*p, *c);
+
+  Edge(*p, *f);
+  Edge(*f, *c);
 }
-#endif
 
 /*
  * Define some helpers
@@ -208,15 +237,32 @@ bool two_nodes(const node&, const node&) {
   return true;
 }
 
-TEST_CASE("FrugalScheduler: Construct nodes and impls", "[frugal]") {
-  auto pro_node_impl = producer_node_impl<FrugalMover3, size_t>(
-      [](std::stop_source&) { return 0; });
-  auto con_node_impl =
-      consumer_node_impl<FrugalMover3, size_t>([](const size_t&) {});
+TEMPLATE_TEST_CASE(
+    "FrugalScheduler: Extensive tests of nodes",
+    "[frugal]",
+    (std::tuple<
+        consumer_node<FrugalMover2, size_t>,
+        function_node<FrugalMover2, size_t>,
+        producer_node<FrugalMover2, size_t>>),
+    (std::tuple<
+        consumer_node<FrugalMover3, size_t>,
+        function_node<FrugalMover3, size_t>,
+        producer_node<FrugalMover3, size_t>>)) {
+  using C = typename std::tuple_element<0, TestType>::type;
+  using F = typename std::tuple_element<1, TestType>::type;
+  using P = typename std::tuple_element<2, TestType>::type;
 
-  auto pro_node =
-      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
-  auto con_node = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+  using CI = typename C::Base::element_type;
+  using FI = typename F::Base::element_type;
+  using PI = typename P::Base::element_type;
+
+  auto pro_node_impl = PI([](std::stop_source&) { return 0; });
+  auto fun_node_impl = FI([](const size_t& i) { return i; });
+  auto con_node_impl = CI([](const size_t&) {});
+
+  auto pro_node = P([](std::stop_source&) { return 0; });
+  auto fun_node = F([](const size_t& i) { return i; });
+  auto con_node = C([](const size_t&) {});
 
   //  auto pro_specified =
   //      producer_node<FrugalMover3, size_t>(pro_node_impl);  // bad
@@ -246,9 +292,13 @@ TEST_CASE("FrugalScheduler: Construct nodes and impls", "[frugal]") {
 
   SECTION("Check polymorphism to node&") {
     CHECK(two_nodes(pro_node_impl, con_node_impl));
+    CHECK(two_nodes(pro_node_impl, fun_node_impl));
+    CHECK(two_nodes(fun_node_impl, con_node_impl));
 
     // No conversion from producer_node to node
     CHECK(two_nodes(pro_node, con_node));
+    CHECK(two_nodes(pro_node, fun_node));
+    CHECK(two_nodes(fun_node, con_node));
 
     // No conversion from producer_node to node&
     //    CHECK(two_shared_nodes(pro_node, con_node));
@@ -256,6 +306,7 @@ TEST_CASE("FrugalScheduler: Construct nodes and impls", "[frugal]") {
 
   SECTION("Checks with FrugalTask and node (godbolt)") {
     auto shared_pro = node{pro_node};
+    auto shared_fun = node{fun_node};
     auto shared_con = node{con_node};
 
     auto shared_nil = node{};
@@ -265,12 +316,15 @@ TEST_CASE("FrugalScheduler: Construct nodes and impls", "[frugal]") {
 
   SECTION("I think this works (godbolt)", "[frugal]") {
     auto frugal_pro = FrugalTask<node>{pro_node};
+    auto frugal_fun = FrugalTask<node>{fun_node};
     auto frugal_con = FrugalTask<node>{con_node};
 
     auto frugal_from_pro = task_from_node(pro_node);
+    auto frugal_from_fun = task_from_node(fun_node);
     auto frugal_from_con = task_from_node(con_node);
 
     auto frugal_hm_pro = hm_(pro_node);
+    auto frugal_hm_fun = hm_(fun_node);
     auto frugal_hm_con = hm_(con_node);
 
     /**
@@ -320,6 +374,43 @@ TEST_CASE("FrugalScheduler: Construct nodes and impls", "[frugal]") {
     CHECK(frugal_pro_5_moved == frugal_pro_5_x);
 
     /*
+     * Function Case
+     */
+
+    auto frugal_fun_1 = FrugalTask<node>{fun_node};
+    auto frugal_fun_2 = FrugalTask<node>{fun_node};
+    auto frugal_fun_3 = task_from_node(fun_node);
+    auto frugal_fun_4 = hm_(fun_node);
+    auto frugal_fun_5 = frugal_fun_1;
+    auto frugal_fun_6 = frugal_fun_3;
+
+    CHECK(frugal_fun_1 != frugal_fun_2);
+    CHECK(frugal_fun_2 != frugal_fun_3);
+    CHECK(frugal_fun_3 != frugal_fun_4);
+    CHECK(frugal_fun_4 != frugal_fun_5);
+    CHECK(frugal_fun_5 != frugal_fun_6);
+
+    FrugalTask<node> frugal_fun_7{frugal_fun_2};
+    FrugalTask frugal_fun_8{frugal_fun_2};
+
+    CHECK(frugal_fun_6 != frugal_fun_7);
+    CHECK(frugal_fun_7 == frugal_fun_2);
+    CHECK(frugal_fun_7 == frugal_fun_8);
+    CHECK(frugal_fun_8 != frugal_fun_1);
+
+    auto frugal_fun_1_x = frugal_fun_1;
+    CHECK(frugal_fun_1 == frugal_fun_1);
+    CHECK(frugal_fun_1_x == frugal_fun_1);
+    CHECK(frugal_fun_1 == frugal_fun_1_x);
+
+    auto frugal_fun_5_x = frugal_fun_5;
+    CHECK(frugal_fun_5_x == frugal_fun_5);
+
+    // Warning danger -- don't use frugal_fun_5 after the move
+    FrugalTask<node> frugal_fun_5_moved{std::move(frugal_fun_5)};
+    CHECK(frugal_fun_5_moved == frugal_fun_5_x);
+
+    /*
      * Consumer case
      */
     auto frugal_con_1 = FrugalTask<node>{con_node};
@@ -358,17 +449,24 @@ TEST_CASE("FrugalScheduler: Construct nodes and impls", "[frugal]") {
 
   SECTION("Check states") {
     auto frugal_pro = FrugalTask<node>{pro_node};
+    auto frugal_fun = FrugalTask<node>{fun_node};
     auto frugal_con = FrugalTask<node>{con_node};
 
     auto frugal_from_pro = task_from_node(pro_node);
+    auto frugal_from_fun = task_from_node(fun_node);
     auto frugal_from_con = task_from_node(con_node);
 
     auto frugal_hm_pro = hm_(pro_node);
+    auto frugal_hm_fun = hm_(fun_node);
     auto frugal_hm_con = hm_(con_node);
 
     CHECK(str(task_state(frugal_pro)) == "created");
     CHECK(str(task_state(frugal_from_pro)) == "created");
     CHECK(str(task_state(frugal_hm_pro)) == "created");
+
+    CHECK(str(task_state(frugal_fun)) == "created");
+    CHECK(str(task_state(frugal_from_fun)) == "created");
+    CHECK(str(task_state(frugal_hm_fun)) == "created");
 
     CHECK(str(task_state(frugal_con)) == "created");
     CHECK(str(task_state(frugal_from_con)) == "created");
@@ -382,6 +480,11 @@ TEST_CASE("FrugalScheduler: Construct nodes and impls", "[frugal]") {
 
     CHECK(str(task_state(frugal_from_pro)) == "created");
     CHECK(str(task_state(frugal_hm_pro)) == "created");
+
+    CHECK(str(task_state(frugal_fun)) == "created");
+    CHECK(str(task_state(frugal_from_fun)) == "created");
+    CHECK(str(task_state(frugal_hm_fun)) == "created");
+
     CHECK(str(task_state(frugal_con)) == "created");
     CHECK(str(task_state(frugal_from_con)) == "created");
     CHECK(str(task_state(frugal_hm_con)) == "created");
@@ -391,6 +494,11 @@ TEST_CASE("FrugalScheduler: Construct nodes and impls", "[frugal]") {
 
     CHECK(str(task_state(frugal_from_pro)) == "created");
     CHECK(str(task_state(frugal_hm_pro)) == "created");
+
+    CHECK(str(task_state(frugal_fun)) == "created");
+    CHECK(str(task_state(frugal_from_fun)) == "created");
+    CHECK(str(task_state(frugal_hm_fun)) == "created");
+
     CHECK(str(task_state(frugal_con)) == "created");
     CHECK(str(task_state(frugal_from_con)) == "created");
     CHECK(str(task_state(frugal_hm_con)) == "created");
@@ -401,38 +509,85 @@ TEST_CASE("FrugalScheduler: Construct nodes and impls", "[frugal]") {
     CHECK(str(task_state(frugal_pro)) == "created");
     CHECK(str(task_state(frugal_from_pro)) == "created");
     CHECK(str(task_state(frugal_hm_pro)) == "created");
+
+    CHECK(str(task_state(frugal_fun)) == "created");
+    CHECK(str(task_state(frugal_from_fun)) == "created");
+    CHECK(str(task_state(frugal_hm_fun)) == "created");
+
     CHECK(str(task_state(frugal_from_con)) == "created");
     CHECK(str(task_state(frugal_hm_con)) == "created");
   }
 }
 
+/*
+ * Some deduction guides
+ */
 namespace tiledb::common {
-// FrugalTask(node)->FrugalTask<node>;
 FrugalTask(node&)->FrugalTask<node>;
+
 FrugalTask(const node&)->FrugalTask<node>;
 
 template <template <class> class M, class T>
-FrugalTask(producer_node<M, T>) -> FrugalTask<node>;
+FrugalTask(producer_node<M, T>)->FrugalTask<node>;
+
 template <template <class> class M, class T>
-FrugalTask(consumer_node<M, T>) -> FrugalTask<node>;
+FrugalTask(consumer_node<M, T>)->FrugalTask<node>;
+
+template <
+    template <class>
+    class M1,
+    class T1,
+    template <class>
+    class M2,
+    class T2>
+FrugalTask(function_node<M1, T1, M2, T2>)->FrugalTask<node>;
+
+template <template <class> class M1, class T1>
+FrugalTask(function_node<M1, T1>)->FrugalTask<node>;
+
 }  // namespace tiledb::common
 
-TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
-  auto pro_node =
-      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
-  auto con_node = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+TEMPLATE_TEST_CASE(
+    "FrugalScheduler: Test FrugalTask",
+    "[frugal]",
+    (std::tuple<
+        consumer_node<FrugalMover2, size_t>,
+        function_node<FrugalMover2, size_t>,
+        producer_node<FrugalMover2, size_t>>),
+    (std::tuple<
+        consumer_node<FrugalMover3, size_t>,
+        function_node<FrugalMover3, size_t>,
+        producer_node<FrugalMover3, size_t>>)) {
+  using C = typename std::tuple_element<0, TestType>::type;
+  using F = typename std::tuple_element<1, TestType>::type;
+  using P = typename std::tuple_element<2, TestType>::type;
 
-  auto pro_node_2 =
-      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
-  auto con_node_2 = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+  using CI = typename C::Base::element_type;
+  using FI = typename F::Base::element_type;
+  using PI = typename P::Base::element_type;
+
+  auto pro_node_impl = PI([](std::stop_source&) { return 0; });
+  auto fun_node_impl = FI([](const size_t& i) { return i; });
+  auto con_node_impl = CI([](const size_t&) {});
+
+  auto pro_node = P([](std::stop_source&) { return 0; });
+  auto fun_node = F([](const size_t& i) { return i; });
+  auto con_node = C([](const size_t&) {});
+
+  auto pro_node_2 = P([](std::stop_source&) { return 0; });
+  auto fun_node_2 = F([](const size_t&) { return 0; });
+  auto con_node_2 = C([](const size_t&) {});
 
   auto pro_task = FrugalTask(pro_node);
+  auto fun_task = FrugalTask(fun_node);
   auto con_task = FrugalTask(con_node);
 
   auto pro_task_assign = pro_task;
+  auto fun_task_assign = fun_task;
   auto con_task_assign = con_task;
 
   auto pro_task_copy = FrugalTask(pro_task);
+  auto fun_task_copy = FrugalTask(fun_task);
   auto con_task_copy = FrugalTask(con_task);
 
   auto pro_task_2 = FrugalTask(pro_node_2);
@@ -450,13 +605,18 @@ TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
   SECTION("Node Equality") {
     // This is brilliant
     node node_pro = pro_node;
+    node node_fun = fun_node;
     node node_con = con_node;
 
     CHECK(node_pro == pro_node);
+    CHECK(node_fun == fun_node);
     CHECK(node_con == con_node);
     CHECK(node_pro != node_con);
+    CHECK(node_pro != node_fun);
+    CHECK(node_fun != node_con);
 
     CHECK(static_cast<void*>(&(*node_pro)) == static_cast<void*>(&(*node_pro)));
+    CHECK(static_cast<void*>(&(*node_fun)) == static_cast<void*>(&(*node_fun)));
     CHECK(static_cast<void*>(&(*node_pro)) == static_cast<void*>(&(*pro_node)));
   }
 
@@ -467,16 +627,17 @@ TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
   }
 
   SECTION("Queue") {
-    auto pro_node_i = producer_node<FrugalMover3, size_t>(
-        [](std::stop_source&) { return 0; });
-    auto pro_node_j = producer_node<FrugalMover3, size_t>(
-        [](std::stop_source&) { return 0; });
-    auto pro_node_k = producer_node_impl<FrugalMover3, size_t>(
-        [](std::stop_source&) { return 0; });
+    auto pro_node_i = P([](std::stop_source&) { return 0; });
+    auto pro_node_j = P([](std::stop_source&) { return 0; });
+    auto pro_node_k = PI([](std::stop_source&) { return 0; });
 
-    auto con_node_i = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
-    auto con_node_j = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
-    auto con_node_k = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
+    auto fun_node_i = F([](const size_t&) { return 0; });
+    auto fun_node_j = F([](const size_t&) { return 0; });
+    auto fun_node_k = FI([](const size_t&) { return 0; });
+
+    auto con_node_i = C([](const size_t&) {});
+    auto con_node_j = C([](const size_t&) {});
+    auto con_node_k = CI([](const size_t&) {});
 
     auto pro_task_i = FrugalTask<node>{pro_node_i};
     auto pro_task_j = FrugalTask<node>{pro_node_j};
@@ -484,6 +645,13 @@ TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
     auto pro_task_j_deduced = FrugalTask{pro_node_j};
     auto pro_task_i_tfn = task_from_node(pro_node_i);
     auto pro_task_j_tfn = task_from_node(pro_node_j);
+
+    auto fun_task_i = FrugalTask<node>{fun_node_i};
+    auto fun_task_j = FrugalTask<node>{fun_node_j};
+    auto fun_task_i_deduced = FrugalTask{fun_node_i};
+    auto fun_task_j_deduced = FrugalTask{fun_node_j};
+    auto fun_task_i_tfn = task_from_node(fun_node_i);
+    auto fun_task_j_tfn = task_from_node(fun_node_j);
 
     auto con_task_i = FrugalTask<node>{con_node_i};
     auto con_task_j = FrugalTask<node>{con_node_j};
@@ -493,37 +661,50 @@ TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
     auto con_task_j_tfn = task_from_node(con_node_j);
 
     CHECK(pro_task_i != pro_task_i_deduced);
+    CHECK(fun_task_i != fun_task_i_deduced);
     CHECK(pro_task_j != pro_task_j_deduced);
 
     std::queue<node> node_queue;
     node_queue.push(pro_node);
+    node_queue.push(fun_node);
     node_queue.push(con_node);
 
     std::queue<FrugalTask<node>> task_queue;
 
     task_queue.push(pro_task_i);
+    task_queue.push(fun_task_i);
     task_queue.push(con_task_i);
     task_queue.push(pro_task_j);
+    task_queue.push(fun_task_j);
     task_queue.push(con_task_j);
 
     task_queue.push(pro_task_i_tfn);
+    task_queue.push(fun_task_i_tfn);
     task_queue.push(con_task_i_tfn);
 
     task_queue.push(pro_task_i_deduced);
     task_queue.push(con_task_i_deduced);
+    task_queue.push(fun_task_i_deduced);
     task_queue.push(pro_task_j_deduced);
     task_queue.push(con_task_j_deduced);
+    task_queue.push(fun_task_j_deduced);
 
     CHECK(task_queue.front() == pro_task_i);
+    task_queue.pop();
+    CHECK(task_queue.front() == fun_task_i);
     task_queue.pop();
     CHECK(task_queue.front() == con_task_i);
     task_queue.pop();
     CHECK(task_queue.front() == pro_task_j);
     task_queue.pop();
+    CHECK(task_queue.front() == fun_task_j);
+    task_queue.pop();
     CHECK(task_queue.front() == con_task_j);
     task_queue.pop();
 
     CHECK(task_queue.front() == pro_task_i_tfn);
+    task_queue.pop();
+    CHECK(task_queue.front() == fun_task_i_tfn);
     task_queue.pop();
     CHECK(task_queue.front() == con_task_i_tfn);
     task_queue.pop();
@@ -532,9 +713,13 @@ TEST_CASE("FrugalScheduler: Test FrugalTask", "[frugal]") {
     task_queue.pop();
     CHECK(task_queue.front() == con_task_i_deduced);
     task_queue.pop();
+    CHECK(task_queue.front() == fun_task_i_deduced);
+    task_queue.pop();
     CHECK(task_queue.front() == pro_task_j_deduced);
     task_queue.pop();
     CHECK(task_queue.front() == con_task_j_deduced);
+    task_queue.pop();
+    CHECK(task_queue.front() == fun_task_j_deduced);
     task_queue.pop();
     CHECK(task_queue.empty());
 
@@ -985,12 +1170,15 @@ TEMPLATE_TEST_CASE(
     "[frugal]",
     (std::tuple<
         consumer_node<FrugalMover2, size_t>,
+        function_node<FrugalMover2, size_t>,
         producer_node<FrugalMover2, size_t>>),
     (std::tuple<
         consumer_node<FrugalMover3, size_t>,
+        function_node<FrugalMover3, size_t>,
         producer_node<FrugalMover3, size_t>>)) {
   using C = typename std::tuple_element<0, TestType>::type;
-  using P = typename std::tuple_element<1, TestType>::type;
+  using F = typename std::tuple_element<1, TestType>::type;
+  using P = typename std::tuple_element<2, TestType>::type;
 
   bool debug{false};
 
@@ -1034,14 +1222,21 @@ TEMPLATE_TEST_CASE(
         }
 
         stop_source.request_stop();
-        return *(input.begin());
+        return *(input.begin()) + 1;
       }
 
       if (sched.debug())
         std::cout << "producer function returning " + std::to_string(*i) + "\n";
 
-      return *i++;
+      return (*i++) + 1;
     });
+    auto f = F([&sched](std::size_t k) {
+      if (sched.debug())
+        std::cout << "Transforming " + std::to_string(k) + " to "
+                  << std::to_string(k - 1) + "\n";
+      return k - 1;
+    });
+
     auto c = C([&j, &output, &debug](std::size_t k) {
       if (debug)
         std::cout << "Consuming " + std::to_string(k) + " with distance " +
@@ -1051,11 +1246,14 @@ TEMPLATE_TEST_CASE(
       *j++ = k;
     });
 
-    connect(p, c);
-    Edge(*p, *c);
+    connect(p, f);
+    connect(f, c);
+    Edge(*p, *f);
+    Edge(*f, *c);
 
     sched.submit(p);
     sched.submit(c);
+    sched.submit(f);
     sched.sync_wait_all();
   }
   CHECK(rounds != 0);
@@ -1071,7 +1269,9 @@ TEMPLATE_TEST_CASE(
   CHECK(std::equal(input.begin(), i, output.begin()));
 
   if (debug)
-    std::cout << *(input.begin()) << " " << *(output.begin()) << std::endl;
+    std::cout << "First input = " + std::to_string(*(input.begin())) +
+                     ", First output = " + std::to_string(*(output.begin())) +
+                     "\n";
 
   CHECK(std::distance(input.begin(), i) == static_cast<long>(rounds));
 }

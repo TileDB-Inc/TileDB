@@ -501,19 +501,19 @@ class FrugalTaskImpl : Node {
   }
 
   void resume() {
-    this->resume();
+    (*this)->resume();
   }
 
   void decrement_program_counter() {
-    this->decrement_program_counter();
+    (*this)->decrement_program_counter();
   }
 
-  Node* sink_correspondent() const {
-    return this->sink_correspondent();
+  Node& sink_correspondent() const {
+    return (*this)->sink_correspondent();
   }
 
-  Node* source_correspondent() const {
-    return this->source_correspondent();
+  Node& source_correspondent() const {
+    return (*this)->source_correspondent();
   }
 
   std::string name() const {
@@ -521,7 +521,7 @@ class FrugalTaskImpl : Node {
   }
 
   size_t id() const {
-    return this->id();
+    return (*this)->id();
   }
 
   virtual ~FrugalTaskImpl() = default;
@@ -663,7 +663,7 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
 
  private:
   /** @todo Need to make ConcurrentMap */
-  //  ConcurrentMap<Node, FrugalTask<Node>> node_to_task;
+  ConcurrentMap<Node, FrugalTask<Node>> node_to_task;
   //  ConcurrentMap<Node, FrugalTask<Node>> port_to_task;
 
  public:
@@ -675,15 +675,12 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
 
     t->set_scheduler(this);
 
-    //    port_to_task[n] = t;
+    node_to_task[n] = t;
 
     this->task_create(t);
 
     if (this->debug()) {
       t->dump_task_state("Submitting");
-      std::cout << "    with correspondent " + t->correspondent()->name() +
-                       " node with id " +
-                       std::to_string(t->correspondent()->id()) + "\n";
     }
   }
 
@@ -852,10 +849,11 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
             task_to_run->dump_task_state("Caught notify");
 
           /** @note Notification goes to correspondent task of task_to_run */
-          // auto task_to_notify = port_to_task[task_to_run->correspondent()];
+          // auto task_to_notify = node_to_task[task_to_run->correspondent()];
 
           if (n.target() == detail::frugal_target::sink) {
-            auto task_to_notify = task_to_run->sink_correspondent();
+            auto task_to_notify =
+                node_to_task[task_to_run->sink_correspondent()];
             this->task_notify(task_to_notify);
 
             if (this->debug()) {
@@ -864,7 +862,8 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
             }
 
           } else {
-            auto task_to_notify = task_to_run->source_correspondent();
+            auto task_to_notify =
+                node_to_task[task_to_run->source_correspondent()];
             this->task_notify(task_to_notify);
 
             if (this->debug()) {
@@ -932,48 +931,48 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
 
   }  // worker()
 
-    /** Terminate threads in the thread pool */
-    void shutdown() {
-      if (this->debug())
-        std::cout << "scheduler shutdown\n";
+  /** Terminate threads in the thread pool */
+  void shutdown() {
+    if (this->debug())
+      std::cout << "scheduler shutdown\n";
 
-      /** Clear out any submitted tasks that haven't been put into the scheduler
-       */
-      this->make_ready_to_run();
-      start_cv_.notify_all();
+    /** Clear out any submitted tasks that haven't been put into the scheduler
+     */
+    this->make_ready_to_run();
+    start_cv_.notify_all();
 
-      // This doesn't seem to be necessary
-      // All queues should be empty by the time we come to shutdown
+    // This doesn't seem to be necessary
+    // All queues should be empty by the time we come to shutdown
 
-      // Policy::p_shutdown();
+    // Policy::p_shutdown();
 
-      concurrency_level_.store(0);
+    concurrency_level_.store(0);
 
-      for (auto&& t : threads_) {
-        t.join();
-      }
-      threads_.clear();
+    for (auto&& t : threads_) {
+      t.join();
     }
+    threads_.clear();
+  }
 
-    /** The worker threads */
-    std::vector<std::thread> threads_;
+  /** The worker threads */
+  std::vector<std::thread> threads_;
 
-    /** The maximum level of concurrency among all of the worker threads */
-    std::atomic<size_t> concurrency_level_;
+  /** The maximum level of concurrency among all of the worker threads */
+  std::atomic<size_t> concurrency_level_;
 
-    /** Track number of tasks submited to scheduler */
-    std::atomic<size_t> num_submitted_tasks_{0};
+  /** Track number of tasks submited to scheduler */
+  std::atomic<size_t> num_submitted_tasks_{0};
 
-    /** Track number of tasks in the scheduler */
-    std::atomic<size_t> num_tasks_{0};
+  /** Track number of tasks in the scheduler */
+  std::atomic<size_t> num_tasks_{0};
 
-    /** Track number of tasks that have exited the scheduler */
-    std::atomic<size_t> num_exited_tasks_{0};
+  /** Track number of tasks that have exited the scheduler */
+  std::atomic<size_t> num_exited_tasks_{0};
 
-    /** Synchronization variables */
-    std::mutex mutex_;
-    std::condition_variable start_cv_;
-  };
+  /** Synchronization variables */
+  std::mutex mutex_;
+  std::condition_variable start_cv_;
+};
 
 }  // namespace tiledb::common
 

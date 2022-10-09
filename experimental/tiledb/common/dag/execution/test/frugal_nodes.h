@@ -61,7 +61,16 @@ struct node_base {
   size_t id_;
   size_t program_counter_{0};
 
-  // node_type correspondent_{nullptr};
+  node_type sink_correspondent_{nullptr};
+  node_type source_correspondent_{nullptr};
+
+  virtual node_type& sink_correspondent() {
+    return sink_correspondent_;
+  }
+
+  virtual node_type& source_correspondent() {
+    return source_correspondent_;
+  }
 
   node_base(node_base&&) = default;
   node_base(const node_base&) {
@@ -113,8 +122,8 @@ void connect(From& from, To& to) {
   //  print_types(from, to, from.sink_correspondent(),
   //  to.source_correspondent());
 
-  from.sink_correspondent() = &to;
-  to.source_correspondent() = &from;
+  (*from).sink_correspondent() = to;
+  (*to).source_correspondent() = from;
 }
 
 static size_t problem_size = 1337;
@@ -264,13 +273,13 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
     }
   }
 
-  using sink_correspondent_type = consumer_node_impl<Mover, T>*;
+  //  using sink_correspondent_type = consumer_node_impl<Mover, T>;
 
-  sink_correspondent_type sink_correspondent_{nullptr};
+  // sink_correspondent_type sink_correspondent_{nullptr};
 
-  sink_correspondent_type& sink_correspondent() {
-    return sink_correspondent_;
-  }
+  // sink_correspondent_type& sink_correspondent() {
+  // return sink_correspondent_;
+  // }
 };
 
 template <template <class> class Mover, class T>
@@ -402,27 +411,24 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
     }
   }
 
-  using source_correspondent_type = producer_node_impl<Mover, T>*;
+  //  using source_correspondent_type = producer_node_impl<Mover, T>;
 
-  source_correspondent_type source_correspondent_{nullptr};
+  //  source_correspondent_type source_correspondent_{nullptr};
 
-  source_correspondent_type& source_correspondent() {
-    return source_correspondent_;
-  }
+  //  source_correspondent_type& source_correspondent() {
+  //    return source_correspondent_;
+  //  }
 };
 
 template <
     template <class>
     class SinkMover,
     class BlockIn,
-    template <class>
-    class SourceMover,
-    class BlockOut>
+    template <class> class SourceMover = SinkMover,
+    class BlockOut = BlockIn>
 struct function_node_impl : public node_base,
                             public Sink<SinkMover, BlockIn>,
-                            public Source<SourceMover, BlockOut>
-
-{
+                            public Source<SourceMover, BlockOut> {
   using sink_mover_type = SinkMover<BlockIn>;
   using source_mover_type = SourceMover<BlockOut>;
   using node_base_type = node_base;
@@ -479,6 +485,11 @@ struct function_node_impl : public node_base,
       case 0: {
         ++this->program_counter_;
         sink_mover->port_pull();
+
+        if (sink_mover->is_done()) {
+          source_mover->port_exhausted();
+          break;
+        }
       }
         [[fallthrough]];
 
@@ -569,19 +580,20 @@ struct function_node_impl : public node_base,
       }
     }
   }
-  using sink_correspondent_type = consumer_node_impl<SinkMover, BlockIn>*;
-  using source_correspondent_type = producer_node_impl<SourceMover, BlockOut>*;
+  // using sink_correspondent_type = consumer_node_impl<SinkMover, BlockIn>*;
+  // using source_correspondent_type = producer_node_impl<SourceMover,
+  // BlockOut>*;
 
-  sink_correspondent_type sink_correspondent_{nullptr};
-  source_correspondent_type source_correspondent_{nullptr};
+  // sink_correspondent_type sink_correspondent_{nullptr};
+  // source_correspondent_type source_correspondent_{nullptr};
 
-  sink_correspondent_type& sink_correspondent() {
-    return sink_correspondent_;
-  }
+  // sink_correspondent_type& sink_correspondent() {
+  //   return sink_correspondent_;
+  // }
 
-  source_correspondent_type& source_correspondent() {
-    return source_correspondent_;
-  }
+  // source_correspondent_type& source_correspondent() {
+  //   return source_correspondent_;
+  // }
 };
 
 template <template <class> class Mover, class T>

@@ -285,7 +285,7 @@ class Sink : public Port<Mover_T, Block> {
       throw std::runtime_error("Sink attempting to detach unattached ports");
     } else {
       this->item_mover_->deregister_items();
-      detach();
+      this->clear_attached();
       predecessor.detach();
     }
   }

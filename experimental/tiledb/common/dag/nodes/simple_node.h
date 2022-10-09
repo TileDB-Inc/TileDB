@@ -86,7 +86,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
 
  public:
   using source_port_type = Base;
-  using base_port_type = Base::port_type;
+  using base_port_type = typename Base::base_port_type;
 
   bool is_source_port() {
     return is_source_port;
@@ -347,14 +347,14 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
   using Base = Sink<Mover_T, Block>;
 
   using sink_port_type = Base;
-  using base_port_type = Base::base_port_type;
+  using base_port_type = typename Base::base_port_type;
 
   bool is_sink_port() {
-    return is_sink_port;
+    return is_sink_port_;
   }
 
-  bool is_sink_port() {
-    return is_sink_port;
+  bool is_source_port() {
+    return is_source_port_;
   }
 
  public:
@@ -606,8 +606,8 @@ class FunctionNode : public GraphNode,
 
  public:
   using source_port_type = SourceBase;
-  using source_port_type = SinkBase;
-  using base_port_type = SinkBase::port_type;
+  using sink_port_type = SinkBase;
+  using base_port_type = typename SinkBase::base_port_type;
 
   /**
    * Trivial default constructor, for testing.

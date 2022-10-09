@@ -115,7 +115,7 @@ class BaseMover<Mover, three_stage, Block> {
             "Attempting to deregister source, edge, or sink items that were "
             "not registered.");
       }
-      j.reset();
+      j->reset();
     }
   }
 
