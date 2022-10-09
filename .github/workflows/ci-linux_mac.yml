@@ -20,6 +20,10 @@ on:
         default: ''
         required: true
         type: string
+      timeout: 90
+        descript: 'Job timeout (minutes)'
+        required: false
+        type: number
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
