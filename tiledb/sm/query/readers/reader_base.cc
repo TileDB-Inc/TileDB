@@ -1019,40 +1019,25 @@ Status ReaderBase::unfilter_tile_chunk_range(
     if (!var_size) {
       if (!nullable) {
         if (array_schema_.bitsort_filter_attr().has_value()) {
-          // TODO: get this working!
           std::vector<Tile*> dim_tiles;
           std::vector<QueryBuffer> qb_vector;
-          /*
-          std::vector<uint64_t> dim_data_sizes;
-          uint64_t num_dims = array_schema_.dim_num();
-
-          dim_tiles.reserve(num_dims);
-          qb_vector.reserve(num_dims);
-          dim_data_sizes.reserve(num_dims);
-          
-
-          for (size_t i = 0; i < num_dims; ++i) {
-            const Dimension *dimension = array_schema_.domain().dimension_ptr(i);
-            auto dim_tile_tuple = tile->tile_tuple(dimension->name());
-            dim_tiles.emplace_back(&dim_tile_tuple->fixed_tile());
-
-            auto &filtered_buffer = dim_tiles[i]->filtered_buffer();
-            dim_data_sizes.emplace_back(filtered_buffer.size());
-            qb_vector.emplace_back(filtered_buffer.data(), nullptr, &dim_data_sizes[i], nullptr);
-          }
-
-          DomainBuffersView db_view(array_schema_.domain(), qb_vector);
-          */
-          GlobalCmpQB cmp_obj = construct_bitsort_filter_argument(tile, dim_tiles, qb_vector);
-          BitSortFilterMetadataType bitsort_metadata = std::make_pair(std::ref(dim_tiles), std::ref(cmp_obj));
+          std::optional<DomainBuffersView> db;
+          GlobalCmpQB cmp_obj =
+              construct_bitsort_filter_argument(tile, dim_tiles, qb_vector, db);
+          BitSortFilterMetadataType bitsort_metadata =
+              std::make_pair(std::ref(dim_tiles), std::ref(cmp_obj));
           RETURN_NOT_OK(unfilter_tile_chunk_range(
-            num_range_threads, range_thread_idx, name, t, tile_chunk_data, bitsort_metadata)); 
+              num_range_threads,
+              range_thread_idx,
+              name,
+              t,
+              tile_chunk_data,
+              bitsort_metadata));
         } else {
           RETURN_NOT_OK(unfilter_tile_chunk_range(
-            num_range_threads, range_thread_idx, name, t, tile_chunk_data)); 
+              num_range_threads, range_thread_idx, name, t, tile_chunk_data));
         }
-      }
-      else {
+      } else {
         RETURN_NOT_OK(unfilter_tile_chunk_range_nullable(
             num_range_threads,
             range_thread_idx,
@@ -1288,12 +1273,12 @@ Status ReaderBase::unfilter_tile_chunk_range(
 }
 
 Status ReaderBase::unfilter_tile_chunk_range(
-      uint64_t num_range_threads,
-      uint64_t thread_idx,
-      const std::string& name,
-      Tile* tile,
-      const ChunkData& tile_chunk_data,
-      BitSortFilterMetadataType &bitsort_metadata) const {
+    uint64_t num_range_threads,
+    uint64_t thread_idx,
+    const std::string& name,
+    Tile* tile,
+    const ChunkData& tile_chunk_data,
+    BitSortFilterMetadataType& bitsort_metadata) const {
   assert(tile);
   // Prevent processing past the end of chunks in case there are more
   // threads than chunks.
@@ -1539,9 +1524,10 @@ Status ReaderBase::unfilter_tiles(
   auto nullable = array_schema_.is_nullable(name);
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
 
-  if (array_schema_.is_dim(name) && array_schema_.bitsort_filter_attr().has_value()) {
-    // We omit running unfilter_tiles when there is a dimension, since we process the
-    // dimension tiles in the bitsort filter.
+  if (array_schema_.is_dim(name) &&
+      array_schema_.bitsort_filter_attr().has_value()) {
+    // We omit running unfilter_tiles when there is a dimension, since we
+    // process the dimension tiles in the bitsort filter.
     return Status::Ok();
   }
 
@@ -1652,32 +1638,13 @@ Status ReaderBase::unfilter_tiles(
           if (!var_size) {
             if (!nullable) {
               if (array_schema_.bitsort_filter_attr().has_value()) {
-                // TODO: get this working!
-                  std::vector<Tile*> dim_tiles;
-                  std::vector<QueryBuffer> qb_vector;
-                  /*
-                  std::vector<uint64_t> dim_data_sizes;
-                  uint64_t num_dims = array_schema_.dim_num();
-
-                  dim_tiles.reserve(num_dims);
-                  qb_vector.reserve(num_dims);
-                  dim_data_sizes.reserve(num_dims);
-                  
-
-                  for (size_t i = 0; i < num_dims; ++i) {
-                    const Dimension *dimension = array_schema_.domain().dimension_ptr(i);
-                    auto dim_tile_tuple = tile->tile_tuple(dimension->name());
-                    dim_tiles.emplace_back(&dim_tile_tuple->fixed_tile());
-
-                    auto &filtered_buffer = dim_tiles[i]->filtered_buffer();
-                    dim_data_sizes.emplace_back(filtered_buffer.size());
-                    qb_vector.emplace_back(filtered_buffer.data(), nullptr, &dim_data_sizes[i], nullptr);
-                  }
-
-                  DomainBuffersView db_view(array_schema_.domain(), qb_vector);
-                  */
-                  GlobalCmpQB cmp_obj = construct_bitsort_filter_argument(tile, dim_tiles, qb_vector);
-                  BitSortFilterMetadataType bitsort_metadata = std::make_pair(std::ref(dim_tiles), std::ref(cmp_obj));
+                std::vector<Tile*> dim_tiles;
+                std::vector<QueryBuffer> qb_vector;
+                std::optional<DomainBuffersView> db;
+                GlobalCmpQB cmp_obj = construct_bitsort_filter_argument(
+                    tile, dim_tiles, qb_vector, db);
+                BitSortFilterMetadataType bitsort_metadata =
+                    std::make_pair(std::ref(dim_tiles), std::ref(cmp_obj));
                 RETURN_NOT_OK(unfilter_tile(name, t, bitsort_metadata));
 
               } else {
@@ -1703,7 +1670,10 @@ Status ReaderBase::unfilter_tiles(
   return Status::Ok();
 }
 
-Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile, BitSortFilterMetadataType &bitsort_metadata) const {
+Status ReaderBase::unfilter_tile(
+    const std::string& name,
+    Tile* tile,
+    BitSortFilterMetadataType& bitsort_metadata) const {
   FilterPipeline filters = array_schema_.filters(name);
 
   // Append an encryption unfilter when necessary.
@@ -1939,25 +1909,32 @@ bool ReaderBase::has_coords() const {
   return false;
 }
 
-GlobalCmpQB ReaderBase::construct_bitsort_filter_argument(ResultTile* const tile, std::vector<Tile*> &dim_tiles, std::vector<QueryBuffer> &qb_vector) const {
+GlobalCmpQB ReaderBase::construct_bitsort_filter_argument(
+    ResultTile* const tile,
+    std::vector<Tile*>& dim_tiles,
+    std::vector<QueryBuffer>& qb_vector,
+    std::optional<DomainBuffersView>& db) const {
   uint64_t num_dims = array_schema_.dim_num();
   std::vector<uint64_t> dim_data_sizes;
 
   dim_tiles.reserve(num_dims);
   qb_vector.reserve(num_dims);
   dim_data_sizes.reserve(num_dims);
-  
+
   for (size_t i = 0; i < num_dims; ++i) {
-    const Dimension *dimension = array_schema_.domain().dimension_ptr(i);
+    const Dimension* dimension = array_schema_.domain().dimension_ptr(i);
     auto dim_tile_tuple = tile->tile_tuple(dimension->name());
     dim_tiles.emplace_back(&dim_tile_tuple->fixed_tile());
 
-    auto &filtered_buffer = dim_tiles[i]->filtered_buffer();
+    auto& filtered_buffer = dim_tiles[i]->filtered_buffer();
     dim_data_sizes.emplace_back(filtered_buffer.size());
-    qb_vector.emplace_back(filtered_buffer.data(), nullptr, &dim_data_sizes[i], nullptr);
+    qb_vector.emplace_back(
+        filtered_buffer.data(), nullptr, &dim_data_sizes[i], nullptr);
   }
 
-  return GlobalCmpQB(array_schema_.domain(), DomainBuffersView(array_schema_.domain(), qb_vector));
+  db.emplace(DomainBuffersView(array_schema_.domain(), qb_vector));
+
+  return GlobalCmpQB(array_schema_.domain(), db.value());
 }
 
 // Explicit template instantiations

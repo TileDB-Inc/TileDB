@@ -834,10 +834,15 @@ class ReaderBase : public StrategyBase {
       const bool nullable) const;
 
  private:
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
   GlobalCmpQB construct_bitsort_filter_argument(
-    ResultTile* const tile, 
-    std::vector<Tile*> &dim_tiles, 
-    std::vector<QueryBuffer> &qb_vector) const;
+      ResultTile* const tile,
+      std::vector<Tile*>& dim_tiles,
+      std::vector<QueryBuffer>& qb_vector,
+      std::optional<DomainBuffersView>& db) const;
 };
 
 }  // namespace sm
