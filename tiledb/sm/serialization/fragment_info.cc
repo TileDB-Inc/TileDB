@@ -222,16 +222,12 @@ single_fragment_info_from_capnp(
   }
 
   // Get list of single fragment info
-  SingleFragmentInfo single_frag_info{};
+  shared_ptr<FragmentMetadata> meta;
   if (single_frag_info_reader.hasMeta()) {
     auto frag_meta_reader = single_frag_info_reader.getMeta();
-    single_frag_info.meta() = make_shared<FragmentMetadata>(HERE());
-    auto st = fragment_metadata_from_capnp(
-        schema->second, frag_meta_reader, single_frag_info.meta());
-    // This is needed so that we don't try to load rtee from disk
-    single_frag_info.meta()->set_rtree_loaded();
-    // set the rest of single_frag_info from meta()
-    single_frag_info.set_info_from_meta();
+    meta = make_shared<FragmentMetadata>(HERE());
+    auto st =
+        fragment_metadata_from_capnp(schema->second, frag_meta_reader, meta);
   } else {
     return {
         Status_SerializationError(
@@ -239,8 +235,19 @@ single_fragment_info_from_capnp(
         nullopt};
   }
 
-  // Get fragment size
-  single_frag_info.fragment_size() = single_frag_info_reader.getFragmentSize();
+  auto expanded_non_empty_domain = meta->non_empty_domain();
+  if (meta->dense()) {
+    meta->array_schema()->domain().expand_to_tiles(&expanded_non_empty_domain);
+  }
+  SingleFragmentInfo single_frag_info{meta->fragment_uri(),
+                                      !meta->dense(),
+                                      meta->timestamp_range(),
+                                      single_frag_info_reader.getFragmentSize(),
+                                      meta->non_empty_domain(),
+                                      expanded_non_empty_domain,
+                                      meta};
+  // This is needed so that we don't try to load rtee from disk
+  single_frag_info.meta()->set_rtree_loaded();
 
   return {Status::Ok(), single_frag_info};
 }
@@ -308,7 +315,6 @@ Status fragment_info_from_capnp(
     fragment_info->unconsolidated_metadata_num() +=
         (uint32_t)!f.has_consolidated_footer();
   }
-  // TODO: do we need anterior_ndrange_?
 
   return Status::Ok();
 }

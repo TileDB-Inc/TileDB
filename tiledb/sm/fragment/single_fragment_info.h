@@ -287,25 +287,6 @@ class SingleFragmentInfo {
     return non_empty_domain_;
   }
 
-  void set_info_from_meta() {
-    if (meta_ == nullptr) {
-      throw std::logic_error("Cannot set info from empty fragment metadata.");
-    }
-    uri_ = meta_->fragment_uri();
-    version_ = meta_->format_version();
-    sparse_ = !meta_->dense();
-    timestamp_range_ = meta_->timestamp_range();
-    cell_num_ = meta_->cell_num();
-    has_consolidated_footer_ = meta_->has_consolidated_footer();
-    array_schema_name_ = meta_->array_schema_name();
-    non_empty_domain_ = meta_->non_empty_domain();
-    expanded_non_empty_domain_ = non_empty_domain_;
-    if (!sparse_) {
-      meta_->array_schema()->domain().expand_to_tiles(
-          &expanded_non_empty_domain_);
-    }
-  }
-
  private:
   /** The fragment URI. */
   URI uri_;

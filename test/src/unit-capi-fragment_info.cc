@@ -523,7 +523,6 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
   CHECK(rc == TILEDB_OK);
-  // tiledb_config_free(&cfg);
 
   bool serialized_load = false;
   SECTION("no serialization") {
@@ -639,7 +638,6 @@ TEST_CASE(
   // Load fragment info again
   rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
   CHECK(rc == TILEDB_OK);
-  // tiledb_ctx_free(&ctx_correct_key);
 
   if (serialized_load) {
     rc = tiledb_fragment_info_alloc(
