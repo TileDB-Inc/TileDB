@@ -49,8 +49,9 @@ tuple<bool, optional<std::string>> have_compatible_types(
   if (dim->type() != attr->type())
     return {false, "Attribute and dimension datatype do not match."};
   if (dim->cell_val_num() != attr->cell_val_num())
-    return {false,
-            "Attribute and dimension number of values per cell do not match"};
+    return {
+        false,
+        "Attribute and dimension number of values per cell do not match"};
   return {true, nullopt};
 }
 
@@ -81,7 +82,7 @@ DimensionLabelSchema::DimensionLabelSchema(
       HERE(), Layout::ROW_MAJOR, index_dims, Layout::ROW_MAJOR)));
   auto label_attr = make_shared<Attribute>(HERE(), "label", label_type);
   if (label_type == Datatype::STRING_ASCII)
-    label_attr->set_cell_val_num(constants::var_num);
+    throw_if_not_ok(label_attr->set_cell_val_num(constants::var_num));
   throw_if_not_ok(indexed_array_schema_->add_attribute(label_attr));
   throw_if_not_ok(indexed_array_schema_->check());
   // Set-up labelled array

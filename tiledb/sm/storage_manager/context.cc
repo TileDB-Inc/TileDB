@@ -55,7 +55,7 @@ Context::Context(const Config& config)
     , stats_(make_shared<stats::Stats>(HERE(), "Context"))
     , storage_manager_{} {
   if (!init(config).ok()) {
-    logger_->status(
+    logger_->status_no_return_value(
         Status_ContextError("Failed to initialize Context in constructor."));
     throw std::logic_error("Could not initialize Context in constructor");
   }
@@ -134,7 +134,7 @@ Status Context::get_config_thread_count(
       config.get<uint64_t>("sm.num_async_threads", &num_async_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_async_threads);
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_async_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
@@ -144,7 +144,7 @@ Status Context::get_config_thread_count(
       "sm.num_reader_threads", &num_reader_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_reader_threads);
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_reader_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
@@ -154,7 +154,7 @@ Status Context::get_config_thread_count(
       "sm.num_writer_threads", &num_writer_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_writer_threads);
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_writer_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
@@ -164,7 +164,7 @@ Status Context::get_config_thread_count(
       config.get<uint64_t>("sm.num_vfs_threads", &num_vfs_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_vfs_threads);
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_vfs_threads\" has been removed; use "
         "config parameter \"sm.io_concurrency_level\"."));
   }
@@ -179,7 +179,7 @@ Status Context::get_config_thread_count(
   if (found) {
     config_thread_count =
         std::max(config_thread_count, static_cast<uint64_t>(num_tbb_threads));
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_tbb_threads\" has been removed; use "
         "config parameter \"sm.io_concurrency_level\"."));
   }

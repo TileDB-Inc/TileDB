@@ -317,7 +317,7 @@ Status Reader::load_initial_data() {
 
   // Load processed conditions from fragment metadata.
   if (delete_conditions_.size() > 0) {
-    load_processed_conditions();
+    RETURN_NOT_OK(load_processed_conditions());
   }
 
   initial_data_loaded_ = true;
@@ -1542,7 +1542,8 @@ Status Reader::compute_result_cell_slabs_row_col(
   // or in `result_space_tiles` (dense).
   auto rcs_it = ReadCellSlabIter<T>(
       &subarray, &result_space_tiles, &result_coords, *result_coords_pos);
-  for (rcs_it.begin(); !rcs_it.end(); ++rcs_it) {
+  RETURN_NOT_OK(rcs_it.begin());
+  for (; !rcs_it.end(); ++rcs_it) {
     // Add result cell slab
     auto result_cell_slab = rcs_it.result_cell_slab();
     result_cell_slabs.push_back(result_cell_slab);
@@ -1581,7 +1582,7 @@ Status Reader::compute_result_cell_slabs_global(
     tile_subarrays.emplace_back(
         subarray.crop_to_tile((const T*)&tc[0], cell_order));
     auto& tile_subarray = tile_subarrays.back();
-    tile_subarray.template compute_tile_coords<T>();
+    RETURN_NOT_OK(tile_subarray.template compute_tile_coords<T>());
 
     RETURN_NOT_OK(compute_result_cell_slabs_row_col<T>(
         tile_subarray,
@@ -2044,8 +2045,8 @@ Status Reader::sparse_read() {
       compute_result_cell_slabs(result_coords, result_cell_slabs));
   result_coords.clear();
 
-  apply_query_condition(
-      result_cell_slabs, result_tiles, read_state_.partitioner_.subarray());
+  RETURN_NOT_OK(apply_query_condition(
+      result_cell_slabs, result_tiles, read_state_.partitioner_.subarray()));
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
@@ -2166,7 +2167,7 @@ Status Reader::calculate_hilbert_values(
         return Status::Ok();
       });
 
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, RETURN_NOT_OK(logger_->status(status)));
 
   return Status::Ok();
 }
@@ -2228,10 +2229,11 @@ tuple<Status, optional<bool>> Reader::fill_dense_coords(
   // This path does not use result cell slabs, which will fill coordinates
   // for cells that should be filtered out.
   if (!condition_.empty()) {
-    return {logger_->status(Status_ReaderError(
-                "Cannot read dense coordinates; dense coordinate "
-                "reads are unsupported with a query condition")),
-            nullopt};
+    return {
+        logger_->status(Status_ReaderError(
+            "Cannot read dense coordinates; dense coordinate "
+            "reads are unsupported with a query condition")),
+        nullopt};
   }
 
   // Prepare buffers

@@ -476,7 +476,7 @@ Status ReaderBase::load_tile_var_sizes(
           if (!schema->var_size(name))
             continue;
 
-          fragment->load_tile_var_sizes(*encryption_key, name);
+          RETURN_NOT_OK(fragment->load_tile_var_sizes(*encryption_key, name));
         }
 
         return Status::Ok();
@@ -894,9 +894,10 @@ tuple<Status, optional<uint64_t>> ReaderBase::load_chunk_data(
   }
 
   if (total_orig_size != tile->size()) {
-    return {LOG_STATUS(Status_ReaderError(
-                "Error incorrect unfiltered tile size allocated.")),
-            nullopt};
+    return {
+        LOG_STATUS(Status_ReaderError(
+            "Error incorrect unfiltered tile size allocated.")),
+        nullopt};
   }
 
   return {Status::Ok(), total_orig_size};
@@ -964,10 +965,11 @@ ReaderBase::load_tile_chunk_data(
       unfiltered_tile_validity_size = tile_validity_size.value();
     }
   }
-  return {Status::Ok(),
-          unfiltered_tile_size,
-          unfiltered_tile_var_size,
-          unfiltered_tile_validity_size};
+  return {
+      Status::Ok(),
+      unfiltered_tile_size,
+      unfiltered_tile_var_size,
+      unfiltered_tile_validity_size};
 }
 
 Status ReaderBase::unfilter_tile_chunk_range(
@@ -1105,18 +1107,18 @@ Status ReaderBase::post_process_unfiltered_tile(
     auto& t = tile_tuple->fixed_tile();
     t.filtered_buffer().clear();
 
-    zip_tile_coordinates(name, &t);
+    RETURN_NOT_OK(zip_tile_coordinates(name, &t));
 
     if (var_size) {
       auto& t_var = tile_tuple->var_tile();
       t_var.filtered_buffer().clear();
-      zip_tile_coordinates(name, &t_var);
+      RETURN_NOT_OK(zip_tile_coordinates(name, &t_var));
     }
 
     if (nullable) {
       auto& t_validity = tile_tuple->validity_tile();
       t_validity.filtered_buffer().clear();
-      zip_tile_coordinates(name, &t_validity);
+      RETURN_NOT_OK(zip_tile_coordinates(name, &t_validity));
     }
   }
 
@@ -1169,7 +1171,7 @@ Status ReaderBase::unfilter_tiles_chunk_range(
         unfiltered_tile_validity_size[i] = tile_validity_size.value();
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, RETURN_NOT_OK(logger_->status(status)));
 
   if (tiles_chunk_data.empty())
     return Status::Ok();

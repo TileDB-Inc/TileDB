@@ -101,8 +101,9 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
   auto subarray = subarray_->ndrange(0);  // Guaranteed to be unary
   std::vector<std::array<T, 2>> sub(dim_num);
   for (int32_t d = 0; d < dim_num; ++d)
-    sub[d] = {*(const T*)subarray[d].start_fixed(),
-              *(const T*)subarray[d].end_fixed()};
+    sub[d] = {
+        *(const T*)subarray[d].start_fixed(),
+        *(const T*)subarray[d].end_fixed()};
   auto tile_layout = array_schema_.cell_order();
   auto sub_layout = subarray_->layout();
 
@@ -576,7 +577,7 @@ Status DenseTiler<T>::copy_tile(
 }
 
 template <class T>
-Status DenseTiler<T>::compute_tile_metadata(
+void DenseTiler<T>::compute_tile_metadata(
     const std::string& name, uint64_t id, WriterTile& tile) const {
   // Calculate copy plan
   const CopyPlan copy_plan = this->copy_plan(id);
@@ -640,7 +641,6 @@ Status DenseTiler<T>::compute_tile_metadata(
   }
 
   md_generator.set_tile_metadata(tile);
-  return Status::Ok();
 }
 
 // Explicit template instantiations

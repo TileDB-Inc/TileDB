@@ -212,27 +212,27 @@ Status EncryptionAES256GCMFilter::decrypt_part(
   return Status::Ok();
 }
 
-Status EncryptionAES256GCMFilter::set_key(const EncryptionKey& key) {
+void EncryptionAES256GCMFilter::set_key(const EncryptionKey& key) {
   auto key_buff = key.key();
 
-  if (key.encryption_type() != EncryptionType::AES_256_GCM)
-    return LOG_STATUS(
+  if (key.encryption_type() != EncryptionType::AES_256_GCM) {
+    throw LOG_STATUS(
         Status_FilterError("Encryption error; invalid key encryption type."));
+    return;
+  }
 
   if (key_buff.data() == nullptr ||
-      key_buff.size() != Crypto::AES256GCM_KEY_BYTES)
-    return LOG_STATUS(
+      key_buff.size() != Crypto::AES256GCM_KEY_BYTES) {
+    throw LOG_STATUS(
         Status_FilterError("Encryption error; invalid key for AES-256-GCM."));
+    return;
+  }
 
   key_bytes_ = key_buff.data();
-
-  return Status::Ok();
 }
 
-Status EncryptionAES256GCMFilter::set_key(const void* key_bytes) {
+void EncryptionAES256GCMFilter::set_key(const void* key_bytes) {
   key_bytes_ = key_bytes;
-
-  return Status::Ok();
 }
 
 Status EncryptionAES256GCMFilter::get_key(const void** key_bytes) const {

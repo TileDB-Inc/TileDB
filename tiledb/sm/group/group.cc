@@ -278,9 +278,7 @@ Status Group::close() {
   metadata_.clear();
   metadata_loaded_ = false;
   is_open_ = false;
-  clear();
-
-  return Status::Ok();
+  return clear();
 }
 
 bool Group::is_open() const {
@@ -715,15 +713,17 @@ tuple<Status, optional<uint64_t>> Group::member_count() const {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    return {Status_GroupError("Cannot get member count; Group is not open"),
-            std::nullopt};
+    return {
+        Status_GroupError("Cannot get member count; Group is not open"),
+        std::nullopt};
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {Status_GroupError(
-                "Cannot get member; Group was not opened in read mode"),
-            std::nullopt};
+    return {
+        Status_GroupError(
+            "Cannot get member; Group was not opened in read mode"),
+        std::nullopt};
   }
 
   return {Status::Ok(), members_.size()};
@@ -739,19 +739,21 @@ Group::member_by_index(uint64_t index) {
 
   // Check if group is open
   if (!is_open_) {
-    return {Status_GroupError("Cannot get member by index; Group is not open"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+    return {
+        Status_GroupError("Cannot get member by index; Group is not open"),
+        std::nullopt,
+        std::nullopt,
+        std::nullopt};
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {Status_GroupError(
-                "Cannot get member; Group was not opened in read mode"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+    return {
+        Status_GroupError(
+            "Cannot get member; Group was not opened in read mode"),
+        std::nullopt,
+        std::nullopt,
+        std::nullopt};
   }
 
   if (index >= members_vec_.size()) {
@@ -785,30 +787,33 @@ Group::member_by_name(const std::string& name) {
 
   // Check if group is open
   if (!is_open_) {
-    return {Status_GroupError("Cannot get member by name; Group is not open"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+    return {
+        Status_GroupError("Cannot get member by name; Group is not open"),
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt};
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {Status_GroupError(
-                "Cannot get member; Group was not opened in read mode"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+    return {
+        Status_GroupError(
+            "Cannot get member; Group was not opened in read mode"),
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt};
   }
 
   auto it = members_by_name_.find(name);
   if (it == members_by_name_.end()) {
-    return {Status_GroupError(name + " does not exist in group"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+    return {
+        Status_GroupError(name + " does not exist in group"),
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt};
   }
 
   auto member = it->second;
@@ -845,9 +850,9 @@ std::string Group::dump(
       }
 
       GroupV1 group_rec(uri, storage_manager_);
-      group_rec.open(QueryType::READ);
+      throw_if_not_ok(group_rec.open(QueryType::READ));
       ss << group_rec.dump(indent_size, num_indents + 2, recursive, false);
-      group_rec.close();
+      throw_if_not_ok(group_rec.close());
     }
   }
 

@@ -103,7 +103,7 @@ StorageManager::~StorageManager() {
   global_state::GlobalState::GetGlobalState().unregister_storage_manager(this);
 
   if (vfs_ != nullptr) {
-    cancel_all_tasks();
+    throw_if_not_ok(cancel_all_tasks());
     tdb_delete(vfs_);
   }
 
@@ -322,10 +322,11 @@ tuple<
 StorageManager::array_open_for_writes(Array* array) {
   // Checks
   if (!vfs_->supports_uri_scheme(array->array_uri()))
-    return {logger_->status(Status_StorageManagerError(
-                "Cannot open array; URI scheme unsupported.")),
-            nullopt,
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            "Cannot open array; URI scheme unsupported.")),
+        nullopt,
+        nullopt};
 
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
@@ -344,9 +345,10 @@ StorageManager::array_open_for_writes(Array* array) {
       err << version;
       err << ") is not the library format version (";
       err << constants::format_version << ")";
-      return {logger_->status(Status_StorageManagerError(err.str())),
-              nullopt,
-              nullopt};
+      return {
+          logger_->status(Status_StorageManagerError(err.str())),
+          nullopt,
+          nullopt};
     }
   } else {
     if (version > constants::format_version) {
@@ -355,9 +357,10 @@ StorageManager::array_open_for_writes(Array* array) {
       err << version;
       err << ") is newer than library format version (";
       err << constants::format_version << ")";
-      return {logger_->status(Status_StorageManagerError(err.str())),
-              nullopt,
-              nullopt};
+      return {
+          logger_->status(Status_StorageManagerError(err.str())),
+          nullopt,
+          nullopt};
     }
   }
 
@@ -376,10 +379,11 @@ StorageManager::array_load_fragments(
   // Check if the array is open
   auto it = open_arrays_.find(array);
   if (it == open_arrays_.end()) {
-    return {logger_->status(Status_StorageManagerError(
-                std::string("Cannot load array fragments from ") +
-                array->array_uri().to_string() + "; Array not open")),
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            std::string("Cannot load array fragments from ") +
+            array->array_uri().to_string() + "; Array not open")),
+        nullopt};
   }
 
   // Load the fragment metadata
@@ -407,12 +411,13 @@ StorageManager::array_reopen(Array* array) {
   // Check if array is open
   auto it = open_arrays_.find(array);
   if (it == open_arrays_.end()) {
-    return {logger_->status(Status_StorageManagerError(
-                std::string("Cannot reopen array ") +
-                array->array_uri().to_string() + "; Array not open")),
-            nullopt,
-            nullopt,
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            std::string("Cannot reopen array ") +
+            array->array_uri().to_string() + "; Array not open")),
+        nullopt,
+        nullopt,
+        nullopt};
   }
 
   return array_open_for_reads(array);
@@ -809,7 +814,7 @@ Status StorageManager::array_create(
 
   // Store array schema
   if (!st.ok()) {
-    vfs_->remove_dir(array_uri);
+    RETURN_NOT_OK(vfs_->remove_dir(array_uri));
     return st;
   }
 
@@ -858,7 +863,7 @@ Status StorageManager::array_evolve_schema(
 
   Status st = store_array_schema(array_schema_evolved.value(), encryption_key);
   if (!st.ok()) {
-    logger_->status(st);
+    logger_->status_no_return_value(st);
     return logger_->status(Status_StorageManagerError(
         "Cannot evolve schema;  Not able to store evolved array schema."));
   }
@@ -928,35 +933,37 @@ Status StorageManager::array_upgrade_version(
 
   if (array_schema.value()->version() < constants::format_version) {
     auto st = array_schema.value()->generate_uri();
-    RETURN_NOT_OK_ELSE(st, logger_->status(st));
+    RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
     array_schema.value()->set_version(constants::format_version);
 
     // Create array schema directory if necessary
     URI array_schema_dir_uri =
         array_uri.join_path(constants::array_schema_dir_name);
     st = vfs_->create_dir(array_schema_dir_uri);
-    RETURN_NOT_OK_ELSE(st, logger_->status(st));
+    RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
 
     // Store array schema
     st = store_array_schema(array_schema.value(), encryption_key_cfg);
-    RETURN_NOT_OK_ELSE(st, logger_->status(st));
+    RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
 
     // Create commit directory if necessary
     URI array_commit_uri =
         array_uri.join_path(constants::array_commits_dir_name);
-    RETURN_NOT_OK_ELSE(vfs_->create_dir(array_commit_uri), logger_->status(st));
+    RETURN_NOT_OK_ELSE(
+        vfs_->create_dir(array_commit_uri),
+        logger_->status_no_return_value(st));
 
     // Create fragments directory if necessary
     URI array_fragments_uri =
         array_uri.join_path(constants::array_fragments_dir_name);
     st = vfs_->create_dir(array_fragments_uri);
-    RETURN_NOT_OK_ELSE(st, logger_->status(st));
+    RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
 
     // Create fragment metadata directory if necessary
     URI array_fragment_metadata_uri =
         array_uri.join_path(constants::array_fragment_meta_dir_name);
     st = vfs_->create_dir(array_fragment_metadata_uri);
-    RETURN_NOT_OK_ELSE(st, logger_->status(st));
+    RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
   }
 
   return Status::Ok();
@@ -1270,14 +1277,14 @@ Status StorageManager::async_push_query(Query* query) {
         // Process query.
         Status st = query_submit(query);
         if (!st.ok())
-          logger_->status(st);
+          logger_->status_no_return_value(st);
         return st;
       },
       [query]() {
         // Task was cancelled. This is safe to perform in a separate thread,
         // as we are guaranteed by the thread pool not to have entered
         // query->process() yet.
-        query->cancel();
+        throw_if_not_ok(query->cancel());
       });
 
   return Status::Ok();
@@ -1301,7 +1308,7 @@ Status StorageManager::cancel_all_tasks() {
 
     // Only call VFS cancel if the object has been constructed
     if (vfs_ != nullptr)
-      vfs_->cancel_all_tasks();
+      RETURN_NOT_OK(vfs_->cancel_all_tasks());
 
     // Wait for in-progress queries to finish.
     wait_for_zero_in_progress();
@@ -1542,9 +1549,10 @@ StorageManager::load_array_schema_from_uri(
   Deserializer deserializer(tile.data(), tile.size());
 
   try {
-    return {Status::Ok(),
-            make_shared<ArraySchema>(
-                HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
+    return {
+        Status::Ok(),
+        make_shared<ArraySchema>(
+            HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
   } catch (const StatusException& e) {
     return {Status_StorageManagerError(e.what()), nullopt};
   }
@@ -1557,9 +1565,10 @@ StorageManager::load_array_schema_latest(
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
-    return {logger_->status(Status_StorageManagerError(
-                "Cannot load array schema; Invalid array URI")),
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            "Cannot load array schema; Invalid array URI")),
+        nullopt};
 
   // Load schema from URI
   const URI& schema_uri = array_dir.latest_array_schema_uri();
@@ -1601,15 +1610,17 @@ StorageManager::load_all_array_schemas(
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
-    return {logger_->status(Status_StorageManagerError(
-                "Cannot load all array schemas; Invalid array URI")),
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            "Cannot load all array schemas; Invalid array URI")),
+        nullopt};
 
   const std::vector<URI>& schema_uris = array_dir.array_schema_uris();
   if (schema_uris.empty()) {
-    return {logger_->status(Status_StorageManagerError(
-                "Cannot get the array schema vector; No array schemas found.")),
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            "Cannot get the array schema vector; No array schemas found.")),
+        nullopt};
   }
 
   std::vector<shared_ptr<ArraySchema>> schema_vector;
@@ -1702,7 +1713,7 @@ StorageManager::load_delete_conditions(const Array& array) {
             tile_opt->data(),
             tile_opt->size());
 
-    delete_conditions[i].check(array.array_schema_latest());
+    RETURN_NOT_OK(delete_conditions[i].check(array.array_schema_latest()));
     return Status::Ok();
   });
   RETURN_NOT_OK_TUPLE(status, nullopt);
@@ -2046,10 +2057,7 @@ Status StorageManager::store_metadata(
   RETURN_NOT_OK(metadata->get_uri(uri, &metadata_uri));
 
   RETURN_NOT_OK(store_data_to_generic_tile(
-      tile.data(),
-      tile.size(),
-      metadata_uri,
-      encryption_key));
+      tile.data(), tile.size(), metadata_uri, encryption_key));
 
   return Status::Ok();
 }
@@ -2433,17 +2441,20 @@ StorageManager::load_consolidated_fragment_meta(
 
   uint32_t fragment_num;
   buffer.reset_offset();
-  buffer.read(&fragment_num, sizeof(uint32_t));
+  RETURN_NOT_OK_TUPLE(
+      buffer.read(&fragment_num, sizeof(uint32_t)), nullopt, nullopt);
 
   uint64_t name_size, offset;
   std::string name;
   std::vector<std::pair<std::string, uint64_t>> ret;
   ret.reserve(fragment_num);
   for (uint32_t f = 0; f < fragment_num; ++f) {
-    buffer.read(&name_size, sizeof(uint64_t));
+    RETURN_NOT_OK_TUPLE(
+        buffer.read(&name_size, sizeof(uint64_t)), nullopt, nullopt);
     name.resize(name_size);
-    buffer.read(&name[0], name_size);
-    buffer.read(&offset, sizeof(uint64_t));
+    RETURN_NOT_OK_TUPLE(buffer.read(&name[0], name_size), nullopt, nullopt);
+    RETURN_NOT_OK_TUPLE(
+        buffer.read(&offset, sizeof(uint64_t)), nullopt, nullopt);
     ret.emplace_back(name, offset);
   }
 

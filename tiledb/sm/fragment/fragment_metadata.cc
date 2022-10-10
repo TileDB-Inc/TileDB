@@ -1233,7 +1233,7 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   }
 
   if (!dense_) {
-    rtree_.set_leaf_num(num_tiles);
+    RETURN_NOT_OK(rtree_.set_leaf_num(num_tiles));
     sparse_tile_num_ = num_tiles;
   }
 
@@ -1304,8 +1304,9 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
   assert(version_ > 8);
   const auto iter = idx_map_.find(name);
   if (iter == idx_map_.end())
-    return {Status_FragmentMetadataError("Name " + name + " not in idx_map_"),
-            std::nullopt};
+    return {
+        Status_FragmentMetadataError("Name " + name + " not in idx_map_"),
+        std::nullopt};
 
   const unsigned idx = iter->second;
 
@@ -1371,9 +1372,10 @@ tuple<Status, optional<URI>> FragmentMetadata::validity_uri(
   if (!st.ok())
     return {st, std::nullopt};
 
-  return {st,
-          fragment_uri_.join_path(
-              *encoded_name + "_validity" + constants::file_suffix)};
+  return {
+      st,
+      fragment_uri_.join_path(
+          *encoded_name + "_validity" + constants::file_suffix)};
 }
 
 const std::string& FragmentMetadata::array_schema_name() {
@@ -1614,9 +1616,10 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::persisted_tile_size(
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_offsets_[idx]) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt};
+    return {
+        LOG_STATUS(Status_FragmentMetadataError(
+            "Trying to access metadata that's not loaded")),
+        nullopt};
   }
 
   auto tile_num = this->tile_num();
@@ -1636,9 +1639,10 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::persisted_tile_var_size(
   auto idx = it->second;
 
   if (!loaded_metadata_.tile_var_offsets_[idx]) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt};
+    return {
+        LOG_STATUS(Status_FragmentMetadataError(
+            "Trying to access metadata that's not loaded")),
+        nullopt};
   }
 
   auto tile_num = this->tile_num();
@@ -1658,9 +1662,10 @@ FragmentMetadata::persisted_tile_validity_size(
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_validity_offsets_[idx]) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt};
+    return {
+        LOG_STATUS(Status_FragmentMetadataError(
+            "Trying to access metadata that's not loaded")),
+        nullopt};
   }
 
   auto tile_num = this->tile_num();
@@ -1688,9 +1693,10 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::tile_var_size(
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_var_sizes_[idx]) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt};
+    return {
+        LOG_STATUS(Status_FragmentMetadataError(
+            "Trying to access metadata that's not loaded")),
+        nullopt};
   }
 
   auto tile_size = tile_var_sizes_[idx][tile_idx];
@@ -2817,7 +2823,7 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&mbr_num, sizeof(uint64_t)));
 
   // Set leaf level
-  rtree_.set_leaf_num(mbr_num);
+  RETURN_NOT_OK(rtree_.set_leaf_num(mbr_num));
   auto& domain{array_schema_->domain()};
   auto dim_num = domain.dim_num();
   for (uint64_t m = 0; m < mbr_num; ++m) {
@@ -2827,7 +2833,7 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
       mbr[d].set_range(buff->cur_data(), r_size);
       buff->advance_offset(r_size);
     }
-    rtree_.set_leaf(m, mbr);
+    RETURN_NOT_OK(rtree_.set_leaf(m, mbr));
   }
 
   // Build R-tree bottom-up
@@ -3047,7 +3053,7 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
     // Get number of tile offsets
     st = buff->read(&tile_var_offsets_num, sizeof(uint64_t));
     if (!st.ok()) {
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       return LOG_STATUS(Status_FragmentMetadataError(
           "Cannot load fragment metadata; Reading number of variable tile "
           "offsets failed"));
@@ -3070,7 +3076,7 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
     tile_var_offsets_[i].resize(tile_var_offsets_num);
     st = buff->read(&tile_var_offsets_[i][0], size);
     if (!st.ok()) {
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       return LOG_STATUS(Status_FragmentMetadataError(
           "Cannot load fragment metadata; Reading variable tile offsets "
           "failed"));
@@ -4963,8 +4969,8 @@ void FragmentMetadata::clean_up() {
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
 
-  storage_manager_->close_file(fragment_metadata_uri);
-  storage_manager_->vfs()->remove_file(fragment_metadata_uri);
+  throw_if_not_ok(storage_manager_->close_file(fragment_metadata_uri));
+  throw_if_not_ok(storage_manager_->vfs()->remove_file(fragment_metadata_uri));
 }
 
 const shared_ptr<const ArraySchema>& FragmentMetadata::array_schema() const {

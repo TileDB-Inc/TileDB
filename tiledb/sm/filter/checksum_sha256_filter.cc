@@ -70,7 +70,7 @@ Status ChecksumSHA256Filter::run_forward(
   // Set output buffer to input buffer
   RETURN_NOT_OK(output->append_view(input));
   // Add original input metadata as a view to the output metadata
-  output_metadata->append_view(input_metadata);
+  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
 
   // Compute and write the metadata
   std::vector<ConstBuffer> data_parts = input->buffers(),
@@ -132,7 +132,7 @@ Status ChecksumSHA256Filter::run_reverse(
     // Only fetch and store checksum if we are not going to skip it
     if (!skip_validation) {
       Buffer buff;
-      buff.realloc(Crypto::SHA256_DIGEST_BYTES);
+      RETURN_NOT_OK(buff.realloc(Crypto::SHA256_DIGEST_BYTES));
       RETURN_NOT_OK(
           input_metadata->read(buff.data(), Crypto::SHA256_DIGEST_BYTES));
       metadata_checksums[i] = std::make_pair(metadata_checksummed_bytes, buff);
@@ -149,7 +149,7 @@ Status ChecksumSHA256Filter::run_reverse(
     // Only fetch and store checksum if we are not going to skip it
     if (!skip_validation) {
       Buffer buff;
-      buff.realloc(Crypto::SHA256_DIGEST_BYTES);
+      RETURN_NOT_OK(buff.realloc(Crypto::SHA256_DIGEST_BYTES));
       RETURN_NOT_OK(
           input_metadata->read(buff.data(), Crypto::SHA256_DIGEST_BYTES));
       data_checksums[i] = std::make_pair(data_checksummed_bytes, buff);
@@ -199,7 +199,7 @@ Status ChecksumSHA256Filter::checksum_part(
   // Allocate an initial output buffer.
   tdb_unique_ptr<Buffer> computed_hash =
       tdb_unique_ptr<Buffer>(tdb_new(Buffer));
-  computed_hash->realloc(Crypto::SHA256_DIGEST_BYTES);
+  RETURN_NOT_OK(computed_hash->realloc(Crypto::SHA256_DIGEST_BYTES));
   RETURN_NOT_OK(Crypto::sha256(part, computed_hash.get()));
 
   // Write metadata.
@@ -224,7 +224,7 @@ Status ChecksumSHA256Filter::compare_checksum_part(
   if (!part->get_const_buffer(bytes_to_compare, buffer_to_compare.get()).ok()) {
     // If the bytes we need to compare span multiple buffers we will have to
     // copy them out
-    byte_buffer_to_compare->realloc(bytes_to_compare);
+    RETURN_NOT_OK(byte_buffer_to_compare->realloc(bytes_to_compare));
     RETURN_NOT_OK(part->read(byte_buffer_to_compare->data(), bytes_to_compare));
     // Set the buffer back
     buffer_to_compare = tdb_unique_ptr<ConstBuffer>(
@@ -238,7 +238,7 @@ Status ChecksumSHA256Filter::compare_checksum_part(
   // Buffer to store the newly computed hash value for comparison
   tdb_unique_ptr<Buffer> computed_hash =
       tdb_unique_ptr<Buffer>(tdb_new(Buffer));
-  computed_hash->realloc(Crypto::SHA256_DIGEST_BYTES);
+  RETURN_NOT_OK(computed_hash->realloc(Crypto::SHA256_DIGEST_BYTES));
 
   RETURN_NOT_OK(Crypto::sha256(
       buffer_to_compare->data(), bytes_to_compare, computed_hash.get()));

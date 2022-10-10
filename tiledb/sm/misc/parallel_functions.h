@@ -150,12 +150,11 @@ void parallel_sort(
     }
 
     // Wait for the sorted partitions.
-    tp->wait_all(tasks);
-    return Status::Ok();
+    return tp->wait_all(tasks);
   };
 
   // Start the quicksort from the entire range.
-  quick_sort(0, begin, end);
+  throw_if_not_ok(quick_sort(0, begin, end));
 }
 
 /**
@@ -271,7 +270,7 @@ Status parallel_for(
   }
 
   // Wait for all instances of `execute_subrange` to complete.
-  tp->wait_all(tasks);
+  throw_if_not_ok(tp->wait_all(tasks));
 
   if (failed_exception.has_value()) {
     std::rethrow_exception(failed_exception.value());
@@ -394,8 +393,9 @@ Status parallel_for_2d(
   }
 
   // Wait for all instances of `execute_subrange` to complete.
-  tp->wait_all(tasks);
-
+  auto wait_status = tp->wait_all(tasks);
+  if (!wait_status.ok())
+    return wait_status;
   return return_st;
 }
 

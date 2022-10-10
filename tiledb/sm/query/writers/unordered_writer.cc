@@ -236,13 +236,13 @@ Status UnorderedWriter::check_coord_dups(
         return Status::Ok();
       });
 
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   return Status::Ok();
 }
 
 void UnorderedWriter::clean_up(const URI& uri) {
-  storage_manager_->vfs()->remove_dir(uri);
+  throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
 }
 
 Status UnorderedWriter::compute_coord_dups(
@@ -655,7 +655,7 @@ Status UnorderedWriter::unordered_write() {
   // Set the number of tiles in the metadata
   auto it = tiles.begin();
   auto tile_num = it->second.size();
-  frag_meta->set_num_tiles(tile_num);
+  RETURN_NOT_OK(frag_meta->set_num_tiles(tile_num));
 
   stats_->add_counter("tile_num", tile_num);
   stats_->add_counter("cell_num", cell_pos.size());

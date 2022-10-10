@@ -796,7 +796,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_offsets_tiles(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   return Status::Ok();
 }
@@ -891,7 +891,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_var_data_tiles(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   return Status::Ok();
 }
@@ -1298,7 +1298,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   return Status::Ok();
 }
@@ -1449,12 +1449,14 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), nullopt);
+  RETURN_NOT_OK_ELSE_TUPLE(
+      status, logger_->status_no_return_value(status), nullopt);
 
   if (max_rt_idx == 0)
-    return {Status_SparseUnorderedWithDupsReaderError(
-                "Unable to copy one tile with current budget/buffers"),
-            nullopt};
+    return {
+        Status_SparseUnorderedWithDupsReaderError(
+            "Unable to copy one tile with current budget/buffers"),
+        nullopt};
 
   // Resize the result tiles vector.
   buffers_full_ &= max_rt_idx == result_tiles.size();

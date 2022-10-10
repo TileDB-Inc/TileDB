@@ -255,8 +255,8 @@ Status GlobalOrderWriter::check_global_order() const {
   auto& domain{array_schema_.domain()};
   DomainBuffersView domain_buffs{array_schema_, buffers_};
   if (global_write_state_->cells_written_.begin()->second > 0) {
-    DomainBuffersView last_cell_buffs{array_schema_,
-                                      *global_write_state_->last_cell_coords_};
+    DomainBuffersView last_cell_buffs{
+        array_schema_, *global_write_state_->last_cell_coords_};
     auto left{last_cell_buffs.domain_ref_at(domain, 0)};
     auto right{domain_buffs.domain_ref_at(domain, 0)};
 
@@ -350,7 +350,7 @@ Status GlobalOrderWriter::check_global_order_hilbert() const {
 }
 
 void GlobalOrderWriter::clean_up(const URI& uri) {
-  storage_manager_->vfs()->remove_dir(uri);
+  throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
   global_write_state_.reset(nullptr);
 }
 
@@ -473,7 +473,7 @@ Status GlobalOrderWriter::finalize_global_write_state() {
   // Handle last tile
   Status st = global_write_handle_last_tile();
   if (!st.ok()) {
-    close_files(meta);
+    RETURN_NOT_OK(close_files(meta));
     clean_up(uri);
     return st;
   }
@@ -600,7 +600,7 @@ Status GlobalOrderWriter::global_write() {
 
   // Set new number of tiles in the fragment metadata
   auto new_num_tiles = frag_meta->tile_index_base() + tile_num;
-  frag_meta->set_num_tiles(new_num_tiles);
+  RETURN_NOT_OK(frag_meta->set_num_tiles(new_num_tiles));
 
   // Compute coordinate metadata (if coordinates are present)
   RETURN_CANCEL_OR_ERROR_ELSE(
@@ -636,7 +636,7 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
 
   // Reserve space for the last tile in the fragment metadata
   auto meta = global_write_state_->frag_meta_;
-  meta->set_num_tiles(meta->tile_index_base() + 1);
+  RETURN_NOT_OK(meta->set_num_tiles(meta->tile_index_base() + 1));
   const auto& uri = global_write_state_->frag_meta_->fragment_uri();
 
   // Filter last tiles
@@ -708,8 +708,8 @@ Status GlobalOrderWriter::init_global_write_state() {
 
 void GlobalOrderWriter::nuke_global_write_state() {
   auto meta = global_write_state_->frag_meta_;
-  close_files(meta);
-  storage_manager_->vfs()->remove_dir(meta->fragment_uri());
+  throw_if_not_ok(close_files(meta));
+  throw_if_not_ok(storage_manager_->vfs()->remove_dir(meta->fragment_uri()));
   global_write_state_.reset(nullptr);
 }
 

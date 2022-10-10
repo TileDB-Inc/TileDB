@@ -53,7 +53,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
   bool exists = false;
   REQUIRE(vfs->is_file(testfile, &exists).ok());
   if (exists) {
-    vfs->remove_file(testfile);
+    REQUIRE(vfs->remove_file(testfile).ok());
   }
 
   // Write some data.
@@ -116,8 +116,8 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
   SECTION("- Reduce min batch size and min batch gap") {
     // Set a smaller min batch size and min batch gap
     Config config;
-    config.set("vfs.min_batch_size", "0");
-    config.set("vfs.min_batch_gap", "0");
+    CHECK(config.set("vfs.min_batch_size", "0").ok());
+    CHECK(config.set("vfs.min_batch_gap", "0").ok());
     VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
 
     // Check large batches are not split up.
@@ -164,7 +164,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
   SECTION("- Reduce min batch size but not min batch gap") {
     // Set a smaller min batch size
     Config config;
-    config.set("vfs.min_batch_size", "0");
+    CHECK(config.set("vfs.min_batch_size", "0").ok());
     VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
 
     // There should be a single read due to the gap
@@ -185,7 +185,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
   SECTION("- Reduce min batch gap but not min batch size") {
     // Set a smaller min batch size
     Config config;
-    config.set("vfs.min_batch_gap", "0");
+    CHECK(config.set("vfs.min_batch_gap", "0").ok());
     VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
 
     // There should be a single read due to the batch size
@@ -472,9 +472,9 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
 
   // Clean up
   bool is_dir;
-  vfs.is_dir(URI(path), &is_dir);
+  REQUIRE(vfs.is_dir(URI(path), &is_dir).ok());
   if (is_dir)
-    vfs.remove_dir(URI(path));
+    REQUIRE(vfs.remove_dir(URI(path)).ok());
 
   std::string dir = path + "ls_dir";
   std::string file = dir + "/file";
@@ -482,11 +482,11 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   std::string subdir_file = subdir + "/file";
 
   // Create directories and files
-  vfs.create_dir(URI(path));
-  vfs.create_dir(URI(dir));
-  vfs.create_dir(URI(subdir));
-  vfs.touch(URI(file));
-  vfs.touch(URI(subdir_file));
+  REQUIRE(vfs.create_dir(URI(path)).ok());
+  REQUIRE(vfs.create_dir(URI(dir)).ok());
+  REQUIRE(vfs.create_dir(URI(subdir)).ok());
+  REQUIRE(vfs.touch(URI(file)).ok());
+  REQUIRE(vfs.touch(URI(subdir_file)).ok());
 
   // Write to file
   std::string s1 = "abcdef";
@@ -520,5 +520,5 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   REQUIRE(children[1].file_size() == 0);
 
   // Clean up
-  vfs.remove_dir(URI(path));
+  REQUIRE(vfs.remove_dir(URI(path)).ok());
 }

@@ -975,7 +975,7 @@ bool ArrayDirectory::consolidation_with_timestamps_supported(
   // Get the fragment version from the uri
   uint32_t version;
   auto name = uri.remove_trailing_slash().last_path_part();
-  utils::parse::get_fragment_version(name, &version);
+  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
 
   // get_fragment_version returns UINT32_MAX for versions <= 2 so we should
   // explicitly exclude this case when checking if consolidation with timestamps

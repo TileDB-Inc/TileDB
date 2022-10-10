@@ -824,7 +824,7 @@ void Config::inherit(const Config& config) {
   for (const auto& p : set_params) {
     auto v = config.get(p, &found);
     assert(found);
-    set(p, v);
+    throw_if_not_ok(set(p, v));
   }
 }
 

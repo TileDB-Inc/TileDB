@@ -95,7 +95,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
       constants::cell_validity_compression_level));
 
   // Generate URI and name for ArraySchema
-  generate_uri();
+  throw_if_not_ok(generate_uri());
 }
 
 ArraySchema::ArraySchema(
@@ -184,11 +184,11 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema) {
   tile_order_ = array_schema.tile_order_;
   version_ = array_schema.version_;
 
-  set_domain(array_schema.domain_);
+  throw_if_not_ok(set_domain(array_schema.domain_));
 
   attribute_map_.clear();
   for (auto attr : array_schema.attributes_)
-    add_attribute(attr, false);
+    throw_if_not_ok(add_attribute(attr, false));
 
   // Create dimension label map
   for (const auto& label : array_schema.dimension_labels_) {
@@ -747,9 +747,10 @@ Status ArraySchema::add_dimension_label(
         "Cannot add dimension label; The dimension label schema is not "
         "compatible with the dimension it is being added to."));
   // Create relative URI in dimension label directory
-  URI uri{constants::array_dimension_labels_dir_name + "/l" +
-              std::to_string(nlabel_internal_),
-          false};
+  URI uri{
+      constants::array_dimension_labels_dir_name + "/l" +
+          std::to_string(nlabel_internal_),
+      false};
   // Add dimension label
   auto dim_label = make_shared<DimensionLabelReference>(
       HERE(),

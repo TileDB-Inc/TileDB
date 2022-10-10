@@ -241,12 +241,13 @@ void SubarrayPartitionerSparseFx::write_default_1d_array() {
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
   std::vector<int> a = {1, 2, 3, 4, 5, 6};
   uint64_t a_size = a.size() * sizeof(int);
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(int),
-                                 3 * sizeof(int),
-                                 6 * sizeof(int),
-                                 9 * sizeof(int),
-                                 11 * sizeof(int)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+      9 * sizeof(int),
+      11 * sizeof(int)};
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6};
   uint64_t b_val_size = b_val.size() * sizeof(int);
@@ -264,16 +265,17 @@ void SubarrayPartitionerSparseFx::write_default_1d_array_2() {
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   uint64_t a_size = a.size() * sizeof(int);
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(int),
-                                 3 * sizeof(int),
-                                 6 * sizeof(int),
-                                 9 * sizeof(int),
-                                 11 * sizeof(int),
-                                 15 * sizeof(int),
-                                 16 * sizeof(int),
-                                 17 * sizeof(int),
-                                 18 * sizeof(int)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+      9 * sizeof(int),
+      11 * sizeof(int),
+      15 * sizeof(int),
+      16 * sizeof(int),
+      17 * sizeof(int),
+      18 * sizeof(int)};
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<int> b_val = {
       1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6, 7, 8, 9, 10};
@@ -292,12 +294,13 @@ void SubarrayPartitionerSparseFx::write_default_1d_float_array() {
   uint64_t coords_size = coords.size() * sizeof(float);
   std::vector<int> a = {1, 2, 3, 4, 5, 6};
   uint64_t a_size = a.size() * sizeof(int);
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(int),
-                                 3 * sizeof(int),
-                                 6 * sizeof(int),
-                                 9 * sizeof(int),
-                                 11 * sizeof(int)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+      9 * sizeof(int),
+      11 * sizeof(int)};
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6};
   uint64_t b_val_size = b_val.size() * sizeof(int);
@@ -315,12 +318,13 @@ void SubarrayPartitionerSparseFx::write_default_2d_array() {
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
   std::vector<int> a = {1, 2, 3, 4, 5, 6};
   uint64_t a_size = a.size() * sizeof(int);
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(int),
-                                 3 * sizeof(int),
-                                 6 * sizeof(int),
-                                 9 * sizeof(int),
-                                 11 * sizeof(int)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+      9 * sizeof(int),
+      11 * sizeof(int)};
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6};
   uint64_t b_val_size = b_val.size() * sizeof(int);
@@ -930,8 +934,8 @@ TEST_CASE_METHOD(
     "[SubarrayPartitioner][sparse][1D][MR][split_once]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{5, 10, 25, 27, 33, 50}};
-  std::vector<SubarrayRanges<uint64_t>> partitions = {{{5, 10, 25, 27}},
-                                                      {{33, 50}}};
+  std::vector<SubarrayRanges<uint64_t>> partitions = {
+      {{5, 10, 25, 27}}, {{33, 50}}};
   uint64_t budget = 4 * sizeof(int);
   std::string attr = "a";
   bool unsplittable = false;
@@ -2285,7 +2289,7 @@ TEST_CASE_METHOD(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
   Range r;
   r.set_str_range("bb", "bb");
-  subarray.add_range(0, std::move(r), true);
+  CHECK(subarray.add_range(0, std::move(r), true).ok());
   ThreadPool tp(4);
   Config config;
   SubarrayPartitioner partitioner(
@@ -2313,7 +2317,7 @@ TEST_CASE_METHOD(
   auto partition = partitioner.current();
   CHECK(partition.range_num() == 1);
   const Range* range = nullptr;
-  partition.get_range(0, 0, &range);
+  CHECK(partition.get_range(0, 0, &range).ok());
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("bb", 2));
   CHECK(range->end_str() == std::string("bb", 2));
@@ -2322,7 +2326,7 @@ TEST_CASE_METHOD(
   tiledb::sm::Subarray subarray_full(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
   r.set_str_range("a", "bb");
-  subarray_full.add_range(0, std::move(r), true);
+  CHECK(subarray_full.add_range(0, std::move(r), true).ok());
   SubarrayPartitioner partitioner_full(
       &config,
       subarray_full,
@@ -2341,7 +2345,7 @@ TEST_CASE_METHOD(
   CHECK(!unsplittable);
   partition = partitioner_full.current();
   CHECK(partition.range_num() == 1);
-  partition.get_range(0, 0, &range);
+  CHECK(partition.get_range(0, 0, &range).ok());
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("a", 1));
   CHECK(range->end_str() == std::string("bb", 2));
@@ -2350,7 +2354,7 @@ TEST_CASE_METHOD(
   tiledb::sm::Subarray subarray_split(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
   r.set_str_range("a", "bb");
-  subarray_split.add_range(0, std::move(r), true);
+  CHECK(subarray_split.add_range(0, std::move(r), true).ok());
   SubarrayPartitioner partitioner_split(
       &config,
       subarray_split,
@@ -2370,7 +2374,7 @@ TEST_CASE_METHOD(
   CHECK(!unsplittable);
   partition = partitioner_split.current();
   CHECK(partition.range_num() == 1);
-  partition.get_range(0, 0, &range);
+  CHECK(partition.get_range(0, 0, &range).ok());
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("a", 1));
   CHECK(range->end_str() == std::string("a\x7F", 2));
@@ -2378,7 +2382,7 @@ TEST_CASE_METHOD(
   CHECK(!unsplittable);
   partition = partitioner_split.current();
   CHECK(partition.range_num() == 1);
-  partition.get_range(0, 0, &range);
+  CHECK(partition.get_range(0, 0, &range).ok());
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("b", 1));
   CHECK(range->end_str() == std::string("bb", 2));
@@ -2388,7 +2392,7 @@ TEST_CASE_METHOD(
   tiledb::sm::Subarray subarray_no_split(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
   r.set_str_range("bb", "cc");
-  subarray_no_split.add_range(0, std::move(r), true);
+  CHECK(subarray_no_split.add_range(0, std::move(r), true).ok());
   SubarrayPartitioner partitioner_no_split(
       &config,
       subarray_no_split,
@@ -2409,7 +2413,7 @@ TEST_CASE_METHOD(
   CHECK(!unsplittable);
   partition = partitioner_no_split.current();
   CHECK(partition.range_num() == 1);
-  partition.get_range(0, 0, &range);
+  CHECK(partition.get_range(0, 0, &range).ok());
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("bb", 2));
   CHECK(range->end_str() == std::string("cc", 2));
@@ -2418,7 +2422,7 @@ TEST_CASE_METHOD(
   tiledb::sm::Subarray subarray_split_2(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
   r.set_str_range("bb", "cc");
-  subarray_split_2.add_range(0, std::move(r), true);
+  CHECK(subarray_split_2.add_range(0, std::move(r), true).ok());
   SubarrayPartitioner partitioner_split_2(
       &config,
       subarray_split_2,
@@ -2439,7 +2443,7 @@ TEST_CASE_METHOD(
   CHECK(!unsplittable);
   partition = partitioner_split_2.current();
   CHECK(partition.range_num() == 1);
-  partition.get_range(0, 0, &range);
+  CHECK(partition.get_range(0, 0, &range).ok());
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("bb", 2));
   CHECK(range->end_str() == std::string("b\x7F", 2));
@@ -2447,7 +2451,7 @@ TEST_CASE_METHOD(
   CHECK(!unsplittable);
   partition = partitioner_split_2.current();
   CHECK(partition.range_num() == 1);
-  partition.get_range(0, 0, &range);
+  CHECK(partition.get_range(0, 0, &range).ok());
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("c", 1));
   CHECK(range->end_str() == std::string("cc", 2));
@@ -2558,7 +2562,7 @@ TEST_CASE_METHOD(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
   Range r;
   r.set_str_range("cc", "ccd");
-  subarray.add_range(0, std::move(r), true);
+  CHECK(subarray.add_range(0, std::move(r), true).ok());
   ThreadPool tp(4);
   Config config;
   SubarrayPartitioner partitioner(
