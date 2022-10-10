@@ -39,6 +39,7 @@
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/filter/filter_storage.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
@@ -379,7 +380,7 @@ Status BitSortFilter::unsort_part(
 
 Status BitSortFilter::run_reverse_dim_tiles(BitSortFilterMetadataType &bitsort_metadata, std::vector<uint64_t> &cell_pos) const {
   std::vector<Tile*> &dim_tiles = bitsort_metadata.first.get();
-  auto cmp_fn = bitsort_metadata.second;
+  auto cmp_fn = bitsort_metadata.second.get();
 
   for (uint64_t i = 0; i < dim_tiles[0]->cell_num(); ++i) {
     cell_pos.push_back(i);

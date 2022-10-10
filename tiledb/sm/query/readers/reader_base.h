@@ -44,6 +44,7 @@
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_space_tile.h"
+#include "tiledb/sm/query/writers/domain_buffer.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 #include <queue>
@@ -833,8 +834,10 @@ class ReaderBase : public StrategyBase {
       const bool nullable) const;
 
  private:
-  BitSortFilterMetadataType construct_bitsort_filter_argument(
-      ResultTile* const tile) const;
+  GlobalCmpQB construct_bitsort_filter_argument(
+    ResultTile* const tile, 
+    std::vector<Tile*> &dim_tiles, 
+    std::vector<QueryBuffer> &qb_vector) const;
 };
 
 }  // namespace sm
