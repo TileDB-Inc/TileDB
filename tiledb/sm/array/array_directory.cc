@@ -245,10 +245,12 @@ Status ArrayDirectory::load() {
           fragment_meta_uris_v12_or_higher.end(),
           std::back_inserter(fragment_meta_uris_));
 
-      // Sort the delete commits by timestamp. Delete tiles locations come from
-      // both the consolidated file and the directory listing, and they might
-      // have interleaved times, so we need to sort.
-      std::sort(delete_tiles_location_.begin(), delete_tiles_location_.end());
+      // Sort the delete/update commits by timestamp. Delete and update tiles
+      // locations come from both the consolidated file and the directory
+      // listing, and they might have interleaved times, so we need to sort.
+      std::sort(
+          delete_and_update_tiles_location_.begin(),
+          delete_and_update_tiles_location_.end());
     }
   }
 
@@ -303,9 +305,9 @@ const std::vector<URI>& ArrayDirectory::fragment_meta_uris() const {
   return fragment_meta_uris_;
 }
 
-const std::vector<ArrayDirectory::DeleteTileLocation>&
-ArrayDirectory::delete_tiles_location() const {
-  return delete_tiles_location_;
+const std::vector<ArrayDirectory::DeleteAndUpdateTileLocation>&
+ArrayDirectory::delete_and_update_tiles_location() const {
+  return delete_and_update_tiles_location_;
 }
 
 URI ArrayDirectory::get_fragments_dir(uint32_t write_version) const {
@@ -452,22 +454,24 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
       }
     } else if (is_vacuum_file(commits_dir_uris[i])) {
       fragment_uris.emplace_back(commits_dir_uris[i]);
-    } else if (stdx::string::ends_with(
-                   commits_dir_uris[i].to_string(),
-                   constants::delete_file_suffix)) {
-      // Get the start and end timestamp for this delete
-      std::pair<uint64_t, uint64_t> delete_timestamp_range;
+    } else if (
+        stdx::string::ends_with(
+            commits_dir_uris[i].to_string(), constants::delete_file_suffix) ||
+        stdx::string::ends_with(
+            commits_dir_uris[i].to_string(), constants::update_file_suffix)) {
+      // Get the start and end timestamp for this delete/update
+      std::pair<uint64_t, uint64_t> timestamp_range;
       RETURN_NOT_OK_TUPLE(
           utils::parse::get_timestamp_range(
-              commits_dir_uris[i], &delete_timestamp_range),
+              commits_dir_uris[i], &timestamp_range),
           nullopt);
 
       // Add the delete tile location if it overlaps the open start/end times
-      if (timestamps_overlap(delete_timestamp_range, false)) {
+      if (timestamps_overlap(timestamp_range, false)) {
         if (consolidated_commit_uris_set_.count(commits_dir_uris[i].c_str()) ==
             0) {
           const auto base_uri_size = uri_.to_string().size();
-          delete_tiles_location_.emplace_back(
+          delete_and_update_tiles_location_.emplace_back(
               commits_dir_uris[i],
               commits_dir_uris[i].to_string().substr(base_uri_size),
               0);
@@ -556,7 +560,8 @@ ArrayDirectory::load_consolidated_commit_uris(
           // Add the delete tile location if it overlaps the open start/end
           // times
           if (timestamps_overlap(delete_timestamp_range, false)) {
-            delete_tiles_location_.emplace_back(uri, condition_marker, pos);
+            delete_and_update_tiles_location_.emplace_back(
+                uri, condition_marker, pos);
           }
           pos += size;
           ss.seekg(pos);

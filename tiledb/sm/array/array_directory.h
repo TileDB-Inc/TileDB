@@ -153,9 +153,10 @@ class ArrayDirectory {
 
  public:
   /**
-   * Class to return a location of a delete tile, which is file URI/offset.
+   * Class to return a location of a delete or update tile, which is file
+   * URI/offset.
    */
-  class DeleteTileLocation {
+  class DeleteAndUpdateTileLocation {
    public:
     /* ********************************* */
     /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -164,7 +165,7 @@ class ArrayDirectory {
     /**
      * Constructor.
      */
-    DeleteTileLocation(
+    DeleteAndUpdateTileLocation(
         const URI& uri,
         const std::string condition_marker,
         const storage_size_t offset)
@@ -181,9 +182,9 @@ class ArrayDirectory {
     }
 
     /** Destructor. */
-    ~DeleteTileLocation() = default;
+    ~DeleteAndUpdateTileLocation() = default;
 
-    bool operator<(const DeleteTileLocation& rhs) const {
+    bool operator<(const DeleteAndUpdateTileLocation& rhs) const {
       return (timestamp_ < rhs.timestamp_);
     }
 
@@ -299,7 +300,8 @@ class ArrayDirectory {
   const std::vector<URI>& fragment_meta_uris() const;
 
   /** Returns the location of delete tiles. */
-  const std::vector<DeleteTileLocation>& delete_tiles_location() const;
+  const std::vector<DeleteAndUpdateTileLocation>&
+  delete_and_update_tiles_location() const;
 
   /** Returns the URI to store fragments. */
   URI get_fragments_dir(uint32_t write_version) const;
@@ -381,8 +383,8 @@ class ArrayDirectory {
   /** The URIs of the consolidated fragment metadata files. */
   std::vector<URI> fragment_meta_uris_;
 
-  /** The location of delete tiles. */
-  std::vector<DeleteTileLocation> delete_tiles_location_;
+  /** The location of delete and update tiles. */
+  std::vector<DeleteAndUpdateTileLocation> delete_and_update_tiles_location_;
 
   /**
    * Only array fragments, metadata, etc. that

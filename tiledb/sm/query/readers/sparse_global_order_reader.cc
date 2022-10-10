@@ -176,7 +176,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   RETURN_NOT_OK(load_initial_data(true));
   purge_deletes_consolidation_ = !deletes_consolidation_no_purge_ &&
                                  consolidation_with_timestamps_ &&
-                                 !delete_conditions_.empty();
+                                 !delete_and_update_conditions_.empty();
   purge_deletes_no_dups_mode_ =
       !array_schema_.allows_dups() && purge_deletes_consolidation_;
 
@@ -1519,7 +1519,7 @@ Status SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
 
   // Make a map to quickly find the condition index from a marker.
   std::unordered_map<std::string, uint64_t> condition_marker_to_index_map;
-  for (auto& condition : delete_conditions_) {
+  for (auto& condition : delete_and_update_conditions_) {
     condition_marker_to_index_map.emplace(
         condition.condition_marker(), condition.condition_index());
   }
