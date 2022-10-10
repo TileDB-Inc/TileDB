@@ -381,7 +381,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       const std::vector<uint64_t>& cell_offsets,
       QueryBuffer& query_buffer,
-      std::vector<void*>& var_data);
+      std::vector<const void*>& var_data);
 
   /**
    * Copy var data tiles.
@@ -404,7 +404,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       const std::vector<uint64_t>& cell_offsets,
       QueryBuffer& query_buffer,
-      const std::vector<void*>& var_data);
+      std::vector<const void*>& var_data);
 
   /**
    * Copy fixed size data tiles.

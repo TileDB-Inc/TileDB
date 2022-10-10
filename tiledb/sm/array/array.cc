@@ -225,34 +225,6 @@ Status Array::load_fragments(
   return Status::Ok();
 }
 
-Status Array::delete_fragments(
-    const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
-  // Check that query type is MODIFY_EXCLUSIVE
-  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(Status_ArrayError(
-        "[Array::delete_fragments] Query type must be MODIFY_EXCLUSIVE"));
-  }
-
-  // Check that array is open
-  if (!is_open() && !controller().is_open(uri)) {
-    return LOG_STATUS(
-        Status_ArrayError("[Array::delete_fragments] Array is closed"));
-  }
-
-  // Check that array is not in the process of opening or closing
-  if (is_opening_or_closing_) {
-    return LOG_STATUS(Status_ArrayError(
-        "[Array::delete_fragments] "
-        "May not perform simultaneous open or close operations."));
-  }
-
-  // Vacuum fragments for deletes
-  RETURN_NOT_OK(storage_manager_->fragments_vacuum(
-      uri.c_str(), timestamp_start, timestamp_end, true));
-
-  return Status::Ok();
-}
-
 Status Array::open(
     QueryType query_type,
     EncryptionType encryption_type,
@@ -292,6 +264,24 @@ Status Array::open(
    * opening process, it will throw and the array will be set as closed. */
   try {
     set_array_open(query_type);
+
+    if (query_type == QueryType::UPDATE) {
+      bool found = false;
+      bool allow_updates = false;
+      if (!config_
+               .get<bool>(
+                   "sm.allow_updates_experimental", &allow_updates, &found)
+               .ok()) {
+        throw Status_ArrayError("Cannot get setting");
+      }
+      assert(found);
+
+      if (!allow_updates) {
+        throw Status_ArrayError(
+            "Cannot open array; Update query type is only experimental, do "
+            "not use.");
+      }
+    }
 
     // Get encryption key from config
     std::string encryption_key_from_cfg;
@@ -345,24 +335,8 @@ Status Array::open(
       } else if (
           query_type == QueryType::WRITE ||
           query_type == QueryType::MODIFY_EXCLUSIVE ||
-          query_type == QueryType::DELETE) {
+          query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
         timestamp_end_opened_at_ = 0;
-      } else if (query_type == QueryType::UPDATE) {
-        bool found = false;
-        bool allow_updates = false;
-        if (!config_
-                 .get<bool>(
-                     "sm.allow_updates_experimental", &allow_updates, &found)
-                 .ok()) {
-          throw Status_ArrayError("Cannot get setting");
-        }
-        assert(found);
-
-        if (!allow_updates) {
-          throw Status_ArrayError(
-              "Cannot open array; Update query type is only experimental, do "
-              "not use.");
-        }
       } else {
         throw Status_ArrayError("Cannot open array; Unsupported query type.");
       }
@@ -548,6 +522,34 @@ Status Array::close() {
   }
 
   is_opening_or_closing_ = false;
+  return Status::Ok();
+}
+
+Status Array::delete_fragments(
+    const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
+  // Check that query type is MODIFY_EXCLUSIVE
+  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+    return LOG_STATUS(Status_ArrayError(
+        "[Array::delete_fragments] Query type must be MODIFY_EXCLUSIVE"));
+  }
+
+  // Check that array is open
+  if (!is_open() && !controller().is_open(uri)) {
+    return LOG_STATUS(
+        Status_ArrayError("[Array::delete_fragments] Array is closed"));
+  }
+
+  // Check that array is not in the process of opening or closing
+  if (is_opening_or_closing_) {
+    return LOG_STATUS(Status_ArrayError(
+        "[Array::delete_fragments] "
+        "May not perform simultaneous open or close operations."));
+  }
+
+  // Delete fragments
+  RETURN_NOT_OK(storage_manager_->delete_fragments(
+      uri.c_str(), timestamp_start, timestamp_end));
+
   return Status::Ok();
 }
 
@@ -1190,8 +1192,8 @@ Status Array::load_metadata() {
         array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
   } else {
     assert(array_dir_.loaded());
-    RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_dir_, *encryption_key_, &metadata_));
+    storage_manager_->load_array_metadata(
+        array_dir_, *encryption_key_, &metadata_);
   }
   metadata_loaded_ = true;
   return Status::Ok();

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -2393,6 +2393,22 @@ int32_t tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_submit_and_finalize(
+    tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  // Trivial case
+  if (query == nullptr)
+    return TILEDB_OK;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, query->query_->submit_and_finalize()))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 void tiledb_query_free(tiledb_query_t** query) {
   if (query != nullptr && *query != nullptr) {
     delete (*query)->query_;
@@ -4293,33 +4309,11 @@ int32_t tiledb_array_evolve(
               0)))
     return TILEDB_ERR;
 
-  // For easy reference
-  auto storage_manager = ctx->storage_manager();
-  auto vfs = storage_manager->vfs();
-  auto tp = storage_manager->compute_tp();
-
-  // Load URIs from the array directory
-  tiledb::sm::ArrayDirectory array_dir;
-  try {
-    array_dir = tiledb::sm::ArrayDirectory(
-        vfs,
-        tp,
-        uri,
-        0,
-        UINT64_MAX,
-        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-  } catch (const std::logic_error& le) {
-    auto st = Status_ArrayDirectoryError(le.what());
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
   // Evolve schema
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->storage_manager()->array_evolve_schema(
-              array_dir, array_schema_evolution->array_schema_evolution_, key)))
+              uri, array_schema_evolution->array_schema_evolution_, key)))
     return TILEDB_ERR;
 
   // Success
@@ -4341,36 +4335,15 @@ int32_t tiledb_array_upgrade_version(
     return TILEDB_ERR;
   }
 
-  // For easy reference
-  auto storage_manager = ctx->storage_manager();
-  auto vfs = storage_manager->vfs();
-  auto tp = storage_manager->compute_tp();
-
-  // Load URIs from the array directory
-  tiledb::sm::ArrayDirectory array_dir;
-  try {
-    array_dir = tiledb::sm::ArrayDirectory(
-        vfs,
-        tp,
-        uri,
-        0,
-        UINT64_MAX,
-        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-  } catch (const std::logic_error& le) {
-    auto st = Status_ArrayDirectoryError(le.what());
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
   // Upgrade version
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->storage_manager()->array_upgrade_version(
-              array_dir,
+              uri,
               (config == nullptr) ? ctx->storage_manager()->config() :
-                                    config->config())))
+                                    config->config()))) {
     return TILEDB_ERR;
+  }
 
   // Success
   return TILEDB_OK;
@@ -4535,7 +4508,14 @@ int32_t tiledb_vfs_alloc(
   }
 
   // Create VFS object
-  (*vfs)->vfs_ = new (std::nothrow) tiledb::sm::VFS();
+  auto stats = ctx->storage_manager()->stats();
+  auto compute_tp = ctx->storage_manager()->compute_tp();
+  auto io_tp = ctx->storage_manager()->io_tp();
+  auto ctx_config = ctx->storage_manager()->config();
+  if (config)
+    ctx_config.inherit(config->config());
+  (*vfs)->vfs_ =
+      new (std::nothrow) tiledb::sm::VFS(stats, compute_tp, io_tp, ctx_config);
   if ((*vfs)->vfs_ == nullptr) {
     auto st =
         Status_Error("Failed to allocate TileDB virtual filesystem object");
@@ -4546,31 +4526,11 @@ int32_t tiledb_vfs_alloc(
     return TILEDB_OOM;
   }
 
-  // Initialize VFS object
-  auto stats = ctx->storage_manager()->stats();
-  auto compute_tp = ctx->storage_manager()->compute_tp();
-  auto io_tp = ctx->storage_manager()->io_tp();
-  auto vfs_config = (config != nullptr) ? &config->config() : nullptr;
-  auto ctx_config = ctx->storage_manager()->config();
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          (*vfs)->vfs_->init(
-              stats, compute_tp, io_tp, &ctx_config, vfs_config))) {
-    delete (*vfs)->vfs_;
-    delete vfs;
-    return TILEDB_ERR;
-  }
-
   // Success
   return TILEDB_OK;
 }
 
 void tiledb_vfs_free(tiledb_vfs_t** vfs) {
-  const auto st = (*vfs)->vfs_->terminate();
-  if (!st.ok()) {
-    LOG_STATUS(st);
-  }
-
   if (vfs != nullptr && *vfs != nullptr) {
     delete (*vfs)->vfs_;
     delete *vfs;
@@ -7595,6 +7555,11 @@ int32_t tiledb_query_set_condition(
 int32_t tiledb_query_finalize(
     tiledb_ctx_t* ctx, tiledb_query_t* query) noexcept {
   return api_entry<tiledb::api::tiledb_query_finalize>(ctx, query);
+}
+
+int32_t tiledb_query_submit_and_finalize(
+    tiledb_ctx_t* ctx, tiledb_query_t* query) noexcept {
+  return api_entry<tiledb::api::tiledb_query_submit_and_finalize>(ctx, query);
 }
 
 void tiledb_query_free(tiledb_query_t** query) noexcept {

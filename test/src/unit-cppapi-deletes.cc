@@ -47,7 +47,6 @@
 using namespace tiledb;
 using namespace tiledb::test;
 
-/** Tests for C API deletes. */
 struct DeletesFx {
   // Constants.
   const char* SPARSE_ARRAY_NAME = "test_deletes_array";
@@ -352,7 +351,8 @@ void DeletesFx::check_delete_conditions(
   auto array_ptr = array->ptr()->array_;
 
   // Load delete conditions.
-  auto&& [st, delete_conditions] = sm_->load_delete_conditions(*array_ptr);
+  auto&& [st, delete_conditions, update_values] =
+      sm_->load_delete_and_update_conditions(*array_ptr);
   REQUIRE(st.ok());
   REQUIRE(delete_conditions->size() == qcs.size());
 

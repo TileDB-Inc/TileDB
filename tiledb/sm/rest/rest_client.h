@@ -201,6 +201,16 @@ class RestClient {
   Status finalize_query_to_rest(const URI& uri, Query* query);
 
   /**
+   * Submit and finalize a query to rest server. Used in global order
+   * writes to submit the last tile-unaligned chunk and finalize the query.
+   *
+   * @param uri of array being queried
+   * @param query to send to server and store results in
+   * @return Status Ok() on success Error() on failures
+   */
+  Status submit_and_finalize_query_to_rest(const URI& uri, Query* query);
+
+  /**
    * Get array's non_empty domain from rest server
    *
    * @param array Array model to fetch and set non empty domain on
