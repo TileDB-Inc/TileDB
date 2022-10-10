@@ -60,8 +60,8 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/deletes_and_updates/deletes.h"
 #include "tiledb/sm/query/writers/global_order_writer.h"
+#include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
@@ -1105,7 +1105,7 @@ Status dense_reader_from_capnp(
 Status delete_from_capnp(
     const capnp::Delete::Reader& delete_reader,
     Query* query,
-    Deletes* delete_strategy) {
+    DeletesAndUpdates* delete_strategy) {
   // Query condition
   if (delete_reader.hasCondition()) {
     auto condition_reader = delete_reader.getCondition();
@@ -1128,7 +1128,7 @@ Status delete_from_capnp(
 
 Status delete_to_capnp(
     const Query& query,
-    Deletes& delete_strategy,
+    DeletesAndUpdates& delete_strategy,
     capnp::Delete::Builder* delete_builder) {
   auto condition = query.condition();
   if (!condition.empty()) {
@@ -1354,7 +1354,8 @@ Status query_to_capnp(
     RETURN_NOT_OK(writer_to_capnp(query, *writer, &builder));
   } else {
     auto builder = query_builder->initDelete();
-    auto delete_strategy = dynamic_cast<Deletes*>(query.strategy(true));
+    auto delete_strategy =
+        dynamic_cast<DeletesAndUpdates*>(query.strategy(true));
     RETURN_NOT_OK(delete_to_capnp(query, *delete_strategy, &builder));
   }
 
@@ -1963,7 +1964,7 @@ Status query_from_capnp(
     }
   } else {
     auto delete_reader = query_reader.getDelete();
-    auto delete_strategy = dynamic_cast<Deletes*>(query->strategy());
+    auto delete_strategy = dynamic_cast<DeletesAndUpdates*>(query->strategy());
     RETURN_NOT_OK(delete_from_capnp(delete_reader, query, delete_strategy));
   }
 

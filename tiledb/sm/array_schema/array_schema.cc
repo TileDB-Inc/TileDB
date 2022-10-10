@@ -339,6 +339,12 @@ Status ArraySchema::check() const {
     }
   }
 
+  if (array_type_ == ArrayType::SPARSE && capacity_ == 0) {
+    throw LOG_STATUS(
+        Status_ArraySchemaError("Array schema check failed; Sparse arrays "
+                                "cannot have their capacity equal to zero."));
+  }
+
   RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
   RETURN_NOT_OK(check_string_compressor(coords_filters()));
   auto st = check_attribute_dimension_label_names();
@@ -947,6 +953,11 @@ void ArraySchema::set_name(const std::string& name) {
 }
 
 void ArraySchema::set_capacity(uint64_t capacity) {
+  if (array_type_ == ArrayType::SPARSE && capacity == 0) {
+    throw StatusException(Status_ArraySchemaError(
+        "Sparse arrays cannot have their capacity equal to zero."));
+  }
+
   capacity_ = capacity;
 }
 

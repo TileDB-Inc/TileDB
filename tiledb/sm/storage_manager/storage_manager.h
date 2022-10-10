@@ -81,6 +81,7 @@ class MemoryTracker;
 class Query;
 class QueryCondition;
 class RestClient;
+class UpdateValue;
 class VFS;
 
 enum class EncryptionType : uint8_t;
@@ -186,7 +187,7 @@ class StorageManager {
    * Loads the group metadata from persistent storage based on
    * the input URI manager.
    */
-  Status load_group_metadata(
+  void load_group_metadata(
       const tdb_shared_ptr<GroupDirectory>& group_dir,
       const EncryptionKey& encryption_key,
       Metadata* metadata);
@@ -799,19 +800,22 @@ class StorageManager {
    * Loads the array metadata from persistent storage based on
    * the input URI manager.
    */
-  Status load_array_metadata(
+  void load_array_metadata(
       const ArrayDirectory& array_dir,
       const EncryptionKey& encryption_key,
       Metadata* metadata);
 
   /**
-   * Loads the delete conditions from storage.
+   * Loads the delete and update conditions from storage.
    *
    * @param array The array.
-   * @return Status, vector of the delete conditions.
+   * @return Status, vector of the conditions, vector of the update values.
    */
-  tuple<Status, optional<std::vector<QueryCondition>>> load_delete_conditions(
-      const Array& array);
+  tuple<
+      Status,
+      optional<std::vector<QueryCondition>>,
+      optional<std::vector<std::vector<UpdateValue>>>>
+  load_delete_and_update_conditions(const Array& array);
 
   /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;

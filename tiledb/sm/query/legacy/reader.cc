@@ -45,6 +45,7 @@
 #include "tiledb/sm/query/legacy/read_cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/readers/result_tile.h"
+#include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/cell_slab.h"
@@ -279,14 +280,14 @@ Status Reader::load_initial_data() {
   }
 
   // Load delete conditions.
-  auto&& [st, delete_conditions] =
-      storage_manager_->load_delete_conditions(*array_);
+  auto&& [st, conditions, update_values] =
+      storage_manager_->load_delete_and_update_conditions(*array_);
   RETURN_CANCEL_OR_ERROR(st);
-  delete_conditions_ = std::move(*delete_conditions);
+  delete_and_update_conditions_ = std::move(*conditions);
 
   // Set timestamps variables
   user_requested_timestamps_ = buffers_.count(constants::timestamps) != 0 ||
-                               delete_conditions_.size() > 0;
+                               delete_and_update_conditions_.size() > 0;
   const bool partial_consol_fragment_overlap =
       partial_consolidated_fragment_overlap();
   use_timestamps_ = partial_consol_fragment_overlap ||
@@ -308,15 +309,15 @@ Status Reader::load_initial_data() {
   if (!condition_.empty()) {
     qc_loaded_attr_names_set_.merge(condition_.field_names());
   }
-  for (auto delete_condition : delete_conditions_) {
-    qc_loaded_attr_names_set_.merge(delete_condition.field_names());
+  for (auto delete_and_update_condition : delete_and_update_conditions_) {
+    qc_loaded_attr_names_set_.merge(delete_and_update_condition.field_names());
   }
 
   // Add delete timestamps condition.
   RETURN_NOT_OK(add_delete_timestamps_condition());
 
   // Load processed conditions from fragment metadata.
-  if (delete_conditions_.size() > 0) {
+  if (delete_and_update_conditions_.size() > 0) {
     load_processed_conditions();
   }
 
@@ -330,7 +331,7 @@ Status Reader::apply_query_condition(
     std::vector<ResultTile*>& result_tiles,
     Subarray& subarray,
     uint64_t stride) {
-  if ((condition_.empty() && delete_conditions_.empty()) ||
+  if ((condition_.empty() && delete_and_update_conditions_.empty()) ||
       result_cell_slabs.empty()) {
     return Status::Ok();
   }
@@ -360,10 +361,10 @@ Status Reader::apply_query_condition(
   }
 
   // Apply delete conditions.
-  if (!delete_conditions_.empty()) {
-    for (uint64_t i = 0; i < delete_conditions_.size(); i++) {
+  if (!delete_and_update_conditions_.empty()) {
+    for (uint64_t i = 0; i < delete_and_update_conditions_.size(); i++) {
       // For legacy, always run the timestamped condition.
-      RETURN_NOT_OK(timestamped_delete_conditions_[i].apply(
+      RETURN_NOT_OK(timestamped_delete_and_update_conditions_[i].apply(
           array_schema_, fragment_metadata_, result_cell_slabs, stride));
     }
   }

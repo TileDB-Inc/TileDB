@@ -43,6 +43,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/strategy_base.h"
+#include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 #include <numeric>
@@ -164,7 +165,8 @@ void SparseIndexReaderBase::init(bool skip_checks_serialization) {
 bool SparseIndexReaderBase::has_post_deduplication_conditions(
     FragmentMetadata& frag_meta) {
   return frag_meta.has_delete_meta() || !condition_.empty() ||
-         (!delete_conditions_.empty() && !deletes_consolidation_no_purge_);
+         (!delete_and_update_conditions_.empty() &&
+          !deletes_consolidation_no_purge_);
 }
 
 uint64_t SparseIndexReaderBase::cells_copied(
@@ -234,10 +236,10 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
   read_state_.done_adding_result_tiles_ = false;
 
   // Load delete conditions.
-  auto&& [st, delete_conditions] =
-      storage_manager_->load_delete_conditions(*array_);
+  auto&& [st, conditions, update_values] =
+      storage_manager_->load_delete_and_update_conditions(*array_);
   RETURN_CANCEL_OR_ERROR(st);
-  delete_conditions_ = std::move(*delete_conditions);
+  delete_and_update_conditions_ = std::move(*conditions);
   bool make_timestamped_conditions = need_timestamped_conditions();
 
   if (make_timestamped_conditions) {
@@ -245,7 +247,7 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
   }
 
   // Load processed conditions from fragment metadata.
-  if (delete_conditions_.size() > 0) {
+  if (delete_and_update_conditions_.size() > 0) {
     load_processed_conditions();
   }
 
@@ -257,8 +259,8 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
       }
     }
   }
-  for (auto delete_condition : delete_conditions_) {
-    for (auto& name : delete_condition.field_names()) {
+  for (auto delete_and_update_condition : delete_and_update_conditions_) {
+    for (auto& name : delete_and_update_condition.field_names()) {
       if (!array_schema_.is_dim(name) || !include_coords) {
         qc_loaded_attr_names_set_.insert(name);
       }
@@ -596,7 +598,8 @@ Status SparseIndexReaderBase::apply_query_condition(
     std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("apply_query_condition");
 
-  if (!condition_.empty() || !delete_conditions_.empty() || use_timestamps_) {
+  if (!condition_.empty() || !delete_and_update_conditions_.empty() ||
+      use_timestamps_) {
     // Process all tiles in parallel.
     auto status = parallel_for(
         storage_manager_->compute_tp(),
@@ -652,7 +655,7 @@ Status SparseIndexReaderBase::apply_query_condition(
           }
 
           // Apply delete conditions.
-          if (!delete_conditions_.empty()) {
+          if (!delete_and_update_conditions_.empty()) {
             // Allocate delete condition idx vector if required. This vector
             // is used to store which delete condition deleted a particular
             // cell.
@@ -660,12 +663,14 @@ Status SparseIndexReaderBase::apply_query_condition(
               rt->allocate_per_cell_delete_condition_vector();
             }
 
-            for (uint64_t i = 0; i < delete_conditions_.size(); i++) {
+            for (uint64_t i = 0; i < delete_and_update_conditions_.size();
+                 i++) {
               if (!frag_meta->has_delete_meta() ||
                   frag_meta->get_processed_conditions_set().count(
-                      delete_conditions_[i].condition_marker()) == 0) {
+                      delete_and_update_conditions_[i].condition_marker()) ==
+                      0) {
                 auto delete_timestamp =
-                    delete_conditions_[i].condition_timestamp();
+                    delete_and_update_conditions_[i].condition_timestamp();
 
                 // Check the delete condition timestamp is after the fragment
                 // start.
@@ -673,13 +678,13 @@ Status SparseIndexReaderBase::apply_query_condition(
                   // Apply timestamped condition or regular condition.
                   if (!frag_meta->has_timestamps() ||
                       delete_timestamp > frag_meta->timestamp_range().second) {
-                    RETURN_NOT_OK(
-                        delete_conditions_[i].apply_sparse<BitmapType>(
-                            *(frag_meta->array_schema().get()),
-                            *rt,
-                            rt->post_dedup_bitmap()));
+                    RETURN_NOT_OK(delete_and_update_conditions_[i]
+                                      .apply_sparse<BitmapType>(
+                                          *(frag_meta->array_schema().get()),
+                                          *rt,
+                                          rt->post_dedup_bitmap()));
                   } else {
-                    RETURN_NOT_OK(timestamped_delete_conditions_[i]
+                    RETURN_NOT_OK(timestamped_delete_and_update_conditions_[i]
                                       .apply_sparse<BitmapType>(
                                           *(frag_meta->array_schema().get()),
                                           *rt,
@@ -692,7 +697,7 @@ Status SparseIndexReaderBase::apply_query_condition(
                     // the current delete condition if the cells was cleared
                     // by this condition and not any previous conditions.
                     rt->compute_per_cell_delete_condition(
-                        &delete_conditions_[i]);
+                        &delete_and_update_conditions_[i]);
                   } else {
                     // Count cells is dups are allowed as the regular bitmap was
                     // modified.

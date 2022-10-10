@@ -31,6 +31,7 @@ doc/source/_sidebar.rst.inc
 doc/source/gensidebar.pyc
 examples/cmake_project/build
 CMakeUserPresets.json
+.vs/
 
 # Quarto dev-cache
 /.quarto/
