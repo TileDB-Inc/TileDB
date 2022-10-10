@@ -1221,7 +1221,11 @@ GlobalOrderWriter::GlobalWriteState* GlobalOrderWriter::get_global_state() {
 }
 
 std::pair<Status, std::unordered_map<std::string, VFS::MultiPartUploadState>>
-GlobalOrderWriter::multipart_upload_state() {
+GlobalOrderWriter::multipart_upload_state(bool client) {
+  if (client) {
+    return {Status::Ok(), global_write_state_->multipart_upload_state_};
+  }
+
   auto meta = global_write_state_->frag_meta_;
   std::unordered_map<std::string, VFS::MultiPartUploadState> result;
 
@@ -1239,7 +1243,7 @@ GlobalOrderWriter::multipart_upload_state() {
     if (!state.has_value()) {
       return {Status::Ok(), {}};
     }
-    result[uri->to_string()] = std::move(*state);
+    result[uri->remove_trailing_slash().last_path_part()] = std::move(*state);
 
     if (array_schema_.var_size(name)) {
       auto&& [status, var_uri] = meta->var_uri(name);
@@ -1248,7 +1252,8 @@ GlobalOrderWriter::multipart_upload_state() {
       auto&& [st, var_state] =
           storage_manager_->vfs()->multipart_upload_state(*var_uri);
       RETURN_NOT_OK_TUPLE(st, {});
-      result[var_uri->to_string()] = std::move(*var_state);
+      result[var_uri->remove_trailing_slash().last_path_part()] =
+          std::move(*var_state);
     }
     if (array_schema_.is_nullable(name)) {
       auto&& [status, validity_uri] = meta->validity_uri(name);
@@ -1257,7 +1262,8 @@ GlobalOrderWriter::multipart_upload_state() {
       auto&& [st, val_state] =
           storage_manager_->vfs()->multipart_upload_state(*validity_uri);
       RETURN_NOT_OK_TUPLE(st, {});
-      result[validity_uri->to_string()] = std::move(*val_state);
+      result[validity_uri->remove_trailing_slash().last_path_part()] =
+          std::move(*val_state);
     }
   }
 
@@ -1265,8 +1271,19 @@ GlobalOrderWriter::multipart_upload_state() {
 }
 
 Status GlobalOrderWriter::set_multipart_upload_state(
-    const URI& uri, const VFS::MultiPartUploadState& state) {
-  return storage_manager_->vfs()->set_multipart_upload_state(uri, state);
+    const std::string& uri,
+    const VFS::MultiPartUploadState& state,
+    bool client) {
+  if (client) {
+    global_write_state_->multipart_upload_state_[uri] = state;
+    return Status::Ok();
+  }
+
+  // uri in this case holds only the buffer name
+  auto absolute_uri =
+      global_write_state_->frag_meta_->fragment_uri().join_path(uri);
+  return storage_manager_->vfs()->set_multipart_upload_state(
+      absolute_uri, state);
 }
 
 }  // namespace sm

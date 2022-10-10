@@ -81,7 +81,13 @@ Status fragment_metadata_from_capnp(
     }
   }
   if (frag_meta_reader.hasFragmentUri()) {
-    frag_meta->fragment_uri() = URI(frag_meta_reader.getFragmentUri().cStr());
+    // Reconstruct the fragment uri out of the received fragment name
+    auto write_version = array_schema.write_version();
+    auto frag_dir_uri = ArrayDirectory::generate_fragment_dir_uri(write_version,
+        array_schema.array_uri().add_trailing_slash());
+    auto fragment_name =
+      std::string(frag_meta_reader.getFragmentUri().cStr());
+    frag_meta->fragment_uri() = frag_dir_uri.join_path(fragment_name);
   }
   frag_meta->has_timestamps() = frag_meta_reader.getHasTimestamps();
   frag_meta->has_delete_meta() = frag_meta_reader.getHasDeleteMeta();
@@ -281,7 +287,8 @@ Status fragment_metadata_to_capnp(
     }
   }
 
-  frag_meta_builder->setFragmentUri(frag_meta.fragment_uri());
+  frag_meta_builder->setFragmentUri(
+      frag_meta.fragment_uri().remove_trailing_slash().last_path_part());
   frag_meta_builder->setHasTimestamps(frag_meta.has_timestamps());
   frag_meta_builder->setHasDeleteMeta(frag_meta.has_delete_meta());
   frag_meta_builder->setHasConsolidatedFooter(

@@ -1310,7 +1310,7 @@ struct MultiPartUploadState {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(d492b6734d5e3bf5, 1, 5)
+    CAPNP_DECLARE_STRUCT_HEADER(d492b6734d5e3bf5, 1, 3)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -11259,12 +11259,6 @@ class MultiPartUploadState::Reader {
   inline bool hasUploadId() const;
   inline ::capnp::Text::Reader getUploadId() const;
 
-  inline bool hasBucket() const;
-  inline ::capnp::Text::Reader getBucket() const;
-
-  inline bool hasS3Key() const;
-  inline ::capnp::Text::Reader getS3Key() const;
-
   inline bool hasStatus() const;
   inline ::capnp::Text::Reader getStatus() const;
 
@@ -11322,20 +11316,6 @@ class MultiPartUploadState::Builder {
   inline ::capnp::Text::Builder initUploadId(unsigned int size);
   inline void adoptUploadId(::capnp::Orphan<::capnp::Text>&& value);
   inline ::capnp::Orphan<::capnp::Text> disownUploadId();
-
-  inline bool hasBucket();
-  inline ::capnp::Text::Builder getBucket();
-  inline void setBucket(::capnp::Text::Reader value);
-  inline ::capnp::Text::Builder initBucket(unsigned int size);
-  inline void adoptBucket(::capnp::Orphan<::capnp::Text>&& value);
-  inline ::capnp::Orphan<::capnp::Text> disownBucket();
-
-  inline bool hasS3Key();
-  inline ::capnp::Text::Builder getS3Key();
-  inline void setS3Key(::capnp::Text::Reader value);
-  inline ::capnp::Text::Builder initS3Key(unsigned int size);
-  inline void adoptS3Key(::capnp::Orphan<::capnp::Text>&& value);
-  inline ::capnp::Orphan<::capnp::Text> disownS3Key();
 
   inline bool hasStatus();
   inline ::capnp::Text::Builder getStatus();
@@ -23901,132 +23881,52 @@ MultiPartUploadState::Builder::disownUploadId() {
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline bool MultiPartUploadState::Reader::hasBucket() const {
+inline bool MultiPartUploadState::Reader::hasStatus() const {
   return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool MultiPartUploadState::Builder::hasBucket() {
-  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::capnp::Text::Reader MultiPartUploadState::Reader::getBucket() const {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
-}
-inline ::capnp::Text::Builder MultiPartUploadState::Builder::getBucket() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
-}
-inline void MultiPartUploadState::Builder::setBucket(
-    ::capnp::Text::Reader value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::set(
-      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
-      value);
-}
-inline ::capnp::Text::Builder MultiPartUploadState::Builder::initBucket(
-    unsigned int size) {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
-      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
-      size);
-}
-inline void MultiPartUploadState::Builder::adoptBucket(
-    ::capnp::Orphan<::capnp::Text>&& value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
-      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
-      kj::mv(value));
-}
-inline ::capnp::Orphan<::capnp::Text>
-MultiPartUploadState::Builder::disownBucket() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
-      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
-}
-
-inline bool MultiPartUploadState::Reader::hasS3Key() const {
-  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline bool MultiPartUploadState::Builder::hasS3Key() {
-  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::capnp::Text::Reader MultiPartUploadState::Reader::getS3Key() const {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
-}
-inline ::capnp::Text::Builder MultiPartUploadState::Builder::getS3Key() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
-}
-inline void MultiPartUploadState::Builder::setS3Key(
-    ::capnp::Text::Reader value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::set(
-      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
-      value);
-}
-inline ::capnp::Text::Builder MultiPartUploadState::Builder::initS3Key(
-    unsigned int size) {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
-      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
-      size);
-}
-inline void MultiPartUploadState::Builder::adoptS3Key(
-    ::capnp::Orphan<::capnp::Text>&& value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
-      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
-      kj::mv(value));
-}
-inline ::capnp::Orphan<::capnp::Text>
-MultiPartUploadState::Builder::disownS3Key() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
-      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
-}
-
-inline bool MultiPartUploadState::Reader::hasStatus() const {
-  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
-              .isNull();
-}
 inline bool MultiPartUploadState::Builder::hasStatus() {
-  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::capnp::Text::Reader MultiPartUploadState::Reader::getStatus() const {
   return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+      _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 inline ::capnp::Text::Builder MultiPartUploadState::Builder::getStatus() {
   return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 inline void MultiPartUploadState::Builder::setStatus(
     ::capnp::Text::Reader value) {
   ::capnp::_::PointerHelpers<::capnp::Text>::set(
-      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
       value);
 }
 inline ::capnp::Text::Builder MultiPartUploadState::Builder::initStatus(
     unsigned int size) {
   return ::capnp::_::PointerHelpers<::capnp::Text>::init(
-      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
       size);
 }
 inline void MultiPartUploadState::Builder::adoptStatus(
     ::capnp::Orphan<::capnp::Text>&& value) {
   ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
-      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
       kj::mv(value));
 }
 inline ::capnp::Orphan<::capnp::Text>
 MultiPartUploadState::Builder::disownStatus() {
   return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
-      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
 inline bool MultiPartUploadState::Reader::hasCompletedParts() const {
-  return !_reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
               .isNull();
 }
 inline bool MultiPartUploadState::Builder::hasCompletedParts() {
-  return !_builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::capnp::List<
@@ -24037,7 +23937,7 @@ MultiPartUploadState::Reader::getCompletedParts() const {
       ::tiledb::sm::serialization::capnp::CompletedPart,
       ::capnp::Kind::STRUCT>>::get(_reader
                                        .getPointerField(
-                                           ::capnp::bounded<4>() *
+                                           ::capnp::bounded<2>() *
                                            ::capnp::POINTERS));
 }
 inline ::capnp::List<
@@ -24048,7 +23948,7 @@ MultiPartUploadState::Builder::getCompletedParts() {
       ::tiledb::sm::serialization::capnp::CompletedPart,
       ::capnp::Kind::STRUCT>>::get(_builder
                                        .getPointerField(
-                                           ::capnp::bounded<4>() *
+                                           ::capnp::bounded<2>() *
                                            ::capnp::POINTERS));
 }
 inline void MultiPartUploadState::Builder::setCompletedParts(
@@ -24058,7 +23958,7 @@ inline void MultiPartUploadState::Builder::setCompletedParts(
   ::capnp::_::PointerHelpers<::capnp::List<
       ::tiledb::sm::serialization::capnp::CompletedPart,
       ::capnp::Kind::STRUCT>>::
-      set(_builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      set(_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
           value);
 }
 inline ::capnp::List<
@@ -24069,7 +23969,7 @@ MultiPartUploadState::Builder::initCompletedParts(unsigned int size) {
       ::tiledb::sm::serialization::capnp::CompletedPart,
       ::capnp::Kind::STRUCT>>::
       init(
-          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
           size);
 }
 inline void MultiPartUploadState::Builder::adoptCompletedParts(
@@ -24080,7 +23980,7 @@ inline void MultiPartUploadState::Builder::adoptCompletedParts(
       ::tiledb::sm::serialization::capnp::CompletedPart,
       ::capnp::Kind::STRUCT>>::
       adopt(
-          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
           kj::mv(value));
 }
 inline ::capnp::Orphan<::capnp::List<
@@ -24091,7 +23991,7 @@ MultiPartUploadState::Builder::disownCompletedParts() {
       ::tiledb::sm::serialization::capnp::CompletedPart,
       ::capnp::Kind::STRUCT>>::disown(_builder
                                           .getPointerField(
-                                              ::capnp::bounded<4>() *
+                                              ::capnp::bounded<2>() *
                                               ::capnp::POINTERS));
 }
 

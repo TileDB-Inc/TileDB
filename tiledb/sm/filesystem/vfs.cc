@@ -1676,8 +1676,6 @@ VFS::multipart_upload_state(const URI& uri) {
     }
     state.upload_id = s3_state->upload_id;
     state.part_number = s3_state->part_number;
-    state.bucket = s3_state->bucket;
-    state.s3_key = s3_state->key;
     state.status = s3_state->st;
     auto& completed_parts = s3_state->completed_parts;
     for (auto& entry : completed_parts) {
@@ -1708,7 +1706,9 @@ VFS::multipart_upload_state(const URI& uri) {
 #endif
   }
 
-  return {Status::Ok(), nullopt};
+  return {LOG_STATUS(
+              Status_VFSError("Unsupported URI schemes: " + uri.to_string())),
+          nullopt};
 }
 
 Status VFS::set_multipart_upload_state(
@@ -1719,15 +1719,13 @@ Status VFS::set_multipart_upload_state(
     S3::MultiPartUploadState s3_state;
     s3_state.part_number = state.part_number;
     s3_state.upload_id = *state.upload_id;
-    s3_state.bucket = *state.bucket;
-    s3_state.key = *state.s3_key;
     s3_state.st = state.status;
     for (auto& part : state.completed_parts) {
       auto rv = s3_state.completed_parts.try_emplace(part.part_number);
       rv.first->second.SetETag(part.e_tag->c_str());
       rv.first->second.SetPartNumber(part.part_number);
     }
-    return s3_.set_multipart_upload_state(uri, s3_state);
+    return s3_.set_multipart_upload_state(uri.to_string(), s3_state);
 #else
     return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
 #endif
@@ -1746,7 +1744,8 @@ Status VFS::set_multipart_upload_state(
 #endif
   }
 
-  return Status::Ok();
+  return LOG_STATUS(
+      Status_VFSError("Unsupported URI schemes: " + uri.to_string()));
 }
 
 Status VFS::flush_multipart_file_buffer(const URI& uri) {

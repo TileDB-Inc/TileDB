@@ -1787,9 +1787,13 @@ std::optional<S3::MultiPartUploadState> S3::multipart_upload_state(
 }
 
 Status S3::set_multipart_upload_state(
-    const URI& uri, const MultiPartUploadState& state) {
-  const Aws::Http::URI aws_uri(uri.c_str());
-  const std::string uri_path(aws_uri.GetPath().c_str());
+    const std::string& uri, MultiPartUploadState& state) {
+  Aws::Http::URI aws_uri(uri.c_str());
+  std::string uri_path(aws_uri.GetPath().c_str());
+
+  state.bucket = aws_uri.GetAuthority();
+  state.key = aws_uri.GetPath();
+
   UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
   multipart_upload_states_[uri_path] = state;
 
