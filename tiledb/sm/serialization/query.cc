@@ -44,8 +44,6 @@
 #endif
 // clang-format on
 
-#include "tiledb/sm/query/ast/query_ast.h"
-#include "tiledb/sm/query/query.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -60,12 +58,14 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/deletes_and_updates/deletes.h"
-#include "tiledb/sm/query/writers/global_order_writer.h"
-#include "tiledb/sm/query/readers/dense_reader.h"
+#include "tiledb/sm/query/ast/query_ast.h"
+#include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
 #include "tiledb/sm/query/legacy/reader.h"
+#include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
+#include "tiledb/sm/query/writers/global_order_writer.h"
 #include "tiledb/sm/query/writers/writer_base.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/query.h"
@@ -1105,7 +1105,7 @@ Status dense_reader_from_capnp(
 Status delete_from_capnp(
     const capnp::Delete::Reader& delete_reader,
     Query* query,
-    Deletes* delete_strategy) {
+    DeletesAndUpdates* delete_strategy) {
   // Query condition
   if (delete_reader.hasCondition()) {
     auto condition_reader = delete_reader.getCondition();
@@ -1128,7 +1128,7 @@ Status delete_from_capnp(
 
 Status delete_to_capnp(
     const Query& query,
-    Deletes& delete_strategy,
+    DeletesAndUpdates& delete_strategy,
     capnp::Delete::Builder* delete_builder) {
   auto condition = query.condition();
   if (!condition.empty()) {
@@ -1348,7 +1348,8 @@ Status query_to_capnp(
     RETURN_NOT_OK(writer_to_capnp(query, *writer, &builder));
   } else {
     auto builder = query_builder->initDelete();
-    auto delete_strategy = dynamic_cast<Deletes*>(query.strategy(true));
+    auto delete_strategy =
+        dynamic_cast<DeletesAndUpdates*>(query.strategy(true));
     RETURN_NOT_OK(delete_to_capnp(query, *delete_strategy, &builder));
   }
 
@@ -1957,7 +1958,7 @@ Status query_from_capnp(
     }
   } else {
     auto delete_reader = query_reader.getDelete();
-    auto delete_strategy = dynamic_cast<Deletes*>(query->strategy());
+    auto delete_strategy = dynamic_cast<DeletesAndUpdates*>(query->strategy());
     RETURN_NOT_OK(delete_from_capnp(delete_reader, query, delete_strategy));
   }
 
@@ -2269,9 +2270,10 @@ Status query_est_result_size_reader_from_capnp(
     auto result_size = it.getValue();
     est_result_sizes_map.emplace(
         name,
-        Subarray::ResultSize{result_size.getSizeFixed(),
-                             result_size.getSizeVar(),
-                             result_size.getSizeValidity()});
+        Subarray::ResultSize{
+            result_size.getSizeFixed(),
+            result_size.getSizeVar(),
+            result_size.getSizeValidity()});
   }
 
   std::unordered_map<std::string, Subarray::MemorySize> max_memory_sizes_map;
@@ -2280,9 +2282,10 @@ Status query_est_result_size_reader_from_capnp(
     auto memory_size = it.getValue();
     max_memory_sizes_map.emplace(
         name,
-        Subarray::MemorySize{memory_size.getSizeFixed(),
-                             memory_size.getSizeVar(),
-                             memory_size.getSizeValidity()});
+        Subarray::MemorySize{
+            memory_size.getSizeFixed(),
+            memory_size.getSizeVar(),
+            memory_size.getSizeValidity()});
   }
 
   return query->set_est_result_size(est_result_sizes_map, max_memory_sizes_map);

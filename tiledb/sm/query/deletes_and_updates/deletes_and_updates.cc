@@ -1,5 +1,5 @@
 /**
- * @file   deletes.cc
+ * @file   deletes_and_updates.cc
  *
  * @section LICENSE
  *
@@ -30,7 +30,7 @@
  * This file implements class Deletes.
  */
 
-#include "tiledb/sm/query/deletes_and_updates/deletes.h"
+#include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
@@ -44,9 +44,9 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 
-class DeleteStatusException : public StatusException {
+class DeleteAndUpdateStatusException : public StatusException {
  public:
-  explicit DeleteStatusException(const std::string& message)
+  explicit DeleteAndUpdateStatusException(const std::string& message)
       : StatusException("Deletes", message) {
   }
 };
@@ -55,7 +55,7 @@ class DeleteStatusException : public StatusException {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Deletes::Deletes(
+DeletesAndUpdates::DeletesAndUpdates(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
     StorageManager* storage_manager,
@@ -65,6 +65,7 @@ Deletes::Deletes(
     Subarray& subarray,
     Layout layout,
     QueryCondition& condition,
+    std::vector<UpdateValue>& update_values,
     bool skip_checks_serialization)
     : StrategyBase(
           stats,
@@ -75,63 +76,69 @@ Deletes::Deletes(
           buffers,
           subarray,
           layout)
-    , condition_(condition) {
+    , condition_(condition)
+    , update_values_(update_values) {
   // Sanity checks
   if (storage_manager_ == nullptr) {
-    throw DeleteStatusException(
+    throw DeleteAndUpdateStatusException(
         "Cannot initialize query; Storage manager not set");
   }
 
   if (!buffers_.empty()) {
-    throw DeleteStatusException("Cannot initialize deletes; Buffers are set");
+    throw DeleteAndUpdateStatusException(
+        "Cannot initialize deletes; Buffers are set");
   }
 
   if (array_schema_.dense()) {
-    throw DeleteStatusException(
+    throw DeleteAndUpdateStatusException(
         "Cannot initialize deletes; Only supported for sparse arrays");
   }
 
   if (subarray_.is_set()) {
-    throw DeleteStatusException(
+    throw DeleteAndUpdateStatusException(
         "Cannot initialize deletes; Subarrays are not supported");
   }
 
   if (!skip_checks_serialization && condition_.empty()) {
-    throw DeleteStatusException(
+    throw DeleteAndUpdateStatusException(
         "Cannot initialize deletes; One condition is needed");
   }
 }
 
-Deletes::~Deletes() {
+DeletesAndUpdates::~DeletesAndUpdates() {
 }
 
 /* ****************************** */
 /*               API              */
 /* ****************************** */
 
-Status Deletes::finalize() {
+Status DeletesAndUpdates::finalize() {
   return Status::Ok();
 }
 
-Status Deletes::initialize_memory_budget() {
+Status DeletesAndUpdates::initialize_memory_budget() {
   return Status::Ok();
 }
 
-Status Deletes::dowork() {
+Status DeletesAndUpdates::dowork() {
   auto timer_se = stats_->start_timer("dowork");
 
   // Check that the query condition is valid.
   RETURN_NOT_OK(condition_.check(array_schema_));
 
+  // Check that the update values are valid.
+  for (auto& update_value : update_values_) {
+    update_value.check(array_schema_);
+  }
+
   // Get a new fragment name for the delete.
   uint64_t timestamp = array_->timestamp_end_opened_at();
   auto write_version = array_->array_schema_latest().write_version();
   auto new_fragment_str =
-      storage_format::generate_fragment_name(timestamp, write_version) +
-      constants::delete_file_suffix;
+      storage_format::generate_fragment_name(timestamp, write_version);
 
-  // Check that the delete isn't in the middle of a fragment consolidated
-  // without timestamps.
+  // Check that the delete or update isn't in the middle of a fragment
+  // consolidated without timestamps.
   auto& frag_uris = array_->array_directory().unfiltered_fragment_uris();
   for (auto& uri : frag_uris) {
     uint32_t version;
@@ -143,23 +150,34 @@ Status Deletes::dowork() {
           utils::parse::get_timestamp_range(uri, &fragment_timestamp_range));
       if (timestamp >= fragment_timestamp_range.first &&
           timestamp <= fragment_timestamp_range.second) {
-        throw DeleteStatusException(
+        throw DeleteAndUpdateStatusException(
             "Cannot write a delete in the middle of a fragment consolidated "
             "without timestamps.");
       }
     }
   }
 
-  // Get the delete URI.
+  // Create the commit URI if needed.
   auto& array_dir = array_->array_directory();
   auto commit_uri = array_dir.get_commits_dir(write_version);
   RETURN_NOT_OK(storage_manager_->vfs()->create_dir(commit_uri));
-  auto uri = commit_uri.join_path(new_fragment_str);
 
-  // Serialize the negated condition and write to disk.
-  auto serialized_condition =
-      tiledb::sm::deletes_and_updates::serialization::serialize_condition(
-          condition_.negated_condition());
+  // Serialize the negated condition (aud update values if they are not empty)
+  // and write to disk.
+  std::vector<uint8_t> serialized_condition;
+  if (update_values_.empty()) {
+    new_fragment_str += constants::delete_file_suffix;
+    serialized_condition =
+        tiledb::sm::deletes_and_updates::serialization::serialize_condition(
+            condition_.negated_condition());
+  } else {
+    new_fragment_str += constants::update_file_suffix;
+    serialized_condition = tiledb::sm::deletes_and_updates::serialization::
+        serialize_update_condition_and_values(
+            condition_.negated_condition(), update_values_);
+  }
+
+  auto uri = commit_uri.join_path(new_fragment_str);
   RETURN_NOT_OK(storage_manager_->store_data_to_generic_tile(
       serialized_condition.data(),
       serialized_condition.size(),
@@ -169,7 +187,7 @@ Status Deletes::dowork() {
   return Status::Ok();
 }
 
-void Deletes::reset() {
+void DeletesAndUpdates::reset() {
 }
 
 }  // namespace sm
