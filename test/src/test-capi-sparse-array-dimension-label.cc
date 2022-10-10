@@ -176,7 +176,8 @@ class SparseArrayExample1 : public DimensionLabelFixture {
    * @param expected_label_data A vector of the expected label values.
    */
   void check_values_from_data_reader(
-      const std::vector<double>& expected_label_data) {
+      const std::vector<double>& expected_label_data,
+      const std::vector<double>& expected_attr_data) {
     // Open array for reading.
     tiledb_array_t* array;
     require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
@@ -191,6 +192,8 @@ class SparseArrayExample1 : public DimensionLabelFixture {
     // Define label buffer and size.
     std::vector<double> label_data(4);
     uint64_t label_data_size{label_data.size() * sizeof(double)};
+    std::vector<double> attr_data(4);
+    uint64_t attr_data_size{attr_data.size() * sizeof(double)};
 
     // Create read query.
     tiledb_query_t* query;
@@ -199,6 +202,10 @@ class SparseArrayExample1 : public DimensionLabelFixture {
     require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED));
     require_tiledb_ok(tiledb_query_set_label_data_buffer(
         ctx, query, "x", label_data.data(), &label_data_size));
+    if (!expected_attr_data.empty()) {
+      require_tiledb_ok(tiledb_query_set_data_buffer(
+          ctx, query, "a", attr_data.data(), &attr_data_size));
+    }
 
     // Submit read query.
     require_tiledb_ok(tiledb_query_submit(ctx, query));
@@ -212,9 +219,15 @@ class SparseArrayExample1 : public DimensionLabelFixture {
     tiledb_array_free(&array);
 
     // Check results.
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      INFO("Label data " + std::to_string(ii));
-      CHECK(label_data[ii] == expected_label_data[ii]);
+    for (uint64_t index{0}; index < 4; ++index) {
+      INFO("Label data " + std::to_string(index));
+      CHECK(label_data[index] == expected_label_data[index]);
+    }
+    if (!expected_attr_data.empty()) {
+      for (uint64_t index{0}; index < 4; ++index) {
+        INFO("Attribute data index=" + std::to_string(index));
+        CHECK(attr_data[index] == expected_attr_data[index]);
+      }
     }
   }
 
@@ -291,6 +304,7 @@ TEST_CASE_METHOD(
   // Expected output vectors.
   std::vector<double> label_data_sorted_by_index{};
   std::vector<double> label_data_sorted_by_label{};
+  std::vector<double> attr_data_sorted_by_index{};
   std::vector<uint64_t> index_data_sorted_by_label{};
 
   // Dimension label parameters.
@@ -308,6 +322,7 @@ TEST_CASE_METHOD(
     // Set expected_output values.
     label_data_sorted_by_index = input_label_data;
     label_data_sorted_by_label = input_label_data;
+    attr_data_sorted_by_index = input_attr_data;
     index_data_sorted_by_label = input_index_data;
   }
 
@@ -318,11 +333,11 @@ TEST_CASE_METHOD(
     // Set input values.
     input_index_data = {0, 1, 2, 3};
     input_label_data = {-1.0, 0.0, 0.5, 1.0};
-    input_attr_data = {};
 
     // Set expected_output values.
     label_data_sorted_by_index = input_label_data;
     label_data_sorted_by_label = input_label_data;
+    attr_data_sorted_by_index = input_attr_data;
     index_data_sorted_by_label = input_index_data;
   }
 
@@ -338,6 +353,7 @@ TEST_CASE_METHOD(
     // Define expected output data.
     label_data_sorted_by_index = input_label_data;
     label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
+    attr_data_sorted_by_index = input_attr_data;
     index_data_sorted_by_label = {3, 2, 1, 0};
   }
 
@@ -367,6 +383,7 @@ TEST_CASE_METHOD(
     // Define expected output data.
     label_data_sorted_by_index = {1.0, -1.0, -0.5, 0.0};
     label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
+    attr_data_sorted_by_index = {0.5, 2.0, 1.5, 1.0};
     index_data_sorted_by_label = {1, 2, 3, 0};
   }
 
@@ -384,25 +401,30 @@ TEST_CASE_METHOD(
     index_data_sorted_by_label = {1, 2, 3, 0};
   }
 
+  INFO(
+      "Testing array with label order " +
+      label_order_str(static_cast<LabelOrder>(label_order)) + ".");
+
   // Create and Write the array and label.
   create_example(label_order);
   write_array_with_label(input_index_data, input_attr_data, input_label_data);
 
   // Check the dimension label arrays have the correct data.
   {
-    INFO("Check indexed array data");
+    INFO("Reading directly from indexed array.");
     check_indexed_array_data(label_data_sorted_by_index);
   }
   {
-    INFO("Check labelled array data");
+    INFO("Reading directly from labelled array.");
     check_labelled_array_data(
         index_data_sorted_by_label, label_data_sorted_by_label);
   }
 
   // Check data reader.
   {
-    INFO("Check data from data reader");
-    check_values_from_data_reader(label_data_sorted_by_index);
+    INFO("Reading values by index range.");
+    check_values_from_data_reader(
+        label_data_sorted_by_index, attr_data_sorted_by_index);
   }
 }
 
