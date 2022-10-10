@@ -835,6 +835,7 @@ Status Reader::copy_attribute_values(
 
   // Build a set of attribute names to process.
   std::unordered_map<std::string, ProcessTileFlags> names;
+  const auto bitsort_attr = array_schema_.bitsort_filter_attr();
   for (const auto& it : buffers_) {
     const auto& name = it.first;
 
@@ -842,19 +843,20 @@ Status Reader::copy_attribute_values(
       break;
     }
 
-    const auto bitsort_attr = array_schema_.bitsort_filter_attr();
-    const auto is_bitsort_attr =
-        bitsort_attr.has_value() && bitsort_attr.value() == name;
-    if (name == constants::coords || array_schema_.is_dim(name) ||
-        is_bitsort_attr) {
+    if (name == constants::coords || array_schema_.is_dim(name)) {
       continue;
     }
 
-    // If the query condition has a clause for `name`, we will only
-    // flag it to copy because we have already preloaded the offsets
-    // and read the tiles in `apply_query_condition`.
+    // See if this is the bitsort attribute.
+    const auto is_bitsort_attr =
+        bitsort_attr.has_value() && bitsort_attr.value() == name;
+
+    // If the query condition has a clause for `name`, we will only flag it to
+    // copy because we have already preloaded the offsets and read the tiles in
+    // `apply_query_condition`. We do the same for the bitsort attribute as it
+    // was already read/unfiltered to process coordinates.
     ProcessTileFlags flags = ProcessTileFlag::COPY;
-    if (qc_loaded_attr_names_set_.count(name) == 0) {
+    if (qc_loaded_attr_names_set_.count(name) == 0 && !is_bitsort_attr) {
       flags |= ProcessTileFlag::READ;
     }
 
