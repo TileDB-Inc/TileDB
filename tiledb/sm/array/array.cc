@@ -265,6 +265,24 @@ Status Array::open(
   try {
     set_array_open(query_type);
 
+    if (query_type == QueryType::UPDATE) {
+      bool found = false;
+      bool allow_updates = false;
+      if (!config_
+               .get<bool>(
+                   "sm.allow_updates_experimental", &allow_updates, &found)
+               .ok()) {
+        throw Status_ArrayError("Cannot get setting");
+      }
+      assert(found);
+
+      if (!allow_updates) {
+        throw Status_ArrayError(
+            "Cannot open array; Update query type is only experimental, do "
+            "not use.");
+      }
+    }
+
     // Get encryption key from config
     std::string encryption_key_from_cfg;
     if (!encryption_key) {
@@ -317,24 +335,8 @@ Status Array::open(
       } else if (
           query_type == QueryType::WRITE ||
           query_type == QueryType::MODIFY_EXCLUSIVE ||
-          query_type == QueryType::DELETE) {
+          query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
         timestamp_end_opened_at_ = 0;
-      } else if (query_type == QueryType::UPDATE) {
-        bool found = false;
-        bool allow_updates = false;
-        if (!config_
-                 .get<bool>(
-                     "sm.allow_updates_experimental", &allow_updates, &found)
-                 .ok()) {
-          throw Status_ArrayError("Cannot get setting");
-        }
-        assert(found);
-
-        if (!allow_updates) {
-          throw Status_ArrayError(
-              "Cannot open array; Update query type is only experimental, do "
-              "not use.");
-        }
       } else {
         throw Status_ArrayError("Cannot open array; Unsupported query type.");
       }
@@ -1190,8 +1192,8 @@ Status Array::load_metadata() {
         array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
   } else {
     assert(array_dir_.loaded());
-    RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_dir_, *encryption_key_, &metadata_));
+    storage_manager_->load_array_metadata(
+        array_dir_, *encryption_key_, &metadata_);
   }
   metadata_loaded_ = true;
   return Status::Ok();

@@ -228,6 +228,9 @@ const std::string write_file_suffix = ".wrt";
 /** Suffix for the special delete files used in TileDB. */
 const std::string delete_file_suffix = ".del";
 
+/** Suffix for the special update files used in TileDB. */
+const std::string update_file_suffix = ".upd";
+
 /** Suffix for the special metadata files used in TileDB. */
 const std::string meta_file_suffix = ".meta";
 

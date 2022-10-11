@@ -1382,14 +1382,17 @@ Status Dimension::set_filter_pipeline(const FilterPipeline* pipeline) {
   }
 
   if (type_ == Datatype::STRING_ASCII && var_size() && pipeline->size() > 1) {
-    if (pipeline->has_filter(FilterType::FILTER_RLE)) {
-      return LOG_STATUS(Status_DimensionError(
-          "RLE filter cannot be combined with other filters when applied to "
-          "variable length string dimensions"));
-    } else if (pipeline->has_filter(FilterType::FILTER_DICTIONARY)) {
-      return LOG_STATUS(Status_AttributeError(
-          "Dictionary-encoding filter cannot be combined with other filters "
-          "when applied to variable length string dimensions"));
+    if (pipeline->has_filter(FilterType::FILTER_RLE) &&
+        pipeline->get_filter(0)->type() != FilterType::FILTER_RLE) {
+      return LOG_STATUS(Status_ArraySchemaError(
+          "RLE filter must be the first filter to apply when used on a "
+          "variable length string dimension"));
+    }
+    if (pipeline->has_filter(FilterType::FILTER_DICTIONARY) &&
+        pipeline->get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
+      return LOG_STATUS(Status_ArraySchemaError(
+          "Dictionary filter must be the first filter to apply when used on a "
+          "variable length string dimension"));
     }
   }
 

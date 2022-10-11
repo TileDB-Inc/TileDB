@@ -29,6 +29,9 @@
 #include "../vfs.h"
 
 int main() {
-  tiledb::sm::VFS x{};
+  static tiledb::sm::stats::Stats stats("test");
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
+  tiledb::sm::VFS x{&stats, &compute_tp, &io_tp, tiledb::sm::Config{}};
   return 0;
 }

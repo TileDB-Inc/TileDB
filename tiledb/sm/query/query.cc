@@ -40,10 +40,11 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/deletes_and_updates/deletes.h"
+#include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
+#include "tiledb/sm/query/readers/ordered_dim_label_reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
 #include "tiledb/sm/query/writers/global_order_writer.h"
@@ -93,7 +94,9 @@ Query::Query(
     , consolidation_with_timestamps_(false)
     , force_legacy_reader_(false)
     , fragment_name_(fragment_name)
-    , remote_query_(false) {
+    , remote_query_(false)
+    , is_dimension_label_ordered_read_(false)
+    , dimension_label_increasing_(true) {
   assert(array->is_open());
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
@@ -177,7 +180,8 @@ Status Query::add_range(
     if (read_range_oob != "error" && read_range_oob != "warn")
       return logger_->status(Status_QueryError(
           "Invalid value " + read_range_oob +
-          " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
+          " for sm.read_range_obb. Acceptable values are 'error' or "
+          "'warn'."));
 
     read_range_oob_error = read_range_oob == "error";
   } else {
@@ -1374,16 +1378,27 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           "Cannot create strategy; unsupported layout " + layout_str(layout_));
     }
   } else if (type_ == QueryType::READ) {
-    bool use_default = true;
     bool all_dense = true;
     for (auto& frag_md : fragment_metadata_) {
       all_dense &= frag_md->dense();
     }
 
-    if (use_refactored_sparse_unordered_with_dups_reader(
-            layout_, *array_schema_)) {
-      use_default = false;
-
+    if (is_dimension_label_ordered_read_) {
+      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+          OrderedDimLabelReader,
+          stats_->create_child("Reader"),
+          logger_,
+          storage_manager_,
+          array_,
+          config_,
+          buffers_,
+          subarray_,
+          layout_,
+          condition_,
+          dimension_label_increasing_,
+          skip_checks_serialization));
+    } else if (use_refactored_sparse_unordered_with_dups_reader(
+                   layout_, *array_schema_)) {
       auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
       RETURN_NOT_OK(st);
 
@@ -1420,8 +1435,6 @@ Status Query::create_strategy(bool skip_checks_serialization) {
         !array_schema_->dense() &&
         (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED)) {
       // Using the reader for unordered queries to do deduplication.
-      use_default = false;
-
       auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
       RETURN_NOT_OK(st);
 
@@ -1456,7 +1469,6 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             skip_checks_serialization));
       }
     } else if (use_refactored_dense_reader(*array_schema_, all_dense)) {
-      use_default = false;
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           DenseReader,
           stats_->create_child("Reader"),
@@ -1469,9 +1481,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           condition_,
           skip_checks_serialization));
-    }
-
-    if (use_default) {
+    } else {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           Reader,
           stats_->create_child("Reader"),
@@ -1485,9 +1495,9 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           condition_,
           skip_checks_serialization));
     }
-  } else if (type_ == QueryType::DELETE) {
+  } else if (type_ == QueryType::DELETE || type_ == QueryType::UPDATE) {
     strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-        Deletes,
+        DeletesAndUpdates,
         stats_->create_child("Deletes"),
         logger_,
         storage_manager_,
@@ -1497,6 +1507,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
         subarray_,
         layout_,
         condition_,
+        update_values_,
         skip_checks_serialization));
   } else {
     return logger_->status(
@@ -2308,11 +2319,6 @@ Status Query::set_subarray(const tiledb::sm::Subarray& subarray) {
   }
 
   // Set subarray
-  if (!subarray.is_set())
-    // Nothing useful to set here, will leave query with its current
-    // settings and consider successful.
-    return Status::Ok();
-
   auto prev_layout = subarray_.layout();
   subarray_ = subarray;
   subarray_.set_layout(prev_layout);
@@ -2340,11 +2346,7 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 }
 
 Status Query::check_buffers_correctness() {
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::MODIFY_EXCLUSIVE && type_ != QueryType::DELETE) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot check buffers; Unsupported query type."));
-  }
+  ensure_query_type_is_valid(type_);
 
   // Iterate through each attribute
   for (auto& attr : buffer_names()) {
@@ -2411,7 +2413,8 @@ Status Query::submit() {
       RETURN_NOT_OK(create_strategy());
     }
 
-    // Check that input buffers are tile-aligned for remote global order writes
+    // Check that input buffers are tile-aligned for remote global order
+    // writes
     RETURN_NOT_OK(check_tile_alignment());
 
     // Check that input buffers >5mb for remote global order writes
@@ -2586,6 +2589,11 @@ void Query::reset_coords_markers() {
 
 void Query::set_remote_query() {
   remote_query_ = true;
+}
+
+void Query::set_dimension_label_ordered_read(bool increasing_order) {
+  is_dimension_label_ordered_read_ = true;
+  dimension_label_increasing_ = increasing_order;
 }
 
 /* ****************************** */

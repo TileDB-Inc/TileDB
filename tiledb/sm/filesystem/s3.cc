@@ -199,9 +199,21 @@ S3::S3()
 }
 
 S3::~S3() {
-  assert(state_ == State::DISCONNECTED);
-  for (auto& buff : file_buffers_)
-    tdb_delete(buff.second);
+  /**
+   * Note: if s3 fails to disconnect, the Status must be logged.
+   * Right now, there aren't means to adjust s3 issues that may cause
+   * disconnection failure.
+   * In the future, the Governor class may be invoked here as a means of
+   * handling s3 connection issues.
+   */
+  Status st = disconnect();
+  if (!st.ok()) {
+    LOG_STATUS(st);
+  } else {
+    assert(state_ == State::DISCONNECTED);
+    for (auto& buff : file_buffers_)
+      tdb_delete(buff.second);
+  }
 }
 
 /* ********************************* */

@@ -265,7 +265,7 @@ class Config {
    *
    * **Parameters**
    *
-   * - `sm.consolidation.allow_updates_experimental` <br>
+   * - `sm.allow_updates_experimental` <br>
    *    **Experimental** <br>
    *    Allow update queries. Experimental for testing purposes, do not use.<br>
    *    **Default**: false
