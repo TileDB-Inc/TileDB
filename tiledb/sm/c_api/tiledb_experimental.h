@@ -868,8 +868,8 @@ TILEDB_EXPORT int32_t tiledb_group_get_member_by_name(
  * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
  * tiledb_group_open(ctx, group, TILEDB_WRITE);
  * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_array", true,
- *     "array1"); 
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_group_2", 
+ *     "array1");
+ * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_group_2",
  *     false, "group2");
  *
  * tiledb_group_close(ctx, group);

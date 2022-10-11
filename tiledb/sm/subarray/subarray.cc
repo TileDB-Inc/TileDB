@@ -609,6 +609,10 @@ const std::vector<Range>& Subarray::get_attribute_ranges(
   return ranges;
 }
 
+const std::string& Subarray::get_label_name(const uint32_t dim_index) const {
+  return label_range_subset_[dim_index]->name;
+}
+
 void Subarray::get_label_range(
     const std::string& label_name,
     uint64_t range_idx,
@@ -934,6 +938,10 @@ bool Subarray::empty() const {
   return range_num() == 0;
 }
 
+bool Subarray::empty(uint32_t dim_idx) const {
+  return range_subset_[dim_idx].is_empty();
+}
+
 QueryType Subarray::get_query_type() const {
   if (array_ == nullptr)
     throw StatusException(Status_SubarrayError(
@@ -1070,6 +1078,25 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   ret.compute_range_offsets();
 
   return ret;
+}
+
+void Subarray::remove_label_ranges() {
+  label_range_subset_.clear();
+  label_range_subset_.resize(array_->array_schema_latest().dim_num(), nullopt);
+}
+
+bool Subarray::has_label_ranges() const {
+  return std::any_of(
+      label_range_subset_.cbegin(),
+      label_range_subset_.cend(),
+      [](const auto& range_subset) {
+        return range_subset.has_value() && !range_subset->ranges.is_empty();
+      });
+}
+
+bool Subarray::has_label_ranges(const uint32_t dim_index) const {
+  return label_range_subset_[dim_index].has_value() &&
+         !label_range_subset_[dim_index]->ranges.is_empty();
 }
 
 bool Subarray::is_default(uint32_t dim_index) const {
@@ -1828,6 +1855,20 @@ void Subarray::set_attribute_ranges(
         attr_name + "'."));
   }
   attr_range_subset_[attr_name] = ranges;
+}
+
+const std::vector<Range>& Subarray::ranges_for_label(
+    const std::string& label_name) const {
+  auto dim_idx = array_->array_schema_latest()
+                     .dimension_label_reference(label_name)
+                     .dimension_id();
+  if (!label_range_subset_[dim_idx].has_value() ||
+      label_range_subset_[dim_idx].value().name != label_name) {
+    throw StatusException(Status_SubarrayError(
+        "Cannot get label ranges; No ranges set on dimension label '" +
+        label_name + "'"));
+  }
+  return label_range_subset_[dim_idx]->get_ranges();
 }
 
 Status Subarray::set_ranges_for_dim(
