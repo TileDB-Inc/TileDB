@@ -290,5 +290,5 @@ TEST_CASE(
   REQUIRE(array.get()->close().ok());
   REQUIRE(x.registry_size() == 0);
   REQUIRE(x.is_open(uri) == false);
-  sm.vfs()->remove_dir(uri);
+  REQUIRE(sm.vfs()->remove_dir(uri).ok());
 }
