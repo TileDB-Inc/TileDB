@@ -358,7 +358,8 @@ class Group {
       Status,
       optional<std::string>,
       optional<ObjectType>,
-      optional<std::string>>
+      optional<std::string>,
+      optional<bool>>
   member_by_name(const std::string& name);
 
   /** Returns `true` if the group is open. */

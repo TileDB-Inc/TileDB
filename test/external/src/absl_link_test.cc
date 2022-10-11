@@ -77,18 +77,18 @@ cloud\testing_util\CMakeLists.txt:        PUBLIC absl::symbolize absl::failure_s
 #include <cstdlib>
 #include <sstream>
 
-#include <include/absl/memory/memory.h>
-#include <include/absl/strings/string_view.h>
-#include <include/absl/strings/numbers.h>
-#include <include/absl/time/clock.h>
-#include <include/absl/hash/hash.h>              // absl::flat_hash_map
-#include <include/absl/types/optional.h>         // absl::optional
-#include <include/absl/types/variant.h>          // absl::variant
-#include <include/absl/base/casts.h>             // absl::function_ref
-#include <include/absl/meta/type_traits.h>       // absl::function_ref
 #include <absl/strings/str_format.h>             // absl::str_format
+#include <include/absl/base/casts.h>             // absl::function_ref
 #include <include/absl/container/fixed_array.h>  // absl::fixed_array
-#include <include/absl/numeric/int128.h>         // absl::numeric
+#include <include/absl/hash/hash.h>              // absl::flat_hash_map
+#include <include/absl/memory/memory.h>
+#include <include/absl/meta/type_traits.h>  // absl::function_ref
+#include <include/absl/numeric/int128.h>    // absl::numeric
+#include <include/absl/strings/numbers.h>
+#include <include/absl/strings/string_view.h>
+#include <include/absl/time/clock.h>
+#include <include/absl/types/optional.h>  // absl::optional
+#include <include/absl/types/variant.h>   // absl::variant
 #if 0
 // absl::symbolize, absl::failure_signal_handler both in testing_util, not
 // verifying these as we do not build gcs tests.

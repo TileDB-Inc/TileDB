@@ -186,7 +186,8 @@ TEMPLATE_LIST_TEST_CASE(
   // Call the tile metadata generator.
   TileMetadataGenerator md_generator(
       tiledb_type, false, false, cell_val_num * sizeof(T), cell_val_num);
-  md_generator.process_tile(writer_tile);
+  md_generator.process_full_tile(writer_tile);
+  md_generator.set_tile_metadata(writer_tile);
 
   // Compare the metadata to what's expected.
   if constexpr (std::is_same<T, char>::value) {
@@ -269,7 +270,8 @@ TEMPLATE_LIST_TEST_CASE(
 
   // Call the tile metadata generator.
   TileMetadataGenerator md_generator(tiledb_type, false, false, sizeof(T), 1);
-  md_generator.process_tile(writer_tile);
+  md_generator.process_full_tile(writer_tile);
+  md_generator.set_tile_metadata(writer_tile);
 
   // Compare the metadata to what's expected.
   if constexpr (std::is_integral_v<T>) {
@@ -293,7 +295,8 @@ TEMPLATE_LIST_TEST_CASE(
 
     // Call the tile metadata generator.
     TileMetadataGenerator md_generator(tiledb_type, false, false, sizeof(T), 1);
-    md_generator.process_tile(writer_tile);
+    md_generator.process_full_tile(writer_tile);
+    md_generator.set_tile_metadata(writer_tile);
 
     // Compare the metadata to what's expected.
     if constexpr (std::is_integral_v<T>) {
@@ -388,7 +391,8 @@ TEST_CASE(
   // Call the tile metadata generator.
   TileMetadataGenerator md_generator(
       Datatype::STRING_ASCII, false, true, TILEDB_VAR_NUM, 1);
-  md_generator.process_tile(writer_tile);
+  md_generator.process_full_tile(writer_tile);
+  md_generator.set_tile_metadata(writer_tile);
 
   // Compare the metadata to what's expected.
   if (all_null || empty_tile) {
@@ -440,7 +444,8 @@ TEST_CASE(
   // Call the tile metadata generator.
   TileMetadataGenerator md_generator(
       Datatype::STRING_ASCII, false, true, TILEDB_VAR_NUM, 1);
-  md_generator.process_tile(writer_tile);
+  md_generator.process_full_tile(writer_tile);
+  md_generator.set_tile_metadata(writer_tile);
 
   // Compare the metadata to what's expected.
   CHECK(0 == strncmp((const char*)writer_tile.min().data(), "12", 2));

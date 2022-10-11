@@ -77,18 +77,18 @@ extern std::mutex catch2_macro_mutex;
   { REQUIRE(a == TILEDB_OK); }
 
 // A variant of the CHECK macro for checking a Status object is okay.
-#define CHECK_TILEDB_STATUS_OK(status) \
-  {                                    \
-    if (!status.ok())                  \
-      INFO(status.to_string());        \
-    CHECK(status.ok());                \
+#define CHECK_TILEDB_STATUS_OK(status)   \
+  {                                      \
+    if (!status.ok())                    \
+      UNSCOPED_INFO(status.to_string()); \
+    CHECK(status.ok());                  \
   }
 
 // A variant of the REQUIRE macro for checking a Status objects is okay.
 #define REQUIRE_TILEDB_STATUS_OK(status) \
   {                                      \
     if (!status.ok())                    \
-      INFO(status.to_string());          \
+      UNSCOPED_INFO(status.to_string()); \
     REQUIRE(status.ok());                \
   }
 namespace tiledb {
@@ -758,6 +758,67 @@ std::string get_commit_dir(std::string array_dir);
  */
 template <class T>
 void check_counts(span<T> vals, std::vector<uint64_t> expected);
+
+/**
+ * Helper function that serializes a query from the "client" or "server"
+ * perspective. The flow being mimicked here is (for read queries):
+ *
+ * - Client sets up read query object including buffers.
+ * - Client submits query to a remote array.
+ * - Internal code (not C API) serializes that query and send it via curl.
+ * - Server receives and deserializes the query using the C API.
+ * - Server submits query.
+ * - Server serializes (using C API) the query and sends it back.
+ * - Client receives response and deserializes the query (not C API). This
+ *   copies the query results into the original user buffers.
+ * - Client's blocking call to tiledb_query_submit() now returns.
+ */
+void serialize_query(
+    const Context& ctx,
+    Query& query,
+    std::vector<uint8_t>* serialized,
+    bool clientside);
+
+/**
+ * Helper function that deserializes a query from the "client" or "server"
+ * perspective.
+ */
+void deserialize_query(
+    const Context& ctx,
+    std::vector<uint8_t>& serialized,
+    Query* query,
+    bool clientside);
+
+int serialize_query(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    std::vector<uint8_t>* serialized,
+    bool clientside);
+
+int deserialize_query(
+    tiledb_ctx_t* ctx,
+    std::vector<uint8_t>& serialized,
+    tiledb_query_t* query,
+    bool clientside);
+
+void submit_serialized_query(tiledb_ctx_t* ctx, tiledb_query_t* query);
+
+void submit_serialized_query(const Context& ctx, Query& query);
+
+void finalize_serialized_query(tiledb_ctx_t* ctx, tiledb_query_t* query);
+
+void finalize_serialized_query(const Context& ctx, Query& query);
+
+void submit_and_finalize_serialized_query(
+    tiledb_ctx_t* ctx, tiledb_query_t* query);
+
+void submit_and_finalize_serialized_query(const Context& ctx, Query& query);
+/**
+ * Helper function that allocates buffers on a query object that has been
+ * deserialized on the "server" side.
+ */
+std::vector<void*> allocate_query_buffers(
+    const Context& ctx, const Array& array, Query* query);
 
 }  // End of namespace test
 

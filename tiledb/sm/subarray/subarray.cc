@@ -414,7 +414,7 @@ Status Subarray::add_point_ranges(
       array_query_type == QueryType::MODIFY_EXCLUSIVE) {
     if (!array_->array_schema_latest().dense()) {
       return LOG_STATUS(Status_SubarrayError(
-          "Adding a subarray range to a write or modify_exclsuive query is not "
+          "Adding a subarray range to a write or modify_exclusive query is not "
           "supported in sparse arrays"));
     }
     if (this->is_set(dim_idx)) {
@@ -459,6 +459,71 @@ Status Subarray::add_point_ranges(
     // Add range
     auto st = this->add_range(
         dim_idx, Range(&range[0], 2 * coord_size), err_on_range_oob_);
+    if (!st.ok()) {
+      return LOG_STATUS(std::move(st));
+    }
+  }
+  return Status::Ok();
+}
+
+Status Subarray::add_ranges_list(
+    unsigned dim_idx, const void* start, uint64_t count) {
+  if (dim_idx >= this->array_->array_schema_latest().dim_num()) {
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add range; Invalid dimension index"));
+  }
+
+  if (count % 2) {
+    return LOG_STATUS(Status_SubarrayError(
+        "add_ranges_list: Invalid count " + std::to_string(count) +
+        ", count must be a multiple of 2 "));
+  }
+
+  QueryType array_query_type{array_->get_query_type()};
+  if (array_query_type == QueryType::WRITE ||
+      array_query_type == QueryType::MODIFY_EXCLUSIVE) {
+    if (!array_->array_schema_latest().dense()) {
+      return LOG_STATUS(Status_SubarrayError(
+          "Adding a subarray range to a write or modify_exclusive query is not "
+          "supported in sparse arrays"));
+    }
+    if (this->is_set(dim_idx)) {
+      return LOG_STATUS(
+          Status_SubarrayError("Cannot add range; Multi-range dense writes "
+                               "are not supported"));
+    }
+  }
+
+  if (array_query_type != QueryType::READ &&
+      array_query_type != QueryType::WRITE &&
+      array_query_type != QueryType::MODIFY_EXCLUSIVE) {
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add range; Unsupported query type"));
+  }
+
+  if (start == nullptr) {
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add ranges; Invalid start pointer"));
+  }
+
+  if (this->array_->array_schema_latest()
+          .domain()
+          .dimension_ptr(dim_idx)
+          ->var_size()) {
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add range; Range must be fixed-sized"));
+  }
+
+  // Prepare a temp range
+  auto coord_size =
+      this->array_->array_schema_latest().dimension_ptr(dim_idx)->coord_size();
+
+  for (size_t i = 0; i < count / 2; i++) {
+    uint8_t* ptr = (uint8_t*)start + 2 * coord_size * i;
+
+    // Add range
+    auto st =
+        this->add_range(dim_idx, Range(ptr, 2 * coord_size), err_on_range_oob_);
     if (!st.ok()) {
       return LOG_STATUS(std::move(st));
     }
@@ -536,6 +601,16 @@ Status Subarray::add_range_var_by_name(
       dim_name, &dim_idx));
 
   return add_range_var(dim_idx, start, start_size, end, end_size);
+}
+
+const std::vector<Range>& Subarray::get_attribute_ranges(
+    const std::string& attr_name) const {
+  const auto& ranges = attr_range_subset_.at(attr_name);
+  return ranges;
+}
+
+const std::string& Subarray::get_label_name(const uint32_t dim_index) const {
+  return label_range_subset_[dim_index]->name;
 }
 
 void Subarray::get_label_range(
@@ -862,6 +937,10 @@ bool Subarray::empty() const {
   return range_num() == 0;
 }
 
+bool Subarray::empty(uint32_t dim_idx) const {
+  return range_subset_[dim_idx].is_empty();
+}
+
 QueryType Subarray::get_query_type() const {
   if (array_ == nullptr)
     throw StatusException(Status_SubarrayError(
@@ -998,6 +1077,25 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   ret.compute_range_offsets();
 
   return ret;
+}
+
+void Subarray::remove_label_ranges() {
+  label_range_subset_.clear();
+  label_range_subset_.resize(array_->array_schema_latest().dim_num(), nullopt);
+}
+
+bool Subarray::has_label_ranges() const {
+  return std::any_of(
+      label_range_subset_.cbegin(),
+      label_range_subset_.cend(),
+      [](const auto& range_subset) {
+        return range_subset.has_value() && !range_subset->ranges.is_empty();
+      });
+}
+
+bool Subarray::has_label_ranges(const uint32_t dim_index) const {
+  return label_range_subset_[dim_index].has_value() &&
+         !label_range_subset_[dim_index]->ranges.is_empty();
 }
 
 bool Subarray::is_default(uint32_t dim_index) const {
@@ -1741,6 +1839,35 @@ NDRange Subarray::ndrange(const std::vector<uint64_t>& range_coords) const {
   for (unsigned d = 0; d < dim_num; ++d)
     ret.emplace_back(range_subset_[d][range_coords[d]]);
   return ret;
+}
+
+void Subarray::set_attribute_ranges(
+    const std::string& attr_name, const std::vector<Range>& ranges) {
+  if (!array_->array_schema_latest().is_attr(attr_name)) {
+    throw StatusException(Status_SubarrayError(
+        "Cannot add ranges; No attribute named " + attr_name + "'."));
+  }
+  auto search = attr_range_subset_.find(attr_name);
+  if (search != attr_range_subset_.end()) {
+    throw StatusException(Status_SubarrayError(
+        "Cannot add ranges; Ranges are already set for attribute '" +
+        attr_name + "'."));
+  }
+  attr_range_subset_[attr_name] = ranges;
+}
+
+const std::vector<Range>& Subarray::ranges_for_label(
+    const std::string& label_name) const {
+  auto dim_idx = array_->array_schema_latest()
+                     .dimension_label_reference(label_name)
+                     .dimension_id();
+  if (!label_range_subset_[dim_idx].has_value() ||
+      label_range_subset_[dim_idx].value().name != label_name) {
+    throw StatusException(Status_SubarrayError(
+        "Cannot get label ranges; No ranges set on dimension label '" +
+        label_name + "'"));
+  }
+  return label_range_subset_[dim_idx]->get_ranges();
 }
 
 Status Subarray::set_ranges_for_dim(
@@ -2719,6 +2846,7 @@ Subarray Subarray::clone() const {
   clone.is_default_ = is_default_;
   clone.range_offsets_ = range_offsets_;
   clone.label_range_subset_ = label_range_subset_;
+  clone.attr_range_subset_ = attr_range_subset_;
   clone.tile_overlap_ = tile_overlap_;
   clone.est_result_size_computed_ = est_result_size_computed_;
   clone.coalesce_ranges_ = coalesce_ranges_;
@@ -2864,6 +2992,7 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(cell_order_, subarray.cell_order_);
   std::swap(range_subset_, subarray.range_subset_);
   std::swap(label_range_subset_, subarray.label_range_subset_);
+  std::swap(attr_range_subset_, subarray.attr_range_subset_);
   std::swap(is_default_, subarray.is_default_);
   std::swap(range_offsets_, subarray.range_offsets_);
   std::swap(tile_overlap_, subarray.tile_overlap_);

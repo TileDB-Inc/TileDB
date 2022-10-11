@@ -242,6 +242,14 @@ class URI {
    */
   URI join_path(const std::string& path) const;
 
+  /**
+   * Joins the URI with the input URI.
+   *
+   * @param uri The URI to append.
+   * @return The resulting URI.
+   */
+  URI join_path(const URI& uri) const;
+
   /** Returns the last part of the URI (i.e., excluding the parent). */
   std::string last_path_part() const;
 

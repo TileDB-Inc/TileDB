@@ -288,7 +288,7 @@ TEST_CASE(
   uint64_t size;
   rc = tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 1, &size);
   CHECK(rc == TILEDB_OK);
-  CHECK(size == 3193);
+  CHECK(size == 3202);
 
   // Get dense / sparse
   int32_t dense;
@@ -539,7 +539,7 @@ TEST_CASE(
   uint64_t size;
   rc = tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 1, &size);
   CHECK(rc == TILEDB_OK);
-  CHECK(size == 5576);
+  CHECK(size == 5585);
 
   // Get dense / sparse
   int32_t dense;
@@ -1376,16 +1376,16 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
       "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
       "  > Type: dense\n" + "  > Non-empty domain: [1, 6]\n" +
-      "  > Size: 3193\n" + "  > Cell num: 10\n" +
+      "  > Size: 3202\n" + "  > Cell num: 10\n" +
       "  > Timestamp range: [1, 1]\n" + "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
       "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [1, 4]\n" + "  > Size: 3142\n" +
+      "  > Non-empty domain: [1, 4]\n" + "  > Size: 3151\n" +
       "  > Cell num: 5\n" + "  > Timestamp range: [2, 2]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #3:\n" +
       "  > URI: " + written_frag_uri_3 + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [5, 6]\n" + "  > Size: 3190\n" +
+      "  > Non-empty domain: [5, 6]\n" + "  > Size: 3202\n" +
       "  > Cell num: 10\n" + "  > Timestamp range: [3, 3]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";

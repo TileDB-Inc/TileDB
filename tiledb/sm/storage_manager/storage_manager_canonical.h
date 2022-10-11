@@ -79,6 +79,7 @@ class MemoryTracker;
 class Query;
 class QueryCondition;
 class RestClient;
+class UpdateValue;
 class VFS;
 
 enum class EncryptionType : uint8_t;
@@ -201,7 +202,7 @@ class StorageManagerCanonical {
    * Loads the group metadata from persistent storage based on
    * the input URI manager.
    */
-  Status load_group_metadata(
+  void load_group_metadata(
       const tdb_shared_ptr<GroupDirectory>& group_dir,
       const EncryptionKey& encryption_key,
       Metadata* metadata);
@@ -434,19 +435,24 @@ class StorageManagerCanonical {
       const Config& config);
 
   /**
+   * Writes a commit ignore file.
+   *
+   * @param array_dir The ArrayDirectory where the data is stored.
+   * @param commit_uris_to_ignore The commit files that are to be ignored.
+   */
+  Status write_commit_ignore_file(
+      ArrayDirectory array_dir, const std::vector<URI>& commit_uris_to_ignore);
+
+  /**
    * Cleans up the array fragments.
    *
    * @param array_name The name of the array to be vacuumed.
    * @param timestamp_start The start timestamp at which to vacuum.
    * @param timestamp_end The end timestamp at which to vacuum.
-   * @param for_deletes True if vacuumuming for deletion of fragments.
    * @return Status
    */
-  Status fragments_vacuum(
-      const char* array_name,
-      uint64_t timestamp_start,
-      uint64_t timestamp_end,
-      bool for_deletes);
+  Status delete_fragments(
+      const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /**
    * Cleans up the array, such as its consolidated fragments and array
@@ -503,7 +509,7 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status array_evolve_schema(
-      const ArrayDirectory& array_dir,
+      const URI& uri,
       ArraySchemaEvolution* array_schema,
       const EncryptionKey& encryption_key);
 
@@ -517,8 +523,7 @@ class StorageManagerCanonical {
    *      this instance).
    * @return Status
    */
-  Status array_upgrade_version(
-      const ArrayDirectory& array_dir, const Config& config);
+  Status array_upgrade_version(const URI& uri, const Config& config);
 
   /**
    * Retrieves the non-empty domain from an array. This is the union of the
@@ -706,10 +711,9 @@ class StorageManagerCanonical {
    * Checks if the input URI represents an array.
    *
    * @param The URI to be checked.
-   * @param is_array Set to `true` if the URI is an array and `false` otherwise.
-   * @return Status
+   * @return bool
    */
-  Status is_array(const URI& uri, bool* is_array) const;
+  bool is_array(const URI& uri) const;
 
   /**
    * Checks if the input URI represents a directory.
@@ -802,19 +806,22 @@ class StorageManagerCanonical {
    * Loads the array metadata from persistent storage based on
    * the input URI manager.
    */
-  Status load_array_metadata(
+  void load_array_metadata(
       const ArrayDirectory& array_dir,
       const EncryptionKey& encryption_key,
       Metadata* metadata);
 
   /**
-   * Loads the delete conditions from storage.
+   * Loads the delete and update conditions from storage.
    *
    * @param array The array.
-   * @return Status, vector of the delete conditions.
+   * @return Status, vector of the conditions, vector of the update values.
    */
-  tuple<Status, optional<std::vector<QueryCondition>>> load_delete_conditions(
-      const Array& array);
+  tuple<
+      Status,
+      optional<std::vector<QueryCondition>>,
+      optional<std::vector<std::vector<UpdateValue>>>>
+  load_delete_and_update_conditions(const Array& array);
 
   /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;

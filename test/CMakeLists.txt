@@ -109,6 +109,7 @@ set(TILEDB_TEST_SUPPORT_SOURCES
 set(TILEDB_UNIT_TEST_SOURCES
   src/helpers.h
   src/helpers-dimension.h
+  src/test-capi-query-error-handling.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
@@ -169,6 +170,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
   src/unit-lru_cache.cc
+  src/unit-ordered-dim-label-reader.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
   src/unit-bytevecvalue.cc
@@ -196,6 +198,7 @@ set(TILEDB_UNIT_TEST_SOURCES
 
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/unit-cppapi-array-deletes.cc
     src/unit-cppapi-array.cc
     src/unit-cppapi-checksum.cc
     src/unit-cppapi-config.cc
@@ -254,7 +257,12 @@ endif()
 
 if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/experimental_helpers.cc
+    src/test-capi-array-many-dimension-labels.cc
     src/test-capi-dimension_labels.cc
+    src/test-capi-dense-array-dimension-label.cc
+    src/test-capi-dense-array-dimension-label-var.cc
+    src/test-capi-sparse-array-dimension-label.cc
     src/test-dimension_labels-read-consistency.cc
     src/unit_intersect_fragments.cc
   )

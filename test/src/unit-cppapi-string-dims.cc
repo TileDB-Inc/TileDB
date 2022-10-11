@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 #include "tiledb/common/logger_public.h"
@@ -1457,10 +1458,21 @@ void write_sparse_array_string_dim(
   query.set_data_buffer("dim1", (char*)data.data(), data.size());
   query.set_offsets_buffer("dim1", data_offsets.data(), data_offsets.size());
 
-  CHECK_NOTHROW(query.submit());
-
-  // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes || layout != TILEDB_GLOBAL_ORDER) {
+    CHECK_NOTHROW(query.submit());
+    query.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query);
+  }
 
   array.close();
 }
@@ -1576,7 +1588,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: Test adding RLE filter of string dimensions",
+    "C++ API: Test adding RLE/Dictionary filter of string dimensions",
     "[cppapi][string-dims][rle-strings][dict-strings][sparse]") {
   std::string array_name = "test_rle_string_dim";
 
@@ -1590,17 +1602,30 @@ TEST_CASE(
 
   // Create filters
   auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
-  Filter rle_filter(ctx, f);
+  Filter string_filter(ctx, f);
   Filter another_filter(ctx, TILEDB_FILTER_CHECKSUM_MD5);
 
-  // Create filter list with RLE only
+  // Create filter list with RLE/Dict only
   FilterList filter_list_rle_only(ctx);
-  filter_list_rle_only.add_filter(rle_filter);
+  filter_list_rle_only.add_filter(string_filter);
 
-  // Create filter list with RLE and other filters
-  FilterList filter_list_with_others(ctx);
-  filter_list_with_others.add_filter(another_filter);
-  filter_list_with_others.add_filter(rle_filter);
+  // Create filter list with other filters also where RLE/Dict is not first
+  FilterList filter_list_with_others_not_first(ctx);
+  filter_list_with_others_not_first.add_filter(another_filter);
+  filter_list_with_others_not_first.add_filter(string_filter);
+
+  // Create filter list with other filters also where RLE/Dict is first
+  FilterList filter_list_with_others_first(ctx);
+  filter_list_with_others_first.add_filter(string_filter);
+  filter_list_with_others_first.add_filter(another_filter);
+
+  // Create filter list with both RLE and Dict, shouldn't be allowed
+  // as one of them won't be first
+  FilterList filter_list_with_rle_and_dict(ctx);
+  Filter rle_filter(ctx, TILEDB_FILTER_RLE);
+  Filter dict_filter(ctx, TILEDB_FILTER_DICTIONARY);
+  filter_list_with_rle_and_dict.add_filter(dict_filter);
+  filter_list_with_rle_and_dict.add_filter(rle_filter);
 
   {
     // Add dimension that is not var length string
@@ -1609,7 +1634,8 @@ TEST_CASE(
     schema.set_domain(domain);
 
     CHECK_NOTHROW(schema.set_coords_filter_list(filter_list_rle_only));
-    CHECK_NOTHROW(schema.set_coords_filter_list(filter_list_with_others));
+    CHECK_NOTHROW(
+        schema.set_coords_filter_list(filter_list_with_others_not_first));
 
     // Add var length string dimension
     domain.add_dimension(dim_var_string);
@@ -1618,10 +1644,17 @@ TEST_CASE(
     // Test set_coords_filter_list
     {
       // Case 1: There is no more specific filter list for this dimension
-      // Adding RLE with other filters to var-length string dimension is not
+      // Adding RLE after other filters to var-length string dimension is not
       // allowed
-      CHECK_THROWS(schema.set_coords_filter_list(filter_list_with_others));
-      // If only RLE is used, it's allowed
+      CHECK_THROWS(
+          schema.set_coords_filter_list(filter_list_with_others_not_first));
+      // Should throw as even RLE is first, dictionary isn't
+      CHECK_THROWS(
+          schema.set_coords_filter_list(filter_list_with_rle_and_dict));
+      // If RLE/Dict is first, it's allowed
+      CHECK_NOTHROW(
+          schema.set_coords_filter_list(filter_list_with_others_first));
+      // If only RLE/Dict is used, it's allowed
       CHECK_NOTHROW(schema.set_coords_filter_list(filter_list_rle_only));
     }
 
@@ -1635,20 +1668,28 @@ TEST_CASE(
       Domain domain2(ctx);
       domain2.add_dimension(dim_var_string);
       schema.set_domain(domain2);
-      CHECK_NOTHROW(schema.set_coords_filter_list(filter_list_with_others));
+      CHECK_NOTHROW(
+          schema.set_coords_filter_list(filter_list_with_others_not_first));
     }
 
     // Test set_filter_list
     {
-      // Adding RLE with other filters to var-length string dimension is not
-      // allowed
-      CHECK_THROWS(dim_var_string.set_filter_list(filter_list_with_others));
+      // Adding RLE/Dict after other filters to var-length string dimension is
+      // not allowed
+      CHECK_THROWS(
+          dim_var_string.set_filter_list(filter_list_with_others_not_first));
+      // Should throw as even RLE is first, dictionary isn't
+      CHECK_THROWS(
+          dim_var_string.set_filter_list(filter_list_with_rle_and_dict));
+      // If RLE/Dict is first, it's allowed
+      CHECK_NOTHROW(
+          dim_var_string.set_filter_list(filter_list_with_others_first));
 
       // The rest of the cases are allowed
       CHECK_NOTHROW(dim_var_string.set_filter_list(filter_list_rle_only));
       CHECK_NOTHROW(dim_not_var_string.set_filter_list(filter_list_rle_only));
-      CHECK_NOTHROW(
-          dim_not_var_string.set_filter_list(filter_list_with_others));
+      CHECK_NOTHROW(dim_not_var_string.set_filter_list(
+          filter_list_with_others_not_first));
     }
   }
 }
