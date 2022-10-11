@@ -1968,8 +1968,10 @@ void Query::set_label_data_buffer(
   // Set dimension label buffer on the appropriate buffer depending if the label
   // is fixed or variable length.
   array_schema_->dimension_label_reference(name).is_var() ?
-      label_buffers_[name].set_data_var_buffer(buffer, buffer_size) :
-      label_buffers_[name].set_data_buffer(buffer, buffer_size);
+      throw_if_not_ok(
+          label_buffers_[name].set_data_var_buffer(buffer, buffer_size)) :
+      throw_if_not_ok(
+          label_buffers_[name].set_data_buffer(buffer, buffer_size));
 }
 
 void Query::set_label_offsets_buffer(
@@ -2019,7 +2021,8 @@ void Query::set_label_offsets_buffer(
   }
 
   // Set dimension label offsets buffers.
-  label_buffers_[name].set_offsets_buffer(buffer_offsets, buffer_offsets_size);
+  throw_if_not_ok(label_buffers_[name].set_offsets_buffer(
+      buffer_offsets, buffer_offsets_size));
 }
 
 Status Query::set_offsets_buffer(
