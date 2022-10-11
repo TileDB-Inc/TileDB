@@ -1304,9 +1304,8 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
   assert(version_ > 8);
   const auto iter = idx_map_.find(name);
   if (iter == idx_map_.end())
-    return {
-        Status_FragmentMetadataError("Name " + name + " not in idx_map_"),
-        std::nullopt};
+    return {Status_FragmentMetadataError("Name " + name + " not in idx_map_"),
+            std::nullopt};
 
   const unsigned idx = iter->second;
 
@@ -1372,10 +1371,9 @@ tuple<Status, optional<URI>> FragmentMetadata::validity_uri(
   if (!st.ok())
     return {st, std::nullopt};
 
-  return {
-      st,
-      fragment_uri_.join_path(
-          *encoded_name + "_validity" + constants::file_suffix)};
+  return {st,
+          fragment_uri_.join_path(
+              *encoded_name + "_validity" + constants::file_suffix)};
 }
 
 const std::string& FragmentMetadata::array_schema_name() {
@@ -1616,10 +1614,9 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::persisted_tile_size(
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_offsets_[idx]) {
-    return {
-        LOG_STATUS(Status_FragmentMetadataError(
-            "Trying to access metadata that's not loaded")),
-        nullopt};
+    return {LOG_STATUS(Status_FragmentMetadataError(
+                "Trying to access metadata that's not loaded")),
+            nullopt};
   }
 
   auto tile_num = this->tile_num();
@@ -1639,10 +1636,9 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::persisted_tile_var_size(
   auto idx = it->second;
 
   if (!loaded_metadata_.tile_var_offsets_[idx]) {
-    return {
-        LOG_STATUS(Status_FragmentMetadataError(
-            "Trying to access metadata that's not loaded")),
-        nullopt};
+    return {LOG_STATUS(Status_FragmentMetadataError(
+                "Trying to access metadata that's not loaded")),
+            nullopt};
   }
 
   auto tile_num = this->tile_num();
@@ -1662,10 +1658,9 @@ FragmentMetadata::persisted_tile_validity_size(
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_validity_offsets_[idx]) {
-    return {
-        LOG_STATUS(Status_FragmentMetadataError(
-            "Trying to access metadata that's not loaded")),
-        nullopt};
+    return {LOG_STATUS(Status_FragmentMetadataError(
+                "Trying to access metadata that's not loaded")),
+            nullopt};
   }
 
   auto tile_num = this->tile_num();
@@ -1693,10 +1688,9 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::tile_var_size(
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_var_sizes_[idx]) {
-    return {
-        LOG_STATUS(Status_FragmentMetadataError(
-            "Trying to access metadata that's not loaded")),
-        nullopt};
+    return {LOG_STATUS(Status_FragmentMetadataError(
+                "Trying to access metadata that's not loaded")),
+            nullopt};
   }
 
   auto tile_size = tile_var_sizes_[idx][tile_idx];

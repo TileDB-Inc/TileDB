@@ -49,9 +49,8 @@ tuple<bool, optional<std::string>> have_compatible_types(
   if (dim->type() != attr->type())
     return {false, "Attribute and dimension datatype do not match."};
   if (dim->cell_val_num() != attr->cell_val_num())
-    return {
-        false,
-        "Attribute and dimension number of values per cell do not match"};
+    return {false,
+            "Attribute and dimension number of values per cell do not match"};
   return {true, nullopt};
 }
 

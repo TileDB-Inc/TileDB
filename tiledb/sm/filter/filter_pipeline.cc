@@ -191,9 +191,9 @@ Status FilterPipeline::filter_chunks_forward(
     uint64_t offset = var_sizes ? chunk_offsets[i] : i * chunk_size;
     void* chunk_buffer = static_cast<char*>(tile.data()) + offset;
     uint32_t chunk_buffer_size =
-        i == nchunks - 1 ? last_buffer_size :
-        var_sizes        ? chunk_offsets[i + 1] - chunk_offsets[i] :
-                           chunk_size;
+        i == nchunks - 1 ?
+            last_buffer_size :
+            var_sizes ? chunk_offsets[i + 1] - chunk_offsets[i] : chunk_size;
     RETURN_NOT_OK(input_data.init(chunk_buffer, chunk_buffer_size));
 
     // Apply the filters sequentially.
@@ -283,9 +283,9 @@ Status FilterPipeline::filter_chunks_forward(
     auto& final_stage_output_data = final_stage_io[i].first.second;
     auto filtered_size = (uint32_t)final_stage_output_data.size();
     uint32_t orig_chunk_size =
-        i == final_stage_io.size() - 1 ? last_buffer_size :
-        var_sizes ? chunk_offsets[i + 1] - chunk_offsets[i] :
-                    chunk_size;
+        i == final_stage_io.size() - 1 ?
+            last_buffer_size :
+            var_sizes ? chunk_offsets[i + 1] - chunk_offsets[i] : chunk_size;
     auto metadata_size = (uint32_t)final_stage_output_metadata.size();
     void* dest = output.data() + offsets[i];
     uint64_t dest_offset = 0;

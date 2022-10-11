@@ -71,13 +71,12 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
 
   if (encryption_key.encryption_type() !=
       (EncryptionType)header.encryption_type) {
-    return {
-        LOG_STATUS(Status_TileIOError(
-            "Error reading generic tile; tile is encrypted with " +
-            encryption_type_str((EncryptionType)header.encryption_type) +
-            " but given key is for " +
-            encryption_type_str(encryption_key.encryption_type()))),
-        nullopt};
+    return {LOG_STATUS(Status_TileIOError(
+                "Error reading generic tile; tile is encrypted with " +
+                encryption_type_str((EncryptionType)header.encryption_type) +
+                " but given key is for " +
+                encryption_type_str(encryption_key.encryption_type()))),
+            nullopt};
   }
 
   RETURN_NOT_OK_TUPLE(

@@ -1407,7 +1407,7 @@ void SubarrayPartitioner::compute_range_uint64(
       auto start_str = r->start_str();
       (*range_uint64)[d][0] =
           empty_start ? 0 :  // min default
-                        dim->map_to_uint64(
+              dim->map_to_uint64(
                   start_str.data(), start_str.size(), bits, max_bucket_val);
       auto end_str = r->end_str();
       (*range_uint64)[d][1] =

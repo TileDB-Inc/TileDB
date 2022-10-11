@@ -747,10 +747,9 @@ Status ArraySchema::add_dimension_label(
         "Cannot add dimension label; The dimension label schema is not "
         "compatible with the dimension it is being added to."));
   // Create relative URI in dimension label directory
-  URI uri{
-      constants::array_dimension_labels_dir_name + "/l" +
-          std::to_string(nlabel_internal_),
-      false};
+  URI uri{constants::array_dimension_labels_dir_name + "/l" +
+              std::to_string(nlabel_internal_),
+          false};
   // Add dimension label
   auto dim_label = make_shared<DimensionLabelReference>(
       HERE(),

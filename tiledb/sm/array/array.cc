@@ -574,10 +574,9 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> Array::get_array_schema()
     const {
   // Error if the array is not open
   if (!is_open_)
-    return {
-        LOG_STATUS(
-            Status_ArrayError("Cannot get array schema; Array is not open")),
-        nullopt};
+    return {LOG_STATUS(Status_ArrayError(
+                "Cannot get array schema; Array is not open")),
+            nullopt};
 
   return {Status::Ok(), array_schema_latest_};
 }

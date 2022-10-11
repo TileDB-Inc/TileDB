@@ -212,12 +212,12 @@ TEST_CASE_METHOD(
   std::vector<int32_t> domain_slice_2 = {4, 5, 2, 4};
   std::vector<int32_t> domain_slice_3 = {5, 7, 1, 9};
 
-  NDRange ds1 = {
-      Range(&domain_slice_1[0], size), Range(&domain_slice_1[2], size)};
-  NDRange ds2 = {
-      Range(&domain_slice_2[0], size), Range(&domain_slice_2[2], size)};
-  NDRange ds3 = {
-      Range(&domain_slice_3[0], size), Range(&domain_slice_3[2], size)};
+  NDRange ds1 = {Range(&domain_slice_1[0], size),
+                 Range(&domain_slice_1[2], size)};
+  NDRange ds2 = {Range(&domain_slice_2[0], size),
+                 Range(&domain_slice_2[2], size)};
+  NDRange ds3 = {Range(&domain_slice_3[0], size),
+                 Range(&domain_slice_3[2], size)};
   NDRange dsd = domain;
 
   std::vector<TileDomain<int32_t>> frag_tile_domains;

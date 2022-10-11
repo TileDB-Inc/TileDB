@@ -917,19 +917,18 @@ TEST_CASE(
   std::vector<bool> is_default(1, false);
   Domain dom1 =
       create_domain({"d"}, {Datatype::STRING_ASCII}, {nullptr}, {nullptr});
-  std::vector<NDRange> mbrs = create_str_mbrs<1>(
-      {"aa",
-       "b",
-       "eee",
-       "g",
-       "gggg",
-       "ii",
-       "jj",
-       "l",
-       "mm",
-       "mmn",
-       "oo",
-       "oop"});
+  std::vector<NDRange> mbrs = create_str_mbrs<1>({"aa",
+                                                  "b",
+                                                  "eee",
+                                                  "g",
+                                                  "gggg",
+                                                  "ii",
+                                                  "jj",
+                                                  "l",
+                                                  "mm",
+                                                  "mmn",
+                                                  "oo",
+                                                  "oop"});
 
   const Domain d1{&dom1};
   RTree rtree(&d1, 3);
@@ -1012,19 +1011,18 @@ TEST_CASE(
       {Datatype::STRING_ASCII, Datatype::STRING_ASCII},
       {nullptr, nullptr},
       {nullptr, nullptr});
-  std::vector<NDRange> mbrs = create_str_mbrs<2>(
-      {"aa",
-       "b",
-       "eee",
-       "g",
-       "gggg",
-       "ii",
-       "jj",
-       "lll",
-       "m",
-       "n",
-       "oo",
-       "qqq"});
+  std::vector<NDRange> mbrs = create_str_mbrs<2>({"aa",
+                                                  "b",
+                                                  "eee",
+                                                  "g",
+                                                  "gggg",
+                                                  "ii",
+                                                  "jj",
+                                                  "lll",
+                                                  "m",
+                                                  "n",
+                                                  "oo",
+                                                  "qqq"});
 
   const Domain d1{&dom};
   RTree rtree(&d1, 3);

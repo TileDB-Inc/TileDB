@@ -713,17 +713,15 @@ tuple<Status, optional<uint64_t>> Group::member_count() const {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    return {
-        Status_GroupError("Cannot get member count; Group is not open"),
-        std::nullopt};
+    return {Status_GroupError("Cannot get member count; Group is not open"),
+            std::nullopt};
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {
-        Status_GroupError(
-            "Cannot get member; Group was not opened in read mode"),
-        std::nullopt};
+    return {Status_GroupError(
+                "Cannot get member; Group was not opened in read mode"),
+            std::nullopt};
   }
 
   return {Status::Ok(), members_.size()};
@@ -739,21 +737,19 @@ Group::member_by_index(uint64_t index) {
 
   // Check if group is open
   if (!is_open_) {
-    return {
-        Status_GroupError("Cannot get member by index; Group is not open"),
-        std::nullopt,
-        std::nullopt,
-        std::nullopt};
+    return {Status_GroupError("Cannot get member by index; Group is not open"),
+            std::nullopt,
+            std::nullopt,
+            std::nullopt};
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {
-        Status_GroupError(
-            "Cannot get member; Group was not opened in read mode"),
-        std::nullopt,
-        std::nullopt,
-        std::nullopt};
+    return {Status_GroupError(
+                "Cannot get member; Group was not opened in read mode"),
+            std::nullopt,
+            std::nullopt,
+            std::nullopt};
   }
 
   if (index >= members_vec_.size()) {
@@ -787,33 +783,30 @@ Group::member_by_name(const std::string& name) {
 
   // Check if group is open
   if (!is_open_) {
-    return {
-        Status_GroupError("Cannot get member by name; Group is not open"),
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt};
+    return {Status_GroupError("Cannot get member by name; Group is not open"),
+            std::nullopt,
+            std::nullopt,
+            std::nullopt,
+            std::nullopt};
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {
-        Status_GroupError(
-            "Cannot get member; Group was not opened in read mode"),
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt};
+    return {Status_GroupError(
+                "Cannot get member; Group was not opened in read mode"),
+            std::nullopt,
+            std::nullopt,
+            std::nullopt,
+            std::nullopt};
   }
 
   auto it = members_by_name_.find(name);
   if (it == members_by_name_.end()) {
-    return {
-        Status_GroupError(name + " does not exist in group"),
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt};
+    return {Status_GroupError(name + " does not exist in group"),
+            std::nullopt,
+            std::nullopt,
+            std::nullopt,
+            std::nullopt};
   }
 
   auto member = it->second;

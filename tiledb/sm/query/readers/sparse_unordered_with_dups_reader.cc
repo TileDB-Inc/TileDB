@@ -1453,10 +1453,9 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
       status, logger_->status_no_return_value(status), nullopt);
 
   if (max_rt_idx == 0)
-    return {
-        Status_SparseUnorderedWithDupsReaderError(
-            "Unable to copy one tile with current budget/buffers"),
-        nullopt};
+    return {Status_SparseUnorderedWithDupsReaderError(
+                "Unable to copy one tile with current budget/buffers"),
+            nullopt};
 
   // Resize the result tiles vector.
   buffers_full_ &= max_rt_idx == result_tiles.size();

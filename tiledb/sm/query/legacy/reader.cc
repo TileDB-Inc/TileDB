@@ -2230,11 +2230,10 @@ tuple<Status, optional<bool>> Reader::fill_dense_coords(
   // This path does not use result cell slabs, which will fill coordinates
   // for cells that should be filtered out.
   if (!condition_.empty()) {
-    return {
-        logger_->status(Status_ReaderError(
-            "Cannot read dense coordinates; dense coordinate "
-            "reads are unsupported with a query condition")),
-        nullopt};
+    return {logger_->status(Status_ReaderError(
+                "Cannot read dense coordinates; dense coordinate "
+                "reads are unsupported with a query condition")),
+            nullopt};
   }
 
   // Prepare buffers

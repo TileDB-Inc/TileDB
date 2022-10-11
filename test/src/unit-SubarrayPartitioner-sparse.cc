@@ -241,13 +241,12 @@ void SubarrayPartitionerSparseFx::write_default_1d_array() {
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
   std::vector<int> a = {1, 2, 3, 4, 5, 6};
   uint64_t a_size = a.size() * sizeof(int);
-  std::vector<uint64_t> b_off = {
-      0,
-      sizeof(int),
-      3 * sizeof(int),
-      6 * sizeof(int),
-      9 * sizeof(int),
-      11 * sizeof(int)};
+  std::vector<uint64_t> b_off = {0,
+                                 sizeof(int),
+                                 3 * sizeof(int),
+                                 6 * sizeof(int),
+                                 9 * sizeof(int),
+                                 11 * sizeof(int)};
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6};
   uint64_t b_val_size = b_val.size() * sizeof(int);
@@ -265,17 +264,16 @@ void SubarrayPartitionerSparseFx::write_default_1d_array_2() {
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   uint64_t a_size = a.size() * sizeof(int);
-  std::vector<uint64_t> b_off = {
-      0,
-      sizeof(int),
-      3 * sizeof(int),
-      6 * sizeof(int),
-      9 * sizeof(int),
-      11 * sizeof(int),
-      15 * sizeof(int),
-      16 * sizeof(int),
-      17 * sizeof(int),
-      18 * sizeof(int)};
+  std::vector<uint64_t> b_off = {0,
+                                 sizeof(int),
+                                 3 * sizeof(int),
+                                 6 * sizeof(int),
+                                 9 * sizeof(int),
+                                 11 * sizeof(int),
+                                 15 * sizeof(int),
+                                 16 * sizeof(int),
+                                 17 * sizeof(int),
+                                 18 * sizeof(int)};
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<int> b_val = {
       1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6, 7, 8, 9, 10};
@@ -294,13 +292,12 @@ void SubarrayPartitionerSparseFx::write_default_1d_float_array() {
   uint64_t coords_size = coords.size() * sizeof(float);
   std::vector<int> a = {1, 2, 3, 4, 5, 6};
   uint64_t a_size = a.size() * sizeof(int);
-  std::vector<uint64_t> b_off = {
-      0,
-      sizeof(int),
-      3 * sizeof(int),
-      6 * sizeof(int),
-      9 * sizeof(int),
-      11 * sizeof(int)};
+  std::vector<uint64_t> b_off = {0,
+                                 sizeof(int),
+                                 3 * sizeof(int),
+                                 6 * sizeof(int),
+                                 9 * sizeof(int),
+                                 11 * sizeof(int)};
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6};
   uint64_t b_val_size = b_val.size() * sizeof(int);
@@ -318,13 +315,12 @@ void SubarrayPartitionerSparseFx::write_default_2d_array() {
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
   std::vector<int> a = {1, 2, 3, 4, 5, 6};
   uint64_t a_size = a.size() * sizeof(int);
-  std::vector<uint64_t> b_off = {
-      0,
-      sizeof(int),
-      3 * sizeof(int),
-      6 * sizeof(int),
-      9 * sizeof(int),
-      11 * sizeof(int)};
+  std::vector<uint64_t> b_off = {0,
+                                 sizeof(int),
+                                 3 * sizeof(int),
+                                 6 * sizeof(int),
+                                 9 * sizeof(int),
+                                 11 * sizeof(int)};
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6};
   uint64_t b_val_size = b_val.size() * sizeof(int);
@@ -934,8 +930,8 @@ TEST_CASE_METHOD(
     "[SubarrayPartitioner][sparse][1D][MR][split_once]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{5, 10, 25, 27, 33, 50}};
-  std::vector<SubarrayRanges<uint64_t>> partitions = {
-      {{5, 10, 25, 27}}, {{33, 50}}};
+  std::vector<SubarrayRanges<uint64_t>> partitions = {{{5, 10, 25, 27}},
+                                                      {{33, 50}}};
   uint64_t budget = 4 * sizeof(int);
   std::string attr = "a";
   bool unsplittable = false;
