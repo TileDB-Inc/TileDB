@@ -140,7 +140,7 @@ std::string DimensionLabelTestFixture::create_single_label_array(
   tiledb_dimension_label_schema_t* dim_label_schema;
   REQUIRE_TILEDB_OK(tiledb_dimension_label_schema_alloc(
       ctx,
-      TILEDB_INCREASING_LABELS,
+      TILEDB_UNORDERED_LABELS,
       TILEDB_UINT64,
       x_domain,
       &x_tile_extent,
