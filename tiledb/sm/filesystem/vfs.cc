@@ -1667,7 +1667,9 @@ Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
 
 std::pair<Status, std::optional<VFS::MultiPartUploadState>>
 VFS::multipart_upload_state(const URI& uri) {
-  if (uri.is_s3()) {
+  if (uri.is_file()) {
+    return {Status::Ok(), {}};
+  } else if (uri.is_s3()) {
 #ifdef HAVE_S3
     VFS::MultiPartUploadState state;
     auto s3_state = s3_.multipart_upload_state(uri);
@@ -1714,7 +1716,9 @@ VFS::multipart_upload_state(const URI& uri) {
 Status VFS::set_multipart_upload_state(
     const URI& uri, const MultiPartUploadState& state) {
   (void)state;
-  if (uri.is_s3()) {
+  if (uri.is_file()) {
+    return Status::Ok();
+  } else if (uri.is_s3()) {
 #ifdef HAVE_S3
     S3::MultiPartUploadState s3_state;
     s3_state.part_number = state.part_number;
