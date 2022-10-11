@@ -270,7 +270,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   }
   for (auto delete_and_update_condition : delete_and_update_conditions_) {
     for (auto& name : delete_and_update_condition.field_names()) {
-      if (!array_schema_.is_dim(name) || !include_coords) {
+      if (!array_schema_.is_dim(name) || !include_coords_) {
         qc_loaded_attr_names_set_.insert(name);
       }
     }

@@ -1925,6 +1925,8 @@ GlobalCmpQB ReaderBase::construct_bitsort_filter_argument(
   qb_vector.reserve(num_dims);
   dim_data_sizes.reserve(num_dims);
 
+  // Loop over the dimensions, adding the dimension tiles and constructed
+  // QueryBuffer objects that represent the dimension tile data.
   for (size_t i = 0; i < num_dims; ++i) {
     const Dimension* dimension = array_schema_.domain().dimension_ptr(i);
     auto dim_tile_tuple = tile->tile_tuple(dimension->name());
@@ -1937,7 +1939,6 @@ GlobalCmpQB ReaderBase::construct_bitsort_filter_argument(
   }
 
   db.emplace(DomainBuffersView(array_schema_.domain(), qb_vector));
-
   return GlobalCmpQB(array_schema_.domain(), db.value());
 }
 

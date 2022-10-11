@@ -846,6 +846,16 @@ class ReaderBase : public StrategyBase {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
+  /**
+   * @brief Constructs global order comparator object, to be passed into
+   * the bitsort filter.
+   *
+   * @param tile Fixed tile that is being unfiltered.
+   * @param dim_tiles Reference to storage for dimension tiles.
+   * @param qb_vector Reference to storage for query buffer vector.
+   * @param db Reference to storage for the domain buffer view object.
+   * @return GlobalCmpQB The comparator object with the dimension tile data.
+   */
   GlobalCmpQB construct_bitsort_filter_argument(
       ResultTile* const tile,
       std::vector<Tile*>& dim_tiles,

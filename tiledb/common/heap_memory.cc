@@ -39,7 +39,7 @@ namespace tiledb {
 namespace common {
 
 // Protects against races between memory management APIs
-// and the HeapProAPI.
+// and the HeapProfiler API.
 std::recursive_mutex __tdb_heap_mem_lock;
 
 void* tiledb_malloc(const size_t size, const std::string& label) {

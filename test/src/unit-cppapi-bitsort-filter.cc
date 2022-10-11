@@ -57,24 +57,33 @@ struct DimIdxValue {
   DimIdxValue(std::optional<int> x, std::optional<int> y, std::optional<int> z, int read_idx) 
   : x_(x), y_(y), z_(z), read_idx_(read_idx) {}
   
-
   std::optional<int> x_;
   std::optional<int> y_;
   std::optional<int> z_;
   int read_idx_;
 };
 
-// Defining dimension vector storage type.
+/**
+ * @brief This is the type that defines the metadata used in the CPP API bitsort tests.
+ * It includes the constructed dimension data vectors to use for writing, along with a 
+ * global index -> dimension data map. The dimension data includes the 
+ * correct x, y, and z coordinates for that global index, along with the index that
+ * corresponds with the read-in attribute data (this is read_index_). For any layout,
+ * we should note that for a global array for attribute array (global_attribute_data),
+ * and a read-in array with the specified layout in the test case using this metadata,
+ * (read_in_data), and a map called dim_idx_map,
+ * global_attribute_data[i] == read_in_data[dim_idx_map[i]] should be true.
+ * 
+ * @tparam DimType The type of the dimension.
+ */
 template<typename DimType>
 using DimensionDataMetadata = std::tuple<std::vector<DimType>, std::vector<DimType>, std::vector<DimType>, std::vector<DimIdxValue>>;
-
-// Defining optional reference wrapper type.
 
 /**
  * @brief Set the buffer with the appropriate dimension for a 1D array.
  *
  * @tparam DimType The type of the dimension.
- * @returns The dimension storage buffer.
+ * @returns The dimension storage buffer and the dimension index map.
  */
 template <typename DimType>
 DimensionDataMetadata<DimType> set_1d_dim_buffers() {
@@ -94,7 +103,7 @@ DimensionDataMetadata<DimType> set_1d_dim_buffers() {
  * @brief Set the buffer with the appropriate dimensions for a 2D array.
  *
  * @tparam DimType The type of the dimension.
- * @returns The dimension storage buffers.
+ * @returns The dimension storage buffers and the dimension index map.
  */
 template <typename DimType>
 DimensionDataMetadata<DimType> set_2d_dim_buffers(tiledb_layout_t read_layout) {
@@ -120,7 +129,7 @@ DimensionDataMetadata<DimType> set_2d_dim_buffers(tiledb_layout_t read_layout) {
             break;
           }
 
-          // Find read index based on the layout.
+          // Find read index based on the read layout.
           int read_index = global_read_index;
           if (read_layout == TILEDB_ROW_MAJOR) {
             read_index = ((x - BITSORT_DIM_LO) * element_size) + (y - BITSORT_DIM_LO);
@@ -145,7 +154,7 @@ DimensionDataMetadata<DimType> set_2d_dim_buffers(tiledb_layout_t read_layout) {
  * @brief Set the buffer with the appropriate dimensions for a 3D array.
  *
  * @tparam DimType The type of the dimension.
- * @returns The dimension storage buffers.
+ * @returns The dimension storage buffers and the dimension index map.
  */
 template <typename DimType>
 DimensionDataMetadata<DimType> set_3d_dim_buffers(tiledb_layout_t read_layout) {
@@ -179,6 +188,7 @@ DimensionDataMetadata<DimType> set_3d_dim_buffers(tiledb_layout_t read_layout) {
                 break;
               }
 
+              // Find read index based on the layout.
               int read_index = global_read_index;
               if (read_layout == TILEDB_ROW_MAJOR) {
                 read_index = ((((x - BITSORT_DIM_LO) * element_size) + (y - BITSORT_DIM_LO)) * element_size) + (z - BITSORT_DIM_LO);
@@ -202,6 +212,21 @@ DimensionDataMetadata<DimType> set_3d_dim_buffers(tiledb_layout_t read_layout) {
   return std::make_tuple(x_dims_data, y_dims_data, z_dims_data, dim_idx_map);
 }
 
+/**
+ * @brief Checks that a read query returns the correct results for an array
+ * with the specifications indicated by the parameters.
+ * 
+ * @tparam AttrType The type of the attribute data in the array.
+ * @tparam DimType The type of the dimensions of the array.
+ * @param num_dims The number of dimensions.
+ * @param global_a The attribute data in global order.
+ * @param a_data_read The read-in attribute data.
+ * @param dim_idx_map The map that maps global indexes to dimension data/read index.
+ * @param has_dimensions Whether the read included reading in the dimensions.
+ * @param x_dims_data The first buffer that the function checks.
+ * @param y_dims_data The second buffer that the function checks.
+ * @param z_dims_data The third buffer that the function checks.
+ */
 template <typename AttrType, typename DimType>
 void check_read(
   uint64_t num_dims,
@@ -370,7 +395,7 @@ void bitsort_filter_api_test(
   Array array_w(ctx, bitsort_array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
   query_w.set_layout(write_layout).set_data_buffer("a", a_write);
-  // Dimension buffers.
+  // Set dimension buffers and the dimension index map.
   auto&& [x_dims_data, y_dims_data, z_dims_data, dim_idx_map]{(num_dims == 1) ? set_1d_dim_buffers<DimType>() : ((num_dims == 2) ? set_2d_dim_buffers<DimType>(read_layout) : set_3d_dim_buffers<DimType>(read_layout))};
 
   // Setting data buffers.
@@ -538,7 +563,6 @@ TEMPLATE_TEST_CASE(
   uint64_t num_dims = GENERATE(1, 2, 3);
   tiledb_layout_t write_layout =
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
-  // TODO: after debugging the other test, test row and column major here.
   tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   bool set_subarray = GENERATE(true, false);
 
