@@ -20,6 +20,11 @@ on:
         default: ''
         required: true
         type: string
+      timeout:
+        default: 90
+        description: 'Job timeout (minutes)'
+        required: false
+        type: number
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
@@ -37,7 +42,7 @@ jobs:
     runs-on: ${{matrix.os}}
 
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
-    timeout-minutes: 90
+    timeout-minutes: ${{ inputs.timeout || 90 }}
     name: ${{matrix.os}} - ${{ inputs.ci_backend }}${{ inputs.ci_option }}
     steps:
       - uses: actions/checkout@v2
