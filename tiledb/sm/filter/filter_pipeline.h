@@ -275,7 +275,7 @@ class FilterPipeline {
    * @param max_chunk_index The chunk range index to end at
    * @param concurrency_level The maximum level of concurrency
    * @param config The global config.
-   * TODO: add nullopt
+   * @param bitsort_metadata The metadata needed to run the bitsort filter.
    * @return Status
    */
 
@@ -288,7 +288,8 @@ class FilterPipeline {
       const uint64_t max_chunk_index,
       uint64_t concurrency_level,
       const Config& config,
-      OptionalRef<BitSortFilterMetadataType> pair = std::nullopt) const;
+      OptionalRef<BitSortFilterMetadataType> bitsort_metadata =
+          std::nullopt) const;
 
   /**
    * Serializes the pipeline metadata into a binary buffer.

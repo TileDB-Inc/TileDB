@@ -552,7 +552,7 @@ Status FilterPipeline::run_reverse_chunk_range(
       const uint64_t max_chunk_index,
       uint64_t concurrency_level,
       const Config& config,
-      OptionalRef<BitSortFilterMetadataType> dim_tiles) const {
+      OptionalRef<BitSortFilterMetadataType> bitsort_metadata) const {
         // Run each chunk through the entire pipeline.
   for (size_t i = min_chunk_index; i < max_chunk_index; i++) {
     auto& chunk = chunk_data.filtered_chunks_[i];
@@ -611,7 +611,7 @@ Status FilterPipeline::run_reverse_chunk_range(
           RETURN_NOT_OK(
               bitsort_filter->run_reverse(
                       *tile,
-                      dim_tiles.value().get(),
+                      bitsort_metadata.value().get(),
                       &input_metadata,
                       &input_data,
                       &output_metadata,

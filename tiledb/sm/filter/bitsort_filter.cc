@@ -436,6 +436,9 @@ Status BitSortFilter::run_reverse_dim_tile(Tile *dim_tile, std::vector<uint64_t>
   // Overwrite the tile.
   memcpy(dim_tile->data(), tile_data_vec.data(), sizeof(DimType) * cell_pos_size);
 
+  // Clear out the filtered buffer.
+  filtered_buffer.clear();
+
   return Status::Ok();
 }
 
