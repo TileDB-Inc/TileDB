@@ -424,12 +424,12 @@ Status subarray_partitioner_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
     if (compute_current_tile_overlap) {
-      partition_info->partition_.precompute_tile_overlap(
+      RETURN_NOT_OK(partition_info->partition_.precompute_tile_overlap(
           partition_info->start_,
           partition_info->end_,
           config,
           compute_tp,
-          true);
+          true));
     }
   }
 
@@ -692,7 +692,8 @@ static Status condition_ast_to_capnp(
 
     for (size_t i = 0; i < node->get_children().size(); ++i) {
       auto child_builder = children_builder[i];
-      condition_ast_to_capnp(node->get_children()[i], &child_builder);
+      RETURN_NOT_OK(
+          condition_ast_to_capnp(node->get_children()[i], &child_builder));
     }
 
     // Validate and store the query condition combination op.
@@ -2276,10 +2277,9 @@ Status query_est_result_size_reader_from_capnp(
     auto result_size = it.getValue();
     est_result_sizes_map.emplace(
         name,
-        Subarray::ResultSize{
-            result_size.getSizeFixed(),
-            result_size.getSizeVar(),
-            result_size.getSizeValidity()});
+        Subarray::ResultSize{result_size.getSizeFixed(),
+                             result_size.getSizeVar(),
+                             result_size.getSizeValidity()});
   }
 
   std::unordered_map<std::string, Subarray::MemorySize> max_memory_sizes_map;
@@ -2288,10 +2288,9 @@ Status query_est_result_size_reader_from_capnp(
     auto memory_size = it.getValue();
     max_memory_sizes_map.emplace(
         name,
-        Subarray::MemorySize{
-            memory_size.getSizeFixed(),
-            memory_size.getSizeVar(),
-            memory_size.getSizeValidity()});
+        Subarray::MemorySize{memory_size.getSizeFixed(),
+                             memory_size.getSizeVar(),
+                             memory_size.getSizeValidity()});
   }
 
   return query->set_est_result_size(est_result_sizes_map, max_memory_sizes_map);
@@ -2945,7 +2944,7 @@ Status global_write_state_from_capnp(
       // Whilst sparse gets its domain calculated, dense needs to have it
       // set here from the deserialized data
       if (query.is_dense()) {
-        frag_meta->init_domain(*ndrange);
+        RETURN_NOT_OK(frag_meta->init_domain(*ndrange));
       }
     }
   }
