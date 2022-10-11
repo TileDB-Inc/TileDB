@@ -719,7 +719,10 @@ Status WriterBase::filter_tiles(
 
 template<typename SupportTileType>
 Status WriterBase::filter_tiles(
-    const std::string& name, WriterTileVector* tiles, [[maybe_unused]] const std::vector<WriterTileVector*>& dim_tiles) {
+    const std::string& name, WriterTileVector* tiles, const std::vector<WriterTileVector*>& dim_tiles) {
+  // Sometimes the dim_tiles argument is unused.
+  (void)dim_tiles;
+
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
 
