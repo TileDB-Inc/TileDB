@@ -77,18 +77,18 @@ extern std::mutex catch2_macro_mutex;
   { REQUIRE(a == TILEDB_OK); }
 
 // A variant of the CHECK macro for checking a Status object is okay.
-#define CHECK_TILEDB_STATUS_OK(status) \
-  {                                    \
-    if (!status.ok())                  \
-      INFO(status.to_string());        \
-    CHECK(status.ok());                \
+#define CHECK_TILEDB_STATUS_OK(status)   \
+  {                                      \
+    if (!status.ok())                    \
+      UNSCOPED_INFO(status.to_string()); \
+    CHECK(status.ok());                  \
   }
 
 // A variant of the REQUIRE macro for checking a Status objects is okay.
 #define REQUIRE_TILEDB_STATUS_OK(status) \
   {                                      \
     if (!status.ok())                    \
-      INFO(status.to_string());          \
+      UNSCOPED_INFO(status.to_string()); \
     REQUIRE(status.ok());                \
   }
 namespace tiledb {
