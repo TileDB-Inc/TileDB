@@ -878,15 +878,8 @@ Status StorageManager::array_evolve_schema(
   return Status::Ok();
 }
 
-/*
- * Note: `Config&` argument is not used, as it was no longer used after
- * refactoring from `const Config* config`. A null check was deleted, after
- * which a warning appear that the argument was not referenced. Encryption
- * parameters are taken from `config_` and not from the former argument
- * `config`, which is likely not what was intended.
- */
 Status StorageManagerCanonical::array_upgrade_version(
-    const URI& array_uri, const Config&) {
+    const URI& array_uri, const Config& override_config) {
   // Check if array exists
   if (!is_array(array_uri))
     return logger_->status(Status_StorageManagerError(
@@ -905,10 +898,10 @@ Status StorageManagerCanonical::array_upgrade_version(
   // Get encryption key from config
   bool found = false;
   std::string encryption_key_from_cfg =
-      config_.get("sm.encryption_key", &found);
+      override_config.get("sm.encryption_key", &found);
   assert(found);
   std::string encryption_type_from_cfg =
-      config_.get("sm.encryption_type", &found);
+      override_config.get("sm.encryption_type", &found);
   assert(found);
   auto [st1, etc] = encryption_type_enum(encryption_type_from_cfg);
   RETURN_NOT_OK(st1);
