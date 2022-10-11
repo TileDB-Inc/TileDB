@@ -300,6 +300,48 @@ Status Group::get_query_type(QueryType* query_type) const {
   return Status::Ok();
 }
 
+void Group::delete_group(const URI& uri, bool recursive) {
+  // Check that group is open
+  if (!is_open_) {
+    throw StatusException(
+        Status_GroupError("[Group::delete_group] Group is not open"));
+  }
+
+  // Check that query type is MODIFY_EXCLUSIVE
+  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+    throw StatusException(Status_GroupError(
+        "[Group::delete_group] Query type must be MODIFY_EXCLUSIVE"));
+  }
+
+  if (recursive) {
+    for (auto member : members_vec_) {
+      URI uri = member->uri();
+      if (member->relative()) {
+        uri = group_uri_.join_path(member->uri().to_string());
+      }
+
+      if (member->type() == ObjectType::ARRAY) {
+        throw_if_not_ok(
+            storage_manager_->delete_array(uri.to_string().c_str()));
+      } else if (member->type() == ObjectType::GROUP) {
+        GroupV1 group_rec(uri, storage_manager_);
+        group_rec.open(QueryType::MODIFY_EXCLUSIVE);
+        group_rec.delete_group(uri, true);
+      }
+    }
+  }
+
+  if (remote_) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      throw StatusException(Status_GroupError(
+          "Cannot open group; remote group with no REST client."));
+    rest_client->delete_group_from_rest(uri);
+  } else {
+    storage_manager_->delete_group(uri.c_str());
+  }
+}
+
 Status Group::delete_metadata(const char* key) {
   // Check if group is open
   if (!is_open_)

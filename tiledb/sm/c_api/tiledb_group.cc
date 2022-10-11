@@ -182,12 +182,32 @@ int32_t tiledb_group_put_metadata(
   return TILEDB_OK;
 }
 
+int32_t tiledb_group_delete_group(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* uri,
+    const uint8_t recursive) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Delete group
+  try {
+    group->group_->delete_group(tiledb::sm::URI(uri), recursive);
+  } catch (std::exception& e) {
+    auto st = sm::Status_GroupError(e.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
 int32_t tiledb_group_delete_metadata(
     tiledb_ctx_t* ctx, tiledb_group_t* group, const char* key) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Put metadata
+  // Delete metadata
   throw_if_not_ok(group->group_->delete_metadata(key));
 
   return TILEDB_OK;
@@ -685,6 +705,15 @@ TILEDB_EXPORT int32_t tiledb_group_put_metadata(
     const void* value) TILEDB_NOEXCEPT {
   return api_entry<detail::tiledb_group_put_metadata>(
       ctx, group, key, value_type, value_num, value);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_delete_group(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* uri,
+    const uint8_t recursive) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_delete_group>(
+      ctx, group, uri, recursive);
 }
 
 TILEDB_EXPORT int32_t tiledb_group_delete_metadata(

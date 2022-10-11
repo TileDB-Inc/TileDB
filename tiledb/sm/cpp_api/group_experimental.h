@@ -1,5 +1,5 @@
 /**
- * @file   group.h
+ * @file   group_experimental.h
  *
  * @author Ravi Gaddipati
  *
@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -209,6 +209,22 @@ class Group {
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
     ctx.handle_error(tiledb_group_put_metadata(
         c_ctx, group_.get(), key.c_str(), value_type, value_num, value));
+  }
+
+  /**
+   * It deletes written data from an open group. The group must
+   * be opened in MODIFY_EXCLSUIVE mode, otherwise the function will error out.
+   *
+   * @param uri The address of the group item to be deleted.
+   * @param recursive True if all data inside the group is to be deleted.
+   *
+   * @note if recursive == false, data added to the group will be left as-is.
+   */
+  void delete_group(const std::string& uri, bool recursive = false) {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(
+        tiledb_group_delete_group(c_ctx, group_.get(), uri.c_str(), recursive));
   }
 
   /**
@@ -421,6 +437,46 @@ class Group {
     std::string ret(str);
     free(str);
     return ret;
+  }
+
+  /**
+   * Consolidates the group metadata into a single group metadata file.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Group::consolidate_metadata(ctx, "s3://bucket-name/group-name");
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param uri The URI of the TileDB group to be consolidated.
+   * @param config Configuration parameters for the consolidation.
+   */
+  static void consolidate_metadata(
+      const Context& ctx,
+      const std::string& uri,
+      Config* const config = nullptr) {
+    ctx.handle_error(tiledb_group_consolidate_metadata(
+        ctx.ptr().get(), uri.c_str(), config ? config->ptr().get() : nullptr));
+  }
+
+  /**
+   * Cleans up the group metadata.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Group::vacuum_metadata(ctx, "s3://bucket-name/group-name");
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param uri The URI of the TileDB group to vacuum.
+   * @param config Configuration parameters for the vacuuming.
+   */
+  static void vacuum_metadata(
+      const Context& ctx,
+      const std::string& uri,
+      Config* const config = nullptr) {
+    ctx.handle_error(tiledb_group_vacuum_metadata(
+        ctx.ptr().get(), uri.c_str(), config ? config->ptr().get() : nullptr));
   }
 
  private:

@@ -657,6 +657,62 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
   throw_if_not_ok(status);
 }
 
+void StorageManager::delete_group(const char* group_name) {
+  Status st;
+  if (group_name == nullptr) {
+    throw Status_StorageManagerError(
+        "[delete_group] Group name cannot be null");
+  }
+
+  auto group_dir = GroupDirectory(
+      vfs_,
+      compute_tp_,
+      URI(group_name),
+      0,
+      std::numeric_limits<uint64_t>::max());
+
+  auto group_detail_uris = group_dir.group_detail_uris();
+  auto group_meta_uris = group_dir.group_meta_uris();
+  auto group_meta_uris_to_vacuum = group_dir.group_meta_uris_to_vacuum();
+  auto group_meta_vac_uris_to_vacuum =
+      group_dir.group_meta_vac_uris_to_vacuum();
+  auto group_file_uris = group_dir.group_file_uris();
+
+  // Delete the group detail files
+  auto status =
+      parallel_for(compute_tp_, 0, group_detail_uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(group_detail_uris[i].uri_));
+        return Status::Ok();
+      });
+  throw_if_not_ok(status);
+
+  // Delete the group metadata files
+  status = parallel_for(compute_tp_, 0, group_meta_uris.size(), [&](size_t i) {
+    RETURN_NOT_OK(vfs_->remove_file(group_meta_uris[i].uri_));
+    return Status::Ok();
+  });
+  throw_if_not_ok(status);
+  status = parallel_for(
+      compute_tp_, 0, group_meta_uris_to_vacuum.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(group_meta_uris_to_vacuum[i]));
+        return Status::Ok();
+      });
+  throw_if_not_ok(status);
+  status = parallel_for(
+      compute_tp_, 0, group_meta_vac_uris_to_vacuum.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(group_meta_vac_uris_to_vacuum[i]));
+        return Status::Ok();
+      });
+  throw_if_not_ok(status);
+
+  // Delete the group files
+  status = parallel_for(compute_tp_, 0, group_file_uris.size(), [&](size_t i) {
+    RETURN_NOT_OK(vfs_->remove_file(group_file_uris[i]));
+    return Status::Ok();
+  });
+  throw_if_not_ok(status);
+}
+
 Status StorageManagerCanonical::delete_fragments(
     const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
   Status st;

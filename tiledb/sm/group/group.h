@@ -95,6 +95,16 @@ class Group {
   Status clear();
 
   /**
+   * Deletes data from an group opened in MODIFY_EXCLUSIVE mode.
+   *
+   * Note: if recursive == false, data added to the group will be left as-is.
+   *
+   * @param uri The address of the group to be deleted.
+   * @param recursive True if all data inside the group is to be deleted.
+   */
+  void delete_group(const URI& uri, bool recursive = false);
+
+  /**
    * Deletes metadata from an group opened in WRITE mode.
    *
    * @param key The key of the metadata item to be deleted.

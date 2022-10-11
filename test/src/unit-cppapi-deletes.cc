@@ -37,6 +37,7 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/cpp_api/group_experimental.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 #ifdef _WIN32
@@ -51,6 +52,7 @@ using namespace tiledb::test;
 struct DeletesFx {
   // Constants.
   const char* SPARSE_ARRAY_NAME = "test_deletes_array";
+  const std::string GROUP_NAME = "test_deletes_group/";
 
   // TileDB context.
   Context ctx_;
@@ -67,6 +69,8 @@ struct DeletesFx {
   // Functions.
   void set_legacy();
   void set_purge_deleted_cells();
+  void create_dir(const std::string& path);
+  void create_simple_array(const std::string& path);
   void create_sparse_array(bool allows_dups = false, bool encrypt = false);
   void create_sparse_array_v11();
   void write_sparse(
@@ -76,6 +80,7 @@ struct DeletesFx {
       uint64_t timestamp,
       bool encrypt = false);
   void write_sparse_v11(uint64_t timestamp);
+  std::vector<tiledb::Object> read_group(const tiledb::Group& group) const;
   void read_sparse(
       std::vector<int>& a1,
       std::vector<uint64_t>& dim1,
@@ -94,6 +99,7 @@ struct DeletesFx {
       std::vector<QueryCondition> qcs,
       uint64_t timestamp,
       bool encrypt = false);
+  void remove_dir(const std::string& path);
   void remove_sparse_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
@@ -132,6 +138,29 @@ void DeletesFx::set_legacy() {
   vfs_ = VFS(ctx_);
 }
 
+void DeletesFx::create_dir(const std::string& path) {
+  remove_dir(path);
+  vfs_.create_dir(path.c_str());
+}
+
+void DeletesFx::create_simple_array(const std::string& path) {
+  // Create domain.
+  Domain domain(ctx_);
+  auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 1}}, 1);
+  auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 1}}, 1);
+  domain.add_dimension(d1);
+  domain.add_dimension(d2);
+
+  // Create attributes.
+  auto a1 = Attribute::create<int32_t>(ctx_, "a1");
+
+  // Create array schema.
+  ArraySchema schema(ctx_, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attributes(a1);
+  Array::create(path, schema);
+}
+
 void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
   // Create dimensions.
   auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 4}}, 2);
@@ -145,7 +174,7 @@ void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
   // Create attributes.
   auto a1 = Attribute::create<int32_t>(ctx_, "a1");
 
-  // Create array schmea.
+  // Create array schema.
   ArraySchema schema(ctx_, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.set_capacity(20);
@@ -244,6 +273,17 @@ void DeletesFx::write_sparse_v11(uint64_t timestamp) {
 
   // Close array.
   array.close();
+}
+
+std::vector<tiledb::Object> DeletesFx::read_group(
+    const tiledb::Group& group) const {
+  std::vector<tiledb::Object> ret;
+  uint64_t count = group.member_count();
+  for (uint64_t i = 0; i < count; i++) {
+    tiledb::Object obj = group.member(i);
+    ret.emplace_back(obj);
+  }
+  return ret;
 }
 
 void DeletesFx::read_sparse(
@@ -380,6 +420,13 @@ void DeletesFx::check_delete_conditions(
   }
 
   array->close();
+}
+
+void DeletesFx::remove_dir(const std::string& path) {
+  if (!vfs_.is_dir(path))
+    return;
+
+  vfs_.remove_dir(path);
 }
 
 void DeletesFx::remove_array(const std::string& array_name) {
@@ -1921,3 +1968,215 @@ TEST_CASE_METHOD(
   remove_sparse_array();
 }
 #endif
+
+TEST_CASE_METHOD(
+    DeletesFx,
+    "CPP API: Deletion of invalid group writes",
+    "[cppapi][deletes][group][invalid]") {
+  create_dir(GROUP_NAME);
+
+  // Create and open group in write mode
+  tiledb::Group::create(ctx_, GROUP_NAME);
+  tiledb::Group group(ctx_, std::string(GROUP_NAME), TILEDB_WRITE);
+
+  // Try to delete group
+  REQUIRE_THROWS_WITH(
+      group.delete_group(GROUP_NAME),
+      Catch::Contains("Query type must be MODIFY_EXCLUSIVE"));
+  group.close();
+
+  // Try to delete group after close
+  REQUIRE_THROWS_WITH(
+      group.delete_group(GROUP_NAME), Catch::Contains("Group is not open"));
+
+  remove_dir(GROUP_NAME);
+}
+
+TEST_CASE_METHOD(
+    DeletesFx,
+    "CPP API: Deletion of group writes",
+    "[cppapi][deletes][group]") {
+  create_dir(GROUP_NAME);
+
+  // Create group
+  tiledb::Group::create(ctx_, GROUP_NAME);
+  std::string array_path = tiledb::sm::URI(GROUP_NAME + "array/").to_string();
+  create_simple_array(array_path);
+
+  // Set expected
+  std::vector<tiledb::Object> group_expected = {
+      tiledb::Object(tiledb::Object::Type::Array, array_path, std::nullopt),
+  };
+
+  // Write to group
+  tiledb::Group group(ctx_, GROUP_NAME, TILEDB_WRITE);
+  group.add_member(array_path, false);
+  int32_t v = 123;
+  group.put_metadata("test_deletes_meta", TILEDB_INT32, 1, &v);
+  group.close();
+  group.open(TILEDB_WRITE);
+  group.put_metadata("test_deletes_meta", TILEDB_INT32, 1, &v);
+  group.close();
+  group.open(TILEDB_WRITE);
+  group.put_metadata("test_deletes_meta", TILEDB_INT32, 1, &v);
+  group.close();
+
+  // Add extraneous file
+  std::string extraneous_file_path = GROUP_NAME + "extraneous_file";
+  vfs_.touch(extraneous_file_path);
+
+  // Validate group structure
+  group.open(TILEDB_READ);
+  std::vector<tiledb::Object> group_received = read_group(group);
+  REQUIRE_THAT(
+      group_received, Catch::Matchers::UnorderedEquals(group_expected));
+  group.close();
+
+  // Validate group data
+  REQUIRE(vfs_.is_file(extraneous_file_path));
+  REQUIRE(vfs_.is_file(GROUP_NAME + tiledb::sm::constants::group_filename));
+  auto group_detail_dir =
+      vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_detail_dir_name);
+  CHECK(group_detail_dir.size() == 1);
+  auto group_meta_dir =
+      vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_metadata_dir_name);
+  CHECK(group_meta_dir.size() == 3);
+
+  // Conditionally consolidate and vacuum
+  bool consolidate = GENERATE(true, false);
+  bool vacuum = GENERATE(true, false);
+  if (!consolidate && vacuum) {
+    return;
+  }
+
+  if (consolidate) {
+    auto config = ctx_.config();
+    config["sm.consolidation.mode"] = "group_meta";
+    Group::consolidate_metadata(ctx_, GROUP_NAME, &config);
+    group_meta_dir =
+        vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_metadata_dir_name);
+    CHECK(group_meta_dir.size() == 5);
+
+    if (vacuum) {
+      config["sm.vacuum.mode"] = "group_meta";
+      Group::vacuum_metadata(ctx_, GROUP_NAME, &config);
+      group_meta_dir =
+          vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_metadata_dir_name);
+      CHECK(group_meta_dir.size() == 1);
+    }
+  }
+
+  // Delete group in modify exclusive mode
+  group.open(TILEDB_MODIFY_EXCLUSIVE);
+  group.delete_group(GROUP_NAME.c_str());
+  group.close();
+
+  // Validate group data
+  REQUIRE(vfs_.is_file(extraneous_file_path));
+  REQUIRE(!vfs_.is_file(GROUP_NAME + tiledb::sm::constants::group_filename));
+  group_detail_dir =
+      vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_detail_dir_name);
+  CHECK(group_detail_dir.size() == 0);
+  group_meta_dir =
+      vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_metadata_dir_name);
+  CHECK(group_meta_dir.size() == 0);
+
+  // Clean up
+  remove_dir(GROUP_NAME);
+}
+
+TEST_CASE_METHOD(
+    DeletesFx,
+    "CPP API: Recursive deletion of group writes",
+    "[cppapi][deletes][group][recursive]") {
+  create_dir(GROUP_NAME);
+
+  // Create groups
+  tiledb::Group::create(ctx_, GROUP_NAME);
+  std::string array_path = tiledb::sm::URI(GROUP_NAME + "array/").to_string();
+  create_simple_array(array_path);
+  std::string group2_path = tiledb::sm::URI(GROUP_NAME + "group2/").to_string();
+  tiledb::Group::create(ctx_, group2_path);
+  std::string array2_path = tiledb::sm::URI(GROUP_NAME + "array2/").to_string();
+  create_simple_array(array2_path);
+
+  // Set expected
+  std::vector<tiledb::Object> group_expected = {
+      tiledb::Object(tiledb::Object::Type::Array, array_path, std::nullopt),
+      tiledb::Object(tiledb::Object::Type::Group, group2_path, std::nullopt),
+  };
+  std::vector<tiledb::Object> group2_expected = {
+      tiledb::Object(tiledb::Object::Type::Array, array2_path, std::nullopt),
+  };
+
+  // Write to group
+  tiledb::Group group(ctx_, GROUP_NAME, TILEDB_WRITE);
+  tiledb::Group group2(ctx_, group2_path, TILEDB_WRITE);
+  group.add_member(array_path, false);
+  group.add_member(group2_path, false);
+  group2.add_member(array2_path, false);
+  int32_t v = 123;
+  group.put_metadata("test_deletes_meta", TILEDB_INT32, 1, &v);
+  group.close();
+  group2.close();
+
+  // Add extraneous file
+  std::string extraneous_file_path = GROUP_NAME + "extraneous_file";
+  vfs_.touch(extraneous_file_path);
+
+  // Validate group structure
+  group.open(TILEDB_READ);
+  group2.open(TILEDB_READ);
+  std::vector<tiledb::Object> group_received = read_group(group);
+  REQUIRE_THAT(
+      group_received, Catch::Matchers::UnorderedEquals(group_expected));
+  std::vector<tiledb::Object> group2_received = read_group(group2);
+  REQUIRE_THAT(
+      group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
+  group.close();
+  group2.close();
+
+  // Validate group data
+  REQUIRE(vfs_.is_file(extraneous_file_path));
+  REQUIRE(vfs_.is_file(GROUP_NAME + tiledb::sm::constants::group_filename));
+  auto group_detail_dir =
+      vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_detail_dir_name);
+  CHECK(group_detail_dir.size() == 1);
+  auto group_meta_dir =
+      vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_metadata_dir_name);
+  CHECK(group_meta_dir.size() == 1);
+  auto array_schema =
+      vfs_.ls(array_path + tiledb::sm::constants::array_schema_dir_name);
+  CHECK(array_schema.size() == 1);
+  auto array2_schema =
+      vfs_.ls(array2_path + tiledb::sm::constants::array_schema_dir_name);
+  CHECK(array2_schema.size() == 1);
+
+  // Recursively delete group in modify exclusive mode
+  group.open(TILEDB_MODIFY_EXCLUSIVE);
+  group.delete_group(GROUP_NAME.c_str(), true);
+  group.close();
+
+  // Validate group data
+  REQUIRE(vfs_.is_file(extraneous_file_path));
+  REQUIRE(!vfs_.is_file(GROUP_NAME + tiledb::sm::constants::group_filename));
+  group_detail_dir =
+      vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_detail_dir_name);
+  CHECK(group_detail_dir.size() == 0);
+  group_meta_dir =
+      vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_metadata_dir_name);
+  CHECK(group_meta_dir.size() == 0);
+  REQUIRE(!vfs_.is_file(group2_path + tiledb::sm::constants::group_filename));
+  auto group2_detail_dir =
+      vfs_.ls(group2_path + tiledb::sm::constants::group_detail_dir_name);
+  CHECK(group2_detail_dir.size() == 0);
+  array_schema =
+      vfs_.ls(array_path + tiledb::sm::constants::array_schema_dir_name);
+  CHECK(array_schema.size() == 0);
+  array2_schema =
+      vfs_.ls(array2_path + tiledb::sm::constants::array_schema_dir_name);
+  CHECK(array2_schema.size() == 0);
+
+  // Clean up
+  remove_dir(GROUP_NAME);
+}

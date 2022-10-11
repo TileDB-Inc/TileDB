@@ -1270,6 +1270,23 @@ Status RestClient::patch_group_to_rest(const URI& uri, Group* group) {
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
+void RestClient::delete_group_from_rest(const URI& uri) {
+  /* #TODO Implement API endpoint on TileDBCloud. */
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string group_ns, group_uri;
+  throw_if_not_ok(uri.get_rest_components(&group_ns, &group_uri));
+  const std::string cache_key = group_ns + ":" + group_uri;
+  throw_if_not_ok(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
+                          "/" + curlc.url_escape(group_uri);
+
+  Buffer returned_data;
+  throw_if_not_ok(curlc.delete_data(
+      stats_, url, serialization_type_, &returned_data, cache_key));
+}
+
 Status RestClient::ensure_json_null_delimited_string(Buffer* buffer) {
   if (serialization_type_ == SerializationType::JSON &&
       buffer->value<char>(buffer->size() - 1) != '\0') {
@@ -1417,6 +1434,11 @@ Status RestClient::post_group_from_rest(const URI&, Group*) {
 
 Status RestClient::patch_group_to_rest(const URI&, Group*) {
   return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+void RestClient::delete_group_from_rest(const URI&) {
+  throw StatusException(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
