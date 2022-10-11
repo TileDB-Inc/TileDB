@@ -43,8 +43,8 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/type/range/range.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;
 

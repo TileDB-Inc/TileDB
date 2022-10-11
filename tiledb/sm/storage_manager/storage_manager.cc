@@ -887,7 +887,6 @@ Status StorageManager::array_evolve_schema(
  */
 Status StorageManagerCanonical::array_upgrade_version(
     const URI& array_uri, const Config&) {
-
   // Check if array exists
   if (!is_array(array_uri))
     return logger_->status(Status_StorageManagerError(
@@ -2052,10 +2051,7 @@ Status StorageManagerCanonical::store_metadata(
   RETURN_NOT_OK(metadata->get_uri(uri, &metadata_uri));
 
   RETURN_NOT_OK(store_data_to_generic_tile(
-      tile.data(),
-      tile.size(),
-      metadata_uri,
-      encryption_key));
+      tile.data(), tile.size(), metadata_uri, encryption_key));
 
   return Status::Ok();
 }

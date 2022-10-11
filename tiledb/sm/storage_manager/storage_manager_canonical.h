@@ -523,8 +523,7 @@ class StorageManagerCanonical {
    *      this instance).
    * @return Status
    */
-  Status array_upgrade_version(
-      const URI& uri, const Config& config);
+  Status array_upgrade_version(const URI& uri, const Config& config);
 
   /**
    * Retrieves the non-empty domain from an array. This is the union of the
