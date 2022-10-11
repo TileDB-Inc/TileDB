@@ -305,7 +305,7 @@ void InfoCommand::write_text_mbrs() const {
   auto fragment_metadata = array.fragment_metadata();
   std::stringstream text;
   for (const auto& f : fragment_metadata) {
-    f->load_rtree(*encryption_key);
+    THROW_NOT_OK(f->load_rtree(*encryption_key));
     const auto& mbrs = f->mbrs();
     for (const auto& mbr : mbrs) {
       auto str_mbr = mbr_to_string(mbr, schema.domain());
