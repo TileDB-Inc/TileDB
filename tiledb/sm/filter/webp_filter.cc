@@ -59,7 +59,7 @@ Status WebpFilter::run_forward(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   if (tile.type() != Datatype::UINT8) {
-    return LOG_STATUS(Status_FilterError("Unsupported input type"));
+    throw StatusException(Status_FilterError("Unsupported input type"));
   }
   return run_forward(input_metadata, input, output_metadata, output);
 }
@@ -81,8 +81,13 @@ Status WebpFilter::run_forward(
   for (const auto& i : input_parts) {
     auto data = static_cast<const uint8_t*>(i.data());
     // Number of bytes encoded; Encoded result data buffer
-    size_t enc_size;
-    uint8_t* result;
+    size_t enc_size = 0;
+    uint8_t* result = nullptr;
+    // Cleanup allocated data when we leave scope
+    ScopedExecutor cleanup([&]() {
+      if (enc_size > 0 && result != nullptr)
+        WebPFree(result);
+    });
     switch (format_) {
       case WebpInputFormat::WEBP_RGB:
         enc_size =
@@ -101,20 +106,19 @@ Status WebpFilter::run_forward(
             WebPEncodeBGRA(data, width, height, width * 4, quality_, &result);
         break;
       case WebpInputFormat::WEBP_NONE:
-        return LOG_STATUS(Status_FilterError(
+        throw StatusException(Status_FilterError(
             "Filter option TILEDB_FILTER_WEBP_FORMAT must be set"));
     }
 
     // Check if encoding failed
-    if (!enc_size) {
-      return LOG_STATUS(Status_FilterError("Error encoding image data"));
+    if (enc_size == 0) {
+      throw StatusException(Status_FilterError("Error encoding image data"));
     }
 
     // Write encoded data to output buffer
     RETURN_NOT_OK(output_metadata->write(&enc_size, sizeof(uint32_t)));
     RETURN_NOT_OK(output->prepend_buffer(enc_size));
     RETURN_NOT_OK(output->write(result, enc_size));
-    WebPFree(result);
   }
 
   return Status::Ok();
@@ -129,7 +133,7 @@ Status WebpFilter::run_reverse(
     FilterBuffer* output,
     const Config&) const {
   if (tile.type() != Datatype::UINT8) {
-    return LOG_STATUS(Status_FilterError("Unsupported input type"));
+    throw StatusException(Status_FilterError("Unsupported input type"));
   }
   return run_reverse(input_metadata, input, output_metadata, output);
 }
@@ -143,12 +147,21 @@ Status WebpFilter::run_reverse(
   RETURN_NOT_OK(input_metadata->read(&num_parts, sizeof(uint32_t)));
   for (uint32_t i = 0; i < num_parts; i++) {
     uint32_t enc_size;
+    uint8_t* result = nullptr;
+    // Cleanup allocated data when we leave scope
+    ScopedExecutor cleanup([&]() {
+      if (enc_size > 0 && result != nullptr)
+        WebPFree(result);
+    });
+    // Read size of data encoded from input metadata
     RETURN_NOT_OK(input_metadata->read(&enc_size, sizeof(uint32_t)));
+    // Read encoded data from input buffer
     ConstBuffer part(nullptr, 0);
     RETURN_NOT_OK(input->get_const_buffer(enc_size, &part));
+
+    // Decode data
     auto data = static_cast<const uint8_t*>(part.data());
     int width, height;
-    uint8_t* result;
     switch (format_) {
       case WebpInputFormat::WEBP_RGB:
         result = WebPDecodeRGB(data, enc_size, &width, &height);
@@ -163,16 +176,15 @@ Status WebpFilter::run_reverse(
         result = WebPDecodeBGRA(data, enc_size, &width, &height);
         break;
       default:
-        return LOG_STATUS(Status_FilterError(
+        throw StatusException(Status_FilterError(
             "Filter option TILEDB_FILTER_WEBP_FORMAT must be set"));
     }
 
     // Check if decoding failed
-    if (!result) {
-      return LOG_STATUS(Status_FilterError("Error decoding image data"));
+    if (result == nullptr) {
+      throw StatusException(Status_FilterError("Error decoding image data"));
     }
     RETURN_NOT_OK(output->write(result, output->size()));
-    WebPFree(result);
   }
 
   // Output metadata is a view on the input metadata, skipping what was used
@@ -186,7 +198,7 @@ Status WebpFilter::run_reverse(
 
 Status WebpFilter::set_option_impl(FilterOption option, const void* value) {
   if (value == nullptr)
-    return LOG_STATUS(
+    throw StatusException(
         Status_FilterError("Webp filter error; Invalid option value"));
 
   switch (option) {
@@ -197,7 +209,7 @@ Status WebpFilter::set_option_impl(FilterOption option, const void* value) {
       format_ = static_cast<WebpInputFormat>(*(uint8_t*)value);
       break;
     default:
-      return LOG_STATUS(
+      throw StatusException(
           Status_FilterError("Webp filter error; Unknown option"));
   }
 
@@ -213,7 +225,7 @@ Status WebpFilter::get_option_impl(FilterOption option, void* value) const {
       *(WebpInputFormat*)value = format_;
       break;
     default:
-      return LOG_STATUS(
+      throw StatusException(
           Status_FilterError("Webp filter error; Unknown option"));
   }
   return Status::Ok();
