@@ -44,6 +44,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/type/range/range.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 using namespace tiledb::common;
 
@@ -52,7 +53,6 @@ namespace tiledb::sm {
 class DimensionLabel;
 class Query;
 class QueryBuffer;
-class StorageManager;
 class Subarray;
 
 /**

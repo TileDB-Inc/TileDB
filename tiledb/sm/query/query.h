@@ -61,7 +61,7 @@ namespace sm {
 
 class Array;
 class ArrayDimensionLabelQueries;
-class StorageManager;
+class StorageManagerCanonical;
 
 enum class QueryStatus : uint8_t;
 enum class QueryType : uint8_t;

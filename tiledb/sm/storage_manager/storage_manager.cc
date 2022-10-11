@@ -903,20 +903,13 @@ Status StorageManagerCanonical::array_upgrade_version(
       UINT64_MAX,
       tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY};
 
-  // If 'config' is unset, use the 'config_' that was set during initialization
-  // of this StorageManager instance.
-  // TODO if (!config) {
-  // TODO   config = &config_;
-  // TODO }
-  auto config = config_; // TODO fixme: allow optional override
-
   // Get encryption key from config
   bool found = false;
   std::string encryption_key_from_cfg =
-      config.get("sm.encryption_key", &found);
+      config_.get("sm.encryption_key", &found);
   assert(found);
   std::string encryption_type_from_cfg =
-      config.get("sm.encryption_type", &found);
+      config_.get("sm.encryption_type", &found);
   assert(found);
   auto [st1, etc] = encryption_type_enum(encryption_type_from_cfg);
   RETURN_NOT_OK(st1);
