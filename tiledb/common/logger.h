@@ -295,7 +295,7 @@ class Logger {
   Status status(const Status& st);
 
   /**
-   * Log a message from a Status object
+   * Log a message from a Status object without returning it.
    *
    * @param st The Status object to log
    */
