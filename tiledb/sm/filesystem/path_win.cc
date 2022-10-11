@@ -88,7 +88,7 @@ std::string path_from_uri(const std::string& uri) {
   std::string str_path;
   if (PathCreateFromUrl(uri_with_scheme.c_str(), path, &path_length, 0) !=
       S_OK) {
-    LOG_STATUS(Status_IOError(std::string(
+    LOG_STATUS_NO_RETURN_VALUE(Status_IOError(std::string(
         "Failed to convert URI '" + uri_with_scheme + "' to path.")));
   }
   str_path = path;
