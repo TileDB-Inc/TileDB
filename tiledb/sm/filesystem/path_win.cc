@@ -62,7 +62,7 @@ std::string uri_from_path(const std::string& path) {
   char uri[INTERNET_MAX_URL_LENGTH];
   std::string str_uri;
   if (UrlCreateFromPath(path.c_str(), uri, &uri_length, 0) != S_OK) {
-    LOG_STATUS(Status_IOError(
+    LOG_STATUS_NO_RETURN_VALUE(Status_IOError(
         std::string("Failed to convert path '" + path + "' to URI.")));
   }
   str_uri = uri;

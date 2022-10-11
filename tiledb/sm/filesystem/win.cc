@@ -126,7 +126,7 @@ std::string Win::abs_path(const std::string& path) {
   std::string str_result;
   if (PathCanonicalize(result, full_path.c_str()) == FALSE) {
     auto gle = GetLastError();
-    LOG_STATUS(Status_IOError(std::string(
+    LOG_STATUS_NO_RETURN_VALUE(Status_IOError(std::string(
         "Cannot canonicalize path. (" +
         get_last_error_msg(gle, "PathCanonicalize") + ")")));
   } else {
