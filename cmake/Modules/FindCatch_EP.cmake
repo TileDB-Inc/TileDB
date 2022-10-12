@@ -42,7 +42,6 @@ if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CATCH_EP_BUILT)
   find_path(CATCH_INCLUDE_DIR
     NAMES catch2/catch_all.hpp
     PATHS ${CATCH_PATHS}
-#    ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 endif()
 
