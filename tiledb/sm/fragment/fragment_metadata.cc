@@ -673,18 +673,6 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
   return Status::Ok();
 }
 
-bool FragmentMetadata::dense() const {
-  return dense_;
-}
-
-const NDRange& FragmentMetadata::domain() const {
-  return domain_;
-}
-
-uint32_t FragmentMetadata::format_version() const {
-  return version_;
-}
-
 Status FragmentMetadata::fragment_size(uint64_t* size) const {
   // Add file sizes
   *size = 0;
@@ -712,14 +700,6 @@ Status FragmentMetadata::fragment_size(uint64_t* size) const {
   *size += meta_file_size;
 
   return Status::Ok();
-}
-
-const URI& FragmentMetadata::fragment_uri() const {
-  return fragment_uri_;
-}
-
-bool FragmentMetadata::has_consolidated_footer() const {
-  return has_consolidated_footer_;
 }
 
 Status FragmentMetadata::get_tile_overlap(
@@ -811,10 +791,6 @@ Status FragmentMetadata::init(const NDRange& non_empty_domain) {
   fragment_null_counts_.resize(num);
 
   return Status::Ok();
-}
-
-uint64_t FragmentMetadata::last_tile_cell_num() const {
-  return last_tile_cell_num_;
 }
 
 Status FragmentMetadata::load(
@@ -1242,10 +1218,6 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
 
 void FragmentMetadata::set_last_tile_cell_num(uint64_t cell_num) {
   last_tile_cell_num_ = cell_num;
-}
-
-uint64_t FragmentMetadata::tile_index_base() const {
-  return tile_index_base_;
 }
 
 uint64_t FragmentMetadata::tile_num() const {
@@ -1941,10 +1913,6 @@ FragmentMetadata::get_processed_conditions_set() {
 
 uint64_t FragmentMetadata::first_timestamp() const {
   return timestamp_range_.first;
-}
-
-const std::pair<uint64_t, uint64_t>& FragmentMetadata::timestamp_range() const {
-  return timestamp_range_;
 }
 
 bool FragmentMetadata::operator<(const FragmentMetadata& metadata) const {

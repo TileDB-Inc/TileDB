@@ -428,6 +428,11 @@ class FragmentInfo {
         tiledb_fragment_info_dump(ctx.ptr().get(), fragment_info_.get(), out));
   }
 
+  /** Returns the C TileDB context object. */
+  std::shared_ptr<tiledb_fragment_info_t> ptr() const {
+    return fragment_info_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

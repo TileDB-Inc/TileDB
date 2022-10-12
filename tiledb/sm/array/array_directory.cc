@@ -308,12 +308,17 @@ ArrayDirectory::delete_tiles_location() const {
   return delete_tiles_location_;
 }
 
-URI ArrayDirectory::get_fragments_dir(uint32_t write_version) const {
+URI ArrayDirectory::generate_fragment_dir_uri(
+    uint32_t write_version, URI array_uri) {
   if (write_version < 12) {
-    return uri_;
+    return array_uri;
   }
 
-  return uri_.join_path(constants::array_fragments_dir_name);
+  return array_uri.join_path(constants::array_fragments_dir_name);
+}
+
+URI ArrayDirectory::get_fragments_dir(uint32_t write_version) const {
+  return generate_fragment_dir_uri(write_version, uri_);
 }
 
 URI ArrayDirectory::get_fragment_metadata_dir(uint32_t write_version) const {

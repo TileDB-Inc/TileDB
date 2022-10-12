@@ -72,6 +72,8 @@ Status GroupMetaConsolidator::consolidate(
   (void)key_length;
   auto timer_se = stats_->start_timer("consolidate_group_meta");
 
+  check_array_uri(group_name);
+
   // Open group for reading
   auto group_uri = URI(group_name);
   GroupV1 group_for_reads(group_uri, storage_manager_);

@@ -79,7 +79,8 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
  *
  * @param array_schema Array schema to serialize
  * @param array_schema_builder Cap'n proto class
- * @param client_side unused
+ * @param client_side indicate if client or server side. If server side we won't
+ * serialize the array URI
  * @return Status
  */
 Status array_schema_to_capnp(
