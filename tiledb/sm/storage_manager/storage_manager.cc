@@ -1943,7 +1943,16 @@ Status StorageManager::read(
   RETURN_NOT_OK(vfs_->read(uri, offset, buffer->data(), nbytes));
   buffer->set_size(nbytes);
   buffer->reset_offset();
+  return Status::Ok();
+}
 
+Status StorageManager::read(
+    const URI& uri,
+    uint64_t offset,
+    Tile* tile,
+    uint64_t nbytes) const {
+  tile->alloc_data(nbytes);
+  RETURN_NOT_OK(vfs_->read(uri, offset, tile->data(), nbytes));
   return Status::Ok();
 }
 

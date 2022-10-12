@@ -815,14 +815,14 @@ Status FragmentMetadata::load(
     Tile* f_tile,
     uint64_t offset,
     std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
-
   auto meta_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
   // Load the metadata file size when we are not reading from consolidated
   // buffer
-  if (f_tile == nullptr)
+  if (f_tile == nullptr) {
     RETURN_NOT_OK(
         storage_manager_->vfs()->file_size(meta_uri, &meta_file_size_));
+  }
 
   // Get fragment name version
   uint32_t f_version;
@@ -2063,11 +2063,8 @@ Status FragmentMetadata::get_footer_offset_and_size(
     URI fragment_metadata_uri = fragment_uri_.join_path(
         std::string(constants::fragment_metadata_filename));
     uint64_t size_offset = meta_file_size_ - sizeof(uint64_t);
-    Buffer buff;
     RETURN_NOT_OK(storage_manager_->read(
-        fragment_metadata_uri, size_offset, &buff, sizeof(uint64_t)));
-    buff.reset_offset();
-    RETURN_NOT_OK(buff.read(size, sizeof(uint64_t)));
+        fragment_metadata_uri, size_offset, size, sizeof(uint64_t)));
     *offset = meta_file_size_ - *size - sizeof(uint64_t);
     storage_manager_->stats()->add_counter(
         "read_frag_meta_size", sizeof(uint64_t));
@@ -2376,8 +2373,9 @@ Status FragmentMetadata::expand_non_empty_domain(const NDRange& mbr) {
 
 Status FragmentMetadata::load_tile_offsets(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 2)
+  if (version_ <= 2) {
     return Status::Ok();
+  }
 
   // If the tile offset is already loaded, exit early to avoid the lock
   if (loaded_metadata_.tile_offsets_[idx])
@@ -2864,12 +2862,12 @@ void FragmentMetadata::load_tile_offsets(Deserializer& deserializer) {
 
     auto size = tile_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr && !memory_tracker_->take_memory(size)) {
-      throw StatusException(Status_FragmentMetadataError(
+      throw FragmentMetadataStatusException(
           "Cannot load tile offsets; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
-          std::to_string(memory_tracker_->get_memory_budget())));
+          std::to_string(memory_tracker_->get_memory_budget()));
     }
 
     // Get tile offsets
@@ -2932,12 +2930,12 @@ void FragmentMetadata::load_tile_var_offsets(Deserializer& deserializer) {
 
     auto size = tile_var_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr && !memory_tracker_->take_memory(size)) {
-      throw StatusException(Status_FragmentMetadataError(
+      throw FragmentMetadataStatusException(
           "Cannot load tile var offsets; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
-          std::to_string(memory_tracker_->get_memory_budget())));
+          std::to_string(memory_tracker_->get_memory_budget()));
     }
 
     // Get variable tile offsets
@@ -2998,12 +2996,12 @@ void FragmentMetadata::load_tile_var_sizes(Deserializer& deserializer) {
 
     auto size = tile_var_sizes_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr && !memory_tracker_->take_memory(size)) {
-      throw StatusException(Status_FragmentMetadataError(
+      throw FragmentMetadataStatusException(
           "Cannot load tile var sizes; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
-          std::to_string(memory_tracker_->get_memory_budget())));
+          std::to_string(memory_tracker_->get_memory_budget()));
     }
 
     // Get variable tile sizes
@@ -3104,12 +3102,12 @@ void FragmentMetadata::load_tile_min_values(
   if (buffer_size != 0) {
     auto size = buffer_size + var_buffer_size;
     if (memory_tracker_ != nullptr && !memory_tracker_->take_memory(size)) {
-      throw StatusException(Status_FragmentMetadataError(
+      throw FragmentMetadataStatusException(
           "Cannot load min values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
-          std::to_string(memory_tracker_->get_memory_budget())));
+          std::to_string(memory_tracker_->get_memory_budget()));
     }
 
     tile_min_buffer_[idx].resize(buffer_size);
@@ -3148,12 +3146,12 @@ void FragmentMetadata::load_tile_max_values(
   if (buffer_size != 0) {
     auto size = buffer_size + var_buffer_size;
     if (memory_tracker_ != nullptr && !memory_tracker_->take_memory(size)) {
-      throw StatusException(Status_FragmentMetadataError(
+      throw FragmentMetadataStatusException(
           "Cannot load max values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
-          std::to_string(memory_tracker_->get_memory_budget())));
+          std::to_string(memory_tracker_->get_memory_budget()));
     }
 
     tile_max_buffer_[idx].resize(buffer_size);
@@ -3184,12 +3182,12 @@ void FragmentMetadata::load_tile_sum_values(
   if (tile_sum_num != 0) {
     auto size = tile_sum_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr && !memory_tracker_->take_memory(size)) {
-      throw StatusException(Status_FragmentMetadataError(
+      throw FragmentMetadataStatusException(
           "Cannot load sum values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
-          std::to_string(memory_tracker_->get_memory_budget())));
+          std::to_string(memory_tracker_->get_memory_budget()));
     }
 
     tile_sums_[idx].resize(size);
@@ -3215,13 +3213,13 @@ void FragmentMetadata::load_tile_null_count_values(
   if (tile_null_count_num != 0) {
     auto size = tile_null_count_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr && !memory_tracker_->take_memory(size)) {
-      throw StatusException(Status_FragmentMetadataError(
+      throw FragmentMetadataStatusException(
           "Cannot load null count values; Insufficient memory budget; "
           "Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
-          std::to_string(memory_tracker_->get_memory_budget())));
+          std::to_string(memory_tracker_->get_memory_budget()));
     }
 
     tile_null_counts_[idx].resize(tile_null_count_num);
@@ -3518,8 +3516,8 @@ void FragmentMetadata::load_array_schema_name(Deserializer& deserializer) {
   uint64_t size = 0;
   size = deserializer.read<uint64_t>();
   if (size == 0) {
-    throw StatusException(Status_FragmentMetadataError(
-        "Cannot load array schema name; Size of schema name is zero"));
+    throw FragmentMetadataStatusException(
+        "Cannot load array schema name; Size of schema name is zero");
   }
   array_schema_name_.resize(size);
 
@@ -3591,31 +3589,32 @@ Status FragmentMetadata::load_footer(
   if (loaded_metadata_.footer_)
     return Status::Ok();
 
-  Buffer buff;
-  shared_ptr<Deserializer> deserializer = nullptr;
+  Tile tile;
   if (f_tile == nullptr) {
     has_consolidated_footer_ = false;
-    RETURN_NOT_OK(read_file_footer(&buff, &footer_offset_, &footer_size_));
-    deserializer = make_shared<Deserializer>(HERE(), buff.data(), buff.alloced_size());
+    RETURN_NOT_OK(read_file_footer(&tile, &footer_offset_, &footer_size_));
+
+    f_tile = &tile;
+    offset = 0;
   } else {
-    footer_size_ = 0;
+    footer_size_ = 0; // adjusted at end of routine based on buffer consumed
     footer_offset_ = offset;
     has_consolidated_footer_ = true;
-    deserializer = make_shared<Deserializer>(HERE(), f_tile->data(), f_tile->size());
-    deserializer->set_offset(offset);
   }
+  Deserializer deserializer(static_cast<uint8_t*>(f_tile->data()) + offset, f_tile->size() - offset);
 
-  load_version(*deserializer.get());
+  load_version(deserializer);
+  
   if (version_ >= 10) {
-    load_array_schema_name(*deserializer.get());
+    load_array_schema_name(deserializer);
     auto schema = array_schemas.find(array_schema_name_);
     if (schema != array_schemas.end()) {
       set_array_schema(schema->second);
     } else {
-      throw StatusException(Status_FragmentMetadataError(
-          "Could not find schema" + array_schema_name_ +
+      throw FragmentMetadataStatusException(
+          "Could not find schema " + array_schema_name_ +
           " in map of schemas loaded.\n" +
-          "Consider reloading the array to check for new array schemas."));
+          "Consider reloading the array to check for new array schemas.");
     }
   } else {
     // Pre-v10 format fragments we need to set the schema and schema name to
@@ -3625,28 +3624,28 @@ Status FragmentMetadata::load_footer(
     if (schema != array_schemas.end()) {
       set_array_schema(schema->second);
     } else {
-      throw StatusException(Status_FragmentMetadataError(
-          "Could not find schema" + array_schema_name_ +
+      throw FragmentMetadataStatusException(
+          "Could not find schema " + array_schema_name_ +
           " in map of schemas loaded.\n" +
-          "Consider reloading the array to check for new array schemas."));
+          "Consider reloading the array to check for new array schemas.");
     }
   }
-  load_dense(*deserializer.get());
-  load_non_empty_domain(*deserializer.get());
-  load_sparse_tile_num(*deserializer.get());
-  load_last_tile_cell_num(*deserializer.get());
+  load_dense(deserializer);
+  load_non_empty_domain(deserializer);
+  load_sparse_tile_num(deserializer);
+  load_last_tile_cell_num(deserializer);
 
   if (version_ >= 14) {
-    load_has_timestamps(*deserializer.get());
+    load_has_timestamps(deserializer);
   }
 
   if (version_ >= 15) {
-    load_has_delete_meta(*deserializer.get());
+    load_has_delete_meta(deserializer);
   }
 
-  load_file_sizes(*deserializer.get());
-  load_file_var_sizes(*deserializer.get());
-  load_file_validity_sizes(*deserializer.get());
+  load_file_sizes(deserializer);
+  load_file_var_sizes(deserializer);
+  load_file_validity_sizes(deserializer);
 
   unsigned num = array_schema_->attribute_num() + 1 + has_timestamps_ +
                  has_delete_meta_ * 2;
@@ -3679,14 +3678,14 @@ Status FragmentMetadata::load_footer(
   loaded_metadata_.tile_sum_.resize(num, false);
   loaded_metadata_.tile_null_count_.resize(num, false);
 
-  load_generic_tile_offsets(*deserializer.get());
+  load_generic_tile_offsets(deserializer);
 
   loaded_metadata_.footer_ = true;
 
   // If the footer_size is not set lets calculate from how much of the buffer we
   // read
   if (footer_size_ == 0)
-    footer_size_ = deserializer->offset() - offset;
+    footer_size_ = deserializer.offset();
 
   return Status::Ok();
 }
@@ -3785,8 +3784,8 @@ void FragmentMetadata::write_generic_tile_offsets(Serializer& serializer) const 
 void FragmentMetadata::write_array_schema_name(Serializer& serializer) const {
   uint64_t size = array_schema_name_.size();
   if (size == 0) {
-    throw StatusException(Status_FragmentMetadataError(
-        "Cannot write array schema name; Size of schema name is zero"));
+    throw FragmentMetadataStatusException(
+        "Cannot write array schema name; Size of schema name is zero");
   }
   serializer.write<uint64_t>(size);
   serializer.write(array_schema_name_.c_str(), size);
@@ -3883,7 +3882,7 @@ tuple<Status, optional<Tile>> FragmentMetadata::read_generic_tile_from_file(
 }
 
 Status FragmentMetadata::read_file_footer(
-    Buffer* buff, uint64_t* footer_offset, uint64_t* footer_size) const {
+    Tile* tile, uint64_t* footer_offset, uint64_t* footer_size) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
@@ -3904,7 +3903,7 @@ Status FragmentMetadata::read_file_footer(
 
   // Read footer
   return storage_manager_->read(
-      fragment_metadata_uri, *footer_offset, buff, *footer_size);
+      fragment_metadata_uri, *footer_offset, tile, *footer_size);
 }
 
 Status FragmentMetadata::write_generic_tile_to_file(

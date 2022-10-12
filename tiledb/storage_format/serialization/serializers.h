@@ -216,20 +216,6 @@ class Deserializer {
   }
 
   /**
-   * (re)set members to reflect a particular position within the Deserializer.
-   */
-  void set_offset(uint64_t offset) {
-    if (offset > size_) {
-      throw std::logic_error(
-          "Attempting illegal offset value " + std::to_string(offset) +
-          " for size_ " + std::to_string(size_) + ".");
-    }
-
-    ptr_ = orig_ptr_ + offset;
-    size_ = orig_size_ - offset;
-  }
-
-  /**
    * Return the offset past what has been read.
    *
    * @return next offset to be read.
