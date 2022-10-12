@@ -1086,6 +1086,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The end timestamp used for opening the group. <br>
  *    Also used for the write timestamp if set. <br>
  *    **Default**: UINT64_MAX
+ * - `sm.fragment_info.preload_mbrs` <br>
+ *    If `true` MBRs will be loaded at the same time as the rest of fragment
+ *    info, otherwise they will be loaded lazily when some info related to MBRs
+ *    is requested by the user. <br>
+ *    **Default**: false
  * -  `vfs.read_ahead_cache_size` <br>
  *    The the total maximum size of the read-ahead cache, which is an LRU. <br>
  *    **Default**: 10485760
@@ -7694,6 +7699,27 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_set_config(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     tiledb_config_t* config) TILEDB_NOEXCEPT;
+
+/**
+ * Retrieves the config from fragment info.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_config_t* config;
+ * tiledb_fragment_info_get_config(ctx, vfs, &config);
+ * // Make sure to free the retrieved config
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param fragment_info The fragment info object.
+ * @param config The config to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_config(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    tiledb_config_t** config) TILEDB_NOEXCEPT;
 
 /**
  * Loads the fragment info.

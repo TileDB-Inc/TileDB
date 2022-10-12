@@ -67,6 +67,8 @@ Status ArrayMetaConsolidator::consolidate(
     uint32_t key_length) {
   auto timer_se = stats_->start_timer("consolidate_array_meta");
 
+  check_array_uri(array_name);
+
   // Open array for reading
   auto array_uri = URI(array_name);
   Array array_for_reads(array_uri, storage_manager_);

@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "helpers.h"
+#include "test/src/serialization_wrappers.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/filesystem/uri.h"
@@ -1817,6 +1818,28 @@ TEST_CASE(
 
   FragmentInfo fragment_info(ctx, old_array_name);
   fragment_info.load();
+
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
+  if (serialized_load) {
+    FragmentInfo deserialized_fragment_info(ctx, old_array_name);
+    tiledb_fragment_info_serialize(
+        ctx.ptr().get(),
+        old_array_name.c_str(),
+        fragment_info.ptr().get(),
+        deserialized_fragment_info.ptr().get(),
+        tiledb_serialization_type_t(0));
+    fragment_info = deserialized_fragment_info;
+  }
+
   std::string fragment_uri = fragment_info.fragment_uri(1);
 
   // old version fragment
