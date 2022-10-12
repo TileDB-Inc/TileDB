@@ -1373,7 +1373,7 @@ Status RestClient::post_group_metadata_from_rest(const URI&, Group*) {
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::get_fragment_info(const URI&, FragmentInfo*) {
+Status RestClient::post_fragment_info_from_rest(const URI&, FragmentInfo*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
