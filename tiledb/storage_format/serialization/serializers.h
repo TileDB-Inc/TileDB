@@ -143,8 +143,7 @@ class Deserializer {
   Deserializer(const void* data, storage_size_t size)
       : ptr_(static_cast<const uint8_t*>(data))
       , size_(size)
-      , orig_ptr_(ptr_)
-      , orig_size_(size) {
+      , orig_ptr_(ptr_) {
   }
 
   DISABLE_COPY_AND_COPY_ASSIGN(Deserializer);
@@ -233,9 +232,6 @@ class Deserializer {
 
   /* initial buffer address */
   const uint8_t* orig_ptr_;
-
-  /* original available to be read. */
-  storage_size_t orig_size_;
 };
 
 }  // namespace tiledb::sm
