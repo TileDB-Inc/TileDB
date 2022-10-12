@@ -71,7 +71,6 @@ target_include_directories(
   tiledb_explore_msys_handle_leakage BEFORE PRIVATE
     ${TILEDB_CORE_INCLUDE_DIR}
     ${TILEDB_EXPORT_HEADER_DIR}
-    ${TILEDB_EP_INSTALL_PREFIX}/include
 )
 
 target_link_libraries(tiledb_explore_msys_handle_leakage

@@ -38,8 +38,7 @@
 /*
  * The header-only version of Catch includes Windows system headers that bleed
  * out preprocessor definitions. This has been reported as
- * https://github.com/catchorg/Catch2/issues/2432. It may not be a problem for
- * version 3 of Catch, which isn't header-only.
+ * https://github.com/catchorg/Catch2/issues/2432.
  *
  * We need to detect and remove definitions that are a problem. It shouldn't be
  * strictly necessary, but out of a superabundance of caution, we detect
