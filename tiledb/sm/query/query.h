@@ -59,6 +59,7 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class ArrayDimensionLabelQueries;
 class StorageManager;
 
 enum class QueryStatus : uint8_t;
@@ -361,6 +362,9 @@ class Query {
   /** Returns the array schema. */
   const ArraySchema& array_schema() const;
 
+  /** Returns the array schema as a shared_ptr */
+  const std::shared_ptr<const ArraySchema> array_schema_shared() const;
+
   /** Returns the names of the buffers set by the user for the query. */
   std::vector<std::string> buffer_names() const;
 
@@ -383,6 +387,12 @@ class Query {
    * layout writes. It has no effect for any other query type.
    */
   Status finalize();
+
+  /**
+   * Submits and finalizes a query, flushing all internal state. Applicable
+   * only to global layout writes, returns an error otherwise.
+   */
+  Status submit_and_finalize();
 
   /**
    * This is a deprecated API.
@@ -429,6 +439,26 @@ class Query {
    */
   Status get_data_buffer(
       const char* name, void** buffer, uint64_t** buffer_size) const;
+
+  /**
+   * Retrieves the data buffer of a fixed or variable-sized dimension label.
+   *
+   * @param name The name of the the label.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size The size of the buffer.
+   */
+  void get_label_data_buffer(
+      const std::string& name, void** buffer, uint64_t** buffer_size) const;
+
+  /**
+   * Retrieves the offset buffer for a variable-sized dimension label.
+   *
+   * @param name The name of the label.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size The size of the buffer.
+   */
+  void get_label_offsets_buffer(
+      const std::string& name, uint64_t** buffer, uint64_t** buffer_size) const;
 
   /**
    * Retrieves the offset buffer for a var-sized attribute/dimension.
@@ -561,6 +591,11 @@ class Query {
    */
   const std::vector<UpdateValue>& update_values() const;
 
+  /**
+   * Returns true if this query requires the use of dimension labels.
+   */
+  bool uses_dimension_labels() const;
+
   /** Processes a query. */
   Status process();
 
@@ -633,6 +668,51 @@ class Query {
       const std::string& name,
       void* const buffer,
       uint64_t* const buffer_size,
+      const bool check_null_buffers = true);
+
+  /**
+   * Wrapper to set the internal buffer for a dimension or attribute from a
+   * QueryBuffer.
+   *
+   * This function is intended to be a convenience method for use setting
+   * buffers for dimension labels.
+   *
+   * @WARNING Does not check for or copy validity data.
+   *
+   * @param name Name of the dimension or attribute to set the buffer for.
+   * @param buffer The query buffer to get the data from.
+   **/
+  void set_dimension_label_buffer(
+      const std::string& name, const QueryBuffer& buffer);
+
+  /**
+   * Sets the label data buffer for fixed or variable sized dimension labels.
+   *
+   * @param name The name of the dimension label to set the data buffer for.
+   * @param buffer The buffer for the data.
+   * @param buffer_size The size of the data.
+   * @param check_null_buffers If ``true`` verify buffer and buffersize are not
+   *     nullptrs.
+   */
+  void set_label_data_buffer(
+      const std::string& name,
+      void* const buffer,
+      uint64_t* const buffer_size,
+      const bool check_null_buffers = true);
+
+  /**
+   * Sets the label offsets buffer for variable sized dimension labels.
+   *
+   * @param name The name of the dimension label to set the offsets buffer for.
+   * @param buffer_offsets The buffer for offsets for the variable size data.
+   * @param buffer_offsets_size The size of the offsets buffer.
+   * @param check_null_buffers If ``true`` verify buffer and buffersize are not
+   *     nullptrs.
+   */
+  void set_label_offsets_buffer(
+      const std::string& name,
+      uint64_t* const buffer_offsets,
+      uint64_t* const buffer_offsets_size,
       const bool check_null_buffers = true);
 
   /**
@@ -929,6 +1009,23 @@ class Query {
   /** Returns if all ranges for this query are non overlapping. */
   tuple<Status, optional<bool>> non_overlapping_ranges();
 
+  /** Returns true if this is a dense query */
+  bool is_dense() const;
+
+  /** Returns a reference to the internal WrittenFragmentInfo list */
+  std::vector<WrittenFragmentInfo>& get_written_fragment_info();
+
+  /** Called from serialization to mark the query as remote */
+  void set_remote_query();
+
+  /**
+   * Set a flag to specify we are doing an ordered dimension label read.
+   *
+   * @param increasing_order Is the query on an array with increasing order? If
+   * not assume decreasing order.
+   */
+  void set_dimension_label_ordered_read(bool increasing_order);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -987,6 +1084,12 @@ class Query {
    * buffer.
    * */
   std::unordered_map<std::string, QueryBuffer> buffers_;
+
+  /** Maps label names to their buffers. */
+  std::unordered_map<std::string, QueryBuffer> label_buffers_;
+
+  /** Dimension label queries that are part of the main query. */
+  tdb_unique_ptr<ArrayDimensionLabelQueries> dim_label_queries_;
 
   /** Keeps track of the coords data. */
   CoordsInfo coords_info_;
@@ -1063,6 +1166,20 @@ class Query {
    */
   optional<std::string> fragment_name_;
 
+  /** It tracks if this is a remote query */
+  bool remote_query_;
+
+  /** Flag to specify we are doing a dimension label ordered read. */
+  bool is_dimension_label_ordered_read_;
+
+  /**
+   * Is the dimension label ordered read on an array with increasing order? If
+   * not assume decreasing order.
+   *
+   * NOTE: Only used when is_dimension_label_order_read_ == true.
+   */
+  bool dimension_label_increasing_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -1086,6 +1203,16 @@ class Query {
    * @return Status
    */
   Status check_buffers_correctness();
+
+  /**
+   * Returns true if only querying dimension labels.
+   *
+   * The query will only query dimension labels if all the following are true:
+   * 1. At most one dimension buffer is set.
+   * 2. No attribute buffers are set.
+   * 3. At least one label buffer is set.
+   */
+  bool only_dim_label_query() const;
 
   /**
    * This is a deprecated API.
@@ -1136,6 +1263,26 @@ class Query {
       void** buffer_val,
       uint64_t** buffer_val_size,
       const ValidityVector** validity_vector) const;
+
+  /**
+   * Check if input buffers are tile aligned. This function should be called
+   * only for remote global order writes and it should enforce tile alignment
+   * for both dense and sparse arrays.
+   */
+  Status check_tile_alignment() const;
+
+  /**
+   * Check if input buffers are bigger than 5MB. S3 multipart upload
+   * requires each part be bigger than 5MB, except the last part.
+   * This function should be called only for remote global order writes.
+   */
+  Status check_buffer_multipart_size() const;
+
+  /**
+   * Reset coord buffer markers at end of a global write submit.
+   * This will allow for the user to properly set the next write batch.
+   */
+  void reset_coords_markers();
 };
 
 }  // namespace sm

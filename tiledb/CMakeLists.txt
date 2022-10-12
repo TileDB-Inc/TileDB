@@ -228,8 +228,11 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ast/query_ast.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/deletes.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/deletes_and_updates.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/serialization.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dimension_label/array_dimension_label_queries.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dimension_label/dimension_label_query.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dimension_label/dimension_label_query_create.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/hilbert_order.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/legacy/cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/legacy/reader.cc
@@ -237,6 +240,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/dense_reader.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/ordered_dim_label_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/reader_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/result_tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/sparse_global_order_reader.cc

@@ -36,14 +36,17 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/deletes_and_updates/deletes.h"
+#include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
+#include "tiledb/sm/query/dimension_label/array_dimension_label_queries.h"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
+#include "tiledb/sm/query/readers/ordered_dim_label_reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
 #include "tiledb/sm/query/writers/global_order_writer.h"
@@ -82,6 +85,7 @@ Query::Query(
     , storage_manager_(storage_manager)
     , stats_(storage_manager_->stats()->create_child("Query"))
     , logger_(storage_manager->logger()->clone("Query", ++logger_id_))
+    , dim_label_queries_(nullptr)
     , has_coords_buffer_(false)
     , has_zipped_coords_buffer_(false)
     , coord_buffer_is_set_(false)
@@ -92,7 +96,10 @@ Query::Query(
     , disable_checks_consolidation_(false)
     , consolidation_with_timestamps_(false)
     , force_legacy_reader_(false)
-    , fragment_name_(fragment_name) {
+    , fragment_name_(fragment_name)
+    , remote_query_(false)
+    , is_dimension_label_ordered_read_(false)
+    , dimension_label_increasing_(true) {
   assert(array->is_open());
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
@@ -176,7 +183,8 @@ Status Query::add_range(
     if (read_range_oob != "error" && read_range_oob != "warn")
       return logger_->status(Status_QueryError(
           "Invalid value " + read_range_oob +
-          " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
+          " for sm.read_range_obb. Acceptable values are 'error' or "
+          "'warn'."));
 
     read_range_oob_error = read_range_oob == "error";
   } else {
@@ -619,6 +627,10 @@ const ArraySchema& Query::array_schema() const {
   return *(array_schema_.get());
 }
 
+const std::shared_ptr<const ArraySchema> Query::array_schema_shared() const {
+  return array_schema_;
+}
+
 std::vector<std::string> Query::buffer_names() const {
   std::vector<std::string> ret;
 
@@ -669,11 +681,119 @@ Status Query::finalize() {
       return logger_->status(Status_QueryError(
           "Error in query finalize; remote array with no rest client."));
 
+    if (type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
+      return logger_->status(Status_QueryError(
+          "Error in query finalize; remote global order writes are only "
+          "allowed to call submit_and_finalize to submit the last tile"));
+    }
     return rest_client->finalize_query_to_rest(array_->array_uri(), this);
   }
 
   RETURN_NOT_OK(strategy_->finalize());
   status_ = QueryStatus::COMPLETED;
+  return Status::Ok();
+}
+
+Status Query::submit_and_finalize() {
+  if (type_ != QueryType::WRITE || layout_ != Layout::GLOBAL_ORDER) {
+    return logger_->status(
+        Status_QueryError("Error in query submit_and_finalize; Call valid only "
+                          "in global_order writes."));
+  }
+
+  // Check attribute/dimensions buffers completeness before query submits
+  RETURN_NOT_OK(check_buffers_correctness());
+
+  if (array_->is_remote()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return logger_->status(
+          Status_QueryError("Error in query submit_and_finalize; remote array "
+                            "with no rest client."));
+
+    if (status_ == QueryStatus::UNINITIALIZED) {
+      RETURN_NOT_OK(create_strategy());
+    }
+    return rest_client->submit_and_finalize_query_to_rest(
+        array_->array_uri(), this);
+  }
+
+  RETURN_NOT_OK(init());
+  RETURN_NOT_OK(storage_manager_->query_submit(this));
+
+  RETURN_NOT_OK(strategy_->finalize());
+  status_ = QueryStatus::COMPLETED;
+
+  return Status::Ok();
+}
+
+Status Query::check_tile_alignment() const {
+  // Only applicable for remote global order writes
+  if (!array_->is_remote() || type_ != QueryType::WRITE ||
+      layout_ != Layout::GLOBAL_ORDER) {
+    return Status::Ok();
+  }
+
+  // It is enough to check for the first attr/dim only as we have
+  // previously checked in check_buffer_sizes that all the buffers
+  // have the same size
+  auto& first_buffer_name = buffers_.begin()->first;
+  auto& first_buffer = buffers_.begin()->second;
+  const bool is_var_size = array_schema_->var_size(first_buffer_name);
+
+  uint64_t cell_num_per_tile = array_schema_->dense() ?
+                                   array_schema_->domain().cell_num_per_tile() :
+                                   array_schema_->capacity();
+  bool buffers_tile_aligned = true;
+  if (is_var_size) {
+    auto offsets_buf_size = *first_buffer.buffer_size_;
+    if ((offsets_buf_size / constants::cell_var_offset_size) %
+        cell_num_per_tile) {
+      buffers_tile_aligned = false;
+    }
+  } else {
+    uint64_t cell_size = array_schema_->cell_size(first_buffer_name);
+    if ((*first_buffer.buffer_size_ / cell_size) % cell_num_per_tile) {
+      buffers_tile_aligned = false;
+    }
+  }
+
+  if (!buffers_tile_aligned) {
+    return Status_WriterError(
+        "Tile alignment check failed; Input buffers need to be tile-aligned "
+        "for remote global order writes.");
+  }
+
+  return Status::Ok();
+}
+
+Status Query::check_buffer_multipart_size() const {
+  // Only applicable for remote global order writes
+  if (!array_->is_remote() || type_ != QueryType::WRITE ||
+      layout_ != Layout::GLOBAL_ORDER) {
+    return Status::Ok();
+  }
+
+  const uint64_t s3_multipart_min_limit = 5242880;  // 5MB
+  for (const auto& it : buffers_) {
+    const auto& buf_name = it.first;
+    const bool is_var = array_schema_->var_size(buf_name);
+    const uint64_t buffer_size =
+        is_var ? *it.second.buffer_var_size_ : *it.second.buffer_size_;
+
+    uint64_t buffer_validity_size = s3_multipart_min_limit;
+    if (array_schema_->is_nullable(buf_name)) {
+      buffer_validity_size = *it.second.validity_vector_.buffer_size();
+    }
+
+    if (buffer_size < s3_multipart_min_limit ||
+        buffer_validity_size < s3_multipart_min_limit) {
+      return logger_->status(Status_WriterError(
+          "Remote global order writes require buffers to be of"
+          "minimum 5MB in size."));
+    }
+  }
+
   return Status::Ok();
 }
 
@@ -826,6 +946,76 @@ Status Query::get_data_buffer(
   *buffer_size = nullptr;
 
   return Status::Ok();
+}
+
+void Query::get_label_data_buffer(
+    const std::string& name, void** buffer, uint64_t** buffer_size) const {
+  // Check query type
+  if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
+    throw StatusException(
+        Status_QueryError("Cannot get buffer; Unsupported query type."));
+  }
+
+  // Check that dimension label exists
+  if (!array_schema_->is_dim_label(name)) {
+    throw StatusException(Status_QueryError(
+        std::string("Cannot set buffer; Invalid dimension label '") + name +
+        "'"));
+  }
+
+  // Return the buffer
+  auto it = label_buffers_.find(name);
+  if (it != label_buffers_.end()) {
+    if (array_schema_->dimension_label_reference(name).is_var()) {
+      *buffer = it->second.buffer_var_;
+      *buffer_size = it->second.buffer_var_size_;
+    } else {
+      *buffer = it->second.buffer_;
+      *buffer_size = it->second.buffer_size_;
+    }
+    return;
+  }
+
+  // Named buffer does not exist
+  *buffer = nullptr;
+  *buffer_size = nullptr;
+}
+
+void Query::get_label_offsets_buffer(
+    const std::string& name,
+    uint64_t** buffer_off,
+    uint64_t** buffer_off_size) const {
+  // Check query type
+  if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
+    throw StatusException(Status_SerializationError(
+        "Cannot get buffer; Unsupported query type."));
+  }
+
+  // Check that dimension label exists
+  if (!array_schema_->is_dim_label(name)) {
+    throw StatusException(Status_QueryError(
+        std::string("Cannot set buffer; Invalid dimension label '") + name +
+        "'"));
+  }
+
+  // Error if it is fixed-sized
+  if (!array_schema_->dimension_label_reference(name).is_var()) {
+    throw StatusException(Status_QueryError(
+        std::string("Cannot set buffer; Input attribute/dimension '") + name +
+        "' is fixed-sized"));
+  }
+
+  // Attribute or dimension
+  auto it = label_buffers_.find(name);
+  if (it != label_buffers_.end()) {
+    *buffer_off = (uint64_t*)it->second.buffer_;
+    *buffer_off_size = it->second.buffer_size_;
+    return;
+  }
+
+  // Named buffer does not exist
+  *buffer_off = nullptr;
+  *buffer_off_size = nullptr;
 }
 
 Status Query::get_validity_buffer(
@@ -1024,7 +1214,46 @@ Status Query::init() {
     }
 
     RETURN_NOT_OK(check_buffer_names());
-    RETURN_NOT_OK(create_strategy());
+
+    // Create dimension label queries and remove labels from subarray.
+    if (uses_dimension_labels()) {
+      if (type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
+        return logger_->status(
+            Status_QueryError("Cannot init query; Querying dimension labels is "
+                              "not supported on global order writes"));
+      }
+
+      // Initialize the dimension label queries.
+      dim_label_queries_ = tdb_unique_ptr<ArrayDimensionLabelQueries>(tdb_new(
+          ArrayDimensionLabelQueries,
+          storage_manager_,
+          stats_->create_child("ArrayDimensionLabelQueries"),
+          array_,
+          subarray_,
+          label_buffers_,
+          buffers_,
+          fragment_name_));
+
+      // Clear the label ranges from the subarray. They are no longer needed.
+      subarray_.remove_label_ranges();
+
+      // Do not allow reading data from dimension labels for sparse arrays
+      // unless we are only returning the dimension label data. If returning
+      // data for the entire sparse array, the output for the dimension label
+      // data needs to be re-arranged to match the coordinate form we use for
+      // sparse reads. This has not yet been implemented.
+      if (!only_dim_label_query() && type_ == QueryType::READ &&
+          !array_schema_->dense() && dim_label_queries_->has_data_query()) {
+        return logger_->status(Status_QueryError(
+            "Cannot initialize query; Reading dimension label data is not yet "
+            "supported on sparse arrays."));
+      }
+    }
+
+    // Create the query strategy if querying main array.
+    if (!only_dim_label_query()) {
+      RETURN_NOT_OK(create_strategy());
+    }
   }
 
   status_ = QueryStatus::INPROGRESS;
@@ -1077,8 +1306,48 @@ Status Query::process() {
         Status_QueryError("Cannot process query; Query is not initialized"));
   status_ = QueryStatus::INPROGRESS;
 
+  // Check if we need to process label ranges and update subarray before
+  // continuing to the main query.
+  if (dim_label_queries_ && dim_label_queries_->completed_range_queries()) {
+    // Process the dimension label queries.
+    dim_label_queries_->process_range_queries(subarray_);
+
+    // The dimension label query did not complete. For now, we are failing on
+    // this step. In the future, this may be updated to allow incomplete
+    // dimension label queries.
+    if (!dim_label_queries_->completed_range_queries()) {
+      status_ = QueryStatus::FAILED;
+      return logger_->status(
+          Status_QueryError("Cannot process query; Failed to read data from "
+                            "dimension label ranges."));
+    }
+
+    // Check if the subarray has a dimension with no data.
+    // Note: For now we are returning an error if no dimension label data was
+    // found on a range. In the future, we may want to update this to instead
+    // finalize the query as returning no results.
+    for (uint32_t dim_idx{0}; dim_idx < subarray_.dim_num(); ++dim_idx) {
+      if (subarray_.empty(dim_idx)) {
+        return logger_->status(Status_QueryError(
+            "Cannot process query; No range set on dimension " +
+            std::to_string(dim_idx) + " after update dimension label ranges."));
+      }
+    }
+  }
+
+  // Update query status.
+  status_ = QueryStatus::INPROGRESS;
+
   // Process query
-  Status st = strategy_->dowork();
+  Status st{Status::Ok()};
+  if (!only_dim_label_query()) {
+    st = strategy_->dowork();
+  }
+
+  // Process dimension label queries
+  if (dim_label_queries_) {
+    dim_label_queries_->process_data_queries();
+  }
 
   // Handle error
   if (!st.ok()) {
@@ -1086,29 +1355,22 @@ Status Query::process() {
     return st;
   }
 
-  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
-      layout_ == Layout::GLOBAL_ORDER) {
-    // reset coord buffer marker at end of global write
-    // this will allow for the user to properly set the next write batch
-    coord_buffer_is_set_ = false;
-    coord_data_buffer_is_set_ = false;
-    coord_offsets_buffer_is_set_ = false;
-  }
-
-  // Check if the query is complete
-  bool completed = !strategy_->incomplete();
-
-  // Handle callback and status
-  if (completed) {
-    if (callback_ != nullptr)
+  // Check if the query is completed or not.
+  if ((only_dim_label_query() || !strategy_->incomplete()) &&
+      (!dim_label_queries_ || dim_label_queries_->completed())) {
+    // Main query and dimension label query are both completed. Handle the
+    // callback, then set status to complete.
+    if (callback_ != nullptr) {
       callback_(callback_data_);
+    }
     status_ = QueryStatus::COMPLETED;
-  } else {  // Incomplete
+  } else {
+    // Either the main query or the dimension lable query are incomplete.
     status_ = QueryStatus::INCOMPLETE;
   }
 
   return Status::Ok();
-}
+}  // namespace sm
 
 IQueryStrategy* Query::strategy(bool skip_checks_serialization) {
   if (strategy_ == nullptr) {
@@ -1129,6 +1391,11 @@ Status Query::reset_strategy_with_layout(
   RETURN_NOT_OK(create_strategy(true));
 
   return Status::Ok();
+}
+
+bool Query::uses_dimension_labels() const {
+  return !label_buffers_.empty() || subarray_.has_label_ranges() ||
+         dim_label_queries_;
 }
 
 Status Query::disable_checks_consolidation() {
@@ -1171,33 +1438,39 @@ void Query::set_processed_conditions(
 Status Query::check_buffer_names() {
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     // If the array is sparse, the coordinates must be provided
-    if (!array_schema_->dense() && !coords_info_.has_coords_)
-      return logger_->status(Status_WriterError(
-          "Sparse array writes expect the coordinates of the "
-          "cells to be written"));
+    if (!array_schema_->dense() && !coords_info_.has_coords_) {
+      return logger_->status(
+          Status_QueryError("Sparse array writes expect the coordinates of the "
+                            "cells to be written"));
+    }
 
     // If the layout is unordered, the coordinates must be provided
-    if (layout_ == Layout::UNORDERED && !coords_info_.has_coords_)
+    if (layout_ == Layout::UNORDERED && !coords_info_.has_coords_) {
       return logger_->status(
-          Status_WriterError("Unordered writes expect the coordinates of the "
-                             "cells to be written"));
+          Status_QueryError("Unordered writes expect the coordinates of the "
+                            "cells to be written"));
+    }
 
-    // All attributes/dimensions must be provided
-    auto expected_num = array_schema_->attribute_num();
-    expected_num += static_cast<decltype(expected_num)>(
-        buffers_.count(constants::timestamps));
-    expected_num += static_cast<decltype(expected_num)>(
-        buffers_.count(constants::delete_timestamps));
-    expected_num += static_cast<decltype(expected_num)>(
-        buffers_.count(constants::delete_condition_index));
-    expected_num += (coord_buffer_is_set_ || coord_data_buffer_is_set_ ||
-                     coord_offsets_buffer_is_set_) ?
-                        array_schema_->dim_num() :
-                        0;
-    if (buffers_.size() != expected_num)
-      return logger_->status(
-          Status_WriterError("Writes expect all attributes (and coordinates in "
-                             "the sparse/unordered case) to be set"));
+    // All attributes/dimensions must be provided unless this query is only for
+    // dimension labels.
+    if (!only_dim_label_query()) {
+      auto expected_num = array_schema_->attribute_num();
+      expected_num += static_cast<decltype(expected_num)>(
+          buffers_.count(constants::timestamps));
+      expected_num += static_cast<decltype(expected_num)>(
+          buffers_.count(constants::delete_timestamps));
+      expected_num += static_cast<decltype(expected_num)>(
+          buffers_.count(constants::delete_condition_index));
+      expected_num += (coord_buffer_is_set_ || coord_data_buffer_is_set_ ||
+                       coord_offsets_buffer_is_set_) ?
+                          array_schema_->dim_num() :
+                          0;
+      if (buffers_.size() != expected_num) {
+        return logger_->status(Status_QueryError(
+            "Writes expect all attributes (and coordinates in "
+            "the sparse/unordered case) to be set"));
+      }
+    }
   }
 
   return Status::Ok();
@@ -1223,6 +1496,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           written_fragment_info_,
           coords_info_,
+          remote_query_,
           fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::UNORDERED) {
@@ -1243,6 +1517,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           written_fragment_info_,
           coords_info_,
+          remote_query_,
           fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::GLOBAL_ORDER) {
@@ -1260,6 +1535,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           disable_checks_consolidation_,
           processed_conditions_,
           coords_info_,
+          remote_query_,
           fragment_name_,
           skip_checks_serialization));
     } else {
@@ -1267,16 +1543,27 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           "Cannot create strategy; unsupported layout " + layout_str(layout_));
     }
   } else if (type_ == QueryType::READ) {
-    bool use_default = true;
     bool all_dense = true;
     for (auto& frag_md : fragment_metadata_) {
       all_dense &= frag_md->dense();
     }
 
-    if (use_refactored_sparse_unordered_with_dups_reader(
-            layout_, *array_schema_)) {
-      use_default = false;
-
+    if (is_dimension_label_ordered_read_) {
+      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+          OrderedDimLabelReader,
+          stats_->create_child("Reader"),
+          logger_,
+          storage_manager_,
+          array_,
+          config_,
+          buffers_,
+          subarray_,
+          layout_,
+          condition_,
+          dimension_label_increasing_,
+          skip_checks_serialization));
+    } else if (use_refactored_sparse_unordered_with_dups_reader(
+                   layout_, *array_schema_)) {
       auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
       RETURN_NOT_OK(st);
 
@@ -1313,8 +1600,6 @@ Status Query::create_strategy(bool skip_checks_serialization) {
         !array_schema_->dense() &&
         (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED)) {
       // Using the reader for unordered queries to do deduplication.
-      use_default = false;
-
       auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
       RETURN_NOT_OK(st);
 
@@ -1349,7 +1634,6 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             skip_checks_serialization));
       }
     } else if (use_refactored_dense_reader(*array_schema_, all_dense)) {
-      use_default = false;
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           DenseReader,
           stats_->create_child("Reader"),
@@ -1362,9 +1646,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           condition_,
           skip_checks_serialization));
-    }
-
-    if (use_default) {
+    } else {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           Reader,
           stats_->create_child("Reader"),
@@ -1378,9 +1660,9 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           condition_,
           skip_checks_serialization));
     }
-  } else if (type_ == QueryType::DELETE) {
+  } else if (type_ == QueryType::DELETE || type_ == QueryType::UPDATE) {
     strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-        Deletes,
+        DeletesAndUpdates,
         stats_->create_child("Deletes"),
         logger_,
         storage_manager_,
@@ -1390,6 +1672,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
         subarray_,
         layout_,
         condition_,
+        update_values_,
         skip_checks_serialization));
   } else {
     return logger_->status(
@@ -1535,6 +1818,20 @@ Status Query::set_buffer(
   return Status::Ok();
 }
 
+void Query::set_dimension_label_buffer(
+    const std::string& name, const QueryBuffer& buffer) {
+  if (buffer.buffer_var_ || buffer.buffer_var_size_) {
+    // Variable-length buffer. Set data buffer and offsets buffer.
+    throw_if_not_ok(
+        set_data_buffer(name, buffer.buffer_var_, buffer.buffer_var_size_));
+    throw_if_not_ok(set_offsets_buffer(
+        name, static_cast<uint64_t*>(buffer.buffer_), buffer.buffer_size_));
+  } else {
+    // Fixed-length buffer. Set data buffer only.
+    throw_if_not_ok(set_data_buffer(name, buffer.buffer_, buffer.buffer_size_));
+  }
+}
+
 Status Query::set_data_buffer(
     const std::string& name,
     void* const buffer,
@@ -1628,6 +1925,100 @@ Status Query::set_data_buffer(
     buffers_[name].set_data_var_buffer(buffer, buffer_size);
 
   return Status::Ok();
+}
+
+void Query::set_label_data_buffer(
+    const std::string& name,
+    void* const buffer,
+    uint64_t* const buffer_size,
+    const bool check_null_buffers) {
+  // Check the query type is valid.
+  if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
+    throw StatusException(Status_SerializationError(
+        "Cannot set buffer; Unsupported query type."));
+  }
+
+  // Check buffer and buffer size.
+  if (check_null_buffers) {
+    if (buffer == nullptr && (type_ != QueryType::WRITE || *buffer_size != 0)) {
+      throw StatusException(
+          Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
+    }
+    if (buffer_size == nullptr) {
+      throw StatusException(Status_QueryError(
+          "Cannot set buffer; " + name + " buffer size is null"));
+    }
+  }
+
+  // Check that dimension label exists.
+  if (!array_schema_->is_dim_label(name)) {
+    throw StatusException(Status_QueryError(
+        std::string("Cannot set buffer; Invalid dimension label '") + name +
+        "'"));
+  }
+
+  // Error if setting a new dimension label after initialization.
+  if (status_ != QueryStatus::UNINITIALIZED) {
+    throw StatusException(Status_QueryError(
+        std::string("Cannot set buffer for new dimension label '") + name +
+        "' after initialization"));
+  }
+
+  // Set dimension label buffer on the appropriate buffer depending if the label
+  // is fixed or variable length.
+  array_schema_->dimension_label_reference(name).is_var() ?
+      label_buffers_[name].set_data_var_buffer(buffer, buffer_size) :
+      label_buffers_[name].set_data_buffer(buffer, buffer_size);
+}
+
+void Query::set_label_offsets_buffer(
+    const std::string& name,
+    uint64_t* const buffer_offsets,
+    uint64_t* const buffer_offsets_size,
+    const bool check_null_buffers) {
+  // Check the query type is valid.
+  if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
+    throw StatusException(Status_SerializationError(
+        "Cannot set buffer; Unsupported query type."));
+  }
+
+  // Check for nullptrs.
+  if (check_null_buffers) {
+    if (buffer_offsets == nullptr) {
+      throw StatusException(
+          Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
+    }
+
+    // Check buffer size
+    if (buffer_offsets_size == nullptr) {
+      throw StatusException(Status_QueryError(
+          "Cannot set buffer; " + name + " buffer size is null"));
+    }
+  }
+
+  // Check that dimension label exists.
+  if (!array_schema_->is_dim_label(name)) {
+    throw StatusException(Status_QueryError(
+        std::string("Cannot set buffer; Invalid dimension label '") + name +
+        "'"));
+  }
+
+  // Check the dimension labe is in fact variable length.
+  if (!array_schema_->dimension_label_reference(name).is_var()) {
+    throw StatusException(Status_QueryError(
+        std::string("Cannot set buffer; Input attribute/dimension '") + name +
+        "' is fixed-sized"));
+  }
+
+  // Check the query was not already initialized.
+  if (status_ != QueryStatus::UNINITIALIZED) {
+    throw StatusException(Status_QueryError(
+        std::string("Cannot set buffer for new attribute/dimension '") + name +
+        "' after initialization"));
+  }
+
+  // Set dimension label offsets buffers.
+  label_buffers_[name].set_offsets_buffer(buffer_offsets, buffer_offsets_size);
 }
 
 Status Query::set_offsets_buffer(
@@ -2165,8 +2556,13 @@ Status Query::set_subarray(const void* subarray) {
       return logger_->status(
           Status_WriterError("Cannot set subarray; Multi-range dense writes "
                              "are not supported"));
-    if (strategy_ != nullptr)
+
+    // When executed from serialization, resetting the strategy will delete
+    // the fragment for global order writes. We need to prevent this, thus
+    // persist the fragment between remote global order write submits.
+    if (strategy_ != nullptr && layout_ != Layout::GLOBAL_ORDER) {
       strategy_->reset();
+    }
   }
 
   subarray_ = sub;
@@ -2196,11 +2592,6 @@ Status Query::set_subarray(const tiledb::sm::Subarray& subarray) {
   }
 
   // Set subarray
-  if (!subarray.is_set())
-    // Nothing useful to set here, will leave query with its current
-    // settings and consider successful.
-    return Status::Ok();
-
   auto prev_layout = subarray_.layout();
   subarray_ = subarray;
   subarray_.set_layout(prev_layout);
@@ -2228,11 +2619,7 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 }
 
 Status Query::check_buffers_correctness() {
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::MODIFY_EXCLUSIVE && type_ != QueryType::DELETE) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot check buffers; Unsupported query type."));
-  }
+  ensure_query_type_is_valid(type_);
 
   // Iterate through each attribute
   for (auto& attr : buffer_names()) {
@@ -2280,6 +2667,19 @@ Status Query::check_buffers_correctness() {
   return Status::Ok();
 }
 
+bool Query::only_dim_label_query() const {
+  // Returns true if all the following are true:
+  // 1. At most one dimension buffer is set.
+  // 2. No attribute buffers are set.
+  // 3. At least one label buffer is set.
+  return (
+      !label_buffers_.empty() &&
+      (buffers_.size() == 0 ||
+       (buffers_.size() == 1 &&
+        (coord_buffer_is_set_ || coord_data_buffer_is_set_ ||
+         coord_offsets_buffer_is_set_))));
+}
+
 Status Query::submit() {
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
@@ -2298,10 +2698,24 @@ Status Query::submit() {
     if (status_ == QueryStatus::UNINITIALIZED) {
       RETURN_NOT_OK(create_strategy());
     }
-    return rest_client->submit_query_to_rest(array_->array_uri(), this);
+
+    // Check that input buffers are tile-aligned for remote global order
+    // writes
+    RETURN_NOT_OK(check_tile_alignment());
+
+    // Check that input buffers >5mb for remote global order writes
+    RETURN_NOT_OK(check_buffer_multipart_size());
+
+    RETURN_NOT_OK(rest_client->submit_query_to_rest(array_->array_uri(), this));
+
+    reset_coords_markers();
+    return Status::Ok();
   }
   RETURN_NOT_OK(init());
-  return storage_manager_->query_submit(this);
+  RETURN_NOT_OK(storage_manager_->query_submit(this));
+
+  reset_coords_markers();
+  return Status::Ok();
 }
 
 Status Query::submit_async(
@@ -2440,6 +2854,32 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader(
 
 tuple<Status, optional<bool>> Query::non_overlapping_ranges() {
   return subarray_.non_overlapping_ranges(storage_manager_->compute_tp());
+}
+
+bool Query::is_dense() const {
+  return !coords_info_.has_coords_;
+}
+
+std::vector<WrittenFragmentInfo>& Query::get_written_fragment_info() {
+  return written_fragment_info_;
+}
+
+void Query::reset_coords_markers() {
+  if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
+      layout_ == Layout::GLOBAL_ORDER) {
+    coord_buffer_is_set_ = false;
+    coord_data_buffer_is_set_ = false;
+    coord_offsets_buffer_is_set_ = false;
+  }
+}
+
+void Query::set_remote_query() {
+  remote_query_ = true;
+}
+
+void Query::set_dimension_label_ordered_read(bool increasing_order) {
+  is_dimension_label_ordered_read_ = true;
+  dimension_label_increasing_ = increasing_order;
 }
 
 /* ****************************** */

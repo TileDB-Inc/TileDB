@@ -185,6 +185,15 @@ class Deserializer {
   }
 
   /**
+   * Return remaining number of bytes to deserialize.
+   *
+   * @return remaining unread bytes in deserializer.
+   */
+  storage_size_t remaining_bytes() const {
+    return size_;
+  }
+
+  /**
    * Return a pointer to serialized data.
    *
    * @tparam T Type of the data.

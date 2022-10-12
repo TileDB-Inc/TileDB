@@ -4259,6 +4259,36 @@ TILEDB_EXPORT int32_t
 tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) TILEDB_NOEXCEPT;
 
 /**
+ * Submits and finalizes the query.
+ * This is applicable only to global layout writes. The function will
+ * error out if called on a query with non global layout.
+ * Its purpose is to submit the final chunk (partial or full tile) in
+ * a global order write query.
+ * `tiledb_query_submit_and_finalize` drops the tile alignment restriction
+ * of the buffers (i.e. compared to the regular global layout submit call)
+ * given the last chunk of a global order write is most frequently smaller
+ * in size than a tile.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_t* query;
+ * while (stop_condition) {
+ *   tiledb_query_set_buffer(ctx, query, attr, tile_aligned_buffer, &size);
+ *   tiledb_query_submit(ctx, query);
+ * }
+ * tiledb_query_set_buffer(ctx, query, attr, final_chunk, &size);
+ * tiledb_query_submit_and_finalize(ctx, query);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query object to be flushed.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_submit_and_finalize(
+    tiledb_ctx_t* ctx, tiledb_query_t* query) TILEDB_NOEXCEPT;
+
+/**
  * Frees a TileDB query object.
  *
  * **Example:**
@@ -4324,7 +4354,7 @@ tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) TILEDB_NOEXCEPT;
  * @param ctx The TileDB context.
  * @param query The query to be submitted.
  * @param callback The function to be called when the query completes.
- * @param callback_data The data to be passed to the callback function.
+ * @param callback_data The data to be passed to the \p callback function.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  *
  * @note `tiledb_query_finalize` must be invoked after finish writing in
@@ -4341,6 +4371,11 @@ tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) TILEDB_NOEXCEPT;
  *    buffers are needed for the query to proceed. In this case, the users
  *    must reallocate their buffers (increasing their size), reset the buffers
  *    with `tiledb_query_set_buffer`, and resubmit the query.
+ *
+ * @note \p callback will be executed in a thread managed by TileDB's internal
+ *    thread pool. To allow TileDB to reuse the thread and avoid starving the
+ *    thread pool, long-running callbacks should be dispatched to another
+ *    thread.
  */
 TILEDB_EXPORT int32_t tiledb_query_submit_async(
     tiledb_ctx_t* ctx,

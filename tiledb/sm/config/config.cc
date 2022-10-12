@@ -473,34 +473,9 @@ Status Config::set(const std::string& param, const std::string& value) {
   return Status::Ok();
 }
 
-optional<std::string> Config::get(const std::string& key) const {
-  bool found;
-  const char* val = get_from_config_or_env(key, &found);
-  if (found) {
-    return {std::string{val}};
-  } else {
-    return {nullopt};
-  }
-}
-
-template <class T>
-optional<T> Config::get(const std::string& key) const {
-  auto value{get(key)};
-  if (!value.has_value()) {
-    return {nullopt};
-  }
-  T converted_value;
-  /*
-   * `convert` is only declared for certain types. If the type argument to this
-   * function isn't one of them, this function won't compile.
-   */
-  auto status = utils::parse::convert(value.value(), &converted_value);
-  if (!status.ok()) {
-    throw_config_exception(
-        "Failed to convert configuration value '" + value.value() +
-        std::string("' for key '") + key + "'. Reason: " + status.to_string());
-  }
-  return {converted_value};
+std::string Config::get(const std::string& param, bool* found) const {
+  const char* val = get_from_config_or_env(param, found);
+  return *found ? val : "";
 }
 
 Status Config::get(const std::string& param, const char** value) const {
@@ -509,11 +484,6 @@ Status Config::get(const std::string& param, const char** value) const {
   *value = found ? val : nullptr;
 
   return Status::Ok();
-}
-
-std::string Config::get(const std::string& param, bool* found) const {
-  const char* val = get_from_config_or_env(param, found);
-  return *found ? val : "";
 }
 
 template <class T>
@@ -1076,6 +1046,38 @@ const char* Config::get_from_config_or_env(
   return *found ? value_config : "";
 }
 
+template <class T, bool must_find_>
+optional<T> Config::get_internal(const std::string& key) const {
+  auto value = get_internal_string<must_find_>(key);
+  if (value.has_value()) {
+    T converted_value;
+    auto status = utils::parse::convert(value.value(), &converted_value);
+    if (status.ok()) {
+      return {converted_value};
+    }
+    throw_config_exception(
+        "Failed to parse config value '" + std::string(value.value()) +
+        "' for key '" + key + "'. Reason: " + status.to_string());
+  }
+
+  return {nullopt};
+}
+
+template <bool must_find_>
+optional<std::string> Config::get_internal_string(
+    const std::string& key) const {
+  bool found;
+  const char* value = get_from_config_or_env(key, &found);
+  if (found) {
+    return {value};
+  }
+
+  if constexpr (must_find_) {
+    throw_config_exception("Failed to get config value for key: " + key);
+  }
+  return {nullopt};
+}
+
 /*
  * Explicit instantiations
  */
@@ -1103,5 +1105,54 @@ template optional<int64_t> Config::get<int64_t>(const std::string&) const;
 template optional<uint64_t> Config::get<uint64_t>(const std::string&) const;
 template optional<float> Config::get<float>(const std::string&) const;
 template optional<double> Config::get<double>(const std::string&) const;
+
+template bool Config::get<bool>(
+    const std::string&, const Config::MustFindMarker&) const;
+template int Config::get<int>(
+    const std::string&, const Config::MustFindMarker&) const;
+template uint32_t Config::get<uint32_t>(
+    const std::string&, const Config::MustFindMarker&) const;
+template int64_t Config::get<int64_t>(
+    const std::string&, const Config::MustFindMarker&) const;
+template uint64_t Config::get<uint64_t>(
+    const std::string&, const Config::MustFindMarker&) const;
+template float Config::get<float>(
+    const std::string&, const Config::MustFindMarker&) const;
+template double Config::get<double>(
+    const std::string&, const Config::MustFindMarker&) const;
+
+template optional<bool> Config::get_internal<bool, false>(
+    const std::string& key) const;
+template optional<bool> Config::get_internal<bool, true>(
+    const std::string& key) const;
+template optional<int> Config::get_internal<int, false>(
+    const std::string& key) const;
+template optional<int> Config::get_internal<int, true>(
+    const std::string& key) const;
+template optional<uint32_t> Config::get_internal<uint32_t, false>(
+    const std::string& key) const;
+template optional<uint32_t> Config::get_internal<uint32_t, true>(
+    const std::string& key) const;
+template optional<int64_t> Config::get_internal<int64_t, false>(
+    const std::string& key) const;
+template optional<int64_t> Config::get_internal<int64_t, true>(
+    const std::string& key) const;
+template optional<uint64_t> Config::get_internal<uint64_t, false>(
+    const std::string& key) const;
+template optional<uint64_t> Config::get_internal<uint64_t, true>(
+    const std::string& key) const;
+template optional<float> Config::get_internal<float, false>(
+    const std::string& key) const;
+template optional<float> Config::get_internal<float, true>(
+    const std::string& key) const;
+template optional<double> Config::get_internal<double, false>(
+    const std::string& key) const;
+template optional<double> Config::get_internal<double, true>(
+    const std::string& key) const;
+
+template optional<std::string> Config::get_internal_string<true>(
+    const std::string& key) const;
+template optional<std::string> Config::get_internal_string<false>(
+    const std::string& key) const;
 
 }  // namespace tiledb::sm

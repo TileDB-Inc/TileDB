@@ -93,6 +93,10 @@ namespace sm {
  * maintains buffer caches for writing into the various attribute files.
  */
 class S3 {
+ private:
+  /** Forward declaration */
+  struct MultiPartUploadState;
+
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -365,6 +369,17 @@ class S3 {
    */
   Status write(const URI& uri, const void* buffer, uint64_t length);
 
+  /**
+   * Used in serialization of global order writes to set the multipart upload
+   * state in multipart_upload_states_ during deserialization
+   *
+   * @param uri The file uri used as key in the internal map
+   * @param state The multipart upload state info
+   * @return Status
+   */
+  Status set_multipart_upload_state(
+      const URI& uri, const S3::MultiPartUploadState& state);
+
  private:
   /* ********************************* */
   /*         PRIVATE DATATYPES         */
@@ -627,7 +642,7 @@ class S3 {
       multipart_upload_states_;
 
   /** Protects 'multipart_upload_states_'. */
-  RWLock multipart_upload_rwlock_;
+  mutable RWLock multipart_upload_rwlock_;
 
   /** The maximum number of parallel operations issued. */
   uint64_t max_parallel_ops_;
@@ -670,6 +685,8 @@ class S3 {
 
   /** If !NOT_SET assign to bucket requests supporting SetACL() */
   Aws::S3::Model::BucketCannedACL bucket_canned_acl_;
+
+  friend class VFS;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -872,6 +889,15 @@ class S3 {
    */
   Status get_make_upload_part_req(
       const URI& uri, const std::string& uri_path, MakeUploadPartCtx& ctx);
+
+  /**
+   * Returns the multipart upload state identified by uri
+   *
+   * @param uri The URI of the multipart state
+   * @return an optional MultiPartUploadState object
+   */
+  std::optional<S3::MultiPartUploadState> multipart_upload_state(
+      const URI& uri);
 };
 
 }  // namespace sm

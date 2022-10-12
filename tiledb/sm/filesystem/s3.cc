@@ -199,9 +199,21 @@ S3::S3()
 }
 
 S3::~S3() {
-  assert(state_ == State::DISCONNECTED);
-  for (auto& buff : file_buffers_)
-    tdb_delete(buff.second);
+  /**
+   * Note: if s3 fails to disconnect, the Status must be logged.
+   * Right now, there aren't means to adjust s3 issues that may cause
+   * disconnection failure.
+   * In the future, the Governor class may be invoked here as a means of
+   * handling s3 connection issues.
+   */
+  Status st = disconnect();
+  if (!st.ok()) {
+    LOG_STATUS(st);
+  } else {
+    assert(state_ == State::DISCONNECTED);
+    for (auto& buff : file_buffers_)
+      tdb_delete(buff.second);
+  }
 }
 
 /* ********************************* */
@@ -1747,6 +1759,39 @@ Status S3::get_make_upload_part_req(
   state->completed_parts.emplace(
       ctx.upload_part_num, std::move(completed_part));
   state_lck.unlock();
+
+  return Status::Ok();
+}
+
+std::optional<S3::MultiPartUploadState> S3::multipart_upload_state(
+    const URI& uri) {
+  const Aws::Http::URI aws_uri(uri.c_str());
+  const std::string uri_path(aws_uri.GetPath().c_str());
+
+  // Lock the multipart states map for reads
+  UniqueReadLock unique_rl(&multipart_upload_rwlock_);
+  auto state_iter = multipart_upload_states_.find(uri_path);
+  if (state_iter == multipart_upload_states_.end()) {
+    return nullopt;
+  }
+
+  // Delete the multipart state from the internal map to avoid
+  // the upload being completed by S3::disconnect during Context
+  // destruction when cloud executors die. The multipart request should be
+  // completed only during query finalize for remote global order writes.
+  std::unique_lock<std::mutex> state_lck(state_iter->second.mtx);
+  MultiPartUploadState rv_state = std::move(state_iter->second);
+  multipart_upload_states_.erase(state_iter);
+
+  return rv_state;
+}
+
+Status S3::set_multipart_upload_state(
+    const URI& uri, const MultiPartUploadState& state) {
+  const Aws::Http::URI aws_uri(uri.c_str());
+  const std::string uri_path(aws_uri.GetPath().c_str());
+  UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
+  multipart_upload_states_[uri_path] = state;
 
   return Status::Ok();
 }

@@ -1070,6 +1070,23 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ArraySchemaFx,
+    "C API: Test sparse array schema with invalid capacity",
+    "[capi][array-schema]") {
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check that zero capacity fails
+  rc = tiledb_array_schema_set_capacity(ctx_, array_schema, 0);
+  REQUIRE(rc == TILEDB_ERR);
+
+  // Clean up
+  tiledb_array_schema_free(&array_schema);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
     "C API: Test array schema with invalid dimension domain and tile extent",
     "[capi][array-schema]") {
   // Domain range exceeds type range - error

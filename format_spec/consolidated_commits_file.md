@@ -18,7 +18,7 @@ my_array                              # array folder
 * `uuid` is a unique identifier
 * `v` is the format version
 
-There may be multiple such files in the array commits folder. Each consolidated commits file combines a list of fragments commits or delete commits.
+There may be multiple such files in the array commits folder. Each consolidated commits file combines a list of fragments commits, delete or update commits.
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Commit 1 | `uint8_t[]` | Commit 1 |
@@ -31,10 +31,10 @@ For fragment commits, the URIs is written delimited by a new line character:
 | :--- | :--- | :--- |
 | URI  followed by a new line character | `uint8_t[]` | URI |
 
-For delete commits, the URIs is written delimited by a new line character and then followed by the delete condition [tile](./tile.md), preceded by its size:
+For delete or update commits, the URIs is written delimited by a new line character and then followed by the delete/update condition [tile](./tile.md), preceded by its size:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | URI  followed by a new line character | `uint8_t[]` | URI |
-| Delete condition size | `uint64_t` | Delete condition size |
-| Delete condition tile | `uint8_t[]` | Delete condition tile |
+| Delete/update condition size | `uint64_t` | Delete/update condition size |
+| Delete/update condition tile | `uint8_t[]` | Delete/update condition tile |

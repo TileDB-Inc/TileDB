@@ -89,7 +89,7 @@ ReaderBase::ReaderBase(
     , initial_data_loaded_(false) {
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
-  timestamps_needed_for_deletes_.resize(fragment_metadata_.size());
+  timestamps_needed_for_deletes_and_updates_.resize(fragment_metadata_.size());
 
   bool found = false;
   if (!config_.get<bool>("vfs.disable_batching", &disable_batching_, &found)
@@ -185,13 +185,14 @@ bool ReaderBase::need_timestamped_conditions() {
   bool make_timestamped_conditions = false;
   for (uint64_t i = 0; i < fragment_metadata_.size(); i++) {
     if (fragment_metadata_[i]->has_timestamps()) {
-      for (auto& delete_condition : delete_conditions_) {
-        auto delete_timestamp = delete_condition.condition_timestamp();
+      for (auto& delete_and_update_condition : delete_and_update_conditions_) {
+        auto delete_timestamp =
+            delete_and_update_condition.condition_timestamp();
         auto& frag_timestamps = fragment_metadata_[i]->timestamp_range();
         if (delete_timestamp >= frag_timestamps.first &&
             delete_timestamp <= frag_timestamps.second) {
           make_timestamped_conditions = true;
-          timestamps_needed_for_deletes_[i] = true;
+          timestamps_needed_for_deletes_and_updates_[i] = true;
         }
       }
     }
@@ -202,31 +203,34 @@ bool ReaderBase::need_timestamped_conditions() {
 
 Status ReaderBase::generate_timestamped_conditions() {
   // Generate timestamped conditions.
-  timestamped_delete_conditions_.reserve(delete_conditions_.size());
-  for (auto& delete_condition : delete_conditions_) {
+  timestamped_delete_and_update_conditions_.reserve(
+      delete_and_update_conditions_.size());
+  for (auto& delete_and_update_condition : delete_and_update_conditions_) {
     // We want the condition to be:
-    // DELETE WHERE (cond) AND cell timestamp <= delete timestamp.
+    // DELETE WHERE (cond) AND cell timestamp <= condition timestamp.
     // For apply, this condition needs to be be negated and become:
-    // (!cond) OR cell timestamp > delete timestamp.
+    // (!cond) OR cell timestamp > condition timestamp.
 
-    // Make the timestamp condition, cell timestamp > delete timestamp.
+    // Make the timestamp condition, cell timestamp > condition timestamp.
     QueryCondition timestamp_condition;
-    auto delete_timestamp = delete_condition.condition_timestamp();
+    auto condition_timestamp =
+        delete_and_update_condition.condition_timestamp();
     std::string attr = constants::timestamps;
     RETURN_NOT_OK(timestamp_condition.init(
         std::move(attr),
-        &delete_timestamp,
+        &condition_timestamp,
         constants::timestamp_size,
         QueryConditionOp::GT));
 
     // Combine the timestamp condition and delete condition. The condition is
     // already negated.
-    QueryCondition timestamped_condition(delete_condition.condition_marker());
+    QueryCondition timestamped_condition(
+        delete_and_update_condition.condition_marker());
     RETURN_NOT_OK(timestamp_condition.combine(
-        delete_condition,
+        delete_and_update_condition,
         QueryConditionCombinationOp::OR,
         &timestamped_condition));
-    timestamped_delete_conditions_.push_back(timestamped_condition);
+    timestamped_delete_and_update_conditions_.push_back(timestamped_condition);
   }
 
   return Status::Ok();
@@ -375,7 +379,7 @@ bool ReaderBase::include_timestamps(const unsigned f) const {
   auto partial_overlap = fragment_metadata_[f]->partial_time_overlap(
       array_->timestamp_start(), array_->timestamp_end_opened_at());
   auto dups = array_schema_.allows_dups();
-  auto timestamps_needed = timestamps_needed_for_deletes_[f];
+  auto timestamps_needed = timestamps_needed_for_deletes_and_updates_[f];
 
   return frag_has_ts && (user_requested_timestamps_ || partial_overlap ||
                          !dups || timestamps_needed);

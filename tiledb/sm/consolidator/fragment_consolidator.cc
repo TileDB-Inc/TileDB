@@ -400,9 +400,10 @@ Status FragmentConsolidator::consolidate_internal(
     RETURN_NOT_OK(
         utils::parse::get_timestamp_range(to_consolidate[0].uri_, &timestamps));
 
-    for (auto& delete_tile_location :
-         array_for_reads->array_directory().delete_tiles_location()) {
-      if (delete_tile_location.timestamp() >= timestamps.first) {
+    for (auto& delete_and_update_tile_location :
+         array_for_reads->array_directory()
+             .delete_and_update_tiles_location()) {
+      if (delete_and_update_tile_location.timestamp() >= timestamps.first) {
         config_.with_delete_meta_ = true;
         break;
       }
@@ -613,11 +614,11 @@ Status FragmentConsolidator::create_queries(
   }
 
   // Set the processed conditions on new fragment.
-  const auto& delete_tiles_location =
-      (*query_r)->array()->array_directory().delete_tiles_location();
+  const auto& delete_and_update_tiles_location =
+      (*query_r)->array()->array_directory().delete_and_update_tiles_location();
   std::vector<std::string> processed_conditions;
-  processed_conditions.reserve(delete_tiles_location.size());
-  for (auto& location : delete_tiles_location) {
+  processed_conditions.reserve(delete_and_update_tiles_location.size());
+  for (auto& location : delete_and_update_tiles_location) {
     processed_conditions.emplace_back(location.condition_marker());
   }
   (*query_w)->set_processed_conditions(processed_conditions);

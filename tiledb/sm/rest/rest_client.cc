@@ -775,6 +775,67 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
       returned_data, serialization_type_, true, nullptr, query, compute_tp_);
 }
 
+Status RestClient::submit_and_finalize_query_to_rest(
+    const URI& uri, Query* query) {
+  serialization::CopyState copy_state;
+
+  // Get array
+  const Array* array = query->array();
+  if (array == nullptr) {
+    return LOG_STATUS(Status_RestError(
+        "Error while submit_and_finalize query to REST; null array."));
+  }
+
+  auto rest_scratch = query->rest_scratch();
+
+  // Serialize query to send
+  BufferList serialized;
+  RETURN_NOT_OK(serialization::query_serialize(
+      query, serialization_type_, true, &serialized));
+
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string array_ns, array_uri;
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  std::string url =
+      redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
+      curlc.url_escape(array_uri) +
+      "/query/submit_and_finalize?type=" + query_type_str(query->type());
+
+  auto write_cb = std::bind(
+      &RestClient::query_post_call_back,
+      this,
+      std::placeholders::_1,
+      std::placeholders::_2,
+      std::placeholders::_3,
+      std::placeholders::_4,
+      rest_scratch,
+      query,
+      &copy_state);
+
+  const Status st = curlc.post_data(
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      rest_scratch.get(),
+      std::move(write_cb),
+      cache_key);
+
+  if (!st.ok() && copy_state.empty()) {
+    return LOG_STATUS(Status_RestError(
+        "Error while submit_and_finalize query to REST; "
+        "server returned no data. "
+        "Curl error: " +
+        st.message()));
+  }
+
+  return st;
+}
+
 Status RestClient::subarray_to_str(
     const ArraySchema& schema,
     const void* subarray,
@@ -1230,6 +1291,11 @@ Status RestClient::submit_query_to_rest(const URI&, Query*) {
 }
 
 Status RestClient::finalize_query_to_rest(const URI&, Query*) {
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+Status RestClient::submit_and_finalize_query_to_rest(const URI&, Query*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }

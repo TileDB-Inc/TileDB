@@ -321,6 +321,19 @@ class Subarray {
   Status add_point_ranges(unsigned dim_idx, const void* start, uint64_t count);
 
   /**
+   * @brief Set ranges from an array of ranges (paired { begin,end } )
+   *
+   * @param dim_idx Dimension index
+   * @param start Pointer to start of the array
+   * @param count Number of pairs to add
+   * @return Status
+   * @note The pairs list is logically { {begin1,end1}, {begin2,end2}, ...} but
+   * because of typing considerations from the C api is simply presented as
+   * a linear list of individual items, though they should be multiple of 2
+   */
+  Status add_ranges_list(unsigned dim_idx, const void* start, uint64_t count);
+
+  /**
    * Adds a variable-sized range to the (read/write) query on the input
    * dimension by index, in the form of (start, end).
    */
@@ -367,6 +380,13 @@ class Subarray {
    */
   const std::vector<Range>& get_attribute_ranges(
       const std::string& attr_name) const;
+
+  /**
+   * Returns the name of the dimension label at the dimension index.
+   *
+   * @param dim_index Index of the dimension to return the label name for.
+   */
+  const std::string& get_label_name(const uint32_t dim_index) const;
 
   /**
    * Retrieves a range from a dimension label name in the form (start, end,
@@ -617,6 +637,9 @@ class Subarray {
   /** Returns the domain the subarray is constructed from. */
   NDRange domain() const;
 
+  /** ``True`` if the dimension of the subarray does not contain any ranges. */
+  bool empty(uint32_t dim_idx) const;
+
   /** ``True`` if the subarray does not contain any ranges. */
   bool empty() const;
 
@@ -850,6 +873,24 @@ class Subarray {
   Subarray get_subarray(uint64_t start, uint64_t end) const;
 
   /**
+   * Returns ``true`` if the any dimension in the subarray have label ranges
+   * set.
+   */
+  bool has_label_ranges() const;
+
+  /**
+   * Returns ``true`` if the dimension index has label ranges set.
+   *
+   * @param dim_idx The dimension index to check for ranges.
+   */
+  bool has_label_ranges(const uint32_t dim_index) const;
+
+  /**
+   * Removes all label ranges from the subarray.
+   */
+  void remove_label_ranges();
+
+  /**
    * Set default indicator for dimension subarray. Used by serialization only
    * @param dim_index
    * @param is_default
@@ -919,6 +960,15 @@ class Subarray {
    */
   void set_attribute_ranges(
       const std::string& attr_name, const std::vector<Range>& ranges);
+
+  /**
+   * Returns the `Range` vector for the given dimension label.
+   *
+   * @param label_name Name of the label to return ranges for.
+   * @returns Vector of ranges on the requested dimension label.
+   */
+  const std::vector<Range>& ranges_for_label(
+      const std::string& label_name) const;
 
   /**
    * Directly sets the `Range` vector for the given dimension index, making
@@ -1176,6 +1226,10 @@ class Subarray {
      */
     LabelRangeSubset(
         const DimensionLabelReference& ref, bool coalesce_ranges = true);
+
+    inline const std::vector<Range>& get_ranges() const {
+      return ranges.ranges();
+    }
 
     /** Name of the dimension label. */
     std::string name;

@@ -346,8 +346,22 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     query.set_data_buffer("a5", a5);
 
     query.set_layout(TILEDB_GLOBAL_ORDER);
-    CHECK(query.submit() == tiledb::Query::Status::COMPLETE);
-    REQUIRE_NOTHROW(query.finalize());
+
+    bool serialized_writes = false;
+    SECTION("no serialization") {
+      serialized_writes = false;
+    }
+    SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+      serialized_writes = true;
+#endif
+    }
+    if (!serialized_writes) {
+      CHECK(query.submit() == tiledb::Query::Status::COMPLETE);
+      REQUIRE_NOTHROW(query.finalize());
+    } else {
+      test::submit_and_finalize_serialized_query(ctx, query);
+    }
 
     // Check non-empty domain while array open in write mode
     CHECK_THROWS(array.non_empty_domain<int>(1));
@@ -414,6 +428,7 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
   tiledb_array_type_t array_type = TILEDB_DENSE;
   bool null_pointer = true;
 
+  bool serialized_writes = false;
   SECTION("SPARSE") {
     array_type = TILEDB_SPARSE;
     SECTION("GLOBAL_ORDER") {
@@ -425,6 +440,14 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
 
       SECTION("NON_NULL_PTR") {
         null_pointer = false;
+      }
+      SECTION("no serialization") {
+        serialized_writes = false;
+      }
+      SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+        serialized_writes = true;
+#endif
       }
     }
 
@@ -478,8 +501,12 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
     q.set_data_buffer("a", a);
     q.set_offsets_buffer("a", a_offset);
     q.set_data_buffer("b", b);
-    q.submit();
-    q.finalize();
+    if (!serialized_writes || write_layout != TILEDB_GLOBAL_ORDER) {
+      q.submit();
+      q.finalize();
+    } else {
+      test::submit_and_finalize_serialized_query(ctx, q);
+    }
 
     array.close();
   }
@@ -1097,8 +1124,21 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  query_w.submit();
-  query_w.finalize();
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    query_w.submit();
+    query_w.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query_w);
+  }
   array_w.close();
 
   // Read
@@ -1469,8 +1509,21 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  query_w.submit();
-  query_w.finalize();
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    query_w.submit();
+    query_w.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query_w);
+  }
   array_w.close();
 
   // Read
@@ -1518,8 +1571,21 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  query_w.submit();
-  query_w.finalize();
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    query_w.submit();
+    query_w.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query_w);
+  }
   array_w.close();
 
   // Read
