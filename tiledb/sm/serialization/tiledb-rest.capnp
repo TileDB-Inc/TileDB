@@ -704,13 +704,16 @@ struct SingleFragmentInfo {
 }
 
 struct FragmentInfo {
-  arraySchemasAll @0 :Map(Text, ArraySchema);
+  arraySchemaLatest @0 :ArraySchema;
+  # latest array schema
+
+  arraySchemasAll @1 :Map(Text, ArraySchema);
   # map of all array schemas
 
-  fragmentInfo @1 :List(SingleFragmentInfo);
+  fragmentInfo @2 :List(SingleFragmentInfo);
   # information about fragments in the array
 
-  toVacuum @2 :List(Text);
+  toVacuum @3 :List(Text);
   # the URIs of the fragments to vacuum
 }
 

@@ -273,6 +273,16 @@ Status fragment_info_from_capnp(
     const capnp::FragmentInfo::Reader& fragment_info_reader,
     const URI& array_uri,
     FragmentInfo* fragment_info) {
+  // Get array_schema_latest from capnp
+  if (fragment_info_reader.hasArraySchemaLatest()) {
+    auto array_schema_latest_reader =
+        fragment_info_reader.getArraySchemaLatest();
+    auto array_schema_latest{
+        array_schema_from_capnp(array_schema_latest_reader, array_uri)};
+    fragment_info->array_schema_latest() =
+        make_shared<ArraySchema>(HERE(), array_schema_latest);
+  }
+
   // Get array_schemas_all from capnp
   if (fragment_info_reader.hasArraySchemasAll()) {
     auto all_schemas_reader = fragment_info_reader.getArraySchemasAll();
@@ -303,7 +313,14 @@ Status fragment_info_from_capnp(
   // Get uris to vacuum from capnp
   if (fragment_info_reader.hasToVacuum()) {
     for (auto uri : fragment_info_reader.getToVacuum()) {
-      fragment_info->to_vacuum().emplace_back(uri.cStr());
+      // Reconstruct the relative fragment URI to a full path URI
+      auto frag_dir_uri = array_uri.add_trailing_slash();
+      if (fragment_info->array_schema_latest()->write_version() >= 12) {
+        frag_dir_uri =
+            frag_dir_uri.join_path(constants::array_fragments_dir_name);
+      }
+      fragment_info->to_vacuum().emplace_back(
+          frag_dir_uri.join_path(uri.cStr()));
     }
   }
 
@@ -323,6 +340,13 @@ Status fragment_info_to_capnp(
     const FragmentInfo& fragment_info,
     capnp::FragmentInfo::Builder* fragment_info_builder,
     const bool client_side) {
+  // set array_schema_latest
+  const auto& array_schema_latest = fragment_info.array_schema_latest();
+  auto array_schema_latest_builder =
+      fragment_info_builder->initArraySchemaLatest();
+  RETURN_NOT_OK(array_schema_to_capnp(
+      *array_schema_latest, &array_schema_latest_builder, client_side));
+
   // set array_schema_all
   const auto& array_schemas_all = fragment_info.array_schemas_all();
   auto array_schemas_all_builder = fragment_info_builder->initArraySchemasAll();
@@ -351,7 +375,10 @@ Status fragment_info_to_capnp(
   auto vacuum_uris_builder =
       fragment_info_builder->initToVacuum(uris_to_vacuum.size());
   for (size_t i = 0; i < uris_to_vacuum.size(); i++) {
-    vacuum_uris_builder.set(i, uris_to_vacuum[i]);
+    // Strip full URI and send only the name of the fragment to vacuum for
+    // security reasons
+    vacuum_uris_builder.set(
+        i, uris_to_vacuum[i].remove_trailing_slash().last_path_part());
   }
 
   return Status::Ok();

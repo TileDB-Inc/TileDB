@@ -316,6 +316,11 @@ class FragmentInfo {
   uint32_t unconsolidated_metadata_num() const;
 
   /** Returns array schemas map. */
+  inline const shared_ptr<ArraySchema> array_schema_latest() const {
+    return array_schema_latest_;
+  }
+
+  /** Returns array schemas map. */
   inline const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
   array_schemas_all() const {
     return array_schemas_all_;
@@ -327,6 +332,11 @@ class FragmentInfo {
   }
 
   // Accessors
+
+  /** Returns array schemas map. */
+  inline shared_ptr<ArraySchema>& array_schema_latest() {
+    return array_schema_latest_;
+  }
 
   /** array_schemas_all accessor. */
   inline std::unordered_map<std::string, shared_ptr<ArraySchema>>&
@@ -367,6 +377,9 @@ class FragmentInfo {
 
   /** The encryption key used if the array is encrypted. */
   EncryptionKey enc_key_;
+
+  /** The latest array schema. */
+  std::shared_ptr<ArraySchema> array_schema_latest_;
 
   /**
    * All the array schemas relevant to the loaded fragment metadata

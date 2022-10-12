@@ -1103,7 +1103,7 @@ struct FragmentInfo {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(a000530ab1d17816, 0, 3)
+    CAPNP_DECLARE_STRUCT_HEADER(a000530ab1d17816, 0, 4)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -9100,6 +9100,10 @@ class FragmentInfo::Reader {
   }
 #endif  // !CAPNP_LITE
 
+  inline bool hasArraySchemaLatest() const;
+  inline ::tiledb::sm::serialization::capnp::ArraySchema::Reader
+  getArraySchemaLatest() const;
+
   inline bool hasArraySchemasAll() const;
   inline ::tiledb::sm::serialization::capnp::Map<
       ::capnp::Text,
@@ -9154,6 +9158,18 @@ class FragmentInfo::Builder {
     return asReader().toString();
   }
 #endif  // !CAPNP_LITE
+
+  inline bool hasArraySchemaLatest();
+  inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder
+  getArraySchemaLatest();
+  inline void setArraySchemaLatest(
+      ::tiledb::sm::serialization::capnp::ArraySchema::Reader value);
+  inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder
+  initArraySchemaLatest();
+  inline void adoptArraySchemaLatest(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>
+  disownArraySchemaLatest();
 
   inline bool hasArraySchemasAll();
   inline ::tiledb::sm::serialization::capnp::Map<
@@ -9234,6 +9250,8 @@ class FragmentInfo::Pipeline {
       : _typeless(kj::mv(typeless)) {
   }
 
+  inline ::tiledb::sm::serialization::capnp::ArraySchema::Pipeline
+  getArraySchemaLatest();
   inline ::tiledb::sm::serialization::capnp::Map<
       ::capnp::Text,
       ::tiledb::sm::serialization::capnp::ArraySchema>::Pipeline
@@ -20660,12 +20678,65 @@ inline void SingleFragmentInfo::Builder::setFragmentSize(::uint64_t value) {
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool FragmentInfo::Reader::hasArraySchemasAll() const {
+inline bool FragmentInfo::Reader::hasArraySchemaLatest() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool FragmentInfo::Builder::hasArraySchemasAll() {
+inline bool FragmentInfo::Builder::hasArraySchemaLatest() {
   return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::ArraySchema::Reader
+FragmentInfo::Reader::getArraySchemaLatest() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::get(
+          _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder
+FragmentInfo::Builder::getArraySchemaLatest() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::get(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::ArraySchema::Pipeline
+FragmentInfo::Pipeline::getArraySchemaLatest() {
+  return ::tiledb::sm::serialization::capnp::ArraySchema::Pipeline(
+      _typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void FragmentInfo::Builder::setArraySchemaLatest(
+    ::tiledb::sm::serialization::capnp::ArraySchema::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::
+      set(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder
+FragmentInfo::Builder::initArraySchemaLatest() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::init(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void FragmentInfo::Builder::adoptArraySchemaLatest(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>
+FragmentInfo::Builder::disownArraySchemaLatest() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::disown(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool FragmentInfo::Reader::hasArraySchemasAll() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool FragmentInfo::Builder::hasArraySchemasAll() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::tiledb::sm::serialization::capnp::
@@ -20674,7 +20745,7 @@ inline ::tiledb::sm::serialization::capnp::
   return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
       ::capnp::Text,
       ::tiledb::sm::serialization::capnp::ArraySchema>>::
-      get(_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+      get(_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 inline ::tiledb::sm::serialization::capnp::
     Map<::capnp::Text, ::tiledb::sm::serialization::capnp::ArraySchema>::Builder
@@ -20682,7 +20753,7 @@ inline ::tiledb::sm::serialization::capnp::
   return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
       ::capnp::Text,
       ::tiledb::sm::serialization::capnp::ArraySchema>>::
-      get(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+      get(_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 #if !CAPNP_LITE
 inline ::tiledb::sm::serialization::capnp::Map<
@@ -20691,7 +20762,7 @@ inline ::tiledb::sm::serialization::capnp::Map<
 FragmentInfo::Pipeline::getArraySchemasAll() {
   return ::tiledb::sm::serialization::capnp::
       Map<::capnp::Text, ::tiledb::sm::serialization::capnp::ArraySchema>::
-          Pipeline(_typeless.getPointerField(0));
+          Pipeline(_typeless.getPointerField(1));
 }
 #endif  // !CAPNP_LITE
 inline void FragmentInfo::Builder::setArraySchemasAll(
@@ -20701,7 +20772,7 @@ inline void FragmentInfo::Builder::setArraySchemasAll(
   ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
       ::capnp::Text,
       ::tiledb::sm::serialization::capnp::ArraySchema>>::
-      set(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      set(_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
           value);
 }
 inline ::tiledb::sm::serialization::capnp::
@@ -20710,7 +20781,7 @@ inline ::tiledb::sm::serialization::capnp::
   return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
       ::capnp::Text,
       ::tiledb::sm::serialization::capnp::ArraySchema>>::
-      init(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+      init(_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 inline void FragmentInfo::Builder::adoptArraySchemasAll(
     ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
@@ -20720,7 +20791,7 @@ inline void FragmentInfo::Builder::adoptArraySchemasAll(
       ::capnp::Text,
       ::tiledb::sm::serialization::capnp::ArraySchema>>::
       adopt(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
           kj::mv(value));
 }
 inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
@@ -20731,15 +20802,15 @@ FragmentInfo::Builder::disownArraySchemasAll() {
       ::capnp::Text,
       ::tiledb::sm::serialization::capnp::ArraySchema>>::
       disown(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
 inline bool FragmentInfo::Reader::hasFragmentInfo() const {
-  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
               .isNull();
 }
 inline bool FragmentInfo::Builder::hasFragmentInfo() {
-  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::capnp::List<
@@ -20750,7 +20821,7 @@ FragmentInfo::Reader::getFragmentInfo() const {
       ::tiledb::sm::serialization::capnp::SingleFragmentInfo,
       ::capnp::Kind::STRUCT>>::get(_reader
                                        .getPointerField(
-                                           ::capnp::bounded<1>() *
+                                           ::capnp::bounded<2>() *
                                            ::capnp::POINTERS));
 }
 inline ::capnp::List<
@@ -20761,7 +20832,7 @@ FragmentInfo::Builder::getFragmentInfo() {
       ::tiledb::sm::serialization::capnp::SingleFragmentInfo,
       ::capnp::Kind::STRUCT>>::get(_builder
                                        .getPointerField(
-                                           ::capnp::bounded<1>() *
+                                           ::capnp::bounded<2>() *
                                            ::capnp::POINTERS));
 }
 inline void FragmentInfo::Builder::setFragmentInfo(
@@ -20771,7 +20842,7 @@ inline void FragmentInfo::Builder::setFragmentInfo(
   ::capnp::_::PointerHelpers<::capnp::List<
       ::tiledb::sm::serialization::capnp::SingleFragmentInfo,
       ::capnp::Kind::STRUCT>>::
-      set(_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      set(_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
           value);
 }
 inline ::capnp::List<
@@ -20782,7 +20853,7 @@ FragmentInfo::Builder::initFragmentInfo(unsigned int size) {
       ::tiledb::sm::serialization::capnp::SingleFragmentInfo,
       ::capnp::Kind::STRUCT>>::
       init(
-          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
           size);
 }
 inline void FragmentInfo::Builder::adoptFragmentInfo(
@@ -20793,7 +20864,7 @@ inline void FragmentInfo::Builder::adoptFragmentInfo(
       ::tiledb::sm::serialization::capnp::SingleFragmentInfo,
       ::capnp::Kind::STRUCT>>::
       adopt(
-          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
           kj::mv(value));
 }
 inline ::capnp::Orphan<::capnp::List<
@@ -20804,49 +20875,49 @@ FragmentInfo::Builder::disownFragmentInfo() {
       ::tiledb::sm::serialization::capnp::SingleFragmentInfo,
       ::capnp::Kind::STRUCT>>::disown(_builder
                                           .getPointerField(
-                                              ::capnp::bounded<1>() *
+                                              ::capnp::bounded<2>() *
                                               ::capnp::POINTERS));
 }
 
 inline bool FragmentInfo::Reader::hasToVacuum() const {
-  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
               .isNull();
 }
 inline bool FragmentInfo::Builder::hasToVacuum() {
-  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
 FragmentInfo::Reader::getToVacuum() const {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
-          _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+          _reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
 }
 inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
 FragmentInfo::Builder::getToVacuum() {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
-          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
 }
 inline void FragmentInfo::Builder::setToVacuum(
     ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
   ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
-          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
           value);
 }
 inline void FragmentInfo::Builder::setToVacuum(
     ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
   ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
-          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
           value);
 }
 inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
 FragmentInfo::Builder::initToVacuum(unsigned int size) {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
-          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
           size);
 }
 inline void FragmentInfo::Builder::adoptToVacuum(
@@ -20854,14 +20925,14 @@ inline void FragmentInfo::Builder::adoptToVacuum(
         value) {
   ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
-          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
           kj::mv(value));
 }
 inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
 FragmentInfo::Builder::disownToVacuum() {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
-          _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
 }
 
 inline bool GroupMetadata::Reader::hasConfig() const {

@@ -874,6 +874,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
           array_dir, nullptr, enc_key_);
   RETURN_NOT_OK(st_schemas);
   const auto& fragment_metadata_value = fragment_metadata.value();
+  array_schema_latest_ = array_schema_latest.value();
   array_schemas_all_ = std::move(array_schemas_all.value());
   auto fragment_num = (uint32_t)fragment_metadata_value.size();
 
@@ -1111,6 +1112,7 @@ Status FragmentInfo::replace(
 FragmentInfo FragmentInfo::clone() const {
   FragmentInfo clone;
   clone.array_uri_ = array_uri_;
+  clone.array_schema_latest_ = array_schema_latest_;
   clone.array_schemas_all_ = array_schemas_all_;
   clone.config_ = config_;
   clone.single_fragment_info_vec_ = single_fragment_info_vec_;
@@ -1126,6 +1128,7 @@ FragmentInfo FragmentInfo::clone() const {
 
 void FragmentInfo::swap(FragmentInfo& fragment_info) {
   std::swap(array_uri_, fragment_info.array_uri_);
+  std::swap(array_schema_latest_, fragment_info.array_schema_latest_);
   std::swap(array_schemas_all_, fragment_info.array_schemas_all_);
   std::swap(config_, fragment_info.config_);
   std::swap(single_fragment_info_vec_, fragment_info.single_fragment_info_vec_);
