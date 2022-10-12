@@ -471,7 +471,7 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
 #endif
 
   // Clean up
-  bool is_dir;
+  bool is_dir = false;
   REQUIRE(vfs.is_dir(URI(path), &is_dir).ok());
   if (is_dir)
     REQUIRE(vfs.remove_dir(URI(path)).ok());
