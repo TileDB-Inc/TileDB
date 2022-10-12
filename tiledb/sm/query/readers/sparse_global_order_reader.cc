@@ -641,7 +641,7 @@ Status SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps() {
                       std::unique_lock<std::mutex> lck(ignored_tiles_mutex);
                       ignored_tiles_.emplace(f, next_tile->tile_idx());
                     }
-                    RETURN_NOT_OK(remove_result_tile(f, next_tile));
+                    throw_if_not_ok(remove_result_tile(f, next_tile));
                   } else {
                     // Remove the cell in the bitmap and move to the next tile.
                     next_tile->clear_cell(first);
@@ -657,7 +657,7 @@ Status SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps() {
                       std::unique_lock<std::mutex> lck(ignored_tiles_mutex);
                       ignored_tiles_.emplace(f, to_delete->tile_idx());
                     }
-                    RETURN_NOT_OK(remove_result_tile(f, to_delete));
+                    throw_if_not_ok(remove_result_tile(f, to_delete));
                   } else {
                     // Remove the cell in the bitmap and move to the next tile.
                     it->clear_cell(last);

@@ -314,7 +314,7 @@ Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
   tile_overlap_.clear();
 
   // Add the range
-  RETURN_NOT_OK(range_subset_[dim_idx].add_range_unrestricted(range));
+  throw_if_not_ok(range_subset_[dim_idx].add_range_unrestricted(range));
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
   return Status::Ok();
 }
@@ -693,7 +693,7 @@ Status Subarray::get_range_var(
 
   uint64_t start_size = 0;
   uint64_t end_size = 0;
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       this->get_range_var_size(dim_idx, range_idx, &start_size, &end_size));
 
   const void* range_start;
@@ -1564,7 +1564,7 @@ Status Subarray::get_max_memory_size(
   }
 
   // Compute tile overlap for each fragment
-  RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
   *size = max_mem_size_[name].size_fixed_;
 
   return Status::Ok();
@@ -1609,7 +1609,7 @@ Status Subarray::get_max_memory_size(
                              "Attribute/Dimension must not be nullable"));
 
   // Compute tile overlap for each fragment
-  RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
   *size_off = max_mem_size_[name].size_fixed_;
   *size_val = max_mem_size_[name].size_var_;
 
@@ -1654,7 +1654,7 @@ Status Subarray::get_max_memory_size_nullable(
                              "Attribute must be nullable"));
 
   // Compute tile overlap for each fragment
-  RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
   *size = max_mem_size_[name].size_fixed_;
   *size_validity = max_mem_size_[name].size_validity_;
 
@@ -1700,7 +1700,7 @@ Status Subarray::get_max_memory_size_nullable(
                              "Attribute must be nullable"));
 
   // Compute tile overlap for each fragment
-  RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
   *size_off = max_mem_size_[name].size_fixed_;
   *size_val = max_mem_size_[name].size_var_;
   *size_validity = max_mem_size_[name].size_validity_;
@@ -1880,7 +1880,7 @@ Status Subarray::set_ranges_for_dim(
   // Add each range individually so that contiguous
   // ranges may be coalesced.
   for (const auto& range : ranges)
-    RETURN_NOT_OK(range_subset_[dim_idx].add_range_unrestricted(range));
+    throw_if_not_ok(range_subset_[dim_idx].add_range_unrestricted(range));
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
   return Status::Ok();
 }

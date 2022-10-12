@@ -107,8 +107,8 @@ Status FragmentConsolidator::consolidate(
       encryption_key,
       key_length);
   if (!st.ok()) {
-    RETURN_NOT_OK(array_for_reads->close());
-    RETURN_NOT_OK(array_for_writes->close());
+    throw_if_not_ok(array_for_reads->close());
+    throw_if_not_ok(array_for_writes->close());
     return st;
   }
 
@@ -127,8 +127,8 @@ Status FragmentConsolidator::consolidate(
         &to_consolidate,
         &union_non_empty_domains);
     if (!st.ok()) {
-      RETURN_NOT_OK(array_for_reads->close());
-      RETURN_NOT_OK(array_for_writes->close());
+      throw_if_not_ok(array_for_reads->close());
+      throw_if_not_ok(array_for_writes->close());
       return st;
     }
 
@@ -146,8 +146,8 @@ Status FragmentConsolidator::consolidate(
         union_non_empty_domains,
         &new_fragment_uri);
     if (!st.ok()) {
-      RETURN_NOT_OK(array_for_reads->close());
-      RETURN_NOT_OK(array_for_writes->close());
+      throw_if_not_ok(array_for_reads->close());
+      throw_if_not_ok(array_for_writes->close());
       return st;
     }
 
@@ -156,8 +156,8 @@ Status FragmentConsolidator::consolidate(
     // consolidated.
     st = fragment_info.load_and_replace(new_fragment_uri, to_consolidate);
     if (!st.ok()) {
-      RETURN_NOT_OK(array_for_reads->close());
-      RETURN_NOT_OK(array_for_writes->close());
+      throw_if_not_ok(array_for_reads->close());
+      throw_if_not_ok(array_for_writes->close());
       return st;
     }
 
@@ -167,7 +167,7 @@ Status FragmentConsolidator::consolidate(
   } while (step < config_.steps_);
 
   RETURN_NOT_OK_ELSE(
-      array_for_reads->close(), RETURN_NOT_OK(array_for_writes->close()));
+      array_for_reads->close(), throw_if_not_ok(array_for_writes->close()));
   RETURN_NOT_OK(array_for_writes->close());
 
   stats_->add_counter("consolidate_step_num", step);
@@ -216,8 +216,8 @@ Status FragmentConsolidator::consolidate_fragments(
       encryption_key,
       key_length);
   if (!st.ok()) {
-    RETURN_NOT_OK(array_for_reads->close());
-    RETURN_NOT_OK(array_for_writes->close());
+    throw_if_not_ok(array_for_reads->close());
+    throw_if_not_ok(array_for_writes->close());
     return st;
   }
 
@@ -260,8 +260,8 @@ Status FragmentConsolidator::consolidate_fragments(
       union_non_empty_domains,
       &new_fragment_uri);
   if (!st.ok()) {
-    RETURN_NOT_OK(array_for_reads->close());
-    RETURN_NOT_OK(array_for_writes->close());
+    throw_if_not_ok(array_for_reads->close());
+    throw_if_not_ok(array_for_writes->close());
     return st;
   }
 
@@ -270,14 +270,14 @@ Status FragmentConsolidator::consolidate_fragments(
   // consolidated.
   st = fragment_info.load_and_replace(new_fragment_uri, to_consolidate);
   if (!st.ok()) {
-    RETURN_NOT_OK(array_for_reads->close());
-    RETURN_NOT_OK(array_for_writes->close());
+    throw_if_not_ok(array_for_reads->close());
+    throw_if_not_ok(array_for_writes->close());
     return st;
   }
 
   RETURN_NOT_OK_ELSE(
       array_for_reads->close(), RETURN_NOT_OK(array_for_writes->close()));
-  RETURN_NOT_OK(array_for_writes->close());
+  throw_if_not_ok(array_for_writes->close());
 
   return Status::Ok();
 }
@@ -481,9 +481,10 @@ Status FragmentConsolidator::consolidate_internal(
     tdb_delete(query_r);
     tdb_delete(query_w);
     bool is_dir = false;
-    RETURN_NOT_OK(storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir));
+    throw_if_not_ok(
+        storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir));
     if (is_dir)
-      RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(*new_fragment_uri));
+      throw_if_not_ok(storage_manager_->vfs()->remove_dir(*new_fragment_uri));
     return st;
   }
 
@@ -594,7 +595,7 @@ Status FragmentConsolidator::create_queries(
 
   // Enable consolidation with timestamps on the reader, if applicable.
   if (config_.with_timestamps_ && !dense) {
-    RETURN_NOT_OK((*query_r)->set_consolidation_with_timestamps());
+    throw_if_not_ok((*query_r)->set_consolidation_with_timestamps());
   }
 
   // Get last fragment URI, which will be the URI of the consolidated fragment

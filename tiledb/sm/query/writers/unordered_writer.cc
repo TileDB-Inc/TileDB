@@ -655,7 +655,7 @@ Status UnorderedWriter::unordered_write() {
   // Set the number of tiles in the metadata
   auto it = tiles.begin();
   auto tile_num = it->second.size();
-  RETURN_NOT_OK(frag_meta->set_num_tiles(tile_num));
+  throw_if_not_ok(frag_meta->set_num_tiles(tile_num));
 
   stats_->add_counter("tile_num", tile_num);
   stats_->add_counter("cell_num", cell_pos.size());

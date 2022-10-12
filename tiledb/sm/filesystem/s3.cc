@@ -529,7 +529,7 @@ Status S3::flush_object(const URI& uri) {
     // It is safe to unlock the state here
     state_lck.unlock();
 
-    RETURN_NOT_OK(wait_for_object_to_propagate(move(bucket), move(key)));
+    throw_if_not_ok(wait_for_object_to_propagate(move(bucket), move(key)));
 
     return finish_flush_object(std::move(outcome), uri, buff);
   } else {
@@ -629,7 +629,7 @@ Status S3::is_empty_bucket(const URI& bucket, bool* is_empty) const {
 }
 
 Status S3::is_bucket(const URI& uri, bool* const exists) const {
-  RETURN_NOT_OK(init_client());
+  throw_if_not_ok(init_client());
 
   if (!uri.is_s3()) {
     return LOG_STATUS(Status_S3Error(
@@ -646,7 +646,7 @@ Status S3::is_bucket(const URI& uri, bool* const exists) const {
 }
 
 Status S3::is_object(const URI& uri, bool* const exists) const {
-  RETURN_NOT_OK(init_client());
+  throw_if_not_ok(init_client());
 
   if (!uri.is_s3()) {
     return LOG_STATUS(Status_S3Error(
@@ -662,7 +662,7 @@ Status S3::is_object(
     const Aws::String& bucket_name,
     const Aws::String& object_key,
     bool* const exists) const {
-  RETURN_NOT_OK(init_client());
+  throw_if_not_ok(init_client());
 
   Aws::S3::Model::HeadObjectRequest head_object_request;
   head_object_request.SetBucket(bucket_name);
@@ -941,7 +941,7 @@ Status S3::remove_object(const URI& uri) const {
         outcome_error_message(delete_object_outcome)));
   }
 
-  RETURN_NOT_OK(wait_for_object_to_be_deleted(
+  throw_if_not_ok(wait_for_object_to_be_deleted(
       delete_object_request.GetBucket(), delete_object_request.GetKey()));
   return Status::Ok();
 }
@@ -1004,7 +1004,7 @@ Status S3::touch(const URI& uri) const {
         outcome_error_message(put_object_outcome)));
   }
 
-  RETURN_NOT_OK(wait_for_object_to_propagate(
+  throw_if_not_ok(wait_for_object_to_propagate(
       put_object_request.GetBucket(), put_object_request.GetKey()));
 
   return Status::Ok();
@@ -1325,7 +1325,7 @@ Status S3::copy_object(const URI& old_uri, const URI& new_uri) {
         new_uri.c_str() + outcome_error_message(copy_object_outcome)));
   }
 
-  RETURN_NOT_OK(wait_for_object_to_propagate(
+  throw_if_not_ok(wait_for_object_to_propagate(
       copy_object_request.GetBucket(), copy_object_request.GetKey()));
 
   return Status::Ok();
@@ -1445,7 +1445,7 @@ std::string S3::join_authority_and_path(
 
 Status S3::wait_for_object_to_propagate(
     const Aws::String& bucket_name, const Aws::String& object_key) const {
-  RETURN_NOT_OK(init_client());
+  throw_if_not_ok(init_client());
 
   unsigned attempts_cnt = 0;
   while (attempts_cnt++ < constants::s3_max_attempts) {
@@ -1466,7 +1466,7 @@ Status S3::wait_for_object_to_propagate(
 
 Status S3::wait_for_object_to_be_deleted(
     const Aws::String& bucket_name, const Aws::String& object_key) const {
-  RETURN_NOT_OK(init_client());
+  throw_if_not_ok(init_client());
 
   unsigned attempts_cnt = 0;
   while (attempts_cnt++ < constants::s3_max_attempts) {
@@ -1486,7 +1486,7 @@ Status S3::wait_for_object_to_be_deleted(
 }
 
 Status S3::wait_for_bucket_to_be_created(const URI& bucket_uri) const {
-  RETURN_NOT_OK(init_client());
+  throw_if_not_ok(init_client());
 
   unsigned attempts_cnt = 0;
   while (attempts_cnt++ < constants::s3_max_attempts) {
@@ -1559,7 +1559,7 @@ Status S3::flush_direct(const URI& uri) {
                        "match result from server!' "));
   }
 
-  RETURN_NOT_OK(wait_for_object_to_propagate(
+  throw_if_not_ok(wait_for_object_to_propagate(
       put_object_request.GetBucket(), put_object_request.GetKey()));
 
   return Status::Ok();

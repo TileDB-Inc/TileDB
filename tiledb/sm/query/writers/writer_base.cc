@@ -548,13 +548,13 @@ Status WriterBase::compute_coords_metadata(
             RETURN_NOT_OK(
                 dim->compute_mbr(tiles_it->second[i].fixed_tile(), &mbr[d]));
           else
-            RETURN_NOT_OK(dim->compute_mbr_var(
+            throw_if_not_ok(dim->compute_mbr_var(
                 tiles_it->second[i].offset_tile(),
                 tiles_it->second[i].var_tile(),
                 &mbr[d]));
         }
 
-        RETURN_NOT_OK(meta->set_mbr(i, mbr));
+        throw_if_not_ok(meta->set_mbr(i, mbr));
         return Status::Ok();
       });
 

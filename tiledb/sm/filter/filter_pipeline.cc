@@ -206,8 +206,8 @@ Status FilterPipeline::filter_chunks_forward(
       input_metadata.reset_offset();
       input_metadata.set_read_only(true);
 
-      RETURN_NOT_OK(output_data.clear());
-      RETURN_NOT_OK(output_metadata.clear());
+      throw_if_not_ok(output_data.clear());
+      throw_if_not_ok(output_metadata.clear());
 
       f->init_compression_resource_pool(compute_tp->concurrency_level());
 
@@ -220,9 +220,9 @@ Status FilterPipeline::filter_chunks_forward(
           &output_data));
 
       input_data.set_read_only(false);
-      RETURN_NOT_OK(input_data.swap(output_data));
+      throw_if_not_ok(input_data.swap(output_data));
       input_metadata.set_read_only(false);
-      RETURN_NOT_OK(input_metadata.swap(output_metadata));
+      throw_if_not_ok(input_metadata.swap(output_metadata));
       // Next input (input_buffers) now stores this output (output_buffers).
     }
 
@@ -235,10 +235,10 @@ Status FilterPipeline::filter_chunks_forward(
     auto& io = final_stage_io[i];
     auto& io_input = io.first;
     auto& io_output = io.second;
-    RETURN_NOT_OK(io_input.first.swap(input_metadata));
-    RETURN_NOT_OK(io_input.second.swap(input_data));
-    RETURN_NOT_OK(io_output.first.swap(output_metadata));
-    RETURN_NOT_OK(io_output.second.swap(output_data));
+    throw_if_not_ok(io_input.first.swap(input_metadata));
+    throw_if_not_ok(io_input.second.swap(input_data));
+    throw_if_not_ok(io_output.first.swap(output_metadata));
+    throw_if_not_ok(io_output.second.swap(output_data));
     return Status::Ok();
   });
 
@@ -375,8 +375,8 @@ Status FilterPipeline::filter_chunks_reverse(
       input_metadata.reset_offset();
       input_metadata.set_read_only(true);
 
-      RETURN_NOT_OK(output_data.clear());
-      RETURN_NOT_OK(output_metadata.clear());
+      throw_if_not_ok(output_data.clear());
+      throw_if_not_ok(output_metadata.clear());
 
       // Final filter: output directly into the shared output buffer.
       bool last_filter = filter_idx == 0;
@@ -402,8 +402,8 @@ Status FilterPipeline::filter_chunks_reverse(
       input_metadata.set_read_only(false);
 
       if (!last_filter) {
-        RETURN_NOT_OK(input_data.swap(output_data));
-        RETURN_NOT_OK(input_metadata.swap(output_metadata));
+        throw_if_not_ok(input_data.swap(output_data));
+        throw_if_not_ok(input_metadata.swap(output_metadata));
         // Next input (input_buffers) now stores this output (output_buffers).
       }
     }
@@ -512,8 +512,8 @@ Status FilterPipeline::run_reverse_chunk_range(
       input_metadata.reset_offset();
       input_metadata.set_read_only(true);
 
-      RETURN_NOT_OK(output_data.clear());
-      RETURN_NOT_OK(output_metadata.clear());
+      throw_if_not_ok(output_data.clear());
+      throw_if_not_ok(output_metadata.clear());
 
       // Final filter: output directly into the shared output buffer.
       bool last_filter = filter_idx == 0;
@@ -541,8 +541,8 @@ Status FilterPipeline::run_reverse_chunk_range(
       input_metadata.set_read_only(false);
 
       if (!last_filter) {
-        RETURN_NOT_OK(input_data.swap(output_data));
-        RETURN_NOT_OK(input_metadata.swap(output_metadata));
+        throw_if_not_ok(input_data.swap(output_data));
+        throw_if_not_ok(input_metadata.swap(output_metadata));
         // Next input (input_buffers) now stores this output (output_buffers).
       }
     }

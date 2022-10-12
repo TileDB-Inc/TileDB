@@ -135,9 +135,9 @@ Status array_schema_evolution_from_capnp(
   if (evolution_reader.hasTimestampRange() &&
       evolution_reader.getTimestampRange().size() >= 2) {
     const auto& timestamp_range = evolution_reader.getTimestampRange();
-    RETURN_NOT_OK((*array_schema_evolution)
-                      ->set_timestamp_range(std::make_pair(
-                          timestamp_range[0], timestamp_range[1])));
+    throw_if_not_ok((*array_schema_evolution)
+                        ->set_timestamp_range(std::make_pair(
+                            timestamp_range[0], timestamp_range[1])));
   }
 
   return Status::Ok();

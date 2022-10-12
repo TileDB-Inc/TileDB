@@ -1233,7 +1233,7 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   }
 
   if (!dense_) {
-    RETURN_NOT_OK(rtree_.set_leaf_num(num_tiles));
+    throw_if_not_ok(rtree_.set_leaf_num(num_tiles));
     sparse_tile_num_ = num_tiles;
   }
 
@@ -2817,7 +2817,7 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&mbr_num, sizeof(uint64_t)));
 
   // Set leaf level
-  RETURN_NOT_OK(rtree_.set_leaf_num(mbr_num));
+  throw_if_not_ok(rtree_.set_leaf_num(mbr_num));
   auto& domain{array_schema_->domain()};
   auto dim_num = domain.dim_num();
   for (uint64_t m = 0; m < mbr_num; ++m) {
@@ -2827,7 +2827,7 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
       mbr[d].set_range(buff->cur_data(), r_size);
       buff->advance_offset(r_size);
     }
-    RETURN_NOT_OK(rtree_.set_leaf(m, mbr));
+    throw_if_not_ok(rtree_.set_leaf(m, mbr));
   }
 
   // Build R-tree bottom-up

@@ -248,7 +248,7 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
 
   // Load processed conditions from fragment metadata.
   if (delete_and_update_conditions_.size() > 0) {
-    RETURN_NOT_OK(load_processed_conditions());
+    throw_if_not_ok(load_processed_conditions());
   }
 
   // Make a list of dim/attr that will be loaded for query condition.

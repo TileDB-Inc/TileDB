@@ -592,7 +592,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
     if (state_.multi_range_.empty())
       state_.start_ = current_.start_;
     state_.multi_range_.push_front(current_.partition_);
-    RETURN_NOT_OK(split_top_multi_range(unsplittable));
+    throw_if_not_ok(split_top_multi_range(unsplittable));
     return next_from_multi_range(unsplittable);
   }
 
@@ -618,7 +618,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
       if (state_.multi_range_.empty())
         state_.start_ = current_.start_;
       state_.multi_range_.push_front(current_.partition_);
-      RETURN_NOT_OK(split_top_multi_range(unsplittable));
+      throw_if_not_ok(split_top_multi_range(unsplittable));
       return next_from_multi_range(unsplittable);
     }
 
@@ -633,7 +633,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
   if (state_.single_range_.empty())
     state_.start_--;
   state_.single_range_.push_front(current_.partition_);
-  RETURN_NOT_OK(split_top_single_range(unsplittable));
+  throw_if_not_ok(split_top_single_range(unsplittable));
   return next_from_single_range(unsplittable);
 }
 
@@ -1225,7 +1225,7 @@ Status SubarrayPartitioner::next_from_multi_range(bool* unsplittable) {
   if (state_.multi_range_.empty()) {
     auto s = subarray_.get_subarray(current_.start_, current_.end_);
     state_.multi_range_.push_front(std::move(s));
-    RETURN_NOT_OK(split_top_multi_range(unsplittable));
+    throw_if_not_ok(split_top_multi_range(unsplittable));
   }
 
   // Loop until you find a partition that fits or unsplittable
@@ -1254,7 +1254,7 @@ Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
   if (state_.single_range_.empty()) {
     auto s = subarray_.get_subarray(current_.start_, current_.end_);
     state_.single_range_.push_front(std::move(s));
-    RETURN_NOT_OK(split_top_single_range(unsplittable));
+    throw_if_not_ok(split_top_single_range(unsplittable));
   }
 
   // Loop until you find a partition that fits or unsplittable

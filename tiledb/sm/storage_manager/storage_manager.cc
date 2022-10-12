@@ -810,7 +810,7 @@ Status StorageManager::array_create(
 
   // Store array schema
   if (!st.ok()) {
-    RETURN_NOT_OK(vfs_->remove_dir(array_uri));
+    throw_if_not_ok(vfs_->remove_dir(array_uri));
     return st;
   }
 
@@ -1304,7 +1304,7 @@ Status StorageManager::cancel_all_tasks() {
 
     // Only call VFS cancel if the object has been constructed
     if (vfs_ != nullptr)
-      RETURN_NOT_OK(vfs_->cancel_all_tasks());
+      throw_if_not_ok(vfs_->cancel_all_tasks());
 
     // Wait for in-progress queries to finish.
     wait_for_zero_in_progress();
@@ -1726,7 +1726,7 @@ StorageManager::load_delete_and_update_conditions(const Array& array) {
       throw Status_StorageManagerError("Unknown condition marker extension");
     }
 
-    RETURN_NOT_OK(conditions[i].check(array.array_schema_latest()));
+    throw_if_not_ok(conditions[i].check(array.array_schema_latest()));
     return Status::Ok();
   });
   RETURN_NOT_OK_TUPLE(status, nullopt, nullopt);
@@ -2454,20 +2454,17 @@ StorageManager::load_consolidated_fragment_meta(
 
   uint32_t fragment_num;
   buffer.reset_offset();
-  RETURN_NOT_OK_TUPLE(
-      buffer.read(&fragment_num, sizeof(uint32_t)), nullopt, nullopt);
+  throw_if_not_ok(buffer.read(&fragment_num, sizeof(uint32_t)));
 
   uint64_t name_size, offset;
   std::string name;
   std::vector<std::pair<std::string, uint64_t>> ret;
   ret.reserve(fragment_num);
   for (uint32_t f = 0; f < fragment_num; ++f) {
-    RETURN_NOT_OK_TUPLE(
-        buffer.read(&name_size, sizeof(uint64_t)), nullopt, nullopt);
+    throw_if_not_ok(buffer.read(&name_size, sizeof(uint64_t)));
     name.resize(name_size);
-    RETURN_NOT_OK_TUPLE(buffer.read(&name[0], name_size), nullopt, nullopt);
-    RETURN_NOT_OK_TUPLE(
-        buffer.read(&offset, sizeof(uint64_t)), nullopt, nullopt);
+    throw_if_not_ok(buffer.read(&name[0], name_size));
+    throw_if_not_ok(buffer.read(&offset, sizeof(uint64_t)));
     ret.emplace_back(name, offset);
   }
 

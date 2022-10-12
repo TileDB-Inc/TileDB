@@ -589,7 +589,7 @@ Status CompressionFilter::decompress_var_string_coords(
     uint8_t rle_len_bytesize, string_len_bytesize;
     RETURN_NOT_OK(input_metadata.read(&rle_len_bytesize, sizeof(uint8_t)));
     RETURN_NOT_OK(input_metadata.read(&string_len_bytesize, sizeof(uint8_t)));
-    RETURN_NOT_OK(RLE::decompress(
+    throw_if_not_ok(RLE::decompress(
         input_view,
         rle_len_bytesize,
         string_len_bytesize,

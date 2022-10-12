@@ -83,7 +83,7 @@ Status ArrayMetaConsolidator::consolidate(
   RETURN_NOT_OK_ELSE(
       array_for_writes.open(
           QueryType::WRITE, encryption_type, encryption_key, key_length),
-      RETURN_NOT_OK(array_for_reads.close()));
+      throw_if_not_ok(array_for_reads.close()));
 
   // Swap the in-memory metadata between the two arrays.
   // After that, the array for writes will store the (consolidated by
@@ -91,15 +91,15 @@ Status ArrayMetaConsolidator::consolidate(
   Metadata* metadata_r;
   auto st = array_for_reads.metadata(&metadata_r);
   if (!st.ok()) {
-    RETURN_NOT_OK(array_for_reads.close());
-    RETURN_NOT_OK(array_for_writes.close());
+    throw_if_not_ok(array_for_reads.close());
+    throw_if_not_ok(array_for_writes.close());
     return st;
   }
   Metadata* metadata_w;
   st = array_for_writes.metadata(&metadata_w);
   if (!st.ok()) {
-    RETURN_NOT_OK(array_for_reads.close());
-    RETURN_NOT_OK(array_for_writes.close());
+    throw_if_not_ok(array_for_reads.close());
+    throw_if_not_ok(array_for_writes.close());
     return st;
   }
   metadata_r->swap(metadata_w);
@@ -110,8 +110,8 @@ Status ArrayMetaConsolidator::consolidate(
   // Generate new name for consolidated metadata
   st = metadata_w->generate_uri(array_uri);
   if (!st.ok()) {
-    RETURN_NOT_OK(array_for_reads.close());
-    RETURN_NOT_OK(array_for_writes.close());
+    throw_if_not_ok(array_for_reads.close());
+    throw_if_not_ok(array_for_writes.close());
     return st;
   }
 
@@ -119,15 +119,15 @@ Status ArrayMetaConsolidator::consolidate(
   URI new_uri;
   st = metadata_w->get_uri(array_uri, &new_uri);
   if (!st.ok()) {
-    RETURN_NOT_OK(array_for_reads.close());
-    RETURN_NOT_OK(array_for_writes.close());
+    throw_if_not_ok(array_for_reads.close());
+    throw_if_not_ok(array_for_writes.close());
     return st;
   }
 
   // Close arrays
   RETURN_NOT_OK_ELSE(
       array_for_reads.close(), RETURN_NOT_OK(array_for_writes.close()));
-  RETURN_NOT_OK(array_for_writes.close());
+  throw_if_not_ok(array_for_writes.close());
 
   // Write vacuum file
   URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);

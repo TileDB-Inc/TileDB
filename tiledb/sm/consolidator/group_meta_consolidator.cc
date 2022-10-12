@@ -82,7 +82,7 @@ Status GroupMetaConsolidator::consolidate(
   GroupV1 group_for_writes(group_uri, storage_manager_);
   RETURN_NOT_OK_ELSE(
       group_for_writes.open(QueryType::WRITE),
-      RETURN_NOT_OK(group_for_reads.close()));
+      throw_if_not_ok(group_for_reads.close()));
 
   // Swap the in-memory metadata between the two groups.
   // After that, the group for writes will store the (consolidated by
@@ -90,15 +90,15 @@ Status GroupMetaConsolidator::consolidate(
   Metadata* metadata_r;
   auto st = group_for_reads.metadata(&metadata_r);
   if (!st.ok()) {
-    RETURN_NOT_OK(group_for_reads.close());
-    RETURN_NOT_OK(group_for_writes.close());
+    throw_if_not_ok(group_for_reads.close());
+    throw_if_not_ok(group_for_writes.close());
     return st;
   }
   Metadata* metadata_w;
   st = group_for_writes.metadata(&metadata_w);
   if (!st.ok()) {
-    RETURN_NOT_OK(group_for_reads.close());
-    RETURN_NOT_OK(group_for_writes.close());
+    throw_if_not_ok(group_for_reads.close());
+    throw_if_not_ok(group_for_writes.close());
     return st;
   }
   metadata_r->swap(metadata_w);
@@ -109,8 +109,8 @@ Status GroupMetaConsolidator::consolidate(
   // Generate new name for consolidated metadata
   st = metadata_w->generate_uri(group_uri);
   if (!st.ok()) {
-    RETURN_NOT_OK(group_for_reads.close());
-    RETURN_NOT_OK(group_for_writes.close());
+    throw_if_not_ok(group_for_reads.close());
+    throw_if_not_ok(group_for_writes.close());
     return st;
   }
 
@@ -118,14 +118,14 @@ Status GroupMetaConsolidator::consolidate(
   URI new_uri;
   st = metadata_w->get_uri(group_uri, &new_uri);
   if (!st.ok()) {
-    RETURN_NOT_OK(group_for_reads.close());
-    RETURN_NOT_OK(group_for_writes.close());
+    throw_if_not_ok(group_for_reads.close());
+    throw_if_not_ok(group_for_writes.close());
     return st;
   }
 
   // Close groups
   RETURN_NOT_OK_ELSE(
-      group_for_reads.close(), RETURN_NOT_OK(group_for_writes.close()));
+      group_for_reads.close(), throw_if_not_ok(group_for_writes.close()));
   RETURN_NOT_OK(group_for_writes.close());
 
   // Write vacuum file

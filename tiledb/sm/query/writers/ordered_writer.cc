@@ -219,7 +219,7 @@ Status OrderedWriter::ordered_write() {
   auto tile_num = dense_tiler.tile_num();
 
   // Set number of tiles in the fragment metadata
-  RETURN_NOT_OK(frag_meta->set_num_tiles(tile_num));
+  throw_if_not_ok(frag_meta->set_num_tiles(tile_num));
 
   // Prepare, filter and write tiles for all attributes
   auto attr_num = buffers_.size();
@@ -240,7 +240,7 @@ Status OrderedWriter::ordered_write() {
           attr, attr_tile_batches, frag_meta, &dense_tiler, 1);
     });
     RETURN_NOT_OK_ELSE(
-        st, RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri)));
+        st, throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri)));
   } else {  // Parallelize over tiles
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
@@ -249,9 +249,9 @@ Status OrderedWriter::ordered_write() {
         RETURN_NOT_OK_ELSE(
             prepare_filter_and_write_tiles<T>(
                 attr, attr_tile_batches, frag_meta, &dense_tiler, thread_num),
-            RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri)));
+            throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri)));
       } catch (const std::logic_error& le) {
-        RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri));
+        throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
         return Status_WriterError(le.what());
       }
     }
@@ -280,7 +280,7 @@ Status OrderedWriter::ordered_write() {
       return Status::Ok();
     });
     RETURN_NOT_OK_ELSE(
-        st, RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri)));
+        st, throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri)));
   } else {  // Parallelize over tiles
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
@@ -302,7 +302,7 @@ Status OrderedWriter::ordered_write() {
               return Status::Ok();
             });
         RETURN_NOT_OK_ELSE(
-            st, RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri)));
+            st, throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri)));
       }
     }
   }
@@ -310,20 +310,20 @@ Status OrderedWriter::ordered_write() {
   // Compute fragment min/max/sum/null count
   RETURN_NOT_OK_ELSE(
       frag_meta->compute_fragment_min_max_sum_null_count(),
-      RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri)));
+      throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri)));
 
   // Write the fragment metadata
   try {
     frag_meta->store(array_->get_encryption_key());
   } catch (...) {
-    RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri));
+    throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
     throw;
   }
 
   // Add written fragment info
   RETURN_NOT_OK_ELSE(
       add_written_fragment_info(uri),
-      RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri)));
+      throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri)));
 
   // The following will make the fragment visible
   URI commit_uri;
@@ -335,7 +335,7 @@ Status OrderedWriter::ordered_write() {
   }
   RETURN_NOT_OK_ELSE(
       storage_manager_->vfs()->touch(commit_uri),
-      RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri)));
+      throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri)));
 
   return Status::Ok();
 }

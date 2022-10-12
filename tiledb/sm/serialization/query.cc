@@ -424,7 +424,7 @@ Status subarray_partitioner_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
     if (compute_current_tile_overlap) {
-      RETURN_NOT_OK(partition_info->partition_.precompute_tile_overlap(
+      throw_if_not_ok(partition_info->partition_.precompute_tile_overlap(
           partition_info->start_,
           partition_info->end_,
           config,
@@ -692,7 +692,7 @@ static Status condition_ast_to_capnp(
 
     for (size_t i = 0; i < node->get_children().size(); ++i) {
       auto child_builder = children_builder[i];
-      RETURN_NOT_OK(
+      throw_if_not_ok(
           condition_ast_to_capnp(node->get_children()[i], &child_builder));
     }
 
@@ -2944,7 +2944,7 @@ Status global_write_state_from_capnp(
       // Whilst sparse gets its domain calculated, dense needs to have it
       // set here from the deserialized data
       if (query.is_dense()) {
-        RETURN_NOT_OK(frag_meta->init_domain(*ndrange));
+        throw_if_not_ok(frag_meta->init_domain(*ndrange));
       }
     }
   }
