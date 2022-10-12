@@ -509,7 +509,6 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   IndexType search_for_range_fixed(
       uint64_t r,
       uint8_t range_index,
-      uint8_t bound_index,
       const IndexType& domain_low,
       const IndexType& tile_extent);
 
