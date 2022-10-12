@@ -333,7 +333,7 @@ class FragmentInfo {
 
   // Accessors
 
-  /** Returns array schemas map. */
+  /** Returns array schemas latest. */
   inline shared_ptr<ArraySchema>& array_schema_latest() {
     return array_schema_latest_;
   }

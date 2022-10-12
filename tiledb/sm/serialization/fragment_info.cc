@@ -314,11 +314,9 @@ Status fragment_info_from_capnp(
   if (fragment_info_reader.hasToVacuum()) {
     for (auto uri : fragment_info_reader.getToVacuum()) {
       // Reconstruct the relative fragment URI to a full path URI
-      auto frag_dir_uri = array_uri.add_trailing_slash();
-      if (fragment_info->array_schema_latest()->write_version() >= 12) {
-        frag_dir_uri =
-            frag_dir_uri.join_path(constants::array_fragments_dir_name);
-      }
+      auto frag_dir_uri = ArrayDirectory::generate_fragment_dir_uri(
+          fragment_info->array_schema_latest()->write_version(),
+          array_uri.add_trailing_slash());
       fragment_info->to_vacuum().emplace_back(
           frag_dir_uri.join_path(uri.cStr()));
     }
