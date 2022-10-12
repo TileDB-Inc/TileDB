@@ -67,6 +67,8 @@ Status FragmentMetaConsolidator::consolidate(
     uint32_t key_length) {
   auto timer_se = stats_->start_timer("consolidate_frag_meta");
 
+  check_array_uri(array_name);
+
   // Open array for reading
   Array array(URI(array_name), storage_manager_);
   RETURN_NOT_OK(
