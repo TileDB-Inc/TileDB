@@ -107,7 +107,7 @@ std::string GSFx::random_bucket_name(const std::string& prefix) {
 
 TEST_CASE_METHOD(GSFx, "Test GS filesystem, file management", "[gs]") {
   Config config;
-  REQUIRE(config.set("vfs.gcs.use_multi_part_upload", "true").οκ());
+  REQUIRE(config.set("vfs.gcs.use_multi_part_upload", "true").ok());
   init_gcs(std::move(config));
 
   /* Create the following file hierarchy:
