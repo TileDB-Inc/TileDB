@@ -107,7 +107,7 @@ std::string GSFx::random_bucket_name(const std::string& prefix) {
 
 TEST_CASE_METHOD(GSFx, "Test GS filesystem, file management", "[gs]") {
   Config config;
-  config.set("vfs.gcs.use_multi_part_upload", "true");
+  REQUIRE(config.set("vfs.gcs.use_multi_part_upload", "true").οκ());
   init_gcs(std::move(config));
 
   /* Create the following file hierarchy:
@@ -226,9 +226,12 @@ TEST_CASE_METHOD(
   Config config;
   const uint64_t max_parallel_ops = 1;
   const uint64_t multi_part_size = 4 * 1024 * 1024;
-  config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops));
-  config.set("vfs.gcs.use_multi_part_upload", "true");
-  config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size));
+  REQUIRE(
+      config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops))
+          .ok());
+  REQUIRE(config.set("vfs.gcs.use_multi_part_upload", "true").ok());
+  REQUIRE(config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size))
+              .ok());
   init_gcs(std::move(config));
 
   const uint64_t write_cache_max_size = max_parallel_ops * multi_part_size;
@@ -311,9 +314,12 @@ TEST_CASE_METHOD(
   Config config;
   const uint64_t max_parallel_ops = 1;
   const uint64_t multi_part_size = 4 * 1024 * 1024;
-  config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops));
-  config.set("vfs.gcs.use_multi_part_upload", "false");
-  config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size));
+  REQUIRE(
+      config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops))
+          .ok());
+  REQUIRE(config.set("vfs.gcs.use_multi_part_upload", "false").ok());
+  REQUIRE(config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size))
+              .ok());
   init_gcs(std::move(config));
 
   const uint64_t write_cache_max_size = max_parallel_ops * multi_part_size;
@@ -389,9 +395,12 @@ TEST_CASE_METHOD(
   Config config;
   const uint64_t max_parallel_ops = 4;
   const uint64_t multi_part_size = 4 * 1024 * 1024;
-  config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops));
-  config.set("vfs.gcs.use_multi_part_upload", "true");
-  config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size));
+  REQUIRE(
+      config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops))
+          .ok());
+  REQUIRE(config.set("vfs.gcs.use_multi_part_upload", "true").ok());
+  REQUIRE(config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size))
+              .ok());
   init_gcs(std::move(config));
 
   const uint64_t write_cache_max_size = max_parallel_ops * multi_part_size;
@@ -474,9 +483,12 @@ TEST_CASE_METHOD(
   Config config;
   const uint64_t max_parallel_ops = 4;
   const uint64_t multi_part_size = 4 * 1024 * 1024;
-  config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops));
-  config.set("vfs.gcs.use_multi_part_upload", "false");
-  config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size));
+  REQUIRE(
+      config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops))
+          .ok());
+  REQUIRE(config.set("vfs.gcs.use_multi_part_upload", "false").ok());
+  REQUIRE(config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size))
+              .ok());
   init_gcs(std::move(config));
 
   const uint64_t write_cache_max_size = max_parallel_ops * multi_part_size;
@@ -552,9 +564,12 @@ TEST_CASE_METHOD(
   Config config;
   const uint64_t max_parallel_ops = 4;
   const uint64_t multi_part_size = 4 * 1024;
-  config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops));
-  config.set("vfs.gcs.use_multi_part_upload", "true");
-  config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size));
+  REQUIRE(
+      config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops))
+          .ok());
+  REQUIRE(config.set("vfs.gcs.use_multi_part_upload", "true").ok());
+  REQUIRE(config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size))
+              .ok());
   init_gcs(std::move(config));
 
   const uint64_t write_cache_max_size = max_parallel_ops * multi_part_size;
