@@ -33,12 +33,12 @@
  * and all operations check if each of the query is initialized or is `nullptr`.
  * This is to support the temporary dual-array dimension label design. Once a
  * reader for the ordered dimension label is implemented and the projections for
- * the unordered dimension label are implemented, each `DimensionLabelQuery`
+ * the unordered dimension label are implemented, each `DimensionLabelDataQuery`
  * will only contain a single `Query` object that must be constructed on
  * initialization.
  */
 
-#include "tiledb/sm/query/dimension_label/dimension_label_query.h"
+#include "tiledb/sm/query/dimension_label/dimension_label_data_query.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/unreachable.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
@@ -55,7 +55,7 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-DimensionLabelQuery::DimensionLabelQuery(
+DimensionLabelDataQuery::DimensionLabelDataQuery(
     StorageManager* storage_manager,
     stats::Stats* stats,
     DimensionLabel* dimension_label,
@@ -79,14 +79,14 @@ DimensionLabelQuery::DimensionLabelQuery(
                                nullptr} {
 }
 
-bool DimensionLabelQuery::completed() const {
+bool DimensionLabelDataQuery::completed() const {
   return (!indexed_array_query ||
           indexed_array_query->status() == QueryStatus::COMPLETED) &&
          (!labelled_array_query ||
           labelled_array_query->status() == QueryStatus::COMPLETED);
 }
 
-void DimensionLabelQuery::process() {
+void DimensionLabelDataQuery::process() {
   if (indexed_array_query) {
     throw_if_not_ok(indexed_array_query->init());
     throw_if_not_ok(indexed_array_query->process());
@@ -104,7 +104,7 @@ DimensionLabelReadDataQuery::DimensionLabelReadDataQuery(
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
     const uint32_t dim_idx)
-    : DimensionLabelQuery{
+    : DimensionLabelDataQuery{
           storage_manager, stats, dimension_label, true, false} {
   // Set the layout (ordered, 1D).
   throw_if_not_ok(indexed_array_query->set_layout(Layout::ROW_MAJOR));
@@ -284,13 +284,13 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
     const QueryBuffer& index_buffer,
     const uint32_t dim_idx,
     optional<std::string> fragment_name)
-    : DimensionLabelQuery{
+    : DimensionLabelDataQuery{
           storage_manager, stats, dimension_label, true, true, fragment_name} {
   // Verify that data isn't already written to the dimension label. This check
   // is only needed until the new ordered dimension label reader is implemented.
   if (!dimension_label->labelled_array()->is_empty() ||
       !dimension_label->indexed_array()->is_empty()) {
-    throw StatusException(Status_DimensionLabelQueryError(
+    throw StatusException(Status_DimensionLabelDataQueryError(
         "Cannot write to dimension label. Currently ordered dimension "
         "labels can only be written to once."));
   }
@@ -301,7 +301,7 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
           label_buffer,
           dimension_label->label_dimension()->type(),
           dimension_label->label_order() == LabelOrder::INCREASING_LABELS)) {
-    throw StatusException(Status_DimensionLabelQueryError(
+    throw StatusException(Status_DimensionLabelDataQueryError(
         "Failed to create dimension label query. The label data is not in the "
         "expected order."));
   }
@@ -315,7 +315,7 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
       // Check only one range is set.
       const auto& ranges = parent_subarray.ranges_for_dim(dim_idx);
       if (ranges.size() != 1) {
-        throw StatusException(Status_DimensionLabelQueryError(
+        throw StatusException(Status_DimensionLabelDataQueryError(
             "Failed to create dimension label query. Dimension label writes "
             "can only be set for a single range."));
       }
@@ -324,7 +324,7 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
       const Range& input_range = ranges[0];
       const Range& index_domain = dimension_label->index_dimension()->domain();
       if (!(input_range == index_domain)) {
-        throw StatusException(Status_DimensionLabelQueryError(
+        throw StatusException(Status_DimensionLabelDataQueryError(
             "Failed to create dimension label query. Currently dimension "
             "labels only support writing the full array."));
       }
@@ -342,14 +342,14 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
     if (*index_buffer.buffer_size_ / datatype_size(index_type) !=
         dimension_label->index_dimension()->domain_range(
             dimension_label->index_dimension()->domain())) {
-      throw StatusException(Status_DimensionLabelQueryError(
+      throw StatusException(Status_DimensionLabelDataQueryError(
           "Failed to create dimension label query. Currently dimension "
           "labels only support writing the full array."));
     }
 
     // Check the index data is sorted in increasing order.
     if (!is_sorted_buffer(stats, index_buffer, index_type, true)) {
-      throw StatusException(Status_DimensionLabelQueryError(
+      throw StatusException(Status_DimensionLabelDataQueryError(
           "Failed to create dimension label query. The input data on "
           "dimension " +
           std::to_string(dim_idx) + " must be strictly increasing."));
@@ -379,7 +379,7 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
 
 void OrderedWriteDataQuery::add_index_ranges_from_label(
     const bool, const void*, const uint64_t) {
-  throw StatusException(Status_DimensionLabelQueryError(
+  throw StatusException(Status_DimensionLabelDataQueryError(
       "Updating index ranges is not supported on writes."));
 }
 
@@ -392,7 +392,7 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
     const QueryBuffer& index_buffer,
     const uint32_t dim_idx,
     optional<std::string> fragment_name)
-    : DimensionLabelQuery{
+    : DimensionLabelDataQuery{
           storage_manager, stats, dimension_label, true, true, fragment_name} {
   // Create locally stored index data if the index buffer is empty.
   bool use_local_index = index_buffer.buffer_ == nullptr;
@@ -401,7 +401,7 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
     if (!parent_subarray.is_default(dim_idx)) {
       const auto& ranges = parent_subarray.ranges_for_dim(dim_idx);
       if (ranges.size() != 1) {
-        throw StatusException(Status_DimensionLabelQueryError(
+        throw StatusException(Status_DimensionLabelDataQueryError(
             "Failed to create dimension label query. Dimension label writes "
             "can only be set for a single range."));
       }
@@ -446,7 +446,7 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
 
 void UnorderedWriteDataQuery::add_index_ranges_from_label(
     const bool, const void*, const uint64_t) {
-  throw StatusException(Status_DimensionLabelQueryError(
+  throw StatusException(Status_DimensionLabelDataQueryError(
       "Updating index ranges is not supported on writes."));
 }
 

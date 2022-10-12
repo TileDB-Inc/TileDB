@@ -42,7 +42,6 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/query/dimension_label/dimension_label_query.h"
 #include "tiledb/sm/query/dimension_label/dimension_label_query_create.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/storage_format/uri/generate_uri.h"

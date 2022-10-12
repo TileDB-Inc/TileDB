@@ -231,7 +231,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/deletes_and_updates.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/serialization.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dimension_label/array_dimension_label_queries.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dimension_label/dimension_label_query.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dimension_label/dimension_label_data_query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dimension_label/dimension_label_query_create.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dimension_label/dimension_label_range_query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dimension_label/index_data.cc

@@ -59,15 +59,17 @@ class IndexData;
 /**
  * Return a Status_DimensionQueryError error class Status with a given
  * message.
+ *
+ * Note: This intentionally returns the error as TileDB::DimensionLabelQuery.
  **/
-inline Status Status_DimensionLabelQueryError(const std::string& msg) {
+inline Status Status_DimensionLabelDataQueryError(const std::string& msg) {
   return {"[TileDB::DimensionLabelQuery] Error", msg};
 }
 
-class DimensionLabelQuery {
+class DimensionLabelDataQuery {
  public:
   /** Default constructor is not C.41 compliant. */
-  DimensionLabelQuery() = delete;
+  DimensionLabelDataQuery() = delete;
 
   /**
    * General constructor.
@@ -79,7 +81,7 @@ class DimensionLabelQuery {
    *     array.
    * @param fragment_name Optional fragment name for writing fragments.
    */
-  DimensionLabelQuery(
+  DimensionLabelDataQuery(
       StorageManager* storage_manager,
       stats::Stats* stats,
       DimensionLabel* dimension_label,
@@ -88,11 +90,11 @@ class DimensionLabelQuery {
       optional<std::string> fragment_name = nullopt);
 
   /** Destructor. */
-  virtual ~DimensionLabelQuery() = default;
+  virtual ~DimensionLabelDataQuery() = default;
 
   /** Disable copy and move. */
-  DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelQuery);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelQuery);
+  DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelDataQuery);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelDataQuery);
 
   /** Returns ``true`` if the query status for both queries is completed. */
   bool completed() const;
@@ -123,7 +125,7 @@ class DimensionLabelQuery {
 };
 
 /** Dimension label query for reading label data. */
-class DimensionLabelReadDataQuery : public DimensionLabelQuery {
+class DimensionLabelReadDataQuery : public DimensionLabelDataQuery {
  public:
   /** Default constructor is not C.41 compliant. */
   DimensionLabelReadDataQuery() = delete;
@@ -162,7 +164,7 @@ class DimensionLabelReadDataQuery : public DimensionLabelQuery {
 };
 
 /** Dimension label query for writing ordered data. */
-class OrderedWriteDataQuery : public DimensionLabelQuery {
+class OrderedWriteDataQuery : public DimensionLabelDataQuery {
  public:
   /** Default constructor is not C.41 compliant. */
   OrderedWriteDataQuery() = delete;
@@ -207,7 +209,7 @@ class OrderedWriteDataQuery : public DimensionLabelQuery {
 };
 
 /** Writer for unordered dimension labels. */
-class UnorderedWriteDataQuery : public DimensionLabelQuery {
+class UnorderedWriteDataQuery : public DimensionLabelDataQuery {
  public:
   /** Default constructor is not C.41 compliant. */
   UnorderedWriteDataQuery() = delete;

@@ -36,7 +36,7 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-DimensionLabelQuery* DimensionLabelQueryCreate::make_write_query(
+DimensionLabelDataQuery* DimensionLabelQueryCreate::make_write_query(
     const std::string& label_name,
     LabelOrder label_order,
     StorageManager* storage_manager,
@@ -77,7 +77,7 @@ DimensionLabelQuery* DimensionLabelQueryCreate::make_write_query(
 
     default:
       // Invalid label order type.
-      throw StatusException(Status_DimensionLabelQueryError(
+      throw StatusException(Status_DimensionLabelDataQueryError(
           "Cannot initialize dimension label '" + label_name +
           "'; Dimension label order " + label_order_str(label_order) +
           " not supported."));

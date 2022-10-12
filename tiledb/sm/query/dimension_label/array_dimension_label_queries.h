@@ -36,7 +36,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/query_status.h"
-#include "tiledb/sm/query/dimension_label/dimension_label_query.h"
+#include "tiledb/sm/query/dimension_label/dimension_label_data_query.h"
 #include "tiledb/sm/query/dimension_label/dimension_label_range_query.h"
 #include "tiledb/sm/stats/global_stats.h"
 
@@ -54,6 +54,14 @@ class StorageManager;
 class Subarray;
 
 enum class QueryType : uint8_t;
+
+/**
+ * Return a Status_DimensionQueryError error class Status with a given
+ * message.
+ **/
+inline Status Status_DimensionLabelQueryError(const std::string& msg) {
+  return {"[TileDB::DimensionLabelQuery] Error", msg};
+}
 
 class ArrayDimensionLabelQueries {
  public:
@@ -160,7 +168,7 @@ class ArrayDimensionLabelQueries {
    * Note: For the data queries, the element order to the queries is
    * unimportant and does not correspond to dimension index or any other value.
    */
-  std::vector<tdb_unique_ptr<DimensionLabelQuery>> data_queries_;
+  std::vector<tdb_unique_ptr<DimensionLabelDataQuery>> data_queries_;
 
   /**
    * Non-owning vector for accessing dat query by dimension index.
@@ -168,7 +176,7 @@ class ArrayDimensionLabelQueries {
    * Note: The outer vector is always sized to the number of dimensions in the
    * array. The internal vector will grow as queries are added.
    */
-  std::vector<std::vector<DimensionLabelQuery*>> data_queries_by_dim_idx_;
+  std::vector<std::vector<DimensionLabelDataQuery*>> data_queries_by_dim_idx_;
 
   /** The status of the range queries. */
   QueryStatus range_query_status_;
