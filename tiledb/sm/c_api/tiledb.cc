@@ -3446,8 +3446,14 @@ int32_t tiledb_array_delete_array(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, array->array_->delete_array(tiledb::sm::URI(uri))))
+  try {
+    array->array_->delete_array(tiledb::sm::URI(uri));
+  } catch (std::exception& e) {
+    auto st = sm::Status_ArrayError(e.what());
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }

@@ -315,21 +315,21 @@ Status RestClient::post_array_from_rest(const URI& uri, Array* array) {
       array, serialization_type_, returned_data);
 }
 
-Status RestClient::delete_array_from_rest(const URI& uri) {
+void RestClient::delete_array_from_rest(const URI& uri) {
   /* #TODO Implement API endpoint on TileDBCloud. */
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+  throw_if_not_ok(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
                           "/" + curlc.url_escape(array_uri);
 
   Buffer returned_data;
-  return curlc.delete_data(
-      stats_, url, serialization_type_, &returned_data, cache_key);
+  throw_if_not_ok(curlc.delete_data(
+      stats_, url, serialization_type_, &returned_data, cache_key));
 }
 
 Status RestClient::deregister_array_from_rest(const URI& uri) {
@@ -1314,8 +1314,8 @@ Status RestClient::post_array_from_rest(const URI&, Array*) {
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::delete_array_from_rest(const URI&) {
-  return LOG_STATUS(
+void RestClient::delete_array_from_rest(const URI&) {
+  throw StatusException(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 

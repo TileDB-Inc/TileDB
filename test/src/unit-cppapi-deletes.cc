@@ -1813,6 +1813,8 @@ TEST_CASE_METHOD(
   array =
       std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
   array->delete_array(array_name);
+
+  /* Note: delete_array closes the array; closing here is an extraneous no-op */
   array->close();
 
   // Check working directory after delete
@@ -1852,7 +1854,7 @@ TEST_CASE_METHOD(
     CHECK(tiledb::test::num_commits(array_name) == 0);
   }
 
-  // Try to read array
+  // Try to open array
   REQUIRE_THROWS_WITH(
       std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ),
       Catch::Contains("Array does not exist"));
@@ -1904,7 +1906,6 @@ TEST_CASE_METHOD(
   std::unique_ptr<Array> array =
       std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
   array->delete_array(array_name);
-  array->close();
 
   // Check working directory after delete
   uris = vfs_.ls(array_name);
