@@ -326,29 +326,21 @@ TEST_CASE_METHOD(
   // Dimension label parameters.
   tiledb_label_order_t label_order;
 
-  SECTION("Write increasing labels and array", "[IncreasingLabels]") {
+  SECTION("Write increasing labels", "[IncreasingLabels]") {
     // Set the label order.
     label_order = TILEDB_INCREASING_LABELS;
 
     // Set input values.
     input_index_data = {0, 1, 2, 3};
     input_label_data = {-1.0, 0.0, 0.5, 1.0};
-    input_attr_data = {0.5, 1.0, 1.5, 2.0};
 
-    // Set expected_output values.
-    label_data_sorted_by_index = input_label_data;
-    label_data_sorted_by_label = input_label_data;
-    attr_data_sorted_by_index = input_attr_data;
-    index_data_sorted_by_label = input_index_data;
-  }
-
-  SECTION("Write increasing labels only", "[IncreasingLabels]") {
-    // Set the label order.
-    label_order = TILEDB_INCREASING_LABELS;
-
-    // Set input values.
-    input_index_data = {0, 1, 2, 3};
-    input_label_data = {-1.0, 0.0, 0.5, 1.0};
+    // Set attribute values.
+    SECTION("With attribute values") {
+      input_attr_data = {0.5, 1.0, 1.5, 2.0};
+    }
+    SECTION("Without attribute values") {
+      input_attr_data = {};
+    }
 
     // Set expected_output values.
     label_data_sorted_by_index = input_label_data;
@@ -364,26 +356,17 @@ TEST_CASE_METHOD(
     // Set the data values.
     input_index_data = {0, 1, 2, 3};
     input_label_data = {1.0, 0.0, -0.5, -1.0};
-    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+    SECTION("With attribute values") {
+      input_attr_data = {0.5, 1.0, 1.5, 2.0};
+    }
+    SECTION("Without attribute values") {
+      input_attr_data = {};
+    }
 
     // Define expected output data.
     label_data_sorted_by_index = input_label_data;
     label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
     attr_data_sorted_by_index = input_attr_data;
-    index_data_sorted_by_label = {3, 2, 1, 0};
-  }
-
-  SECTION("Write decreasing labels only", "[DecreasingLabels]") {
-    // Set the label order.
-    label_order = TILEDB_DECREASING_LABELS;
-
-    // Set the data values.
-    input_index_data = {0, 1, 2, 3};
-    input_label_data = {1.0, 0.0, -0.5, -1.0};
-
-    // Define expected output data.
-    label_data_sorted_by_index = input_label_data;
-    label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
     index_data_sorted_by_label = {3, 2, 1, 0};
   }
 
@@ -394,22 +377,15 @@ TEST_CASE_METHOD(
     // Set the data values.
     input_index_data = {0, 3, 2, 1};
     input_label_data = {1.0, 0.0, -0.5, -1.0};
-    input_attr_data = {0.5, 1.0, 1.5, 2.0};
 
-    // Define expected output data.
-    label_data_sorted_by_index = {1.0, -1.0, -0.5, 0.0};
-    label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
-    attr_data_sorted_by_index = {0.5, 2.0, 1.5, 1.0};
-    index_data_sorted_by_label = {1, 2, 3, 0};
-  }
-
-  SECTION("Write unordered labels only", "[UnorderedLabels]") {
-    // Set the label order.
-    label_order = TILEDB_UNORDERED_LABELS;
-
-    // Set the data values.
-    input_index_data = {0, 3, 2, 1};
-    input_label_data = {1.0, 0.0, -0.5, -1.0};
+    SECTION("With attribute values") {
+      input_attr_data = {0.5, 1.0, 1.5, 2.0};
+      attr_data_sorted_by_index = {0.5, 2.0, 1.5, 1.0};
+    }
+    SECTION("Without attribute values") {
+      input_attr_data = {};
+      attr_data_sorted_by_index = {};
+    }
 
     // Define expected output data.
     label_data_sorted_by_index = {1.0, -1.0, -0.5, 0.0};
