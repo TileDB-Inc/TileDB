@@ -82,11 +82,10 @@ Status fragment_metadata_from_capnp(
   }
   if (frag_meta_reader.hasFragmentUri()) {
     // Reconstruct the fragment uri out of the received fragment name
-    auto write_version = array_schema.write_version();
-    auto frag_dir_uri = ArrayDirectory::generate_fragment_dir_uri(write_version,
-        array_schema.array_uri().add_trailing_slash());
-    auto fragment_name =
-      std::string(frag_meta_reader.getFragmentUri().cStr());
+    auto write_version = array_schema->write_version();
+    auto frag_dir_uri = ArrayDirectory::generate_fragment_dir_uri(
+        write_version, array_schema->array_uri().add_trailing_slash());
+    auto fragment_name = std::string(frag_meta_reader.getFragmentUri().cStr());
     frag_meta->fragment_uri() = frag_dir_uri.join_path(fragment_name);
   }
   frag_meta->has_timestamps() = frag_meta_reader.getHasTimestamps();
