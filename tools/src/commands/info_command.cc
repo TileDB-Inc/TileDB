@@ -149,9 +149,7 @@ void InfoCommand::print_tile_sizes() const {
         num_tiles++;
         if (var_size) {
           persisted_tile_size += f->persisted_tile_var_size(name, tile_idx);
-          auto&& [st_var, tile_size_var] = f->tile_var_size(name, tile_idx);
-          THROW_NOT_OK(st_var);
-          in_memory_tile_size += *tile_size_var;
+          in_memory_tile_size += f->tile_var_size(name, tile_idx);
           num_tiles++;
         }
       }
