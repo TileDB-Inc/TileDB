@@ -75,11 +75,14 @@
 #define CHECK(str)
 
 #include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/nodes/nodes.h"
-#include "experimental/tiledb/common/dag/ports/ports.h"
-#include "experimental/tiledb/common/dag/state_machine/fsm.h"
-#include "experimental/tiledb/common/dag/state_machine/item_mover.h"
-#include "experimental/tiledb/common/dag/state_machine/policies.h"
+#include "experimental/tiledb/common/dag/execution/frugal.h"
+#include "experimental/tiledb/common/dag/execution/scheduler.h"
+#include "experimental/tiledb/common/dag/execution/test/frugal_nodes.h"
+// #include "experimental/tiledb/common/dag/nodes/nodes.h"
+// #include "experimental/tiledb/common/dag/ports/ports.h"
+// #include "experimental/tiledb/common/dag/state_machine/fsm.h"
+// #include "experimental/tiledb/common/dag/state_machine/item_mover.h"
+// #include "experimental/tiledb/common/dag/state_machine/policies.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
 #include "experimental/tiledb/common/dag/utils/print_types.h"
@@ -200,18 +203,28 @@ auto sieve_seq(size_t n) {
  * @return integer, value one greater than previously returned
  */
 class input_body {
-  std::atomic<size_t> p{0};
+  inline static std::atomic<size_t> p{0};
+  inline static size_t limit_;
+  inline static size_t block_size_;
 
  public:
-  input_body()
-      : p{0} {
+  input_body(size_t block_size, size_t limit) {
+    limit_ = limit;
+    block_size_ = block_size;
   }
-  input_body(const input_body& rhs)
-      : p{rhs.p.load()} {
+
+  void reset() {
+    p.store(0);
   }
-  size_t operator()() {
+
+  size_t operator()(std::stop_source& stop_source) {
     if (debug)
-      std::cout << "input_body " << p << std::endl;
+      std::cout << "input_body " + std::to_string(p) + " with limit " +
+                       std::to_string(limit_) + "\n";
+
+    if (p * block_size_ >= limit_) {
+      stop_source.request_stop();
+    }
     return p++;
   }
 };
@@ -415,6 +428,21 @@ void do_emplace_x_width(
    ...);
 }
 
+template <template <class> class Mover, class T>
+using ProducerNode = producer_node<Mover, T>;
+
+template <
+    template <class>
+    class M1,
+    class T1,
+    template <class>
+    class M2,
+    class T2>
+using FunctionNode = function_node<M1, T1, M2, T2>;
+
+template <template <class> class Mover, class T>
+using ConsumerNode = consumer_node<Mover, T>;
+
 /**
  * Main sieve function
  *
@@ -423,7 +451,7 @@ void do_emplace_x_width(
  * @param n upper bound of sieve
  * @param block_size how many primes to search for given a base set of primes
  */
-template <template <class> class AsyncMover, class bool_t>
+template <template <class> class Mover, class bool_t>
 auto sieve_async_block(
     size_t n,
     size_t block_size,
@@ -435,32 +463,12 @@ auto sieve_async_block(
   if (debug)
     std::cout << "== I am running" << std::endl;
 
+  input_body gen{block_size, n};
+  gen.reset();
+
   /*
    * Pseudo graph type. A structure to hold simple dag task graph nodes.
    */
-  using GraphType =
-      the<ProducerNode<AsyncMover, size_t>,
-          FunctionNode<AsyncMover, size_t, AsyncMover, part_info<bool_t>>,
-          FunctionNode<
-              AsyncMover,
-              part_info<bool_t>,
-              AsyncMover,
-              part_info<bool_t>>,
-          FunctionNode<AsyncMover, part_info<bool_t>, AsyncMover, prime_info>,
-          ConsumerNode<AsyncMover, prime_info>>;
-
-  GraphType graph;
-  input_body gen;
-
-  // Use threads instead of tasks
-  // std::vector<std::thread> threads;
-  // threads.clear();
-
-  std::vector<std::future<void>> futs;
-  futs.clear();
-
-  graph.clear();
-
   size_t sqrt_n = static_cast<size_t>(std::ceil(std::sqrt(n)));
 
   /* Generate base set of sqrt(n) primes to be used for subsequent sieving */
@@ -480,6 +488,11 @@ auto sieve_async_block(
 
   size_t rounds = (n / block_size + 2) / width + 1;
 
+  auto sched = FrugalScheduler<node>(width);
+
+  if (debug)
+    sched.enable_debug();
+
   if (debug)
     std::cout << n << " "
               << " " << block_size << " " << width << " " << rounds
@@ -492,10 +505,6 @@ auto sieve_async_block(
   std::atomic<size_t> time_index{0};
   auto start_time = std::chrono::high_resolution_clock::now();
 
-  graph.reserve(width);
-  std::vector<GraphEdge> edges;
-  edges.reserve(4 * width);
-
   /*
    * Create the "graphs" by emplacing the nodes for each "graph" into a vector.
    */
@@ -503,121 +512,40 @@ auto sieve_async_block(
     if (debug)
       std::cout << "w: " << w << std::endl;
 
-    graph.emplace_back(
-        std::ref(gen),
-        std::bind(gen_range<bool_t>, _1, block_size, sqrt_n, n),
+    auto a = producer_node<Mover, size_t>{gen};
+    auto b = FunctionNode<Mover, size_t, Mover, part_info<bool_t>>{
+        std::bind(gen_range<bool_t>, _1, block_size, sqrt_n, n)};
+    auto c = FunctionNode<Mover, part_info<bool_t>, Mover, part_info<bool_t>>{
         std::bind(range_sieve<bool_t>, _1, std::cref(base_primes)),
-        sieve_to_primes_part<bool_t>,
-        std::bind(output_body, _1, std::ref(prime_list)));
+    };
+    auto d = FunctionNode<Mover, part_info<bool_t>, Mover, prime_info>{
+        sieve_to_primes_part<bool_t>};
+    auto e = ConsumerNode<Mover, prime_info>{
+        std::bind(output_body, _1, std::ref(prime_list))};
 
-    /*
-     * Connect the nodes in the graph.  We try to keep the edges from going out
-     * of scope by putting them into a vector.
-     */
-    edges.emplace_back(std::move(
-        Edge(std::get<0>(graph.back()), std::get<1>(graph.back()), debug)));
-    edges.emplace_back(
-        std::move(Edge(std::get<1>(graph.back()), std::get<2>(graph.back()))));
-    edges.emplace_back(
-        std::move(Edge(std::get<2>(graph.back()), std::get<3>(graph.back()))));
-    edges.emplace_back(
-        std::move(Edge(std::get<3>(graph.back()), std::get<4>(graph.back()))));
-    if (debug)
-      std::cout << "Post edge" << std::endl;
-  }
+    connect(a, b);
+    connect(b, c);
+    connect(c, d);
+    connect(d, e);
 
-  size_t N = rounds;
+    Edge(*a, *b);
+    Edge(*b, *c);
+    Edge(*c, *d);
+    Edge(*d, *e);
 
-  /*
-   * Launch a thread to execute the graph.  We use the "abundant thread"
-   * scheduling policy, which launches a thread to run each node in each
-   * graph.
-   *
-   * @todo Only launch a subset of the graphs and launch new ones as running
-   * ones complete.  It might be easier to do this with `std::async` rather
-   * than `std::thread`.
-   */
-
-  /*
-   * Put the nodes for every graph sequentially into the vector.
-   */
-  if (grouped == false && reverse_order == false) {
-    for (size_t w = 0; w < width; ++w) {
-      do_emplace<0>(futs, graph, N, w, timestamps, time_index, start_time);
-      do_emplace<1>(futs, graph, N, w, timestamps, time_index, start_time);
-      do_emplace<2>(futs, graph, N, w, timestamps, time_index, start_time);
-      do_emplace<3>(futs, graph, N, w, timestamps, time_index, start_time);
-      do_emplace<4>(futs, graph, N, w, timestamps, time_index, start_time);
+    if (debug) {
+      a->enable_debug();
+      b->enable_debug();
     }
+
+    sched.submit(a);
+    sched.submit(b);
+    sched.submit(c);
+    sched.submit(d);
+    sched.submit(e);
   }
 
-  /*
-   * Put the nodes for every graph sequentially into the vector, in reverse
-   * order.
-   */
-  if (grouped == false && reverse_order == true) {
-    for (size_t w = 0; w < width; ++w) {
-      do_emplace<4>(futs, graph, N, w, timestamps, time_index, start_time);
-      do_emplace<3>(futs, graph, N, w, timestamps, time_index, start_time);
-      do_emplace<2>(futs, graph, N, w, timestamps, time_index, start_time);
-      do_emplace<1>(futs, graph, N, w, timestamps, time_index, start_time);
-      do_emplace<0>(futs, graph, N, w, timestamps, time_index, start_time);
-    }
-  }
-
-  /*
-   * Put the nodes at each stage of the graph together into the vector.
-   */
-  if (grouped == true && reverse_order == false) {
-    for (size_t w = 0; w < width; ++w)
-      do_emplace<0>(futs, graph, N, w, timestamps, time_index, start_time);
-    for (size_t w = 0; w < width; ++w)
-      do_emplace<1>(futs, graph, N, w, timestamps, time_index, start_time);
-    for (size_t w = 0; w < width; ++w)
-      do_emplace<2>(futs, graph, N, w, timestamps, time_index, start_time);
-    for (size_t w = 0; w < width; ++w)
-      do_emplace<3>(futs, graph, N, w, timestamps, time_index, start_time);
-    for (size_t w = 0; w < width; ++w)
-      do_emplace<4>(futs, graph, N, w, timestamps, time_index, start_time);
-  }
-
-  /*
-   * Put the nodes at each stage of the graph together into the vector, in
-   * reverse order.
-   */
-  if (grouped == true && reverse_order == true) {
-    for (size_t w = 0; w < width; ++w)
-      do_emplace<4>(futs, graph, N, w, timestamps, time_index, start_time);
-    for (size_t w = 0; w < width; ++w)
-      do_emplace<3>(futs, graph, N, w, timestamps, time_index, start_time);
-    for (size_t w = 0; w < width; ++w)
-      do_emplace<2>(futs, graph, N, w, timestamps, time_index, start_time);
-    for (size_t w = 0; w < width; ++w)
-      do_emplace<1>(futs, graph, N, w, timestamps, time_index, start_time);
-    for (size_t w = 0; w < width; ++w)
-      do_emplace<0>(futs, graph, N, w, timestamps, time_index, start_time);
-  }
-
-#if 0
-  // If using threads
-  for (size_t i = 0; i < threads.size(); ++i) {
-    if (debug)
-      std::cout << "joining " << i << std::endl;
-
-    threads[i].join();
-  }
-#else
-  // If using thread pool
-  // tp.wait_all(futs);
-
-  // If using tasks
-  for (auto&& f : futs) {
-    f.wait();
-  }
-#endif
-
-  if (debug)
-    std::cout << "threads size: " << futs.size() << std::endl;
+  sched.sync_wait_all();
 
   /*
    * Output tracing information from the runs.
@@ -677,7 +605,7 @@ auto timer_2(
       num += j->size();
     }
   }
-  std::cout << num << ": " << std::endl;
+  std::cout << "Found " + std::to_string(num) << " primes\n";
 
   return stop - start;
 }
@@ -713,7 +641,8 @@ int main(int argc, char* argv[]) {
 
   tbb::global_control(tbb::global_control::max_allowed_parallelism, 2);
 #endif
-  size_t width = 4;
+  size_t width = 2;
+  // std::thread::hardware_concurrency();
 
   /*
    * Test with two_stage connections
@@ -722,7 +651,7 @@ int main(int argc, char* argv[]) {
     for (auto grouped : {false, true}) {
       for (size_t i = 0; i < 3; ++i) {
         auto using_char_async_block = timer_2(
-            sieve_async_block<AsyncMover2, char>,
+            sieve_async_block<FrugalMover2, char>,
             number,
             block_size * 1024,
             width,
@@ -731,7 +660,7 @@ int main(int argc, char* argv[]) {
             true,    /* use_futures */
             false);  /* use_threadpool */
 
-        std::cout << "Time using char async block, two stage, " +
+        std::cout << "Time using frugal block, two stage, " +
                          std::string(
                              reverse_order ? "reverse order" :
                                              "forward order") +
@@ -754,7 +683,7 @@ int main(int argc, char* argv[]) {
         }
 
         auto using_char_async_block = timer_2(
-            sieve_async_block<AsyncMover3, char>,
+            sieve_async_block<FrugalMover3, char>,
             number,
             block_size * 1024,
             width,
@@ -762,7 +691,7 @@ int main(int argc, char* argv[]) {
             grouped, /* grouped */
             true,    /* use_futures */
             false);  /* use_threadpool */
-        std::cout << "Time using char async block, three stage, " +
+        std::cout << "Time using frugal async block, three stage, " +
                          std::string(
                              reverse_order ? "reverse order" :
                                              "forward order") +

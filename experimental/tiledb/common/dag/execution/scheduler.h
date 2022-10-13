@@ -240,7 +240,8 @@ class SchedulerStateMachine {
     auto entry_action{
         detail::entry_table[to_index(next_state)][to_index(event)]};
 
-    assert(next_state != TaskState::error);
+    // assert(next_state != TaskState::error);
+    // CHECK(next_state != TaskState::error);
 
     switch (exit_action) {
       case TaskAction::none:

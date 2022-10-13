@@ -333,10 +333,33 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
 
     [[maybe_unused]] std::thread::id this_id = std::this_thread::get_id();
 
+
+    if (mover->is_done()) {
+
+      if (this->debug())
+	std::cout
+	  << this->name() + " node " + std::to_string(this->id()) +
+	  " got mover done in consumer at top of resume -- returning\n";
+      
+      mover->port_exhausted();
+
+      return;
+    }
+
+
+
     switch (this->program_counter_) {
       case 0: {
         ++this->program_counter_;
         mover->port_pull();
+
+	if (is_done(mover->state()) == "") {
+	  std::cout << "=== sink mover done\n";
+	  // mover->on_term_sink();
+	  //	  throw(detail::frugal_exit{detail::frugal_target::sink});//	  
+	  //	  mover->port_done();
+	}
+
       }
         [[fallthrough]];
 
@@ -349,9 +372,9 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
 
         thing = *(SinkBase::extract());
 
-        if (this->debug())
-
-          std::cout << "function thing is " + std::to_string(thing) + "\n";
+        //        if (this->debug())
+        //          std::cout << "function thing is " + std::to_string(thing) +
+        //          "\n";
       }
         [[fallthrough]];
 
@@ -387,8 +410,10 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
           break;
         }
 
-        if (this->debug())
-          std::cout << "next function thing is " + std::to_string(thing) + "\n";
+        //        if (this->debug())
+        //          std::cout << "next function thing is " +
+        //          std::to_string(thing) + "\n";
+
         f_(thing);
       }
 
@@ -476,17 +501,38 @@ struct function_node_impl : public node_base,
 
     if (this->debug())
       std::cout << this->name() + " node " + std::to_string(this->id()) +
-                       " resuming with " + std::to_string(processed_items_) +
-                       " consumed_items" + "\n";
+                       " resuming at program counter = " +
+                       std::to_string(this->program_counter_) + " and " +
+                       std::to_string(processed_items_) + " consumed_items\n";
 
     [[maybe_unused]] std::thread::id this_id = std::this_thread::get_id();
+
+    if (source_mover->is_done() || sink_mover->is_done()) {
+
+      if (this->debug())
+	std::cout
+	  << this->name() + " node " + std::to_string(this->id()) +
+	  " got sink_mover done at top of resumes -- returning\n";
+      
+      source_mover->port_exhausted();
+
+      return;
+    }
+
+
 
     switch (this->program_counter_) {
       case 0: {
         ++this->program_counter_;
         sink_mover->port_pull();
 
-        if (sink_mover->is_done()) {
+	//        if (sink_mover->is_done()) {
+        if (source_mover->is_done() || sink_mover->is_done()) {
+          if (this->debug())
+            std::cout
+                << this->name() + " node " + std::to_string(this->id()) +
+                       " got sink_mover done -- going to exhaust source\n";
+
           source_mover->port_exhausted();
           break;
         }
@@ -498,9 +544,10 @@ struct function_node_impl : public node_base,
 
         in_thing = *(SinkBase::extract());
 
-        if (this->debug())
-          std::cout << "function in_thing is " + std::to_string(in_thing) +
-                           "\n";
+        //        if (this->debug())
+        //          std::cout << "function in_thing is " +
+        //          std::to_string(in_thing) +
+        //                           "\n";
       }
         [[fallthrough]];
 
@@ -537,9 +584,10 @@ struct function_node_impl : public node_base,
           break;
         }
 
-        if (this->debug())
-          std::cout << "next processed thing is " + std::to_string(in_thing) +
-                           "\n";
+        //        if (this->debug())
+        //          std::cout << "next processed thing is " +
+        //          std::to_string(in_thing) +
+        //"\n";
         out_thing = f_(in_thing);
       }
 
@@ -570,11 +618,22 @@ struct function_node_impl : public node_base,
 
         // @todo Should skip yield if push waited;
       case 9: {
-        this->program_counter_ = 0;
+        // this->program_counter_ = 0;
         //        this->task_yield(*this);
         // yield();
-        break;
+	//        break;
       }
+        [[fallthrough]];
+
+      case 10: {
+	this->program_counter_ = 0;
+
+	if (source_mover->is_done() || sink_mover->is_done()) {
+	  break;
+	}
+      }
+        [[fallthrough]];
+
       default: {
         break;
       }

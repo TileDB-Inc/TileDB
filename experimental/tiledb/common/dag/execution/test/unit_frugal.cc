@@ -51,6 +51,66 @@
 using namespace tiledb::common;
 
 TEMPLATE_TEST_CASE(
+    "FrugalScheduler: Test soft terminate of sink",
+    "[frugal]",
+    (std::tuple<
+        consumer_node<FrugalMover2, size_t>,
+        function_node<FrugalMover2, size_t>,
+        producer_node<FrugalMover2, size_t>>),
+    (std::tuple<
+        consumer_node<FrugalMover3, size_t>,
+        function_node<FrugalMover3, size_t>,
+        producer_node<FrugalMover3, size_t>>)) {
+
+  bool debug{false};
+
+  auto num_threads = 1;
+  [[maybe_unused]] auto sched = FrugalScheduler<node>(num_threads);
+
+  size_t rounds = 5;
+  
+  using C = typename std::tuple_element<0, TestType>::type;
+  using F = typename std::tuple_element<1, TestType>::type;
+  using P = typename std::tuple_element<2, TestType>::type;
+
+  auto p = P([rounds](std::stop_source& stop_source) { 
+    static size_t i {0};
+    if (i > rounds) {
+      stop_source.request_stop();
+    }
+    return i++;
+  });
+  auto f = F([](const size_t& i) { return i; });
+  auto g = F([](const size_t& i) { return i; });
+  auto c = C([](const size_t&) {});
+
+  connect(p, f);
+  connect(f, g);
+  connect(g, c);
+
+  Edge(*p, *f);
+  Edge(*f, *g);
+  Edge(*g, *c);
+
+  sched.submit(p);
+  sched.submit(f);
+  sched.submit(g);
+  sched.submit(c);
+
+  if (debug) {
+    //    sched.debug();
+
+    p->enable_debug();
+    f->enable_debug();
+    g->enable_debug();
+    c->enable_debug();
+  }
+
+  sched.sync_wait_all();
+}
+
+
+TEMPLATE_TEST_CASE(
     "FrugalScheduler: Test creating nodes",
     "[frugal]",
     (std::tuple<
@@ -1103,14 +1163,14 @@ TEMPLATE_TEST_CASE(
   using C = typename std::tuple_element<0, TestType>::type;
   using P = typename std::tuple_element<1, TestType>::type;
 
-
   bool debug{false};
 
   auto num_threads = GENERATE(1, 2, 3, 4, 5, 8, 17);
 
-  // auto num_threads = 17UL;
+  // auto num_threads = 1UL;
 
-  if (debug) {
+    if (debug) 
+{
     problem_size = debug_problem_size;
   }
 
@@ -1121,10 +1181,14 @@ TEMPLATE_TEST_CASE(
       sched.enable_debug();
     }
 
-    auto p = P([&sched](std::stop_source&) {
+    auto p = P([&sched](std::stop_source& stop_source) {
+      static size_t i{0};
       if (sched.debug())
         std::cout << "Producing\n";
-      return 0;
+      if (i >= problem_size) {
+	stop_source.request_stop();
+      }
+      return i++;;
     });
     auto c = C([&sched](const size_t&) {
       if (sched.debug())
@@ -1134,7 +1198,8 @@ TEMPLATE_TEST_CASE(
     connect(p, c);
     Edge(*p, *c);
 
-    if (debug) {
+    if (debug) 
+	    {
       p->enable_debug();
       c->enable_debug();
     }
@@ -1157,11 +1222,13 @@ TEMPLATE_TEST_CASE(
     CHECK(p->produced_items() == problem_size);
     CHECK(c->consumed_items() == problem_size);
 
+#if 0
     if (debug) {
       CHECK(problem_size == debug_problem_size);
     } else {
       CHECK(problem_size == 1337);
     }
+#endif
   }
 }
 
@@ -1182,8 +1249,8 @@ TEMPLATE_TEST_CASE(
 
   bool debug{false};
 
-  //  auto num_threads = GENERATE(1, 2, 3, 4);
-  auto num_threads = 1;
+  auto num_threads = GENERATE(1, 2, 3, 4);
+  //auto num_threads = 1;
 
   if (debug) {
     problem_size = debug_problem_size;
@@ -1275,3 +1342,4 @@ TEMPLATE_TEST_CASE(
 
   CHECK(std::distance(input.begin(), i) == static_cast<long>(rounds));
 }
+

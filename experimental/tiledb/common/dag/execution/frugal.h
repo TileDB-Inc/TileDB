@@ -87,7 +87,7 @@ class frugal_exception {
   frugal_target target_{frugal_target::self};
 
  public:
-  constexpr frugal_exception(frugal_target target)
+  constexpr frugal_exception(frugal_target target = frugal_target::self)
       : target_{target} {
   }
 
@@ -96,7 +96,9 @@ class frugal_exception {
   }
 };
 
-class frugal_exit {};
+class frugal_exit : public frugal_exception {
+  using frugal_exception::frugal_exception;
+};
 
 class frugal_wait : public frugal_exception {
   using frugal_exception::frugal_exception;
@@ -171,12 +173,12 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
 
   inline void on_term_source(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action source done");
-    throw(frugal_exit);
+    throw(detail::frugal_exit{detail::frugal_target::source});
   }
 
   inline void on_term_sink(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action sink done");
-    throw(frugal_exit);
+    throw(detail::frugal_exit{detail::frugal_target::sink});
   }
 
  private:
@@ -823,6 +825,9 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
           if (this->debug())
             task_to_run->dump_task_state("Returning from resume");
 
+	  
+
+
         } catch (const detail::frugal_wait& w) {
           _.lock();
 
@@ -872,25 +877,31 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
             }
           }
 
-        } catch (const detail::frugal_exit&) {
+        } catch (const detail::frugal_exit& ex) {
           _.lock();
 
-          if (this->debug()) {
-            task_to_run->dump_task_state("Caught exit");
-            this->dump_queue_state("Caught exit");
-          }
+          if (true || ex.target() == detail::frugal_target::source) {
 
-          --num_tasks_;
-          ++num_exited_tasks_;
-          this->task_exit(task_to_run);
 
-          if (this->debug()) {
-            task_to_run->dump_task_state("Post exit");
-            this->dump_queue_state("Post exit");
-          }
-
-          /* Slight optimization to skip call to yield when exiting */
-          continue;
+	    if (this->debug()) {
+	      task_to_run->dump_task_state("Caught exit");
+	      this->dump_queue_state("Caught exit");
+	    }
+	    
+	    --num_tasks_;
+	    ++num_exited_tasks_;
+	    this->task_exit(task_to_run);
+	    
+	    if (this->debug()) {
+	      task_to_run->dump_task_state("Post exit");
+	      this->dump_queue_state("Post exit");
+	    }
+	    
+	    /* Slight optimization to skip call to yield when exiting */
+	    continue;
+	  } else {
+	    std::cout << "*** Caught sink exit\n";
+	  }
 
           // break; // Don't do this
         } catch (...) {

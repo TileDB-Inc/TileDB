@@ -64,8 +64,8 @@ struct GraphEdge {};
 template <template <class> class Mover_T, class Block>
 class Edge;
 
-template <template <class> class Mover_T, class Block>
-Edge(Source<Mover_T, Block>&, Sink<Mover_T, Block>&)->Edge<Mover_T, Block>;
+// template <template <class> class Mover_T, class Block>
+// Edge(Source<Mover_T, Block>&, Sink<Mover_T, Block>&)->Edge<Mover_T, Block>;
 
 template <template <class> class Mover_T, class Block>
 class Edge : public GraphEdge {
