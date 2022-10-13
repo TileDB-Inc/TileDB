@@ -266,6 +266,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The end timestamp used for opening the group. <br>
  *    Also used for the write timestamp if set. <br>
  *    **Default**: UINT64_MAX
+ * - `sm.fragment_info.preload_mbrs` <br>
+ *    If `true` MBRs will be loaded at the same time as the rest of fragment
+ *    info, otherwise they will be loaded lazily when some info related to MBRs
+ *    is requested by the user. <br>
+ *    **Default**: false
  * -  `vfs.read_ahead_cache_size` <br>
  *    The the total maximum size of the read-ahead cache, which is an LRU. <br>
  *    **Default**: 10485760

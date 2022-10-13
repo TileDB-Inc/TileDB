@@ -3191,7 +3191,7 @@ tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) TILEDB_NOEXCEPT;
  * @param ctx The TileDB context.
  * @param query The query to be submitted.
  * @param callback The function to be called when the query completes.
- * @param callback_data The data to be passed to the callback function.
+ * @param callback_data The data to be passed to the \p callback function.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  *
  * @note `tiledb_query_finalize` must be invoked after finish writing in
@@ -3208,6 +3208,11 @@ tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) TILEDB_NOEXCEPT;
  *    buffers are needed for the query to proceed. In this case, the users
  *    must reallocate their buffers (increasing their size), reset the buffers
  *    with `tiledb_query_set_buffer`, and resubmit the query.
+ *
+ * @note \p callback will be executed in a thread managed by TileDB's internal
+ *    thread pool. To allow TileDB to reuse the thread and avoid starving the
+ *    thread pool, long-running callbacks should be dispatched to another
+ *    thread.
  */
 TILEDB_EXPORT int32_t tiledb_query_submit_async(
     tiledb_ctx_t* ctx,
@@ -6526,6 +6531,27 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_set_config(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     tiledb_config_t* config) TILEDB_NOEXCEPT;
+
+/**
+ * Retrieves the config from fragment info.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_config_t* config;
+ * tiledb_fragment_info_get_config(ctx, vfs, &config);
+ * // Make sure to free the retrieved config
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param fragment_info The fragment info object.
+ * @param config The config to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_config(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    tiledb_config_t** config) TILEDB_NOEXCEPT;
 
 /**
  * Loads the fragment info.

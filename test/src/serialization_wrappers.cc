@@ -120,3 +120,42 @@ int tiledb_array_open_serialize(
   tiledb_buffer_free(&buffer);
   return rc;
 }
+
+int tiledb_fragment_info_request_serialize(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info_before_serialization,
+    tiledb_fragment_info_t* fragment_info_deserialized,
+    tiledb_serialization_type_t serialize_type) {
+  // Serialize and Deserialize
+  tiledb_buffer_t* buffer;
+  int rc = tiledb_serialize_fragment_info_request(
+      ctx, fragment_info_before_serialization, serialize_type, 1, &buffer);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_deserialize_fragment_info_request(
+      ctx, buffer, serialize_type, 0, fragment_info_deserialized);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_buffer_free(&buffer);
+  return rc;
+}
+
+int tiledb_fragment_info_serialize(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_fragment_info_t* fragment_info_before_serialization,
+    tiledb_fragment_info_t* fragment_info_deserialized,
+    tiledb_serialization_type_t serialize_type) {
+  // Serialize and Deserialize
+  tiledb_buffer_t* buffer;
+  int rc = tiledb_serialize_fragment_info(
+      ctx, fragment_info_before_serialization, serialize_type, 1, &buffer);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_deserialize_fragment_info(
+      ctx, buffer, serialize_type, array_uri, 0, fragment_info_deserialized);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_buffer_free(&buffer);
+  return rc;
+}

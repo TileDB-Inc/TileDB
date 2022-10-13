@@ -129,7 +129,7 @@ class Consolidator {
 
  protected:
   /* ********************************* */
-  /*      PROTECTED CONSTRUCTORS       */
+  /*         PROTECTED METHODS         */
   /* ********************************* */
 
   /**
@@ -138,6 +138,13 @@ class Consolidator {
    * @param storage_manager Storage manager.
    */
   explicit Consolidator(StorageManager* storage_manager);
+
+  /**
+   * Checks if the array is remote.
+   *
+   * @param array_name Name of the array to check.
+   */
+  void check_array_uri(const char* array_name);
 
   /* ********************************* */
   /*           TYPE DEFINITIONS        */

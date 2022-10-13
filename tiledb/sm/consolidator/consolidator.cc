@@ -126,5 +126,11 @@ Status Consolidator::vacuum([[maybe_unused]] const char* array_name) {
       Status_ConsolidatorError("Cannot vacuum; Invalid object"));
 }
 
+void Consolidator::check_array_uri(const char* array_name) {
+  if (URI(array_name).is_tiledb()) {
+    throw std::logic_error("Consolidation is not supported for remote arrays.");
+  }
+}
+
 }  // namespace sm
 }  // namespace tiledb
