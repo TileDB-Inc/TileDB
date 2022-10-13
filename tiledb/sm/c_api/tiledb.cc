@@ -70,6 +70,7 @@
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/config.h"
+#include "tiledb/sm/serialization/fragment_info.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/context.h"
@@ -6379,6 +6380,143 @@ int32_t tiledb_deserialize_config(
   return TILEDB_OK;
 }
 
+int32_t tiledb_serialize_fragment_info_request(
+    tiledb_ctx_t* ctx,
+    const tiledb_fragment_info_t* fragment_info,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer) {
+  // Currently no different behaviour is required if fragment info request is
+  // serialized by the client or the Cloud server, so the variable is unused
+  (void)client_side;
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Allocate a buffer list
+  if (detail::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::fragment_info_request_serialize(
+              *fragment_info->fragment_info_,
+              (tiledb::sm::SerializationType)serialize_type,
+              (*buffer)->buffer_))) {
+    detail::tiledb_buffer_free(buffer);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_fragment_info_request(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_fragment_info_t* fragment_info) {
+  // Currently no different behaviour is required if fragment info request is
+  // serialized by the client or the Cloud server, so the variable is unused
+  (void)client_side;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::fragment_info_request_deserialize(
+              fragment_info->fragment_info_,
+              (tiledb::sm::SerializationType)serialize_type,
+              *buffer->buffer_))) {
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_serialize_fragment_info(
+    tiledb_ctx_t* ctx,
+    const tiledb_fragment_info_t* fragment_info,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Allocate buffer
+  if (detail::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Serialize
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::fragment_info_serialize(
+              *fragment_info->fragment_info_,
+              (tiledb::sm::SerializationType)serialize_type,
+              (*buffer)->buffer_,
+              client_side))) {
+    detail::tiledb_buffer_free(buffer);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_fragment_info(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    const char* array_uri,
+    int32_t client_side,
+    tiledb_fragment_info_t* fragment_info) {
+  // Currently no different behaviour is required if fragment info is
+  // deserialized by the client or the Cloud server, so the variable is unused
+  (void)client_side;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Check array uri
+  tiledb::sm::URI uri(array_uri);
+  if (uri.is_invalid()) {
+    auto st =
+        Status_Error("Failed to deserialize fragment info; Invalid array URI");
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::fragment_info_deserialize(
+              fragment_info->fragment_info_,
+              (tiledb::sm::SerializationType)serialize_type,
+              uri,
+              *buffer->buffer_))) {
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*            C++ API             */
 /* ****************************** */
@@ -6478,6 +6616,32 @@ int32_t tiledb_fragment_info_set_config(
   if (SAVE_ERROR_CATCH(
           ctx, fragment_info->fragment_info_->set_config(*(config->config_))))
     return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_config(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    tiledb_config_t** config) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a new config struct
+  *config = new (std::nothrow) tiledb_config_t;
+  if (*config == nullptr)
+    return TILEDB_OOM;
+
+  // Get the array config
+  (*config)->config_ = new (std::nothrow) tiledb::sm::Config();
+  *((*config)->config_) = fragment_info->fragment_info_->config();
+  if ((*config)->config_ == nullptr) {
+    delete (*config);
+    *config = nullptr;
+    return TILEDB_OOM;
+  }
 
   return TILEDB_OK;
 }
@@ -9860,6 +10024,47 @@ int32_t tiledb_deserialize_config(
       ctx, buffer, serialize_type, client_side, config);
 }
 
+int32_t tiledb_serialize_fragment_info_request(
+    tiledb_ctx_t* ctx,
+    const tiledb_fragment_info_t* fragment_info,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer) noexcept {
+  return api_entry<detail::tiledb_serialize_fragment_info_request>(
+      ctx, fragment_info, serialize_type, client_side, buffer);
+}
+
+int32_t tiledb_deserialize_fragment_info_request(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_fragment_info_t* fragment_info) noexcept {
+  return api_entry<detail::tiledb_deserialize_fragment_info_request>(
+      ctx, buffer, serialize_type, client_side, fragment_info);
+}
+
+int32_t tiledb_serialize_fragment_info(
+    tiledb_ctx_t* ctx,
+    const tiledb_fragment_info_t* fragment_info,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer) noexcept {
+  return api_entry<detail::tiledb_serialize_fragment_info>(
+      ctx, fragment_info, serialize_type, client_side, buffer);
+}
+
+int32_t tiledb_deserialize_fragment_info(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    const char* array_uri,
+    int32_t client_side,
+    tiledb_fragment_info_t* fragment_info) noexcept {
+  return api_entry<detail::tiledb_deserialize_fragment_info>(
+      ctx, buffer, serialize_type, array_uri, client_side, fragment_info);
+}
+
 /* ****************************** */
 /*            C++ API             */
 /* ****************************** */
@@ -9894,6 +10099,14 @@ int32_t tiledb_fragment_info_set_config(
     tiledb_fragment_info_t* fragment_info,
     tiledb_config_t* config) noexcept {
   return api_entry<detail::tiledb_fragment_info_set_config>(
+      ctx, fragment_info, config);
+}
+
+int32_t tiledb_fragment_info_get_config(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    tiledb_config_t** config) noexcept {
+  return api_entry<detail::tiledb_fragment_info_get_config>(
       ctx, fragment_info, config);
 }
 

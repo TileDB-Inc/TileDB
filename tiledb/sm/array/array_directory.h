@@ -303,6 +303,9 @@ class ArrayDirectory {
   const std::vector<DeleteAndUpdateTileLocation>&
   delete_and_update_tiles_location() const;
 
+  /** Returns the fragment absolute path given an array URI and a version */
+  static URI generate_fragment_dir_uri(uint32_t write_version, URI array_uri);
+
   /** Returns the URI to store fragments. */
   URI get_fragments_dir(uint32_t write_version) const;
 

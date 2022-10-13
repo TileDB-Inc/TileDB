@@ -82,4 +82,36 @@ int tiledb_group_serialize(
     tiledb_group_t* group_deserialized,
     tiledb_serialization_type_t serialize_type);
 
+/**
+ * Wrap a fragment info request serialize/deserialize call
+ *
+ * @param ctx tiledb context
+ * @param fragment_info_before_serialization fragment info to serialize from
+ * @param fragment_info_deserialized fragment info to deserialize into
+ * @param serialize_type serialization format
+ * @return status
+ */
+int tiledb_fragment_info_request_serialize(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info_before_serialization,
+    tiledb_fragment_info_t* fragment_info_deserialized,
+    tiledb_serialization_type_t serialize_type);
+
+/**
+ * Wrap a fragment info serialize/deserialize call
+ *
+ * @param ctx tiledb context
+ * @param array_uri array that fragment info belongs to
+ * @param fragment_info_before_serialization fragment info to serialize
+ * @param fragment_info_deserialized fragment info to deserialize into
+ * @param serialize_type serialization format
+ * @return status
+ */
+int tiledb_fragment_info_serialize(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_fragment_info_t* fragment_info_before_serialization,
+    tiledb_fragment_info_t* fragment_info_deserialized,
+    tiledb_serialization_type_t serialize_type);
+
 #endif  // TILEDB_TEST_SERIALIZATION_WRAPPERS_H

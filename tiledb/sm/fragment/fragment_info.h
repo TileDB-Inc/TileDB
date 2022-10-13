@@ -307,8 +307,62 @@ class FragmentInfo {
   /** Returns the number of fragments to vacuum. */
   uint32_t to_vacuum_num() const;
 
+  /** Returns the list of fragments to vacuum. */
+  inline const std::vector<URI>& to_vacuum() const {
+    return to_vacuum_;
+  }
+
   /** Returns the number of fragments with unconsolidated metadata. */
   uint32_t unconsolidated_metadata_num() const;
+
+  /** Returns array schemas map. */
+  inline const shared_ptr<ArraySchema> array_schema_latest() const {
+    return array_schema_latest_;
+  }
+
+  /** Returns array schemas map. */
+  inline const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+  array_schemas_all() const {
+    return array_schemas_all_;
+  }
+
+  /** Returns the config. */
+  inline const Config& config() const {
+    return config_;
+  }
+
+  // Accessors
+
+  /** Returns array schemas latest. */
+  inline shared_ptr<ArraySchema>& array_schema_latest() {
+    return array_schema_latest_;
+  }
+
+  /** array_schemas_all accessor. */
+  inline std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+  array_schemas_all() {
+    return array_schemas_all_;
+  }
+
+  /** single_fragment_info_vec_ accessor. */
+  inline std::vector<SingleFragmentInfo>& single_fragment_info_vec() {
+    return single_fragment_info_vec_;
+  }
+
+  /** to_vacuum_ accessor. */
+  inline std::vector<URI>& to_vacuum() {
+    return to_vacuum_;
+  }
+
+  /** array_uri_ accessor. */
+  inline URI& array_uri() {
+    return array_uri_;
+  }
+
+  /** unconsolidated_metadata_num_ accessor. */
+  inline uint32_t& unconsolidated_metadata_num() {
+    return unconsolidated_metadata_num_;
+  }
 
  private:
   /* ********************************* */
@@ -323,6 +377,9 @@ class FragmentInfo {
 
   /** The encryption key used if the array is encrypted. */
   EncryptionKey enc_key_;
+
+  /** The latest array schema. */
+  std::shared_ptr<ArraySchema> array_schema_latest_;
 
   /**
    * All the array schemas relevant to the loaded fragment metadata
@@ -354,9 +411,6 @@ class FragmentInfo {
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
-
-  /** Checks the array URI is valid. */
-  Status check_array_uri();
 
   /** Sets the encryption key (if present) from config_. */
   Status set_enc_key_from_config();
