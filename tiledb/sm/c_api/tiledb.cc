@@ -5767,7 +5767,7 @@ int32_t tiledb_serialize_fragment_info_request(
   }
 
   // Allocate a buffer list
-  if (detail::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+  if (api::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
       sanity_check(ctx, *buffer) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
@@ -5778,7 +5778,7 @@ int32_t tiledb_serialize_fragment_info_request(
               *fragment_info->fragment_info_,
               (tiledb::sm::SerializationType)serialize_type,
               (*buffer)->buffer_))) {
-    detail::tiledb_buffer_free(buffer);
+    api::tiledb_buffer_free(buffer);
     return TILEDB_ERR;
   }
 
@@ -5827,7 +5827,7 @@ int32_t tiledb_serialize_fragment_info(
   }
 
   // Allocate buffer
-  if (detail::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+  if (api::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
       sanity_check(ctx, *buffer) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
@@ -5840,7 +5840,7 @@ int32_t tiledb_serialize_fragment_info(
               (tiledb::sm::SerializationType)serialize_type,
               (*buffer)->buffer_,
               client_side))) {
-    detail::tiledb_buffer_free(buffer);
+    api::tiledb_buffer_free(buffer);
     return TILEDB_ERR;
   }
 
@@ -5999,20 +5999,8 @@ int32_t tiledb_fragment_info_get_config(
       sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Create a new config struct
-  *config = new (std::nothrow) tiledb_config_t;
-  if (*config == nullptr)
-    return TILEDB_OOM;
-
-  // Get the array config
-  (*config)->config_ = new (std::nothrow) tiledb::sm::Config();
-  *((*config)->config_) = fragment_info->fragment_info_->config();
-  if ((*config)->config_ == nullptr) {
-    delete (*config);
-    *config = nullptr;
-    return TILEDB_OOM;
-  }
-
+  api::ensure_output_pointer_is_valid(config);
+  *config = tiledb_config_handle_t::make_handle(fragment_info->fragment_info_->config());
   return TILEDB_OK;
 }
 
@@ -9148,7 +9136,7 @@ int32_t tiledb_serialize_fragment_info_request(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_buffer_t** buffer) noexcept {
-  return api_entry<detail::tiledb_serialize_fragment_info_request>(
+  return api_entry<tiledb::api::tiledb_serialize_fragment_info_request>(
       ctx, fragment_info, serialize_type, client_side, buffer);
 }
 
@@ -9158,7 +9146,7 @@ int32_t tiledb_deserialize_fragment_info_request(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_fragment_info_t* fragment_info) noexcept {
-  return api_entry<detail::tiledb_deserialize_fragment_info_request>(
+  return api_entry<tiledb::api::tiledb_deserialize_fragment_info_request>(
       ctx, buffer, serialize_type, client_side, fragment_info);
 }
 
@@ -9168,7 +9156,7 @@ int32_t tiledb_serialize_fragment_info(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_buffer_t** buffer) noexcept {
-  return api_entry<detail::tiledb_serialize_fragment_info>(
+  return api_entry<tiledb::api::tiledb_serialize_fragment_info>(
       ctx, fragment_info, serialize_type, client_side, buffer);
 }
 
@@ -9179,7 +9167,7 @@ int32_t tiledb_deserialize_fragment_info(
     const char* array_uri,
     int32_t client_side,
     tiledb_fragment_info_t* fragment_info) noexcept {
-  return api_entry<detail::tiledb_deserialize_fragment_info>(
+  return api_entry<tiledb::api::tiledb_deserialize_fragment_info>(
       ctx, buffer, serialize_type, array_uri, client_side, fragment_info);
 }
 
@@ -9224,7 +9212,7 @@ int32_t tiledb_fragment_info_get_config(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     tiledb_config_t** config) noexcept {
-  return api_entry<detail::tiledb_fragment_info_get_config>(
+  return api_entry<tiledb::api::tiledb_fragment_info_get_config>(
       ctx, fragment_info, config);
 }
 
