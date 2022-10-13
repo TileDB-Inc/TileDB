@@ -69,14 +69,6 @@ DimensionLabelSchema::DimensionLabelSchema(
         "Datatype Datatype::" + datatype_str(label_type) +
         " is not a valid dimension datatype."));
   }
-  if (datatype_is_string(label_type) &&
-      label_order != LabelOrder::UNORDERED_LABELS) {
-    throw std::invalid_argument(
-        "Failed to create dimension label schema; Datatype Datatype::" +
-        datatype_str(label_type) +
-        " is not supported on dimension labels with LabelOrder::" +
-        label_order_str(label_order));
-  }
 
   // Create indexed array.
   if (label_order == LabelOrder::UNORDERED_LABELS) {
