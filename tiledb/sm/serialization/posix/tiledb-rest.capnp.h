@@ -67,7 +67,7 @@ CAPNP_DECLARE_SCHEMA(9737dcafdfce31bb);
 CAPNP_DECLARE_SCHEMA(926fe1c3b12ed651);
 CAPNP_DECLARE_SCHEMA(9317f20ce509d918);
 CAPNP_DECLARE_SCHEMA(d9d27c082dec9e26);
-CAPNP_DECLARE_SCHEMA(e49c69137e9b3d04);
+CAPNP_DECLARE_SCHEMA(9eb745af522d087c);
 CAPNP_DECLARE_SCHEMA(8cd4e323f1feea3b);
 CAPNP_DECLARE_SCHEMA(92c8467685565269);
 CAPNP_DECLARE_SCHEMA(bda7916926591c22);
@@ -1018,7 +1018,7 @@ struct ArrayDirectory {
   class Builder;
   class Pipeline;
   struct TimestampedURI;
-  struct DeleteTileLocation;
+  struct DeleteAndUpdateTileLocation;
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(9317f20ce509d918, 2, 12)
@@ -1047,15 +1047,15 @@ struct ArrayDirectory::TimestampedURI {
   };
 };
 
-struct ArrayDirectory::DeleteTileLocation {
-  DeleteTileLocation() = delete;
+struct ArrayDirectory::DeleteAndUpdateTileLocation {
+  DeleteAndUpdateTileLocation() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(e49c69137e9b3d04, 1, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(9eb745af522d087c, 1, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -8638,11 +8638,12 @@ class ArrayDirectory::Reader {
   inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
   getFragmentMetaUris() const;
 
-  inline bool hasDeleteTilesLocation() const;
+  inline bool hasDeleteAndUpdateTileLocation() const;
   inline ::capnp::List<
-      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::
+          DeleteAndUpdateTileLocation,
       ::capnp::Kind::STRUCT>::Reader
-  getDeleteTilesLocation() const;
+  getDeleteAndUpdateTileLocation() const;
 
   inline ::uint64_t getTimestampStart() const;
 
@@ -8851,28 +8852,32 @@ class ArrayDirectory::Builder {
   inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
   disownFragmentMetaUris();
 
-  inline bool hasDeleteTilesLocation();
+  inline bool hasDeleteAndUpdateTileLocation();
   inline ::capnp::List<
-      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::
+          DeleteAndUpdateTileLocation,
       ::capnp::Kind::STRUCT>::Builder
-  getDeleteTilesLocation();
-  inline void setDeleteTilesLocation(::capnp::List<
-                                     ::tiledb::sm::serialization::capnp::
-                                         ArrayDirectory::DeleteTileLocation,
-                                     ::capnp::Kind::STRUCT>::Reader value);
+  getDeleteAndUpdateTileLocation();
+  inline void setDeleteAndUpdateTileLocation(
+      ::capnp::List<
+          ::tiledb::sm::serialization::capnp::ArrayDirectory::
+              DeleteAndUpdateTileLocation,
+          ::capnp::Kind::STRUCT>::Reader value);
   inline ::capnp::List<
-      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::
+          DeleteAndUpdateTileLocation,
       ::capnp::Kind::STRUCT>::Builder
-  initDeleteTilesLocation(unsigned int size);
-  inline void adoptDeleteTilesLocation(
+  initDeleteAndUpdateTileLocation(unsigned int size);
+  inline void adoptDeleteAndUpdateTileLocation(
       ::capnp::Orphan<::capnp::List<
           ::tiledb::sm::serialization::capnp::ArrayDirectory::
-              DeleteTileLocation,
+              DeleteAndUpdateTileLocation,
           ::capnp::Kind::STRUCT>>&& value);
   inline ::capnp::Orphan<::capnp::List<
-      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::
+          DeleteAndUpdateTileLocation,
       ::capnp::Kind::STRUCT>>
-  disownDeleteTilesLocation();
+  disownDeleteAndUpdateTileLocation();
 
   inline ::uint64_t getTimestampStart();
   inline void setTimestampStart(::uint64_t value);
@@ -9016,9 +9021,9 @@ class ArrayDirectory::TimestampedURI::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
-class ArrayDirectory::DeleteTileLocation::Reader {
+class ArrayDirectory::DeleteAndUpdateTileLocation::Reader {
  public:
-  typedef DeleteTileLocation Reads;
+  typedef DeleteAndUpdateTileLocation Reads;
 
   Reader() = default;
   inline explicit Reader(::capnp::_::StructReader base)
@@ -9055,9 +9060,9 @@ class ArrayDirectory::DeleteTileLocation::Reader {
   friend class ::capnp::Orphanage;
 };
 
-class ArrayDirectory::DeleteTileLocation::Builder {
+class ArrayDirectory::DeleteAndUpdateTileLocation::Builder {
  public:
-  typedef DeleteTileLocation Builds;
+  typedef DeleteAndUpdateTileLocation Builds;
 
   Builder() = delete;  // Deleted to discourage incorrect usage.
                        // You can explicitly initialize to nullptr instead.
@@ -9109,9 +9114,9 @@ class ArrayDirectory::DeleteTileLocation::Builder {
 };
 
 #if !CAPNP_LITE
-class ArrayDirectory::DeleteTileLocation::Pipeline {
+class ArrayDirectory::DeleteAndUpdateTileLocation::Pipeline {
  public:
-  typedef DeleteTileLocation Pipelines;
+  typedef DeleteAndUpdateTileLocation Pipelines;
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -21589,74 +21594,86 @@ ArrayDirectory::Builder::disownFragmentMetaUris() {
           _builder.getPointerField(::capnp::bounded<10>() * ::capnp::POINTERS));
 }
 
-inline bool ArrayDirectory::Reader::hasDeleteTilesLocation() const {
+inline bool ArrayDirectory::Reader::hasDeleteAndUpdateTileLocation() const {
   return !_reader.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool ArrayDirectory::Builder::hasDeleteTilesLocation() {
+inline bool ArrayDirectory::Builder::hasDeleteAndUpdateTileLocation() {
   return !_builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::capnp::List<
-    ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+    ::tiledb::sm::serialization::capnp::ArrayDirectory::
+        DeleteAndUpdateTileLocation,
     ::capnp::Kind::STRUCT>::Reader
-ArrayDirectory::Reader::getDeleteTilesLocation() const {
+ArrayDirectory::Reader::getDeleteAndUpdateTileLocation() const {
   return ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::
+          DeleteAndUpdateTileLocation,
       ::capnp::Kind::STRUCT>>::get(_reader
                                        .getPointerField(
                                            ::capnp::bounded<11>() *
                                            ::capnp::POINTERS));
 }
 inline ::capnp::List<
-    ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+    ::tiledb::sm::serialization::capnp::ArrayDirectory::
+        DeleteAndUpdateTileLocation,
     ::capnp::Kind::STRUCT>::Builder
-ArrayDirectory::Builder::getDeleteTilesLocation() {
+ArrayDirectory::Builder::getDeleteAndUpdateTileLocation() {
   return ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::
+          DeleteAndUpdateTileLocation,
       ::capnp::Kind::STRUCT>>::get(_builder
                                        .getPointerField(
                                            ::capnp::bounded<11>() *
                                            ::capnp::POINTERS));
 }
-inline void ArrayDirectory::Builder::setDeleteTilesLocation(
+inline void ArrayDirectory::Builder::setDeleteAndUpdateTileLocation(
     ::capnp::List<
-        ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+        ::tiledb::sm::serialization::capnp::ArrayDirectory::
+            DeleteAndUpdateTileLocation,
         ::capnp::Kind::STRUCT>::Reader value) {
   ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::
+          DeleteAndUpdateTileLocation,
       ::capnp::Kind::STRUCT>>::
       set(_builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS),
           value);
 }
 inline ::capnp::List<
-    ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+    ::tiledb::sm::serialization::capnp::ArrayDirectory::
+        DeleteAndUpdateTileLocation,
     ::capnp::Kind::STRUCT>::Builder
-ArrayDirectory::Builder::initDeleteTilesLocation(unsigned int size) {
+ArrayDirectory::Builder::initDeleteAndUpdateTileLocation(unsigned int size) {
   return ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::
+          DeleteAndUpdateTileLocation,
       ::capnp::Kind::STRUCT>>::
       init(
           _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS),
           size);
 }
-inline void ArrayDirectory::Builder::adoptDeleteTilesLocation(
+inline void ArrayDirectory::Builder::adoptDeleteAndUpdateTileLocation(
     ::capnp::Orphan<::capnp::List<
-        ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+        ::tiledb::sm::serialization::capnp::ArrayDirectory::
+            DeleteAndUpdateTileLocation,
         ::capnp::Kind::STRUCT>>&& value) {
   ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::
+          DeleteAndUpdateTileLocation,
       ::capnp::Kind::STRUCT>>::
       adopt(
           _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS),
           kj::mv(value));
 }
 inline ::capnp::Orphan<::capnp::List<
-    ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+    ::tiledb::sm::serialization::capnp::ArrayDirectory::
+        DeleteAndUpdateTileLocation,
     ::capnp::Kind::STRUCT>>
-ArrayDirectory::Builder::disownDeleteTilesLocation() {
+ArrayDirectory::Builder::disownDeleteAndUpdateTileLocation() {
   return ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::ArrayDirectory::DeleteTileLocation,
+      ::tiledb::sm::serialization::capnp::ArrayDirectory::
+          DeleteAndUpdateTileLocation,
       ::capnp::Kind::STRUCT>>::disown(_builder
                                           .getPointerField(
                                               ::capnp::bounded<11>() *
@@ -21765,103 +21782,111 @@ inline void ArrayDirectory::TimestampedURI::Builder::setTimestampEnd(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool ArrayDirectory::DeleteTileLocation::Reader::hasUri() const {
+inline bool ArrayDirectory::DeleteAndUpdateTileLocation::Reader::hasUri()
+    const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool ArrayDirectory::DeleteTileLocation::Builder::hasUri() {
+inline bool ArrayDirectory::DeleteAndUpdateTileLocation::Builder::hasUri() {
   return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::capnp::Text::Reader
-ArrayDirectory::DeleteTileLocation::Reader::getUri() const {
+ArrayDirectory::DeleteAndUpdateTileLocation::Reader::getUri() const {
   return ::capnp::_::PointerHelpers<::capnp::Text>::get(
       _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 inline ::capnp::Text::Builder
-ArrayDirectory::DeleteTileLocation::Builder::getUri() {
+ArrayDirectory::DeleteAndUpdateTileLocation::Builder::getUri() {
   return ::capnp::_::PointerHelpers<::capnp::Text>::get(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void ArrayDirectory::DeleteTileLocation::Builder::setUri(
+inline void ArrayDirectory::DeleteAndUpdateTileLocation::Builder::setUri(
     ::capnp::Text::Reader value) {
   ::capnp::_::PointerHelpers<::capnp::Text>::set(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       value);
 }
 inline ::capnp::Text::Builder
-ArrayDirectory::DeleteTileLocation::Builder::initUri(unsigned int size) {
+ArrayDirectory::DeleteAndUpdateTileLocation::Builder::initUri(
+    unsigned int size) {
   return ::capnp::_::PointerHelpers<::capnp::Text>::init(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       size);
 }
-inline void ArrayDirectory::DeleteTileLocation::Builder::adoptUri(
+inline void ArrayDirectory::DeleteAndUpdateTileLocation::Builder::adoptUri(
     ::capnp::Orphan<::capnp::Text>&& value) {
   ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       kj::mv(value));
 }
 inline ::capnp::Orphan<::capnp::Text>
-ArrayDirectory::DeleteTileLocation::Builder::disownUri() {
+ArrayDirectory::DeleteAndUpdateTileLocation::Builder::disownUri() {
   return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline bool ArrayDirectory::DeleteTileLocation::Reader::hasConditionMarker()
+inline bool
+ArrayDirectory::DeleteAndUpdateTileLocation::Reader::hasConditionMarker()
     const {
   return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool ArrayDirectory::DeleteTileLocation::Builder::hasConditionMarker() {
+inline bool
+ArrayDirectory::DeleteAndUpdateTileLocation::Builder::hasConditionMarker() {
   return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::capnp::Text::Reader
-ArrayDirectory::DeleteTileLocation::Reader::getConditionMarker() const {
+ArrayDirectory::DeleteAndUpdateTileLocation::Reader::getConditionMarker()
+    const {
   return ::capnp::_::PointerHelpers<::capnp::Text>::get(
       _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 inline ::capnp::Text::Builder
-ArrayDirectory::DeleteTileLocation::Builder::getConditionMarker() {
+ArrayDirectory::DeleteAndUpdateTileLocation::Builder::getConditionMarker() {
   return ::capnp::_::PointerHelpers<::capnp::Text>::get(
       _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
-inline void ArrayDirectory::DeleteTileLocation::Builder::setConditionMarker(
+inline void
+ArrayDirectory::DeleteAndUpdateTileLocation::Builder::setConditionMarker(
     ::capnp::Text::Reader value) {
   ::capnp::_::PointerHelpers<::capnp::Text>::set(
       _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
       value);
 }
 inline ::capnp::Text::Builder
-ArrayDirectory::DeleteTileLocation::Builder::initConditionMarker(
+ArrayDirectory::DeleteAndUpdateTileLocation::Builder::initConditionMarker(
     unsigned int size) {
   return ::capnp::_::PointerHelpers<::capnp::Text>::init(
       _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
       size);
 }
-inline void ArrayDirectory::DeleteTileLocation::Builder::adoptConditionMarker(
+inline void
+ArrayDirectory::DeleteAndUpdateTileLocation::Builder::adoptConditionMarker(
     ::capnp::Orphan<::capnp::Text>&& value) {
   ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
       _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
       kj::mv(value));
 }
 inline ::capnp::Orphan<::capnp::Text>
-ArrayDirectory::DeleteTileLocation::Builder::disownConditionMarker() {
+ArrayDirectory::DeleteAndUpdateTileLocation::Builder::disownConditionMarker() {
   return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
       _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
-inline ::uint64_t ArrayDirectory::DeleteTileLocation::Reader::getOffset()
-    const {
+inline ::uint64_t
+ArrayDirectory::DeleteAndUpdateTileLocation::Reader::getOffset() const {
   return _reader.getDataField<::uint64_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint64_t ArrayDirectory::DeleteTileLocation::Builder::getOffset() {
+inline ::uint64_t
+ArrayDirectory::DeleteAndUpdateTileLocation::Builder::getOffset() {
   return _builder.getDataField<::uint64_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void ArrayDirectory::DeleteTileLocation::Builder::setOffset(
+inline void ArrayDirectory::DeleteAndUpdateTileLocation::Builder::setOffset(
     ::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);

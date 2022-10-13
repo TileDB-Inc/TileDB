@@ -413,9 +413,10 @@ class ArrayDirectory {
     return fragment_meta_uris_;
   }
 
-  /** Accessor to delete_tiles_location_ */
-  inline std::vector<DeleteTileLocation>& delete_tiles_location() {
-    return delete_tiles_location_;
+  /** Accessor to delete_and_update_tiles_location_ */
+  inline std::vector<DeleteAndUpdateTileLocation>&
+  delete_and_update_tiles_location() {
+    return delete_and_update_tiles_location_;
   }
 
   /** Accessor to loaded_ */

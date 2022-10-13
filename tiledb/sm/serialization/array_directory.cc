@@ -186,17 +186,21 @@ Status array_directory_to_capnp(
   }
 
   // set delete tiles location
-  const auto& delete_tiles_location = array_directory.delete_tiles_location();
-  if (!delete_tiles_location.empty()) {
-    auto delete_tiles_location_builder =
-        array_directory_builder->initDeleteTilesLocation(
-            delete_tiles_location.size());
-    for (size_t i = 0; i < delete_tiles_location.size(); i++) {
-      auto del_tile_location_builder = delete_tiles_location_builder[i];
-      del_tile_location_builder.setUri(delete_tiles_location[i].uri());
+  const auto& delete_and_update_tile_location =
+      array_directory.delete_and_update_tiles_location();
+  if (!delete_and_update_tile_location.empty()) {
+    auto delete_and_update_tile_location_builder =
+        array_directory_builder->initDeleteAndUpdateTileLocation(
+            delete_and_update_tile_location.size());
+    for (size_t i = 0; i < delete_and_update_tile_location.size(); i++) {
+      auto del_tile_location_builder =
+          delete_and_update_tile_location_builder[i];
+      del_tile_location_builder.setUri(
+          delete_and_update_tile_location[i].uri());
       del_tile_location_builder.setConditionMarker(
-          delete_tiles_location[i].condition_marker());
-      del_tile_location_builder.setOffset(delete_tiles_location[i].offset());
+          delete_and_update_tile_location[i].condition_marker());
+      del_tile_location_builder.setOffset(
+          delete_and_update_tile_location[i].offset());
     }
   }
 
@@ -304,10 +308,10 @@ Status array_directory_from_capnp(
   }
 
   // Get delete tiles location
-  if (array_directory_reader.hasDeleteTilesLocation()) {
+  if (array_directory_reader.hasDeleteAndUpdateTileLocation()) {
     for (auto del_tile_reader :
-         array_directory_reader.getDeleteTilesLocation()) {
-      array_directory->delete_tiles_location().emplace_back(
+         array_directory_reader.getDeleteAndUpdateTileLocation()) {
+      array_directory->delete_and_update_tiles_location().emplace_back(
           URI(del_tile_reader.getUri().cStr()),
           del_tile_reader.getConditionMarker(),
           del_tile_reader.getOffset());
