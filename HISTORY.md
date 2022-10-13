@@ -233,6 +233,8 @@
 
 * https://github.com/TileDB-Inc/TileDB/compare/2.10.0...2.11.0
 
+---
+
 # TileDB v2.10.0 Release Notes
 
 **Full Changelog**: https://github.com/TileDB-Inc/TileDB/compare/2.9.0...2.10.0
