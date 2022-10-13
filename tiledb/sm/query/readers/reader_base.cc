@@ -1023,13 +1023,14 @@ Status ReaderBase::unfilter_tile_chunk_range(
     if (!var_size) {
       if (!nullable) {
         if (array_schema_.bitsort_filter_attr().has_value()) {
-          std::vector<Tile*> dim_tiles;
-          std::vector<QueryBuffer> qb_vector;
+          BitSortFilterMetadataType bitsort_metadata;
+          std::vector<QueryBuffer> query_buffers;
           std::optional<DomainBuffersView> db;
           GlobalCmpQB cmp_obj =
-              construct_bitsort_filter_argument(tile, dim_tiles, qb_vector, db);
-          BitSortFilterMetadataType bitsort_metadata =
-              std::make_pair(std::ref(dim_tiles), std::ref(cmp_obj));
+              construct_bitsort_filter_argument(tile, bitsort_metadata.dim_tiles(), query_buffers, db);
+          bitsort_metadata.comparator() = [&cmp_obj](const uint64_t &left_idx, const uint64_t &right_idx){
+                return cmp_obj(left_idx, right_idx);
+              };
           RETURN_NOT_OK(unfilter_tile_chunk_range(
               num_range_threads,
               range_thread_idx,
@@ -1642,13 +1643,14 @@ Status ReaderBase::unfilter_tiles(
           if (!var_size) {
             if (!nullable) {
               if (array_schema_.bitsort_filter_attr().has_value()) {
-                std::vector<Tile*> dim_tiles;
-                std::vector<QueryBuffer> qb_vector;
+                BitSortFilterMetadataType bitsort_metadata;
+                std::vector<QueryBuffer> query_buffers;
                 std::optional<DomainBuffersView> db;
-                GlobalCmpQB cmp_obj = construct_bitsort_filter_argument(
-                    tile, dim_tiles, qb_vector, db);
-                BitSortFilterMetadataType bitsort_metadata =
-                    std::make_pair(std::ref(dim_tiles), std::ref(cmp_obj));
+                GlobalCmpQB cmp_obj =
+                construct_bitsort_filter_argument(tile, bitsort_metadata.dim_tiles(), query_buffers, db);
+                bitsort_metadata.comparator() = [&cmp_obj](const uint64_t &left_idx, const uint64_t &right_idx){
+                      return cmp_obj(left_idx, right_idx);
+                    };
                 RETURN_NOT_OK(unfilter_tile(name, t, bitsort_metadata));
 
               } else {

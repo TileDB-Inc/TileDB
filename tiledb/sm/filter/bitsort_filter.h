@@ -82,7 +82,7 @@ class BitSortFilter : public Filter {
    */
   Status run_forward(
       const Tile& tile,
-      std::vector<Tile*>& dim_tiles,
+      const std::vector<Tile*>& dim_tiles,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -168,7 +168,7 @@ class BitSortFilter : public Filter {
    */
   template <typename AttrType>
   Status run_forward(
-      std::vector<Tile*>& dim_tiles,
+      const std::vector<Tile*>& dim_tiles,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -193,19 +193,6 @@ class BitSortFilter : public Filter {
       FilterBuffer* input,
       FilterBuffer* output_metadata,
       FilterBuffer* output) const;
-
-  /**
-   * @brief Collects the attribute data, per part, prior to sorting.
-   *
-   * @tparam AttrType Attribute tile type.
-   * @param input_buffer Input buffer containing the attribute data for one
-   * part.
-   * @param elements Vector for collecting elements.
-   * @return Status
-   */
-  template <typename AttrType>
-  Status collect_part_data(
-      const ConstBuffer* input_buffer, std::vector<AttrType>& elements) const;
 
   /**
    * @brief Rewrites the dimension tile given the positions of the attributes.

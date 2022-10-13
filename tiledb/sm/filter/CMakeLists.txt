@@ -156,6 +156,7 @@ add_executable(compile_float_scale_filters EXCLUDE_FROM_ALL)
 target_link_libraries(compile_float_scale_filters PRIVATE float_scaling_filters)
 target_sources(compile_float_scale_filters PRIVATE test/compile_float_scaling_filter_main.cc)
 
+#
 # `xor_filters` object library
 #
 add_library(xor_filters OBJECT xor_filter.cc)

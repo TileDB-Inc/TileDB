@@ -39,7 +39,6 @@
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/filter/filter_storage.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
@@ -100,7 +99,7 @@ Status BitSortFilter::run_reverse(
 
 Status BitSortFilter::run_forward(
     const Tile& tile,
-    std::vector<Tile*> &dim_tiles,
+    const std::vector<Tile*> &dim_tiles,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -137,7 +136,7 @@ Status BitSortFilter::run_forward(
 
 template <typename AttrType>
 Status BitSortFilter::run_forward(
-    std::vector<Tile*> &dim_tiles,
+    const std::vector<Tile*> &dim_tiles,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -159,28 +158,21 @@ Status BitSortFilter::run_forward(
   size_t total_size = 0;
   for (uint64_t i = 0; i < num_parts; ++i) {
     const auto &part = parts[i];
-    total_size += part.size();
+    auto part_size = static_cast<uint32_t>(part.size());
+    RETURN_NOT_OK(output_metadata->write(&part_size, sizeof(uint32_t)));
+    total_size += part_size;
   }
   size_t elements_size = total_size / sizeof(AttrType);
 
   // Create a vector to store the attribute data with their respective positions.
   // Then for each part of the input, collect this data into the sorted_elements vector.
-  std::vector<AttrType> elements;
-  elements.reserve(elements_size);
-  for (uint64_t i = 0; i < num_parts; ++i) {
-    const auto &part = parts[i];
-    auto part_size = static_cast<uint32_t>(part.size());
-    RETURN_NOT_OK(output_metadata->write(&part_size, sizeof(uint32_t)));
-    RETURN_NOT_OK(collect_part_data<AttrType>(&part, elements));
-  }
+  std::vector<AttrType> elements(elements_size);
+  input->copy_to(elements.data());
 
   // Sort all the attribute tile data by bit order, which is equivalent to sorting an
   // unsigned integer type in ascending order.
-  std::vector<size_t> cell_pos;
-  cell_pos.reserve(elements_size);
-  for (size_t i = 0; i < elements_size; ++i) {
-    cell_pos.emplace_back(i);
-  }
+  std::vector<size_t> cell_pos(elements_size);
+  std::iota(std::begin(cell_pos), std::end(cell_pos), 0);
 
   auto comparator = std::less<AttrType>();
   std::sort(cell_pos.begin(), cell_pos.end(), [&elements, &comparator](const size_t &left, const size_t &right){
@@ -228,39 +220,19 @@ Status BitSortFilter::run_forward(
   return Status::Ok();
 }
 
-template <typename AttrType>
-Status BitSortFilter::collect_part_data(const ConstBuffer* input_buffer, std::vector<AttrType>& elements) const {
-  // Read in the data.
-  uint32_t buff_size = input_buffer->size();
-  assert(buff_size % sizeof(AttrType) == 0);
-  uint32_t num_elems_in_part = buff_size / sizeof(AttrType);
-
-  if (num_elems_in_part == 0) {
-    return Status::Ok();
-  }
-
-  // Store the elements and their respective positions in the entire array in the sorted_elements vector.
-  const AttrType* input_data = static_cast<const AttrType*>(input_buffer->data());
-  for (uint32_t i = 0; i < num_elems_in_part; ++i) {
-    elements.emplace_back(input_data[i]);
-  }
-
-  return Status::Ok();
-}
-
 template <typename DimType>
 Status BitSortFilter::run_forward_dim_tile(const std::vector<size_t> &cell_pos, Tile *dim_tile) const {
   // Obtain the pointer to the data the code modifies.
-  uint64_t cell_pos_size = cell_pos.size();
-  DimType *tile_data = static_cast<DimType*>(dim_tile->data());
+  uint64_t cell_num = cell_pos.size();
+  DimType *tile_data = dim_tile->data_as<DimType>();
 
   // Obtain the pointer to the filtered data buffer.
   FilteredBuffer &filtered_buffer = dim_tile->filtered_buffer();
-  filtered_buffer.expand(cell_pos_size * sizeof(DimType));
-  DimType *filtered_buffer_data = static_cast<DimType*>((void*)filtered_buffer.data());
+  filtered_buffer.expand(cell_num * sizeof(DimType));
+  DimType *filtered_buffer_data = filtered_buffer.data_as<DimType>();
 
   // Keep track of the data we should write to the tile.
-  for (uint64_t i = 0; i < cell_pos_size; ++i) {
+  for (uint64_t i = 0; i < cell_num; ++i) {
     filtered_buffer_data[i] = tile_data[cell_pos[i]];
   }
 
@@ -321,13 +293,10 @@ Status BitSortFilter::run_reverse(
   Buffer* output_buf = output->buffer_ptr(0);
   assert(output_buf != nullptr);
 
-  // Get number of cells in the tile.
-  std::vector<Tile*> &dim_tiles = bitsort_metadata.first.get();
-  uint64_t cell_pos_size = dim_tiles[0]->cell_num();
-
   // Determine the positions vector and rewrite the dimension tiles using these positions.
-  std::vector<uint64_t> cell_pos;
-  cell_pos.reserve(cell_pos_size);
+  std::vector<Tile*>& dim_tiles = bitsort_metadata.dim_tiles();
+  assert(dim_tiles.size() > 0);
+  std::vector<uint64_t> cell_pos(dim_tiles[0]->cell_num());
   run_reverse_dim_tiles(bitsort_metadata, cell_pos);
 
   // Unsort the attribute data with the positions determined by the dimension global sorting.
@@ -367,8 +336,8 @@ Status BitSortFilter::unsort_part(
     return Status::Ok();
   }
 
-  const AttrType* input_array = static_cast<const AttrType*>(input_buffer->data());
-  AttrType* output_array = static_cast<AttrType*>(output_buffer->cur_data());
+  const AttrType* input_array = input_buffer->data_as<const AttrType>();
+  AttrType* output_array = output_buffer->cur_data_as<AttrType>();
 
   // Write in data in original order.
   for (uint32_t i = 0; i < num_elems_in_part; ++i) {
@@ -379,12 +348,11 @@ Status BitSortFilter::unsort_part(
 }
 
 Status BitSortFilter::run_reverse_dim_tiles(BitSortFilterMetadataType &bitsort_metadata, std::vector<uint64_t> &cell_pos) const {
-  std::vector<Tile*> &dim_tiles = bitsort_metadata.first.get();
-  auto cmp_fn = bitsort_metadata.second.get();
+  std::vector<Tile*> &dim_tiles = bitsort_metadata.dim_tiles();
+  auto& cmp_fn = bitsort_metadata.comparator();
 
-  for (uint64_t i = 0; i < dim_tiles[0]->cell_num(); ++i) {
-    cell_pos.push_back(i);
-  }
+  // Get number of cells in the tile, and define the position vector.
+  std::iota(std::begin(cell_pos), std::end(cell_pos), 0);
 
   // Sort the dimension data and determine the positions of the dimension tile data.
   std::sort(cell_pos.begin(), cell_pos.end(), cmp_fn);
@@ -423,18 +391,15 @@ Status BitSortFilter::run_reverse_dim_tiles(BitSortFilterMetadataType &bitsort_m
 template<typename DimType>
 Status BitSortFilter::run_reverse_dim_tile(Tile *dim_tile, std::vector<uint64_t> &cell_pos) const {
   // Obtain the pointer to the data the code modifies.
-  uint64_t cell_pos_size = cell_pos.size();
-  std::vector<DimType> tile_data_vec(cell_pos_size);
+  uint64_t cell_num = cell_pos.size();
   FilteredBuffer &filtered_buffer = dim_tile->filtered_buffer();
-  DimType *tile_data = reinterpret_cast<DimType*>(filtered_buffer.data());
+  DimType *filtered_tile_data = filtered_buffer.data_as<DimType>();
+  DimType *unfiltered_tile_data = dim_tile->data_as<DimType>();
 
-  // Keep track of the data we should write to the tile.
-  for (uint64_t i = 0; i < cell_pos_size; ++i) {
-    tile_data_vec[i] = tile_data[cell_pos[i]];
+  // Write to the unfiltered tile.
+  for (uint64_t i = 0; i < cell_num; ++i) {
+    unfiltered_tile_data[i] = filtered_tile_data[cell_pos[i]];
   }
-
-  // Overwrite the tile.
-  memcpy(dim_tile->data(), tile_data_vec.data(), sizeof(DimType) * cell_pos_size);
 
   // Clear out the filtered buffer.
   filtered_buffer.clear();

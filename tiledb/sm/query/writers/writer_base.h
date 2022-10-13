@@ -311,13 +311,14 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
 
   template <
-      typename T,
-      typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type* =
+      typename SupportTileType,
+      typename std::enable_if<
+          !std::is_same<SupportTileType, std::nullptr_t>::value>::type* =
           nullptr>
   Status filter_tile(
       const std::string& name,
       Tile* tile,
-      T support_tile,
+      SupportTileType support_tile,
       bool offsets,
       bool nullable);
 

@@ -446,7 +446,11 @@ class ArraySchema {
 
   /**
    * Returns the name of the attribute in this schema with a bitsort filter.
-   * If none exists, then this function returns std::nullopt.
+   * If none exists, then this function returns std::nullopt. Note that
+   * there should only be one attribute per schema with a bitsort filter in
+   * place, as the bitsort filter will use the dimension tiles to store the
+   * positions, and there is only one set of dimension tiles per set of
+   * attribute tiles.
    */
   std::optional<std::string> bitsort_filter_attr() const;
 

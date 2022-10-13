@@ -219,13 +219,13 @@ Status FilterPipeline::filter_chunks_forward(
 
       // We case on the type of the support argument to determine whether we have
       // a bitsort filter in the attribute filtering pipeline. 
-      if constexpr (std::is_same<SupportDataType, std::reference_wrapper<std::vector<Tile*>>>::value) {
+      if constexpr (std::is_same<SupportDataType, const std::vector<Tile*>&>::value) {
         if (f->type() == FilterType::FILTER_BITSORT) {
           auto bitsort_filter = reinterpret_cast<const BitSortFilter*>(f.get());
           RETURN_NOT_OK(
               bitsort_filter->run_forward(
                       tile,
-                      support_tiles.get(),
+                      support_tiles,
                       &input_metadata,
                       &input_data,
                       &output_metadata,
@@ -422,7 +422,7 @@ Status FilterPipeline::filter_chunks_reverse(
 
       // We case on the type of the support argument to determine whether we have
       // a bitsort filter in the attribute filtering pipeline.
-      if constexpr (std::is_same<SupportDataType, BitSortFilterMetadataType>::value) {
+      if constexpr (std::is_same<SupportDataType, BitSortFilterMetadataType&>::value) {
         if (f->type() == FilterType::FILTER_BITSORT) {
           auto bitsort_filter = reinterpret_cast<const BitSortFilter*>(f.get());
           RETURN_NOT_OK(
@@ -507,7 +507,7 @@ Status FilterPipeline::run_forward(
   }
 
   // Get the chunk sizes for var size attributes.
-  if constexpr (!std::is_same<SupportDataType, std::reference_wrapper<std::vector<Tile*>>>::value){
+  if constexpr (!std::is_same<SupportDataType, const std::vector<Tile*>&>::value){
     auto&& [st, chunk_offsets] =
       get_var_chunk_sizes(chunk_size, tile, support_tiles);
     RETURN_NOT_OK_ELSE(st, tile->filtered_buffer().clear());
@@ -526,7 +526,7 @@ Status FilterPipeline::run_forward(
   } else {
     std::vector<uint64_t> dummy_offsets = {};
     RETURN_NOT_OK_ELSE(
-      filter_chunks_forward(
+      filter_chunks_forward<SupportDataType>(
           *tile,
           support_tiles,
           chunk_size,
@@ -702,7 +702,7 @@ Status FilterPipeline::run_reverse_internal(
 
   reader_stats->add_counter("read_unfiltered_byte_num", total_orig_size);
 
-  const Status st = filter_chunks_reverse(
+  const Status st = filter_chunks_reverse<SupportDataType>(
       *tile, support_tiles, filtered_chunks, compute_tp, config);
   
   if (!st.ok()) {
@@ -870,10 +870,10 @@ template Status FilterPipeline::run_forward<Tile*>(
       ThreadPool* compute_tp,
       bool chunking) const;
 
-template Status FilterPipeline::run_forward<std::reference_wrapper<std::vector<Tile*>>>(
+template Status FilterPipeline::run_forward<const std::vector<Tile*>&>(
       stats::Stats* writer_stats,
       Tile* tile,
-      std::reference_wrapper<std::vector<Tile*>> support_tiles,
+      const std::vector<Tile*>& support_tiles,
       ThreadPool* compute_tp,
       bool chunking) const;
 

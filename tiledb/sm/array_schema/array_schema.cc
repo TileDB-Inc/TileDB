@@ -146,7 +146,7 @@ ArraySchema::ArraySchema(
       auto attr = attr_iter.get();
       attribute_map_[attr->name()] = attr;
       if (attr->filters().has_filter(FilterType::FILTER_BITSORT)) {
-        if (bitsort_filter_attr_) {
+        if (bitsort_filter_attr_.has_value()) {
           throw StatusException(Status_ArraySchemaError(
             "Array schema creation failed. More than one attribute has a bitsort filter."));
         }

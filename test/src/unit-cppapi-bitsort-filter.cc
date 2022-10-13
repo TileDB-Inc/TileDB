@@ -287,16 +287,14 @@ void check_read(
  */
 template<typename DimType>
 void read_query_set_subarray(Query &read_query, int num_dims) {
-  DimType dim_lo = static_cast<DimType>(BITSORT_DIM_LO);
-  DimType dim_hi = static_cast<DimType>(BITSORT_DIM_HI);
-  read_query.add_range("x", dim_lo, dim_hi);
+  read_query.add_range<DimType>("x", BITSORT_DIM_LO, BITSORT_DIM_HI);
 
   if (num_dims >= 2) {
-    read_query.add_range("y", dim_lo, dim_hi);
+    read_query.add_range<DimType>("y", BITSORT_DIM_LO, BITSORT_DIM_HI);
   }
 
   if (num_dims == 3) {
-     read_query.add_range("z", dim_lo, dim_hi);
+     read_query.add_range<DimType>("z", BITSORT_DIM_LO, BITSORT_DIM_HI);
   }
 }
 
@@ -378,7 +376,7 @@ void bitsort_filter_api_test(
   std::mt19937_64 gen(SEED);
   AttrType low = 0;
   if constexpr (std::is_signed<AttrType>::value) {
-    low = std::numeric_limits<AttrType>::min();
+    low = std::numeric_limits<AttrType>::lowest();
   }
   AttributeDistribution dis(low, std::numeric_limits<AttrType>::max());
 
@@ -577,4 +575,14 @@ TEMPLATE_TEST_CASE(
     bitsort_filter_api_test<TestType, IntDistribution>(
         array_name, num_dims, write_layout, read_layout, set_subarray);
   }
+}
+
+TEST_CASE("bitsort filter debugging test", "[cppapi][filter][bitsort][whee]") {
+  uint64_t num_dims = 1;
+  std::string array_name = "cpp_unit_bitsort_array";
+  tiledb_layout_t write_layout = TILEDB_GLOBAL_ORDER;
+  tiledb_layout_t read_layout = TILEDB_ROW_MAJOR;
+
+  bitsort_filter_api_test<int32_t, int16_t, IntDistribution>(
+        array_name, num_dims, write_layout, read_layout, false);
 }

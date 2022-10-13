@@ -27,8 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines the TileVectorRef and BitSortFilterMetadataType types.
- * TileVectorRef is a type used to pass a reference of a tile vector.
+ * This file defines the BitSortFilterMetadataType type.
  * BitSortFilterMetadataType is used to pass auxiliary information to the
  * bitsort filter from either the writer or the reader. We send a reference
  * to both a vector of dimension tiles (that we plan to modify in the bitsort
@@ -38,7 +37,6 @@
  */
 
 #include <functional>
-#include <utility>
 #include <vector>
 
 #ifndef TILEDB_BITSORT_FILTER_TYPE_H
@@ -50,11 +48,23 @@ namespace sm {
 class Tile;
 class GlobalCmpQB;
 
-using TileVectorRef = std::reference_wrapper<std::vector<Tile*>>;
+class BitSortFilterMetadataType {
+ public:
+  BitSortFilterMetadataType() {
+  }
 
-using BitSortFilterMetadataType = std::pair<
-    std::reference_wrapper<std::vector<Tile*>>,
-    std::reference_wrapper<GlobalCmpQB>>;
+  std::vector<Tile*>& dim_tiles() {
+    return dim_tiles_;
+  }
+
+  std::function<bool(const uint64_t&, const uint64_t&)>& comparator() {
+    return comparator_;
+  }
+
+ private:
+  std::vector<Tile*> dim_tiles_;
+  std::function<bool(const uint64_t&, const uint64_t&)> comparator_;
+};
 
 }  // namespace sm
 }  // namespace tiledb

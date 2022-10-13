@@ -30,6 +30,7 @@
  * This file implements class WriterBase.
  */
 
+#include <iostream> // TODO: delete
 #include <functional>
 
 #include "tiledb/sm/query/writers/writer_base.h"
@@ -757,6 +758,7 @@ Status WriterBase::filter_tiles(
       }
 
       args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp, false, false);
+
       return Status::Ok();
     });
     RETURN_NOT_OK(args_status);
@@ -767,14 +769,13 @@ Status WriterBase::filter_tiles(
       storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
         const auto& [tile, support_tiles, contains_offsets, is_nullable] =
             args[i];
-
-       if constexpr (std::is_same<std::vector<Tile*>, SupportTileType>::value) {
-          RETURN_NOT_OK(filter_tile<std::vector<Tile*>>(
+      if constexpr (std::is_same<SupportTileType, std::vector<Tile*>>::value) {
+        RETURN_NOT_OK(filter_tile<const SupportTileType&>(
             name, tile, support_tiles, contains_offsets, is_nullable));
-        } else {
-           RETURN_NOT_OK(filter_tile(
+      } else {
+        RETURN_NOT_OK(filter_tile<SupportTileType>(
             name, tile, support_tiles, contains_offsets, is_nullable));
-        }
+      }
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
@@ -794,12 +795,12 @@ Status WriterBase::filter_tiles(
   return Status::Ok();
 }
 
-template<typename T,
-  typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type*>
+template<typename SupportTileType,
+  typename std::enable_if<!std::is_same<SupportTileType, std::nullptr_t>::value>::type*>
 Status WriterBase::filter_tile(
     const std::string& name,
     Tile* const tile,
-    T support_tiles, 
+    SupportTileType support_tiles, 
     const bool offsets,
     const bool nullable) {
   auto timer_se = stats_->start_timer("filter_tile");
@@ -836,23 +837,12 @@ Status WriterBase::filter_tile(
       array_schema_.var_size(name), array_schema_.version(), tile->type());
 
   assert(!tile->filtered());
-  if constexpr (std::is_same<std::vector<Tile*>, T>::value) {
-    auto &dim_tiles = support_tiles;
-    TileVectorRef dim_tiles_ref = std::ref(dim_tiles);
-    RETURN_NOT_OK(filters.run_forward<TileVectorRef>(
-      stats_,
-      tile,
-      dim_tiles_ref,
-      storage_manager_->compute_tp(),
-      use_chunking));
-  } else {
-    RETURN_NOT_OK(filters.run_forward<T>(
+   RETURN_NOT_OK(filters.run_forward<SupportTileType>(
     stats_,
     tile,
     support_tiles,
     storage_manager_->compute_tp(),
     use_chunking));
-  }
   assert(tile->filtered());
 
   return Status::Ok();
