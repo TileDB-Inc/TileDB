@@ -126,7 +126,7 @@ Status ArrayMetaConsolidator::consolidate(
 
   // Close arrays
   RETURN_NOT_OK_ELSE(
-      array_for_reads.close(), RETURN_NOT_OK(array_for_writes.close()));
+      array_for_reads.close(), throw_if_not_ok(array_for_writes.close()));
   throw_if_not_ok(array_for_writes.close());
 
   // Write vacuum file

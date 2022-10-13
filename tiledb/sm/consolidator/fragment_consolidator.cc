@@ -471,7 +471,7 @@ Status FragmentConsolidator::consolidate_internal(
     auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
     (void)st2;  // Perhaps report this once we support an error stack
     if (is_dir)
-      RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(*new_fragment_uri));
+      throw_if_not_ok(storage_manager_->vfs()->remove_dir(*new_fragment_uri));
     return st;
   }
 
