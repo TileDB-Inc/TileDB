@@ -2735,12 +2735,13 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
 }
 
 void FragmentMetadata::load_non_empty_domain(Deserializer& deserializer) {
-  if (version_ <= 2)
+  if (version_ <= 2) {
     load_non_empty_domain_v1_v2(deserializer);
-  else if (version_ == 3 || version_ == 4)
+  } else if (version_ == 3 || version_ == 4) {
     load_non_empty_domain_v3_v4(deserializer);
-  else
+  } else {
     load_non_empty_domain_v5_or_higher(deserializer);
+  }
 }
 
 // ===== FORMAT =====
@@ -3602,6 +3603,7 @@ Status FragmentMetadata::load_footer(
     has_consolidated_footer_ = true;
   }
   Deserializer deserializer(static_cast<uint8_t*>(f_tile->data()) + offset, f_tile->size() - offset);
+  auto starting_deserializer_size = deserializer.size();
 
   load_version(deserializer);
   
@@ -3684,8 +3686,9 @@ Status FragmentMetadata::load_footer(
 
   // If the footer_size is not set lets calculate from how much of the buffer we
   // read
-  if (footer_size_ == 0)
-    footer_size_ = deserializer.offset();
+  if (footer_size_ == 0) {
+    footer_size_ = starting_deserializer_size - deserializer.size();
+  }
 
   return Status::Ok();
 }

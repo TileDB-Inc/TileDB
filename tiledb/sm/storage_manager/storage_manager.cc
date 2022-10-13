@@ -222,14 +222,15 @@ StorageManager::load_array_schemas_and_fragment_metadata(
   const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
 
   // Get the consolidated fragment metadatas
-  std::vector<Tile> f_tiles(meta_uris.size());
+  std::vector<shared_ptr<Tile>> f_tiles(meta_uris.size());
   std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
       meta_uris.size());
   auto status = parallel_for(compute_tp_, 0, meta_uris.size(), [&](size_t i) {
     auto&& [st, tile_opt, offsets] =
         load_consolidated_fragment_meta(meta_uris[i], enc_key);
     RETURN_NOT_OK(st);
-    f_tiles[i] = std::move(*tile_opt);
+    //f_tiles[i] = std::move(*tile_opt);
+    f_tiles[i] = make_shared<Tile>(HERE(), std::move(*tile_opt));
     offsets_vectors[i] = std::move(offsets.value());
     return st;
   });
@@ -241,7 +242,7 @@ StorageManager::load_array_schemas_and_fragment_metadata(
     for (auto& offset : offsets_vectors[i]) {
       if (offsets.count(offset.first) == 0) {
         offsets.emplace(
-            offset.first, std::make_pair(&f_tiles[i], offset.second));
+            offset.first, std::make_pair(f_tiles[i].get(), offset.second));
       }
     }
   }
