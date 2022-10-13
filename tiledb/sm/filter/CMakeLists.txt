@@ -204,7 +204,7 @@ if(TILEDB_WEBP)
     add_library(webp_filters OBJECT webp_filter.cc)
     target_link_libraries(webp_filters PUBLIC filter $<TARGET_OBJECTS:filter>)
     find_package(Webp_EP REQUIRED)
-    target_link_libraries(webp_filters PRIVATE webp)
+    target_link_libraries(webp_filters PRIVATE WebP::webp)
 
     #
     # Test-compile of object library ensures link-completeness

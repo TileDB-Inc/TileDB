@@ -106,6 +106,7 @@ std::vector<uint8_t*> read_png(
   png_read_image(png, row_pointers.data());
   fclose(fp);
 
+  png_destroy_read_struct(&png, &info, NULL);
   return row_pointers;
 }
 
@@ -162,6 +163,7 @@ void write_png(
   png_write_end(png, NULL);
 
   fclose(fp);
+  png_destroy_write_struct(&png, &info);
 }
 
 /**
@@ -182,9 +184,9 @@ void create_array(
   // We use `width * 4` for X dimension to allow for RGBA (4) elements per-pixel
   domain
       .add_dimension(
-          Dimension::create<unsigned>(ctx, "y", {{1, (height)}}, height))
+          Dimension::create<unsigned>(ctx, "x", {{1, width*4}}, width))
       .add_dimension(
-          Dimension::create<unsigned>(ctx, "x", {{1, (width)*4}}, (width * 4)));
+          Dimension::create<unsigned>(ctx, "y", {{1, height}}, height));
 
   // To compress using webp we need RGBA in a single buffer
   ArraySchema schema(ctx, TILEDB_DENSE);
@@ -267,18 +269,18 @@ void read_png_array(
   // Get the array non-empty domain, which corresponds to the original image
   // width and height.
   auto non_empty = array.non_empty_domain<unsigned>();
-  auto array_height = non_empty[0].second.second,
-       array_width = non_empty[1].second.second;
+  auto array_width = non_empty[0].second.second,
+       array_height = non_empty[1].second.second;
 
-  std::vector<unsigned> subarray = {1, array_height, 1, array_width};
-  auto output_height = subarray[1], output_width = subarray[3];
+  std::vector<unsigned> subarray = {1, array_width, 1, array_height};
+  auto output_width = subarray[1], output_height = subarray[3];
 
   // Allocate query and set subarray
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR).set_subarray(subarray);
 
   // Allocate buffer to read into.
-  std::vector<uint8_t> rgba(output_height * (output_width));
+  std::vector<uint8_t> rgba(output_height * output_width);
 
   // Set buffer
   query.set_data_buffer("rgba", rgba);

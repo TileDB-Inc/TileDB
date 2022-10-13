@@ -124,6 +124,7 @@ class Filter {
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data
    * @param output Buffer with filtered data (unused by in-place filters).
+   * @param config Config object for query-level parameters
    * @return
    */
   virtual Status run_reverse(

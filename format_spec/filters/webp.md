@@ -8,9 +8,8 @@ The WebP filter compresses image data using [libwebp](https://developers.google.
 ```C++
 Domain domain(ctx);
 // We use `width * 4` for X dimension to allow for RGBA (4) elements per-pixel 
-domain.add_dimension(Dimension::create<unsigned>(ctx, "y", {{1, (height)}}, 100))
-      .add_dimension(Dimension::create<unsigned>(ctx, "x", {{1, (width)*4}}, 100));
-
+domain.add_dimension(Dimension::create<unsigned>(ctx, "x", {{1, (width)*4}}, 100))
+      .add_dimension(Dimension::create<unsigned>(ctx, "y", {{1, (height)}}, 100));
 // To compress using webp we need RGBA in a single uint8_t buffer
 ArraySchema schema(ctx, TILEDB_DENSE);
 Attribute rgba = Attribute::create<uint8_t>(ctx, "rgba");

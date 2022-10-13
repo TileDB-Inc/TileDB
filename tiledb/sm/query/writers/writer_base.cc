@@ -40,6 +40,7 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -869,6 +870,10 @@ Status WriterBase::filter_tile(
       array_schema_.var_size(name), array_schema_.version(), tile->type());
 
   assert(!tile->filtered());
+  auto f_webp = filters.get_filter<WebpFilter>();
+  if (f_webp != nullptr) {
+    f_webp->set_extent(array_schema_.domain().tile_extents());
+  }
   RETURN_NOT_OK(filters.run_forward(
       stats_,
       tile,
