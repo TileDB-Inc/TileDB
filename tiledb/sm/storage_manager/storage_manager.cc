@@ -1624,6 +1624,7 @@ StorageManager::load_all_array_schemas(
           auto&& [st, array_schema] =
               load_array_schema_from_uri(schema_uri, encryption_key);
           RETURN_NOT_OK(st);
+          array_schema.value()->set_array_uri(array_uri);
           schema_vector[schema_ith] = array_schema.value();
         } catch (std::exception& e) {
           return Status_StorageManagerError(e.what());
@@ -2068,10 +2069,7 @@ Status StorageManager::store_metadata(
   RETURN_NOT_OK(metadata->get_uri(uri, &metadata_uri));
 
   RETURN_NOT_OK(store_data_to_generic_tile(
-      tile.data(),
-      tile.size(),
-      metadata_uri,
-      encryption_key));
+      tile.data(), tile.size(), metadata_uri, encryption_key));
 
   return Status::Ok();
 }
