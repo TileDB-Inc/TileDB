@@ -205,7 +205,7 @@ class ResultTile {
 
     /** Constructor with var_size and nullable parameters. */
     TileTuple(
-        const uint32_t format_version,
+        const format_version_t format_version,
         const ArraySchema& array_schema,
         const std::string& name,
         const TileSizes tile_sizes)
@@ -355,14 +355,14 @@ class ResultTile {
 
   /** Initializes the result tile for the given attribute. */
   void init_attr_tile(
-      const uint32_t format_version,
+      const format_version_t format_version,
       const ArraySchema& array_schema,
       const std::string& name,
       const TileSizes tile_sizes);
 
   /** Initializes the result tile for the given dimension name and index. */
   void init_coord_tile(
-      const uint32_t format_version,
+      const format_version_t format_version,
       const ArraySchema& array_schema,
       const std::string& name,
       const TileSizes tile_sizes,

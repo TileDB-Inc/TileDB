@@ -103,7 +103,7 @@ class Tile {
    * @param filtered_size The filtered size to allocate.
    */
   Tile(
-      const uint32_t format_version,
+      const format_version_t format_version,
       const Datatype type,
       const uint64_t cell_size,
       const unsigned int zipped_coords_dim_num,
@@ -278,7 +278,7 @@ class Tile {
   unsigned int zipped_coords_dim_num_;
 
   /** The format version of the data in this tile. */
-  uint32_t format_version_;
+  format_version_t format_version_;
 
   /** The tile data type. */
   Datatype type_;

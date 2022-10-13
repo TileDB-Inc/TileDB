@@ -291,7 +291,7 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
       Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
 }
 
-void ensure_supported_schema_version_for_read(uint32_t version) {
+void ensure_supported_schema_version_for_read(format_version_t version) {
   // We do not allow reading from arrays written by newer version of TileDB
   if (version > constants::format_version) {
     std::stringstream err;

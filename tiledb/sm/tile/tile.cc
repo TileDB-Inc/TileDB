@@ -99,7 +99,7 @@ Tile Tile::from_generic(storage_size_t tile_size) {
 /* ****************************** */
 
 Tile::Tile(
-    const uint32_t format_version,
+    const format_version_t format_version,
     const Datatype type,
     const uint64_t cell_size,
     const unsigned int zipped_coords_dim_num,

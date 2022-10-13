@@ -554,7 +554,7 @@ Status ReaderBase::read_tiles(
       // For each tile, read from its fragment.
       auto const fragment = fragment_metadata_[tile->frag_idx()];
 
-      const uint32_t format_version = fragment->format_version();
+      const format_version_t format_version = fragment->format_version();
 
       // Applicable for zipped coordinates only to versions < 5
       if (name == constants::coords && format_version >= 5) {

@@ -167,7 +167,7 @@ void ResultTile::erase_tile(const std::string& name) {
 }
 
 void ResultTile::init_attr_tile(
-    const uint32_t format_version,
+    const format_version_t format_version,
     const ArraySchema& array_schema,
     const std::string& name,
     const TileSizes tile_sizes) {
@@ -203,7 +203,7 @@ void ResultTile::init_attr_tile(
 }
 
 void ResultTile::init_coord_tile(
-    const uint32_t format_version,
+    const format_version_t format_version,
     const ArraySchema& array_schema,
     const std::string& name,
     const TileSizes tile_sizes,

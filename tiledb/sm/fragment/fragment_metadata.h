@@ -231,7 +231,7 @@ class FragmentMetadata {
   }
 
   /** Returns the format version of this fragment. */
-  inline uint32_t format_version() const {
+  inline format_version_t format_version() const {
     return version_;
   }
 

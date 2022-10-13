@@ -40,7 +40,7 @@ using namespace tiledb::sm;
 
 TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
   // Initialize the test Tile.
-  const uint32_t format_version = 0;
+  const format_version_t format_version = 0;
   const Datatype data_type = Datatype::UINT32;
   const uint64_t tile_size = 1024 * 1024;
   const uint64_t cell_size = sizeof(uint32_t);
@@ -120,7 +120,7 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
 
 TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
   // Instantiate and initialize the first test Tile.
-  const uint32_t format_version = 0;
+  const format_version_t format_version = 0;
   const Datatype data_type = Datatype::UINT32;
   const uint64_t tile_size = 1024 * 1024;
   const uint64_t cell_size = sizeof(uint32_t);
@@ -164,7 +164,7 @@ TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
 
 TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
   // Instantiate and initialize the first test Tile.
-  const uint32_t format_version = 0;
+  const format_version_t format_version = 0;
   const Datatype data_type = Datatype::UINT32;
   const uint64_t tile_size = 1024 * 1024;
   const uint64_t cell_size = sizeof(uint32_t);

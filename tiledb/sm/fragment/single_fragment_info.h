@@ -152,7 +152,7 @@ class SingleFragmentInfo {
     return timestamp_range_;
   }
 
-  uint32_t format_version() const {
+  format_version_t format_version() const {
     return version_;
   }
 
@@ -292,7 +292,7 @@ class SingleFragmentInfo {
   URI uri_;
 
   /** The format version of the fragment. */
-  uint32_t version_;
+  format_version_t version_;
 
   /** True if the fragment is sparse, and false if it is dense. */
   bool sparse_;
