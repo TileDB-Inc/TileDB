@@ -62,7 +62,7 @@ using namespace tiledb::test;
  *  * Dimension labels:
  *    - x: (label_order=label_order_t, dim_idx=0, type=FLOAT64)
  */
-class DenseArrayExample1 : public DimensionLabelFixture {
+class DenseArrayExample1 : public TemporaryDirectoryFixture {
  public:
   DenseArrayExample1()
       : array_name{}
@@ -171,52 +171,6 @@ class DenseArrayExample1 : public DimensionLabelFixture {
   }
 
   /**
-   * Check the value in the indexed array is correct.
-   *
-   * @param expected_label_data The expected label data in the indexed array.
-   */
-  void check_indexed_array_data(
-      const std::vector<double>& expected_label_data) {
-    // Read back the data.
-    auto label_data = DimensionLabelFixture::read_indexed_array<double>(
-        URI(array_name).join_path("__labels/l0"),
-        4,
-        &index_domain_[0],
-        &index_domain_[1]);
-
-    // Check results.
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      CHECK(label_data[ii] == expected_label_data[ii]);
-    }
-  }
-
-  /**
-   * Check the value in the labelled array is correct.
-   *
-   * @param expected_index_data The expected index data in the labelled array.
-   * @param expected_label_data The expected label data in the labelled array.
-   */
-  void check_labelled_array_data(
-      const std::vector<uint64_t>& expected_index_data,
-      const std::vector<double>& expected_label_data) {
-    // Read back the data.
-    auto [index_data, label_data] =
-        DimensionLabelFixture::read_labelled_array<uint64_t, double>(
-            URI(array_name).join_path("__labels/l0"),
-            4,
-            &label_domain_[0],
-            &label_domain_[1]);
-
-    // Check the results.
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      CHECK(index_data[ii] == expected_index_data[ii]);
-    }
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      CHECK(label_data[ii] == expected_label_data[ii]);
-    }
-  }
-
-  /**
    * Read back full array with a data query and check the values.
    *
    * @param expected_label_data A vector of the expected label values.
@@ -307,7 +261,7 @@ class DenseArrayExample1 : public DimensionLabelFixture {
     std::vector<double> label_data(expected_label_data.size());
     uint64_t label_data_size{label_data.size() * sizeof(double)};
 
-    // Define attribute data
+    // Define attribute buffer and size.
     std::vector<double> attr_data(expected_attr_data.size());
     uint64_t attr_data_size{attr_data.size() * sizeof(double)};
 
@@ -454,32 +408,38 @@ TEST_CASE_METHOD(
   create_example(label_order);
   write_array_with_label(input_attr_data, input_label_data);
 
-  // Check the dimension label arrays have the correct data.
-  {
-    INFO("Reading directly from indexed array.");
-    check_indexed_array_data(input_label_data);
-  }
-  {
-    INFO("Reading directly from labelled array.");
-    check_labelled_array_data(
-        index_data_sorted_by_label, label_data_sorted_by_label);
-  }
-
   // Check data reader.
   {
     INFO("Reading values by index range.");
     check_values_from_data_reader(input_label_data, input_attr_data);
   }
 
-  // Check range reader
+  // Check range reader.
   if (label_order != TILEDB_UNORDERED_LABELS) {
     INFO("Reading data by label range.");
 
-    // Check written fragment
+    // Check query on full range.
     check_values_from_range_reader(
         {label_domain_[0], label_domain_[1]},
         input_label_data,
         input_attr_data);
+
+    // Check point query on each individual value.
+    if (input_attr_data.empty()) {
+      for (uint64_t index{0}; index < 4; ++index) {
+        check_values_from_range_reader(
+            {input_label_data[index], input_label_data[index]},
+            {input_label_data[index]},
+            {});
+      }
+    } else {
+      for (uint64_t index{0}; index < 4; ++index) {
+        check_values_from_range_reader(
+            {input_label_data[index], input_label_data[index]},
+            {input_label_data[index]},
+            {input_attr_data[index]});
+      }
+    }
   }
 }
 

@@ -72,7 +72,7 @@ using namespace tiledb::test;
  *    - gamma: (label_order=DEACRESING, dim_idx=2, type=FLOAT64)
  *
  */
-class ExampleArray : public DimensionLabelFixture {
+class ExampleArray : public TemporaryDirectoryFixture {
  public:
   ExampleArray()
       : domain_{1, 4}
@@ -199,14 +199,14 @@ class ExampleArray : public DimensionLabelFixture {
    * @param time Data for the time data.
    */
   void write_array_with_labels(
-      std::vector<double>& a1,
-      std::vector<double>& x1,
-      std::vector<double>& x2,
-      std::vector<double>& y1,
-      std::vector<double>& y2,
-      std::vector<double>& z1,
-      std::vector<double>& z2,
-      std::vector<int64_t>& time) {
+      std::vector<double> a1,
+      std::vector<double> x1,
+      std::vector<double> x2,
+      std::vector<double> y1,
+      std::vector<double> y2,
+      std::vector<double> z1,
+      std::vector<double> z2,
+      std::vector<int64_t> time) {
     // Open array for writing.
     tiledb_array_t* array;
     require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
@@ -449,4 +449,10 @@ TEST_CASE_METHOD(
   // Check the data.
   check_values_from_data_reader(
       input_x1, input_x2, input_y1, input_y2, input_z1, input_z2, input_t);
+}
+
+TEST_CASE_METHOD(
+    ExampleArray,
+    "Test reading ranges with multiple ordered dimension labels",
+    "[capi][query][DimensionLabel]") {
 }
