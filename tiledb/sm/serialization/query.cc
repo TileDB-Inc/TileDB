@@ -1377,7 +1377,9 @@ Status query_to_capnp(
     auto builder =
         query_builder->initWrittenFragmentInfo(written_fragment_info.size());
     for (uint64_t i = 0; i < written_fragment_info.size(); ++i) {
-      builder[i].setUri(written_fragment_info[i].uri_);
+      builder[i].setUri(written_fragment_info[i]
+                            .uri_.remove_trailing_slash()
+                            .last_path_part());
       auto range_builder = builder[i].initTimestampRange(2);
       range_builder.set(0, written_fragment_info[i].timestamp_range_.first);
       range_builder.set(1, written_fragment_info[i].timestamp_range_.second);
@@ -1989,8 +1991,13 @@ Status query_from_capnp(
     auto reader_list = query_reader.getWrittenFragmentInfo();
     auto& written_fi = query->get_written_fragment_info();
     for (auto fi : reader_list) {
+      auto write_version = query->array_schema().write_version();
+      auto frag_dir_uri = ArrayDirectory::generate_fragment_dir_uri(
+          write_version,
+          query->array_schema().array_uri().add_trailing_slash());
+      auto fragment_name = std::string(fi.getUri().cStr());
       written_fi.emplace_back(
-          URI(fi.getUri().cStr()),
+          frag_dir_uri.join_path(fragment_name),
           std::make_pair(fi.getTimestampRange()[0], fi.getTimestampRange()[1]));
     }
   }
