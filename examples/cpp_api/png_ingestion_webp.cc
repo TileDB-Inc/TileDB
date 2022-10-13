@@ -184,7 +184,7 @@ void create_array(
   // We use `width * 4` for X dimension to allow for RGBA (4) elements per-pixel
   domain
       .add_dimension(
-          Dimension::create<unsigned>(ctx, "x", {{1, width*4}}, width))
+          Dimension::create<unsigned>(ctx, "x", {{1, width * 4}}, width))
       .add_dimension(
           Dimension::create<unsigned>(ctx, "y", {{1, height}}, height));
 

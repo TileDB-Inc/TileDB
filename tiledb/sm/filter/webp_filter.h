@@ -200,7 +200,7 @@ class WebpFilter : public Filter {
    *
    * @param extents Extents retrieved from array Domain object
    */
-  inline void set_extent(const std::vector<ByteVecValue> & extents) {
+  inline void set_extent(const std::vector<ByteVecValue>& extents) {
     extents_ = extents;
   }
 
