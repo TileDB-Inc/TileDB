@@ -109,8 +109,9 @@ DimensionLabelReadDataQuery::DimensionLabelReadDataQuery(
   // Set the layout (ordered, 1D).
   throw_if_not_ok(indexed_array_query->set_layout(Layout::ROW_MAJOR));
 
-  // Set the subarray.
-  if (!parent_subarray.is_default(dim_idx)) {
+  // Set the subarray if it has index ranges added to it.
+  if (!parent_subarray.is_default(dim_idx) &&
+      !parent_subarray.has_label_ranges(dim_idx)) {
     Subarray subarray{*indexed_array_query->subarray()};
     throw_if_not_ok(subarray.set_ranges_for_dim(
         0, parent_subarray.ranges_for_dim(dim_idx)));
