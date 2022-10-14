@@ -62,11 +62,11 @@ OrderedRangeQuery::OrderedRangeQuery(
   throw_if_not_ok(query_->set_subarray(subarray));
 
   // Set index data buffer that will store the computed ranges.
-  query_->set_data_buffer(
+  throw_if_not_ok(query_->set_data_buffer(
       dimension_label->index_dimension()->name(),
       index_data_->data(),
       index_data_->data_size(),
-      true);
+      true));
 }
 
 bool OrderedRangeQuery::completed() const {

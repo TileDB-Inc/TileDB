@@ -100,7 +100,7 @@ int32_t tiledb_dimension_label_schema_alloc(
   if (*dim_label_schema == nullptr) {
     auto st =
         Status_Error("Failed to allocate TileDB dimension label schema object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -121,7 +121,7 @@ int32_t tiledb_dimension_label_schema_alloc(
     *dim_label_schema = nullptr;
     auto st =
         Status_Error("Failed to allocate TileDB dimension label schema object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }

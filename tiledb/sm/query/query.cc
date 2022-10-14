@@ -1327,7 +1327,7 @@ Status Query::process() {
         dynamic_cast<StrategyBase*>(strategy_.get())->stats()->reset();
         strategy_ = nullptr;
       }
-      create_strategy(true);
+      throw_if_not_ok(create_strategy(true));
     }
   }
 
