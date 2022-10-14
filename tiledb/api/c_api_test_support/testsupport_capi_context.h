@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api_support/context/testsupport_capi_context.h
+ * @file tiledb/api/c_api_test_support/context/testsupport_capi_context.h
  *
  * @section LICENSE
  *

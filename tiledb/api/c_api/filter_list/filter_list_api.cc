@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines C API functions for the filter section.
+ * This file defines C API functions for the filter list section.
  */
 
 #include "../filter/filter_api_internal.h"

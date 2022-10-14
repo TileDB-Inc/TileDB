@@ -1,5 +1,5 @@
 #
-# tiledb/api/c_api_support/CMakeLists.txt
+# tiledb/api/c_api_test_support/CMakeLists.txt
 #
 # The MIT License
 #

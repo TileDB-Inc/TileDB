@@ -38,7 +38,7 @@ using tiledb::api::test_support::ordinary_context;
 
 TEST_CASE("C API: tiledb_ctx_alloc argument validation", "[capi][context]") {
   SECTION("Success, null config") {
-    tiledb_ctx_handle_t* ctx;
+    tiledb_ctx_handle_t* ctx{nullptr};
     auto rc{tiledb_ctx_alloc(nullptr, &ctx)};
     CHECK(tiledb_status(rc) == TILEDB_OK);
     REQUIRE(ctx != nullptr);
@@ -46,9 +46,9 @@ TEST_CASE("C API: tiledb_ctx_alloc argument validation", "[capi][context]") {
   }
 
   SECTION("Success, non null config") {
-    tiledb_ctx_handle_t* ctx;
-    tiledb_config_handle_t* config;
-    tiledb_error_handle_t* err;
+    tiledb_ctx_handle_t* ctx{nullptr};
+    tiledb_config_handle_t* config{nullptr};
+    tiledb_error_handle_t* err{nullptr};
     auto rc{tiledb_config_alloc(&config, &err)};
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     rc = tiledb_ctx_alloc(nullptr, &ctx);
@@ -65,7 +65,7 @@ TEST_CASE("C API: tiledb_ctx_alloc argument validation", "[capi][context]") {
 }
 
 TEST_CASE("C API: tiledb_ctx_free argument validation", "[capi][context]") {
-  tiledb_ctx_handle_t* ctx;
+  tiledb_ctx_handle_t* ctx{nullptr};
   auto rc{tiledb_ctx_alloc(nullptr, &ctx)};
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   REQUIRE(ctx != nullptr);
@@ -90,7 +90,7 @@ TEST_CASE(
 TEST_CASE(
     "C API: tiledb_ctx_get_config argument validation", "[capi][context]") {
   SECTION("bad context") {
-    tiledb_config_handle_t* config;
+    tiledb_config_handle_t* config{nullptr};
     auto rc{tiledb_ctx_get_config(nullptr, &config)};
     CHECK(rc == TILEDB_INVALID_CONTEXT);
   }
@@ -104,7 +104,7 @@ TEST_CASE(
 TEST_CASE(
     "C API: tiledb_ctx_get_last_error argument validation", "[capi][context]") {
   SECTION("bad context") {
-    tiledb_error_handle_t* error;
+    tiledb_error_handle_t* error{nullptr};
     auto rc{tiledb_ctx_get_last_error(nullptr, &error)};
     CHECK(rc == TILEDB_INVALID_CONTEXT);
   }

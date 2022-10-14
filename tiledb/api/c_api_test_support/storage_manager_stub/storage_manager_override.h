@@ -1,5 +1,5 @@
 /**
- * @file storage_manager_stub.cc
+ * @file storage_manager_override.cc
  *
  * @section LICENSE
  *

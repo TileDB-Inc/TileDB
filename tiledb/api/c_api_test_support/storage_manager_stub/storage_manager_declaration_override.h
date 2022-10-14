@@ -1,5 +1,5 @@
 /**
- * @file storage_manager_override.h
+ * @file storage_manager_declaration_override.h
  *
  * @section LICENSE
  *

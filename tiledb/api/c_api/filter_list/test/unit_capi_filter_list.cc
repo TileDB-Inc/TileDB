@@ -181,6 +181,7 @@ TEST_CASE(
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   tiledb_filter_list_t* filter_list;
   rc = tiledb_filter_list_alloc(ctx, &filter_list);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
   tiledb_filter_t* filter;
   rc = tiledb_filter_alloc(ctx, TILEDB_FILTER_NONE, &filter);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
@@ -203,6 +204,7 @@ TEST_CASE(
   SECTION("null filter pointer") {
     rc = tiledb_filter_list_get_filter_from_index(ctx, filter_list, 0, nullptr);
   }
+  REQUIRE(tiledb_status(rc) == TILEDB_ERR);
 
   tiledb_filter_free(&filter);
   tiledb_filter_list_free(&filter_list);

@@ -28,7 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class StorageManager.
+ * This file defines class StorageManagerCanonical.
  */
 
 #ifndef TILEDB_STORAGE_MANAGER_CANONICAL_H

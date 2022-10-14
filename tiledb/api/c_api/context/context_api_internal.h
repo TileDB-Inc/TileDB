@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/context/context_internal.h
+ * @file tiledb/api/c_api/context/context_api_internal.h
  *
  * @section LICENSE
  *
