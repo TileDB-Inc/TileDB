@@ -315,6 +315,19 @@ struct TimestampedURI {
     return timestamp_range_.first < uri.timestamp_range_.first;
   }
 
+  const URI& uri() const {
+    return uri_;
+  }
+
+  const std::pair<uint64_t, uint64_t>& timestamp_range() const {
+    return timestamp_range_;
+  }
+
+  bool operator==(const TimestampedURI& other) const {
+    return (
+        uri() == other.uri() && timestamp_range() == other.timestamp_range());
+  }
+
   bool has_unary_timestamp_range() const {
     return timestamp_range_.first == timestamp_range_.second;
   }

@@ -223,7 +223,7 @@ Status array_directory_from_capnp(
   }
 
   // Array uri
-  array_directory->uri() = array_uri;
+  array_directory->uri() = array_uri.add_trailing_slash();
 
   // Get unfiltered fragment uris
   if (array_directory_reader.hasUnfilteredFragmentUris()) {

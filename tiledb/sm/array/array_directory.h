@@ -188,6 +188,13 @@ class ArrayDirectory {
       return (timestamp_ < rhs.timestamp_);
     }
 
+    bool operator==(const DeleteAndUpdateTileLocation& other) const {
+      return (
+          uri() == other.uri() &&
+          condition_marker() == other.condition_marker() &&
+          offset() == other.offset() && timestamp() == other.timestamp());
+    }
+
     /* ********************************* */
     /*                API                */
     /* ********************************* */
