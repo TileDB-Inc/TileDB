@@ -62,6 +62,18 @@ class ReaderBaseStatusException : public StatusException {
   }
 };
 
+struct ReaderBase::BitSortFilterMetadataStorage {
+      std::vector<Tile*> dim_tiles_;
+      std::vector<QueryBuffer> query_buffers_;
+      std::optional<DomainBuffersView> db_;
+      std::optional<GlobalCmpQB> qc_;
+      std::function<bool(const uint64_t&, const uint64_t&)> comparator_;
+
+      BitSortFilterMetadataType get_arg() {
+          return BitSortFilterMetadataType(dim_tiles_, comparator_);
+      }
+};
+
 /* ****************************** */
 /*          CONSTRUCTORS          */
 /* ****************************** */
@@ -1025,14 +1037,8 @@ Status ReaderBase::unfilter_tile_chunk_range(
     if (!var_size) {
       if (!nullable) {
         if (array_schema_.bitsort_filter_attr().has_value()) {
-          BitSortFilterMetadataType bitsort_metadata;
-          std::vector<QueryBuffer> query_buffers;
-          std::optional<DomainBuffersView> db;
-          GlobalCmpQB cmp_obj =
-              construct_bitsort_filter_argument(tile, bitsort_metadata, query_buffers, db);
-            bitsort_metadata.comparator() = [&cmp_obj](const uint64_t &left_idx, const uint64_t &right_idx){
-                return cmp_obj(left_idx, right_idx);
-              };
+          BitSortFilterMetadataStorage bitsort_storage;
+          BitSortFilterMetadataType bitsort_metadata = construct_bitsort_filter_argument(tile, bitsort_storage);
           RETURN_NOT_OK(unfilter_tile_chunk_range(
               num_range_threads,
               range_thread_idx,
@@ -1645,14 +1651,8 @@ Status ReaderBase::unfilter_tiles(
           if (!var_size) {
             if (!nullable) {
               if (array_schema_.bitsort_filter_attr().has_value()) {
-                BitSortFilterMetadataType bitsort_metadata;
-                std::vector<QueryBuffer> query_buffers;
-                std::optional<DomainBuffersView> db;
-                GlobalCmpQB cmp_obj =
-                construct_bitsort_filter_argument(tile, bitsort_metadata, query_buffers, db);
-                bitsort_metadata.comparator() = [&cmp_obj](const uint64_t &left_idx, const uint64_t &right_idx){
-                    return cmp_obj(left_idx, right_idx);
-                };
+                BitSortFilterMetadataStorage bitsort_storage;
+                BitSortFilterMetadataType bitsort_metadata = construct_bitsort_filter_argument(tile, bitsort_storage);
                 RETURN_NOT_OK(unfilter_tile(name, t, bitsort_metadata));
 
               } else {
@@ -1917,18 +1917,21 @@ bool ReaderBase::has_coords() const {
   return false;
 }
 
-GlobalCmpQB ReaderBase::construct_bitsort_filter_argument(
-    ResultTile* const tile,
-    BitSortFilterMetadataType &bitsort_metadata,
-    std::vector<QueryBuffer>& qb_vector,
-    std::optional<DomainBuffersView>& db) const {
+BitSortFilterMetadataType ReaderBase::construct_bitsort_filter_argument(
+      ResultTile* const tile,
+      BitSortFilterMetadataStorage& bitsort_storage) const {
+  // Getting the references to the fields in storage.
+  std::vector<Tile*>& dim_tiles = bitsort_storage.dim_tiles_;
+  std::vector<QueryBuffer>& query_buffers = bitsort_storage.query_buffers_;
+  std::optional<DomainBuffersView>& db = bitsort_storage.db_;
+  std::optional<GlobalCmpQB>& qc = bitsort_storage.qc_;
+  std::function<bool(const uint64_t&, const uint64_t&)>& comparator = bitsort_storage.comparator_;
 
-  std::vector<Tile*>& dim_tiles = bitsort_metadata.dim_tiles();
   uint64_t num_dims = array_schema_.dim_num();
   std::vector<uint64_t> dim_data_sizes;
 
   dim_tiles.reserve(num_dims);
-  qb_vector.reserve(num_dims);
+  query_buffers.reserve(num_dims);
   dim_data_sizes.reserve(num_dims);
 
   // Loop over the dimensions, adding the dimension tiles and constructed
@@ -1940,12 +1943,17 @@ GlobalCmpQB ReaderBase::construct_bitsort_filter_argument(
 
     auto& filtered_buffer = dim_tiles[i]->filtered_buffer();
     dim_data_sizes.emplace_back(filtered_buffer.size());
-    qb_vector.emplace_back(
+    query_buffers.emplace_back(
         filtered_buffer.data(), nullptr, &dim_data_sizes[i], nullptr);
   }
 
-  db.emplace(DomainBuffersView(array_schema_.domain(), qb_vector));
-  return GlobalCmpQB(array_schema_.domain(), db.value());
+  db.emplace(DomainBuffersView(array_schema_.domain(), query_buffers));
+  qc.emplace(GlobalCmpQB(array_schema_.domain(), db.value()));
+  comparator = [&qc](const uint64_t &left_idx, const uint64_t &right_idx){
+      return qc.value()(left_idx, right_idx);
+  };
+
+  return bitsort_storage.get_arg();
 }
 
 // Explicit template instantiations
