@@ -318,6 +318,7 @@ void read_query_set_subarray(Query &read_query, int num_dims) {
  * @param read_layout The layout of the read query.
  * @param set_subarray Whether the read query is called with a subarray encompassing the whole array.
  * @param set_capacity Set whether the array has a custom capacity.
+ * @param hilbert_order Set whether the schema's cell layout is Hilbert order.
  */
 template <typename AttrType, typename DimType, typename AttributeDistribution>
 void bitsort_filter_api_test(
@@ -326,7 +327,8 @@ void bitsort_filter_api_test(
     tiledb_layout_t write_layout,
     tiledb_layout_t read_layout,
     bool set_subarray,
-    bool set_capacity) {
+    bool set_capacity, 
+    bool hilbert_order) {
   // Setup.
   Context ctx;
   VFS vfs(ctx);
@@ -378,7 +380,9 @@ void bitsort_filter_api_test(
   if (set_capacity) {
     schema.set_capacity(CAPACITY);
   }
-
+  if (hilbert_order) {
+    schema.set_cell_order(TILEDB_HILBERT);
+  }
   Array::create(bitsort_array_name, schema);
 
   // Setting up the random number generator for the bitsort filter testing.
@@ -519,6 +523,7 @@ void bitsort_filter_api_test(
  * @param read_layout The layout of the read query.
  * @param set_subarray Whether the read query is called with a subarray encompassing the whole array.
  * @param set_capacity Set whether the array has a custom capacity.
+ * @param hilbert_order Set whether the schema's cell layout is Hilbert order.
  */
 template <typename AttrType, typename AttributeDistribution>
 void bitsort_filter_api_test(
@@ -527,27 +532,28 @@ void bitsort_filter_api_test(
     tiledb_layout_t write_layout,
     tiledb_layout_t read_layout,
     bool set_subarray,
-    bool set_capacity) {
+    bool set_capacity,
+    bool hilbert_order) {
   bitsort_filter_api_test<AttrType, int16_t, AttributeDistribution>(
-      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
   bitsort_filter_api_test<AttrType, int8_t, AttributeDistribution>(
-      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
   bitsort_filter_api_test<AttrType, int32_t, AttributeDistribution>(
-      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
   bitsort_filter_api_test<AttrType, int64_t, AttributeDistribution>(
-      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
   bitsort_filter_api_test<AttrType, uint8_t, AttributeDistribution>(
-      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
   bitsort_filter_api_test<AttrType, uint16_t, AttributeDistribution>(
-      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
   bitsort_filter_api_test<AttrType, uint32_t, AttributeDistribution>(
-      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
   bitsort_filter_api_test<AttrType, uint64_t, AttributeDistribution>(
-      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
   bitsort_filter_api_test<AttrType, float, AttributeDistribution>(
-      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
   bitsort_filter_api_test<AttrType, double, AttributeDistribution>(
-      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity);
+      bitsort_array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
 }
 
 TEMPLATE_TEST_CASE(
@@ -571,28 +577,43 @@ TEMPLATE_TEST_CASE(
   tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   bool set_subarray = GENERATE(true, false);
   bool set_capacity = false; // TODO: set to generate.
+  bool hilbert_order = false; // TODO: set to generate.
 
   // Run tests.
   if constexpr (std::is_floating_point<TestType>::value) {
     bitsort_filter_api_test<TestType, FloatDistribution>(
-        array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity);
+        array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
   } else if constexpr (std::is_unsigned<TestType>::value) {
     bitsort_filter_api_test<TestType, UnsignedIntDistribution>(
-        array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity);
+        array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
   } else if constexpr (std::is_signed<TestType>::value) {
     bitsort_filter_api_test<TestType, IntDistribution>(
-        array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity);
+        array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
   }
 }
 
-TEST_CASE("bitsort filter debugging test (set capacity)", "[cppapi][filter][bitsort][capacity][!mayfail]") {
+TEST_CASE("bitsort filter debugging test (hilbert)", "[cppapi][filter][bitsort][hilbert]") {
+  uint64_t num_dims = 2;
+  std::string array_name = "cpp_unit_bitsort_array";
+  tiledb_layout_t write_layout = TILEDB_GLOBAL_ORDER;
+  tiledb_layout_t read_layout = TILEDB_ROW_MAJOR;
+  bool set_subarray = false;
+  bool set_capacity = false; 
+  bool hilbert_order = true; 
+
+  bitsort_filter_api_test<int32_t, int16_t, IntDistribution>(
+        array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
+}
+
+TEST_CASE("bitsort filter debugging test (set capacity)", "[cppapi][filter][bitsort][hilbert]") {
   uint64_t num_dims = 2;
   std::string array_name = "cpp_unit_bitsort_array";
   tiledb_layout_t write_layout = TILEDB_GLOBAL_ORDER;
   tiledb_layout_t read_layout = TILEDB_ROW_MAJOR;
   bool set_subarray = false;
   bool set_capacity = true; 
+  bool hilbert_order = false; 
 
   bitsort_filter_api_test<int32_t, int16_t, IntDistribution>(
-        array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity);
+        array_name, num_dims, write_layout, read_layout, set_subarray, set_capacity, hilbert_order);
 }
