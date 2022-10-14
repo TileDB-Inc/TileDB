@@ -847,18 +847,6 @@ class ReaderBase : public StrategyBase {
   /* ********************************* */
 
   /**
-   * @brief Calculate Hilbert values. Used to pass in a Hilbert
-   * comparator to the read-reverse path.
-   *
-   * @param domain_buffers
-   * @param hilbert_values
-   * @return Status
-   */
-  Status calculate_hilbert_values(
-      const DomainBuffersView& domain_buffers,
-      std::vector<uint64_t>& hilbert_values) const;
-
-  /**
    * @brief Constructs global order comparator object, to be passed into
    * the bitsort filter.
    *
@@ -866,14 +854,10 @@ class ReaderBase : public StrategyBase {
    * @param dim_tiles Reference to storage for dimension tiles.
    * @param qb_vector Reference to storage for query buffer vector.
    * @param db Reference to storage for the domain buffer view object.
-   * @return CmpObject The comparator object with the dimension tile data.
+   * @return GlobalCmpQB The comparator object with the dimension tile data.
    */
-  template <
-      typename CmpObject,
-      typename std::enable_if_t<
-          std::is_same_v<CmpObject, HilbertCmpQB> ||
-          std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
-  CmpObject construct_bitsort_filter_argument(
+
+  GlobalCmpQB construct_bitsort_filter_argument(
       ResultTile* const tile,
       BitSortFilterMetadataType& bitsort_metadata,
       std::vector<QueryBuffer>& qb_vector,
