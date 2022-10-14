@@ -313,7 +313,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{5, 15, 3, 5, 11, 14}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   uint64_t tile_coords_0[] = {0};
   uint64_t tile_coords_1[] = {1};
@@ -433,7 +433,7 @@ TEST_CASE_METHOD(
       {1, 2, 5, 8},
   };
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   check_iter<uint64_t>(subarray, c_cell_slabs);
 

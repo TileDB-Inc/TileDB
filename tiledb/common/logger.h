@@ -295,6 +295,13 @@ class Logger {
   Status status(const Status& st);
 
   /**
+   * Log a message from a Status object without returning it.
+   *
+   * @param st The Status object to log
+   */
+  void status_no_return_value(const Status& st);
+
+  /**
    * Log an error and exit with a non-zero status.
    *
    * @param msg The string to log.

@@ -340,7 +340,7 @@ Status WriterBase::calculate_hilbert_values(
         return Status::Ok();
       });
 
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   return Status::Ok();
 }
@@ -545,15 +545,16 @@ Status WriterBase::compute_coords_metadata(
           auto tiles_it = tiles.find(dim_name);
           assert(tiles_it != tiles.end());
           if (!dim->var_size())
-            dim->compute_mbr(tiles_it->second[i].fixed_tile(), &mbr[d]);
+            RETURN_NOT_OK(
+                dim->compute_mbr(tiles_it->second[i].fixed_tile(), &mbr[d]));
           else
-            dim->compute_mbr_var(
+            throw_if_not_ok(dim->compute_mbr_var(
                 tiles_it->second[i].offset_tile(),
                 tiles_it->second[i].var_tile(),
-                &mbr[d]);
+                &mbr[d]));
         }
 
-        meta->set_mbr(i, mbr);
+        throw_if_not_ok(meta->set_mbr(i, mbr));
         return Status::Ok();
       });
 

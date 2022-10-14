@@ -128,7 +128,7 @@ Status DeletesAndUpdates::dowork() {
 
   // Check that the update values are valid.
   for (auto& update_value : update_values_) {
-    update_value.check(array_schema_);
+    std::ignore = update_value.check(array_schema_);
   }
 
   // Get a new fragment name for the delete.

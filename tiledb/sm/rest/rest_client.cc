@@ -728,7 +728,7 @@ size_t RestClient::query_post_call_back(
 
     assert(st.ok());
     if (!st.ok()) {
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
     }
     assert(scratch->size() == length);
   }

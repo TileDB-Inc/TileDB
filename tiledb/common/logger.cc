@@ -124,6 +124,10 @@ Status Logger::status(const Status& st) {
   return st;
 }
 
+void Logger::status_no_return_value(const Status& st) {
+  logger_->error(st.message());
+}
+
 void Logger::trace(const std::string& msg) {
   logger_->trace(msg);
 }
@@ -313,6 +317,11 @@ void LOG_ERROR(const std::string& msg) {
 Status LOG_STATUS(const Status& st) {
   global_logger().error(st.to_string());
   return st;
+}
+
+/** Logs a status without returning it. */
+void LOG_STATUS_NO_RETURN_VALUE(const Status& st) {
+  global_logger().error(st.to_string());
 }
 
 /** Logs a status. */

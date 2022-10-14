@@ -422,7 +422,7 @@ TEST_CASE("test relevant_ranges", "[dimension][relevant_ranges][string]") {
 TEST_CASE("Dimension::oob format") {
   Dimension d("X", Datatype::FLOAT64);
   double d_dom[2]{-682.73999, 929.42999};
-  d.set_domain(Range(&d_dom, sizeof(d_dom)));
+  REQUIRE(d.set_domain(Range(&d_dom, sizeof(d_dom))).ok());
   double x{-682.75};
   std::string error{};
   bool b{Dimension::oob<double>(&d, &x, &error)};

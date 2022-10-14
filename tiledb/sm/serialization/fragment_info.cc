@@ -365,7 +365,8 @@ Status fragment_info_to_capnp(
       fragment_info_builder->initFragmentInfo(frag_info.size());
   for (size_t i = 0; i < frag_info.size(); i++) {
     auto single_info_builder = frag_info_builder[i];
-    single_fragment_info_to_capnp(frag_info[i], &single_info_builder);
+    throw_if_not_ok(
+        single_fragment_info_to_capnp(frag_info[i], &single_info_builder));
   }
 
   // set fragment uris to vacuum

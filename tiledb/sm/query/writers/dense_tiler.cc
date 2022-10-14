@@ -576,7 +576,7 @@ Status DenseTiler<T>::copy_tile(
 }
 
 template <class T>
-Status DenseTiler<T>::compute_tile_metadata(
+void DenseTiler<T>::compute_tile_metadata(
     const std::string& name, uint64_t id, WriterTile& tile) const {
   // Calculate copy plan
   const CopyPlan copy_plan = this->copy_plan(id);
@@ -640,7 +640,6 @@ Status DenseTiler<T>::compute_tile_metadata(
   }
 
   md_generator.set_tile_metadata(tile);
-  return Status::Ok();
 }
 
 // Explicit template instantiations

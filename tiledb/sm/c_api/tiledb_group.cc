@@ -55,7 +55,7 @@ int32_t tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) {
   // Check for error
   if (group_uri == nullptr) {
     auto st = Status_Error("Invalid group directory argument is NULL");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -80,7 +80,7 @@ int32_t tiledb_group_alloc(
   if (*group == nullptr) {
     auto st = Status_Error(
         "Failed to create TileDB group object; Memory allocation error");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -91,7 +91,7 @@ int32_t tiledb_group_alloc(
     auto st = Status_Error("Failed to create TileDB group object; Invalid URI");
     delete *group;
     *group = nullptr;
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -105,7 +105,7 @@ int32_t tiledb_group_alloc(
     auto st = Status_Error(
         "Failed to create TileDB group object; Memory allocation "
         "error");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -410,7 +410,7 @@ int32_t tiledb_group_get_member_count(
   } catch (const std::exception& e) {
     auto st = Status_Error(
         std::string("Internal TileDB uncaught exception; ") + e.what());
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -459,7 +459,7 @@ int32_t tiledb_group_get_member_by_index(
   } catch (const std::exception& e) {
     auto st = Status_Error(
         std::string("Internal TileDB uncaught exception; ") + e.what());
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -497,7 +497,7 @@ int32_t tiledb_group_get_member_by_name(
   } catch (const std::exception& e) {
     auto st = Status_Error(
         std::string("Internal TileDB uncaught exception; ") + e.what());
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }

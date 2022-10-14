@@ -248,7 +248,7 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
 
   // Load processed conditions from fragment metadata.
   if (delete_and_update_conditions_.size() > 0) {
-    load_processed_conditions();
+    throw_if_not_ok(load_processed_conditions());
   }
 
   // Make a list of dim/attr that will be loaded for query condition.
@@ -475,7 +475,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
               ->alloc_bitmap();
           return Status::Ok();
         });
-    RETURN_NOT_OK_ELSE(status, logger_->status(status));
+    RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
   }
 
   // Process all tiles/cells in parallel.
@@ -571,7 +571,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   // For multiple range threads, bitmap cell count is done in a separate
   // parallel for.
@@ -586,7 +586,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
               ->count_cells();
           return Status::Ok();
         });
-    RETURN_NOT_OK_ELSE(status, logger_->status(status));
+    RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
   }
 
   logger_->debug("Done computing tile bitmaps");
@@ -712,7 +712,7 @@ Status SparseIndexReaderBase::apply_query_condition(
 
           return Status::Ok();
         });
-    RETURN_NOT_OK_ELSE(status, logger_->status(status));
+    RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
   }
 
   logger_->debug("Done applying query condition");
