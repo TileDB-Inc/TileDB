@@ -278,9 +278,7 @@ Status Group::close() {
   metadata_.clear();
   metadata_loaded_ = false;
   is_open_ = false;
-  clear();
-
-  return Status::Ok();
+  return clear();
 }
 
 bool Group::is_open() const {
@@ -845,9 +843,9 @@ std::string Group::dump(
       }
 
       GroupV1 group_rec(uri, storage_manager_);
-      group_rec.open(QueryType::READ);
+      throw_if_not_ok(group_rec.open(QueryType::READ));
       ss << group_rec.dump(indent_size, num_indents + 2, recursive, false);
-      group_rec.close();
+      throw_if_not_ok(group_rec.close());
     }
   }
 

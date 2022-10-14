@@ -153,7 +153,7 @@ Status filter_pipeline_to_capnp(
   for (unsigned i = 0; i < num_filters; i++) {
     const auto* filter = filter_pipeline->get_filter(i);
     auto filter_builder = filter_list_builder[i];
-    filter_to_capnp(filter, &filter_builder);
+    throw_if_not_ok(filter_to_capnp(filter, &filter_builder));
   }
 
   return Status::Ok();

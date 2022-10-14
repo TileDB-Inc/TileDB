@@ -54,7 +54,7 @@ capi_return_t tiledb_filter_list_add_filter(
     tiledb_filter_list_t* filter_list, tiledb_filter_t* filter) {
   ensure_filter_list_is_valid(filter_list);
   ensure_filter_is_valid(filter);
-  throw_if_not_ok(filter_list->pipeline().add_filter(filter->filter()));
+  filter_list->pipeline().add_filter(filter->filter());
   return TILEDB_OK;
 }
 

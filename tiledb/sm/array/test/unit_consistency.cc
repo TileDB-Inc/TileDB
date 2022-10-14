@@ -182,12 +182,12 @@ TEST_CASE(
   REQUIRE(tiledb::sm::utils::parse::is_element_of(uri, uri) == true);
 
   // Deregister array
-  array.get()->close();
+  REQUIRE(array.get()->close().ok());
   REQUIRE(x.registry_size() == 0);
   REQUIRE(x.is_open(uri) == false);
 
   // Clean up
-  sm.vfs()->remove_dir(uri);
+  REQUIRE(sm.vfs()->remove_dir(uri).ok());
 }
 
 TEST_CASE(
@@ -222,7 +222,7 @@ TEST_CASE(
 
   // Deregister arrays
   for (auto a = arrays.end(); a == arrays.begin(); --a) {
-    a->get()->close();
+    REQUIRE(a->get()->close().ok());
     count--;
     REQUIRE(x.is_open(uris[count]) == false);
     REQUIRE(x.registry_size() == count);
@@ -230,7 +230,7 @@ TEST_CASE(
 
   // Clean up
   for (auto uri : uris) {
-    sm.vfs()->remove_dir(uri);
+    REQUIRE(sm.vfs()->remove_dir(uri).ok());
   }
 }
 
@@ -266,7 +266,7 @@ TEST_CASE(
   REQUIRE(x.is_open(uri) == true);
 
   // Close exclusive modification array
-  array.get()->close();
+  REQUIRE(array.get()->close().ok());
   REQUIRE(x.registry_size() == 0);
   REQUIRE(x.is_open(uri) == false);
 
@@ -284,8 +284,8 @@ TEST_CASE(
   REQUIRE(x.registry_size() == 1);
 
   // Clean up
-  array.get()->close();
+  REQUIRE(array.get()->close().ok());
   REQUIRE(x.registry_size() == 0);
   REQUIRE(x.is_open(uri) == false);
-  sm.vfs()->remove_dir(uri);
+  REQUIRE(sm.vfs()->remove_dir(uri).ok());
 }

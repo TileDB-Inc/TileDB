@@ -315,7 +315,7 @@ int32_t tiledb_buffer_alloc(tiledb_ctx_t* ctx, tiledb_buffer_t** buffer) {
   *buffer = new (std::nothrow) tiledb_buffer_t;
   if (*buffer == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB buffer object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -326,7 +326,7 @@ int32_t tiledb_buffer_alloc(tiledb_ctx_t* ctx, tiledb_buffer_t** buffer) {
     delete *buffer;
     *buffer = nullptr;
     auto st = Status_Error("Failed to allocate TileDB buffer object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -392,8 +392,7 @@ int32_t tiledb_buffer_set_data(
   tiledb::sm::Buffer tmp_buffer(data, size);
 
   // Swap with the given buffer.
-  if (SAVE_ERROR_CATCH(ctx, buffer->buffer_->swap(tmp_buffer)))
-    return TILEDB_ERR;
+  buffer->buffer_->swap(tmp_buffer);
 
   // 'tmp_buffer' now destructs, freeing the old allocation (if any) of the
   // given buffer.
@@ -414,7 +413,7 @@ int32_t tiledb_buffer_list_alloc(
   *buffer_list = new (std::nothrow) tiledb_buffer_list_t;
   if (*buffer_list == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB buffer list object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -425,7 +424,7 @@ int32_t tiledb_buffer_list_alloc(
     delete *buffer_list;
     *buffer_list = nullptr;
     auto st = Status_Error("Failed to allocate TileDB buffer list object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -476,7 +475,7 @@ int32_t tiledb_buffer_list_get_buffer(
   *buffer = new (std::nothrow) tiledb_buffer_t;
   if (*buffer == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB buffer object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -488,7 +487,7 @@ int32_t tiledb_buffer_list_get_buffer(
     delete *buffer;
     *buffer = nullptr;
     auto st = Status_Error("Failed to allocate TileDB buffer object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -558,7 +557,7 @@ int32_t tiledb_attribute_alloc(
   *attr = new (std::nothrow) tiledb_attribute_t;
   if (*attr == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB attribute object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -570,7 +569,7 @@ int32_t tiledb_attribute_alloc(
     delete *attr;
     *attr = nullptr;
     auto st = Status_Error("Failed to allocate TileDB attribute object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -764,7 +763,7 @@ int32_t tiledb_domain_alloc(tiledb_ctx_t* ctx, tiledb_domain_t** domain) {
   *domain = new (std::nothrow) tiledb_domain_t;
   if (*domain == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB domain object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -775,7 +774,7 @@ int32_t tiledb_domain_alloc(tiledb_ctx_t* ctx, tiledb_domain_t** domain) {
     delete *domain;
     *domain = nullptr;
     auto st = Status_Error("Failed to allocate TileDB domain object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -798,7 +797,7 @@ int32_t tiledb_domain_get_type(
 
   if (domain->domain_->dim_num() == 0) {
     auto st = Status_Error("Cannot get domain type; Domain has no dimensions");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -806,7 +805,7 @@ int32_t tiledb_domain_get_type(
   if (!domain->domain_->all_dims_same_type()) {
     auto st = Status_Error(
         "Cannot get domain type; Not applicable to heterogeneous dimensions");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -867,7 +866,7 @@ int32_t tiledb_dimension_alloc(
   *dim = new (std::nothrow) tiledb_dimension_t;
   if (*dim == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB dimension object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -880,7 +879,7 @@ int32_t tiledb_dimension_alloc(
     delete *dim;
     *dim = nullptr;
     auto st = Status_Error("Failed to allocate TileDB dimension object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1020,14 +1019,14 @@ int32_t tiledb_domain_get_dimension_from_index(
     errmsg << "Dimension " << index << " out of bounds, domain has rank "
            << ndim;
     auto st = Status_DomainError(errmsg.str());
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
   *dim = new (std::nothrow) tiledb_dimension_t;
   if (*dim == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB dimension object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1037,7 +1036,7 @@ int32_t tiledb_domain_get_dimension_from_index(
     delete *dim;
     *dim = nullptr;
     auto st = Status_Error("Failed to allocate TileDB dimension object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1064,7 +1063,7 @@ int32_t tiledb_domain_get_dimension_from_name(
   if (found_dim == nullptr) {
     auto st = Status_DomainError(
         std::string("Dimension '") + name + "' does not exist");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -1080,7 +1079,7 @@ int32_t tiledb_domain_get_dimension_from_name(
     delete *dim;
     *dim = nullptr;
     auto st = Status_Error("Failed to allocate TileDB dimension object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1121,7 +1120,7 @@ int32_t tiledb_array_schema_alloc(
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array schema object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1131,7 +1130,7 @@ int32_t tiledb_array_schema_alloc(
       HERE(), static_cast<tiledb::sm::ArrayType>(array_type));
   if ((*array_schema)->array_schema_ == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array schema object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1346,7 +1345,7 @@ int32_t tiledb_array_schema_load(
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array schema object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1355,7 +1354,7 @@ int32_t tiledb_array_schema_load(
   tiledb::sm::URI uri(array_uri);
   if (uri.is_invalid()) {
     auto st = Status_Error("Failed to load array schema; Invalid array URI");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -1366,7 +1365,7 @@ int32_t tiledb_array_schema_load(
     if (rest_client == nullptr) {
       auto st = Status_Error(
           "Failed to load array schema; remote array with no REST client.");
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
       return TILEDB_ERR;
     }
@@ -1374,7 +1373,7 @@ int32_t tiledb_array_schema_load(
     auto&& [st, array_schema_rest] =
         rest_client->get_array_schema_from_rest(uri);
     if (!st.ok()) {
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
       delete *array_schema;
       return TILEDB_ERR;
@@ -1408,7 +1407,7 @@ int32_t tiledb_array_schema_load(
           tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       auto st = Status_ArrayDirectoryError(le.what());
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
       delete *array_schema;
       return TILEDB_ERR;
@@ -1418,7 +1417,7 @@ int32_t tiledb_array_schema_load(
     auto&& [st, array_schema_latest] =
         storage_manager->load_array_schema_latest(array_dir, key);
     if (!st.ok()) {
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
       delete *array_schema;
       return TILEDB_ERR;
@@ -1442,7 +1441,7 @@ int32_t tiledb_array_schema_load_with_key(
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array schema object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1453,7 +1452,7 @@ int32_t tiledb_array_schema_load_with_key(
     delete *array_schema;
     *array_schema = nullptr;
     auto st = Status_Error("Failed to load array schema; Invalid array URI");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -1466,7 +1465,7 @@ int32_t tiledb_array_schema_load_with_key(
       *array_schema = nullptr;
       auto st = Status_Error(
           "Failed to load array schema; remote array with no REST client.");
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
       return TILEDB_ERR;
     }
@@ -1474,7 +1473,7 @@ int32_t tiledb_array_schema_load_with_key(
     auto&& [st, array_schema_rest] =
         rest_client->get_array_schema_from_rest(uri);
     if (!st.ok()) {
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
       delete *array_schema;
       *array_schema = nullptr;
@@ -1512,7 +1511,7 @@ int32_t tiledb_array_schema_load_with_key(
           tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
       auto st = Status_ArrayDirectoryError(le.what());
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
       delete *array_schema;
       return TILEDB_ERR;
@@ -1522,7 +1521,7 @@ int32_t tiledb_array_schema_load_with_key(
     auto&& [st, array_schema_latest] =
         storage_manager->load_array_schema_latest(array_dir, key);
     if (!st.ok()) {
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
       delete *array_schema;
       *array_schema = nullptr;
@@ -1622,7 +1621,7 @@ int32_t tiledb_array_schema_get_domain(
   *domain = new (std::nothrow) tiledb_domain_t;
   if (*domain == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB domain object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1634,7 +1633,7 @@ int32_t tiledb_array_schema_get_domain(
     delete *domain;
     *domain = nullptr;
     auto st = Status_Error("Failed to allocate TileDB domain object in object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1693,7 +1692,7 @@ int32_t tiledb_array_schema_get_attribute_from_index(
            << attribute_num << " attributes in array "
            << array_schema->array_schema_->array_uri().to_string();
     auto st = Status_ArraySchemaError(errmsg.str());
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -1704,7 +1703,7 @@ int32_t tiledb_array_schema_get_attribute_from_index(
   *attr = new (std::nothrow) tiledb_attribute_t;
   if (*attr == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB attribute");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1717,7 +1716,7 @@ int32_t tiledb_array_schema_get_attribute_from_index(
     delete *attr;
     *attr = nullptr;
     auto st = Status_Error("Failed to allocate TileDB attribute");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1746,14 +1745,14 @@ int32_t tiledb_array_schema_get_attribute_from_name(
         (name_string.empty() ? "<anonymous>" : name) +
         " does not exist for array " +
         array_schema->array_schema_->array_uri().to_string());
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
   *attr = new (std::nothrow) tiledb_attribute_t;
   if (*attr == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB attribute");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1764,7 +1763,7 @@ int32_t tiledb_array_schema_get_attribute_from_name(
     delete *attr;
     *attr = nullptr;
     auto st = Status_Error("Failed to allocate TileDB attribute");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1807,7 +1806,7 @@ int32_t tiledb_array_schema_evolution_alloc(
   if (*array_schema_evolution == nullptr) {
     auto st =
         Status_Error("Failed to allocate TileDB array schema evolution object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1820,7 +1819,7 @@ int32_t tiledb_array_schema_evolution_alloc(
     *array_schema_evolution = nullptr;
     auto st =
         Status_Error("Failed to allocate TileDB array schema evolution object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1913,7 +1912,7 @@ int32_t tiledb_query_alloc(
   if (!array->array_->is_open()) {
     auto st = Status_Error("Cannot create query; Input array is not open");
     *query = nullptr;
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -1936,7 +1935,7 @@ int32_t tiledb_query_alloc(
            << ")";
     *query = nullptr;
     auto st = Status_Error(errmsg.str());
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -1946,7 +1945,7 @@ int32_t tiledb_query_alloc(
   if (*query == nullptr) {
     auto st = Status_Error(
         "Failed to allocate TileDB query object; Memory allocation failed");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -1959,7 +1958,7 @@ int32_t tiledb_query_alloc(
         "Failed to allocate TileDB query object; Memory allocation failed");
     delete *query;
     *query = nullptr;
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -2499,7 +2498,7 @@ int32_t tiledb_query_get_array(
   if (*array == nullptr) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation error");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -2835,7 +2834,7 @@ int32_t tiledb_query_get_subarray_t(
   *subarray = new (std::nothrow) tiledb_subarray_t;
   if (*subarray == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB subarray object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -3235,7 +3234,7 @@ int32_t tiledb_query_condition_alloc(
     auto st = Status_Error(
         "Failed to create TileDB query condition object; Memory allocation "
         "error");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -3244,7 +3243,7 @@ int32_t tiledb_query_condition_alloc(
   (*cond)->query_condition_ = new (std::nothrow) tiledb::sm::QueryCondition();
   if ((*cond)->query_condition_ == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB query condition object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     delete *cond;
     *cond = nullptr;
@@ -3282,7 +3281,7 @@ int32_t tiledb_query_condition_init(
       condition_value_size,
       static_cast<tiledb::sm::QueryConditionOp>(op));
   if (!st.ok()) {
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -3309,7 +3308,7 @@ int32_t tiledb_query_condition_combine(
     auto st = Status_Error(
         "Failed to create TileDB query condition object; Memory allocation "
         "error");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -3319,7 +3318,7 @@ int32_t tiledb_query_condition_combine(
       new (std::nothrow) tiledb::sm::QueryCondition();
   if ((*combined_cond)->query_condition_ == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB query condition object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     delete *combined_cond;
     *combined_cond = nullptr;
@@ -3357,7 +3356,7 @@ int32_t tiledb_array_alloc(
   if (*array == nullptr) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation error");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -3368,7 +3367,7 @@ int32_t tiledb_array_alloc(
     auto st = Status_Error("Failed to create TileDB array object; Invalid URI");
     delete *array;
     *array = nullptr;
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -3382,7 +3381,7 @@ int32_t tiledb_array_alloc(
         "Failed to create TileDB array object; Memory allocation error");
     delete *array;
     *array = nullptr;
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -3634,7 +3633,7 @@ int32_t tiledb_array_get_schema(
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array schema");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -3642,7 +3641,7 @@ int32_t tiledb_array_get_schema(
   // Get schema
   auto&& [st, array_schema_get] = array->array_->get_array_schema();
   if (!st.ok()) {
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     delete *array_schema;
     *array_schema = nullptr;
@@ -3687,7 +3686,7 @@ int32_t tiledb_array_create(
   tiledb::sm::URI uri(array_uri);
   if (uri.is_invalid()) {
     auto st = Status_Error("Failed to create array; Invalid array URI");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -3698,7 +3697,7 @@ int32_t tiledb_array_create(
     if (rest_client == nullptr) {
       auto st = Status_Error(
           "Failed to create array; remote array with no REST client.");
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
       return TILEDB_ERR;
     }
@@ -3773,7 +3772,7 @@ int32_t tiledb_array_create_with_key(
   tiledb::sm::URI uri(array_uri);
   if (uri.is_invalid()) {
     auto st = Status_Error("Failed to create array; Invalid array URI");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -3784,7 +3783,7 @@ int32_t tiledb_array_create_with_key(
       auto st = Status_Error(
           "Failed to create array; encrypted remote arrays are not "
           "supported.");
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
       return TILEDB_ERR;
     }
@@ -3794,7 +3793,7 @@ int32_t tiledb_array_create_with_key(
     if (rest_client == nullptr) {
       auto st = Status_Error(
           "Failed to create array; remote array with no REST client.");
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
       return TILEDB_ERR;
     }
@@ -4105,7 +4104,7 @@ int32_t tiledb_array_encryption_type(
         tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
   } catch (const std::logic_error& le) {
     auto st = Status_ArrayDirectoryError(le.what());
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -4295,7 +4294,7 @@ int32_t tiledb_array_evolve(
   tiledb::sm::URI uri(array_uri);
   if (uri.is_invalid()) {
     auto st = Status_Error("Failed to create array; Invalid array URI");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -4331,7 +4330,7 @@ int32_t tiledb_array_upgrade_version(
   tiledb::sm::URI uri(array_uri);
   if (uri.is_invalid()) {
     auto st = Status_Error("Failed to find the array; Invalid array URI");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -4398,7 +4397,7 @@ int32_t tiledb_object_walk(
     return TILEDB_ERR;
   if (callback == nullptr) {
     auto st = Status_Error("Cannot initiate walk; Invalid callback function");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -4449,7 +4448,7 @@ int32_t tiledb_object_ls(
   if (callback == nullptr) {
     auto st =
         Status_Error("Cannot initiate object ls; Invalid callback function");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -4503,7 +4502,7 @@ int32_t tiledb_vfs_alloc(
   if (*vfs == nullptr) {
     auto st =
         Status_Error("Failed to allocate TileDB virtual filesystem object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -4520,7 +4519,7 @@ int32_t tiledb_vfs_alloc(
   if ((*vfs)->vfs_ == nullptr) {
     auto st =
         Status_Error("Failed to allocate TileDB virtual filesystem object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     delete *vfs;
     *vfs = nullptr;
@@ -4772,7 +4771,7 @@ int32_t tiledb_vfs_open(
   if (*fh == nullptr) {
     auto st = Status_Error(
         "Failed to create TileDB VFS file handle; Memory allocation error");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -4784,7 +4783,7 @@ int32_t tiledb_vfs_open(
         Status_Error("Failed to create TileDB VFS file handle; Invalid URI");
     delete *fh;
     *fh = nullptr;
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -4796,7 +4795,7 @@ int32_t tiledb_vfs_open(
   if ((*fh)->vfs_fh_ == nullptr) {
     auto st = Status_Error(
         "Failed to create TileDB VFS file handle; Memory allocation error");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     delete (*fh);
     *fh = nullptr;
@@ -4874,7 +4873,7 @@ int32_t tiledb_vfs_ls(
     return TILEDB_ERR;
   if (callback == nullptr) {
     auto st = Status_Error("Cannot initiate VFS ls; Invalid callback function");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -5091,7 +5090,7 @@ int32_t tiledb_deserialize_array(
   *array = new (std::nothrow) tiledb_array_t;
   if (*array == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -5102,7 +5101,7 @@ int32_t tiledb_deserialize_array(
     auto st = Status_Error("Failed to create TileDB array object; Invalid URI");
     delete *array;
     *array = nullptr;
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -5115,7 +5114,7 @@ int32_t tiledb_deserialize_array(
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation "
         "error");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -5182,7 +5181,7 @@ int32_t tiledb_deserialize_array_schema(
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array schema object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -5255,7 +5254,7 @@ int32_t tiledb_deserialize_array_open(
   *array = new (std::nothrow) tiledb_array_t;
   if (*array == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -5266,7 +5265,7 @@ int32_t tiledb_deserialize_array_open(
     auto st = Status_Error("Failed to create TileDB array object; Invalid URI");
     delete *array;
     *array = nullptr;
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -5281,7 +5280,7 @@ int32_t tiledb_deserialize_array_open(
         "error");
     delete *array;
     *array = nullptr;
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -5349,7 +5348,7 @@ int32_t tiledb_deserialize_array_schema_evolution(
   if (*array_schema_evolution == nullptr) {
     auto st =
         Status_Error("Failed to allocate TileDB array schema evolution object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -5870,7 +5869,7 @@ int32_t tiledb_deserialize_fragment_info(
   if (uri.is_invalid()) {
     auto st =
         Status_Error("Failed to deserialize fragment info; Invalid array URI");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -5931,7 +5930,7 @@ int32_t tiledb_fragment_info_alloc(
     auto st = Status_Error(
         "Failed to create TileDB fragment info object; Memory allocation "
         "error");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -5943,7 +5942,7 @@ int32_t tiledb_fragment_info_alloc(
         "Failed to create TileDB fragment info object; Invalid URI");
     delete *fragment_info;
     *fragment_info = nullptr;
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -5957,7 +5956,7 @@ int32_t tiledb_fragment_info_alloc(
     auto st = Status_Error(
         "Failed to create TileDB fragment info object; Memory allocation "
         "error");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -6524,7 +6523,7 @@ int32_t tiledb_fragment_info_get_array_schema(
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array schema object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -6532,7 +6531,7 @@ int32_t tiledb_fragment_info_get_array_schema(
   auto&& [st, array_schema_get] =
       fragment_info->fragment_info_->get_array_schema(fid);
   if (!st.ok()) {
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     delete *array_schema;
     *array_schema = nullptr;

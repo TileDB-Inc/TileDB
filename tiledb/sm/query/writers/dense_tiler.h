@@ -328,9 +328,8 @@ class DenseTiler {
    *    is serialied in the tile order of the array domain.
    * @param tile The tile to compute the metadata for. The tile needs to be
    *    filled in.
-   * @return Status
    */
-  Status compute_tile_metadata(
+  void compute_tile_metadata(
       const std::string& name, uint64_t id, WriterTile& tile) const;
 };
 

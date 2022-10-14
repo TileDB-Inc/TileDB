@@ -44,8 +44,6 @@
 #endif
 // clang-format on
 
-#include "tiledb/sm/query/ast/query_ast.h"
-#include "tiledb/sm/query/query.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -60,14 +58,17 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/writers/global_order_writer.h"
+#include "tiledb/sm/query/ast/query_ast.h"
 #include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
-#include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/legacy/reader.h"
+#include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
+#include "tiledb/sm/query/writers/global_order_writer.h"
 #include "tiledb/sm/query/writers/writer_base.h"
 #include "tiledb/sm/serialization/config.h"
+#include "tiledb/sm/serialization/fragment_metadata.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
@@ -424,12 +425,12 @@ Status subarray_partitioner_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
     if (compute_current_tile_overlap) {
-      partition_info->partition_.precompute_tile_overlap(
+      throw_if_not_ok(partition_info->partition_.precompute_tile_overlap(
           partition_info->start_,
           partition_info->end_,
           &config,
           compute_tp,
-          true);
+          true));
     }
   }
 
@@ -692,7 +693,8 @@ static Status condition_ast_to_capnp(
 
     for (size_t i = 0; i < node->get_children().size(); ++i) {
       auto child_builder = children_builder[i];
-      condition_ast_to_capnp(node->get_children()[i], &child_builder);
+      throw_if_not_ok(
+          condition_ast_to_capnp(node->get_children()[i], &child_builder));
     }
 
     // Validate and store the query condition combination op.

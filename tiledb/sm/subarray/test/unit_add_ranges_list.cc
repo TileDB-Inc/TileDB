@@ -78,7 +78,7 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
   a.set_array_schema_latest(sp_as);
   // a.create();
   tiledb::sm::EncryptionKey ek;
-  ek.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0);
+  CHECK(ek.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0).ok());
   CHECK(ctx.storage_manager()->array_create(a.array_uri(), sp_as, ek).ok());
   CHECK(a.open(
              tiledb::sm::QueryType::READ,
