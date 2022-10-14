@@ -47,6 +47,7 @@ namespace sm {
 
 class Tile;
 class GlobalCmpQB;
+class HilbertCmpQB;
 
 class BitSortFilterMetadataType {
  public:
@@ -57,12 +58,17 @@ class BitSortFilterMetadataType {
     return dim_tiles_;
   }
 
+  std::vector<uint64_t>& hilbert_values() {
+    return hilbert_values_;
+  }
+
   std::function<bool(const uint64_t&, const uint64_t&)>& comparator() {
     return comparator_;
   }
 
  private:
   std::vector<Tile*> dim_tiles_;
+  std::vector<uint64_t> hilbert_values_;
   std::function<bool(const uint64_t&, const uint64_t&)> comparator_;
 };
 

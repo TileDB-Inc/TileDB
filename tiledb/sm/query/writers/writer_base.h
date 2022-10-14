@@ -282,6 +282,8 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * Runs the input tiles for the input attribute through the filter pipeline.
    * The tile buffers are modified to contain the output of the pipeline.
    *
+   * @tparam SupportTileType Type of the support argument passed to the filter
+   * pipeline.
    * @param name The attribute/dimension the tiles belong to.
    * @param tile The tiles to be filtered.
    * @param dim_tiles The dimension tile array (used for BitSortFilter).
@@ -299,7 +301,8 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * pipeline. The tile buffer is modified to contain the output of the
    * pipeline.
    *
-   * @tparam T Type of the support argument passed to the filter pipeline.
+   * @tparam SupportTileType Type of the support argument passed to the filter
+   * pipeline.
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be filtered.
    * @param support_tile The support tile argument passed to the filter

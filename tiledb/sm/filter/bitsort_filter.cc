@@ -46,6 +46,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <iostream> // TODO: delete
 #include <numeric>
 #include <optional>
 #include <unordered_map>
@@ -141,6 +142,7 @@ Status BitSortFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
+  // std::cout << "whee!\n";
   // Output size does not change with this filter.
   RETURN_NOT_OK(output->prepend_buffer(input->size()));
   Buffer* output_buf = output->buffer_ptr(0);
@@ -159,10 +161,12 @@ Status BitSortFilter::run_forward(
   for (uint64_t i = 0; i < num_parts; ++i) {
     const auto &part = parts[i];
     auto part_size = static_cast<uint32_t>(part.size());
+    // std::cout << "in part with size " << part_size << std::endl;
     RETURN_NOT_OK(output_metadata->write(&part_size, sizeof(uint32_t)));
     total_size += part_size;
   }
   size_t elements_size = total_size / sizeof(AttrType);
+  // std::cout << "elements size: " << elements_size << std::endl;
 
   // Create a vector to store the attribute data with their respective positions.
   // Then for each part of the input, collect this data into the sorted_elements vector.
@@ -179,13 +183,20 @@ Status BitSortFilter::run_forward(
     return comparator(elements[left], elements[right]);
   });
 
+/*
+  // std::cout << "printing element positions:\n";
+  for (const auto &elem : cell_pos) {
+    std::cout << elem << " ";
+  }
+  // std::cout << std::endl;
+  */
+
   // Write in the sorted order to output.
-  uint32_t num_elements = total_size / sizeof(AttrType);
-  for (uint32_t j = 0; j < num_elements; ++j) {
+  for (size_t j = 0; j < elements_size; ++j) {
     AttrType value = elements[cell_pos[j]];
     RETURN_NOT_OK(output_buf->write(&value, sizeof(AttrType)));
 
-    if (j != num_elements - 1) {
+    if (j != elements_size - 1) {
       output_buf->advance_offset(sizeof(AttrType));
     }
   }
@@ -196,6 +207,7 @@ Status BitSortFilter::run_forward(
   // corresponding integer type into a templated function.
   for (auto* dim_tile : dim_tiles) {
     Datatype tile_type = dim_tile->type();
+    //std::cout << "dim tile size: " << dim_tile->size() << std::endl;
     switch (datatype_size(tile_type)) {
       case sizeof(uint8_t): {
         run_forward_dim_tile<uint8_t>(cell_pos, dim_tile);

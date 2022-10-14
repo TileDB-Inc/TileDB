@@ -221,7 +221,7 @@ Status FilterPipeline::filter_chunks_forward(
       // a bitsort filter in the attribute filtering pipeline. 
       if constexpr (std::is_same<SupportDataType, const std::vector<Tile*>&>::value) {
         if (f->type() == FilterType::FILTER_BITSORT) {
-          auto bitsort_filter = reinterpret_cast<const BitSortFilter*>(f.get());
+          auto bitsort_filter = static_cast<const BitSortFilter*>(f.get());
           RETURN_NOT_OK(
               bitsort_filter->run_forward(
                       tile,
@@ -424,7 +424,7 @@ Status FilterPipeline::filter_chunks_reverse(
       // a bitsort filter in the attribute filtering pipeline.
       if constexpr (std::is_same<SupportDataType, BitSortFilterMetadataType&>::value) {
         if (f->type() == FilterType::FILTER_BITSORT) {
-          auto bitsort_filter = reinterpret_cast<const BitSortFilter*>(f.get());
+          auto bitsort_filter = static_cast<const BitSortFilter*>(f.get());
           RETURN_NOT_OK(
               bitsort_filter->run_reverse(
                       tile,
@@ -607,7 +607,7 @@ Status FilterPipeline::run_reverse_chunk_range(
       // without the bitsort filter is unaffected.
       if constexpr (HasBitSortFilter) {
         if (f->type() == FilterType::FILTER_BITSORT) {
-         auto bitsort_filter = reinterpret_cast<const BitSortFilter*>(f.get());
+         auto bitsort_filter = static_cast<const BitSortFilter*>(f.get());
           RETURN_NOT_OK(
               bitsort_filter->run_reverse(
                       *tile,

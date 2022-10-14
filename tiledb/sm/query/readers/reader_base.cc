@@ -42,8 +42,10 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
+#include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/query/legacy/cell_slab_iter.h"
+#include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/strategy_base.h"
@@ -1026,11 +1028,18 @@ Status ReaderBase::unfilter_tile_chunk_range(
           BitSortFilterMetadataType bitsort_metadata;
           std::vector<QueryBuffer> query_buffers;
           std::optional<DomainBuffersView> db;
-          GlobalCmpQB cmp_obj =
-              construct_bitsort_filter_argument(tile, bitsort_metadata.dim_tiles(), query_buffers, db);
-          bitsort_metadata.comparator() = [&cmp_obj](const uint64_t &left_idx, const uint64_t &right_idx){
+          if (array_schema_.cell_order() == Layout::HILBERT) {
+            HilbertCmpQB cmp_obj = construct_bitsort_filter_argument<HilbertCmpQB>(tile, bitsort_metadata, query_buffers, db);
+            bitsort_metadata.comparator() = [&cmp_obj](const uint64_t &left_idx, const uint64_t &right_idx){
                 return cmp_obj(left_idx, right_idx);
               };
+          } else {
+            GlobalCmpQB cmp_obj =
+              construct_bitsort_filter_argument<GlobalCmpQB>(tile, bitsort_metadata, query_buffers, db);
+            bitsort_metadata.comparator() = [&cmp_obj](const uint64_t &left_idx, const uint64_t &right_idx){
+                return cmp_obj(left_idx, right_idx);
+              };
+          }
           RETURN_NOT_OK(unfilter_tile_chunk_range(
               num_range_threads,
               range_thread_idx,
@@ -1646,11 +1655,18 @@ Status ReaderBase::unfilter_tiles(
                 BitSortFilterMetadataType bitsort_metadata;
                 std::vector<QueryBuffer> query_buffers;
                 std::optional<DomainBuffersView> db;
-                GlobalCmpQB cmp_obj =
-                construct_bitsort_filter_argument(tile, bitsort_metadata.dim_tiles(), query_buffers, db);
-                bitsort_metadata.comparator() = [&cmp_obj](const uint64_t &left_idx, const uint64_t &right_idx){
+                if (array_schema_.cell_order() == Layout::HILBERT) {
+                  HilbertCmpQB cmp_obj = construct_bitsort_filter_argument<HilbertCmpQB>(tile, bitsort_metadata, query_buffers, db);
+                  bitsort_metadata.comparator() = [&cmp_obj](const uint64_t &left_idx, const uint64_t &right_idx){
                       return cmp_obj(left_idx, right_idx);
                     };
+                } else {
+                  GlobalCmpQB cmp_obj =
+                    construct_bitsort_filter_argument<GlobalCmpQB>(tile, bitsort_metadata, query_buffers, db);
+                  bitsort_metadata.comparator() = [&cmp_obj](const uint64_t &left_idx, const uint64_t &right_idx){
+                      return cmp_obj(left_idx, right_idx);
+                    };
+                }
                 RETURN_NOT_OK(unfilter_tile(name, t, bitsort_metadata));
 
               } else {
@@ -1915,11 +1931,46 @@ bool ReaderBase::has_coords() const {
   return false;
 }
 
-GlobalCmpQB ReaderBase::construct_bitsort_filter_argument(
+Status ReaderBase::calculate_hilbert_values(
+    const DomainBuffersView& domain_buffers,
+    std::vector<uint64_t>& hilbert_values) const {
+  auto dim_num = array_schema_.dim_num();
+  Hilbert h(dim_num);
+  auto bits = h.bits();
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
+
+  // Calculate Hilbert values in parallel
+  uint64_t cell_num = hilbert_values.size();
+  auto status = parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      cell_num,
+      [&](uint64_t c) {
+        std::vector<uint64_t> coords(dim_num);
+        for (uint32_t d = 0; d < dim_num; ++d) {
+          auto dim{array_schema_.dimension_ptr(d)};
+          coords[d] = hilbert_order::map_to_uint64(
+              *dim, domain_buffers[d], c, bits, max_bucket_val);
+        }
+        hilbert_values[c] = h.coords_to_hilbert(&coords[0]);
+
+        return Status::Ok();
+      });
+
+  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+
+  return Status::Ok();
+}
+
+template <typename CmpObject,
+typename std::enable_if_t<std::is_same_v<CmpObject, HilbertCmpQB> || std::is_same_v<CmpObject, GlobalCmpQB>>*>
+CmpObject ReaderBase::construct_bitsort_filter_argument(
     ResultTile* const tile,
-    std::vector<Tile*>& dim_tiles,
+    BitSortFilterMetadataType &bitsort_metadata,
     std::vector<QueryBuffer>& qb_vector,
     std::optional<DomainBuffersView>& db) const {
+
+  std::vector<Tile*>& dim_tiles = bitsort_metadata.dim_tiles();
   uint64_t num_dims = array_schema_.dim_num();
   std::vector<uint64_t> dim_data_sizes;
 
@@ -1941,7 +1992,22 @@ GlobalCmpQB ReaderBase::construct_bitsort_filter_argument(
   }
 
   db.emplace(DomainBuffersView(array_schema_.domain(), qb_vector));
-  return GlobalCmpQB(array_schema_.domain(), db.value());
+
+  if constexpr (std::is_same<CmpObject, HilbertCmpQB>::value) {
+    std::vector<uint64_t>& hilbert_values = bitsort_metadata.hilbert_values();
+    assert(dim_tiles.size() > 0);
+    uint64_t cell_num = dim_tiles[0]->cell_num();
+    hilbert_values.resize(cell_num);
+    Status st = calculate_hilbert_values(db.value(), hilbert_values);
+    if (!st.ok()) {
+      throw std::runtime_error("ReaderBase::construct_bitsort_filter_argument: calculating hilbert values failed.");
+    }
+    return HilbertCmpQB(array_schema_.domain(), db.value(), hilbert_values);
+  } else if constexpr  (std::is_same<CmpObject, GlobalCmpQB>::value) {
+    return GlobalCmpQB(array_schema_.domain(), db.value());
+  }
+
+  throw std::runtime_error("ReaderBase::construct_bitsort_filter_argument: function called without valid comparator struct return argument.");
 }
 
 // Explicit template instantiations
