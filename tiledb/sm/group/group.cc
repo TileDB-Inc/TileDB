@@ -340,6 +340,9 @@ void Group::delete_group(const URI& uri, bool recursive) {
   } else {
     storage_manager_->delete_group(uri.c_str());
   }
+
+  // Close the deleted group
+  throw_if_not_ok(this->close());
 }
 
 Status Group::delete_metadata(const char* key) {

@@ -2067,9 +2067,9 @@ TEST_CASE_METHOD(
   }
 
   // Delete group in modify exclusive mode
+  /* Note: delete_group will close the group, no need to do so here. */
   group.open(TILEDB_MODIFY_EXCLUSIVE);
   group.delete_group(GROUP_NAME.c_str());
-  group.close();
 
   // Validate group data
   REQUIRE(vfs_.is_file(extraneous_file_path));
@@ -2155,7 +2155,6 @@ TEST_CASE_METHOD(
   // Recursively delete group in modify exclusive mode
   group.open(TILEDB_MODIFY_EXCLUSIVE);
   group.delete_group(GROUP_NAME.c_str(), true);
-  group.close();
 
   // Validate group data
   REQUIRE(vfs_.is_file(extraneous_file_path));

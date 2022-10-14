@@ -95,7 +95,7 @@ class Group {
   Status clear();
 
   /**
-   * Deletes data from an group opened in MODIFY_EXCLUSIVE mode.
+   * Deletes data from and closes a group opened in MODIFY_EXCLUSIVE mode.
    *
    * Note: if recursive == false, data added to the group will be left as-is.
    *
