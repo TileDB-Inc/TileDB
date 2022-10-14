@@ -196,6 +196,7 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
     decltype(f_(st)) thing{};
 
     std::stop_source stop_source_;
+    assert (!stop_source_.stop_requested());
 
     switch (this->program_counter_) {
       case 0: {

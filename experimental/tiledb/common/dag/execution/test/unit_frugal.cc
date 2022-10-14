@@ -1167,11 +1167,10 @@ TEMPLATE_TEST_CASE(
 
   auto num_threads = GENERATE(1, 2, 3, 4, 5, 8, 17);
 
-  // auto num_threads = 1UL;
+  auto rounds = problem_size;
 
-    if (debug) 
-{
-    problem_size = debug_problem_size;
+  if (debug) {
+    rounds = debug_problem_size;
   }
 
   SECTION("With " + std::to_string(num_threads) + " threads") {
@@ -1181,17 +1180,20 @@ TEMPLATE_TEST_CASE(
       sched.enable_debug();
     }
 
-    auto p = P([&sched](std::stop_source& stop_source) {
-      static size_t i{0};
-      if (sched.debug())
+    size_t i{0};
+
+    auto p = P([rounds,debug,&i](std::stop_source& stop_source) {
+      CHECK(!stop_source.stop_requested());
+
+      if (debug)
         std::cout << "Producing\n";
-      if (i >= problem_size) {
+      if (i >= rounds) {
 	stop_source.request_stop();
       }
       return i++;;
     });
-    auto c = C([&sched](const size_t&) {
-      if (sched.debug())
+    auto c = C([debug](const size_t&) {
+      if (debug)
         std::cout << "Consuming\n";
     });
 
@@ -1219,8 +1221,8 @@ TEMPLATE_TEST_CASE(
       std::cout << "==========================================================="
                    "=====\n";
 
-    CHECK(p->produced_items() == problem_size);
-    CHECK(c->consumed_items() == problem_size);
+    CHECK(p->produced_items() == rounds);
+    CHECK(c->consumed_items() == rounds);
 
 #if 0
     if (debug) {
@@ -1249,8 +1251,7 @@ TEMPLATE_TEST_CASE(
 
   bool debug{false};
 
-  auto num_threads = GENERATE(1, 2, 3, 4);
-  //auto num_threads = 1;
+  auto num_threads = GENERATE(1, 2, 3, 4, 5, 17);
 
   if (debug) {
     problem_size = debug_problem_size;
