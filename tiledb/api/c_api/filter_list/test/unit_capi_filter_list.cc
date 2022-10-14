@@ -193,18 +193,21 @@ TEST_CASE(
   SECTION("null context") {
     rc = tiledb_filter_list_get_filter_from_index(
         nullptr, filter_list, 0, &filter_out);
+    REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null filter list") {
     rc = tiledb_filter_list_get_filter_from_index(ctx, nullptr, 0, &filter_out);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("invalid index") {
     rc = tiledb_filter_list_get_filter_from_index(
         ctx, filter_list, 9001, &filter_out);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null filter pointer") {
     rc = tiledb_filter_list_get_filter_from_index(ctx, filter_list, 0, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  REQUIRE(tiledb_status(rc) == TILEDB_ERR);
 
   tiledb_filter_free(&filter);
   tiledb_filter_list_free(&filter_list);
