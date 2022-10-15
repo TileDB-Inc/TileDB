@@ -77,7 +77,9 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_curl.tar.gz
-      URL "https://curl.se/download/curl-7.74.0.tar.gz"
+      URL
+        "https://github.com/TileDB-Inc/tiledb-deps-mirror/releases/download/2.11-deps/curl-7.74.0.tar.gz"
+        "https://curl.se/download/curl-7.74.0.tar.gz"
       URL_HASH SHA1=cd7239cf9223b39ade86a14eb37fe68f5656eae9
       CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
