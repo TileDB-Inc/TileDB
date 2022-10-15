@@ -79,6 +79,8 @@ TILEDB_FILTER_TYPE_ENUM(FILTER_NONE) = 0,
     TILEDB_FILTER_OPTION_ENUM(WEBP_QUALITY) = 6,
     /** Set input format to for webp Type: uint8_t */
     TILEDB_FILTER_OPTION_ENUM(WEBP_INPUT_FORMAT) = 7,
+    /** Enable lossless WebP compression Type: uint8_t */
+    TILEDB_FILTER_OPTION_ENUM(WEBP_LOSSLESS) = 8,
 #endif
 
 #ifdef TILEDB_FILTER_WEBP_FORMAT

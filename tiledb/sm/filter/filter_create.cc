@@ -174,7 +174,10 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
 #ifdef TILEDB_WEBP
       auto filter_config = deserializer.read<WebpFilter::FilterConfig>();
       return make_shared<WebpFilter>(
-          HERE(), filter_config.quality, filter_config.format);
+          HERE(),
+          filter_config.quality,
+          filter_config.format,
+          filter_config.lossless);
 #else
       throw StatusException(
           "FilterCreate", "Deserialization error; built with TILEDB_WEBP=OFF");

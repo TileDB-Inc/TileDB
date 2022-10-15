@@ -43,6 +43,14 @@
 
 using namespace tiledb;
 
+std::vector<uint8_t> read, write;
+
+// Colorspace stride
+enum Colorspace { RGB = 3, RGBA = 4 };
+unsigned colorspace = RGBA;
+const float quality_factor = 100.0f;
+const bool lossless = true;
+
 /**
  * Reads a .png file at the given path and returns a vector of pointers to
  * the pixel data in each row. The caller must free the row pointers.
@@ -98,13 +106,20 @@ std::vector<uint8_t*> read_png(
 
   // Set up buffers to hold rows of pixel data.
   for (unsigned y = 0; y < *height; y++) {
-    auto row = (uint8_t*)(std::malloc(png_get_rowbytes(png, info)));
+    size_t row_len = png_get_rowbytes(png, info);
+    auto row = (uint8_t*)(std::malloc(row_len));
     row_pointers.push_back(row);
   }
 
   // Read the pixel data.
   png_read_image(png, row_pointers.data());
   fclose(fp);
+
+  for (unsigned y = 0; y < *height; y++) {
+    for (unsigned x = 0; x < *width * colorspace; x++) {
+      read.push_back(row_pointers[y][x]);
+    }
+  }
 
   png_destroy_read_struct(&png, &info, NULL);
   return row_pointers;
@@ -142,7 +157,8 @@ void write_png(
 
   png_init_io(png, fp);
 
-  // Output is 8bit depth, RGBA format.
+  //  int color_type = colorspace == RGB ? PNG_COLOR_TYPE_RGB :
+  //  PNG_COLOR_TYPE_RGBA;
   png_set_IHDR(
       png,
       info,
@@ -155,9 +171,10 @@ void write_png(
       PNG_FILTER_TYPE_DEFAULT);
   png_write_info(png, info);
 
-  // To remove the alpha channel for PNG_COLOR_TYPE_RGB format,
-  // Use png_set_filler().
-  // png_set_filler(png, 0, PNG_FILLER_AFTER);
+  // To remove alpha channel for PNG_COLOR_TYPE_RGB format use png_set_filler()
+  //  if (colorspace == RGB) {
+  //     png_set_filler(png, 0, PNG_FILLER_AFTER);
+  //  }
 
   png_write_image(png, row_pointers.data());
   png_write_end(png, NULL);
@@ -184,9 +201,9 @@ void create_array(
   // We use `width * 4` for X dimension to allow for RGBA (4) elements per-pixel
   domain
       .add_dimension(
-          Dimension::create<unsigned>(ctx, "x", {{1, width * 4}}, width))
-      .add_dimension(
-          Dimension::create<unsigned>(ctx, "y", {{1, height}}, height));
+          Dimension::create<unsigned>(ctx, "y", {{1, height}}, height / 2))
+      .add_dimension(Dimension::create<unsigned>(
+          ctx, "x", {{1, width * colorspace}}, (width / 2) * colorspace));
 
   // To compress using webp we need RGBA in a single buffer
   ArraySchema schema(ctx, TILEDB_DENSE);
@@ -194,10 +211,10 @@ void create_array(
 
   // Create WebP filter and set options
   Filter webp(ctx, TILEDB_FILTER_WEBP);
-  auto fmt = TILEDB_WEBP_RGBA;
+  auto fmt = colorspace == RGB ? TILEDB_WEBP_RGB : TILEDB_WEBP_RGBA;
   webp.set_option(TILEDB_WEBP_INPUT_FORMAT, &fmt);
-  float quality = 50.0f;
-  webp.set_option(TILEDB_WEBP_QUALITY, &quality);
+  webp.set_option(TILEDB_WEBP_QUALITY, &quality_factor);
+  webp.set_option(TILEDB_WEBP_LOSSLESS, &lossless);
 
   // Add to FilterList and set attribute filters
   FilterList filterList(ctx);
@@ -230,19 +247,21 @@ void ingest_png(const std::string& input_png, const std::string& array_path) {
   for (unsigned y = 0; y < height; y++) {
     auto row = row_pointers[y];
     for (unsigned x = 0; x < width; x++) {
-      auto rgba_temp = &row[4 * x];
-      uint8_t r = rgba_temp[0], g = rgba_temp[1], b = rgba_temp[2],
-              a = rgba_temp[3];
-      rgba.push_back(r);
-      rgba.push_back(g);
-      rgba.push_back(b);
-      rgba.push_back(a);
+      auto rgba_temp = &row[colorspace * x];
+      rgba.push_back(rgba_temp[0]);
+      rgba.push_back(rgba_temp[1]);
+      rgba.push_back(rgba_temp[2]);
+      if (colorspace == RGBA) {
+        rgba.push_back(rgba_temp[3]);
+      }
     }
   }
 
   // Clean up.
   for (unsigned y = 0; y < height; y++)
     std::free(row_pointers[y]);
+
+  std::cout << "Write size: " << rgba.size() << std::endl;
 
   // Write the pixel data into the array.
   Context ctx;
@@ -269,11 +288,11 @@ void read_png_array(
   // Get the array non-empty domain, which corresponds to the original image
   // width and height.
   auto non_empty = array.non_empty_domain<unsigned>();
-  auto array_width = non_empty[0].second.second,
-       array_height = non_empty[1].second.second;
+  auto array_width = non_empty[1].second.second,
+       array_height = non_empty[0].second.second;
 
-  std::vector<unsigned> subarray = {1, array_width, 1, array_height};
-  auto output_width = subarray[1], output_height = subarray[3];
+  std::vector<unsigned> subarray = {1, array_height, 1, array_width};
+  auto output_width = subarray[3], output_height = subarray[1];
 
   // Allocate query and set subarray
   Query query(ctx, array);
@@ -300,11 +319,17 @@ void read_png_array(
     uint8_t* row = png_buffer[y];
     for (unsigned x = 0; x < output_width; x++) {
       row[x] = rgba[(y * output_width) + x];
+      write.push_back(row[x]);
+      if (lossless) {
+        // This will sometimes pass lossy compression, but always for lossless
+        assert(read[x] == write[x]);
+      }
     }
   }
+  std::cout << "Read size: " << rgba.size() << std::endl;
 
   // Write the image.
-  write_png(png_buffer, output_width / 4, output_height, output_png);
+  write_png(png_buffer, output_width / colorspace, output_height, output_png);
 
   // Clean up.
   for (unsigned i = 0; i < output_height; i++)

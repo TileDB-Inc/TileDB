@@ -33,9 +33,7 @@
 #ifdef TILEDB_WEBP
 
 #include "tiledb/sm/filter/webp_filter.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
-#include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/tile/tile.h"
 
@@ -76,8 +74,16 @@ Status WebpFilter::run_forward(
   throw_if_not_ok(output_metadata->prepend_buffer(metadata_size));
   throw_if_not_ok(output_metadata->write(&num_parts, sizeof(uint32_t)));
 
-  int width = extents_[0].rvalue_as<int>(),
-      height = extents_[1].rvalue_as<int>();
+  int extent_y = extents_.first, extent_x = extents_.second,
+      pixel_depth = (int)format_ < 2 ? 3 : 4;
+  // X should be divisible by colorspace value count or RGB values will skew
+  if (extent_x % pixel_depth != 0) {
+    throw StatusException(Status_FilterError(
+        pixel_depth == 3 ?
+            "Colorspace with no alpha must use extents divisible by 3" :
+            "Colorspace with alpha must use extents divisible by 4"));
+  }
+
   for (const auto& i : input_parts) {
     auto data = static_cast<const uint8_t*>(i.data());
     // Number of bytes encoded; Encoded result data buffer
@@ -88,22 +94,64 @@ Status WebpFilter::run_forward(
       if (enc_size > 0 && result != nullptr)
         WebPFree(result);
     });
+    // We divide extent_x by colorspace value count to get pixel-width of image
+    // + extent_x currently represents row stride
     switch (format_) {
       case WebpInputFormat::WEBP_RGB:
-        enc_size =
-            WebPEncodeRGB(data, width, height, width * 3, quality_, &result);
+        if (lossless_) {
+          enc_size = WebPEncodeLosslessRGB(
+              data, extent_x / pixel_depth, extent_y, extent_x, &result);
+        } else {
+          enc_size = WebPEncodeRGB(
+              data,
+              extent_x / pixel_depth,
+              extent_y,
+              extent_x,
+              quality_,
+              &result);
+        }
         break;
       case WebpInputFormat::WEBP_RGBA:
-        enc_size =
-            WebPEncodeRGBA(data, width, height, width * 4, quality_, &result);
+        if (lossless_) {
+          enc_size = WebPEncodeLosslessRGBA(
+              data, extent_x / pixel_depth, extent_y, extent_x, &result);
+        } else {
+          enc_size = WebPEncodeRGBA(
+              data,
+              extent_x / pixel_depth,
+              extent_y,
+              extent_x,
+              quality_,
+              &result);
+        }
         break;
       case WebpInputFormat::WEBP_BGR:
-        enc_size =
-            WebPEncodeBGR(data, width, height, width * 3, quality_, &result);
+        if (lossless_) {
+          enc_size = WebPEncodeLosslessBGR(
+              data, extent_x / pixel_depth, extent_y, extent_x, &result);
+        } else {
+          enc_size = WebPEncodeBGR(
+              data,
+              extent_x / pixel_depth,
+              extent_y,
+              extent_x,
+              quality_,
+              &result);
+        }
         break;
       case WebpInputFormat::WEBP_BGRA:
-        enc_size =
-            WebPEncodeBGRA(data, width, height, width * 4, quality_, &result);
+        if (lossless_) {
+          enc_size = WebPEncodeLosslessBGRA(
+              data, extent_x / pixel_depth, extent_y, extent_x, &result);
+        } else {
+          enc_size = WebPEncodeBGRA(
+              data,
+              extent_x / pixel_depth,
+              extent_y,
+              extent_x,
+              quality_,
+              &result);
+        }
         break;
       case WebpInputFormat::WEBP_NONE:
         throw StatusException(Status_FilterError(
@@ -208,6 +256,9 @@ Status WebpFilter::set_option_impl(FilterOption option, const void* value) {
     case FilterOption::WEBP_INPUT_FORMAT:
       format_ = static_cast<WebpInputFormat>(*(uint8_t*)value);
       break;
+    case FilterOption::WEBP_LOSSLESS:
+      lossless_ = *(uint8_t*)value;
+      break;
     default:
       throw StatusException(
           Status_FilterError("Webp filter error; Unknown option"));
@@ -224,6 +275,9 @@ Status WebpFilter::get_option_impl(FilterOption option, void* value) const {
     case FilterOption::WEBP_INPUT_FORMAT:
       *(WebpInputFormat*)value = format_;
       break;
+    case FilterOption::WEBP_LOSSLESS:
+      *(uint8_t*)value = lossless_;
+      break;
     default:
       throw StatusException(
           Status_FilterError("Webp filter error; Unknown option"));
@@ -232,12 +286,22 @@ Status WebpFilter::get_option_impl(FilterOption option, void* value) const {
 }
 
 [[nodiscard]] WebpFilter* WebpFilter::clone_impl() const {
-  return tdb_new(WebpFilter, quality_, format_);
+  return tdb_new(WebpFilter, quality_, format_, lossless_);
 }
 
 void WebpFilter::serialize_impl(Serializer& serializer) const {
-  FilterConfig filter_config{quality_, format_};
+  FilterConfig filter_config{quality_, format_, lossless_};
   serializer.write(filter_config);
+}
+
+void WebpFilter::set_extent(const Domain& domain) {
+  if (domain.tile_extents().size() != 2 || domain.dim_num() != 2) {
+    throw StatusException(
+        Status_FilterError("WebP filter can only be applied to 2D arrays"));
+  }
+  set_extent(
+      domain.tile_extents()[0].rvalue_as<int>(),
+      domain.tile_extents()[1].rvalue_as<int>());
 }
 
 }  // namespace tiledb::sm

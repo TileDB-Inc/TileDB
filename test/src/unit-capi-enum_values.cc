@@ -493,6 +493,10 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
       (tiledb_filter_option_from_str("WEBP_INPUT_FORMAT", &filter_option) ==
            TILEDB_OK &&
        filter_option == TILEDB_WEBP_INPUT_FORMAT));
+  REQUIRE(
+      (tiledb_filter_option_from_str("WEBP_LOSSLESS", &filter_option) ==
+           TILEDB_OK &&
+       filter_option == TILEDB_WEBP_LOSSLESS));
 
   tiledb_encryption_type_t encryption_type;
   REQUIRE(

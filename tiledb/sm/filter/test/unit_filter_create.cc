@@ -438,8 +438,10 @@ TEST_CASE("Filter: Test WEBP filter deserialization", "[filter][webp]") {
 
   float quality0 = 50.5f;
   WebpInputFormat fmt0 = WebpInputFormat::WEBP_RGBA;
+  uint8_t lossless0 = 1;
   buffer_offset<float, 5>(p) = quality0;
   buffer_offset<uint8_t, 9>(p) = static_cast<uint8_t>(fmt0);
+  buffer_offset<uint8_t, 10>(p) = lossless0;
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   auto filter{
@@ -454,5 +456,9 @@ TEST_CASE("Filter: Test WEBP filter deserialization", "[filter][webp]") {
   WebpInputFormat fmt1;
   filter->get_option(FilterOption::WEBP_INPUT_FORMAT, &fmt1);
   CHECK(fmt0 == fmt1);
+
+  uint8_t lossless1;
+  filter->get_option(FilterOption::WEBP_LOSSLESS, &lossless1);
+  CHECK(lossless0 == lossless1);
 }
 #endif  // TILEDB_WEBP

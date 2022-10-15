@@ -61,21 +61,38 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
       filter.to_str(filter.filter_type()) == sm::constants::filter_webp_str);
 
   // Check WEBP_QUALITY option
-  float option_expected = 1.0f;
-  REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_QUALITY, option_expected));
-  float option_found;
-  REQUIRE_NOTHROW(filter.get_option<float>(TILEDB_WEBP_QUALITY, &option_found));
-  REQUIRE(option_expected == option_found);
+  float quality_found;
+  REQUIRE_NOTHROW(
+      filter.get_option<float>(TILEDB_WEBP_QUALITY, &quality_found));
+  REQUIRE(100.0f == quality_found);
 
-  {
-    // Check WEBP_INPUT_FORMAT option
-    uint8_t format_expected = TILEDB_WEBP_RGBA;
-    REQUIRE_NOTHROW(
-        filter.set_option(TILEDB_WEBP_INPUT_FORMAT, &format_expected));
-    uint8_t format_found;
-    REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
-    REQUIRE(TILEDB_WEBP_RGBA == format_found);
-  }
+  float quality_expected = 1.0f;
+  REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_QUALITY, quality_expected));
+  REQUIRE_NOTHROW(
+      filter.get_option<float>(TILEDB_WEBP_QUALITY, &quality_found));
+  REQUIRE(quality_expected == quality_found);
+
+  // Check WEBP_INPUT_FORMAT option
+  uint8_t format_found;
+  REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
+  REQUIRE(TILEDB_WEBP_NONE == format_found);
+
+  uint8_t format_expected = TILEDB_WEBP_RGBA;
+  REQUIRE_NOTHROW(
+      filter.set_option(TILEDB_WEBP_INPUT_FORMAT, &format_expected));
+  REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
+  REQUIRE(format_expected == format_found);
+
+  // Check WEBP_LOSSLESS option
+  uint8_t lossless_found;
+  REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
+  REQUIRE(false == lossless_found);
+
+  REQUIRE(false == lossless_found);
+  uint8_t lossless_expected = 1;
+  REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_LOSSLESS, &format_expected));
+  REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
+  REQUIRE(lossless_expected == lossless_found);
 
   FilterList filterList(ctx);
   filterList.add_filter(filter);
@@ -108,25 +125,53 @@ TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
   tiledb_filter_type_to_str(filterType, &filterStr);
   REQUIRE(filterStr == sm::constants::filter_webp_str);
 
-  float expected_quality = 1.0f;
-  auto status = tiledb_filter_set_option(
+  float expected_quality = 100.0f;
+  float found_quality;
+  auto status = tiledb_filter_get_option(
+      ctx, filter, TILEDB_WEBP_QUALITY, &found_quality);
+  REQUIRE(status == TILEDB_OK);
+  REQUIRE(expected_quality == found_quality);
+
+  expected_quality = 1.0f;
+  status = tiledb_filter_set_option(
       ctx, filter, TILEDB_WEBP_QUALITY, &expected_quality);
   REQUIRE(status == TILEDB_OK);
-  float found_quality;
   status = tiledb_filter_get_option(
       ctx, filter, TILEDB_WEBP_QUALITY, &found_quality);
   REQUIRE(status == TILEDB_OK);
   REQUIRE(expected_quality == found_quality);
 
-  uint8_t expected_fmt = TILEDB_WEBP_RGBA;
-  status = tiledb_filter_set_option(
-      ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &expected_fmt);
-  REQUIRE(status == TILEDB_OK);
+  uint8_t expected_fmt = TILEDB_WEBP_NONE;
   uint8_t found_fmt;
   status = tiledb_filter_get_option(
       ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &found_fmt);
   REQUIRE(status == TILEDB_OK);
   REQUIRE(expected_fmt == found_fmt);
+
+  expected_fmt = TILEDB_WEBP_RGBA;
+  status = tiledb_filter_set_option(
+      ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &expected_fmt);
+  REQUIRE(status == TILEDB_OK);
+  status = tiledb_filter_get_option(
+      ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &found_fmt);
+  REQUIRE(status == TILEDB_OK);
+  REQUIRE(expected_fmt == found_fmt);
+
+  uint8_t expected_lossless = 0;
+  uint8_t found_lossless;
+  status = tiledb_filter_get_option(
+      ctx, filter, TILEDB_WEBP_LOSSLESS, &found_lossless);
+  REQUIRE(status == TILEDB_OK);
+  REQUIRE(expected_lossless == found_lossless);
+
+  expected_lossless = 1;
+  status = tiledb_filter_set_option(
+      ctx, filter, TILEDB_WEBP_LOSSLESS, &expected_lossless);
+  REQUIRE(status == TILEDB_OK);
+  status = tiledb_filter_get_option(
+      ctx, filter, TILEDB_WEBP_LOSSLESS, &found_lossless);
+  REQUIRE(status == TILEDB_OK);
+  REQUIRE(expected_lossless == found_lossless);
 }
 
 #endif  // TILEDB_WEBP

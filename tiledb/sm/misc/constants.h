@@ -416,6 +416,9 @@ extern const std::string filter_option_webp_quality;
 /** The string representation for FilterOption type webp_input_format. */
 extern const std::string filter_option_webp_input_format;
 
+/** The string representation for FilterOption type webp_lossless. */
+extern const std::string filter_option_webp_lossless;
+
 /** The string representation for type int32. */
 extern const std::string int32_str;
 

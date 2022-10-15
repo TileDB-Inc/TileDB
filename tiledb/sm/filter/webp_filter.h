@@ -36,10 +36,10 @@
 #ifdef TILEDB_WEBP
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter.h"
-#include "tiledb/sm/misc/types.h"
 
 using namespace tiledb::common;
 
@@ -58,16 +58,25 @@ enum class WebpInputFormat : uint8_t;
  * On read, this filter decodes WebP data and returns raw colorspace values to
  * the caller.
  *
- * This filter expects the array to provide two dimensions for X, Y pixel
- * position. Dimensions may be defined with any name, but X, Y should be at
+ * This filter expects the array to provide two dimensions for Y, X pixel
+ * position. Dimensions may be defined with any name, but Y, X should be at
  * dimension index 0, 1 respectively.
  */
 class WebpFilter : public Filter {
  public:
+  /* ********************************* */
+  /*          PUBLIC DATATYPES         */
+  /* ********************************* */
+
   struct FilterConfig {
     float quality;
     WebpInputFormat format;
+    bool lossless;
   };
+
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
 
   /**
    * Default setting for webp quality factor is 100.0 for lossy compression
@@ -76,17 +85,20 @@ class WebpFilter : public Filter {
   WebpFilter()
       : Filter(FilterType::FILTER_WEBP)
       , quality_(100.0f)
-      , format_(WebpInputFormat::WEBP_NONE) {
+      , format_(WebpInputFormat::WEBP_NONE)
+      , lossless_(false) {
   }
 
   /**
    * @param quality Quality factor to use for WebP lossy compression
    * @param inputFormat Colorspace format to use for WebP compression
+   * @param lossless Enable lossless compression
    */
-  WebpFilter(float quality, WebpInputFormat inputFormat)
+  WebpFilter(float quality, WebpInputFormat inputFormat, bool lossless)
       : Filter(FilterType::FILTER_WEBP)
       , quality_(quality)
-      , format_(inputFormat) {
+      , format_(inputFormat)
+      , lossless_(lossless) {
   }
 
   /**
@@ -198,16 +210,34 @@ class WebpFilter : public Filter {
    * Set tile extents to be used in tile-based image compression
    * This filter references these extents only on the forward pass during writes
    *
-   * @param extents Extents retrieved from array Domain object
+   * @param Domain Array Domain object
    */
-  inline void set_extent(const std::vector<ByteVecValue>& extents) {
-    extents_ = extents;
-  }
+  void set_extent(const Domain& domain);
 
  private:
+  /* ********************************* */
+  /*           PRIVATE ATTRIBUTES      */
+  /* ********************************* */
+
   float quality_;
   WebpInputFormat format_;
-  std::vector<ByteVecValue> extents_;
+  bool lossless_;
+  std::pair<int, int> extents_;
+
+  /* ********************************* */
+  /*           PRIVATE METHODS         */
+  /* ********************************* */
+
+  /**
+   * Set tile extents to be used in tile-based image compression
+   * This filter references these extents only on the forward pass during writes
+   *
+   * @param y Extent for dimension at index 0
+   * @param x Extent for dimension at index 1
+   */
+  inline void set_extent(int y, int x) {
+    extents_ = std::make_pair(y, x);
+  }
 
   /**
    * @return New clone of this filter

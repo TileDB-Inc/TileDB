@@ -337,6 +337,7 @@ class Filter {
           throw std::invalid_argument("Option value must be float.");
         break;
       case TILEDB_WEBP_INPUT_FORMAT:
+      case TILEDB_WEBP_LOSSLESS:
         if (!std::is_same<uint8_t, T>::value)
           throw std::invalid_argument("Option value must be uint8_t.");
         break;
