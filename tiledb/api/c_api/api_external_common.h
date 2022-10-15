@@ -114,20 +114,39 @@ typedef int32_t capi_status_t;
  *
  * @param x A status code returned from a C API call
  */
+#ifdef __cplusplus
+inline capi_status_t tiledb_status(capi_return_t x) {
+  return x;
+}
+#else
 capi_status_t tiledb_status(capi_return_t x);
+#endif
 
 /**
  * @name Status codes
  */
 /**@{*/
-/** Success */
-#define TILEDB_OK 0
-/** General error */
+/**
+ * Success.
+ */
+#define TILEDB_OK (0)
+/**
+ * An error state, not otherwise specified.
+ */
 #define TILEDB_ERR (-1)
-/** Out of memory */
+/**
+ * Out of memory. The implementation threw `std::bad_alloc` somewhere.
+ */
 #define TILEDB_OOM (-2)
-/** Invalid context */
+/**
+ * Invalid context would prevent errors from being reported correctly.
+ */
 #define TILEDB_INVALID_CONTEXT (-3)
+/**
+ * Invalid error argument would prevent errors from being reported correctly.
+ */
+#define TILEDB_INVALID_ERROR (-4)
+
 /** Default compression level */
 #define TILEDB_COMPRESSION_FILTER_DEFAULT_LEVEL (-30000)
 /**@}*/

@@ -50,7 +50,7 @@ GroupMemberV1::GroupMemberV1(
 // relative (uint8_t)
 // uri_size (uint64_t)
 // uri (string)
-void GroupMemberV1::serialize(Serializer &serializer) {
+void GroupMemberV1::serialize(Serializer& serializer) {
   serializer.write<uint32_t>(GroupMemberV1::format_version_);
 
   // Write type
@@ -75,8 +75,8 @@ void GroupMemberV1::serialize(Serializer &serializer) {
   }
 }
 
-tdb_shared_ptr<GroupMember>
-GroupMemberV1::deserialize(Deserializer &deserializer) {
+tdb_shared_ptr<GroupMember> GroupMemberV1::deserialize(
+    Deserializer& deserializer) {
   uint8_t type_placeholder;
   type_placeholder = deserializer.read<uint8_t>();
   ObjectType type = static_cast<ObjectType>(type_placeholder);

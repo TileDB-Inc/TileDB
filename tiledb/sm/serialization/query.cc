@@ -340,7 +340,7 @@ Status subarray_partitioner_to_capnp(
 Status subarray_partitioner_from_capnp(
     Stats* query_stats,
     Stats* reader_stats,
-    const Config* config,
+    const Config& config,
     const Array* array,
     const capnp::SubarrayPartitioner::Reader& reader,
     SubarrayPartitioner* partitioner,
@@ -364,7 +364,7 @@ Status subarray_partitioner_from_capnp(
   Subarray subarray(array, layout, query_stats, dummy_logger, false);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner = SubarrayPartitioner(
-      config,
+      &config,
       subarray,
       memory_budget,
       memory_budget_var,
@@ -428,7 +428,7 @@ Status subarray_partitioner_from_capnp(
       throw_if_not_ok(partition_info->partition_.precompute_tile_overlap(
           partition_info->start_,
           partition_info->end_,
-          config,
+          &config,
           compute_tp,
           true));
     }
@@ -1362,9 +1362,8 @@ Status query_to_capnp(
   }
 
   // Serialize Config
-  const Config* config = query.config();
   auto config_builder = query_builder->initConfig();
-  RETURN_NOT_OK(config_to_capnp(config, &config_builder));
+  RETURN_NOT_OK(config_to_capnp(query.config(), &config_builder));
 
   // If stats object exists set its cap'n proto object
   stats::Stats* stats = query.stats();

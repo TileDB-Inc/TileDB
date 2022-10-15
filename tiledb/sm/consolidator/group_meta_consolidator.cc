@@ -50,7 +50,7 @@ namespace sm {
 /* ****************************** */
 
 GroupMetaConsolidator::GroupMetaConsolidator(
-    const Config* config, StorageManager* storage_manager)
+    const Config& config, StorageManager* storage_manager)
     : Consolidator(storage_manager) {
   auto st = set_config(config);
   if (!st.ok()) {
@@ -192,12 +192,10 @@ Status GroupMetaConsolidator::vacuum(const char* group_name) {
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status GroupMetaConsolidator::set_config(const Config* config) {
+Status GroupMetaConsolidator::set_config(const Config& config) {
   // Set the consolidation config for ease of use
   Config merged_config = storage_manager_->config();
-  if (config) {
-    merged_config.inherit(*config);
-  }
+  merged_config.inherit(config);
   bool found = false;
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_start", &config_.timestamp_start_, &found));

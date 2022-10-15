@@ -46,6 +46,7 @@
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/metadata/metadata.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
@@ -55,7 +56,6 @@ namespace sm {
 class ArraySchema;
 class SchemaEvolution;
 class FragmentMetadata;
-class StorageManager;
 enum class QueryType : uint8_t;
 
 /**

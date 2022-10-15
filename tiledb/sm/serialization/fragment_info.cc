@@ -63,7 +63,7 @@ Status fragment_info_request_to_capnp(
   // Set config
   auto config_builder = fragment_info_req_builder->initConfig();
   auto config = fragment_info.config();
-  RETURN_NOT_OK(config_to_capnp(&config, &config_builder));
+  RETURN_NOT_OK(config_to_capnp(config, &config_builder));
 
   return Status::Ok();
 }

@@ -37,6 +37,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension_label_schema.h"
 #include "tiledb/sm/enums/label_order.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
@@ -44,7 +45,6 @@ namespace tiledb::sm {
 
 class Attribute;
 class Dimension;
-class StorageManager;
 class URI;
 
 /** Return a Status_DimensionLabelError error class Status with a given
