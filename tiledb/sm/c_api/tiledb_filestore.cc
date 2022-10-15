@@ -34,9 +34,10 @@
 // Avoid deprecation warnings for the cpp api
 #define TILEDB_DEPRECATED
 
+#include "tiledb/api/c_api/config/config_api_internal.h"
+#include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/common/common-std.h"
 #include "tiledb/sm/c_api/api_argument_validator.h"
-#include "tiledb/sm/c_api/api_exception_safety.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/cpp_api/array.h"
@@ -708,7 +709,7 @@ std::pair<Status, optional<uint64_t>> get_buffer_size_from_config(
     const Context& context, uint64_t tile_extent) {
   bool found = false;
   uint64_t buffer_size;
-  auto st = context.config().ptr()->config_->get<uint64_t>(
+  auto st = context.config().ptr()->config().get<uint64_t>(
       "filestore.buffer_size", &buffer_size, &found);
 
   RETURN_NOT_OK_TUPLE(st, nullopt);
@@ -728,6 +729,10 @@ std::pair<Status, optional<uint64_t>> get_buffer_size_from_config(
 }
 
 }  // namespace tiledb::common::detail
+
+using tiledb::api::api_entry_plain;
+template <auto f>
+constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
 
 TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
     tiledb_ctx_t* ctx,
@@ -782,10 +787,10 @@ TILEDB_EXPORT int32_t tiledb_filestore_size(
 
 TILEDB_EXPORT int32_t tiledb_mime_type_to_str(
     tiledb_mime_type_t mime_type, const char** str) noexcept {
-  return api_entry<detail::tiledb_mime_type_to_str>(mime_type, str);
+  return api_entry_plain<detail::tiledb_mime_type_to_str>(mime_type, str);
 }
 
 TILEDB_EXPORT int32_t tiledb_mime_type_from_str(
     const char* str, tiledb_mime_type_t* mime_type) noexcept {
-  return api_entry<detail::tiledb_mime_type_from_str>(str, mime_type);
+  return api_entry_plain<detail::tiledb_mime_type_from_str>(str, mime_type);
 }

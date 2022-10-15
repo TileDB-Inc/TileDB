@@ -332,8 +332,11 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/context/context_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter_list/filter_list_api_external.h"
 )
 set(TILEDB_C_API_RELATIVE_HEADER_BASE "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -439,7 +442,14 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_add_ranges_list)
   add_dependencies(tests unit_consistency)
   add_dependencies(tests unit_range)
-  add_dependencies(tests unit_capi_handle unit_capi_filter)
+
+  # C API support
+  add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
+  # C API basics
+  add_dependencies(tests unit_capi_error unit_capi_config unit_capi_context)
+  # C API array schema
+  add_dependencies(tests unit_capi_filter unit_capi_filter_list)
+
   add_dependencies(tests unit_delete_update_condition)
   add_dependencies(tests unit_ast)
   add_dependencies(tests unit_serializers)

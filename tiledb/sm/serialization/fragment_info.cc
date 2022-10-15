@@ -63,7 +63,7 @@ Status fragment_info_request_to_capnp(
   // Set config
   auto config_builder = fragment_info_req_builder->initConfig();
   auto config = fragment_info.config();
-  RETURN_NOT_OK(config_to_capnp(&config, &config_builder));
+  RETURN_NOT_OK(config_to_capnp(config, &config_builder));
 
   return Status::Ok();
 }
@@ -279,6 +279,7 @@ Status fragment_info_from_capnp(
         fragment_info_reader.getArraySchemaLatest();
     auto array_schema_latest{
         array_schema_from_capnp(array_schema_latest_reader, array_uri)};
+    array_schema_latest.set_array_uri(array_uri);
     fragment_info->array_schema_latest() =
         make_shared<ArraySchema>(HERE(), array_schema_latest);
   }
@@ -292,6 +293,7 @@ Status fragment_info_from_capnp(
       for (auto array_schema_build : entries) {
         auto schema{
             array_schema_from_capnp(array_schema_build.getValue(), array_uri)};
+        schema.set_array_uri(array_uri);
         fragment_info->array_schemas_all()[array_schema_build.getKey()] =
             make_shared<ArraySchema>(HERE(), schema);
       }

@@ -82,8 +82,6 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
-enum class SerializationContext { CLIENT, SERVER, BACKUP };
-
 shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
 
 Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
@@ -340,7 +338,7 @@ Status subarray_partitioner_to_capnp(
 Status subarray_partitioner_from_capnp(
     Stats* query_stats,
     Stats* reader_stats,
-    const Config* config,
+    const Config& config,
     const Array* array,
     const capnp::SubarrayPartitioner::Reader& reader,
     SubarrayPartitioner* partitioner,
@@ -364,7 +362,7 @@ Status subarray_partitioner_from_capnp(
   Subarray subarray(array, layout, query_stats, dummy_logger, false);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner = SubarrayPartitioner(
-      config,
+      &config,
       subarray,
       memory_budget,
       memory_budget_var,
@@ -428,7 +426,7 @@ Status subarray_partitioner_from_capnp(
       throw_if_not_ok(partition_info->partition_.precompute_tile_overlap(
           partition_info->start_,
           partition_info->end_,
-          config,
+          &config,
           compute_tp,
           true));
     }
@@ -1151,7 +1149,8 @@ Status delete_to_capnp(
 Status writer_to_capnp(
     const Query& query,
     WriterBase& writer,
-    capnp::Writer::Builder* writer_builder) {
+    capnp::Writer::Builder* writer_builder,
+    bool client_side) {
   writer_builder->setCheckCoordDups(writer.get_check_coord_dups());
   writer_builder->setCheckCoordOOB(writer.get_check_coord_oob());
   writer_builder->setDedupCoords(writer.get_dedup_coords());
@@ -1191,7 +1190,7 @@ Status writer_to_capnp(
     if (globalstate) {
       auto global_state_builder = writer_builder->initGlobalWriteStateV1();
       RETURN_NOT_OK(global_write_state_to_capnp(
-          query, globalwriter, &global_state_builder));
+          query, globalwriter, &global_state_builder, client_side));
     }
   }
 
@@ -1201,7 +1200,8 @@ Status writer_to_capnp(
 Status writer_from_capnp(
     const Query& query,
     const capnp::Writer::Reader& writer_reader,
-    WriterBase* writer) {
+    WriterBase* writer,
+    const SerializationContext context) {
   writer->set_check_coord_dups(writer_reader.getCheckCoordDups());
   writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
   writer->set_dedup_coords(writer_reader.getDedupCoords());
@@ -1226,7 +1226,7 @@ Status writer_from_capnp(
       RETURN_NOT_OK(global_writer->init_global_write_state());
     }
     RETURN_NOT_OK(global_write_state_from_capnp(
-        query, writer_reader.getGlobalWriteStateV1(), global_writer));
+        query, writer_reader.getGlobalWriteStateV1(), global_writer, context));
   }
 
   return Status::Ok();
@@ -1353,7 +1353,7 @@ Status query_to_capnp(
     query_builder->setVarOffsetsAddExtraElement(
         writer->offsets_extra_element());
     query_builder->setVarOffsetsBitsize(writer->offsets_bitsize());
-    RETURN_NOT_OK(writer_to_capnp(query, *writer, &builder));
+    RETURN_NOT_OK(writer_to_capnp(query, *writer, &builder, client_side));
   } else {
     auto builder = query_builder->initDelete();
     auto delete_strategy =
@@ -1362,9 +1362,8 @@ Status query_to_capnp(
   }
 
   // Serialize Config
-  const Config* config = query.config();
   auto config_builder = query_builder->initConfig();
-  RETURN_NOT_OK(config_to_capnp(config, &config_builder));
+  RETURN_NOT_OK(config_to_capnp(query.config(), &config_builder));
 
   // If stats object exists set its cap'n proto object
   stats::Stats* stats = query.stats();
@@ -1378,7 +1377,9 @@ Status query_to_capnp(
     auto builder =
         query_builder->initWrittenFragmentInfo(written_fragment_info.size());
     for (uint64_t i = 0; i < written_fragment_info.size(); ++i) {
-      builder[i].setUri(written_fragment_info[i].uri_);
+      builder[i].setUri(written_fragment_info[i]
+                            .uri_.remove_trailing_slash()
+                            .last_path_part());
       auto range_builder = builder[i].initTimestampRange(2);
       range_builder.set(0, written_fragment_info[i].timestamp_range_.first);
       range_builder.set(1, written_fragment_info[i].timestamp_range_.second);
@@ -1941,7 +1942,7 @@ Status query_from_capnp(
           writer->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
     }
 
-    RETURN_NOT_OK(writer_from_capnp(*query, writer_reader, writer));
+    RETURN_NOT_OK(writer_from_capnp(*query, writer_reader, writer, context));
 
     // For sparse writes we want to explicitly set subarray to nullptr.
     const bool sparse_write =
@@ -1990,8 +1991,13 @@ Status query_from_capnp(
     auto reader_list = query_reader.getWrittenFragmentInfo();
     auto& written_fi = query->get_written_fragment_info();
     for (auto fi : reader_list) {
+      auto write_version = query->array_schema().write_version();
+      auto frag_dir_uri = ArrayDirectory::generate_fragment_dir_uri(
+          write_version,
+          query->array_schema().array_uri().add_trailing_slash());
+      auto fragment_name = std::string(fi.getUri().cStr());
       written_fi.emplace_back(
-          URI(fi.getUri().cStr()),
+          frag_dir_uri.join_path(fragment_name),
           std::make_pair(fi.getTimestampRange()[0], fi.getTimestampRange()[1]));
     }
   }
@@ -2406,7 +2412,8 @@ Status query_est_result_size_deserialize(
 Status global_write_state_to_capnp(
     const Query& query,
     GlobalOrderWriter& globalwriter,
-    capnp::GlobalWriteState::Builder* state_builder) {
+    capnp::GlobalWriteState::Builder* state_builder,
+    bool client_side) {
   auto& write_state = *globalwriter.get_global_state();
 
   auto& cells_written = write_state.cells_written_;
@@ -2461,7 +2468,8 @@ Status global_write_state_to_capnp(
   state_builder->setLastHilbertValue(write_state.last_hilbert_value_);
 
   // Serialize the multipart upload state
-  auto&& [st, multipart_states] = globalwriter.multipart_upload_state();
+  auto&& [st, multipart_states] =
+      globalwriter.multipart_upload_state(client_side);
   RETURN_NOT_OK(st);
 
   if (!multipart_states.empty()) {
@@ -2477,12 +2485,6 @@ Status global_write_state_to_capnp(
       multipart_entry_builder.setPartNumber(state.part_number);
       if (state.upload_id.has_value()) {
         multipart_entry_builder.setUploadId(*state.upload_id);
-      }
-      if (state.bucket.has_value()) {
-        multipart_entry_builder.setBucket(*state.bucket);
-      }
-      if (state.s3_key.has_value()) {
-        multipart_entry_builder.setS3Key(*state.s3_key);
       }
       if (!state.status.ok()) {
         multipart_entry_builder.setStatus(state.status.message());
@@ -2509,7 +2511,8 @@ Status global_write_state_to_capnp(
 Status global_write_state_from_capnp(
     const Query& query,
     const capnp::GlobalWriteState::Reader& state_reader,
-    GlobalOrderWriter* globalwriter) {
+    GlobalOrderWriter* globalwriter,
+    const SerializationContext context) {
   auto write_state = globalwriter->get_global_state();
 
   if (state_reader.hasCellsWritten()) {
@@ -2566,15 +2569,9 @@ Status global_write_state_from_capnp(
       for (auto entry : multipart_reader.getEntries()) {
         VFS::MultiPartUploadState deserialized_state;
         auto state = entry.getValue();
-        auto uri = URI(entry.getKey().cStr());
+        std::string buffer_uri(entry.getKey().cStr());
         if (state.hasUploadId()) {
           deserialized_state.upload_id = state.getUploadId();
-        }
-        if (state.hasBucket()) {
-          deserialized_state.bucket = state.getBucket();
-        }
-        if (state.hasS3Key()) {
-          deserialized_state.s3_key = state.getS3Key();
         }
         if (state.hasStatus()) {
           deserialized_state.status =
@@ -2592,8 +2589,10 @@ Status global_write_state_from_capnp(
           }
         }
 
-        RETURN_NOT_OK(
-            globalwriter->set_multipart_upload_state(uri, deserialized_state));
+        RETURN_NOT_OK(globalwriter->set_multipart_upload_state(
+            buffer_uri,
+            deserialized_state,
+            context == SerializationContext::CLIENT));
       }
     }
   }

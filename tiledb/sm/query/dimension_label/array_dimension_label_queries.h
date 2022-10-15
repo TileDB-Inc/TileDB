@@ -39,6 +39,7 @@
 #include "tiledb/sm/query/dimension_label/dimension_label_data_query.h"
 #include "tiledb/sm/query/dimension_label/dimension_label_range_query.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <unordered_map>
 
@@ -50,7 +51,6 @@ class Array;
 class DimensionLabelReference;
 class Query;
 class QueryBuffer;
-class StorageManager;
 class Subarray;
 
 enum class QueryType : uint8_t;

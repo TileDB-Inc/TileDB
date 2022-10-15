@@ -38,6 +38,7 @@
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 #include <vector>
 
@@ -49,7 +50,6 @@ namespace sm {
 class ArraySchema;
 class Config;
 class Query;
-class StorageManager;
 class URI;
 
 /** Mode for the consolidator class. */
@@ -79,7 +79,7 @@ class Consolidator {
    */
   static shared_ptr<Consolidator> create(
       const ConsolidationMode mode,
-      const Config* config,
+      const Config& config,
       StorageManager* storage_manager);
 
   /**
@@ -90,7 +90,7 @@ class Consolidator {
    * @return Consolidation mode.
    */
   static ConsolidationMode mode_from_config(
-      const Config* config, const bool vacuum_mode = false);
+      const Config& config, const bool vacuum_mode = false);
 
   /* ********************************* */
   /*            DESTRUCTORS            */

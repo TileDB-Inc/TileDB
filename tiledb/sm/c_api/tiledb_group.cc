@@ -31,8 +31,9 @@
  * This file defines the C API of TileDB for groups.
  **/
 
+#include "tiledb/api/c_api/config/config_api_internal.h"
+#include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/sm/c_api/api_argument_validator.h"
-#include "tiledb/sm/c_api/api_exception_safety.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
@@ -150,12 +151,11 @@ void tiledb_group_free(tiledb_group_t** group) {
 int32_t tiledb_group_set_config(
     tiledb_ctx_t* ctx, tiledb_group_t* group, tiledb_config_t* config) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, group) == TILEDB_ERR ||
-      sanity_check(ctx, config) == TILEDB_ERR)
+  if (sanity_check(ctx, group) == TILEDB_ERR)
     return TILEDB_ERR;
+  api::ensure_config_is_valid(config);
 
-  if (SAVE_ERROR_CATCH(ctx, group->group_->set_config(*(config->config_))))
+  if (SAVE_ERROR_CATCH(ctx, group->group_->set_config(config->config())))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -163,24 +163,10 @@ int32_t tiledb_group_set_config(
 
 int32_t tiledb_group_get_config(
     tiledb_ctx_t* ctx, tiledb_group_t* group, tiledb_config_t** config) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
+  if (sanity_check(ctx, group) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  // Create a new config struct
-  *config = new (std::nothrow) tiledb_config_t;
-  if (*config == nullptr)
-    return TILEDB_OOM;
-
-  // Get the group config
-  (*config)->config_ = new (std::nothrow) tiledb::sm::Config();
-  *((*config)->config_) = *group->group_->config();
-  if ((*config)->config_ == nullptr) {
-    delete (*config);
-    *config = nullptr;
-    return TILEDB_OOM;
-  }
-
+  api::ensure_output_pointer_is_valid(config);
+  *config = tiledb_config_handle_t::make_handle(group->group_->config());
   return TILEDB_OK;
 }
 
@@ -651,13 +637,14 @@ int32_t tiledb_group_consolidate_metadata(
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
+  api::ensure_config_is_valid(config);
 
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->storage_manager()->group_metadata_consolidate(
               group_uri,
-              (config == nullptr) ? &ctx->storage_manager()->config() :
-                                    config->config_)))
+              (config == nullptr) ? ctx->storage_manager()->config() :
+                                    config->config())))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -673,14 +660,17 @@ int32_t tiledb_group_vacuum_metadata(
           ctx,
           ctx->storage_manager()->group_metadata_vacuum(
               group_uri,
-              (config == nullptr) ? &ctx->storage_manager()->config() :
-                                    config->config_)))
+              (config == nullptr) ? ctx->storage_manager()->config() :
+                                    config->config())))
     return TILEDB_ERR;
 
   return TILEDB_OK;
 }
 
 }  // namespace tiledb::common::detail
+
+template <auto f>
+constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
 
 int32_t tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri)
     TILEDB_NOEXCEPT {
@@ -707,7 +697,7 @@ tiledb_group_close(tiledb_ctx_t* ctx, tiledb_group_t* group) TILEDB_NOEXCEPT {
 }
 
 TILEDB_EXPORT void tiledb_group_free(tiledb_group_t** group) TILEDB_NOEXCEPT {
-  return api_entry_void<detail::tiledb_group_free>(group);
+  return tiledb::api::api_entry_void<detail::tiledb_group_free>(group);
 }
 
 TILEDB_EXPORT int32_t tiledb_group_set_config(
@@ -825,7 +815,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_is_relative_uri_by_name(
     tiledb_group_t* group,
     const char* name,
     uint8_t* relative) TILEDB_NOEXCEPT {
-  return api_entry_context<detail::tiledb_group_get_is_relative_uri_by_name>(
+  return api_entry<detail::tiledb_group_get_is_relative_uri_by_name>(
       ctx, group, name, relative);
 }
 
