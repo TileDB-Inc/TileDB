@@ -914,16 +914,10 @@ struct MultiPartUploadState {
   uploadId@1 :Text;
   # S3 specific ID identifying a multipart upload process for a file
 
-  bucket@2 :Text;
-  # The S3 bucket name
-
-  s3Key@3 :Text;
-  # S3 specific multipart upload key
-
-  status@4 :Text;
+  status@2 :Text;
   # Status field used to signal an error in a multipart upload process
 
-  completedParts@5 :List(CompletedPart);
+  completedParts@3 :List(CompletedPart);
   # A list of parts that are already uploaded
 }
 struct CompletedPart {

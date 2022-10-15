@@ -1601,6 +1601,7 @@ StorageManagerCanonical::load_all_array_schemas(
           auto&& [st, array_schema] =
               load_array_schema_from_uri(schema_uri, encryption_key);
           RETURN_NOT_OK(st);
+          array_schema.value()->set_array_uri(array_uri);
           schema_vector[schema_ith] = array_schema.value();
         } catch (std::exception& e) {
           return Status_StorageManagerError(e.what());
