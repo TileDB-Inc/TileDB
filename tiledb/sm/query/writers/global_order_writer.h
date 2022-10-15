@@ -91,6 +91,11 @@ class GlobalOrderWriter : public WriterBase {
 
     /** The last hilbert value written. */
     uint64_t last_hilbert_value_;
+
+    /** A mapping of buffer names to multipart upload state used by clients
+     * to track the write state in remote global order writes */
+    std::unordered_map<std::string, VFS::MultiPartUploadState>
+        multipart_upload_state_;
   };
 
   /* ********************************* */
@@ -146,16 +151,30 @@ class GlobalOrderWriter : public WriterBase {
   /**
    * Used in serialization to share the multipart upload state
    * among cloud executors
+   *
+   * @param client true if the code is executed from a client context
+   * @return A mapping of buffer names to VFS multipart upload states read from
+   * within this instance's `multipart_upload_state_` if the caller is a client,
+   * or from within the cloud backend internal mappings if the code is executed
+   * on the rest server.
    */
   std::pair<Status, std::unordered_map<std::string, VFS::MultiPartUploadState>>
-  multipart_upload_state();
+  multipart_upload_state(bool client);
 
   /**
    * Used in serialization of global order writes to set the multipart upload
    * state in the internal maps of cloud backends
+   *
+   * @param uri complete uri of a buffer file or just the buffer name if client
+   * is true
+   * @param state VFS multipart upload state to be set
+   * @param client true if the code is executed from a client context
+   * @return Status
    */
   Status set_multipart_upload_state(
-      const URI& uri, const VFS::MultiPartUploadState& state);
+      const std::string& uri,
+      const VFS::MultiPartUploadState& state,
+      bool client);
 
  private:
   /* ********************************* */

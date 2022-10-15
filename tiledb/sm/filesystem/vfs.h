@@ -106,8 +106,6 @@ class VFS {
 
     uint64_t part_number;
     optional<std::string> upload_id;
-    optional<std::string> bucket;
-    optional<std::string> s3_key;
     std::vector<CompletedParts> completed_parts;
     Status status;
   };

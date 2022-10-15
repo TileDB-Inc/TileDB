@@ -378,7 +378,7 @@ class S3 {
    * @return Status
    */
   Status set_multipart_upload_state(
-      const URI& uri, const S3::MultiPartUploadState& state);
+      const std::string& uri, S3::MultiPartUploadState& state);
 
  private:
   /* ********************************* */
