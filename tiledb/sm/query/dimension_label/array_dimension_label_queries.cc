@@ -232,7 +232,6 @@ void ArrayDimensionLabelQueries::add_read_queries(
     data_queries_.emplace_back(tdb_new(
         DimensionLabelReadDataQuery,
         storage_manager_,
-        stats_->create_child("DimensionLabelQuery"),
         dim_label,
         subarray,
         label_buffer,

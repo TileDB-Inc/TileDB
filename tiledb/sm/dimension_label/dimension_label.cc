@@ -204,10 +204,6 @@ void DimensionLabel::open(
             .filtered_fragment_uris(false)
             .fragment_uris()};
 
-    // Remove mismatched fragments.
-    intersect_fragments(indexed_frag_uris, labelled_frag_uris);
-    intersect_fragments(labelled_frag_uris, indexed_frag_uris);
-
     // Reload with only shared fragments.
     throw_if_not_ok(indexed_array_->load_fragments(indexed_frag_uris));
     throw_if_not_ok(labelled_array_->load_fragments(labelled_frag_uris));
@@ -338,38 +334,6 @@ void create_dimension_label(
 
   // Close group.
   throw_if_not_ok(label_group.close());
-}
-
-void intersect_fragments(
-    const std::vector<TimestampedURI>& comparison_fragment_list,
-    std::vector<TimestampedURI>& fragment_list) {
-  // If the comparison list is empty, clear the fragment list and return.
-  if (comparison_fragment_list.empty()) {
-    fragment_list.clear();
-    return;
-  }
-
-  // Create a set of fragment names from the comparison fragment list.
-  std::set<std::string> allowed_fragment_names;
-  for (const auto& frag_uri : comparison_fragment_list) {
-    allowed_fragment_names.insert(
-        frag_uri.uri_.remove_trailing_slash().last_path_part());
-  }
-
-  // Iterate over fragment list removing any fragments that are not in the
-  // comparison list.
-  for (auto iter = fragment_list.rbegin(); iter != fragment_list.rend();
-       ++iter) {
-    auto search = allowed_fragment_names.find(
-        iter->uri_.remove_trailing_slash().last_path_part());
-    if (search == allowed_fragment_names.end()) {
-      // Swap & pop the fragment: Replace the value at this iterator with the
-      // last element in the vector, then remove the final element for the
-      // vector.
-      *iter = fragment_list.back();
-      fragment_list.pop_back();
-    }
-  }
 }
 
 }  // namespace tiledb::sm

@@ -40,7 +40,7 @@ DimensionLabelDataQuery* DimensionLabelQueryCreate::make_write_query(
     const std::string& label_name,
     LabelOrder label_order,
     StorageManager* storage_manager,
-    stats::Stats* stats,
+    stats::Stats* parent_stats,
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
@@ -54,7 +54,7 @@ DimensionLabelDataQuery* DimensionLabelQueryCreate::make_write_query(
       return tdb_new(
           OrderedWriteDataQuery,
           storage_manager,
-          stats,
+          parent_stats->create_child("DimensionLabelQuery"),
           dimension_label,
           parent_subarray,
           label_buffer,
@@ -67,7 +67,6 @@ DimensionLabelDataQuery* DimensionLabelQueryCreate::make_write_query(
       return tdb_new(
           UnorderedWriteDataQuery,
           storage_manager,
-          stats,
           dimension_label,
           parent_subarray,
           label_buffer,
