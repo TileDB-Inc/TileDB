@@ -44,6 +44,7 @@
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_space_tile.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 namespace tiledb {
@@ -51,7 +52,6 @@ namespace sm {
 
 class Array;
 class ArraySchema;
-class StorageManager;
 class Subarray;
 
 /** Processes read queries. */

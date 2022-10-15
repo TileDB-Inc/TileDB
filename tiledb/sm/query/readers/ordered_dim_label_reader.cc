@@ -407,7 +407,8 @@ OrderedDimLabelReader::FragmentRangeTileIndexes
 OrderedDimLabelReader::get_array_tile_indexes_for_range(
     unsigned f, uint64_t r) {
   const auto tile_num = fragment_metadata_[f]->tile_num();
-  uint64_t start_index = 0, end_index = tile_num - 1;
+  uint64_t start_index = increasing_labels_ ? 0 : tile_num - 1,
+           end_index = increasing_labels_ ? tile_num - 1 : 0;
 
   const auto start_range = get_range_as<LabelType>(r, 0);
   const auto end_range = get_range_as<LabelType>(r, 1);
@@ -462,10 +463,10 @@ OrderedDimLabelReader::get_array_tile_indexes_for_range(
         }
       }
     } else {
-      for (; start_index < tile_num; start_index++) {
-        const auto min = fragment_metadata_[f]->get_tile_min_as<LabelType>(
+      for (;; start_index--) {
+        const auto max = fragment_metadata_[f]->get_tile_max_as<LabelType>(
             label_name_, start_index);
-        if (min <= start_range) {
+        if (start_index == 0 || max >= start_range) {
           break;
         }
       }
@@ -483,10 +484,10 @@ OrderedDimLabelReader::get_array_tile_indexes_for_range(
         }
       }
     } else {
-      for (;; end_index--) {
-        const auto max = fragment_metadata_[f]->get_tile_max_as<LabelType>(
+      for (; end_index < tile_num; end_index++) {
+        const auto min = fragment_metadata_[f]->get_tile_min_as<LabelType>(
             label_name_, end_index);
-        if (end_index == 0 || max >= end_range) {
+        if (min <= end_range) {
           break;
         }
       }
@@ -755,10 +756,16 @@ IndexType OrderedDimLabelReader::search_for_range_fixed(
   }
 
   // Do one last comparison to decide to return left or right. If finding the
-  // starting range index, check if the left bound is within the value range.
-  // If finding the ending range index, check if the right value is within the
+  // smaller range value, check if the left bound is within the value range.
+  // If finding the larger range value, check if the right value is within the
   // value range.
-  auto bound = range_index == 0 ? left_index : right_index;
+  IndexType bound;
+  if (increasing_labels_) {
+    bound = range_index == 0 ? left_index : right_index;
+  } else {
+    bound = range_index == 0 ? right_index : left_index;
+  }
+
   return (cmp(
              get_value_at<IndexType, LabelType>(bound, domain_low, tile_extent),
              value)) ?
@@ -808,11 +815,11 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
     dest[0] = search_for_range_fixed<
         IndexType,
         LabelType,
-        std::less_equal<LabelType>>(r, 0, dim_dom[0], tile_extent);
+        std::less_equal<LabelType>>(r, 1, dim_dom[0], tile_extent);
 
     // If the result is the last index, make sure the range includes it.
     if (dest[0] == non_empty_domain[1]) {
-      LabelType value = get_range_as<LabelType>(r, 0);
+      LabelType value = get_range_as<LabelType>(r, 1);
       if (get_value_at<IndexType, LabelType>(dest[0], dim_dom[0], tile_extent) >
           value) {
         throw OrderedDimLabelReaderStatusException("Range contained no values");
@@ -821,11 +828,11 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
 
     dest[1] =
         search_for_range_fixed<IndexType, LabelType, std::less<LabelType>>(
-            r, 1, dim_dom[0], tile_extent);
+            r, 0, dim_dom[0], tile_extent);
 
     // If the result is the first index, make sure the range includes it.
     if (dest[1] == non_empty_domain[0]) {
-      LabelType value = get_range_as<LabelType>(r, 1);
+      LabelType value = get_range_as<LabelType>(r, 0);
       if (get_value_at<IndexType, LabelType>(dest[1], dim_dom[0], tile_extent) <
           value) {
         throw OrderedDimLabelReaderStatusException("Range contained no values");

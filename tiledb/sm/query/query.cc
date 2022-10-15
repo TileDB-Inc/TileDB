@@ -119,7 +119,7 @@ Query::Query(
     config_ = storage_manager->config();
 
   // Set initial subarray configuration
-  subarray_.set_config(config_);
+  throw_if_not_ok(subarray_.set_config(config_));
 
   rest_scratch_ = make_shared<Buffer>(HERE());
 }
@@ -304,7 +304,8 @@ Status Query::get_range_var(
 
   uint64_t start_size = 0;
   uint64_t end_size = 0;
-  subarray_.get_range_var_size(dim_idx, range_idx, &start_size, &end_size);
+  throw_if_not_ok(
+      subarray_.get_range_var_size(dim_idx, range_idx, &start_size, &end_size));
 
   const void* range_start;
   const void* range_end;
@@ -1717,7 +1718,7 @@ Status Query::set_config(const Config& config) {
   // Set subarray's config for backwards compatibility
   // Users expect the query config to effect the subarray based on existing
   // behavior before subarray was exposed directly
-  subarray_.set_config(config_);
+  throw_if_not_ok(subarray_.set_config(config_));
 
   return Status::Ok();
 }
@@ -1813,7 +1814,7 @@ Status Query::set_buffer(
   has_coords_buffer_ |= is_dim;
 
   // Set attribute buffer
-  buffers_[name].set_data_buffer(buffer, buffer_size);
+  throw_if_not_ok(buffers_[name].set_data_buffer(buffer, buffer_size));
 
   return Status::Ok();
 }
@@ -1919,10 +1920,10 @@ Status Query::set_data_buffer(
   // Set attribute/dimension buffer on the appropriate buffer
   if (!array_schema_->var_size(name))
     // Fixed size data buffer
-    buffers_[name].set_data_buffer(buffer, buffer_size);
+    throw_if_not_ok(buffers_[name].set_data_buffer(buffer, buffer_size));
   else
     // Var sized data buffer
-    buffers_[name].set_data_var_buffer(buffer, buffer_size);
+    throw_if_not_ok(buffers_[name].set_data_var_buffer(buffer, buffer_size));
 
   return Status::Ok();
 }
@@ -1967,8 +1968,10 @@ void Query::set_label_data_buffer(
   // Set dimension label buffer on the appropriate buffer depending if the label
   // is fixed or variable length.
   array_schema_->dimension_label_reference(name).is_var() ?
-      label_buffers_[name].set_data_var_buffer(buffer, buffer_size) :
-      label_buffers_[name].set_data_buffer(buffer, buffer_size);
+      throw_if_not_ok(
+          label_buffers_[name].set_data_var_buffer(buffer, buffer_size)) :
+      throw_if_not_ok(
+          label_buffers_[name].set_data_buffer(buffer, buffer_size));
 }
 
 void Query::set_label_offsets_buffer(
@@ -2018,7 +2021,8 @@ void Query::set_label_offsets_buffer(
   }
 
   // Set dimension label offsets buffers.
-  label_buffers_[name].set_offsets_buffer(buffer_offsets, buffer_offsets_size);
+  throw_if_not_ok(label_buffers_[name].set_offsets_buffer(
+      buffer_offsets, buffer_offsets_size));
 }
 
 Status Query::set_offsets_buffer(
@@ -2083,7 +2087,8 @@ Status Query::set_offsets_buffer(
   has_coords_buffer_ |= is_dim;
 
   // Set attribute/dimension buffer
-  buffers_[name].set_offsets_buffer(buffer_offsets, buffer_offsets_size);
+  throw_if_not_ok(
+      buffers_[name].set_offsets_buffer(buffer_offsets, buffer_offsets_size));
 
   return Status::Ok();
 }
@@ -2128,7 +2133,8 @@ Status Query::set_validity_buffer(
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  buffers_[name].set_validity_buffer(std::move(validity_vector));
+  throw_if_not_ok(
+      buffers_[name].set_validity_buffer(std::move(validity_vector)));
 
   return Status::Ok();
 }
@@ -2215,8 +2221,10 @@ Status Query::set_buffer(
   }
 
   // Set attribute/dimension buffer
-  buffers_[name].set_data_var_buffer(buffer_val, buffer_val_size);
-  buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size);
+  throw_if_not_ok(
+      buffers_[name].set_data_var_buffer(buffer_val, buffer_val_size));
+  throw_if_not_ok(
+      buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size));
 
   return Status::Ok();
 }
@@ -2315,8 +2323,9 @@ Status Query::set_buffer(
         "' after initialization"));
 
   // Set attribute buffer
-  buffers_[name].set_data_buffer(buffer, buffer_size);
-  buffers_[name].set_validity_buffer(std::move(validity_vector));
+  throw_if_not_ok(buffers_[name].set_data_buffer(buffer, buffer_size));
+  throw_if_not_ok(
+      buffers_[name].set_validity_buffer(std::move(validity_vector)));
 
   return Status::Ok();
 }
@@ -2395,9 +2404,12 @@ Status Query::set_buffer(
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  buffers_[name].set_data_var_buffer(buffer_val, buffer_val_size);
-  buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size);
-  buffers_[name].set_validity_buffer(std::move(validity_vector));
+  throw_if_not_ok(
+      buffers_[name].set_data_var_buffer(buffer_val, buffer_val_size));
+  throw_if_not_ok(
+      buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size));
+  throw_if_not_ok(
+      buffers_[name].set_validity_buffer(std::move(validity_vector)));
 
   return Status::Ok();
 }
@@ -2527,7 +2539,7 @@ Status Query::set_subarray(const void* subarray) {
       // Get read_range_oob config setting
       bool found = false;
       std::string read_range_oob_str =
-          config()->get("sm.read_range_oob", &found);
+          config().get("sm.read_range_oob", &found);
       assert(found);
       if (read_range_oob_str != "error" && read_range_oob_str != "warn")
         return logger_->status(Status_QueryError(
@@ -2751,8 +2763,8 @@ QueryType Query::type() const {
   return type_;
 }
 
-const Config* Query::config() const {
-  return &config_;
+const Config& Query::config() const {
+  return config_;
 }
 
 stats::Stats* Query::stats() const {
@@ -2774,8 +2786,8 @@ bool Query::use_refactored_dense_reader(
   }
 
   // First check for legacy option
-  config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_reader, &found);
+  throw_if_not_ok(config_.get<bool>(
+      "sm.use_refactored_readers", &use_refactored_reader, &found));
   // If the legacy/deprecated option is set use it over the new parameters
   // This facilitates backwards compatibility
   if (found) {
@@ -2802,8 +2814,8 @@ bool Query::use_refactored_sparse_global_order_reader(
   }
 
   // First check for legacy option
-  config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_reader, &found);
+  throw_if_not_ok(config_.get<bool>(
+      "sm.use_refactored_readers", &use_refactored_reader, &found));
   // If the legacy/deprecated option is set use it over the new parameters
   // This facilitates backwards compatibility
   if (found) {
@@ -2832,8 +2844,8 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader(
   }
 
   // First check for legacy option
-  config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_reader, &found);
+  throw_if_not_ok(config_.get<bool>(
+      "sm.use_refactored_readers", &use_refactored_reader, &found));
   // If the legacy/deprecated option is set use it over the new parameters
   // This facilitates backwards compatibility
   if (found) {

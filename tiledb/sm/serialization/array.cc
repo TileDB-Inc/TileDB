@@ -117,8 +117,6 @@ Status array_to_capnp(
     Array* array,
     capnp::Array::Builder* array_builder,
     const bool client_side) {
-  // Currently unused
-  (void)client_side;
   // The serialized URI is set if it exists
   // this is used for backwards compatibility with pre TileDB 2.5 clients that
   // want to serialized a query object TileDB >= 2.5 no longer needs to send the
@@ -241,7 +239,7 @@ Status array_open_to_capnp(
   // Set config
   auto config_builder = array_open_builder->initConfig();
   auto config = array.config();
-  RETURN_NOT_OK(config_to_capnp(&config, &config_builder));
+  RETURN_NOT_OK(config_to_capnp(config, &config_builder));
 
   return Status::Ok();
 }

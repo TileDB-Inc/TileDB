@@ -133,7 +133,7 @@ std::string AzureFx::random_container_name(const std::string& prefix) {
 
 TEST_CASE_METHOD(AzureFx, "Test Azure filesystem, file management", "[azure]") {
   Config config;
-  config.set("vfs.azure.use_block_list_upload", "true");
+  REQUIRE(config.set("vfs.azure.use_block_list_upload", "true").ok());
 
   auto settings =
       GENERATE(from_range(test_settings.begin(), test_settings.end()));
@@ -270,10 +270,15 @@ TEST_CASE_METHOD(
   Config config;
   const uint64_t max_parallel_ops = 2;
   const uint64_t block_list_block_size = 4 * 1024 * 1024;
-  config.set("vfs.azure.use_block_list_upload", "true");
-  config.set("vfs.azure.max_parallel_ops", std::to_string(max_parallel_ops));
-  config.set(
-      "vfs.azure.block_list_block_size", std::to_string(block_list_block_size));
+  REQUIRE(config.set("vfs.azure.use_block_list_upload", "true").ok());
+  REQUIRE(
+      config.set("vfs.azure.max_parallel_ops", std::to_string(max_parallel_ops))
+          .ok());
+  REQUIRE(config
+              .set(
+                  "vfs.azure.block_list_block_size",
+                  std::to_string(block_list_block_size))
+              .ok());
 
   auto settings =
       GENERATE(from_range(test_settings.begin(), test_settings.end()));
@@ -360,10 +365,15 @@ TEST_CASE_METHOD(
   Config config;
   const uint64_t max_parallel_ops = 2;
   const uint64_t block_list_block_size = 4 * 1024 * 1024;
-  config.set("vfs.azure.use_block_list_upload", "false");
-  config.set("vfs.azure.max_parallel_ops", std::to_string(max_parallel_ops));
-  config.set(
-      "vfs.azure.block_list_block_size", std::to_string(block_list_block_size));
+  REQUIRE(config.set("vfs.azure.use_block_list_upload", "false").ok());
+  REQUIRE(
+      config.set("vfs.azure.max_parallel_ops", std::to_string(max_parallel_ops))
+          .ok());
+  REQUIRE(config
+              .set(
+                  "vfs.azure.block_list_block_size",
+                  std::to_string(block_list_block_size))
+              .ok());
 
   auto settings =
       GENERATE(from_range(test_settings.begin(), test_settings.end()));

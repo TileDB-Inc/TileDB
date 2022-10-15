@@ -34,6 +34,7 @@
 #ifndef TILEDB_WALK_ORDER_H
 #define TILEDB_WALK_ORDER_H
 
+#include "tiledb/common/exception/status.h"
 #include "tiledb/sm/misc/constants.h"
 
 namespace tiledb {
@@ -65,7 +66,7 @@ inline Status walkorder_enum(
   else if (walkorder_str == constants::walkorder_postorder_str)
     *walkorder = WalkOrder::POSTORDER;
   else
-    return Status_Error("Invalid WalkOrder " + walkorder_str);
+    return common::Status_Error("Invalid WalkOrder " + walkorder_str);
 
   return Status::Ok();
 }

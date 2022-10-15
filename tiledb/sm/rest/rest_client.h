@@ -229,6 +229,16 @@ class RestClient {
       const URI& uri, ArraySchemaEvolution* array_schema_evolution);
 
   /**
+   * Get array's fragment info from rest server
+   *
+   * @param uri Array uri to query for
+   * @param fragment_info Fragment info object to store the incoming info
+   * @return Status Ok() on success Error() on failures
+   */
+  Status post_fragment_info_from_rest(
+      const URI& uri, FragmentInfo* fragment_info);
+
+  /**
    * Gets the group's metadata from the REST server (and updates the in-memory
    * Metadata of the group to match the returned values).
    *

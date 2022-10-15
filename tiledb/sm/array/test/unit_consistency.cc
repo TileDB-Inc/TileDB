@@ -172,9 +172,8 @@ TEST_CASE(
   ThreadPool tp_cpu(1);
   ThreadPool tp_io(1);
   stats::Stats stats("");
-  StorageManager sm(&tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""));
-  Status st = sm.init(config);
-  REQUIRE(st.ok());
+  StorageManager sm(
+      &tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""), config);
 
   // Register array
   tdb_unique_ptr<Array> array = x.open_array(uri, &sm);
@@ -183,12 +182,12 @@ TEST_CASE(
   REQUIRE(tiledb::sm::utils::parse::is_element_of(uri, uri) == true);
 
   // Deregister array
-  array.get()->close();
+  REQUIRE(array.get()->close().ok());
   REQUIRE(x.registry_size() == 0);
   REQUIRE(x.is_open(uri) == false);
 
   // Clean up
-  sm.vfs()->remove_dir(uri);
+  REQUIRE(sm.vfs()->remove_dir(uri).ok());
 }
 
 TEST_CASE(
@@ -201,9 +200,8 @@ TEST_CASE(
   ThreadPool tp_cpu(1);
   ThreadPool tp_io(1);
   stats::Stats stats("");
-  StorageManager sm(&tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""));
-  Status st = sm.init(config);
-  REQUIRE(st.ok());
+  StorageManager sm(
+      &tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""), config);
 
   std::vector<tdb_unique_ptr<Array>> arrays;
   std::vector<URI> uris = {URI("whitebox_array_vector_1"),
@@ -224,7 +222,7 @@ TEST_CASE(
 
   // Deregister arrays
   for (auto a = arrays.end(); a == arrays.begin(); --a) {
-    a->get()->close();
+    REQUIRE(a->get()->close().ok());
     count--;
     REQUIRE(x.is_open(uris[count]) == false);
     REQUIRE(x.registry_size() == count);
@@ -232,7 +230,7 @@ TEST_CASE(
 
   // Clean up
   for (auto uri : uris) {
-    sm.vfs()->remove_dir(uri);
+    REQUIRE(sm.vfs()->remove_dir(uri).ok());
   }
 }
 
@@ -247,15 +245,14 @@ TEST_CASE(
   ThreadPool tp_cpu(1);
   ThreadPool tp_io(1);
   stats::Stats stats("");
-  StorageManager sm(&tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""));
-  Status st = sm.init(config);
-  REQUIRE(st.ok());
+  StorageManager sm(
+      &tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""), config);
 
   // Create an array
   tdb_unique_ptr<Array> array = x.create_array(uri, &sm);
 
   // Open an array for exclusive modification
-  st = array->open(
+  auto st = array->open(
       QueryType::MODIFY_EXCLUSIVE, EncryptionType::NO_ENCRYPTION, nullptr, 0);
   REQUIRE(st.ok());
   REQUIRE(x.registry_size() == 1);
@@ -269,7 +266,7 @@ TEST_CASE(
   REQUIRE(x.is_open(uri) == true);
 
   // Close exclusive modification array
-  array.get()->close();
+  REQUIRE(array.get()->close().ok());
   REQUIRE(x.registry_size() == 0);
   REQUIRE(x.is_open(uri) == false);
 
@@ -287,8 +284,8 @@ TEST_CASE(
   REQUIRE(x.registry_size() == 1);
 
   // Clean up
-  array.get()->close();
+  REQUIRE(array.get()->close().ok());
   REQUIRE(x.registry_size() == 0);
   REQUIRE(x.is_open(uri) == false);
-  sm.vfs()->remove_dir(uri);
+  REQUIRE(sm.vfs()->remove_dir(uri).ok());
 }

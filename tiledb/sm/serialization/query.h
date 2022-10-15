@@ -194,6 +194,7 @@ Status query_est_result_size_deserialize(
     const Buffer& serialized_buffer);
 
 #ifdef TILEDB_SERIALIZATION
+
 Status global_write_state_to_capnp(
     const Query& query,
     GlobalOrderWriter& globalwriter,

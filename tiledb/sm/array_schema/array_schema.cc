@@ -95,7 +95,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
       constants::cell_validity_compression_level));
 
   // Generate URI and name for ArraySchema
-  generate_uri();
+  throw_if_not_ok(generate_uri());
 }
 
 ArraySchema::ArraySchema(
@@ -184,11 +184,11 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema) {
   tile_order_ = array_schema.tile_order_;
   version_ = array_schema.version_;
 
-  set_domain(array_schema.domain_);
+  throw_if_not_ok(set_domain(array_schema.domain_));
 
   attribute_map_.clear();
   for (auto attr : array_schema.attributes_)
-    add_attribute(attr, false);
+    throw_if_not_ok(add_attribute(attr, false));
 
   // Create dimension label map
   for (const auto& label : array_schema.dimension_labels_) {
@@ -961,18 +961,16 @@ void ArraySchema::set_capacity(uint64_t capacity) {
   capacity_ = capacity;
 }
 
-Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline* pipeline) {
-  assert(pipeline);
-  RETURN_NOT_OK(check_string_compressor(*pipeline));
-  RETURN_NOT_OK(check_double_delta_compressor(*pipeline));
-
-  coords_filters_ = *pipeline;
+Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline& pipeline) {
+  RETURN_NOT_OK(check_string_compressor(pipeline));
+  RETURN_NOT_OK(check_double_delta_compressor(pipeline));
+  coords_filters_ = pipeline;
   return Status::Ok();
 }
 
 Status ArraySchema::set_cell_var_offsets_filter_pipeline(
-    const FilterPipeline* pipeline) {
-  cell_var_offsets_filters_ = *pipeline;
+    const FilterPipeline& pipeline) {
+  cell_var_offsets_filters_ = pipeline;
   return Status::Ok();
 }
 
@@ -988,8 +986,8 @@ Status ArraySchema::set_cell_order(Layout cell_order) {
 }
 
 Status ArraySchema::set_cell_validity_filter_pipeline(
-    const FilterPipeline* pipeline) {
-  cell_validity_filters_ = *pipeline;
+    const FilterPipeline& pipeline) {
+  cell_validity_filters_ = pipeline;
   return Status::Ok();
 }
 

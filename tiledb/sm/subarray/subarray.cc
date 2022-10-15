@@ -314,7 +314,7 @@ Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
   tile_overlap_.clear();
 
   // Add the range
-  range_subset_[dim_idx].add_range_unrestricted(range);
+  throw_if_not_ok(range_subset_[dim_idx].add_range_unrestricted(range));
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
   return Status::Ok();
 }
@@ -468,15 +468,15 @@ Status Subarray::add_point_ranges(
 
 Status Subarray::add_ranges_list(
     unsigned dim_idx, const void* start, uint64_t count) {
-  if (dim_idx >= this->array_->array_schema_latest().dim_num()){
+  if (dim_idx >= this->array_->array_schema_latest().dim_num()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
   }
 
   if (count % 2) {
-    return LOG_STATUS(Status_SubarrayError("add_ranges_list: Invalid count " 
-        + std::to_string(count)
-        + ", count must be a multiple of 2 "));
+    return LOG_STATUS(Status_SubarrayError(
+        "add_ranges_list: Invalid count " + std::to_string(count) +
+        ", count must be a multiple of 2 "));
   }
 
   QueryType array_query_type{array_->get_query_type()};
@@ -522,8 +522,8 @@ Status Subarray::add_ranges_list(
     uint8_t* ptr = (uint8_t*)start + 2 * coord_size * i;
 
     // Add range
-    auto st = this->add_range(
-        dim_idx, Range(ptr, 2 * coord_size), err_on_range_oob_);
+    auto st =
+        this->add_range(dim_idx, Range(ptr, 2 * coord_size), err_on_range_oob_);
     if (!st.ok()) {
       return LOG_STATUS(std::move(st));
     }
@@ -693,7 +693,8 @@ Status Subarray::get_range_var(
 
   uint64_t start_size = 0;
   uint64_t end_size = 0;
-  this->get_range_var_size(dim_idx, range_idx, &start_size, &end_size);
+  throw_if_not_ok(
+      this->get_range_var_size(dim_idx, range_idx, &start_size, &end_size));
 
   const void* range_start;
   const void* range_end;
@@ -1065,7 +1066,7 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   for (unsigned d = 0; d < dim_num; ++d) {
     if (!range_subset_[d].is_implicitly_initialized()) {
       for (uint64_t r = start_coords[d]; r <= end_coords[d]; ++r) {
-        ret.add_range_unsafe(d, range_subset_[d][r]);
+        throw_if_not_ok(ret.add_range_unsafe(d, range_subset_[d][r]));
       }
     }
   }
@@ -1563,7 +1564,7 @@ Status Subarray::get_max_memory_size(
   }
 
   // Compute tile overlap for each fragment
-  compute_est_result_size(config, compute_tp);
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
   *size = max_mem_size_[name].size_fixed_;
 
   return Status::Ok();
@@ -1608,7 +1609,7 @@ Status Subarray::get_max_memory_size(
                              "Attribute/Dimension must not be nullable"));
 
   // Compute tile overlap for each fragment
-  compute_est_result_size(config, compute_tp);
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
   *size_off = max_mem_size_[name].size_fixed_;
   *size_val = max_mem_size_[name].size_var_;
 
@@ -1653,7 +1654,7 @@ Status Subarray::get_max_memory_size_nullable(
                              "Attribute must be nullable"));
 
   // Compute tile overlap for each fragment
-  compute_est_result_size(config, compute_tp);
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
   *size = max_mem_size_[name].size_fixed_;
   *size_validity = max_mem_size_[name].size_validity_;
 
@@ -1699,7 +1700,7 @@ Status Subarray::get_max_memory_size_nullable(
                              "Attribute must be nullable"));
 
   // Compute tile overlap for each fragment
-  compute_est_result_size(config, compute_tp);
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
   *size_off = max_mem_size_[name].size_fixed_;
   *size_val = max_mem_size_[name].size_var_;
   *size_validity = max_mem_size_[name].size_validity_;
@@ -1879,7 +1880,7 @@ Status Subarray::set_ranges_for_dim(
   // Add each range individually so that contiguous
   // ranges may be coalesced.
   for (const auto& range : ranges)
-    range_subset_[dim_idx].add_range_unrestricted(range);
+    throw_if_not_ok(range_subset_[dim_idx].add_range_unrestricted(range));
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
   return Status::Ok();
 }
@@ -2129,7 +2130,7 @@ Subarray::get_est_result_size_map(
     const Config* const config, ThreadPool* const compute_tp) {
   // If the result sizes have not been computed, compute them first
   if (!est_result_size_computed_)
-    compute_est_result_size(config, compute_tp);
+    throw_if_not_ok(compute_est_result_size(config, compute_tp));
 
   return est_result_size_;
 }
@@ -2139,7 +2140,7 @@ Subarray::get_max_mem_size_map(
     const Config* const config, ThreadPool* const compute_tp) {
   // If the result sizes have not been computed, compute them first
   if (!est_result_size_computed_)
-    compute_est_result_size(config, compute_tp);
+    throw_if_not_ok(compute_est_result_size(config, compute_tp));
 
   return max_mem_size_;
 }
@@ -3423,7 +3424,7 @@ void Subarray::crop_to_tile_impl(const T* tile_coords, Subarray& ret) const {
           &overlaps);
 
       if (overlaps) {
-        ret.add_range_unsafe(d, Range(new_range, r_size));
+        throw_if_not_ok(ret.add_range_unsafe(d, Range(new_range, r_size)));
         ret.original_range_idx_.resize(dim_num());
         ret.original_range_idx_[d].resize(i + 1);
         ret.original_range_idx_[d][i++] = r;

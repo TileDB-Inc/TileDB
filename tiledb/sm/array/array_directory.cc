@@ -310,12 +310,17 @@ ArrayDirectory::delete_and_update_tiles_location() const {
   return delete_and_update_tiles_location_;
 }
 
-URI ArrayDirectory::get_fragments_dir(uint32_t write_version) const {
+URI ArrayDirectory::generate_fragment_dir_uri(
+    uint32_t write_version, URI array_uri) {
   if (write_version < 12) {
-    return uri_;
+    return array_uri;
   }
 
-  return uri_.join_path(constants::array_fragments_dir_name);
+  return array_uri.join_path(constants::array_fragments_dir_name);
+}
+
+URI ArrayDirectory::get_fragments_dir(uint32_t write_version) const {
+  return generate_fragment_dir_uri(write_version, uri_);
 }
 
 URI ArrayDirectory::get_fragment_metadata_dir(uint32_t write_version) const {
@@ -980,7 +985,7 @@ bool ArrayDirectory::consolidation_with_timestamps_supported(
   // Get the fragment version from the uri
   uint32_t version;
   auto name = uri.remove_trailing_slash().last_path_part();
-  utils::parse::get_fragment_version(name, &version);
+  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
 
   // get_fragment_version returns UINT32_MAX for versions <= 2 so we should
   // explicitly exclude this case when checking if consolidation with timestamps

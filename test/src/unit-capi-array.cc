@@ -2159,7 +2159,7 @@ TEST_CASE_METHOD(
   // this here by forcing metadata loading
   if (!array_v2) {
     Metadata* metadata = nullptr;
-    array->array_->metadata(&metadata);
+    CHECK(array->array_->metadata(&metadata).ok());
     array->array_->non_empty_domain();
   }
 
