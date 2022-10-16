@@ -1,5 +1,5 @@
 /**
- * @file frugal.cc
+ * @file throwcatch.cc
  *
  * @section LICENSE
  *
@@ -28,4 +28,4 @@
  * @section DESCRIPTION
  */
 
-#include "frugal.h"
+#include "throwcatch.h"

@@ -1,5 +1,5 @@
 /**
- * @file stop_token.cc
+ * @file experimental/tiledb/common/thread_pool/test/unit_throwcatch.h
  *
  * @section LICENSE
  *
@@ -28,4 +28,7 @@
  * @section DESCRIPTION
  */
 
-#include "jthread/stop_token.hpp"
+#ifndef TILEDB_UNIT_FRUGAL_H
+#define TILEDB_UNIT_FRUGAL_H
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_UNIT_FRUGAL_H

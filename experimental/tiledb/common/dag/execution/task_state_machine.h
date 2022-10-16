@@ -1,5 +1,5 @@
 /**
- * @file   scheduler.h
+ * @file   task_state_machine.h
  *
  * @section LICENSE
  *

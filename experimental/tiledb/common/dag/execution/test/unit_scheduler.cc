@@ -29,8 +29,8 @@
  *
  */
 
-#include "unit_scheduler.h"
-#include "../scheduler.h"
+#include "unit_task_state_machine.h"
+#include "../task_state_machine.h"
 
 using namespace tiledb::common;
 

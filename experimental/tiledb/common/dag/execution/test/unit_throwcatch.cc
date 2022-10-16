@@ -1,5 +1,5 @@
 /**
- * @file   unit_frugal.cc
+ * @file   unit_throwcatch.cc
  *
  * @section LICENSE
  *
@@ -37,11 +37,11 @@
 #include <iostream>
 #include <map>
 #include <type_traits>
-#include "../frugal.h"
+#include "../throwcatch.h"
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
-#include "experimental/tiledb/common/dag/execution/scheduler.h"
-#include "unit_frugal.h"
+#include "experimental/tiledb/common/dag/execution/task_state_machine.h"
+#include "unit_throwcatch.h"
 
 #include "experimental/tiledb/common/dag/nodes/consumer.h"
 #include "experimental/tiledb/common/dag/ports/ports.h"

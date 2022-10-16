@@ -1,5 +1,5 @@
 /**
- * @file scheduler.cc
+ * @file task_state_machine.cc
  *
  * @section LICENSE
  *
@@ -28,4 +28,4 @@
  * @section DESCRIPTION
  */
 
-#include "scheduler.h"
+#include "task_state_machine.h"

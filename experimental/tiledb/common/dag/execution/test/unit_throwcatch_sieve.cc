@@ -75,8 +75,8 @@
 #define CHECK(str)
 
 #include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/execution/frugal.h"
-#include "experimental/tiledb/common/dag/execution/scheduler.h"
+#include "experimental/tiledb/common/dag/execution/throwcatch.h"
+#include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 #include "experimental/tiledb/common/dag/execution/test/frugal_nodes.h"
 // #include "experimental/tiledb/common/dag/nodes/nodes.h"
 // #include "experimental/tiledb/common/dag/ports/ports.h"

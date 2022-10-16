@@ -1,5 +1,5 @@
 /**
- * @file   frugal.h
+ * @file   throwcatch.h
  *
  * @section LICENSE
  *
@@ -34,7 +34,7 @@
  * The `worker` method implements the scheduling of tasks.  A task is an
  * executable entity with a `resume` method.  The `worker` manages the state
  * of each task, in conjunction with a scheduler policy task and the scheduler
- * state machine (defined in scheduler.h).
+ * state machine (defined in task_state_machine.h).
  *
  * Tasks are submitted to the scheduler with the `submit` method.  The
  * `submit` method is variadic, so an arbitray number of tasks can be
@@ -69,7 +69,7 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include "experimental/tiledb/common/dag/execution/scheduler.h"
+#include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/item_mover.h"
 #include "experimental/tiledb/common/dag/utils/bounded_buffer.h"

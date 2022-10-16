@@ -1,5 +1,5 @@
 /**
- * @file   frugal_nodes.h
+ * @file   throwcatchnodes.h
  *
  * @section LICENSE
  *
@@ -360,7 +360,7 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
 	if (is_done(mover->state()) == "") {
 	  std::cout << "=== sink mover done\n";
 	  // mover->on_term_sink();
-	  //	  throw(detail::frugal_exit{detail::frugal_target::sink});//	  
+	  //	  throw(detail::throwcatchexit{detail::throwcatchtarget::sink});//	  
 	  //	  mover->port_done();
 	}
 

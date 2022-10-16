@@ -26,7 +26,7 @@
  * THE SOFTWARE.
  */
 
-#include "../scheduler.h"
+#include "../task_state_machine.h"
 
 using namespace tiledb::common;
 
