@@ -26,7 +26,7 @@
 
 add_executable(unit_capi_error EXCLUDE_FROM_ALL)
 find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_capi_error PUBLIC Catch2::Catch2)
+target_link_libraries(unit_capi_error PUBLIC Catch2::Catch2WithMain)
 
 # Sources for code under test
 target_link_libraries(unit_capi_error PUBLIC capi_error_stub)
