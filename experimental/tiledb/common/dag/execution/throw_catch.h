@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a frugal (static threadpool) scheduler for dag.
+ * This file declares a throw_catch (static threadpool) scheduler for dag.
  *
  * This scheduler has a fixed number of threads (determined when the scheduler
  * is constructed).  Each thread runs the `worker` method of the scheduler.
@@ -56,8 +56,8 @@
  * can be mixed and matched.
  */
 
-#ifndef TILEDB_DAG_FRUGAL_H
-#define TILEDB_DAG_FRUGAL_H
+#ifndef TILEDB_DAG_throw_catch_H
+#define TILEDB_DAG_throw_catch_H
 
 #include <condition_variable>
 #include <functional>
@@ -81,57 +81,57 @@ namespace tiledb::common {
 
 namespace detail {
 
-enum class frugal_target { self, source, sink, last };
+enum class throw_catch_target { self, source, sink, last };
 
-class frugal_exception {
-  frugal_target target_{frugal_target::self};
+class throw_catch_exception {
+  throw_catch_target target_{throw_catch_target::self};
 
  public:
-  constexpr frugal_exception(frugal_target target = frugal_target::self)
+  constexpr throw_catch_exception(throw_catch_target target = throw_catch_target::self)
       : target_{target} {
   }
 
-  frugal_target target() const {
+  throw_catch_target target() const {
     return target_;
   }
 };
 
-class frugal_exit : public frugal_exception {
-  using frugal_exception::frugal_exception;
+class throw_catch_exit : public throw_catch_exception {
+  using throw_catch_exception::throw_catch_exception;
 };
 
-class frugal_wait : public frugal_exception {
-  using frugal_exception::frugal_exception;
+class throw_catch_wait : public throw_catch_exception {
+  using throw_catch_exception::throw_catch_exception;
 };
 
-class frugal_notify : public frugal_exception {
-  using frugal_exception::frugal_exception;
+class throw_catch_notify : public throw_catch_exception {
+  using throw_catch_exception::throw_catch_exception;
 };
 
 }  // namespace detail
 
-constexpr const detail::frugal_exit frugal_exit;
-constexpr const detail::frugal_wait frugal_sink_wait{
-    detail::frugal_target::sink};
-constexpr const detail::frugal_wait frugal_source_wait{
-    detail::frugal_target::source};
-constexpr const detail::frugal_notify frugal_notify_sink{
-    detail::frugal_target::sink};
-constexpr const detail::frugal_notify frugal_notify_source{
-    detail::frugal_target::source};
+constexpr const detail::throw_catch_exit throw_catch_exit;
+constexpr const detail::throw_catch_wait throw_catch_sink_wait{
+    detail::throw_catch_target::sink};
+constexpr const detail::throw_catch_wait throw_catch_source_wait{
+    detail::throw_catch_target::source};
+constexpr const detail::throw_catch_notify throw_catch_notify_sink{
+    detail::throw_catch_target::sink};
+constexpr const detail::throw_catch_notify throw_catch_notify_source{
+    detail::throw_catch_target::source};
 
 template <class Mover, class PortState = typename Mover::PortState>
-class FrugalPortPolicy : public PortFiniteStateMachine<
-                             FrugalPortPolicy<Mover, PortState>,
+class ThrowCatchPortPolicy : public PortFiniteStateMachine<
+                             ThrowCatchPortPolicy<Mover, PortState>,
                              PortState> {
   using state_machine_type =
-      PortFiniteStateMachine<FrugalPortPolicy<Mover, PortState>, PortState>;
+      PortFiniteStateMachine<ThrowCatchPortPolicy<Mover, PortState>, PortState>;
   using lock_type = typename state_machine_type::lock_type;
 
   using mover_type = Mover;
 
  public:
-  FrugalPortPolicy() {
+  ThrowCatchPortPolicy() {
     if constexpr (std::is_same_v<PortState, two_stage>) {
       assert(static_cast<Mover*>(this)->state() == PortState::st_00);
     } else if constexpr (std::is_same_v<PortState, three_stage>) {
@@ -153,32 +153,32 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
 
   inline void on_notify_source(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action notify source");
-    throw(detail::frugal_notify{detail::frugal_target::source});
+    throw(detail::throw_catch_notify{detail::throw_catch_target::source});
   }
 
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action notify sink");
-    throw(detail::frugal_notify{detail::frugal_target::sink});
+    throw(detail::throw_catch_notify{detail::throw_catch_target::sink});
   }
 
   inline void on_source_wait(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action source wait");
-    throw(detail::frugal_wait{detail::frugal_target::source});
+    throw(detail::throw_catch_wait{detail::throw_catch_target::source});
   }
 
   inline void on_sink_wait(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action sink wait");
-    throw(detail::frugal_wait{detail::frugal_target::sink});
+    throw(detail::throw_catch_wait{detail::throw_catch_target::sink});
   }
 
   inline void on_term_source(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action source done");
-    throw(detail::frugal_exit{detail::frugal_target::source});
+    throw(detail::throw_catch_exit{detail::throw_catch_target::source});
   }
 
   inline void on_term_sink(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action sink done");
-    throw(detail::frugal_exit{detail::frugal_target::sink});
+    throw(detail::throw_catch_exit{detail::throw_catch_target::sink});
   }
 
  private:
@@ -190,35 +190,35 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
 };
 
 template <class T>
-using FrugalMover3 = ItemMover<FrugalPortPolicy, three_stage, T>;
+using ThrowCatchMover3 = ItemMover<ThrowCatchPortPolicy, three_stage, T>;
 template <class T>
-using FrugalMover2 = ItemMover<FrugalPortPolicy, two_stage, T>;
+using ThrowCatchMover2 = ItemMover<ThrowCatchPortPolicy, two_stage, T>;
 
 template <class Node>
-class FrugalScheduler;
+class ThrowCatchScheduler;
 
 template <class Task>
-class FrugalSchedulerPolicy;
+class ThrowCatchSchedulerPolicy;
 
 template <typename T>
-struct SchedulerTraits<FrugalSchedulerPolicy<T>> {
+struct SchedulerTraits<ThrowCatchSchedulerPolicy<T>> {
   using task_type = T;
   using task_handle_type = T;
 };
 
 template <class Task>
-class FrugalSchedulerPolicy
-    : public SchedulerStateMachine<FrugalSchedulerPolicy<Task>> {
-  using state_machine_type = SchedulerStateMachine<FrugalSchedulerPolicy<Task>>;
+class ThrowCatchSchedulerPolicy
+    : public SchedulerStateMachine<ThrowCatchSchedulerPolicy<Task>> {
+  using state_machine_type = SchedulerStateMachine<ThrowCatchSchedulerPolicy<Task>>;
   using lock_type = typename state_machine_type::lock_type;
 
  public:
   using task_type =
-      typename SchedulerTraits<FrugalSchedulerPolicy<Task>>::task_type;
+      typename SchedulerTraits<ThrowCatchSchedulerPolicy<Task>>::task_type;
   using task_handle_type =
-      typename SchedulerTraits<FrugalSchedulerPolicy<Task>>::task_handle_type;
+      typename SchedulerTraits<ThrowCatchSchedulerPolicy<Task>>::task_handle_type;
 
-  ~FrugalSchedulerPolicy() {
+  ~ThrowCatchSchedulerPolicy() {
     if (this->debug())
       std::cout << "policy destructor\n";
 
@@ -408,8 +408,8 @@ class FrugalSchedulerPolicy
 
 #if 0
 template <class Node>
-class FrugalTaskImpl {
-  using scheduler = FrugalScheduler<Node>;
+class ThrowCatchTaskImpl {
+  using scheduler = ThrowCatchScheduler<Node>;
   scheduler* scheduler_{nullptr};
   TaskState state_{TaskState::created};
 
@@ -418,15 +418,15 @@ class FrugalTaskImpl {
   Node node_;
 
  public:
-  FrugalTaskImpl(const Node& n)
+  ThrowCatchTaskImpl(const Node& n)
       : node_{n} {
   }
 
-  FrugalTaskImpl() = default;
-  FrugalTaskImpl(const FrugalTaskImpl&) = default;
-  FrugalTaskImpl(FrugalTaskImpl&&) = default;
-  FrugalTaskImpl& operator=(const FrugalTaskImpl&) = default;
-  FrugalTaskImpl& operator=(FrugalTaskImpl&&) = default;
+  ThrowCatchTaskImpl() = default;
+  ThrowCatchTaskImpl(const ThrowCatchTaskImpl&) = default;
+  ThrowCatchTaskImpl(ThrowCatchTaskImpl&&) = default;
+  ThrowCatchTaskImpl& operator=(const ThrowCatchTaskImpl&) = default;
+  ThrowCatchTaskImpl& operator=(ThrowCatchTaskImpl&&) = default;
 
   void set_scheduler(scheduler* sched) {
     scheduler_ = sched;
@@ -460,7 +460,7 @@ class FrugalTaskImpl {
     return node_->id();
   }
 
-  virtual ~FrugalTaskImpl() = default;
+  virtual ~ThrowCatchTaskImpl() = default;
 
   void dump_task_state(const std::string msg = "") {
     std::string preface = (msg != "" ? msg + "\n" : "");
@@ -473,8 +473,8 @@ class FrugalTaskImpl {
 
 #else
 template <class Node>
-class FrugalTaskImpl : Node {
-  using scheduler = FrugalScheduler<Node>;
+class ThrowCatchTaskImpl : Node {
+  using scheduler = ThrowCatchScheduler<Node>;
   scheduler* scheduler_{nullptr};
   TaskState state_{TaskState::created};
 
@@ -484,15 +484,15 @@ class FrugalTaskImpl : Node {
   using node_ = Node;
 
  public:
-  FrugalTaskImpl(const Node& n)
+  ThrowCatchTaskImpl(const Node& n)
       : node_{n} {
   }
 
-  FrugalTaskImpl() = default;
-  FrugalTaskImpl(const FrugalTaskImpl&) = default;
-  FrugalTaskImpl(FrugalTaskImpl&&) = default;
-  FrugalTaskImpl& operator=(const FrugalTaskImpl&) = default;
-  FrugalTaskImpl& operator=(FrugalTaskImpl&&) = default;
+  ThrowCatchTaskImpl() = default;
+  ThrowCatchTaskImpl(const ThrowCatchTaskImpl&) = default;
+  ThrowCatchTaskImpl(ThrowCatchTaskImpl&&) = default;
+  ThrowCatchTaskImpl& operator=(const ThrowCatchTaskImpl&) = default;
+  ThrowCatchTaskImpl& operator=(ThrowCatchTaskImpl&&) = default;
 
   void set_scheduler(scheduler* sched) {
     scheduler_ = sched;
@@ -526,7 +526,7 @@ class FrugalTaskImpl : Node {
     return (*this)->id();
   }
 
-  virtual ~FrugalTaskImpl() = default;
+  virtual ~ThrowCatchTaskImpl() = default;
 
   void dump_task_state(const std::string msg = "") {
     std::string preface = (msg != "" ? msg + "\n" : "");
@@ -539,20 +539,20 @@ class FrugalTaskImpl : Node {
 #endif
 
 template <class Node>
-class FrugalTask : public std::shared_ptr<FrugalTaskImpl<Node>> {
-  using Base = std::shared_ptr<FrugalTaskImpl<Node>>;
+class ThrowCatchTask : public std::shared_ptr<ThrowCatchTaskImpl<Node>> {
+  using Base = std::shared_ptr<ThrowCatchTaskImpl<Node>>;
 
  public:
-  FrugalTask(const Node& n)
-      : Base{std::make_shared<FrugalTaskImpl<Node>>(n)} {
+  ThrowCatchTask(const Node& n)
+      : Base{std::make_shared<ThrowCatchTaskImpl<Node>>(n)} {
   }
 
-  FrugalTask() = default;
+  ThrowCatchTask() = default;
 
-  FrugalTask(const FrugalTask& rhs) = default;
-  FrugalTask(FrugalTask&& rhs) = default;
-  FrugalTask& operator=(const FrugalTask& rhs) = default;
-  FrugalTask& operator=(FrugalTask&& rhs) = default;
+  ThrowCatchTask(const ThrowCatchTask& rhs) = default;
+  ThrowCatchTask(ThrowCatchTask&& rhs) = default;
+  ThrowCatchTask& operator=(const ThrowCatchTask& rhs) = default;
+  ThrowCatchTask& operator=(ThrowCatchTask&& rhs) = default;
 
   TaskState& task_state() const {
     return (*this)->task_state();
@@ -560,9 +560,9 @@ class FrugalTask : public std::shared_ptr<FrugalTaskImpl<Node>> {
 };
 
 template <class Node>
-class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
-  using Scheduler = FrugalScheduler<Node>;
-  using Policy = FrugalSchedulerPolicy<FrugalTask<Node>>;
+class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node>> {
+  using Scheduler = ThrowCatchScheduler<Node>;
+  using Policy = ThrowCatchSchedulerPolicy<ThrowCatchTask<Node>>;
 
  public:
   /* ********************************* */
@@ -578,7 +578,7 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
    * but not accepting nor executing any tasks.  A value of
    * 256*hardware_concurrency or larger is an error.
    */
-  FrugalScheduler(size_t n)
+  ThrowCatchScheduler(size_t n)
       : concurrency_level_(n) {
     // If concurrency_level_ is set to zero, construct the thread pool in
     // shutdown state.  Explicitly shut down the task queue as well.
@@ -590,7 +590,7 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
     // in testing error conditions in creating a context.
     if (concurrency_level_ >= 256 * std::thread::hardware_concurrency()) {
       std::string msg =
-          "Error initializing frugal scheduler of concurrency level " +
+          "Error initializing throw_catch scheduler of concurrency level " +
           std::to_string(concurrency_level_) + "; Requested size too large";
       throw std::runtime_error(msg);
     }
@@ -607,7 +607,7 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
       size_t tries = 3;
       while (tries--) {
         try {
-          tmp = std::thread(&FrugalScheduler::worker, this);
+          tmp = std::thread(&ThrowCatchScheduler::worker, this);
         } catch (const std::system_error& e) {
           if (e.code() != std::errc::resource_unavailable_try_again ||
               tries == 0) {
@@ -631,11 +631,11 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
   }
 
   /** Deleted default constructor */
-  FrugalScheduler() = delete;
-  FrugalScheduler(const FrugalScheduler&) = delete;
+  ThrowCatchScheduler() = delete;
+  ThrowCatchScheduler(const ThrowCatchScheduler&) = delete;
 
   /** Destructor. */
-  ~FrugalScheduler() {
+  ~ThrowCatchScheduler() {
     if (this->debug())
       std::cout << "scheduler destructor\n";
     shutdown();
@@ -665,15 +665,15 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
 
  private:
   /** @todo Need to make ConcurrentMap */
-  ConcurrentMap<Node, FrugalTask<Node>> node_to_task;
-  //  ConcurrentMap<Node, FrugalTask<Node>> port_to_task;
+  ConcurrentMap<Node, ThrowCatchTask<Node>> node_to_task;
+  //  ConcurrentMap<Node, ThrowCatchTask<Node>> port_to_task;
 
  public:
   void submit(Node&& n) {
     ++num_submitted_tasks_;
     ++num_tasks_;
 
-    auto t = FrugalTask{n};
+    auto t = ThrowCatchTask{n};
 
     t->set_scheduler(this);
 
@@ -743,7 +743,7 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
   /** The worker thread routine */
   void worker() {
     [[maybe_unused]] thread_local static auto scheduler = this;
-    thread_local FrugalTask<Node> this_task{nullptr};
+    thread_local ThrowCatchTask<Node> this_task{nullptr};
 
     /*
      * The worker threads wait on a condition variable until they are released
@@ -828,12 +828,12 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
 	  
 
 
-        } catch (const detail::frugal_wait& w) {
+        } catch (const detail::throw_catch_wait& w) {
           _.lock();
 
           assert(
-              w.target() == detail::frugal_target::sink ||
-              w.target() == detail::frugal_target::source);
+              w.target() == detail::throw_catch_target::sink ||
+              w.target() == detail::throw_catch_target::source);
 
           if (this->debug())
             task_to_run->dump_task_state("Caught wait");
@@ -843,12 +843,12 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
           if (this->debug())
             task_to_run->dump_task_state("Post wait");
 
-        } catch (const detail::frugal_notify& n) {
+        } catch (const detail::throw_catch_notify& n) {
           _.lock();
 
           assert(
-              n.target() == detail::frugal_target::sink ||
-              n.target() == detail::frugal_target::source);
+              n.target() == detail::throw_catch_target::sink ||
+              n.target() == detail::throw_catch_target::source);
 
           if (this->debug())
             task_to_run->dump_task_state("Caught notify");
@@ -856,7 +856,7 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
           /** @note Notification goes to correspondent task of task_to_run */
           // auto task_to_notify = node_to_task[task_to_run->correspondent()];
 
-          if (n.target() == detail::frugal_target::sink) {
+          if (n.target() == detail::throw_catch_target::sink) {
             auto task_to_notify =
                 node_to_task[task_to_run->sink_correspondent()];
             this->task_notify(task_to_notify);
@@ -877,10 +877,10 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
             }
           }
 
-        } catch (const detail::frugal_exit& ex) {
+        } catch (const detail::throw_catch_exit& ex) {
           _.lock();
 
-          if (true || ex.target() == detail::frugal_target::source) {
+          if (true || ex.target() == detail::throw_catch_target::source) {
 
 
 	    if (this->debug()) {
@@ -987,4 +987,4 @@ class FrugalScheduler : public FrugalSchedulerPolicy<FrugalTask<Node>> {
 
 }  // namespace tiledb::common
 
-#endif  // TILEDB_DAG_FRUGAL_H
+#endif  // TILEDB_DAG_throw_catch_H

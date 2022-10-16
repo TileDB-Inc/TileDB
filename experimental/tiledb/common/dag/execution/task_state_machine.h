@@ -201,7 +201,7 @@ namespace detail {
 template <typename T>
 struct SchedulerTraits;
 template <class Task>
-class FrugalSchedulerPolicy;
+class ThrowCatchSchedulerPolicy;
 template <class Task>
 class EmptySchedulerPolicy;
 template <typename T>

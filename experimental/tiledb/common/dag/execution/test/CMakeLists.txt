@@ -27,13 +27,13 @@
 
 
 #
-# Define unit tests for threadpool, bountiful, stop_token, frugal
+# Define unit tests for threadpool, bountiful, stop_token, throwcatch
 #
 dag_add_header_only_unit_test(threadpool)
 dag_add_header_only_unit_test(bountiful)
 dag_add_header_only_unit_test(stop_token)
-dag_add_header_only_unit_test(frugal)
-dag_add_header_only_unit_test(scheduler)
+dag_add_header_only_unit_test(throwcatch)
+dag_add_header_only_unit_test(task_state_machine)
 
 
 #
@@ -41,21 +41,21 @@ dag_add_header_only_unit_test(scheduler)
 #
 # Define unit test
 #
-add_executable(unit_frugal_sieve EXCLUDE_FROM_ALL)
+add_executable(unit_throwcatch_sieve EXCLUDE_FROM_ALL)
 #
 # Required libraries
 #
 #
 # Define sources for test
 #
-target_sources(unit_frugal_sieve PUBLIC
-    unit_frugal_sieve.cc
+target_sources(unit_throwcatch_sieve PUBLIC
+    unit_throwcatch_sieve.cc
 )
 #
 # Add unit test to global suite of unit tests
 #
 add_test(
-    NAME "unit_frugal_sieve"
-    COMMAND $<TARGET_FILE:unit_frugal_sieve> --durations=yes
+    NAME "unit_throwcatch_sieve"
+    COMMAND $<TARGET_FILE:unit_throwcatch_sieve> --durations=yes
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )

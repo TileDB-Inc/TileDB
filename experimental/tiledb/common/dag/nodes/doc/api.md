@@ -370,7 +370,7 @@ Edge h{c, d};
 
 ```c++
 // Run the primitive graph
-BountifulScheduler sched;  // Could also use FrugalSchedular
+BountifulScheduler sched;  // Could also use throw_catchSchedular
 
 // Until we have an actual `graph` class, we can submit a primitive
 // graph for execution by submitting its nodes

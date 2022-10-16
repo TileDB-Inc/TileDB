@@ -213,7 +213,7 @@ constexpr const PortAction entry_table<three_stage>[num_states<three_stage>][n_e
   /* st_110 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,        PortAction::notify_source, PortAction::none,     PortAction::none,      PortAction::none },
   /* st_111 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::none },
 
-  // Gaah!  need term_source for frugal but notify_sink for bountiful  (unit_frugal vs unit_stop)
+  // Gaah!  need term_source for throw_catch but notify_sink for bountiful  (unit_throw_catch vs unit_stop)
 
   /* xt_000 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::term_source },
   /* xt_001 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::term_source },

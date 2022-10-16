@@ -29,29 +29,39 @@
  *
  */
 
+#include <memory>
+
 #include "unit_task_state_machine.h"
 #include "../task_state_machine.h"
 
 using namespace tiledb::common;
 
-struct unit_test_task {
+struct _unit_test_task {
   TaskState state_{TaskState::created};
-  TaskState state() {
+  TaskState& task_state() {
     return state_;
   }
-  TaskState set_state(TaskState st) {
+  TaskState& set_state(TaskState st) {
     return state_ = st;
   }
 };
+
+//using unit_test_task = std::shared_ptr<_unit_test_task>;
+
+struct unit_test_task : public std::shared_ptr<_unit_test_task> {
+  using Base = std::shared_ptr<_unit_test_task>;
+  unit_test_task() : Base{std::make_shared<_unit_test_task>()}{}
+};
+
 
 TEST_CASE(
     "Scheduler FSM: Construct SchedulerStateMachine<EmptySchedulerPolicy>",
     "[scheduler]") {
   [[maybe_unused]] auto sched = SchedulerStateMachine<
-      unit_test_task,
+    //      unit_test_task,
       EmptySchedulerPolicy<unit_test_task>>{};
   unit_test_task a;
-  CHECK(str(a.state()) == "created");
+  CHECK(str(a->task_state()) == "created");
 }
 
 TEST_CASE(
@@ -59,78 +69,78 @@ TEST_CASE(
     "SchedulerStateMachine<EmptySchedulerPolicy>",
     "[scheduler]") {
   [[maybe_unused]] auto sched = SchedulerStateMachine<
-      unit_test_task,
+    //      unit_test_task,
       EmptySchedulerPolicy<unit_test_task>>{};
   unit_test_task a;
-  CHECK(str(a.state()) == "created");
+  CHECK(str(a->task_state()) == "created");
 
   SECTION("Admit") {
     sched.task_admit(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
   }
 
   SECTION("Admit + dispatch") {
     sched.task_admit(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
   }
 
   SECTION("Admit + dispatch + yield") {
     sched.task_admit(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     sched.task_yield(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
   }
 
   SECTION("Admit + dispatch + yield + dispatch + wait") {
     sched.task_admit(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     sched.task_yield(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     sched.task_wait(a);
-    CHECK(str(a.state()) == "waiting");
+    CHECK(str(a->task_state()) == "waiting");
   }
 
   SECTION("Admit + dispatch + yield + dispatch + wait + notify") {
     sched.task_admit(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     sched.task_yield(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     sched.task_wait(a);
-    CHECK(str(a.state()) == "waiting");
+    CHECK(str(a->task_state()) == "waiting");
     sched.task_notify(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
   }
 
   SECTION(
       "Admit + dispatch + yield + dispatch + wait + notify + schedule + exit") {
     sched.task_admit(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     sched.task_yield(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     sched.task_wait(a);
-    CHECK(str(a.state()) == "waiting");
+    CHECK(str(a->task_state()) == "waiting");
     sched.task_notify(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     sched.task_exit(a);
-    CHECK(str(a.state()) == "terminated");
+    CHECK(str(a->task_state()) == "terminated");
   }
 }
 
@@ -140,11 +150,29 @@ std::atomic<bool> running;
 std::atomic<bool> waiting;
 std::atomic<bool> terminated;
 
+
+template <class Task>
+class UnitTestSchedulerPolicy;
+
+template <typename T>
+struct SchedulerTraits<UnitTestSchedulerPolicy<T>> {
+  using task_type = T;
+  using task_handle_type = T;
+};
+
+
+
 template <class Task>
 class UnitTestSchedulerPolicy : public SchedulerStateMachine<
-                                    unit_test_task,
+  //                                    unit_test_task,
                                     UnitTestSchedulerPolicy<Task>> {
  public:
+  using task_type =
+      typename SchedulerTraits<EmptySchedulerPolicy<Task>>::task_type;
+  using task_handle_type =
+      typename SchedulerTraits<EmptySchedulerPolicy<Task>>::task_handle_type;
+
+
   UnitTestSchedulerPolicy() {
     created.store(true);
     runnable.store(false);
@@ -197,11 +225,11 @@ TEST_CASE(
   auto sched = UnitTestSchedulerPolicy<unit_test_task>{};
   unit_test_task a;
 
-  CHECK(str(a.state()) == "created");
+  CHECK(str(a->task_state()) == "created");
 
   SECTION("Create") {
     sched.task_create(a);
-    CHECK(str(a.state()) == "created");
+    CHECK(str(a->task_state()) == "created");
     CHECK(created);
     CHECK(!runnable);
     CHECK(!terminated);
@@ -211,10 +239,10 @@ TEST_CASE(
 
   SECTION("Admit") {
     sched.task_create(a);
-    CHECK(str(a.state()) == "created");
+    CHECK(str(a->task_state()) == "created");
     CHECK(created);
     sched.task_admit(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     CHECK(runnable);
     CHECK(runnable);
     CHECK(!terminated);
@@ -225,13 +253,13 @@ TEST_CASE(
 
   SECTION("Admit + dispatch") {
     sched.task_create(a);
-    CHECK(str(a.state()) == "created");
+    CHECK(str(a->task_state()) == "created");
     CHECK(created);
     sched.task_admit(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     CHECK(runnable);
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     CHECK(running);
     CHECK(!runnable);
     CHECK(!terminated);
@@ -241,16 +269,16 @@ TEST_CASE(
 
   SECTION("Admit + dispatch + yield") {
     sched.task_create(a);
-    CHECK(str(a.state()) == "created");
+    CHECK(str(a->task_state()) == "created");
     CHECK(created);
     sched.task_admit(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     CHECK(runnable);
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     CHECK(running);
     sched.task_yield(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     CHECK(runnable);
     CHECK(!terminated);
     CHECK(!running);
@@ -260,22 +288,22 @@ TEST_CASE(
 
   SECTION("Admit + dispatch + yield + dispatch + wait") {
     sched.task_create(a);
-    CHECK(str(a.state()) == "created");
+    CHECK(str(a->task_state()) == "created");
     CHECK(created);
     sched.task_admit(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
 
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     CHECK(running);
     sched.task_yield(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     CHECK(runnable);
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     CHECK(running);
     sched.task_wait(a);
-    CHECK(str(a.state()) == "waiting");
+    CHECK(str(a->task_state()) == "waiting");
     CHECK(waiting);
     CHECK(!runnable);
     CHECK(!terminated);
@@ -286,25 +314,25 @@ TEST_CASE(
 
   SECTION("Admit + dispatch + yield + dispatch + wait + notify") {
     sched.task_create(a);
-    CHECK(str(a.state()) == "created");
+    CHECK(str(a->task_state()) == "created");
     CHECK(created);
     sched.task_admit(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     CHECK(runnable);
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     CHECK(running);
     sched.task_yield(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     CHECK(runnable);
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     CHECK(running);
     sched.task_wait(a);
-    CHECK(str(a.state()) == "waiting");
+    CHECK(str(a->task_state()) == "waiting");
     CHECK(waiting);
     sched.task_notify(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     CHECK(runnable);
     CHECK(!terminated);
     CHECK(!running);
@@ -315,31 +343,31 @@ TEST_CASE(
   SECTION(
       "Admit + dispatch + yield + dispatch + wait + notify + schedule + exit") {
     sched.task_create(a);
-    CHECK(str(a.state()) == "created");
+    CHECK(str(a->task_state()) == "created");
     CHECK(created);
     sched.task_admit(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     CHECK(runnable);
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     CHECK(running);
     sched.task_yield(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     CHECK(runnable);
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     CHECK(running);
     sched.task_wait(a);
-    CHECK(str(a.state()) == "waiting");
+    CHECK(str(a->task_state()) == "waiting");
     CHECK(waiting);
     sched.task_notify(a);
-    CHECK(str(a.state()) == "runnable");
+    CHECK(str(a->task_state()) == "runnable");
     CHECK(runnable);
     sched.task_dispatch(a);
-    CHECK(str(a.state()) == "running");
+    CHECK(str(a->task_state()) == "running");
     CHECK(running);
     sched.task_exit(a);
-    CHECK(str(a.state()) == "terminated");
+    CHECK(str(a->task_state()) == "terminated");
     CHECK(terminated);
     CHECK(!runnable);
     CHECK(!running);

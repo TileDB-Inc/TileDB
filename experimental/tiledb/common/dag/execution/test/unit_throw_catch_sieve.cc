@@ -77,7 +77,7 @@
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/execution/throwcatch.h"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
-#include "experimental/tiledb/common/dag/execution/test/frugal_nodes.h"
+#include "experimental/tiledb/common/dag/execution/test/throw_catch_nodes.h"
 // #include "experimental/tiledb/common/dag/nodes/nodes.h"
 // #include "experimental/tiledb/common/dag/ports/ports.h"
 // #include "experimental/tiledb/common/dag/state_machine/fsm.h"
@@ -488,7 +488,7 @@ auto sieve_async_block(
 
   size_t rounds = (n / block_size + 2) / width + 1;
 
-  auto sched = FrugalScheduler<node>(width);
+  auto sched = ThrowCatchScheduler<node>(width);
 
   //  if (debug)
     //    sched.enable_debug();
@@ -690,7 +690,7 @@ int main(int argc, char* argv[]) {
     for (auto grouped : {false, true}) {
       for (size_t i = 0; i < 3; ++i) {
         auto using_char_async_block = timer_2(
-            sieve_async_block<FrugalMover2, char>,
+            sieve_async_block<ThrowCatchMover2, char>,
             number,
             block_size * 1024,
             width,
@@ -699,7 +699,7 @@ int main(int argc, char* argv[]) {
             true,    /* use_futures */
             false);  /* use_threadpool */
 
-        std::cout << "Time using frugal block, two stage, " +
+        std::cout << "Time using throw_catch block, two stage, " +
                          std::string(
                              reverse_order ? "reverse order" :
                                              "forward order") +
@@ -722,7 +722,7 @@ int main(int argc, char* argv[]) {
         }
 
         auto using_char_async_block = timer_2(
-            sieve_async_block<FrugalMover3, char>,
+            sieve_async_block<ThrowCatchMover3, char>,
             number,
             block_size * 1024,
             width,
@@ -730,7 +730,7 @@ int main(int argc, char* argv[]) {
             grouped, /* grouped */
             true,    /* use_futures */
             false);  /* use_threadpool */
-        std::cout << "Time using frugal async block, three stage, " +
+        std::cout << "Time using throw_catch async block, three stage, " +
                          std::string(
                              reverse_order ? "reverse order" :
                                              "forward order") +

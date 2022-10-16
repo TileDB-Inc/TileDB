@@ -469,7 +469,7 @@ on_term_source(lock_type& lock, std::atomic<int>& event) {
       " and " + str(this->next_state()));
 
   // @note This is not optimal.  Have to notify sink when source is ending b/c
-  // can't do it with frugal in fsm.h
+  // can't do it with throw_catch in fsm.h
   on_notify_sink(lock, event);
 }
 
@@ -610,7 +610,7 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
     assert(lock.owns_lock());
 
     // @note This is not optimal.  Have to notify sink when source is ending b/c
-    // can't do it with frugal in fsm.h
+    // can't do it with throw_catch in fsm.h
     on_notify_sink(lock, event);
   }
 
