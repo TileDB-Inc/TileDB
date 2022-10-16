@@ -126,8 +126,8 @@ void connect(From& from, To& to) {
   (*to).source_correspondent() = from;
 }
 
-static size_t problem_size = 1337;
-static size_t debug_problem_size = 3;
+  // static size_t problem_size = 1337;
+  // static size_t debug_problem_size = 3;
 
 std::atomic<size_t> id_counter{0};
 
@@ -202,6 +202,7 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
       case 0: {
         ++this->program_counter_;
 
+#if 0
         if (produced_items_ >= problem_size) {
           if (this->debug())
             std::cout << this->name() + " node " + std::to_string(this->id()) +
@@ -213,6 +214,7 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
           mover->port_exhausted();
           break;
         }
+#endif
 
         thing = f_(stop_source_);
 
@@ -226,8 +228,9 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
                 << this->name() + " node " + std::to_string(this->id()) +
                        " has gotten stop -- calling port_exhausted with " +
                        std::to_string(produced_items_) +
-                       " produced items and " + std::to_string(problem_size) +
-                       " problem size\n";
+	      " produced items\n"; 
+
+// and " + std::to_string(problem_size) +                       " problem size\n";
 
           mover->port_exhausted();
           break;
@@ -396,6 +399,7 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
       case 4: {
         ++this->program_counter_;
 
+#if 0
         if (consumed_items_++ >= problem_size) {
           //                    if (this->debug())
           std::cout << "THIS SHOULD NOT HAPPEN " + this->name() + " node " +
@@ -410,7 +414,7 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
           mover->port_exhausted();
           break;
         }
-
+#endif
         //        if (this->debug())
         //          std::cout << "next function thing is " +
         //          std::to_string(thing) + "\n";
@@ -570,6 +574,7 @@ struct function_node_impl : public node_base,
       case 4: {
         ++this->program_counter_;
 
+#if 0
         if (processed_items_++ >= problem_size) {
           //                    if (this->debug())
           std::cout << "THIS SHOULD NOT HAPPEN " + this->name() + " node " +
@@ -584,7 +589,7 @@ struct function_node_impl : public node_base,
           sink_mover->port_exhausted();
           break;
         }
-
+#endif
         //        if (this->debug())
         //          std::cout << "next processed thing is " +
         //          std::to_string(in_thing) +

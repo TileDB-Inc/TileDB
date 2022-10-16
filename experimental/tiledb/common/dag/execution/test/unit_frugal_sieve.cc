@@ -490,8 +490,8 @@ auto sieve_async_block(
 
   auto sched = FrugalScheduler<node>(width);
 
-  if (debug)
-    sched.enable_debug();
+  //  if (debug)
+    //    sched.enable_debug();
 
   if (debug)
     std::cout << n << " "
@@ -508,44 +508,84 @@ auto sieve_async_block(
   /*
    * Create the "graphs" by emplacing the nodes for each "graph" into a vector.
    */
-  for (size_t w = 0; w < width; ++w) {
-    if (debug)
-      std::cout << "w: " << w << std::endl;
 
-    auto a = producer_node<Mover, size_t>{gen};
-    auto b = FunctionNode<Mover, size_t, Mover, part_info<bool_t>>{
+  if (grouped == false && reverse_order == false) {
+    for (size_t w = 0; w < width; ++w) {
+
+      if (debug)
+	std::cout << "w: " << w << std::endl;
+    
+      auto a = producer_node<Mover, size_t>{gen};
+      auto b = FunctionNode<Mover, size_t, Mover, part_info<bool_t>>{
         std::bind(gen_range<bool_t>, _1, block_size, sqrt_n, n)};
-    auto c = FunctionNode<Mover, part_info<bool_t>, Mover, part_info<bool_t>>{
+      auto c = FunctionNode<Mover, part_info<bool_t>, Mover, part_info<bool_t>>{
         std::bind(range_sieve<bool_t>, _1, std::cref(base_primes)),
-    };
-    auto d = FunctionNode<Mover, part_info<bool_t>, Mover, prime_info>{
+      };
+      auto d = FunctionNode<Mover, part_info<bool_t>, Mover, prime_info>{
         sieve_to_primes_part<bool_t>};
-    auto e = ConsumerNode<Mover, prime_info>{
+      auto e = ConsumerNode<Mover, prime_info>{
         std::bind(output_body, _1, std::ref(prime_list))};
-
-    connect(a, b);
-    connect(b, c);
-    connect(c, d);
-    connect(d, e);
-
-    Edge(*a, *b);
-    Edge(*b, *c);
-    Edge(*c, *d);
-    Edge(*d, *e);
-
-    if (debug) {
-      a->enable_debug();
-      b->enable_debug();
+      
+      connect(a, b);
+      connect(b, c);
+      connect(c, d);
+      connect(d, e);
+      
+      Edge(*a, *b);
+      Edge(*b, *c);
+      Edge(*c, *d);
+      Edge(*d, *e);
+      
+      sched.submit(a);
+      sched.submit(b);
+      sched.submit(c);
+      sched.submit(d);
+      sched.submit(e);
     }
+    sched.sync_wait_all();
+  } 
+  if (grouped == false && reverse_order == true) {
+    for (size_t w = 0; w < width; ++w) {
 
-    sched.submit(a);
-    sched.submit(b);
-    sched.submit(c);
-    sched.submit(d);
-    sched.submit(e);
-  }
+      if (debug)
+	std::cout << "w: " << w << std::endl;
+    
+      auto a = producer_node<Mover, size_t>{gen};
+      auto b = FunctionNode<Mover, size_t, Mover, part_info<bool_t>>{
+        std::bind(gen_range<bool_t>, _1, block_size, sqrt_n, n)};
+      auto c = FunctionNode<Mover, part_info<bool_t>, Mover, part_info<bool_t>>{
+        std::bind(range_sieve<bool_t>, _1, std::cref(base_primes)),
+      };
+      auto d = FunctionNode<Mover, part_info<bool_t>, Mover, prime_info>{
+        sieve_to_primes_part<bool_t>};
+      auto e = ConsumerNode<Mover, prime_info>{
+        std::bind(output_body, _1, std::ref(prime_list))};
+      
+      connect(a, b);
+      connect(b, c);
+      connect(c, d);
+      connect(d, e);
+      
+      Edge(*a, *b);
+      Edge(*b, *c);
+      Edge(*c, *d);
+      Edge(*d, *e);
+      
+      sched.submit(e);
+      sched.submit(d);
+      sched.submit(c);
+      sched.submit(b);
+      sched.submit(a);
+    }
+    sched.sync_wait_all();
+  } 
+  if (grouped == true && reverse_order == false) {
+  } 
+  if (grouped == true && reverse_order == true) {
+  } 
 
-  sched.sync_wait_all();
+
+
 
   /*
    * Output tracing information from the runs.
@@ -641,8 +681,7 @@ int main(int argc, char* argv[]) {
 
   tbb::global_control(tbb::global_control::max_allowed_parallelism, 2);
 #endif
-  size_t width = 2;
-  // std::thread::hardware_concurrency();
+  size_t width =  std::thread::hardware_concurrency();
 
   /*
    * Test with two_stage connections
