@@ -33,6 +33,8 @@ Types
     :project: TileDB-C
 .. doxygentypedef:: tiledb_filter_list_t
     :project: TileDB-C
+.. doxygentypedef:: tiledb_fragment_info_t
+    :project: TileDB-C
 .. doxygentypedef:: tiledb_vfs_t
     :project: TileDB-C
 .. doxygentypedef:: tiledb_vfs_fh_t
