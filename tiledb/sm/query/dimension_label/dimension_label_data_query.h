@@ -50,14 +50,16 @@ class Subarray;
 class IndexData;
 
 /**
- * Return a Status_DimensionQueryError error class Status with a given
- * message.
+ * Class for locally generated status exceptions.
  *
  * Note: This intentionally returns the error as TileDB::DimensionLabelQuery.
- **/
-inline Status Status_DimensionLabelDataQueryError(const std::string& msg) {
-  return {"[TileDB::DimensionLabelQuery] Error", msg};
-}
+ */
+class DimensionLabelDataQueryStatusException : public StatusException {
+ public:
+  explicit DimensionLabelDataQueryStatusException(const std::string& msg)
+      : StatusException("DimensionLabelQuery", msg) {
+  }
+};
 
 class DimensionLabelDataQuery {
  public:

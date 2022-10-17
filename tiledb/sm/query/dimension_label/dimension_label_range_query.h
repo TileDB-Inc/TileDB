@@ -48,14 +48,16 @@ class StorageManager;
 class Subarray;
 
 /**
- * Return a Status_DimensionQueryRangeError error class Status with a given
- * message.
+ * Class for locally generated status exceptions.
  *
  * Note: This intentionally returns the error as TileDB::DimensionLabelQuery.
- **/
-inline Status Status_DimensionLabelRangeQueryError(const std::string& msg) {
-  return {"[TileDB::DimensionLabelQuery] Error", msg};
-}
+ */
+class DimensionLabelRangeQueryStatusException : public StatusException {
+ public:
+  explicit DimensionLabelRangeQueryStatusException(const std::string& msg)
+      : StatusException("DimensionLabelQuery", msg) {
+  }
+};
 
 class DimensionLabelRangeQuery {
  public:

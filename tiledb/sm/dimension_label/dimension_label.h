@@ -47,10 +47,12 @@ class Dimension;
 class StorageManager;
 class URI;
 
-/** Return a Status_DimensionLabelError error class Status with a given
- * message **/
-inline Status Status_DimensionLabelError(const std::string& msg) {
-  return {"[TileDB::DimensionLabel] Error", msg};
+/** Class for locally generated status exceptions. */
+class DimensionLabelStatusException : public StatusException {
+ public:
+  explicit DimensionLabelStatusException(const std::string& msg)
+      : StatusException("DimensionLabel", msg) {
+  }
 };
 
 /**

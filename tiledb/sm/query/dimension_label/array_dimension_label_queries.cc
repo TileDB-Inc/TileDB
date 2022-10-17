@@ -83,9 +83,9 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
       } else {
         // Cannot both read label ranges and write label data on the same write.
         if (subarray.has_label_ranges()) {
-          throw StatusException(Status_DimensionLabelQueryError(
+          throw DimensionLabelQueryStatusException(
               "Failed to add dimension label queries. Cannot set both label "
-              "buffer and label range on a write query."));
+              "buffer and label range on a write query.");
         }
 
         // If fragment name is not set, set it.
@@ -109,17 +109,17 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
     case (QueryType::UPDATE):
     case (QueryType::MODIFY_EXCLUSIVE):
       if (!label_buffers.empty() || subarray.has_label_ranges()) {
-        throw StatusException(Status_DimensionLabelQueryError(
+        throw DimensionLabelQueryStatusException(
             "Failed to add dimension label queries. Query type " +
             query_type_str(array->get_query_type()) +
-            " is not supported for dimension labels."));
+            " is not supported for dimension labels.");
       }
       break;
 
     default:
-      throw StatusException(Status_DimensionLabelQueryError(
+      throw DimensionLabelQueryStatusException(
           "Failed to add dimension label queries. Unknown query type " +
-          query_type_str(array->get_query_type()) + "."));
+          query_type_str(array->get_query_type()) + ".");
   }
   range_query_status_ =
       range_queries_.empty() ? QueryStatus::COMPLETED : QueryStatus::INPROGRESS;
@@ -195,9 +195,9 @@ void ArrayDimensionLabelQueries::add_read_queries(
 
     // Unordered labels are not supported yet.
     if (dim_label_ref.label_order() == LabelOrder::UNORDERED_LABELS) {
-      throw StatusException(Status_DimensionLabelQueryError(
+      throw DimensionLabelQueryStatusException(
           "Support for reading ranges from unordered labels is not yet "
-          "implemented."));
+          "implemented.");
     }
 
     // Open the indexed array.
@@ -254,10 +254,10 @@ void ArrayDimensionLabelQueries::add_write_queries(
 
     // Verify that this subarray is not set to use labels.
     if (subarray.has_label_ranges(dim_label_ref.dimension_id())) {
-      throw StatusException(Status_DimensionLabelQueryError(
+      throw DimensionLabelQueryStatusException(
           "Failed to initialize dimension label query for label '" +
           label_name +
-          "'. Cannot write label data when subarray is set by label range."));
+          "'. Cannot write label data when subarray is set by label range.");
     }
 
     // Open both arrays in the dimension label.

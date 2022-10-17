@@ -55,13 +55,13 @@ class Subarray;
 
 enum class QueryType : uint8_t;
 
-/**
- * Return a Status_DimensionQueryError error class Status with a given
- * message.
- **/
-inline Status Status_DimensionLabelQueryError(const std::string& msg) {
-  return {"[TileDB::DimensionLabelQuery] Error", msg};
-}
+/** Class for locally generated status exceptions. */
+class DimensionLabelQueryStatusException : public StatusException {
+ public:
+  explicit DimensionLabelQueryStatusException(const std::string& msg)
+      : StatusException("DimensionLabelQuery", msg) {
+  }
+};
 
 class ArrayDimensionLabelQueries {
  public:
