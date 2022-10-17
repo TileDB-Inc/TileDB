@@ -155,7 +155,7 @@ TEMPLATE_TEST_CASE_SIG(
     auto&& [error_status, warn_message] = subset.add_range(range, false);
     CHECK(error_status.ok());
     REQUIRE(warn_message.has_value());
-    INFO(warn_message.value())
+    INFO(warn_message.value());
     REQUIRE(subset.num_ranges() == 1);
     check_subset_range_values<T>(subset, 0, 1, 3);
   }

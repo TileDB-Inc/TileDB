@@ -28,7 +28,6 @@
  * @section DESCRIPTION
  */
 
-#define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
 #include "../error_api_external.h"
 #include "../error_api_internal.h"

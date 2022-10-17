@@ -30,7 +30,7 @@
  * This file contains unit tests for the array schema
  */
 
-#include <catch.hpp>
+#include <tdb_catch.h>
 
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/array_schema/test/unit_array_schema_helper.h"

@@ -53,7 +53,7 @@
 /*
  * The actual payload of this file
  */
-#include <catch.hpp>
+#include <catch2/catch_all.hpp>
 
 /*
  * Clean up preprocessor definitions

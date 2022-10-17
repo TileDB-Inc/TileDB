@@ -30,7 +30,7 @@
  * This file tests the DimensionLabelReference object
  */
 
-#include <catch.hpp>
+#include <tdb_catch.h>
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"

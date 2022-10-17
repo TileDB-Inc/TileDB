@@ -276,11 +276,7 @@ add_library(tiledb_test_support_lib EXCLUDE_FROM_ALL
   $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
   ${TILEDB_TEST_SUPPORT_SOURCES}
 )
-
-target_include_directories(tiledb_test_support_lib
-  PRIVATE
-    $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
-)
+target_link_libraries(tiledb_test_support_lib INTERFACE Catch2::Catch2WithMain)
 
 # unit test executable
 add_executable(

@@ -45,7 +45,7 @@ add_executable(unit_consistency EXCLUDE_FROM_ALL
 
 target_link_libraries(unit_consistency
   PUBLIC
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     TILEDB_CORE_OBJECTS_ILIB
 )
 
