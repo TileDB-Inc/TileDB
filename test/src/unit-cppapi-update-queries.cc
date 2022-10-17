@@ -295,8 +295,6 @@ TEST_CASE_METHOD(
   std::vector<sm::UpdateValue> uvs2;
   val = 2;
   uvs2.emplace_back("a1", &val, sizeof(int32_t));
-  val = 1;
-  uvs2.emplace_back("d1", &val, sizeof(int32_t));
 
   write_update_condition(qc, uvs, 1, encrypt);
   check_update_conditions({qc}, {uvs}, 2, encrypt);
