@@ -79,17 +79,17 @@ UpdateValue::UpdateValue(UpdateValue&& rhs)
 UpdateValue::~UpdateValue() {
 }
 
-Status UpdateValue::check(const ArraySchema& array_schema) const {
+void UpdateValue::check(const ArraySchema& array_schema) const {
   const uint64_t update_value_size = update_value_data_.size();
 
   // Ensure field name exists.
   if (!array_schema.is_field(field_name_)) {
-    return Status_UpdateValueError("Field name doesn't exist");
+    throw Status_UpdateValueError("Field name doesn't exist");
   }
 
   // Ensure field is an attribute.
   if (!array_schema.is_attr(field_name_)) {
-    return Status_UpdateValueError("Can only update attributes");
+    throw Status_UpdateValueError("Can only update attributes");
   }
 
   const auto nullable = array_schema.is_nullable(field_name_);
@@ -102,7 +102,7 @@ Status UpdateValue::check(const ArraySchema& array_schema) const {
   if (update_value_view_.content() == nullptr) {
     if ((!nullable) &&
         (type != Datatype::STRING_ASCII && type != Datatype::CHAR)) {
-      return Status_UpdateValueError(
+      throw Status_UpdateValueError(
           "Null value can only be used with nullable attributes");
     }
   }
@@ -110,7 +110,7 @@ Status UpdateValue::check(const ArraySchema& array_schema) const {
   // Ensure that non string fixed size attributes store only one value per cell.
   if (cell_val_num != 1 && type != Datatype::STRING_ASCII &&
       type != Datatype::CHAR && (!var_size)) {
-    return Status_UpdateValueError(
+    throw Status_UpdateValueError(
         "Value node attribute must have one value per cell for non-string "
         "fixed size attributes: " +
         field_name_);
@@ -121,12 +121,12 @@ Status UpdateValue::check(const ArraySchema& array_schema) const {
   if (cell_size != constants::var_size && cell_size != update_value_size &&
       !(nullable && update_value_view_.content() == nullptr) &&
       type != Datatype::STRING_ASCII && type != Datatype::CHAR && (!var_size)) {
-    return Status_UpdateValueError(
+    throw Status_UpdateValueError(
         "Value node condition value size mismatch: " +
         std::to_string(cell_size) + " != " + std::to_string(update_value_size));
   }
 
-  return Status::Ok();
+  return;
 }
 }  // namespace sm
 }  // namespace tiledb

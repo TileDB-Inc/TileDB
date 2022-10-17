@@ -88,9 +88,8 @@ class UpdateValue {
    * Verifies that the object respects the array schema.
    *
    * @param array_schema The current array schema.
-   * @return Status
    */
-  Status check(const ArraySchema& array_schema) const;
+  void check(const ArraySchema& array_schema) const;
 
  private:
   /* ********************************* */
