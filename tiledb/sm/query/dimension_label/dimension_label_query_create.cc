@@ -76,10 +76,10 @@ DimensionLabelDataQuery* DimensionLabelQueryCreate::make_write_query(
 
     default:
       // Invalid label order type.
-      throw StatusException(Status_DimensionLabelDataQueryError(
+      throw DimensionLabelDataQueryStatusException(
           "Cannot initialize dimension label '" + label_name +
           "'; Dimension label order " + label_order_str(label_order) +
-          " not supported."));
+          " not supported.");
   }
 }
 

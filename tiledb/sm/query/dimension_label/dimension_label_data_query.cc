@@ -144,61 +144,58 @@ bool is_sorted_buffer(
     case Datatype::INT8:
       return is_sorted_buffer_impl<int8_t>(
           stats,
-          static_cast<const int8_t*>(buffer.buffer_),
+          buffer.typed_buffer<int8_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::UINT8:
       return is_sorted_buffer_impl<uint8_t>(
           stats,
-          static_cast<const uint8_t*>(buffer.buffer_),
+          buffer.typed_buffer<uint8_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::INT16:
       return is_sorted_buffer_impl<int16_t>(
           stats,
-          static_cast<const int16_t*>(buffer.buffer_),
+          buffer.typed_buffer<int16_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::UINT16:
       return is_sorted_buffer_impl<uint16_t>(
           stats,
-          static_cast<const uint16_t*>(buffer.buffer_),
+          buffer.typed_buffer<uint16_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::INT32:
       return is_sorted_buffer_impl<int32_t>(
           stats,
-          static_cast<const int32_t*>(buffer.buffer_),
+          buffer.typed_buffer<int32_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::UINT32:
       return is_sorted_buffer_impl<uint32_t>(
           stats,
-          static_cast<const uint32_t*>(buffer.buffer_),
+          buffer.typed_buffer<uint32_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::INT64:
       return is_sorted_buffer_impl<int64_t>(
           stats,
-          static_cast<const int64_t*>(buffer.buffer_),
+          buffer.typed_buffer<int64_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::UINT64:
       return is_sorted_buffer_impl<uint64_t>(
           stats,
-          static_cast<const uint64_t*>(buffer.buffer_),
+          buffer.typed_buffer<uint64_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::FLOAT32:
       return is_sorted_buffer_impl<float>(
-          stats,
-          static_cast<const float*>(buffer.buffer_),
-          buffer.buffer_size_,
-          increasing);
+          stats, buffer.typed_buffer<float>(), buffer.buffer_size_, increasing);
     case Datatype::FLOAT64:
       return is_sorted_buffer_impl<double>(
           stats,
-          static_cast<const double*>(buffer.buffer_),
+          buffer.typed_buffer<double>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::DATETIME_YEAR:
@@ -225,7 +222,7 @@ bool is_sorted_buffer(
     case Datatype::TIME_AS:
       return is_sorted_buffer_impl<int64_t>(
           stats,
-          static_cast<const int64_t*>(buffer.buffer_),
+          buffer.typed_buffer<int64_t>(),
           buffer.buffer_size_,
           increasing);
     default:
@@ -259,10 +256,9 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
           label_buffer,
           dimension_label->label_dimension()->type(),
           dimension_label->label_order() == LabelOrder::INCREASING_LABELS)) {
-    throw StatusException(Status_DimensionLabelDataQueryError(
-        "Failed to create dimension label query. The label data is not in "
-        "the "
-        "expected order."));
+    throw DimensionLabelDataQueryStatusException(
+        "Failed to create dimension label query. The label data is not in the "
+        "expected order.");
   }
   query_->set_dimension_label_buffer(
       dimension_label->label_attribute()->name(), label_buffer);
@@ -299,8 +295,8 @@ void OrderedWriteDataQuery::process() {
 
 void OrderedWriteDataQuery::add_index_ranges_from_label(
     const bool, const void*, const uint64_t) {
-  throw StatusException(Status_DimensionLabelDataQueryError(
-      "Updating index ranges is not supported on writes."));
+  throw DimensionLabelDataQueryStatusException(
+      "Updating index ranges is not supported on writes.");
 }
 
 UnorderedWriteDataQuery::UnorderedWriteDataQuery(
@@ -328,9 +324,9 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
     if (!parent_subarray.is_default(dim_idx)) {
       const auto& ranges = parent_subarray.ranges_for_dim(dim_idx);
       if (ranges.size() != 1) {
-        throw StatusException(Status_DimensionLabelDataQueryError(
+        throw DimensionLabelDataQueryStatusException(
             "Failed to create dimension label query. Dimension label writes "
-            "can only be set for a single range."));
+            "can only be set for a single range.");
       }
     }
 
@@ -373,8 +369,8 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
 
 void UnorderedWriteDataQuery::add_index_ranges_from_label(
     const bool, const void*, const uint64_t) {
-  throw StatusException(Status_DimensionLabelDataQueryError(
-      "Updating index ranges is not supported on writes."));
+  throw DimensionLabelDataQueryStatusException(
+      "Updating index ranges is not supported on writes.");
 }
 
 bool UnorderedWriteDataQuery::completed() const {

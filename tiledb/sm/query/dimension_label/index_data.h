@@ -36,6 +36,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/type/range/range.h"
 
+#include <numeric>
 #include <vector>
 
 using namespace tiledb::common;
@@ -79,7 +80,7 @@ class TypedIndexData : public IndexData {
   TypedIndexData(const type::Range& range)
       : data_{}
       , data_size_{0} {
-    auto range_data = static_cast<const T*>(range.data());
+    auto range_data = range.typed_data<T>();
     T min_value = range_data[0];
     T max_value = range_data[1];
     if (max_value < min_value) {
@@ -87,10 +88,8 @@ class TypedIndexData : public IndexData {
           "Invalid range - cannot have lower bound greater than the upper "
           "bound.");
     }
-    data_.reserve(max_value - min_value + 1);
-    for (T val = min_value; val <= max_value; ++val) {
-      data_.push_back(val);
-    }
+    data_.resize(max_value - min_value + 1);
+    std::iota(data_.begin(), data_.end(), min_value);
     data_size_ = sizeof(T) * data_.size();
   }
 
