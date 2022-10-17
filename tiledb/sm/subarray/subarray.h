@@ -332,7 +332,8 @@ class Subarray {
    * @param start Pointer to start of the array.
    * @param count Number of elements to add.
    * @param check_for_label If ``true``, verify no label ranges set on this
-   *   dimension.
+   *   dimension. This should check for labels unless being called by
+   *   ``add_index_ranges_from_label`` to update label ranges with index values.
    * @return Status
    */
   Status add_point_ranges(
@@ -349,7 +350,8 @@ class Subarray {
    * @param count Number of total elemenst to add. Must contain two elements for
    *     each range.
    * @param check_for_label If ``true``, verify no label ranges set on this
-   *     dimension.
+   *   dimension. This should check for labels unless being called by
+   *   ``add_index_ranges_from_label`` to update label ranges with index values.
    * @return Status
    * @note The pairs list is logically { {begin1,end1}, {begin2,end2}, ...} but
    * because of typing considerations from the C api is simply presented as
