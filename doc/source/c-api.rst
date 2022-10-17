@@ -714,6 +714,20 @@ Fragment Info
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_get_non_empty_domain_var_from_name
     :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_mbr_num
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_mbr_from_index
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_mbr_from_name
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_mbr_var_size_from_index
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_mbr_var_size_from_name
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_mbr_var_from_index
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_mbr_var_from_name
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_get_cell_num
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_get_version
