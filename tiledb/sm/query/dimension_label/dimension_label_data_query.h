@@ -71,8 +71,8 @@ class DimensionLabelDataQuery {
    *
    * @param is_point_ranges If ``true`` the data contains point ranges.
    *     Otherwise, it contains standard ranges.
-   * @param start Pointer to the start of the range array.
-   * @param count Number of total elements in the range array.
+   * @param start Pointer to the start of the range data.
+   * @param count Number of total elements in the range data.
    */
   virtual void add_index_ranges_from_label(
       const bool is_point_range, const void* start, const uint64_t count) = 0;
@@ -115,8 +115,8 @@ class DimensionLabelReadDataQuery : public DimensionLabelDataQuery {
    *
    * @param is_point_ranges If ``true`` the data contains point ranges.
    *     Otherwise, it contains standard ranges.
-   * @param start Pointer to the start of the range array.
-   * @param count Number of total elements in the range array.
+   * @param start Pointer to the start of the range data.
+   * @param count Number of total elements in the range data.
    */
   void add_index_ranges_from_label(
       const bool is_point_range,
@@ -231,9 +231,10 @@ class UnorderedWriteDataQuery : public DimensionLabelDataQuery {
    * Adds ranges to a query initialized with label ranges. Not valid on a write
    * query.
    *
-   * @param is_piont_range If ``true`` the returned data is stored as point
+   * @param is_point_range If ``true`` the returned data is stored as point
    *     ranges, otherwise it is stored as standard ranges.
    * @param start Pointer to the start of the range data to add.
+   * @param count Number of total elements in the range data.
    */
   void add_index_ranges_from_label(
       const bool is_point_range,
