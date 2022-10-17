@@ -160,7 +160,7 @@ class ArrayDimensionLabelQueries {
    * There can be at most on query per dimension. If there is no query on the
    * dimension, it contains a nullpointer.
    */
-  std::vector<DimensionLabelRangeQuery*> range_queries_by_dim_idx_;
+  std::vector<DimensionLabelRangeQuery*> label_range_queries_by_dim_idx_;
 
   /**
    * Dimension label data queries.
@@ -171,12 +171,14 @@ class ArrayDimensionLabelQueries {
   std::vector<tdb_unique_ptr<DimensionLabelDataQuery>> data_queries_;
 
   /**
-   * Non-owning vector for accessing dat query by dimension index.
+   * Non-owning vector for accessing data query by dimension index.
    *
    * Note: The outer vector is always sized to the number of dimensions in the
-   * array. The internal vector will grow as queries are added.
+   * array. There can be multiple queries on a dimension. If there is no query
+   * on the dimension, the inner vector will be empty.
    */
-  std::vector<std::vector<DimensionLabelDataQuery*>> data_queries_by_dim_idx_;
+  std::vector<std::vector<DimensionLabelDataQuery*>>
+      label_data_queries_by_dim_idx_;
 
   /** The status of the range queries. */
   QueryStatus range_query_status_;

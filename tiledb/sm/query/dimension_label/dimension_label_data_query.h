@@ -168,8 +168,13 @@ class OrderedWriteDataQuery : public DimensionLabelDataQuery {
   DISABLE_MOVE_AND_MOVE_ASSIGN(OrderedWriteDataQuery);
 
   /**
-   * Adds ranges to a query initialize with label ranges. Not valid on write
+   * Adds ranges to a query initialized with label ranges. Not valid on a write
    * query.
+   *
+   * @param is_piont_range If ``true`` the returned data is stored as point
+   *     ranges, otherwise it is stored as standard ranges.
+   * @param start Pointer to the start of the range data to add.
+   * @param count The total number of elements in the range data.
    */
   void add_index_ranges_from_label(
       const bool is_point_range,
@@ -223,8 +228,12 @@ class UnorderedWriteDataQuery : public DimensionLabelDataQuery {
   DISABLE_MOVE_AND_MOVE_ASSIGN(UnorderedWriteDataQuery);
 
   /**
-   * Adds ranges to a query initialize with label ranges. Not valid on write
+   * Adds ranges to a query initialized with label ranges. Not valid on a write
    * query.
+   *
+   * @param is_piont_range If ``true`` the returned data is stored as point
+   *     ranges, otherwise it is stored as standard ranges.
+   * @param start Pointer to the start of the range data to add.
    */
   void add_index_ranges_from_label(
       const bool is_point_range,
