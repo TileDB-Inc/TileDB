@@ -682,13 +682,15 @@ Fragment Info
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_free
     :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_set_config
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_config
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_load
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_load_with_key
     :project: TileDB-C
-.. doxygenfunction:: tiledb_fragment_info_get_array_schema
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_fragment_info_get_array_schema_name
+.. doxygenfunction:: tiledb_fragment_info_get_fragment_name
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_get_fragment_num
     :project: TileDB-C
@@ -739,6 +741,10 @@ Fragment Info
 .. doxygenfunction:: tiledb_fragment_info_get_to_vacuum_num
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_get_to_vacuum_uri
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_array_schema
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_array_schema_name
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_dump
     :project: TileDB-C
