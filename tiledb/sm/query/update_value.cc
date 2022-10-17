@@ -38,6 +38,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class UpdateValueStatusException : public StatusException {
+ public:
+  explicit UpdateValueStatusException(const std::string& message)
+      : StatusException("UpdateValue", message) {
+  }
+};
+
 UpdateValue::UpdateValue(
     std::string field_name,
     const void* update_value,
@@ -84,12 +91,12 @@ void UpdateValue::check(const ArraySchema& array_schema) const {
 
   // Ensure field name exists.
   if (!array_schema.is_field(field_name_)) {
-    throw StatusException(Status_UpdateValueError("Field name doesn't exist"));
+    throw UpdateValueStatusException("Field name doesn't exist");
   }
 
   // Ensure field is an attribute.
   if (!array_schema.is_attr(field_name_)) {
-    throw StatusException(Status_UpdateValueError("Can only update attributes"));
+    throw UpdateValueStatusException("Can only update attributes");
   }
 
   const auto nullable = array_schema.is_nullable(field_name_);
@@ -102,18 +109,18 @@ void UpdateValue::check(const ArraySchema& array_schema) const {
   if (update_value_view_.content() == nullptr) {
     if ((!nullable) &&
         (type != Datatype::STRING_ASCII && type != Datatype::CHAR)) {
-      throw StatusException(Status_UpdateValueError(
-          "Null value can only be used with nullable attributes"));
+      throw UpdateValueStatusException(
+          "Null value can only be used with nullable attributes");
     }
   }
 
   // Ensure that non string fixed size attributes store only one value per cell.
   if (cell_val_num != 1 && type != Datatype::STRING_ASCII &&
       type != Datatype::CHAR && (!var_size)) {
-    throw StatusException(Status_UpdateValueError(
+    throw UpdateValueStatusException(
         "Value node attribute must have one value per cell for non-string "
         "fixed size attributes: " +
-        field_name_));
+        field_name_);
   }
 
   // Ensure that the condition value size matches the attribute's
@@ -121,9 +128,9 @@ void UpdateValue::check(const ArraySchema& array_schema) const {
   if (cell_size != constants::var_size && cell_size != update_value_size &&
       !(nullable && update_value_view_.content() == nullptr) &&
       type != Datatype::STRING_ASCII && type != Datatype::CHAR && (!var_size)) {
-    throw StatusException(Status_UpdateValueError(
+    throw UpdateValueStatusException(
         "Value node condition value size mismatch: " +
-        std::to_string(cell_size) + " != " + std::to_string(update_value_size)));
+        std::to_string(cell_size) + " != " + std::to_string(update_value_size));
   }
 
   return;
