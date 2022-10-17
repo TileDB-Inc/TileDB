@@ -199,14 +199,14 @@ class ExampleArray : public TemporaryDirectoryFixture {
    * @param time Data for the time data.
    */
   void write_array_with_labels(
-      std::vector<double> a1,
-      std::vector<double> x1,
-      std::vector<double> x2,
-      std::vector<double> y1,
-      std::vector<double> y2,
-      std::vector<double> z1,
-      std::vector<double> z2,
-      std::vector<int64_t> time) {
+      std::vector<double>& a1,
+      std::vector<double>& x1,
+      std::vector<double>& x2,
+      std::vector<double>& y1,
+      std::vector<double>& y2,
+      std::vector<double>& z1,
+      std::vector<double>& z2,
+      std::vector<int64_t>& time) {
     // Open array for writing.
     tiledb_array_t* array;
     require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));

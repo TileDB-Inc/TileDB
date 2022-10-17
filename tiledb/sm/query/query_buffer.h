@@ -239,6 +239,12 @@ class QueryBuffer {
     return Status::Ok();
   }
 
+  /** Returns a const pointer to the buffer data as the requested type. */
+  template <typename T>
+  inline const T* typed_buffer() const {
+    return buffer_ ? static_cast<T*>(buffer_) : nullptr;
+  }
+
   /**
    * Treat this buffer as containing an array of data of fixed size `datum_size`
    * and retrieve the datum at array position `index`.

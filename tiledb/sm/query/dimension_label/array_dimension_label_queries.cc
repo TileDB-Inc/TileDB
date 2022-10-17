@@ -62,8 +62,8 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
     const optional<std::string>& fragment_name)
     : storage_manager_(storage_manager)
     , stats_(stats)
-    , range_queries_by_dim_idx_(subarray.dim_num(), nullptr)
-    , data_queries_by_dim_idx_(subarray.dim_num())
+    , label_range_queries_by_dim_idx_(subarray.dim_num(), nullptr)
+    , label_data_queries_by_dim_idx_(subarray.dim_num())
     , range_query_status_{QueryStatus::UNINITIALIZED}
     , fragment_name_{fragment_name} {
   switch (array->get_query_type()) {
@@ -83,9 +83,9 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
       } else {
         // Cannot both read label ranges and write label data on the same write.
         if (subarray.has_label_ranges()) {
-          throw StatusException(Status_DimensionLabelQueryError(
+          throw DimensionLabelQueryStatusException(
               "Failed to add dimension label queries. Cannot set both label "
-              "buffer and label range on a write query."));
+              "buffer and label range on a write query.");
         }
 
         // If fragment name is not set, set it.
@@ -109,17 +109,17 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
     case (QueryType::UPDATE):
     case (QueryType::MODIFY_EXCLUSIVE):
       if (!label_buffers.empty() || subarray.has_label_ranges()) {
-        throw StatusException(Status_DimensionLabelQueryError(
+        throw DimensionLabelQueryStatusException(
             "Failed to add dimension label queries. Query type " +
             query_type_str(array->get_query_type()) +
-            " is not supported for dimension labels."));
+            " is not supported for dimension labels.");
       }
       break;
 
     default:
-      throw StatusException(Status_DimensionLabelQueryError(
+      throw DimensionLabelQueryStatusException(
           "Failed to add dimension label queries. Unknown query type " +
-          query_type_str(array->get_query_type()) + "."));
+          query_type_str(array->get_query_type()) + ".");
   }
   range_query_status_ =
       range_queries_.empty() ? QueryStatus::COMPLETED : QueryStatus::INPROGRESS;
@@ -151,14 +151,14 @@ void ArrayDimensionLabelQueries::process_range_queries(Subarray& subarray) {
       0,
       subarray.dim_num(),
       [&](const uint32_t dim_idx) {
-        if (range_queries_by_dim_idx_[dim_idx]) {
+        if (label_range_queries_by_dim_idx_[dim_idx]) {
           // Process the query.
-          range_queries_by_dim_idx_[dim_idx]->process();
+          label_range_queries_by_dim_idx_[dim_idx]->process();
 
           // Update data queries and subarray with the dimension ranges.
           auto [is_point_ranges, range_data, count] =
-              range_queries_by_dim_idx_[dim_idx]->computed_ranges();
-          for (auto& data_query : data_queries_by_dim_idx_[dim_idx]) {
+              label_range_queries_by_dim_idx_[dim_idx]->computed_ranges();
+          for (auto& data_query : label_data_queries_by_dim_idx_[dim_idx]) {
             data_query->add_index_ranges_from_label(
                 is_point_ranges, range_data, count);
           }
@@ -195,9 +195,9 @@ void ArrayDimensionLabelQueries::add_read_queries(
 
     // Unordered labels are not supported yet.
     if (dim_label_ref.label_order() == LabelOrder::UNORDERED_LABELS) {
-      throw StatusException(Status_DimensionLabelQueryError(
+      throw DimensionLabelQueryStatusException(
           "Support for reading ranges from unordered labels is not yet "
-          "implemented."));
+          "implemented.");
     }
 
     // Open the indexed array.
@@ -210,7 +210,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
     // Create the range query.
     range_queries_.emplace_back(
         tdb_new(OrderedRangeQuery, storage_manager_, dim_label, label_ranges));
-    range_queries_by_dim_idx_[dim_idx] = range_queries_.back().get();
+    label_range_queries_by_dim_idx_[dim_idx] = range_queries_.back().get();
   }
 
   // Add remaining dimension label queries.
@@ -236,7 +236,8 @@ void ArrayDimensionLabelQueries::add_read_queries(
         subarray,
         label_buffer,
         dim_idx));
-    data_queries_by_dim_idx_[dim_idx].push_back(data_queries_.back().get());
+    label_data_queries_by_dim_idx_[dim_idx].push_back(
+        data_queries_.back().get());
   }
 }
 
@@ -254,10 +255,10 @@ void ArrayDimensionLabelQueries::add_write_queries(
 
     // Verify that this subarray is not set to use labels.
     if (subarray.has_label_ranges(dim_label_ref.dimension_id())) {
-      throw StatusException(Status_DimensionLabelQueryError(
+      throw DimensionLabelQueryStatusException(
           "Failed to initialize dimension label query for label '" +
           label_name +
-          "'. Cannot write label data when subarray is set by label range."));
+          "'. Cannot write label data when subarray is set by label range.");
     }
 
     // Open both arrays in the dimension label.
@@ -282,7 +283,8 @@ void ArrayDimensionLabelQueries::add_write_queries(
                                                      index_buffer_pair->second,
         dim_idx,
         fragment_name_));
-    data_queries_by_dim_idx_[dim_idx].push_back(data_queries_.back().get());
+    label_data_queries_by_dim_idx_[dim_idx].push_back(
+        data_queries_.back().get());
   }
 }
 
@@ -304,8 +306,8 @@ DimensionLabel* ArrayDimensionLabelQueries::open_dimension_label(
   // Currently there is no way to open just one of these arrays. This is a
   // placeholder for a single array open is implemented.
   if (open_indexed_array || open_labelled_array) {
-    // Open the dimension label. Handling encrypted dimension labels is not
-    // yet implemented.
+    // Open the dimension label. Handling encrypted dimension labels is not yet
+    // implemented.
     dim_label->open(
         query_type,
         array->timestamp_start(),
@@ -314,8 +316,8 @@ DimensionLabel* ArrayDimensionLabelQueries::open_dimension_label(
         nullptr,
         0);
 
-    // Check the dimension label is compatible with the dim label reference
-    // and dimension from the parent array.
+    // Check the dimension label is compatible with the dim label reference and
+    // dimension from the parent array.
     dim_label->is_compatible(
         dim_label_ref,
         array->array_schema_latest().dimension_ptr(
