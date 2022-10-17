@@ -294,14 +294,13 @@ void WebpFilter::serialize_impl(Serializer& serializer) const {
   serializer.write(filter_config);
 }
 
-void WebpFilter::set_extent(const Domain& domain) {
-  if (domain.tile_extents().size() != 2 || domain.dim_num() != 2) {
+void WebpFilter::set_extent(const std::vector<ByteVecValue>& extents) {
+  if (extents.size() != 2) {
     throw StatusException(
         Status_FilterError("WebP filter can only be applied to 2D arrays"));
   }
-  set_extent(
-      domain.tile_extents()[0].rvalue_as<int>(),
-      domain.tile_extents()[1].rvalue_as<int>());
+  extents_ =
+      std::make_pair(extents[0].rvalue_as<int>(), extents[1].rvalue_as<int>());
 }
 
 }  // namespace tiledb::sm

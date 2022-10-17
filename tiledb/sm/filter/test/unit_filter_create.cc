@@ -450,15 +450,15 @@ TEST_CASE("Filter: Test WEBP filter deserialization", "[filter][webp]") {
   CHECK(filter->type() == filterType);
 
   float quality1;
-  filter->get_option(FilterOption::WEBP_QUALITY, &quality1);
+  REQUIRE(filter->get_option(FilterOption::WEBP_QUALITY, &quality1).ok());
   CHECK(quality0 == quality1);
 
   WebpInputFormat fmt1;
-  filter->get_option(FilterOption::WEBP_INPUT_FORMAT, &fmt1);
+  REQUIRE(filter->get_option(FilterOption::WEBP_INPUT_FORMAT, &fmt1).ok());
   CHECK(fmt0 == fmt1);
 
   uint8_t lossless1;
-  filter->get_option(FilterOption::WEBP_LOSSLESS, &lossless1);
+  REQUIRE(filter->get_option(FilterOption::WEBP_LOSSLESS, &lossless1).ok());
   CHECK(lossless0 == lossless1);
 }
 #endif  // TILEDB_WEBP

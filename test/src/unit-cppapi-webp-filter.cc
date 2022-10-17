@@ -35,7 +35,7 @@
 #include <random>
 #include <vector>
 
-#include "catch.hpp"
+#include <test/support/tdb_catch.h>
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/filter_type.h"
@@ -86,7 +86,7 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
   // Check WEBP_LOSSLESS option
   uint8_t lossless_found;
   REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
-  REQUIRE(false == lossless_found);
+  REQUIRE(0 == lossless_found);
 
   REQUIRE(false == lossless_found);
   uint8_t lossless_expected = 1;

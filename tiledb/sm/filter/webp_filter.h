@@ -101,6 +101,10 @@ class WebpFilter : public Filter {
       , lossless_(lossless) {
   }
 
+  /* ****************************** */
+  /*              API               */
+  /* ****************************** */
+
   /**
    * Dumps filter details in ASCII format
    * @param out Location to write output
@@ -212,7 +216,7 @@ class WebpFilter : public Filter {
    *
    * @param Domain Array Domain object
    */
-  void set_extent(const Domain& domain);
+  void set_extent(const std::vector<ByteVecValue>& extents);
 
  private:
   /* ********************************* */
@@ -227,17 +231,6 @@ class WebpFilter : public Filter {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
-
-  /**
-   * Set tile extents to be used in tile-based image compression
-   * This filter references these extents only on the forward pass during writes
-   *
-   * @param y Extent for dimension at index 0
-   * @param x Extent for dimension at index 1
-   */
-  inline void set_extent(int y, int x) {
-    extents_ = std::make_pair(y, x);
-  }
 
   /**
    * @return New clone of this filter

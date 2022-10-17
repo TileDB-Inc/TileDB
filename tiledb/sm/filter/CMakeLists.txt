@@ -203,6 +203,7 @@ if(TILEDB_WEBP)
     #
     add_library(webp_filters OBJECT webp_filter.cc)
     target_link_libraries(webp_filters PUBLIC filter $<TARGET_OBJECTS:filter>)
+    target_link_libraries(webp_filters PUBLIC misc_types $<TARGET_OBJECTS:misc_types>)
     find_package(Webp_EP REQUIRED)
     target_link_libraries(webp_filters PRIVATE WebP::webp)
 
