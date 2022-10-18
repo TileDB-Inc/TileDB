@@ -55,6 +55,8 @@
 namespace tiledb {
 namespace sm {
 
+using dimension_size_type = uint32_t;
+
 class ReaderBaseStatusException : public StatusException {
  public:
   explicit ReaderBaseStatusException(const std::string& message)
@@ -1894,7 +1896,7 @@ GlobalCmpQB ReaderBase::construct_bitsort_filter_argument(
     std::vector<QueryBuffer>& qb_vector,
     std::optional<DomainBuffersView>& db) const {
   std::vector<Tile*>& dim_tiles = bitsort_metadata.dim_tiles();
-  uint64_t num_dims = array_schema_.dim_num();
+  dimension_size_type num_dims = array_schema_.dim_num();
   std::vector<uint64_t> dim_data_sizes;
 
   dim_tiles.reserve(num_dims);
@@ -1903,7 +1905,7 @@ GlobalCmpQB ReaderBase::construct_bitsort_filter_argument(
 
   // Loop over the dimensions, adding the dimension tiles and constructed
   // QueryBuffer objects that represent the dimension tile data.
-  for (size_t i = 0; i < num_dims; ++i) {
+  for (dimension_size_type i = 0; i < num_dims; ++i) {
     const Dimension* dimension = array_schema_.domain().dimension_ptr(i);
     auto dim_tile_tuple = tile->tile_tuple(dimension->name());
     dim_tiles.emplace_back(&dim_tile_tuple->fixed_tile());
