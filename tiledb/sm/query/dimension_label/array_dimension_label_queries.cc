@@ -201,8 +201,8 @@ void ArrayDimensionLabelQueries::add_read_queries(
     }
 
     // Open the indexed array.
-    auto* dim_label = open_dimension_label(
-        array, dim_label_ref, QueryType::READ, true, false);
+    auto* dim_label =
+        open_dimension_label(array, dim_label_ref, QueryType::READ);
 
     // Get subarray ranges.
     auto& label_ranges = subarray.ranges_for_label(label_name);
@@ -224,8 +224,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
     auto dim_label_iter = dimension_labels_.find(label_name);
     auto* dim_label =
         dim_label_iter == dimension_labels_.end() ?
-            open_dimension_label(
-                array, dim_label_ref, QueryType::READ, true, false) :
+            open_dimension_label(array, dim_label_ref, QueryType::READ) :
             dim_label_iter->second.get();
 
     // Create the data query.
@@ -262,8 +261,8 @@ void ArrayDimensionLabelQueries::add_write_queries(
     }
 
     // Open both arrays in the dimension label.
-    auto* dim_label = open_dimension_label(
-        array, dim_label_ref, QueryType::WRITE, true, true);
+    auto* dim_label =
+        open_dimension_label(array, dim_label_ref, QueryType::WRITE);
 
     // Get the index_buffer from the array buffers.
     const auto& dim_name = array->array_schema_latest()
@@ -291,9 +290,7 @@ void ArrayDimensionLabelQueries::add_write_queries(
 DimensionLabel* ArrayDimensionLabelQueries::open_dimension_label(
     Array* array,
     const DimensionLabelReference& dim_label_ref,
-    const QueryType& query_type,
-    const bool open_indexed_array,
-    const bool open_labelled_array) {
+    const QueryType& query_type) {
   // Create the dimension label.
   auto label_iter = dimension_labels_.try_emplace(
       dim_label_ref.name(),
@@ -303,26 +300,21 @@ DimensionLabel* ArrayDimensionLabelQueries::open_dimension_label(
           storage_manager_));
   DimensionLabel* dim_label = (label_iter.first->second).get();
 
-  // Currently there is no way to open just one of these arrays. This is a
-  // placeholder for a single array open is implemented.
-  if (open_indexed_array || open_labelled_array) {
-    // Open the dimension label. Handling encrypted dimension labels is not yet
-    // implemented.
-    dim_label->open(
-        query_type,
-        array->timestamp_start(),
-        array->timestamp_end(),
-        EncryptionType::NO_ENCRYPTION,
-        nullptr,
-        0);
+  // Open the dimension label. Handling encrypted dimension labels is not yet
+  // implemented.
+  dim_label->open(
+      query_type,
+      array->timestamp_start(),
+      array->timestamp_end(),
+      EncryptionType::NO_ENCRYPTION,
+      nullptr,
+      0);
 
-    // Check the dimension label is compatible with the dim label reference and
-    // dimension from the parent array.
-    dim_label->is_compatible(
-        dim_label_ref,
-        array->array_schema_latest().dimension_ptr(
-            dim_label_ref.dimension_id()));
-  }
+  // Check the dimension label is compatible with the dim label reference and
+  // dimension from the parent array.
+  dim_label->is_compatible(
+      dim_label_ref,
+      array->array_schema_latest().dimension_ptr(dim_label_ref.dimension_id()));
 
   return dim_label;
 }
