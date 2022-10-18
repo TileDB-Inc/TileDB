@@ -102,12 +102,14 @@ void UpdatesFx::create_sparse_array(bool allows_dups, bool encrypt) {
 
   // Create attributes.
   auto a1 = Attribute::create<int32_t>(ctx_, "a1");
+  auto a2 = Attribute::create<int32_t>(ctx_, "a2");
 
   // Create array schmea.
   ArraySchema schema(ctx_, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.set_capacity(20);
   schema.add_attributes(a1);
+  schema.add_attributes(a2);
 
   if (allows_dups) {
     schema.set_allows_dups(true);
@@ -256,10 +258,8 @@ TEST_CASE("C++ API: Test setting an update value", "[cppapi][updates]") {
   QueryExperimental::add_update_value_to_query(
       ctx, query, "a", &val, sizeof(val));
 
-  CHECK(query.ptr()
-            ->query_->update_values()[0]
-            .check(array.ptr()->array_->array_schema_latest())
-            .ok());
+  query.ptr()->query_->update_values()[0]
+            .check(array.ptr()->array_->array_schema_latest());
 
   array.close();
 
@@ -296,7 +296,7 @@ TEST_CASE_METHOD(
   val = 2;
   uvs2.emplace_back("a1", &val, sizeof(int32_t));
   val = 1;
-  uvs2.emplace_back("d1", &val, sizeof(int32_t));
+  uvs2.emplace_back("a2", &val, sizeof(int32_t));
 
   write_update_condition(qc, uvs, 1, encrypt);
   check_update_conditions({qc}, {uvs}, 2, encrypt);
