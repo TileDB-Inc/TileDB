@@ -193,7 +193,6 @@ Status Tile::init_filtered(
 }
 
 void Tile::clear_data() {
-  std::cout << "!!!! clear data !!!!" << std::endl;
   data_ = nullptr;
   size_ = 0;
 }
