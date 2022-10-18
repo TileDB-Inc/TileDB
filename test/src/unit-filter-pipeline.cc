@@ -4013,7 +4013,6 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     // true in general use of the filter pipeline.
     key[0]--;
     filter->set_key(key);
-    tile.clear_data();
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
