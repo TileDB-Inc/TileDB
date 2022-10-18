@@ -781,7 +781,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   const char* attr_name;
   rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
+  CHECK_THAT(attr_name, Catch::Matchers::Equals(ATTR_NAME));
   tiledb_attribute_free(&attr);
 
   // get first attribute by name
@@ -790,7 +790,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
+  CHECK_THAT(attr_name, Catch::Matchers::Equals(ATTR_NAME));
 
   tiledb_datatype_t attr_type;
   rc = tiledb_attribute_get_type(ctx_, attr, &attr_type);
@@ -837,7 +837,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   const char* dim_name;
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
+  CHECK_THAT(dim_name, Catch::Matchers::Equals(DIM1_NAME));
 
   tiledb_dimension_free(&dim);
 
@@ -846,7 +846,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
+  CHECK_THAT(dim_name, Catch::Matchers::Equals(DIM1_NAME));
 
   const void* dim_domain;
   rc = tiledb_dimension_get_domain(ctx_, dim, &dim_domain);
@@ -866,7 +866,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
 
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(dim_name, Catch::Equals(DIM2_NAME));
+  CHECK_THAT(dim_name, Catch::Matchers::Equals(DIM2_NAME));
   tiledb_dimension_free(&dim);
 
   // get from index
@@ -875,7 +875,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
 
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(dim_name, Catch::Equals(DIM2_NAME));
+  CHECK_THAT(dim_name, Catch::Matchers::Equals(DIM2_NAME));
 
   rc = tiledb_dimension_get_domain(ctx_, dim, &dim_domain);
   REQUIRE(rc == TILEDB_OK);
@@ -1027,7 +1027,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_dimension_get_name(ctx_, get_dim, &get_name);
   CHECK(rc == TILEDB_OK);
-  CHECK_THAT(get_name, Catch::Equals("d2"));
+  CHECK_THAT(get_name, Catch::Matchers::Equals("d2"));
   tiledb_dimension_free(&get_dim);
 
   // Clean up
@@ -2163,7 +2163,7 @@ TEST_CASE_METHOD(
   const char* attr_name;
   rc = tiledb_attribute_get_name(ctx_, read_attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name, Catch::Equals("a2"));
+  CHECK_THAT(attr_name, Catch::Matchers::Equals("a2"));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2306,7 +2306,7 @@ TEST_CASE_METHOD(
   const char* attr_name;
   rc = tiledb_attribute_get_name(ctx_, read_attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name, Catch::Equals("a2"));
+  CHECK_THAT(attr_name, Catch::Matchers::Equals("a2"));
 
   tiledb_attribute_t* read_attr1;
   rc = tiledb_array_schema_get_attribute_from_index(
@@ -2315,7 +2315,7 @@ TEST_CASE_METHOD(
   const char* attr_name1;
   rc = tiledb_attribute_get_name(ctx_, read_attr1, &attr_name1);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name1, Catch::Equals("a3"));
+  CHECK_THAT(attr_name1, Catch::Matchers::Equals("a3"));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2398,7 +2398,7 @@ TEST_CASE_METHOD(
   const char* attr_name;
   rc = tiledb_attribute_get_name(ctx_, read_attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name, Catch::Equals("a2"));
+  CHECK_THAT(attr_name, Catch::Matchers::Equals("a2"));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

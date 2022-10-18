@@ -126,7 +126,7 @@ std::string Win::abs_path(const std::string& path) {
   std::string str_result;
   if (PathCanonicalize(result, full_path.c_str()) == FALSE) {
     auto gle = GetLastError();
-    LOG_STATUS(Status_IOError(std::string(
+    LOG_STATUS_NO_RETURN_VALUE(Status_IOError(std::string(
         "Cannot canonicalize path. (" +
         get_last_error_msg(gle, "PathCanonicalize") + ")")));
   } else {
@@ -181,7 +181,7 @@ std::string Win::current_dir() {
   unsigned long length = GetCurrentDirectory(0, nullptr);
   char* path = (char*)tdb_malloc(length * sizeof(char));
   if (path == nullptr || GetCurrentDirectory(length, path) == 0) {
-    LOG_STATUS(Status_IOError(std::string(
+    LOG_STATUS_NO_RETURN_VALUE(Status_IOError(std::string(
         "Failed to get current directory. " +
         get_last_error_msg("GetCurrentDirectory"))));
   }

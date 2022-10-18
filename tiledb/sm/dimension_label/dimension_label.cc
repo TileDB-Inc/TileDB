@@ -33,6 +33,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/array_schema/dimension_label_schema.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/label_order.h"
@@ -72,6 +73,52 @@ const Dimension* DimensionLabel::index_dimension() const {
     throw std::logic_error(
         "DimensionLabel schema does not exist. DimensionLabel must be opened.");
   return schema_->index_dimension();
+}
+
+void DimensionLabel::is_compatible(
+    const DimensionLabelReference& dim_label_ref, const Dimension* dim) const {
+  if (!schema_)
+    throw std::logic_error(
+        "DimensionLabel schema does not exist. DimensionLabel must be opened.");
+
+  // Check the dimension label schema matches the definition provided in
+  // the dimension label reference.
+  if (!schema_->is_compatible_label(dim)) {
+    throw StatusException(Status_DimensionLabelError(
+        "Error opening dimension label; Found dimension label does not match "
+        "array dimension."));
+  }
+  if (schema_->label_order() != dim_label_ref.label_order()) {
+    throw StatusException(Status_DimensionLabelError(
+        "Error opening dimension label; The label order of the loaded "
+        "dimension label is " +
+        label_order_str(schema_->label_order()) +
+        ", but the expected label order was " +
+        label_order_str(dim_label_ref.label_order()) + "."));
+  }
+  if (schema_->label_dimension()->type() != dim_label_ref.label_type()) {
+    throw StatusException(Status_DimensionLabelError(
+        "Error opening dimension label; The label datatype of the loaded "
+        "dimension label is " +
+        datatype_str(schema_->label_dimension()->type()) +
+        ", but the expected label datatype was " +
+        datatype_str(dim_label_ref.label_type()) + "."));
+  }
+  if (!(schema_->label_dimension()->domain() == dim_label_ref.label_domain())) {
+    throw StatusException(Status_DimensionLabelError(
+        "Error opening dimension label; The label domain of the loaded "
+        "dimension label does not match the expected domain."));
+  }
+  if (schema_->label_dimension()->cell_val_num() !=
+      dim_label_ref.label_cell_val_num()) {
+    throw StatusException(Status_DimensionLabelError(
+        "Error opening dimension label; The label cell value number of the "
+        "loaded "
+        "dimension label is " +
+        std::to_string(schema_->label_dimension()->cell_val_num()) +
+        ", but the expected label cell value number was " +
+        std::to_string(dim_label_ref.label_cell_val_num()) + "."));
+  }
 }
 
 const Attribute* DimensionLabel::label_attribute() const {
@@ -162,8 +209,8 @@ void DimensionLabel::open(
     intersect_fragments(labelled_frag_uris, indexed_frag_uris);
 
     // Reload with only shared fragments.
-    indexed_array_->load_fragments(indexed_frag_uris);
-    labelled_array_->load_fragments(labelled_frag_uris);
+    throw_if_not_ok(indexed_array_->load_fragments(indexed_frag_uris));
+    throw_if_not_ok(labelled_array_->load_fragments(labelled_frag_uris));
   }
 }
 
@@ -237,49 +284,60 @@ QueryType DimensionLabel::query_type() const {
       "not been opened");
 }
 
+const DimensionLabelSchema& DimensionLabel::schema() const {
+  if (!schema_) {
+    throw std::logic_error(
+        "DimensionLabel schema does not exist. DimensionLabel must be opened.");
+  }
+  return *schema_;
+}
+
 void create_dimension_label(
     const URI& uri,
     StorageManager& storage_manager,
     const DimensionLabelSchema& schema) {
   // Create the group for the dimension label.
-  storage_manager.group_create(uri.to_string());
+  throw_if_not_ok(storage_manager.group_create(uri.to_string()));
 
   // Create the arrays inside the group.
   EncryptionKey key;
-  key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0);
+  throw_if_not_ok(key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
   std::optional<std::string> indexed_array_name{
       DimensionLabel::indexed_array_name};
-  storage_manager.array_create(
+  throw_if_not_ok(storage_manager.array_create(
       uri.join_path(indexed_array_name.value()),
       schema.indexed_array_schema(),
-      key);
+      key));
   std::optional<std::string> labelled_array_name{
       DimensionLabel::labelled_array_name};
-  storage_manager.array_create(
+  throw_if_not_ok(storage_manager.array_create(
       uri.join_path(labelled_array_name.value()),
       schema.labelled_array_schema(),
-      key);
+      key));
 
   // Open dimension label group.
   GroupV1 label_group{uri, &storage_manager};
-  label_group.open(QueryType::WRITE);
+  throw_if_not_ok(label_group.open(QueryType::WRITE));
 
   // Add metadata to group.
   const uint32_t format_version{1};
-  label_group.put_metadata(
-      "__dimension_label_format_version", Datatype::UINT32, 1, &format_version);
+  throw_if_not_ok(label_group.put_metadata(
+      "__dimension_label_format_version",
+      Datatype::UINT32,
+      1,
+      &format_version));
   uint8_t label_order_int{static_cast<uint8_t>(schema.label_order())};
-  label_group.put_metadata(
-      "__label_order", Datatype::UINT8, 1, &label_order_int);
+  throw_if_not_ok(label_group.put_metadata(
+      "__label_order", Datatype::UINT8, 1, &label_order_int));
 
   // Add arrays to group.
-  label_group.mark_member_for_addition(
-      URI(indexed_array_name.value(), false), true, indexed_array_name);
-  label_group.mark_member_for_addition(
-      URI(labelled_array_name.value(), false), true, labelled_array_name);
+  throw_if_not_ok(label_group.mark_member_for_addition(
+      URI(indexed_array_name.value(), false), true, indexed_array_name));
+  throw_if_not_ok(label_group.mark_member_for_addition(
+      URI(labelled_array_name.value(), false), true, labelled_array_name));
 
   // Close group.
-  label_group.close();
+  throw_if_not_ok(label_group.close());
 }
 
 void intersect_fragments(

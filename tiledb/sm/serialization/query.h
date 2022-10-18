@@ -194,15 +194,20 @@ Status query_est_result_size_deserialize(
     const Buffer& serialized_buffer);
 
 #ifdef TILEDB_SERIALIZATION
+
+enum class SerializationContext { CLIENT, SERVER, BACKUP };
+
 Status global_write_state_to_capnp(
     const Query& query,
     GlobalOrderWriter& globalwriter,
-    capnp::GlobalWriteState::Builder* state_builder);
+    capnp::GlobalWriteState::Builder* state_builder,
+    bool client);
 
 Status global_write_state_from_capnp(
     const Query& query,
     const capnp::GlobalWriteState::Reader& state_reader,
-    GlobalOrderWriter* globalwriter);
+    GlobalOrderWriter* globalwriter,
+    SerializationContext context);
 
 Status condition_from_capnp(
     const capnp::Condition::Reader& condition_reader,

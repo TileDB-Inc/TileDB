@@ -41,6 +41,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb::sm;
@@ -798,9 +799,23 @@ Status FragmentInfo::has_consolidated_metadata(
 }
 
 Status FragmentInfo::load() {
-  RETURN_NOT_OK(check_array_uri());
   RETURN_NOT_OK(set_enc_key_from_config());
   RETURN_NOT_OK(set_default_timestamp_range());
+
+  if (array_uri_.is_tiledb()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr) {
+      return LOG_STATUS(Status_ArrayError(
+          "Cannot load fragment info; remote array with no REST client."));
+    }
+
+    // Overriding this config parameter is necessary to enable Cloud to load
+    // MBRs at the same time as the rest of fragment info and not lazily
+    // as it's the case for local fragment info load requests.
+    throw_if_not_ok(config_.set("sm.fragment_info.preload_mbrs", "true"));
+
+    return rest_client->post_fragment_info_from_rest(array_uri_, this);
+  }
 
   // Create an ArrayDirectory object and load
   auto array_dir = ArrayDirectory(
@@ -817,8 +832,6 @@ Status FragmentInfo::load(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  RETURN_NOT_OK(check_array_uri());
-
   RETURN_NOT_OK(enc_key_.set_key(encryption_type, encryption_key, key_length));
   RETURN_NOT_OK(set_default_timestamp_range());
 
@@ -839,7 +852,6 @@ Status FragmentInfo::load(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  RETURN_NOT_OK(check_array_uri());
   timestamp_start_ = timestamp_start;
   timestamp_end_ = timestamp_end;
 
@@ -848,12 +860,21 @@ Status FragmentInfo::load(
 }
 
 Status FragmentInfo::load(const ArrayDirectory& array_dir) {
+  // Check if we need to preload MBRs or not based on config
+  bool found = false, preload_rtrees = false;
+  auto status = config_.get<bool>(
+      "sm.fragment_info.preload_mbrs", &preload_rtrees, &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error("Cannot get fragment info config setting");
+  }
+
   // Get the array schemas and fragment metadata.
   auto&& [st_schemas, array_schema_latest, array_schemas_all, fragment_metadata] =
       storage_manager_->load_array_schemas_and_fragment_metadata(
           array_dir, nullptr, enc_key_);
   RETURN_NOT_OK(st_schemas);
   const auto& fragment_metadata_value = fragment_metadata.value();
+  array_schema_latest_ = array_schema_latest.value();
   array_schemas_all_ = std::move(array_schemas_all.value());
   auto fragment_num = (uint32_t)fragment_metadata_value.size();
 
@@ -863,7 +884,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
       storage_manager_->compute_tp(),
       0,
       fragment_num,
-      [this, &fragment_metadata_value, &sizes](uint64_t i) {
+      [this, &fragment_metadata_value, &sizes, preload_rtrees](uint64_t i) {
         // Get fragment size. Applicable only to relevant fragments, including
         // fragments that are in the range [timestamp_start_, timestamp_end_].
         auto meta = fragment_metadata_value[i];
@@ -872,6 +893,10 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
           uint64_t size;
           RETURN_NOT_OK(meta->fragment_size(&size));
           sizes[i] = size;
+        }
+
+        if (preload_rtrees & !meta->dense()) {
+          RETURN_NOT_OK(meta->load_rtree(enc_key_));
         }
 
         return Status::Ok();
@@ -957,18 +982,6 @@ uint32_t FragmentInfo::unconsolidated_metadata_num() const {
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
-
-Status FragmentInfo::check_array_uri() {
-  if (array_uri_.is_tiledb()) {
-    auto msg = std::string(
-                   "FragmentInfo not supported in TileDB Cloud arrays; "
-                   "FragmentInfo for array '") +
-               array_uri_.to_string() + "' cannot be loaded";
-    return LOG_STATUS(Status_FragmentInfoError(msg));
-  }
-
-  return Status::Ok();
-}
 
 Status FragmentInfo::set_enc_key_from_config() {
   std::string enc_key_str, enc_type_str;
@@ -1099,6 +1112,7 @@ Status FragmentInfo::replace(
 FragmentInfo FragmentInfo::clone() const {
   FragmentInfo clone;
   clone.array_uri_ = array_uri_;
+  clone.array_schema_latest_ = array_schema_latest_;
   clone.array_schemas_all_ = array_schemas_all_;
   clone.config_ = config_;
   clone.single_fragment_info_vec_ = single_fragment_info_vec_;
@@ -1114,6 +1128,7 @@ FragmentInfo FragmentInfo::clone() const {
 
 void FragmentInfo::swap(FragmentInfo& fragment_info) {
   std::swap(array_uri_, fragment_info.array_uri_);
+  std::swap(array_schema_latest_, fragment_info.array_schema_latest_);
   std::swap(array_schemas_all_, fragment_info.array_schemas_all_);
   std::swap(config_, fragment_info.config_);
   std::swap(single_fragment_info_vec_, fragment_info.single_fragment_info_vec_);

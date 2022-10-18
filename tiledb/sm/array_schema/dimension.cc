@@ -1368,36 +1368,31 @@ Status Dimension::set_domain_unsafe(const void* domain) {
   return Status::Ok();
 }
 
-Status Dimension::set_filter_pipeline(const FilterPipeline* pipeline) {
-  if (pipeline == nullptr)
-    return LOG_STATUS(Status_DimensionError(
-        "Cannot set filter pipeline to dimension; Pipeline cannot be null"));
-
-  for (unsigned i = 0; i < pipeline->size(); ++i) {
+Status Dimension::set_filter_pipeline(const FilterPipeline& pipeline) {
+  for (unsigned i = 0; i < pipeline.size(); ++i) {
     if (datatype_is_real(type_) &&
-        pipeline->get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
+        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
       return LOG_STATUS(
           Status_DimensionError("Cannot set DOUBLE DELTA filter to a "
                                 "dimension with a real datatype"));
   }
 
-  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline->size() > 1) {
-    if (pipeline->has_filter(FilterType::FILTER_RLE) &&
-        pipeline->get_filter(0)->type() != FilterType::FILTER_RLE) {
+  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline.size() > 1) {
+    if (pipeline.has_filter(FilterType::FILTER_RLE) &&
+        pipeline.get_filter(0)->type() != FilterType::FILTER_RLE) {
       return LOG_STATUS(Status_ArraySchemaError(
           "RLE filter must be the first filter to apply when used on a "
           "variable length string dimension"));
     }
-    if (pipeline->has_filter(FilterType::FILTER_DICTIONARY) &&
-        pipeline->get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
+    if (pipeline.has_filter(FilterType::FILTER_DICTIONARY) &&
+        pipeline.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
       return LOG_STATUS(Status_ArraySchemaError(
           "Dictionary filter must be the first filter to apply when used on a "
           "variable length string dimension"));
     }
   }
 
-  filters_ = *pipeline;
-
+  filters_ = pipeline;
   return Status::Ok();
 }
 

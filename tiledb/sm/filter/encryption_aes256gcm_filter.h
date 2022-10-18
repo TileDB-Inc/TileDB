@@ -98,7 +98,7 @@ class EncryptionAES256GCMFilter : public Filter {
    */
   Status run_forward(
       const Tile& tile,
-      Tile* const tile_offsets,
+      void* const support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -109,7 +109,7 @@ class EncryptionAES256GCMFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      Tile* const tile_offsets,
+      void* support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -128,17 +128,15 @@ class EncryptionAES256GCMFilter : public Filter {
    * Sets the secret key on this filter to a pointer to the given key.
    *
    * @param key Encryption key, expected to hold `uint8_t[32]`.
-   * @return Status
    */
-  Status set_key(const EncryptionKey& key);
+  void set_key(const EncryptionKey& key);
 
   /**
    * Sets the secret key on this filter to a pointer to the given key.
    *
    * @param key_bytes Buffer holding the key, expected to be `uint8_t[32]`.
-   * @return Status
    */
-  Status set_key(const void* key_bytes);
+  void set_key(const void* key_bytes);
 
  private:
   /** Pointer to a buffer storing the secret key. */

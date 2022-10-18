@@ -37,13 +37,13 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
 
-class StorageManager;
 class Tile;
 
 /** Handles IO (reading/writing) for tiles. */

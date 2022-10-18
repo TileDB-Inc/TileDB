@@ -93,7 +93,7 @@ if (TILEDB_TESTS)
   add_executable(unit_experimental EXCLUDE_FROM_ALL)
   target_link_libraries(unit_experimental
     PRIVATE baseline
-    PUBLIC Catch2::Catch2
+    PUBLIC Catch2::Catch2WithMain
   )
   target_sources(unit_experimental
     PUBLIC

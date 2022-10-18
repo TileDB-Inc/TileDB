@@ -50,7 +50,7 @@ void XORFilter::dump(FILE* out) const {
 
 Status XORFilter::run_forward(
     const Tile& tile,
-    Tile* const,  // offsets_tile
+    void* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -149,7 +149,7 @@ Status XORFilter::xor_part(const ConstBuffer* part, Buffer* output) const {
 
 Status XORFilter::run_reverse(
     const Tile& tile,
-    Tile* const,  // offsets_tile
+    void*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

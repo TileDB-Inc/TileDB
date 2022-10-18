@@ -109,7 +109,7 @@ namespace common {
  * implementation and make interconversion easy. The value `nullopt` will be the
  * OK status; anything else will be an error status.
  */
-class Status {
+class [[nodiscard]] Status {
   friend class StatusException;
 
   /* ********************************* */

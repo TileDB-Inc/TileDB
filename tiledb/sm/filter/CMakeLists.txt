@@ -232,12 +232,12 @@ if (TILEDB_TESTS)
     add_executable(unit_filter_create EXCLUDE_FROM_ALL)
     target_link_libraries(unit_filter_create PUBLIC all_filters)
     find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_filter_create PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_filter_create PUBLIC Catch2::Catch2WithMain)
 
     add_executable(unit_filter_pipeline EXCLUDE_FROM_ALL)
     target_link_libraries(unit_filter_pipeline PUBLIC filter_pipeline)
     find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_filter_pipeline PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_filter_pipeline PUBLIC Catch2::Catch2WithMain)
 
     # Sources for tests
     target_sources(unit_filter_create PUBLIC

@@ -1052,7 +1052,7 @@ void GCS::delete_parts(
 
   const Status st = thread_pool_->wait_all(tasks);
   if (!st.ok()) {
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
   }
 }
 

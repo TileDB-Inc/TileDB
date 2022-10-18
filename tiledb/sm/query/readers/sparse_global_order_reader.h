@@ -46,6 +46,7 @@
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_coords.h"
 #include "tiledb/sm/query/readers/sparse_index_reader_base.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
@@ -53,7 +54,6 @@ namespace tiledb {
 namespace sm {
 
 class Array;
-class StorageManager;
 
 /** Processes sparse global order read queries. */
 

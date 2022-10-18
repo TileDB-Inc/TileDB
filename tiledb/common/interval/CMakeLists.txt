@@ -31,8 +31,8 @@ endif()
 find_package(Catch_EP REQUIRED)
 
 add_executable(unit_interval EXCLUDE_FROM_ALL)
-target_link_libraries(unit_interval PUBLIC Catch2::Catch2)
-
+target_link_libraries(unit_interval PUBLIC Catch2::Catch2WithMain)
+  
 # Sources for code under test
 target_sources(unit_interval PUBLIC
   interval.cc

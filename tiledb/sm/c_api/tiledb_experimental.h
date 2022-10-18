@@ -394,7 +394,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
  *     no error).
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_ctx_alloc_with_error(
+TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
     tiledb_config_t* config,
     tiledb_ctx_t** ctx,
     tiledb_error_t** error) TILEDB_NOEXCEPT;
@@ -868,8 +868,8 @@ TILEDB_EXPORT int32_t tiledb_group_get_member_by_name(
  * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
  * tiledb_group_open(ctx, group, TILEDB_WRITE);
  * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_array", true,
- *     "array1"); 
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_group_2", 
+ *     "array1");
+ * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_group_2",
  *     false, "group2");
  *
  * tiledb_group_close(ctx, group);
