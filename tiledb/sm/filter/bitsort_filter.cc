@@ -72,7 +72,7 @@ Status BitSortFilter::run_forward(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   const std::vector<Tile*> dim_tiles =
-      *static_cast<std::vector<Tile*>* const>(support_data);
+      *static_cast<std::vector<Tile*>*>(support_data);
 
   // Since run_forward interprets the filter's data as integers, we case on
   // the size of the type and pass in the corresponding integer type into

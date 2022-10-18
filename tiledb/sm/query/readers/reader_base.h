@@ -508,33 +508,8 @@ class ReaderBase : public StrategyBase {
       uint64_t thread_idx,
       const std::string& name,
       Tile* tile,
-      const ChunkData& tile_chunk_data) const;
-
-  /**
-   * Runs the input fixed-sized tile for the input attribute or dimension
-   * through the filter pipeline. The tile buffer is modified to contain the
-   * output of the pipeline. Used only by new readers that parallelize on chunk
-   * ranges.
-   *
-   * This function should only be called when the attribute filtering
-   * includes a bitsort filter.
-   *
-   * @param num_range_threads Total number of range threads.
-   * @param range_thread_idx Current range thread index.
-   * @param name Attribute/dimension the tile belong to.
-   * @param tile Tile to be unfiltered.
-   * @param tile_chunk_data Tile chunk info, buffers and offsets
-   * @param bitsort_metadata Stores the metadata needed to run the bitsort
-   * filter.
-   * @return Status
-   */
-  Status unfilter_tile_chunk_range(
-      uint64_t num_range_threads,
-      uint64_t thread_idx,
-      const std::string& name,
-      Tile* tile,
       const ChunkData& tile_chunk_data,
-      BitSortFilterMetadataType& bitsort_metadata) const;
+      void* support_data = nullptr) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through

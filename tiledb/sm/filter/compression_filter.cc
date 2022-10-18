@@ -215,7 +215,7 @@ Status CompressionFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  Tile* const offsets_tile = static_cast<Tile* const>(support_data);
+  Tile* const offsets_tile = static_cast<Tile*>(support_data);
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {
     RETURN_NOT_OK(output->append_view(input));

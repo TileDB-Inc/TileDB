@@ -1040,7 +1040,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
               name,
               t,
               tile_chunk_data,
-              bitsort_metadata));
+              &bitsort_metadata));
         } else {
           RETURN_NOT_OK(unfilter_tile_chunk_range(
               num_range_threads, range_thread_idx, name, t, tile_chunk_data));
@@ -1249,45 +1249,8 @@ Status ReaderBase::unfilter_tile_chunk_range(
     const uint64_t thread_idx,
     const std::string& name,
     Tile* tile,
-    const ChunkData& tile_chunk_data) const {
-  assert(tile);
-  // Prevent processing past the end of chunks in case there are more
-  // threads than chunks.
-  if (thread_idx > tile_chunk_data.filtered_chunks_.size() - 1) {
-    return Status::Ok();
-  }
-
-  FilterPipeline filters = array_schema_.filters(name);
-
-  // Append an encryption unfilter when necessary.
-  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-      &filters, array_->get_encryption_key()));
-
-  // Compute chunk boundaries
-  auto&& [t_min, t_max] = compute_chunk_min_max(
-      tile_chunk_data.chunk_offsets_.size(), num_range_threads, thread_idx);
-
-  // Reverse the tile filters.
-  RETURN_NOT_OK(filters.run_reverse_chunk_range(
-      stats_,
-      tile,
-      nullptr,
-      tile_chunk_data,
-      t_min,
-      t_max,
-      storage_manager_->compute_tp()->concurrency_level(),
-      storage_manager_->config()));
-
-  return Status::Ok();
-}
-
-Status ReaderBase::unfilter_tile_chunk_range(
-    uint64_t num_range_threads,
-    uint64_t thread_idx,
-    const std::string& name,
-    Tile* tile,
     const ChunkData& tile_chunk_data,
-    BitSortFilterMetadataType& bitsort_metadata) const {
+    void* support_data) const {
   assert(tile);
   // Prevent processing past the end of chunks in case there are more
   // threads than chunks.
@@ -1309,7 +1272,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
   RETURN_NOT_OK(filters.run_reverse_chunk_range(
       stats_,
       tile,
-      &bitsort_metadata,
+      support_data,
       tile_chunk_data,
       t_min,
       t_max,

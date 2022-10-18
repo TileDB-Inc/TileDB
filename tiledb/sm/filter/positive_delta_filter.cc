@@ -67,7 +67,7 @@ Status PositiveDeltaFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  Tile* const offsets_tile = static_cast<Tile* const>(support_data);
+  Tile* const offsets_tile = static_cast<Tile*>(support_data);
   auto tile_type = tile.type();
 
   // If encoding can't work, just return the input unmodified.
