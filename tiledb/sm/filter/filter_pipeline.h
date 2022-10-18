@@ -120,7 +120,7 @@ class FilterPipeline {
    * Returns pointer to the first instance of a filter in the pipeline with the
    * given filter subclass type.
    *
-   * @tparam SupportDataType Subclass type of Filter to get
+   * @tparam T Subclass type of Filter to get
    * @return Pointer to filter instance in the pipeline, or nullptr if not
    *    found.
    */
@@ -251,7 +251,7 @@ class FilterPipeline {
    */
   Status run_reverse(
       stats::Stats* writer_stats,
-      Tile* tile,
+      Tile* const tile,
       Tile* const offsets_tile,
       ThreadPool* compute_tp,
       const Config& config,
@@ -417,10 +417,10 @@ class FilterPipeline {
    * @return Status
    */
   Status run_reverse_internal(
-      stats::Stats* const reader_stats,
+      stats::Stats* reader_stats,
       Tile* const tile,
       Tile* const offsets_tile,
-      ThreadPool* const compute_tp,
+      ThreadPool* compute_tp,
       const Config& config,
       void* support_data) const;
 };

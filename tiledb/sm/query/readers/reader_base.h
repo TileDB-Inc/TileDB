@@ -501,6 +501,7 @@ class ReaderBase : public StrategyBase {
    * @param name Attribute/dimension the tile belong to.
    * @param tile Tile to be unfiltered.
    * @param tile_chunk_data Tile chunk info, buffers and offsets
+   * @param support_data Support data for the filter
    * @return Status
    */
   Status unfilter_tile_chunk_range(
@@ -606,27 +607,11 @@ class ReaderBase : public StrategyBase {
    *
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be unfiltered.
-   * @return Status
-   */
-  Status unfilter_tile(const std::string& name, Tile* tile) const;
-
-  /**
-   * Runs the input fixed-sized tile for the input attribute or dimension
-   * through the filter pipeline. The tile buffer is modified to contain the
-   * output of the pipeline.
-   *
-   * This function should only be called when the attribute filtering
-   * includes a bitsort filter.
-   *
-   * @param name The attribute/dimension the tile belong to.
-   * @param tile The tile to be unfiltered.
-   * @param pair Stores the metadata needed to run the bitsort filter.
+   * @param support_data Support data for the filter.
    * @return Status
    */
   Status unfilter_tile(
-      const std::string& name,
-      Tile* tile,
-      BitSortFilterMetadataType& bitsort_metadata) const;
+      const std::string& name, Tile* tile, void* support_data = nullptr) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through

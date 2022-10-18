@@ -1627,7 +1627,7 @@ Status ReaderBase::unfilter_tiles(
                                                     const uint64_t& right_idx) {
                   return cmp_obj(left_idx, right_idx);
                 };
-                RETURN_NOT_OK(unfilter_tile(name, t, bitsort_metadata));
+                RETURN_NOT_OK(unfilter_tile(name, t, &bitsort_metadata));
 
               } else {
                 RETURN_NOT_OK(unfilter_tile(name, t));
@@ -1653,9 +1653,7 @@ Status ReaderBase::unfilter_tiles(
 }
 
 Status ReaderBase::unfilter_tile(
-    const std::string& name,
-    Tile* tile,
-    BitSortFilterMetadataType& bitsort_metadata) const {
+    const std::string& name, Tile* tile, void* support_data) const {
   FilterPipeline filters = array_schema_.filters(name);
 
   // Append an encryption unfilter when necessary.
@@ -1669,26 +1667,7 @@ Status ReaderBase::unfilter_tile(
       nullptr,
       storage_manager_->compute_tp(),
       storage_manager_->config(),
-      &bitsort_metadata));
-
-  return Status::Ok();
-}
-
-Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile) const {
-  FilterPipeline filters = array_schema_.filters(name);
-
-  // Append an encryption unfilter when necessary.
-  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-      &filters, array_->get_encryption_key()));
-
-  // Reverse the tile filters.
-  RETURN_NOT_OK(filters.run_reverse(
-      stats_,
-      tile,
-      nullptr,
-      storage_manager_->compute_tp(),
-      storage_manager_->config(),
-      nullptr));
+      support_data));
 
   return Status::Ok();
 }

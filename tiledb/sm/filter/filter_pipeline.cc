@@ -47,9 +47,6 @@
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/tile/tile.h"
 
-#include <memory>
-#include <optional>
-
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -613,11 +610,9 @@ Status FilterPipeline::run_reverse_internal(
   if (!st.ok()) {
     tile->clear_data();
 
-    // Clear the support tiles buffer, but only when possible.
     if (offsets_tile) {
       offsets_tile->clear_data();
     }
-
     return st;
   }
 
