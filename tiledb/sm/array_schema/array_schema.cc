@@ -751,18 +751,24 @@ Status ArraySchema::add_dimension_label(
               std::to_string(nlabel_internal_),
           false};
   // Add dimension label
-  auto dim_label = make_shared<DimensionLabelReference>(
-      HERE(),
-      dim_id,
-      name,
-      uri,
-      dimension_label_schema->label_order(),
-      dimension_label_schema->label_dimension()->type(),
-      dimension_label_schema->label_dimension()->cell_val_num(),
-      dimension_label_schema->label_dimension()->domain(),
-      dimension_label_schema);
-  dimension_labels_.emplace_back(dim_label);
-  dimension_label_map_[name] = dim_label.get();
+  try {
+    auto dim_label = make_shared<DimensionLabelReference>(
+        HERE(),
+        dim_id,
+        name,
+        uri,
+        dimension_label_schema->label_order(),
+        dimension_label_schema->label_type(),
+        dimension_label_schema->label_cell_val_num(),
+        dimension_label_schema->label_domain(),
+        dimension_label_schema);
+    dimension_labels_.emplace_back(dim_label);
+    dimension_label_map_[name] = dim_label.get();
+  } catch (...) {
+    // TODO Add ArraySchemaStatusExcpetion.
+    std::throw_with_nested(StatusException(Status_ArraySchemaError(
+        "Failed to add dimension label '" + name + "'.")));
+  }
   ++nlabel_internal_;  // WARNING: not atomic
   return Status::Ok();
 }

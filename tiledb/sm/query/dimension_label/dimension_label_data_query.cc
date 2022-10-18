@@ -254,7 +254,7 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
   if (!is_sorted_buffer(
           stats_,
           label_buffer,
-          dimension_label->label_dimension()->type(),
+          dimension_label->label_attribute()->type(),
           dimension_label->label_order() == LabelOrder::INCREASING_LABELS)) {
     throw DimensionLabelDataQueryStatusException(
         "Failed to create dimension label query. The label data is not in the "

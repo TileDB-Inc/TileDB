@@ -58,7 +58,7 @@ OrderedRangeQuery::OrderedRangeQuery(
   // Set the subarray.
   Subarray subarray{*query_->subarray()};
   subarray.set_attribute_ranges(
-      dimension_label->label_dimension()->name(), label_ranges);
+      dimension_label->label_attribute()->name(), label_ranges);
   throw_if_not_ok(query_->set_subarray(subarray));
 
   // Set index data buffer that will store the computed ranges.

@@ -287,22 +287,14 @@ TEST_CASE_METHOD(
   URI label_uri{array_name + "/" + x_label_uri};
   DimensionLabel dim_label(label_uri, ctx->storage_manager());
   dim_label.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0);
-  CHECK(dim_label.index_dimension()->type() == Datatype::UINT64);
-  CHECK(dim_label.index_attribute()->type() == Datatype::UINT64);
-  CHECK(dim_label.label_attribute()->type() == label_datatype);
-  CHECK(dim_label.label_attribute()->type() == label_datatype);
+  CHECK(dim_label.schema().index_type() == Datatype::UINT64);
+  CHECK(dim_label.schema().label_type() == label_datatype);
   const auto& indexed_array_schema =
       dim_label.indexed_array()->array_schema_latest();
   CHECK(indexed_array_schema.domain().dim_num() == 1);
   CHECK(indexed_array_schema.attribute_num() == 1);
   CHECK(indexed_array_schema.dimension_ptr(0)->type() == Datatype::UINT64);
   CHECK(indexed_array_schema.attribute(0)->type() == label_datatype);
-  const auto& labelled_array_schema =
-      dim_label.labelled_array()->array_schema_latest();
-  CHECK(labelled_array_schema.domain().dim_num() == 1);
-  CHECK(labelled_array_schema.attribute_num() == 1);
-  CHECK(labelled_array_schema.dimension_ptr(0)->type() == label_datatype);
-  CHECK(labelled_array_schema.attribute(0)->type() == Datatype::UINT64);
   dim_label.close();
 
   // Free remaining resources

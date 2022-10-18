@@ -43,11 +43,19 @@ template <typename T>
 shared_ptr<detail::RangeSetAndSupersetImpl> create_range_subset_internals(
     const Range& superset, bool coalesce_ranges) {
   if (coalesce_ranges) {
-    return make_shared<detail::TypedRangeSetAndSupersetImpl<T, true>>(
+    if (superset.empty()) {
+      return make_shared<detail::TypedRangeSetAndFullsetImpl<T, true>>(HERE());
+    } else {
+      return make_shared<detail::TypedRangeSetAndSupersetImpl<T, true>>(
+          HERE(), superset);
+    }
+  }
+  if (superset.empty()) {
+    return make_shared<detail::TypedRangeSetAndFullsetImpl<T, false>>(HERE());
+  } else {
+    return make_shared<detail::TypedRangeSetAndSupersetImpl<T, false>>(
         HERE(), superset);
   }
-  return make_shared<detail::TypedRangeSetAndSupersetImpl<T, false>>(
-      HERE(), superset);
 }
 
 shared_ptr<detail::RangeSetAndSupersetImpl> range_subset_internals(
@@ -97,8 +105,15 @@ shared_ptr<detail::RangeSetAndSupersetImpl> range_subset_internals(
     case Datatype::TIME_AS:
       return create_range_subset_internals<int64_t>(superset, coalesce_ranges);
     case Datatype::STRING_ASCII:
-      return create_range_subset_internals<std::string>(
-          superset, coalesce_ranges);
+      if (!superset.empty()) {
+        throw std::invalid_argument("Unexpected string range domain.");
+      }
+      if (coalesce_ranges) {
+        return make_shared<
+            detail::TypedRangeSetAndFullsetImpl<std::string, true>>(HERE());
+      }
+      return make_shared<
+          detail::TypedRangeSetAndFullsetImpl<std::string, false>>(HERE());
     default:
       throw std::invalid_argument(
           "Unexpected dimension datatype " + datatype_str(datatype));

@@ -62,7 +62,6 @@ class DimensionLabelStatusException : public StatusException {
 class DimensionLabel {
  public:
   inline const static std::string indexed_array_name{"indexed"};
-  inline const static std::string labelled_array_name{"labelled"};
   /**
    * Constructor.
    *
@@ -74,9 +73,6 @@ class DimensionLabel {
 
   /** Closes the arrays and frees all memory. */
   void close();
-
-  /** Returns the index attribute in the labelled array. */
-  const Attribute* index_attribute() const;
 
   /** Returns the index dimension in the indexed array. */
   const Dimension* index_dimension() const;
@@ -97,14 +93,6 @@ class DimensionLabel {
 
   /** Returns the label attribute in the indexed array. */
   const Attribute* label_attribute() const;
-
-  /** Returns the label dimension in the labelled array. */
-  const Dimension* label_dimension() const;
-
-  /** Returns the array with labels stored on the dimension. */
-  inline shared_ptr<Array> labelled_array() const {
-    return labelled_array_;
-  }
 
   /** Returns the order of the dimension label. */
   LabelOrder label_order() const;
@@ -167,9 +155,6 @@ class DimensionLabel {
   /** Array with index dimension */
   shared_ptr<Array> indexed_array_;
 
-  /** Array with label dimension */
-  shared_ptr<Array> labelled_array_;
-
   /** Latest dimension label schema  */
   shared_ptr<DimensionLabelSchema> schema_;
 
@@ -184,11 +169,8 @@ class DimensionLabel {
    * Loads and checks the dimension label schema.
    *
    * @param indexed_array_schema Array schema for the indexed array
-   * @param labelled_array_schema Array schema for the labelled array
    **/
-  void load_schema(
-      shared_ptr<ArraySchema> indexed_array_schema,
-      shared_ptr<ArraySchema> labelled_array_schema);
+  void load_schema(shared_ptr<ArraySchema> indexed_array_schema);
 };
 
 /**
