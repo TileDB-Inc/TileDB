@@ -3319,8 +3319,8 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
       CHECK(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
     }
 
-    CHECK(
-        !pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
+    CHECK_THROWS(
+        pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp));
   }
 }
 
@@ -3505,9 +3505,8 @@ TEST_CASE(
       CHECK(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
     }
 
-    CHECK(
-        !pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
-             .ok());
+    CHECK_THROWS(
+        pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp));
   }
 
   Tile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
@@ -3974,8 +3973,8 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     pipeline.add_filter(EncryptionAES256GCMFilter());
 
     // No key set
-    CHECK(
-        !pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
+    CHECK_THROWS(
+        pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp));
 
     // Create and set a key
     char key[32];
@@ -4006,9 +4005,8 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     key[0]++;
     filter->set_key(key);
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK(!pipeline
-               .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-               .ok());
+    CHECK_THROWS(pipeline
+               .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config));
 
     // Fix key and check success. Note: this test depends on the implementation
     // leaving the tile data unmodified when the decryption fails, which is not
