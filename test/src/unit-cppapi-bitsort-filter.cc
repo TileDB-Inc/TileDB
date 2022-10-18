@@ -45,7 +45,7 @@ const int BITSORT_DIM_LO = 1;
 const int BITSORT_DIM_HI = 10;
 const int TILE_EXTENT = 4;
 const int CAPACITY = 32;
-const int SEED = 0xADA65ED6;
+const uint64_t SEED = 0xADA65ED6;
 
 // Defining distribution parameters.
 typedef typename std::uniform_int_distribution<uint64_t>
@@ -696,8 +696,10 @@ TEMPLATE_TEST_CASE(
   }
 }
 
-/*TEST_CASE("bitsort filter debugging test (set capacity)",
-"[cppapi][filter][bitsort][capacity][!mayfail]") { uint64_t num_dims = 2;
+TEST_CASE(
+    "bitsort filter debugging test (set capacity)",
+    "[cppapi][filter][bitsort][capacity]") {
+  uint64_t num_dims = 2;
   std::string array_name = "cpp_unit_bitsort_array";
   tiledb_layout_t write_layout = TILEDB_GLOBAL_ORDER;
   tiledb_layout_t read_layout = TILEDB_ROW_MAJOR;
@@ -705,6 +707,10 @@ TEMPLATE_TEST_CASE(
   bool set_capacity = true;
 
   bitsort_filter_api_test<int32_t, int16_t, IntDistribution>(
-        array_name, num_dims, write_layout, read_layout, set_subarray,
-set_capacity);
-}*/
+      array_name,
+      num_dims,
+      write_layout,
+      read_layout,
+      set_subarray,
+      set_capacity);
+}

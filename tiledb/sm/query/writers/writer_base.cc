@@ -774,22 +774,18 @@ Status WriterBase::filter_tiles_bitsort(
   auto tile_num = tiles->size();
   std::vector<std::tuple<Tile*, std::vector<Tile*>, bool, bool>> args;
   args.reserve(tile_num);
-  auto args_status = parallel_for(
-      storage_manager_->compute_tp(), 0, attr_tiles.size(), [&](uint64_t i) {
-        auto& tile = attr_tiles[i];
+  for (uint64_t i = 0; i < attr_tiles.size(); i++) {
+    auto& tile = attr_tiles[i];
 
-        // Collect the dim tiles argument.
-        std::vector<Tile*> dim_tiles_temp;
-        dim_tiles_temp.reserve(dim_tiles.size());
-        for (const auto& elem : dim_tiles) {
-          dim_tiles_temp.emplace_back(&((*elem)[i].fixed_tile()));
-        }
+    // Collect the dim tiles argument.
+    std::vector<Tile*> dim_tiles_temp;
+    dim_tiles_temp.reserve(dim_tiles.size());
+    for (const auto& elem : dim_tiles) {
+      dim_tiles_temp.emplace_back(&((*elem)[i].fixed_tile()));
+    }
 
-        args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp, false, false);
-
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(args_status);
+    args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp, false, false);
+  }
 
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
