@@ -30,9 +30,7 @@
  * This file implements class WriterBase.
  */
 
-#include <functional>
-#include <iostream>  // TODO: delete
-
+#include "tiledb/sm/query/writers/writer_base.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -51,7 +49,6 @@
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
-#include "tiledb/sm/query/writers/writer_base.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
@@ -679,54 +676,36 @@ Status WriterBase::create_fragment(
   return Status::Ok();
 }
 
-template <>
-Status WriterBase::filter_tiles<std::vector<Tile*>* const>(
-    const std::string& name,
-    WriterTileVector* tiles,
-    const std::vector<WriterTileVector*>& dim_tiles) {
-  // Filter all tiles
-  auto tile_num = tiles->size();
-  std::vector<std::tuple<Tile*, std::vector<Tile*>, bool, bool>> args;
-  args.reserve(tile_num);
-  auto args_status = parallel_for(
-      storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
-        auto& tile = (*tiles)[i];
+Status WriterBase::filter_tiles(
+    std::unordered_map<std::string, WriterTileVector>* tiles) {
+  auto timer_se = stats_->start_timer("filter_tiles");
+  const auto bitsort_attr = array_schema_.bitsort_filter_attr();
 
-        // Collect the dim tiles argument.
-        std::vector<Tile*> dim_tiles_temp;
-        dim_tiles_temp.reserve(dim_tiles.size());
-        for (const auto& elem : dim_tiles) {
-          dim_tiles_temp.emplace_back(&((*elem)[i].fixed_tile()));
+  auto num = buffers_.size();
+  auto status =
+      parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
+        auto buff_it = buffers_.begin();
+        std::advance(buff_it, i);
+        const auto& name = buff_it->first;
+
+        // Run a special function for the bitsort filter.
+        if (bitsort_attr.has_value() && name == bitsort_attr.value()) {
+          RETURN_CANCEL_OR_ERROR(filter_tiles_bitsort(name, tiles));
+        } else if (bitsort_attr.has_value() && array_schema_.is_dim(name)) {
+          // When there is a bitsort filter, dimensions will be filtered at the
+          // same time as the attribute.
+        } else {
+          RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
         }
-
-        args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp, false, false);
-
         return Status::Ok();
       });
-  RETURN_NOT_OK(args_status);
 
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
-        auto& [tile, support_tiles, contains_offsets, is_nullable] = args[i];
-        RETURN_NOT_OK(filter_tile(
-            name,
-            tile,
-            nullptr,
-            contains_offsets,
-            is_nullable,
-            &support_tiles));
-        return Status::Ok();
-      });
   RETURN_NOT_OK(status);
-
   return Status::Ok();
 }
 
-template <typename SupportTileType>
 Status WriterBase::filter_tiles(
-    const std::string& name,
-    WriterTileVector* tiles,
-    const std::vector<WriterTileVector*>&) {
+    const std::string& name, WriterTileVector* tiles) {
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
 
@@ -779,44 +758,52 @@ Status WriterBase::filter_tiles(
   return Status::Ok();
 }
 
-Status WriterBase::filter_tiles(
+Status WriterBase::filter_tiles_bitsort(
+    const std::string& name,
     std::unordered_map<std::string, WriterTileVector>* tiles) {
-  auto timer_se = stats_->start_timer("filter_tiles");
-
   std::vector<WriterTileVector*> dim_tiles;
   dim_tiles.reserve(array_schema_.dim_num());
-  // Since the bitsort filter processes the dimension tiles, we pass the
-  // dimension tiles to be processed with the attribute containing the bitsort
-  // filter in its filter pipeline.
-  const auto attr_value = array_schema_.bitsort_filter_attr();
-  if (attr_value.has_value()) {
-    std::string attr_name = attr_value.value();
-    for (const auto& name : array_schema_.dim_names()) {
-      dim_tiles.emplace_back(&((*tiles)[name]));
-    }
-
-    RETURN_CANCEL_OR_ERROR(filter_tiles<std::vector<Tile*>* const>(
-        attr_name, &((*tiles)[attr_name]), dim_tiles));
+  for (const auto& name : array_schema_.dim_names()) {
+    dim_tiles.emplace_back(&((*tiles)[name]));
   }
 
-  auto num = buffers_.size();
-  auto status =
-      parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
-        auto buff_it = buffers_.begin();
-        std::advance(buff_it, i);
-        const auto& name = buff_it->first;
-        // We want to only process attributes and dimensions in parallel when
-        // there is no bitsort filter in the schema. Otherwise, we only want to
-        // process the other attributes that are not the attribute with the
-        // bitsort filter in parallel.
-        if (!attr_value || (attr_value && array_schema_.is_attr(name) &&
-                            name != attr_value.value())) {
-          RETURN_CANCEL_OR_ERROR(filter_tiles<Tile*>(name, &((*tiles)[name])));
+  auto& attr_tiles = (*tiles)[name];
+
+  // Filter all tiles
+  auto tile_num = tiles->size();
+  std::vector<std::tuple<Tile*, std::vector<Tile*>, bool, bool>> args;
+  args.reserve(tile_num);
+  auto args_status = parallel_for(
+      storage_manager_->compute_tp(), 0, attr_tiles.size(), [&](uint64_t i) {
+        auto& tile = attr_tiles[i];
+
+        // Collect the dim tiles argument.
+        std::vector<Tile*> dim_tiles_temp;
+        dim_tiles_temp.reserve(dim_tiles.size());
+        for (const auto& elem : dim_tiles) {
+          dim_tiles_temp.emplace_back(&((*elem)[i].fixed_tile()));
         }
+
+        args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp, false, false);
+
         return Status::Ok();
       });
+  RETURN_NOT_OK(args_status);
 
+  auto status = parallel_for(
+      storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
+        auto& [tile, support_tiles, contains_offsets, is_nullable] = args[i];
+        RETURN_NOT_OK(filter_tile(
+            name,
+            tile,
+            nullptr,
+            contains_offsets,
+            is_nullable,
+            &support_tiles));
+        return Status::Ok();
+      });
   RETURN_NOT_OK(status);
+
   return Status::Ok();
 }
 

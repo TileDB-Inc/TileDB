@@ -282,19 +282,24 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * Runs the input tiles for the input attribute through the filter pipeline.
    * The tile buffers are modified to contain the output of the pipeline.
    *
-   * @tparam SupportTileType Type of the support argument passed to the filter
-   * pipeline.
    * @param name The attribute/dimension the tiles belong to.
    * @param tile The tiles to be filtered.
-   * @param dim_tiles The dimension tile array (used for BitSortFilter).
    * @return Status
    */
+  Status filter_tiles(const std::string& name, WriterTileVector* tiles);
 
-  template <typename SupportTileType>
-  Status filter_tiles(
+  /**
+   * Runs the input tiles for the input attribute through the filter pipeline
+   * for a bitsort attribute.
+   * The tile buffers are modified to contain the output of the pipeline.
+   *
+   * @param name The attribute/dimension the tiles belong to.
+   * @param tiles The tiles map, per attribute.
+   * @return Status
+   */
+  Status filter_tiles_bitsort(
       const std::string& name,
-      WriterTileVector* tiles,
-      const std::vector<WriterTileVector*>& dim_tiles = {});
+      std::unordered_map<std::string, WriterTileVector>* tiles);
 
   /**
    * Runs the input tile for the input attribute/dimension through the filter
@@ -313,7 +318,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status filter_tile(
       const std::string& name,
       Tile* tile,
-      Tile* const offsets_tile,
+      Tile* offsets_tile,
       bool offsets,
       bool nullable,
       void* support_data);
