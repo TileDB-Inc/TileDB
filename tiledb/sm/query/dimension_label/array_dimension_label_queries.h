@@ -36,7 +36,8 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/query_status.h"
-#include "tiledb/sm/query/dimension_label/dimension_label_query.h"
+#include "tiledb/sm/query/dimension_label/dimension_label_data_query.h"
+#include "tiledb/sm/query/dimension_label/dimension_label_range_query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
@@ -53,6 +54,14 @@ class QueryBuffer;
 class Subarray;
 
 enum class QueryType : uint8_t;
+
+/** Class for locally generated status exceptions. */
+class DimensionLabelQueryStatusException : public StatusException {
+ public:
+  explicit DimensionLabelQueryStatusException(const std::string& msg)
+      : StatusException("DimensionLabelQuery", msg) {
+  }
+};
 
 class ArrayDimensionLabelQueries {
  public:
@@ -106,7 +115,7 @@ class ArrayDimensionLabelQueries {
 
   /** Returns ``true`` if there are any range queries. */
   inline bool has_range_query() const {
-    return !range_queries_map_.empty();
+    return !range_queries_.empty();
   }
 
   /**
@@ -134,25 +143,24 @@ class ArrayDimensionLabelQueries {
   /** The storage manager. */
   StorageManager* storage_manager_;
 
-  /** TODO: Docs */
+  /** Class stats object for timing. */
   stats::Stats* stats_;
 
   /** Map from label name to dimension label opened by this query. */
   std::unordered_map<std::string, tdb_unique_ptr<DimensionLabel>>
       dimension_labels_;
 
-  /** Map from label name to dimension label range query. */
-  std::unordered_map<std::string, tdb_unique_ptr<DimensionLabelQuery>>
-      range_queries_map_;
+  /** Dimension label range queries */
+  std::vector<tdb_unique_ptr<DimensionLabelRangeQuery>> range_queries_;
 
   /**
-   * Non-owning vector for accessing query by dimension index.
+   * Non-owning vector for accessing range query by dimension index.
    *
    * Note: This vector is always sized to the number of dimensions in the array.
    * There can be at most on query per dimension. If there is no query on the
    * dimension, it contains a nullpointer.
    */
-  std::vector<DimensionLabelQuery*> range_queries_;
+  std::vector<DimensionLabelRangeQuery*> label_range_queries_by_dim_idx_;
 
   /**
    * Dimension label data queries.
@@ -160,10 +168,17 @@ class ArrayDimensionLabelQueries {
    * Note: For the data queries, the element order to the queries is
    * unimportant and does not correspond to dimension index or any other value.
    */
-  std::vector<tdb_unique_ptr<DimensionLabelQuery>> data_queries_;
+  std::vector<tdb_unique_ptr<DimensionLabelDataQuery>> data_queries_;
 
-  /** Non-owning map from label name to dimension label data query. */
-  std::unordered_map<std::string, DimensionLabelQuery*> data_queries_map_;
+  /**
+   * Non-owning vector for accessing data query by dimension index.
+   *
+   * Note: The outer vector is always sized to the number of dimensions in the
+   * array. There can be multiple queries on a dimension. If there is no query
+   * on the dimension, the inner vector will be empty.
+   */
+  std::vector<std::vector<DimensionLabelDataQuery*>>
+      label_data_queries_by_dim_idx_;
 
   /** The status of the range queries. */
   QueryStatus range_query_status_;
@@ -177,41 +192,28 @@ class ArrayDimensionLabelQueries {
   optional<std::string> fragment_name_;
 
   /**
-   * Initializes all queries for reading label data.
-   *
-   * @param array Array for the parent query.
-   * @param subarray Subarray for the parent query.
-   * @param label_buffers A map of query buffers with label buffers.
-   */
-  void add_data_queries_for_read(
-      Array* array,
-      const Subarray& subarray,
-      const std::unordered_map<std::string, QueryBuffer>& label_buffers);
-
-  /**
-   * Initializes all queries for writing label data.
+   * Initializes read queries.
    *
    * @param array Array for the parent query.
    * @param subarray Subarray for the parent query.
    * @param label_buffers A map of query buffers with label buffers.
    * @param array_buffers Non-label buffers set on the parent query.
    */
-  void add_data_queries_for_write(
+  void add_read_queries(
       Array* array,
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers,
       const std::unordered_map<std::string, QueryBuffer>& array_buffers);
 
   /**
-   * Initializes all queries for reading dimension ranges.
-   *
+   * Initializes write queries.
    *
    * @param array Array for the parent query.
    * @param subarray Subarray for the parent query.
    * @param label_buffers A map of query buffers with label buffers.
    * @param array_buffers Non-label buffers set on the parent query.
    */
-  void add_range_queries(
+  void add_write_queries(
       Array* array,
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers,

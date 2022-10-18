@@ -1218,10 +1218,23 @@ Status Query::init() {
 
     // Create dimension label queries and remove labels from subarray.
     if (uses_dimension_labels()) {
-      if (type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
+      // Check the layout is valid.
+      if (layout_ == Layout::GLOBAL_ORDER) {
         return logger_->status(
-            Status_QueryError("Cannot init query; Querying dimension labels is "
-                              "not supported on global order writes"));
+            Status_QueryError("Cannot init query; The global order layout is "
+                              "not supported when querying dimension labels"));
+      }
+
+      // Support for reading dimension label data from sparse arrays with
+      // multiple dimensions is not yet implemented. The data needs to be
+      // reformatted after reading to match the form of other attribute and
+      // dimension output.
+      if (!only_dim_label_query() && type_ == QueryType::READ &&
+          !array_schema_->dense() && array_schema_->dim_num() > 1 &&
+          !label_buffers_.empty()) {
+        return logger_->status(Status_QueryError(
+            "Cannot initialize query; Reading dimension label data is not yet "
+            "supported on sparse arrays with multiple dimensions."));
       }
 
       // Initialize the dimension label queries.
@@ -1234,25 +1247,11 @@ Status Query::init() {
           label_buffers_,
           buffers_,
           fragment_name_));
-
-      // Clear the label ranges from the subarray. They are no longer needed.
-      subarray_.remove_label_ranges();
-
-      // Do not allow reading data from dimension labels for sparse arrays
-      // unless we are only returning the dimension label data. If returning
-      // data for the entire sparse array, the output for the dimension label
-      // data needs to be re-arranged to match the coordinate form we use for
-      // sparse reads. This has not yet been implemented.
-      if (!only_dim_label_query() && type_ == QueryType::READ &&
-          !array_schema_->dense() && dim_label_queries_->has_data_query()) {
-        return logger_->status(Status_QueryError(
-            "Cannot initialize query; Reading dimension label data is not yet "
-            "supported on sparse arrays."));
-      }
     }
 
-    // Create the query strategy if querying main array.
-    if (!only_dim_label_query()) {
+    // Create the query strategy if querying main array and the Subarray does
+    // not need to be updated.
+    if (!only_dim_label_query() && !subarray_.has_label_ranges()) {
       RETURN_NOT_OK(create_strategy());
     }
   }
@@ -1309,7 +1308,7 @@ Status Query::process() {
 
   // Check if we need to process label ranges and update subarray before
   // continuing to the main query.
-  if (dim_label_queries_ && dim_label_queries_->completed_range_queries()) {
+  if (dim_label_queries_ && !dim_label_queries_->completed_range_queries()) {
     // Process the dimension label queries.
     dim_label_queries_->process_range_queries(subarray_);
 
@@ -1323,16 +1322,12 @@ Status Query::process() {
                             "dimension label ranges."));
     }
 
-    // Check if the subarray has a dimension with no data.
-    // Note: For now we are returning an error if no dimension label data was
-    // found on a range. In the future, we may want to update this to instead
-    // finalize the query as returning no results.
-    for (uint32_t dim_idx{0}; dim_idx < subarray_.dim_num(); ++dim_idx) {
-      if (subarray_.empty(dim_idx)) {
-        return logger_->status(Status_QueryError(
-            "Cannot process query; No range set on dimension " +
-            std::to_string(dim_idx) + " after update dimension label ranges."));
+    if (!only_dim_label_query()) {
+      if (strategy_ != nullptr) {
+        dynamic_cast<StrategyBase*>(strategy_.get())->stats()->reset();
+        strategy_ = nullptr;
       }
+      throw_if_not_ok(create_strategy(true));
     }
   }
 

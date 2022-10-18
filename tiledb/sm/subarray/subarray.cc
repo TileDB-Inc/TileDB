@@ -155,6 +155,16 @@ Subarray& Subarray::operator=(Subarray&& subarray) noexcept {
 /*               API              */
 /* ****************************** */
 
+void Subarray::add_index_ranges_from_label(
+    const uint32_t dim_idx,
+    const bool is_point_ranges,
+    const void* start,
+    const uint64_t count) {
+  is_point_ranges ?
+      throw_if_not_ok(add_point_ranges(dim_idx, start, count, false)) :
+      throw_if_not_ok(add_ranges_list(dim_idx, start, count, false));
+}
+
 void Subarray::add_label_range(
     const DimensionLabelReference& dim_label_ref,
     Range&& range,
@@ -273,11 +283,6 @@ Status Subarray::add_range(
     return logger_->status(Status_SubarrayError(
         "Cannot add range to dimension; Invalid dimension index"));
   }
-  if (label_range_subset_[dim_idx].has_value()) {
-    return logger_->status(Status_SubarrayError(
-        "Cannot add range to to dimension; A range is already set on a "
-        "dimension label for this dimension"));
-  }
 
   // Must reset the result size and tile overlap
   est_result_size_computed_ = false;
@@ -353,6 +358,12 @@ Status Subarray::add_range(
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
 
+  if (label_range_subset_[dim_idx].has_value()) {
+    return logger_->status(Status_SubarrayError(
+        "Cannot add range to to dimension; A range is already set on a "
+        "dimension label for this dimension"));
+  }
+
   QueryType array_query_type{array_->get_query_type()};
   if (array_query_type == QueryType::WRITE ||
       array_query_type == QueryType::MODIFY_EXCLUSIVE) {
@@ -403,10 +414,16 @@ Status Subarray::add_range(
 }
 
 Status Subarray::add_point_ranges(
-    unsigned dim_idx, const void* start, uint64_t count) {
+    unsigned dim_idx, const void* start, uint64_t count, bool check_for_label) {
   if (dim_idx >= this->array_->array_schema_latest().dim_num()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
+  }
+
+  if (check_for_label && label_range_subset_[dim_idx].has_value()) {
+    return logger_->status(Status_SubarrayError(
+        "Cannot add range to to dimension; A range is already set on a "
+        "dimension label for this dimension"));
   }
 
   QueryType array_query_type{array_->get_query_type()};
@@ -467,10 +484,16 @@ Status Subarray::add_point_ranges(
 }
 
 Status Subarray::add_ranges_list(
-    unsigned dim_idx, const void* start, uint64_t count) {
+    unsigned dim_idx, const void* start, uint64_t count, bool check_for_label) {
   if (dim_idx >= this->array_->array_schema_latest().dim_num()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
+  }
+
+  if (check_for_label && label_range_subset_[dim_idx].has_value()) {
+    return logger_->status(Status_SubarrayError(
+        "Cannot add range to to dimension; A range is already set on a "
+        "dimension label for this dimension"));
   }
 
   if (count % 2) {
@@ -552,6 +575,12 @@ Status Subarray::add_range_var(
   if (dim_idx >= array_->array_schema_latest().dim_num()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
+  }
+
+  if (label_range_subset_[dim_idx].has_value()) {
+    return logger_->status(Status_SubarrayError(
+        "Cannot add range to to dimension; A range is already set on a "
+        "dimension label for this dimension"));
   }
 
   if ((start == nullptr && start_size != 0) ||
@@ -1078,11 +1107,6 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   ret.compute_range_offsets();
 
   return ret;
-}
-
-void Subarray::remove_label_ranges() {
-  label_range_subset_.clear();
-  label_range_subset_.resize(array_->array_schema_latest().dim_num(), nullopt);
 }
 
 bool Subarray::has_label_ranges() const {

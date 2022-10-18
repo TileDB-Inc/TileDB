@@ -251,6 +251,21 @@ class Subarray {
   Status set_subarray(const void* subarray);
 
   /**
+   * Adds dimension ranges computed from label ranges on the dimension label.
+   *
+   * @param dim_idx The dimension to add ranges to.
+   * @param is_point_ranges If ``true`` the data contains point ranges.
+   *     Otherwise, it contains standard ranges.
+   * @param start Pointer to the start of the range array.
+   * @param count Number of total elements in the range array.
+   */
+  void add_index_ranges_from_label(
+      const uint32_t dim_idx,
+      const bool is_point_ranges,
+      const void* start,
+      const uint64_t count);
+
+  /**
    * Adds a range along the dimension with the given index for the requested
    * dimension label.
    *
@@ -313,25 +328,40 @@ class Subarray {
   /**
    * @brief Set point ranges from an array
    *
-   * @param dim_idx Dimension index
-   * @param start Pointer to start of the array
-   * @param count Number of elements to add
+   * @param dim_idx Dimension index.
+   * @param start Pointer to start of the array.
+   * @param count Number of elements to add.
+   * @param check_for_label If ``true``, verify no label ranges set on this
+   *   dimension. This should check for labels unless being called by
+   *   ``add_index_ranges_from_label`` to update label ranges with index values.
    * @return Status
    */
-  Status add_point_ranges(unsigned dim_idx, const void* start, uint64_t count);
+  Status add_point_ranges(
+      unsigned dim_idx,
+      const void* start,
+      uint64_t count,
+      bool check_for_label = true);
 
   /**
    * @brief Set ranges from an array of ranges (paired { begin,end } )
    *
-   * @param dim_idx Dimension index
-   * @param start Pointer to start of the array
-   * @param count Number of pairs to add
+   * @param dim_idx Dimension index.
+   * @param start Pointer to start of the array.
+   * @param count Number of total elemenst to add. Must contain two elements for
+   *     each range.
+   * @param check_for_label If ``true``, verify no label ranges set on this
+   *   dimension. This should check for labels unless being called by
+   *   ``add_index_ranges_from_label`` to update label ranges with index values.
    * @return Status
    * @note The pairs list is logically { {begin1,end1}, {begin2,end2}, ...} but
    * because of typing considerations from the C api is simply presented as
    * a linear list of individual items, though they should be multiple of 2
    */
-  Status add_ranges_list(unsigned dim_idx, const void* start, uint64_t count);
+  Status add_ranges_list(
+      unsigned dim_idx,
+      const void* start,
+      uint64_t count,
+      bool check_for_label = true);
 
   /**
    * Adds a variable-sized range to the (read/write) query on the input
@@ -884,11 +914,6 @@ class Subarray {
    * @param dim_idx The dimension index to check for ranges.
    */
   bool has_label_ranges(const uint32_t dim_index) const;
-
-  /**
-   * Removes all label ranges from the subarray.
-   */
-  void remove_label_ranges();
 
   /**
    * Set default indicator for dimension subarray. Used by serialization only

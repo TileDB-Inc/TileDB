@@ -47,10 +47,12 @@ class Attribute;
 class Dimension;
 class URI;
 
-/** Return a Status_DimensionLabelError error class Status with a given
- * message **/
-inline Status Status_DimensionLabelError(const std::string& msg) {
-  return {"[TileDB::DimensionLabel] Error", msg};
+/** Class for locally generated status exceptions. */
+class DimensionLabelStatusException : public StatusException {
+ public:
+  explicit DimensionLabelStatusException(const std::string& msg)
+      : StatusException("DimensionLabel", msg) {
+  }
 };
 
 /**
@@ -201,20 +203,6 @@ void create_dimension_label(
     const URI& uri,
     StorageManager& storage_manager,
     const DimensionLabelSchema& schema);
-
-/**
- * Removes all fragments URIs from a fragment list that do not have a similarly
- * named fragment in a comparison fragments list.
- *
- * The comparison here is only on the base name of the fragment URIs. Fragments
- * may be re-ordered upon return.
- *
- * @param comparison_fragment_uris The list of fragment URIs to check against.
- * @param fragment_list The list of fragment URIs to prune.
- */
-void intersect_fragments(
-    const std::vector<TimestampedURI>& comparison_fragment_list,
-    std::vector<TimestampedURI>& fragment_list);
 
 }  // namespace tiledb::sm
 
