@@ -140,17 +140,21 @@ struct CPPOrderedDimLabelReaderFixedFx {
 
         // Get the value in between the labels we are testing for or a label
         // before the first one.
-        T range_start = first == min_index_ ?
+        T first_label = first == min_index_ ?
                             labels_[first] - boundary_modifier :
                             (labels_[first] + labels_[first - 1]) / 2;
 
         // Get the value in between the labels we are testing for or a label
         // after the last one.
-        T range_end = second == max_index_ ?
-                          labels_[second] + boundary_modifier :
-                          (labels_[second] + labels_[second + 1]) / 2;
+        T second_label = second == max_index_ ?
+                             labels_[second] + boundary_modifier :
+                             (labels_[second] + labels_[second + 1]) / 2;
 
-        input_ranges.emplace_back(&range_start, &range_end, sizeof(T));
+        // Always add range so that the lower bound is less than or equal to the
+        // upper bound.
+        increasing_labels_ ?
+            input_ranges.emplace_back(&first_label, &second_label, sizeof(T)) :
+            input_ranges.emplace_back(&second_label, &first_label, sizeof(T));
 
         Subarray subarray(ctx_, array);
         subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
@@ -419,15 +423,15 @@ TEST_CASE_METHOD(
   write_labels(1, 4, {4.0, 3.0, 2.0, 1.0});
   std::vector<double> ranges{2.1, 2.8};
   REQUIRE_THROWS_WITH(
-      read_labels({2.8, 2.1}),
+      read_labels({2.1, 2.8}),
       "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
       "contained no values");
   REQUIRE_THROWS_WITH(
-      read_labels({0.0, -2.0}),
+      read_labels({-2.0, 0.0}),
       "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
       "contained no values");
   REQUIRE_THROWS_WITH(
-      read_labels({6.0, 5.0}),
+      read_labels({5.0, 6.0}),
       "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
       "contained no values");
 }
@@ -492,7 +496,7 @@ TEST_CASE_METHOD(
     "decreasing]") {
   increasing_labels_ = false;
   write_labels(16, 25, {10, 9, 8, 7, 6, 5, 4, 3, 2, 1});
-  CHECK(read_labels({9, 8}) == std::vector({17, 18}));
+  CHECK(read_labels({8, 9}) == std::vector({17, 18}));
 }
 
 TEST_CASE_METHOD(
@@ -513,7 +517,7 @@ TEST_CASE_METHOD(
     "decreasing]") {
   increasing_labels_ = false;
   write_labels(16, 25, {10, 9, 8, 7, 6, 5, 4, 3, 2, 1});
-  CHECK(read_labels({6, 5}) == std::vector({20, 21}));
+  CHECK(read_labels({5, 6}) == std::vector({20, 21}));
 }
 
 struct CPPOrderedDimLabelReaderVarFx {
@@ -632,24 +636,29 @@ struct CPPOrderedDimLabelReaderVarFx {
 
         // Get the value in between the labels we are testing for or a label
         // before the first one.
-        double range_start = first == min_index_ ?
+        double first_label = first == min_index_ ?
                                  labels_[first] - boundary_modifier :
                                  (labels_[first] + labels_[first - 1]) / 2;
 
         // Get the value in between the labels we are testing for or a label
         // after the last one.
-        double range_end = second == max_index_ ?
-                               labels_[second] + boundary_modifier :
-                               (labels_[second] + labels_[second + 1]) / 2;
+        double second_label = second == max_index_ ?
+                                  labels_[second] + boundary_modifier :
+                                  (labels_[second] + labels_[second + 1]) / 2;
 
         // Set attribute ranges.
         std::stringstream stream;
-        stream << std::fixed << std::setprecision(2) << range_start
-               << range_end;
+        stream << std::fixed << std::setprecision(2) << first_label
+               << second_label;
         auto labels_data = stream.str();
 
-        input_ranges.emplace_back(
-            labels_data.data(), 4, labels_data.data() + 4, 4);
+        // Always add range so that the lower bound is less than or equal to the
+        // upper bound.
+        increasing_labels_ ?
+            input_ranges.emplace_back(
+                labels_data.data(), 4, labels_data.data() + 4, 4) :
+            input_ranges.emplace_back(
+                labels_data.data() + 4, 4, labels_data.data(), 4);
 
         Subarray subarray(ctx_, array);
         subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
@@ -752,7 +761,7 @@ TEST_CASE_METHOD(
     "[ordered-dim-label-reader][var][boundary][binary-search][decreasing]") {
   increasing_labels_ = false;
   write_labels(16, 25, {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1});
-  CHECK(read_labels({0.9, 0.8}) == std::vector({17, 18}));
+  CHECK(read_labels({0.8, 0.9}) == std::vector({17, 18}));
 }
 
 TEST_CASE_METHOD(
@@ -771,7 +780,7 @@ TEST_CASE_METHOD(
     "[ordered-dim-label-reader][var][boundary][tile-search][decreasing]") {
   increasing_labels_ = false;
   write_labels(16, 25, {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1});
-  CHECK(read_labels({0.6, 0.5}) == std::vector({20, 21}));
+  CHECK(read_labels({0.5, 0.6}) == std::vector({20, 21}));
 }
 
 TEST_CASE_METHOD(
@@ -801,15 +810,15 @@ TEST_CASE_METHOD(
   write_labels(1, 4, {4.0, 3.0, 2.0, 1.0});
   std::vector<double> ranges{2.1, 2.8};
   REQUIRE_THROWS_WITH(
-      read_labels({2.8, 2.1}),
+      read_labels({2.1, 2.8}),
       "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
       "contained no values");
   REQUIRE_THROWS_WITH(
-      read_labels({0.0, -2.0}),
+      read_labels({-2.0, 0.0}),
       "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
       "contained no values");
   REQUIRE_THROWS_WITH(
-      read_labels({6.0, 5.0}),
+      read_labels({5.0, 5.0}),
       "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
       "contained no values");
 }

@@ -43,6 +43,7 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/reader_base.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
@@ -50,7 +51,6 @@ namespace tiledb {
 namespace sm {
 
 class Array;
-class StorageManager;
 
 /** Processes dense read queries. */
 class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {

@@ -300,7 +300,7 @@ Status Azure::flush_blob(const URI& uri) {
     // uncommited blocks ~7 days later. We chose to delete the blob
     // as a best-effort operation. We intentionally are ignoring the
     // returned Status from 'remove_blob'.
-    remove_blob(uri);
+    throw_if_not_ok(remove_blob(uri));
 
     // Release all instance state associated with this block list
     // transactions.

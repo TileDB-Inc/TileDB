@@ -44,8 +44,6 @@
 #endif
 // clang-format on
 
-#include "tiledb/sm/query/ast/query_ast.h"
-#include "tiledb/sm/query/query.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -60,14 +58,17 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/writers/global_order_writer.h"
+#include "tiledb/sm/query/ast/query_ast.h"
 #include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
-#include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/legacy/reader.h"
+#include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
+#include "tiledb/sm/query/writers/global_order_writer.h"
 #include "tiledb/sm/query/writers/writer_base.h"
 #include "tiledb/sm/serialization/config.h"
+#include "tiledb/sm/serialization/fragment_metadata.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
@@ -80,8 +81,6 @@ namespace sm {
 namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
-
-enum class SerializationContext { CLIENT, SERVER, BACKUP };
 
 shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
 
@@ -339,7 +338,7 @@ Status subarray_partitioner_to_capnp(
 Status subarray_partitioner_from_capnp(
     Stats* query_stats,
     Stats* reader_stats,
-    const Config* config,
+    const Config& config,
     const Array* array,
     const capnp::SubarrayPartitioner::Reader& reader,
     SubarrayPartitioner* partitioner,
@@ -363,7 +362,7 @@ Status subarray_partitioner_from_capnp(
   Subarray subarray(array, layout, query_stats, dummy_logger, false);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner = SubarrayPartitioner(
-      config,
+      &config,
       subarray,
       memory_budget,
       memory_budget_var,
@@ -424,12 +423,12 @@ Status subarray_partitioner_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
     if (compute_current_tile_overlap) {
-      partition_info->partition_.precompute_tile_overlap(
+      throw_if_not_ok(partition_info->partition_.precompute_tile_overlap(
           partition_info->start_,
           partition_info->end_,
-          config,
+          &config,
           compute_tp,
-          true);
+          true));
     }
   }
 
@@ -692,7 +691,8 @@ static Status condition_ast_to_capnp(
 
     for (size_t i = 0; i < node->get_children().size(); ++i) {
       auto child_builder = children_builder[i];
-      condition_ast_to_capnp(node->get_children()[i], &child_builder);
+      throw_if_not_ok(
+          condition_ast_to_capnp(node->get_children()[i], &child_builder));
     }
 
     // Validate and store the query condition combination op.
@@ -1149,7 +1149,8 @@ Status delete_to_capnp(
 Status writer_to_capnp(
     const Query& query,
     WriterBase& writer,
-    capnp::Writer::Builder* writer_builder) {
+    capnp::Writer::Builder* writer_builder,
+    bool client_side) {
   writer_builder->setCheckCoordDups(writer.get_check_coord_dups());
   writer_builder->setCheckCoordOOB(writer.get_check_coord_oob());
   writer_builder->setDedupCoords(writer.get_dedup_coords());
@@ -1189,7 +1190,7 @@ Status writer_to_capnp(
     if (globalstate) {
       auto global_state_builder = writer_builder->initGlobalWriteStateV1();
       RETURN_NOT_OK(global_write_state_to_capnp(
-          query, globalwriter, &global_state_builder));
+          query, globalwriter, &global_state_builder, client_side));
     }
   }
 
@@ -1199,7 +1200,8 @@ Status writer_to_capnp(
 Status writer_from_capnp(
     const Query& query,
     const capnp::Writer::Reader& writer_reader,
-    WriterBase* writer) {
+    WriterBase* writer,
+    const SerializationContext context) {
   writer->set_check_coord_dups(writer_reader.getCheckCoordDups());
   writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
   writer->set_dedup_coords(writer_reader.getDedupCoords());
@@ -1224,7 +1226,7 @@ Status writer_from_capnp(
       RETURN_NOT_OK(global_writer->init_global_write_state());
     }
     RETURN_NOT_OK(global_write_state_from_capnp(
-        query, writer_reader.getGlobalWriteStateV1(), global_writer));
+        query, writer_reader.getGlobalWriteStateV1(), global_writer, context));
   }
 
   return Status::Ok();
@@ -1238,6 +1240,12 @@ Status query_to_capnp(
   auto layout = query.layout();
   auto type = query.type();
   auto array = query.array();
+
+  if (query.uses_dimension_labels()) {
+    return LOG_STATUS(Status_SerializationError(
+        "Cannot serialize; serialization is not yet supported for queries "
+        "using dimension labels."));
+  }
 
   if (array == nullptr) {
     return LOG_STATUS(
@@ -1345,7 +1353,7 @@ Status query_to_capnp(
     query_builder->setVarOffsetsAddExtraElement(
         writer->offsets_extra_element());
     query_builder->setVarOffsetsBitsize(writer->offsets_bitsize());
-    RETURN_NOT_OK(writer_to_capnp(query, *writer, &builder));
+    RETURN_NOT_OK(writer_to_capnp(query, *writer, &builder, client_side));
   } else {
     auto builder = query_builder->initDelete();
     auto delete_strategy =
@@ -1354,9 +1362,8 @@ Status query_to_capnp(
   }
 
   // Serialize Config
-  const Config* config = query.config();
   auto config_builder = query_builder->initConfig();
-  RETURN_NOT_OK(config_to_capnp(config, &config_builder));
+  RETURN_NOT_OK(config_to_capnp(query.config(), &config_builder));
 
   // If stats object exists set its cap'n proto object
   stats::Stats* stats = query.stats();
@@ -1370,7 +1377,9 @@ Status query_to_capnp(
     auto builder =
         query_builder->initWrittenFragmentInfo(written_fragment_info.size());
     for (uint64_t i = 0; i < written_fragment_info.size(); ++i) {
-      builder[i].setUri(written_fragment_info[i].uri_);
+      builder[i].setUri(written_fragment_info[i]
+                            .uri_.remove_trailing_slash()
+                            .last_path_part());
       auto range_builder = builder[i].initTimestampRange(2);
       range_builder.set(0, written_fragment_info[i].timestamp_range_.first);
       range_builder.set(1, written_fragment_info[i].timestamp_range_.second);
@@ -1933,7 +1942,7 @@ Status query_from_capnp(
           writer->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
     }
 
-    RETURN_NOT_OK(writer_from_capnp(*query, writer_reader, writer));
+    RETURN_NOT_OK(writer_from_capnp(*query, writer_reader, writer, context));
 
     // For sparse writes we want to explicitly set subarray to nullptr.
     const bool sparse_write =
@@ -1982,8 +1991,13 @@ Status query_from_capnp(
     auto reader_list = query_reader.getWrittenFragmentInfo();
     auto& written_fi = query->get_written_fragment_info();
     for (auto fi : reader_list) {
+      auto write_version = query->array_schema().write_version();
+      auto frag_dir_uri = ArrayDirectory::generate_fragment_dir_uri(
+          write_version,
+          query->array_schema().array_uri().add_trailing_slash());
+      auto fragment_name = std::string(fi.getUri().cStr());
       written_fi.emplace_back(
-          URI(fi.getUri().cStr()),
+          frag_dir_uri.join_path(fragment_name),
           std::make_pair(fi.getTimestampRange()[0], fi.getTimestampRange()[1]));
     }
   }
@@ -2398,7 +2412,8 @@ Status query_est_result_size_deserialize(
 Status global_write_state_to_capnp(
     const Query& query,
     GlobalOrderWriter& globalwriter,
-    capnp::GlobalWriteState::Builder* state_builder) {
+    capnp::GlobalWriteState::Builder* state_builder,
+    bool client_side) {
   auto& write_state = *globalwriter.get_global_state();
 
   auto& cells_written = write_state.cells_written_;
@@ -2417,205 +2432,7 @@ Status global_write_state_to_capnp(
   if (write_state.frag_meta_) {
     auto frag_meta = write_state.frag_meta_;
     auto frag_meta_builder = state_builder->initFragMeta();
-
-    auto& file_sizes = frag_meta->file_sizes();
-    if (!file_sizes.empty()) {
-      auto builder = frag_meta_builder.initFileSizes(file_sizes.size());
-      for (uint64_t i = 0; i < file_sizes.size(); ++i) {
-        builder.set(i, file_sizes[i]);
-      }
-    }
-    auto& file_var_sizes = frag_meta->file_var_sizes();
-    if (!file_var_sizes.empty()) {
-      auto builder = frag_meta_builder.initFileVarSizes(file_var_sizes.size());
-      for (uint64_t i = 0; i < file_var_sizes.size(); ++i) {
-        builder.set(i, file_var_sizes[i]);
-      }
-    }
-    auto& file_validity_sizes = frag_meta->file_validity_sizes();
-    if (!file_validity_sizes.empty()) {
-      auto builder =
-          frag_meta_builder.initFileValiditySizes(file_validity_sizes.size());
-      for (uint64_t i = 0; i < file_validity_sizes.size(); ++i) {
-        builder.set(i, file_validity_sizes[i]);
-      }
-    }
-
-    frag_meta_builder.setFragmentUri(frag_meta->fragment_uri());
-    frag_meta_builder.setHasTimestamps(frag_meta->has_timestamps());
-    frag_meta_builder.setHasDeleteMeta(frag_meta->has_delete_meta());
-    frag_meta_builder.setSparseTileNum(frag_meta->sparse_tile_num());
-    frag_meta_builder.setTileIndexBase(frag_meta->tile_index_base());
-
-    auto& tile_offsets = frag_meta->tile_offsets();
-    if (!tile_offsets.empty()) {
-      auto builder = frag_meta_builder.initTileOffsets(tile_offsets.size());
-      for (uint64_t i = 0; i < tile_offsets.size(); ++i) {
-        builder.init(i, tile_offsets[i].size());
-        for (uint64_t j = 0; j < tile_offsets[i].size(); ++j) {
-          builder[i].set(j, tile_offsets[i][j]);
-        }
-      }
-    }
-    auto& tile_var_offsets = frag_meta->tile_var_offsets();
-    if (!tile_var_offsets.empty()) {
-      auto builder =
-          frag_meta_builder.initTileVarOffsets(tile_var_offsets.size());
-      for (uint64_t i = 0; i < tile_var_offsets.size(); ++i) {
-        builder.init(i, tile_var_offsets[i].size());
-        for (uint64_t j = 0; j < tile_var_offsets[i].size(); ++j) {
-          builder[i].set(j, tile_var_offsets[i][j]);
-        }
-      }
-    }
-    auto& tile_var_sizes = frag_meta->tile_var_sizes();
-    if (!tile_var_sizes.empty()) {
-      auto builder = frag_meta_builder.initTileVarSizes(tile_var_sizes.size());
-      for (uint64_t i = 0; i < tile_var_sizes.size(); ++i) {
-        builder.init(i, tile_var_sizes[i].size());
-        for (uint64_t j = 0; j < tile_var_sizes[i].size(); ++j) {
-          builder[i].set(j, tile_var_sizes[i][j]);
-        }
-      }
-    }
-    auto& tile_validity_offsets = frag_meta->tile_validity_offsets();
-    if (!tile_validity_offsets.empty()) {
-      auto builder = frag_meta_builder.initTileValidityOffsets(
-          tile_validity_offsets.size());
-      for (uint64_t i = 0; i < tile_validity_offsets.size(); ++i) {
-        builder.init(i, tile_validity_offsets[i].size());
-        for (uint64_t j = 0; j < tile_validity_offsets[i].size(); ++j) {
-          builder[i].set(j, tile_validity_offsets[i][j]);
-        }
-      }
-    }
-    auto& tile_min_buffer = frag_meta->tile_min_buffer();
-    if (!tile_min_buffer.empty()) {
-      auto builder =
-          frag_meta_builder.initTileMinBuffer(tile_min_buffer.size());
-      for (uint64_t i = 0; i < tile_min_buffer.size(); ++i) {
-        builder.init(i, tile_min_buffer[i].size());
-        for (uint64_t j = 0; j < tile_min_buffer[i].size(); ++j) {
-          builder[i].set(j, tile_min_buffer[i][j]);
-        }
-      }
-    }
-    auto& tile_min_var_buffer = frag_meta->tile_min_var_buffer();
-    if (!tile_min_var_buffer.empty()) {
-      auto builder =
-          frag_meta_builder.initTileMinVarBuffer(tile_min_var_buffer.size());
-      for (uint64_t i = 0; i < tile_min_var_buffer.size(); ++i) {
-        builder.init(i, tile_min_var_buffer[i].size());
-        for (uint64_t j = 0; j < tile_min_var_buffer[i].size(); ++j) {
-          builder[i].set(j, tile_min_var_buffer[i][j]);
-        }
-      }
-    }
-    auto& tile_max_buffer = frag_meta->tile_max_buffer();
-    if (!tile_max_buffer.empty()) {
-      auto builder =
-          frag_meta_builder.initTileMaxBuffer(tile_max_buffer.size());
-      for (uint64_t i = 0; i < tile_max_buffer.size(); ++i) {
-        builder.init(i, tile_max_buffer[i].size());
-        for (uint64_t j = 0; j < tile_max_buffer[i].size(); ++j) {
-          builder[i].set(j, tile_max_buffer[i][j]);
-        }
-      }
-    }
-    auto& tile_max_var_buffer = frag_meta->tile_max_var_buffer();
-    if (!tile_max_var_buffer.empty()) {
-      auto builder =
-          frag_meta_builder.initTileMaxVarBuffer(tile_max_var_buffer.size());
-      for (uint64_t i = 0; i < tile_max_var_buffer.size(); ++i) {
-        builder.init(i, tile_max_var_buffer[i].size());
-        for (uint64_t j = 0; j < tile_max_var_buffer[i].size(); ++j) {
-          builder[i].set(j, tile_max_var_buffer[i][j]);
-        }
-      }
-    }
-    auto& tile_sums = frag_meta->tile_sums();
-    if (!tile_sums.empty()) {
-      auto builder = frag_meta_builder.initTileSums(tile_sums.size());
-      for (uint64_t i = 0; i < tile_sums.size(); ++i) {
-        builder.init(i, tile_sums[i].size());
-        for (uint64_t j = 0; j < tile_sums[i].size(); ++j) {
-          builder[i].set(j, tile_sums[i][j]);
-        }
-      }
-    }
-    auto& tile_null_counts = frag_meta->tile_null_counts();
-    if (!tile_null_counts.empty()) {
-      auto builder =
-          frag_meta_builder.initTileNullCounts(tile_null_counts.size());
-      for (uint64_t i = 0; i < tile_null_counts.size(); ++i) {
-        builder.init(i, tile_null_counts[i].size());
-        for (uint64_t j = 0; j < tile_null_counts[i].size(); ++j) {
-          builder[i].set(j, tile_null_counts[i][j]);
-        }
-      }
-    }
-    auto& fragment_mins = frag_meta->fragment_mins();
-    if (!fragment_mins.empty()) {
-      auto builder = frag_meta_builder.initFragmentMins(fragment_mins.size());
-      for (uint64_t i = 0; i < fragment_mins.size(); ++i) {
-        builder.init(i, fragment_mins[i].size());
-        for (uint64_t j = 0; j < fragment_mins[i].size(); ++j) {
-          builder[i].set(j, fragment_mins[i][j]);
-        }
-      }
-    }
-    auto& fragment_maxs = frag_meta->fragment_maxs();
-    if (!fragment_maxs.empty()) {
-      auto builder = frag_meta_builder.initFragmentMaxs(fragment_maxs.size());
-      for (uint64_t i = 0; i < fragment_maxs.size(); ++i) {
-        builder.init(i, fragment_maxs[i].size());
-        for (uint64_t j = 0; j < fragment_maxs[i].size(); ++j) {
-          builder[i].set(j, fragment_maxs[i][j]);
-        }
-      }
-    }
-    auto& fragment_sums = frag_meta->fragment_sums();
-    if (!fragment_sums.empty()) {
-      auto builder = frag_meta_builder.initFragmentSums(fragment_sums.size());
-      for (uint64_t i = 0; i < fragment_sums.size(); ++i) {
-        builder.set(i, fragment_sums[i]);
-      }
-    }
-    auto& fragment_null_counts = frag_meta->fragment_null_counts();
-    if (!fragment_null_counts.empty()) {
-      auto builder =
-          frag_meta_builder.initFragmentNullCounts(fragment_null_counts.size());
-      for (uint64_t i = 0; i < fragment_null_counts.size(); ++i) {
-        builder.set(i, fragment_null_counts[i]);
-      }
-    }
-
-    frag_meta_builder.setVersion(frag_meta->version());
-
-    auto trange_builder = frag_meta_builder.initTimestampRange(2);
-    trange_builder.set(0, frag_meta->timestamp_range().first);
-    trange_builder.set(1, frag_meta->timestamp_range().second);
-
-    frag_meta_builder.setLastTileCellNum(frag_meta->last_tile_cell_num());
-
-    auto ned_builder = frag_meta_builder.initNonEmptyDomain();
-    RETURN_NOT_OK(utils::serialize_non_empty_domain_rv(
-        ned_builder,
-        frag_meta->non_empty_domain(),
-        query.array_schema().dim_num()));
-
-    // TODO: Can this be done better? Does this make a lot of copies?
-    SizeComputationSerializer size_computation_serializer;
-    frag_meta->rtree().serialize(size_computation_serializer);
-
-    std::vector<uint8_t> buff(size_computation_serializer.size());
-    Serializer serializer(buff.data(), buff.size());
-    frag_meta->rtree().serialize(serializer);
-
-    auto vec = kj::Vector<uint8_t>();
-    vec.addAll(
-        kj::ArrayPtr<uint8_t>(static_cast<uint8_t*>(buff.data()), buff.size()));
-    frag_meta_builder.setRtree(vec.asPtr());
+    RETURN_NOT_OK(fragment_metadata_to_capnp(*frag_meta, &frag_meta_builder));
   }
 
   if (write_state.last_cell_coords_.has_value()) {
@@ -2651,7 +2468,8 @@ Status global_write_state_to_capnp(
   state_builder->setLastHilbertValue(write_state.last_hilbert_value_);
 
   // Serialize the multipart upload state
-  auto&& [st, multipart_states] = globalwriter.multipart_upload_state();
+  auto&& [st, multipart_states] =
+      globalwriter.multipart_upload_state(client_side);
   RETURN_NOT_OK(st);
 
   if (!multipart_states.empty()) {
@@ -2667,12 +2485,6 @@ Status global_write_state_to_capnp(
       multipart_entry_builder.setPartNumber(state.part_number);
       if (state.upload_id.has_value()) {
         multipart_entry_builder.setUploadId(*state.upload_id);
-      }
-      if (state.bucket.has_value()) {
-        multipart_entry_builder.setBucket(*state.bucket);
-      }
-      if (state.s3_key.has_value()) {
-        multipart_entry_builder.setS3Key(*state.s3_key);
       }
       if (!state.status.ok()) {
         multipart_entry_builder.setStatus(state.status.message());
@@ -2699,7 +2511,8 @@ Status global_write_state_to_capnp(
 Status global_write_state_from_capnp(
     const Query& query,
     const capnp::GlobalWriteState::Reader& state_reader,
-    GlobalOrderWriter* globalwriter) {
+    GlobalOrderWriter* globalwriter,
+    const SerializationContext context) {
   auto write_state = globalwriter->get_global_state();
 
   if (state_reader.hasCellsWritten()) {
@@ -2707,180 +2520,6 @@ Status global_write_state_from_capnp(
     auto cell_written_reader = state_reader.getCellsWritten();
     for (const auto& entry : cell_written_reader.getEntries()) {
       cells_written[std::string(entry.getKey().cStr())] = entry.getValue();
-    }
-  }
-
-  if (state_reader.hasFragMeta()) {
-    auto frag_meta = write_state->frag_meta_;
-    auto frag_meta_reader = state_reader.getFragMeta();
-    if (frag_meta_reader.hasFileSizes()) {
-      frag_meta->file_sizes().reserve(frag_meta_reader.getFileSizes().size());
-      for (const auto& file_size : frag_meta_reader.getFileSizes()) {
-        frag_meta->file_sizes().emplace_back(file_size);
-      }
-    }
-    if (frag_meta_reader.hasFileVarSizes()) {
-      frag_meta->file_var_sizes().reserve(
-          frag_meta_reader.getFileVarSizes().size());
-      for (const auto& file_var_size : frag_meta_reader.getFileVarSizes()) {
-        frag_meta->file_var_sizes().emplace_back(file_var_size);
-      }
-    }
-    if (frag_meta_reader.hasFileValiditySizes()) {
-      frag_meta->file_validity_sizes().reserve(
-          frag_meta_reader.getFileValiditySizes().size());
-
-      for (const auto& file_validity_size :
-           frag_meta_reader.getFileValiditySizes()) {
-        frag_meta->file_validity_sizes().emplace_back(file_validity_size);
-      }
-    }
-    if (frag_meta_reader.hasFragmentUri()) {
-      frag_meta->fragment_uri() = URI(frag_meta_reader.getFragmentUri().cStr());
-    }
-    frag_meta->has_timestamps() = frag_meta_reader.getHasTimestamps();
-    frag_meta->has_delete_meta() = frag_meta_reader.getHasDeleteMeta();
-    frag_meta->sparse_tile_num() = frag_meta_reader.getSparseTileNum();
-    frag_meta->tile_index_base() = frag_meta_reader.getTileIndexBase();
-    if (frag_meta_reader.hasTileOffsets()) {
-      for (const auto& t : frag_meta_reader.getTileOffsets()) {
-        auto& last = frag_meta->tile_offsets().emplace_back();
-        last.reserve(t.size());
-        for (const auto& v : t) {
-          last.emplace_back(v);
-        }
-      }
-    }
-    if (frag_meta_reader.hasTileVarOffsets()) {
-      for (const auto& t : frag_meta_reader.getTileVarOffsets()) {
-        auto& last = frag_meta->tile_var_offsets().emplace_back();
-        last.reserve(t.size());
-        for (const auto& v : t) {
-          last.emplace_back(v);
-        }
-      }
-    }
-    if (frag_meta_reader.hasTileVarSizes()) {
-      for (const auto& t : frag_meta_reader.getTileVarSizes()) {
-        auto& last = frag_meta->tile_var_sizes().emplace_back();
-        last.reserve(t.size());
-        for (const auto& v : t) {
-          last.emplace_back(v);
-        }
-      }
-    }
-    if (frag_meta_reader.hasTileValidityOffsets()) {
-      for (const auto& t : frag_meta_reader.getTileValidityOffsets()) {
-        auto& last = frag_meta->tile_validity_offsets().emplace_back();
-        last.reserve(t.size());
-        for (const auto& v : t) {
-          last.emplace_back(v);
-        }
-      }
-    }
-    if (frag_meta_reader.hasTileMinBuffer()) {
-      for (const auto& t : frag_meta_reader.getTileMinBuffer()) {
-        auto& last = frag_meta->tile_min_buffer().emplace_back();
-        last.reserve(t.size());
-        for (const auto& v : t) {
-          last.emplace_back(v);
-        }
-      }
-    }
-    if (frag_meta_reader.hasTileMinVarBuffer()) {
-      for (const auto& t : frag_meta_reader.getTileMinVarBuffer()) {
-        auto& last = frag_meta->tile_min_var_buffer().emplace_back();
-        last.reserve(t.size());
-        for (const auto& v : t) {
-          last.emplace_back(v);
-        }
-      }
-    }
-    if (frag_meta_reader.hasTileMaxBuffer()) {
-      for (const auto& t : frag_meta_reader.getTileMaxBuffer()) {
-        auto& last = frag_meta->tile_max_buffer().emplace_back();
-        last.reserve(t.size());
-        for (const auto& v : t) {
-          last.emplace_back(v);
-        }
-      }
-    }
-    if (frag_meta_reader.hasTileMaxVarBuffer()) {
-      for (const auto& t : frag_meta_reader.getTileMaxVarBuffer()) {
-        auto& last = frag_meta->tile_max_var_buffer().emplace_back();
-        last.reserve(t.size());
-        for (const auto& v : t) {
-          last.emplace_back(v);
-        }
-      }
-    }
-    if (frag_meta_reader.hasTileSums()) {
-      for (const auto& t : frag_meta_reader.getTileSums()) {
-        auto& last = frag_meta->tile_sums().emplace_back();
-        last.reserve(t.size());
-        for (const auto& v : t) {
-          last.emplace_back(v);
-        }
-      }
-    }
-    if (frag_meta_reader.hasTileNullCounts()) {
-      for (const auto& t : frag_meta_reader.getTileNullCounts()) {
-        auto& last = frag_meta->tile_null_counts().emplace_back();
-        last.reserve(t.size());
-        for (const auto& v : t) {
-          last.emplace_back(v);
-        }
-      }
-    }
-    if (frag_meta_reader.hasFragmentMins()) {
-      for (const auto& t : frag_meta_reader.getFragmentMins()) {
-        auto& last = frag_meta->fragment_mins().emplace_back();
-        last.reserve(t.size());
-        for (const auto& v : t) {
-          last.emplace_back(v);
-        }
-      }
-    }
-    if (frag_meta_reader.hasFragmentMaxs()) {
-      for (const auto& t : frag_meta_reader.getFragmentMaxs()) {
-        auto& last = frag_meta->fragment_maxs().emplace_back();
-        last.reserve(t.size());
-        for (const auto& v : t) {
-          last.emplace_back(v);
-        }
-      }
-    }
-    if (frag_meta_reader.hasFragmentSums()) {
-      frag_meta->fragment_sums().reserve(
-          frag_meta_reader.getFragmentSums().size());
-      for (const auto& fragment_sum : frag_meta_reader.getFragmentSums()) {
-        frag_meta->fragment_sums().emplace_back(fragment_sum);
-      }
-    }
-    if (frag_meta_reader.hasFragmentNullCounts()) {
-      frag_meta->fragment_null_counts().reserve(
-          frag_meta_reader.getFragmentNullCounts().size());
-      for (const auto& fragment_null_count :
-           frag_meta_reader.getFragmentNullCounts()) {
-        frag_meta->fragment_null_counts().emplace_back(fragment_null_count);
-      }
-    }
-    frag_meta->version() = frag_meta_reader.getVersion();
-    if (frag_meta_reader.hasTimestampRange()) {
-      frag_meta->timestamp_range() = std::make_pair(
-          frag_meta_reader.getTimestampRange()[0],
-          frag_meta_reader.getTimestampRange()[1]);
-    }
-    frag_meta->last_tile_cell_num() = frag_meta_reader.getLastTileCellNum();
-
-    if (frag_meta_reader.hasRtree()) {
-      auto data = frag_meta_reader.getRtree();
-      auto& domain = query.array_schema().domain();
-      // If there are no levels, we still need domain_ properly initialized
-      frag_meta->rtree() = RTree(&domain, constants::rtree_fanout);
-      Deserializer deserializer(data.begin(), data.size());
-      frag_meta->rtree().deserialize(
-          deserializer, &domain, frag_meta->version());
     }
   }
 
@@ -2916,30 +2555,11 @@ Status global_write_state_from_capnp(
 
   write_state->last_hilbert_value_ = state_reader.getLastHilbertValue();
 
-  // Set the array schema and most importantly retrigger the build
-  // of the internal idx_map. Also set array_schema_name which is used
-  // in some places in the global writer
-  write_state->frag_meta_->set_array_schema(query.array_schema_shared());
-  write_state->frag_meta_->set_schema_name(query.array_schema().name());
-
-  write_state->frag_meta_->set_dense(query.is_dense());
-
-  // It's important to do this here as init_domain depends on some fields
-  // above to be properly initialized
   if (state_reader.hasFragMeta()) {
     auto frag_meta = write_state->frag_meta_;
     auto frag_meta_reader = state_reader.getFragMeta();
-
-    if (frag_meta_reader.hasNonEmptyDomain()) {
-      auto reader = frag_meta_reader.getNonEmptyDomain();
-      auto&& [status, ndrange] = utils::deserialize_non_empty_domain_rv(reader);
-      RETURN_NOT_OK(status);
-      // Whilst sparse gets its domain calculated, dense needs to have it
-      // set here from the deserialized data
-      if (query.is_dense()) {
-        frag_meta->init_domain(*ndrange);
-      }
-    }
+    RETURN_NOT_OK(fragment_metadata_from_capnp(
+        query.array_schema_shared(), frag_meta_reader, frag_meta));
   }
 
   // Deserialize the multipart upload state
@@ -2949,15 +2569,9 @@ Status global_write_state_from_capnp(
       for (auto entry : multipart_reader.getEntries()) {
         VFS::MultiPartUploadState deserialized_state;
         auto state = entry.getValue();
-        auto uri = URI(entry.getKey().cStr());
+        std::string buffer_uri(entry.getKey().cStr());
         if (state.hasUploadId()) {
           deserialized_state.upload_id = state.getUploadId();
-        }
-        if (state.hasBucket()) {
-          deserialized_state.bucket = state.getBucket();
-        }
-        if (state.hasS3Key()) {
-          deserialized_state.s3_key = state.getS3Key();
         }
         if (state.hasStatus()) {
           deserialized_state.status =
@@ -2975,8 +2589,10 @@ Status global_write_state_from_capnp(
           }
         }
 
-        RETURN_NOT_OK(
-            globalwriter->set_multipart_upload_state(uri, deserialized_state));
+        RETURN_NOT_OK(globalwriter->set_multipart_upload_state(
+            buffer_uri,
+            deserialized_state,
+            context == SerializationContext::CLIENT));
       }
     }
   }

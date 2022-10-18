@@ -42,14 +42,13 @@
 #include "tiledb/sm/group/group_directory.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
 
-class StorageManager;
 class Group {
  public:
   Group(
@@ -205,7 +204,7 @@ class Group {
    * Return config
    * @return Config
    */
-  const Config* config() const;
+  const Config& config() const;
 
   /**
    * Set the config on the group

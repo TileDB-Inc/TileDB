@@ -484,7 +484,7 @@ Status ReaderBase::load_tile_var_sizes(
           if (!schema->var_size(name))
             continue;
 
-          fragment->load_tile_var_sizes(*encryption_key, name);
+          throw_if_not_ok(fragment->load_tile_var_sizes(*encryption_key, name));
         }
 
         return Status::Ok();
@@ -1132,18 +1132,18 @@ Status ReaderBase::post_process_unfiltered_tile(
     auto& t = tile_tuple->fixed_tile();
     t.filtered_buffer().clear();
 
-    zip_tile_coordinates(name, &t);
+    throw_if_not_ok(zip_tile_coordinates(name, &t));
 
     if (var_size) {
       auto& t_var = tile_tuple->var_tile();
       t_var.filtered_buffer().clear();
-      zip_tile_coordinates(name, &t_var);
+      throw_if_not_ok(zip_tile_coordinates(name, &t_var));
     }
 
     if (nullable) {
       auto& t_validity = tile_tuple->validity_tile();
       t_validity.filtered_buffer().clear();
-      zip_tile_coordinates(name, &t_validity);
+      throw_if_not_ok(zip_tile_coordinates(name, &t_validity));
     }
   }
 
@@ -1196,7 +1196,7 @@ Status ReaderBase::unfilter_tiles_chunk_range(
         unfiltered_tile_validity_size[i] = tile_validity_size.value();
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, throw_if_not_ok(logger_->status(status)));
 
   if (tiles_chunk_data.empty())
     return Status::Ok();

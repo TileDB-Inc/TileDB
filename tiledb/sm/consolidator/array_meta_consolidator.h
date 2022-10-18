@@ -39,13 +39,12 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/consolidator/consolidator.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-
-class StorageManager;
 
 /** Handles array metadata consolidation. */
 class ArrayMetaConsolidator : public Consolidator {
@@ -61,7 +60,7 @@ class ArrayMetaConsolidator : public Consolidator {
    * @param storage_manager Storage manager.
    */
   explicit ArrayMetaConsolidator(
-      const Config* config, StorageManager* storage_manager);
+      const Config& config, StorageManager* storage_manager);
 
   /** Destructor. */
   ~ArrayMetaConsolidator() = default;
@@ -103,7 +102,7 @@ class ArrayMetaConsolidator : public Consolidator {
   /* ********************************* */
 
   /** Checks and sets the input configuration parameters. */
-  Status set_config(const Config* config);
+  Status set_config(const Config& config);
 
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */

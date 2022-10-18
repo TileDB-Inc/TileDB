@@ -146,16 +146,16 @@ int main(const int argc, char** const argv) {
 
   // Add a '--vfs' command line argument to override the default VFS.
   std::string vfs;
-  Catch::clara::Parser cli =
+  Catch::Clara::Parser cli =
       session.cli() |
-      Catch::clara::Opt(vfs, vfs_fs_oss.str())["--vfs"](
+      Catch::Clara::Opt(vfs, vfs_fs_oss.str())["--vfs"](
           "Override the VFS filesystem to use for generic tests") |
-      Catch::clara::Opt(
+      Catch::Clara::Opt(
           read_sparse_iters, "read_sparse_iters")["--read-sparse-iters"](
           "specify read_sparse_iters (default 1)") |
-      Catch::clara::Opt(perform_query, "perform_query")["--perform-query"](
+      Catch::Clara::Opt(perform_query, "perform_query")["--perform-query"](
           "specify whether to perform query (default non-zero)") |
-      Catch::clara::Opt(
+      Catch::Clara::Opt(
           consolidate_sparse_iters,
           "consolidate_sparse_iters")["--consolidate-sparse-iters"](
           "how many read_sparse iters to perform (default 1)");
@@ -183,8 +183,8 @@ int main(const int argc, char** const argv) {
   return retval;
 }
 
-struct CICompletionStatusListener : Catch::TestEventListenerBase {
-  using TestEventListenerBase::TestEventListenerBase;  // inherit constructor
+struct CICompletionStatusListener : Catch::EventListenerBase {
+  using EventListenerBase::EventListenerBase;  // inherit constructor
 
   // Successful completion hook
   void testRunEnded(Catch::TestRunStats const& testRunStats) override {

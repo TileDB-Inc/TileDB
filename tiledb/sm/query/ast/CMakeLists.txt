@@ -67,10 +67,6 @@ if (TILEDB_TESTS)
 
     find_package(Catch_EP REQUIRED)
 
-    target_include_directories(ast_test_support_lib
-      PUBLIC
-	$<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
-    )
 
     # We want tests to continue as normal even as the API is changing,
     # so don't warn for deprecations, since they'll be escalated to errors.
@@ -78,7 +74,7 @@ if (TILEDB_TESTS)
       target_compile_options(ast_test_support_lib PRIVATE -Wno-deprecated-declarations)
     endif()
 
-    target_link_libraries(unit_ast PRIVATE ast_test_support_lib)
+    target_link_libraries(unit_ast PRIVATE ast_test_support_lib Catch2::Catch2WithMain)
 
     ################################################################
     #

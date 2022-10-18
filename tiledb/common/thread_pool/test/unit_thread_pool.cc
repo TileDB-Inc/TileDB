@@ -256,12 +256,12 @@ TEST_CASE("ThreadPool: Test recursion, simplest case", "[threadpool]") {
     });
     REQUIRE(b.valid());
     tasks.emplace_back(std::move(b));
-    pool.wait_all(tasks);
+    REQUIRE(pool.wait_all(tasks).ok());
     return Status::Ok();
   });
   REQUIRE(a.valid());
   tasks.emplace_back(std::move(a));
-  pool.wait_all(tasks);
+  REQUIRE(pool.wait_all(tasks).ok());
   REQUIRE(result == 1);
 }
 
@@ -390,7 +390,7 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
               tasks_c.emplace_back(std::move(task_c));
             }
 
-            pool_a.wait_all(tasks_c);
+            REQUIRE(pool_a.wait_all(tasks_c).ok());
             return Status::Ok();
           });
 
@@ -431,7 +431,7 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
               tasks_c.emplace_back(std::move(task_c));
             }
 
-            pool_a.wait_all(tasks_c);
+            REQUIRE(pool_a.wait_all(tasks_c).ok());
             return Status::Ok();
           });
 

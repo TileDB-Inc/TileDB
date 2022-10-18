@@ -181,6 +181,11 @@ class SingleFragmentInfo {
     return meta_;
   }
 
+  /** Returns the array schema name. */
+  const std::string& array_schema_name() const {
+    return array_schema_name_;
+  }
+
   /** Returns the non-empty domain in string format. */
   std::string non_empty_domain_str(
       const std::vector<Datatype>& dim_types) const {
@@ -267,9 +272,19 @@ class SingleFragmentInfo {
     return ss.str();
   }
 
-  /** Returns the array schema name. */
-  const std::string& array_schema_name() const {
-    return array_schema_name_;
+  /** Accessor to the fragment size. */
+  uint64_t& fragment_size() {
+    return fragment_size_;
+  }
+
+  /** Accessor to the metadata pointer. */
+  shared_ptr<FragmentMetadata>& meta() {
+    return meta_;
+  }
+
+  /** Accessor to the metadata pointer. */
+  NDRange& non_empty_domain() {
+    return non_empty_domain_;
   }
 
  private:

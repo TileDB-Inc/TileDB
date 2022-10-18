@@ -50,7 +50,7 @@ namespace sm {
 /* ****************************** */
 
 GroupMetaConsolidator::GroupMetaConsolidator(
-    const Config* config, StorageManager* storage_manager)
+    const Config& config, StorageManager* storage_manager)
     : Consolidator(storage_manager) {
   auto st = set_config(config);
   if (!st.ok()) {
@@ -72,6 +72,8 @@ Status GroupMetaConsolidator::consolidate(
   (void)key_length;
   auto timer_se = stats_->start_timer("consolidate_group_meta");
 
+  check_array_uri(group_name);
+
   // Open group for reading
   auto group_uri = URI(group_name);
   GroupV1 group_for_reads(group_uri, storage_manager_);
@@ -81,7 +83,8 @@ Status GroupMetaConsolidator::consolidate(
   // Open group for writing
   GroupV1 group_for_writes(group_uri, storage_manager_);
   RETURN_NOT_OK_ELSE(
-      group_for_writes.open(QueryType::WRITE), group_for_reads.close());
+      group_for_writes.open(QueryType::WRITE),
+      throw_if_not_ok(group_for_reads.close()));
 
   // Swap the in-memory metadata between the two groups.
   // After that, the group for writes will store the (consolidated by
@@ -89,15 +92,15 @@ Status GroupMetaConsolidator::consolidate(
   Metadata* metadata_r;
   auto st = group_for_reads.metadata(&metadata_r);
   if (!st.ok()) {
-    group_for_reads.close();
-    group_for_writes.close();
+    throw_if_not_ok(group_for_reads.close());
+    throw_if_not_ok(group_for_writes.close());
     return st;
   }
   Metadata* metadata_w;
   st = group_for_writes.metadata(&metadata_w);
   if (!st.ok()) {
-    group_for_reads.close();
-    group_for_writes.close();
+    throw_if_not_ok(group_for_reads.close());
+    throw_if_not_ok(group_for_writes.close());
     return st;
   }
   metadata_r->swap(metadata_w);
@@ -108,8 +111,8 @@ Status GroupMetaConsolidator::consolidate(
   // Generate new name for consolidated metadata
   st = metadata_w->generate_uri(group_uri);
   if (!st.ok()) {
-    group_for_reads.close();
-    group_for_writes.close();
+    throw_if_not_ok(group_for_reads.close());
+    throw_if_not_ok(group_for_writes.close());
     return st;
   }
 
@@ -117,13 +120,14 @@ Status GroupMetaConsolidator::consolidate(
   URI new_uri;
   st = metadata_w->get_uri(group_uri, &new_uri);
   if (!st.ok()) {
-    group_for_reads.close();
-    group_for_writes.close();
+    throw_if_not_ok(group_for_reads.close());
+    throw_if_not_ok(group_for_writes.close());
     return st;
   }
 
   // Close groups
-  RETURN_NOT_OK_ELSE(group_for_reads.close(), group_for_writes.close());
+  RETURN_NOT_OK_ELSE(
+      group_for_reads.close(), throw_if_not_ok(group_for_writes.close()));
   RETURN_NOT_OK(group_for_writes.close());
 
   // Write vacuum file
@@ -188,12 +192,10 @@ Status GroupMetaConsolidator::vacuum(const char* group_name) {
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status GroupMetaConsolidator::set_config(const Config* config) {
+Status GroupMetaConsolidator::set_config(const Config& config) {
   // Set the consolidation config for ease of use
   Config merged_config = storage_manager_->config();
-  if (config) {
-    merged_config.inherit(*config);
-  }
+  merged_config.inherit(config);
   bool found = false;
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_start", &config_.timestamp_start_, &found));

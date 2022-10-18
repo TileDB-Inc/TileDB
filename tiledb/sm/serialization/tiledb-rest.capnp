@@ -64,7 +64,6 @@ struct ArrayOpen {
   # Config
 }
 
-
 struct ArraySchema {
 # ArraySchema during creation or retrieval
     arrayType @0 :Text;
@@ -688,6 +687,36 @@ struct EstimatedResultSize {
   memorySizes @1 :Map(Text, MemorySize);
 }
 
+struct FragmentInfoRequest {
+  config @0 :Config;
+  # Config
+}
+
+struct SingleFragmentInfo {
+  arraySchemaName @0 :Text;
+  # array schema name
+
+  meta @1 :FragmentMetadata;
+  # fragment metadata
+
+  fragmentSize @2 : UInt64;
+  # the size of the entire fragment directory
+}
+
+struct FragmentInfo {
+  arraySchemaLatest @0 :ArraySchema;
+  # latest array schema
+
+  arraySchemasAll @1 :Map(Text, ArraySchema);
+  # map of all array schemas
+
+  fragmentInfo @2 :List(SingleFragmentInfo);
+  # information about fragments in the array
+
+  toVacuum @3 :List(Text);
+  # the URIs of the fragments to vacuum
+}
+
 struct GroupMetadata {
   config @0 :Config;
   # Config
@@ -873,6 +902,9 @@ struct FragmentMetadata {
 
   rtree @26 :Data;
   # The RTree for the MBRs serialized as a blob
+
+  hasConsolidatedFooter @27 :Bool;
+  # if the fragment metadata footer appears in a consolidated file
 }
 
 struct MultiPartUploadState {
@@ -882,16 +914,10 @@ struct MultiPartUploadState {
   uploadId@1 :Text;
   # S3 specific ID identifying a multipart upload process for a file
 
-  bucket@2 :Text;
-  # The S3 bucket name
-
-  s3Key@3 :Text;
-  # S3 specific multipart upload key
-
-  status@4 :Text;
+  status@2 :Text;
   # Status field used to signal an error in a multipart upload process
 
-  completedParts@5 :List(CompletedPart);
+  completedParts@3 :List(CompletedPart);
   # A list of parts that are already uploaded
 }
 struct CompletedPart {

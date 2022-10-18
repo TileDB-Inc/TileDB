@@ -53,12 +53,15 @@ Context::Context(const Config& config)
     , compute_tp_(get_compute_thread_count(config))
     , io_tp_(get_io_thread_count(config))
     , stats_(make_shared<stats::Stats>(HERE(), "Context"))
-    , storage_manager_{} {
-  if (!init(config).ok()) {
-    logger_->status(
-        Status_ContextError("Failed to initialize Context in constructor."));
-    throw std::logic_error("Could not initialize Context in constructor");
-  }
+    , storage_manager_{&compute_tp_, &io_tp_, stats_.get(), logger_, config} {
+  /*
+   * Logger class is not yet C.41-compliant
+   */
+  throw_if_not_ok(init_loggers(config));
+  /*
+   * Explicitly register our `stats` object with the global.
+   */
+  stats::all_stats.register_stats(stats_);
 }
 
 /* ****************************** */
@@ -80,11 +83,6 @@ void Context::save_error(const StatusException& st) {
   last_error_ = st.what();
 }
 
-// Return pointer to underlying storage manager.
-StorageManager* Context::storage_manager() const {
-  return &(*storage_manager_);
-}
-
 ThreadPool* Context::compute_tp() const {
   return &compute_tp_;
 }
@@ -95,26 +93,6 @@ ThreadPool* Context::io_tp() const {
 
 stats::Stats* Context::stats() const {
   return stats_.get();
-}
-
-Status Context::init(const Config& config) {
-  RETURN_NOT_OK(init_loggers(config));
-
-  // Register stats.
-  stats::all_stats.register_stats(stats_);
-
-  // Create storage manager
-  storage_manager_ = tdb_unique_ptr<tiledb::sm::StorageManager>{
-      new (std::nothrow) tiledb::sm::StorageManager(
-          &compute_tp_, &io_tp_, stats_.get(), logger_)};
-  if (storage_manager_ == nullptr)
-    return logger_->status(Status_ContextError(
-        "Cannot initialize context Storage manager allocation failed"));
-
-  // Initialize storage manager
-  auto sm = storage_manager_->init(config);
-
-  return sm;
 }
 
 Status Context::get_config_thread_count(
@@ -134,7 +112,7 @@ Status Context::get_config_thread_count(
       config.get<uint64_t>("sm.num_async_threads", &num_async_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_async_threads);
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_async_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
@@ -144,7 +122,7 @@ Status Context::get_config_thread_count(
       "sm.num_reader_threads", &num_reader_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_reader_threads);
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_reader_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
@@ -154,7 +132,7 @@ Status Context::get_config_thread_count(
       "sm.num_writer_threads", &num_writer_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_writer_threads);
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_writer_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
@@ -164,7 +142,7 @@ Status Context::get_config_thread_count(
       config.get<uint64_t>("sm.num_vfs_threads", &num_vfs_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_vfs_threads);
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_vfs_threads\" has been removed; use "
         "config parameter \"sm.io_concurrency_level\"."));
   }
@@ -179,7 +157,7 @@ Status Context::get_config_thread_count(
   if (found) {
     config_thread_count =
         std::max(config_thread_count, static_cast<uint64_t>(num_tbb_threads));
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_tbb_threads\" has been removed; use "
         "config parameter \"sm.io_concurrency_level\"."));
   }

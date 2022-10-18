@@ -60,7 +60,7 @@ namespace serialization {
  * @return Status
  */
 Status config_to_capnp(
-    const Config* config, capnp::Config::Builder* config_builder);
+    const Config& config, capnp::Config::Builder* config_builder);
 
 /**
  * Create a config object from a cap'n proto class

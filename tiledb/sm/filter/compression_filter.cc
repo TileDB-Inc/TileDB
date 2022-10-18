@@ -591,12 +591,12 @@ Status CompressionFilter::decompress_var_string_coords(
     uint8_t rle_len_bytesize, string_len_bytesize;
     RETURN_NOT_OK(input_metadata.read(&rle_len_bytesize, sizeof(uint8_t)));
     RETURN_NOT_OK(input_metadata.read(&string_len_bytesize, sizeof(uint8_t)));
-    RLE::decompress(
+    throw_if_not_ok(RLE::decompress(
         input_view,
         rle_len_bytesize,
         string_len_bytesize,
         output_view,
-        offsets_view);
+        offsets_view));
   } else if (compressor_ == Compressor::DICTIONARY_ENCODING) {
     uint8_t ids_bytesize = 0, string_len_bytesize = 0;
     uint32_t dict_size = 0;

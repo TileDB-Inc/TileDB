@@ -44,6 +44,7 @@
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/range_subset.h"
 #include "tiledb/sm/subarray/subarray_tile_overlap.h"
 
@@ -71,7 +72,6 @@ class DimensionLabelReference;
 class EncryptionKey;
 class FragIdx;
 class FragmentMetadata;
-class StorageManager;
 
 enum class Layout : uint8_t;
 enum class QueryType : uint8_t;
@@ -382,6 +382,13 @@ class Subarray {
       const std::string& attr_name) const;
 
   /**
+   * Returns the name of the dimension label at the dimension index.
+   *
+   * @param dim_index Index of the dimension to return the label name for.
+   */
+  const std::string& get_label_name(const uint32_t dim_index) const;
+
+  /**
    * Retrieves a range from a dimension label name in the form (start, end,
    * stride).
    *
@@ -630,6 +637,9 @@ class Subarray {
   /** Returns the domain the subarray is constructed from. */
   NDRange domain() const;
 
+  /** ``True`` if the dimension of the subarray does not contain any ranges. */
+  bool empty(uint32_t dim_idx) const;
+
   /** ``True`` if the subarray does not contain any ranges. */
   bool empty() const;
 
@@ -863,6 +873,24 @@ class Subarray {
   Subarray get_subarray(uint64_t start, uint64_t end) const;
 
   /**
+   * Returns ``true`` if the any dimension in the subarray have label ranges
+   * set.
+   */
+  bool has_label_ranges() const;
+
+  /**
+   * Returns ``true`` if the dimension index has label ranges set.
+   *
+   * @param dim_idx The dimension index to check for ranges.
+   */
+  bool has_label_ranges(const uint32_t dim_index) const;
+
+  /**
+   * Removes all label ranges from the subarray.
+   */
+  void remove_label_ranges();
+
+  /**
    * Set default indicator for dimension subarray. Used by serialization only
    * @param dim_index
    * @param is_default
@@ -932,6 +960,15 @@ class Subarray {
    */
   void set_attribute_ranges(
       const std::string& attr_name, const std::vector<Range>& ranges);
+
+  /**
+   * Returns the `Range` vector for the given dimension label.
+   *
+   * @param label_name Name of the label to return ranges for.
+   * @returns Vector of ranges on the requested dimension label.
+   */
+  const std::vector<Range>& ranges_for_label(
+      const std::string& label_name) const;
 
   /**
    * Directly sets the `Range` vector for the given dimension index, making
@@ -1189,6 +1226,10 @@ class Subarray {
      */
     LabelRangeSubset(
         const DimensionLabelReference& ref, bool coalesce_ranges = true);
+
+    inline const std::vector<Range>& get_ranges() const {
+      return ranges.ranges();
+    }
 
     /** Name of the dimension label. */
     std::string name;

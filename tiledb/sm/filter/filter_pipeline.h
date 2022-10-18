@@ -94,9 +94,8 @@ class FilterPipeline {
    * Adds a copy of the given filter to the end of this pipeline.
    *
    * @param filter Filter to add
-   * @return Status
    */
-  Status add_filter(const Filter& filter);
+  void add_filter(const Filter& filter);
 
   /** Clears the pipeline (removes all filters. */
   void clear();

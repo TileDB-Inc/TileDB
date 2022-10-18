@@ -37,6 +37,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension_label_schema.h"
 #include "tiledb/sm/enums/label_order.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
@@ -44,7 +45,6 @@ namespace tiledb::sm {
 
 class Attribute;
 class Dimension;
-class StorageManager;
 class URI;
 
 /** Return a Status_DimensionLabelError error class Status with a given
@@ -78,6 +78,15 @@ class DimensionLabel {
 
   /** Returns the index dimension in the indexed array. */
   const Dimension* index_dimension() const;
+
+  /**
+   * Throws an exception if the dimension label is not compatible with an input
+   * dimension label reference.
+   *
+   * @param dim_label_ref Dimension label reference to check compatibility with.
+   */
+  void is_compatible(
+      const DimensionLabelReference& dim_label_ref, const Dimension* dim) const;
 
   /** Returns the array with indices stored on the dimension. */
   inline shared_ptr<Array> indexed_array() const {
@@ -138,6 +147,9 @@ class DimensionLabel {
 
   /** Returns the query type the dimension label was opened with. */
   QueryType query_type() const;
+
+  /** Returns a reference to the dimension label schema. */
+  const DimensionLabelSchema& schema() const;
 
  private:
   /**********************/

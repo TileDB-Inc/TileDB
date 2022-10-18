@@ -37,13 +37,12 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/consolidator/consolidator.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-
-class StorageManager;
 
 /** Handles group metadata consolidation. */
 class GroupMetaConsolidator : public Consolidator {
@@ -59,7 +58,7 @@ class GroupMetaConsolidator : public Consolidator {
    * @param storage_manager Storage manager.
    */
   explicit GroupMetaConsolidator(
-      const Config* config, StorageManager* storage_manager);
+      const Config& config, StorageManager* storage_manager);
 
   /** Destructor. */
   ~GroupMetaConsolidator() = default;
@@ -101,7 +100,7 @@ class GroupMetaConsolidator : public Consolidator {
   /* ********************************* */
 
   /** Checks and sets the input configuration parameters. */
-  Status set_config(const Config* config);
+  Status set_config(const Config& config);
 
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */

@@ -673,18 +673,6 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
   return Status::Ok();
 }
 
-bool FragmentMetadata::dense() const {
-  return dense_;
-}
-
-const NDRange& FragmentMetadata::domain() const {
-  return domain_;
-}
-
-uint32_t FragmentMetadata::format_version() const {
-  return version_;
-}
-
 Status FragmentMetadata::fragment_size(uint64_t* size) const {
   // Add file sizes
   *size = 0;
@@ -712,14 +700,6 @@ Status FragmentMetadata::fragment_size(uint64_t* size) const {
   *size += meta_file_size;
 
   return Status::Ok();
-}
-
-const URI& FragmentMetadata::fragment_uri() const {
-  return fragment_uri_;
-}
-
-bool FragmentMetadata::has_consolidated_footer() const {
-  return has_consolidated_footer_;
 }
 
 Status FragmentMetadata::get_tile_overlap(
@@ -811,10 +791,6 @@ Status FragmentMetadata::init(const NDRange& non_empty_domain) {
   fragment_null_counts_.resize(num);
 
   return Status::Ok();
-}
-
-uint64_t FragmentMetadata::last_tile_cell_num() const {
-  return last_tile_cell_num_;
 }
 
 Status FragmentMetadata::load(
@@ -1233,7 +1209,7 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   }
 
   if (!dense_) {
-    rtree_.set_leaf_num(num_tiles);
+    throw_if_not_ok(rtree_.set_leaf_num(num_tiles));
     sparse_tile_num_ = num_tiles;
   }
 
@@ -1242,10 +1218,6 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
 
 void FragmentMetadata::set_last_tile_cell_num(uint64_t cell_num) {
   last_tile_cell_num_ = cell_num;
-}
-
-uint64_t FragmentMetadata::tile_index_base() const {
-  return tile_index_base_;
 }
 
 uint64_t FragmentMetadata::tile_num() const {
@@ -1990,10 +1962,6 @@ FragmentMetadata::get_processed_conditions_set() {
 
 uint64_t FragmentMetadata::first_timestamp() const {
   return timestamp_range_.first;
-}
-
-const std::pair<uint64_t, uint64_t>& FragmentMetadata::timestamp_range() const {
-  return timestamp_range_;
 }
 
 bool FragmentMetadata::operator<(const FragmentMetadata& metadata) const {
@@ -2817,7 +2785,7 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&mbr_num, sizeof(uint64_t)));
 
   // Set leaf level
-  rtree_.set_leaf_num(mbr_num);
+  throw_if_not_ok(rtree_.set_leaf_num(mbr_num));
   auto& domain{array_schema_->domain()};
   auto dim_num = domain.dim_num();
   for (uint64_t m = 0; m < mbr_num; ++m) {
@@ -2827,7 +2795,7 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
       mbr[d].set_range(buff->cur_data(), r_size);
       buff->advance_offset(r_size);
     }
-    rtree_.set_leaf(m, mbr);
+    throw_if_not_ok(rtree_.set_leaf(m, mbr));
   }
 
   // Build R-tree bottom-up
@@ -3047,7 +3015,7 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
     // Get number of tile offsets
     st = buff->read(&tile_var_offsets_num, sizeof(uint64_t));
     if (!st.ok()) {
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       return LOG_STATUS(Status_FragmentMetadataError(
           "Cannot load fragment metadata; Reading number of variable tile "
           "offsets failed"));
@@ -3070,7 +3038,7 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
     tile_var_offsets_[i].resize(tile_var_offsets_num);
     st = buff->read(&tile_var_offsets_[i][0], size);
     if (!st.ok()) {
-      LOG_STATUS(st);
+      LOG_STATUS_NO_RETURN_VALUE(st);
       return LOG_STATUS(Status_FragmentMetadataError(
           "Cannot load fragment metadata; Reading variable tile offsets "
           "failed"));
@@ -4963,8 +4931,8 @@ void FragmentMetadata::clean_up() {
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
 
-  storage_manager_->close_file(fragment_metadata_uri);
-  storage_manager_->vfs()->remove_file(fragment_metadata_uri);
+  throw_if_not_ok(storage_manager_->close_file(fragment_metadata_uri));
+  throw_if_not_ok(storage_manager_->vfs()->remove_file(fragment_metadata_uri));
 }
 
 const shared_ptr<const ArraySchema>& FragmentMetadata::array_schema() const {

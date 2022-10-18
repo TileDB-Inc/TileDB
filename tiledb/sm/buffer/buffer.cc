@@ -258,13 +258,12 @@ void Buffer::set_size(const uint64_t size) {
   size_ = size;
 }
 
-Status Buffer::swap(Buffer& other) {
+void Buffer::swap(Buffer& other) {
   std::swap(alloced_size_, other.alloced_size_);
   std::swap(data_, other.data_);
   std::swap(offset_, other.offset_);
   std::swap(owns_data_, other.owns_data_);
   std::swap(size_, other.size_);
-  return Status::Ok();
 }
 
 Status Buffer::write(ConstBuffer* buff) {
