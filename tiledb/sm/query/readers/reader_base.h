@@ -524,7 +524,8 @@ class ReaderBase : public StrategyBase {
    * @param name Attribute/dimension the tile belong to.
    * @param tile Tile to be unfiltered.
    * @param tile_chunk_data Tile chunk info, buffers and offsets
-   * @param pair Stores the metadata needed to run the bitsort filter.
+   * @param bitsort_metadata Stores the metadata needed to run the bitsort
+   * filter.
    * @return Status
    */
   Status unfilter_tile_chunk_range(

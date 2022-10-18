@@ -112,7 +112,8 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
           &tile,
           nullptr,
           storage_manager_->compute_tp(),
-          config),
+          config,
+          nullptr),
       nullopt);
   assert(!tile.filtered());
 

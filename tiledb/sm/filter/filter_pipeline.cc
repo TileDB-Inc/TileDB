@@ -318,10 +318,9 @@ Status FilterPipeline::filter_chunks_forward(
   return Status::Ok();
 }
 
-template <typename SupportDataType>
 Status FilterPipeline::filter_chunks_reverse(
     Tile& tile,
-    SupportDataType support_tiles,
+    void* support_data,
     const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
     ThreadPool* const compute_tp,
     const Config& config) const {
@@ -397,7 +396,7 @@ Status FilterPipeline::filter_chunks_reverse(
 
       RETURN_NOT_OK(f->run_reverse(
           tile,
-          support_tiles,
+          support_data,
           &input_metadata,
           &input_data,
           &output_metadata,
@@ -559,26 +558,26 @@ Status FilterPipeline::run_reverse_chunk_range(
   return Status::Ok();
 }
 
-template <typename SupportDataType>
 Status FilterPipeline::run_reverse(
     stats::Stats* const reader_stats,
     Tile* const tile,
-    SupportDataType support_tiles,
+    Tile* const offsets_tile,
     ThreadPool* const compute_tp,
-    const Config& config) const {
+    const Config& config,
+    void* support_data) const {
   assert(tile->filtered());
 
-  return run_reverse_internal<SupportDataType>(
-      reader_stats, tile, support_tiles, compute_tp, config);
+  return run_reverse_internal(
+      reader_stats, tile, offsets_tile, compute_tp, config, support_data);
 }
 
-template <typename SupportDataType>
 Status FilterPipeline::run_reverse_internal(
     stats::Stats* const reader_stats,
     Tile* const tile,
-    SupportDataType support_tiles,
+    Tile* const offsets_tile,
     ThreadPool* const compute_tp,
-    const Config& config) const {
+    const Config& config,
+    void* support_data) const {
   auto filtered_buffer_data = tile->filtered_buffer().data();
 
   // First make a pass over the tile to get the chunk information.
@@ -609,20 +608,17 @@ Status FilterPipeline::run_reverse_internal(
 
   reader_stats->add_counter("read_unfiltered_byte_num", total_orig_size);
 
-  const Status st = filter_chunks_reverse<SupportDataType>(
-      *tile, support_tiles, filtered_chunks, compute_tp, config);
+  const Status st = filter_chunks_reverse(
+      *tile, support_data, filtered_chunks, compute_tp, config);
 
   if (!st.ok()) {
     tile->clear_data();
 
     // Clear the support tiles buffer, but only when possible.
-    if constexpr (
-        !std::is_same<SupportDataType, BitSortFilterMetadataType*>::value &&
-        !std::is_same<SupportDataType, std::nullptr_t>::value) {
-      if (support_tiles) {
-        support_tiles->clear_data();
-      }
+    if (offsets_tile) {
+      offsets_tile->clear_data();
     }
+
     return st;
   }
 
@@ -630,12 +626,8 @@ Status FilterPipeline::run_reverse_internal(
   // 'tile->buffer()'.
   tile->filtered_buffer().clear();
   // If unfiltering also included offsets, clear their filtered buffer too
-  if constexpr (
-      !std::is_same<SupportDataType, BitSortFilterMetadataType*>::value &&
-      !std::is_same<SupportDataType, std::nullptr_t>::value) {
-    if (support_tiles) {
-      support_tiles->filtered_buffer().clear();
-    }
+  if (offsets_tile) {
+    offsets_tile->filtered_buffer().clear();
   }
 
   // Zip the coords.
@@ -766,35 +758,6 @@ bool FilterPipeline::use_tile_chunking(
 
   return true;
 }
-
-/** Explicit template instantiations of run_reverse. */
-template Status FilterPipeline::run_reverse<Tile* const>(
-    stats::Stats* writer_stats,
-    Tile* tile,
-    Tile* const support_tiles,
-    ThreadPool* compute_tp,
-    const Config& config) const;
-
-template Status FilterPipeline::run_reverse<Tile*>(
-    stats::Stats* writer_stats,
-    Tile* tile,
-    Tile* support_tiles,
-    ThreadPool* compute_tp,
-    const Config& config) const;
-
-template Status FilterPipeline::run_reverse<std::nullptr_t>(
-    stats::Stats* writer_stats,
-    Tile* tile,
-    std::nullptr_t support_tiles,
-    ThreadPool* compute_tp,
-    const Config& config) const;
-
-template Status FilterPipeline::run_reverse<BitSortFilterMetadataType*>(
-    stats::Stats* writer_stats,
-    Tile* tile,
-    BitSortFilterMetadataType* support_tiles,
-    ThreadPool* compute_tp,
-    const Config& config) const;
 
 }  // namespace sm
 }  // namespace tiledb

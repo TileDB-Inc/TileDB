@@ -1700,12 +1700,13 @@ Status ReaderBase::unfilter_tile(
       &filters, array_->get_encryption_key()));
 
   // Reverse the tile filters.
-  RETURN_NOT_OK(filters.run_reverse<BitSortFilterMetadataType*>(
+  RETURN_NOT_OK(filters.run_reverse(
       stats_,
       tile,
-      &bitsort_metadata,
+      nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config()));
+      storage_manager_->config(),
+      &bitsort_metadata));
 
   return Status::Ok();
 }
@@ -1723,7 +1724,8 @@ Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile) const {
       tile,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config()));
+      storage_manager_->config(),
+      nullptr));
 
   return Status::Ok();
 }
@@ -1745,12 +1747,22 @@ Status ReaderBase::unfilter_tile(
   if (filters.skip_offsets_filtering(
           tile_var->type(), array_schema_.version())) {
     RETURN_NOT_OK(filters.run_reverse(
-        stats_, tile_var, tile, storage_manager_->compute_tp(), config_));
+        stats_, tile_var, tile, storage_manager_->compute_tp(), config_, tile));
   } else {
     RETURN_NOT_OK(offset_filters.run_reverse(
-        stats_, tile, nullptr, storage_manager_->compute_tp(), config_));
+        stats_,
+        tile,
+        nullptr,
+        storage_manager_->compute_tp(),
+        config_,
+        nullptr));
     RETURN_NOT_OK(filters.run_reverse(
-        stats_, tile_var, nullptr, storage_manager_->compute_tp(), config_));
+        stats_,
+        tile_var,
+        nullptr,
+        storage_manager_->compute_tp(),
+        config_,
+        nullptr));
   }
 
   return Status::Ok();
@@ -1773,14 +1785,16 @@ Status ReaderBase::unfilter_tile_nullable(
       tile,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config()));
+      storage_manager_->config(),
+      nullptr));
   // Reverse the validity tile filters.
   RETURN_NOT_OK(validity_filters.run_reverse(
       stats_,
       tile_validity,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config()));
+      storage_manager_->config(),
+      nullptr));
 
   return Status::Ok();
 }
@@ -1811,20 +1825,23 @@ Status ReaderBase::unfilter_tile_nullable(
         tile_var,
         tile,
         storage_manager_->compute_tp(),
-        storage_manager_->config()));
+        storage_manager_->config(),
+        tile));
   } else {
     RETURN_NOT_OK(offset_filters.run_reverse(
         stats_,
         tile,
         nullptr,
         storage_manager_->compute_tp(),
-        storage_manager_->config()));
+        storage_manager_->config(),
+        nullptr));
     RETURN_NOT_OK(filters.run_reverse(
         stats_,
         tile_var,
         nullptr,
         storage_manager_->compute_tp(),
-        storage_manager_->config()));
+        storage_manager_->config(),
+        nullptr));
   }
 
   // Reverse the validity tile filters.
@@ -1833,7 +1850,8 @@ Status ReaderBase::unfilter_tile_nullable(
       tile_validity,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config()));
+      storage_manager_->config(),
+      nullptr));
 
   return Status::Ok();
 }

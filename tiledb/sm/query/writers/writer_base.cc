@@ -730,15 +730,15 @@ Status WriterBase::filter_tiles(
   // For fixed size, process everything, for var size, everything minus offsets.
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
-        const auto& [tile, offsets_tile, contains_offsets, is_nullable] =
+        const auto& [tile, offset_tile, contains_offsets, is_nullable] =
             args[i];
         RETURN_NOT_OK(filter_tile(
             name,
             tile,
-            offsets_tile,
+            offset_tile,
             contains_offsets,
             is_nullable,
-            offsets_tile));
+            offset_tile));
         return Status::Ok();
       });
   RETURN_NOT_OK(status);

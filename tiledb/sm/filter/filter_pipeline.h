@@ -33,9 +33,7 @@
 #ifndef TILEDB_FILTER_PIPELINE_H
 #define TILEDB_FILTER_PIPELINE_H
 
-#include <functional>
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -44,7 +42,6 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/types.h"
@@ -196,10 +193,10 @@ class FilterPipeline {
    * The given Tile's underlying buffer is modified to contain the filtered
    * data.
    *
-   * @tparam SupportDataType The type of the support data given to the filter.
    * @param tile Tile to filter.
    * @param offsets_tile Offets tile for tile to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
+   * @param support_data Support data for the filter.
    * @param chunking True if the tile should be cut into chunks before
    * filtering, false if not.
    * @return Status
@@ -244,21 +241,22 @@ class FilterPipeline {
    * The length of tile_data will be the sum of all chunkI_orig_len for I in 0
    * to N.
    *
-   * @tparam SupportDataType The type of the support data given to the filter.
    * @param reader_stats Reader stats
    * @param tile Tile to unfilter
-   * @param support_tiles Argument for support data passed given to filter.
+   * @param offsets_tile Offsets tile to unfilter, null if it will be unfilered
+   * separately
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
+   * @param support_data Support data for the filter.
    * @return Status
    */
-  template <typename SupportDataType = Tile* const>
   Status run_reverse(
       stats::Stats* writer_stats,
       Tile* tile,
-      SupportDataType support_tiles,
+      Tile* const offsets_tile,
       ThreadPool* compute_tp,
-      const Config& config) const;
+      const Config& config,
+      void* support_data = nullptr) const;
 
   /**
    * Run the given chunk range in reverse through the pipeline.
@@ -393,7 +391,7 @@ class FilterPipeline {
    *
    * @tparam SupportDataType The type of the support data given to the filter.
    * @param tile Current tile on which the filter pipeline is being run
-   * @param support_tiles Argument for support data passed given to filter.
+   * @param support_data Argument for support data passed given to filter.
    * @param input Filtered chunk buffers to reverse.
    * @param output Chunked buffer where output of the last stage
    *    will be written.
@@ -401,10 +399,9 @@ class FilterPipeline {
    * @param config The global config.
    * @return Status
    */
-  template <typename SupportDataType = Tile* const>
   Status filter_chunks_reverse(
       Tile& tile,
-      SupportDataType support_tiles,
+      void* support_data,
       const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
       ThreadPool* const compute_tp,
       const Config& config) const;
@@ -414,18 +411,19 @@ class FilterPipeline {
    *
    * @tparam SupportDataType The type of the support data given to the filter.
    * @param tile Tile to filter
-   * @param support_tiles Argument for support data passed given to filter.
+   * @param offsets_tile Offsets tile for var sized tile to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
+   * @param support_data Support data for the filter.
    * @return Status
    */
-  template <typename SupportDataType = Tile* const>
   Status run_reverse_internal(
-      stats::Stats* reader_stats,
+      stats::Stats* const reader_stats,
       Tile* const tile,
-      SupportDataType support_tiles,
-      ThreadPool* compute_tp,
-      const Config& config) const;
+      Tile* const offsets_tile,
+      ThreadPool* const compute_tp,
+      const Config& config,
+      void* support_data) const;
 };
 
 }  // namespace sm
