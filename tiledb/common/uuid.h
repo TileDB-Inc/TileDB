@@ -1,11 +1,11 @@
 /**
- * @file compile_uuid_main.cc
+ * @file   uuid.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,11 +24,36 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file declares a platform-independent UUID generator.
  */
 
-#include "../uuid.h"
+#ifndef TILEDB_UUID_H
+#define TILEDB_UUID_H
 
-int main() {
-  (void)tiledb::sm::uuid::generate_uuid(nullptr, false);
-  return 0;
+#include "tiledb/common/status.h"
+
+using namespace tiledb::common;
+
+namespace uuid {
+
+/** Return a uuid error class Status with a given message **/
+inline Status Status_UuidError(const std::string& msg) {
+  return {"[TileDB::Uuid] Error", msg};
 }
+
+/**
+ * Generates a 128-bit UUID. The string is formatted with hyphens like:
+ * 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxx' where 'x' is a hexadecimal digit.
+ * Note: this function internally acquires a lock.
+ *
+ * @param hyphenate If false, the UUID string will not be hyphenated.
+ * @return Status
+ */
+std::string generate_uuid(bool hyphenate = true);
+
+}  // namespace uuid
+
+#endif

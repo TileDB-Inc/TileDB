@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,7 @@
 #include <mutex>
 #include <vector>
 
-#include "tiledb/sm/misc/uuid.h"
+#include "tiledb/common/uuid.h"
 
 #ifdef _WIN32
 #include <Rpc.h>
@@ -45,8 +45,6 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
 namespace uuid {
 
 /** Mutex to guard UUID generation. */
@@ -57,28 +55,26 @@ static std::mutex uuid_mtx;
 /**
  * Generate a UUID using Win32 RPC API.
  */
-Status generate_uuid_win32(std::string* uuid_str) {
+void generate_uuid_win32(std::string* uuid_str) {
   if (uuid_str == nullptr)
-    return Status_UtilsError("Null UUID string argument");
+    throw Status_UuidError("Null UUID string argument");
 
   UUID uuid;
   RPC_STATUS rc = UuidCreate(&uuid);
   if (rc != RPC_S_OK)
-    return Status_UtilsError("Unable to generate Win32 UUID: creation error");
+    throw Status_UuidError("Unable to generate Win32 UUID: creation error");
 
   char* buf = nullptr;
   rc = UuidToStringA(&uuid, reinterpret_cast<RPC_CSTR*>(&buf));
   if (rc != RPC_S_OK)
-    return Status_UtilsError(
+    throw Status_UuidError(
         "Unable to generate Win32 UUID: string conversion error");
 
   *uuid_str = std::string(buf);
 
   rc = RpcStringFreeA(reinterpret_cast<RPC_CSTR*>(&buf));
   if (rc != RPC_S_OK)
-    return Status_UtilsError("Unable to generate Win32 UUID: free error");
-
-  return Status::Ok();
+    throw Status_UuidError("Unable to generate Win32 UUID: free error");
 }
 
 #else
@@ -89,9 +85,9 @@ Status generate_uuid_win32(std::string* uuid_str) {
  * Initially from: https://gist.github.com/kvelakur/9069c9896577c3040030
  * "Generating a Version 4 UUID using OpenSSL"
  */
-Status generate_uuid_openssl(std::string* uuid_str) {
+void generate_uuid_openssl(std::string* uuid_str) {
   if (uuid_str == nullptr)
-    return Status_UtilsError("Null UUID string argument");
+    throw Status_UuidError("Null UUID string argument");
 
   union {
     struct {
@@ -109,7 +105,7 @@ Status generate_uuid_openssl(std::string* uuid_str) {
   if (rc < 1) {
     char err_msg[256];
     ERR_error_string_n(ERR_get_error(), err_msg, sizeof(err_msg));
-    return Status_UtilsError(
+    throw Status_UuidError(
         "Cannot generate random bytes with OpenSSL: " + std::string(err_msg));
   }
 
@@ -138,41 +134,34 @@ Status generate_uuid_openssl(std::string* uuid_str) {
       uuid.node[5]);
 
   if (rc < 0)
-    return Status_UtilsError("Error formatting UUID string");
+    throw Status_UuidError("Error formatting UUID string");
 
   *uuid_str = std::string(buf);
-
-  return Status::Ok();
 }
 
 #endif
 
-Status generate_uuid(std::string* uuid, bool hyphenate) {
-  if (uuid == nullptr)
-    return Status_UtilsError("Null UUID string argument");
-
-  std::string uuid_str;
+std::string generate_uuid(bool hyphenate) {
+  std::string uuid_hyphenated;
   {
     // OpenSSL is not threadsafe, so grab a lock here. We are locking in the
     // Windows case as well just to be careful.
     std::unique_lock<std::mutex> lck(uuid_mtx);
 #ifdef _WIN32
-    RETURN_NOT_OK(generate_uuid_win32(&uuid_str));
+    generate_uuid_win32(&uuid_hyphenated);
 #else
-    RETURN_NOT_OK(generate_uuid_openssl(&uuid_str));
+    generate_uuid_openssl(&uuid_hyphenated);
 #endif
   }
 
-  uuid->clear();
-  for (unsigned i = 0; i < uuid_str.length(); i++) {
-    if (uuid_str[i] == '-' && !hyphenate)
+  std::string uuid;
+  for (unsigned i = 0; i < uuid_hyphenated.length(); i++) {
+    if (uuid_hyphenated[i] == '-' && !hyphenate)
       continue;
-    uuid->push_back(uuid_str[i]);
+    uuid.push_back(uuid_hyphenated[i]);
   }
 
-  return Status::Ok();
+  return uuid;
 }
 
 }  // namespace uuid
-}  // namespace sm
-}  // namespace tiledb

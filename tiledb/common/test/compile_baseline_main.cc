@@ -32,6 +32,7 @@
 #include "../heap_profiler.h"
 #include "../logger.h"
 #include "../status.h"
+#include "../uuid.h"
 
 using namespace tiledb::common;
 
@@ -40,5 +41,6 @@ int main() {
       sizeof(Logger) + sizeof(Status) + sizeof(Governor) + sizeof(HeapProfiler);
   tdb_free(tdb_malloc(n));
   auto p = make_shared<int>(HERE(), n);
+  (void)uuid::generate_uuid(false);
   return 0;
 }

@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/common/logger.h"
+#include "tiledb/common/uuid.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/fmt/ostr.h>
@@ -39,6 +40,10 @@
 #ifndef _WIN32
 #include <spdlog/sinks/stdout_color_sinks.h>
 #endif
+
+#include <chrono>
+#include <ctime>
+#include <iostream>
 
 namespace tiledb::common {
 
@@ -284,6 +289,27 @@ Logger& global_logger(Logger::Format format) {
   static std::string name = (format == Logger::Format::JSON) ?
                                 Logger::global_logger_json_name :
                                 Logger::global_logger_default_name;
+
+  // Append name with a (timestamped?) uuid.
+  std::string uuid = uuid::generate_uuid(false);
+  name.append(uuid);
+
+  /*const uint64_t ts_milli =
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::system_clock::now().time_since_epoch())
+          .count();
+  const uint64_t ts_micro =
+      std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::system_clock::now().time_since_epoch())
+          .count();
+  auto uuid_substr = name.substr(name.length() - 7);
+  auto ts_milli_substr =
+    std::to_string(ts_milli).substr(std::to_string(ts_milli).length() - 7);
+  auto ts_micro_substr =
+    std::to_string(ts_micro).substr(std::to_string(ts_micro).length() - 7);
+  std::cerr<<"Logger_info {uuid, ts(ms), ts (us)}:   {" << uuid_substr
+  << " , " << ts_milli_substr << " , " << ts_micro_substr << "}" << std::endl;*/
+
   static Logger l(name, format, true);
   return l;
 }

@@ -33,7 +33,6 @@ target_link_libraries(metadata PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(metadata PUBLIC buffer $<TARGET_OBJECTS:buffer>)
 target_link_libraries(metadata PUBLIC constants $<TARGET_OBJECTS:constants>)
 target_link_libraries(metadata PUBLIC time $<TARGET_OBJECTS:time>)
-target_link_libraries(metadata PUBLIC uuid $<TARGET_OBJECTS:uuid>)
 target_link_libraries(metadata PUBLIC vfs $<TARGET_OBJECTS:vfs>)
 #
 # Test-compile of object library ensures link-completeness

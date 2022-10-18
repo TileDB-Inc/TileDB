@@ -33,10 +33,10 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
+#include "tiledb/common/uuid.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb::common;
@@ -370,8 +370,7 @@ URI ArrayDirectory::get_vacuum_uri(const URI& fragment_uri) const {
 tuple<Status, optional<std::string>> ArrayDirectory::compute_new_fragment_name(
     const URI& first, const URI& last, uint32_t format_version) const {
   // Get uuid
-  std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), nullopt);
+  std::string uuid = uuid::generate_uuid(false);
 
   // For creating the new fragment URI
 

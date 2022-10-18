@@ -97,7 +97,6 @@ target_link_libraries(array_schema PUBLIC domain $<TARGET_OBJECTS:domain>)
 target_link_libraries(array_schema PUBLIC dimension_label_reference $<TARGET_OBJECTS:dimension_label_reference>)
 target_link_libraries(array_schema PUBLIC time $<TARGET_OBJECTS:time>)
 target_link_libraries(array_schema PUBLIC uri_format $<TARGET_OBJECTS:uri_format>)
-target_link_libraries(array_schema PUBLIC uuid $<TARGET_OBJECTS:uuid>)
 target_link_libraries(array_schema PUBLIC vfs $<TARGET_OBJECTS:vfs>)
 #
 # Test-compile of object library ensures link-completeness

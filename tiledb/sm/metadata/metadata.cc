@@ -32,10 +32,10 @@
 
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/uuid.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 #include <iostream>
@@ -109,8 +109,7 @@ Status Metadata::get_uri(const URI& array_uri, URI* meta_uri) {
 }
 
 Status Metadata::generate_uri(const URI& array_uri) {
-  std::string uuid;
-  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
+  std::string uuid = uuid::generate_uuid(false);
 
   std::stringstream ss;
   ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"

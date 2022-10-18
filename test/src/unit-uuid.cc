@@ -36,8 +36,8 @@
 #include <vector>
 
 #include "test/src/helpers.h"
+#include "tiledb/common/uuid.h"
 #include "tiledb/sm/global_state/global_state.h"
-#include "tiledb/sm/misc/uuid.h"
 
 using namespace tiledb::sm;
 
@@ -46,14 +46,13 @@ TEST_CASE("UUID: Test generate", "[uuid]") {
   REQUIRE(global_state::GlobalState::GetGlobalState().init().ok());
 
   SECTION("- Serial") {
-    std::string uuid0, uuid1, uuid2;
-    REQUIRE(uuid::generate_uuid(&uuid0).ok());
+    std::string uuid0 = uuid::generate_uuid();
     REQUIRE(uuid0.length() == 36);
-    REQUIRE(uuid::generate_uuid(&uuid1).ok());
+    std::string uuid1 = uuid::generate_uuid();
     REQUIRE(uuid1.length() == 36);
     REQUIRE(uuid0 != uuid1);
 
-    REQUIRE(uuid::generate_uuid(&uuid2, false).ok());
+    std::string uuid2 = uuid::generate_uuid(false);
     REQUIRE(uuid2.length() == 32);
   }
 
@@ -64,7 +63,7 @@ TEST_CASE("UUID: Test generate", "[uuid]") {
     for (unsigned i = 0; i < nthreads; i++) {
       threads.emplace_back([&uuids, i]() {
         std::string& uuid = uuids[i];
-        REQUIRE_SAFE(uuid::generate_uuid(&uuid).ok());
+        uuid = uuid::generate_uuid();
         REQUIRE_SAFE(uuid.length() == 36);
       });
     }

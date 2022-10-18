@@ -33,7 +33,6 @@ add_library(array OBJECT array_directory.cc)
 target_link_libraries(array PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(array PUBLIC vfs $<TARGET_OBJECTS:vfs>)
 target_link_libraries(array PUBLIC uri_format $<TARGET_OBJECTS:uri_format>)
-target_link_libraries(array PUBLIC uuid $<TARGET_OBJECTS:uuid>)
 #
 # Test-compile of object library ensures link-completeness
 #

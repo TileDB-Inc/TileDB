@@ -57,8 +57,21 @@ set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
 #
 add_library(baseline OBJECT
     logger.cc governor/governor.cc heap_profiler.cc heap_memory.cc
-    exception/exception.cc exception/status.cc
+    exception/exception.cc exception/status.cc uuid.cc
 )
+if(WIN32)
+    if(MSVC)
+        find_library(RPCRT4_LIBRARY rpcrt4)
+        message(STATUS "Found Win32 lib bcrypt: ${RPCRT4_LIBRARY}")
+        target_link_libraries(baseline PUBLIC ${RPCRT4_LIBRARY})
+    else()
+        message(STATUS "Linking to Win32 lib rpcrt4")
+        target_link_libraries(baseline PUBLIC -lrpcrt4)
+    endif()
+else()
+    find_package(OpenSSL_EP REQUIRED)
+    target_link_libraries(baseline PUBLIC OpenSSL::Crypto)
+endif()
 find_package(Spdlog_EP REQUIRED)
 target_link_libraries(baseline PUBLIC spdlog::spdlog)
 target_link_libraries(baseline PUBLIC common)

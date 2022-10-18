@@ -34,6 +34,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/uuid.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -44,7 +45,6 @@
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -255,8 +255,8 @@ Status GlobalOrderWriter::check_global_order() const {
   auto& domain{array_schema_.domain()};
   DomainBuffersView domain_buffs{array_schema_, buffers_};
   if (global_write_state_->cells_written_.begin()->second > 0) {
-    DomainBuffersView last_cell_buffs{array_schema_,
-                                      *global_write_state_->last_cell_coords_};
+    DomainBuffersView last_cell_buffs{
+        array_schema_, *global_write_state_->last_cell_coords_};
     auto left{last_cell_buffs.domain_ref_at(domain, 0)};
     auto right{domain_buffs.domain_ref_at(domain, 0)};
 

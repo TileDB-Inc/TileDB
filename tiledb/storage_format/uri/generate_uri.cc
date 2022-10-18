@@ -27,8 +27,8 @@
  */
 
 #include "tiledb/storage_format/uri/generate_uri.h"
+#include "tiledb/common/uuid.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/uuid.h"
 
 #include <sstream>
 
@@ -38,8 +38,7 @@ namespace tiledb::storage_format {
 
 std::string generate_uri(
     uint64_t timestamp_start, uint64_t timestamp_end, uint32_t version) {
-  std::string uuid;
-  throw_if_not_ok(sm::uuid::generate_uuid(&uuid, false));
+  std::string uuid = uuid::generate_uuid(false);
   std::stringstream ss;
   ss << "/__" << timestamp_start << "_" << timestamp_end << "_" << uuid << "_"
      << version;

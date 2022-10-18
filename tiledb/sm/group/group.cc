@@ -33,6 +33,7 @@
 #include "tiledb/sm/group/group.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/uuid.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -41,7 +42,6 @@
 #include "tiledb/sm/group/group_v1.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/rest/rest_client.h"
 
 using namespace tiledb::common;
@@ -713,15 +713,17 @@ tuple<Status, optional<uint64_t>> Group::member_count() const {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    return {Status_GroupError("Cannot get member count; Group is not open"),
-            std::nullopt};
+    return {
+        Status_GroupError("Cannot get member count; Group is not open"),
+        std::nullopt};
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {Status_GroupError(
-                "Cannot get member; Group was not opened in read mode"),
-            std::nullopt};
+    return {
+        Status_GroupError(
+            "Cannot get member; Group was not opened in read mode"),
+        std::nullopt};
   }
 
   return {Status::Ok(), members_.size()};
@@ -737,19 +739,21 @@ Group::member_by_index(uint64_t index) {
 
   // Check if group is open
   if (!is_open_) {
-    return {Status_GroupError("Cannot get member by index; Group is not open"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+    return {
+        Status_GroupError("Cannot get member by index; Group is not open"),
+        std::nullopt,
+        std::nullopt,
+        std::nullopt};
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {Status_GroupError(
-                "Cannot get member; Group was not opened in read mode"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+    return {
+        Status_GroupError(
+            "Cannot get member; Group was not opened in read mode"),
+        std::nullopt,
+        std::nullopt,
+        std::nullopt};
   }
 
   if (index >= members_vec_.size()) {
@@ -783,30 +787,33 @@ Group::member_by_name(const std::string& name) {
 
   // Check if group is open
   if (!is_open_) {
-    return {Status_GroupError("Cannot get member by name; Group is not open"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+    return {
+        Status_GroupError("Cannot get member by name; Group is not open"),
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt};
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {Status_GroupError(
-                "Cannot get member; Group was not opened in read mode"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+    return {
+        Status_GroupError(
+            "Cannot get member; Group was not opened in read mode"),
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt};
   }
 
   auto it = members_by_name_.find(name);
   if (it == members_by_name_.end()) {
-    return {Status_GroupError(name + " does not exist in group"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+    return {
+        Status_GroupError(name + " does not exist in group"),
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt};
   }
 
   auto member = it->second;
@@ -857,8 +864,7 @@ std::string Group::dump(
 /* ********************************* */
 
 tuple<Status, optional<std::string>> Group::generate_name() const {
-  std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), std::nullopt);
+  std::string uuid = uuid::generate_uuid(false);
 
   auto timestamp =
       (timestamp_end_ != 0) ? timestamp_end_ : utils::time::timestamp_now_ms();

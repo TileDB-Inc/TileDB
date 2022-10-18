@@ -275,7 +275,6 @@ inline Status Status_ArraySchemaError(const std::string& msg) {
 inline Status Status_ArraySchemaEvolutionError(const std::string& msg) {
   return {"[TileDB::ArraySchemaEvolution] Error", msg};
 }
-
 /** Return a IO error class Status with a given message **/
 inline Status Status_IOError(const std::string& msg) {
   return {"[TileDB::IO] Error", msg};

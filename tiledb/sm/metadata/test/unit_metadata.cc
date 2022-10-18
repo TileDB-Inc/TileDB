@@ -34,11 +34,11 @@
 #include "../metadata.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
+#include "tiledb/common/uuid.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/uuid.h"
 
 using namespace tiledb;
 using namespace tiledb::common;

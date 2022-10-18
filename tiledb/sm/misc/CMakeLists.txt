@@ -102,32 +102,6 @@ add_dependencies(all_link_complete compile_time)
 target_link_libraries(compile_time PRIVATE time)
 target_sources(compile_time PRIVATE test/compile_time_main.cc)
 
-#
-# `uuid` object library
-#
-add_library(uuid OBJECT uuid.cc)
-target_link_libraries(uuid PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-if(WIN32)
-    if(MSVC)
-        find_library(RPCRT4_LIBRARY rpcrt4)
-        message(STATUS "Found Win32 lib bcrypt: ${RPCRT4_LIBRARY}")
-        target_link_libraries(uuid PUBLIC ${RPCRT4_LIBRARY})
-    else()
-        message(STATUS "Linking to Win32 lib rpcrt4")
-        target_link_libraries(uuid PUBLIC -lrpcrt4)
-    endif()
-else()
-    find_package(OpenSSL_EP REQUIRED)
-    target_link_libraries(uuid PUBLIC OpenSSL::Crypto)
-endif()
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_uuid EXCLUDE_FROM_ALL)
-add_dependencies(all_link_complete compile_uuid)
-target_link_libraries(compile_uuid PRIVATE uuid)
-target_sources(compile_uuid PRIVATE test/compile_uuid_main.cc)
-
 if (TILEDB_TESTS)
   # simple unit test of magic.mgc embedded data vs external data
   find_package(Magic_EP REQUIRED)
