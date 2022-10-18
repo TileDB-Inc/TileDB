@@ -53,9 +53,7 @@ TEST_CASE("C API: Test error and error message", "[capi][error]") {
   rc = tiledb_error_message(err, &errmsg);
   CHECK(rc == TILEDB_OK);
   CHECK_THAT(
-      errmsg,
-      Catch::Matchers::Equals(
-          "Error: Invalid group directory argument is NULL"));
+      errmsg, Catch::Matchers::Equals("Error: Invalid group directory argument is NULL"));
 
   // Clean up
   tiledb_error_free(&err);

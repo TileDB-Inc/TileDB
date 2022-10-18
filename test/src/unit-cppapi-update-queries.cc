@@ -258,8 +258,8 @@ TEST_CASE("C++ API: Test setting an update value", "[cppapi][updates]") {
   QueryExperimental::add_update_value_to_query(
       ctx, query, "a", &val, sizeof(val));
 
-  query.ptr()->query_->update_values()[0].check(
-      array.ptr()->array_->array_schema_latest());
+  query.ptr()->query_->update_values()[0]
+            .check(array.ptr()->array_->array_schema_latest());
 
   array.close();
 

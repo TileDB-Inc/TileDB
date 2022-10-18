@@ -118,8 +118,7 @@ TEST_CASE_METHOD(
   CHECK(tiledb::test::num_fragments(array_name) == 3);
   REQUIRE_THROWS_WITH(
       array.delete_fragments(array_name, timestamp_start, timestamp_end),
-      Catch::Matchers::ContainsSubstring(
-          "Query type must be MODIFY_EXCLUSIVE"));
+      Catch::Matchers::ContainsSubstring("Query type must be MODIFY_EXCLUSIVE"));
   CHECK(tiledb::test::num_fragments(array_name) == 3);
   array.close();
 }
