@@ -160,10 +160,9 @@ class BitSortFilter : public Filter {
    * @tparam DimType Dimension tile type.
    * @param positions Vector with the sorted positions of the attribute data.
    * @param dim_tile Dimension tile to rewrite.
-   * @return Status
    */
   template <typename DimType>
-  Status run_forward_dim_tile(
+  void run_forward_dim_tile(
       const std::vector<size_t>& positions, Tile* dim_tile) const;
 
   /**
@@ -203,10 +202,9 @@ class BitSortFilter : public Filter {
    * @tparam DimType Dimension tile type.
    * @param dim_tile Dimension tile to rewrite.
    * @param positions Vector with the sorted positions of the attribute data.
-   * @return Status
    */
   template <typename DimType>
-  Status run_reverse_dim_tile(
+  void run_reverse_dim_tile(
       Tile* dim_tile, std::vector<uint64_t>& positions) const;
 };
 

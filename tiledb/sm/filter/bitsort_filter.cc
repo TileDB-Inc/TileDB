@@ -140,7 +140,7 @@ Status BitSortFilter::run_forward(
   // positions. Then for each part of the input, collect this data into the
   // sorted_elements vector.
   std::vector<AttrType> elements(elements_size);
-  input->copy_to(elements.data());
+  RETURN_NOT_OK(input->copy_to(elements.data()));
 
   // Sort all the attribute tile data by bit order, which is equivalent to
   // sorting an unsigned integer type in ascending order.
@@ -206,7 +206,7 @@ Status BitSortFilter::run_forward(
 }
 
 template <typename DimType>
-Status BitSortFilter::run_forward_dim_tile(
+void BitSortFilter::run_forward_dim_tile(
     const std::vector<size_t>& cell_pos, Tile* dim_tile) const {
   // Obtain the pointer to the data the code modifies.
   uint64_t cell_num = cell_pos.size();
@@ -221,8 +221,6 @@ Status BitSortFilter::run_forward_dim_tile(
   for (uint64_t i = 0; i < cell_num; ++i) {
     filtered_buffer_data[i] = tile_data[cell_pos[i]];
   }
-
-  return Status::Ok();
 }
 
 Status BitSortFilter::run_reverse(
@@ -286,7 +284,7 @@ Status BitSortFilter::run_reverse(
   std::vector<Tile*>& dim_tiles = bitsort_metadata.dim_tiles();
   assert(dim_tiles.size() > 0);
   std::vector<uint64_t> cell_pos(dim_tiles[0]->cell_num());
-  run_reverse_dim_tiles(bitsort_metadata, cell_pos);
+  RETURN_NOT_OK(run_reverse_dim_tiles(bitsort_metadata, cell_pos));
 
   // Unsort the attribute data with the positions determined by the dimension
   // global sorting.
@@ -385,7 +383,7 @@ Status BitSortFilter::run_reverse_dim_tiles(
 }
 
 template <typename DimType>
-Status BitSortFilter::run_reverse_dim_tile(
+void BitSortFilter::run_reverse_dim_tile(
     Tile* dim_tile, std::vector<uint64_t>& cell_pos) const {
   // Obtain the pointer to the data the code modifies.
   uint64_t cell_num = cell_pos.size();
@@ -400,8 +398,6 @@ Status BitSortFilter::run_reverse_dim_tile(
 
   // Clear out the filtered buffer.
   filtered_buffer.clear();
-
-  return Status::Ok();
 }
 
 BitSortFilter* BitSortFilter::clone_impl() const {
