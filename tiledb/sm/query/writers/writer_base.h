@@ -301,29 +301,22 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * pipeline. The tile buffer is modified to contain the output of the
    * pipeline.
    *
-   * @tparam SupportTileType Type of the support argument passed to the filter
-   * pipeline.
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be filtered.
-   * @param support_tile The support tile argument passed to the filter
-   * pipeline.
+   * @param offsets_tile The offsets tile in case of a var tile, or null.
    * @param offsets True if the tile to be filtered contains offsets for a
    *    var-sized attribute/dimension.
-   * @param offsets True if the tile to be filtered contains validity values.
+   * @param nullable True if the tile to be filtered contains validity values.
+   * @param support_data Support data for the filter.
    * @return Status
    */
-
-  template <
-      typename SupportTileType,
-      typename std::enable_if<
-          !std::is_same<SupportTileType, std::nullptr_t>::value>::type* =
-          nullptr>
   Status filter_tile(
       const std::string& name,
       Tile* tile,
-      SupportTileType support_tile,
+      Tile* const offsets_tile,
       bool offsets,
-      bool nullable);
+      bool nullable,
+      void* support_data);
 
   /**
    * Determines if an attribute has min max metadata.

@@ -201,18 +201,18 @@ class FilterPipeline {
    *
    * @tparam SupportDataType The type of the support data given to the filter.
    * @param tile Tile to filter.
-   * @param support_tiles Argument for support data passed given to filter.
+   * @param offsets_tile Offets tile for tile to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param chunking True if the tile should be cut into chunks before
    * filtering, false if not.
    * @return Status
    */
-  template <typename SupportDataType = Tile* const>
   Status run_forward(
       stats::Stats* writer_stats,
       Tile* tile,
-      SupportDataType support_tiles,
+      Tile* offsets_tile,
       ThreadPool* compute_tp,
+      void* support_data = nullptr,
       bool chunking = true) const;
 
   /**
@@ -266,30 +266,26 @@ class FilterPipeline {
   /**
    * Run the given chunk range in reverse through the pipeline.
    *
-   * @tparam HasBitSortFilter Stores within the template whether the bitsort
-   * parameter exists.
    * @param reader_stats Stats to record in the function
    * @param tile Current tile on which the filter pipeline is being run
+   * @param support_data Support data for the filter
    * @param chunk_data The tile chunk info, buffers and offsets
    * @param min_chunk_index The chunk range index to start from
    * @param max_chunk_index The chunk range index to end at
    * @param concurrency_level The maximum level of concurrency
    * @param config The global config.
-   * @param bitsort_metadata The metadata needed to run the bitsort filter.
    * @return Status
    */
 
-  template <bool HasBitSortFilter = false>
   Status run_reverse_chunk_range(
       stats::Stats* const reader_stats,
       Tile* const tile,
+      void* support_data,
       const ChunkData& chunk_data,
       const uint64_t min_chunk_index,
       const uint64_t max_chunk_index,
       uint64_t concurrency_level,
-      const Config& config,
-      OptionalRef<BitSortFilterMetadataType> bitsort_metadata =
-          std::nullopt) const;
+      const Config& config) const;
 
   /**
    * Serializes the pipeline metadata into a binary buffer.
@@ -378,7 +374,7 @@ class FilterPipeline {
    *
    * @tparam SupportDataType The type of the support data given to the filter.
    * @param tile Current tile on which the filter pipeline is being run.
-   * @param support_tiles Argument for support data passed given to filter.
+   * @param support_data Argument for support data passed given to filter.
    * @param input buffer to process.
    * @param chunk_size chunk size.
    * @param chunk_offsets chunk offsets computed for var sized attributes.
@@ -387,10 +383,9 @@ class FilterPipeline {
    * @param compute_tp The thread pool for compute-bound tasks.
    * @return Status
    */
-  template <typename SupportDataType = Tile* const>
   Status filter_chunks_forward(
       const Tile& tile,
-      SupportDataType support_tiles,
+      void* support_data,
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,
       FilteredBuffer& output,

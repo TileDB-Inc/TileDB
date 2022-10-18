@@ -155,10 +155,9 @@ FilterPipeline::get_var_chunk_sizes(
   return {Status::Ok(), std::move(chunk_offsets)};
 }
 
-template <typename SupportDataType>
 Status FilterPipeline::filter_chunks_forward(
     const Tile& tile,
-    SupportDataType support_tiles,
+    void* support_data,
     uint32_t chunk_size,
     std::vector<uint64_t>& chunk_offsets,
     FilteredBuffer& output,
@@ -217,37 +216,13 @@ Status FilterPipeline::filter_chunks_forward(
 
       f->init_compression_resource_pool(compute_tp->concurrency_level());
 
-      // We case on the type of the support argument to determine whether we have
-      // a bitsort filter in the attribute filtering pipeline. 
-      if constexpr (std::is_same<SupportDataType, const std::vector<Tile*>&>::value) {
-        if (f->type() == FilterType::FILTER_BITSORT) {
-          auto bitsort_filter = static_cast<const BitSortFilter*>(f.get());
-          RETURN_NOT_OK(
-              bitsort_filter->run_forward(
-                      tile,
-                      support_tiles,
-                      &input_metadata,
-                      &input_data,
-                      &output_metadata,
-                      &output_data));
-        } else {
-          RETURN_NOT_OK(f->run_forward(
-            tile,
-            nullptr,
-            &input_metadata,
-            &input_data,
-            &output_metadata,
-            &output_data));
-        }
-      } else {
-         RETURN_NOT_OK(f->run_forward(
-            tile,
-            support_tiles,
-            &input_metadata,
-            &input_data,
-            &output_metadata,
-            &output_data));
-      }
+      RETURN_NOT_OK(f->run_forward(
+          tile,
+          support_data,
+          &input_metadata,
+          &input_data,
+          &output_metadata,
+          &output_data));
 
       input_data.set_read_only(false);
       input_data.swap(output_data);
@@ -420,32 +395,7 @@ Status FilterPipeline::filter_chunks_reverse(
 
       f->init_decompression_resource_pool(compute_tp->concurrency_level());
 
-      // We case on the type of the support argument to determine whether we have
-      // a bitsort filter in the attribute filtering pipeline.
-      if constexpr (std::is_same<SupportDataType, BitSortFilterMetadataType&>::value) {
-        if (f->type() == FilterType::FILTER_BITSORT) {
-          auto bitsort_filter = static_cast<const BitSortFilter*>(f.get());
-          RETURN_NOT_OK(
-              bitsort_filter->run_reverse(
-                      tile,
-                      support_tiles,
-                      &input_metadata,
-                      &input_data,
-                      &output_metadata,
-                      &output_data,
-                      config));
-        } else {
-          RETURN_NOT_OK(f->run_reverse(
-          tile,
-          nullptr,
-          &input_metadata,
-          &input_data,
-          &output_metadata,
-          &output_data,
-          config));
-        }
-      } else {
-         RETURN_NOT_OK(f->run_reverse(
+      RETURN_NOT_OK(f->run_reverse(
           tile,
           support_tiles,
           &input_metadata,
@@ -453,7 +403,6 @@ Status FilterPipeline::filter_chunks_reverse(
           &output_metadata,
           &output_data,
           config));
-      }
 
       input_data.set_read_only(false);
       input_metadata.set_read_only(false);
@@ -483,12 +432,12 @@ uint32_t FilterPipeline::max_chunk_size() const {
   return max_chunk_size_;
 }
 
-template <typename SupportDataType>
 Status FilterPipeline::run_forward(
     stats::Stats* const writer_stats,
     Tile* const tile,
-    SupportDataType support_tiles,
+    Tile* offsets_tile,
     ThreadPool* const compute_tp,
+    void* support_data,
     bool use_chunking) const {
   RETURN_NOT_OK(
       tile ? Status::Ok() : Status_Error("invalid argument: null Tile*"));
@@ -507,34 +456,21 @@ Status FilterPipeline::run_forward(
   }
 
   // Get the chunk sizes for var size attributes.
-  if constexpr (!std::is_same<SupportDataType, const std::vector<Tile*>&>::value){
-    auto&& [st, chunk_offsets] =
-      get_var_chunk_sizes(chunk_size, tile, support_tiles);
-    RETURN_NOT_OK_ELSE(st, tile->filtered_buffer().clear());
+  auto&& [st, chunk_offsets] =
+      get_var_chunk_sizes(chunk_size, tile, offsets_tile);
+  RETURN_NOT_OK_ELSE(st, tile->filtered_buffer().clear());
 
-     // Run the filters over all the chunks and store the result in
-    // 'filtered_buffer'.
-    RETURN_NOT_OK_ELSE(
+  // Run the filters over all the chunks and store the result in
+  // 'filtered_buffer'.
+  RETURN_NOT_OK_ELSE(
       filter_chunks_forward(
           *tile,
-          support_tiles,
+          support_data,
           chunk_size,
           *chunk_offsets,
           tile->filtered_buffer(),
           compute_tp),
       tile->filtered_buffer().clear());
-  } else {
-    std::vector<uint64_t> dummy_offsets = {};
-    RETURN_NOT_OK_ELSE(
-      filter_chunks_forward<SupportDataType>(
-          *tile,
-          support_tiles,
-          chunk_size,
-          dummy_offsets,
-          tile->filtered_buffer(),
-          compute_tp),
-      tile->filtered_buffer().clear());
-  }
 
   // The contents of 'buffer' have been filtered and stored
   // in 'filtered_buffer'. We can safely free 'buffer'.
@@ -543,17 +479,16 @@ Status FilterPipeline::run_forward(
   return Status::Ok();
 }
 
-template<bool HasBitSortFilter>
 Status FilterPipeline::run_reverse_chunk_range(
-      stats::Stats* const reader_stats,
-      Tile* const tile,
-      const ChunkData& chunk_data,
-      const uint64_t min_chunk_index,
-      const uint64_t max_chunk_index,
-      uint64_t concurrency_level,
-      const Config& config,
-      OptionalRef<BitSortFilterMetadataType> bitsort_metadata) const {
-        // Run each chunk through the entire pipeline.
+    stats::Stats* const reader_stats,
+    Tile* const tile,
+    void* support_data,
+    const ChunkData& chunk_data,
+    const uint64_t min_chunk_index,
+    const uint64_t max_chunk_index,
+    uint64_t concurrency_level,
+    const Config& config) const {
+  // Run each chunk through the entire pipeline.
   for (size_t i = min_chunk_index; i < max_chunk_index; i++) {
     auto& chunk = chunk_data.filtered_chunks_[i];
     FilterStorage storage;
@@ -601,42 +536,14 @@ Status FilterPipeline::run_reverse_chunk_range(
 
       f->init_decompression_resource_pool(concurrency_level);
 
-      // We case on the type of the support argument to determine whether we have
-      // a bitsort filter in the attribute filtering pipeline. Wrapping this code
-      // in a constexpr statement ensures the performance of the filter pipeline
-      // without the bitsort filter is unaffected.
-      if constexpr (HasBitSortFilter) {
-        if (f->type() == FilterType::FILTER_BITSORT) {
-         auto bitsort_filter = static_cast<const BitSortFilter*>(f.get());
-          RETURN_NOT_OK(
-              bitsort_filter->run_reverse(
-                      *tile,
-                      bitsort_metadata.value().get(),
-                      &input_metadata,
-                      &input_data,
-                      &output_metadata,
-                      &output_data,
-                      config));
-        } else {
-          RETURN_NOT_OK(f->run_reverse(
+      RETURN_NOT_OK(f->run_reverse(
           *tile,
-          nullptr,
+          support_data,
           &input_metadata,
           &input_data,
           &output_metadata,
           &output_data,
           config));
-        }
-      } else {
-        RETURN_NOT_OK(f->run_reverse(
-          *tile,
-          nullptr,
-          &input_metadata,
-          &input_data,
-          &output_metadata,
-          &output_data,
-          config));
-      }
 
       input_data.set_read_only(false);
       input_metadata.set_read_only(false);
@@ -704,15 +611,17 @@ Status FilterPipeline::run_reverse_internal(
 
   const Status st = filter_chunks_reverse<SupportDataType>(
       *tile, support_tiles, filtered_chunks, compute_tp, config);
-  
+
   if (!st.ok()) {
     tile->clear_data();
 
     // Clear the support tiles buffer, but only when possible.
-    if constexpr (!std::is_same<SupportDataType, BitSortFilterMetadataType&>::value && !std::is_same<SupportDataType, std::nullptr_t>::value){
+    if constexpr (
+        !std::is_same<SupportDataType, BitSortFilterMetadataType*>::value &&
+        !std::is_same<SupportDataType, std::nullptr_t>::value) {
       if (support_tiles) {
-      support_tiles->clear_data();
-    }
+        support_tiles->clear_data();
+      }
     }
     return st;
   }
@@ -721,17 +630,20 @@ Status FilterPipeline::run_reverse_internal(
   // 'tile->buffer()'.
   tile->filtered_buffer().clear();
   // If unfiltering also included offsets, clear their filtered buffer too
-  if constexpr (!std::is_same<SupportDataType, BitSortFilterMetadataType&>::value && !std::is_same<SupportDataType, std::nullptr_t>::value){
+  if constexpr (
+      !std::is_same<SupportDataType, BitSortFilterMetadataType*>::value &&
+      !std::is_same<SupportDataType, std::nullptr_t>::value) {
     if (support_tiles) {
-     support_tiles->filtered_buffer().clear();
+      support_tiles->filtered_buffer().clear();
     }
   }
 
   // Zip the coords.
   if (tile->stores_coords()) {
-    // Note that format version < 2 only split the coordinates when compression
-    // was used. See https://github.com/TileDB-Inc/TileDB/issues/1053
-    // For format version > 4, a tile never stores coordinates
+    // Note that format version < 2 only split the coordinates when
+    // compression was used. See
+    // https://github.com/TileDB-Inc/TileDB/issues/1053 For format version >
+    // 4, a tile never stores coordinates
     bool using_compression = get_filter<CompressionFilter>() != nullptr;
     auto version = tile->format_version();
     if (version > 1 || using_compression) {
@@ -855,85 +767,34 @@ bool FilterPipeline::use_tile_chunking(
   return true;
 }
 
-/** Explicit template instantiations of run_forward. */
-template Status FilterPipeline::run_forward<Tile* const>(
-      stats::Stats* writer_stats,
-      Tile* tile,
-      Tile* const support_tiles,
-      ThreadPool* compute_tp,
-      bool chunking) const;
-
-template Status FilterPipeline::run_forward<Tile*>(
-      stats::Stats* writer_stats,
-      Tile* tile,
-      Tile* support_tiles,
-      ThreadPool* compute_tp,
-      bool chunking) const;
-
-template Status FilterPipeline::run_forward<const std::vector<Tile*>&>(
-      stats::Stats* writer_stats,
-      Tile* tile,
-      const std::vector<Tile*>& support_tiles,
-      ThreadPool* compute_tp,
-      bool chunking) const;
-
-  template Status FilterPipeline::run_forward<std::nullptr_t>(
-      stats::Stats* writer_stats,
-      Tile* tile,
-      std::nullptr_t support_tiles,
-      ThreadPool* compute_tp,
-      bool chunking) const;
-
 /** Explicit template instantiations of run_reverse. */
 template Status FilterPipeline::run_reverse<Tile* const>(
-      stats::Stats* writer_stats,
-      Tile* tile,
-      Tile* const support_tiles,
-      ThreadPool* compute_tp,
-      const Config& config) const;
+    stats::Stats* writer_stats,
+    Tile* tile,
+    Tile* const support_tiles,
+    ThreadPool* compute_tp,
+    const Config& config) const;
 
 template Status FilterPipeline::run_reverse<Tile*>(
-      stats::Stats* writer_stats,
-      Tile* tile,
-      Tile* support_tiles,
-      ThreadPool* compute_tp,
-      const Config& config) const;
+    stats::Stats* writer_stats,
+    Tile* tile,
+    Tile* support_tiles,
+    ThreadPool* compute_tp,
+    const Config& config) const;
 
 template Status FilterPipeline::run_reverse<std::nullptr_t>(
-      stats::Stats* writer_stats,
-      Tile* tile,
-      std::nullptr_t support_tiles,
-      ThreadPool* compute_tp,
-      const Config& config) const;
+    stats::Stats* writer_stats,
+    Tile* tile,
+    std::nullptr_t support_tiles,
+    ThreadPool* compute_tp,
+    const Config& config) const;
 
-template Status FilterPipeline::run_reverse<BitSortFilterMetadataType&>(
-      stats::Stats* writer_stats,
-      Tile* tile,
-      BitSortFilterMetadataType& support_tiles,
-      ThreadPool* compute_tp,
-      const Config& config) const;
-
-/** Explicit template instantiations of run_reverse_chunk_range. */
-template Status FilterPipeline::run_reverse_chunk_range<true>(
-      stats::Stats* const reader_stats,
-      Tile* const tile,
-      const ChunkData& chunk_data,
-      const uint64_t min_chunk_index,
-      const uint64_t max_chunk_index,
-      uint64_t concurrency_level,
-      const Config& config,
-      OptionalRef<BitSortFilterMetadataType> dim_tiles) const;
-
-template Status FilterPipeline::run_reverse_chunk_range<false>(
-      stats::Stats* const reader_stats,
-      Tile* const tile,
-      const ChunkData& chunk_data,
-      const uint64_t min_chunk_index,
-      const uint64_t max_chunk_index,
-      uint64_t concurrency_level,
-      const Config& config,
-      OptionalRef<BitSortFilterMetadataType> dim_tiles) const;
-
+template Status FilterPipeline::run_reverse<BitSortFilterMetadataType*>(
+    stats::Stats* writer_stats,
+    Tile* tile,
+    BitSortFilterMetadataType* support_tiles,
+    ThreadPool* compute_tp,
+    const Config& config) const;
 
 }  // namespace sm
 }  // namespace tiledb
