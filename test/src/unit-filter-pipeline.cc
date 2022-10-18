@@ -4013,15 +4013,15 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     // true in general use of the filter pipeline.
     key[0]--;
     filter->set_key(key);
-    Tile tile1;
-    CHECK(tile1.alloc_data(nelts * sizeof(uint64_t)).ok());
+    tile.clear_data();
+    CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
     CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile1, nullptr, &tp, config)
+        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
-    CHECK(tile1.filtered_buffer().size() == 0);
+    CHECK(tile.filtered_buffer().size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile1.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
       CHECK(elt == i);
     }
   }
