@@ -27,13 +27,13 @@
  *
  * @section DESCRIPTION
  *
- * Factory for creating DimensionLabelQuery objects.
+ * Factory for creating dimension label query objects.
  */
 
 #ifndef TILEDB_DIMENSION_LABEL_QUERY_CREATE_H
 #define TILEDB_DIMENSION_LABEL_QUERY_CREATE_H
 
-#include "tiledb/sm/query/dimension_label/dimension_label_query.h"
+#include "tiledb/sm/query/dimension_label/dimension_label_data_query.h"
 
 using namespace tiledb::common;
 
@@ -46,7 +46,7 @@ class DimensionLabelQueryCreate {
   /**
    * Factory method for read data query.
    */
-  static DimensionLabelQuery* make_write_query(
+  static DimensionLabelDataQuery* make_write_query(
       const std::string& label_name,
       LabelOrder label_order,
       StorageManager* storage_manager,

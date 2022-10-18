@@ -27,15 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * Classes for querying (reading/writing) a dimension label.
- *
- * Note: The current implementation uses a class that stores two `Query` objects
- * and all operations check if each of the query is initialized or is `nullptr`.
- * This is to support the temporary dual-array dimension label design. Once a
- * reader for the ordered dimension label is implemented and the projections for
- * the unordered dimension label are implemented, each `DimensionLabelQuery`
- * will only contain a single `Query` object that must be constructed on
- * initialization.
+ * Classes for querying (reading/writing) a dimension label using the index
+ * dimension for setting the subarray.
  */
 
 #ifndef TILEDB_DIMENSION_LABEL_QUERY_H
@@ -54,64 +47,45 @@ class DimensionLabel;
 class Query;
 class QueryBuffer;
 class Subarray;
+class IndexData;
 
 /**
- * Return a Status_DimensionQueryError error class Status with a given
- * message.
- **/
-inline Status Status_DimensionLabelQueryError(const std::string& msg) {
-  return {"[TileDB::DimensionLabelQuery] Error", msg};
-}
-
-class DimensionLabelQuery {
+ * Class for locally generated status exceptions.
+ *
+ * Note: This intentionally returns the error as TileDB::DimensionLabelQuery.
+ */
+class DimensionLabelDataQueryStatusException : public StatusException {
  public:
-  /** Default constructor is not C.41 compliant. */
-  DimensionLabelQuery() = delete;
+  explicit DimensionLabelDataQueryStatusException(const std::string& msg)
+      : StatusException("DimensionLabelQuery", msg) {
+  }
+};
+
+class DimensionLabelDataQuery {
+ public:
+  /** Destructor. */
+  virtual ~DimensionLabelDataQuery() = default;
 
   /**
-   * General constructor.
+   * Adds ranges to a query initialize with label ranges.
    *
-   * @param storage_manager Storage manager object.
-   * @param dimension_label Opened dimension label for the query.
-   * @param add_indexed_query If ``true``, create a query on the indexed array.
-   * @param add_labelled_query If ``true``, create a query on the labelled
-   *     array.
-   * @param fragment_name Optional fragment name for writing fragments.
+   * @param is_point_ranges If ``true`` the data contains point ranges.
+   *     Otherwise, it contains standard ranges.
+   * @param start Pointer to the start of the range data.
+   * @param count Number of total elements in the range data.
    */
-  DimensionLabelQuery(
-      StorageManager* storage_manager,
-      stats::Stats* stats,
-      DimensionLabel* dimension_label,
-      bool add_indexed_query,
-      bool add_labelled_query,
-      optional<std::string> fragment_name = nullopt);
-
-  /** Destructor. */
-  virtual ~DimensionLabelQuery() = default;
-
-  /** Disable copy and move. */
-  DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelQuery);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelQuery);
+  virtual void add_index_ranges_from_label(
+      const bool is_point_range, const void* start, const uint64_t count) = 0;
 
   /** Returns ``true`` if the query status for both queries is completed. */
-  bool completed() const;
+  virtual bool completed() const = 0;
 
   /** Processes both queries if they exist. */
-  void process();
-
- protected:
-  /** TODO: Docs */
-  stats::Stats* stats_;
-
-  /** Query on the dimension label indexed array. */
-  tdb_unique_ptr<Query> indexed_array_query{nullptr};
-
-  /** Query on the dimension label labelled array. */
-  tdb_unique_ptr<Query> labelled_array_query{nullptr};
+  virtual void process() = 0;
 };
 
 /** Dimension label query for reading label data. */
-class DimensionLabelReadDataQuery : public DimensionLabelQuery {
+class DimensionLabelReadDataQuery : public DimensionLabelDataQuery {
  public:
   /** Default constructor is not C.41 compliant. */
   DimensionLabelReadDataQuery() = delete;
@@ -127,7 +101,6 @@ class DimensionLabelReadDataQuery : public DimensionLabelQuery {
    */
   DimensionLabelReadDataQuery(
       StorageManager* storage_manager,
-      stats::Stats* stats,
       DimensionLabel* dimension_label,
       const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,
@@ -136,71 +109,33 @@ class DimensionLabelReadDataQuery : public DimensionLabelQuery {
   /** Disable copy and move. */
   DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelReadDataQuery);
   DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelReadDataQuery);
-};
-
-/** Base class for internally managed index data. */
-class IndexData {
- public:
-  virtual ~IndexData() = default;
-  virtual void* data() = 0;
-  virtual uint64_t* data_size() = 0;
-};
-
-/** Typed class for internally managed index data. */
-template <
-    typename T,
-    typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
-class TypedIndexData : public IndexData {
- public:
-  /** Default constructor is not C.41 compliant. */
-  TypedIndexData() = delete;
 
   /**
-   * Constructor.
+   * Adds ranges to a query initialize with label ranges.
    *
-   * This will create a vector of index values starting at the range lower bound
-   * and continuing to the range upper bound.
-   *
-   * @param range The range to create index data for.
+   * @param is_point_ranges If ``true`` the data contains point ranges.
+   *     Otherwise, it contains standard ranges.
+   * @param start Pointer to the start of the range data.
+   * @param count Number of total elements in the range data.
    */
-  TypedIndexData(const type::Range& range)
-      : data_{}
-      , data_size_{0} {
-    auto range_data = static_cast<const T*>(range.data());
-    T min_value = range_data[0];
-    T max_value = range_data[1];
-    if (max_value < min_value) {
-      throw std::invalid_argument(
-          "Invalid range - cannot have lower bound greater than the upper "
-          "bound.");
-    }
-    data_.reserve(max_value - min_value + 1);
-    for (T val = min_value; val <= max_value; ++val) {
-      data_.push_back(val);
-    }
-    data_size_ = sizeof(T) * data_.size();
-  }
+  void add_index_ranges_from_label(
+      const bool is_point_range,
+      const void* start,
+      const uint64_t count) override;
 
-  /** Pointer access to index data. */
-  void* data() override {
-    return data_.data();
-  }
+  /** Returns ``true`` if the query status for both queries is completed. */
+  bool completed() const override;
 
-  /** Pointer access to data size. */
-  uint64_t* data_size() override {
-    return &data_size_;
-  }
+  /** Processes both queries if they exist. */
+  void process() override;
 
  private:
-  /** Vector of index data. */
-  std::vector<T> data_;
-
-  /** Size of the index data. */
-  uint64_t data_size_;
+  /** Query on the dimension label indexed array. */
+  tdb_unique_ptr<Query> query_{nullptr};
 };
 
 /** Dimension label query for writing ordered data. */
-class OrderedWriteDataQuery : public DimensionLabelQuery {
+class OrderedWriteDataQuery : public DimensionLabelDataQuery {
  public:
   /** Default constructor is not C.41 compliant. */
   OrderedWriteDataQuery() = delete;
@@ -232,12 +167,36 @@ class OrderedWriteDataQuery : public DimensionLabelQuery {
   DISABLE_COPY_AND_COPY_ASSIGN(OrderedWriteDataQuery);
   DISABLE_MOVE_AND_MOVE_ASSIGN(OrderedWriteDataQuery);
 
+  /**
+   * Adds ranges to a query initialized with label ranges. Not valid on a write
+   * query.
+   *
+   * @param is_piont_range If ``true`` the returned data is stored as point
+   *     ranges, otherwise it is stored as standard ranges.
+   * @param start Pointer to the start of the range data to add.
+   * @param count The total number of elements in the range data.
+   */
+  void add_index_ranges_from_label(
+      const bool is_point_range,
+      const void* start,
+      const uint64_t count) override;
+
+  /** Returns ``true`` if the query status for both queries is completed. */
+  bool completed() const override;
+
+  /** Processes both queries if they exist. */
+  void process() override;
+
  private:
-  tdb_unique_ptr<IndexData> index_data_;
+  /** Class stats object for timing. */
+  stats::Stats* stats_;
+
+  /** Query on the dimension label indexed array. */
+  tdb_unique_ptr<Query> query_;
 };
 
 /** Writer for unordered dimension labels. */
-class UnorderedWriteDataQuery : public DimensionLabelQuery {
+class UnorderedWriteDataQuery : public DimensionLabelDataQuery {
  public:
   /** Default constructor is not C.41 compliant. */
   UnorderedWriteDataQuery() = delete;
@@ -257,7 +216,6 @@ class UnorderedWriteDataQuery : public DimensionLabelQuery {
    */
   UnorderedWriteDataQuery(
       StorageManager* storage_manager,
-      stats::Stats* stats,
       DimensionLabel* dimension_label,
       const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,
@@ -269,7 +227,34 @@ class UnorderedWriteDataQuery : public DimensionLabelQuery {
   DISABLE_COPY_AND_COPY_ASSIGN(UnorderedWriteDataQuery);
   DISABLE_MOVE_AND_MOVE_ASSIGN(UnorderedWriteDataQuery);
 
+  /**
+   * Adds ranges to a query initialized with label ranges. Not valid on a write
+   * query.
+   *
+   * @param is_point_range If ``true`` the returned data is stored as point
+   *     ranges, otherwise it is stored as standard ranges.
+   * @param start Pointer to the start of the range data to add.
+   * @param count Number of total elements in the range data.
+   */
+  void add_index_ranges_from_label(
+      const bool is_point_range,
+      const void* start,
+      const uint64_t count) override;
+
+  /** Returns ``true`` if the query status for both queries is completed. */
+  bool completed() const override;
+
+  /** Processes both queries if they exist. */
+  void process() override;
+
  private:
+  /** Query on the dimension label indexed array. */
+  tdb_unique_ptr<Query> indexed_array_query_{nullptr};
+
+  /** Query on the dimension label labelled array. */
+  tdb_unique_ptr<Query> labelled_array_query_{nullptr};
+
+  /** Internally managed index data for sparse write to labelled array. */
   tdb_unique_ptr<IndexData> index_data_;
 };
 

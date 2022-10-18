@@ -62,7 +62,7 @@ using namespace tiledb::test;
  *  * Dimension labels:
  *    - x: (label_order=UNORDERED_LABELS, dim_idx=0, type=STRING_ASCII)
  */
-class ArrayExample : public DimensionLabelFixture {
+class ArrayExample : public TemporaryDirectoryFixture {
  public:
   ArrayExample()
       : index_domain_{0, 3} {

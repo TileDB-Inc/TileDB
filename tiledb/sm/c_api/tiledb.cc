@@ -95,6 +95,14 @@ struct tiledb_subarray_transient_local_t : public tiledb_subarray_t {
   }
 };
 
+/*
+ * The Definition for a "C" function can't be in a header.
+ */
+capi_status_t tiledb_status_code(capi_return_t x) {
+  return tiledb_status(x);  // An inline C++ function
+}
+
+
 /* ****************************** */
 /*  IMPLEMENTATION FUNCTIONS      */
 /* ****************************** */

@@ -62,7 +62,7 @@ using namespace tiledb::test;
  *  * Dimension labels:
  *    - x: (label_order=label_order_t, dim_idx=0, type=FLOAT64)
  */
-class SparseArrayExample1 : public DimensionLabelFixture {
+class SparseArrayExample1 : public TemporaryDirectoryFixture {
  public:
   SparseArrayExample1()
       : array_name{}
@@ -176,7 +176,8 @@ class SparseArrayExample1 : public DimensionLabelFixture {
    * @param expected_label_data A vector of the expected label values.
    */
   void check_values_from_data_reader(
-      const std::vector<double>& expected_label_data) {
+      const std::vector<double>& expected_label_data,
+      const std::vector<double>& expected_attr_data) {
     // Open array for reading.
     tiledb_array_t* array;
     require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
@@ -191,6 +192,8 @@ class SparseArrayExample1 : public DimensionLabelFixture {
     // Define label buffer and size.
     std::vector<double> label_data(4);
     uint64_t label_data_size{label_data.size() * sizeof(double)};
+    std::vector<double> attr_data(4);
+    uint64_t attr_data_size{attr_data.size() * sizeof(double)};
 
     // Create read query.
     tiledb_query_t* query;
@@ -199,6 +202,10 @@ class SparseArrayExample1 : public DimensionLabelFixture {
     require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED));
     require_tiledb_ok(tiledb_query_set_label_data_buffer(
         ctx, query, "x", label_data.data(), &label_data_size));
+    if (!expected_attr_data.empty()) {
+      require_tiledb_ok(tiledb_query_set_data_buffer(
+          ctx, query, "a", attr_data.data(), &attr_data_size));
+    }
 
     // Submit read query.
     require_tiledb_ok(tiledb_query_submit(ctx, query));
@@ -212,58 +219,81 @@ class SparseArrayExample1 : public DimensionLabelFixture {
     tiledb_array_free(&array);
 
     // Check results.
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      INFO("Label data " + std::to_string(ii));
-      CHECK(label_data[ii] == expected_label_data[ii]);
+    for (uint64_t index{0}; index < 4; ++index) {
+      INFO("Label data " + std::to_string(index));
+      CHECK(label_data[index] == expected_label_data[index]);
+    }
+    if (!expected_attr_data.empty()) {
+      for (uint64_t index{0}; index < 4; ++index) {
+        INFO("Attribute data index=" + std::to_string(index));
+        CHECK(attr_data[index] == expected_attr_data[index]);
+      }
     }
   }
 
   /**
-   * Check the value in the indexed array is correct.
+   * Check data from a query using label ranges.
    *
-   * @param expected_label_data The expected label data in the indexed array.
+   * @param expected_label_data A vector of the expected label values.
+   * @param expected_attr_data A vector of the expected attribute values. If
+   *     empty, do not read attribute data.
    */
-  void check_indexed_array_data(
-      const std::vector<double>& expected_label_data) {
-    // Read back the data.
-    auto label_data = DimensionLabelFixture::read_indexed_array<double>(
-        URI(array_name).join_path("__labels/l0"),
-        4,
-        &index_domain_[0],
-        &index_domain_[1]);
+  void check_values_from_range_reader(
+      const std::vector<double> ranges,
+      const std::vector<double> expected_label_data,
+      const std::vector<double> expected_attr_data) {
+    // Open array for reading.
+    tiledb_array_t* array;
+    require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
+    require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_READ));
+
+    // Create subarray.
+    tiledb_subarray_t* subarray;
+    require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
+    for (uint64_t r{0}; r < ranges.size() / 2; r++) {
+      require_tiledb_ok(tiledb_subarray_add_label_range(
+          ctx, subarray, "x", &ranges[2 * r], &ranges[2 * r + 1], nullptr));
+    }
+
+    // Define label buffer and size.
+    std::vector<double> label_data(expected_label_data.size());
+    uint64_t label_data_size{label_data.size() * sizeof(double)};
+
+    // Define attribute buffer and size.
+    std::vector<double> attr_data(expected_attr_data.size());
+    uint64_t attr_data_size{attr_data.size() * sizeof(double)};
+
+    // Create read query.
+    tiledb_query_t* query;
+    require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_READ, &query));
+    require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
+    require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR));
+    if (!expected_label_data.empty()) {
+      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+          ctx, query, "x", label_data.data(), &label_data_size));
+    }
+    if (!expected_attr_data.empty()) {
+      require_tiledb_ok(tiledb_query_set_data_buffer(
+          ctx, query, "a", attr_data.data(), &attr_data_size));
+    }
+
+    // Submit read query.
+    require_tiledb_ok(tiledb_query_submit(ctx, query));
+    tiledb_query_status_t query_status;
+    require_tiledb_ok(tiledb_query_get_status(ctx, query, &query_status));
+    REQUIRE(query_status == TILEDB_COMPLETED);
+
+    // Clean-up.
+    tiledb_subarray_free(&subarray);
+    tiledb_query_free(&query);
+    tiledb_array_free(&array);
 
     // Check results.
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      INFO("Label data " + std::to_string(ii));
-      CHECK(label_data[ii] == expected_label_data[ii]);
+    for (uint64_t index{0}; index < expected_label_data.size(); ++index) {
+      CHECK(label_data[index] == expected_label_data[index]);
     }
-  }
-
-  /**
-   * Check the value in the labelled array is correct.
-   *
-   * @param expected_index_data The expected index data in the labelled array.
-   * @param expected_label_data The expected label data in the labelled array.
-   */
-  void check_labelled_array_data(
-      const std::vector<uint64_t>& expected_index_data,
-      const std::vector<double>& expected_label_data) {
-    // Read back the data.
-    auto [index_data, label_data] =
-        DimensionLabelFixture::read_labelled_array<uint64_t, double>(
-            URI(array_name).join_path("__labels/l0"),
-            4,
-            &label_domain_[0],
-            &label_domain_[1]);
-
-    // Check the results.
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      INFO("Index data " + std::to_string(ii));
-      CHECK(index_data[ii] == expected_index_data[ii]);
-    }
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      INFO("Label data " + std::to_string(ii));
-      CHECK(label_data[ii] == expected_label_data[ii]);
+    for (uint64_t index{0}; index < expected_attr_data.size(); ++index) {
+      CHECK(attr_data[index] == expected_attr_data[index]);
     }
   }
 
@@ -271,7 +301,6 @@ class SparseArrayExample1 : public DimensionLabelFixture {
   /** Name of the example array. */
   std::string array_name;
 
- private:
   /** Valid range for the index. */
   uint64_t index_domain_[2];
 
@@ -291,38 +320,32 @@ TEST_CASE_METHOD(
   // Expected output vectors.
   std::vector<double> label_data_sorted_by_index{};
   std::vector<double> label_data_sorted_by_label{};
+  std::vector<double> attr_data_sorted_by_index{};
   std::vector<uint64_t> index_data_sorted_by_label{};
 
   // Dimension label parameters.
   tiledb_label_order_t label_order;
 
-  SECTION("Write increasing labels and array", "[IncreasingLabels]") {
+  SECTION("Write increasing labels", "[IncreasingLabels]") {
     // Set the label order.
     label_order = TILEDB_INCREASING_LABELS;
 
     // Set input values.
     input_index_data = {0, 1, 2, 3};
     input_label_data = {-1.0, 0.0, 0.5, 1.0};
-    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+
+    // Set attribute values.
+    SECTION("With attribute values") {
+      input_attr_data = {0.5, 1.0, 1.5, 2.0};
+    }
+    SECTION("Without attribute values") {
+      input_attr_data = {};
+    }
 
     // Set expected_output values.
     label_data_sorted_by_index = input_label_data;
     label_data_sorted_by_label = input_label_data;
-    index_data_sorted_by_label = input_index_data;
-  }
-
-  SECTION("Write increasing labels only", "[IncreasingLabels]") {
-    // Set the label order.
-    label_order = TILEDB_INCREASING_LABELS;
-
-    // Set input values.
-    input_index_data = {0, 1, 2, 3};
-    input_label_data = {-1.0, 0.0, 0.5, 1.0};
-    input_attr_data = {};
-
-    // Set expected_output values.
-    label_data_sorted_by_index = input_label_data;
-    label_data_sorted_by_label = input_label_data;
+    attr_data_sorted_by_index = input_attr_data;
     index_data_sorted_by_label = input_index_data;
   }
 
@@ -333,25 +356,17 @@ TEST_CASE_METHOD(
     // Set the data values.
     input_index_data = {0, 1, 2, 3};
     input_label_data = {1.0, 0.0, -0.5, -1.0};
-    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+    SECTION("With attribute values") {
+      input_attr_data = {0.5, 1.0, 1.5, 2.0};
+    }
+    SECTION("Without attribute values") {
+      input_attr_data = {};
+    }
 
     // Define expected output data.
     label_data_sorted_by_index = input_label_data;
     label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
-    index_data_sorted_by_label = {3, 2, 1, 0};
-  }
-
-  SECTION("Write decreasing labels only", "[DecreasingLabels]") {
-    // Set the label order.
-    label_order = TILEDB_DECREASING_LABELS;
-
-    // Set the data values.
-    input_index_data = {0, 1, 2, 3};
-    input_label_data = {1.0, 0.0, -0.5, -1.0};
-
-    // Define expected output data.
-    label_data_sorted_by_index = input_label_data;
-    label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
+    attr_data_sorted_by_index = input_attr_data;
     index_data_sorted_by_label = {3, 2, 1, 0};
   }
 
@@ -362,7 +377,15 @@ TEST_CASE_METHOD(
     // Set the data values.
     input_index_data = {0, 3, 2, 1};
     input_label_data = {1.0, 0.0, -0.5, -1.0};
-    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+
+    SECTION("With attribute values") {
+      input_attr_data = {0.5, 1.0, 1.5, 2.0};
+      attr_data_sorted_by_index = {0.5, 2.0, 1.5, 1.0};
+    }
+    SECTION("Without attribute values") {
+      input_attr_data = {};
+      attr_data_sorted_by_index = {};
+    }
 
     // Define expected output data.
     label_data_sorted_by_index = {1.0, -1.0, -0.5, 0.0};
@@ -370,39 +393,47 @@ TEST_CASE_METHOD(
     index_data_sorted_by_label = {1, 2, 3, 0};
   }
 
-  SECTION("Write unordered labels only", "[UnorderedLabels]") {
-    // Set the label order.
-    label_order = TILEDB_UNORDERED_LABELS;
-
-    // Set the data values.
-    input_index_data = {0, 3, 2, 1};
-    input_label_data = {1.0, 0.0, -0.5, -1.0};
-
-    // Define expected output data.
-    label_data_sorted_by_index = {1.0, -1.0, -0.5, 0.0};
-    label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
-    index_data_sorted_by_label = {1, 2, 3, 0};
-  }
+  INFO(
+      "Testing array with label order " +
+      label_order_str(static_cast<LabelOrder>(label_order)) + ".");
 
   // Create and Write the array and label.
   create_example(label_order);
   write_array_with_label(input_index_data, input_attr_data, input_label_data);
 
-  // Check the dimension label arrays have the correct data.
+  // Check values when reading by index ranges.
   {
-    INFO("Check indexed array data");
-    check_indexed_array_data(label_data_sorted_by_index);
-  }
-  {
-    INFO("Check labelled array data");
-    check_labelled_array_data(
-        index_data_sorted_by_label, label_data_sorted_by_label);
+    INFO("Reading values by index range.");
+    check_values_from_data_reader(
+        label_data_sorted_by_index, attr_data_sorted_by_index);
   }
 
-  // Check data reader.
-  {
-    INFO("Check data from data reader");
-    check_values_from_data_reader(label_data_sorted_by_index);
+  // Check values when reading by label ranges.
+  if (label_order != TILEDB_UNORDERED_LABELS) {
+    INFO("Reading data by label range.");
+
+    // Check query on full range.
+    check_values_from_range_reader(
+        {label_domain_[0], label_domain_[1]},
+        label_data_sorted_by_index,
+        attr_data_sorted_by_index);
+
+    // Check point query on each individual value.
+    if (input_attr_data.empty()) {
+      for (uint64_t index{0}; index < 4; ++index) {
+        check_values_from_range_reader(
+            {input_label_data[index], input_label_data[index]},
+            {input_label_data[index]},
+            {});
+      }
+    } else {
+      for (uint64_t index{0}; index < 4; ++index) {
+        check_values_from_range_reader(
+            {input_label_data[index], input_label_data[index]},
+            {input_label_data[index]},
+            {input_attr_data[index]});
+      }
+    }
   }
 }
 
