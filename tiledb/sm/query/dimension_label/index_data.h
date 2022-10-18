@@ -51,16 +51,16 @@ class IndexData {
   virtual ~IndexData() = default;
 
   /** Returns the count, or number of stored variables.*/
-  virtual uint64_t count() const = 0;
+  virtual storage_size_t count() const = 0;
 
   /** Returns pointer to data. */
   virtual void* data() = 0;
 
   /** Returns pointer to total data size. */
-  virtual uint64_t* data_size() = 0;
+  virtual storage_size_t* data_size() = 0;
 };
 
-/** Typed class for internally managed index data. */
+/** Typed class for internally managed index data for a QueryBuffer. */
 template <
     typename T,
     typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
@@ -101,13 +101,13 @@ class TypedIndexData : public IndexData {
    *
    * @param num_values Number of values the data array must be able to store.
    */
-  TypedIndexData(const uint64_t num_values)
+  TypedIndexData(const storage_size_t num_values)
       : data_(num_values)
       , data_size_{sizeof(T) * num_values} {
   }
 
   /** Returns the number of stored elements. */
-  uint64_t count() const override {
+  storage_size_t count() const override {
     return data_.size();
   }
 
@@ -117,7 +117,7 @@ class TypedIndexData : public IndexData {
   }
 
   /** Pointer access to data size. */
-  uint64_t* data_size() override {
+  storage_size_t* data_size() override {
     return &data_size_;
   }
 
@@ -126,7 +126,7 @@ class TypedIndexData : public IndexData {
   std::vector<T> data_;
 
   /** Size of the index data. */
-  uint64_t data_size_;
+  storage_size_t data_size_;
 };
 
 /** Index data factory. */
@@ -144,14 +144,14 @@ class IndexDataCreate {
       const Datatype type, const type::Range& input_range);
 
   /**
-   * Creates a buffer to hold index values.
+   * Creates a buffer that can hold the requested size of data.
    *
    * @param Datatype of the index data to create.
    * @param num_values The number of contained data points.
    * @returns A pointer to an index data object.
    */
   static IndexData* make_index_data(
-      const Datatype type, const uint64_t num_values);
+      const Datatype type, const storage_size_t num_values);
 };
 
 }  // namespace tiledb::sm

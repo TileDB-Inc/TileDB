@@ -73,7 +73,8 @@ bool OrderedRangeQuery::completed() const {
   return query_->status() == QueryStatus::COMPLETED;
 }
 
-tuple<bool, const void*, uint64_t> OrderedRangeQuery::computed_ranges() const {
+tuple<bool, const void*, storage_size_t> OrderedRangeQuery::computed_ranges()
+    const {
   if (!completed()) {
     throw DimensionLabelRangeQueryStatusException(
         "Cannot return computed ranges. Query has not completed.");

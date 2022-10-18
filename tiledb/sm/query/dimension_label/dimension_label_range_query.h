@@ -73,7 +73,7 @@ class DimensionLabelRangeQuery {
    *   * range_data: Pointer to the start of the range data.
    *   * count: Total number of points stored in the range data.
    */
-  virtual tuple<bool, const void*, uint64_t> computed_ranges() const = 0;
+  virtual tuple<bool, const void*, storage_size_t> computed_ranges() const = 0;
 
   /** Returns ``true`` if the query status is completed. */
   virtual bool completed() const = 0;
@@ -111,7 +111,7 @@ class OrderedRangeQuery : public DimensionLabelRangeQuery {
    *  * start: Pointer to the start of the range data.
    *  * count: Number of total elements in the range data.
    */
-  tuple<bool, const void*, uint64_t> computed_ranges() const;
+  tuple<bool, const void*, storage_size_t> computed_ranges() const;
 
   /** Returns ``true`` if the query status is completed. */
   bool completed() const;
