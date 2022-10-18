@@ -188,7 +188,7 @@ Status parallel_for(
           const uint64_t subrange_start,
           const uint64_t subrange_end) -> Status {
     for (uint64_t i = subrange_start; i < subrange_end; ++i) {
-      RETURN_IF_NOT_OK(F(i));
+      RETURN_NOT_OK(F(i));
     }
     return Status::Ok();
   };
