@@ -93,8 +93,6 @@ class Filter {
    *
    * Implemented by filter subclass.
    *
-   * @tparam SupportType The type of the support metadata given to the filter.
-   * The default setting on this type is Tile *const.
    * @param tile Current tile on which the filter is being run
    * @param support_data Support data for the filter
    * @param input_metadata Buffer with metadata for `input`
@@ -103,7 +101,6 @@ class Filter {
    * @param output Buffer with filtered data (unused by in-place filters).
    * @return
    */
-  template <typename SupportType = Tile* const>
   virtual Status run_forward(
       const Tile& tile,
       void* const support_data,
@@ -121,8 +118,6 @@ class Filter {
    *
    * Implemented by filter subclass.
    *
-   * @tparam SupportType The type of the support metadata given to the filter.
-   * The default setting on this type is Tile *const.
    * @param tile Current tile on which the filter is being run
    * @param support_data Support data for the filter
    * @param input_metadata Buffer with metadata for `input`
@@ -131,7 +126,6 @@ class Filter {
    * @param output Buffer with filtered data (unused by in-place filters).
    * @return
    */
-  template <typename SupportType = Tile* const>
   virtual Status run_reverse(
       const Tile& tile,
       void* support_data,

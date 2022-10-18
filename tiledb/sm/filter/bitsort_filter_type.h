@@ -50,12 +50,8 @@ class GlobalCmpQB;
 
 class BitSortFilterMetadataType {
  public:
-  BitSortFilterMetadataType() = delete;
-
-  BitSortFilterMetadataType(std::vector<Tile*>& dim_tiles, std::function<bool(const uint64_t&, const uint64_t&)>& comparator) 
-    : dim_tiles_(dim_tiles)
-    , comparator_(comparator) {}
-
+  BitSortFilterMetadataType() {
+  }
 
   std::vector<Tile*>& dim_tiles() {
     return dim_tiles_;
@@ -66,8 +62,8 @@ class BitSortFilterMetadataType {
   }
 
  private:
-  std::vector<Tile*>& dim_tiles_;
-  std::function<bool(const uint64_t&, const uint64_t&)>& comparator_;
+  std::vector<Tile*> dim_tiles_;
+  std::function<bool(const uint64_t&, const uint64_t&)> comparator_;
 };
 
 }  // namespace sm
