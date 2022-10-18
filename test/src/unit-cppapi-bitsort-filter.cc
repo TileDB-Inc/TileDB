@@ -666,7 +666,7 @@ TEMPLATE_TEST_CASE(
       TILEDB_ROW_MAJOR,
       TILEDB_COL_MAJOR);
   bool set_subarray = GENERATE(true, false);
-  bool set_capacity = false;  // TODO: set to generate.
+  bool set_capacity = GENERATE(true, false);
 
   // Run tests.
   if constexpr (std::is_floating_point<TestType>::value) {
@@ -694,23 +694,4 @@ TEMPLATE_TEST_CASE(
         set_subarray,
         set_capacity);
   }
-}
-
-TEST_CASE(
-    "bitsort filter debugging test (set capacity)",
-    "[cppapi][filter][bitsort][capacity]") {
-  uint64_t num_dims = 2;
-  std::string array_name = "cpp_unit_bitsort_array";
-  tiledb_layout_t write_layout = TILEDB_GLOBAL_ORDER;
-  tiledb_layout_t read_layout = TILEDB_ROW_MAJOR;
-  bool set_subarray = false;
-  bool set_capacity = true;
-
-  bitsort_filter_api_test<int32_t, int16_t, IntDistribution>(
-      array_name,
-      num_dims,
-      write_layout,
-      read_layout,
-      set_subarray,
-      set_capacity);
 }
