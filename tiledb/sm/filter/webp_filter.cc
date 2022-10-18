@@ -75,7 +75,7 @@ Status WebpFilter::run_forward(
   throw_if_not_ok(output_metadata->write(&num_parts, sizeof(uint32_t)));
 
   int extent_y = extents_.first, extent_x = extents_.second,
-      pixel_depth = (int)format_ < 2 ? 3 : 4;
+      pixel_depth = format_ < WebpInputFormat::WEBP_RGBA ? 3 : 4;
   // X should be divisible by colorspace value count or RGB values will skew
   if (extent_x % pixel_depth != 0) {
     throw StatusException(Status_FilterError(

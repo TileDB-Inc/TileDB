@@ -36,10 +36,10 @@
 #ifdef TILEDB_WEBP
 
 #include "tiledb/common/status.h"
-#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter.h"
+#include "tiledb/sm/misc/types.h"
 
 using namespace tiledb::common;
 

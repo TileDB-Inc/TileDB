@@ -93,10 +93,13 @@ std::vector<uint8_t*> read_png(
   if (png_get_valid(png, info, PNG_INFO_tRNS))
     png_set_tRNS_to_alpha(png);
 
-  // These color_type don't have an alpha channel then fill it with 0xff.
-  if (color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY ||
-      color_type == PNG_COLOR_TYPE_PALETTE)
-    png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
+  // If example is ran with RGBA ensure alpha is present
+  if (colorspace == RGBA) {
+    // These color_type don't have an alpha channel then fill it with 0xff.
+    if (color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY ||
+        color_type == PNG_COLOR_TYPE_PALETTE)
+      png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
+  }
 
   if (color_type == PNG_COLOR_TYPE_GRAY ||
       color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
@@ -157,24 +160,21 @@ void write_png(
 
   png_init_io(png, fp);
 
-  //  int color_type = colorspace == RGB ? PNG_COLOR_TYPE_RGB :
-  //  PNG_COLOR_TYPE_RGBA;
+  int color_type = colorspace == RGB ? PNG_COLOR_TYPE_RGB : PNG_COLOR_TYPE_RGBA;
   png_set_IHDR(
       png,
       info,
       width,
       height,
       8,
-      PNG_COLOR_TYPE_RGBA,
+      color_type,
       PNG_INTERLACE_NONE,
       PNG_COMPRESSION_TYPE_DEFAULT,
       PNG_FILTER_TYPE_DEFAULT);
   png_write_info(png, info);
 
   // To remove alpha channel for PNG_COLOR_TYPE_RGB format use png_set_filler()
-  //  if (colorspace == RGB) {
   //     png_set_filler(png, 0, PNG_FILLER_AFTER);
-  //  }
 
   png_write_image(png, row_pointers.data());
   png_write_end(png, NULL);

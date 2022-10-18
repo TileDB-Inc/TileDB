@@ -36,9 +36,72 @@
 #include <vector>
 
 #include <test/support/tdb_catch.h>
-#include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/filter_type.h"
+
+// For optional visual verification that images appear as expected
+#ifdef PNG_FOUND
+#include <png.h>
+void write_image(
+    const std::vector<uint8_t>& data,
+    int width,
+    int height,
+    uint8_t depth,
+    uint8_t colorspace) {
+  std::vector<uint8_t*> png_buffer;
+  for (int y = 0; y < height; y++)
+    png_buffer.push_back(
+        (uint8_t*)std::malloc(width * depth * sizeof(uint8_t)));
+
+  int row_stride = width * depth;
+  for (int y = 0; y < height; y++) {
+    uint8_t* row = png_buffer[y];
+    for (int x = 0; x < width * depth; x++) {
+      row[x] = data[(y * row_stride) + x];
+    }
+  }
+
+  // The test images will overwrite one another to avoid creating a gallery
+  FILE* fp = fopen("cpp_unit_array_webp.png", "wb");
+  if (!fp)
+    abort();
+
+  png_structp png =
+      png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+  if (!png)
+    abort();
+
+  png_infop info = png_create_info_struct(png);
+  if (!info)
+    abort();
+
+  if (setjmp(png_jmpbuf(png)))
+    abort();
+
+  png_init_io(png, fp);
+
+  int color_type =
+      colorspace < TILEDB_WEBP_RGBA ? PNG_COLOR_TYPE_RGB : PNG_COLOR_TYPE_RGBA;
+  // libpng doesn't provide PNG_COLOR_TYPE_BGR(A)
+  png_set_IHDR(
+      png,
+      info,
+      width,
+      height,
+      8,
+      color_type,
+      PNG_INTERLACE_NONE,
+      PNG_COMPRESSION_TYPE_DEFAULT,
+      PNG_FILTER_TYPE_DEFAULT);
+  png_write_info(png, info);
+
+  png_write_image(png, png_buffer.data());
+  png_write_end(png, NULL);
+
+  fclose(fp);
+  png_destroy_write_struct(&png, &info);
+}
+#endif  // PNG_FOUND
 
 using namespace tiledb;
 
@@ -50,10 +113,17 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
   if (vfs.is_dir(webp_array_name))
     vfs.remove_dir(webp_array_name);
 
-  auto rows = Dimension::create<int>(ctx, "rows", {{1, 4}}, 4);
-  auto cols = Dimension::create<int>(ctx, "cols", {{1, 4}}, 4);
+  uint8_t format_expected = GENERATE(
+      TILEDB_WEBP_RGB, TILEDB_WEBP_RGBA, TILEDB_WEBP_BGR, TILEDB_WEBP_BGRA);
+
+  // Size of test image is 40x40
+  unsigned size = 40;
+  unsigned pixel_depth = format_expected < TILEDB_WEBP_RGBA ? 3 : 4;
+  auto y = Dimension::create<unsigned>(ctx, "y", {{1, size}}, size / 2);
+  auto x = Dimension::create<unsigned>(
+      ctx, "x", {{1, size * pixel_depth}}, (size / 2) * pixel_depth);
   Domain domain(ctx);
-  domain.add_dimensions(rows, cols);
+  domain.add_dimensions(y, x);
 
   Filter filter(ctx, TILEDB_FILTER_WEBP);
   REQUIRE(filter.filter_type() == TILEDB_FILTER_WEBP);
@@ -77,7 +147,6 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
   REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
   REQUIRE(TILEDB_WEBP_NONE == format_found);
 
-  uint8_t format_expected = TILEDB_WEBP_RGBA;
   REQUIRE_NOTHROW(
       filter.set_option(TILEDB_WEBP_INPUT_FORMAT, &format_expected));
   REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
@@ -88,22 +157,89 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
   REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
   REQUIRE(0 == lossless_found);
 
-  REQUIRE(false == lossless_found);
-  uint8_t lossless_expected = 1;
-  REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_LOSSLESS, &format_expected));
+  uint8_t lossless_expected = GENERATE(1, 0);
+  REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_LOSSLESS, &lossless_expected));
   REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
   REQUIRE(lossless_expected == lossless_found);
 
   FilterList filterList(ctx);
   filterList.add_filter(filter);
 
-  auto a = Attribute::create<int>(ctx, "a1");
+  // This attribute is used for all colorspace formats: RGB, RGBA, BGR, BGRA
+  auto a = Attribute::create<uint8_t>(ctx, "rgb");
   a.set_filter_list(filterList);
 
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain);
   schema.add_attribute(a);
   Array::create(webp_array_name, schema);
+
+  // Construct data for 40x40 test image
+  // + Each quadrant of the image will be solid R, G, B, or W
+  // + Draw a black border between quadrants
+  // This vector is used for all colorspace formats: RGB, RGBA, BGR, BGRA
+  std::vector<uint8_t> rgb(size * (size * pixel_depth), 0);
+  // Size of test image, midpoint between quadrants
+  unsigned mid = size / 2;
+  int stride = size * pixel_depth;
+  for (unsigned row = 0; row < size; row++) {
+    for (unsigned col = 0; col < size; col++) {
+      int pos = (stride * row) + (col * pixel_depth);
+      if (row < mid && col < mid) {
+        // Red (Blue) top-left
+        rgb[pos] = 255;
+      } else if (row < mid && col > mid) {
+        // Green top-right
+        rgb[pos + 1] = 255;
+      } else if (row > mid && col < mid) {
+        // Blue (Red) bottom-left
+        rgb[pos + 2] = 255;
+      } else if (row > mid && col > mid) {
+        // White bottom-right
+        rgb[pos] = 255;
+        rgb[pos + 1] = 255;
+        rgb[pos + 2] = 255;
+      } else if (row == mid || col == mid) {
+        // Black cell border; vector elements already initialized to 0
+      }
+
+      // Add an alpha value for RGBA / BGRA
+      if (pixel_depth > 3) {
+        rgb[pos + 3] = 255;
+      }
+    }
+  }
+
+  // Write pixel data to the array
+  Array array(ctx, webp_array_name, TILEDB_WRITE);
+  Query write(ctx, array);
+  write.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("rgb", rgb);
+  write.submit();
+  array.close();
+  REQUIRE(Query::Status::COMPLETE == write.query_status());
+
+  array.open(TILEDB_READ);
+  std::vector<uint8_t> read_rgb((size * pixel_depth) * size);
+  std::vector<unsigned> subarray = {1, size, 1, (size * pixel_depth)};
+  Query read(ctx, array);
+  read.set_layout(TILEDB_ROW_MAJOR)
+      .set_subarray(subarray)
+      .set_data_buffer("rgb", read_rgb);
+  read.submit();
+  array.close();
+  REQUIRE(Query::Status::COMPLETE == read.query_status());
+
+  if (lossless_expected == 1) {
+    // Lossless compression should be exact
+    REQUIRE_THAT(read_rgb, Catch::Matchers::Equals(rgb));
+  } else {
+    // Lossy compression at 100.0f quality should be approx
+
+    // Would something like this work?
+    // TODO: REQUIRE_THAT(read_rgb, Catch::Matchers::Approx(rgb));
+  }
+
+  write_image(read_rgb, size, size, pixel_depth, format_expected);
 }
 
 TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
