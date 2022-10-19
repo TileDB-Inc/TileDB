@@ -488,7 +488,7 @@ TEST_CASE_METHOD(
 
   // Check the data when querying by dimension.
   {
-    INFO("Reading values from index ranges.")
+    INFO("Reading values from index ranges.");
     check_values(
         {{0, {1, 4}}, {1, {1, 4}}, {2, {1, 4}}, {3, {1, 8}}},
         {},

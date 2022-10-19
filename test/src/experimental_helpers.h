@@ -34,7 +34,6 @@
 #ifndef TILEDB_TEST_EXPERIMENTAL_HELPERS_H
 #define TILEDB_TEST_EXPERIMENTAL_HELPERS_H
 
-#include "catch.hpp"
 #include "helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
