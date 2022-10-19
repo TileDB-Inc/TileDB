@@ -270,9 +270,7 @@ Status parallel_for(
   }
 
   // Wait for all instances of `execute_subrange` to complete.
-  // This is ignoring the wait status as we use failed_exception for propagating
-  // the tasks exceptions.
-  std::ignore = tp->wait_all(tasks);
+  throw_if_not_ok(tp->wait_all(tasks));
 
   if (failed_exception.has_value()) {
     std::rethrow_exception(failed_exception.value());
