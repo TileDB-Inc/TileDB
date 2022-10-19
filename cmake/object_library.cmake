@@ -180,6 +180,7 @@ macro(TileDB_Environment_object_library_end)
     target_sources(${TileDB_Environment_object_library_end_Compile} PRIVATE
         test/${TileDB_Environment_object_library_end_Compile}_main.cc $<TARGET_OBJECTS:${TileDB_Environment_object_library_end_Library}>
         )
+    # Append the current link-complete compile target to the complete list of them
     put_into(ACCUMULATOR object_library_compile_targets LIST ${TileDB_Environment_object_library_end_Compile})
     # ----------------------------------
 
