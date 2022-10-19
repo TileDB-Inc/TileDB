@@ -48,9 +48,6 @@
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
-#include <queue>
-#include <utility>
-
 namespace tiledb {
 namespace sm {
 
@@ -821,7 +818,6 @@ class ReaderBase : public StrategyBase {
    * bitsort filter.
    * @return BitSortFilterMetadataType the constructed argument.
    */
-
   BitSortFilterMetadataType construct_bitsort_filter_argument(
       ResultTile* const tile,
       BitSortFilterMetadataStorage& bitsort_storage) const;

@@ -217,7 +217,7 @@ class Buffer : public BufferBase {
   void* cur_data() const;
 
   template <typename T>
-  T* cur_data_as() const {
+  inline T* cur_data_as() const {
     return static_cast<T*>(nonconst_unread_data());
   }
 

@@ -654,15 +654,22 @@ TEMPLATE_TEST_CASE(
   // Generate parameters.
   std::string array_name = "cpp_unit_bitsort_array";
   uint64_t num_dims = GENERATE(1, 2, 3);
-  tiledb_layout_t write_layout =
-      GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+  tiledb_layout_t write_layout = (std::is_same<int64_t, TestType>::value ||
+                                  std::is_same<uint8_t, TestType>::value ||
+                                  std::is_same<float, TestType>::value) ?
+                                     TILEDB_UNORDERED :
+                                     TILEDB_GLOBAL_ORDER;
   tiledb_layout_t read_layout = GENERATE(
       TILEDB_UNORDERED,
       TILEDB_GLOBAL_ORDER,
       TILEDB_ROW_MAJOR,
       TILEDB_COL_MAJOR);
-  bool set_subarray = GENERATE(true, false);
-  bool set_capacity = GENERATE(true, false);
+  bool set_capacity = std::is_same<int16_t, TestType>::value ||
+                      std::is_same<uint8_t, TestType>::value ||
+                      std::is_same<double, TestType>::value;
+  bool set_subarray = std::is_same<int64_t, TestType>::value ||
+                      std::is_same<uint8_t, TestType>::value ||
+                      std::is_same<float, TestType>::value;
 
   // Run tests.
   if constexpr (std::is_floating_point<TestType>::value) {

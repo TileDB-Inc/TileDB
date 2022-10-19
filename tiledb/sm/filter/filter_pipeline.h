@@ -250,7 +250,7 @@ class FilterPipeline {
    * @return Status
    */
   Status run_reverse(
-      stats::Stats* writer_stats,
+      stats::Stats* reader_stats,
       Tile* const tile,
       Tile* const offsets_tile,
       ThreadPool* compute_tp,

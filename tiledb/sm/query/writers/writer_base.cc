@@ -762,15 +762,15 @@ Status WriterBase::filter_tiles(
 Status WriterBase::filter_tiles_bitsort(
     const std::string& name,
     std::unordered_map<std::string, WriterTileVector>* tiles) {
+  // Cache the dimention tile vectors.
   std::vector<WriterTileVector*> dim_tiles;
   dim_tiles.reserve(array_schema_.dim_num());
   for (const auto& name : array_schema_.dim_names()) {
     dim_tiles.emplace_back(&((*tiles)[name]));
   }
 
+  // Generate arguments to filter all tiles
   auto& attr_tiles = (*tiles)[name];
-
-  // Filter all tiles
   auto tile_num = tiles->size();
   std::vector<std::tuple<Tile*, std::vector<Tile*>, bool, bool>> args;
   args.reserve(tile_num);
@@ -787,6 +787,7 @@ Status WriterBase::filter_tiles_bitsort(
     args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp, false, false);
   }
 
+  // Finally filter the tiles.
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
         auto& [tile, support_tiles, contains_offsets, is_nullable] = args[i];
