@@ -102,7 +102,6 @@ capi_status_t tiledb_status_code(capi_return_t x) {
   return tiledb_status(x);  // An inline C++ function
 }
 
-
 /* ****************************** */
 /*  IMPLEMENTATION FUNCTIONS      */
 /* ****************************** */
@@ -3449,8 +3448,8 @@ int32_t tiledb_array_delete_array(
   try {
     array->array_->delete_array(tiledb::sm::URI(uri));
   } catch (std::exception& e) {
-    auto st = sm::Status_ArrayError(e.what());
-    LOG_STATUS(st);
+    auto st = Status_ArrayError(e.what());
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
@@ -6024,7 +6023,8 @@ int32_t tiledb_fragment_info_get_config(
     return TILEDB_ERR;
 
   api::ensure_output_pointer_is_valid(config);
-  *config = tiledb_config_handle_t::make_handle(fragment_info->fragment_info_->config());
+  *config = tiledb_config_handle_t::make_handle(
+      fragment_info->fragment_info_->config());
   return TILEDB_OK;
 }
 
@@ -8280,7 +8280,7 @@ int32_t tiledb_array_get_open_timestamp_end(
 
 int32_t tiledb_array_delete_array(
     tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) noexcept {
-  return api_entry<detail::tiledb_array_delete_array>(ctx, array, uri);
+  return api_entry<tiledb::api::tiledb_array_delete_array>(ctx, array, uri);
 }
 
 int32_t tiledb_array_delete_fragments(

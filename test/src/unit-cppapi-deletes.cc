@@ -1734,7 +1734,8 @@ TEST_CASE_METHOD(
       std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE);
   REQUIRE_THROWS_WITH(
       array->delete_array(SPARSE_ARRAY_NAME),
-      Catch::Contains("Query type must be MODIFY_EXCLUSIVE"));
+      Catch::Matchers::ContainsSubstring(
+          "Query type must be MODIFY_EXCLUSIVE"));
   array->close();
 
   // Ensure nothing was deleted
@@ -1857,7 +1858,7 @@ TEST_CASE_METHOD(
   // Try to open array
   REQUIRE_THROWS_WITH(
       std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ),
-      Catch::Contains("Array does not exist"));
+      Catch::Matchers::ContainsSubstring("Array does not exist"));
 
   remove_sparse_array();
 }
