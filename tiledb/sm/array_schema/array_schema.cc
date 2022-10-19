@@ -153,19 +153,19 @@ ArraySchema::ArraySchema(
 
   // Check array schema is valid.
   st = check_double_delta_compressor(coords_filters_);
-  if (!st.ok())
-    throw StatusException(
-        Status_ArraySchemaError("Array schema check failed; Double delta "
-                                "compression used in zipped coords."));
+  if (!st.ok()) {
+    throw ArraySchemaStatusException(
+        "Array schema check failed; Double delta compression used in zipped "
+        "coords.");
+  }
 
   st = check_string_compressor(coords_filters_);
-  if (!st.ok())
-    throw StatusException(Status_ArraySchemaError(
-        "Array schema check failed; RLE compression used."));
+  if (!st.ok()) {
+    throw ArraySchemaStatusException(
+        "Array schema check failed; RLE compression used.");
+  }
 
-  st = check_attribute_dimension_label_names();
-  if (!st.ok())
-    throw StatusException(st);
+  throw_if_not_ok(check_attribute_dimension_label_names());
 }
 
 ArraySchema::ArraySchema(const ArraySchema& array_schema) {
@@ -423,9 +423,9 @@ const DimensionLabelReference& ArraySchema::dimension_label_reference(
     const std::string& name) const {
   auto iter = dimension_label_map_.find(name);
   if (iter == dimension_label_map_.end())
-    throw StatusException(Status_ArraySchemaError(
+    throw ArraySchemaStatusException(
         "Unable to get dimension label reference; No dimension label named '" +
-        name + "'."));
+        name + "'.");
   return *iter->second;
 }
 
@@ -607,8 +607,8 @@ void ArraySchema::serialize(Serializer& serializer) const {
   if constexpr (is_experimental_build) {
     auto label_num = static_cast<uint32_t>(dimension_labels_.size());
     if (label_num != dimension_labels_.size()) {
-      throw StatusException(Status_ArraySchemaError(
-          "Overflow when attempting to serialize label number."));
+      throw ArraySchemaStatusException(
+          "Overflow when attempting to serialize label number.");
     }
     serializer.write<uint32_t>(label_num);
     for (auto& label : dimension_labels_) {
@@ -765,9 +765,8 @@ Status ArraySchema::add_dimension_label(
     dimension_labels_.emplace_back(dim_label);
     dimension_label_map_[name] = dim_label.get();
   } catch (...) {
-    // TODO Add ArraySchemaStatusExcpetion.
-    std::throw_with_nested(StatusException(Status_ArraySchemaError(
-        "Failed to add dimension label '" + name + "'.")));
+    std::throw_with_nested(ArraySchemaStatusException(
+        "Failed to add dimension label '" + name + "'."));
   }
   ++nlabel_internal_;  // WARNING: not atomic
   return Status::Ok();
@@ -808,8 +807,8 @@ ArraySchema ArraySchema::deserialize(
   // #TODO Add security validation
   auto version = deserializer.read<uint32_t>();
   if (!(version <= constants::format_version)) {
-    throw StatusException(Status_ArraySchemaError(
-        "[ArraySchema::deserialize] Incompatible format version."));
+    throw ArraySchemaStatusException(
+        "Failed to deserialize array schema; Incompatible format version.");
   }
 
   // Load allows_dups
@@ -886,21 +885,21 @@ ArraySchema ArraySchema::deserialize(
   // Validate
   if (cell_order == Layout::HILBERT &&
       domain->dim_num() > Hilbert::HC_MAX_DIM) {
-    throw StatusException(Status_ArraySchemaError(
+    throw ArraySchemaStatusException(
         "Array schema check failed; Maximum dimensions supported by Hilbert "
-        "order exceeded"));
+        "order exceeded");
   }
 
   if (array_type == ArrayType::DENSE) {
     auto type{domain->dimension_ptr(0)->type()};
     if (datatype_is_real(type)) {
-      throw StatusException(
-          Status_ArraySchemaError("Array schema check failed; Dense arrays "
-                                  "cannot have floating point domains"));
+      throw ArraySchemaStatusException(
+          "Array schema check failed; Dense arrays cannot have floating point "
+          "domains");
     }
     if (attributes.size() == 0) {
-      throw StatusException(Status_ArraySchemaError(
-          "Array schema check failed; No attributes provided"));
+      throw ArraySchemaStatusException(
+          "Array schema check failed; No attributes provided");
     }
   }
 
@@ -960,8 +959,8 @@ void ArraySchema::set_name(const std::string& name) {
 
 void ArraySchema::set_capacity(uint64_t capacity) {
   if (array_type_ == ArrayType::SPARSE && capacity == 0) {
-    throw StatusException(Status_ArraySchemaError(
-        "Sparse arrays cannot have their capacity equal to zero."));
+    throw ArraySchemaStatusException(
+        "Sparse arrays cannot have their capacity equal to zero.");
   }
 
   capacity_ = capacity;
