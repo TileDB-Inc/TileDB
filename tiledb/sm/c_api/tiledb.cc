@@ -82,10 +82,6 @@
 
 using namespace tiledb::common;
 
-capi_status_t tiledb_status(capi_return_t x) {
-  return x;
-}
-
 /**
  * Helper class to aid shimming access from _query... routines in this module to
  * _subarray... routines deprecating them.
@@ -100,6 +96,14 @@ struct tiledb_subarray_transient_local_t : public tiledb_subarray_t {
 
 /** For debugging, use this definition instead to not catch exceptions. */
 //#define SAVE_ERROR_CATCH(ctx, stmt) save_error(ctx, (stmt))
+
+/*
+ * The Definition for a "C" function can't be in a header.
+ */
+capi_status_t tiledb_status_code(capi_return_t x) {
+  return tiledb_status(x);  // An inline C++ function
+}
+
 
 /* ****************************** */
 /*  IMPLEMENTATION FUNCTIONS      */
