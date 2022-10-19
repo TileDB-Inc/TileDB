@@ -42,27 +42,29 @@
 // For optional visual verification that images appear as expected
 #ifdef PNG_FOUND
 #include <png.h>
+static const std::string webp_png_name = "cpp_unit_webp.png";
+
 void write_image(
     const std::vector<uint8_t>& data,
-    int width,
-    int height,
+    unsigned width,
+    unsigned height,
     uint8_t depth,
     uint8_t colorspace) {
   std::vector<uint8_t*> png_buffer;
-  for (int y = 0; y < height; y++)
+  for (unsigned y = 0; y < height; y++)
     png_buffer.push_back(
         (uint8_t*)std::malloc(width * depth * sizeof(uint8_t)));
 
-  int row_stride = width * depth;
-  for (int y = 0; y < height; y++) {
+  unsigned row_stride = width * depth;
+  for (size_t y = 0; y < height; y++) {
     uint8_t* row = png_buffer[y];
-    for (int x = 0; x < width * depth; x++) {
+    for (size_t x = 0; x < width * depth; x++) {
       row[x] = data[(y * row_stride) + x];
     }
   }
 
   // The test images will overwrite one another to avoid creating a gallery
-  FILE* fp = fopen("cpp_unit_array_webp.png", "wb");
+  FILE* fp = fopen(webp_png_name.c_str(), "wb");
   if (!fp)
     abort();
 
@@ -82,7 +84,12 @@ void write_image(
 
   int color_type =
       colorspace < TILEDB_WEBP_RGBA ? PNG_COLOR_TYPE_RGB : PNG_COLOR_TYPE_RGBA;
-  // libpng doesn't provide PNG_COLOR_TYPE_BGR(A)
+
+  // Enable BGR(A) format
+  if (colorspace == TILEDB_WEBP_BGR || colorspace == TILEDB_WEBP_BGRA) {
+    png_set_bgr(png);
+  }
+
   png_set_IHDR(
       png,
       info,
@@ -98,6 +105,9 @@ void write_image(
   png_write_image(png, png_buffer.data());
   png_write_end(png, NULL);
 
+  for (size_t i = 0; i < height; i++)
+    std::free(png_buffer[i]);
+
   fclose(fp);
   png_destroy_write_struct(&png, &info);
 }
@@ -107,6 +117,46 @@ using namespace tiledb;
 
 static const std::string webp_array_name = "cpp_unit_array_webp";
 
+std::vector<uint8_t> create_image(
+    unsigned width, unsigned height, unsigned pixel_depth) {
+  // Construct data for test image
+  // + Each quadrant of the image will be solid R, G, B, or W
+  // + Draw a black border between quadrants
+  // This vector is used for all colorspace formats: RGB, RGBA, BGR, BGRA
+  std::vector<uint8_t> rgb(height * (width * pixel_depth), 0);
+  unsigned mid_y = height / 2;
+  unsigned mid_x = width / 2;
+  unsigned stride = width * pixel_depth;
+  for (unsigned row = 0; row < height; row++) {
+    for (unsigned col = 0; col < width; col++) {
+      size_t pos = (stride * row) + (col * pixel_depth);
+      if (row < mid_y && col < mid_x) {
+        // Red (Blue) top-left
+        rgb[pos] = 255;
+      } else if (row < mid_y && col > mid_x) {
+        // Green top-right
+        rgb[pos + 1] = 255;
+      } else if (row > mid_y && col < mid_x) {
+        // Blue (Red) bottom-left
+        rgb[pos + 2] = 255;
+      } else if (row > mid_y && col > mid_x) {
+        // White bottom-right
+        rgb[pos] = 255;
+        rgb[pos + 1] = 255;
+        rgb[pos + 2] = 255;
+      } else if (row == mid_y || col == mid_x) {
+        // Black cell border; vector elements already initialized to 0
+      }
+
+      // Add an alpha value for RGBA / BGRA
+      if (pixel_depth > 3) {
+        rgb[pos + 3] = 255;
+      }
+    }
+  }
+  return rgb;
+}
+
 TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
   Context ctx;
   VFS vfs(ctx);
@@ -115,15 +165,7 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
 
   uint8_t format_expected = GENERATE(
       TILEDB_WEBP_RGB, TILEDB_WEBP_RGBA, TILEDB_WEBP_BGR, TILEDB_WEBP_BGRA);
-
-  // Size of test image is 40x40
-  unsigned size = 40;
-  unsigned pixel_depth = format_expected < TILEDB_WEBP_RGBA ? 3 : 4;
-  auto y = Dimension::create<unsigned>(ctx, "y", {{1, size}}, size / 2);
-  auto x = Dimension::create<unsigned>(
-      ctx, "x", {{1, size * pixel_depth}}, (size / 2) * pixel_depth);
-  Domain domain(ctx);
-  domain.add_dimensions(y, x);
+  uint8_t lossless_expected = GENERATE(1, 0);
 
   Filter filter(ctx, TILEDB_FILTER_WEBP);
   REQUIRE(filter.filter_type() == TILEDB_FILTER_WEBP);
@@ -142,6 +184,12 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
       filter.get_option<float>(TILEDB_WEBP_QUALITY, &quality_found));
   REQUIRE(quality_expected == quality_found);
 
+  // Set lossy quality back to 100 to test highest quality lossy compression
+  REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_QUALITY, 100.0f));
+  REQUIRE_NOTHROW(
+      filter.get_option<float>(TILEDB_WEBP_QUALITY, &quality_found));
+  REQUIRE(100.0f == quality_found);
+
   // Check WEBP_INPUT_FORMAT option
   uint8_t format_found;
   REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
@@ -157,10 +205,19 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
   REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
   REQUIRE(0 == lossless_found);
 
-  uint8_t lossless_expected = GENERATE(1, 0);
   REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_LOSSLESS, &lossless_expected));
   REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
   REQUIRE(lossless_expected == lossless_found);
+
+  // Test against images of different sizes
+  unsigned height = 40;
+  unsigned width = GENERATE(40, 20, 80);
+  unsigned pixel_depth = format_expected < TILEDB_WEBP_RGBA ? 3 : 4;
+  auto y = Dimension::create<unsigned>(ctx, "y", {{1, height}}, height / 2);
+  auto x = Dimension::create<unsigned>(
+      ctx, "x", {{1, width * pixel_depth}}, (width / 2) * pixel_depth);
+  Domain domain(ctx);
+  domain.add_dimensions(y, x);
 
   FilterList filterList(ctx);
   filterList.add_filter(filter);
@@ -174,41 +231,7 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
   schema.add_attribute(a);
   Array::create(webp_array_name, schema);
 
-  // Construct data for 40x40 test image
-  // + Each quadrant of the image will be solid R, G, B, or W
-  // + Draw a black border between quadrants
-  // This vector is used for all colorspace formats: RGB, RGBA, BGR, BGRA
-  std::vector<uint8_t> rgb(size * (size * pixel_depth), 0);
-  // Size of test image, midpoint between quadrants
-  unsigned mid = size / 2;
-  int stride = size * pixel_depth;
-  for (unsigned row = 0; row < size; row++) {
-    for (unsigned col = 0; col < size; col++) {
-      int pos = (stride * row) + (col * pixel_depth);
-      if (row < mid && col < mid) {
-        // Red (Blue) top-left
-        rgb[pos] = 255;
-      } else if (row < mid && col > mid) {
-        // Green top-right
-        rgb[pos + 1] = 255;
-      } else if (row > mid && col < mid) {
-        // Blue (Red) bottom-left
-        rgb[pos + 2] = 255;
-      } else if (row > mid && col > mid) {
-        // White bottom-right
-        rgb[pos] = 255;
-        rgb[pos + 1] = 255;
-        rgb[pos + 2] = 255;
-      } else if (row == mid || col == mid) {
-        // Black cell border; vector elements already initialized to 0
-      }
-
-      // Add an alpha value for RGBA / BGRA
-      if (pixel_depth > 3) {
-        rgb[pos + 3] = 255;
-      }
-    }
-  }
+  auto rgb = create_image(width, height, pixel_depth);
 
   // Write pixel data to the array
   Array array(ctx, webp_array_name, TILEDB_WRITE);
@@ -219,8 +242,8 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
   REQUIRE(Query::Status::COMPLETE == write.query_status());
 
   array.open(TILEDB_READ);
-  std::vector<uint8_t> read_rgb((size * pixel_depth) * size);
-  std::vector<unsigned> subarray = {1, size, 1, (size * pixel_depth)};
+  std::vector<uint8_t> read_rgb((width * pixel_depth) * height);
+  std::vector<unsigned> subarray = {1, height, 1, (width * pixel_depth)};
   Query read(ctx, array);
   read.set_layout(TILEDB_ROW_MAJOR)
       .set_subarray(subarray)
@@ -234,12 +257,15 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
     REQUIRE_THAT(read_rgb, Catch::Matchers::Equals(rgb));
   } else {
     // Lossy compression at 100.0f quality should be approx
-
-    // Would something like this work?
-    // TODO: REQUIRE_THAT(read_rgb, Catch::Matchers::Approx(rgb));
+    REQUIRE_THAT(read_rgb, Catch::Matchers::Approx(rgb).margin(100));
   }
 
-  write_image(read_rgb, size, size, pixel_depth, format_expected);
+#ifdef PNG_FOUND
+  write_image(read_rgb, width, height, pixel_depth, format_expected);
+#endif  // PNG_FOUND
+
+  if (vfs.is_dir(webp_array_name))
+    vfs.remove_dir(webp_array_name);
 }
 
 TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
@@ -251,6 +277,10 @@ TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
   tiledb_vfs_is_dir(ctx, vfs, webp_array_name.c_str(), &is_dir);
   if (is_dir)
     tiledb_vfs_remove_dir(ctx, vfs, webp_array_name.c_str());
+
+  uint8_t expected_lossless = GENERATE(1, 0);
+  uint8_t expected_fmt = GENERATE(
+      TILEDB_WEBP_RGB, TILEDB_WEBP_RGBA, TILEDB_WEBP_BGR, TILEDB_WEBP_BGRA);
 
   tiledb_filter_t* filter;
   tiledb_filter_alloc(ctx, TILEDB_FILTER_WEBP, &filter);
@@ -277,14 +307,22 @@ TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
   REQUIRE(status == TILEDB_OK);
   REQUIRE(expected_quality == found_quality);
 
-  uint8_t expected_fmt = TILEDB_WEBP_NONE;
+  // Set lossy quality back to 100 to test highest quality lossy compression
+  expected_quality = 100.0f;
+  status = tiledb_filter_set_option(
+      ctx, filter, TILEDB_WEBP_QUALITY, &expected_quality);
+  REQUIRE(status == TILEDB_OK);
+  status = tiledb_filter_get_option(
+      ctx, filter, TILEDB_WEBP_QUALITY, &found_quality);
+  REQUIRE(status == TILEDB_OK);
+  REQUIRE(expected_quality == found_quality);
+
   uint8_t found_fmt;
   status = tiledb_filter_get_option(
       ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &found_fmt);
   REQUIRE(status == TILEDB_OK);
-  REQUIRE(expected_fmt == found_fmt);
+  REQUIRE(TILEDB_WEBP_NONE == found_fmt);
 
-  expected_fmt = TILEDB_WEBP_RGBA;
   status = tiledb_filter_set_option(
       ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &expected_fmt);
   REQUIRE(status == TILEDB_OK);
@@ -293,14 +331,12 @@ TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
   REQUIRE(status == TILEDB_OK);
   REQUIRE(expected_fmt == found_fmt);
 
-  uint8_t expected_lossless = 0;
   uint8_t found_lossless;
   status = tiledb_filter_get_option(
       ctx, filter, TILEDB_WEBP_LOSSLESS, &found_lossless);
   REQUIRE(status == TILEDB_OK);
-  REQUIRE(expected_lossless == found_lossless);
+  REQUIRE(0 == found_lossless);
 
-  expected_lossless = 1;
   status = tiledb_filter_set_option(
       ctx, filter, TILEDB_WEBP_LOSSLESS, &expected_lossless);
   REQUIRE(status == TILEDB_OK);
@@ -308,6 +344,105 @@ TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
       ctx, filter, TILEDB_WEBP_LOSSLESS, &found_lossless);
   REQUIRE(status == TILEDB_OK);
   REQUIRE(expected_lossless == found_lossless);
+
+  // Size of test image is 40x40
+  unsigned height = 40;
+  unsigned width = GENERATE(40, 20, 80);
+  unsigned pixel_depth = expected_fmt < TILEDB_WEBP_RGBA ? 3 : 4;
+  auto rgb = create_image(width, height, pixel_depth);
+
+  tiledb_filter_list_t* filter_list;
+  tiledb_filter_list_alloc(ctx, &filter_list);
+  tiledb_filter_list_add_filter(ctx, filter_list, filter);
+
+  unsigned bounds[] = {1, height, 1, (width * pixel_depth)};
+  unsigned extents[] = {height / 2, (width / 2) * pixel_depth};
+  tiledb_dimension_t* y;
+  tiledb_dimension_alloc(ctx, "y", TILEDB_INT32, &bounds[0], &extents[0], &y);
+  tiledb_dimension_t* x;
+  tiledb_dimension_alloc(ctx, "x", TILEDB_INT32, &bounds[2], &extents[1], &x);
+
+  tiledb_domain_t* domain;
+  tiledb_domain_alloc(ctx, &domain);
+  tiledb_domain_add_dimension(ctx, domain, y);
+  tiledb_domain_add_dimension(ctx, domain, x);
+
+  tiledb_attribute_t* a;
+  tiledb_attribute_alloc(ctx, "rgb", TILEDB_UINT8, &a);
+  tiledb_attribute_set_filter_list(ctx, a, filter_list);
+
+  tiledb_array_schema_t* schema;
+  tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &schema);
+  tiledb_array_schema_set_cell_order(ctx, schema, TILEDB_ROW_MAJOR);
+  tiledb_array_schema_set_tile_order(ctx, schema, TILEDB_ROW_MAJOR);
+  tiledb_array_schema_set_domain(ctx, schema, domain);
+  tiledb_array_schema_add_attribute(ctx, schema, a);
+
+  tiledb_array_create(ctx, webp_array_name.c_str(), schema);
+
+  tiledb_filter_free(&filter);
+  tiledb_filter_list_free(&filter_list);
+  tiledb_attribute_free(&a);
+  tiledb_dimension_free(&y);
+  tiledb_dimension_free(&x);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&schema);
+
+  // Write to array
+  uint64_t data_size = rgb.size() * sizeof(uint8_t);
+  {
+    tiledb_array_t* array;
+    tiledb_array_alloc(ctx, webp_array_name.c_str(), &array);
+    tiledb_array_open(ctx, array, TILEDB_WRITE);
+    tiledb_query_t* write;
+    tiledb_query_alloc(ctx, array, TILEDB_WRITE, &write);
+    tiledb_query_set_layout(ctx, write, TILEDB_ROW_MAJOR);
+    tiledb_query_set_data_buffer(ctx, write, "rgb", rgb.data(), &data_size);
+    tiledb_query_submit(ctx, write);
+    tiledb_array_close(ctx, array);
+
+    tiledb_array_free(&array);
+    tiledb_query_free(&write);
+  }
+
+  // Read from array
+  std::vector<uint8_t> read_rgb(data_size);
+  {
+    tiledb_array_t* array;
+    tiledb_array_alloc(ctx, webp_array_name.c_str(), &array);
+    tiledb_array_open(ctx, array, TILEDB_READ);
+    tiledb_query_t* read;
+    tiledb_query_alloc(ctx, array, TILEDB_READ, &read);
+    tiledb_query_set_layout(ctx, read, TILEDB_ROW_MAJOR);
+    unsigned sub[] = {1, height, 1, (width * pixel_depth)};
+    tiledb_subarray_t* subarray;
+    tiledb_subarray_alloc(ctx, array, &subarray);
+    tiledb_subarray_set_subarray(ctx, subarray, &sub);
+    tiledb_query_set_subarray_t(ctx, read, subarray);
+    tiledb_query_set_data_buffer(ctx, read, "rgb", read_rgb.data(), &data_size);
+    tiledb_query_submit(ctx, read);
+    tiledb_array_close(ctx, array);
+
+    tiledb_array_free(&array);
+    tiledb_query_free(&read);
+    tiledb_subarray_free(&subarray);
+  }
+
+  if (expected_lossless == 1) {
+    // Lossless compression should be exact
+    REQUIRE_THAT(read_rgb, Catch::Matchers::Equals(rgb));
+  } else {
+    // Lossy compression at 100.0f quality should be approx
+    REQUIRE_THAT(read_rgb, Catch::Matchers::Approx(rgb).margin(100));
+  }
+
+#ifdef PNG_FOUND
+  write_image(read_rgb, width, height, pixel_depth, expected_fmt);
+#endif  // PNG_FOUND
+
+  tiledb_vfs_is_dir(ctx, vfs, webp_array_name.c_str(), &is_dir);
+  if (is_dir)
+    tiledb_vfs_remove_dir(ctx, vfs, webp_array_name.c_str());
 }
 
 #endif  // TILEDB_WEBP

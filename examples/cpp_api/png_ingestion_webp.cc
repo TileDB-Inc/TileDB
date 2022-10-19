@@ -46,8 +46,8 @@ using namespace tiledb;
 std::vector<uint8_t> read, write;
 
 // Colorspace stride
-enum Colorspace { RGB = 3, RGBA = 4 };
-unsigned colorspace = RGBA;
+const unsigned colorspace = TILEDB_WEBP_RGB;
+const unsigned pixel_depth = colorspace < TILEDB_WEBP_RGBA ? 3 : 4;
 const float quality_factor = 100.0f;
 const bool lossless = true;
 
@@ -94,11 +94,17 @@ std::vector<uint8_t*> read_png(
     png_set_tRNS_to_alpha(png);
 
   // If example is ran with RGBA ensure alpha is present
-  if (colorspace == RGBA) {
+  if (colorspace == TILEDB_WEBP_RGBA || colorspace == TILEDB_WEBP_BGRA) {
     // These color_type don't have an alpha channel then fill it with 0xff.
     if (color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY ||
         color_type == PNG_COLOR_TYPE_PALETTE)
       png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
+  }
+
+  // Since we read in BGR and write in BGR colors will not change
+  // + Comment out this condition and colors flip; read in RGB and write in BGR
+  if (colorspace == TILEDB_WEBP_BGR || colorspace == TILEDB_WEBP_BGRA) {
+    png_set_bgr(png);
   }
 
   if (color_type == PNG_COLOR_TYPE_GRAY ||
@@ -119,7 +125,7 @@ std::vector<uint8_t*> read_png(
   fclose(fp);
 
   for (unsigned y = 0; y < *height; y++) {
-    for (unsigned x = 0; x < *width * colorspace; x++) {
+    for (unsigned x = 0; x < *width * pixel_depth; x++) {
       read.push_back(row_pointers[y][x]);
     }
   }
@@ -160,7 +166,14 @@ void write_png(
 
   png_init_io(png, fp);
 
-  int color_type = colorspace == RGB ? PNG_COLOR_TYPE_RGB : PNG_COLOR_TYPE_RGBA;
+  int color_type =
+      colorspace == TILEDB_WEBP_RGB || colorspace == TILEDB_WEBP_BGR ?
+          PNG_COLOR_TYPE_RGB :
+          PNG_COLOR_TYPE_RGBA;
+  if (colorspace == TILEDB_WEBP_BGR || colorspace == TILEDB_WEBP_BGRA) {
+    png_set_bgr(png);
+  }
+
   png_set_IHDR(
       png,
       info,
@@ -203,7 +216,7 @@ void create_array(
       .add_dimension(
           Dimension::create<unsigned>(ctx, "y", {{1, height}}, height / 2))
       .add_dimension(Dimension::create<unsigned>(
-          ctx, "x", {{1, width * colorspace}}, (width / 2) * colorspace));
+          ctx, "x", {{1, width * pixel_depth}}, (width / 2) * pixel_depth));
 
   // To compress using webp we need RGBA in a single buffer
   ArraySchema schema(ctx, TILEDB_DENSE);
@@ -211,8 +224,7 @@ void create_array(
 
   // Create WebP filter and set options
   Filter webp(ctx, TILEDB_FILTER_WEBP);
-  auto fmt = colorspace == RGB ? TILEDB_WEBP_RGB : TILEDB_WEBP_RGBA;
-  webp.set_option(TILEDB_WEBP_INPUT_FORMAT, &fmt);
+  webp.set_option(TILEDB_WEBP_INPUT_FORMAT, &colorspace);
   webp.set_option(TILEDB_WEBP_QUALITY, &quality_factor);
   webp.set_option(TILEDB_WEBP_LOSSLESS, &lossless);
 
@@ -247,11 +259,11 @@ void ingest_png(const std::string& input_png, const std::string& array_path) {
   for (unsigned y = 0; y < height; y++) {
     auto row = row_pointers[y];
     for (unsigned x = 0; x < width; x++) {
-      auto rgba_temp = &row[colorspace * x];
+      auto rgba_temp = &row[pixel_depth * x];
       rgba.push_back(rgba_temp[0]);
       rgba.push_back(rgba_temp[1]);
       rgba.push_back(rgba_temp[2]);
-      if (colorspace == RGBA) {
+      if (colorspace == TILEDB_WEBP_RGBA || colorspace == TILEDB_WEBP_BGRA) {
         rgba.push_back(rgba_temp[3]);
       }
     }
@@ -329,7 +341,7 @@ void read_png_array(
   std::cout << "Read size: " << rgba.size() << std::endl;
 
   // Write the image.
-  write_png(png_buffer, output_width / colorspace, output_height, output_png);
+  write_png(png_buffer, output_width / pixel_depth, output_height, output_png);
 
   // Clean up.
   for (unsigned i = 0; i < output_height; i++)
