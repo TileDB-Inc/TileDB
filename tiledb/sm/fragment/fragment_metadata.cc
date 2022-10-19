@@ -521,7 +521,7 @@ Status FragmentMetadata::add_max_buffer_sizes(
   uint64_t offset = 0;
   for (unsigned d = 0; d < dim_num; ++d) {
     auto r_size{2 * array_schema_->dimension_ptr(d)->coord_size()};
-    sub_nd[d].set_range(&sub_ptr[offset], r_size);
+    sub_nd[d] = Range(&sub_ptr[offset], r_size);
     offset += r_size;
   }
 
@@ -2774,7 +2774,7 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
     NDRange mbr(dim_num);
     for (unsigned d = 0; d < dim_num; ++d) {
       auto r_size{2 * domain.dimension_ptr(d)->coord_size()};
-      mbr[d].set_range(buff->cur_data(), r_size);
+      mbr[d] = Range(buff->cur_data(), r_size);
       buff->advance_offset(r_size);
     }
     throw_if_not_ok(rtree_.set_leaf(m, mbr));
@@ -2882,13 +2882,13 @@ Status FragmentMetadata::load_non_empty_domain_v5_or_higher(ConstBuffer* buff) {
       auto dim{domain.dimension_ptr(d)};
       if (!dim->var_size()) {  // Fixed-sized
         auto r_size = 2 * dim->coord_size();
-        non_empty_domain_[d].set_range(buff->cur_data(), r_size);
+        non_empty_domain_[d] = Range(buff->cur_data(), r_size);
         buff->advance_offset(r_size);
       } else {  // Var-sized
         uint64_t r_size, start_size;
         RETURN_NOT_OK(buff->read(&r_size, sizeof(uint64_t)));
         RETURN_NOT_OK(buff->read(&start_size, sizeof(uint64_t)));
-        non_empty_domain_[d].set_range(buff->cur_data(), r_size, start_size);
+        non_empty_domain_[d] = Range(buff->cur_data(), r_size, start_size);
         buff->advance_offset(r_size);
       }
     }

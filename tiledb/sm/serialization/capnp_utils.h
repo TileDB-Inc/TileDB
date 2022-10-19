@@ -452,7 +452,6 @@ std::pair<Status, std::optional<NDRange>> deserialize_non_empty_domain_rv(
     auto nonEmptyDomains = r.getNonEmptyDomains();
 
     for (uint32_t i = 0; i < nonEmptyDomains.size(); i++) {
-      Range range;
       auto nonEmptyDomainObj = nonEmptyDomains[i];
       // We always store nonEmptyDomain as uint8 lists for the heterogeneous/var
       // length version
@@ -464,12 +463,10 @@ std::pair<Status, std::optional<NDRange>> deserialize_non_empty_domain_rv(
 
       if (nonEmptyDomainObj.hasSizes()) {
         auto sizes = nonEmptyDomainObj.getSizes();
-        range.set_range(vec.data(), vec.size(), sizes[0]);
+        ndRange.emplace_back(vec.data(), vec.size(), sizes[0]);
       } else {
-        range.set_range(vec.data(), vec.size());
+        ndRange.emplace_back(vec.data(), vec.size());
       }
-
-      ndRange.emplace_back(range);
     }
   }
 

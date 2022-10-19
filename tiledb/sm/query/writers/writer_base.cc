@@ -544,14 +544,11 @@ Status WriterBase::compute_coords_metadata(
           const auto& dim_name = dim->name();
           auto tiles_it = tiles.find(dim_name);
           assert(tiles_it != tiles.end());
-          if (!dim->var_size())
-            RETURN_NOT_OK(
-                dim->compute_mbr(tiles_it->second[i].fixed_tile(), &mbr[d]));
-          else
-            throw_if_not_ok(dim->compute_mbr_var(
-                tiles_it->second[i].offset_tile(),
-                tiles_it->second[i].var_tile(),
-                &mbr[d]));
+          mbr[d] = dim->var_size() ?
+                       dim->compute_mbr_var(
+                           tiles_it->second[i].offset_tile(),
+                           tiles_it->second[i].var_tile()) :
+                       dim->compute_mbr(tiles_it->second[i].fixed_tile());
         }
 
         throw_if_not_ok(meta->set_mbr(i, mbr));
