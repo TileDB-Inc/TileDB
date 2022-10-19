@@ -4005,15 +4005,14 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     key[0]++;
     filter->set_key(key);
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
-    CHECK_THROWS(pipeline
-               .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config));
+    CHECK_THROWS(pipeline.run_reverse(
+        &test::g_helper_stats, &tile, nullptr, &tp, config));
 
     // Fix key and check success. Note: this test depends on the implementation
     // leaving the tile data unmodified when the decryption fails, which is not
     // true in general use of the filter pipeline.
     key[0]--;
     filter->set_key(key);
-    tile.clear_data();
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)

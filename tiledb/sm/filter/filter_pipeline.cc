@@ -599,14 +599,22 @@ Status FilterPipeline::run_reverse_internal(
 
   reader_stats->add_counter("read_unfiltered_byte_num", total_orig_size);
 
-  const Status st = filter_chunks_reverse(
-      *tile, offsets_tile, filtered_chunks, compute_tp, config);
-  if (!st.ok()) {
+  try {
+    const Status st = filter_chunks_reverse(
+        *tile, offsets_tile, filtered_chunks, compute_tp, config);
+    if (!st.ok()) {
+      tile->clear_data();
+      if (offsets_tile) {
+        offsets_tile->clear_data();
+      }
+      return st;
+    }
+  } catch (...) {
     tile->clear_data();
     if (offsets_tile) {
       offsets_tile->clear_data();
     }
-    return st;
+    std::rethrow_exception(std::current_exception());
   }
 
   // Clear the filtered buffer now that we have reverse-filtered it into
