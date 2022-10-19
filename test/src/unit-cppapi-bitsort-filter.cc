@@ -645,14 +645,10 @@ void bitsort_filter_api_test(
 TEMPLATE_TEST_CASE(
     "C++ API: Bitsort Filter Read on Array",
     "[cppapi][filter][bitsort]",
-    int8_t,
     int16_t,
-    int32_t,
     int64_t,
     uint8_t,
-    uint16_t,
     uint32_t,
-    uint64_t,
     float,
     double) {
   // Generate parameters.
