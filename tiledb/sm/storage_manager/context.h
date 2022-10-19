@@ -103,6 +103,18 @@ class Context {
   /** The class logger. */
   shared_ptr<Logger> logger_;
 
+  /** The class unique logger prefix */
+  inline static std::string logger_prefix_ =
+      std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                         std::chrono::system_clock::now().time_since_epoch())
+                         .count()) +
+      "-Context: ";
+
+  /**
+   * Counter for generating unique identifiers for `Logger` objects.
+   */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
+
   /** The thread pool for compute-bound tasks. */
   mutable ThreadPool compute_tp_;
 
@@ -114,8 +126,6 @@ class Context {
 
   /** The storage manager. */
   tdb_unique_ptr<StorageManager> storage_manager_;
-
-  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */
