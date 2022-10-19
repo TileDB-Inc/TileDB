@@ -6007,8 +6007,7 @@ int32_t tiledb_fragment_info_get_config(
     return TILEDB_ERR;
 
   api::ensure_output_pointer_is_valid(config);
-  *config = tiledb_config_handle_t::make_handle(
-      fragment_info->fragment_info_->config());
+  *config = tiledb_config_handle_t::make_handle(fragment_info->fragment_info_->config());
   return TILEDB_OK;
 }
 

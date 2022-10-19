@@ -366,7 +366,6 @@ class FilterPipeline {
   /**
    * Run the given buffer forward through the pipeline.
    *
-   * @tparam SupportDataType The type of the support data given to the filter.
    * @param tile Current tile on which the filter pipeline is being run.
    * @param support_data Argument for support data passed given to filter.
    * @param input buffer to process.
@@ -388,7 +387,6 @@ class FilterPipeline {
   /**
    * Run the given list of chunks in reverse through the pipeline.
    *
-   * @tparam SupportDataType The type of the support data given to the filter.
    * @param tile Current tile on which the filter pipeline is being run
    * @param support_data Argument for support data passed given to filter.
    * @param input Filtered chunk buffers to reverse.
@@ -408,7 +406,6 @@ class FilterPipeline {
   /**
    * The internal work routine for `run_reverse`.
    *
-   * @tparam SupportDataType The type of the support data given to the filter.
    * @param tile Tile to filter
    * @param offsets_tile Offsets tile for var sized tile to filter.
    * @param compute_tp The thread pool for compute-bound tasks.

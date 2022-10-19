@@ -69,7 +69,8 @@ class BitSortFilter : public Filter {
   void dump(FILE* out) const override;
 
   /**
-   * @brief Dummy run forward to satisfy the Filter class requirements.
+   * @brief Run forward. Takes input data parts, and per part it stores
+   * the input values, sorted in bit order (ascending).
    *
    * @param tile Current tile on which the filter is being run.
    * @param support_data Offsets tile of the current tile on which the filter is
@@ -156,7 +157,6 @@ class BitSortFilter : public Filter {
   /**
    * @brief Rewrites the dimension tile given the positions of the attributes.
    *
-   * @tparam AttrType Attribute tile type.
    * @tparam DimType Dimension tile type.
    * @param positions Vector with the sorted positions of the attribute data.
    * @param dim_tile Dimension tile to rewrite.
