@@ -114,7 +114,22 @@ typedef int32_t capi_status_t;
  *
  * @param x A status code returned from a C API call
  */
-capi_status_t tiledb_status(capi_return_t x);
+#ifdef __cplusplus
+inline capi_status_t tiledb_status(capi_return_t x) {
+  return x;
+}
+#endif
+
+/**
+ * Extract a status code from a return value.
+ *
+ * This function is as a pure "C" equivalent for `tiledb_status`, which is an
+ * inline C++ function, not visible in the "C" context.
+ *
+ * @param x A value returned from a CAPI call
+ * @return The status code within that value
+ */
+TILEDB_EXPORT capi_status_t tiledb_status_code(capi_return_t x);
 
 /**
  * @name Status codes
