@@ -51,12 +51,10 @@ void add_dimension_label(
   auto rc = tiledb_dimension_label_schema_alloc(
       ctx,
       label_order,
+      label_datatype,
       static_cast<tiledb_datatype_t>(dim_type),
       dim_domain.data(),
       index_tile_extent,
-      label_datatype,
-      nullptr,
-      nullptr,
       &dim_label_schema);
   if (rc != TILEDB_OK) {
     tiledb_error_t* err = NULL;

@@ -53,19 +53,14 @@ typedef struct tiledb_dimension_label_schema_t tiledb_dimension_label_schema_t;
  * @code{.c}
  * int64_t dim_domain[] = {1, 10};
  * int64_t tile_extent = 5;
- * double label_domain [] = {-10.0, 10.0};
- * double label_tile_extent = 4.0;
  * tiledb_dimension_label_schema_t* dim_label;
  * tiledb_dimension_label_schema_alloc(
  *     ctx,
  *     TILEDB_INCREASING_LABELS,
+ *     TILEDB_FLOAT64,
  *     TILEDB_INT64,
  *     dim_domain,
- *     &tile_extent,
- *     TILEDB_FLOAT64,
- *     label_domain,
- *     &label_tile_extent,
- *     &dim_label);
+ *     &tile_extent);
  * tiledb_array_schema_t* label_array_schema;
  * tiledb_array_schema_add_dimension_label(
  *     ctx,
@@ -114,43 +109,34 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_dimension_label(
  * @code{.c}
  * int64_t dim_domain[] = {1, 10};
  * int64_t tile_extent = 5;
- * double label_domain [] = {-10.0, 10.0};
- * double label_tile_extent = 4.0;
  * tiledb_dimension_label_schema_t* dim_label;
  * tiledb_dimension_label_schema_alloc(
  *     ctx,
  *     TILEDB_INCREASING_LABELS,
+ *     TILEDB_FLOAT64,
  *     TILEDB_INT64,
  *     dim_domain,
- *     &tile_extent,
- *     TILEDB_FLOAT64,
- *     label_domain,
- *     &label_tile_extent,
- *     &dim_label);
+ *     &tile_extent);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param label_type The label type.
+ * @param label_type The datatype for the new label dimension data.
  * @param index_type The datatype for the original dimension data. Must be the
  *     same as the dimension the dimension label is applied to.
  * @param index_domain The range the original dimension is defined on. Must be
  *     the same as the dimension the dimension label is applied to.
  * @param index_tile_extent The tile extent for the original dimension data on
  *     the dimension label.
- * @param label_type The datatype for the new label dimension data.
- * @param label_dim_domain The range the label data is defined on domain.
- * @param label_tile_extent The tile extent for the label data.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_dimension_label_schema_alloc(
     tiledb_ctx_t* ctx,
     tiledb_label_order_t label_order,
+    tiledb_datatype_t label_type,
     tiledb_datatype_t index_type,
     const void* index_domain,
     const void* index_tile_extent,
-    tiledb_datatype_t label_type,
-    const void* label_domain,
-    const void* label_tile_extent,
     tiledb_dimension_label_schema_t** dim_label_schema) TILEDB_NOEXCEPT;
 
 /**
