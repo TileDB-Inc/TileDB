@@ -50,14 +50,6 @@ class DimensionLabelSchema;
 enum class Datatype : uint8_t;
 enum class LabelOrder : uint8_t;
 
-/** Class for locally generated status exceptions. */
-class DimensionLabelReferenceStatusException : public StatusException {
- public:
-  explicit DimensionLabelReferenceStatusException(const std::string& msg)
-      : StatusException("DimensionLabelReference", msg) {
-  }
-};
-
 /**
  * Class containing dimension label information required for usage
  * in a TileDB array schema.

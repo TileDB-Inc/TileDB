@@ -63,14 +63,6 @@ enum class Datatype : uint8_t;
 enum class LabelOrder : uint8_t;
 enum class Layout : uint8_t;
 
-/** Class for locally generated status exceptions. */
-class ArraySchemaStatusException : public StatusException {
- public:
-  explicit ArraySchemaStatusException(const std::string& msg)
-      : StatusException("ArraySchema", msg) {
-  }
-};
-
 /** Specifies the array schema. */
 class ArraySchema {
  public:
@@ -554,7 +546,7 @@ class ArraySchema {
    * Returns false if the union of attribute and dimension names contain
    * duplicates.
    */
-  Status check_attribute_dimension_label_names() const;
+  void check_attribute_dimension_label_names() const;
 
   /**
    * Returns error if double delta compression is used in the zipped

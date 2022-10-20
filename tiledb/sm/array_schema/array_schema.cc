@@ -62,6 +62,14 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+/** Class for locally generated status exceptions. */
+class ArraySchemaStatusException : public StatusException {
+ public:
+  explicit ArraySchemaStatusException(const std::string& msg)
+      : StatusException("ArraySchema", msg) {
+  }
+};
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -165,7 +173,7 @@ ArraySchema::ArraySchema(
         "Array schema check failed; RLE compression used.");
   }
 
-  throw_if_not_ok(check_attribute_dimension_label_names());
+  check_attribute_dimension_label_names();
 }
 
 ArraySchema::ArraySchema(const ArraySchema& array_schema) {
@@ -347,9 +355,7 @@ Status ArraySchema::check() const {
 
   RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
   RETURN_NOT_OK(check_string_compressor(coords_filters()));
-  auto st = check_attribute_dimension_label_names();
-  if (!st.ok())
-    return LOG_STATUS(st);
+  check_attribute_dimension_label_names();
 
   // Check all internal dimension labels have a schema set and the schema is
   // compatible with the definition of the array it was added to.
@@ -1088,8 +1094,7 @@ const std::string& ArraySchema::name() const {
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
-
-Status ArraySchema::check_attribute_dimension_label_names() const {
+void ArraySchema::check_attribute_dimension_label_names() const {
   std::set<std::string> names;
   // Check attribute and dimension names are unique.
   auto dim_num = this->dim_num();
@@ -1098,10 +1103,11 @@ Status ArraySchema::check_attribute_dimension_label_names() const {
     names.insert(attr->name());
   for (dimension_size_type i = 0; i < dim_num; ++i)
     names.insert(domain_->dimension_ptr(i)->name());
-  if (names.size() != expected_unique_names)
-    return Status_ArraySchemaError(
+  if (names.size() != expected_unique_names) {
+    throw ArraySchemaStatusException(
         "Array schema check failed; Attributes and dimensions must have unique "
         "names");
+  }
   // Check dimension label names are unique except at most 1 label / dimension
   // that has the same name as the dimension it is on.
   expected_unique_names += dimension_labels_.size();
@@ -1112,10 +1118,11 @@ Status ArraySchema::check_attribute_dimension_label_names() const {
     // Check if the dimension label has the same name as the dimension
     if (label_name == domain_->dimension_ptr(dim_id)->name()) {
       // Check if there is already a dimension label with that name.
-      if (label_with_dim_name[dim_id])
-        return Status_ArraySchemaError(
+      if (label_with_dim_name[dim_id]) {
+        throw ArraySchemaStatusException(
             "Array schema check failed; At most one dimension label can share "
             "a name with the dimension it is on");
+      }
       --expected_unique_names;  // decrement number of unique name - this name
                                 // is not unique
       label_with_dim_name[dim_id] = true;
@@ -1123,11 +1130,11 @@ Status ArraySchema::check_attribute_dimension_label_names() const {
       names.insert(label_name);
     }
   }
-  return (names.size() == expected_unique_names) ?
-             Status::Ok() :
-             Status_ArraySchemaError(
-                 "Array schema check failed; Dimension labels must have unique "
-                 "names from other labels, attributes, and dimensions");
+  if (names.size() != expected_unique_names) {
+    throw ArraySchemaStatusException(
+        "Array schema check failed; Dimension labels must have unique "
+        "names from other labels, attributes, and dimensions");
+  }
 }
 
 Status ArraySchema::check_double_delta_compressor(

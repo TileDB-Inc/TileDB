@@ -67,9 +67,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     std::vector<shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("x", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
-    auto status = schema->check();
-    INFO(status.to_string());
-    REQUIRE(!status.ok());
+    REQUIRE_THROWS(schema->check());
   }
 
   SECTION("Catch repeating dimension name") {
@@ -79,9 +77,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     std::vector<shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
-    auto status = schema->check();
-    INFO(status.to_string());
-    REQUIRE(!status.ok());
+    REQUIRE_THROWS(schema->check());
   }
 
   SECTION("Catch repeating attribute name") {
@@ -91,9 +87,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0),
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
-    auto status = schema->check();
-    INFO(status.to_string());
-    REQUIRE(!status.ok());
+    REQUIRE_THROWS(schema->check());
   }
 
   SECTION("Catch repeating label name shared with dim when adding label") {
@@ -139,9 +133,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     REQUIRE(status.ok());
     status = schema->add_dimension_label(0, "x", dim_label_schema, false, true);
     REQUIRE(status.ok());
-    status = schema->check();
-    INFO(status.to_string());
-    REQUIRE(!status.ok());
+    REQUIRE_THROWS(schema->check());
   }
 
   SECTION("Catch repeating label name not shared with dim when adding label") {
@@ -187,9 +179,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     REQUIRE(status.ok());
     status = schema->add_dimension_label(0, "y", dim_label_schema, false, true);
     REQUIRE(status.ok());
-    status = schema->check();
-    INFO(status.to_string());
-    REQUIRE(!status.ok());
+    REQUIRE_THROWS(schema->check());
   }
 
   SECTION("Catch shared label/attribute name when adding label") {
@@ -231,9 +221,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
         &index_tile_extent);
     status = schema->add_dimension_label(0, "a", dim_label_schema, false, true);
     REQUIRE(status.ok());
-    status = schema->check();
-    INFO(status.to_string());
-    REQUIRE(!status.ok());
+    REQUIRE_THROWS(schema->check());
   }
 
   SECTION("Catch shared label/dimension name when adding label") {
@@ -277,9 +265,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
         &index_tile_extent);
     status = schema->add_dimension_label(0, "y", dim_label_schema, false, true);
     REQUIRE(status.ok());
-    status = schema->check();
-    INFO(status.to_string());
-    REQUIRE(!status.ok());
+    REQUIRE_THROWS(schema->check());
   }
 
   SECTION("Catch shared label/dimension name when adding label") {
@@ -324,9 +310,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     status =
         schema->add_dimension_label(0, "y", dim_label_schema, false, false);
     REQUIRE(status.ok());
-    status = schema->check();
-    INFO(status.to_string());
-    REQUIRE(!status.ok());
+    REQUIRE_THROWS(schema->check());
   }
 }
 

@@ -39,6 +39,14 @@ using namespace tiledb::type;
 
 namespace tiledb::sm {
 
+/** Class for locally generated status exceptions. */
+class DimensionLabelReferenceStatusException : public StatusException {
+ public:
+  explicit DimensionLabelReferenceStatusException(const std::string& msg)
+      : StatusException("DimensionLabelReference", msg) {
+  }
+};
+
 DimensionLabelReference::DimensionLabelReference(
     dimension_size_type dim_id,
     const std::string& name,
