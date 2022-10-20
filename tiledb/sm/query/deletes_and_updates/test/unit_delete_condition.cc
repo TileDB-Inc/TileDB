@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests the `ArrayDirectory` class.
+ * Tests the delete condition serialization.
  */
 
 #include "test/support/src/ast_helpers.h"

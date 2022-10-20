@@ -39,7 +39,7 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_query PUBLIC TILEDB_CORE_OBJECTS_ILIB)
 
     find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_query PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_query PUBLIC Catch2::Catch2WithMain)
     target_link_libraries(unit_query PUBLIC ast_test_support_lib)
 
     # We want tests to continue as normal even as the API is changing,

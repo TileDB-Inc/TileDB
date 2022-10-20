@@ -37,7 +37,6 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -78,6 +77,7 @@ GlobalOrderWriter::GlobalOrderWriter(
     bool disable_checks_consolidation,
     std::vector<std::string>& processed_conditions,
     Query::CoordsInfo& coords_info,
+    bool remote_query,
     optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
@@ -92,9 +92,15 @@ GlobalOrderWriter::GlobalOrderWriter(
           written_fragment_info,
           disable_checks_consolidation,
           coords_info,
+          remote_query,
           fragment_name,
           skip_checks_serialization)
     , processed_conditions_(processed_conditions) {
+  if (layout != Layout::GLOBAL_ORDER) {
+    throw StatusException(Status_WriterError(
+        "Failed to initialize global order writer. Layout " +
+        layout_str(layout) + " is not global order."));
+  }
 }
 
 GlobalOrderWriter::~GlobalOrderWriter() {
@@ -344,7 +350,7 @@ Status GlobalOrderWriter::check_global_order_hilbert() const {
 }
 
 void GlobalOrderWriter::clean_up(const URI& uri) {
-  storage_manager_->vfs()->remove_dir(uri);
+  throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
   global_write_state_.reset(nullptr);
 }
 
@@ -467,7 +473,7 @@ Status GlobalOrderWriter::finalize_global_write_state() {
   // Handle last tile
   Status st = global_write_handle_last_tile();
   if (!st.ok()) {
-    close_files(meta);
+    throw_if_not_ok(close_files(meta));
     clean_up(uri);
     return st;
   }
@@ -517,16 +523,26 @@ Status GlobalOrderWriter::finalize_global_write_state() {
       meta->compute_fragment_min_max_sum_null_count(), clean_up(uri));
 
   // Flush fragment metadata to storage
-  RETURN_NOT_OK_ELSE(meta->store(array_->get_encryption_key()), clean_up(uri));
+  try {
+    meta->store(array_->get_encryption_key());
+  } catch (...) {
+    clean_up(uri);
+    throw;
+  }
 
   // Add written fragment info
   RETURN_NOT_OK_ELSE(add_written_fragment_info(uri), clean_up(uri));
 
   // The following will make the fragment visible
-  auto&& [st1, commit_uri] = array_->array_directory().get_commit_uri(uri);
-  RETURN_NOT_OK_ELSE(st1, storage_manager_->vfs()->remove_dir(uri));
-  RETURN_NOT_OK_ELSE(
-      storage_manager_->vfs()->touch(commit_uri.value()), clean_up(uri));
+  URI commit_uri;
+  try {
+    commit_uri = array_->array_directory().get_commit_uri(uri);
+  } catch (std::exception& e) {
+    RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri));
+    std::throw_with_nested(
+        std::logic_error("[GlobalOrderWriter::finalize_global_write_state] "));
+  }
+  RETURN_NOT_OK_ELSE(storage_manager_->vfs()->touch(commit_uri), clean_up(uri));
 
   // Delete global write state
   global_write_state_.reset(nullptr);
@@ -540,6 +556,9 @@ Status GlobalOrderWriter::global_write() {
 
   // Initialize the global write state if this is the first invocation
   if (!global_write_state_) {
+    RETURN_CANCEL_OR_ERROR(alloc_global_write_state());
+    RETURN_CANCEL_OR_ERROR(create_fragment(
+        !coords_info_.has_coords_, global_write_state_->frag_meta_));
     RETURN_CANCEL_OR_ERROR(init_global_write_state());
   }
   auto frag_meta = global_write_state_->frag_meta_;
@@ -581,7 +600,7 @@ Status GlobalOrderWriter::global_write() {
 
   // Set new number of tiles in the fragment metadata
   auto new_num_tiles = frag_meta->tile_index_base() + tile_num;
-  frag_meta->set_num_tiles(new_num_tiles);
+  throw_if_not_ok(frag_meta->set_num_tiles(new_num_tiles));
 
   // Compute coordinate metadata (if coordinates are present)
   RETURN_CANCEL_OR_ERROR_ELSE(
@@ -617,7 +636,7 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
 
   // Reserve space for the last tile in the fragment metadata
   auto meta = global_write_state_->frag_meta_;
-  meta->set_num_tiles(meta->tile_index_base() + 1);
+  throw_if_not_ok(meta->set_num_tiles(meta->tile_index_base() + 1));
   const auto& uri = global_write_state_->frag_meta_->fragment_uri();
 
   // Filter last tiles
@@ -634,7 +653,7 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
   return Status::Ok();
 }
 
-Status GlobalOrderWriter::init_global_write_state() {
+Status GlobalOrderWriter::alloc_global_write_state() {
   // Create global array state object
   if (global_write_state_ != nullptr)
     return logger_->status(
@@ -642,10 +661,15 @@ Status GlobalOrderWriter::init_global_write_state() {
                            "properly finalized"));
   global_write_state_.reset(new GlobalWriteState);
 
-  // Create fragment
+  // Alloc FragmentMetadata object
   global_write_state_->frag_meta_ = make_shared<FragmentMetadata>(HERE());
-  RETURN_NOT_OK(create_fragment(
-      !coords_info_.has_coords_, global_write_state_->frag_meta_));
+  // Used in serialization when FragmentMetadata is built from ground up
+  global_write_state_->frag_meta_->set_storage_manager(storage_manager_);
+
+  return Status::Ok();
+}
+
+Status GlobalOrderWriter::init_global_write_state() {
   auto uri = global_write_state_->frag_meta_->fragment_uri();
 
   // Initialize global write state for attribute and coordinates
@@ -684,8 +708,8 @@ Status GlobalOrderWriter::init_global_write_state() {
 
 void GlobalOrderWriter::nuke_global_write_state() {
   auto meta = global_write_state_->frag_meta_;
-  close_files(meta);
-  storage_manager_->vfs()->remove_dir(meta->fragment_uri());
+  throw_if_not_ok(close_files(meta));
+  throw_if_not_ok(storage_manager_->vfs()->remove_dir(meta->fragment_uri()));
   global_write_state_.reset(nullptr);
 }
 
@@ -1190,6 +1214,76 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   global_write_state_->cells_written_[name] += cell_num;
 
   return Status::Ok();
+}
+
+GlobalOrderWriter::GlobalWriteState* GlobalOrderWriter::get_global_state() {
+  return global_write_state_.get();
+}
+
+std::pair<Status, std::unordered_map<std::string, VFS::MultiPartUploadState>>
+GlobalOrderWriter::multipart_upload_state(bool client) {
+  if (client) {
+    return {Status::Ok(), global_write_state_->multipart_upload_state_};
+  }
+
+  auto meta = global_write_state_->frag_meta_;
+  std::unordered_map<std::string, VFS::MultiPartUploadState> result;
+
+  // TODO: to be refactored, there are multiple places in writers where
+  // we iterate over the internal fragment files manually
+  const auto buf_names = buffer_names();
+  for (const auto& name : buf_names) {
+    auto&& [st1, uri] = meta->uri(name);
+    RETURN_NOT_OK_TUPLE(st1, {});
+
+    auto&& [st2, state] = storage_manager_->vfs()->multipart_upload_state(*uri);
+    RETURN_NOT_OK_TUPLE(st2, {});
+    // If there is no entry for this uri, probably multipart upload is disabled
+    // or no write was issued so far
+    if (!state.has_value()) {
+      return {Status::Ok(), {}};
+    }
+    result[uri->remove_trailing_slash().last_path_part()] = std::move(*state);
+
+    if (array_schema_.var_size(name)) {
+      auto&& [status, var_uri] = meta->var_uri(name);
+      RETURN_NOT_OK_TUPLE(status, {});
+
+      auto&& [st, var_state] =
+          storage_manager_->vfs()->multipart_upload_state(*var_uri);
+      RETURN_NOT_OK_TUPLE(st, {});
+      result[var_uri->remove_trailing_slash().last_path_part()] =
+          std::move(*var_state);
+    }
+    if (array_schema_.is_nullable(name)) {
+      auto&& [status, validity_uri] = meta->validity_uri(name);
+      RETURN_NOT_OK_TUPLE(status, {});
+
+      auto&& [st, val_state] =
+          storage_manager_->vfs()->multipart_upload_state(*validity_uri);
+      RETURN_NOT_OK_TUPLE(st, {});
+      result[validity_uri->remove_trailing_slash().last_path_part()] =
+          std::move(*val_state);
+    }
+  }
+
+  return {Status::Ok(), result};
+}
+
+Status GlobalOrderWriter::set_multipart_upload_state(
+    const std::string& uri,
+    const VFS::MultiPartUploadState& state,
+    bool client) {
+  if (client) {
+    global_write_state_->multipart_upload_state_[uri] = state;
+    return Status::Ok();
+  }
+
+  // uri in this case holds only the buffer name
+  auto absolute_uri =
+      global_write_state_->frag_meta_->fragment_uri().join_path(uri);
+  return storage_manager_->vfs()->set_multipart_upload_state(
+      absolute_uri, state);
 }
 
 }  // namespace sm

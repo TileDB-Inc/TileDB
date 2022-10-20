@@ -137,11 +137,49 @@ class SingleCoord {
       memcpy(coords_[d].data(), dv.content(), sizes_[d]);
 
       if (var_size) {
-        qb_[d].set_offsets_buffer(
-            &single_offset_[0], &sizes_[schema.dim_num()]);
-        qb_[d].set_data_var_buffer(coords_[d].data(), &sizes_[d]);
+        throw_if_not_ok(qb_[d].set_offsets_buffer(
+            &single_offset_[0], &sizes_[schema.dim_num()]));
+        throw_if_not_ok(
+            qb_[d].set_data_var_buffer(coords_[d].data(), &sizes_[d]));
       } else {
-        qb_[d].set_data_buffer(coords_[d].data(), &sizes_[d]);
+        throw_if_not_ok(qb_[d].set_data_buffer(coords_[d].data(), &sizes_[d]));
+      }
+    }
+  }
+
+  /**
+   * Construct a SingleCoord object from deserialized data.
+   *
+   * @param schema The array schema
+   * @param coords Deserialized coordinates vector
+   * @param sizes Deserialized sizes vector
+   * @param single_offset Deserialized offset vector
+   */
+  SingleCoord(
+      const ArraySchema& schema,
+      std::vector<std::vector<uint8_t>> coords,
+      std::vector<uint64_t> sizes,
+      std::vector<uint64_t> single_offset)
+      : coords_(schema.dim_num())
+      , qb_(schema.dim_num())
+      , sizes_(schema.dim_num() + 1)
+      , single_offset_(1) {
+    sizes_[schema.dim_num()] = sizeof(uint64_t);
+    single_offset_ = single_offset;
+    for (unsigned d = 0; d < schema.dim_num(); ++d) {
+      bool var_size = schema.dimension_ptr(d)->var_size();
+      sizes_[d] = sizes[d];
+      coords_[d].resize(sizes[d]);
+      memcpy(coords_[d].data(), coords[d].data(), sizes[d]);
+
+      if (var_size) {
+        throw_if_not_ok(qb_[d].set_offsets_buffer(
+            single_offset_.data(), sizes_.data() + schema.dim_num()));
+        throw_if_not_ok(
+            qb_[d].set_data_var_buffer(coords_[d].data(), sizes_.data() + d));
+      } else {
+        throw_if_not_ok(
+            qb_[d].set_data_buffer(coords_[d].data(), sizes_.data() + d));
       }
     }
   }
@@ -153,6 +191,16 @@ class SingleCoord {
    */
   inline QueryBuffer* get_qb(const unsigned d) {
     return &qb_[d];
+  }
+
+  inline const std::vector<std::vector<uint8_t>>& get_coords() const {
+    return coords_;
+  }
+  inline const std::vector<uint64_t>& get_sizes() const {
+    return sizes_;
+  }
+  inline const std::vector<uint64_t>& get_single_offset() const {
+    return single_offset_;
   }
 
  private:

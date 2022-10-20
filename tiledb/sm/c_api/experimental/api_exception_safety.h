@@ -43,7 +43,7 @@ inline int32_t sanity_check(
   if (dim_label_schema == nullptr ||
       dim_label_schema->dim_label_schema_ == nullptr) {
     auto st = Status_Error("Invalid TileDB dimension label schema object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }

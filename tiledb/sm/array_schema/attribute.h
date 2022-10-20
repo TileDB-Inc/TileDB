@@ -183,7 +183,7 @@ class Attribute {
   Status get_nullable(bool* nullable);
 
   /** Sets the filter pipeline for this attribute. */
-  Status set_filter_pipeline(const FilterPipeline* pipeline);
+  Status set_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the attribute name. */
   void set_name(const std::string& name);

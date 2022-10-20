@@ -359,6 +359,28 @@ std::string SupportedFsMem::temp_dir() {
   return temp_dir_;
 }
 
+void TemporaryDirectoryFixture::check_tiledb_ok(int rc) {
+  if (rc != TILEDB_OK) {
+    tiledb_error_t* err = NULL;
+    tiledb_ctx_get_last_error(ctx, &err);
+    const char* msg;
+    tiledb_error_message(err, &msg);
+    UNSCOPED_INFO(msg);
+  }
+  CHECK(rc == TILEDB_OK);
+}
+
+void TemporaryDirectoryFixture::require_tiledb_ok(int rc) {
+  if (rc != TILEDB_OK) {
+    tiledb_error_t* err = NULL;
+    tiledb_ctx_get_last_error(ctx, &err);
+    const char* msg;
+    tiledb_error_message(err, &msg);
+    UNSCOPED_INFO(msg);
+  }
+  REQUIRE(rc == TILEDB_OK);
+}
+
 }  // End of namespace test
 
 }  // End of namespace tiledb

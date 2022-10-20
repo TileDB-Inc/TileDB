@@ -232,7 +232,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{5, 15}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice = {1, 100};
@@ -305,7 +305,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{5, 15}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice = {20, 30};
@@ -378,7 +378,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{5, 15, 3, 5, 11, 14}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice_1 = {5, 12};
@@ -462,7 +462,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{3, 15, 18, 20}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice = {3, 12};
@@ -679,7 +679,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{2, 3}, {2, 6}};
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice = {1, 6, 1, 6};
@@ -864,7 +864,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{2, 3}, {2, 6}};
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice = {6, 6, 6, 6};
@@ -1062,7 +1062,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{2, 3}, {2, 6}};
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice = {3, 6, 5, 6};
@@ -1304,7 +1304,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{3, 5}, {2, 4, 5, 6}};
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice_1 = {3, 5, 2, 4};

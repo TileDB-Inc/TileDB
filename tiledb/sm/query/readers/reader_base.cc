@@ -89,7 +89,7 @@ ReaderBase::ReaderBase(
     , initial_data_loaded_(false) {
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
-  timestamps_needed_for_deletes_.resize(fragment_metadata_.size());
+  timestamps_needed_for_deletes_and_updates_.resize(fragment_metadata_.size());
 
   bool found = false;
   if (!config_.get<bool>("vfs.disable_batching", &disable_batching_, &found)
@@ -185,13 +185,14 @@ bool ReaderBase::need_timestamped_conditions() {
   bool make_timestamped_conditions = false;
   for (uint64_t i = 0; i < fragment_metadata_.size(); i++) {
     if (fragment_metadata_[i]->has_timestamps()) {
-      for (auto& delete_condition : delete_conditions_) {
-        auto delete_timestamp = delete_condition.condition_timestamp();
+      for (auto& delete_and_update_condition : delete_and_update_conditions_) {
+        auto delete_timestamp =
+            delete_and_update_condition.condition_timestamp();
         auto& frag_timestamps = fragment_metadata_[i]->timestamp_range();
         if (delete_timestamp >= frag_timestamps.first &&
             delete_timestamp <= frag_timestamps.second) {
           make_timestamped_conditions = true;
-          timestamps_needed_for_deletes_[i] = true;
+          timestamps_needed_for_deletes_and_updates_[i] = true;
         }
       }
     }
@@ -202,31 +203,34 @@ bool ReaderBase::need_timestamped_conditions() {
 
 Status ReaderBase::generate_timestamped_conditions() {
   // Generate timestamped conditions.
-  timestamped_delete_conditions_.reserve(delete_conditions_.size());
-  for (auto& delete_condition : delete_conditions_) {
+  timestamped_delete_and_update_conditions_.reserve(
+      delete_and_update_conditions_.size());
+  for (auto& delete_and_update_condition : delete_and_update_conditions_) {
     // We want the condition to be:
-    // DELETE WHERE (cond) AND cell timestamp <= delete timestamp.
+    // DELETE WHERE (cond) AND cell timestamp <= condition timestamp.
     // For apply, this condition needs to be be negated and become:
-    // (!cond) OR cell timestamp > delete timestamp.
+    // (!cond) OR cell timestamp > condition timestamp.
 
-    // Make the timestamp condition, cell timestamp > delete timestamp.
+    // Make the timestamp condition, cell timestamp > condition timestamp.
     QueryCondition timestamp_condition;
-    auto delete_timestamp = delete_condition.condition_timestamp();
+    auto condition_timestamp =
+        delete_and_update_condition.condition_timestamp();
     std::string attr = constants::timestamps;
     RETURN_NOT_OK(timestamp_condition.init(
         std::move(attr),
-        &delete_timestamp,
+        &condition_timestamp,
         constants::timestamp_size,
         QueryConditionOp::GT));
 
     // Combine the timestamp condition and delete condition. The condition is
     // already negated.
-    QueryCondition timestamped_condition(delete_condition.condition_marker());
+    QueryCondition timestamped_condition(
+        delete_and_update_condition.condition_marker());
     RETURN_NOT_OK(timestamp_condition.combine(
-        delete_condition,
+        delete_and_update_condition,
         QueryConditionCombinationOp::OR,
         &timestamped_condition));
-    timestamped_delete_conditions_.push_back(timestamped_condition);
+    timestamped_delete_and_update_conditions_.push_back(timestamped_condition);
   }
 
   return Status::Ok();
@@ -362,7 +366,9 @@ Status ReaderBase::add_delete_timestamps_condition() {
         std::string(constants::delete_timestamps),
         &open_ts,
         sizeof(uint64_t),
-        QueryConditionOp::GE));
+        open_ts == std::numeric_limits<uint64_t>::max() ?
+            QueryConditionOp::GE :
+            QueryConditionOp::GT));
   }
 
   return Status::Ok();
@@ -373,7 +379,7 @@ bool ReaderBase::include_timestamps(const unsigned f) const {
   auto partial_overlap = fragment_metadata_[f]->partial_time_overlap(
       array_->timestamp_start(), array_->timestamp_end_opened_at());
   auto dups = array_schema_.allows_dups();
-  auto timestamps_needed = timestamps_needed_for_deletes_[f];
+  auto timestamps_needed = timestamps_needed_for_deletes_and_updates_[f];
 
   return frag_has_ts && (user_requested_timestamps_ || partial_overlap ||
                          !dups || timestamps_needed);
@@ -474,7 +480,7 @@ Status ReaderBase::load_tile_var_sizes(
           if (!schema->var_size(name))
             continue;
 
-          fragment->load_tile_var_sizes(*encryption_key, name);
+          throw_if_not_ok(fragment->load_tile_var_sizes(*encryption_key, name));
         }
 
         return Status::Ok();
@@ -1103,18 +1109,18 @@ Status ReaderBase::post_process_unfiltered_tile(
     auto& t = tile_tuple->fixed_tile();
     t.filtered_buffer().clear();
 
-    zip_tile_coordinates(name, &t);
+    throw_if_not_ok(zip_tile_coordinates(name, &t));
 
     if (var_size) {
       auto& t_var = tile_tuple->var_tile();
       t_var.filtered_buffer().clear();
-      zip_tile_coordinates(name, &t_var);
+      throw_if_not_ok(zip_tile_coordinates(name, &t_var));
     }
 
     if (nullable) {
       auto& t_validity = tile_tuple->validity_tile();
       t_validity.filtered_buffer().clear();
-      zip_tile_coordinates(name, &t_validity);
+      throw_if_not_ok(zip_tile_coordinates(name, &t_validity));
     }
   }
 
@@ -1167,7 +1173,7 @@ Status ReaderBase::unfilter_tiles_chunk_range(
         unfiltered_tile_validity_size[i] = tile_validity_size.value();
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, throw_if_not_ok(logger_->status(status)));
 
   if (tiles_chunk_data.empty())
     return Status::Ok();
@@ -1718,6 +1724,11 @@ Status ReaderBase::unfilter_tile_nullable(
   return Status::Ok();
 }
 
+uint64_t ReaderBase::offsets_bytesize() const {
+  return offsets_bitsize_ == 32 ? sizeof(uint32_t) :
+                                  constants::cell_var_offset_size;
+}
+
 tuple<Status, optional<uint64_t>> ReaderBase::get_attribute_tile_size(
     const std::string& name, unsigned f, uint64_t t) {
   uint64_t tile_size = 0;
@@ -1795,231 +1806,12 @@ void ReaderBase::compute_result_space_tiles(
 
 bool ReaderBase::has_coords() const {
   for (const auto& it : buffers_) {
-    if (it.first == constants::coords || array_schema_.is_dim(it.first))
+    if (it.first == constants::coords || array_schema_.is_dim(it.first)) {
       return true;
+    }
   }
 
   return false;
-}
-
-template <class T>
-tuple<Status, optional<bool>> ReaderBase::fill_dense_coords(
-    const Subarray& subarray) {
-  auto timer_se = stats_->start_timer("fill_dense_coords");
-
-  // Reading coordinates with a query condition is currently unsupported.
-  // Query conditions mutate the result cell slabs to filter attributes.
-  // This path does not use result cell slabs, which will fill coordinates
-  // for cells that should be filtered out.
-  if (!condition_.empty()) {
-    return {logger_->status(Status_ReaderError(
-                "Cannot read dense coordinates; dense coordinate "
-                "reads are unsupported with a query condition")),
-            nullopt};
-  }
-
-  // Prepare buffers
-  std::vector<unsigned> dim_idx;
-  std::vector<QueryBuffer*> buffers;
-  auto coords_it = buffers_.find(constants::coords);
-  auto dim_num = array_schema_.dim_num();
-  if (coords_it != buffers_.end()) {
-    buffers.emplace_back(&(coords_it->second));
-    dim_idx.emplace_back(dim_num);
-  } else {
-    for (unsigned d = 0; d < dim_num; ++d) {
-      const auto dim{array_schema_.dimension_ptr(d)};
-      auto it = buffers_.find(dim->name());
-      if (it != buffers_.end()) {
-        buffers.emplace_back(&(it->second));
-        dim_idx.emplace_back(d);
-      }
-    }
-  }
-  std::vector<uint64_t> offsets(buffers.size(), 0);
-
-  bool overflowed = false;
-  if (layout_ == Layout::GLOBAL_ORDER) {
-    auto&& [st, of] =
-        fill_dense_coords_global<T>(subarray, dim_idx, buffers, offsets);
-    RETURN_NOT_OK_TUPLE(st, std::nullopt);
-    overflowed = *of;
-  } else {
-    assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
-    auto&& [st, of] =
-        fill_dense_coords_row_col<T>(subarray, dim_idx, buffers, offsets);
-    RETURN_NOT_OK_TUPLE(st, std::nullopt);
-    overflowed = *of;
-  }
-
-  // Update buffer sizes
-  for (size_t i = 0; i < buffers.size(); ++i)
-    *(buffers[i]->buffer_size_) = offsets[i];
-
-  return {Status::Ok(), overflowed};
-}
-
-template <class T>
-tuple<Status, optional<bool>> ReaderBase::fill_dense_coords_global(
-    const Subarray& subarray,
-    const std::vector<unsigned>& dim_idx,
-    const std::vector<QueryBuffer*>& buffers,
-    std::vector<uint64_t>& offsets) {
-  auto tile_coords = subarray.tile_coords();
-  auto cell_order = array_schema_.cell_order();
-
-  bool overflowed = false;
-  for (const auto& tc : tile_coords) {
-    auto tile_subarray = subarray.crop_to_tile((const T*)&tc[0], cell_order);
-    auto&& [st, of] =
-        fill_dense_coords_row_col<T>(tile_subarray, dim_idx, buffers, offsets);
-    RETURN_NOT_OK_TUPLE(st, std::nullopt);
-    overflowed |= *of;
-  }
-
-  return {Status::Ok(), overflowed};
-}
-
-template <class T>
-tuple<Status, optional<bool>> ReaderBase::fill_dense_coords_row_col(
-    const Subarray& subarray,
-    const std::vector<unsigned>& dim_idx,
-    const std::vector<QueryBuffer*>& buffers,
-    std::vector<uint64_t>& offsets) {
-  auto cell_order = array_schema_.cell_order();
-  auto dim_num = array_schema_.dim_num();
-
-  // Iterate over all coordinates, retrieved in cell slabs
-  CellSlabIter<T> iter(&subarray);
-  RETURN_CANCEL_OR_ERROR_TUPLE(iter.begin());
-  while (!iter.end()) {
-    auto cell_slab = iter.cell_slab();
-    auto coords_num = cell_slab.length_;
-
-    // Check for overflow
-    for (size_t i = 0; i < buffers.size(); ++i) {
-      auto idx = (dim_idx[i] == dim_num) ? 0 : dim_idx[i];
-      auto coord_size{array_schema_.domain().dimension_ptr(idx)->coord_size()};
-      coord_size = (dim_idx[i] == dim_num) ? coord_size * dim_num : coord_size;
-      auto buff_size = *(buffers[i]->buffer_size_);
-      auto offset = offsets[i];
-      if (coords_num * coord_size + offset > buff_size) {
-        return {Status::Ok(), true};
-      }
-    }
-
-    // Copy slab
-    if (layout_ == Layout::ROW_MAJOR ||
-        (layout_ == Layout::GLOBAL_ORDER && cell_order == Layout::ROW_MAJOR))
-      fill_dense_coords_row_slab(
-          &cell_slab.coords_[0], coords_num, dim_idx, buffers, offsets);
-    else
-      fill_dense_coords_col_slab(
-          &cell_slab.coords_[0], coords_num, dim_idx, buffers, offsets);
-
-    ++iter;
-  }
-
-  return {Status::Ok(), false};
-}
-
-template <class T>
-void ReaderBase::fill_dense_coords_row_slab(
-    const T* start,
-    uint64_t num,
-    const std::vector<unsigned>& dim_idx,
-    const std::vector<QueryBuffer*>& buffers,
-    std::vector<uint64_t>& offsets) const {
-  // For easy reference
-  auto dim_num = array_schema_.dim_num();
-
-  // Special zipped coordinates
-  if (dim_idx.size() == 1 && dim_idx[0] == dim_num) {
-    auto c_buff = (char*)buffers[0]->buffer_;
-    auto offset = &offsets[0];
-
-    // Fill coordinates
-    for (uint64_t i = 0; i < num; ++i) {
-      // First dim-1 dimensions are copied as they are
-      if (dim_num > 1) {
-        auto bytes_to_copy = (dim_num - 1) * sizeof(T);
-        std::memcpy(c_buff + *offset, start, bytes_to_copy);
-        *offset += bytes_to_copy;
-      }
-
-      // Last dimension is incremented by `i`
-      auto new_coord = start[dim_num - 1] + i;
-      std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
-      *offset += sizeof(T);
-    }
-  } else {  // Set of separate coordinate buffers
-    for (uint64_t i = 0; i < num; ++i) {
-      for (size_t b = 0; b < buffers.size(); ++b) {
-        auto c_buff = (char*)buffers[b]->buffer_;
-        auto offset = &offsets[b];
-
-        // First dim-1 dimensions are copied as they are
-        if (dim_num > 1 && dim_idx[b] < dim_num - 1) {
-          std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(T));
-          *offset += sizeof(T);
-        } else {
-          // Last dimension is incremented by `i`
-          auto new_coord = start[dim_num - 1] + i;
-          std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
-          *offset += sizeof(T);
-        }
-      }
-    }
-  }
-}
-
-template <class T>
-void ReaderBase::fill_dense_coords_col_slab(
-    const T* start,
-    uint64_t num,
-    const std::vector<unsigned>& dim_idx,
-    const std::vector<QueryBuffer*>& buffers,
-    std::vector<uint64_t>& offsets) const {
-  // For easy reference
-  auto dim_num = array_schema_.dim_num();
-
-  // Special zipped coordinates
-  if (dim_idx.size() == 1 && dim_idx[0] == dim_num) {
-    auto c_buff = (char*)buffers[0]->buffer_;
-    auto offset = &offsets[0];
-
-    // Fill coordinates
-    for (uint64_t i = 0; i < num; ++i) {
-      // First dimension is incremented by `i`
-      auto new_coord = start[0] + i;
-      std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
-      *offset += sizeof(T);
-
-      // Last dim-1 dimensions are copied as they are
-      if (dim_num > 1) {
-        auto bytes_to_copy = (dim_num - 1) * sizeof(T);
-        std::memcpy(c_buff + *offset, &start[1], bytes_to_copy);
-        *offset += bytes_to_copy;
-      }
-    }
-  } else {  // Separate coordinate buffers
-    for (uint64_t i = 0; i < num; ++i) {
-      for (size_t b = 0; b < buffers.size(); ++b) {
-        auto c_buff = (char*)buffers[b]->buffer_;
-        auto offset = &offsets[b];
-
-        // First dimension is incremented by `i`
-        if (dim_idx[b] == 0) {
-          auto new_coord = start[0] + i;
-          std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
-          *offset += sizeof(T);
-        } else {  // Last dim-1 dimensions are copied as they are
-          std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(T));
-          *offset += sizeof(T);
-        }
-      }
-    }
-  }
 }
 
 // Explicit template instantiations
@@ -2055,23 +1847,6 @@ template void ReaderBase::compute_result_space_tiles<uint64_t>(
     const Subarray&,
     const Subarray&,
     std::map<const uint64_t*, ResultSpaceTile<uint64_t>>&) const;
-
-template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<int8_t>(
-    const Subarray&);
-template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<uint8_t>(
-    const Subarray&);
-template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<int16_t>(
-    const Subarray&);
-template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<uint16_t>(
-    const Subarray&);
-template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<int32_t>(
-    const Subarray&);
-template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<uint32_t>(
-    const Subarray&);
-template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<int64_t>(
-    const Subarray&);
-template tuple<Status, optional<bool>> ReaderBase::fill_dense_coords<uint64_t>(
-    const Subarray&);
 
 }  // namespace sm
 }  // namespace tiledb

@@ -95,7 +95,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
       constants::cell_validity_compression_level));
 
   // Generate URI and name for ArraySchema
-  generate_uri();
+  throw_if_not_ok(generate_uri());
 }
 
 ArraySchema::ArraySchema(
@@ -184,11 +184,11 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema) {
   tile_order_ = array_schema.tile_order_;
   version_ = array_schema.version_;
 
-  set_domain(array_schema.domain_);
+  throw_if_not_ok(set_domain(array_schema.domain_));
 
   attribute_map_.clear();
   for (auto attr : array_schema.attributes_)
-    add_attribute(attr, false);
+    throw_if_not_ok(add_attribute(attr, false));
 
   // Create dimension label map
   for (const auto& label : array_schema.dimension_labels_) {
@@ -337,6 +337,12 @@ Status ArraySchema::check() const {
       return LOG_STATUS(Status_ArraySchemaError(
           "Array schema check failed; No attributes provided"));
     }
+  }
+
+  if (array_type_ == ArrayType::SPARSE && capacity_ == 0) {
+    throw LOG_STATUS(
+        Status_ArraySchemaError("Array schema check failed; Sparse arrays "
+                                "cannot have their capacity equal to zero."));
   }
 
   RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
@@ -526,8 +532,7 @@ bool ArraySchema::is_dim_label(const std::string& name) const {
 }
 
 bool ArraySchema::is_field(const std::string& name) const {
-  return is_attr(name) || is_dim(name) || name == constants::coords ||
-         name == constants::timestamps || name == constants::delete_timestamps;
+  return is_attr(name) || is_dim(name) || is_special_attribute(name);
 }
 
 bool ArraySchema::is_nullable(const std::string& name) const {
@@ -948,21 +953,24 @@ void ArraySchema::set_name(const std::string& name) {
 }
 
 void ArraySchema::set_capacity(uint64_t capacity) {
+  if (array_type_ == ArrayType::SPARSE && capacity == 0) {
+    throw StatusException(Status_ArraySchemaError(
+        "Sparse arrays cannot have their capacity equal to zero."));
+  }
+
   capacity_ = capacity;
 }
 
-Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline* pipeline) {
-  assert(pipeline);
-  RETURN_NOT_OK(check_string_compressor(*pipeline));
-  RETURN_NOT_OK(check_double_delta_compressor(*pipeline));
-
-  coords_filters_ = *pipeline;
+Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline& pipeline) {
+  RETURN_NOT_OK(check_string_compressor(pipeline));
+  RETURN_NOT_OK(check_double_delta_compressor(pipeline));
+  coords_filters_ = pipeline;
   return Status::Ok();
 }
 
 Status ArraySchema::set_cell_var_offsets_filter_pipeline(
-    const FilterPipeline* pipeline) {
-  cell_var_offsets_filters_ = *pipeline;
+    const FilterPipeline& pipeline) {
+  cell_var_offsets_filters_ = pipeline;
   return Status::Ok();
 }
 
@@ -978,8 +986,8 @@ Status ArraySchema::set_cell_order(Layout cell_order) {
 }
 
 Status ArraySchema::set_cell_validity_filter_pipeline(
-    const FilterPipeline* pipeline) {
-  cell_validity_filters_ = *pipeline;
+    const FilterPipeline& pipeline) {
+  cell_validity_filters_ = pipeline;
   return Status::Ok();
 }
 
@@ -1151,15 +1159,15 @@ Status ArraySchema::check_double_delta_compressor(
 
 Status ArraySchema::check_string_compressor(
     const FilterPipeline& filters) const {
-  // There is no error if only 1 filter is used for RLE or Dictionary-encoding
+  // There is no error if only 1 filter is used
   if (filters.size() <= 1 ||
       !(filters.has_filter(FilterType::FILTER_RLE) ||
         filters.has_filter(FilterType::FILTER_DICTIONARY))) {
     return Status::Ok();
   }
 
-  // Error if there are also other filters set for a string dimension together
-  // with RLE or Dictionary-encoding
+  // If RLE or Dictionary-encoding is set for strings, they need to be
+  // the first filter in the list
   auto dim_num = domain_->dim_num();
   for (dimension_size_type d = 0; d < dim_num; ++d) {
     auto dim{domain_->dimension_ptr(d)};
@@ -1168,14 +1176,17 @@ Status ArraySchema::check_string_compressor(
     // list already set for that dimension (then coords_filters_ will be used)
     if (dim->type() == Datatype::STRING_ASCII && dim->var_size() &&
         dim_filters.empty()) {
-      if (filters.has_filter(FilterType::FILTER_RLE)) {
+      if (filters.has_filter(FilterType::FILTER_RLE) &&
+          filters.get_filter(0)->type() != FilterType::FILTER_RLE) {
         return LOG_STATUS(Status_ArraySchemaError(
-            "RLE filter cannot be combined with other filters when applied to "
+            "RLE filter must be the first filter to apply when used on "
             "variable length string dimensions"));
-      } else {
+      }
+      if (filters.has_filter(FilterType::FILTER_DICTIONARY) &&
+          filters.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
         return LOG_STATUS(Status_ArraySchemaError(
-            "Dictionary-encoding filter cannot be combined with other filters "
-            "when applied to variable length string dimensions"));
+            "Dictionary filter must be the first filter to apply when used on "
+            "variable length string dimensions"));
       }
     }
   }

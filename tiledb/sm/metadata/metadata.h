@@ -42,6 +42,8 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/tile/tile.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
 
@@ -88,7 +90,7 @@ class Metadata {
   /* ********************************* */
 
   /** Constructor. */
-  Metadata();
+  explicit Metadata();
 
   /** Constructor. */
   Metadata(const std::map<std::string, MetadataValue>& metadata_map);
@@ -117,14 +119,14 @@ class Metadata {
 
   /**
    * Deserializes the input metadata buffers. Note that the buffers are
-   * assummed to be sorted on time. The function will take care of any
+   * assumed to be sorted on time. The function will take care of any
    * deleted or overwritten metadata items considering the order.
    */
-  static tuple<Status, optional<shared_ptr<Metadata>>> deserialize(
-      const std::vector<shared_ptr<Buffer>>& metadata_buffs);
+  static Metadata deserialize(
+      const std::vector<shared_ptr<Tile>>& metadata_tiles);
 
   /** Serializes all key-value metadata items into the input buffer. */
-  Status serialize(Buffer* buff) const;
+  void serialize(Serializer& serializer) const;
 
   /** Returns the timestamp range. */
   const std::pair<uint64_t, uint64_t>& timestamp_range() const;
@@ -209,7 +211,7 @@ class Metadata {
    * Sets the URIs of the metadata files that have been loaded
    * to this object.
    */
-  Status set_loaded_metadata_uris(
+  void set_loaded_metadata_uris(
       const std::vector<TimestampedURI>& loaded_metadata_uris);
 
   /**

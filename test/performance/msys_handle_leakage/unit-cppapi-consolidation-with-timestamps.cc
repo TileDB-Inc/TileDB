@@ -27,15 +27,15 @@
  *
  * @section DESCRIPTION
  *
- * Tests the CPP API consolidation with timestamps.
+ * Tests the CPP API for consolidation with timestamps.
  */
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
-//#include "tiledb/sm/query/sparse_global_order_reader.h"
 
 using namespace tiledb;
 using namespace tiledb::test;
@@ -103,7 +103,7 @@ ConsolidationWithTimestampsFx::ConsolidationWithTimestampsFx()
   Config config;
   config.set("sm.consolidation.buffer_size", "1000");
   ctx_ = Context(config);
-  sm_ = ctx_.ptr().get()->ctx_->storage_manager();
+  sm_ = ctx_.ptr().get()->storage_manager();
   vfs_ = VFS(ctx_);
 }
 
@@ -117,7 +117,7 @@ void ConsolidationWithTimestampsFx::set_legacy() {
   config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
 
   ctx_ = Context(config);
-  sm_ = ctx_.ptr().get()->ctx_->storage_manager();
+  sm_ = ctx_.ptr().get()->storage_manager();
   vfs_ = VFS(ctx_);
 }
 

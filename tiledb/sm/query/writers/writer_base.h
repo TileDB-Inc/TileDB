@@ -44,6 +44,7 @@
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/query/writers/dense_tiler.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/tile/writer_tile.h"
 
 using namespace tiledb::common;
@@ -55,7 +56,6 @@ class Array;
 class DomainBuffersView;
 class FragmentMetadata;
 class TileMetadataGenerator;
-class StorageManager;
 
 using WriterTileVector = std::vector<WriterTile>;
 
@@ -79,6 +79,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       bool disable_checks_consolidation,
       Query::CoordsInfo& coords_info_,
+      bool remote_query,
       optional<std::string> fragment_name = nullopt,
       bool skip_checks_serialization = false);
 
@@ -187,6 +188,9 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
+
+  /** Used in serialization to track if the writer belongs to a remote query */
+  bool remote_query_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
@@ -457,6 +461,11 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       tdb_shared_ptr<FragmentMetadata> frag_meta,
       DenseTiler<T>* dense_tiler,
       uint64_t thread_num);
+
+  /**
+   * Returns true if this write strategy is part of a remote query
+   */
+  bool remote_query() const;
 };
 
 }  // namespace sm

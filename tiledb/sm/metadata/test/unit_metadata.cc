@@ -51,72 +51,75 @@ inline T& buffer_metadata(void* p) {
 
 TEST_CASE(
     "Metadata: Test metadata deserialization", "[metadata][deserialization]") {
-  std::vector<shared_ptr<Buffer>> metadata_buffs;
+  std::vector<shared_ptr<Tile>> metadata_tiles;
+
+  Metadata metadata_to_serialize1, metadata_to_serialize2,
+      metadata_to_serialize3;
 
   // key_1:a, value_1:100,200
   std::string key_1 = "key1";
-  auto key_1_size = static_cast<uint32_t>(key_1.size());
   std::vector<int> value_1_vector{100, 200};
 
   // key_2:key_2, value_2:1.1(double)
   std::string key_2 = "key2";
-  uint32_t key_2_size = static_cast<uint32_t>(key_2.size());
   uint32_t value_2_size = 1;
   double value_2 = 1.0;
 
   // key_3:key_3, value_3:strmetadata
   std::string key_3 = "key3";
-  uint32_t key_3_size = static_cast<uint32_t>(key_2.size());
   std::string value_3 = "strmetadata";
   uint32_t value_3_size = static_cast<uint32_t>(value_3.size());
 
-  char serialized_buffer_1[22];
-  char* p_1 = &serialized_buffer_1[0];
-  // set key_1:value_1 integer metadata
-  buffer_metadata<uint32_t, 0>(p_1) = static_cast<uint32_t>(key_1.size());
-  std::memcpy(&buffer_metadata<char, 4>(p_1), key_1.c_str(), key_1_size);
-  buffer_metadata<char, 8>(p_1) = 0;
-  buffer_metadata<char, 9>(p_1) = static_cast<char>(Datatype::INT32);
-  buffer_metadata<uint32_t, 10>(p_1) = (uint32_t)value_1_vector.size();
-  buffer_metadata<int32_t, 14>(p_1) = value_1_vector[0];
-  buffer_metadata<int32_t, 18>(p_1) = value_1_vector[1];
-  metadata_buffs.push_back(make_shared<Buffer>(
-      HERE(), &serialized_buffer_1, sizeof(serialized_buffer_1)));
+  CHECK(metadata_to_serialize1
+            .put(key_1.c_str(), Datatype::INT32, 2, value_1_vector.data())
+            .ok());
 
-  char serialized_buffer_2[22];
-  char* p_2 = &serialized_buffer_2[0];
-  // set key_2:value_2 double metadata
-  buffer_metadata<uint32_t, 0>(p_2) = static_cast<uint32_t>(key_2.size());
-  std::memcpy(&buffer_metadata<char, 4>(p_2), key_2.c_str(), key_2_size);
-  buffer_metadata<char, 8>(p_2) = 0;
-  buffer_metadata<char, 9>(p_2) = (char)Datatype::FLOAT64;
-  buffer_metadata<uint32_t, 10>(p_2) = value_2_size;
-  buffer_metadata<double, 14>(p_2) = value_2;
-  metadata_buffs.push_back(make_shared<Buffer>(
-      HERE(), &serialized_buffer_2, sizeof(serialized_buffer_2)));
+  SizeComputationSerializer size_computation_serializer1;
+  metadata_to_serialize1.serialize(size_computation_serializer1);
+  Tile tile1{Tile::from_generic(size_computation_serializer1.size())};
 
-  char serialized_buffer_3[25];
-  char* p_3 = &serialized_buffer_3[0];
-  // set key_3:value_3 string metadata
-  buffer_metadata<uint32_t, 0>(p_3) = static_cast<uint32_t>(key_3.size());
-  std::memcpy(&buffer_metadata<char, 4>(p_3), key_3.c_str(), key_3_size);
-  buffer_metadata<char, 8>(p_3) = 0;
-  buffer_metadata<char, 9>(p_3) = (char)Datatype::STRING_ASCII;
-  buffer_metadata<uint32_t, 10>(p_3) = value_3_size;
-  std::memcpy(&buffer_metadata<char, 14>(p_3), value_3.c_str(), value_3_size);
-  metadata_buffs.push_back(make_shared<Buffer>(
-      HERE(), &serialized_buffer_3, sizeof(serialized_buffer_3)));
+  Serializer serializer1(tile1.data(), tile1.size());
+  metadata_to_serialize1.serialize(serializer1);
 
-  auto&& [st_meta, meta]{Metadata::deserialize(metadata_buffs)};
+  CHECK(
+      metadata_to_serialize2.put(key_2.c_str(), Datatype::FLOAT64, 1, &value_2)
+          .ok());
 
-  REQUIRE(st_meta.ok());
+  SizeComputationSerializer size_computation_serializer2;
+  metadata_to_serialize2.serialize(size_computation_serializer2);
+  Tile tile2{Tile::from_generic(size_computation_serializer2.size())};
+
+  Serializer serializer2(tile2.data(), tile2.size());
+  metadata_to_serialize2.serialize(serializer2);
+
+  CHECK(metadata_to_serialize3
+            .put(
+                key_3.c_str(),
+                Datatype::STRING_ASCII,
+                value_3_size,
+                value_3.data())
+            .ok());
+
+  SizeComputationSerializer size_computation_serializer3;
+  metadata_to_serialize3.serialize(size_computation_serializer3);
+  Tile tile3{Tile::from_generic(size_computation_serializer3.size())};
+
+  Serializer serializer3(tile3.data(), tile3.size());
+  metadata_to_serialize3.serialize(serializer3);
+
+  metadata_tiles.resize(3);
+  metadata_tiles[0] = tdb::make_shared<Tile>(HERE(), std::move(tile1));
+  metadata_tiles[1] = tdb::make_shared<Tile>(HERE(), std::move(tile2));
+  metadata_tiles[2] = tdb::make_shared<Tile>(HERE(), std::move(tile3));
+
+  auto meta{Metadata::deserialize(metadata_tiles)};
 
   Datatype type;
   uint32_t v_num;
 
   // Read key_1 metadata
   const int32_t* v_1;
-  meta.value()->get("key1", &type, &v_num, (const void**)(&v_1));
+  CHECK(meta.get("key1", &type, &v_num, (const void**)(&v_1)).ok());
   CHECK(type == Datatype::INT32);
   CHECK(v_num == (uint32_t)(value_1_vector.size()));
   CHECK(*(v_1) == 100);
@@ -124,14 +127,14 @@ TEST_CASE(
 
   // Read key_2 metadata
   const double* v_2;
-  meta.value()->get("key2", &type, &v_num, (const void**)(&v_2));
+  CHECK(meta.get("key2", &type, &v_num, (const void**)(&v_2)).ok());
   CHECK(type == Datatype::FLOAT64);
   CHECK(v_num == value_2_size);
   CHECK(*(v_2) == value_2);
 
   // Read key_3 metadata
   const char* v_3;
-  meta.value()->get("key3", &type, &v_num, (const void**)(&v_3));
+  CHECK(meta.get("key3", &type, &v_num, (const void**)(&v_3)).ok());
   CHECK(type == Datatype::STRING_ASCII);
   CHECK(v_num == value_3_size);
   CHECK(std::string(v_3, value_3_size) == value_3);

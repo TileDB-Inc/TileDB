@@ -38,6 +38,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/filesystem/uri.h"
 
 using namespace tiledb::common;
@@ -68,7 +69,15 @@ class ConsistencyController {
   friend class WhiteboxConsistencyController;
 
  public:
-  using entry_type = std::multimap<const URI, Array&>::const_iterator;
+  /**
+   * Note: array openness and registration are not fully atomic. Upon array
+   * registration, the array is considered to be only partially opened, so
+   * requesting array data is prohibited. However, in order to maintain
+   * consistency, registration must access the array's QueryType. As such, the
+   * QueryType is stored in the multimap alongside its corresponding Array.
+   */
+  using array_entry = std::tuple<Array&, const QueryType>;
+  using entry_type = std::multimap<const URI, array_entry>::const_iterator;
 
   /**
    * Constructor.
@@ -99,7 +108,8 @@ class ConsistencyController {
    *
    * @return Sentry object whose lifespan is the same as the registration.
    */
-  ConsistencySentry make_sentry(const URI uri, Array& array);
+  ConsistencySentry make_sentry(
+      const URI uri, Array& array, const QueryType query_type);
 
   /** Returns true if the array is open, i.e. registered in the multimap. */
   bool is_open(const URI uri);
@@ -108,17 +118,21 @@ class ConsistencyController {
   /**
    * Wrapper around a multimap registration operation.
    *
-   * Note: this function is private bacause it may only be called by the
+   * Note: this function is private because it may only be called by the
    * ConsistencySentry constructor.
+   *
+   * Note: this function must not request any data from an array because array
+   * openness and registration are not yet fully atomic.
    *
    * @pre the given URI is the root directory of the Array and is not empty.
    */
-  entry_type register_array(const URI uri, Array& array);
+  entry_type register_array(
+      const URI uri, Array& array, const QueryType query_type);
 
   /**
    * Wrapper around a multimap deregistration operation.
    *
-   * Note: this function is private bacuse it may only be called by the
+   * Note: this function is private because it may only be called by the
    * ConsistencySentry destructor.
    *
    * Note: entry_type is passed as a value that is explicitly deleted from the
@@ -126,8 +140,14 @@ class ConsistencyController {
    */
   void deregister_array(entry_type entry);
 
-  /** The open array registry. */
-  std::multimap<const URI, Array&> array_registry_;
+  /**
+   * The open array registry.
+   *
+   * Note: QueryType must be stored in the multimap to avoid requesting data
+   * from partially-opened arrays because array openness and registration are
+   * not yet fully atomic.
+   **/
+  std::multimap<const URI, array_entry> array_registry_;
 
   /**
    * Mutex that protects atomicity between the existence of a

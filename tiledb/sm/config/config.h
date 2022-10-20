@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,10 +40,26 @@
 #include <string>
 #include <vector>
 
+/*
+ * C++14 introduced the attribute [[deprecated]], but no conditional syntax
+ * for it. In order to turn it on only when we want it, we have to use the
+ * preprocessor.
+ */
+#if defined(TILEDB_DEPRECATE_OLD_CONFIG_GET)
+/*
+ * Old versions of `Config::get` don't obey the "outputs on the left" principle,
+ * or return `Status`, or both.
+ */
+#define TILEDB_DEPRECATE_CONFIG \
+  [[deprecated(                 \
+      "Instead use the single-argument version that returns `optional`")]]
+#else
+#define TILEDB_DEPRECATE_CONFIG
+#endif
+
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /**
  * This class manages the TileDB configuration options.
@@ -105,6 +121,9 @@ class Config {
   /** The default format for logging. */
   static const std::string CONFIG_LOGGING_DEFAULT_FORMAT;
 
+  /** Allow updates or not. */
+  static const std::string SM_ALLOW_UPDATES_EXPERIMENTAL;
+
   /**
    * The key for encrypted arrays.
    *  */
@@ -160,6 +179,9 @@ class Config {
    * for a var-sized attribute.
    */
   static const std::string SM_MEMORY_BUDGET_VAR;
+
+  /** Set the dense reader in qc coords mode. */
+  static const std::string SM_QUERY_DENSE_QC_COORDS_MODE;
 
   /** Which reader to use for dense queries. */
   static const std::string SM_QUERY_DENSE_READER;
@@ -329,6 +351,13 @@ class Config {
    * An group will open between timestamp_start and this value.
    */
   static const std::string SM_GROUP_TIMESTAMP_END;
+
+  /**
+   * If `true` MBRs will be loaded at the same time as the rest of fragment
+   * info, otherwise they will be loaded lazily when some info related to MBRs
+   * is requested by the user
+   */
+  static const std::string SM_FRAGMENT_INFO_PRELOAD_MBRS;
 
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;
@@ -519,6 +548,10 @@ class Config {
   /*        OTHER CONSTANTS         */
   /* ****************************** */
 
+  /** Marker class to enforce value is found with Config::get overload */
+  class MustFindMarker {};
+  static constexpr MustFindMarker must_find{};
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -543,18 +576,45 @@ class Config {
   Status set(const std::string& param, const std::string& value);
 
   /**
+   * Retrieve the string value of a configuration parameter and convert it to
+   * a designated type.
+   *
+   * @param key The name of the configuration parameter
+   * @return If a configuration item is present, its value. If not, `nullopt`.
+   */
+  template <class T>
+  [[nodiscard]] inline optional<T> get(const std::string& key) const {
+    return get_internal<T, false>(key);
+  }
+
+  /**
+   * Retrieves the value of the given parameter in the templated type.
+   * Throws StatusException if config value could not be found
+   *
+   * @param key The name of the configuration parameter
+   * @return The value of the configuration parameter
+   */
+  template <class T>
+  inline T get(const std::string& key, const MustFindMarker&) const {
+    return get_internal<T, true>(key).value();
+  }
+
+  /**
    * Returns the string representation of a config parameter value.
    * Sets `found` to `true` if found and `false` otherwise.
    */
+  TILEDB_DEPRECATE_CONFIG
   std::string get(const std::string& param, bool* found) const;
 
   /** Gets a config parameter value (`nullptr` if `param` does not exist). */
+  TILEDB_DEPRECATE_CONFIG
   Status get(const std::string& param, const char** value) const;
 
   /**
    * Retrieves the value of the given parameter in the templated type.
    * Sets `found` to `true` if found and `false` otherwise.
    */
+  TILEDB_DEPRECATE_CONFIG
   template <class T>
   Status get(const std::string& param, T* value, bool* found) const;
 
@@ -653,9 +713,39 @@ class Config {
    */
   const char* get_from_config_or_env(
       const std::string& param, bool* found) const;
+
+  template <class T, bool must_find_>
+  optional<T> get_internal(const std::string& key) const;
+
+  template <bool must_find_>
+  optional<std::string> get_internal_string(const std::string& key) const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+/**
+ * An explicit specialization for `std::string`. It does not call a conversion
+ * function and it is thus the same as `get_internal_string<false>`.
+ */
+template <>
+[[nodiscard]] inline optional<std::string> Config::get<std::string>(
+    const std::string& key) const {
+  return get_internal_string<false>(key);
+}
+
+/**
+ * An explicit specialization for `std::string`. It does not call a conversion
+ * function and it is thus the same as `get_internal_string<true>`
+ *
+ * Will throw if value is not found for provided config key
+ */
+template <>
+inline std::string Config::get<std::string>(
+    const std::string& key, const Config::MustFindMarker&) const {
+  return get_internal_string<true>(key).value();
+}
+}  // namespace tiledb::sm
+
+#ifdef TILEDB_DEPRECATE_CONFIG
+#undef TILEDB_DEPRECATE_CONFIG
+#endif
 
 #endif  // TILEDB_CONFIG_H

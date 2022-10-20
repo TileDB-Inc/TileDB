@@ -58,7 +58,9 @@
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter_create.h"
 #include "tiledb/sm/filter/float_scaling_filter.h"
+#include "tiledb/sm/filter/noop_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
+#include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
 
@@ -129,6 +131,7 @@ Status filter_to_capnp(
     case FilterType::FILTER_CHECKSUM_MD5:
     case FilterType::FILTER_CHECKSUM_SHA256:
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
+    case FilterType::FILTER_XOR:
       break;
   }
 
@@ -150,7 +153,7 @@ Status filter_pipeline_to_capnp(
   for (unsigned i = 0; i < num_filters; i++) {
     const auto* filter = filter_pipeline->get_filter(i);
     auto filter_builder = filter_list_builder[i];
-    filter_to_capnp(filter, &filter_builder);
+    throw_if_not_ok(filter_to_capnp(filter, &filter_builder));
   }
 
   return Status::Ok();
@@ -203,8 +206,9 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
       return {Status::Ok(),
               tiledb::common::make_shared<FloatScalingFilter>(HERE())};
     }
-    case FilterType::FILTER_NONE:
-      break;
+    case FilterType::FILTER_NONE: {
+      return {Status::Ok(), tiledb::common::make_shared<NoopFilter>(HERE())};
+    }
     case FilterType::FILTER_BITSHUFFLE: {
       return {Status::Ok(),
               tiledb::common::make_shared<BitshuffleFilter>(HERE())};
@@ -224,6 +228,9 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
     case FilterType::INTERNAL_FILTER_AES_256_GCM: {
       return {Status::Ok(),
               tiledb::common::make_shared<EncryptionAES256GCMFilter>(HERE())};
+    }
+    case FilterType::FILTER_XOR: {
+      return {Status::Ok(), tiledb::common::make_shared<XORFilter>(HERE())};
     }
     default: {
       throw std::logic_error(

@@ -282,7 +282,6 @@ int32_t CSparseGlobalOrderFx::read(
 
   // Submit query.
   auto ret = tiledb_query_submit(ctx_, query);
-
   if (query_ret == nullptr || array_ret == nullptr) {
     // Clean up.
     rc = tiledb_array_close(ctx_, array);
@@ -421,10 +420,10 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
-  // Two result tile (2 * (~504 + 8) will be bigger than the per fragment budget
-  // (1000).
+  // Two result tile (2 * (~1200 + 8) will be bigger than the per fragment
+  // budget (1000).
   total_budget_ = "10000";
-  ratio_coords_ = "0.21";
+  ratio_coords_ = "0.30";
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -465,7 +464,6 @@ TEST_CASE_METHOD(
   tiledb_query_get_status(ctx_, query, &status);
   CHECK(status == TILEDB_COMPLETED);
 
-  // Should only read one tile (2 values).
   CHECK(40 == data_r_size);
   CHECK(40 == coords_r_size);
 
@@ -661,7 +659,6 @@ TEST_CASE_METHOD(
   tiledb_query_get_status(ctx_, query, &status);
   CHECK(status == TILEDB_COMPLETED);
 
-  // Should only read one tile (2 values).
   CHECK(uint64_t(num_frags * 20) == data_r_size);
   CHECK(uint64_t(num_frags * 20) == coords_r_size);
 
@@ -951,10 +948,21 @@ TEST_CASE(
   query.set_data_buffer("d1", d1);
   query.set_data_buffer("a", a1_data);
   query.set_offsets_buffer("a", a1_offsets);
-  CHECK_NOTHROW(query.submit());
-
-  // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    CHECK_NOTHROW(query.submit());
+    query.finalize();
+  } else {
+    submit_and_finalize_serialized_query(ctx, query);
+  }
 
   // Read using a buffer that can't fit a single result
   Array array2(ctx, array_name, TILEDB_READ);
@@ -987,4 +995,174 @@ TEST_CASE(
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
   }
+}
+
+TEST_CASE(
+    "Sparse global order reader: attribute copy memory limit",
+    "[sparse-global-order][attribute-copy][memory-limit]") {
+  std::string array_name = "test_sparse_global_order";
+  Config config;
+  config["sm.mem.total_budget"] = "10000";
+  Context ctx(config);
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create array with var-sized attribute.
+  Domain dom(ctx);
+  dom.add_dimension(Dimension::create<int64_t>(ctx, "d1", {{1, 4}}, 2));
+
+  Attribute attr(ctx, "a", TILEDB_STRING_ASCII);
+  attr.set_cell_val_num(TILEDB_VAR_NUM);
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.add_attribute(attr);
+  schema.set_tile_order(TILEDB_ROW_MAJOR);
+  schema.set_cell_order(TILEDB_ROW_MAJOR);
+  schema.set_domain(dom);
+  schema.set_allows_dups(true);
+  schema.set_capacity(4);
+
+  Array::create(array_name, schema);
+
+  // Write a fragment with two tiles of 4 cells each. The var size tiles will
+  // have a size of 5000.
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_layout(TILEDB_GLOBAL_ORDER);
+  std::vector<int64_t> d1 = {1, 1, 2, 2, 3, 3, 4, 4};
+  std::string a1_data;
+  a1_data.resize(10000);
+  for (uint64_t i = 0; i < 10000; i++) {
+    a1_data[i] = '0' + i % 10;
+  }
+  std::vector<uint64_t> a1_offsets{0, 1250, 2500, 3750, 5000, 6250, 7500, 8750};
+
+  query.set_data_buffer("d1", d1);
+  query.set_data_buffer("a", a1_data);
+  query.set_offsets_buffer("a", a1_offsets);
+  CHECK_NOTHROW(query.submit());
+  CHECK_NOTHROW(query.finalize());
+
+  // Read using a budget that can only fit one of the var size tiles.
+  Array array2(ctx, array_name, TILEDB_READ);
+  Query query2(ctx, array2, TILEDB_READ);
+
+  std::string attr_val;
+  attr_val.resize(5000);
+  std::vector<uint64_t> attr_off(sizeof(uint64_t));
+
+  query2.set_layout(TILEDB_GLOBAL_ORDER);
+  query2.set_data_buffer("a", (char*)attr_val.data(), attr_val.size());
+  query2.set_offsets_buffer("a", attr_off);
+
+  // Submit and validate we only get 4 cells back (one tile).
+  auto st = query2.submit();
+  CHECK(st == Query::Status::INCOMPLETE);
+
+  auto result_num = (int)query2.result_buffer_elements()["a"].first;
+  CHECK(result_num == 4);
+
+  // Submit and validate we get the last 4 cells back.
+  st = query2.submit();
+  CHECK(st == Query::Status::COMPLETE);
+
+  result_num = (int)query2.result_buffer_elements()["a"].first;
+  CHECK(result_num == 4);
+
+  array2.close();
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}
+
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: no new coords tile",
+    "[sparse-global-order][no-new-coords-tile]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
+
+  bool use_subarray = false;
+  SECTION("- No subarray") {
+    use_subarray = false;
+  }
+  SECTION("- Subarray") {
+    use_subarray = true;
+  }
+
+  int num_frags = 2;
+  for (int i = 1; i < num_frags + 1; i++) {
+    // Write a fragment.
+    int coords[] = {i,
+                    num_frags + i,
+                    2 * num_frags + i,
+                    3 * num_frags + i,
+                    4 * num_frags + i};
+    uint64_t coords_size = sizeof(coords);
+    int data[] = {i,
+                  num_frags + i,
+                  2 * num_frags + i,
+                  3 * num_frags + i,
+                  4 * num_frags + i};
+    uint64_t data_size = sizeof(data);
+    write_1d_fragment(coords, &coords_size, data, &data_size);
+  }
+
+  // Two result tile (2 * (~1200 + 8) will be bigger than the per fragment
+  // budget (1000).
+  total_budget_ = "10000";
+  ratio_coords_ = "0.30";
+  update_config();
+
+  tiledb_array_t* array = nullptr;
+  tiledb_query_t* query = nullptr;
+
+  // Try to read.
+  int coords_r[1];
+  int data_r[1];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
+  tiledb_query_status_t status;
+  uint32_t rc = read(
+      use_subarray,
+      false,
+      coords_r,
+      &coords_r_size,
+      data_r,
+      &data_r_size,
+      &query,
+      &array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_INCOMPLETE);
+
+  uint64_t loop_idx = 1;
+  CHECK(4 == data_r_size);
+  CHECK(4 == coords_r_size);
+  CHECK(!std::memcmp(&loop_idx, coords_r, coords_r_size));
+  CHECK(!std::memcmp(&loop_idx, data_r, data_r_size));
+  loop_idx++;
+
+  while (status == TILEDB_INCOMPLETE && rc == TILEDB_OK) {
+    rc = tiledb_query_submit(ctx_, query);
+    tiledb_query_get_status(ctx_, query, &status);
+    CHECK(4 == data_r_size);
+    CHECK(4 == coords_r_size);
+    CHECK(!std::memcmp(&loop_idx, coords_r, coords_r_size));
+    CHECK(!std::memcmp(&loop_idx, data_r, data_r_size));
+    loop_idx++;
+  }
+  CHECK(loop_idx == 11);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up.
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
 }

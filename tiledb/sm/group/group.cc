@@ -71,7 +71,8 @@ Status Group::open(
     return Status_GroupError("Cannot open group; Group already open");
   }
 
-  if (query_type != QueryType::READ && query_type != QueryType::WRITE) {
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
+      query_type != QueryType::MODIFY_EXCLUSIVE) {
     return Status_GroupError("Cannot open group; Unsupported query type");
   }
 
@@ -79,7 +80,9 @@ Status Group::open(
     if (query_type == QueryType::READ) {
       timestamp_end = utils::time::timestamp_now_ms();
     } else {
-      assert(query_type == QueryType::WRITE);
+      assert(
+          query_type == QueryType::WRITE ||
+          query_type == QueryType::MODIFY_EXCLUSIVE);
       timestamp_end = 0;
     }
   }
@@ -230,7 +233,8 @@ Status Group::close() {
   if (remote_) {
     // Update group metadata for write queries if metadata was written by the
     // user
-    if (query_type_ == QueryType::WRITE) {
+    if (query_type_ == QueryType::WRITE ||
+        query_type_ == QueryType::MODIFY_EXCLUSIVE) {
       if (metadata_.num() > 0) {
         // Set metadata loaded to be true so when serialization fetches the
         // metadata it won't trigger a deadlock
@@ -260,7 +264,9 @@ Status Group::close() {
   } else {
     if (query_type_ == QueryType::READ) {
       RETURN_NOT_OK(storage_manager_->group_close_for_reads(this));
-    } else if (query_type_ == QueryType::WRITE) {
+    } else if (
+        query_type_ == QueryType::WRITE ||
+        query_type_ == QueryType::MODIFY_EXCLUSIVE) {
       // If changes haven't been applied, apply them
       if (!changes_applied_) {
         RETURN_NOT_OK(apply_pending_changes());
@@ -272,9 +278,7 @@ Status Group::close() {
   metadata_.clear();
   metadata_loaded_ = false;
   is_open_ = false;
-  clear();
-
-  return Status::Ok();
+  return clear();
 }
 
 bool Group::is_open() const {
@@ -302,10 +306,11 @@ Status Group::delete_metadata(const char* key) {
     return Status_GroupError("Cannot delete metadata. Group is not open");
 
   // Check mode
-  if (query_type_ != QueryType::WRITE)
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE)
     return Status_GroupError(
         "Cannot delete metadata. Group was "
-        "not opened in write mode");
+        "not opened in write or modify_exclusive mode");
 
   // Check if key is null
   if (key == nullptr)
@@ -326,10 +331,11 @@ Status Group::put_metadata(
     return Status_GroupError("Cannot put metadata; Group is not open");
 
   // Check mode
-  if (query_type_ != QueryType::WRITE)
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE)
     return Status_GroupError(
         "Cannot put metadata; Group was "
-        "not opened in write mode");
+        "not opened in write or modify_exclusive mode");
 
   // Check if key is null
   if (key == nullptr)
@@ -475,8 +481,8 @@ QueryType Group::query_type() const {
   return query_type_;
 }
 
-const Config* Group::config() const {
-  return &config_;
+const Config& Group::config() const {
+  return config_;
 }
 
 Status Group::set_config(Config config) {
@@ -495,7 +501,7 @@ Status Group::clear() {
   return Status::Ok();
 }
 
-Status Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
+void Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   const std::string& uri = group_member->uri().to_string();
   members_.emplace(uri, group_member);
@@ -503,8 +509,6 @@ Status Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
   if (group_member->name().has_value()) {
     members_by_name_.emplace(group_member->name().value(), group_member);
   }
-
-  return Status::Ok();
 }
 
 Status Group::mark_member_for_addition(
@@ -518,9 +522,11 @@ Status Group::mark_member_for_addition(
   }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE) {
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return Status_GroupError(
-        "Cannot get member; Group was not opened in write mode");
+        "Cannot get member; Group was not opened in write or modify_exclusive "
+        "mode");
   }
 
   const std::string& uri = group_member_uri.to_string();
@@ -587,9 +593,11 @@ Status Group::mark_member_for_removal(const std::string& uri) {
   }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE) {
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return Status_GroupError(
-        "Cannot get member; Group was not opened in write mode");
+        "Cannot get member; Group was not opened in write or modify_exclusive "
+        "mode");
   }
   if (members_to_add_.find(uri) != members_to_add_.end()) {
     return Status_GroupError(
@@ -648,26 +656,27 @@ Group::members() const {
   return members_;
 }
 
-Status Group::serialize(Buffer*) {
-  return Status_GroupError("Invalid call to Group::serialize");
+void Group::serialize(Serializer&) {
+  throw StatusException(Status_GroupError("Invalid call to Group::serialize"));
 }
 
-Status Group::apply_and_serialize(Buffer* buff) {
-  RETURN_NOT_OK(apply_pending_changes());
-  return serialize(buff);
+void Group::apply_and_serialize(Serializer& serializer) {
+  throw_if_not_ok(apply_pending_changes());
+  serialize(serializer);
 }
 
-std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> Group::deserialize(
-    ConstBuffer* buff, const URI& group_uri, StorageManager* storage_manager) {
+std::optional<tdb_shared_ptr<Group>> Group::deserialize(
+    Deserializer& deserializer,
+    const URI& group_uri,
+    StorageManager* storage_manager) {
   uint32_t version = 0;
-  RETURN_NOT_OK_TUPLE(buff->read(&version, sizeof(uint32_t)), std::nullopt);
+  version = deserializer.read<uint32_t>();
   if (version == 1) {
-    return GroupV1::deserialize(buff, group_uri, storage_manager);
+    return GroupV1::deserialize(deserializer, group_uri, storage_manager);
   }
 
-  return {
-      Status_GroupError("Unsupported group version " + std::to_string(version)),
-      std::nullopt};
+  throw StatusException(Status_GroupError(
+      "Unsupported group version " + std::to_string(version)));
 }
 
 const URI& Group::group_uri() const {
@@ -767,13 +776,15 @@ tuple<
     Status,
     optional<std::string>,
     optional<ObjectType>,
-    optional<std::string>>
+    optional<std::string>,
+    optional<bool>>
 Group::member_by_name(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   // Check if group is open
   if (!is_open_) {
     return {Status_GroupError("Cannot get member by name; Group is not open"),
+            std::nullopt,
             std::nullopt,
             std::nullopt,
             std::nullopt};
@@ -785,12 +796,14 @@ Group::member_by_name(const std::string& name) {
                 "Cannot get member; Group was not opened in read mode"),
             std::nullopt,
             std::nullopt,
+            std::nullopt,
             std::nullopt};
   }
 
   auto it = members_by_name_.find(name);
   if (it == members_by_name_.end()) {
     return {Status_GroupError(name + " does not exist in group"),
+            std::nullopt,
             std::nullopt,
             std::nullopt,
             std::nullopt};
@@ -802,7 +815,8 @@ Group::member_by_name(const std::string& name) {
     uri = group_uri_.join_path(member->uri().to_string()).to_string();
   }
 
-  return {Status::Ok(), uri, member->type(), member->name()};
+  return {
+      Status::Ok(), uri, member->type(), member->name(), member->relative()};
 }
 
 std::string Group::dump(
@@ -829,9 +843,9 @@ std::string Group::dump(
       }
 
       GroupV1 group_rec(uri, storage_manager_);
-      group_rec.open(QueryType::READ);
+      throw_if_not_ok(group_rec.open(QueryType::READ));
       ss << group_rec.dump(indent_size, num_indents + 2, recursive, false);
-      group_rec.close();
+      throw_if_not_ok(group_rec.close());
     }
   }
 
@@ -863,8 +877,8 @@ Status Group::load_metadata() {
     RETURN_NOT_OK(rest_client->post_group_metadata_from_rest(group_uri_, this));
   } else {
     assert(group_dir_->loaded());
-    RETURN_NOT_OK(storage_manager_->load_group_metadata(
-        group_dir_, *encryption_key_, &metadata_));
+    storage_manager_->load_group_metadata(
+        group_dir_, *encryption_key_, &metadata_);
   }
   metadata_loaded_ = true;
   return Status::Ok();

@@ -35,6 +35,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/tdb_catch.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -593,6 +594,24 @@ struct TemporaryDirectoryFixture {
         tiledb_array_create(ctx, array_uri.c_str(), array_schema));
     return array_uri;
   };
+
+  /**
+   * Checks the return code for a TileDB C-API function is TILEDB_OK. If not,
+   * if will add a failed assert to the Catch2 test and print the last error
+   * message from the local TileDB context.
+   *
+   * @param rc Return code from a TileDB C-API function.
+   */
+  void check_tiledb_ok(int rc);
+
+  /**
+   * Requires the return code for a TileDB C-API function is TILEDB_OK. If not,
+   * it will end the Catch2 test and print the last error message from the local
+   * TileDB context.
+   *
+   * @param rc Return code from a TileDB C-API function.
+   */
+  void require_tiledb_ok(int rc);
 
  protected:
   /** TileDB context */

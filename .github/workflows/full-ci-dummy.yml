@@ -1,4 +1,4 @@
-name: "Full CI"
+name: "CI Placeholder (docs only)"
 on:
   pull_request:
     branches:

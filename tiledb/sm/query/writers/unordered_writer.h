@@ -63,6 +63,7 @@ class UnorderedWriter : public WriterBase {
       Layout layout,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       Query::CoordsInfo& coords_info_,
+      bool remote_query,
       optional<std::string> fragment_name = nullopt,
       bool skip_checks_serialization = false);
 

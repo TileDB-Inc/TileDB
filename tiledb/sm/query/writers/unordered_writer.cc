@@ -76,6 +76,7 @@ UnorderedWriter::UnorderedWriter(
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
+    bool remote_query,
     optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
@@ -90,8 +91,21 @@ UnorderedWriter::UnorderedWriter(
           written_fragment_info,
           false,
           coords_info,
+          remote_query,
           fragment_name,
           skip_checks_serialization) {
+  if (layout != Layout::UNORDERED) {
+    throw StatusException(Status_WriterError(
+        "Failed to initialize UnorderedWriter; The unordered writer does not "
+        "support layout " +
+        layout_str(layout)));
+  }
+
+  if (array_schema_.dense()) {
+    throw StatusException(Status_WriterError(
+        "Failed to initialize UnorderedWriter; The unordered "
+        "writer does not support dense arrays."));
+  }
 }
 
 UnorderedWriter::~UnorderedWriter() {
@@ -222,13 +236,13 @@ Status UnorderedWriter::check_coord_dups(
         return Status::Ok();
       });
 
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   return Status::Ok();
 }
 
 void UnorderedWriter::clean_up(const URI& uri) {
-  storage_manager_->vfs()->remove_dir(uri);
+  throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
 }
 
 Status UnorderedWriter::compute_coord_dups(
@@ -641,7 +655,7 @@ Status UnorderedWriter::unordered_write() {
   // Set the number of tiles in the metadata
   auto it = tiles.begin();
   auto tile_num = it->second.size();
-  frag_meta->set_num_tiles(tile_num);
+  throw_if_not_ok(frag_meta->set_num_tiles(tile_num));
 
   stats_->add_counter("tile_num", tile_num);
   stats_->add_counter("cell_num", cell_pos.size());
@@ -666,17 +680,26 @@ Status UnorderedWriter::unordered_write() {
       frag_meta->compute_fragment_min_max_sum_null_count(), clean_up(uri));
 
   // Write the fragment metadata
-  RETURN_CANCEL_OR_ERROR_ELSE(
-      frag_meta->store(array_->get_encryption_key()), clean_up(uri));
+  try {
+    frag_meta->store(array_->get_encryption_key());
+  } catch (...) {
+    clean_up(uri);
+    throw;
+  }
 
   // Add written fragment info
   RETURN_NOT_OK_ELSE(add_written_fragment_info(uri), clean_up(uri));
 
   // The following will make the fragment visible
-  auto&& [st, commit_uri] = array_->array_directory().get_commit_uri(uri);
-  RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
-  RETURN_NOT_OK_ELSE(
-      storage_manager_->vfs()->touch(commit_uri.value()), clean_up(uri));
+  URI commit_uri;
+  try {
+    commit_uri = array_->array_directory().get_commit_uri(uri);
+  } catch (std::exception& e) {
+    RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri));
+    std::throw_with_nested(
+        std::logic_error("[UnorderedWriter::unordered_write] "));
+  }
+  RETURN_NOT_OK_ELSE(storage_manager_->vfs()->touch(commit_uri), clean_up(uri));
 
   return Status::Ok();
 }

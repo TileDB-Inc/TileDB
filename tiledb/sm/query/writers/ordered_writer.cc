@@ -76,6 +76,7 @@ OrderedWriter::OrderedWriter(
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
+    bool remote_query,
     optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
@@ -90,8 +91,21 @@ OrderedWriter::OrderedWriter(
           written_fragment_info,
           false,
           coords_info,
+          remote_query,
           fragment_name,
           skip_checks_serialization) {
+  if (layout != Layout::ROW_MAJOR && layout != Layout::COL_MAJOR) {
+    throw StatusException(Status_WriterError(
+        "Failed to initialize OrderedWriter; The ordered writer does not "
+        "support layout " +
+        layout_str(layout)));
+  }
+
+  if (!array_schema_.dense()) {
+    throw StatusException(
+        Status_WriterError("Failed to initialize OrderedWriter; The ordered "
+                           "writer does not support sparse arrays."));
+  }
 }
 
 OrderedWriter::~OrderedWriter() {
@@ -205,7 +219,7 @@ Status OrderedWriter::ordered_write() {
   auto tile_num = dense_tiler.tile_num();
 
   // Set number of tiles in the fragment metadata
-  frag_meta->set_num_tiles(tile_num);
+  throw_if_not_ok(frag_meta->set_num_tiles(tile_num));
 
   // Prepare, filter and write tiles for all attributes
   auto attr_num = buffers_.size();
@@ -225,7 +239,8 @@ Status OrderedWriter::ordered_write() {
       return prepare_filter_and_write_tiles<T>(
           attr, attr_tile_batches, frag_meta, &dense_tiler, 1);
     });
-    RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
+    RETURN_NOT_OK_ELSE(
+        st, throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri)));
   } else {  // Parallelize over tiles
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
@@ -234,9 +249,9 @@ Status OrderedWriter::ordered_write() {
         RETURN_NOT_OK_ELSE(
             prepare_filter_and_write_tiles<T>(
                 attr, attr_tile_batches, frag_meta, &dense_tiler, thread_num),
-            storage_manager_->vfs()->remove_dir(uri));
+            throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri)));
       } catch (const std::logic_error& le) {
-        storage_manager_->vfs()->remove_dir(uri);
+        throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
         return Status_WriterError(le.what());
       }
     }
@@ -264,7 +279,8 @@ Status OrderedWriter::ordered_write() {
       }
       return Status::Ok();
     });
-    RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
+    RETURN_NOT_OK_ELSE(
+        st, throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri)));
   } else {  // Parallelize over tiles
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
@@ -285,7 +301,8 @@ Status OrderedWriter::ordered_write() {
               }
               return Status::Ok();
             });
-        RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
+        RETURN_NOT_OK_ELSE(
+            st, throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri)));
       }
     }
   }
@@ -293,23 +310,32 @@ Status OrderedWriter::ordered_write() {
   // Compute fragment min/max/sum/null count
   RETURN_NOT_OK_ELSE(
       frag_meta->compute_fragment_min_max_sum_null_count(),
-      storage_manager_->vfs()->remove_dir(uri));
+      throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri)));
 
   // Write the fragment metadata
-  RETURN_CANCEL_OR_ERROR_ELSE(
-      frag_meta->store(array_->get_encryption_key()),
-      storage_manager_->vfs()->remove_dir(uri));
+  try {
+    frag_meta->store(array_->get_encryption_key());
+  } catch (...) {
+    throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
+    throw;
+  }
 
   // Add written fragment info
   RETURN_NOT_OK_ELSE(
-      add_written_fragment_info(uri), storage_manager_->vfs()->remove_dir(uri));
+      add_written_fragment_info(uri),
+      throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri)));
 
   // The following will make the fragment visible
-  auto&& [st, commit_uri] = array_->array_directory().get_commit_uri(uri);
-  RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
+  URI commit_uri;
+  try {
+    commit_uri = array_->array_directory().get_commit_uri(uri);
+  } catch (std::exception& e) {
+    RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri));
+    std::throw_with_nested(std::logic_error("[OrderedWriter::ordered_write] "));
+  }
   RETURN_NOT_OK_ELSE(
-      storage_manager_->vfs()->touch(commit_uri.value()),
-      storage_manager_->vfs()->remove_dir(uri));
+      storage_manager_->vfs()->touch(commit_uri),
+      throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri)));
 
   return Status::Ok();
 }
@@ -325,10 +351,8 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
 
   // For easy reference
   const auto type = array_schema_.type(name);
-  const auto is_dim = array_schema_.is_dim(name);
   const bool var = array_schema_.var_size(name);
   const auto cell_size = array_schema_.cell_size(name);
-  const auto cell_val_num = array_schema_.cell_val_num(name);
   const bool nullable = array_schema_.is_nullable(name);
 
   // Initialization
@@ -360,12 +384,8 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
         storage_manager_->compute_tp(), 0, batch_size, [&](uint64_t i) {
           // Prepare and filter tiles
           auto& writer_tile = tile_batches[b][i];
-          TileMetadataGenerator md_generator(
-              type, is_dim, var, cell_size, cell_val_num);
-
           RETURN_NOT_OK(
               dense_tiler->get_tile(frag_tile_id + i, name, writer_tile));
-          md_generator.process_tile(writer_tile);
 
           if (!var) {
             RETURN_NOT_OK(filter_tile(

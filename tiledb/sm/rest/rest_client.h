@@ -201,6 +201,16 @@ class RestClient {
   Status finalize_query_to_rest(const URI& uri, Query* query);
 
   /**
+   * Submit and finalize a query to rest server. Used in global order
+   * writes to submit the last tile-unaligned chunk and finalize the query.
+   *
+   * @param uri of array being queried
+   * @param query to send to server and store results in
+   * @return Status Ok() on success Error() on failures
+   */
+  Status submit_and_finalize_query_to_rest(const URI& uri, Query* query);
+
+  /**
    * Get array's non_empty domain from rest server
    *
    * @param array Array model to fetch and set non empty domain on
@@ -217,6 +227,16 @@ class RestClient {
    */
   Status post_array_schema_evolution_to_rest(
       const URI& uri, ArraySchemaEvolution* array_schema_evolution);
+
+  /**
+   * Get array's fragment info from rest server
+   *
+   * @param uri Array uri to query for
+   * @param fragment_info Fragment info object to store the incoming info
+   * @return Status Ok() on success Error() on failures
+   */
+  Status post_fragment_info_from_rest(
+      const URI& uri, FragmentInfo* fragment_info);
 
   /**
    * Gets the group's metadata from the REST server (and updates the in-memory

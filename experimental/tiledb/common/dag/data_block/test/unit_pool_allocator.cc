@@ -39,11 +39,11 @@
 using namespace tiledb::common;
 
 class big_class {
-  std::array<char, 2 * 1024 * 1024> storage_;
+  [[maybe_unused]] std::array<char, 2 * 1024 * 1024> storage_;
 };
 
 class small_class {
-  std::array<char, 4 * 1024> storage_;
+  [[maybe_unused]] std::array<char, 4 * 1024> storage_;
 };
 
 /**
@@ -368,8 +368,8 @@ TEST_CASE(
 }
 
 /**
- * Test interface for `PoolAllocator`.  It should be conformant, but g++ seems
- * more persnickety.
+ * Test allocator interface for `PoolAllocator`.  It should be conformant, but
+ * g++ seems to be kind of persnickety.
  */
 #ifndef __GNUG__
 TEST_CASE(

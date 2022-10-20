@@ -169,7 +169,7 @@ Status group_details_from_capnp(
     for (auto member : group_details_reader.getMembers()) {
       auto&& [st, group_member] = group_member_from_capnp(&member);
       RETURN_NOT_OK(st);
-      RETURN_NOT_OK(group->add_member(group_member.value()));
+      group->add_member(group_member.value());
     }
   }
 
@@ -209,7 +209,7 @@ Status group_from_capnp(
   }
 
   if (group_reader.hasGroup()) {
-    group->clear();
+    throw_if_not_ok(group->clear());
     RETURN_NOT_OK(group_details_from_capnp(group_reader.getGroup(), group));
   }
 
@@ -270,7 +270,7 @@ Status group_update_from_capnp(
 
   if (group_update_details_reader.hasMembersToRemove()) {
     for (auto uri : group_update_details_reader.getMembersToRemove()) {
-      group->mark_member_for_removal(uri.cStr());
+      throw_if_not_ok(group->mark_member_for_removal(uri.cStr()));
     }
   }
 

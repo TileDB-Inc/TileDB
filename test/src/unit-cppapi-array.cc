@@ -32,6 +32,8 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/src/serialization_wrappers.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"
@@ -345,8 +347,22 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     query.set_data_buffer("a5", a5);
 
     query.set_layout(TILEDB_GLOBAL_ORDER);
-    CHECK(query.submit() == tiledb::Query::Status::COMPLETE);
-    REQUIRE_NOTHROW(query.finalize());
+
+    bool serialized_writes = false;
+    SECTION("no serialization") {
+      serialized_writes = false;
+    }
+    SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+      serialized_writes = true;
+#endif
+    }
+    if (!serialized_writes) {
+      CHECK(query.submit() == tiledb::Query::Status::COMPLETE);
+      REQUIRE_NOTHROW(query.finalize());
+    } else {
+      test::submit_and_finalize_serialized_query(ctx, query);
+    }
 
     // Check non-empty domain while array open in write mode
     CHECK_THROWS(array.non_empty_domain<int>(1));
@@ -413,6 +429,7 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
   tiledb_array_type_t array_type = TILEDB_DENSE;
   bool null_pointer = true;
 
+  bool serialized_writes = false;
   SECTION("SPARSE") {
     array_type = TILEDB_SPARSE;
     SECTION("GLOBAL_ORDER") {
@@ -424,6 +441,14 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
 
       SECTION("NON_NULL_PTR") {
         null_pointer = false;
+      }
+      SECTION("no serialization") {
+        serialized_writes = false;
+      }
+      SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+        serialized_writes = true;
+#endif
       }
     }
 
@@ -477,8 +502,12 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
     q.set_data_buffer("a", a);
     q.set_offsets_buffer("a", a_offset);
     q.set_data_buffer("b", b);
-    q.submit();
-    q.finalize();
+    if (!serialized_writes || write_layout != TILEDB_GLOBAL_ORDER) {
+      q.submit();
+      q.finalize();
+    } else {
+      test::submit_and_finalize_serialized_query(ctx, q);
+    }
 
     array.close();
   }
@@ -1096,8 +1125,21 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  query_w.submit();
-  query_w.finalize();
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    query_w.submit();
+    query_w.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query_w);
+  }
   array_w.close();
 
   // Read
@@ -1468,8 +1510,21 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  query_w.submit();
-  query_w.finalize();
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    query_w.submit();
+    query_w.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query_w);
+  }
   array_w.close();
 
   // Read
@@ -1517,8 +1572,21 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  query_w.submit();
-  query_w.finalize();
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes) {
+    query_w.submit();
+    query_w.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query_w);
+  }
   array_w.close();
 
   // Read
@@ -1721,8 +1789,8 @@ TEST_CASE(
   // Try writing to an older-versioned array
   REQUIRE_THROWS_WITH(
       Array(ctx, old_array_name, TILEDB_WRITE),
-      Catch::Contains("Array format version") &&
-          Catch::Contains("is not the library format version"));
+      Catch::Matchers::ContainsSubstring("Array format version") &&
+          Catch::Matchers::ContainsSubstring("is not the library format version"));
 
   // Read from an older-versioned array
   Array array(ctx, old_array_name, TILEDB_READ);
@@ -1750,6 +1818,28 @@ TEST_CASE(
 
   FragmentInfo fragment_info(ctx, old_array_name);
   fragment_info.load();
+
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
+  if (serialized_load) {
+    FragmentInfo deserialized_fragment_info(ctx, old_array_name);
+    tiledb_fragment_info_serialize(
+        ctx.ptr().get(),
+        old_array_name.c_str(),
+        fragment_info.ptr().get(),
+        deserialized_fragment_info.ptr().get(),
+        tiledb_serialization_type_t(0));
+    fragment_info = deserialized_fragment_info;
+  }
+
   std::string fragment_uri = fragment_info.fragment_uri(1);
 
   // old version fragment
@@ -1787,12 +1877,12 @@ TEST_CASE(
   // Try writing to a newer-versioned (UINT32_MAX) array
   REQUIRE_THROWS_WITH(
       Array(ctx, new_array_name, TILEDB_WRITE),
-      Catch::Contains("Incompatible format version."));
+      Catch::Matchers::ContainsSubstring("Incompatible format version."));
 
   // Try reading from a newer-versioned (UINT32_MAX) array
   REQUIRE_THROWS_WITH(
       Array(ctx, new_array_name, TILEDB_READ),
-      Catch::Contains("Incompatible format version."));
+      Catch::Matchers::ContainsSubstring("Incompatible format version."));
 
   // Clean up
   VFS vfs(ctx);

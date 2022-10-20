@@ -44,6 +44,7 @@
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/range_subset.h"
 #include "tiledb/sm/subarray/subarray_tile_overlap.h"
 
@@ -71,7 +72,6 @@ class DimensionLabelReference;
 class EncryptionKey;
 class FragIdx;
 class FragmentMetadata;
-class StorageManager;
 
 enum class Layout : uint8_t;
 enum class QueryType : uint8_t;
@@ -251,6 +251,21 @@ class Subarray {
   Status set_subarray(const void* subarray);
 
   /**
+   * Adds dimension ranges computed from label ranges on the dimension label.
+   *
+   * @param dim_idx The dimension to add ranges to.
+   * @param is_point_ranges If ``true`` the data contains point ranges.
+   *     Otherwise, it contains standard ranges.
+   * @param start Pointer to the start of the range array.
+   * @param count Number of total elements in the range array.
+   */
+  void add_index_ranges_from_label(
+      const uint32_t dim_idx,
+      const bool is_point_ranges,
+      const void* start,
+      const uint64_t count);
+
+  /**
    * Adds a range along the dimension with the given index for the requested
    * dimension label.
    *
@@ -313,12 +328,40 @@ class Subarray {
   /**
    * @brief Set point ranges from an array
    *
-   * @param dim_idx Dimension index
-   * @param start Pointer to start of the array
-   * @param count Number of elements to add
+   * @param dim_idx Dimension index.
+   * @param start Pointer to start of the array.
+   * @param count Number of elements to add.
+   * @param check_for_label If ``true``, verify no label ranges set on this
+   *   dimension. This should check for labels unless being called by
+   *   ``add_index_ranges_from_label`` to update label ranges with index values.
    * @return Status
    */
-  Status add_point_ranges(unsigned dim_idx, const void* start, uint64_t count);
+  Status add_point_ranges(
+      unsigned dim_idx,
+      const void* start,
+      uint64_t count,
+      bool check_for_label = true);
+
+  /**
+   * @brief Set ranges from an array of ranges (paired { begin,end } )
+   *
+   * @param dim_idx Dimension index.
+   * @param start Pointer to start of the array.
+   * @param count Number of total elemenst to add. Must contain two elements for
+   *     each range.
+   * @param check_for_label If ``true``, verify no label ranges set on this
+   *   dimension. This should check for labels unless being called by
+   *   ``add_index_ranges_from_label`` to update label ranges with index values.
+   * @return Status
+   * @note The pairs list is logically { {begin1,end1}, {begin2,end2}, ...} but
+   * because of typing considerations from the C api is simply presented as
+   * a linear list of individual items, though they should be multiple of 2
+   */
+  Status add_ranges_list(
+      unsigned dim_idx,
+      const void* start,
+      uint64_t count,
+      bool check_for_label = true);
 
   /**
    * Adds a variable-sized range to the (read/write) query on the input
@@ -359,6 +402,21 @@ class Subarray {
       uint64_t start_size,
       const void* end,
       uint64_t end_size);
+
+  /**
+   * Retrieves reference to attribute ranges.
+   *
+   * @param attr_name Name of the attribute to get ragnes for.
+   */
+  const std::vector<Range>& get_attribute_ranges(
+      const std::string& attr_name) const;
+
+  /**
+   * Returns the name of the dimension label at the dimension index.
+   *
+   * @param dim_index Index of the dimension to return the label name for.
+   */
+  const std::string& get_label_name(const uint32_t dim_index) const;
 
   /**
    * Retrieves a range from a dimension label name in the form (start, end,
@@ -609,6 +667,9 @@ class Subarray {
   /** Returns the domain the subarray is constructed from. */
   NDRange domain() const;
 
+  /** ``True`` if the dimension of the subarray does not contain any ranges. */
+  bool empty(uint32_t dim_idx) const;
+
   /** ``True`` if the subarray does not contain any ranges. */
   bool empty() const;
 
@@ -814,7 +875,7 @@ class Subarray {
       ThreadPool* compute_tp);
 
   /** Retrieves the query type of the subarray's array. */
-  Status get_query_type(QueryType* type) const;
+  QueryType get_query_type() const;
 
   /**
    * Returns the range coordinates (for all dimensions) given a flattened
@@ -840,6 +901,19 @@ class Subarray {
    *     interval ``[start, end]`` in the flattened range order.
    */
   Subarray get_subarray(uint64_t start, uint64_t end) const;
+
+  /**
+   * Returns ``true`` if the any dimension in the subarray have label ranges
+   * set.
+   */
+  bool has_label_ranges() const;
+
+  /**
+   * Returns ``true`` if the dimension index has label ranges set.
+   *
+   * @param dim_idx The dimension index to check for ranges.
+   */
+  bool has_label_ranges(const uint32_t dim_index) const;
 
   /**
    * Set default indicator for dimension subarray. Used by serialization only
@@ -896,6 +970,30 @@ class Subarray {
   inline const std::vector<Range>& ranges_for_dim(uint32_t dim_idx) const {
     return range_subset_[dim_idx].ranges();
   }
+
+  /**
+   * Adds ranges for an attribute.
+   *
+   * This method is designed to copy label ranges from a parent subarray to
+   * attribute ranges in a dimension label array. The ranges will only be
+   * accessed by the dimension label readers, and it is assumed all checks on
+   * validity of the ranges has already been ran when adding the label ranges to
+   * the parent subarray.
+   *
+   * @param attr_name Name of the attribute to add the ranges for.
+   * @param ranges Ranges to add.
+   */
+  void set_attribute_ranges(
+      const std::string& attr_name, const std::vector<Range>& ranges);
+
+  /**
+   * Returns the `Range` vector for the given dimension label.
+   *
+   * @param label_name Name of the label to return ranges for.
+   * @returns Vector of ranges on the requested dimension label.
+   */
+  const std::vector<Range>& ranges_for_label(
+      const std::string& label_name) const;
 
   /**
    * Directly sets the `Range` vector for the given dimension index, making
@@ -1154,6 +1252,10 @@ class Subarray {
     LabelRangeSubset(
         const DimensionLabelReference& ref, bool coalesce_ranges = true);
 
+    inline const std::vector<Range>& get_ranges() const {
+      return ranges.ranges();
+    }
+
     /** Name of the dimension label. */
     std::string name;
 
@@ -1206,6 +1308,11 @@ class Subarray {
    * Stores LabelRangeSubset objects for handling ranges on dimension labels.
    */
   std::vector<optional<LabelRangeSubset>> label_range_subset_;
+
+  /**
+   * Stores ranges for attributes.
+   */
+  std::unordered_map<std::string, std::vector<Range>> attr_range_subset_;
 
   /**
    * Flag storing if each dimension is a default value or not.

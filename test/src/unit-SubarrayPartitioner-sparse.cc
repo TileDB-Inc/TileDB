@@ -2285,7 +2285,7 @@ TEST_CASE_METHOD(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
   Range r;
   r.set_str_range("bb", "bb");
-  subarray.add_range(0, std::move(r), true);
+  CHECK(subarray.add_range(0, std::move(r), true).ok());
   ThreadPool tp(4);
   Config config;
   SubarrayPartitioner partitioner(
@@ -2313,7 +2313,7 @@ TEST_CASE_METHOD(
   auto partition = partitioner.current();
   CHECK(partition.range_num() == 1);
   const Range* range = nullptr;
-  partition.get_range(0, 0, &range);
+  CHECK(partition.get_range(0, 0, &range).ok());
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("bb", 2));
   CHECK(range->end_str() == std::string("bb", 2));
@@ -2322,7 +2322,7 @@ TEST_CASE_METHOD(
   tiledb::sm::Subarray subarray_full(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
   r.set_str_range("a", "bb");
-  subarray_full.add_range(0, std::move(r), true);
+  CHECK(subarray_full.add_range(0, std::move(r), true).ok());
   SubarrayPartitioner partitioner_full(
       &config,
       subarray_full,
@@ -2341,7 +2341,7 @@ TEST_CASE_METHOD(
   CHECK(!unsplittable);
   partition = partitioner_full.current();
   CHECK(partition.range_num() == 1);
-  partition.get_range(0, 0, &range);
+  CHECK(partition.get_range(0, 0, &range).ok());
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("a", 1));
   CHECK(range->end_str() == std::string("bb", 2));
@@ -2350,7 +2350,7 @@ TEST_CASE_METHOD(
   tiledb::sm::Subarray subarray_split(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
   r.set_str_range("a", "bb");
-  subarray_split.add_range(0, std::move(r), true);
+  CHECK(subarray_split.add_range(0, std::move(r), true).ok());
   SubarrayPartitioner partitioner_split(
       &config,
       subarray_split,
@@ -2370,7 +2370,7 @@ TEST_CASE_METHOD(
   CHECK(!unsplittable);
   partition = partitioner_split.current();
   CHECK(partition.range_num() == 1);
-  partition.get_range(0, 0, &range);
+  CHECK(partition.get_range(0, 0, &range).ok());
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("a", 1));
   CHECK(range->end_str() == std::string("a\x7F", 2));
@@ -2378,7 +2378,7 @@ TEST_CASE_METHOD(
   CHECK(!unsplittable);
   partition = partitioner_split.current();
   CHECK(partition.range_num() == 1);
-  partition.get_range(0, 0, &range);
+  CHECK(partition.get_range(0, 0, &range).ok());
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("b", 1));
   CHECK(range->end_str() == std::string("bb", 2));
@@ -2388,7 +2388,7 @@ TEST_CASE_METHOD(
   tiledb::sm::Subarray subarray_no_split(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
   r.set_str_range("bb", "cc");
-  subarray_no_split.add_range(0, std::move(r), true);
+  CHECK(subarray_no_split.add_range(0, std::move(r), true).ok());
   SubarrayPartitioner partitioner_no_split(
       &config,
       subarray_no_split,
@@ -2409,7 +2409,7 @@ TEST_CASE_METHOD(
   CHECK(!unsplittable);
   partition = partitioner_no_split.current();
   CHECK(partition.range_num() == 1);
-  partition.get_range(0, 0, &range);
+  CHECK(partition.get_range(0, 0, &range).ok());
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("bb", 2));
   CHECK(range->end_str() == std::string("cc", 2));
@@ -2418,7 +2418,7 @@ TEST_CASE_METHOD(
   tiledb::sm::Subarray subarray_split_2(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
   r.set_str_range("bb", "cc");
-  subarray_split_2.add_range(0, std::move(r), true);
+  CHECK(subarray_split_2.add_range(0, std::move(r), true).ok());
   SubarrayPartitioner partitioner_split_2(
       &config,
       subarray_split_2,
@@ -2439,7 +2439,7 @@ TEST_CASE_METHOD(
   CHECK(!unsplittable);
   partition = partitioner_split_2.current();
   CHECK(partition.range_num() == 1);
-  partition.get_range(0, 0, &range);
+  CHECK(partition.get_range(0, 0, &range).ok());
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("bb", 2));
   CHECK(range->end_str() == std::string("b\x7F", 2));
@@ -2447,7 +2447,7 @@ TEST_CASE_METHOD(
   CHECK(!unsplittable);
   partition = partitioner_split_2.current();
   CHECK(partition.range_num() == 1);
-  partition.get_range(0, 0, &range);
+  CHECK(partition.get_range(0, 0, &range).ok());
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("c", 1));
   CHECK(range->end_str() == std::string("cc", 2));
@@ -2558,7 +2558,7 @@ TEST_CASE_METHOD(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
   Range r;
   r.set_str_range("cc", "ccd");
-  subarray.add_range(0, std::move(r), true);
+  CHECK(subarray.add_range(0, std::move(r), true).ok());
   ThreadPool tp(4);
   Config config;
   SubarrayPartitioner partitioner(

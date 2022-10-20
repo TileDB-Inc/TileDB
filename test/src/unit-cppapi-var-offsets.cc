@@ -37,6 +37,8 @@
 
 using namespace tiledb;
 
+static bool serialized_writes = false;
+
 void create_sparse_array(const std::string& array_name) {
   Context ctx;
   VFS vfs(ctx);
@@ -77,10 +79,13 @@ void write_sparse_array(
   query.set_data_buffer("d2", d2);
   query.set_data_buffer("attr", data);
   query.set_offsets_buffer("attr", data_offsets);
-  CHECK_NOTHROW(query.submit());
 
-  // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
+  if (!serialized_writes || layout != TILEDB_GLOBAL_ORDER) {
+    CHECK_NOTHROW(query.submit());
+    query.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query);
+  }
 
   array.close();
 }
@@ -104,9 +109,15 @@ void write_sparse_array(
       "attr",
       reinterpret_cast<uint64_t*>(data_offsets.data()),
       data_offsets.size());
+  /* TODO: enable this when sc21681 is fixed
+  if (!serialized_writes || layout != TILEDB_GLOBAL_ORDER) {
+    CHECK_NOTHROW(query.submit());
+    query.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query);
+  }
+  */
   CHECK_NOTHROW(query.submit());
-
-  // Finalize is necessary in global writes, otherwise a no-op
   query.finalize();
 
   array.close();
@@ -292,10 +303,20 @@ void write_dense_array(
     query.set_subarray<int64_t>({1, 2, 1, 2});
   }
 
-  CHECK_NOTHROW(query.submit());
-
-  // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  if (!serialized_writes || layout != TILEDB_GLOBAL_ORDER) {
+    CHECK_NOTHROW(query.submit());
+    query.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query);
+  }
 
   array.close();
 }
@@ -338,9 +359,22 @@ void write_dense_array(
     query.set_subarray<int64_t>({1, 2, 1, 2});
   }
 
-  CHECK_NOTHROW(query.submit());
-  // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  /* TODO: enable this when sc21681 is fixed
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
+  */
+  if (!serialized_writes || layout != TILEDB_GLOBAL_ORDER) {
+    CHECK_NOTHROW(query.submit());
+    query.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query);
+  }
 
   array.close();
 }
@@ -474,6 +508,14 @@ TEST_CASE(
       }
     }
     SECTION("Global order write") {
+      SECTION("no serialization") {
+        serialized_writes = false;
+      }
+      SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+        serialized_writes = true;
+#endif
+      }
       write_sparse_array(
           ctx, array_name, data, byte_offsets, TILEDB_GLOBAL_ORDER);
       SECTION("Row major read") {
@@ -516,6 +558,14 @@ TEST_CASE(
       }
     }
     SECTION("Global order write") {
+      SECTION("no serialization") {
+        serialized_writes = false;
+      }
+      SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+        serialized_writes = true;
+#endif
+      }
       write_sparse_array(
           ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
       SECTION("Row major read") {
@@ -651,6 +701,14 @@ TEST_CASE(
           }
         }
         SECTION("Global order write") {
+          SECTION("no serialization") {
+            serialized_writes = false;
+          }
+          SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+            serialized_writes = true;
+#endif
+          }
           write_sparse_array(
               ctx, array_name, data, data_offsets, TILEDB_GLOBAL_ORDER);
           SECTION("Row major read") {
@@ -692,6 +750,14 @@ TEST_CASE(
           }
         }
         SECTION("Global order write") {
+          SECTION("no serialization") {
+            serialized_writes = false;
+          }
+          SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+            serialized_writes = true;
+#endif
+          }
           write_sparse_array(
               ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
           SECTION("Row major read") {
@@ -733,6 +799,14 @@ TEST_CASE(
           }
         }
         SECTION("Global order write") {
+          SECTION("no serialization") {
+            serialized_writes = false;
+          }
+          SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+            serialized_writes = true;
+#endif
+          }
           write_sparse_array(
               ctx, array_name, data, data_offsets, TILEDB_GLOBAL_ORDER);
           SECTION("Row major read") {
@@ -921,6 +995,14 @@ TEST_CASE(
           }
         }
         SECTION("Global order write") {
+          SECTION("no serialization") {
+            serialized_writes = false;
+          }
+          SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+            serialized_writes = true;
+#endif
+          }
           write_sparse_array(
               ctx, array_name, data, data_offsets, TILEDB_GLOBAL_ORDER);
           SECTION("Row major read") {
@@ -1002,6 +1084,14 @@ TEST_CASE(
           }
         }
         SECTION("Global order write") {
+          SECTION("no serialization") {
+            serialized_writes = false;
+          }
+          SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+            serialized_writes = true;
+#endif
+          }
           write_sparse_array(
               ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
           SECTION("Row major read") {
@@ -1477,6 +1567,14 @@ TEST_CASE(
       }
     }
     SECTION("Global order write") {
+      SECTION("no serialization") {
+        serialized_writes = false;
+      }
+      SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+        serialized_writes = true;
+#endif
+      }
       write_sparse_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
       SECTION("Row major read") {
@@ -1519,6 +1617,14 @@ TEST_CASE(
       }
     }
     SECTION("Global order write") {
+      SECTION("no serialization") {
+        serialized_writes = false;
+      }
+      SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+        serialized_writes = true;
+#endif
+      }
       write_sparse_array(
           ctx, array_name, data, data_element_offsets, TILEDB_GLOBAL_ORDER);
       SECTION("Row major read") {
@@ -1561,6 +1667,14 @@ TEST_CASE(
       }
     }
     SECTION("Global order write") {
+      SECTION("no serialization") {
+        serialized_writes = false;
+      }
+      SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+        serialized_writes = true;
+#endif
+      }
       write_sparse_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
       SECTION("Row major read") {

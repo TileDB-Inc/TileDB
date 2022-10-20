@@ -30,6 +30,9 @@ The filter has internal format:
 | Filter metadata size | `uint32_t` | Number of bytes in filter metadata — may be 0. |
 | Filter metadata | [Filter Metadata](#filter-metadata) | Filter metadata, specific to each filter. E.g. compression level for compression filters. |
 
+TileDB supports the following filters:
+* [XOR Filter](./filters/xor.md)
+
 ## Filter Options
 
 The filter options are configuration parameters for the filters that do not change once the array schema has been created. 

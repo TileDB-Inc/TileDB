@@ -77,7 +77,9 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_curl.tar.gz
-      URL "https://curl.se/download/curl-7.74.0.tar.gz"
+      URL
+        "https://github.com/TileDB-Inc/tiledb-deps-mirror/releases/download/2.11-deps/curl-7.74.0.tar.gz"
+        "https://curl.se/download/curl-7.74.0.tar.gz"
       URL_HASH SHA1=cd7239cf9223b39ade86a14eb37fe68f5656eae9
       CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
@@ -88,6 +90,9 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
         -DCURL_STATICLIB=ON
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DHTTP_ONLY=ON
+        # NOTE: as of Curl 7.74 there is no way to set ZSTD paths for cmake
+        # ZSTD is not enabled until curl support being able to point to superbuild
+        #-DCURL_ZSTD=ON
         "${WITH_SSL}"
         "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
       UPDATE_COMMAND ""
@@ -127,6 +132,18 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
       message(WARNING "TileDB FindZlib_EP did not set TILEDB_ZLIB_DIR. Falling back to autotools detection.")
       # ensure that curl config errors out if SSL not available
       set(WITH_ZLIB "--with-zlib")
+    endif()
+
+    if (TARGET ep_zstd)
+      list(APPEND DEPENDS ep_zstd)
+      set(WITH_ZLIB "--with-zstd=${TILEDB_EP_INSTALL_PREFIX}")
+    elseif (TILEDB_ZSTD_DIR)
+      # ensure that curl links against the same libz
+      set(WITH_ZSTD "--with-zstd=${TILEDB_ZSTD_DIR}")
+    else()
+      message(WARNING "TileDB FindZstd_EP did not set TILEDB_ZSTD_DIR. Falling back to autotools detection.")
+      # ensure that curl config errors out if SSL not available
+      set(WITH_ZSTD "--with-zstd")
     endif()
 
     # Support cross compilation of MacOS
@@ -181,6 +198,7 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
           --disable-tftp
           ${WITH_SSL}
           ${WITH_ZLIB}
+          ${WITH_ZSTD}
           ${CURL_CROSS_COMPILATION_FLAGS}
       BUILD_IN_SOURCE TRUE
       BUILD_COMMAND $(MAKE)

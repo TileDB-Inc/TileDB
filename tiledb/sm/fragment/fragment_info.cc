@@ -41,6 +41,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb::sm;
@@ -796,83 +797,86 @@ Status FragmentInfo::has_consolidated_metadata(
 
   return Status::Ok();
 }
+
+Status FragmentInfo::load() {
+  RETURN_NOT_OK(set_enc_key_from_config());
+  RETURN_NOT_OK(set_default_timestamp_range());
+
+  if (array_uri_.is_tiledb()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr) {
+      return LOG_STATUS(Status_ArrayError(
+          "Cannot load fragment info; remote array with no REST client."));
+    }
+
+    // Overriding this config parameter is necessary to enable Cloud to load
+    // MBRs at the same time as the rest of fragment info and not lazily
+    // as it's the case for local fragment info load requests.
+    throw_if_not_ok(config_.set("sm.fragment_info.preload_mbrs", "true"));
+
+    return rest_client->post_fragment_info_from_rest(array_uri_, this);
+  }
+
+  // Create an ArrayDirectory object and load
+  auto array_dir = ArrayDirectory(
+      storage_manager_->vfs(),
+      storage_manager_->compute_tp(),
+      array_uri_,
+      timestamp_start_,
+      timestamp_end_);
+
+  return load(array_dir);
+}
+
 Status FragmentInfo::load(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
   RETURN_NOT_OK(enc_key_.set_key(encryption_type, encryption_key, key_length));
-  auto set_timestamp_range_from_config = true;
-  auto set_key_from_config = false;  // Key set explicitly above
-  auto compute_anterior = false;
-  return load(
-      set_timestamp_range_from_config, set_key_from_config, compute_anterior);
-}
-
-Status FragmentInfo::load(
-    uint64_t timestamp_start,
-    uint64_t timestamp_end,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    bool compute_anterior) {
-  timestamp_start_ = timestamp_start;
-  timestamp_end_ = timestamp_end;
-  RETURN_NOT_OK(enc_key_.set_key(encryption_type, encryption_key, key_length));
-  auto set_timestamp_range_from_config =
-      false;                         // Timestamps set explicitly above
-  auto set_key_from_config = false;  // Key set explicitly above
-  return load(
-      set_timestamp_range_from_config, set_key_from_config, compute_anterior);
-}
-
-Status FragmentInfo::load(
-    bool set_timestamp_range_from_config,
-    bool set_key_from_config,
-    bool compute_anterior) {
-  bool is_array;
-  RETURN_NOT_OK(storage_manager_->is_array(array_uri_, &is_array));
-  if (!is_array) {
-    auto msg = std::string("Cannot load fragment info; Array '") +
-               array_uri_.to_string() + "' does not exist";
-    return LOG_STATUS(Status_FragmentInfoError(msg));
-  }
-
-  if (array_uri_.is_tiledb()) {
-    auto msg = std::string(
-                   "FragmentInfo not supported in TileDB Cloud arrays; "
-                   "FragmentInfo for array '") +
-               array_uri_.to_string() + "' cannot be loaded";
-    return LOG_STATUS(Status_FragmentInfoError(msg));
-  }
-
-  // Set the timestamp range
-  if (set_timestamp_range_from_config) {
-    RETURN_NOT_OK(this->set_timestamp_range_from_config());
-  }
-
-  // Get the encryption key (if not already set)
-  if (set_key_from_config) {
-    RETURN_NOT_OK(this->set_enc_key_from_config());
-  }
+  RETURN_NOT_OK(set_default_timestamp_range());
 
   // Create an ArrayDirectory object and load
-  auto timestamp_start = compute_anterior ? 0 : timestamp_start_;
   auto array_dir = ArrayDirectory(
       storage_manager_->vfs(),
       storage_manager_->compute_tp(),
       array_uri_,
-      timestamp_start,
+      timestamp_start_,
       timestamp_end_);
+  return load(array_dir);
+}
+
+Status FragmentInfo::load(
+    const ArrayDirectory& array_dir,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
+  timestamp_start_ = timestamp_start;
+  timestamp_end_ = timestamp_end;
+
+  RETURN_NOT_OK(enc_key_.set_key(encryption_type, encryption_key, key_length));
+  return load(array_dir);
+}
+
+Status FragmentInfo::load(const ArrayDirectory& array_dir) {
+  // Check if we need to preload MBRs or not based on config
+  bool found = false, preload_rtrees = false;
+  auto status = config_.get<bool>(
+      "sm.fragment_info.preload_mbrs", &preload_rtrees, &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error("Cannot get fragment info config setting");
+  }
 
   // Get the array schemas and fragment metadata.
   auto&& [st_schemas, array_schema_latest, array_schemas_all, fragment_metadata] =
       storage_manager_->load_array_schemas_and_fragment_metadata(
           array_dir, nullptr, enc_key_);
   RETURN_NOT_OK(st_schemas);
-  (void)array_schema_latest;  // Not needed here
+  const auto& fragment_metadata_value = fragment_metadata.value();
+  array_schema_latest_ = array_schema_latest.value();
   array_schemas_all_ = std::move(array_schemas_all.value());
-  auto fragment_num = (uint32_t)fragment_metadata.value().size();
-  const auto& fragment_metadata_v = fragment_metadata.value();
+  auto fragment_num = (uint32_t)fragment_metadata_value.size();
 
   // Get fragment sizes
   std::vector<uint64_t> sizes(fragment_num, 0);
@@ -880,14 +884,19 @@ Status FragmentInfo::load(
       storage_manager_->compute_tp(),
       0,
       fragment_num,
-      [this, &fragment_metadata_v, &sizes](uint64_t i) {
-        // Get fragment size. Applicable only to relevant fragments,
-        // excluding those potentially used to compute anterior_ndrange_.
-        auto meta = fragment_metadata_v[i];
-        if (meta->timestamp_range().first >= timestamp_start_) {
+      [this, &fragment_metadata_value, &sizes, preload_rtrees](uint64_t i) {
+        // Get fragment size. Applicable only to relevant fragments, including
+        // fragments that are in the range [timestamp_start_, timestamp_end_].
+        auto meta = fragment_metadata_value[i];
+        if (meta->timestamp_range().first >= timestamp_start_ &&
+            meta->timestamp_range().second <= timestamp_end_) {
           uint64_t size;
           RETURN_NOT_OK(meta->fragment_size(&size));
           sizes[i] = size;
+        }
+
+        if (preload_rtrees & !meta->dense()) {
+          RETURN_NOT_OK(meta->load_rtree(enc_key_));
         }
 
         return Status::Ok();
@@ -899,13 +908,13 @@ Status FragmentInfo::load(
 
   // Create the vector that will store the SingleFragmentInfo objects
   for (uint64_t fid = 0; fid < fragment_num; fid++) {
-    const auto meta = fragment_metadata_v[fid];
+    const auto meta = fragment_metadata_value[fid];
     const auto& array_schema = meta->array_schema();
     const auto& non_empty_domain = meta->non_empty_domain();
 
     if (meta->timestamp_range().first < timestamp_start_) {
       expand_anterior_ndrange(array_schema->domain(), non_empty_domain);
-    } else {
+    } else if (meta->timestamp_range().second <= timestamp_end_) {
       const auto& uri = meta->fragment_uri();
       bool sparse = !meta->dense();
 
@@ -935,9 +944,6 @@ Status FragmentInfo::load(
   for (const auto& f : single_fragment_info_vec_) {
     unconsolidated_metadata_num_ += (uint32_t)!f.has_consolidated_footer();
   }
-
-  // Store the delete tile locations
-  delete_tiles_location_ = array_dir.delete_tiles_location();
 
   return Status::Ok();
 }
@@ -973,11 +979,6 @@ uint32_t FragmentInfo::unconsolidated_metadata_num() const {
   return unconsolidated_metadata_num_;
 }
 
-const std::vector<ArrayDirectory::DeleteTileLocation>&
-FragmentInfo::delete_tiles_location() const {
-  return delete_tiles_location_;
-}
-
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
@@ -994,7 +995,7 @@ Status FragmentInfo::set_enc_key_from_config() {
       enc_type, enc_key_str.c_str(), static_cast<uint32_t>(enc_key_str.size()));
 }
 
-Status FragmentInfo::set_timestamp_range_from_config() {
+Status FragmentInfo::set_default_timestamp_range() {
   timestamp_start_ = 0;
   timestamp_end_ = utils::time::timestamp_now_ms();
 
@@ -1111,6 +1112,7 @@ Status FragmentInfo::replace(
 FragmentInfo FragmentInfo::clone() const {
   FragmentInfo clone;
   clone.array_uri_ = array_uri_;
+  clone.array_schema_latest_ = array_schema_latest_;
   clone.array_schemas_all_ = array_schemas_all_;
   clone.config_ = config_;
   clone.single_fragment_info_vec_ = single_fragment_info_vec_;
@@ -1126,6 +1128,7 @@ FragmentInfo FragmentInfo::clone() const {
 
 void FragmentInfo::swap(FragmentInfo& fragment_info) {
   std::swap(array_uri_, fragment_info.array_uri_);
+  std::swap(array_schema_latest_, fragment_info.array_schema_latest_);
   std::swap(array_schemas_all_, fragment_info.array_schemas_all_);
   std::swap(config_, fragment_info.config_);
   std::swap(single_fragment_info_vec_, fragment_info.single_fragment_info_vec_);

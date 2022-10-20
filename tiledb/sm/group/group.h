@@ -42,14 +42,13 @@
 #include "tiledb/sm/group/group_directory.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
 
-class StorageManager;
 class Group {
  public:
   Group(
@@ -205,7 +204,7 @@ class Group {
    * Return config
    * @return Config
    */
-  const Config* config() const;
+  const Config& config() const;
 
   /**
    * Set the config on the group
@@ -270,7 +269,7 @@ class Group {
    * @param group_member to add
    * @return Status
    */
-  Status add_member(const tdb_shared_ptr<GroupMember>& group_member);
+  void add_member(const tdb_shared_ptr<GroupMember>& group_member);
 
   /**
    * Serializes the object members into a binary buffer.
@@ -279,7 +278,7 @@ class Group {
    * @param version The format spec version.
    * @return Status
    */
-  virtual Status serialize(Buffer* buff);
+  virtual void serialize(Serializer& serializer);
 
   /**
    * Applies and pending changes and then calls serialize
@@ -288,7 +287,7 @@ class Group {
    * @param version The format spec version.
    * @return Status
    */
-  Status apply_and_serialize(Buffer* buff);
+  void apply_and_serialize(Serializer& serializer);
 
   /**
    * Returns a Group object from the data in the input binary buffer.
@@ -297,8 +296,10 @@ class Group {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> deserialize(
-      ConstBuffer* buff, const URI& group_uri, StorageManager* storage_manager);
+  static std::optional<tdb_shared_ptr<Group>> deserialize(
+      Deserializer& deserializer,
+      const URI& group_uri,
+      StorageManager* storage_manager);
 
   /** Returns the group URI. */
   const URI& group_uri() const;
@@ -357,7 +358,8 @@ class Group {
       Status,
       optional<std::string>,
       optional<ObjectType>,
-      optional<std::string>>
+      optional<std::string>,
+      optional<bool>>
   member_by_name(const std::string& name);
 
   /** Returns `true` if the group is open. */

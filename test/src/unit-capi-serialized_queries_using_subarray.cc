@@ -55,6 +55,10 @@
 using namespace tiledb;
 using ResultSetType = std::map<std::string, std::any>;
 
+using tiledb::test::allocate_query_buffers;
+using tiledb::test::deserialize_query;
+using tiledb::test::serialize_query;
+
 namespace {
 
 #ifdef _WIN32
@@ -354,92 +358,6 @@ struct SerializationFx {
     query2.submit();
     serialize_query(ctx, query2, &serialized, false);
     deserialize_query(ctx, serialized, &query, true);
-  }
-
-  /**
-   * Helper function that serializes a query from the "client" or "server"
-   * perspective. The flow being mimicked here is (for read queries):
-   *
-   * - Client sets up read query object including buffers.
-   * - Client submits query to a remote array.
-   * - Internal code (not C API) serializes that query and send it via curl.
-   * - Server receives and deserializes the query using the C API.
-   * - Server submits query.
-   * - Server serializes (using C API) the query and sends it back.
-   * - Client receives response and deserializes the query (not C API). This
-   *   copies the query results into the original user buffers.
-   * - Client's blocking call to tiledb_query_submit() now returns.
-   */
-  static void serialize_query(
-      const Context& ctx,
-      Query& query,
-      std::vector<uint8_t>* serialized,
-      bool clientside) {
-    // Serialize
-    tiledb_buffer_list_t* buff_list;
-
-    ctx.handle_error(tiledb_serialize_query(
-        ctx.ptr().get(),
-        query.ptr().get(),
-        TILEDB_CAPNP,
-        clientside ? 1 : 0,
-        &buff_list));
-
-    // Flatten
-    tiledb_buffer_t* c_buff;
-    ctx.handle_error(
-        tiledb_buffer_list_flatten(ctx.ptr().get(), buff_list, &c_buff));
-
-    // Wrap in a safe pointer
-    auto deleter = [](tiledb_buffer_t* b) { tiledb_buffer_free(&b); };
-    std::unique_ptr<tiledb_buffer_t, decltype(deleter)> buff_ptr(
-        c_buff, deleter);
-
-    // Copy into user vector
-    void* data;
-    uint64_t num_bytes;
-    ctx.handle_error(
-        tiledb_buffer_get_data(ctx.ptr().get(), c_buff, &data, &num_bytes));
-    serialized->clear();
-    serialized->insert(
-        serialized->end(),
-        static_cast<const uint8_t*>(data),
-        static_cast<const uint8_t*>(data) + num_bytes);
-
-    // Free buffer list
-    tiledb_buffer_list_free(&buff_list);
-  }
-
-  /**
-   * Helper function that deserializes a query from the "client" or "server"
-   * perspective.
-   */
-  static void deserialize_query(
-      const Context& ctx,
-      std::vector<uint8_t>& serialized,
-      Query* query,
-      bool clientside) {
-    tiledb_buffer_t* c_buff;
-    ctx.handle_error(tiledb_buffer_alloc(ctx.ptr().get(), &c_buff));
-
-    // Wrap in a safe pointer
-    auto deleter = [](tiledb_buffer_t* b) { tiledb_buffer_free(&b); };
-    std::unique_ptr<tiledb_buffer_t, decltype(deleter)> buff_ptr(
-        c_buff, deleter);
-
-    ctx.handle_error(tiledb_buffer_set_data(
-        ctx.ptr().get(),
-        c_buff,
-        reinterpret_cast<void*>(&serialized[0]),
-        static_cast<uint64_t>(serialized.size())));
-
-    // Deserialize
-    ctx.handle_error(tiledb_deserialize_query(
-        ctx.ptr().get(),
-        c_buff,
-        TILEDB_CAPNP,
-        clientside ? 1 : 0,
-        query->ptr().get()));
   }
 
   /**

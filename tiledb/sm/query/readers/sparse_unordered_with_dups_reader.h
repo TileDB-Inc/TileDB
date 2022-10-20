@@ -46,6 +46,7 @@
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_coords.h"
 #include "tiledb/sm/query/readers/sparse_index_reader_base.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
@@ -53,7 +54,6 @@ namespace tiledb {
 namespace sm {
 
 class Array;
-class StorageManager;
 
 /** Processes sparse unordered with duplicates read queries. */
 template <class BitmapType>
@@ -254,7 +254,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const uint64_t src_max_pos,
       OffType* buffer,
       uint8_t* val_buffer,
-      void** var_data);
+      const void** var_data);
 
   /**
    * Copy offsets tiles.
@@ -279,7 +279,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const std::vector<ResultTile*>& result_tiles,
       const std::vector<uint64_t>& cell_offsets,
       QueryBuffer& query_buffer,
-      std::vector<void*>& var_data);
+      std::vector<const void*>& var_data);
 
   /**
    * Copy var data tile.
@@ -329,7 +329,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const std::vector<ResultTile*>& result_tiles,
       const std::vector<uint64_t>& cell_offsets,
       QueryBuffer& query_buffer,
-      std::vector<void*>& var_data);
+      std::vector<const void*>& var_data);
 
   /**
    * Copy fixed size data tile.

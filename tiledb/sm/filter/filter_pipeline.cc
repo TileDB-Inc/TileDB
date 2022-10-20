@@ -85,10 +85,9 @@ FilterPipeline& FilterPipeline::operator=(FilterPipeline&& other) {
   return *this;
 }
 
-Status FilterPipeline::add_filter(const Filter& filter) {
+void FilterPipeline::add_filter(const Filter& filter) {
   shared_ptr<Filter> copy(filter.clone());
   filters_.push_back(std::move(copy));
-  return Status::Ok();
 }
 
 void FilterPipeline::clear() {
@@ -207,8 +206,8 @@ Status FilterPipeline::filter_chunks_forward(
       input_metadata.reset_offset();
       input_metadata.set_read_only(true);
 
-      output_data.clear();
-      output_metadata.clear();
+      throw_if_not_ok(output_data.clear());
+      throw_if_not_ok(output_metadata.clear());
 
       f->init_compression_resource_pool(compute_tp->concurrency_level());
 
@@ -221,9 +220,9 @@ Status FilterPipeline::filter_chunks_forward(
           &output_data));
 
       input_data.set_read_only(false);
-      input_data.swap(output_data);
+      throw_if_not_ok(input_data.swap(output_data));
       input_metadata.set_read_only(false);
-      input_metadata.swap(output_metadata);
+      throw_if_not_ok(input_metadata.swap(output_metadata));
       // Next input (input_buffers) now stores this output (output_buffers).
     }
 
@@ -236,10 +235,10 @@ Status FilterPipeline::filter_chunks_forward(
     auto& io = final_stage_io[i];
     auto& io_input = io.first;
     auto& io_output = io.second;
-    io_input.first.swap(input_metadata);
-    io_input.second.swap(input_data);
-    io_output.first.swap(output_metadata);
-    io_output.second.swap(output_data);
+    throw_if_not_ok(io_input.first.swap(input_metadata));
+    throw_if_not_ok(io_input.second.swap(input_data));
+    throw_if_not_ok(io_output.first.swap(output_metadata));
+    throw_if_not_ok(io_output.second.swap(output_data));
     return Status::Ok();
   });
 
@@ -376,8 +375,8 @@ Status FilterPipeline::filter_chunks_reverse(
       input_metadata.reset_offset();
       input_metadata.set_read_only(true);
 
-      output_data.clear();
-      output_metadata.clear();
+      throw_if_not_ok(output_data.clear());
+      throw_if_not_ok(output_metadata.clear());
 
       // Final filter: output directly into the shared output buffer.
       bool last_filter = filter_idx == 0;
@@ -403,8 +402,8 @@ Status FilterPipeline::filter_chunks_reverse(
       input_metadata.set_read_only(false);
 
       if (!last_filter) {
-        input_data.swap(output_data);
-        input_metadata.swap(output_metadata);
+        throw_if_not_ok(input_data.swap(output_data));
+        throw_if_not_ok(input_metadata.swap(output_metadata));
         // Next input (input_buffers) now stores this output (output_buffers).
       }
     }
@@ -513,8 +512,8 @@ Status FilterPipeline::run_reverse_chunk_range(
       input_metadata.reset_offset();
       input_metadata.set_read_only(true);
 
-      output_data.clear();
-      output_metadata.clear();
+      throw_if_not_ok(output_data.clear());
+      throw_if_not_ok(output_metadata.clear());
 
       // Final filter: output directly into the shared output buffer.
       bool last_filter = filter_idx == 0;
@@ -542,8 +541,8 @@ Status FilterPipeline::run_reverse_chunk_range(
       input_metadata.set_read_only(false);
 
       if (!last_filter) {
-        input_data.swap(output_data);
-        input_metadata.swap(output_metadata);
+        throw_if_not_ok(input_data.swap(output_data));
+        throw_if_not_ok(input_metadata.swap(output_metadata));
         // Next input (input_buffers) now stores this output (output_buffers).
       }
     }
@@ -712,7 +711,8 @@ Status FilterPipeline::append_encryption_filter(
     case EncryptionType::NO_ENCRYPTION:
       return Status::Ok();
     case EncryptionType::AES_256_GCM:
-      return pipeline->add_filter(EncryptionAES256GCMFilter(encryption_key));
+      pipeline->add_filter(EncryptionAES256GCMFilter(encryption_key));
+      return Status::Ok();
     default:
       return LOG_STATUS(Status_FilterError(
           "Error appending encryption filter; unknown type."));

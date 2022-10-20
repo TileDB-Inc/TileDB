@@ -75,6 +75,14 @@ class Tile {
    */
   static void set_max_tile_chunk_size(uint64_t max_tile_chunk_size);
 
+  /**
+   * returns a Tile initialized with parameters commonly used for
+   * generic data storage.
+   *
+   * @param tile_size to be provided to init_unfiltered call
+   */
+  static Tile from_generic(storage_size_t tile_size);
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */

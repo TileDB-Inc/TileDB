@@ -48,7 +48,7 @@ namespace sm {
 /* ****************************** */
 
 ArrayMetaConsolidator::ArrayMetaConsolidator(
-    const Config* config, StorageManager* storage_manager)
+    const Config& config, StorageManager* storage_manager)
     : Consolidator(storage_manager) {
   auto st = set_config(config);
   if (!st.ok()) {
@@ -67,6 +67,8 @@ Status ArrayMetaConsolidator::consolidate(
     uint32_t key_length) {
   auto timer_se = stats_->start_timer("consolidate_array_meta");
 
+  check_array_uri(array_name);
+
   // Open array for reading
   auto array_uri = URI(array_name);
   Array array_for_reads(array_uri, storage_manager_);
@@ -83,7 +85,7 @@ Status ArrayMetaConsolidator::consolidate(
   RETURN_NOT_OK_ELSE(
       array_for_writes.open(
           QueryType::WRITE, encryption_type, encryption_key, key_length),
-      array_for_reads.close());
+      throw_if_not_ok(array_for_reads.close()));
 
   // Swap the in-memory metadata between the two arrays.
   // After that, the array for writes will store the (consolidated by
@@ -91,15 +93,15 @@ Status ArrayMetaConsolidator::consolidate(
   Metadata* metadata_r;
   auto st = array_for_reads.metadata(&metadata_r);
   if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
+    throw_if_not_ok(array_for_reads.close());
+    throw_if_not_ok(array_for_writes.close());
     return st;
   }
   Metadata* metadata_w;
   st = array_for_writes.metadata(&metadata_w);
   if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
+    throw_if_not_ok(array_for_reads.close());
+    throw_if_not_ok(array_for_writes.close());
     return st;
   }
   metadata_r->swap(metadata_w);
@@ -110,8 +112,8 @@ Status ArrayMetaConsolidator::consolidate(
   // Generate new name for consolidated metadata
   st = metadata_w->generate_uri(array_uri);
   if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
+    throw_if_not_ok(array_for_reads.close());
+    throw_if_not_ok(array_for_writes.close());
     return st;
   }
 
@@ -119,14 +121,15 @@ Status ArrayMetaConsolidator::consolidate(
   URI new_uri;
   st = metadata_w->get_uri(array_uri, &new_uri);
   if (!st.ok()) {
-    array_for_reads.close();
-    array_for_writes.close();
+    throw_if_not_ok(array_for_reads.close());
+    throw_if_not_ok(array_for_writes.close());
     return st;
   }
 
   // Close arrays
-  RETURN_NOT_OK_ELSE(array_for_reads.close(), array_for_writes.close());
-  RETURN_NOT_OK(array_for_writes.close());
+  RETURN_NOT_OK_ELSE(
+      array_for_reads.close(), throw_if_not_ok(array_for_writes.close()));
+  throw_if_not_ok(array_for_writes.close());
 
   // Write vacuum file
   URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
@@ -186,12 +189,10 @@ Status ArrayMetaConsolidator::vacuum(const char* array_name) {
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status ArrayMetaConsolidator::set_config(const Config* config) {
+Status ArrayMetaConsolidator::set_config(const Config& config) {
   // Set the consolidation config for ease of use
   Config merged_config = storage_manager_->config();
-  if (config) {
-    merged_config.inherit(*config);
-  }
+  merged_config.inherit(config);
   bool found = false;
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_start", &config_.timestamp_start_, &found));

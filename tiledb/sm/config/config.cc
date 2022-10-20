@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,8 +42,16 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
+
+/** Return a Config error class Status with a given message **/
+inline Status Status_ConfigError(const std::string& msg) {
+  return {"[TileDB::Config] Error", msg};
+}
+
+void throw_config_exception(const std::string& msg) {
+  throw StatusException(Status_ConfigError(msg));
+}
 
 /* ****************************** */
 /*        CONFIG DEFAULTS         */
@@ -69,6 +77,7 @@ const std::string Config::REST_CURL_VERBOSE = "false";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "false";
+const std::string Config::SM_ALLOW_UPDATES_EXPERIMENTAL = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
 const std::string Config::SM_ENCRYPTION_TYPE = "NO_ENCRYPTION";
 const std::string Config::SM_DEDUP_COORDS = "false";
@@ -80,6 +89,7 @@ const std::string Config::SM_TILE_CACHE_SIZE = "10000000";
 const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
 const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
+const std::string Config::SM_QUERY_DENSE_QC_COORDS_MODE = "false";
 const std::string Config::SM_QUERY_DENSE_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
@@ -125,6 +135,7 @@ const std::string Config::SM_OFFSETS_FORMAT_MODE = "bytes";
 const std::string Config::SM_MAX_TILE_OVERLAP_SIZE = "314572800";  // 300MiB
 const std::string Config::SM_GROUP_TIMESTAMP_START = "0";
 const std::string Config::SM_GROUP_TIMESTAMP_END = std::to_string(UINT64_MAX);
+const std::string Config::SM_FRAGMENT_INFO_PRELOAD_MBRS = "false";
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MAX_BATCH_SIZE = std::to_string(UINT64_MAX);
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
@@ -238,6 +249,8 @@ Config::Config() {
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
+  param_values_["sm.allow_updates_experimental"] =
+      SM_ALLOW_UPDATES_EXPERIMENTAL;
   param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   param_values_["sm.encryption_type"] = SM_ENCRYPTION_TYPE;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
@@ -250,6 +263,8 @@ Config::Config() {
       SM_SKIP_EST_SIZE_PARTITIONING;
   param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
+  param_values_["sm.query.dense.qc_coords_mode"] =
+      SM_QUERY_DENSE_QC_COORDS_MODE;
   param_values_["sm.query.dense.reader"] = SM_QUERY_DENSE_READER;
   param_values_["sm.query.sparse_global_order.reader"] =
       SM_QUERY_SPARSE_GLOBAL_ORDER_READER;
@@ -302,6 +317,8 @@ Config::Config() {
   param_values_["sm.max_tile_overlap_size"] = SM_MAX_TILE_OVERLAP_SIZE;
   param_values_["sm.group.timestamp_start"] = SM_GROUP_TIMESTAMP_START;
   param_values_["sm.group.timestamp_end"] = SM_GROUP_TIMESTAMP_END;
+  param_values_["sm.fragment_info.preload_mbrs"] =
+      SM_FRAGMENT_INFO_PRELOAD_MBRS;
   param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   param_values_["vfs.max_batch_size"] = VFS_MAX_BATCH_SIZE;
   param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
@@ -459,17 +476,17 @@ Status Config::set(const std::string& param, const std::string& value) {
   return Status::Ok();
 }
 
+std::string Config::get(const std::string& param, bool* found) const {
+  const char* val = get_from_config_or_env(param, found);
+  return *found ? val : "";
+}
+
 Status Config::get(const std::string& param, const char** value) const {
   bool found;
   const char* val = get_from_config_or_env(param, &found);
   *value = found ? val : nullptr;
 
   return Status::Ok();
-}
-
-std::string Config::get(const std::string& param, bool* found) const {
-  const char* val = get_from_config_or_env(param, found);
-  return *found ? val : "";
 }
 
 template <class T>
@@ -549,6 +566,9 @@ Status Config::unset(const std::string& param) {
     param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
   } else if (param == "config.logging_format") {
     param_values_["config.logging_format"] = CONFIG_LOGGING_DEFAULT_FORMAT;
+  } else if (param == "sm.allow_updates_experimental") {
+    param_values_["sm.allow_updates_experimental"] =
+        SM_ALLOW_UPDATES_EXPERIMENTAL;
   } else if (param == "sm.encryption_key") {
     param_values_["sm.encryption_key"] = SM_ENCRYPTION_KEY;
   } else if (param == "sm.encryption_type") {
@@ -569,6 +589,9 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   } else if (param == "sm.memory_budget_var") {
     param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
+  } else if (param == "sm.query.dense.qc_coords_mode") {
+    param_values_["sm.query.dense.qc_coords_mode"] =
+        SM_QUERY_DENSE_QC_COORDS_MODE;
   } else if (param == "sm.query.dense.reader") {
     param_values_["sm.query.dense.reader"] = SM_QUERY_DENSE_READER;
   } else if (param == "sm.query.sparse_global_order.reader") {
@@ -661,6 +684,9 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.group.timestamp_start"] = SM_GROUP_TIMESTAMP_START;
   } else if (param == "sm.group.timestamp_end") {
     param_values_["sm.group.timestamp_end"] = SM_GROUP_TIMESTAMP_END;
+  } else if (param == "sm.fragment_info.preload_mbrs") {
+    param_values_["sm.fragment_info.preload_mbrs"] =
+        SM_FRAGMENT_INFO_PRELOAD_MBRS;
   } else if (param == "vfs.min_parallel_size") {
     param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   } else if (param == "vfs.max_batch_size") {
@@ -804,7 +830,7 @@ void Config::inherit(const Config& config) {
   for (const auto& p : set_params) {
     auto v = config.get(p, &found);
     assert(found);
-    set(p, v);
+    throw_if_not_ok(set(p, v));
   }
 }
 
@@ -844,6 +870,8 @@ Status Config::sanity_check(
     if (value != "DEFAULT" && value != "JSON")
       return LOG_STATUS(
           Status_ConfigError("Invalid logging format parameter value"));
+  } else if (param == "sm.allow_updates_experimental") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.dedup_coords") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_coord_dups") {
@@ -886,6 +914,8 @@ Status Config::sanity_check(
     if (value != "bytes" && value != "elements")
       return LOG_STATUS(
           Status_ConfigError("Invalid offsets format parameter value"));
+  } else if (param == "sm.fragment_info.preload_mbrs") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.max_batch_size") {
@@ -1011,8 +1041,8 @@ const char* Config::get_from_config_or_env(
     return value_config;
   }
 
-  // Check env if not found in config or if it was found in the config but is a
-  // default value
+  // Check env if not found in config or if it was found in the config but is
+  // a default value
   const char* value_env = get_from_env(param, found);
   if (*found)
     return value_env;
@@ -1022,6 +1052,38 @@ const char* Config::get_from_config_or_env(
   // indicate it was not found
   *found = found_config;
   return *found ? value_config : "";
+}
+
+template <class T, bool must_find_>
+optional<T> Config::get_internal(const std::string& key) const {
+  auto value = get_internal_string<must_find_>(key);
+  if (value.has_value()) {
+    T converted_value;
+    auto status = utils::parse::convert(value.value(), &converted_value);
+    if (status.ok()) {
+      return {converted_value};
+    }
+    throw_config_exception(
+        "Failed to parse config value '" + std::string(value.value()) +
+        "' for key '" + key + "'. Reason: " + status.to_string());
+  }
+
+  return {nullopt};
+}
+
+template <bool must_find_>
+optional<std::string> Config::get_internal_string(
+    const std::string& key) const {
+  bool found;
+  const char* value = get_from_config_or_env(key, &found);
+  if (found) {
+    return {value};
+  }
+
+  if constexpr (must_find_) {
+    throw_config_exception("Failed to get config value for key: " + key);
+  }
+  return {nullopt};
 }
 
 /*
@@ -1044,5 +1106,61 @@ template Status Config::get<double>(
 template Status Config::get_vector<uint32_t>(
     const std::string& param, std::vector<uint32_t>* value, bool* found) const;
 
-}  // namespace sm
-}  // namespace tiledb
+template optional<bool> Config::get<bool>(const std::string&) const;
+template optional<int> Config::get<int>(const std::string&) const;
+template optional<uint32_t> Config::get<uint32_t>(const std::string&) const;
+template optional<int64_t> Config::get<int64_t>(const std::string&) const;
+template optional<uint64_t> Config::get<uint64_t>(const std::string&) const;
+template optional<float> Config::get<float>(const std::string&) const;
+template optional<double> Config::get<double>(const std::string&) const;
+
+template bool Config::get<bool>(
+    const std::string&, const Config::MustFindMarker&) const;
+template int Config::get<int>(
+    const std::string&, const Config::MustFindMarker&) const;
+template uint32_t Config::get<uint32_t>(
+    const std::string&, const Config::MustFindMarker&) const;
+template int64_t Config::get<int64_t>(
+    const std::string&, const Config::MustFindMarker&) const;
+template uint64_t Config::get<uint64_t>(
+    const std::string&, const Config::MustFindMarker&) const;
+template float Config::get<float>(
+    const std::string&, const Config::MustFindMarker&) const;
+template double Config::get<double>(
+    const std::string&, const Config::MustFindMarker&) const;
+
+template optional<bool> Config::get_internal<bool, false>(
+    const std::string& key) const;
+template optional<bool> Config::get_internal<bool, true>(
+    const std::string& key) const;
+template optional<int> Config::get_internal<int, false>(
+    const std::string& key) const;
+template optional<int> Config::get_internal<int, true>(
+    const std::string& key) const;
+template optional<uint32_t> Config::get_internal<uint32_t, false>(
+    const std::string& key) const;
+template optional<uint32_t> Config::get_internal<uint32_t, true>(
+    const std::string& key) const;
+template optional<int64_t> Config::get_internal<int64_t, false>(
+    const std::string& key) const;
+template optional<int64_t> Config::get_internal<int64_t, true>(
+    const std::string& key) const;
+template optional<uint64_t> Config::get_internal<uint64_t, false>(
+    const std::string& key) const;
+template optional<uint64_t> Config::get_internal<uint64_t, true>(
+    const std::string& key) const;
+template optional<float> Config::get_internal<float, false>(
+    const std::string& key) const;
+template optional<float> Config::get_internal<float, true>(
+    const std::string& key) const;
+template optional<double> Config::get_internal<double, false>(
+    const std::string& key) const;
+template optional<double> Config::get_internal<double, true>(
+    const std::string& key) const;
+
+template optional<std::string> Config::get_internal_string<true>(
+    const std::string& key) const;
+template optional<std::string> Config::get_internal_string<false>(
+    const std::string& key) const;
+
+}  // namespace tiledb::sm

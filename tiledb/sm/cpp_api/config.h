@@ -265,6 +265,10 @@ class Config {
    *
    * **Parameters**
    *
+   * - `sm.allow_updates_experimental` <br>
+   *    **Experimental** <br>
+   *    Allow update queries. Experimental for testing purposes, do not use.<br>
+   *    **Default**: false
    * - `sm.dedup_coords` <br>
    *    If `true`, cells with duplicate coordinates will be removed during
    *    sparse fragment writes. Note that ties during deduplication are broken
@@ -386,6 +390,11 @@ class Config {
    *    The offsets format (`bytes` or `elements`) to be used for
    *    var-sized attributes.<br>
    *    **Default**: bytes
+   * - `sm.query.dense.qc_coords_mode` <br>
+   *    **Experimental** <br>
+   *    Reads only the coordinates of the dense query that matched the query
+   *    condition.<br>
+   *    **Default**: false
    * - `sm.query.dense.reader` <br>
    *    Which reader to use for dense queries. "refactored" or "legacy".<br>
    *    **Default**: refactored
@@ -445,6 +454,11 @@ class Config {
    *    The end timestamp used for opening the group. <br>
    *    Also used for the write timestamp if set. <br>
    *    **Default**: UINT64_MAX
+   * - `sm.fragment_info.preload_mbrs` <br>
+   *    If `true` MBRs will be loaded at the same time as the rest of fragment
+   *    info, otherwise they will be loaded lazily when some info related to
+   *    MBRs is requested by the user. <br>
+   *    **Default**: false
    * -  `vfs.read_ahead_cache_size` <br>
    *    The the total maximum size of the read-ahead cache, which is an LRU.
    *    <br>

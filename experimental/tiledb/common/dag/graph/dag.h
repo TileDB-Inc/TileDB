@@ -37,9 +37,9 @@
 #include <mutex>
 #include <optional>
 
-#include "experimental/tiledb/common/node/edge.h"
-#include "experimental/tiledb/common/node/node.h"
-#include "experimental/tiledb/common/ports/ports.h"
+#include "experimental/tiledb/common/dag/edge/edge.h"
+#include "experimental/tiledb/common/dag/node/node.h"
+#include "experimental/tiledb/common/dag/ports/ports.h"
 #include "tiledb/common/common-std.h"
 #include "tiledb/common/thread_pool.h"
 

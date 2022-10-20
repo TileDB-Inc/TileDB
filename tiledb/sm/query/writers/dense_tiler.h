@@ -319,6 +319,18 @@ class DenseTiler {
    */
   Status copy_tile(
       uint64_t id, uint64_t cell_size, uint8_t* buff, Tile& tile) const;
+
+  /**
+   * Computes the tile metadata according to the copy plan.
+   *
+   * @param name The name of the dimension/attribute.
+   * @param id The id of the tile within the subarray to be retrieved. The id
+   *    is serialied in the tile order of the array domain.
+   * @param tile The tile to compute the metadata for. The tile needs to be
+   *    filled in.
+   */
+  void compute_tile_metadata(
+      const std::string& name, uint64_t id, WriterTile& tile) const;
 };
 
 }  // namespace sm

@@ -43,6 +43,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/strategy_base.h"
+#include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 #include <numeric>
@@ -91,7 +92,8 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
     , buffers_full_(false)
-    , deletes_consolidation_(false) {
+    , deletes_consolidation_no_purge_(
+          buffers_.count(constants::delete_timestamps) != 0) {
   read_state_.done_adding_result_tiles_ = false;
   disable_cache_ = true;
 }
@@ -163,7 +165,8 @@ void SparseIndexReaderBase::init(bool skip_checks_serialization) {
 bool SparseIndexReaderBase::has_post_deduplication_conditions(
     FragmentMetadata& frag_meta) {
   return frag_meta.has_delete_meta() || !condition_.empty() ||
-         (!delete_conditions_.empty() && !deletes_consolidation_);
+         (!delete_and_update_conditions_.empty() &&
+          !deletes_consolidation_no_purge_);
 }
 
 uint64_t SparseIndexReaderBase::cells_copied(
@@ -233,10 +236,10 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
   read_state_.done_adding_result_tiles_ = false;
 
   // Load delete conditions.
-  auto&& [st, delete_conditions] =
-      storage_manager_->load_delete_conditions(*array_);
+  auto&& [st, conditions, update_values] =
+      storage_manager_->load_delete_and_update_conditions(*array_);
   RETURN_CANCEL_OR_ERROR(st);
-  delete_conditions_ = std::move(*delete_conditions);
+  delete_and_update_conditions_ = std::move(*conditions);
   bool make_timestamped_conditions = need_timestamped_conditions();
 
   if (make_timestamped_conditions) {
@@ -244,8 +247,8 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
   }
 
   // Load processed conditions from fragment metadata.
-  if (delete_conditions_.size() > 0) {
-    load_processed_conditions();
+  if (delete_and_update_conditions_.size() > 0) {
+    throw_if_not_ok(load_processed_conditions());
   }
 
   // Make a list of dim/attr that will be loaded for query condition.
@@ -256,8 +259,8 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
       }
     }
   }
-  for (auto delete_condition : delete_conditions_) {
-    for (auto& name : delete_condition.field_names()) {
+  for (auto delete_and_update_condition : delete_and_update_conditions_) {
+    for (auto& name : delete_and_update_condition.field_names()) {
       if (!array_schema_.is_dim(name) || !include_coords) {
         qc_loaded_attr_names_set_.insert(name);
       }
@@ -372,6 +375,11 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
   // Load delete timestamps, always.
   attr_tile_offsets_to_load.emplace_back(constants::delete_timestamps);
 
+  // Load delete condition marker hashes for delete consolidation.
+  if (deletes_consolidation_no_purge_) {
+    attr_tile_offsets_to_load.emplace_back(constants::delete_condition_index);
+  }
+
   // Load tile offsets and var sizes for attributes.
   RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(subarray_, var_size_to_load));
   RETURN_CANCEL_OR_ERROR(
@@ -404,11 +412,16 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
 
   // Compute attributes to load.
   std::vector<std::string> attr_to_load;
-  attr_to_load.reserve(1 + use_timestamps_ + qc_loaded_attr_names_.size());
+  attr_to_load.reserve(
+      1 + deletes_consolidation_no_purge_ + use_timestamps_ +
+      qc_loaded_attr_names_.size());
   if (use_timestamps_) {
     attr_to_load.emplace_back(constants::timestamps);
   }
   attr_to_load.emplace_back(constants::delete_timestamps);
+  if (deletes_consolidation_no_purge_) {
+    attr_to_load.emplace_back(constants::delete_condition_index);
+  }
   std::copy(
       qc_loaded_attr_names_.begin(),
       qc_loaded_attr_names_.end(),
@@ -435,8 +448,8 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
   const auto dim_num = array_schema_.dim_num();
   const auto cell_order = array_schema_.cell_order();
 
-  // No subarray set, return.
-  if (!subarray_.is_set()) {
+  // No subarray set or empty result tiles, return.
+  if (!subarray_.is_set() || result_tiles.empty()) {
     return Status::Ok();
   }
 
@@ -462,7 +475,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
               ->alloc_bitmap();
           return Status::Ok();
         });
-    RETURN_NOT_OK_ELSE(status, logger_->status(status));
+    RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
   }
 
   // Process all tiles/cells in parallel.
@@ -558,7 +571,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   // For multiple range threads, bitmap cell count is done in a separate
   // parallel for.
@@ -573,7 +586,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
               ->count_cells();
           return Status::Ok();
         });
-    RETURN_NOT_OK_ELSE(status, logger_->status(status));
+    RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
   }
 
   logger_->debug("Done computing tile bitmaps");
@@ -585,7 +598,8 @@ Status SparseIndexReaderBase::apply_query_condition(
     std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("apply_query_condition");
 
-  if (!condition_.empty() || !delete_conditions_.empty() || use_timestamps_) {
+  if (!condition_.empty() || !delete_and_update_conditions_.empty() ||
+      use_timestamps_) {
     // Process all tiles in parallel.
     auto status = parallel_for(
         storage_manager_->compute_tp(),
@@ -612,42 +626,51 @@ Status SparseIndexReaderBase::apply_query_condition(
 
           // Make sure we have a condition bitmap if needed.
           if (has_post_deduplication_conditions(*frag_meta) ||
-              deletes_consolidation_) {
+              deletes_consolidation_no_purge_) {
             rt->ensure_bitmap_for_query_condition();
           }
 
           // If the fragment has delete meta, process the delete timestamps.
-          if (frag_meta->has_delete_meta() && !deletes_consolidation_) {
+          if (frag_meta->has_delete_meta() &&
+              !deletes_consolidation_no_purge_) {
             // Remove cells deleted cells using the open timestamp.
             RETURN_NOT_OK(delete_timestamps_condition_.apply_sparse<BitmapType>(
-                *(frag_meta->array_schema().get()), *rt, rt->bitmap_with_qc()));
-            rt->count_cells();
+                *(frag_meta->array_schema().get()),
+                *rt,
+                rt->post_dedup_bitmap()));
+            if (array_schema_.allows_dups()) {
+              rt->count_cells();
+            }
           }
 
           // Compute the result of the query condition for this tile
           if (!condition_.empty()) {
             RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
-                *(frag_meta->array_schema().get()), *rt, rt->bitmap_with_qc()));
+                *(frag_meta->array_schema().get()),
+                *rt,
+                rt->post_dedup_bitmap()));
             if (array_schema_.allows_dups()) {
               rt->count_cells();
             }
           }
 
           // Apply delete conditions.
-          if (!delete_conditions_.empty()) {
+          if (!delete_and_update_conditions_.empty()) {
             // Allocate delete condition idx vector if required. This vector
             // is used to store which delete condition deleted a particular
             // cell.
-            if (deletes_consolidation_) {
+            if (deletes_consolidation_no_purge_) {
               rt->allocate_per_cell_delete_condition_vector();
             }
 
-            for (uint64_t i = 0; i < delete_conditions_.size(); i++) {
+            for (uint64_t i = 0; i < delete_and_update_conditions_.size();
+                 i++) {
               if (!frag_meta->has_delete_meta() ||
                   frag_meta->get_processed_conditions_set().count(
-                      delete_conditions_[i].condition_marker()) == 0) {
+                      delete_and_update_conditions_[i].condition_marker()) ==
+                      0) {
                 auto delete_timestamp =
-                    delete_conditions_[i].condition_timestamp();
+                    delete_and_update_conditions_[i].condition_timestamp();
 
                 // Check the delete condition timestamp is after the fragment
                 // start.
@@ -655,26 +678,26 @@ Status SparseIndexReaderBase::apply_query_condition(
                   // Apply timestamped condition or regular condition.
                   if (!frag_meta->has_timestamps() ||
                       delete_timestamp > frag_meta->timestamp_range().second) {
-                    RETURN_NOT_OK(
-                        delete_conditions_[i].apply_sparse<BitmapType>(
-                            *(frag_meta->array_schema().get()),
-                            *rt,
-                            rt->bitmap_with_qc()));
-                  } else {
-                    RETURN_NOT_OK(timestamped_delete_conditions_[i]
+                    RETURN_NOT_OK(delete_and_update_conditions_[i]
                                       .apply_sparse<BitmapType>(
                                           *(frag_meta->array_schema().get()),
                                           *rt,
-                                          rt->bitmap_with_qc()));
+                                          rt->post_dedup_bitmap()));
+                  } else {
+                    RETURN_NOT_OK(timestamped_delete_and_update_conditions_[i]
+                                      .apply_sparse<BitmapType>(
+                                          *(frag_meta->array_schema().get()),
+                                          *rt,
+                                          rt->post_dedup_bitmap()));
                   }
 
-                  if (deletes_consolidation_) {
+                  if (deletes_consolidation_no_purge_) {
                     // This is a post processing step during deletes
                     // consolidation to set the delete condition pointer to
                     // the current delete condition if the cells was cleared
                     // by this condition and not any previous conditions.
                     rt->compute_per_cell_delete_condition(
-                        &delete_conditions_[i]);
+                        &delete_and_update_conditions_[i]);
                   } else {
                     // Count cells is dups are allowed as the regular bitmap was
                     // modified.
@@ -689,7 +712,7 @@ Status SparseIndexReaderBase::apply_query_condition(
 
           return Status::Ok();
         });
-    RETURN_NOT_OK_ELSE(status, logger_->status(status));
+    RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
   }
 
   logger_->debug("Done applying query condition");

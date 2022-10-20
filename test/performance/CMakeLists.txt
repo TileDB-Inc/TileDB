@@ -55,7 +55,6 @@ add_executable(
   tiledb_explore_msys_handle_leakage EXCLUDE_FROM_ALL
   $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
   ${TILEDB_MSYS_HANDLE_LEAKAGE_SOURCES}
-#  "performance/msys_handle_leakage/unit.cc"
   "msys_handle_leakage/unit.cc"
 )
 
@@ -77,7 +76,7 @@ target_include_directories(
 target_link_libraries(tiledb_explore_msys_handle_leakage
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     tiledb_test_support_lib
 )
 

@@ -158,7 +158,8 @@ TEST_CASE_METHOD(
   QueryCondition condition;
   ThreadPool tp_cpu(4), tp_io(4);
   Array array(URI(array_name_), context.storage_manager());
-  array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+  CHECK(array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0)
+            .ok());
   Subarray subarray(&array, &g_helper_stats, g_helper_logger());
   Reader reader(
       &g_helper_stats,
@@ -230,11 +231,11 @@ TEST_CASE_METHOD(
       UINT32_MAX, domain, dsd, tile_extents, layout);
 
   Dimension d1("d1", Datatype::INT32);
-  d1.set_domain(domain_vec);
-  d1.set_tile_extent(&tile_extents_vec[0]);
+  CHECK(d1.set_domain(domain_vec).ok());
+  CHECK(d1.set_tile_extent(&tile_extents_vec[0]).ok());
   Dimension d2("d2", Datatype::INT32);
-  d2.set_domain(&domain_vec[2]);
-  d2.set_tile_extent(&tile_extents_vec[1]);
+  CHECK(d2.set_domain(&domain_vec[2]).ok());
+  CHECK(d2.set_tile_extent(&tile_extents_vec[1]).ok());
   Domain dom;
   CHECK(dom.add_dimension(make_shared<Dimension>(HERE(), &d1)).ok());
   CHECK(dom.add_dimension(make_shared<Dimension>(HERE(), &d2)).ok());

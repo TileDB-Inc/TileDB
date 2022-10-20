@@ -1184,8 +1184,9 @@ void test_apply_cells<char*>(
   // Fetch the fill value.
   const void* fill_value;
   uint64_t fill_value_size;
-  array_schema.attribute(field_name)
-      ->get_fill_value(&fill_value, &fill_value_size);
+  REQUIRE(array_schema.attribute(field_name)
+              ->get_fill_value(&fill_value, &fill_value_size)
+              .ok());
   REQUIRE(fill_value_size == 2 * sizeof(char));
 
   // Build expected indexes of cells that meet the query condition
@@ -1324,8 +1325,9 @@ void test_apply_cells(
   // Fetch the fill value.
   const void* fill_value;
   uint64_t fill_value_size;
-  array_schema.attribute(field_name)
-      ->get_fill_value(&fill_value, &fill_value_size);
+  REQUIRE(array_schema.attribute(field_name)
+              ->get_fill_value(&fill_value, &fill_value_size)
+              .ok());
   REQUIRE(fill_value_size == sizeof(T));
 
   // Build expected indexes of cells that meet the query condition

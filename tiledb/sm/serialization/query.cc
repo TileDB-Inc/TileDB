@@ -44,8 +44,6 @@
 #endif
 // clang-format on
 
-#include "tiledb/sm/query/ast/query_ast.h"
-#include "tiledb/sm/query/query.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -60,13 +58,17 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/deletes_and_updates/deletes.h"
-#include "tiledb/sm/query/readers/dense_reader.h"
+#include "tiledb/sm/query/ast/query_ast.h"
+#include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
 #include "tiledb/sm/query/legacy/reader.h"
+#include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
+#include "tiledb/sm/query/writers/global_order_writer.h"
 #include "tiledb/sm/query/writers/writer_base.h"
 #include "tiledb/sm/serialization/config.h"
+#include "tiledb/sm/serialization/fragment_metadata.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
@@ -79,8 +81,6 @@ namespace sm {
 namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
-
-enum class SerializationContext { CLIENT, SERVER, BACKUP };
 
 shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
 
@@ -338,7 +338,7 @@ Status subarray_partitioner_to_capnp(
 Status subarray_partitioner_from_capnp(
     Stats* query_stats,
     Stats* reader_stats,
-    const Config* config,
+    const Config& config,
     const Array* array,
     const capnp::SubarrayPartitioner::Reader& reader,
     SubarrayPartitioner* partitioner,
@@ -362,7 +362,7 @@ Status subarray_partitioner_from_capnp(
   Subarray subarray(array, layout, query_stats, dummy_logger, false);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner = SubarrayPartitioner(
-      config,
+      &config,
       subarray,
       memory_budget,
       memory_budget_var,
@@ -423,12 +423,12 @@ Status subarray_partitioner_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
     if (compute_current_tile_overlap) {
-      partition_info->partition_.precompute_tile_overlap(
+      throw_if_not_ok(partition_info->partition_.precompute_tile_overlap(
           partition_info->start_,
           partition_info->end_,
-          config,
+          &config,
           compute_tp,
-          true);
+          true));
     }
   }
 
@@ -691,7 +691,8 @@ static Status condition_ast_to_capnp(
 
     for (size_t i = 0; i < node->get_children().size(); ++i) {
       auto child_builder = children_builder[i];
-      condition_ast_to_capnp(node->get_children()[i], &child_builder);
+      throw_if_not_ok(
+          condition_ast_to_capnp(node->get_children()[i], &child_builder));
     }
 
     // Validate and store the query condition combination op.
@@ -791,10 +792,10 @@ Status reader_to_capnp(
   // Read state
   RETURN_NOT_OK(read_state_to_capnp(array_schema, reader, reader_builder));
 
-  const QueryCondition* condition = query.condition();
-  if (!condition->empty()) {
+  const auto& condition = query.condition();
+  if (!condition.empty()) {
     auto condition_builder = reader_builder->initCondition();
-    RETURN_NOT_OK(condition_to_capnp(*condition, &condition_builder));
+    RETURN_NOT_OK(condition_to_capnp(condition, &condition_builder));
   }
 
   // If stats object exists set its cap'n proto object
@@ -825,10 +826,10 @@ Status index_reader_to_capnp(
   // Read state
   RETURN_NOT_OK(index_read_state_to_capnp(reader.read_state(), reader_builder));
 
-  const QueryCondition* condition = query.condition();
-  if (!condition->empty()) {
+  const auto& condition = query.condition();
+  if (!condition.empty()) {
     auto condition_builder = reader_builder->initCondition();
-    RETURN_NOT_OK(condition_to_capnp(*condition, &condition_builder));
+    RETURN_NOT_OK(condition_to_capnp(condition, &condition_builder));
   }
 
   // If stats object exists set its cap'n proto object
@@ -860,10 +861,10 @@ Status dense_reader_to_capnp(
   RETURN_NOT_OK(
       dense_read_state_to_capnp(array_schema, reader, reader_builder));
 
-  const QueryCondition* condition = query.condition();
-  if (!condition->empty()) {
+  const auto& condition = query.condition();
+  if (!condition.empty()) {
     auto condition_builder = reader_builder->initCondition();
-    RETURN_NOT_OK(condition_to_capnp(*condition, &condition_builder));
+    RETURN_NOT_OK(condition_to_capnp(condition, &condition_builder));
   }
 
   // If stats object exists set its cap'n proto object
@@ -1104,7 +1105,7 @@ Status dense_reader_from_capnp(
 Status delete_from_capnp(
     const capnp::Delete::Reader& delete_reader,
     Query* query,
-    Deletes* delete_strategy) {
+    DeletesAndUpdates* delete_strategy) {
   // Query condition
   if (delete_reader.hasCondition()) {
     auto condition_reader = delete_reader.getCondition();
@@ -1127,12 +1128,12 @@ Status delete_from_capnp(
 
 Status delete_to_capnp(
     const Query& query,
-    Deletes& delete_strategy,
+    DeletesAndUpdates& delete_strategy,
     capnp::Delete::Builder* delete_builder) {
-  const QueryCondition* condition = query.condition();
-  if (!condition->empty()) {
+  auto condition = query.condition();
+  if (!condition.empty()) {
     auto condition_builder = delete_builder->initCondition();
-    RETURN_NOT_OK(condition_to_capnp(*condition, &condition_builder));
+    RETURN_NOT_OK(condition_to_capnp(condition, &condition_builder));
   }
 
   // If stats object exists set its cap'n proto object
@@ -1148,7 +1149,8 @@ Status delete_to_capnp(
 Status writer_to_capnp(
     const Query& query,
     WriterBase& writer,
-    capnp::Writer::Builder* writer_builder) {
+    capnp::Writer::Builder* writer_builder,
+    bool client_side) {
   writer_builder->setCheckCoordDups(writer.get_check_coord_dups());
   writer_builder->setCheckCoordOOB(writer.get_check_coord_oob());
   writer_builder->setDedupCoords(writer.get_dedup_coords());
@@ -1178,11 +1180,28 @@ Status writer_to_capnp(
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
   }
 
+  if (query.layout() == Layout::GLOBAL_ORDER) {
+    auto& globalwriter = dynamic_cast<GlobalOrderWriter&>(writer);
+    auto globalstate = globalwriter.get_global_state();
+    // Remote global order writes have global_write_state equal to nullptr
+    // before the first submit(). The state gets initialized when do_work() gets
+    // invoked. Once GlobalOrderWriter becomes C41 compliant, we can delete this
+    // check.
+    if (globalstate) {
+      auto global_state_builder = writer_builder->initGlobalWriteStateV1();
+      RETURN_NOT_OK(global_write_state_to_capnp(
+          query, globalwriter, &global_state_builder, client_side));
+    }
+  }
+
   return Status::Ok();
 }
 
 Status writer_from_capnp(
-    const capnp::Writer::Reader& writer_reader, WriterBase* writer) {
+    const Query& query,
+    const capnp::Writer::Reader& writer_reader,
+    WriterBase* writer,
+    const SerializationContext context) {
   writer->set_check_coord_dups(writer_reader.getCheckCoordDups());
   writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
   writer->set_dedup_coords(writer_reader.getDedupCoords());
@@ -1196,6 +1215,20 @@ Status writer_from_capnp(
     }
   }
 
+  if (query.layout() == Layout::GLOBAL_ORDER &&
+      writer_reader.hasGlobalWriteStateV1()) {
+    auto global_writer = dynamic_cast<GlobalOrderWriter*>(writer);
+
+    // global_write_state is not allocated when deserializing into a
+    // new Query object
+    if (!global_writer->get_global_state()) {
+      RETURN_NOT_OK(global_writer->alloc_global_write_state());
+      RETURN_NOT_OK(global_writer->init_global_write_state());
+    }
+    RETURN_NOT_OK(global_write_state_from_capnp(
+        query, writer_reader.getGlobalWriteStateV1(), global_writer, context));
+  }
+
   return Status::Ok();
 }
 
@@ -1207,18 +1240,11 @@ Status query_to_capnp(
   auto layout = query.layout();
   auto type = query.type();
   auto array = query.array();
-  auto query_type = query.type();
 
-  if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
-      query_type != QueryType::DELETE) {
-    return LOG_STATUS(
-        Status_SerializationError("Cannot serialize; Unsupported query type."));
-  }
-
-  if (layout == Layout::GLOBAL_ORDER && query_type == QueryType::WRITE) {
-    return LOG_STATUS(
-        Status_SerializationError("Cannot serialize; global order "
-                                  "serialization not supported for writes."));
+  if (query.uses_dimension_labels()) {
+    return LOG_STATUS(Status_SerializationError(
+        "Cannot serialize; serialization is not yet supported for queries "
+        "using dimension labels."));
   }
 
   if (array == nullptr) {
@@ -1327,23 +1353,37 @@ Status query_to_capnp(
     query_builder->setVarOffsetsAddExtraElement(
         writer->offsets_extra_element());
     query_builder->setVarOffsetsBitsize(writer->offsets_bitsize());
-    RETURN_NOT_OK(writer_to_capnp(query, *writer, &builder));
+    RETURN_NOT_OK(writer_to_capnp(query, *writer, &builder, client_side));
   } else {
     auto builder = query_builder->initDelete();
-    auto delete_strategy = dynamic_cast<Deletes*>(query.strategy(true));
+    auto delete_strategy =
+        dynamic_cast<DeletesAndUpdates*>(query.strategy(true));
     RETURN_NOT_OK(delete_to_capnp(query, *delete_strategy, &builder));
   }
 
   // Serialize Config
-  const Config* config = query.config();
   auto config_builder = query_builder->initConfig();
-  RETURN_NOT_OK(config_to_capnp(config, &config_builder));
+  RETURN_NOT_OK(config_to_capnp(query.config(), &config_builder));
 
   // If stats object exists set its cap'n proto object
   stats::Stats* stats = query.stats();
   if (stats != nullptr) {
     auto stats_builder = query_builder->initStats();
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+  }
+
+  auto& written_fragment_info = query.get_written_fragment_info();
+  if (!written_fragment_info.empty()) {
+    auto builder =
+        query_builder->initWrittenFragmentInfo(written_fragment_info.size());
+    for (uint64_t i = 0; i < written_fragment_info.size(); ++i) {
+      builder[i].setUri(written_fragment_info[i]
+                            .uri_.remove_trailing_slash()
+                            .last_path_part());
+      auto range_builder = builder[i].initTimestampRange(2);
+      range_builder.set(0, written_fragment_info[i].timestamp_range_.first);
+      range_builder.set(1, written_fragment_info[i].timestamp_range_.second);
+    }
   }
 
   return Status::Ok();
@@ -1377,7 +1417,8 @@ Status query_from_capnp(
   }
 
   if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
-      query_type != QueryType::DELETE) {
+      query_type != QueryType::DELETE &&
+      query_type != QueryType::MODIFY_EXCLUSIVE) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; Unsupported query type."));
   }
@@ -1386,13 +1427,23 @@ Status query_from_capnp(
   Layout layout = Layout::UNORDERED;
   RETURN_NOT_OK(layout_enum(query_reader.getLayout().cStr(), &layout));
 
+  // Deserialize array instance.
+  RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
+
+  // Marks the query as remote
+  // Needs to happen before the reset strategy call below so that the marker
+  // propagates to the underlying strategy. Also this marker needs to live
+  // on the Query not on the strategy because for the first remote submit,
+  // the strategy gets reset once more during query submit on the server side
+  // (much later).
+  if (context == SerializationContext::SERVER) {
+    query->set_remote_query();
+  }
+
   // Make sure we have the right query strategy in place.
   bool force_legacy_reader =
       query_type == QueryType::READ && query_reader.hasReader();
   RETURN_NOT_OK(query->reset_strategy_with_layout(layout, force_legacy_reader));
-
-  // Deserialize array instance.
-  RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
 
   // Deserialize Config
   if (query_reader.hasConfig()) {
@@ -1891,7 +1942,7 @@ Status query_from_capnp(
           writer->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
     }
 
-    RETURN_NOT_OK(writer_from_capnp(writer_reader, writer));
+    RETURN_NOT_OK(writer_from_capnp(*query, writer_reader, writer, context));
 
     // For sparse writes we want to explicitly set subarray to nullptr.
     const bool sparse_write =
@@ -1916,7 +1967,7 @@ Status query_from_capnp(
     }
   } else {
     auto delete_reader = query_reader.getDelete();
-    auto delete_strategy = dynamic_cast<Deletes*>(query->strategy());
+    auto delete_strategy = dynamic_cast<DeletesAndUpdates*>(query->strategy());
     RETURN_NOT_OK(delete_from_capnp(delete_reader, query, delete_strategy));
   }
 
@@ -1933,6 +1984,21 @@ Status query_from_capnp(
     // We should always have a stats here
     if (stats != nullptr) {
       RETURN_NOT_OK(stats_from_capnp(query_reader.getStats(), stats));
+    }
+  }
+
+  if (query_reader.hasWrittenFragmentInfo()) {
+    auto reader_list = query_reader.getWrittenFragmentInfo();
+    auto& written_fi = query->get_written_fragment_info();
+    for (auto fi : reader_list) {
+      auto write_version = query->array_schema().write_version();
+      auto frag_dir_uri = ArrayDirectory::generate_fragment_dir_uri(
+          write_version,
+          query->array_schema().array_uri().add_trailing_slash());
+      auto fragment_name = std::string(fi.getUri().cStr());
+      written_fi.emplace_back(
+          frag_dir_uri.join_path(fragment_name),
+          std::make_pair(fi.getTimestampRange()[0], fi.getTimestampRange()[1]));
     }
   }
 
@@ -1956,6 +2022,7 @@ Status query_serialize(
     // Determine whether we should be serializing the buffer data.
     const bool serialize_buffers =
         (clientside && query->type() == QueryType::WRITE) ||
+        (clientside && query->type() == QueryType::MODIFY_EXCLUSIVE) ||
         (!clientside && query->type() == QueryType::READ);
 
     switch (serialize_type) {
@@ -2337,6 +2404,197 @@ Status query_est_result_size_deserialize(
     return LOG_STATUS(Status_SerializationError(
         "Error deserializing query est result size; exception " +
         std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
+Status global_write_state_to_capnp(
+    const Query& query,
+    GlobalOrderWriter& globalwriter,
+    capnp::GlobalWriteState::Builder* state_builder,
+    bool client_side) {
+  auto& write_state = *globalwriter.get_global_state();
+
+  auto& cells_written = write_state.cells_written_;
+  if (!cells_written.empty()) {
+    auto cells_writen_builder = state_builder->initCellsWritten();
+    auto entries_builder =
+        cells_writen_builder.initEntries(cells_written.size());
+    uint64_t index = 0;
+    for (auto& entry : cells_written) {
+      entries_builder[index].setKey(entry.first);
+      entries_builder[index].setValue(entry.second);
+      ++index;
+    }
+  }
+
+  if (write_state.frag_meta_) {
+    auto frag_meta = write_state.frag_meta_;
+    auto frag_meta_builder = state_builder->initFragMeta();
+    RETURN_NOT_OK(fragment_metadata_to_capnp(*frag_meta, &frag_meta_builder));
+  }
+
+  if (write_state.last_cell_coords_.has_value()) {
+    auto& single_coord = write_state.last_cell_coords_.value();
+    auto coord_builder = state_builder->initLastCellCoords();
+
+    auto& coords = single_coord.get_coords();
+    if (!coords.empty()) {
+      auto builder = coord_builder.initCoords(coords.size());
+      for (uint64_t i = 0; i < coords.size(); ++i) {
+        builder.init(i, coords[i].size());
+        for (uint64_t j = 0; j < coords.size(); ++j) {
+          builder[i].set(j, coords[i][j]);
+        }
+      }
+    }
+    auto& sizes = single_coord.get_sizes();
+    if (!sizes.empty()) {
+      auto builder = coord_builder.initSizes(sizes.size());
+      for (uint64_t i = 0; i < sizes.size(); ++i) {
+        builder.set(i, sizes[i]);
+      }
+    }
+    auto& single_offset = single_coord.get_single_offset();
+    if (!single_offset.empty()) {
+      auto builder = coord_builder.initSingleOffset(single_offset.size());
+      for (uint64_t i = 0; i < single_offset.size(); ++i) {
+        builder.set(i, single_offset[i]);
+      }
+    }
+  }
+
+  state_builder->setLastHilbertValue(write_state.last_hilbert_value_);
+
+  // Serialize the multipart upload state
+  auto&& [st, multipart_states] =
+      globalwriter.multipart_upload_state(client_side);
+  RETURN_NOT_OK(st);
+
+  if (!multipart_states.empty()) {
+    auto multipart_builder = state_builder->initMultiPartUploadStates();
+    auto entries_builder =
+        multipart_builder.initEntries(multipart_states.size());
+    uint64_t index = 0;
+    for (auto& entry : multipart_states) {
+      entries_builder[index].setKey(entry.first);
+      auto multipart_entry_builder = entries_builder[index].initValue();
+      ++index;
+      auto& state = entry.second;
+      multipart_entry_builder.setPartNumber(state.part_number);
+      if (state.upload_id.has_value()) {
+        multipart_entry_builder.setUploadId(*state.upload_id);
+      }
+      if (!state.status.ok()) {
+        multipart_entry_builder.setStatus(state.status.message());
+      }
+
+      auto& completed_parts = state.completed_parts;
+      // Get completed parts
+      if (!completed_parts.empty()) {
+        auto builder = multipart_entry_builder.initCompletedParts(
+            state.completed_parts.size());
+        for (uint64_t i = 0; i < state.completed_parts.size(); ++i) {
+          if (state.completed_parts[i].e_tag.has_value()) {
+            builder[i].setETag(*state.completed_parts[i].e_tag);
+          }
+          builder[i].setPartNumber(state.completed_parts[i].part_number);
+        }
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status global_write_state_from_capnp(
+    const Query& query,
+    const capnp::GlobalWriteState::Reader& state_reader,
+    GlobalOrderWriter* globalwriter,
+    const SerializationContext context) {
+  auto write_state = globalwriter->get_global_state();
+
+  if (state_reader.hasCellsWritten()) {
+    auto& cells_written = write_state->cells_written_;
+    auto cell_written_reader = state_reader.getCellsWritten();
+    for (const auto& entry : cell_written_reader.getEntries()) {
+      cells_written[std::string(entry.getKey().cStr())] = entry.getValue();
+    }
+  }
+
+  if (state_reader.hasLastCellCoords()) {
+    auto single_coord_reader = state_reader.getLastCellCoords();
+    if (single_coord_reader.hasCoords() &&
+        single_coord_reader.hasSingleOffset() &&
+        single_coord_reader.hasSizes()) {
+      std::vector<std::vector<uint8_t>> coords;
+      std::vector<uint64_t> sizes;
+      std::vector<uint64_t> single_offset;
+      for (const auto& t : single_coord_reader.getCoords()) {
+        auto& last = coords.emplace_back();
+        last.reserve(t.size());
+        for (const auto& v : t) {
+          last.emplace_back(v);
+        }
+      }
+
+      sizes.reserve(single_coord_reader.getSizes().size());
+      for (const auto& size : single_coord_reader.getSizes()) {
+        sizes.emplace_back(size);
+      }
+      single_offset.reserve(single_coord_reader.getSingleOffset().size());
+      for (const auto& so : single_coord_reader.getSingleOffset()) {
+        single_offset.emplace_back(so);
+      }
+
+      write_state->last_cell_coords_.emplace(
+          query.array_schema(), coords, sizes, single_offset);
+    }
+  }
+
+  write_state->last_hilbert_value_ = state_reader.getLastHilbertValue();
+
+  if (state_reader.hasFragMeta()) {
+    auto frag_meta = write_state->frag_meta_;
+    auto frag_meta_reader = state_reader.getFragMeta();
+    RETURN_NOT_OK(fragment_metadata_from_capnp(
+        query.array_schema_shared(), frag_meta_reader, frag_meta));
+  }
+
+  // Deserialize the multipart upload state
+  if (state_reader.hasMultiPartUploadStates()) {
+    auto multipart_reader = state_reader.getMultiPartUploadStates();
+    if (multipart_reader.hasEntries()) {
+      for (auto entry : multipart_reader.getEntries()) {
+        VFS::MultiPartUploadState deserialized_state;
+        auto state = entry.getValue();
+        std::string buffer_uri(entry.getKey().cStr());
+        if (state.hasUploadId()) {
+          deserialized_state.upload_id = state.getUploadId();
+        }
+        if (state.hasStatus()) {
+          deserialized_state.status =
+              Status(std::string(state.getStatus().cStr()), "");
+        }
+        deserialized_state.part_number = entry.getValue().getPartNumber();
+        if (state.hasCompletedParts()) {
+          auto& parts = deserialized_state.completed_parts;
+          for (auto part : state.getCompletedParts()) {
+            parts.emplace_back();
+            parts.back().part_number = part.getPartNumber();
+            if (part.hasETag()) {
+              parts.back().e_tag = std::string(part.getETag().cStr());
+            }
+          }
+        }
+
+        RETURN_NOT_OK(globalwriter->set_multipart_upload_state(
+            buffer_uri,
+            deserialized_state,
+            context == SerializationContext::CLIENT));
+      }
+    }
   }
 
   return Status::Ok();

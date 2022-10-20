@@ -228,6 +228,9 @@ const std::string write_file_suffix = ".wrt";
 /** Suffix for the special delete files used in TileDB. */
 const std::string delete_file_suffix = ".del";
 
+/** Suffix for the special update files used in TileDB. */
+const std::string update_file_suffix = ".upd";
+
 /** Suffix for the special metadata files used in TileDB. */
 const std::string meta_file_suffix = ".meta";
 
@@ -283,6 +286,12 @@ const std::string query_type_write_str = "WRITE";
 
 /** TILEDB_DELETE Query String **/
 const std::string query_type_delete_str = "DELETE";
+
+/** TILEDB_UPDATE Query String **/
+const std::string query_type_update_str = "UPDATE";
+
+/** TILEDB_MODIFY_EXCLUSIVE Query String **/
+const std::string query_type_modify_exclusive_str = "MODIFY_EXCLUSIVE";
 
 /** TILEDB_FAILED Query String **/
 const std::string query_status_failed_str = "FAILED";
@@ -385,6 +394,9 @@ const std::string filter_dictionary_str = "DICTIONARY_ENCODING";
 
 /** String describing FILTER_SCALE_FLOAT. */
 const std::string filter_scale_float_str = "SCALE_FLOAT";
+
+/** String describing FILTER_XOR. */
+const std::string filter_xor_str = "XOR";
 
 /** The string representation for FilterOption type compression_level. */
 const std::string filter_option_compression_level_str = "COMPRESSION_LEVEL";
@@ -631,6 +643,9 @@ const uint32_t consolidation_with_timestamps_min_version = 15;
 
 /** The lowest version supported for deletes. */
 const uint32_t deletes_min_version = 16;
+
+/** The lowest version supported for updates. */
+const uint32_t updates_min_version = 16;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;

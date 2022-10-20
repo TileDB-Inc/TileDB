@@ -39,13 +39,13 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
 
-class StorageManager;
 class URI;
 
 namespace global_state {
