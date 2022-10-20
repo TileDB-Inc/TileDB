@@ -52,7 +52,8 @@ jobs:
           # Build all unit tests
           make -C tiledb tests -j4
           # Run all unit tests
-          make -C tiledb test ARGS="-R '^unit_'"
+          make -C tiledb test ARGS="-R '^unit_'" -R "test_assert"
+          make -C tiledb test ARGS="-R 'test_ci_asserts'"
 
           popd
       - name: "Print log files (failed build only)"
