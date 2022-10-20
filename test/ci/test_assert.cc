@@ -55,7 +55,7 @@ TEST_CASE("CI: Test assertions configuration", "[ci][assertions]") {
       std::find(assert_exit_codes.begin(), assert_exit_codes.end(), retval) !=
       assert_exit_codes.end());
 #else
-  (void)assert_exit_code;
+  (void)assert_exit_codes;
   REQUIRE(retval == 0);
 #endif
 }
