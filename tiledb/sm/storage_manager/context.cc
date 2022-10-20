@@ -49,7 +49,7 @@ namespace sm {
 Context::Context(const Config& config)
     : last_error_(nullopt)
     , logger_(make_shared<Logger>(
-          HERE(), "Context: " + std::to_string(++logger_id_)))
+          HERE(), logger_prefix_ + std::to_string(++logger_id_)))
     , compute_tp_(get_compute_thread_count(config))
     , io_tp_(get_io_thread_count(config))
     , stats_(make_shared<stats::Stats>(HERE(), "Context"))

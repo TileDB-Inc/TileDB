@@ -364,12 +364,6 @@ class Logger {
     JSON,
   };
 
-  /** The name of the global logger */
-  static inline constexpr char global_logger_default_name[] = "Global";
-
-  /** The name of the global logger in json format */
-  static inline constexpr char global_logger_json_name[] = "\"Global\":\"1\"";
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
