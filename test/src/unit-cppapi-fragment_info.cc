@@ -31,7 +31,7 @@
  */
 
 #include "test/support/src/helpers.h"
-#include "test/src/serialization_wrappers.h"
+#include "test/support/src/serialization_wrappers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 #include <test/support/tdb_catch.h>

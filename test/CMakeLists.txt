@@ -270,11 +270,6 @@ if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
 endif()
 
-add_library(tiledb_test_support_lib EXCLUDE_FROM_ALL
-  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
-  ${TILEDB_TEST_SUPPORT_SOURCES}
-)
-target_link_libraries(tiledb_test_support_lib INTERFACE Catch2::Catch2WithMain)
 
 # unit test executable
 add_executable(

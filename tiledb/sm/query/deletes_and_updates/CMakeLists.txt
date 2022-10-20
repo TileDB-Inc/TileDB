@@ -36,8 +36,6 @@ if (TILEDB_TESTS)
     # Sources for tests
     target_sources(unit_delete_update_condition PUBLIC test/main.cc test/unit_delete_condition.cc test/unit_update_condition.cc)
 
-    target_include_directories(unit_delete_condition PRIVATE "${TILEDB_CORE_INCLUDE_DIR}")
-
     # The dependencies can't yet be factored into separate object libraries
     target_link_libraries(unit_delete_update_condition PUBLIC TILEDB_CORE_OBJECTS)
     target_link_libraries(unit_delete_update_condition PUBLIC TILEDB_CORE_OBJECTS_ILIB)
