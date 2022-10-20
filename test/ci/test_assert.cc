@@ -50,6 +50,7 @@ std::vector<int> assert_exit_codes{
 TEST_CASE("CI: Test assertions configuration", "[ci][assertions]") {
   int retval = system(TILEDB_PATH_TO_TRY_ASSERT "/try_assert");
   
+  // in case value is one not currently accepted, report what was returned.
   std::cout << "retval is " << retval << " from " << TILEDB_PATH_TO_TRY_ASSERT "/try_assert" << std::endl;
 
 #ifdef TILEDB_ASSERTIONS
