@@ -459,7 +459,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
     num_range_threads = 1 + ((num_threads - 1) / result_tiles.size());
   }
 
-  // Perforance runs have shown that running multiple parallel_for's has a
+  // Performance runs have shown that running multiple parallel_for's has a
   // measurable performance impact. So only pre-allocate tile bitmaps if we
   // are going to run multiple range threads.
   if (num_range_threads != 1) {
@@ -488,6 +488,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
         auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[t];
         auto cell_num =
             fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+        stats_->add_counter("cell_num", cell_num);
 
         // Allocate the bitmap if not preallocated.
         if (num_range_threads == 1) {
