@@ -680,12 +680,16 @@ Status GlobalOrderWriter::init_global_write_state() {
     const auto nullable = array_schema_.is_nullable(name);
     const auto cell_size = array_schema_.cell_size(name);
     const auto type = array_schema_.type(name);
+    const auto& domain{array_schema_.domain()};
+    const auto capacity = array_schema_.capacity();
+    const auto cell_num_per_tile =
+        coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
     auto last_tile_vector =
         std::pair<std::string, WriterTileVector>(name, WriterTileVector());
     try {
       last_tile_vector.second.emplace_back(WriterTile(
           array_schema_,
-          coords_info_.has_coords_,
+          cell_num_per_tile,
           var_size,
           nullable,
           cell_size,
@@ -823,12 +827,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
     tiles->reserve(full_tile_num);
     for (uint64_t i = 0; i < full_tile_num; i++) {
       tiles->emplace_back(WriterTile(
-          array_schema_,
-          coords_info_.has_coords_,
-          false,
-          nullable,
-          cell_size,
-          type));
+          array_schema_, cell_num_per_tile, false, nullable, cell_size, type));
     }
 
     // Handle last tile (it must be either full or empty)
@@ -1035,12 +1034,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
     tiles->reserve(full_tile_num);
     for (uint64_t i = 0; i < full_tile_num; i++) {
       tiles->emplace_back(WriterTile(
-          array_schema_,
-          coords_info_.has_coords_,
-          true,
-          nullable,
-          cell_size,
-          type));
+          array_schema_, cell_num_per_tile, true, nullable, cell_size, type));
     }
 
     // Handle last tile (it must be either full or empty)

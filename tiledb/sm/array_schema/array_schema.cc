@@ -571,8 +571,8 @@ void ArraySchema::serialize(Serializer& serializer) const {
   // Write version, which is always the current version. Despite
   // the in-memory `version_`, we will serialize every array schema
   // as the latest version.
-  const uint32_t version = constants::format_version;
-  serializer.write<uint32_t>(version);
+  const format_version_t version = constants::format_version;
+  serializer.write<format_version_t>(version);
 
   // Write allows_dups
   serializer.write<uint8_t>(allows_dups_);

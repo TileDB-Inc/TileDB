@@ -291,7 +291,7 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
       Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
 }
 
-void ensure_supported_schema_version_for_read(uint32_t version) {
+void ensure_supported_schema_version_for_read(format_version_t version) {
   // We do not allow reading from arrays written by newer version of TileDB
   if (version > constants::format_version) {
     std::stringstream err;
@@ -1921,7 +1921,6 @@ Status StorageManagerCanonical::read_from_cache(
     bool* in_cache) const {
   std::stringstream key;
   key << uri.to_string() << "+" << offset;
-  buffer.expand(nbytes);
   RETURN_NOT_OK(tile_cache_->read(key.str(), buffer, 0, nbytes, in_cache));
 
   return Status::Ok();

@@ -203,9 +203,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param f Fragment index.
    * @param t Tile index.
    *
-   * @return Status, tiles_size, tiles_size_qc.
+   * @return Tiles_size, tiles_size_qc.
    */
-  tuple<Status, optional<std::pair<uint64_t, uint64_t>>> get_coord_tiles_size(
+  std::pair<uint64_t, uint64_t> get_coord_tiles_size(
       unsigned dim_num, unsigned f, uint64_t t);
 
   /**
@@ -218,9 +218,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param t Tile index.
    * @param frag_md Fragment metadata.
    *
-   * @return buffers_full, new_var_buffer_size, new_result_tiles_size.
+   * @return buffers_full.
    */
-  tuple<Status, optional<bool>> add_result_tile(
+  bool add_result_tile(
       const unsigned dim_num,
       const uint64_t memory_budget_coords_tiles,
       const uint64_t memory_budget_qc_tiles,
@@ -231,9 +231,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /**
    * Create the result tiles.
    *
-   * @return Status, tiles_found.
+   * @return Tiles_found.
    */
-  tuple<Status, optional<bool>> create_result_tiles();
+  bool create_result_tiles();
 
   /**
    * Process tiles with timestamps to deduplicate entries.

@@ -63,7 +63,6 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
     const Config& config) {
-  Tile tile;
   auto&& [st, header_opt] =
       read_generic_tile_header(storage_manager_, uri_, file_offset);
   RETURN_NOT_OK_TUPLE(st, nullopt);
@@ -85,17 +84,15 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
   const auto tile_data_offset =
       GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
 
-  RETURN_NOT_OK_TUPLE(
-      tile.init_filtered(
-          header.version_number,
-          (Datatype)header.datatype,
-          header.cell_size,
-          0),
-      nullopt);
+  Tile tile(
+      header.version_number,
+      (Datatype)header.datatype,
+      header.cell_size,
+      0,
+      header.tile_size,
+      header.persisted_size);
 
   // Read the tile.
-  tile.filtered_buffer().expand(header.persisted_size);
-  RETURN_NOT_OK_TUPLE(tile.alloc_data(header.tile_size), nullopt);
   RETURN_NOT_OK_TUPLE(
       storage_manager_->read(
           uri_,
