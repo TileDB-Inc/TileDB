@@ -239,10 +239,19 @@ class QueryBuffer {
     return Status::Ok();
   }
 
-  /** Returns a const pointer to the buffer data as the requested type. */
+  /** Returns a const pointer to the data buffer as the requested type. */
   template <typename T>
-  inline const T* typed_buffer() const {
-    return buffer_ ? static_cast<T*>(buffer_) : nullptr;
+  inline const T* typed_data_buffer() const {
+    if (buffer_var_) {
+      return static_cast<T*>(buffer_var_);
+    } else {
+      return buffer_ ? static_cast<T*>(buffer_) : nullptr;
+    }
+  }
+
+  /** Returns a const pointer to the offset buffer. */
+  inline const uint64_t* offsets_buffer() const {
+    return buffer_ ? static_cast<uint64_t*>(buffer_) : nullptr;
   }
 
   /**

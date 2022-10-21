@@ -168,7 +168,7 @@ class ArrayExample : public TemporaryDirectoryFixture {
   }
 
   /**
-   * Read back full array with a data query and check the values.
+   * Read back data from the range [r0, r1].
    *
    * @param r0 Lower value of the range to query on.
    * @param r1 Upper value of the range to query on.
@@ -248,9 +248,9 @@ class ArrayExample : public TemporaryDirectoryFixture {
   }
 
   /**
-   * Read back full array with a data query and check the values.
+   * Read values in the label ranges.
    *
-   * @param range_data Data for ranges to query on.
+   * @param ranges Data for ranges to query on.
    * @param expected_attr_data A vector of the expected attribute values.
    * @param expected_label_data A vector of the expected label values.
    * @param expected_label_offsets A vector of the expected label offsets.
@@ -273,9 +273,9 @@ class ArrayExample : public TemporaryDirectoryFixture {
           ctx,
           subarray,
           "x",
-          &ranges[r],
+          ranges[r].data(),
           ranges[r].size(),
-          &ranges[r + 1],
+          ranges[r + 1].data(),
           ranges[r + 1].size()));
     }
 
@@ -342,38 +342,6 @@ class ArrayExample : public TemporaryDirectoryFixture {
 TEST_CASE_METHOD(
     ArrayExample,
     "Round trip dimension label and array data for dense 1d array with var "
-    "dimension label (part 1)",
-    "[capi][query][DimensionLabel][var]") {
-  // Define the input data values.
-  std::vector<double> input_attr_data{1.0, 2.5, -1.0, 0.0};
-  std::string input_label_data{"redyellowgreenblue"};
-  std::vector<uint64_t> input_label_offsets{0, 4, 10, 15};
-
-  std::vector<uint64_t> index_domain{0, 3};
-
-  // Create the array.
-  create_example(TILEDB_UNORDERED_LABELS, index_domain.data());
-
-  // Write the array.
-  write_array_with_label(
-      index_domain[0],
-      index_domain[1],
-      input_attr_data,
-      input_label_data,
-      input_label_offsets);
-
-  // Check data reader.
-  check_values_from_data_reader(
-      index_domain[0],
-      index_domain[1],
-      input_attr_data,
-      input_label_data,
-      input_label_offsets);
-}
-
-TEST_CASE_METHOD(
-    ArrayExample,
-    "Round trip dimension label and array data for dense 1d array with var "
     "dimension label",
     "[capi][query][DimensionLabel][var]") {
   // Array parameters.
@@ -432,7 +400,7 @@ TEST_CASE_METHOD(
     }
   }
 
-  /** Create label data from raw data. */
+  // Create label data from raw data.
   std::string input_label_data{};
   std::vector<uint64_t> input_label_offsets(4);
   for (uint64_t i{0}; i < 4; ++i) {
@@ -453,7 +421,6 @@ TEST_CASE_METHOD(
       input_label_data,
       input_label_offsets);
 
-  /*
   // Check data reader.
   {
     INFO("Reading values by index range.");
@@ -464,29 +431,27 @@ TEST_CASE_METHOD(
         input_label_data,
         input_label_offsets);
   }
-*/
+
   // Check range reader.
   if (label_order != TILEDB_UNORDERED_LABELS) {
     INFO("Reading data by label range.");
 
-    /*
+    // Check full range
+    check_values_from_range_reader(
+        {"10", "90"}, input_attr_data, input_label_data, input_label_offsets);
+
     // Check point query on each individual value.
     if (input_attr_data.empty()) {
       for (uint64_t index{0}; index < 4; ++index) {
-
-        check_values_from_range_reader(
-            {input_label_data_raw[index], input_label_data[index]},
-            {input_label_data[index]},
-            {});
+        auto label = std::to_string(input_label_data_raw[index]);
+        check_values_from_range_reader({label, label}, {}, {label}, {0});
       }
     } else {
       for (uint64_t index{0}; index < 4; ++index) {
+        auto label = std::to_string(input_label_data_raw[index]);
         check_values_from_range_reader(
-            {input_label_data[index], input_label_data[index]},
-            {input_label_data[index]},
-            {input_attr_data[index]});
+            {label, label}, {input_attr_data[index]}, {label}, {0});
       }
     }
-    */
   }
 }
