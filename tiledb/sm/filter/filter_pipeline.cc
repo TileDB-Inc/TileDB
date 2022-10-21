@@ -339,10 +339,8 @@ void FilterPipeline::filter_chunks_reverse(
   }
 
   if (total_size != tile.size()) {
-    auto e = FilterPipelineStatusException(
+    throw FilterPipelineStatusException(
         "Error incorrect unfiltered tile size allocated.");
-    LOG_STATUS(e);
-    throw e;
   }
 
   // Run each chunk through the entire pipeline.
