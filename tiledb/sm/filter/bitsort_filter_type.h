@@ -37,6 +37,7 @@
  */
 
 #include <functional>
+#include <utility>
 #include <vector>
 
 #ifndef TILEDB_BITSORT_FILTER_TYPE_H
@@ -51,25 +52,26 @@ class HilbertCmpQB;
 
 class BitSortFilterMetadataType {
  public:
-  BitSortFilterMetadataType() {
+  BitSortFilterMetadataType() : dim_tiles_(nullptr), comparator_(nullptr) {}
+
+  BitSortFilterMetadataType(
+      std::vector<Tile*>* dim_tiles,
+      std::function<bool(const uint64_t&, const uint64_t&)>* comparator)
+      : dim_tiles_(dim_tiles)
+      , comparator_(comparator) {
   }
 
   std::vector<Tile*>& dim_tiles() {
-    return dim_tiles_;
-  }
-
-  std::vector<uint64_t>& hilbert_values() {
-    return hilbert_values_;
+    return *dim_tiles_;
   }
 
   std::function<bool(const uint64_t&, const uint64_t&)>& comparator() {
-    return comparator_;
+    return *comparator_;
   }
 
  private:
-  std::vector<Tile*> dim_tiles_;
-  std::vector<uint64_t> hilbert_values_;
-  std::function<bool(const uint64_t&, const uint64_t&)> comparator_;
+  std::vector<Tile*>* dim_tiles_;
+  std::function<bool(const uint64_t&, const uint64_t&)>* comparator_;
 };
 
 }  // namespace sm

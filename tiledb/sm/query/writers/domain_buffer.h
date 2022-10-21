@@ -138,11 +138,12 @@ class SingleCoord {
       memcpy(coords_[d].data(), dv.content(), sizes_[d]);
 
       if (var_size) {
-        qb_[d].set_offsets_buffer(
-            &single_offset_[0], &sizes_[schema.dim_num()]);
-        qb_[d].set_data_var_buffer(coords_[d].data(), &sizes_[d]);
+        throw_if_not_ok(qb_[d].set_offsets_buffer(
+            &single_offset_[0], &sizes_[schema.dim_num()]));
+        throw_if_not_ok(
+            qb_[d].set_data_var_buffer(coords_[d].data(), &sizes_[d]));
       } else {
-        qb_[d].set_data_buffer(coords_[d].data(), &sizes_[d]);
+        throw_if_not_ok(qb_[d].set_data_buffer(coords_[d].data(), &sizes_[d]));
       }
     }
   }
@@ -173,11 +174,13 @@ class SingleCoord {
       memcpy(coords_[d].data(), coords[d].data(), sizes[d]);
 
       if (var_size) {
-        qb_[d].set_offsets_buffer(
-            single_offset_.data(), sizes_.data() + schema.dim_num());
-        qb_[d].set_data_var_buffer(coords_[d].data(), sizes_.data() + d);
+        throw_if_not_ok(qb_[d].set_offsets_buffer(
+            single_offset_.data(), sizes_.data() + schema.dim_num()));
+        throw_if_not_ok(
+            qb_[d].set_data_var_buffer(coords_[d].data(), sizes_.data() + d));
       } else {
-        qb_[d].set_data_buffer(coords_[d].data(), sizes_.data() + d);
+        throw_if_not_ok(
+            qb_[d].set_data_buffer(coords_[d].data(), sizes_.data() + d));
       }
     }
   }

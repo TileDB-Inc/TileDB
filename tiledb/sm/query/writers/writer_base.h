@@ -44,6 +44,7 @@
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/query/writers/dense_tiler.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/tile/writer_tile.h"
 
 using namespace tiledb::common;
@@ -55,7 +56,6 @@ class Array;
 class DomainBuffersView;
 class FragmentMetadata;
 class TileMetadataGenerator;
-class StorageManager;
 
 using WriterTileVector = std::vector<WriterTile>;
 
@@ -282,48 +282,46 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * Runs the input tiles for the input attribute through the filter pipeline.
    * The tile buffers are modified to contain the output of the pipeline.
    *
-   * @tparam SupportTileType Type of the support argument passed to the filter
-   * pipeline.
    * @param name The attribute/dimension the tiles belong to.
    * @param tile The tiles to be filtered.
-   * @param dim_tiles The dimension tile array (used for BitSortFilter).
    * @return Status
    */
+  Status filter_tiles(const std::string& name, WriterTileVector* tiles);
 
-  template <typename SupportTileType>
-  Status filter_tiles(
+  /**
+   * Runs the input tiles for the input attribute through the filter pipeline
+   * for a bitsort attribute.
+   * The tile buffers are modified to contain the output of the pipeline.
+   *
+   * @param name The attribute/dimension the tiles belong to.
+   * @param tiles The tiles map, per attribute.
+   * @return Status
+   */
+  Status filter_tiles_bitsort(
       const std::string& name,
-      WriterTileVector* tiles,
-      const std::vector<WriterTileVector*>& dim_tiles = {});
+      std::unordered_map<std::string, WriterTileVector>* tiles);
 
   /**
    * Runs the input tile for the input attribute/dimension through the filter
    * pipeline. The tile buffer is modified to contain the output of the
    * pipeline.
    *
-   * @tparam SupportTileType Type of the support argument passed to the filter
-   * pipeline.
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be filtered.
-   * @param support_tile The support tile argument passed to the filter
-   * pipeline.
+   * @param offsets_tile The offsets tile in case of a var tile, or null.
    * @param offsets True if the tile to be filtered contains offsets for a
    *    var-sized attribute/dimension.
-   * @param offsets True if the tile to be filtered contains validity values.
+   * @param nullable True if the tile to be filtered contains validity values.
+   * @param support_data Support data for the filter.
    * @return Status
    */
-
-  template <
-      typename SupportTileType,
-      typename std::enable_if<
-          !std::is_same<SupportTileType, std::nullptr_t>::value>::type* =
-          nullptr>
   Status filter_tile(
       const std::string& name,
       Tile* tile,
-      SupportTileType support_tile,
+      Tile* offsets_tile,
       bool offsets,
-      bool nullable);
+      bool nullable,
+      void* support_data);
 
   /**
    * Determines if an attribute has min max metadata.

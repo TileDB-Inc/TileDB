@@ -66,22 +66,20 @@ const bool& GroupMember::relative() const {
   return relative_;
 }
 
-void GroupMember::serialize(Serializer &) {
+void GroupMember::serialize(Serializer&) {
   throw StatusException(
       Status_GroupMemberError("Invalid call to GroupMember::serialize"));
 }
 
-tdb_shared_ptr<GroupMember>
-GroupMember::deserialize(Deserializer &deserializer) {
+tdb_shared_ptr<GroupMember> GroupMember::deserialize(
+    Deserializer& deserializer) {
   uint32_t version = 0;
   version = deserializer.read<uint32_t>();
   if (version == 1) {
     return GroupMemberV1::deserialize(deserializer);
   }
-  throw StatusException(
-    Status_GroupError(
-              "Unsupported group member version " + std::to_string(version))
-          );
+  throw StatusException(Status_GroupError(
+      "Unsupported group member version " + std::to_string(version)));
 }
 }  // namespace sm
 }  // namespace tiledb

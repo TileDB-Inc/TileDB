@@ -45,6 +45,7 @@
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_space_tile.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 #include <queue>
@@ -55,7 +56,6 @@ namespace sm {
 
 class Array;
 class ArraySchema;
-class StorageManager;
 class Subarray;
 
 /** Processes read queries. */
@@ -501,30 +501,7 @@ class ReaderBase : public StrategyBase {
    * @param name Attribute/dimension the tile belong to.
    * @param tile Tile to be unfiltered.
    * @param tile_chunk_data Tile chunk info, buffers and offsets
-   * @return Status
-   */
-  Status unfilter_tile_chunk_range(
-      uint64_t num_range_threads,
-      uint64_t thread_idx,
-      const std::string& name,
-      Tile* tile,
-      const ChunkData& tile_chunk_data) const;
-
-  /**
-   * Runs the input fixed-sized tile for the input attribute or dimension
-   * through the filter pipeline. The tile buffer is modified to contain the
-   * output of the pipeline. Used only by new readers that parallelize on chunk
-   * ranges.
-   *
-   * This function should only be called when the attribute filtering
-   * includes a bitsort filter.
-   *
-   * @param num_range_threads Total number of range threads.
-   * @param range_thread_idx Current range thread index.
-   * @param name Attribute/dimension the tile belong to.
-   * @param tile Tile to be unfiltered.
-   * @param tile_chunk_data Tile chunk info, buffers and offsets
-   * @param pair Stores the metadata needed to run the bitsort filter.
+   * @param support_data Support data for the filter
    * @return Status
    */
   Status unfilter_tile_chunk_range(
@@ -533,7 +510,7 @@ class ReaderBase : public StrategyBase {
       const std::string& name,
       Tile* tile,
       const ChunkData& tile_chunk_data,
-      BitSortFilterMetadataType& bitsort_metadata) const;
+      void* support_data = nullptr) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -630,27 +607,11 @@ class ReaderBase : public StrategyBase {
    *
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be unfiltered.
-   * @return Status
-   */
-  Status unfilter_tile(const std::string& name, Tile* tile) const;
-
-  /**
-   * Runs the input fixed-sized tile for the input attribute or dimension
-   * through the filter pipeline. The tile buffer is modified to contain the
-   * output of the pipeline.
-   *
-   * This function should only be called when the attribute filtering
-   * includes a bitsort filter.
-   *
-   * @param name The attribute/dimension the tile belong to.
-   * @param tile The tile to be unfiltered.
-   * @param pair Stores the metadata needed to run the bitsort filter.
+   * @param support_data Support data for the filter.
    * @return Status
    */
   Status unfilter_tile(
-      const std::string& name,
-      Tile* tile,
-      BitSortFilterMetadataType& bitsort_metadata) const;
+      const std::string& name, Tile* tile, void* support_data = nullptr) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -842,6 +803,18 @@ class ReaderBase : public StrategyBase {
       const bool nullable) const;
 
  private:
+  /**
+   * @brief Class that stores all the storage needed to keep bitsort
+   * metadata.
+   * @tparam CmpObject The comparator object being stored.
+   */
+    template <
+        typename CmpObject,
+        typename std::enable_if_t<
+            std::is_same_v<CmpObject, HilbertCmpQB> ||
+            std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
+  struct BitSortFilterMetadataStorage;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -859,25 +832,23 @@ class ReaderBase : public StrategyBase {
       std::vector<uint64_t>& hilbert_values) const;
 
   /**
-   * @brief Constructs global order comparator object, to be passed into
-   * the bitsort filter.
+   * @brief Constructs the bitsort metadata object.
    *
+   * @tparam CmpObject The comparator object being constructed.
    * @param tile Fixed tile that is being unfiltered.
-   * @param dim_tiles Reference to storage for dimension tiles.
-   * @param qb_vector Reference to storage for query buffer vector.
-   * @param db Reference to storage for the domain buffer view object.
-   * @return CmpObject The comparator object with the dimension tile data.
+   * @param bitsort_storage Storage for all the vectors needed to construct the
+   * bitsort filter.
+   * @return BitSortFilterMetadataType the constructed argument.
    */
+
   template <
       typename CmpObject,
       typename std::enable_if_t<
           std::is_same_v<CmpObject, HilbertCmpQB> ||
           std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
-  CmpObject construct_bitsort_filter_argument(
+  BitSortFilterMetadataType construct_bitsort_filter_argument(
       ResultTile* const tile,
-      BitSortFilterMetadataType& bitsort_metadata,
-      std::vector<QueryBuffer>& qb_vector,
-      std::optional<DomainBuffersView>& db) const;
+      BitSortFilterMetadataStorage<CmpObject>& bitsort_storage) const;
 };
 
 }  // namespace sm

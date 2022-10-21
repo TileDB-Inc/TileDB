@@ -83,7 +83,7 @@ class Add1InPlace : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
-      Tile* const,
+      void* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -107,7 +107,7 @@ class Add1InPlace : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
-      Tile* const,
+      void*,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -154,7 +154,7 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
-      Tile* const,
+      void* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -189,7 +189,7 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
-      Tile* const,
+      void*,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -247,7 +247,7 @@ class AddNInPlace : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
-      Tile* const,
+      void* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -270,7 +270,7 @@ class AddNInPlace : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
-      Tile* const,
+      void*,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -330,7 +330,7 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
-      Tile* const,
+      void* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -361,7 +361,7 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
-      Tile* const,
+      void*,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -421,7 +421,7 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
 
   Status run_forward(
       const Tile&,
-      Tile* const,
+      void* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -476,7 +476,7 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
-      Tile* const,
+      void*,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -544,12 +544,13 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -613,12 +614,13 @@ TEST_CASE(
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -658,12 +660,14 @@ TEST_CASE(
       offsets.size() * constants::cell_var_offset_size;
 
   Tile offsets_tile;
-  offsets_tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      offsets_tile_size,
-      constants::cell_var_offset_size,
-      dim_num);
+  CHECK(offsets_tile
+            .init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                offsets_tile_size,
+                constants::cell_var_offset_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < offsets.size(); i++) {
@@ -738,12 +742,13 @@ TEST_CASE(
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -752,7 +757,7 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(Add1InPlace()).ok());
+  pipeline.add_filter(Add1InPlace());
 
   SECTION("- Single stage") {
     CHECK(
@@ -802,8 +807,8 @@ TEST_CASE(
 
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
-    CHECK(pipeline.add_filter(Add1InPlace()).ok());
-    CHECK(pipeline.add_filter(Add1InPlace()).ok());
+    pipeline.add_filter(Add1InPlace());
+    pipeline.add_filter(Add1InPlace());
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
@@ -861,12 +866,13 @@ TEST_CASE(
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -906,12 +912,14 @@ TEST_CASE(
       offsets.size() * constants::cell_var_offset_size;
 
   Tile offsets_tile;
-  offsets_tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      offsets_tile_size,
-      constants::cell_var_offset_size,
-      dim_num);
+  CHECK(offsets_tile
+            .init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                offsets_tile_size,
+                constants::cell_var_offset_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < offsets.size(); i++) {
@@ -925,7 +933,7 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(Add1InPlace()).ok());
+  pipeline.add_filter(Add1InPlace());
 
   SECTION("- Single stage") {
     Tile::set_max_tile_chunk_size(80);
@@ -981,8 +989,8 @@ TEST_CASE(
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
     Tile::set_max_tile_chunk_size(80);
-    CHECK(pipeline.add_filter(Add1InPlace()).ok());
-    CHECK(pipeline.add_filter(Add1InPlace()).ok());
+    pipeline.add_filter(Add1InPlace());
+    pipeline.add_filter(Add1InPlace());
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
 
@@ -1047,12 +1055,13 @@ TEST_CASE(
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -1061,7 +1070,7 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
+  pipeline.add_filter(Add1OutOfPlace());
 
   SECTION("- Single stage") {
     CHECK(
@@ -1111,8 +1120,8 @@ TEST_CASE(
 
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
-    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
+    pipeline.add_filter(Add1OutOfPlace());
+    pipeline.add_filter(Add1OutOfPlace());
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
@@ -1170,12 +1179,13 @@ TEST_CASE(
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -1215,12 +1225,14 @@ TEST_CASE(
       offsets.size() * constants::cell_var_offset_size;
 
   Tile offsets_tile;
-  offsets_tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      offsets_tile_size,
-      constants::cell_var_offset_size,
-      dim_num);
+  CHECK(offsets_tile
+            .init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                offsets_tile_size,
+                constants::cell_var_offset_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < offsets.size(); i++) {
@@ -1234,7 +1246,7 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
+  pipeline.add_filter(Add1OutOfPlace());
 
   SECTION("- Single stage") {
     Tile::set_max_tile_chunk_size(80);
@@ -1290,8 +1302,8 @@ TEST_CASE(
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
     Tile::set_max_tile_chunk_size(80);
-    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
+    pipeline.add_filter(Add1OutOfPlace());
+    pipeline.add_filter(Add1OutOfPlace());
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
 
@@ -1356,12 +1368,13 @@ TEST_CASE(
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -1370,10 +1383,10 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(Add1InPlace()).ok());
-  CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-  CHECK(pipeline.add_filter(Add1InPlace()).ok());
-  CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
+  pipeline.add_filter(Add1InPlace());
+  pipeline.add_filter(Add1OutOfPlace());
+  pipeline.add_filter(Add1InPlace());
+  pipeline.add_filter(Add1OutOfPlace());
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
   CHECK(tile.size() == 0);
@@ -1428,12 +1441,13 @@ TEST_CASE(
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -1473,12 +1487,14 @@ TEST_CASE(
       offsets.size() * constants::cell_var_offset_size;
 
   Tile offsets_tile;
-  offsets_tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      offsets_tile_size,
-      constants::cell_var_offset_size,
-      dim_num);
+  CHECK(offsets_tile
+            .init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                offsets_tile_size,
+                constants::cell_var_offset_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < offsets.size(); i++) {
@@ -1493,10 +1509,10 @@ TEST_CASE(
   FilterPipeline pipeline;
   ThreadPool tp(4);
   Tile::set_max_tile_chunk_size(80);
-  CHECK(pipeline.add_filter(Add1InPlace()).ok());
-  CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-  CHECK(pipeline.add_filter(Add1InPlace()).ok());
-  CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
+  pipeline.add_filter(Add1InPlace());
+  pipeline.add_filter(Add1OutOfPlace());
+  pipeline.add_filter(Add1InPlace());
+  pipeline.add_filter(Add1OutOfPlace());
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
             .ok());
 
@@ -1556,12 +1572,13 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -1571,23 +1588,25 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   // Set up dummy array schema (needed by compressor filter for cell size, etc).
   uint32_t dim_dom[] = {1, 10};
   tiledb::sm::Dimension dim{"", Datatype::INT32};
-  dim.set_domain(dim_dom);
+  CHECK(dim.set_domain(dim_dom).ok());
   tiledb::sm::Domain domain;
-  domain.add_dimension(make_shared<tiledb::sm::Dimension>(HERE(), &dim));
+  CHECK(domain.add_dimension(make_shared<tiledb::sm::Dimension>(HERE(), &dim))
+            .ok());
   tiledb::sm::ArraySchema schema;
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
-  schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), &attr));
-  schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain));
-  schema.init();
+  CHECK(schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), &attr))
+            .ok());
+  CHECK(
+      schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain)).ok());
+  CHECK(schema.init().ok());
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
 
   SECTION("- Simple") {
-    CHECK(pipeline.add_filter(Add1InPlace()).ok());
-    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-    CHECK(pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5))
-              .ok());
+    pipeline.add_filter(Add1InPlace());
+    pipeline.add_filter(Add1OutOfPlace());
+    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5));
 
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
@@ -1610,9 +1629,8 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   }
 
   SECTION("- With checksum stage") {
-    CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
-    CHECK(pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5))
-              .ok());
+    pipeline.add_filter(PseudoChecksumFilter());
+    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5));
 
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
@@ -1635,11 +1653,10 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   }
 
   SECTION("- With multiple stages") {
-    CHECK(pipeline.add_filter(Add1InPlace()).ok());
-    CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
-    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-    CHECK(pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5))
-              .ok());
+    pipeline.add_filter(Add1InPlace());
+    pipeline.add_filter(PseudoChecksumFilter());
+    pipeline.add_filter(Add1OutOfPlace());
+    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5));
 
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
@@ -1671,12 +1688,13 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -1716,12 +1734,14 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
       offsets.size() * constants::cell_var_offset_size;
 
   Tile offsets_tile;
-  offsets_tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      offsets_tile_size,
-      constants::cell_var_offset_size,
-      dim_num);
+  CHECK(offsets_tile
+            .init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                offsets_tile_size,
+                constants::cell_var_offset_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < offsets.size(); i++) {
@@ -1736,24 +1756,26 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
   // Set up dummy array schema (needed by compressor filter for cell size, etc).
   uint32_t dim_dom[] = {1, 10};
   tiledb::sm::Dimension dim{"", Datatype::INT32};
-  dim.set_domain(dim_dom);
+  CHECK(dim.set_domain(dim_dom).ok());
   tiledb::sm::Domain domain;
-  domain.add_dimension(make_shared<tiledb::sm::Dimension>(HERE(), &dim));
+  CHECK(domain.add_dimension(make_shared<tiledb::sm::Dimension>(HERE(), &dim))
+            .ok());
   tiledb::sm::ArraySchema schema;
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
-  schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), &attr));
-  schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain));
-  schema.init();
+  CHECK(schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), &attr))
+            .ok());
+  CHECK(
+      schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain)).ok());
+  CHECK(schema.init().ok());
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
 
   SECTION("- Simple") {
     Tile::set_max_tile_chunk_size(80);
-    CHECK(pipeline.add_filter(Add1InPlace()).ok());
-    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-    CHECK(pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5))
-              .ok());
+    pipeline.add_filter(Add1InPlace());
+    pipeline.add_filter(Add1OutOfPlace());
+    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5));
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
@@ -1779,9 +1801,8 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
 
   SECTION("- With checksum stage") {
     Tile::set_max_tile_chunk_size(80);
-    CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
-    CHECK(pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5))
-              .ok());
+    pipeline.add_filter(PseudoChecksumFilter());
+    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5));
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
@@ -1807,11 +1828,10 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
 
   SECTION("- With multiple stages") {
     Tile::set_max_tile_chunk_size(80);
-    CHECK(pipeline.add_filter(Add1InPlace()).ok());
-    CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
-    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-    CHECK(pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5))
-              .ok());
+    pipeline.add_filter(Add1InPlace());
+    pipeline.add_filter(PseudoChecksumFilter());
+    pipeline.add_filter(Add1OutOfPlace());
+    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5));
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
@@ -1849,12 +1869,13 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -1863,7 +1884,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
+  pipeline.add_filter(PseudoChecksumFilter());
 
   SECTION("- Single stage") {
     CHECK(
@@ -1919,9 +1940,9 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
   }
 
   SECTION("- Multi-stage") {
-    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-    CHECK(pipeline.add_filter(Add1InPlace()).ok());
-    CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
+    pipeline.add_filter(Add1OutOfPlace());
+    pipeline.add_filter(Add1InPlace());
+    pipeline.add_filter(PseudoChecksumFilter());
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
@@ -1996,12 +2017,13 @@ TEST_CASE(
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -2041,12 +2063,14 @@ TEST_CASE(
       offsets.size() * constants::cell_var_offset_size;
 
   Tile offsets_tile;
-  offsets_tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      offsets_tile_size,
-      constants::cell_var_offset_size,
-      dim_num);
+  CHECK(offsets_tile
+            .init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                offsets_tile_size,
+                constants::cell_var_offset_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < offsets.size(); i++) {
@@ -2063,7 +2087,7 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
+  pipeline.add_filter(PseudoChecksumFilter());
 
   SECTION("- Single stage") {
     Tile::set_max_tile_chunk_size(80);
@@ -2125,9 +2149,9 @@ TEST_CASE(
 
   SECTION("- Multi-stage") {
     Tile::set_max_tile_chunk_size(80);
-    CHECK(pipeline.add_filter(Add1OutOfPlace()).ok());
-    CHECK(pipeline.add_filter(Add1InPlace()).ok());
-    CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
+    pipeline.add_filter(Add1OutOfPlace());
+    pipeline.add_filter(Add1InPlace());
+    pipeline.add_filter(PseudoChecksumFilter());
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
 
@@ -2204,12 +2228,13 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -2218,9 +2243,9 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(Add1InPlace()).ok());
-  CHECK(pipeline.add_filter(AddNInPlace()).ok());
-  CHECK(pipeline.add_filter(Add1InPlace()).ok());
+  pipeline.add_filter(Add1InPlace());
+  pipeline.add_filter(AddNInPlace());
+  pipeline.add_filter(Add1InPlace());
 
   // Get non-existent filter instance
   auto* cksum = pipeline.get_filter<PseudoChecksumFilter>();
@@ -2280,12 +2305,13 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -2325,12 +2351,14 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
       offsets.size() * constants::cell_var_offset_size;
 
   Tile offsets_tile;
-  offsets_tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      offsets_tile_size,
-      constants::cell_var_offset_size,
-      dim_num);
+  CHECK(offsets_tile
+            .init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                offsets_tile_size,
+                constants::cell_var_offset_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < offsets.size(); i++) {
@@ -2344,9 +2372,9 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(Add1InPlace()).ok());
-  CHECK(pipeline.add_filter(AddNInPlace()).ok());
-  CHECK(pipeline.add_filter(Add1InPlace()).ok());
+  pipeline.add_filter(Add1InPlace());
+  pipeline.add_filter(AddNInPlace());
+  pipeline.add_filter(Add1InPlace());
 
   // Get non-existent filter instance
   auto* cksum = pipeline.get_filter<PseudoChecksumFilter>();
@@ -2419,12 +2447,13 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -2433,10 +2462,10 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(Add1InPlace()).ok());
-  CHECK(pipeline.add_filter(AddNInPlace()).ok());
-  CHECK(pipeline.add_filter(Add1InPlace()).ok());
-  CHECK(pipeline.add_filter(PseudoChecksumFilter()).ok());
+  pipeline.add_filter(Add1InPlace());
+  pipeline.add_filter(AddNInPlace());
+  pipeline.add_filter(Add1InPlace());
+  pipeline.add_filter(PseudoChecksumFilter());
 
   // Modify +N filter
   auto* add_n = pipeline.get_filter<AddNInPlace>();
@@ -2508,12 +2537,13 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -2570,12 +2600,12 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
       if (j == 0 && rng_bool(gen) == 1) {
         auto idx = (unsigned)rng_constructors_first(gen);
         tiledb::sm::Filter* filter = constructors_first[idx]();
-        CHECK(pipeline.add_filter(*filter).ok());
+        pipeline.add_filter(*filter);
         delete filter;
       } else {
         auto idx = (unsigned)rng_constructors(gen);
         tiledb::sm::Filter* filter = constructors[idx]();
-        CHECK(pipeline.add_filter(*filter).ok());
+        pipeline.add_filter(*filter);
         delete filter;
       }
     }
@@ -2610,12 +2640,13 @@ TEST_CASE(
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -2626,7 +2657,7 @@ TEST_CASE(
   FilterPipeline md5_pipeline;
   ThreadPool tp(4);
   ChecksumMD5Filter md5_filter;
-  CHECK(md5_pipeline.add_filter(md5_filter).ok());
+  md5_pipeline.add_filter(md5_filter);
   CHECK(md5_pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp)
             .ok());
   CHECK(tile.size() == 0);
@@ -2645,7 +2676,7 @@ TEST_CASE(
   // SHA256
   FilterPipeline sha_256_pipeline;
   ChecksumMD5Filter sha_256_filter;
-  CHECK(sha_256_pipeline.add_filter(sha_256_filter).ok());
+  sha_256_pipeline.add_filter(sha_256_filter);
   CHECK(sha_256_pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp)
             .ok());
   CHECK(tile.size() == 0);
@@ -2672,12 +2703,13 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -2686,7 +2718,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(BitWidthReductionFilter()).ok());
+  pipeline.add_filter(BitWidthReductionFilter());
 
   SECTION("- Single stage") {
     CHECK(
@@ -2764,12 +2796,13 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     INFO("Random element seed: " << seed);
 
     Tile tile;
-    tile.init_unfiltered(
-        constants::format_version,
-        Datatype::UINT64,
-        tile_size,
-        cell_size,
-        dim_num);
+    CHECK(tile.init_unfiltered(
+                  constants::format_version,
+                  Datatype::UINT64,
+                  tile_size,
+                  cell_size,
+                  dim_num)
+              .ok());
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
@@ -2805,12 +2838,13 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     const uint64_t tile_size2 = nelts * sizeof(uint32_t);
 
     Tile tile;
-    tile.init_unfiltered(
-        constants::format_version,
-        Datatype::UINT64,
-        tile_size2,
-        cell_size,
-        dim_num);
+    CHECK(tile.init_unfiltered(
+                  constants::format_version,
+                  Datatype::UINT64,
+                  tile_size2,
+                  cell_size,
+                  dim_num)
+              .ok());
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
@@ -2836,12 +2870,13 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
 
   SECTION("- Byte overflow") {
     Tile tile;
-    tile.init_unfiltered(
-        constants::format_version,
-        Datatype::UINT64,
-        tile_size,
-        cell_size,
-        dim_num);
+    CHECK(tile.init_unfiltered(
+                  constants::format_version,
+                  Datatype::UINT64,
+                  tile_size,
+                  cell_size,
+                  dim_num)
+              .ok());
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
@@ -2877,12 +2912,13 @@ TEST_CASE(
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -2922,12 +2958,14 @@ TEST_CASE(
       offsets.size() * constants::cell_var_offset_size;
 
   Tile offsets_tile;
-  offsets_tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      offsets_tile_size,
-      constants::cell_var_offset_size,
-      dim_num);
+  CHECK(offsets_tile
+            .init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                offsets_tile_size,
+                constants::cell_var_offset_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < offsets.size(); i++) {
@@ -2941,7 +2979,7 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(BitWidthReductionFilter()).ok());
+  pipeline.add_filter(BitWidthReductionFilter());
 
   SECTION("- Single stage") {
     Tile::set_max_tile_chunk_size(80);
@@ -3045,12 +3083,13 @@ TEST_CASE(
     INFO("Random element seed: " << seed);
 
     Tile tile;
-    tile.init_unfiltered(
-        constants::format_version,
-        Datatype::UINT64,
-        tile_size,
-        cell_size,
-        dim_num);
+    CHECK(tile.init_unfiltered(
+                  constants::format_version,
+                  Datatype::UINT64,
+                  tile_size,
+                  cell_size,
+                  dim_num)
+              .ok());
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
@@ -3087,12 +3126,13 @@ TEST_CASE(
     const uint64_t tile_size2 = nelts * sizeof(uint32_t);
 
     Tile tile;
-    tile.init_unfiltered(
-        constants::format_version,
-        Datatype::UINT64,
-        tile_size2,
-        cell_size,
-        dim_num);
+    CHECK(tile.init_unfiltered(
+                  constants::format_version,
+                  Datatype::UINT64,
+                  tile_size2,
+                  cell_size,
+                  dim_num)
+              .ok());
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
@@ -3106,12 +3146,14 @@ TEST_CASE(
     }
 
     Tile offsets_tile32;
-    offsets_tile32.init_unfiltered(
-        constants::format_version,
-        Datatype::UINT64,
-        offsets_tile_size,
-        constants::cell_var_offset_size,
-        dim_num);
+    CHECK(offsets_tile32
+              .init_unfiltered(
+                  constants::format_version,
+                  Datatype::UINT64,
+                  offsets_tile_size,
+                  constants::cell_var_offset_size,
+                  dim_num)
+              .ok());
 
     // Set up test data
     for (uint64_t i = 0; i < offsets.size(); i++) {
@@ -3143,12 +3185,13 @@ TEST_CASE(
   SECTION("- Byte overflow") {
     Tile::set_max_tile_chunk_size(80);
     Tile tile;
-    tile.init_unfiltered(
-        constants::format_version,
-        Datatype::UINT64,
-        tile_size,
-        cell_size,
-        dim_num);
+    CHECK(tile.init_unfiltered(
+                  constants::format_version,
+                  Datatype::UINT64,
+                  tile_size,
+                  cell_size,
+                  dim_num)
+              .ok());
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
@@ -3185,12 +3228,13 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -3199,7 +3243,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(PositiveDeltaFilter()).ok());
+  pipeline.add_filter(PositiveDeltaFilter());
 
   SECTION("- Single stage") {
     CHECK(
@@ -3291,12 +3335,13 @@ TEST_CASE(
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -3336,12 +3381,14 @@ TEST_CASE(
       offsets.size() * constants::cell_var_offset_size;
 
   Tile offsets_tile;
-  offsets_tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      offsets_tile_size,
-      constants::cell_var_offset_size,
-      dim_num);
+  CHECK(offsets_tile
+            .init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                offsets_tile_size,
+                constants::cell_var_offset_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < offsets.size(); i++) {
@@ -3355,7 +3402,7 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(PositiveDeltaFilter()).ok());
+  pipeline.add_filter(PositiveDeltaFilter());
 
   SECTION("- Single stage") {
     Tile::set_max_tile_chunk_size(80);
@@ -3476,12 +3523,13 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -3490,7 +3538,7 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(BitshuffleFilter()).ok());
+  pipeline.add_filter(BitshuffleFilter());
 
   SECTION("- Single stage") {
     CHECK(
@@ -3514,12 +3562,14 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
     const uint64_t tile_size2 = nelts2 * sizeof(uint32_t);
 
     Tile tile2;
-    tile2.init_unfiltered(
-        constants::format_version,
-        Datatype::UINT32,
-        tile_size2,
-        sizeof(uint32_t),
-        dim_num);
+    CHECK(tile2
+              .init_unfiltered(
+                  constants::format_version,
+                  Datatype::UINT32,
+                  tile_size2,
+                  sizeof(uint32_t),
+                  dim_num)
+              .ok());
 
     // Set up test data
     for (uint32_t i = 0; i < nelts2; i++) {
@@ -3552,12 +3602,13 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -3597,12 +3648,14 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
       offsets.size() * constants::cell_var_offset_size;
 
   Tile offsets_tile;
-  offsets_tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      offsets_tile_size,
-      constants::cell_var_offset_size,
-      dim_num);
+  CHECK(offsets_tile
+            .init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                offsets_tile_size,
+                constants::cell_var_offset_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < offsets.size(); i++) {
@@ -3616,7 +3669,7 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(BitshuffleFilter()).ok());
+  pipeline.add_filter(BitshuffleFilter());
 
   SECTION("- Single stage") {
     Tile::set_max_tile_chunk_size(80);
@@ -3642,12 +3695,14 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
     const uint64_t tile_size2 = nelts2 * sizeof(uint32_t);
 
     Tile tile2;
-    tile2.init_unfiltered(
-        constants::format_version,
-        Datatype::UINT32,
-        tile_size2,
-        sizeof(uint32_t),
-        dim_num);
+    CHECK(tile2
+              .init_unfiltered(
+                  constants::format_version,
+                  Datatype::UINT32,
+                  tile_size2,
+                  sizeof(uint32_t),
+                  dim_num)
+              .ok());
 
     // Set up test data
     for (uint32_t i = 0; i < nelts2; i++) {
@@ -3684,12 +3739,13 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -3698,7 +3754,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(ByteshuffleFilter()).ok());
+  pipeline.add_filter(ByteshuffleFilter());
 
   SECTION("- Single stage") {
     CHECK(
@@ -3722,12 +3778,14 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
     const uint64_t tile_size2 = nelts2 * sizeof(uint32_t);
 
     Tile tile2;
-    tile2.init_unfiltered(
-        constants::format_version,
-        Datatype::UINT32,
-        tile_size2,
-        sizeof(uint32_t),
-        dim_num);
+    CHECK(tile2
+              .init_unfiltered(
+                  constants::format_version,
+                  Datatype::UINT32,
+                  tile_size2,
+                  sizeof(uint32_t),
+                  dim_num)
+              .ok());
 
     // Set up test data
     for (uint32_t i = 0; i < nelts2; i++) {
@@ -3760,12 +3818,13 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -3805,12 +3864,14 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
       offsets.size() * constants::cell_var_offset_size;
 
   Tile offsets_tile;
-  offsets_tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      offsets_tile_size,
-      constants::cell_var_offset_size,
-      dim_num);
+  CHECK(offsets_tile
+            .init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                offsets_tile_size,
+                constants::cell_var_offset_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < offsets.size(); i++) {
@@ -3824,7 +3885,7 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(ByteshuffleFilter()).ok());
+  pipeline.add_filter(ByteshuffleFilter());
 
   SECTION("- Single stage") {
     Tile::set_max_tile_chunk_size(80);
@@ -3850,12 +3911,14 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
     const uint64_t tile_size2 = nelts2 * sizeof(uint32_t);
 
     Tile tile2;
-    tile2.init_unfiltered(
-        constants::format_version,
-        Datatype::UINT32,
-        tile_size2,
-        sizeof(uint32_t),
-        dim_num);
+    CHECK(tile2
+              .init_unfiltered(
+                  constants::format_version,
+                  Datatype::UINT32,
+                  tile_size2,
+                  sizeof(uint32_t),
+                  dim_num)
+              .ok());
 
     // Set up test data
     for (uint32_t i = 0; i < nelts2; i++) {
@@ -3892,12 +3955,13 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version,
-      Datatype::UINT64,
-      tile_size,
-      cell_size,
-      dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version,
+                Datatype::UINT64,
+                tile_size,
+                cell_size,
+                dim_num)
+            .ok());
 
   // Set up test data
   for (uint64_t i = 0; i < nelts; i++) {
@@ -3907,7 +3971,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
   SECTION("- AES-256-GCM") {
     FilterPipeline pipeline;
     ThreadPool tp(4);
-    CHECK(pipeline.add_filter(EncryptionAES256GCMFilter()).ok());
+    pipeline.add_filter(EncryptionAES256GCMFilter());
 
     // No key set
     CHECK(
@@ -3918,7 +3982,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     for (unsigned i = 0; i < 32; i++)
       key[i] = (char)i;
     auto filter = pipeline.get_filter<EncryptionAES256GCMFilter>();
-    CHECK(filter->set_key(key).ok());
+    filter->set_key(key);
 
     // Check success
     CHECK(
@@ -3940,7 +4004,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
     key[0]++;
-    CHECK(filter->set_key(key).ok());
+    filter->set_key(key);
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
     CHECK(!pipeline
                .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
@@ -3950,7 +4014,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     // leaving the tile data unmodified when the decryption fails, which is not
     // true in general use of the filter pipeline.
     key[0]--;
-    CHECK(filter->set_key(key).ok());
+    filter->set_key(key);
     CHECK(tile.alloc_data(nelts * sizeof(uint64_t)).ok());
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
@@ -3991,8 +4055,9 @@ void testing_float_scaling_filter() {
     }
   }
 
-  tile.init_unfiltered(
-      constants::format_version, t, tile_size, cell_size, dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version, t, tile_size, cell_size, dim_num)
+            .ok());
 
   std::vector<FloatingType> float_result_vec;
   double scale = 2.53;
@@ -4018,13 +4083,16 @@ void testing_float_scaling_filter() {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(FloatScalingFilter()).ok());
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width);
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_FACTOR, &scale);
-  pipeline.get_filter<FloatScalingFilter>()->set_option(
-      FilterOption::SCALE_FLOAT_OFFSET, &foffset);
+  pipeline.add_filter(FloatScalingFilter());
+  CHECK(pipeline.get_filter<FloatScalingFilter>()
+            ->set_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width)
+            .ok());
+  CHECK(pipeline.get_filter<FloatScalingFilter>()
+            ->set_option(FilterOption::SCALE_FLOAT_FACTOR, &scale)
+            .ok());
+  CHECK(pipeline.get_filter<FloatScalingFilter>()
+            ->set_option(FilterOption::SCALE_FLOAT_OFFSET, &foffset)
+            .ok());
 
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
@@ -4069,8 +4137,9 @@ void testing_xor_filter(Datatype t) {
   const uint32_t dim_num = 0;
 
   Tile tile;
-  tile.init_unfiltered(
-      constants::format_version, t, tile_size, cell_size, dim_num);
+  CHECK(tile.init_unfiltered(
+                constants::format_version, t, tile_size, cell_size, dim_num)
+            .ok());
 
   // Setting up the random number generator for the XOR filter testing.
   std::mt19937_64 gen(0x57A672DE);
@@ -4087,7 +4156,7 @@ void testing_xor_filter(Datatype t) {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  CHECK(pipeline.add_filter(XORFilter()).ok());
+  pipeline.add_filter(XORFilter());
 
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 

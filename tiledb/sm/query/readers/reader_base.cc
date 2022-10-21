@@ -44,8 +44,8 @@
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/hilbert_order.h"
+#include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/strategy_base.h"
@@ -55,11 +55,28 @@
 namespace tiledb {
 namespace sm {
 
+using dimension_size_type = uint32_t;
+
 class ReaderBaseStatusException : public StatusException {
  public:
   explicit ReaderBaseStatusException(const std::string& message)
       : StatusException("ReaderBase", message) {
   }
+};
+
+template <typename CmpObject,
+typename std::enable_if_t<std::is_same_v<CmpObject, HilbertCmpQB> || std::is_same_v<CmpObject, GlobalCmpQB>>*>
+struct ReaderBase::BitSortFilterMetadataStorage {
+      std::vector<Tile*> dim_tiles_;
+      std::vector<QueryBuffer> query_buffers_;
+      std::vector<uint64_t> hilbert_values_;
+      std::optional<DomainBuffersView> db_;
+      std::optional<CmpObject> cmp_obj_;
+      std::function<bool(const uint64_t&, const uint64_t&)> comparator_;
+
+      BitSortFilterMetadataType get_arg() {
+          return BitSortFilterMetadataType(&dim_tiles_, &comparator_);
+      }
 };
 
 /* ****************************** */
@@ -484,7 +501,7 @@ Status ReaderBase::load_tile_var_sizes(
           if (!schema->var_size(name))
             continue;
 
-          fragment->load_tile_var_sizes(*encryption_key, name);
+          throw_if_not_ok(fragment->load_tile_var_sizes(*encryption_key, name));
         }
 
         return Status::Ok();
@@ -1026,19 +1043,14 @@ Status ReaderBase::unfilter_tile_chunk_range(
       if (!nullable) {
         if (array_schema_.bitsort_filter_attr().has_value()) {
           BitSortFilterMetadataType bitsort_metadata;
-          std::vector<QueryBuffer> query_buffers;
-          std::optional<DomainBuffersView> db;
           if (array_schema_.cell_order() == Layout::HILBERT) {
-            HilbertCmpQB cmp_obj = construct_bitsort_filter_argument<HilbertCmpQB>(tile, bitsort_metadata, query_buffers, db);
-            bitsort_metadata.comparator() = [&cmp_obj](const uint64_t &left_idx, const uint64_t &right_idx){
-                return cmp_obj(left_idx, right_idx);
-              };
+            BitSortFilterMetadataStorage<HilbertCmpQB> bitsort_storage;
+              bitsort_metadata = construct_bitsort_filter_argument<HilbertCmpQB>(
+              tile, bitsort_storage);
           } else {
-            GlobalCmpQB cmp_obj =
-              construct_bitsort_filter_argument<GlobalCmpQB>(tile, bitsort_metadata, query_buffers, db);
-            bitsort_metadata.comparator() = [&cmp_obj](const uint64_t &left_idx, const uint64_t &right_idx){
-                return cmp_obj(left_idx, right_idx);
-              };
+            BitSortFilterMetadataStorage<GlobalCmpQB> bitsort_storage;
+              bitsort_metadata = construct_bitsort_filter_argument<GlobalCmpQB>(
+              tile, bitsort_storage);
           }
           RETURN_NOT_OK(unfilter_tile_chunk_range(
               num_range_threads,
@@ -1046,7 +1058,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
               name,
               t,
               tile_chunk_data,
-              bitsort_metadata));
+              &bitsort_metadata));
         } else {
           RETURN_NOT_OK(unfilter_tile_chunk_range(
               num_range_threads, range_thread_idx, name, t, tile_chunk_data));
@@ -1138,18 +1150,18 @@ Status ReaderBase::post_process_unfiltered_tile(
     auto& t = tile_tuple->fixed_tile();
     t.filtered_buffer().clear();
 
-    zip_tile_coordinates(name, &t);
+    throw_if_not_ok(zip_tile_coordinates(name, &t));
 
     if (var_size) {
       auto& t_var = tile_tuple->var_tile();
       t_var.filtered_buffer().clear();
-      zip_tile_coordinates(name, &t_var);
+      throw_if_not_ok(zip_tile_coordinates(name, &t_var));
     }
 
     if (nullable) {
       auto& t_validity = tile_tuple->validity_tile();
       t_validity.filtered_buffer().clear();
-      zip_tile_coordinates(name, &t_validity);
+      throw_if_not_ok(zip_tile_coordinates(name, &t_validity));
     }
   }
 
@@ -1202,7 +1214,7 @@ Status ReaderBase::unfilter_tiles_chunk_range(
         unfiltered_tile_validity_size[i] = tile_validity_size.value();
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, throw_if_not_ok(logger_->status(status)));
 
   if (tiles_chunk_data.empty())
     return Status::Ok();
@@ -1255,7 +1267,8 @@ Status ReaderBase::unfilter_tile_chunk_range(
     const uint64_t thread_idx,
     const std::string& name,
     Tile* tile,
-    const ChunkData& tile_chunk_data) const {
+    const ChunkData& tile_chunk_data,
+    void* support_data) const {
   assert(tile);
   // Prevent processing past the end of chunks in case there are more
   // threads than chunks.
@@ -1277,49 +1290,12 @@ Status ReaderBase::unfilter_tile_chunk_range(
   RETURN_NOT_OK(filters.run_reverse_chunk_range(
       stats_,
       tile,
+      support_data,
       tile_chunk_data,
       t_min,
       t_max,
       storage_manager_->compute_tp()->concurrency_level(),
       storage_manager_->config()));
-
-  return Status::Ok();
-}
-
-Status ReaderBase::unfilter_tile_chunk_range(
-    uint64_t num_range_threads,
-    uint64_t thread_idx,
-    const std::string& name,
-    Tile* tile,
-    const ChunkData& tile_chunk_data,
-    BitSortFilterMetadataType& bitsort_metadata) const {
-  assert(tile);
-  // Prevent processing past the end of chunks in case there are more
-  // threads than chunks.
-  if (thread_idx > tile_chunk_data.filtered_chunks_.size() - 1) {
-    return Status::Ok();
-  }
-
-  FilterPipeline filters = array_schema_.filters(name);
-
-  // Append an encryption unfilter when necessary.
-  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-      &filters, array_->get_encryption_key()));
-
-  // Compute chunk boundaries
-  auto&& [t_min, t_max] = compute_chunk_min_max(
-      tile_chunk_data.chunk_offsets_.size(), num_range_threads, thread_idx);
-
-  // Reverse the tile filters.
-  RETURN_NOT_OK(filters.run_reverse_chunk_range<true>(
-      stats_,
-      tile,
-      tile_chunk_data,
-      t_min,
-      t_max,
-      storage_manager_->compute_tp()->concurrency_level(),
-      storage_manager_->config(),
-      bitsort_metadata));
 
   return Status::Ok();
 }
@@ -1353,6 +1329,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
   RETURN_NOT_OK(offset_filters.run_reverse_chunk_range(
       stats_,
       tile,
+      nullptr,
       tile_chunk_data,
       t_min,
       t_max,
@@ -1368,6 +1345,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
     RETURN_NOT_OK(filters.run_reverse_chunk_range(
         stats_,
         tile_var,
+        nullptr,
         tile_var_chunk_data,
         tvar_min,
         tvar_max,
@@ -1410,6 +1388,7 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(filters.run_reverse_chunk_range(
         stats_,
         tile,
+        nullptr,
         tile_chunk_data,
         t_min,
         t_max,
@@ -1430,6 +1409,7 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(validity_filters.run_reverse_chunk_range(
         stats_,
         tile_validity,
+        nullptr,
         tile_validity_chunk_data,
         tval_min,
         tval_max,
@@ -1478,6 +1458,7 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(offset_filters.run_reverse_chunk_range(
         stats_,
         tile,
+        nullptr,
         tile_chunk_data,
         t_min,
         t_max,
@@ -1498,6 +1479,7 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(filters.run_reverse_chunk_range(
         stats_,
         tile_var,
+        nullptr,
         tile_var_chunk_data,
         tvar_min,
         tvar_max,
@@ -1518,6 +1500,7 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(validity_filters.run_reverse_chunk_range(
         stats_,
         tile_validity,
+        nullptr,
         tile_validity_chunk_data,
         tval_min,
         tval_max,
@@ -1653,22 +1636,16 @@ Status ReaderBase::unfilter_tiles(
             if (!nullable) {
               if (array_schema_.bitsort_filter_attr().has_value()) {
                 BitSortFilterMetadataType bitsort_metadata;
-                std::vector<QueryBuffer> query_buffers;
-                std::optional<DomainBuffersView> db;
                 if (array_schema_.cell_order() == Layout::HILBERT) {
-                  HilbertCmpQB cmp_obj = construct_bitsort_filter_argument<HilbertCmpQB>(tile, bitsort_metadata, query_buffers, db);
-                  bitsort_metadata.comparator() = [&cmp_obj](const uint64_t &left_idx, const uint64_t &right_idx){
-                      return cmp_obj(left_idx, right_idx);
-                    };
+                  BitSortFilterMetadataStorage<HilbertCmpQB> bitsort_storage;
+                    bitsort_metadata = construct_bitsort_filter_argument<HilbertCmpQB>(
+                    tile, bitsort_storage);
                 } else {
-                  GlobalCmpQB cmp_obj =
-                    construct_bitsort_filter_argument<GlobalCmpQB>(tile, bitsort_metadata, query_buffers, db);
-                  bitsort_metadata.comparator() = [&cmp_obj](const uint64_t &left_idx, const uint64_t &right_idx){
-                      return cmp_obj(left_idx, right_idx);
-                    };
+                  BitSortFilterMetadataStorage<GlobalCmpQB> bitsort_storage;
+                    bitsort_metadata = construct_bitsort_filter_argument<GlobalCmpQB>(
+                    tile, bitsort_storage);
                 }
-                RETURN_NOT_OK(unfilter_tile(name, t, bitsort_metadata));
-
+                RETURN_NOT_OK(unfilter_tile(name, t, &bitsort_metadata));
               } else {
                 RETURN_NOT_OK(unfilter_tile(name, t));
               }
@@ -1693,27 +1670,7 @@ Status ReaderBase::unfilter_tiles(
 }
 
 Status ReaderBase::unfilter_tile(
-    const std::string& name,
-    Tile* tile,
-    BitSortFilterMetadataType& bitsort_metadata) const {
-  FilterPipeline filters = array_schema_.filters(name);
-
-  // Append an encryption unfilter when necessary.
-  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-      &filters, array_->get_encryption_key()));
-
-  // Reverse the tile filters.
-  RETURN_NOT_OK(filters.run_reverse<BitSortFilterMetadataType&>(
-      stats_,
-      tile,
-      bitsort_metadata,
-      storage_manager_->compute_tp(),
-      storage_manager_->config()));
-
-  return Status::Ok();
-}
-
-Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile) const {
+    const std::string& name, Tile* tile, void* support_data) const {
   FilterPipeline filters = array_schema_.filters(name);
 
   // Append an encryption unfilter when necessary.
@@ -1726,7 +1683,8 @@ Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile) const {
       tile,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config()));
+      storage_manager_->config(),
+      support_data));
 
   return Status::Ok();
 }
@@ -1748,12 +1706,22 @@ Status ReaderBase::unfilter_tile(
   if (filters.skip_offsets_filtering(
           tile_var->type(), array_schema_.version())) {
     RETURN_NOT_OK(filters.run_reverse(
-        stats_, tile_var, tile, storage_manager_->compute_tp(), config_));
+        stats_, tile_var, tile, storage_manager_->compute_tp(), config_, tile));
   } else {
     RETURN_NOT_OK(offset_filters.run_reverse(
-        stats_, tile, nullptr, storage_manager_->compute_tp(), config_));
+        stats_,
+        tile,
+        nullptr,
+        storage_manager_->compute_tp(),
+        config_,
+        nullptr));
     RETURN_NOT_OK(filters.run_reverse(
-        stats_, tile_var, nullptr, storage_manager_->compute_tp(), config_));
+        stats_,
+        tile_var,
+        nullptr,
+        storage_manager_->compute_tp(),
+        config_,
+        nullptr));
   }
 
   return Status::Ok();
@@ -1776,14 +1744,16 @@ Status ReaderBase::unfilter_tile_nullable(
       tile,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config()));
+      storage_manager_->config(),
+      nullptr));
   // Reverse the validity tile filters.
   RETURN_NOT_OK(validity_filters.run_reverse(
       stats_,
       tile_validity,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config()));
+      storage_manager_->config(),
+      nullptr));
 
   return Status::Ok();
 }
@@ -1814,20 +1784,23 @@ Status ReaderBase::unfilter_tile_nullable(
         tile_var,
         tile,
         storage_manager_->compute_tp(),
-        storage_manager_->config()));
+        storage_manager_->config(),
+        tile));
   } else {
     RETURN_NOT_OK(offset_filters.run_reverse(
         stats_,
         tile,
         nullptr,
         storage_manager_->compute_tp(),
-        storage_manager_->config()));
+        storage_manager_->config(),
+        nullptr));
     RETURN_NOT_OK(filters.run_reverse(
         stats_,
         tile_var,
         nullptr,
         storage_manager_->compute_tp(),
-        storage_manager_->config()));
+        storage_manager_->config(),
+        nullptr));
   }
 
   // Reverse the validity tile filters.
@@ -1836,7 +1809,8 @@ Status ReaderBase::unfilter_tile_nullable(
       tile_validity,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config()));
+      storage_manager_->config(),
+      nullptr));
 
   return Status::Ok();
 }
@@ -1956,58 +1930,61 @@ Status ReaderBase::calculate_hilbert_values(
 
         return Status::Ok();
       });
-
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
-
+      
+  throw_if_not_ok(status);
   return Status::Ok();
 }
 
 template <typename CmpObject,
 typename std::enable_if_t<std::is_same_v<CmpObject, HilbertCmpQB> || std::is_same_v<CmpObject, GlobalCmpQB>>*>
-CmpObject ReaderBase::construct_bitsort_filter_argument(
-    ResultTile* const tile,
-    BitSortFilterMetadataType &bitsort_metadata,
-    std::vector<QueryBuffer>& qb_vector,
-    std::optional<DomainBuffersView>& db) const {
-
-  std::vector<Tile*>& dim_tiles = bitsort_metadata.dim_tiles();
-  uint64_t num_dims = array_schema_.dim_num();
+BitSortFilterMetadataType ReaderBase::construct_bitsort_filter_argument(
+      ResultTile* const tile,
+      BitSortFilterMetadataStorage<CmpObject>& bitsort_storage) const {
+  // Collect the storage vectors.
+  std::vector<Tile*>& dim_tiles = bitsort_storage.dim_tiles_;
+  std::vector<QueryBuffer>& query_buffers = bitsort_storage.query_buffers_;
+  dimension_size_type num_dims = array_schema_.dim_num();
   std::vector<uint64_t> dim_data_sizes;
 
   dim_tiles.reserve(num_dims);
-  qb_vector.reserve(num_dims);
+  query_buffers.reserve(num_dims);
   dim_data_sizes.reserve(num_dims);
 
   // Loop over the dimensions, adding the dimension tiles and constructed
   // QueryBuffer objects that represent the dimension tile data.
-  for (size_t i = 0; i < num_dims; ++i) {
+  for (dimension_size_type i = 0; i < num_dims; ++i) {
     const Dimension* dimension = array_schema_.domain().dimension_ptr(i);
     auto dim_tile_tuple = tile->tile_tuple(dimension->name());
     dim_tiles.emplace_back(&dim_tile_tuple->fixed_tile());
 
     auto& filtered_buffer = dim_tiles[i]->filtered_buffer();
     dim_data_sizes.emplace_back(filtered_buffer.size());
-    qb_vector.emplace_back(
+    query_buffers.emplace_back(
         filtered_buffer.data(), nullptr, &dim_data_sizes[i], nullptr);
   }
 
-  db.emplace(DomainBuffersView(array_schema_.domain(), qb_vector));
-
+  bitsort_storage.db_.emplace(DomainBuffersView(array_schema_.domain(), query_buffers));
   if constexpr (std::is_same<CmpObject, HilbertCmpQB>::value) {
-    std::vector<uint64_t>& hilbert_values = bitsort_metadata.hilbert_values();
+    std::vector<uint64_t>& hilbert_values = bitsort_storage.hilbert_values_;
     assert(dim_tiles.size() > 0);
     uint64_t cell_num = dim_tiles[0]->cell_num();
     hilbert_values.resize(cell_num);
-    Status st = calculate_hilbert_values(db.value(), hilbert_values);
+    Status st = calculate_hilbert_values(bitsort_storage.db_.value(), hilbert_values);
     if (!st.ok()) {
       throw std::runtime_error("ReaderBase::construct_bitsort_filter_argument: calculating hilbert values failed.");
     }
-    return HilbertCmpQB(array_schema_.domain(), db.value(), hilbert_values);
+    bitsort_storage.cmp_obj_.emplace(HilbertCmpQB(array_schema_.domain(), bitsort_storage.db_.value(), hilbert_values));
   } else if constexpr  (std::is_same<CmpObject, GlobalCmpQB>::value) {
-    return GlobalCmpQB(array_schema_.domain(), db.value());
+    bitsort_storage.cmp_obj_.emplace(GlobalCmpQB(array_schema_.domain(), bitsort_storage.db_.value()));
   }
 
-  throw std::runtime_error("ReaderBase::construct_bitsort_filter_argument: function called without valid comparator struct return argument.");
+  std::function<bool(const uint64_t&, const uint64_t&)>& comparator = bitsort_storage.comparator_;
+  CmpObject& cmp_obj = bitsort_storage.cmp_obj_.value();
+  comparator = [&cmp_obj](const uint64_t& left_idx, const uint64_t& right_idx) {
+                return cmp_obj(left_idx, right_idx);
+              };
+
+  return bitsort_storage.get_arg();
 }
 
 

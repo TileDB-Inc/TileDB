@@ -1235,7 +1235,7 @@ Status Array::compute_non_empty_domain() {
         // If the fragment's non-empty domain is indeed empty, lets log it so
         // the user gets a message warning that this fragment might be corrupt
         // Note: LOG_STATUS only prints if TileDB is built in verbose mode.
-        LOG_STATUS(Status_ArrayError(
+        LOG_STATUS_NO_RETURN_VALUE(Status_ArrayError(
             "Non empty domain unexpectedly empty for fragment: " +
             fragment_metadata_[j]->fragment_uri().to_string()));
       }

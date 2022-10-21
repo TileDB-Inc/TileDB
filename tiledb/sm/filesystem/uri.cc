@@ -257,6 +257,10 @@ URI URI::join_path(const std::string& path) const {
   }
 }
 
+URI URI::join_path(const URI& uri) const {
+  return join_path(uri.to_string());
+}
+
 std::string URI::last_path_part() const {
   return uri_.substr(uri_.find_last_of('/') + 1);
 }

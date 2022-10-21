@@ -72,27 +72,8 @@ class BitSortFilter : public Filter {
    * @brief Run forward. Takes input data parts, and per part it stores
    * the input values, sorted in bit order (ascending).
    *
-   * @param tile Current attribute tile on which the filter is being run.
-   * @param dim_tiles Dimension tiles of the schema.
-   * @param input_metadata Buffer with metadata for `input`.
-   * @param input Buffer with data to be filtered.
-   * @param output_metadata Buffer with metadata for filtered data.
-   * @param output Buffer with filtered data.
-   * @return Status.
-   */
-  Status run_forward(
-      const Tile& tile,
-      const std::vector<Tile*>& dim_tiles,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const;
-
-  /**
-   * @brief Dummy run forward to satisfy the Filter class requirements.
-   *
    * @param tile Current tile on which the filter is being run.
-   * @param offsets_tile Offsets tile of the current tile on which the filter is
+   * @param support_data Offsets tile of the current tile on which the filter is
    * being run.
    * @param input_metadata Buffer with metadata for `input`.
    * @param input Buffer with data to be filtered.
@@ -102,7 +83,7 @@ class BitSortFilter : public Filter {
    */
   Status run_forward(
       const Tile& tile,
-      Tile* const tile_offsets,
+      void* const support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -123,28 +104,7 @@ class BitSortFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      BitSortFilterMetadataType& bitsort_metadata,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output,
-      const Config& config) const;
-
-  /**
-   * @brief Dummy run reverse to satisfy the Filter class requirements.
-   *
-   * @param tile Current tile on which the filter is being run.
-   * @param offsets_tile Offsets tile of the current tile on which the filter is
-   * being run.
-   * @param input_metadata Buffer with metadata for `input`.
-   * @param input Buffer with data to be filtered.
-   * @param output_metadata Buffer with metadata for filtered data.
-   * @param output Buffer with filtered data (unused by in-place filters).
-   * @return Status_FilterError. This function should never be called.
-   */
-  Status run_reverse(
-      const Tile& tile,
-      Tile* const tile_offsets,
+      void* support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -197,14 +157,12 @@ class BitSortFilter : public Filter {
   /**
    * @brief Rewrites the dimension tile given the positions of the attributes.
    *
-   * @tparam AttrType Attribute tile type.
    * @tparam DimType Dimension tile type.
    * @param positions Vector with the sorted positions of the attribute data.
    * @param dim_tile Dimension tile to rewrite.
-   * @return Status
    */
   template <typename DimType>
-  Status run_forward_dim_tile(
+  void run_forward_dim_tile(
       const std::vector<size_t>& positions, Tile* dim_tile) const;
 
   /**
@@ -244,10 +202,9 @@ class BitSortFilter : public Filter {
    * @tparam DimType Dimension tile type.
    * @param dim_tile Dimension tile to rewrite.
    * @param positions Vector with the sorted positions of the attribute data.
-   * @return Status
    */
   template <typename DimType>
-  Status run_reverse_dim_tile(
+  void run_reverse_dim_tile(
       Tile* dim_tile, std::vector<uint64_t>& positions) const;
 };
 

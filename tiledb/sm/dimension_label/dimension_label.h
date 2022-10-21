@@ -37,6 +37,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension_label_schema.h"
 #include "tiledb/sm/enums/label_order.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
@@ -44,13 +45,14 @@ namespace tiledb::sm {
 
 class Attribute;
 class Dimension;
-class StorageManager;
 class URI;
 
-/** Return a Status_DimensionLabelError error class Status with a given
- * message **/
-inline Status Status_DimensionLabelError(const std::string& msg) {
-  return {"[TileDB::DimensionLabel] Error", msg};
+/** Class for locally generated status exceptions. */
+class DimensionLabelStatusException : public StatusException {
+ public:
+  explicit DimensionLabelStatusException(const std::string& msg)
+      : StatusException("DimensionLabel", msg) {
+  }
 };
 
 /**
@@ -78,6 +80,15 @@ class DimensionLabel {
 
   /** Returns the index dimension in the indexed array. */
   const Dimension* index_dimension() const;
+
+  /**
+   * Throws an exception if the dimension label is not compatible with an input
+   * dimension label reference.
+   *
+   * @param dim_label_ref Dimension label reference to check compatibility with.
+   */
+  void is_compatible(
+      const DimensionLabelReference& dim_label_ref, const Dimension* dim) const;
 
   /** Returns the array with indices stored on the dimension. */
   inline shared_ptr<Array> indexed_array() const {
@@ -139,6 +150,9 @@ class DimensionLabel {
   /** Returns the query type the dimension label was opened with. */
   QueryType query_type() const;
 
+  /** Returns a reference to the dimension label schema. */
+  const DimensionLabelSchema& schema() const;
+
  private:
   /**********************/
   /* Private attributes */
@@ -189,20 +203,6 @@ void create_dimension_label(
     const URI& uri,
     StorageManager& storage_manager,
     const DimensionLabelSchema& schema);
-
-/**
- * Removes all fragments URIs from a fragment list that do not have a similarly
- * named fragment in a comparison fragments list.
- *
- * The comparison here is only on the base name of the fragment URIs. Fragments
- * may be re-ordered upon return.
- *
- * @param comparison_fragment_uris The list of fragment URIs to check against.
- * @param fragment_list The list of fragment URIs to prune.
- */
-void intersect_fragments(
-    const std::vector<TimestampedURI>& comparison_fragment_list,
-    std::vector<TimestampedURI>& fragment_list);
 
 }  // namespace tiledb::sm
 

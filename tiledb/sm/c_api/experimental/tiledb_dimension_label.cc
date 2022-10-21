@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/c_api/tiledb_dimension_label.cc
+ * @file tiledb/sm/c_api/experimental/tiledb_dimension_label.cc
  *
  * @section LICENSE
  *
@@ -27,8 +27,8 @@
  */
 
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
+#include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
-#include "tiledb/sm/c_api/api_exception_safety.h"
 #include "tiledb/sm/c_api/experimental/api_exception_safety.h"
 #include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -44,7 +44,7 @@ namespace tiledb::common::detail {
 int32_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    uint32_t dim_id,
+    const uint32_t dim_id,
     const char* name,
     tiledb_dimension_label_schema_t* dim_label_schema) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array_schema) ||
@@ -68,14 +68,9 @@ int32_t tiledb_array_schema_add_dimension_label(
 }
 
 int32_t tiledb_array_schema_has_dimension_label(
-    tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     const char* name,
     int32_t* has_dim_label) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
   bool is_dim_label = array_schema->array_schema_->is_dim_label(name);
   *has_dim_label = is_dim_label ? 1 : 0;
   return TILEDB_OK;
@@ -100,7 +95,7 @@ int32_t tiledb_dimension_label_schema_alloc(
   if (*dim_label_schema == nullptr) {
     auto st =
         Status_Error("Failed to allocate TileDB dimension label schema object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -121,7 +116,7 @@ int32_t tiledb_dimension_label_schema_alloc(
     *dim_label_schema = nullptr;
     auto st =
         Status_Error("Failed to allocate TileDB dimension label schema object");
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_OOM;
   }
@@ -138,93 +133,99 @@ void tiledb_dimension_label_schema_free(
   }
 }
 
+int32_t tiledb_query_set_label_data_buffer(
+    tiledb_query_t* query,
+    const char* name,
+    void* buffer,
+    uint64_t* buffer_size) {
+  query->query_->set_label_data_buffer(name, buffer, buffer_size);
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_set_label_offsets_buffer(
+    tiledb_query_t* query,
+    const char* name,
+    uint64_t* buffer,
+    uint64_t* buffer_size) {
+  query->query_->set_label_offsets_buffer(name, buffer, buffer_size);
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_label_data_buffer(
+    tiledb_query_t* query,
+    const char* name,
+    void** buffer,
+    uint64_t** buffer_size) {
+  query->query_->get_label_data_buffer(name, buffer, buffer_size);
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_label_offsets_buffer(
+    tiledb_query_t* query,
+    const char* name,
+    uint64_t** buffer,
+    uint64_t** buffer_size) {
+  query->query_->get_label_offsets_buffer(name, buffer, buffer_size);
+  return TILEDB_OK;
+}
+
 int32_t tiledb_subarray_add_label_range(
-    tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
     const char* label_name,
     const void* start,
     const void* end,
     const void* stride) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
   subarray->subarray_->add_label_range(label_name, start, end, stride);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_add_label_range_var(
-    tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
     const char* label_name,
     const void* start,
     uint64_t start_size,
     const void* end,
     uint64_t end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
   subarray->subarray_->add_label_range_var(
       label_name, start, start_size, end, end_size);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_get_label_range(
-    tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
     const void** start,
     const void** end,
     const void** stride) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
   subarray->subarray_->get_label_range(dim_name, range_idx, start, end, stride);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_get_label_range_num(
-    tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t* range_num) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
   subarray->subarray_->get_label_range_num(dim_name, range_num);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_get_label_range_var(
-    tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
     void* start,
     void* end) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
   subarray->subarray_->get_label_range_var(dim_name, range_idx, start, end);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_get_label_range_var_size(
-    tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
     uint64_t* start_size,
     uint64_t* end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
   subarray->subarray_->get_label_range_var_size(
       dim_name, range_idx, start_size, end_size);
   return TILEDB_OK;
@@ -232,13 +233,20 @@ int32_t tiledb_subarray_get_label_range_var_size(
 
 }  // namespace tiledb::common::detail
 
+using tiledb::api::api_entry_context;
+using tiledb::api::api_entry_with_context;
+
+template <auto f>
+constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
+
 int32_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    uint32_t dim_id,
+    const uint32_t dim_id,
     const char* name,
     tiledb_dimension_label_schema_t* dim_label_schema) noexcept {
-  return api_entry<detail::tiledb_array_schema_add_dimension_label>(
+  return api_entry_with_context<
+      detail::tiledb_array_schema_add_dimension_label>(
       ctx, array_schema, dim_id, name, dim_label_schema);
 }
 
@@ -247,7 +255,7 @@ int32_t tiledb_array_schema_has_dimension_label(
     const tiledb_array_schema_t* array_schema,
     const char* name,
     int32_t* has_dim_label) noexcept {
-  return api_entry<detail::tiledb_array_schema_has_dimension_label>(
+  return api_entry_context<detail::tiledb_array_schema_has_dimension_label>(
       ctx, array_schema, name, has_dim_label);
 }
 
@@ -261,7 +269,7 @@ int32_t tiledb_dimension_label_schema_alloc(
     const void* label_domain,
     const void* label_tile_extent,
     tiledb_dimension_label_schema_t** dim_label_schema) noexcept {
-  return api_entry<detail::tiledb_dimension_label_schema_alloc>(
+  return api_entry_with_context<detail::tiledb_dimension_label_schema_alloc>(
       ctx,
       label_order,
       index_type,
@@ -275,8 +283,48 @@ int32_t tiledb_dimension_label_schema_alloc(
 
 void tiledb_dimension_label_schema_free(
     tiledb_dimension_label_schema_t** dim_label_schema) noexcept {
-  return api_entry_void<detail::tiledb_dimension_label_schema_free>(
-      dim_label_schema);
+  return tiledb::api::api_entry_void<
+      detail::tiledb_dimension_label_schema_free>(dim_label_schema);
+}
+
+int32_t tiledb_query_set_label_data_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void* buffer,
+    uint64_t* buffer_size) noexcept {
+  return api_entry_context<detail::tiledb_query_set_label_data_buffer>(
+      ctx, query, name, buffer, buffer_size);
+}
+
+int32_t tiledb_query_set_label_offsets_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    uint64_t* buffer,
+    uint64_t* buffer_size) noexcept {
+  return api_entry_context<detail::tiledb_query_set_label_offsets_buffer>(
+      ctx, query, name, buffer, buffer_size);
+}
+
+int32_t tiledb_query_get_label_data_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void** buffer,
+    uint64_t** buffer_size) noexcept {
+  return api_entry_context<detail::tiledb_query_get_label_data_buffer>(
+      ctx, query, name, buffer, buffer_size);
+}
+
+int32_t tiledb_query_get_label_offsets_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    uint64_t** buffer,
+    uint64_t** buffer_size) noexcept {
+  return api_entry_context<detail::tiledb_query_get_label_offsets_buffer>(
+      ctx, query, name, buffer, buffer_size);
 }
 
 int32_t tiledb_subarray_add_label_range(
@@ -286,7 +334,7 @@ int32_t tiledb_subarray_add_label_range(
     const void* start,
     const void* end,
     const void* stride) noexcept {
-  return api_entry<detail::tiledb_subarray_add_label_range>(
+  return api_entry_context<detail::tiledb_subarray_add_label_range>(
       ctx, subarray, label_name, start, end, stride);
 }
 
@@ -298,7 +346,7 @@ int32_t tiledb_subarray_add_label_range_var(
     uint64_t start_size,
     const void* end,
     uint64_t end_size) noexcept {
-  return api_entry<detail::tiledb_subarray_add_label_range_var>(
+  return api_entry_context<detail::tiledb_subarray_add_label_range_var>(
       ctx, subarray, label_name, start, start_size, end, end_size);
 }
 
@@ -310,7 +358,7 @@ int32_t tiledb_subarray_get_label_range(
     const void** start,
     const void** end,
     const void** stride) noexcept {
-  return api_entry<detail::tiledb_subarray_get_label_range>(
+  return api_entry_context<detail::tiledb_subarray_get_label_range>(
       ctx, subarray, dim_name, range_idx, start, end, stride);
 }
 
@@ -319,7 +367,7 @@ int32_t tiledb_subarray_get_label_range_num(
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t* range_num) noexcept {
-  return api_entry<detail::tiledb_subarray_get_label_range_num>(
+  return api_entry_context<detail::tiledb_subarray_get_label_range_num>(
       ctx, subarray, dim_name, range_num);
 }
 
@@ -330,7 +378,7 @@ int32_t tiledb_subarray_get_label_range_var(
     uint64_t range_idx,
     void* start,
     void* end) noexcept {
-  return api_entry<detail::tiledb_subarray_get_label_range_var>(
+  return api_entry_context<detail::tiledb_subarray_get_label_range_var>(
       ctx, subarray, dim_name, range_idx, start, end);
 }
 
@@ -341,6 +389,6 @@ int32_t tiledb_subarray_get_label_range_var_size(
     uint64_t range_idx,
     uint64_t* start_size,
     uint64_t* end_size) noexcept {
-  return api_entry<detail::tiledb_subarray_get_label_range_var_size>(
+  return api_entry_context<detail::tiledb_subarray_get_label_range_var_size>(
       ctx, subarray, dim_name, range_idx, start_size, end_size);
 }

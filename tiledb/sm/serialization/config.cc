@@ -60,19 +60,14 @@ namespace serialization {
 #ifdef TILEDB_SERIALIZATION
 
 Status config_to_capnp(
-    const Config* config, capnp::Config::Builder* config_builder) {
-  if (config == nullptr)
-    return LOG_STATUS(
-        Status_SerializationError("Error serializing config; config is null."));
-
-  auto entries = config_builder->initEntries(config->param_values().size());
+    const Config& config, capnp::Config::Builder* config_builder) {
+  auto entries = config_builder->initEntries(config.param_values().size());
   uint64_t i = 0;
-  for (const auto& kv : config->param_values()) {
+  for (const auto& kv : config.param_values()) {
     entries[i].setKey(kv.first);
     entries[i].setValue(kv.second);
     ++i;
   }
-
   return Status::Ok();
 }
 
@@ -108,7 +103,7 @@ Status config_from_capnp(
 }
 
 Status config_serialize(
-    const Config* config,
+    const Config& config,
     SerializationType serialize_type,
     Buffer* serialized_buffer,
     const bool client_side) {
@@ -217,7 +212,7 @@ Status config_deserialize(
 
 #else
 
-Status config_serialize(const Config*, SerializationType, Buffer*, const bool) {
+Status config_serialize(const Config&, SerializationType, Buffer*, const bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

@@ -24,7 +24,10 @@ ignored_files = frozenset(
 regex_malloc = re.compile(r"malloc\(")
 
 # Contains per-file exceptions to violations of "malloc".
-malloc_exceptions = {"*": ["tdb_malloc", "tiledb_malloc"]}
+malloc_exceptions = {
+    "*": ["tdb_malloc", "tiledb_malloc"],
+    "context_api.cc": ["*stats_json = static_cast<char*>(std::malloc(str.size() + 1));"]
+}
 
 # Match C API calloc:
 regex_calloc = re.compile(r"calloc\(")

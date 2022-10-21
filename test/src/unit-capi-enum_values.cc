@@ -113,7 +113,6 @@ TEST_CASE("C API: Test enum values", "[capi][enums]") {
   REQUIRE(TILEDB_FILTER_DICTIONARY == 14);
   REQUIRE(TILEDB_FILTER_SCALE_FLOAT == 15);
   REQUIRE(TILEDB_FILTER_XOR == 16);
-  REQUIRE(TILEDB_FILTER_BITSORT == 17);
 
   /** Filter option */
   REQUIRE(TILEDB_COMPRESSION_LEVEL == 0);
@@ -439,17 +438,11 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
            TILEDB_OK &&
        filter_type == TILEDB_FILTER_DICTIONARY));
   REQUIRE(
-    (tiledb_filter_type_from_str("SCALE_FLOAT", &filter_type) == TILEDB_OK &&
+      (tiledb_filter_type_from_str("SCALE_FLOAT", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_SCALE_FLOAT));
   REQUIRE(
       (tiledb_filter_type_from_str("XOR", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_XOR));
-  REQUIRE(
-      (tiledb_filter_type_from_str("BITSORT", &filter_type) == TILEDB_OK &&
-       filter_type == TILEDB_FILTER_BITSORT));
-  REQUIRE(
-      (tiledb_filter_type_from_str("BITSORT", &filter_type) == TILEDB_OK &&
-       filter_type == TILEDB_FILTER_BITSORT));
 
   tiledb_filter_option_t filter_option;
   REQUIRE(

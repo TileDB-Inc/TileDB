@@ -250,7 +250,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
 
             return Status::Ok();
           });
-      RETURN_NOT_OK_ELSE(status, logger_->status(status));
+      RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
     }
 
     // For fragments with timestamps, check first and last cell of every tiles
@@ -445,7 +445,8 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
           all_tiles_loaded_[f] = true;
           return Status::Ok();
         });
-    RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), nullopt);
+    RETURN_NOT_OK_ELSE_TUPLE(
+        status, logger_->status_no_return_value(status), nullopt);
   } else {
     // Load as many tiles as the memory budget allows.
     auto status = parallel_for(
@@ -495,7 +496,8 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
           all_tiles_loaded_[f] = true;
           return Status::Ok();
         });
-    RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), nullopt);
+    RETURN_NOT_OK_ELSE_TUPLE(
+        status, logger_->status_no_return_value(status), nullopt);
   }
 
   bool done_adding_result_tiles = true;
@@ -586,7 +588,7 @@ Status SparseGlobalOrderReader<BitmapType>::dedup_tiles_with_timestamps(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   logger_->debug("Done processing fragments with timestamps");
   return Status::Ok();
@@ -639,7 +641,7 @@ Status SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps() {
                       std::unique_lock<std::mutex> lck(ignored_tiles_mutex);
                       ignored_tiles_.emplace(f, next_tile->tile_idx());
                     }
-                    remove_result_tile(f, next_tile);
+                    throw_if_not_ok(remove_result_tile(f, next_tile));
                   } else {
                     // Remove the cell in the bitmap and move to the next tile.
                     next_tile->clear_cell(first);
@@ -655,7 +657,7 @@ Status SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps() {
                       std::unique_lock<std::mutex> lck(ignored_tiles_mutex);
                       ignored_tiles_.emplace(f, to_delete->tile_idx());
                     }
-                    remove_result_tile(f, to_delete);
+                    throw_if_not_ok(remove_result_tile(f, to_delete));
                   } else {
                     // Remove the cell in the bitmap and move to the next tile.
                     it->clear_cell(last);
@@ -669,7 +671,7 @@ Status SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps() {
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   return Status::Ok();
 }
@@ -759,7 +761,8 @@ bool SparseGlobalOrderReader<BitmapType>::add_all_dups_to_queue(
         if (rc.same_coords(rc2)) {
           // Remove the current tile if not used.
           if (!rc.tile_->used()) {
-            remove_result_tile(frag_idx, result_tiles_it[frag_idx]);
+            throw_if_not_ok(
+                remove_result_tile(frag_idx, result_tiles_it[frag_idx]));
           }
 
           result_tiles_it[frag_idx] = next_tile;
@@ -796,7 +799,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
 
     // Remove the tile from result tiles if it wasn't used at all.
     if (!rc.tile_->used()) {
-      remove_result_tile(frag_idx, to_delete);
+      throw_if_not_ok(remove_result_tile(frag_idx, to_delete));
     }
 
     // Try to find a new tile.
@@ -892,7 +895,7 @@ Status SparseGlobalOrderReader<BitmapType>::compute_hilbert_values(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   return Status::Ok();
 }
@@ -961,7 +964,8 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), nullopt);
+  RETURN_NOT_OK_ELSE_TUPLE(
+      status, logger_->status_no_return_value(status), nullopt);
 
   const bool non_overlapping_ranges = std::is_same<BitmapType, uint8_t>::value;
 
@@ -1257,7 +1261,7 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   return Status::Ok();
 }
@@ -1333,7 +1337,7 @@ Status SparseGlobalOrderReader<BitmapType>::copy_var_data_tiles(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   return Status::Ok();
 }
@@ -1441,7 +1445,7 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   return Status::Ok();
 }
@@ -1504,7 +1508,7 @@ Status SparseGlobalOrderReader<BitmapType>::copy_timestamps_tiles(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   return Status::Ok();
 }
@@ -1621,7 +1625,7 @@ Status SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   return Status::Ok();
 }
@@ -1715,7 +1719,8 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), nullopt);
+  RETURN_NOT_OK_ELSE_TUPLE(
+      status, logger_->status_no_return_value(status), nullopt);
 
   if (max_cs_idx == 0) {
     return {Status_SparseUnorderedWithDupsReaderError(
@@ -2041,7 +2046,7 @@ Status SparseGlobalOrderReader<BitmapType>::end_iteration() {
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   if (!incomplete()) {
     assert(memory_used_for_coords_total_ == 0);
