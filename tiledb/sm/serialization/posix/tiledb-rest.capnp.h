@@ -156,7 +156,7 @@ struct Array {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(a45730f57e0460b4, 2, 7)
+    CAPNP_DECLARE_STRUCT_HEADER(a45730f57e0460b4, 2, 6)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1936,10 +1936,6 @@ class Array::Reader {
   inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Reader
   getArrayMetadata() const;
 
-  inline bool hasArrayDirectory() const;
-  inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Reader
-  getArrayDirectory() const;
-
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -2059,19 +2055,6 @@ class Array::Builder {
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayMetadata>
   disownArrayMetadata();
 
-  inline bool hasArrayDirectory();
-  inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Builder
-  getArrayDirectory();
-  inline void setArrayDirectory(
-      ::tiledb::sm::serialization::capnp::ArrayDirectory::Reader value);
-  inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Builder
-  initArrayDirectory();
-  inline void adoptArrayDirectory(
-      ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayDirectory>&&
-          value);
-  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayDirectory>
-  disownArrayDirectory();
-
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -2103,8 +2086,6 @@ class Array::Pipeline {
   getNonEmptyDomain();
   inline ::tiledb::sm::serialization::capnp::ArrayMetadata::Pipeline
   getArrayMetadata();
-  inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Pipeline
-  getArrayDirectory();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -13282,62 +13263,6 @@ Array::Builder::disownArrayMetadata() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::ArrayMetadata>::disown(
           _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
-}
-
-inline bool Array::Reader::hasArrayDirectory() const {
-  return !_reader.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline bool Array::Builder::hasArrayDirectory() {
-  return !_builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Reader
-Array::Reader::getArrayDirectory() const {
-  return ::capnp::_::
-      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayDirectory>::get(
-          _reader.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
-}
-inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Builder
-Array::Builder::getArrayDirectory() {
-  return ::capnp::_::
-      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayDirectory>::get(
-          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
-}
-#if !CAPNP_LITE
-inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Pipeline
-Array::Pipeline::getArrayDirectory() {
-  return ::tiledb::sm::serialization::capnp::ArrayDirectory::Pipeline(
-      _typeless.getPointerField(6));
-}
-#endif  // !CAPNP_LITE
-inline void Array::Builder::setArrayDirectory(
-    ::tiledb::sm::serialization::capnp::ArrayDirectory::Reader value) {
-  ::capnp::_::
-      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayDirectory>::set(
-          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS),
-          value);
-}
-inline ::tiledb::sm::serialization::capnp::ArrayDirectory::Builder
-Array::Builder::initArrayDirectory() {
-  return ::capnp::_::
-      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayDirectory>::init(
-          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
-}
-inline void Array::Builder::adoptArrayDirectory(
-    ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayDirectory>&&
-        value) {
-  ::capnp::_::
-      PointerHelpers<::tiledb::sm::serialization::capnp::ArrayDirectory>::adopt(
-          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS),
-          kj::mv(value));
-}
-inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArrayDirectory>
-Array::Builder::disownArrayDirectory() {
-  return ::capnp::_::PointerHelpers<
-      ::tiledb::sm::serialization::capnp::ArrayDirectory>::
-      disown(
-          _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
 }
 
 inline bool ArrayOpen::Reader::hasConfig() const {

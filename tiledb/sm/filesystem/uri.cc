@@ -265,6 +265,10 @@ std::string URI::last_path_part() const {
   return uri_.substr(uri_.find_last_of('/') + 1);
 }
 
+std::string URI::last_two_path_parts() const {
+  return uri_.substr(uri_.rfind('/', uri_.rfind('/') - 1) + 1);
+}
+
 std::string URI::to_path(const std::string& uri) {
   if (is_file(uri)) {
 #ifdef _WIN32

@@ -57,9 +57,6 @@ struct Array {
 
   arrayMetadata @7 :ArrayMetadata;
   # array metadata
-
-  arrayDirectory @8 : ArrayDirectory;
-  # array directory
 }
 
 struct ArrayOpen {

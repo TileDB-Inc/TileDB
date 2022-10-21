@@ -68,11 +68,13 @@ Status array_directory_from_capnp(
  * Convert Array Directory to Cap'n Proto message
  *
  * @param array_dir array directory to serialize
+ * @param array_schema array schema of the array directory to serialize
  * @param array_dir_builder cap'n proto class
  * @return Status
  */
 Status array_directory_to_capnp(
     const ArrayDirectory& array_directory,
+    const ArraySchema& array_schema,
     capnp::ArrayDirectory::Builder* array_directory_builder);
 
 #endif

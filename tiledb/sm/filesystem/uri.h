@@ -253,6 +253,10 @@ class URI {
   /** Returns the last part of the URI (i.e., excluding the parent). */
   std::string last_path_part() const;
 
+  /** Returns the two last parts of the URI (i.e., after the penultimate `/`).
+   */
+  std::string last_two_path_parts() const;
+
   /**
    * Returns the URI path for the current platform, stripping the resource. For
    * example, if "file:///my/path/" is the URI, this function will return

@@ -89,6 +89,20 @@ Status attribute_to_capnp(
 tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
     const capnp::Attribute::Reader& attribute_reader);
 
+inline std::string serialize_uri_to_relative(
+    const URI& uri, const uint32_t version) {
+  if (version < 12) {
+    return uri.remove_trailing_slash().last_path_part();
+  } else {
+    return uri.remove_trailing_slash().last_two_path_parts();
+  }
+}
+
+/* Reconstruct the relative fragment URI to a full path URI */
+inline URI deserialize_uri_to_absolute(std::string uri, const URI& array_uri) {
+  return array_uri.join_path(uri);
+}
+
 };  // namespace serialization
 };  // namespace sm
 };  // namespace tiledb
