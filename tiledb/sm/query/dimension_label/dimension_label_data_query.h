@@ -251,9 +251,6 @@ class UnorderedWriteDataQuery : public DimensionLabelDataQuery {
   /** Query on the dimension label indexed array. */
   tdb_unique_ptr<Query> indexed_array_query_{nullptr};
 
-  /** Query on the dimension label labelled array. */
-  tdb_unique_ptr<Query> labelled_array_query_{nullptr};
-
   /** Internally managed index data for sparse write to labelled array. */
   tdb_unique_ptr<IndexData> index_data_;
 };

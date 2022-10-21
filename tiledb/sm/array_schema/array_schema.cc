@@ -62,6 +62,14 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+/** Class for locally generated status exceptions. */
+class ArraySchemaStatusException : public StatusException {
+ public:
+  explicit ArraySchemaStatusException(const std::string& msg)
+      : StatusException("ArraySchema", msg) {
+  }
+};
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -153,19 +161,19 @@ ArraySchema::ArraySchema(
 
   // Check array schema is valid.
   st = check_double_delta_compressor(coords_filters_);
-  if (!st.ok())
-    throw StatusException(
-        Status_ArraySchemaError("Array schema check failed; Double delta "
-                                "compression used in zipped coords."));
+  if (!st.ok()) {
+    throw ArraySchemaStatusException(
+        "Array schema check failed; Double delta compression used in zipped "
+        "coords.");
+  }
 
   st = check_string_compressor(coords_filters_);
-  if (!st.ok())
-    throw StatusException(Status_ArraySchemaError(
-        "Array schema check failed; RLE compression used."));
+  if (!st.ok()) {
+    throw ArraySchemaStatusException(
+        "Array schema check failed; RLE compression used.");
+  }
 
-  st = check_attribute_dimension_label_names();
-  if (!st.ok())
-    throw StatusException(st);
+  check_attribute_dimension_label_names();
 }
 
 ArraySchema::ArraySchema(const ArraySchema& array_schema) {
@@ -347,9 +355,7 @@ Status ArraySchema::check() const {
 
   RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
   RETURN_NOT_OK(check_string_compressor(coords_filters()));
-  auto st = check_attribute_dimension_label_names();
-  if (!st.ok())
-    return LOG_STATUS(st);
+  check_attribute_dimension_label_names();
 
   // Check all internal dimension labels have a schema set and the schema is
   // compatible with the definition of the array it was added to.
@@ -423,9 +429,9 @@ const DimensionLabelReference& ArraySchema::dimension_label_reference(
     const std::string& name) const {
   auto iter = dimension_label_map_.find(name);
   if (iter == dimension_label_map_.end())
-    throw StatusException(Status_ArraySchemaError(
+    throw ArraySchemaStatusException(
         "Unable to get dimension label reference; No dimension label named '" +
-        name + "'."));
+        name + "'.");
   return *iter->second;
 }
 
@@ -607,8 +613,8 @@ void ArraySchema::serialize(Serializer& serializer) const {
   if constexpr (is_experimental_build) {
     auto label_num = static_cast<uint32_t>(dimension_labels_.size());
     if (label_num != dimension_labels_.size()) {
-      throw StatusException(Status_ArraySchemaError(
-          "Overflow when attempting to serialize label number."));
+      throw ArraySchemaStatusException(
+          "Overflow when attempting to serialize label number.");
     }
     serializer.write<uint32_t>(label_num);
     for (auto& label : dimension_labels_) {
@@ -751,18 +757,23 @@ Status ArraySchema::add_dimension_label(
               std::to_string(nlabel_internal_),
           false};
   // Add dimension label
-  auto dim_label = make_shared<DimensionLabelReference>(
-      HERE(),
-      dim_id,
-      name,
-      uri,
-      dimension_label_schema->label_order(),
-      dimension_label_schema->label_dimension()->type(),
-      dimension_label_schema->label_dimension()->cell_val_num(),
-      dimension_label_schema->label_dimension()->domain(),
-      dimension_label_schema);
-  dimension_labels_.emplace_back(dim_label);
-  dimension_label_map_[name] = dim_label.get();
+  try {
+    auto dim_label = make_shared<DimensionLabelReference>(
+        HERE(),
+        dim_id,
+        name,
+        uri,
+        dimension_label_schema->label_order(),
+        dimension_label_schema->label_type(),
+        dimension_label_schema->label_cell_val_num(),
+        dimension_label_schema->label_domain(),
+        dimension_label_schema);
+    dimension_labels_.emplace_back(dim_label);
+    dimension_label_map_[name] = dim_label.get();
+  } catch (...) {
+    std::throw_with_nested(ArraySchemaStatusException(
+        "Failed to add dimension label '" + name + "'."));
+  }
   ++nlabel_internal_;  // WARNING: not atomic
   return Status::Ok();
 }
@@ -802,8 +813,8 @@ ArraySchema ArraySchema::deserialize(
   // #TODO Add security validation
   auto version = deserializer.read<uint32_t>();
   if (!(version <= constants::format_version)) {
-    throw StatusException(Status_ArraySchemaError(
-        "[ArraySchema::deserialize] Incompatible format version."));
+    throw ArraySchemaStatusException(
+        "Failed to deserialize array schema; Incompatible format version.");
   }
 
   // Load allows_dups
@@ -880,21 +891,21 @@ ArraySchema ArraySchema::deserialize(
   // Validate
   if (cell_order == Layout::HILBERT &&
       domain->dim_num() > Hilbert::HC_MAX_DIM) {
-    throw StatusException(Status_ArraySchemaError(
+    throw ArraySchemaStatusException(
         "Array schema check failed; Maximum dimensions supported by Hilbert "
-        "order exceeded"));
+        "order exceeded");
   }
 
   if (array_type == ArrayType::DENSE) {
     auto type{domain->dimension_ptr(0)->type()};
     if (datatype_is_real(type)) {
-      throw StatusException(
-          Status_ArraySchemaError("Array schema check failed; Dense arrays "
-                                  "cannot have floating point domains"));
+      throw ArraySchemaStatusException(
+          "Array schema check failed; Dense arrays cannot have floating point "
+          "domains");
     }
     if (attributes.size() == 0) {
-      throw StatusException(Status_ArraySchemaError(
-          "Array schema check failed; No attributes provided"));
+      throw ArraySchemaStatusException(
+          "Array schema check failed; No attributes provided");
     }
   }
 
@@ -954,8 +965,8 @@ void ArraySchema::set_name(const std::string& name) {
 
 void ArraySchema::set_capacity(uint64_t capacity) {
   if (array_type_ == ArrayType::SPARSE && capacity == 0) {
-    throw StatusException(Status_ArraySchemaError(
-        "Sparse arrays cannot have their capacity equal to zero."));
+    throw ArraySchemaStatusException(
+        "Sparse arrays cannot have their capacity equal to zero.");
   }
 
   capacity_ = capacity;
@@ -1083,8 +1094,7 @@ const std::string& ArraySchema::name() const {
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
-
-Status ArraySchema::check_attribute_dimension_label_names() const {
+void ArraySchema::check_attribute_dimension_label_names() const {
   std::set<std::string> names;
   // Check attribute and dimension names are unique.
   auto dim_num = this->dim_num();
@@ -1093,10 +1103,11 @@ Status ArraySchema::check_attribute_dimension_label_names() const {
     names.insert(attr->name());
   for (dimension_size_type i = 0; i < dim_num; ++i)
     names.insert(domain_->dimension_ptr(i)->name());
-  if (names.size() != expected_unique_names)
-    return Status_ArraySchemaError(
+  if (names.size() != expected_unique_names) {
+    throw ArraySchemaStatusException(
         "Array schema check failed; Attributes and dimensions must have unique "
         "names");
+  }
   // Check dimension label names are unique except at most 1 label / dimension
   // that has the same name as the dimension it is on.
   expected_unique_names += dimension_labels_.size();
@@ -1107,10 +1118,11 @@ Status ArraySchema::check_attribute_dimension_label_names() const {
     // Check if the dimension label has the same name as the dimension
     if (label_name == domain_->dimension_ptr(dim_id)->name()) {
       // Check if there is already a dimension label with that name.
-      if (label_with_dim_name[dim_id])
-        return Status_ArraySchemaError(
+      if (label_with_dim_name[dim_id]) {
+        throw ArraySchemaStatusException(
             "Array schema check failed; At most one dimension label can share "
             "a name with the dimension it is on");
+      }
       --expected_unique_names;  // decrement number of unique name - this name
                                 // is not unique
       label_with_dim_name[dim_id] = true;
@@ -1118,11 +1130,11 @@ Status ArraySchema::check_attribute_dimension_label_names() const {
       names.insert(label_name);
     }
   }
-  return (names.size() == expected_unique_names) ?
-             Status::Ok() :
-             Status_ArraySchemaError(
-                 "Array schema check failed; Dimension labels must have unique "
-                 "names from other labels, attributes, and dimensions");
+  if (names.size() != expected_unique_names) {
+    throw ArraySchemaStatusException(
+        "Array schema check failed; Dimension labels must have unique "
+        "names from other labels, attributes, and dimensions");
+  }
 }
 
 Status ArraySchema::check_double_delta_compressor(

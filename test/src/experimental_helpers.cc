@@ -40,8 +40,6 @@ void add_dimension_label(
     const uint32_t dim_idx,
     tiledb_label_order_t label_order,
     tiledb_datatype_t label_datatype,
-    const void* label_domain,
-    const void* label_tile_extent,
     const void* index_tile_extent) {
   // Get the dimension type and domain from the array schema.
   const auto* dim = array_schema->array_schema_->dimension_ptr(dim_idx);
@@ -50,20 +48,36 @@ void add_dimension_label(
 
   // Create the dimension label.
   tiledb_dimension_label_schema_t* dim_label_schema;
-  REQUIRE_TILEDB_OK(tiledb_dimension_label_schema_alloc(
+  auto rc = tiledb_dimension_label_schema_alloc(
       ctx,
       label_order,
+      label_datatype,
       static_cast<tiledb_datatype_t>(dim_type),
       dim_domain.data(),
       index_tile_extent,
-      label_datatype,
-      label_domain,
-      label_tile_extent,
-      &dim_label_schema));
+      &dim_label_schema);
+  if (rc != TILEDB_OK) {
+    tiledb_error_t* err = NULL;
+    tiledb_ctx_get_last_error(ctx, &err);
+    const char* msg;
+    tiledb_error_message(err, &msg);
+    UNSCOPED_INFO(msg);
+  }
+  REQUIRE(rc == TILEDB_OK);
 
   // Add the dimension label to the array schema.
-  REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
-      ctx, array_schema, dim_idx, label_name.c_str(), dim_label_schema));
+  rc = tiledb_array_schema_add_dimension_label(
+      ctx, array_schema, dim_idx, label_name.c_str(), dim_label_schema);
+  if (rc != TILEDB_OK) {
+    tiledb_error_t* err = NULL;
+    tiledb_ctx_get_last_error(ctx, &err);
+    const char* msg;
+    tiledb_error_message(err, &msg);
+    UNSCOPED_INFO(msg);
+  }
+  REQUIRE(rc == TILEDB_OK);
+
+  // Free the dimension label schema.
   tiledb_dimension_label_schema_free(&dim_label_schema);
 }
 
