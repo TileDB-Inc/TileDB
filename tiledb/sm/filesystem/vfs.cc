@@ -1506,6 +1506,17 @@ Status VFS::close_file(const URI& uri) {
       Status_VFSError("Unsupported URI schemes: " + uri.to_string()));
 }
 
+Status VFS::finalize_and_close_file(const URI& uri) {
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return s3_.finalize_and_flush_object(uri);
+#else
+    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+#endif
+  }
+  return close_file(uri);
+}
+
 Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
   stats_->add_counter("write_byte_num", buffer_size);
   stats_->add_counter("write_ops_num", 1);
@@ -1551,6 +1562,19 @@ Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
   }
   return LOG_STATUS(
       Status_VFSError("Unsupported URI schemes: " + uri.to_string()));
+}
+
+Status VFS::global_order_write(
+    const URI& uri, const void* buffer, uint64_t buffer_size) {
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    return s3_.global_order_write(uri, buffer, buffer_size);
+#else
+    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+#endif
+  }
+
+  return write(uri, buffer, buffer_size);
 }
 
 std::pair<Status, std::optional<VFS::MultiPartUploadState>>
@@ -1641,20 +1665,6 @@ Status VFS::set_multipart_upload_state(
 
   return LOG_STATUS(
       Status_VFSError("Unsupported URI schemes: " + uri.to_string()));
-}
-
-Status VFS::flush_multipart_file_buffer(const URI& uri) {
-  if (uri.is_s3()) {
-#ifdef HAVE_S3
-    Buffer* buff = nullptr;
-    RETURN_NOT_OK(s3_.get_file_buffer(uri, &buff));
-    RETURN_NOT_OK(s3_.flush_file_buffer(uri, buff, true));
-#else
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
-#endif
-  }
-
-  return Status::Ok();
 }
 
 }  // namespace tiledb::sm

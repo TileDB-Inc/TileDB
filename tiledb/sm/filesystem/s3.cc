@@ -544,6 +544,86 @@ Status S3::flush_object(const URI& uri) {
   }
 }
 
+Status S3::finalize_and_flush_object(const URI& uri) {
+  throw_if_not_ok(init_client());
+  if (!use_multipart_upload_) {
+    throw StatusException(
+        Status_S3Error("Global order write failed! S3 multipart upload is "
+                       "disabled from config"));
+  }
+
+  Aws::Http::URI aws_uri = uri.c_str();
+  std::string path_c_str = aws_uri.GetPath().c_str();
+
+  // Take a lock protecting 'multipart_upload_states_'.
+  UniqueReadLock unique_rl(&multipart_upload_rwlock_);
+
+  auto state_iter = multipart_upload_states_.find(path_c_str);
+  if (state_iter == multipart_upload_states_.end()) {
+    throw StatusException(Status_S3Error(
+        "Global order write failed! Couldn't find a multipart upload state "
+        "associated with buffer: " +
+        uri.last_path_part()));
+  }
+
+  auto& state = state_iter->second;
+  unique_rl.unlock();
+
+  // If there are no intermediate chunks, it means they have all been uploaded
+  // during the previous submit() call
+  auto& intermediate_chunks = state.buffered_chunks;
+  if (!intermediate_chunks.empty()) {
+    // TODO: it's probably wise for BufferedChunk::size to store the cumulative
+    // size
+    uint64_t sum_sizes = 0;
+    for (auto& chunk : intermediate_chunks) {
+      sum_sizes += chunk.size;
+    }
+
+    std::vector<std::byte> merged(sum_sizes);
+    uint64_t length_returned;
+    uint64_t offset = 0;
+    // TODO: this loop needs to be transformed into a parallel_for read
+    for (auto& chunk : intermediate_chunks) {
+      throw_if_not_ok(read(
+          URI(chunk.uri),
+          0,
+          merged.data() + offset,
+          chunk.size,
+          0,
+          &length_returned));
+      offset += chunk.size;
+    }
+
+    // TODO: multipart upload the last chunk
+  }
+
+  if (state.st.ok()) {
+    Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
+        make_multipart_complete_request(state);
+    auto outcome = client_->CompleteMultipartUpload(complete_request);
+    if (!outcome.IsSuccess()) {
+      throw StatusException(Status_S3Error(
+          std::string("Failed to flush S3 object ") + uri.c_str() +
+          outcome_error_message(outcome)));
+    }
+
+    auto bucket = state.bucket;
+    auto key = state.key;
+
+    throw_if_not_ok(wait_for_object_to_propagate(move(bucket), move(key)));
+
+    return finish_flush_object(std::move(outcome), uri, buff);
+  } else {
+    Aws::S3::Model::AbortMultipartUploadRequest abort_request =
+        make_multipart_abort_request(state);
+
+    auto outcome = client_->AbortMultipartUpload(abort_request);
+
+    return finish_flush_object(std::move(outcome), uri, buff);
+  }
+}
+
 Aws::S3::Model::CompleteMultipartUploadRequest
 S3::make_multipart_complete_request(const MultiPartUploadState& state) {
   // Add all the completed parts (sorted by part number) to the upload object.
@@ -1062,6 +1142,134 @@ Status S3::write(const URI& uri, const void* buffer, uint64_t length) {
     }
     assert(offset == length);
   }
+
+  return Status::Ok();
+}
+
+Status S3::global_order_write(
+    const URI& uri, const void* buffer, uint64_t length) {
+  throw_if_not_ok(init_client());
+
+  if (!use_multipart_upload_) {
+    throw StatusException(
+        Status_S3Error("Global order write failed! S3 multipart upload is "
+                       "disabled from config"));
+  }
+
+  const Aws::Http::URI aws_uri(uri.c_str());
+  const std::string uri_path(aws_uri.GetPath().c_str());
+
+  UniqueReadLock unique_rl(&multipart_upload_rwlock_);
+  auto state_iter = multipart_upload_states_.find(uri_path);
+  if (state_iter == multipart_upload_states_.end()) {
+    unique_rl.unlock();
+    UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
+
+    state_iter =
+        multipart_upload_states_.emplace(uri_path, MultiPartUploadState())
+            .first;
+
+    unique_wl.unlock();
+
+    // TODO: investigate if this is REALLY necessary
+    bool exists;
+    throw_if_not_ok(is_object(uri, &exists));
+    if (exists) {
+      throw_if_not_ok(remove_object(uri));
+    }
+
+    throw_if_not_ok(initiate_multipart_request(aws_uri, &state_iter->second));
+  } else {
+    // Unlock, as make_upload_part_req will reaquire as necessary.
+    unique_rl.unlock();
+  }
+
+  auto& state = state_iter->second;
+
+  // TODO: it's probably wise for BufferedChunk::size to store the cumulative
+  // size
+  auto& intermediate_chunks = state.buffered_chunks;
+  uint64_t sum_sizes = length;
+  for (auto& chunk : intermediate_chunks) {
+    sum_sizes += chunk.size;
+  }
+
+  // TODO: add constant for 5MB s3 minimum part value
+  if (sum_sizes < 5242880) {  // 5MB
+    auto new_uri = generate_chunk_uri(uri, intermediate_chunks.size());
+    write_buffered_chunk(new_uri, buffer, length);
+    intermediate_chunks.emplace(new_uri, length);
+    return Status::Ok();
+  }
+
+  // We have enough buffered for a multipart part upload
+  std::vector<std::byte> merged(sum_sizes);
+  uint64_t length_returned;
+  uint64_t offset = 0;
+  // TODO: this loop needs to be transformed into a parallel_for read
+  for (auto& chunk : intermediate_chunks) {
+    throw_if_not_ok(read(
+        URI(chunk.uri),
+        0,
+        merged.data() + offset,
+        chunk.size,
+        0,
+        &length_returned));
+    offset += chunk.size;
+  }
+  std::memcpy(merged.data() + offset, buffer, length);
+
+  // Issue one more multiple part uploads depending on the cumulative size of
+  // the merged chunks. It's a valid case that one of the submit() calls brings
+  // here a 10GB attribute write request, so we need to account for it and issue
+  // parallel writes if necessary
+  uint64_t num_ops = utils::math::ceil(merged.size(), multipart_part_size_);
+  num_ops = std::min(std::max(num_ops, uint64_t(1)), max_parallel_ops_);
+
+  auto upload_id = state.upload_id;
+
+  // Assign the part number(s), and make the write request.
+  if (num_ops == 1) {
+    const int part_num = state.part_number++;
+    auto ctx = make_upload_part_req(
+        aws_uri, merged.data(), merged.size(), upload_id, part_num);
+    return get_make_upload_part_req(uri, uri_path, ctx);
+  } else {
+    std::vector<MakeUploadPartCtx> ctx_vec;
+    ctx_vec.resize(num_ops);
+    const uint64_t bytes_per_op = multipart_part_size_;
+    const int part_num_base = state.part_number;
+    auto st = parallel_for(vfs_thread_pool_, 0, num_ops, [&](uint64_t i) {
+      uint64_t begin = i * bytes_per_op,
+               end = std::min(
+                   (i + 1) * bytes_per_op - 1, uint64_t(merged.size() - 1));
+      uint64_t thread_nbytes = end - begin + 1;
+      auto thread_buffer = reinterpret_cast<const char*>(merged.data()) + begin;
+      int part_num = static_cast<int>(part_num_base + i);
+      ctx_vec[i] = make_upload_part_req(
+          aws_uri, thread_buffer, thread_nbytes, upload_id, part_num);
+
+      return Status::Ok();
+    });
+    state.part_number += num_ops;
+
+    for (auto& ctx : ctx_vec) {
+      auto st = get_make_upload_part_req(uri, uri_path, ctx);
+      if (!st.ok()) {
+        std::stringstream errmsg;
+        errmsg << "S3 parallel write multipart error; " << st.message();
+        throw StatusException(Status_S3Error(errmsg.str()));
+      }
+    }
+  }
+
+  auto st = parallel_for(
+      vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
+        throw_if_not_ok(remove_object(URI(intermediate_chunks[i].uri)));
+        return Status::Ok();
+      });
+
+  intermediate_chunks.clear();
 
   return Status::Ok();
 }
@@ -1612,8 +1820,10 @@ Status S3::write_multipart(
       multipart_upload_states_.emplace(
           std::move(path_str), std::move(new_state));
       state = &multipart_upload_states_.at(uri_path);
+
+      // Expected in initiate_multipart_request
       state_lck = std::unique_lock<std::mutex>(state->mtx);
-      // Downgrade to read lock, expected below outside the create
+
       unique_wl.unlock();
 
       // Delete file if it exists (overwrite) and initiate multipart request

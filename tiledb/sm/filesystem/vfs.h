@@ -114,6 +114,12 @@ class VFS {
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
+
+  struct BufferedChunk {
+    std::string uri;
+    uint64_t size;
+  };
+
   /**
    * Multipart upload state definition used in the serialization of remote
    * global order writes. This state is a generalization of
@@ -128,6 +134,7 @@ class VFS {
 
     uint64_t part_number;
     optional<std::string> upload_id;
+    optional<std::vector<BufferedChunk>> buffered_chunks;
     std::vector<CompletedParts> completed_parts;
     Status status;
   };
@@ -430,6 +437,16 @@ class VFS {
   Status close_file(const URI& uri);
 
   /**
+   * Closes a file, flushing its contents to persistent storage.
+   * This function has special S3 logic tailored to work best with remote
+   * global order writes.
+   *
+   * @param uri The URI of the file.
+   * @return Status
+   */
+  Status finalize_and_close_file(const URI& uri);
+
+  /**
    * Writes the contents of a buffer into a file.
    *
    * @param uri The URI of the file.
@@ -438,6 +455,19 @@ class VFS {
    * @return Status
    */
   Status write(const URI& uri, const void* buffer, uint64_t buffer_size);
+
+  /**
+   * Writes the contents of a buffer into a file.
+   * This function has special S3 logic tailored to work best with remote
+   * global order writes.
+   *
+   * @param uri The URI of the file.
+   * @param buffer The buffer to write from.
+   * @param buffer_size The buffer size.
+   * @return Status
+   */
+  Status global_order_write(
+      const URI& uri, const void* buffer, uint64_t buffer_size);
 
   /**
    * Used in serialization to share the multipart upload state

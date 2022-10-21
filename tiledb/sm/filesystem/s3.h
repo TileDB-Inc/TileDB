@@ -155,6 +155,15 @@ class S3 {
    */
   Status flush_object(const URI& uri);
 
+  /**
+   * Flushes an s3 object as a result of a remote global order write
+   * finalize() call.
+   *
+   * @param uri The URI of the object to be flushed.
+   * @return Status
+   */
+  Status finalize_and_flush_object(const URI& uri);
+
   /** Checks if a bucket is empty. */
   Status is_empty_bucket(const URI& bucket, bool* is_empty) const;
 
@@ -371,15 +380,16 @@ class S3 {
   Status write(const URI& uri, const void* buffer, uint64_t length);
 
   /**
-   * Used in serialization of global order writes to set the multipart upload
-   * state in multipart_upload_states_ during deserialization
+   * Writes the input buffer to an S3 object. Note that this is essentially
+   * an append operation implemented via multipart uploads.
    *
-   * @param uri The file uri used as key in the internal map
-   * @param state The multipart upload state info
+   * @param uri The URI of the object to be written to.
+   * @param buffer The input buffer.
+   * @param length The size of the input buffer.
    * @return Status
    */
-  Status set_multipart_upload_state(
-      const std::string& uri, S3::MultiPartUploadState& state);
+  Status global_order_write(
+      const URI& uri, const void* buffer, uint64_t length);
 
  private:
   /* ********************************* */
@@ -505,6 +515,13 @@ class S3 {
     int upload_part_num;
   };
 
+  // TODO: Add a short version of the algorithm as docs here, it's important
+  // to have it close to code
+  struct BufferedChunk {
+    std::string uri;
+    uint64_t size;
+  };
+
   /** Contains all state associated with a multipart upload transaction. */
   struct MultiPartUploadState {
     MultiPartUploadState()
@@ -570,6 +587,10 @@ class S3 {
 
     /** The overall status of the multipart request. */
     Status st;
+
+    /** Tracks all global order write intermediate chunks that make up a >5mb
+     * multipart upload part */
+    std::vector<BufferedChunk> buffered_chunks;
 
     /** Mutex for thread safety */
     mutable std::mutex mtx;
@@ -897,6 +918,17 @@ class S3 {
    */
   Status get_make_upload_part_req(
       const URI& uri, const std::string& uri_path, MakeUploadPartCtx& ctx);
+
+  /**
+   * Used in serialization of global order writes to set the multipart upload
+   * state in multipart_upload_states_ during deserialization
+   *
+   * @param uri The file uri used as key in the internal map
+   * @param state The multipart upload state info
+   * @return Status
+   */
+  Status set_multipart_upload_state(
+      const std::string& uri, S3::MultiPartUploadState& state);
 
   /**
    * Returns the multipart upload state identified by uri
