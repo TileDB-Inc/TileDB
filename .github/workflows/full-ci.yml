@@ -53,7 +53,7 @@ jobs:
     with:
       ci_backend: HDFS
       matrix_image: ubuntu-20.04
-      bootstrap_args: '--enable-hdfs'
+      bootstrap_args: '--enable-hdfs --enable-static-tiledb'
   ci5:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
