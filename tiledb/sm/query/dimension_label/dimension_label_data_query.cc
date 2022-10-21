@@ -254,7 +254,7 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
   if (!is_sorted_buffer(
           stats_,
           label_buffer,
-          dimension_label->label_dimension()->type(),
+          dimension_label->label_attribute()->type(),
           dimension_label->label_order() == LabelOrder::INCREASING_LABELS)) {
     throw DimensionLabelDataQueryStatusException(
         "Failed to create dimension label query. The label data is not in the "
@@ -311,11 +311,6 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
           Query,
           storage_manager,
           dimension_label->indexed_array(),
-          fragment_name))}
-    , labelled_array_query_{tdb_unique_ptr<Query>(tdb_new(
-          Query,
-          storage_manager,
-          dimension_label->labelled_array(),
           fragment_name))} {
   // Create locally stored index data if the index buffer is empty.
   bool use_local_index = index_buffer.buffer_ == nullptr;
@@ -334,21 +329,6 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
     index_data_ = tdb_unique_ptr<IndexData>(IndexDataCreate::make_index_data(
         dimension_label->index_dimension()->type(),
         parent_subarray.ranges_for_dim(dim_idx)[0]));
-  }
-
-  // Set-up labelled array (sparse array).
-  throw_if_not_ok(labelled_array_query_->set_layout(Layout::UNORDERED));
-  labelled_array_query_->set_dimension_label_buffer(
-      dimension_label->label_dimension()->name(), label_buffer);
-  if (use_local_index) {
-    throw_if_not_ok(labelled_array_query_->set_data_buffer(
-        dimension_label->index_attribute()->name(),
-        index_data_->data(),
-        index_data_->data_size(),
-        true));
-  } else {
-    labelled_array_query_->set_dimension_label_buffer(
-        dimension_label->index_attribute()->name(), index_buffer);
   }
 
   // Set-up indexed array query (sparse array).
@@ -374,18 +354,13 @@ void UnorderedWriteDataQuery::add_index_ranges_from_label(
 }
 
 bool UnorderedWriteDataQuery::completed() const {
-  return indexed_array_query_->status() == QueryStatus::COMPLETED &&
-         labelled_array_query_->status() == QueryStatus::COMPLETED;
+  return indexed_array_query_->status() == QueryStatus::COMPLETED;
 }
 
 void UnorderedWriteDataQuery::process() {
   // Write to main dimension label array.
   throw_if_not_ok(indexed_array_query_->init());
   throw_if_not_ok(indexed_array_query_->process());
-
-  // Write to projection array.
-  throw_if_not_ok(labelled_array_query_->init());
-  throw_if_not_ok(labelled_array_query_->process());
 }
 
 }  // namespace tiledb::sm

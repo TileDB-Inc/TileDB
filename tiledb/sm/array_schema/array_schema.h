@@ -562,7 +562,7 @@ class ArraySchema {
    * Returns false if the union of attribute and dimension names contain
    * duplicates.
    */
-  Status check_attribute_dimension_label_names() const;
+  void check_attribute_dimension_label_names() const;
 
   /**
    * Returns error if double delta compression is used in the zipped

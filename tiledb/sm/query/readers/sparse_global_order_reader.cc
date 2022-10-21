@@ -277,11 +277,15 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   } while (!buffers_full_ && incomplete());
 
   // Fix the output buffer sizes.
-  RETURN_NOT_OK(resize_output_buffers(cells_copied(names)));
+  const auto cells = cells_copied(names);
+  stats_->add_counter("result_num", cells);
+  RETURN_NOT_OK(resize_output_buffers(cells));
 
   if (offsets_extra_element_) {
     RETURN_NOT_OK(add_extra_offset());
   }
+
+  stats_->add_counter("ignored_tiles", ignored_tiles_.size());
 
   return Status::Ok();
 }

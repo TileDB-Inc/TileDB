@@ -281,9 +281,14 @@ std::string Logger::add_tag(const std::string& tag, uint64_t id) {
 /* ********************************* */
 
 Logger& global_logger(Logger::Format format) {
-  static std::string name = (format == Logger::Format::JSON) ?
-                                Logger::global_logger_json_name :
-                                Logger::global_logger_default_name;
+  static auto ts_micro =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+          std::chrono::system_clock::now().time_since_epoch())
+          .count();
+  static std::string name =
+      (format == Logger::Format::JSON) ?
+          "\"" + std::to_string(ts_micro) + "-Global\":\"1\"" :
+          std::to_string(ts_micro) + "-Global";
   static Logger l(name, format, true);
   return l;
 }

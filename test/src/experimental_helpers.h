@@ -34,7 +34,6 @@
 #ifndef TILEDB_TEST_EXPERIMENTAL_HELPERS_H
 #define TILEDB_TEST_EXPERIMENTAL_HELPERS_H
 
-#include "catch.hpp"
 #include "helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
@@ -53,8 +52,6 @@ namespace tiledb::test {
  * @param array_schema The array schema to add the dimension label to.
  * @param label_name The name of the dimension label.
  * @param dim_idx The dimension index to add the label on.
- * @param label_order The label order for the dimension label.
- * @param label_domain The dimension label domain.
  * @param label_tile_extent The dimension tile extent for the label.
  * @param index_tile_extent The dimension label tile extent for the index.
  */
@@ -65,8 +62,6 @@ void add_dimension_label(
     const uint32_t dim_idx,
     tiledb_label_order_t label_order,
     tiledb_datatype_t label_datatype,
-    const void* label_domain,
-    const void* label_tile_extent,
     const void* index_tile_extent);
 
 }  // namespace tiledb::test
