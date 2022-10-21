@@ -297,8 +297,8 @@ template <class BitmapType>
 std::pair<uint64_t, uint64_t>
 SparseGlobalOrderReader<BitmapType>::get_coord_tiles_size(
     unsigned dim_num, unsigned f, uint64_t t) {
-  auto tiles_sizes = SparseIndexReaderBase::get_coord_tiles_size<BitmapType>(
-      true, dim_num, f, t);
+  auto tiles_sizes =
+      SparseIndexReaderBase::get_coord_tiles_size<BitmapType>(dim_num, f, t);
   auto frag_meta = fragment_metadata_[f];
 
   // Add the result tile structure size.

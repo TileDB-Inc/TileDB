@@ -185,7 +185,7 @@ uint64_t SparseIndexReaderBase::cells_copied(
 
 template <class BitmapType>
 std::pair<uint64_t, uint64_t> SparseIndexReaderBase::get_coord_tiles_size(
-    bool include_coords, unsigned dim_num, unsigned f, uint64_t t) {
+    unsigned dim_num, unsigned f, uint64_t t) {
   uint64_t tiles_size = 0;
 
   // Add the coordinate tiles size.
@@ -212,10 +212,7 @@ std::pair<uint64_t, uint64_t> SparseIndexReaderBase::get_coord_tiles_size(
   // Compute bitsort attribute tile size.
   if (bitsort_attribute_.has_value()) {
     // Calculate memory consumption for this tile.
-    auto&& [st, tile_size] =
-        get_attribute_tile_size(bitsort_attribute_.value(), f, t);
-    RETURN_NOT_OK_TUPLE(st, nullopt);
-    tiles_size += *tile_size;
+    tiles_size += get_attribute_tile_size(bitsort_attribute_.value(), f, t);
   }
 
   // Compute query condition tile sizes.
@@ -863,7 +860,7 @@ void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
 // Explicit template instantiations
 template std::pair<uint64_t, uint64_t>
 SparseIndexReaderBase::get_coord_tiles_size<uint64_t>(
-    bool, unsigned, unsigned, uint64_t);
+    unsigned, unsigned, uint64_t);
 template std::pair<uint64_t, uint64_t>
 SparseIndexReaderBase::get_coord_tiles_size<uint8_t>(
     unsigned, unsigned, uint64_t);

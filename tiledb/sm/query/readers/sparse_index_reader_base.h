@@ -346,7 +346,7 @@ class SparseIndexReaderBase : public ReaderBase {
    */
   template <class BitmapType>
   std::pair<uint64_t, uint64_t> get_coord_tiles_size(
-      bool include_coords, unsigned dim_num, unsigned f, uint64_t t);
+      unsigned dim_num, unsigned f, uint64_t t);
 
   /**
    * Load tile offsets and result tile ranges.
