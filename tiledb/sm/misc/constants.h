@@ -37,6 +37,8 @@
 #include <cinttypes>
 #include <string>
 
+#include "tiledb/common/common.h"
+
 namespace tiledb {
 namespace sm {
 
@@ -610,19 +612,19 @@ extern const int32_t library_version[3];
 extern const uint32_t base_format_version;
 
 /** The TileDB serialization format version number. */
-extern const uint32_t format_version;
+extern const format_version_t format_version;
 
 /** The lowest version supported for back compat writes. */
-extern const uint32_t back_compat_writes_min_format_version;
+extern const format_version_t back_compat_writes_min_format_version;
 
 /** The lowest version supported for consolidation with timestamps. */
-extern const uint32_t consolidation_with_timestamps_min_version;
+extern const format_version_t consolidation_with_timestamps_min_version;
 
 /** The lowest version supported for deletes. */
-extern const uint32_t deletes_min_version;
+extern const format_version_t deletes_min_version;
 
 /** The lowest version supported for updates. */
-extern const uint32_t updates_min_version;
+extern const format_version_t updates_min_version;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;

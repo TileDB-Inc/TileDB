@@ -369,64 +369,6 @@ class ReaderBase : public StrategyBase {
   Status load_processed_conditions();
 
   /**
-   * Initializes a fixed-sized tile.
-   *
-   * @param format_version The format version of the tile.
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The tile to be initialized.
-   * @return Status
-   */
-  Status init_tile(
-      uint32_t format_version, const std::string& name, Tile* tile) const;
-
-  /**
-   * Initializes a var-sized tile.
-   *
-   * @param format_version The format version of the tile.
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The offsets tile to be initialized.
-   * @param tile_var The var-sized data tile to be initialized.
-   * @return Status
-   */
-  Status init_tile(
-      uint32_t format_version,
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_var) const;
-
-  /**
-   * Initializes a fixed-sized tile.
-   *
-   * @param format_version The format version of the tile.
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The tile to be initialized.
-   * @param tile_validity The validity tile to be initialized.
-   * @return Status
-   */
-  Status init_tile_nullable(
-      uint32_t format_version,
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_validity) const;
-
-  /**
-   * Initializes a var-sized tile.
-   *
-   * @param format_version The format version of the tile.
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The offsets tile to be initialized.
-   * @param tile_var The var-sized data tile to be initialized.
-   * @param tile_validity The validity tile to be initialized.
-   * @return Status
-   */
-  Status init_tile_nullable(
-      uint32_t format_version,
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_var,
-      Tile* tile_validity) const;
-
-  /**
    * Concurrently executes across each name in `names` and each result tile
    * in 'result_tiles'.
    *
@@ -664,9 +606,9 @@ class ReaderBase : public StrategyBase {
    * @param name The attribute name.
    * @param f The fragment idx.
    * @param t The tile idx.
-   * @return Status, tile size.
+   * @return Tile size.
    */
-  tuple<Status, optional<uint64_t>> get_attribute_tile_size(
+  uint64_t get_attribute_tile_size(
       const std::string& name, unsigned f, uint64_t t);
 
   /**

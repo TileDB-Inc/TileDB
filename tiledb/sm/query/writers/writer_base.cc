@@ -881,15 +881,14 @@ Status WriterBase::init_tiles(
   const bool nullable = array_schema_.is_nullable(name);
   const uint64_t cell_size = array_schema_.cell_size(name);
   const auto type = array_schema_.type(name);
+  const auto& domain{array_schema_.domain()};
+  const auto capacity = array_schema_.capacity();
+  const auto cell_num_per_tile =
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
     tiles->emplace_back(WriterTile(
-        array_schema_,
-        coords_info_.has_coords_,
-        var_size,
-        nullable,
-        cell_size,
-        type));
+        array_schema_, cell_num_per_tile, var_size, nullable, cell_size, type));
   }
 
   return Status::Ok();

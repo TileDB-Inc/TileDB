@@ -29,7 +29,7 @@ find_package(Catch_EP REQUIRED)
 # Array tests
 add_executable(unit_array EXCLUDE_FROM_ALL)
 target_link_libraries(unit_array PRIVATE array)
-target_link_libraries(unit_array PUBLIC Catch2::Catch2)
+target_link_libraries(unit_array PUBLIC Catch2::Catch2WithMain)
 
 target_sources(unit_array PUBLIC main.cc unit_array_directory.cc)
 

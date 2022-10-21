@@ -342,11 +342,11 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param f Fragment index.
    * @param t Tile index.
    *
-   * @return Status, tiles_size, tiles_size_qc.
+   * @return Tiles_size, tiles_size_qc.
    */
   template <class BitmapType>
-  tuple<Status, optional<std::pair<uint64_t, uint64_t>>> get_coord_tiles_size(
-      unsigned dim_num, unsigned f, uint64_t t);
+  std::pair<uint64_t, uint64_t> get_coord_tiles_size(
+      bool include_coords, unsigned dim_num, unsigned f, uint64_t t);
 
   /**
    * Load tile offsets and result tile ranges.

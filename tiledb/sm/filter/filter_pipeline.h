@@ -321,7 +321,7 @@ class FilterPipeline {
    */
   bool skip_offsets_filtering(
       const Datatype type,
-      const uint32_t version = constants::format_version) const;
+      const format_version_t version = constants::format_version) const;
 
   /**
    * Checks if an attribute/dimension needs to be filtered in chunks or as a

@@ -52,7 +52,7 @@ class WriterTile {
 
   WriterTile(
       const ArraySchema& array_schema,
-      const bool has_coords,
+      const uint64_t cell_num_per_tile,
       const bool var_size,
       const bool nullable,
       const uint64_t cell_size,
@@ -217,11 +217,6 @@ class WriterTile {
   void swap(WriterTile& tile);
 
  private:
-  /* ********************************* */
-  /*        PRIVATE CONSTRUCTOR        */
-  /* ********************************* */
-  WriterTile() = default;
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

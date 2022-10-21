@@ -184,9 +184,8 @@ uint64_t SparseIndexReaderBase::cells_copied(
 }
 
 template <class BitmapType>
-tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
-SparseIndexReaderBase::get_coord_tiles_size(
-    unsigned dim_num, unsigned f, uint64_t t) {
+std::pair<uint64_t, uint64_t> SparseIndexReaderBase::get_coord_tiles_size(
+    bool include_coords, unsigned dim_num, unsigned f, uint64_t t) {
   uint64_t tiles_size = 0;
 
   // Add the coordinate tiles size.
@@ -195,10 +194,7 @@ SparseIndexReaderBase::get_coord_tiles_size(
       tiles_size += fragment_metadata_[f]->tile_size(dim_names_[d], t);
 
       if (is_dim_var_size_[d]) {
-        auto&& [st, temp] =
-            fragment_metadata_[f]->tile_var_size(dim_names_[d], t);
-        RETURN_NOT_OK_TUPLE(st, nullopt);
-        tiles_size += *temp;
+        tiles_size += fragment_metadata_[f]->tile_var_size(dim_names_[d], t);
       }
     }
   }
@@ -227,13 +223,11 @@ SparseIndexReaderBase::get_coord_tiles_size(
   if (!qc_loaded_attr_names_.empty()) {
     for (auto& name : qc_loaded_attr_names_) {
       // Calculate memory consumption for this tile.
-      auto&& [st, tile_size] = get_attribute_tile_size(name, f, t);
-      RETURN_NOT_OK_TUPLE(st, nullopt);
-      tiles_size_qc += *tile_size;
+      tiles_size_qc += get_attribute_tile_size(name, f, t);
     }
   }
 
-  return {Status::Ok(), std::make_pair(tiles_size, tiles_size_qc)};
+  return std::make_pair(tiles_size, tiles_size_qc);
 }
 
 Status SparseIndexReaderBase::load_initial_data() {
@@ -867,10 +861,10 @@ void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
 }
 
 // Explicit template instantiations
-template tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
+template std::pair<uint64_t, uint64_t>
 SparseIndexReaderBase::get_coord_tiles_size<uint64_t>(
-    unsigned, unsigned, uint64_t);
-template tuple<Status, optional<std::pair<uint64_t, uint64_t>>>
+    bool, unsigned, unsigned, uint64_t);
+template std::pair<uint64_t, uint64_t>
 SparseIndexReaderBase::get_coord_tiles_size<uint8_t>(
     unsigned, unsigned, uint64_t);
 template Status SparseIndexReaderBase::apply_query_condition<
