@@ -49,7 +49,8 @@ typedef struct tiledb_error_handle_t tiledb_error_t;
  *
  * **Example:**
  *
- * The following shows how to get the last error from a TileDB context.
+ * The following shows how to get the last error from a TileDB context. If the
+ * error does not contain an error message ``errmsg`` is set to ``NULL``.
  *
  * @code{.c}
  * tiledb_error_t* err = NULL;
