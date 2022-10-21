@@ -135,9 +135,9 @@ class ArrayDimensionLabelQueries {
   /**
    * Process all data queries and updates the ranges on the parent subarray.
    *
-   * @param subarray The subarray to set the updated dimension ranges on.
+   * @param parent_query The parent array query to update ranges on.
    */
-  void process_range_queries(Subarray& subarray);
+  void process_range_queries(Query* parent_query);
 
  private:
   /** The storage manager. */

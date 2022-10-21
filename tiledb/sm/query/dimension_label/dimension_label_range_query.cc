@@ -45,24 +45,23 @@ OrderedRangeQuery::OrderedRangeQuery(
     StorageManager* storage_manager,
     DimensionLabel* dimension_label,
     const std::vector<Range>& label_ranges)
-    : query_{tdb_unique_ptr<Query>(tdb_new(
-          Query, storage_manager, dimension_label->indexed_array(), nullopt))}
+    : Query(storage_manager, dimension_label->indexed_array(), nullopt)
     , index_data_{IndexDataCreate::make_index_data(
           dimension_label->index_dimension()->type(),
           2 * label_ranges.size())} {
   // Set the basic query properies.
-  throw_if_not_ok(query_->set_layout(Layout::ROW_MAJOR));
-  query_->set_dimension_label_ordered_read(
+  throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
+  set_dimension_label_ordered_read(
       dimension_label->label_order() == LabelOrder::INCREASING_LABELS);
 
   // Set the subarray.
-  Subarray subarray{*query_->subarray()};
+  Subarray subarray{*this->subarray()};
   subarray.set_attribute_ranges(
       dimension_label->label_attribute()->name(), label_ranges);
-  throw_if_not_ok(query_->set_subarray(subarray));
+  throw_if_not_ok(set_subarray(subarray));
 
   // Set index data buffer that will store the computed ranges.
-  throw_if_not_ok(query_->set_data_buffer(
+  throw_if_not_ok(set_data_buffer(
       dimension_label->index_dimension()->name(),
       index_data_->data(),
       index_data_->data_size(),
@@ -70,7 +69,7 @@ OrderedRangeQuery::OrderedRangeQuery(
 }
 
 bool OrderedRangeQuery::completed() const {
-  return query_->status() == QueryStatus::COMPLETED;
+  return status() == QueryStatus::COMPLETED;
 }
 
 tuple<bool, const void*, storage_size_t> OrderedRangeQuery::computed_ranges()
@@ -80,11 +79,6 @@ tuple<bool, const void*, storage_size_t> OrderedRangeQuery::computed_ranges()
         "Cannot return computed ranges. Query has not completed.");
   }
   return {false, index_data_->data(), index_data_->count()};
-}
-
-void OrderedRangeQuery::process() {
-  throw_if_not_ok(query_->init());
-  throw_if_not_ok(query_->process());
 }
 
 }  // namespace tiledb::sm

@@ -139,30 +139,33 @@ void ArrayDimensionLabelQueries::process_data_queries() {
       0,
       data_queries_.size(),
       [&](const size_t query_idx) {
-        data_queries_[query_idx]->process();
+        throw_if_not_ok(data_queries_[query_idx]->init());
+        throw_if_not_ok(data_queries_[query_idx]->process());
         return Status::Ok();
       }));
 }
 
-void ArrayDimensionLabelQueries::process_range_queries(Subarray& subarray) {
+void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
   // Process queries and update the subarray.
   throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
-      subarray.dim_num(),
+      label_range_queries_by_dim_idx_.size(),
       [&](const uint32_t dim_idx) {
-        if (label_range_queries_by_dim_idx_[dim_idx]) {
+        auto& range = label_range_queries_by_dim_idx_[dim_idx];
+        if (range) {
           // Process the query.
-          label_range_queries_by_dim_idx_[dim_idx]->process();
+          throw_if_not_ok(range->init());
+          throw_if_not_ok(range->process());
 
-          // Update data queries and subarray with the dimension ranges.
+          // Update data queries and the parent query with the dimension ranges.
           auto [is_point_ranges, range_data, count] =
               label_range_queries_by_dim_idx_[dim_idx]->computed_ranges();
           for (auto& data_query : label_data_queries_by_dim_idx_[dim_idx]) {
             data_query->add_index_ranges_from_label(
-                is_point_ranges, range_data, count);
+                0, is_point_ranges, range_data, count);
           }
-          subarray.add_index_ranges_from_label(
+          parent_query->add_index_ranges_from_label(
               dim_idx, is_point_ranges, range_data, count);
         }
         return Status::Ok();

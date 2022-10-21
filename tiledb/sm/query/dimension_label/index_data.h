@@ -146,6 +146,8 @@ class IndexDataCreate {
   /**
    * Creates a buffer that can hold the requested size of data.
    *
+   * This follows the same initialization rules as std::vector.
+   *
    * @param Datatype of the index data to create.
    * @param num_values The number of contained data points.
    * @returns A pointer to an index data object.

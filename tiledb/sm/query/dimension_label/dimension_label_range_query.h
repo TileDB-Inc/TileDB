@@ -59,7 +59,7 @@ class DimensionLabelRangeQueryStatusException : public StatusException {
   }
 };
 
-class DimensionLabelRangeQuery {
+class DimensionLabelRangeQuery : public virtual Query {
  public:
   /** Destructor. */
   virtual ~DimensionLabelRangeQuery() = default;
@@ -77,9 +77,6 @@ class DimensionLabelRangeQuery {
 
   /** Returns ``true`` if the query status is completed. */
   virtual bool completed() const = 0;
-
-  /** Processes the dimension label query. */
-  virtual void process() = 0;
 };
 
 class OrderedRangeQuery : public DimensionLabelRangeQuery {
@@ -116,13 +113,7 @@ class OrderedRangeQuery : public DimensionLabelRangeQuery {
   /** Returns ``true`` if the query status is completed. */
   bool completed() const;
 
-  /** Processes the dimension label query. */
-  void process();
-
  private:
-  /** Query on the dimension label. */
-  tdb_unique_ptr<Query> query_;
-
   /** Data to store index data in. */
   tdb_unique_ptr<IndexData> index_data_;
 };

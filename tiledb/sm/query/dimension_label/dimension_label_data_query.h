@@ -35,6 +35,7 @@
 #define TILEDB_DIMENSION_LABEL_QUERY_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/type/range/range.h"
@@ -44,7 +45,6 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 class DimensionLabel;
-class Query;
 class QueryBuffer;
 class Subarray;
 class IndexData;
@@ -61,30 +61,14 @@ class DimensionLabelDataQueryStatusException : public StatusException {
   }
 };
 
-class DimensionLabelDataQuery {
+class DimensionLabelDataQuery : public virtual Query {
  public:
-  /** Destructor. */
   virtual ~DimensionLabelDataQuery() = default;
 
-  /**
-   * Adds ranges to a query initialize with label ranges.
-   *
-   * @param is_point_ranges If ``true`` the data contains point ranges.
-   *     Otherwise, it contains standard ranges.
-   * @param start Pointer to the start of the range data.
-   * @param count Number of total elements in the range data.
-   */
-  virtual void add_index_ranges_from_label(
-      const bool is_point_range, const void* start, const uint64_t count) = 0;
-
-  /** Returns ``true`` if the query status for both queries is completed. */
+  /** Returns ``true`` if the query status is completed. */
   virtual bool completed() const = 0;
-
-  /** Processes both queries if they exist. */
-  virtual void process() = 0;
 };
 
-/** Dimension label query for reading label data. */
 class DimensionLabelReadDataQuery : public DimensionLabelDataQuery {
  public:
   /** Default constructor is not C.41 compliant. */
@@ -110,28 +94,8 @@ class DimensionLabelReadDataQuery : public DimensionLabelDataQuery {
   DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelReadDataQuery);
   DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelReadDataQuery);
 
-  /**
-   * Adds ranges to a query initialize with label ranges.
-   *
-   * @param is_point_ranges If ``true`` the data contains point ranges.
-   *     Otherwise, it contains standard ranges.
-   * @param start Pointer to the start of the range data.
-   * @param count Number of total elements in the range data.
-   */
-  void add_index_ranges_from_label(
-      const bool is_point_range,
-      const void* start,
-      const uint64_t count) override;
-
-  /** Returns ``true`` if the query status for both queries is completed. */
-  bool completed() const override;
-
-  /** Processes both queries if they exist. */
-  void process() override;
-
- private:
-  /** Query on the dimension label indexed array. */
-  tdb_unique_ptr<Query> query_{nullptr};
+  /** Returns ``true`` if the query status is completed. */
+  bool completed() const;
 };
 
 /** Dimension label query for writing ordered data. */
@@ -167,32 +131,8 @@ class OrderedWriteDataQuery : public DimensionLabelDataQuery {
   DISABLE_COPY_AND_COPY_ASSIGN(OrderedWriteDataQuery);
   DISABLE_MOVE_AND_MOVE_ASSIGN(OrderedWriteDataQuery);
 
-  /**
-   * Adds ranges to a query initialized with label ranges. Not valid on a write
-   * query.
-   *
-   * @param is_piont_range If ``true`` the returned data is stored as point
-   *     ranges, otherwise it is stored as standard ranges.
-   * @param start Pointer to the start of the range data to add.
-   * @param count The total number of elements in the range data.
-   */
-  void add_index_ranges_from_label(
-      const bool is_point_range,
-      const void* start,
-      const uint64_t count) override;
-
-  /** Returns ``true`` if the query status for both queries is completed. */
-  bool completed() const override;
-
-  /** Processes both queries if they exist. */
-  void process() override;
-
- private:
-  /** Class stats object for timing. */
-  stats::Stats* stats_;
-
-  /** Query on the dimension label indexed array. */
-  tdb_unique_ptr<Query> query_;
+  /** Returns ``true`` if the query status is completed. */
+  bool completed() const;
 };
 
 /** Writer for unordered dimension labels. */
@@ -227,30 +167,10 @@ class UnorderedWriteDataQuery : public DimensionLabelDataQuery {
   DISABLE_COPY_AND_COPY_ASSIGN(UnorderedWriteDataQuery);
   DISABLE_MOVE_AND_MOVE_ASSIGN(UnorderedWriteDataQuery);
 
-  /**
-   * Adds ranges to a query initialized with label ranges. Not valid on a write
-   * query.
-   *
-   * @param is_point_range If ``true`` the returned data is stored as point
-   *     ranges, otherwise it is stored as standard ranges.
-   * @param start Pointer to the start of the range data to add.
-   * @param count Number of total elements in the range data.
-   */
-  void add_index_ranges_from_label(
-      const bool is_point_range,
-      const void* start,
-      const uint64_t count) override;
-
-  /** Returns ``true`` if the query status for both queries is completed. */
-  bool completed() const override;
-
-  /** Processes both queries if they exist. */
-  void process() override;
+  /** Returns ``true`` if the query status is completed. */
+  bool completed() const;
 
  private:
-  /** Query on the dimension label indexed array. */
-  tdb_unique_ptr<Query> indexed_array_query_{nullptr};
-
   /** Internally managed index data for sparse write to labelled array. */
   tdb_unique_ptr<IndexData> index_data_;
 };
