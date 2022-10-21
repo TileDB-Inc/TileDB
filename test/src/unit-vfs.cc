@@ -52,7 +52,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
   bool exists = false;
   REQUIRE(vfs.is_file(testfile, &exists).ok());
   if (exists) {
-    REQUIRE(vfs->remove_file(testfile).ok());
+    REQUIRE(vfs.remove_file(testfile).ok());
   }
 
   // Write some data.
@@ -473,9 +473,9 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
 
   // Clean up
   bool is_dir = false;
-  REQUIRE(vfs.is_dir(URI(path), &is_dir).ok());
+  REQUIRE(vfs_ls.is_dir(URI(path), &is_dir).ok());
   if (is_dir)
-    REQUIRE(vfs.remove_dir(URI(path)).ok());
+    REQUIRE(vfs_ls.remove_dir(URI(path)).ok());
 
   std::string dir = path + "ls_dir";
   std::string file = dir + "/file";
@@ -483,11 +483,11 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   std::string subdir_file = subdir + "/file";
 
   // Create directories and files
-  REQUIRE(vfs.create_dir(URI(path)).ok());
-  REQUIRE(vfs.create_dir(URI(dir)).ok());
-  REQUIRE(vfs.create_dir(URI(subdir)).ok());
-  REQUIRE(vfs.touch(URI(file)).ok());
-  REQUIRE(vfs.touch(URI(subdir_file)).ok());
+  REQUIRE(vfs_ls.create_dir(URI(path)).ok());
+  REQUIRE(vfs_ls.create_dir(URI(dir)).ok());
+  REQUIRE(vfs_ls.create_dir(URI(subdir)).ok());
+  REQUIRE(vfs_ls.touch(URI(file)).ok());
+  REQUIRE(vfs_ls.touch(URI(subdir_file)).ok());
 
   // Write to file
   std::string s1 = "abcdef";
@@ -521,5 +521,5 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   REQUIRE(children[1].file_size() == 0);
 
   // Clean up
-  REQUIRE(vfs.remove_dir(URI(path)).ok());
+  REQUIRE(vfs_ls.remove_dir(URI(path)).ok());
 }

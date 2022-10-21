@@ -34,25 +34,15 @@ gather_sources(${SOURCES})
 #
 # Object library for other units to depend upon
 #
-add_library(capi_vfs OBJECT ${SOURCES})
-target_link_libraries(capi_vfs PUBLIC export)
-target_link_libraries(capi_vfs PUBLIC vfs $<TARGET_OBJECTS:vfs>)
-
-#
-# UNFINISHED
-#
-# This will support a future `capi_context` library.
-#
+add_library(capi_vfs_stub OBJECT ${SOURCES})
+target_link_libraries(capi_vfs_stub PUBLIC capi_context_stub $<TARGET_OBJECTS:capi_context_stub>)
+#target_link_libraries(capi_vfs_stub PUBLIC vfs $<TARGET_OBJECTS:vfs>)
 
 #
 # Test-compile of object library ensures link-completeness
 #
-# Note: As of this time, this test-compile does not fully link because there's
-# no `context` object library to link against. There's no point in testing
-# link-completeness against the library as a whole.
-#
-add_executable(noncompile_capi_vfs EXCLUDE_FROM_ALL)
-target_link_libraries(noncompile_capi_vfs PRIVATE capi_vfs)
-target_sources(noncompile_capi_vfs PRIVATE test/compile_capi_vfs_main.cc)
+add_executable(compile_capi_vfs_stub EXCLUDE_FROM_ALL)
+target_link_libraries(compile_capi_vfs_stub PRIVATE capi_vfs_stub)
+target_sources(compile_capi_vfs_stub PRIVATE test/compile_capi_vfs_main.cc)
 
 add_test_subdirectory()
