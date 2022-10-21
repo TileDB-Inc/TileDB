@@ -51,6 +51,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class FilterPipelineStatusException : public common::StatusException {
+ public:
+  explicit FilterPipelineStatusException(const std::string& message)
+      : StatusException("FilterPipeline", message) {
+  }
+};
+
 FilterPipeline::FilterPipeline()
     : max_chunk_size_(constants::max_tile_chunk_size) {
 }
@@ -313,14 +320,14 @@ Status FilterPipeline::filter_chunks_forward(
   return Status::Ok();
 }
 
-Status FilterPipeline::filter_chunks_reverse(
+void FilterPipeline::filter_chunks_reverse(
     Tile& tile,
     Tile* const offsets_tile,
     const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
     ThreadPool* const compute_tp,
     const Config& config) const {
   if (input.empty()) {
-    return Status::Ok();
+    return;
   }
 
   // Precompute the sizes of the final output chunks.
@@ -332,12 +339,14 @@ Status FilterPipeline::filter_chunks_reverse(
   }
 
   if (total_size != tile.size()) {
-    return LOG_STATUS(
-        Status_FilterError("Error incorrect unfiltered tile size allocated."));
+    auto e = FilterPipelineStatusException(
+        "Error incorrect unfiltered tile size allocated.");
+    LOG_STATUS(e);
+    throw e;
   }
 
   // Run each chunk through the entire pipeline.
-  auto status = parallel_for(compute_tp, 0, input.size(), [&](uint64_t i) {
+  throw_if_not_ok(parallel_for(compute_tp, 0, input.size(), [&](uint64_t i) {
     const auto& chunk_input = input[i];
 
     const uint32_t filtered_chunk_len = std::get<1>(chunk_input);
@@ -408,11 +417,7 @@ Status FilterPipeline::filter_chunks_reverse(
       }
     }
     return Status::Ok();
-  });
-
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+  }));
 }
 
 Filter* FilterPipeline::get_filter(unsigned index) const {
@@ -600,15 +605,8 @@ Status FilterPipeline::run_reverse_internal(
   reader_stats->add_counter("read_unfiltered_byte_num", total_orig_size);
 
   try {
-    const Status st = filter_chunks_reverse(
+    filter_chunks_reverse(
         *tile, offsets_tile, filtered_chunks, compute_tp, config);
-    if (!st.ok()) {
-      tile->clear_data();
-      if (offsets_tile) {
-        offsets_tile->clear_data();
-      }
-      return st;
-    }
   } catch (...) {
     tile->clear_data();
     if (offsets_tile) {

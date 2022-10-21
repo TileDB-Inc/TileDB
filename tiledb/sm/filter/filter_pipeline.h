@@ -388,9 +388,8 @@ class FilterPipeline {
    *    will be written.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
-   * @return Status
    */
-  Status filter_chunks_reverse(
+  void filter_chunks_reverse(
       Tile& tile,
       Tile* const offsets_tile,
       const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
