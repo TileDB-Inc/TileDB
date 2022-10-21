@@ -30,8 +30,10 @@
 
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
+#include "../vfs_api_internal.h"
 //#include "../vfs_api_external.h"
-// Disabled until we have a context object library that will allow linking
 
 TEST_CASE("CAPI VFS: null") {
 }
+
+/* #TODO Implement argument validation tests. */

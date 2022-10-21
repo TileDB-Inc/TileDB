@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/vfs/vfs_external.h
+ * @file tiledb/api/c_api/vfs/vfs_api_external.h
  *
  * @section LICENSE
  *
@@ -34,7 +34,6 @@
 #define TILEDB_CAPI_VFS_EXTERNAL_H
 
 #include "../api_external_common.h"
-#include "../config/config_api_external.h"
 #include "../context/context_api_external.h"
 
 #ifdef __cplusplus

@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/vfs/vfs_internal.h
+ * @file tiledb/api/c_api/vfs/vfs_api_internal.h
  *
  * @section LICENSE
  *
@@ -27,13 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C API for TileDB.
+ * This file declares the internals of the vfs section of the C API.
  */
 
 #ifndef TILEDB_CAPI_VFS_INTERNAL_H
 #define TILEDB_CAPI_VFS_INTERNAL_H
 
-#include "tiledb/api/c_api_support/argument_validation.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/enums/vfs_mode.h"
@@ -44,6 +43,11 @@
 /** Handle `struct` for API VFS objects. */
 struct tiledb_vfs_handle_t
     : public tiledb::api::CAPIHandle<tiledb_vfs_handle_t> {
+  /**
+   * Type name
+   */
+  static constexpr std::string_view object_type_name{"vfs"};
+
  private:
   using vfs_type = tiledb::sm::VFS;
   vfs_type vfs_;
@@ -191,8 +195,10 @@ namespace tiledb::api {
  */
 inline void ensure_vfs_is_valid(const tiledb_vfs_t* vfs) {
   if (vfs == nullptr) {
-    action_invalid_object("vfs");
+    throw CAPIStatusException(std::string("Invalid TileDB object: ") + "vfs");
+    // action_invalid_object("vfs");
   }
+  // ensure_handle_is_valid(vfs);
 }
 
 /**
@@ -202,8 +208,11 @@ inline void ensure_vfs_is_valid(const tiledb_vfs_t* vfs) {
  */
 inline void ensure_vfs_fh_is_valid(const tiledb_vfs_fh_t* vfs_fh) {
   if (vfs_fh == nullptr) {
-    action_invalid_object("vfs_fh");
+    // action_invalid_object("vfs_fh");
+    throw CAPIStatusException(
+        std::string("Invalid TileDB object: ") + "vfs_fh");
   }
+  // ensure_handle_is_valid(vfs_fh);
 }
 
 }  // namespace tiledb::api
