@@ -4013,8 +4013,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     CHECK_THROWS_WITH(
         pipeline.run_reverse(
             &test::g_helper_stats, &tile, nullptr, &tp, config),
-        "[TileDB::Encryption] Error: OpenSSL error; error finalizing "
-        "decryption.");
+        Catch::Matchers::StartsWith("[TileDB::Encryption] Error:"));
 
     // Fix key and check success. Note: this test depends on the implementation
     // leaving the tile data unmodified when the decryption fails, which is not
