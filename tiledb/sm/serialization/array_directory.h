@@ -56,13 +56,11 @@ namespace serialization {
  *
  * @param array_dir_reader cap'n proto class
  * @param array_uri uri of the array that the directory belongs to
- * @param array_directory array directory object to deserialize into
- * @return Status
+ * @return array_directory array directory object to deserialize into
  */
-Status array_directory_from_capnp(
+shared_ptr<ArrayDirectory> array_directory_from_capnp(
     const capnp::ArrayDirectory::Reader& array_directory_reader,
-    const URI& array_uri,
-    ArrayDirectory* array_directory);
+    const URI& array_uri);
 
 /**
  * Convert Array Directory to Cap'n Proto message
@@ -72,7 +70,7 @@ Status array_directory_from_capnp(
  * @param array_dir_builder cap'n proto class
  * @return Status
  */
-Status array_directory_to_capnp(
+void array_directory_to_capnp(
     const ArrayDirectory& array_directory,
     const ArraySchema& array_schema,
     capnp::ArrayDirectory::Builder* array_directory_builder);

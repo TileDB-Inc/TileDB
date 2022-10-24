@@ -54,7 +54,7 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
-Status array_directory_to_capnp(
+void array_directory_to_capnp(
     const ArrayDirectory& array_directory,
     const ArraySchema& array_schema,
     capnp::ArrayDirectory::Builder* array_directory_builder) {
@@ -232,25 +232,20 @@ Status array_directory_to_capnp(
 
   // set timestamp end
   array_directory_builder->setTimestampEnd(array_directory.timestamp_end());
-
-  return Status::Ok();
 }
 
-Status array_directory_from_capnp(
+shared_ptr<ArrayDirectory> array_directory_from_capnp(
     const capnp::ArrayDirectory::Reader& array_directory_reader,
-    const URI& array_uri,
-    ArrayDirectory* array_directory) {
-  if (array_directory == nullptr) {
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing array directory; array directory instance is null"));
-  }
-
+    const URI& array_uri) {
+  auto array_directory = make_shared<ArrayDirectory>(HERE());
   // Array uri
   array_directory->uri() = array_uri.add_trailing_slash();
 
   // Get unfiltered fragment uris
   if (array_directory_reader.hasUnfilteredFragmentUris()) {
     for (auto uri : array_directory_reader.getUnfilteredFragmentUris()) {
+      array_directory->unfiltered_fragment_uris().reserve(
+          array_directory_reader.getUnfilteredFragmentUris().size());
       array_directory->unfiltered_fragment_uris().emplace_back(
           deserialize_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -259,6 +254,8 @@ Status array_directory_from_capnp(
   // Get consolidated commit uris
   if (array_directory_reader.hasConsolidatedCommitUris()) {
     for (auto uri : array_directory_reader.getConsolidatedCommitUris()) {
+      array_directory->consolidated_commit_uris_set().reserve(
+          array_directory_reader.getConsolidatedCommitUris().size());
       array_directory->consolidated_commit_uris_set().emplace(
           deserialize_uri_to_absolute(uri.cStr(), array_uri).to_string());
     }
@@ -267,6 +264,8 @@ Status array_directory_from_capnp(
   // Get array schema uris
   if (array_directory_reader.hasArraySchemaUris()) {
     for (auto uri : array_directory_reader.getArraySchemaUris()) {
+      array_directory->array_schema_uris().reserve(
+          array_directory_reader.getArraySchemaUris().size());
       array_directory->array_schema_uris().emplace_back(
           deserialize_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -283,6 +282,8 @@ Status array_directory_from_capnp(
   // Get array meta uris to vacuum
   if (array_directory_reader.hasArrayMetaUrisToVacuum()) {
     for (auto uri : array_directory_reader.getArrayMetaUrisToVacuum()) {
+      array_directory->array_meta_uris_to_vacuum().reserve(
+          array_directory_reader.getArrayMetaUrisToVacuum().size());
       array_directory->array_meta_uris_to_vacuum().emplace_back(
           deserialize_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -291,6 +292,8 @@ Status array_directory_from_capnp(
   // Get array meta vac uris to vacuum
   if (array_directory_reader.hasArrayMetaVacUrisToVacuum()) {
     for (auto uri : array_directory_reader.getArrayMetaVacUrisToVacuum()) {
+      array_directory->array_meta_vac_uris_to_vacuum().reserve(
+          array_directory_reader.getArrayMetaVacUrisToVacuum().size());
       array_directory->array_meta_vac_uris_to_vacuum().emplace_back(
           deserialize_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -299,6 +302,8 @@ Status array_directory_from_capnp(
   // Get commit uris to consolidate
   if (array_directory_reader.hasCommitUrisToConsolidate()) {
     for (auto uri : array_directory_reader.getCommitUrisToConsolidate()) {
+      array_directory->commit_uris_to_consolidate().reserve(
+          array_directory_reader.getCommitUrisToConsolidate().size());
       array_directory->commit_uris_to_consolidate().emplace_back(
           deserialize_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -307,6 +312,8 @@ Status array_directory_from_capnp(
   // Get commit uris to vacuum
   if (array_directory_reader.hasCommitUrisToVacuum()) {
     for (auto uri : array_directory_reader.getCommitUrisToVacuum()) {
+      array_directory->commit_uris_to_vacuum().reserve(
+          array_directory_reader.getCommitUrisToVacuum().size());
       array_directory->commit_uris_to_vacuum().emplace_back(
           deserialize_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -316,6 +323,8 @@ Status array_directory_from_capnp(
   if (array_directory_reader.hasConsolidatedCommitUrisToVacuum()) {
     for (auto uri :
          array_directory_reader.getConsolidatedCommitUrisToVacuum()) {
+      array_directory->consolidated_commits_uris_to_vacuum().reserve(
+          array_directory_reader.getConsolidatedCommitUrisToVacuum().size());
       array_directory->consolidated_commits_uris_to_vacuum().emplace_back(
           deserialize_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -324,6 +333,8 @@ Status array_directory_from_capnp(
   // Get array meta uris
   if (array_directory_reader.hasArrayMetaUris()) {
     for (auto timestamp_reader : array_directory_reader.getArrayMetaUris()) {
+      array_directory->array_meta_uris().reserve(
+          array_directory_reader.getArrayMetaUris().size());
       array_directory->array_meta_uris().emplace_back(
           URI(deserialize_uri_to_absolute(
               timestamp_reader.getUri().cStr(), array_uri)),
@@ -336,6 +347,8 @@ Status array_directory_from_capnp(
   // Get fragment meta uris
   if (array_directory_reader.hasFragmentMetaUris()) {
     for (auto uri : array_directory_reader.getFragmentMetaUris()) {
+      array_directory->fragment_meta_uris().reserve(
+          array_directory_reader.getFragmentMetaUris().size());
       array_directory->fragment_meta_uris().emplace_back(
           deserialize_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -345,6 +358,8 @@ Status array_directory_from_capnp(
   if (array_directory_reader.hasDeleteAndUpdateTileLocation()) {
     for (auto del_tile_reader :
          array_directory_reader.getDeleteAndUpdateTileLocation()) {
+      array_directory->delete_and_update_tiles_location().reserve(
+          array_directory_reader.getDeleteAndUpdateTileLocation().size());
       array_directory->delete_and_update_tiles_location().emplace_back(
           URI(deserialize_uri_to_absolute(
               del_tile_reader.getUri().cStr(), array_uri)),
@@ -361,7 +376,7 @@ Status array_directory_from_capnp(
   // Set the array directory as loaded
   array_directory->loaded() = true;
 
-  return Status::Ok();
+  return array_directory;
 }
 
 #endif  // TILEDB_SERIALIZATION

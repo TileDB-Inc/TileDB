@@ -7162,55 +7162,53 @@ TEST_CASE_METHOD(
   ::capnp::MallocMessageBuilder message;
   tiledb::sm::serialization::capnp::ArrayDirectory::Builder array_dir_builder =
       message.initRoot<tiledb::sm::serialization::capnp::ArrayDirectory>();
-  REQUIRE(tiledb::sm::serialization::array_directory_to_capnp(
-              array_dir, *schema, &array_dir_builder)
-              .ok());
-  tiledb::sm::ArrayDirectory deserialized_array_dir{};
-  REQUIRE(tiledb::sm::serialization::array_directory_from_capnp(
-              array_dir_builder, array_uri, &deserialized_array_dir)
-              .ok());
+  tiledb::sm::serialization::array_directory_to_capnp(
+      array_dir, *schema, &array_dir_builder);
+  auto deserialized_array_dir =
+      tiledb::sm::serialization::array_directory_from_capnp(
+          array_dir_builder, array_uri);
 
   // Compare original array_directory to the deserialized one
   REQUIRE(
-      deserialized_array_dir.uri().to_string() == array_dir.uri().to_string());
+      deserialized_array_dir->uri().to_string() == array_dir.uri().to_string());
   REQUIRE(
-      deserialized_array_dir.unfiltered_fragment_uris() ==
+      deserialized_array_dir->unfiltered_fragment_uris() ==
       array_dir.unfiltered_fragment_uris());
   REQUIRE(
-      deserialized_array_dir.consolidated_commit_uris_set() ==
+      deserialized_array_dir->consolidated_commit_uris_set() ==
       array_dir.consolidated_commit_uris_set());
   REQUIRE(
-      deserialized_array_dir.array_schema_uris() ==
+      deserialized_array_dir->array_schema_uris() ==
       array_dir.array_schema_uris());
   REQUIRE(
-      deserialized_array_dir.latest_array_schema_uri() ==
+      deserialized_array_dir->latest_array_schema_uri() ==
       array_dir.latest_array_schema_uri());
   REQUIRE(
-      deserialized_array_dir.array_meta_uris_to_vacuum() ==
+      deserialized_array_dir->array_meta_uris_to_vacuum() ==
       array_dir.array_meta_uris_to_vacuum());
   REQUIRE(
-      deserialized_array_dir.array_meta_vac_uris_to_vacuum() ==
+      deserialized_array_dir->array_meta_vac_uris_to_vacuum() ==
       array_dir.array_meta_vac_uris_to_vacuum());
   REQUIRE(
-      deserialized_array_dir.commit_uris_to_consolidate() ==
+      deserialized_array_dir->commit_uris_to_consolidate() ==
       array_dir.commit_uris_to_consolidate());
   REQUIRE(
-      deserialized_array_dir.commit_uris_to_vacuum() ==
+      deserialized_array_dir->commit_uris_to_vacuum() ==
       array_dir.commit_uris_to_vacuum());
   REQUIRE(
-      deserialized_array_dir.consolidated_commits_uris_to_vacuum() ==
+      deserialized_array_dir->consolidated_commits_uris_to_vacuum() ==
       array_dir.consolidated_commits_uris_to_vacuum());
   REQUIRE(
-      deserialized_array_dir.array_meta_uris() == array_dir.array_meta_uris());
+      deserialized_array_dir->array_meta_uris() == array_dir.array_meta_uris());
   REQUIRE(
-      deserialized_array_dir.fragment_meta_uris() ==
+      deserialized_array_dir->fragment_meta_uris() ==
       array_dir.fragment_meta_uris());
   REQUIRE(
-      deserialized_array_dir.delete_and_update_tiles_location() ==
+      deserialized_array_dir->delete_and_update_tiles_location() ==
       array_dir.delete_and_update_tiles_location());
   REQUIRE(
-      deserialized_array_dir.timestamp_start() == array_dir.timestamp_start());
-  REQUIRE(deserialized_array_dir.timestamp_end() == array_dir.timestamp_end());
+      deserialized_array_dir->timestamp_start() == array_dir.timestamp_start());
+  REQUIRE(deserialized_array_dir->timestamp_end() == array_dir.timestamp_end());
 
   vfs.remove_dir(array_name);
 #endif
