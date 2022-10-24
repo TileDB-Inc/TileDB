@@ -79,12 +79,10 @@ int32_t tiledb_array_schema_has_dimension_label(
 int32_t tiledb_dimension_label_schema_alloc(
     tiledb_ctx_t* ctx,
     tiledb_label_order_t label_order,
+    tiledb_datatype_t label_type,
     tiledb_datatype_t index_type,
     const void* index_domain,
     const void* index_tile_extent,
-    tiledb_datatype_t label_type,
-    const void* label_domain,
-    const void* label_tile_extent,
     tiledb_dimension_label_schema_t** dim_label_schema) {
   if (sanity_check(ctx) == TILEDB_ERR) {
     return TILEDB_ERR;
@@ -105,12 +103,10 @@ int32_t tiledb_dimension_label_schema_alloc(
       make_shared<tiledb::sm::DimensionLabelSchema>(
           HERE(),
           static_cast<tiledb::sm::LabelOrder>(label_order),
+          static_cast<tiledb::sm::Datatype>(label_type),
           static_cast<tiledb::sm::Datatype>(index_type),
           index_domain,
-          index_tile_extent,
-          static_cast<tiledb::sm::Datatype>(label_type),
-          label_domain,
-          label_tile_extent);
+          index_tile_extent);
   if ((*dim_label_schema)->dim_label_schema_ == nullptr) {
     delete *dim_label_schema;
     *dim_label_schema = nullptr;
@@ -262,22 +258,18 @@ int32_t tiledb_array_schema_has_dimension_label(
 int32_t tiledb_dimension_label_schema_alloc(
     tiledb_ctx_t* ctx,
     tiledb_label_order_t label_order,
+    tiledb_datatype_t label_type,
     tiledb_datatype_t index_type,
     const void* index_domain,
     const void* index_tile_extent,
-    tiledb_datatype_t label_type,
-    const void* label_domain,
-    const void* label_tile_extent,
     tiledb_dimension_label_schema_t** dim_label_schema) noexcept {
   return api_entry_with_context<detail::tiledb_dimension_label_schema_alloc>(
       ctx,
       label_order,
+      label_type,
       index_type,
       index_domain,
       index_tile_extent,
-      label_type,
-      label_domain,
-      label_tile_extent,
       dim_label_schema);
 }
 

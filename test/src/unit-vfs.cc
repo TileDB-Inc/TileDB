@@ -64,9 +64,11 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
   }
   REQUIRE(vfs->write(testfile, data_write, nelts * sizeof(uint32_t)).ok());
 
-  Tile tile[nelts];
+  std::vector<Tile> tile;
+  tile.reserve(nelts);
   for (uint64_t i = 0; i < nelts; i++) {
-    tile[i].filtered_buffer().expand(nelts * sizeof(uint32_t));
+    tile.emplace_back(Tile(
+        0, Datatype::UINT64, sizeof(uint64_t), 0, 1, nelts * sizeof(uint32_t)));
   }
 
   std::vector<tuple<uint64_t, Tile*, uint64_t>> batches;

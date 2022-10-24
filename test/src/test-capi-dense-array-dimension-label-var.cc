@@ -92,8 +92,6 @@ class ArrayExample : public TemporaryDirectoryFixture {
         0,
         TILEDB_UNORDERED_LABELS,
         TILEDB_STRING_ASCII,
-        nullptr,
-        nullptr,
         &x_tile_extent);
     // Create array
     array_name = create_temporary_array("array_with_label_1", array_schema);

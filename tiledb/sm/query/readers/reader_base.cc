@@ -515,86 +515,6 @@ Status ReaderBase::load_processed_conditions() {
   return Status::Ok();
 }
 
-Status ReaderBase::init_tile(
-    uint32_t format_version, const std::string& name, Tile* tile) const {
-  // For easy reference
-  auto cell_size = array_schema_.cell_size(name);
-  auto type = array_schema_.type(name);
-  auto is_coords = (name == constants::coords);
-  auto dim_num = (is_coords) ? array_schema_.dim_num() : 0;
-
-  // Initialize
-  RETURN_NOT_OK(tile->init_filtered(format_version, type, cell_size, dim_num));
-
-  return Status::Ok();
-}
-
-Status ReaderBase::init_tile(
-    uint32_t format_version,
-    const std::string& name,
-    Tile* tile,
-    Tile* tile_var) const {
-  // For easy reference
-  auto type = array_schema_.type(name);
-
-  // Initialize
-  RETURN_NOT_OK(tile->init_filtered(
-      format_version,
-      constants::cell_var_offset_type,
-      constants::cell_var_offset_size,
-      0));
-  RETURN_NOT_OK(
-      tile_var->init_filtered(format_version, type, datatype_size(type), 0));
-  return Status::Ok();
-}
-
-Status ReaderBase::init_tile_nullable(
-    uint32_t format_version,
-    const std::string& name,
-    Tile* tile,
-    Tile* tile_validity) const {
-  // For easy reference
-  auto cell_size = array_schema_.cell_size(name);
-  auto type = array_schema_.type(name);
-  auto is_coords = (name == constants::coords);
-  auto dim_num = (is_coords) ? array_schema_.dim_num() : 0;
-
-  // Initialize
-  RETURN_NOT_OK(tile->init_filtered(format_version, type, cell_size, dim_num));
-  RETURN_NOT_OK(tile_validity->init_filtered(
-      format_version,
-      constants::cell_validity_type,
-      constants::cell_validity_size,
-      0));
-
-  return Status::Ok();
-}
-
-Status ReaderBase::init_tile_nullable(
-    uint32_t format_version,
-    const std::string& name,
-    Tile* tile,
-    Tile* tile_var,
-    Tile* tile_validity) const {
-  // For easy reference
-  auto type = array_schema_.type(name);
-
-  // Initialize
-  RETURN_NOT_OK(tile->init_filtered(
-      format_version,
-      constants::cell_var_offset_type,
-      constants::cell_var_offset_size,
-      0));
-  RETURN_NOT_OK(
-      tile_var->init_filtered(format_version, type, datatype_size(type), 0));
-  RETURN_NOT_OK(tile_validity->init_filtered(
-      format_version,
-      constants::cell_validity_type,
-      constants::cell_validity_size,
-      0));
-  return Status::Ok();
-}
-
 Status ReaderBase::read_attribute_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
@@ -634,7 +554,7 @@ Status ReaderBase::read_tiles(
       // For each tile, read from its fragment.
       auto const fragment = fragment_metadata_[tile->frag_idx()];
 
-      const uint32_t format_version = fragment->format_version();
+      const format_version_t format_version = fragment->format_version();
 
       // Applicable for zipped coordinates only to versions < 5
       if (name == constants::coords && format_version >= 5) {
@@ -669,6 +589,11 @@ Status ReaderBase::read_tiles(
 
       const bool var_size = array_schema->var_size(name);
       const bool nullable = array_schema->is_nullable(name);
+      const auto tile_idx = tile->tile_idx();
+
+      // Construct a TileSizes class.
+      ResultTile::TileSizes tile_sizes(
+          fragment, name, var_size, nullable, tile_idx);
 
       // Initialize the tile(s)
       ResultTile::TileTuple* tile_tuple = nullptr;
@@ -676,13 +601,14 @@ Status ReaderBase::read_tiles(
         const uint64_t dim_num = array_schema->dim_num();
         for (uint64_t d = 0; d < dim_num; ++d) {
           if (array_schema->dimension_ptr(d)->name() == name) {
-            tile->init_coord_tile(name, var_size, d);
+            tile->init_coord_tile(
+                format_version, array_schema_, name, tile_sizes, d);
             break;
           }
         }
         tile_tuple = tile->tile_tuple(name);
       } else {
-        tile->init_attr_tile(name, var_size, nullable);
+        tile->init_attr_tile(format_version, array_schema_, name, tile_sizes);
         tile_tuple = tile->tile_tuple(name);
       }
 
@@ -691,53 +617,27 @@ Status ReaderBase::read_tiles(
       Tile* const t_var = var_size ? &tile_tuple->var_tile() : nullptr;
       Tile* const t_validity =
           nullable ? &tile_tuple->validity_tile() : nullptr;
-      if (!var_size) {
-        if (nullable)
-          RETURN_NOT_OK(
-              init_tile_nullable(format_version, name, t, t_validity));
-        else
-          RETURN_NOT_OK(init_tile(format_version, name, t));
-      } else {
-        if (nullable)
-          RETURN_NOT_OK(
-              init_tile_nullable(format_version, name, t, t_var, t_validity));
-        else
-          RETURN_NOT_OK(init_tile(format_version, name, t, t_var));
-      }
-
-      // Get information about the tile in its fragment
       auto&& [status, tile_attr_uri] = fragment->uri(name);
       RETURN_NOT_OK(status);
 
-      auto tile_idx = tile->tile_idx();
-      uint64_t tile_attr_offset;
-      RETURN_NOT_OK(fragment->file_offset(name, tile_idx, &tile_attr_offset));
-      auto&& [st, tile_persisted_size] =
-          fragment->persisted_tile_size(name, tile_idx);
-      RETURN_NOT_OK(st);
-      uint64_t tile_size = fragment->tile_size(name, tile_idx);
-
       // Try the cache first.
       bool cache_hit = false;
+      uint64_t tile_attr_offset;
+      RETURN_NOT_OK(fragment->file_offset(name, tile_idx, &tile_attr_offset));
       if (!disable_cache_) {
         RETURN_NOT_OK(storage_manager_->read_from_cache(
             *tile_attr_uri,
             tile_attr_offset,
             t->filtered_buffer(),
-            *tile_persisted_size,
+            tile_sizes.tile_persisted_size(),
             &cache_hit));
       }
 
       if (!cache_hit) {
         // Add the region of the fragment to be read.
         all_regions[*tile_attr_uri].emplace_back(
-            tile_attr_offset, t, *tile_persisted_size);
-
-        t->filtered_buffer().expand(*tile_persisted_size);
+            tile_attr_offset, t, tile_sizes.tile_persisted_size());
       }
-
-      // Pre-allocate the unfiltered buffer.
-      RETURN_NOT_OK(t->alloc_data(tile_size));
 
       if (var_size) {
         auto&& [status, tile_attr_var_uri] = fragment->var_uri(name);
@@ -746,31 +646,22 @@ Status ReaderBase::read_tiles(
         uint64_t tile_attr_var_offset;
         RETURN_NOT_OK(
             fragment->file_var_offset(name, tile_idx, &tile_attr_var_offset));
-        auto&& [st, tile_var_persisted_size] =
-            fragment->persisted_tile_var_size(name, tile_idx);
-        RETURN_NOT_OK(st);
-        auto&& [st_2, tile_var_size] = fragment->tile_var_size(name, tile_idx);
-        RETURN_NOT_OK(st_2);
-
         if (!disable_cache_) {
           RETURN_NOT_OK(storage_manager_->read_from_cache(
               *tile_attr_var_uri,
               tile_attr_var_offset,
               t_var->filtered_buffer(),
-              *tile_var_persisted_size,
+              tile_sizes.tile_var_persisted_size(),
               &cache_hit));
         }
 
         if (!cache_hit) {
           // Add the region of the fragment to be read.
           all_regions[*tile_attr_var_uri].emplace_back(
-              tile_attr_var_offset, t_var, *tile_var_persisted_size);
-
-          t_var->filtered_buffer().expand(*tile_var_persisted_size);
+              tile_attr_var_offset,
+              t_var,
+              tile_sizes.tile_var_persisted_size());
         }
-
-        // Pre-allocate the unfiltered buffer.
-        RETURN_NOT_OK(t_var->alloc_data(*tile_var_size));
       }
 
       if (nullable) {
@@ -780,18 +671,12 @@ Status ReaderBase::read_tiles(
         uint64_t tile_attr_validity_offset;
         RETURN_NOT_OK(fragment->file_validity_offset(
             name, tile_idx, &tile_attr_validity_offset));
-        auto&& [st, tile_validity_persisted_size] =
-            fragment->persisted_tile_validity_size(name, tile_idx);
-        RETURN_NOT_OK(st);
-        uint64_t tile_validity_size =
-            fragment->cell_num(tile_idx) * constants::cell_validity_size;
-
         if (!disable_cache_) {
           RETURN_NOT_OK(storage_manager_->read_from_cache(
               *tile_validity_attr_uri,
               tile_attr_validity_offset,
               t_validity->filtered_buffer(),
-              *tile_validity_persisted_size,
+              tile_sizes.tile_validity_persisted_size(),
               &cache_hit));
         }
 
@@ -800,13 +685,8 @@ Status ReaderBase::read_tiles(
           all_regions[*tile_validity_attr_uri].emplace_back(
               tile_attr_validity_offset,
               t_validity,
-              *tile_validity_persisted_size);
-
-          t_validity->filtered_buffer().expand(*tile_validity_persisted_size);
+              tile_sizes.tile_validity_persisted_size());
         }
-
-        // Pre-allocate the unfiltered buffer.
-        RETURN_NOT_OK(t_validity->alloc_data(tile_validity_size));
       }
     }
   }
@@ -1729,15 +1609,13 @@ uint64_t ReaderBase::offsets_bytesize() const {
                                   constants::cell_var_offset_size;
 }
 
-tuple<Status, optional<uint64_t>> ReaderBase::get_attribute_tile_size(
+uint64_t ReaderBase::get_attribute_tile_size(
     const std::string& name, unsigned f, uint64_t t) {
   uint64_t tile_size = 0;
   tile_size += fragment_metadata_[f]->tile_size(name, t);
 
   if (array_schema_.var_size(name)) {
-    auto&& [st, temp] = fragment_metadata_[f]->tile_var_size(name, t);
-    RETURN_NOT_OK_TUPLE(st, nullopt);
-    tile_size += *temp;
+    tile_size += fragment_metadata_[f]->tile_var_size(name, t);
   }
 
   if (array_schema_.is_nullable(name)) {
@@ -1745,7 +1623,7 @@ tuple<Status, optional<uint64_t>> ReaderBase::get_attribute_tile_size(
         fragment_metadata_[f]->cell_num(t) * constants::cell_validity_size;
   }
 
-  return {Status::Ok(), tile_size};
+  return tile_size;
 }
 
 template <class T>

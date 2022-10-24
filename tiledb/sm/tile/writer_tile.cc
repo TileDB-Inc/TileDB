@@ -44,80 +44,63 @@ namespace sm {
 
 WriterTile::WriterTile(
     const ArraySchema& array_schema,
-    const bool has_coords,
+    const uint64_t cell_num_per_tile,
     const bool var_size,
     const bool nullable,
     const uint64_t cell_size,
     const Datatype type)
-    : var_tile_(var_size ? std::optional<Tile>(Tile()) : std::nullopt)
-    , validity_tile_(nullable ? std::optional<Tile>(Tile()) : std::nullopt)
+    : fixed_tile_(
+          var_size ? Tile(
+                         array_schema.write_version(),
+                         constants::cell_var_offset_type,
+                         constants::cell_var_offset_size,
+                         0,
+                         cell_num_per_tile * constants::cell_var_offset_size,
+                         0) :
+                     Tile(
+                         array_schema.write_version(),
+                         type,
+                         cell_size,
+                         0,
+                         cell_num_per_tile * cell_size,
+                         0))
+    , var_tile_(
+          var_size ? std::optional<Tile>(Tile(
+                         array_schema.write_version(),
+                         type,
+                         datatype_size(type),
+                         0,
+                         cell_num_per_tile * constants::cell_var_offset_size,
+                         0)) :
+                     std::nullopt)
+    , validity_tile_(
+          nullable ? std::optional<Tile>(Tile(
+                         array_schema.write_version(),
+                         constants::cell_validity_type,
+                         constants::cell_validity_size,
+                         0,
+                         cell_num_per_tile * constants::cell_validity_size,
+                         0)) :
+                     std::nullopt)
     , cell_size_(cell_size)
     , var_pre_filtered_size_(0)
     , min_size_(0)
     , max_size_(0)
     , null_count_(0) {
-  auto& domain{array_schema.domain()};
-  auto capacity = array_schema.capacity();
-  auto cell_num_per_tile = has_coords ? capacity : domain.cell_num_per_tile();
-
-  if (var_size) {
-    auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
-
-    // Initialize
-    if (!fixed_tile_
-             .init_unfiltered(
-                 array_schema.write_version(),
-                 constants::cell_var_offset_type,
-                 tile_size,
-                 constants::cell_var_offset_size,
-                 0)
-             .ok()) {
-      throw std::logic_error(
-          "Could not initialize offset tile in WriterTile constructor");
-    }
-    if (!var_tile_
-             ->init_unfiltered(
-                 array_schema.write_version(),
-                 type,
-                 tile_size,
-                 datatype_size(type),
-                 0)
-             .ok()) {
-      throw std::logic_error(
-          "Could not initialize var tile in WriterTile constructor");
-    }
-  } else {
-    auto tile_size = cell_num_per_tile * cell_size;
-
-    // Initialize
-    if (!fixed_tile_
-             .init_unfiltered(
-                 array_schema.write_version(), type, tile_size, cell_size, 0)
-             .ok()) {
-      throw std::logic_error(
-          "Could not initialize fixed tile in WriterTile constructor");
-    }
-  }
-
-  if (nullable) {
-    if (!validity_tile_
-             ->init_unfiltered(
-                 array_schema.write_version(),
-                 constants::cell_validity_type,
-                 cell_num_per_tile * constants::cell_validity_size,
-                 constants::cell_validity_size,
-                 0)
-             .ok()) {
-      throw std::logic_error(
-          "Could not initialize validity tile in WriterTile constructor");
-    }
-  }
 }
 
 WriterTile::WriterTile(WriterTile&& tile)
-    : WriterTile() {
-  // Swap with the argument
-  swap(tile);
+    : fixed_tile_(std::move(tile.fixed_tile_))
+    , var_tile_(std::move(tile.var_tile_))
+    , validity_tile_(std::move(tile.validity_tile_))
+    , cell_size_(std::move(tile.cell_size_))
+    , var_pre_filtered_size_(std::move(tile.var_pre_filtered_size_))
+    , min_(std::move(tile.min_))
+    , min_size_(std::move(tile.min_size_))
+    , max_(std::move(tile.max_))
+    , max_size_(std::move(tile.max_size_))
+    , sum_(std::move(tile.sum_))
+    , null_count_(std::move(tile.null_count_)) {
 }
 
 WriterTile& WriterTile::operator=(WriterTile&& tile) {
@@ -159,9 +142,9 @@ void WriterTile::set_metadata(
 }
 
 void WriterTile::swap(WriterTile& tile) {
-  fixed_tile_.swap(tile.fixed_tile_);
-  var_tile_.swap(tile.var_tile_);
-  validity_tile_.swap(tile.validity_tile_);
+  std::swap(fixed_tile_, tile.fixed_tile_);
+  std::swap(var_tile_, tile.var_tile_);
+  std::swap(validity_tile_, tile.validity_tile_);
   std::swap(cell_size_, tile.cell_size_);
   std::swap(var_pre_filtered_size_, tile.var_pre_filtered_size_);
   std::swap(min_, tile.min_);

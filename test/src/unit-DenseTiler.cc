@@ -392,7 +392,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -406,7 +406,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -433,7 +433,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -459,7 +459,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -510,7 +510,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -524,7 +524,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -576,7 +576,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -590,7 +590,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1415,7 +1415,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1435,7 +1435,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1457,7 +1457,7 @@ TEST_CASE_METHOD(
   // Test get tile 2
   WriterTile tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1475,7 +1475,7 @@ TEST_CASE_METHOD(
   // Test get tile 3
   WriterTile tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1509,7 +1509,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1553,7 +1553,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile3_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1573,7 +1573,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile3_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1595,7 +1595,7 @@ TEST_CASE_METHOD(
   // Test get tile 2
   WriterTile tile3_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1613,7 +1613,7 @@ TEST_CASE_METHOD(
   // Test get tile 3
   WriterTile tile3_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1647,7 +1647,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile4_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1717,7 +1717,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1741,7 +1741,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1764,7 +1764,7 @@ TEST_CASE_METHOD(
   // Test get tile 2
   WriterTile tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1786,7 +1786,7 @@ TEST_CASE_METHOD(
   // Test get tile 3
   WriterTile tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1822,7 +1822,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1884,7 +1884,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile3_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1908,7 +1908,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile3_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1931,7 +1931,7 @@ TEST_CASE_METHOD(
   // Test get tile 2
   WriterTile tile3_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1953,7 +1953,7 @@ TEST_CASE_METHOD(
   // Test get tile 3
   WriterTile tile3_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1989,7 +1989,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile4_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2080,7 +2080,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2096,7 +2096,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2157,7 +2157,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2173,7 +2173,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2228,7 +2228,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       2 * sizeof(int32_t),
@@ -2241,7 +2241,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       2 * sizeof(int32_t),
@@ -2276,7 +2276,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       2 * sizeof(int32_t),
@@ -2303,7 +2303,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       2 * sizeof(int32_t),
@@ -2358,7 +2358,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0_a1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2368,7 +2368,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_0_a1.fixed_tile(), c_data1_0_a1));
   WriterTile tile1_0_a2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(double),
@@ -2381,7 +2381,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1_a1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2392,7 +2392,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_1_a1.fixed_tile(), c_data1_1_a1));
   WriterTile tile1_1_a2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(double),
@@ -2422,7 +2422,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile2_a1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2432,7 +2432,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile2_a1.fixed_tile(), c_data2_a1));
   WriterTile tile2_a2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(double),
@@ -2458,7 +2458,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile3_a1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2468,7 +2468,7 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile3_a1.fixed_tile(), c_data3_a1));
   WriterTile tile3_a2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(double),
@@ -2531,7 +2531,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2553,7 +2553,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2575,7 +2575,7 @@ TEST_CASE_METHOD(
   // Test get tile 2
   WriterTile tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2594,7 +2594,7 @@ TEST_CASE_METHOD(
   // Test get tile 3
   WriterTile tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2635,7 +2635,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2698,7 +2698,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile3_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2720,7 +2720,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile3_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2742,7 +2742,7 @@ TEST_CASE_METHOD(
   // Test get tile 2
   WriterTile tile3_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2761,7 +2761,7 @@ TEST_CASE_METHOD(
   // Test get tile 3
   WriterTile tile3_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2802,7 +2802,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile4_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2890,7 +2890,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -2930,7 +2930,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -2978,7 +2978,7 @@ TEST_CASE_METHOD(
   // Test get tile 2
   WriterTile tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3009,7 +3009,7 @@ TEST_CASE_METHOD(
   // Test get tile 3
   WriterTile tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3062,7 +3062,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3224,7 +3224,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3264,7 +3264,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3312,7 +3312,7 @@ TEST_CASE_METHOD(
   // Test get tile 2
   WriterTile tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3343,7 +3343,7 @@ TEST_CASE_METHOD(
   // Test get tile 3
   WriterTile tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3415,7 +3415,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3579,7 +3579,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3619,7 +3619,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3667,7 +3667,7 @@ TEST_CASE_METHOD(
   // Test get tile 2
   WriterTile tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3698,7 +3698,7 @@ TEST_CASE_METHOD(
   // Test get tile 3
   WriterTile tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3772,7 +3772,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3922,7 +3922,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3962,7 +3962,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4010,7 +4010,7 @@ TEST_CASE_METHOD(
   // Test get tile 2
   WriterTile tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4041,7 +4041,7 @@ TEST_CASE_METHOD(
   // Test get tile 3
   WriterTile tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4098,7 +4098,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4248,7 +4248,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4288,7 +4288,7 @@ TEST_CASE_METHOD(
   // Test get tile 1
   WriterTile tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4336,7 +4336,7 @@ TEST_CASE_METHOD(
   // Test get tile 2
   WriterTile tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4367,7 +4367,7 @@ TEST_CASE_METHOD(
   // Test get tile 3
   WriterTile tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4424,7 +4424,7 @@ TEST_CASE_METHOD(
   // Test get tile 0
   WriterTile tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,

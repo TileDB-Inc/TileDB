@@ -326,7 +326,7 @@ class ArrayDirectory {
    * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
    */
   tuple<Status, optional<std::string>> compute_new_fragment_name(
-      const URI& first, const URI& last, uint32_t format_version) const;
+      const URI& first, const URI& last, format_version_t format_version) const;
 
   /** Returns `true` if `load` has been run. */
   bool loaded() const;

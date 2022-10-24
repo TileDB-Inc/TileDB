@@ -2132,14 +2132,12 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
               mem_vec[i].size_validity_ +=
                   tile_size / cell_size * constants::cell_validity_size;
           } else {
-            auto&& [st, tile_var_size] =
-                meta->tile_var_size(names[i], ft.second);
-            RETURN_NOT_OK(st);
+            auto tile_var_size = meta->tile_var_size(names[i], ft.second);
             mem_vec[i].size_fixed_ += tile_size;
-            mem_vec[i].size_var_ += *tile_var_size;
+            mem_vec[i].size_var_ += tile_var_size;
             if (nullable[i])
               mem_vec[i].size_validity_ +=
-                  *tile_var_size / cell_size * constants::cell_validity_size;
+                  tile_var_size / cell_size * constants::cell_validity_size;
           }
         }
       }
@@ -2439,12 +2437,11 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
                   constants::cell_validity_size;
           } else {
             (*result_sizes)[n].size_fixed_ += tile_size;
-            auto&& [st, tile_var_size] = meta->tile_var_size(names[n], tid);
-            RETURN_NOT_OK(st);
-            (*result_sizes)[n].size_var_ += *tile_var_size;
+            auto tile_var_size = meta->tile_var_size(names[n], tid);
+            (*result_sizes)[n].size_var_ += tile_var_size;
             if (nullable[n])
               (*result_sizes)[n].size_validity_ +=
-                  *tile_var_size / attr_datatype_size *
+                  tile_var_size / attr_datatype_size *
                   constants::cell_validity_size;
           }
         }
@@ -2479,12 +2476,11 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
 
         } else {
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
-          auto&& [st, tile_var_size] = meta->tile_var_size(names[n], tid);
-          RETURN_NOT_OK(st);
-          (*result_sizes)[n].size_var_ += *tile_var_size * ratio;
+          auto tile_var_size = meta->tile_var_size(names[n], tid);
+          (*result_sizes)[n].size_var_ += tile_var_size * ratio;
           if (nullable[n])
             (*result_sizes)[n].size_validity_ +=
-                (*tile_var_size / attr_datatype_size *
+                (tile_var_size / attr_datatype_size *
                  constants::cell_validity_size) *
                 ratio;
         }

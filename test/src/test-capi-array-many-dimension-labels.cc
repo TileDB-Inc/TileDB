@@ -76,10 +76,7 @@ class ExampleArray : public TemporaryDirectoryFixture {
  public:
   ExampleArray()
       : domain_{1, 4}
-      , t_domain_{1, 8}
-      , temporal_label_domain_{0, 100}
-      , spatial_label1_domain_{-10.0, 10.0}
-      , spatial_label2_domain_{0.0, 100.0} {
+      , t_domain_{1, 8} {
     // Create an array schema
     uint64_t tile_extent{4};
     auto array_schema = create_array_schema(
@@ -99,10 +96,6 @@ class ExampleArray : public TemporaryDirectoryFixture {
         false);
 
     // Add dimension labels.
-    double spatial_label1_tile = 20.0;
-    double spatial_label2_tile = 100.0;
-    int64_t temporal_tile = 101;
-
     add_dimension_label(
         ctx,
         array_schema,
@@ -110,8 +103,6 @@ class ExampleArray : public TemporaryDirectoryFixture {
         3,
         TILEDB_INCREASING_LABELS,
         TILEDB_DATETIME_SEC,
-        &temporal_label_domain_[0],
-        &temporal_tile,
         &tile_extent);
 
     add_dimension_label(
@@ -121,8 +112,6 @@ class ExampleArray : public TemporaryDirectoryFixture {
         0,
         TILEDB_INCREASING_LABELS,
         TILEDB_FLOAT64,
-        &spatial_label1_domain_[0],
-        &spatial_label1_tile,
         &tile_extent);
 
     add_dimension_label(
@@ -132,8 +121,6 @@ class ExampleArray : public TemporaryDirectoryFixture {
         1,
         TILEDB_INCREASING_LABELS,
         TILEDB_FLOAT64,
-        &spatial_label1_domain_[0],
-        &spatial_label1_tile,
         &tile_extent);
 
     add_dimension_label(
@@ -143,8 +130,6 @@ class ExampleArray : public TemporaryDirectoryFixture {
         2,
         TILEDB_INCREASING_LABELS,
         TILEDB_FLOAT64,
-        &spatial_label1_domain_[0],
-        &spatial_label1_tile,
         &tile_extent);
 
     add_dimension_label(
@@ -154,8 +139,6 @@ class ExampleArray : public TemporaryDirectoryFixture {
         0,
         TILEDB_DECREASING_LABELS,
         TILEDB_FLOAT64,
-        &spatial_label2_domain_[0],
-        &spatial_label2_tile,
         &tile_extent);
 
     add_dimension_label(
@@ -165,8 +148,6 @@ class ExampleArray : public TemporaryDirectoryFixture {
         1,
         TILEDB_DECREASING_LABELS,
         TILEDB_FLOAT64,
-        &spatial_label2_domain_[0],
-        &spatial_label2_tile,
         &tile_extent);
 
     add_dimension_label(
@@ -176,8 +157,6 @@ class ExampleArray : public TemporaryDirectoryFixture {
         2,
         TILEDB_DECREASING_LABELS,
         TILEDB_FLOAT64,
-        &spatial_label2_domain_[0],
-        &spatial_label2_tile,
         &tile_extent);
 
     // Create array
@@ -439,15 +418,6 @@ class ExampleArray : public TemporaryDirectoryFixture {
 
   /** Domain for dimension t. */
   uint64_t t_domain_[2];
-
-  /** Domain for the dimension label on dimension t. */
-  int64_t temporal_label_domain_[2];
-
-  /** Domain for the dimension labels x, y, and z. */
-  double spatial_label1_domain_[2];
-
-  /** Domain for the dimension labels alpha, beta, and gamma. */
-  double spatial_label2_domain_[2];
 };
 
 TEST_CASE_METHOD(

@@ -218,13 +218,13 @@ Status DenseTiler<T>::get_tile(
     std::vector<uint8_t> fill_var(sizeof(uint64_t), 0);
 
     // Initialize position tile
-    Tile tile_pos;
-    RETURN_NOT_OK(tile_pos.init_unfiltered(
+    Tile tile_pos(
         constants::format_version,
         constants::cell_var_offset_type,
-        tile_off_size,
         constants::cell_var_offset_size,
-        0));
+        0,
+        tile_off_size,
+        0);
 
     // Fill entire tile with MAX_UINT64
     std::vector<uint64_t> to_write(

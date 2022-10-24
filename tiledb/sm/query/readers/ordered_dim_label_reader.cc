@@ -558,9 +558,7 @@ OrderedDimLabelReader::get_array_tile_indexes_for_range(
 uint64_t OrderedDimLabelReader::label_tile_size(unsigned f, uint64_t t) const {
   uint64_t tile_size = fragment_metadata_[f]->tile_size(label_name_, t);
   if (label_var_size_) {
-    auto&& [st, size] = fragment_metadata_[f]->tile_var_size(label_name_, t);
-    throw_if_not_ok(st);
-    tile_size += *size;
+    tile_size += fragment_metadata_[f]->tile_var_size(label_name_, t);
   }
 
   return tile_size;

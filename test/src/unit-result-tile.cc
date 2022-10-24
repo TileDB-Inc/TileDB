@@ -185,49 +185,42 @@ TEST_CASE_METHOD(
   uint64_t dim_idx = first_dim ? 0 : 1;
   uint64_t num_cells = 8;
 
-  ResultTile rt(0, 0, array_->array_->array_schema_latest());
+  auto& array_schema = array_->array_->array_schema_latest();
+  ResultTile rt(0, 0, array_schema);
 
   // Make sure cell_num() will return the correct value.
   if (!first_dim) {
-    rt.init_coord_tile("d1", true, 0);
-    auto tile_tuple = rt.tile_tuple("d1");
-    Tile* const t = &tile_tuple->fixed_tile();
-    CHECK(t->init_unfiltered(
-               constants::format_version,
-               constants::cell_var_offset_type,
-               num_cells * constants::cell_var_offset_size,
-               constants::cell_var_offset_size,
-               0)
-              .ok());
+    ResultTile::TileSizes tile_sizes(
+        num_cells * constants::cell_var_offset_size,
+        0,
+        0,
+        0,
+        std::nullopt,
+        std::nullopt);
+    rt.init_coord_tile(
+        constants::format_version, array_schema, "d1", tile_sizes, 0);
   }
 
-  rt.init_coord_tile(dim_name, true, dim_idx);
+  ResultTile::TileSizes tile_sizes(
+      num_cells * constants::cell_var_offset_size,
+      0,
+      num_cells,
+      0,
+      std::nullopt,
+      std::nullopt);
+  rt.init_coord_tile(
+      constants::format_version, array_schema, dim_name, tile_sizes, dim_idx);
   auto tile_tuple = rt.tile_tuple(dim_name);
   Tile* const t = &tile_tuple->fixed_tile();
   Tile* const t_var = &tile_tuple->var_tile();
 
   // Initialize offsets, use 1 character strings.
-  CHECK(t->init_unfiltered(
-             constants::format_version,
-             constants::cell_var_offset_type,
-             num_cells * constants::cell_var_offset_size,
-             constants::cell_var_offset_size,
-             dim_idx)
-            .ok());
   uint64_t* offsets = (uint64_t*)t->data();
   for (uint64_t i = 0; i < num_cells; i++) {
     offsets[i] = i;
   }
 
   // Initialize data, use incrementing single string values starting with 'a'.
-  CHECK(t_var
-            ->init_unfiltered(
-                constants::format_version,
-                Datatype::STRING_ASCII,
-                num_cells,
-                1,
-                0)
-            .ok());
   char* var = (char*)t_var->data();
   for (uint64_t i = 0; i < num_cells; i++) {
     var[i] = 'a' + i;
@@ -283,49 +276,42 @@ TEST_CASE_METHOD(
   uint64_t dim_idx = first_dim ? 0 : 1;
   uint64_t num_cells = 8;
 
-  ResultTile rt(0, 0, array_->array_->array_schema_latest());
+  auto& array_schema = array_->array_->array_schema_latest();
+  ResultTile rt(0, 0, array_schema);
 
   // Make sure cell_num() will return the correct value.
   if (!first_dim) {
-    rt.init_coord_tile("d1", true, 0);
-    auto tile_tuple = rt.tile_tuple("d1");
-    Tile* const t = &tile_tuple->fixed_tile();
-    CHECK(t->init_unfiltered(
-               constants::format_version,
-               constants::cell_var_offset_type,
-               num_cells * constants::cell_var_offset_size,
-               constants::cell_var_offset_size,
-               0)
-              .ok());
+    ResultTile::TileSizes tile_sizes(
+        num_cells * constants::cell_var_offset_size,
+        0,
+        0,
+        0,
+        std::nullopt,
+        std::nullopt);
+    rt.init_coord_tile(
+        constants::format_version, array_schema, "d1", tile_sizes, 0);
   }
 
-  rt.init_coord_tile(dim_name, true, dim_idx);
+  ResultTile::TileSizes tile_sizes(
+      num_cells * constants::cell_var_offset_size,
+      0,
+      num_cells,
+      0,
+      std::nullopt,
+      std::nullopt);
+  rt.init_coord_tile(
+      constants::format_version, array_schema, dim_name, tile_sizes, dim_idx);
   auto tile_tuple = rt.tile_tuple(dim_name);
   Tile* const t = &tile_tuple->fixed_tile();
   Tile* const t_var = &tile_tuple->var_tile();
 
   // Initialize offsets, use 1 character strings.
-  CHECK(t->init_unfiltered(
-             constants::format_version,
-             constants::cell_var_offset_type,
-             num_cells * constants::cell_var_offset_size,
-             constants::cell_var_offset_size,
-             dim_idx)
-            .ok());
   uint64_t* offsets = (uint64_t*)t->data();
   for (uint64_t i = 0; i < num_cells; i++) {
     offsets[i] = i;
   }
 
   // Initialize data, use incrementing single string values starting with 'a'.
-  CHECK(t_var
-            ->init_unfiltered(
-                constants::format_version,
-                Datatype::STRING_ASCII,
-                num_cells,
-                1,
-                0)
-            .ok());
   char* var = (char*)t_var->data();
   for (uint64_t i = 0; i < num_cells; i++) {
     var[i] = 'a' + i;

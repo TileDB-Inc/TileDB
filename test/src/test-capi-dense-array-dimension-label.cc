@@ -95,17 +95,8 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
         false);
 
     // Add dimension label.
-    double label_tile_extent = 2.0;
     add_dimension_label(
-        ctx,
-        array_schema,
-        "x",
-        0,
-        label_order,
-        TILEDB_FLOAT64,
-        &label_domain_[0],
-        &label_tile_extent,
-        &x_tile_extent);
+        ctx, array_schema, "x", 0, label_order, TILEDB_FLOAT64, &x_tile_extent);
 
     // Create array
     array_name = create_temporary_array("array_with_label_1", array_schema);

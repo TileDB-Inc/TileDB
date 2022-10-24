@@ -47,77 +47,14 @@ TEST_CASE(
   auto indexed_array_schema = test::make_array_schema(
       ArrayType::DENSE, indexed_array_dims, indexed_array_attrs);
   REQUIRE(indexed_array_schema->check().ok());
-  // Create labelled array schema uint64_t label_domain[2] = {20, 30};
-  std::vector<shared_ptr<Dimension>> labelled_array_dims{
-      test::make_dimension<uint64_t>(
-          "label0", Datatype::UINT64, 1, 10, 20, 11)};
-  std::vector<shared_ptr<Attribute>> labelled_array_attrs{
-      test::make_attribute<uint64_t>("dim0", Datatype::UINT64, false, 1, 0)};
-  auto labelled_array_schema = test::make_array_schema(
-      ArrayType::DENSE, labelled_array_dims, labelled_array_attrs);
-  REQUIRE(labelled_array_schema->check().ok());
   // Create dimension label schema
   REQUIRE_NOTHROW(DimensionLabelSchema(
-      LabelOrder::INCREASING_LABELS,
-      indexed_array_schema,
-      labelled_array_schema));
+      LabelOrder::INCREASING_LABELS, indexed_array_schema));
 }
 
 TEST_CASE(
     "Test invalid dimension label schema construction",
     "[dimension_label_schema]") {
-  SECTION("Mismatched index definition") {
-    // Create indexed array schema
-    std::vector<shared_ptr<Dimension>> indexed_array_dims{
-        test::make_dimension<uint64_t>("dim0", Datatype::UINT64, 1, 0, 10, 11)};
-    std::vector<shared_ptr<Attribute>> indexed_array_attrs{
-        test::make_attribute<uint64_t>(
-            "label0", Datatype::UINT64, false, 1, 0)};
-    auto indexed_array_schema = test::make_array_schema(
-        ArrayType::DENSE, indexed_array_dims, indexed_array_attrs);
-    REQUIRE(indexed_array_schema->check().ok());
-    // Create labelled array schema uint64_t label_domain[2] = {20, 30};
-    std::vector<shared_ptr<Dimension>> labelled_array_dims{
-        test::make_dimension<uint64_t>(
-            "label0", Datatype::UINT64, 1, 10, 20, 11)};
-    std::vector<shared_ptr<Attribute>> labelled_array_attrs{
-        test::make_attribute<uint64_t>("dim0", Datatype::UINT64, false, 2, 0)};
-    auto labelled_array_schema = test::make_array_schema(
-        ArrayType::DENSE, labelled_array_dims, labelled_array_attrs);
-    REQUIRE(labelled_array_schema->check().ok());
-    // Create dimension label schema
-    REQUIRE_THROWS(DimensionLabelSchema(
-        LabelOrder::INCREASING_LABELS,
-        indexed_array_schema,
-        labelled_array_schema));
-  }
-
-  SECTION("Mismatched label definition") {
-    // Create indexed array schema
-    std::vector<shared_ptr<Dimension>> indexed_array_dims{
-        test::make_dimension<uint64_t>("dim0", Datatype::UINT64, 1, 0, 10, 11)};
-    std::vector<shared_ptr<Attribute>> indexed_array_attrs{
-        test::make_attribute<uint64_t>(
-            "label0", Datatype::UINT64, false, 1, 0)};
-    auto indexed_array_schema = test::make_array_schema(
-        ArrayType::DENSE, indexed_array_dims, indexed_array_attrs);
-    REQUIRE(indexed_array_schema->check().ok());
-    // Create labelled array schema uint64_t label_domain[2] = {20, 30};
-    std::vector<shared_ptr<Dimension>> labelled_array_dims{
-        test::make_dimension<uint32_t>(
-            "label0", Datatype::UINT32, 1, 10, 20, 11)};
-    std::vector<shared_ptr<Attribute>> labelled_array_attrs{
-        test::make_attribute<uint64_t>("dim0", Datatype::UINT64, false, 1, 0)};
-    auto labelled_array_schema = test::make_array_schema(
-        ArrayType::DENSE, labelled_array_dims, labelled_array_attrs);
-    REQUIRE(labelled_array_schema->check().ok());
-    // Create dimension label schema
-    REQUIRE_THROWS(DimensionLabelSchema(
-        LabelOrder::INCREASING_LABELS,
-        indexed_array_schema,
-        labelled_array_schema));
-  }
-
   SECTION("Too many dimensions on index array") {
     // Create indexed array schema
     std::vector<shared_ptr<Dimension>> indexed_array_dims{
@@ -129,48 +66,9 @@ TEST_CASE(
     auto indexed_array_schema = test::make_array_schema(
         ArrayType::DENSE, indexed_array_dims, indexed_array_attrs);
     REQUIRE(indexed_array_schema->check().ok());
-    // Create labelled array schema uint64_t label_domain[2] = {20, 30};
-    std::vector<shared_ptr<Dimension>> labelled_array_dims{
-        test::make_dimension<uint64_t>(
-            "label0", Datatype::UINT64, 1, 10, 20, 11)};
-    std::vector<shared_ptr<Attribute>> labelled_array_attrs{
-        test::make_attribute<uint64_t>("dim0", Datatype::UINT64, false, 1, 0)};
-    auto labelled_array_schema = test::make_array_schema(
-        ArrayType::DENSE, labelled_array_dims, labelled_array_attrs);
-    REQUIRE(labelled_array_schema->check().ok());
     // Create dimension label schema
     REQUIRE_THROWS(DimensionLabelSchema(
-        LabelOrder::INCREASING_LABELS,
-        indexed_array_schema,
-        labelled_array_schema));
-  }
-
-  SECTION("Too many dimensions on label array") {
-    // Create indexed array schema
-    std::vector<shared_ptr<Dimension>> indexed_array_dims{
-        test::make_dimension<uint64_t>("dim0", Datatype::UINT64, 1, 0, 10, 11)};
-    std::vector<shared_ptr<Attribute>> indexed_array_attrs{
-        test::make_attribute<uint64_t>(
-            "label0", Datatype::UINT64, false, 1, 0)};
-    auto indexed_array_schema = test::make_array_schema(
-        ArrayType::DENSE, indexed_array_dims, indexed_array_attrs);
-    REQUIRE(indexed_array_schema->check().ok());
-    // Create labelled array schema uint64_t label_domain[2] = {20, 30};
-    std::vector<shared_ptr<Dimension>> labelled_array_dims{
-        test::make_dimension<uint64_t>(
-            "label0", Datatype::UINT64, 1, 10, 20, 11),
-        test::make_dimension<uint64_t>(
-            "label1", Datatype::UINT64, 1, 10, 20, 11)};
-    std::vector<shared_ptr<Attribute>> labelled_array_attrs{
-        test::make_attribute<uint64_t>("dim0", Datatype::UINT64, false, 1, 0)};
-    auto labelled_array_schema = test::make_array_schema(
-        ArrayType::DENSE, labelled_array_dims, labelled_array_attrs);
-    REQUIRE(labelled_array_schema->check().ok());
-    // Create dimension label schema
-    REQUIRE_THROWS(DimensionLabelSchema(
-        LabelOrder::INCREASING_LABELS,
-        indexed_array_schema,
-        labelled_array_schema));
+        LabelOrder::INCREASING_LABELS, indexed_array_schema));
   }
 
   SECTION("Too many label attributes") {
@@ -184,48 +82,9 @@ TEST_CASE(
     auto indexed_array_schema = test::make_array_schema(
         ArrayType::DENSE, indexed_array_dims, indexed_array_attrs);
     REQUIRE(indexed_array_schema->check().ok());
-    // Create labelled array schema uint64_t label_domain[2] = {20, 30};
-    std::vector<shared_ptr<Dimension>> labelled_array_dims{
-        test::make_dimension<uint64_t>(
-            "label0", Datatype::UINT64, 1, 10, 20, 11)};
-    std::vector<shared_ptr<Attribute>> labelled_array_attrs{
-        test::make_attribute<uint64_t>("dim0", Datatype::UINT64, false, 1, 0)};
-    auto labelled_array_schema = test::make_array_schema(
-        ArrayType::DENSE, labelled_array_dims, labelled_array_attrs);
-    REQUIRE(labelled_array_schema->check().ok());
     // Create dimension label schema
     REQUIRE_THROWS(DimensionLabelSchema(
-        LabelOrder::INCREASING_LABELS,
-        indexed_array_schema,
-        labelled_array_schema));
-  }
-
-  SECTION("Too many index attributes") {
-    // Create indexed array schema
-    std::vector<shared_ptr<Dimension>> indexed_array_dims{
-        test::make_dimension<uint64_t>("dim0", Datatype::UINT64, 1, 0, 10, 11)};
-    std::vector<shared_ptr<Attribute>> indexed_array_attrs{
-        test::make_attribute<uint64_t>(
-            "label0", Datatype::UINT64, false, 1, 0)};
-    auto indexed_array_schema = test::make_array_schema(
-        ArrayType::DENSE, indexed_array_dims, indexed_array_attrs);
-    REQUIRE(indexed_array_schema->check().ok());
-    // Create labelled array schema uint64_t label_domain[2] = {20, 30};
-    std::vector<shared_ptr<Dimension>> labelled_array_dims{
-        test::make_dimension<uint64_t>(
-            "label0", Datatype::UINT64, 1, 10, 20, 11),
-        test::make_dimension<uint64_t>(
-            "label1", Datatype::UINT64, 1, 10, 20, 11)};
-    std::vector<shared_ptr<Attribute>> labelled_array_attrs{
-        test::make_attribute<uint64_t>("dim0", Datatype::UINT64, false, 1, 0)};
-    auto labelled_array_schema = test::make_array_schema(
-        ArrayType::DENSE, labelled_array_dims, labelled_array_attrs);
-    REQUIRE(labelled_array_schema->check().ok());
-    // Create dimension label schema
-    REQUIRE_THROWS(DimensionLabelSchema(
-        LabelOrder::INCREASING_LABELS,
-        indexed_array_schema,
-        labelled_array_schema));
+        LabelOrder::INCREASING_LABELS, indexed_array_schema));
   }
 }
 
@@ -235,17 +94,13 @@ TEST_CASE(
   // Create dimension label schema
   uint64_t index_domain[2] = {0, 15};
   uint64_t index_tile_extent = 8;
-  double label_domain[2]{-1.0, 1.0};
-  double label_tile_extent{2.0};
   auto dimension_label_schema = make_shared<DimensionLabelSchema>(
       HERE(),
       LabelOrder::INCREASING_LABELS,
+      Datatype::FLOAT64,
       Datatype::UINT64,
       index_domain,
-      &index_tile_extent,
-      Datatype::FLOAT64,
-      label_domain,
-      &label_tile_extent);
+      &index_tile_extent);
   SECTION("Is valid") {
     auto dim =
         test::make_dimension<uint64_t>("dim", Datatype::UINT64, 1, 0, 15, 16);
