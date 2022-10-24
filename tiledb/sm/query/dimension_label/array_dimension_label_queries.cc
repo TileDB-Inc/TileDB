@@ -42,7 +42,6 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/query/dimension_label/dimension_label_query_create.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
@@ -300,11 +299,11 @@ void ArrayDimensionLabelQueries::add_write_queries(
                                  ->name();
       const auto& index_buffer_pair = array_buffers.find(dim_name);
 
-      data_queries_.emplace_back(DimensionLabelQueryCreate::make_write_query(
-          label_name,
-          dim_label_ref.label_order(),
+      data_queries_.emplace_back(tdb_new(
+          DimensionLabelWriteDataQuery,
           storage_manager_,
           stats_->create_child("DimensionLabelQuery"),
+          label_name,
           dim_label,
           subarray,
           label_buffer,

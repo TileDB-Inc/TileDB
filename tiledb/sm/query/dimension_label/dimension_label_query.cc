@@ -31,10 +31,11 @@
  * dimension for setting the subarray.
  */
 
-#include "tiledb/sm/query/dimension_label/dimension_label_data_query.h"
+#include "tiledb/sm/query/dimension_label/dimension_label_query.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/unreachable.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
+#include "tiledb/sm/enums/label_order.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/query/dimension_label/index_data.h"
 #include "tiledb/sm/query/query_buffer.h"
@@ -294,7 +295,7 @@ bool is_sorted_buffer(
   return true;
 }
 
-OrderedWriteDataQuery::OrderedWriteDataQuery(
+DimensionLabelWriteDataQuery::DimensionLabelWriteDataQuery(
     StorageManager* storage_manager,
     stats::Stats* stats,
     const std::string& name,
@@ -306,6 +307,46 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
     optional<std::string> fragment_name)
     : Query(storage_manager, dimension_label->indexed_array(), fragment_name)
     , DimensionLabelDataQuery(name) {
+  switch (dimension_label->label_order()) {
+    case (LabelOrder::INCREASING_LABELS):
+    case (LabelOrder::DECREASING_LABELS):
+      initialize_ordered_write_query(
+          stats,
+          dimension_label,
+          parent_subarray,
+          label_buffer,
+          index_buffer,
+          dim_idx);
+      break;
+
+    case (LabelOrder::UNORDERED_LABELS):
+      initialize_unordered_write_query(
+          dimension_label,
+          parent_subarray,
+          label_buffer,
+          index_buffer,
+          dim_idx);
+      break;
+
+    default:
+      // Invalid label order type.
+      throw DimensionLabelDataQueryStatusException(
+          "Dimension label order " +
+          label_order_str(dimension_label->label_order()) + " not supported.");
+  }
+}
+
+bool DimensionLabelWriteDataQuery::completed() const {
+  return status() == QueryStatus::COMPLETED;
+}
+
+void DimensionLabelWriteDataQuery::initialize_ordered_write_query(
+    stats::Stats* stats,
+    DimensionLabel* dimension_label,
+    const Subarray& parent_subarray,
+    const QueryBuffer& label_buffer,
+    const QueryBuffer& index_buffer,
+    const uint32_t dim_idx) {
   // Set query layout.
   throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
 
@@ -355,21 +396,12 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
   }
 }
 
-bool OrderedWriteDataQuery::completed() const {
-  return status() == QueryStatus::COMPLETED;
-}
-
-UnorderedWriteDataQuery::UnorderedWriteDataQuery(
-    StorageManager* storage_manager,
-    const std::string& name,
+void DimensionLabelWriteDataQuery::initialize_unordered_write_query(
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
     const QueryBuffer& index_buffer,
-    const uint32_t dim_idx,
-    optional<std::string> fragment_name)
-    : Query(storage_manager, dimension_label->indexed_array(), fragment_name)
-    , DimensionLabelDataQuery(name) {
+    const uint32_t dim_idx) {
   // Create locally stored index data if the index buffer is empty.
   bool use_local_index = index_buffer.buffer_ == nullptr;
   if (use_local_index) {
@@ -403,9 +435,6 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
     set_dimension_label_buffer(
         dimension_label->index_dimension()->name(), index_buffer);
   }
-}
-bool UnorderedWriteDataQuery::completed() const {
-  return status() == QueryStatus::COMPLETED;
 }
 
 }  // namespace tiledb::sm

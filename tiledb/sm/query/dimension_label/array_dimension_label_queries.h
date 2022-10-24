@@ -36,7 +36,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/query_status.h"
-#include "tiledb/sm/query/dimension_label/dimension_label_data_query.h"
+#include "tiledb/sm/query/dimension_label/dimension_label_query.h"
 #include "tiledb/sm/query/dimension_label/dimension_label_range_query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"

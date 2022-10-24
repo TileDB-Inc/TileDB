@@ -121,10 +121,10 @@ class DimensionLabelReadDataQuery : public DimensionLabelDataQuery {
 };
 
 /** Dimension label query for writing ordered data. */
-class OrderedWriteDataQuery : public DimensionLabelDataQuery {
+class DimensionLabelWriteDataQuery : public DimensionLabelDataQuery {
  public:
   /** Default constructor is not C.41 compliant. */
-  OrderedWriteDataQuery() = delete;
+  DimensionLabelWriteDataQuery() = delete;
 
   /**
    * Constructor for when index buffer is not set.
@@ -140,7 +140,7 @@ class OrderedWriteDataQuery : public DimensionLabelDataQuery {
    *     label is for.
    * @param fragment_name Name to use when writing the fragment.
    */
-  OrderedWriteDataQuery(
+  DimensionLabelWriteDataQuery(
       StorageManager* storage_manager,
       stats::Stats* stats,
       const std::string& name,
@@ -152,46 +152,8 @@ class OrderedWriteDataQuery : public DimensionLabelDataQuery {
       optional<std::string> fragment_name);
 
   /** Disable copy and move. */
-  DISABLE_COPY_AND_COPY_ASSIGN(OrderedWriteDataQuery);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(OrderedWriteDataQuery);
-
-  /** Returns ``true`` if the query status is completed. */
-  bool completed() const;
-};
-
-/** Writer for unordered dimension labels. */
-class UnorderedWriteDataQuery : public DimensionLabelDataQuery {
- public:
-  /** Default constructor is not C.41 compliant. */
-  UnorderedWriteDataQuery() = delete;
-
-  /**
-   * Constructor.
-   *
-   * @param storage_manager Storage manager object.
-   * @param name Name of the dimension label.
-   * @param dimension_label Opened dimension label for the query.
-   * @param parent_subarrray Subarray of the parent array.
-   * @param label_buffer Query buffer for the label data.
-   * @param index_buffer Query buffer for the index data. May be empty if no
-   *     index buffer is set.
-   * @param dim_idx Index of the dimension on the parent array this dimension
-   *     label is for.
-   * @param fragment_name Name to use when writing the fragment.
-   */
-  UnorderedWriteDataQuery(
-      StorageManager* storage_manager,
-      const std::string& name,
-      DimensionLabel* dimension_label,
-      const Subarray& parent_subarray,
-      const QueryBuffer& label_buffer,
-      const QueryBuffer& index_buffer,
-      const uint32_t dim_idx,
-      optional<std::string> fragment_name);
-
-  /** Disable copy and move. */
-  DISABLE_COPY_AND_COPY_ASSIGN(UnorderedWriteDataQuery);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(UnorderedWriteDataQuery);
+  DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelWriteDataQuery);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelWriteDataQuery);
 
   /** Returns ``true`` if the query status is completed. */
   bool completed() const;
@@ -199,8 +161,22 @@ class UnorderedWriteDataQuery : public DimensionLabelDataQuery {
  private:
   /** Internally managed index data for sparse write to labelled array. */
   tdb_unique_ptr<IndexData> index_data_;
-};
 
+  void initialize_ordered_write_query(
+      stats::Stats* stats,
+      DimensionLabel* dimension_label,
+      const Subarray& parent_subarray,
+      const QueryBuffer& label_buffer,
+      const QueryBuffer& index_buffer,
+      const uint32_t dim_idx);
+
+  void initialize_unordered_write_query(
+      DimensionLabel* dimension_label,
+      const Subarray& parent_subarray,
+      const QueryBuffer& label_buffer,
+      const QueryBuffer& index_buffer,
+      const uint32_t dim_idx);
+};
 }  // namespace tiledb::sm
 
 #endif
