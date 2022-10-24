@@ -193,6 +193,8 @@ class WriterTile {
    * @param size Final size.
    */
   inline void final_size(uint64_t size) {
+    cell_num_ = size;
+
     if (var_tile_.has_value()) {
       fixed_tile_.set_size(size * constants::cell_var_offset_size);
     } else {
@@ -210,7 +212,7 @@ class WriterTile {
    * @return Cell number.
    */
   inline uint64_t cell_num() const {
-    return fixed_tile_.cell_num();
+    return cell_num_;
   }
 
   /** Swaps the contents (all field values) of this tile with the given tile. */
@@ -256,6 +258,9 @@ class WriterTile {
 
   /** Count of null values. */
   uint64_t null_count_;
+
+  /** Cell num. */
+  uint64_t cell_num_;
 };
 
 }  // namespace sm

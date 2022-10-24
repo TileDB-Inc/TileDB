@@ -86,7 +86,8 @@ WriterTile::WriterTile(
     , var_pre_filtered_size_(0)
     , min_size_(0)
     , max_size_(0)
-    , null_count_(0) {
+    , null_count_(0)
+    , cell_num_(cell_num_per_tile) {
 }
 
 WriterTile::WriterTile(WriterTile&& tile)
@@ -100,7 +101,8 @@ WriterTile::WriterTile(WriterTile&& tile)
     , max_(std::move(tile.max_))
     , max_size_(std::move(tile.max_size_))
     , sum_(std::move(tile.sum_))
-    , null_count_(std::move(tile.null_count_)) {
+    , null_count_(std::move(tile.null_count_))
+    , cell_num_(std::move(tile.cell_num_)) {
 }
 
 WriterTile& WriterTile::operator=(WriterTile&& tile) {
@@ -153,6 +155,7 @@ void WriterTile::swap(WriterTile& tile) {
   std::swap(max_size_, tile.max_size_);
   std::swap(sum_, tile.sum_);
   std::swap(null_count_, tile.null_count_);
+  std::swap(cell_num_, tile.cell_num_);
 }
 
 }  // namespace sm

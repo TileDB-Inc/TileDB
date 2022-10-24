@@ -368,7 +368,7 @@ template <>
 void FragmentMetadata::compute_fragment_min_max_sum<char>(
     const std::string& name);
 
-Status FragmentMetadata::compute_fragment_min_max_sum_null_count() {
+void FragmentMetadata::compute_fragment_min_max_sum_null_count() {
   std::vector<std::string> names;
   names.reserve(idx_map_.size());
   for (auto& it : idx_map_) {
@@ -376,7 +376,7 @@ Status FragmentMetadata::compute_fragment_min_max_sum_null_count() {
   }
 
   // Process all attributes in parallel.
-  auto status = parallel_for(
+  throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(), 0, idx_map_.size(), [&](uint64_t n) {
         // For easy reference.
         const auto& name = names[n];
@@ -461,10 +461,7 @@ Status FragmentMetadata::compute_fragment_min_max_sum_null_count() {
         }
 
         return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
 void FragmentMetadata::set_array_schema(

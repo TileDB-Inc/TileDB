@@ -99,7 +99,8 @@ Query::Query(
     , fragment_name_(fragment_name)
     , remote_query_(false)
     , is_dimension_label_ordered_read_(false)
-    , dimension_label_increasing_(true) {
+    , dimension_label_increasing_(true)
+    , fragment_size_(std::numeric_limits<uint64_t>::max()) {
   assert(array->is_open());
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
@@ -1527,6 +1528,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           buffers_,
           subarray_,
           layout_,
+          fragment_size_,
           written_fragment_info_,
           disable_checks_consolidation_,
           processed_conditions_,
@@ -2699,6 +2701,13 @@ Status Query::submit() {
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     return Status::Ok();
+  }
+
+  // Make sure fragment size is only set for global order.
+  if (fragment_size_ != std::numeric_limits<uint64_t>::max() &&
+      (layout_ != Layout::GLOBAL_ORDER || type_ != QueryType::WRITE)) {
+    throw StatusException(Status_QueryError(
+        "Fragment size is only supported for global order writes."));
   }
 
   // Check attribute/dimensions buffers completeness before query submits
