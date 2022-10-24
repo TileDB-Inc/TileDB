@@ -32,7 +32,7 @@
  */
 
 #include "test/src/experimental_helpers.h"
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
@@ -488,7 +488,7 @@ TEST_CASE_METHOD(
 
   // Check the data when querying by dimension.
   {
-    INFO("Reading values from index ranges.")
+    INFO("Reading values from index ranges.");
     check_values(
         {{0, {1, 4}}, {1, {1, 4}}, {2, {1, 4}}, {3, {1, 8}}},
         {},

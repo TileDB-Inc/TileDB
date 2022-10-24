@@ -17,7 +17,7 @@ add_executable(unit_add_ranges_list EXCLUDE_FROM_ALL)
 target_sources(unit_add_ranges_list PUBLIC main.cc unit_add_ranges_list.cc)
 
 target_link_libraries(unit_add_ranges_list
-    PUBLIC Catch2::Catch2
+    PUBLIC Catch2::Catch2WithMain
 )
 target_link_libraries(unit_add_ranges_list PUBLIC  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 target_link_libraries(unit_add_ranges_list PUBLIC tiledb_test_support_lib)
