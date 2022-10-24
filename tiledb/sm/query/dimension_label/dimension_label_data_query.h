@@ -63,10 +63,30 @@ class DimensionLabelDataQueryStatusException : public StatusException {
 
 class DimensionLabelDataQuery : public virtual Query {
  public:
+  /** Delete default constructor: not C.41 compliant. */
+  DimensionLabelDataQuery() = delete;
+
+  /**
+   * Constructor.
+   *
+   * @param name Name of the dimension label.
+   */
+  DimensionLabelDataQuery(const std::string& name);
+
+  /** Destructor. */
   virtual ~DimensionLabelDataQuery() = default;
 
   /** Returns ``true`` if the query status is completed. */
   virtual bool completed() const = 0;
+
+  /** Returns the name of the dimension label. */
+  inline const std::string& name() const {
+    return name_;
+  }
+
+ private:
+  /** Name of the dimension label. */
+  std::string name_;
 };
 
 class DimensionLabelReadDataQuery : public DimensionLabelDataQuery {
@@ -78,6 +98,7 @@ class DimensionLabelReadDataQuery : public DimensionLabelDataQuery {
    * Constructor.
    *
    * @param storage_manager Storage manager object.
+   * @param name Name of the dimension label.
    * @param dimension_label Opened dimension label for the query.
    * @param parent_subarrray Subarray of the parent array.
    * @param label_buffer Query buffer for the label data.
@@ -85,6 +106,7 @@ class DimensionLabelReadDataQuery : public DimensionLabelDataQuery {
    */
   DimensionLabelReadDataQuery(
       StorageManager* storage_manager,
+      const std::string& name,
       DimensionLabel* dimension_label,
       const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,
@@ -108,6 +130,7 @@ class OrderedWriteDataQuery : public DimensionLabelDataQuery {
    * Constructor for when index buffer is not set.
    *
    * @param storage_manager Storage manager object.
+   * @param name Name of the dimension label.
    * @param dimension_label Opened dimension label for the query.
    * @param parent_subarrray Subarray of the parent array.
    * @param label_buffer Query buffer for the label data.
@@ -120,6 +143,7 @@ class OrderedWriteDataQuery : public DimensionLabelDataQuery {
   OrderedWriteDataQuery(
       StorageManager* storage_manager,
       stats::Stats* stats,
+      const std::string& name,
       DimensionLabel* dimension_label,
       const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,
@@ -145,6 +169,7 @@ class UnorderedWriteDataQuery : public DimensionLabelDataQuery {
    * Constructor.
    *
    * @param storage_manager Storage manager object.
+   * @param name Name of the dimension label.
    * @param dimension_label Opened dimension label for the query.
    * @param parent_subarrray Subarray of the parent array.
    * @param label_buffer Query buffer for the label data.
@@ -156,6 +181,7 @@ class UnorderedWriteDataQuery : public DimensionLabelDataQuery {
    */
   UnorderedWriteDataQuery(
       StorageManager* storage_manager,
+      const std::string& name,
       DimensionLabel* dimension_label,
       const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,

@@ -55,6 +55,7 @@ DimensionLabelDataQuery* DimensionLabelQueryCreate::make_write_query(
           OrderedWriteDataQuery,
           storage_manager,
           parent_stats->create_child("DimensionLabelQuery"),
+          label_name,
           dimension_label,
           parent_subarray,
           label_buffer,
@@ -67,6 +68,7 @@ DimensionLabelDataQuery* DimensionLabelQueryCreate::make_write_query(
       return tdb_new(
           UnorderedWriteDataQuery,
           storage_manager,
+          label_name,
           dimension_label,
           parent_subarray,
           label_buffer,

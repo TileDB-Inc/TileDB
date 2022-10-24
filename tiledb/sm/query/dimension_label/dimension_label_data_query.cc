@@ -47,13 +47,19 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+DimensionLabelDataQuery::DimensionLabelDataQuery(const std::string& name)
+    : name_{name} {
+}
+
 DimensionLabelReadDataQuery::DimensionLabelReadDataQuery(
     StorageManager* storage_manager,
+    const std::string& name,
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
     const uint32_t dim_idx)
-    : Query(storage_manager, dimension_label->indexed_array(), nullopt) {
+    : Query(storage_manager, dimension_label->indexed_array(), nullopt)
+    , DimensionLabelDataQuery(name) {
   // Set the layout (ordered, 1D).
   throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
 
@@ -291,13 +297,15 @@ bool is_sorted_buffer(
 OrderedWriteDataQuery::OrderedWriteDataQuery(
     StorageManager* storage_manager,
     stats::Stats* stats,
+    const std::string& name,
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
     const QueryBuffer& index_buffer,
     const uint32_t dim_idx,
     optional<std::string> fragment_name)
-    : Query(storage_manager, dimension_label->indexed_array(), fragment_name) {
+    : Query(storage_manager, dimension_label->indexed_array(), fragment_name)
+    , DimensionLabelDataQuery(name) {
   // Set query layout.
   throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
 
@@ -321,6 +329,11 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
       Subarray subarray{*this->subarray()};
       throw_if_not_ok(subarray.set_ranges_for_dim(
           0, parent_subarray.ranges_for_dim(dim_idx)));
+      if (subarray.range_num() > 1) {
+        throw DimensionLabelDataQueryStatusException(
+            "Failed to create dimension label query. The index data must "
+            "contain consecutive points when writing to a dimension label.");
+      }
       throw_if_not_ok(set_subarray(subarray));
     }
 
@@ -348,13 +361,15 @@ bool OrderedWriteDataQuery::completed() const {
 
 UnorderedWriteDataQuery::UnorderedWriteDataQuery(
     StorageManager* storage_manager,
+    const std::string& name,
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
     const QueryBuffer& index_buffer,
     const uint32_t dim_idx,
     optional<std::string> fragment_name)
-    : Query(storage_manager, dimension_label->indexed_array(), fragment_name) {
+    : Query(storage_manager, dimension_label->indexed_array(), fragment_name)
+    , DimensionLabelDataQuery(name) {
   // Create locally stored index data if the index buffer is empty.
   bool use_local_index = index_buffer.buffer_ == nullptr;
   if (use_local_index) {

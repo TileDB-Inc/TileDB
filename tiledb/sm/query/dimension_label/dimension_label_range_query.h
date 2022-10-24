@@ -77,6 +77,15 @@ class DimensionLabelRangeQuery : public virtual Query {
 
   /** Returns ``true`` if the query status is completed. */
   virtual bool completed() const = 0;
+
+  /** Returns the name of the dimension label. */
+  inline const std::string& name() const {
+    return name_;
+  }
+
+ private:
+  /** Name of the dimension label. */
+  std::string name_;
 };
 
 class OrderedRangeQuery : public DimensionLabelRangeQuery {
