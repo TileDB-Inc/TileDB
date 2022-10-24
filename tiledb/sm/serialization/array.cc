@@ -47,6 +47,8 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/serialization/array_directory.h"
+#include "tiledb/sm/serialization/fragment_metadata.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
@@ -162,6 +164,13 @@ Status array_to_capnp(
       RETURN_NOT_OK(array->metadata(&metadata));
       RETURN_NOT_OK(metadata_to_capnp(metadata, &array_metadata_builder));
     }
+
+    // TODO: load if not loaded
+    auto array_directory = array->array_directory();
+    auto array_directory_builder = array_builder->initArrayDirectory();
+    array_directory_to_capnp(
+        array_directory, array_schema_latest, &array_directory_builder);
+
   } else {
     if (array->non_empty_domain_computed()) {
       auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
@@ -227,10 +236,19 @@ Status array_from_capnp(
 
   if (array_reader.hasArrayMetadata()) {
     const auto& array_metadata_reader = array_reader.getArrayMetadata();
-    // Deserialize
     RETURN_NOT_OK(
         metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
     array->set_metadata_loaded(true);
+  }
+
+  // Deserialize array directory
+  if (array_reader.hasArrayDirectory()) {
+    const auto& array_directory_reader = array_reader.getArrayDirectory();
+    auto array_dir =
+        array_directory_from_capnp(array_directory_reader, array->array_uri());
+    array->set_array_directory(*array_dir);
+    // TODO set array directory loaded somehow
+    // array->set_metadata_loaded(true);
   }
 
   return Status::Ok();

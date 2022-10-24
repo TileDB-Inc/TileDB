@@ -57,6 +57,12 @@ struct Array {
 
   arrayMetadata @7 :ArrayMetadata;
   # array metadata
+
+  arrayDirectory @8 :ArrayDirectory;
+  # array metadata
+
+  fragmentMetadataAll @9 :List(FragmentMetadata);
+  # array metadata
 }
 
 struct ArrayOpen {

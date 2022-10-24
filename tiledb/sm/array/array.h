@@ -106,6 +106,11 @@ class Array {
   /** Returns the array directory object. */
   const ArrayDirectory& array_directory() const;
 
+  /** Set the array directory. */
+  void set_array_directory(const ArrayDirectory& dir) {
+    array_dir_ = dir;
+  }
+
   /** Sets the latest array schema.
    * @param array_schema The array schema to set.
    */
