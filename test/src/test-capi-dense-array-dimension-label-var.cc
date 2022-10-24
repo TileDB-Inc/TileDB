@@ -1,4 +1,5 @@
 /**
+ *
  * @file test-capi-sparse-array-dimension-label.cc
  *
  * @section LICENSE
@@ -193,7 +194,7 @@ class ArrayExample : public TemporaryDirectoryFixture {
         tiledb_subarray_add_range(ctx, subarray, 0, &r0, &r1, nullptr));
 
     // Define label buffers and size.
-    std::vector<char> label_data(expected_label_data.size());
+    std::string label_data(expected_label_data.size(), ' ');
     std::vector<uint64_t> label_offsets(expected_label_data.size());
     uint64_t label_data_size{label_data.size() * sizeof(char)};
     uint64_t label_offsets_size{label_offsets.size() * sizeof(uint64_t)};
@@ -230,21 +231,14 @@ class ArrayExample : public TemporaryDirectoryFixture {
     tiledb_array_free(&array);
 
     // Check results.
-    CHECK(label_data_size == sizeof(char) * expected_label_data.size());
-    for (uint64_t ii{0}; ii < expected_label_data.size(); ++ii) {
-      CHECK(label_data[ii] == expected_label_data[ii]);
-    }
+    label_data.resize(label_data_size / sizeof(char));
+    CHECK(label_data == expected_label_data);
 
-    CHECK(
-        label_offsets_size == sizeof(uint64_t) * expected_label_offsets.size());
-    for (uint64_t ii{0}; ii < expected_label_offsets.size(); ++ii) {
-      CHECK(label_offsets[ii] == expected_label_offsets[ii]);
-    }
+    label_offsets.resize(label_offsets_size / sizeof(uint64_t));
+    CHECK(label_offsets == expected_label_offsets);
 
-    CHECK(attr_data_size == sizeof(double) * expected_attr_data.size());
-    for (uint64_t ii{0}; ii < expected_attr_data.size(); ++ii) {
-      CHECK(attr_data[ii] == expected_attr_data[ii]);
-    }
+    attr_data.resize(attr_data_size / sizeof(double));
+    CHECK(attr_data == expected_attr_data);
   }
 
   /**
@@ -280,7 +274,7 @@ class ArrayExample : public TemporaryDirectoryFixture {
     }
 
     // Define label buffers and size.
-    std::vector<char> label_data(expected_label_data.size());
+    std::string label_data(expected_label_data.size(), ' ');
     std::vector<uint64_t> label_offsets(expected_label_data.size());
     uint64_t label_data_size{label_data.size() * sizeof(char)};
     uint64_t label_offsets_size{label_offsets.size() * sizeof(uint64_t)};
@@ -317,21 +311,14 @@ class ArrayExample : public TemporaryDirectoryFixture {
     tiledb_array_free(&array);
 
     // Check results.
-    CHECK(label_data_size == sizeof(char) * expected_label_data.size());
-    for (uint64_t ii{0}; ii < expected_label_data.size(); ++ii) {
-      CHECK(label_data[ii] == expected_label_data[ii]);
-    }
+    label_data.resize(label_data_size / sizeof(char));
+    CHECK(label_data == expected_label_data);
 
-    CHECK(
-        label_offsets_size == sizeof(uint64_t) * expected_label_offsets.size());
-    for (uint64_t ii{0}; ii < expected_label_offsets.size(); ++ii) {
-      CHECK(label_offsets[ii] == expected_label_offsets[ii]);
-    }
+    label_offsets.resize(label_offsets_size / sizeof(uint64_t));
+    CHECK(label_offsets == expected_label_offsets);
 
-    CHECK(attr_data_size == sizeof(double) * expected_attr_data.size());
-    for (uint64_t ii{0}; ii < expected_attr_data.size(); ++ii) {
-      CHECK(attr_data[ii] == expected_attr_data[ii]);
-    }
+    attr_data.resize(attr_data_size / sizeof(double));
+    CHECK(attr_data == expected_attr_data);
   }
 
  protected:

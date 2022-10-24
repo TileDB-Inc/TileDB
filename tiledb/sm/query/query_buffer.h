@@ -241,7 +241,7 @@ class QueryBuffer {
 
   /** Returns a const pointer to the data buffer as the requested type. */
   template <typename T>
-  inline const T* typed_data_buffer() const {
+  inline const T* data_buffer_as() const {
     if (buffer_var_) {
       return static_cast<T*>(buffer_var_);
     } else {

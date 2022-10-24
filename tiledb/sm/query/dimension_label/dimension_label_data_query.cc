@@ -96,6 +96,7 @@ void DimensionLabelReadDataQuery::process() {
  * sorting is handled for ordered dimension labels. If we keep this design,
  * we should consider optimizing (parallelizing?) the loops in this check.
  *
+ * @param stats Stats object for timing method.
  * @param buffer Buffer to check for sort.
  * @param buffer_size Total size of the buffer.
  * @param increasing If ``true`` check if the data is stricly increasing. If
@@ -103,25 +104,16 @@ void DimensionLabelReadDataQuery::process() {
  */
 template <
     typename T,
+    typename Op,
     typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
 bool is_sorted_buffer_impl(
-    stats::Stats* stats,
-    const T* buffer,
-    const uint64_t* buffer_size,
-    bool increasing) {
+    stats::Stats* stats, const T* buffer, const uint64_t* buffer_size) {
   auto timer_se = stats->start_timer("check_data_sort");
   uint64_t num_values = *buffer_size / sizeof(T);
-  if (increasing) {
-    for (uint64_t index{0}; index < num_values - 1; ++index) {
-      if (buffer[index + 1] <= buffer[index]) {
-        return false;
-      }
-    }
-  } else {
-    for (uint64_t index{0}; index < num_values - 1; ++index) {
-      if (buffer[index + 1] >= buffer[index]) {
-        return false;
-      }
+  Op compare;
+  for (uint64_t index{0}; index < num_values - 1; ++index) {
+    if (compare(buffer[index + 1], buffer[index])) {
+      return false;
     }
   }
   return true;
@@ -134,46 +126,58 @@ bool is_sorted_buffer_impl(
  * sorting is handled for ordered dimension labels. If we keep this design,
  * we should consider optimizing (parallelizing?) the loops in this check.
  *
- * @param buffer Buffer to check for sort.
- * @param buffer_size Total size of the buffer.
- * @param increasing If ``true`` check if the data is stricly increasing. If
- *     ``false``, check if the data is strictly decreasing.
+ * @param stats Stats object for timing method.
+ * @param offsets_buffer Buffer with offsets for data.
+ * @param offsets_buffer_size Total size of the offsets buffer.
+ * @param buffer Data buffer to check for sort.
+ * @param buffer_size Total size of the data buffer.
  */
+template <typename Op>
 bool is_sorted_buffer_str_impl(
     stats::Stats* stats,
     const uint64_t* offsets_buffer,
     const uint64_t* offsets_buffer_size,
     const char* buffer,
-    const uint64_t* buffer_size,
-    bool increasing) {
+    const uint64_t* buffer_size) {
   auto timer_se = stats->start_timer("check_data_sort");
   uint64_t num_values = *offsets_buffer_size / sizeof(uint64_t);
-  if (increasing) {
-    for (uint64_t index{0}; index < num_values - 1; ++index) {
-      uint64_t i0 = offsets_buffer[index];
-      uint64_t i1 = offsets_buffer[index + 1];
-      uint64_t i2 = index + 1 < num_values ? offsets_buffer[index + 2] :
-                                             *buffer_size / sizeof(char);
-      if (std::string_view(&buffer[i1], i2 - i1) <=
-          std::string_view(&buffer[i0], i1 - i0)) {
-        return false;
-      }
-    }
-  } else {
-    for (uint64_t index{0}; index < num_values - 1; ++index) {
-      uint64_t i0 = offsets_buffer[index];
-      uint64_t i1 = offsets_buffer[index + 1];
-      uint64_t i2 = index + 1 < num_values ? offsets_buffer[index + 2] :
-                                             *buffer_size / sizeof(char);
-      if (std::string_view(&buffer[i1], i2 - i1) >=
-          std::string_view(&buffer[i0], i1 - i0)) {
-        return false;
-      }
+  Op compare;
+  for (uint64_t index{0}; index < num_values - 1; ++index) {
+    uint64_t i0 = offsets_buffer[index];
+    uint64_t i1 = offsets_buffer[index + 1];
+    uint64_t i2 = index + 1 < num_values ? offsets_buffer[index + 2] :
+                                           *buffer_size / sizeof(char);
+    if (compare(
+            std::string_view(&buffer[i1], i2 - i1),
+            std::string_view(&buffer[i0], i1 - i0))) {
+      return false;
     }
   }
   return true;
 }
 
+/**
+ * Pass through method that calss is_sorted_buffer_impl with the appropriate
+ * sort type.
+ *
+ * @param buffer Buffer to check for sort.
+ * @param buffer_size Total size of the buffer.
+ * @param increasing If ``true`` check if the data is stricly increasing. If
+ *     ``false``, check if the data is strictly decreasing.
+ */
+template <
+    typename T,
+    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+inline bool is_sorted_buffer_as(
+    stats::Stats* stats,
+    const T* buffer,
+    const uint64_t* buffer_size,
+    bool increasing) {
+  return increasing ? is_sorted_buffer_impl<T, std::less_equal<T>>(
+                          stats, buffer, buffer_size) :
+                      is_sorted_buffer_impl<T, std::greater_equal<T>>(
+                          stats, buffer, buffer_size);
+}
 /**
  * Checks if the input buffer is sorted.
  *
@@ -189,63 +193,63 @@ bool is_sorted_buffer(
     bool increasing) {
   switch (type) {
     case Datatype::INT8:
-      return is_sorted_buffer_impl<int8_t>(
+      return is_sorted_buffer_as<int8_t>(
           stats,
-          buffer.typed_data_buffer<int8_t>(),
+          buffer.data_buffer_as<int8_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::UINT8:
-      return is_sorted_buffer_impl<uint8_t>(
+      return is_sorted_buffer_as<uint8_t>(
           stats,
-          buffer.typed_data_buffer<uint8_t>(),
+          buffer.data_buffer_as<uint8_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::INT16:
-      return is_sorted_buffer_impl<int16_t>(
+      return is_sorted_buffer_as<int16_t>(
           stats,
-          buffer.typed_data_buffer<int16_t>(),
+          buffer.data_buffer_as<int16_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::UINT16:
-      return is_sorted_buffer_impl<uint16_t>(
+      return is_sorted_buffer_as<uint16_t>(
           stats,
-          buffer.typed_data_buffer<uint16_t>(),
+          buffer.data_buffer_as<uint16_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::INT32:
-      return is_sorted_buffer_impl<int32_t>(
+      return is_sorted_buffer_as<int32_t>(
           stats,
-          buffer.typed_data_buffer<int32_t>(),
+          buffer.data_buffer_as<int32_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::UINT32:
-      return is_sorted_buffer_impl<uint32_t>(
+      return is_sorted_buffer_as<uint32_t>(
           stats,
-          buffer.typed_data_buffer<uint32_t>(),
+          buffer.data_buffer_as<uint32_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::INT64:
-      return is_sorted_buffer_impl<int64_t>(
+      return is_sorted_buffer_as<int64_t>(
           stats,
-          buffer.typed_data_buffer<int64_t>(),
+          buffer.data_buffer_as<int64_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::UINT64:
-      return is_sorted_buffer_impl<uint64_t>(
+      return is_sorted_buffer_as<uint64_t>(
           stats,
-          buffer.typed_data_buffer<uint64_t>(),
+          buffer.data_buffer_as<uint64_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::FLOAT32:
-      return is_sorted_buffer_impl<float>(
+      return is_sorted_buffer_as<float>(
           stats,
-          buffer.typed_data_buffer<float>(),
+          buffer.data_buffer_as<float>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::FLOAT64:
-      return is_sorted_buffer_impl<double>(
+      return is_sorted_buffer_as<double>(
           stats,
-          buffer.typed_data_buffer<double>(),
+          buffer.data_buffer_as<double>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::DATETIME_YEAR:
@@ -270,19 +274,26 @@ bool is_sorted_buffer(
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
-      return is_sorted_buffer_impl<int64_t>(
+      return is_sorted_buffer_as<int64_t>(
           stats,
-          buffer.typed_data_buffer<int64_t>(),
+          buffer.data_buffer_as<int64_t>(),
           buffer.buffer_size_,
           increasing);
     case Datatype::STRING_ASCII:
-      return is_sorted_buffer_str_impl(
-          stats,
-          buffer.offsets_buffer(),
-          buffer.buffer_size_,
-          buffer.typed_data_buffer<char>(),
-          buffer.buffer_var_size_,
-          increasing);
+      return increasing ?
+                 is_sorted_buffer_str_impl<std::less_equal<std::string_view>>(
+                     stats,
+                     buffer.offsets_buffer(),
+                     buffer.buffer_size_,
+                     buffer.data_buffer_as<char>(),
+                     buffer.buffer_var_size_) :
+                 is_sorted_buffer_str_impl<
+                     std::greater_equal<std::string_view>>(
+                     stats,
+                     buffer.offsets_buffer(),
+                     buffer.buffer_size_,
+                     buffer.data_buffer_as<char>(),
+                     buffer.buffer_var_size_);
     default:
       throw DimensionLabelDataQueryStatusException(
           "Unexpected label datatype " + datatype_str(type));
