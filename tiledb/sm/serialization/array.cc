@@ -148,6 +148,24 @@ Status array_to_capnp(
   }
 
   if (array->use_refactored_array_open()) {
+    // Serialize array directory (load if not loaded already)
+    const auto array_directory = array->load_array_directory();
+    auto array_directory_builder = array_builder->initArrayDirectory();
+    array_directory_to_capnp(
+        array_directory, array_schema_latest, &array_directory_builder);
+
+    // Serialize fragment metadata iff loaded (if the array is open for READs)
+    auto fragment_metadata_all = array->fragment_metadata();
+    if (!fragment_metadata_all.empty()) {
+      auto fragment_metadata_all_builder =
+          array_builder->initFragmentMetadataAll(fragment_metadata_all.size());
+      for (size_t i = 0; i < fragment_metadata_all.size(); i++) {
+        auto fragment_metadata_builder = fragment_metadata_all_builder[i];
+        fragment_metadata_to_capnp(
+            *fragment_metadata_all[i], &fragment_metadata_builder);
+      }
+    }
+
     if (array->serialize_non_empty_domain()) {
       auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
       RETURN_NOT_OK(
@@ -164,13 +182,6 @@ Status array_to_capnp(
       RETURN_NOT_OK(array->metadata(&metadata));
       RETURN_NOT_OK(metadata_to_capnp(metadata, &array_metadata_builder));
     }
-
-    // TODO: load if not loaded
-    auto array_directory = array->array_directory();
-    auto array_directory_builder = array_builder->initArrayDirectory();
-    array_directory_to_capnp(
-        array_directory, array_schema_latest, &array_directory_builder);
-
   } else {
     if (array->non_empty_domain_computed()) {
       auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
@@ -226,6 +237,25 @@ Status array_from_capnp(
         make_shared<ArraySchema>(HERE(), array_schema_latest));
   }
 
+  // Deserialize array directory
+  if (array_reader.hasArrayDirectory()) {
+    const auto& array_directory_reader = array_reader.getArrayDirectory();
+    auto array_dir =
+        array_directory_from_capnp(array_directory_reader, array->array_uri());
+    array->set_array_directory(*array_dir);
+  }
+
+  if (array_reader.hasFragmentMetadataAll()) {
+    array->fragment_metadata().reserve(
+        array_reader.getFragmentMetadataAll().size());
+    for (auto frag_meta_reader : array_reader.getFragmentMetadataAll()) {
+      auto meta = make_shared<FragmentMetadata>(HERE());
+      RETURN_NOT_OK(fragment_metadata_from_capnp(
+          array->array_schema_latest_ptr(), frag_meta_reader, meta));
+      array->fragment_metadata().emplace_back(meta);
+    }
+  }
+
   if (array_reader.hasNonEmptyDomain()) {
     const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();
     // Deserialize
@@ -239,16 +269,6 @@ Status array_from_capnp(
     RETURN_NOT_OK(
         metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
     array->set_metadata_loaded(true);
-  }
-
-  // Deserialize array directory
-  if (array_reader.hasArrayDirectory()) {
-    const auto& array_directory_reader = array_reader.getArrayDirectory();
-    auto array_dir =
-        array_directory_from_capnp(array_directory_reader, array->array_uri());
-    array->set_array_directory(*array_dir);
-    // TODO set array directory loaded somehow
-    // array->set_metadata_loaded(true);
   }
 
   return Status::Ok();

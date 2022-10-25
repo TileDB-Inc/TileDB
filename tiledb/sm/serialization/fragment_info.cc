@@ -302,6 +302,8 @@ Status fragment_info_from_capnp(
 
   // Get single_fragment_info from capnp
   if (fragment_info_reader.hasFragmentInfo()) {
+    fragment_info->single_fragment_info_vec().reserve(
+        fragment_info_reader.getFragmentInfo().size());
     for (auto single_frag_info_reader :
          fragment_info_reader.getFragmentInfo()) {
       auto&& [st, single_frag_info] = single_fragment_info_from_capnp(

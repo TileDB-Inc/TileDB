@@ -241,6 +241,13 @@ class Array {
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata() const;
 
   /**
+   * Accessor to the fragment metadata of the array.
+   */
+  inline std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata() {
+    return fragment_metadata_;
+  }
+
+  /**
    * Returns `true` if the array is empty at the time it is opened.
    * The funciton returns `false` if the array is not open.
    */
@@ -471,6 +478,9 @@ class Array {
    * dimensions/attributes.
    */
   std::unordered_map<std::string, uint64_t> get_average_var_cell_sizes() const;
+
+  /** Load array directory for non-remote arrays */
+  ArrayDirectory& load_array_directory();
 
  private:
   /* ********************************* */

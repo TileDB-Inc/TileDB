@@ -1383,6 +1383,30 @@ Status Array::load_remote_non_empty_domain() {
   return Status::Ok();
 }
 
+ArrayDirectory& Array::load_array_directory() {
+  if (remote_) {
+    throw std::logic_error(
+        "Loading array directory for remote arrays is not supported");
+  }
+
+  auto mode = (query_type_ == QueryType::WRITE ||
+               query_type_ == QueryType::MODIFY_EXCLUSIVE) ?
+                  ArrayDirectoryMode::SCHEMA_ONLY :
+                  ArrayDirectoryMode::READ;
+  if (!array_dir_.loaded()) {
+    array_dir_ = ArrayDirectory(
+        storage_manager_->vfs(),
+        storage_manager_->compute_tp(),
+        array_uri_,
+        timestamp_start_,
+        timestamp_end_opened_at_,
+        mode);
+    array_dir_.loaded() = true;
+  }
+
+  return array_dir_;
+}
+
 Status Array::compute_non_empty_domain() {
   if (remote_) {
     RETURN_NOT_OK(load_remote_non_empty_domain());
