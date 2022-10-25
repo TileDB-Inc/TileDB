@@ -50,7 +50,7 @@ void write_image(
     unsigned height,
     uint8_t depth,
     uint8_t colorspace,
-    const char * path=webp_png_name.c_str()) {
+    const char* path = webp_png_name.c_str()) {
   std::vector<uint8_t*> png_buffer;
   for (unsigned y = 0; y < height; y++)
     png_buffer.push_back(

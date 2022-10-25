@@ -83,9 +83,7 @@ class WebpFilter : public Filter {
    * Caller must set colorspace format filter option
    */
   WebpFilter()
-      : WebpFilter(100.0f
-      , WebpInputFormat::WEBP_NONE
-      , false) {
+      : WebpFilter(100.0f, WebpInputFormat::WEBP_NONE, false) {
   }
 
   /**

@@ -332,9 +332,9 @@ void read_png_array(
   if (lossless) {
     for (unsigned y = 0; y < output_height; y++) {
       for (unsigned x = 0; x < output_width; x++) {
-          // This will sometimes pass lossy compression, but always for lossless
-          size_t pos = (y * output_width) + x;
-          assert(read[pos] == write[pos]);
+        // This will sometimes pass lossy compression, but always for lossless
+        size_t pos = (y * output_width) + x;
+        assert(read[pos] == write[pos]);
       }
     }
   }
