@@ -2062,14 +2062,14 @@
     "href": "format_spec/filter_pipeline.html#filter",
     "title": "Filter Pipeline",
     "section": "Filter",
-    "text": "Filter\nThe filter has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nFilter type\nuint8_t\nType of filter (e.g. TILEDB_FILTER_BZIP2)\n\n\nFilter metadata size\nuint32_t\nNumber of bytes in filter metadata — may be 0.\n\n\nFilter metadata\nFilter Metadata\nFilter metadata, specific to each filter. E.g. compression level for compression filters.\n\n\n\nTileDB supports the following filters: * XOR Filter"
+    "text": "Filter\nThe filter has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nFilter type\nuint8_t\nType of filter (e.g. TILEDB_FILTER_BZIP2)\n\n\nFilter metadata size\nuint32_t\nNumber of bytes in filter metadata — may be 0.\n\n\nFilter metadata\nFilter Metadata\nFilter metadata, specific to each filter. E.g. compression level for compression filters.\n\n\n\nTileDB supports the following filters: * XOR Filter * Dictionary Encoding Filter"
   },
   {
     "objectID": "format_spec/filter_pipeline.html#filter-options",
     "href": "format_spec/filter_pipeline.html#filter-options",
     "title": "Filter Pipeline",
     "section": "Filter Options",
-    "text": "Filter Options\nThe filter options are configuration parameters for the filters that do not change once the array schema has been created.\n\nMain Compressor Options\nFor the compression filters (any of the filter types TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DOUBLE_DELTA,DICTIONARY}) the filter options have internal format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nCompressor type\nuint8_t\nType of compression (e.g. TILEDB_BZIP2)\n\n\nCompression level\nint32_t\nCompression level used (ignored by some compressors).\n\n\n\n\n\nBit-width Reduction Options\nThe filter options for TILEDB_FILTER_BIT_WIDTH_REDUCTION has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax window size\nuint32_t\nMaximum window size in bytes\n\n\n\n\n\nPositive Delta Options\nThe filter options for TILEDB_FILTER_POSITIVE_DELTA has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax window size\nuint32_t\nMaximum window size in bytes\n\n\n\n\n\nOther Filter Options\nThe remaining filters (TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256} do not serialize any options."
+    "text": "Filter Options\nThe filter options are configuration parameters for the filters that do not change once the array schema has been created.\n\nMain Compressor Options\nFor the compression filters (any of the filter types TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DOUBLE_DELTA,DICTIONARY}) the filter options have internal format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nCompressor type\nuint8_t\nType of compression (e.g. TILEDB_BZIP2)\n\n\nCompression level\nint32_t\nCompression level used (ignored by some compressors).\n\n\n\n\n\nBit-width Reduction Options\nThe filter options for TILEDB_FILTER_BIT_WIDTH_REDUCTION has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax window size\nuint32_t\nMaximum window size in bytes\n\n\n\n\n\nPositive Delta Options\nThe filter options for TILEDB_FILTER_POSITIVE_DELTA has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax window size\nuint32_t\nMaximum window size in bytes\n\n\n\n\n\nOther Filter Options\nThe remaining filters (TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256,DICTIONARY} do not serialize any options."
   },
   {
     "objectID": "format_spec/FORMAT_SPEC.html",
@@ -2119,6 +2119,13 @@
     "title": "XOR Filter",
     "section": "",
     "text": "data = np.random.rang(npts)\ndata_b = data.view(np.int64)\nfor i in range(1, len(data)):\n  data_b[i] = data_b[i] ^ data_b[i-1]\n\nFilter Enum Value\nThe filter enum value for the XOR filter is 16 (TILEDB_FILTER_XOR enum).\n\n\nInput and Output Layout\nThe input and output data layout is identical for the XOR filter."
+  },
+  {
+    "objectID": "format_spec/filters/dictionary_encoding.html",
+    "href": "format_spec/filters/dictionary_encoding.html",
+    "title": "Dictionary Encoding Filter",
+    "section": "",
+    "text": "input_data = \"HG543232\", \"HG543232\", \"HG543232\", \"HG54\", \"HG54\", \"A\", \"HG543232\", \"HG54\"]\n# apply dictionary encoding ->\ndictionary = [\"HG543232\", \"HG54\", \"A\"]\noutput_data = [0, 0, 0, 1, 1, 2, 0, 1]\n\nFilter Enum Value\nThe filter enum value for the Dictionary Encoding filter is 14 (TILEDB_FILTER_DICTIONARY enum).\n\n\nInput and Output Layout\n\nInput is an array of strings [str1|...|strN].\nOutput is an array of integers [num1|...|numN], that are actually the indices in the dictionary of the strings that appeared in input, in the order that they appeared. The integer datasize depends on the input and is chosen between uint8_t, uint16_t, uint32_t or uint64_t as the minimum datasize that can hold the size of the dictionary, aka the number of unique strings in input and stored in output metadata.\nOutput metadata are in the form: [output_datasize|dict_string_datasize|dictionary] where dictionary is in the form: [num_of_strings|size_str1|str1|...|size_strN|strN]. output_datasize refers to the chosen datasize of the integers in output while dict_string_datasize refers to the minimum integer size that can hold the maximum length string in input and is also chosen between uint8_t, uint16_t, uint32_t or uint64_t.\n\nAll the above integers are stored in big-endian format."
   },
   {
     "objectID": "format_spec/ignore_file.html",
