@@ -403,16 +403,16 @@ TEST_CASE_METHOD(
   write_labels(1, 4, {1.0, 2.0, 3.0, 4.0});
   REQUIRE_THROWS_WITH(
       read_labels({2.1, 2.8}),
-      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
-      "contained no values");
+      "Error: Internal TileDB uncaught exception; [TileDB::Task] Error: Caught "
+      "std::exception: OrderedDimLabelReader: Range contained no values");
   REQUIRE_THROWS_WITH(
       read_labels({-2.0, 0.0}),
-      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
-      "contained no values");
+      "Error: Internal TileDB uncaught exception; [TileDB::Task] Error: Caught "
+      "std::exception: OrderedDimLabelReader: Range contained no values");
   REQUIRE_THROWS_WITH(
       read_labels({5.0, 6.0}),
-      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
-      "contained no values");
+      "Error: Internal TileDB uncaught exception; [TileDB::Task] Error: Caught "
+      "std::exception: OrderedDimLabelReader: Range contained no values");
 }
 
 TEST_CASE_METHOD(
@@ -424,16 +424,16 @@ TEST_CASE_METHOD(
   std::vector<double> ranges{2.1, 2.8};
   REQUIRE_THROWS_WITH(
       read_labels({2.1, 2.8}),
-      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
-      "contained no values");
+      "Error: Internal TileDB uncaught exception; [TileDB::Task] Error: Caught "
+      "std::exception: OrderedDimLabelReader: Range contained no values");
   REQUIRE_THROWS_WITH(
       read_labels({-2.0, 0.0}),
-      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
-      "contained no values");
+      "Error: Internal TileDB uncaught exception; [TileDB::Task] Error: Caught "
+      "std::exception: OrderedDimLabelReader: Range contained no values");
   REQUIRE_THROWS_WITH(
       read_labels({5.0, 6.0}),
-      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
-      "contained no values");
+      "Error: Internal TileDB uncaught exception; [TileDB::Task] Error: Caught "
+      "std::exception: OrderedDimLabelReader: Range contained no values");
 }
 
 TEST_CASE_METHOD(
@@ -790,16 +790,16 @@ TEST_CASE_METHOD(
   write_labels(1, 4, {1.0, 2.0, 3.0, 4.0});
   REQUIRE_THROWS_WITH(
       read_labels({2.1, 2.8}),
-      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
-      "contained no values");
+      "Error: Internal TileDB uncaught exception; [TileDB::Task] Error: Caught "
+      "std::exception: OrderedDimLabelReader: Range contained no values");
   REQUIRE_THROWS_WITH(
       read_labels({-2.0, 0.0}),
-      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
-      "contained no values");
+      "Error: Internal TileDB uncaught exception; [TileDB::Task] Error: Caught "
+      "std::exception: OrderedDimLabelReader: Range contained no values");
   REQUIRE_THROWS_WITH(
       read_labels({5.0, 6.0}),
-      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
-      "contained no values");
+      "Error: Internal TileDB uncaught exception; [TileDB::Task] Error: Caught "
+      "std::exception: OrderedDimLabelReader: Range contained no values");
 }
 
 TEST_CASE_METHOD(
@@ -811,16 +811,16 @@ TEST_CASE_METHOD(
   std::vector<double> ranges{2.1, 2.8};
   REQUIRE_THROWS_WITH(
       read_labels({2.1, 2.8}),
-      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
-      "contained no values");
+      "Error: Internal TileDB uncaught exception; [TileDB::Task] Error: Caught "
+      "std::exception: OrderedDimLabelReader: Range contained no values");
   REQUIRE_THROWS_WITH(
       read_labels({-2.0, 0.0}),
-      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
-      "contained no values");
+      "Error: Internal TileDB uncaught exception; [TileDB::Task] Error: Caught "
+      "std::exception: OrderedDimLabelReader: Range contained no values");
   REQUIRE_THROWS_WITH(
       read_labels({5.0, 5.0}),
-      "Error: Internal TileDB uncaught exception; OrderedDimLabelReader: Range "
-      "contained no values");
+      "Error: Internal TileDB uncaught exception; [TileDB::Task] Error: Caught "
+      "std::exception: OrderedDimLabelReader: Range contained no values");
 }
 
 TEST_CASE_METHOD(
