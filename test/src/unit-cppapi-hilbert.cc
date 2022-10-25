@@ -515,6 +515,16 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, test writing in global order",
     "[cppapi][hilbert][write][global-order]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   Context ctx;
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
@@ -542,15 +552,7 @@ TEST_CASE(
   buff_a = {2, 3, 4, 1};
   buff_d1 = {1, 1, 5, 4};
   buff_d2 = {3, 1, 4, 2};
-  bool serialized_writes = false;
-  SECTION("no serialization") {
-    serialized_writes = false;
-  }
-  SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
-#endif
-  }
+
   if (!serialized_writes) {
     CHECK_NOTHROW(query_w.submit());
     query_w.finalize();

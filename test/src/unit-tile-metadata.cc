@@ -108,6 +108,7 @@ struct CPPFixedTileMetadataFx {
   }
 
   void write_fragment(
+      const bool serialized_writes,
       uint64_t f,
       tiledb_layout_t layout,
       bool nullable,
@@ -254,15 +255,6 @@ struct CPPFixedTileMetadataFx {
       query.set_validity_buffer("a", a_val);
     }
 
-    bool serialized_writes = false;
-    SECTION("no serialization") {
-      serialized_writes = false;
-    }
-    SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-      serialized_writes = true;
-#endif
-    }
     if (!serialized_writes) {
       query.submit();
       query.finalize();
@@ -620,6 +612,16 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   typedef TestType T;
   std::string test = GENERATE("nullable", "all null", "non nullable");
 
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   tiledb_layout_t layout =
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER, TILEDB_ROW_MAJOR);
 
@@ -636,7 +638,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   for (uint64_t f = 0; f < num_frag; f++) {
     // Write a fragment.
     CPPFixedTileMetadataFx<T>::write_fragment(
-        f, layout, nullable, all_null, cell_val_num);
+        serialized_writes, f, layout, nullable, all_null, cell_val_num);
   }
 
   for (uint64_t f = 0; f < num_frag; f++) {
@@ -681,7 +683,11 @@ struct CPPVarTileMetadataFx {
   }
 
   void write_fragment(
-      uint64_t f, tiledb_layout_t layout, bool nullable, bool all_null) {
+      const bool serialized_writes,
+      uint64_t f,
+      tiledb_layout_t layout,
+      bool nullable,
+      bool all_null) {
     std::default_random_engine random_engine;
 
     uint64_t max_string_size = 100;
@@ -775,15 +781,6 @@ struct CPPVarTileMetadataFx {
       query.set_validity_buffer("a", a_val);
     }
 
-    bool serialized_writes = false;
-    SECTION("no serialization") {
-      serialized_writes = false;
-    }
-    SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-      serialized_writes = true;
-#endif
-    }
     if (!serialized_writes) {
       query.submit();
       query.finalize();
@@ -1008,6 +1005,16 @@ TEST_CASE_METHOD(
     "[tile-metadata][var-data]") {
   std::string test = GENERATE("nullable", "all null", "non nullable");
 
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   tiledb_layout_t layout =
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER, TILEDB_ROW_MAJOR);
 
@@ -1021,7 +1028,8 @@ TEST_CASE_METHOD(
 
   for (uint64_t f = 0; f < num_frag; f++) {
     // Write a fragment.
-    CPPVarTileMetadataFx::write_fragment(f, layout, nullable, all_null);
+    CPPVarTileMetadataFx::write_fragment(
+        serialized_writes, f, layout, nullable, all_null);
   }
 
   for (uint64_t f = 0; f < num_frag; f++) {

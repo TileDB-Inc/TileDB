@@ -877,11 +877,11 @@ TEST_CASE_METHOD(
     SECTION("no serialization") {
       serialized_writes = false;
     }
-    SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
+    SECTION("serialization enabled global order write") {
       serialized_writes = true;
-#endif
     }
+#endif
   }
 
   SECTION("- with encryption") {
@@ -1459,11 +1459,11 @@ TEST_CASE_METHOD(
     SECTION("no serialization") {
       serialized_writes = false;
     }
-    SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
+    SECTION("serialization enabled global order write") {
       serialized_writes = true;
-#endif
     }
+#endif
   }
 
   SECTION("- with encryption") {

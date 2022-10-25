@@ -62,7 +62,8 @@ struct SparseNegFx2 {
   void remove_temp_dir(const std::string& path);
   void create_sparse_vector(const std::string& path);
   void create_sparse_array(const std::string& path);
-  void write_sparse_vector(const std::string& path);
+  void write_sparse_vector(
+      const std::string& path, const bool serialized_writes);
   void write_sparse_array(const std::string& path);
   void read_sparse_vector(const std::string& path);
   void read_sparse_array_row(const std::string& path);
@@ -216,7 +217,8 @@ void SparseNegFx2::create_sparse_array(const std::string& path) {
   tiledb_array_schema_free(&array_schema);
 }
 
-void SparseNegFx2::write_sparse_vector(const std::string& path) {
+void SparseNegFx2::write_sparse_vector(
+    const std::string& path, const bool serialized_writes) {
   // Open array
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, path.c_str(), &array);
@@ -237,15 +239,7 @@ void SparseNegFx2::write_sparse_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-  bool serialized_writes = false;
-  SECTION("no serialization") {
-    serialized_writes = false;
-  }
-  SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
-#endif
-  }
+
   if (!serialized_writes) {
     rc = tiledb_query_submit(ctx_, query);
     CHECK(rc == TILEDB_OK);
@@ -472,13 +466,23 @@ TEST_CASE_METHOD(
     SparseNegFx2,
     "C API: Test 1d sparse vector with negative domain 2",
     "[capi][sparse-neg-2][sparse-neg-vector-2]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   SupportedFsLocal local_fs;
   std::string vector_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "sparse_neg_vector";
   create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   create_sparse_vector(vector_name);
-  write_sparse_vector(vector_name);
+  write_sparse_vector(vector_name, serialized_writes);
   read_sparse_vector(vector_name);
 
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
