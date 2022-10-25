@@ -493,7 +493,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   LabelType get_range_as(uint64_t r, uint8_t range_index);
 
   /**
-   * Search for a label defined in the specified range for fixed size labels.
+   * Search for a label defined in the specified range.
    *
    * @tparam Index type.
    * @tparam Label type.
@@ -506,7 +506,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
    * @return Index for the searched label.
    */
   template <typename IndexType, typename LabelType, typename Op>
-  IndexType search_for_range_fixed(
+  IndexType search_for_range(
       uint64_t r,
       uint8_t range_index,
       const IndexType& domain_low,
