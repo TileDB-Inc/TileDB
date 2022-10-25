@@ -48,19 +48,72 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-DimensionLabelDataQuery::DimensionLabelDataQuery(const std::string& name)
-    : name_{name} {
-}
-
-DimensionLabelReadDataQuery::DimensionLabelReadDataQuery(
+DimensionLabelQuery::DimensionLabelQuery(
     StorageManager* storage_manager,
+    stats::Stats* stats,
     const std::string& name,
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
-    const uint32_t dim_idx)
-    : Query(storage_manager, dimension_label->indexed_array(), nullopt)
-    , DimensionLabelDataQuery(name) {
+    const QueryBuffer& index_buffer,
+    const uint32_t dim_idx,
+    optional<std::string> fragment_name)
+    : Query(storage_manager, dimension_label->indexed_array(), fragment_name)
+    , name_{name} {
+  switch (dimension_label->query_type()) {
+    case (QueryType::READ):
+      initialize_read_labels_query(
+          dimension_label, parent_subarray, label_buffer, dim_idx);
+      break;
+
+    case (QueryType::WRITE):
+      // Initialize write query for the appropriate label order type.
+      switch (dimension_label->label_order()) {
+        case (LabelOrder::INCREASING_LABELS):
+        case (LabelOrder::DECREASING_LABELS):
+          initialize_ordered_write_query(
+              stats,
+              dimension_label,
+              parent_subarray,
+              label_buffer,
+              index_buffer,
+              dim_idx);
+          break;
+
+        case (LabelOrder::UNORDERED_LABELS):
+          initialize_unordered_write_query(
+              dimension_label,
+              parent_subarray,
+              label_buffer,
+              index_buffer,
+              dim_idx);
+          break;
+
+        default:
+          // Invalid label order type.
+          throw DimensionLabelDataQueryStatusException(
+              "Dimension label order " +
+              label_order_str(dimension_label->label_order()) +
+              " not supported.");
+      }
+      break;
+
+    default:
+      throw DimensionLabelDataQueryStatusException(
+          "Query type " + query_type_str(dimension_label->query_type()) +
+          " not supported for dimension label queries.");
+  }
+}
+
+bool DimensionLabelQuery::completed() const {
+  return status() == QueryStatus::COMPLETED;
+}
+
+void DimensionLabelQuery::initialize_read_labels_query(
+    DimensionLabel* dimension_label,
+    const Subarray& parent_subarray,
+    const QueryBuffer& label_buffer,
+    const uint32_t dim_idx) {
   // Set the layout (ordered, 1D).
   throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
 
@@ -76,10 +129,6 @@ DimensionLabelReadDataQuery::DimensionLabelReadDataQuery(
   // Set the label data buffer.
   set_dimension_label_buffer(
       dimension_label->label_attribute()->name(), label_buffer);
-}
-
-bool DimensionLabelReadDataQuery::completed() const {
-  return status() == QueryStatus::COMPLETED;
 }
 
 /**
@@ -295,52 +344,7 @@ bool is_sorted_buffer(
   return true;
 }
 
-DimensionLabelWriteDataQuery::DimensionLabelWriteDataQuery(
-    StorageManager* storage_manager,
-    stats::Stats* stats,
-    const std::string& name,
-    DimensionLabel* dimension_label,
-    const Subarray& parent_subarray,
-    const QueryBuffer& label_buffer,
-    const QueryBuffer& index_buffer,
-    const uint32_t dim_idx,
-    optional<std::string> fragment_name)
-    : Query(storage_manager, dimension_label->indexed_array(), fragment_name)
-    , DimensionLabelDataQuery(name) {
-  switch (dimension_label->label_order()) {
-    case (LabelOrder::INCREASING_LABELS):
-    case (LabelOrder::DECREASING_LABELS):
-      initialize_ordered_write_query(
-          stats,
-          dimension_label,
-          parent_subarray,
-          label_buffer,
-          index_buffer,
-          dim_idx);
-      break;
-
-    case (LabelOrder::UNORDERED_LABELS):
-      initialize_unordered_write_query(
-          dimension_label,
-          parent_subarray,
-          label_buffer,
-          index_buffer,
-          dim_idx);
-      break;
-
-    default:
-      // Invalid label order type.
-      throw DimensionLabelDataQueryStatusException(
-          "Dimension label order " +
-          label_order_str(dimension_label->label_order()) + " not supported.");
-  }
-}
-
-bool DimensionLabelWriteDataQuery::completed() const {
-  return status() == QueryStatus::COMPLETED;
-}
-
-void DimensionLabelWriteDataQuery::initialize_ordered_write_query(
+void DimensionLabelQuery::initialize_ordered_write_query(
     stats::Stats* stats,
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
@@ -396,7 +400,7 @@ void DimensionLabelWriteDataQuery::initialize_ordered_write_query(
   }
 }
 
-void DimensionLabelWriteDataQuery::initialize_unordered_write_query(
+void DimensionLabelQuery::initialize_unordered_write_query(
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,

@@ -35,6 +35,7 @@
 #define TILEDB_DIMENSION_LABEL_QUERY_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/sm/query/dimension_label/index_data.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
@@ -47,7 +48,6 @@ namespace tiledb::sm {
 class DimensionLabel;
 class QueryBuffer;
 class Subarray;
-class IndexData;
 
 /**
  * Class for locally generated status exceptions.
@@ -61,73 +61,14 @@ class DimensionLabelDataQueryStatusException : public StatusException {
   }
 };
 
-class DimensionLabelDataQuery : public virtual Query {
- public:
-  /** Delete default constructor: not C.41 compliant. */
-  DimensionLabelDataQuery() = delete;
-
-  /**
-   * Constructor.
-   *
-   * @param name Name of the dimension label.
-   */
-  DimensionLabelDataQuery(const std::string& name);
-
-  /** Destructor. */
-  virtual ~DimensionLabelDataQuery() = default;
-
-  /** Returns ``true`` if the query status is completed. */
-  virtual bool completed() const = 0;
-
-  /** Returns the name of the dimension label. */
-  inline const std::string& name() const {
-    return name_;
-  }
-
- private:
-  /** Name of the dimension label. */
-  std::string name_;
-};
-
-class DimensionLabelReadDataQuery : public DimensionLabelDataQuery {
- public:
-  /** Default constructor is not C.41 compliant. */
-  DimensionLabelReadDataQuery() = delete;
-
-  /**
-   * Constructor.
-   *
-   * @param storage_manager Storage manager object.
-   * @param name Name of the dimension label.
-   * @param dimension_label Opened dimension label for the query.
-   * @param parent_subarrray Subarray of the parent array.
-   * @param label_buffer Query buffer for the label data.
-   * @param dim_idx Index of the dimension on the parent array this dimension
-   */
-  DimensionLabelReadDataQuery(
-      StorageManager* storage_manager,
-      const std::string& name,
-      DimensionLabel* dimension_label,
-      const Subarray& parent_subarray,
-      const QueryBuffer& label_buffer,
-      const uint32_t dim_idx);
-
-  /** Disable copy and move. */
-  DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelReadDataQuery);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelReadDataQuery);
-
-  /** Returns ``true`` if the query status is completed. */
-  bool completed() const;
-};
-
 /** Dimension label query for writing ordered data. */
-class DimensionLabelWriteDataQuery : public DimensionLabelDataQuery {
+class DimensionLabelQuery : public Query {
  public:
   /** Default constructor is not C.41 compliant. */
-  DimensionLabelWriteDataQuery() = delete;
+  DimensionLabelQuery() = delete;
 
   /**
-   * Constructor for when index buffer is not set.
+   * Constructor for queries to read or write label data.
    *
    * @param storage_manager Storage manager object.
    * @param name Name of the dimension label.
@@ -140,7 +81,7 @@ class DimensionLabelWriteDataQuery : public DimensionLabelDataQuery {
    *     label is for.
    * @param fragment_name Name to use when writing the fragment.
    */
-  DimensionLabelWriteDataQuery(
+  DimensionLabelQuery(
       StorageManager* storage_manager,
       stats::Stats* stats,
       const std::string& name,
@@ -152,16 +93,43 @@ class DimensionLabelWriteDataQuery : public DimensionLabelDataQuery {
       optional<std::string> fragment_name);
 
   /** Disable copy and move. */
-  DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelWriteDataQuery);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelWriteDataQuery);
+  DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelQuery);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelQuery);
 
   /** Returns ``true`` if the query status is completed. */
   bool completed() const;
 
+  /** Returns the name of the dimension label. */
+  inline const std::string& name() const {
+    return name_;
+  }
+
  private:
-  /** Internally managed index data for sparse write to labelled array. */
+  /**
+   * Internally managed index data.
+   *
+   * Note: May be null if the index data is set and managed by the user.
+   */
   tdb_unique_ptr<IndexData> index_data_;
 
+  /** The name of the dimension label. */
+  std::string name_;
+
+  /**
+   * Initialize query for reading label data.
+   *
+   * @param dimension_label Opened dimension label for the query.
+   * @param parent_subarrray Subarray of the parent array.
+   * @param label_buffer Query buffer for the label data.
+   * @param dim_idx Index of the dimension on the parent array this dimension
+   */
+  void initialize_read_labels_query(
+      DimensionLabel* dimension_label,
+      const Subarray& parent_subarray,
+      const QueryBuffer& label_buffer,
+      const uint32_t dim_idx);
+
+  /** TODO: Docs */
   void initialize_ordered_write_query(
       stats::Stats* stats,
       DimensionLabel* dimension_label,
@@ -170,6 +138,7 @@ class DimensionLabelWriteDataQuery : public DimensionLabelDataQuery {
       const QueryBuffer& index_buffer,
       const uint32_t dim_idx);
 
+  /** TODO: Docs */
   void initialize_unordered_write_query(
       DimensionLabel* dimension_label,
       const Subarray& parent_subarray,

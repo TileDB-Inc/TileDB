@@ -253,13 +253,16 @@ void ArrayDimensionLabelQueries::add_read_queries(
 
       // Create the data query.
       data_queries_.emplace_back(tdb_new(
-          DimensionLabelReadDataQuery,
+          DimensionLabelQuery,
           storage_manager_,
+          stats_->create_child("DimensionLabelQuery"),
           label_name,
           dim_label,
           subarray,
           label_buffer,
-          dim_idx));
+          QueryBuffer(),
+          dim_idx,
+          nullopt));
       label_data_queries_by_dim_idx_[dim_idx].push_back(
           data_queries_.back().get());
     } catch (...) {
@@ -300,7 +303,7 @@ void ArrayDimensionLabelQueries::add_write_queries(
       const auto& index_buffer_pair = array_buffers.find(dim_name);
 
       data_queries_.emplace_back(tdb_new(
-          DimensionLabelWriteDataQuery,
+          DimensionLabelQuery,
           storage_manager_,
           stats_->create_child("DimensionLabelQuery"),
           label_name,
