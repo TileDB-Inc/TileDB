@@ -37,7 +37,6 @@
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/label_order.h"
 #include "tiledb/sm/enums/query_status.h"
-#include "tiledb/sm/query/dimension_label/index_data.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/subarray/subarray.h"
 
@@ -103,6 +102,34 @@ DimensionLabelQuery::DimensionLabelQuery(
           "Query type " + query_type_str(dimension_label->query_type()) +
           " not supported for dimension label queries.");
   }
+}
+
+DimensionLabelQuery::DimensionLabelQuery(
+    StorageManager* storage_manager,
+    DimensionLabel* dimension_label,
+    const std::vector<Range>& label_ranges)
+    : Query(storage_manager, dimension_label->indexed_array(), nullopt)
+    , index_data_{IndexDataCreate::make_index_data(
+          dimension_label->index_dimension()->type(),
+          2 * label_ranges.size(),
+          false)} {
+  // Set the basic query properies.
+  throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
+  set_dimension_label_ordered_read(
+      dimension_label->label_order() == LabelOrder::INCREASING_LABELS);
+
+  // Set the subarray.
+  Subarray subarray{*this->subarray()};
+  subarray.set_attribute_ranges(
+      dimension_label->label_attribute()->name(), label_ranges);
+  throw_if_not_ok(set_subarray(subarray));
+
+  // Set index data buffer that will store the computed ranges.
+  throw_if_not_ok(set_data_buffer(
+      dimension_label->index_dimension()->name(),
+      index_data_->data(),
+      index_data_->data_size(),
+      true));
 }
 
 bool DimensionLabelQuery::completed() const {

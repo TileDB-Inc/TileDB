@@ -165,9 +165,9 @@ void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
             throw_if_not_ok(range_query->init());
             throw_if_not_ok(range_query->process());
             if (!range_query->completed()) {
-              // TODO: Clean-up error to specify which query didn't complete.
               throw DimensionLabelQueryStatusException(
-                  "Cannot return computed ranges. Query has not completed.");
+                  "Range query for label '" + range_query->name() +
+                  "' failed to complete.");
             }
 
             // Update data queries and the parent query with the dimension
@@ -187,8 +187,8 @@ void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
         } catch (...) {
           // TODO: Update to use name.
           std::throw_with_nested(DimensionLabelStatusException(
-              "Failed to process label range data on dimension " +
-              std::to_string(dim_idx) + "."));
+              "Failed to read and process label data for label '" +
+              range_query->name() + "'."));
         }
       }));
 
@@ -234,7 +234,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
 
       // Create the range query.
       range_queries_.emplace_back(tdb_new(
-          OrderedRangeQuery, storage_manager_, dim_label, label_ranges));
+          DimensionLabelQuery, storage_manager_, dim_label, label_ranges));
       label_range_queries_by_dim_idx_[dim_idx] = range_queries_.back().get();
     } catch (...) {
       std::throw_with_nested(DimensionLabelStatusException(

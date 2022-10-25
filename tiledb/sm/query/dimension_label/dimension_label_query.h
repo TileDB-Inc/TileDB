@@ -92,6 +92,18 @@ class DimensionLabelQuery : public Query {
       const uint32_t dim_idx,
       optional<std::string> fragment_name);
 
+  /**
+   * Constructor for range queries.
+   *
+   * @param storage_manager Storage manager object.
+   * @param dimension_label Opened dimension label for the query.
+   * @param label_ranges Label ranges to read index ranges from.
+   */
+  DimensionLabelQuery(
+      StorageManager* storage_manager,
+      DimensionLabel* dimension_label,
+      const std::vector<Range>& label_ranges);
+
   /** Disable copy and move. */
   DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelQuery);
   DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelQuery);
@@ -99,21 +111,26 @@ class DimensionLabelQuery : public Query {
   /** Returns ``true`` if the query status is completed. */
   bool completed() const;
 
+  /** Returns access to the internally stored index data. */
+  inline IndexData* index_data() {
+    return index_data_.get();
+  }
+
   /** Returns the name of the dimension label. */
   inline const std::string& name() const {
     return name_;
   }
 
  private:
+  /** The name of the dimension label. */
+  std::string name_;
+
   /**
    * Internally managed index data.
    *
    * Note: May be null if the index data is set and managed by the user.
    */
   tdb_unique_ptr<IndexData> index_data_;
-
-  /** The name of the dimension label. */
-  std::string name_;
 
   /**
    * Initialize query for reading label data.

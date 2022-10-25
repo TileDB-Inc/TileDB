@@ -37,7 +37,6 @@
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/query/dimension_label/dimension_label_query.h"
-#include "tiledb/sm/query/dimension_label/dimension_label_range_query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
@@ -151,7 +150,7 @@ class ArrayDimensionLabelQueries {
       dimension_labels_;
 
   /** Dimension label range queries */
-  std::vector<tdb_unique_ptr<DimensionLabelRangeQuery>> range_queries_;
+  std::vector<tdb_unique_ptr<DimensionLabelQuery>> range_queries_;
 
   /**
    * Non-owning vector for accessing range query by dimension index.
@@ -160,7 +159,7 @@ class ArrayDimensionLabelQueries {
    * There can be at most on query per dimension. If there is no query on the
    * dimension, it contains a nullpointer.
    */
-  std::vector<DimensionLabelRangeQuery*> label_range_queries_by_dim_idx_;
+  std::vector<DimensionLabelQuery*> label_range_queries_by_dim_idx_;
 
   /**
    * Dimension label data queries.
