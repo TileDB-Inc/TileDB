@@ -2545,6 +2545,16 @@ Status global_write_state_to_capnp(
           builder[i].setPartNumber(state.completed_parts[i].part_number);
         }
       }
+
+      if (state.buffered_chunks.has_value()) {
+        auto& buffered_chunks = state.buffered_chunks.value();
+        auto builder =
+            multipart_entry_builder.initBufferedChunks(buffered_chunks.size());
+        for (uint64_t i = 0; i < buffered_chunks.size(); ++i) {
+          builder[i].setUri(buffered_chunks[i].uri);
+          builder[i].setSize(buffered_chunks[i].size);
+        }
+      }
     }
   }
 
@@ -2628,6 +2638,18 @@ Status global_write_state_from_capnp(
             parts.back().part_number = part.getPartNumber();
             if (part.hasETag()) {
               parts.back().e_tag = std::string(part.getETag().cStr());
+            }
+          }
+        }
+
+        if (state.hasBufferedChunks()) {
+          deserialized_state.buffered_chunks.emplace();
+          auto& chunks = deserialized_state.buffered_chunks.value();
+          for (auto chunk : state.getBufferedChunks()) {
+            chunks.emplace_back();
+            chunks.back().size = chunk.getSize();
+            if (chunk.hasUri()) {
+              chunks.back().uri = std::string(chunk.getUri().cStr());
             }
           }
         }

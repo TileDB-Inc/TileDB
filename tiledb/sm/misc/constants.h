@@ -720,6 +720,15 @@ extern const std::string filestore_metadata_original_filename_key;
 /** Name of the metadata key used in filestore arrays for filename extension. */
 extern const std::string filestore_metadata_file_extension_key;
 
+/** The minimum size of an s3 multipart upload intermediate part */
+extern const uint64_t s3_min_multipart_part_size;
+
+/**
+ * The dir name under fragment uri used by s3 to store remote
+ * global order writes intermediate chunks
+ */
+extern const std::string s3_multipart_buffering_dirname;
+
 }  // namespace constants
 
 }  // namespace sm

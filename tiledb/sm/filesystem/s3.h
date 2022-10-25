@@ -520,6 +520,11 @@ class S3 {
   struct BufferedChunk {
     std::string uri;
     uint64_t size;
+
+    BufferedChunk(std::string chunk_uri, uint64_t chunk_size)
+        : uri(chunk_uri)
+        , size(chunk_size) {
+    }
   };
 
   /** Contains all state associated with a multipart upload transaction. */
@@ -873,6 +878,18 @@ class S3 {
   Status flush_direct(const URI& uri);
 
   /**
+   * Writes the input buffer to a file by issuing one PutObject
+   * request. If the file does not exist, then it is created. If the file
+   * exists then it is appended to.
+   *
+   * @param uri The URI of the S3 file to be written to.
+   * @param buffer The input buffer.
+   * @param length The size of the input buffer.
+   * @return Status
+   */
+  Status write_direct(const URI& uri, const void* buffer, uint64_t length);
+
+  /**
    * Writes the input buffer to a file by issuing one or more multipart upload
    * requests. If the file does not exist, then it is created. If the file
    * exists then it is appended to. This command will upload chunks of an
@@ -938,6 +955,11 @@ class S3 {
    */
   std::optional<S3::MultiPartUploadState> multipart_upload_state(
       const URI& uri);
+
+  URI generate_chunk_uri(const URI& attribute_uri, uint64_t id);
+
+  URI generate_chunk_uri(
+      const URI& attribute_uri, const std::string& chunk_name);
 };
 
 }  // namespace sm

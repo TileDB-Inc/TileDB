@@ -118,6 +118,15 @@ class VFS {
   struct BufferedChunk {
     std::string uri;
     uint64_t size;
+
+    BufferedChunk()
+        : uri("")
+        , size(0) {
+    }
+    BufferedChunk(std::string chunk_uri, uint64_t chunk_size)
+        : uri(chunk_uri)
+        , size(chunk_size) {
+    }
   };
 
   /**
