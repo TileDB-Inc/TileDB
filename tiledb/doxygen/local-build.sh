@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -x
 # Builds the ReadTheDocs documentation locally.
 # Usage. Execute in this directory:
 #   $ ./local-build.sh
@@ -14,11 +14,13 @@
 # **Note** If you get errors running the script,
 # try removing the local `venv` folder and re-running the script.
 
+SCRIPT_PATH=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+TILEDB_SRC_PATH=`realpath $SCRIPT_PATH/../../`
+
 # Choose the default directories
-source_dir="source"
-build_dir="source/_build"
-venv_dir="venv"
-tiledb_root_dir="../"
+source_dir="$SCRIPT_PATH/source"
+build_dir="$SCRIPT_PATH/source/_build"
+venv_dir="$SCRIPT_PATH/venv"
 cmake=`which cmake`
 
 make_jobs=1
@@ -71,8 +73,9 @@ setup_venv() {
 
 run_doxygen() {
     if [ -z ${tiledb_build+x} ]; then
-      pushd "$tiledb_root_dir"
-      tiledb_build="build"
+      pushd "$TILEDB_SRC_PATH"
+      tiledb_build="$TILEDB_SRC_PATH/build"
+      build_dir_arg="-D TILEDB_BUILD_DIR=${tiledb_build}"
       if [ ! -d "build" ]; then
           mkdir build
           pushd build
@@ -89,7 +92,7 @@ build_site() {
     # Note:
     #  -E disables the build cache (slower builds).
     #  -W enables warnings as errors.
-    sphinx-build -E -W -T -b html -d ${build_dir}/doctrees -D language=en ${source_dir} ${build_dir}/html || \
+    sphinx-build -E -W -T -b html -d ${build_dir}/doctrees -D language=en ${source_dir} ${build_dir}/html ${BUILD_DIR_ARG:-} || \
         die "could not build sphinx site"
 }
 

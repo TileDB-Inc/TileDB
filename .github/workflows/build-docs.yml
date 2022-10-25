@@ -6,7 +6,7 @@ on:
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
-      - 'doc/source/conf.py'
+      - 'tiledb/doxygen/source/*'
       - 'tiledb/sm/c_api/tiledb_version.h'
   pull_request:
     branches:
@@ -16,7 +16,7 @@ on:
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
-      - 'doc/source/conf.py'
+      - 'tiledb/doxygen/source/*'
       - 'tiledb/sm/c_api/tiledb_version.h'
 
 jobs:
@@ -49,6 +49,8 @@ jobs:
 
       - name: Build Doxygen Docs (linux only)'
         run: |
-          source $GITHUB_WORKSPACE/scripts/ci/build_docs.sh
+          # Build the documentation (this does not deploy to RTD).
+          cd $GITHUB_WORKSPACE/tiledb/doxygen;
+          ./local-build.sh;
         shell: bash
         if: ${{ runner.os == 'Linux' }}
