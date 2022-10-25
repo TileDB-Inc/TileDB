@@ -90,15 +90,14 @@ DimensionLabelQuery::DimensionLabelQuery(
 
         default:
           // Invalid label order type.
-          throw DimensionLabelDataQueryStatusException(
-              "Dimension label order " +
-              label_order_str(dimension_label->label_order()) +
-              " not supported.");
+          throw DimensionLabelQueryStatusException(
+              "Unrecognized label order " +
+              label_order_str(dimension_label->label_order()));
       }
       break;
 
     default:
-      throw DimensionLabelDataQueryStatusException(
+      throw DimensionLabelQueryStatusException(
           "Query type " + query_type_str(dimension_label->query_type()) +
           " not supported for dimension label queries.");
   }
@@ -113,6 +112,22 @@ DimensionLabelQuery::DimensionLabelQuery(
           dimension_label->index_dimension()->type(),
           2 * label_ranges.size(),
           false)} {
+  // Check dimension label order is supported.
+  switch (dimension_label->label_order()) {
+    case (LabelOrder::INCREASING_LABELS):
+    case (LabelOrder::DECREASING_LABELS):
+      break;
+    case (LabelOrder::UNORDERED_LABELS):
+      throw DimensionLabelQueryStatusException(
+          "Support for reading ranges from unordered labels is not yet "
+          "implemented.");
+    default:
+      // Invalid label order type.
+      throw DimensionLabelQueryStatusException(
+          "Unrecognized label order " +
+          label_order_str(dimension_label->label_order()));
+  }
+
   // Set the basic query properies.
   throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
   set_dimension_label_ordered_read(
@@ -364,7 +379,7 @@ bool is_sorted_buffer(
                      buffer.data_buffer_as<char>(),
                      buffer.buffer_var_size_);
     default:
-      throw DimensionLabelDataQueryStatusException(
+      throw DimensionLabelQueryStatusException(
           "Unexpected label datatype " + datatype_str(type));
   }
 
@@ -387,9 +402,8 @@ void DimensionLabelQuery::initialize_ordered_write_query(
           label_buffer,
           dimension_label->label_attribute()->type(),
           dimension_label->label_order() == LabelOrder::INCREASING_LABELS)) {
-    throw DimensionLabelDataQueryStatusException(
-        "Failed to create dimension label query. The label data is not in the "
-        "expected order.");
+    throw DimensionLabelQueryStatusException(
+        "The label data is not in the expected order.");
   }
   set_dimension_label_buffer(
       dimension_label->label_attribute()->name(), label_buffer);
@@ -402,9 +416,9 @@ void DimensionLabelQuery::initialize_ordered_write_query(
       throw_if_not_ok(subarray.set_ranges_for_dim(
           0, parent_subarray.ranges_for_dim(dim_idx)));
       if (subarray.range_num() > 1) {
-        throw DimensionLabelDataQueryStatusException(
-            "Failed to create dimension label query. The index data must "
-            "contain consecutive points when writing to a dimension label.");
+        throw DimensionLabelQueryStatusException(
+            "The index data must contain consecutive points when writing to a "
+            "dimension label.");
       }
       throw_if_not_ok(set_subarray(subarray));
     }
@@ -419,9 +433,8 @@ void DimensionLabelQuery::initialize_ordered_write_query(
     throw_if_not_ok(subarray.set_coalesce_ranges(true));
     throw_if_not_ok(subarray.add_point_ranges(0, index_buffer.buffer_, count));
     if (subarray.range_num() > 1) {
-      throw DimensionLabelDataQueryStatusException(
-          "Failed to create dimension label query. The index data must be for "
-          "consecutive values.");
+      throw DimensionLabelQueryStatusException(
+          "The index data must be for consecutive values.");
     }
     throw_if_not_ok(set_subarray(subarray));
   }
@@ -440,9 +453,8 @@ void DimensionLabelQuery::initialize_unordered_write_query(
     if (!parent_subarray.is_default(dim_idx)) {
       const auto& ranges = parent_subarray.ranges_for_dim(dim_idx);
       if (ranges.size() != 1) {
-        throw DimensionLabelDataQueryStatusException(
-            "Failed to create dimension label query. Dimension label writes "
-            "can only be set for a single range.");
+        throw DimensionLabelQueryStatusException(
+            "Dimension label writes can only be set for a single range.");
       }
     }
 

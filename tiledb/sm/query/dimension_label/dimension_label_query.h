@@ -27,8 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Classes for querying (reading/writing) a dimension label using the index
- * dimension for setting the subarray.
+ * Class for querying a dimesnion label.
  */
 
 #ifndef TILEDB_DIMENSION_LABEL_QUERY_H
@@ -49,14 +48,10 @@ class DimensionLabel;
 class QueryBuffer;
 class Subarray;
 
-/**
- * Class for locally generated status exceptions.
- *
- * Note: This intentionally returns the error as TileDB::DimensionLabelQuery.
- */
-class DimensionLabelDataQueryStatusException : public StatusException {
+/** Class for dimension label query status exceptions. */
+class DimensionLabelQueryStatusException : public StatusException {
  public:
-  explicit DimensionLabelDataQueryStatusException(const std::string& msg)
+  explicit DimensionLabelQueryStatusException(const std::string& msg)
       : StatusException("DimensionLabelQuery", msg) {
   }
 };
@@ -133,7 +128,7 @@ class DimensionLabelQuery : public Query {
   tdb_unique_ptr<IndexData> index_data_;
 
   /**
-   * Initialize query for reading label data.
+   * Initializes the query for reading label data.
    *
    * @param dimension_label Opened dimension label for the query.
    * @param parent_subarrray Subarray of the parent array.
@@ -146,7 +141,17 @@ class DimensionLabelQuery : public Query {
       const QueryBuffer& label_buffer,
       const uint32_t dim_idx);
 
-  /** TODO: Docs */
+  /**
+   * Initializes the query for writing to an ordered dimension label.
+   *
+   * @param stats Statistics object for performing timing.
+   * @param dimension_label Opened dimension label for the query.
+   * @param parent_subarrray Subarray of the parent array.
+   * @param label_buffer Query buffer for the label data.
+   * @param index_buffer Query buffer for the index data. May be empty if no
+   *     index buffer is set.
+   * @param dim_idx Index of the dimension on the parent array this dimension
+   */
   void initialize_ordered_write_query(
       stats::Stats* stats,
       DimensionLabel* dimension_label,
@@ -155,7 +160,15 @@ class DimensionLabelQuery : public Query {
       const QueryBuffer& index_buffer,
       const uint32_t dim_idx);
 
-  /** TODO: Docs */
+  /**
+   * Initializes the query for writing to an unordered dimension label
+   * @param dimension_label Opened dimension label for the query.
+   * @param parent_subarrray Subarray of the parent array.
+   * @param label_buffer Query buffer for the label data.
+   * @param index_buffer Query buffer for the index data. May be empty if no
+   *     index buffer is set.
+   * @param dim_idx Index of the dimension on the parent array this dimension
+   */
   void initialize_unordered_write_query(
       DimensionLabel* dimension_label,
       const Subarray& parent_subarray,

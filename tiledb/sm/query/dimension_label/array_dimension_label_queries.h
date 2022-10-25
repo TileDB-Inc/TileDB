@@ -54,14 +54,6 @@ class Subarray;
 
 enum class QueryType : uint8_t;
 
-/** Class for locally generated status exceptions. */
-class DimensionLabelQueryStatusException : public StatusException {
- public:
-  explicit DimensionLabelQueryStatusException(const std::string& msg)
-      : StatusException("DimensionLabelQuery", msg) {
-  }
-};
-
 class ArrayDimensionLabelQueries {
  public:
   /**

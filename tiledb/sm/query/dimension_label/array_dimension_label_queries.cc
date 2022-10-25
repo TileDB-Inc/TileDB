@@ -185,9 +185,8 @@ void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
           }
           return Status::Ok();
         } catch (...) {
-          // TODO: Update to use name.
           std::throw_with_nested(DimensionLabelStatusException(
-              "Failed to read and process label data for label '" +
+              "Failed to process and update index ranges for label '" +
               range_query->name() + "'."));
         }
       }));
@@ -218,13 +217,6 @@ void ArrayDimensionLabelQueries::add_read_queries(
         array->array_schema_latest().dimension_label_reference(label_name);
 
     try {
-      // Unordered labels are not supported yet.
-      if (dim_label_ref.label_order() == LabelOrder::UNORDERED_LABELS) {
-        throw DimensionLabelQueryStatusException(
-            "Support for reading ranges from unordered labels is not yet "
-            "implemented.");
-      }
-
       // Open the indexed array.
       auto* dim_label =
           open_dimension_label(array, dim_label_ref, QueryType::READ);
