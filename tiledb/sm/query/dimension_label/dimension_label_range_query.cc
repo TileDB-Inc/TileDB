@@ -48,7 +48,8 @@ OrderedRangeQuery::OrderedRangeQuery(
     : Query(storage_manager, dimension_label->indexed_array(), nullopt)
     , index_data_{IndexDataCreate::make_index_data(
           dimension_label->index_dimension()->type(),
-          2 * label_ranges.size())} {
+          2 * label_ranges.size(),
+          false)} {
   // Set the basic query properies.
   throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
   set_dimension_label_ordered_read(
@@ -72,13 +73,8 @@ bool OrderedRangeQuery::completed() const {
   return status() == QueryStatus::COMPLETED;
 }
 
-tuple<bool, const void*, storage_size_t> OrderedRangeQuery::computed_ranges()
-    const {
-  if (!completed()) {
-    throw DimensionLabelRangeQueryStatusException(
-        "Cannot return computed ranges. Query has not completed.");
-  }
-  return {false, index_data_->data(), index_data_->count()};
+IndexData* OrderedRangeQuery::index_data() {
+  return index_data_.get();
 }
 
 }  // namespace tiledb::sm

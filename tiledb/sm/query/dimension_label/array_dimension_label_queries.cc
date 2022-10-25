@@ -164,11 +164,18 @@ void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
             // Process the query.
             throw_if_not_ok(range_query->init());
             throw_if_not_ok(range_query->process());
+            if (!range_query->completed()) {
+              // TODO: Clean-up error to specify which query didn't complete.
+              throw DimensionLabelQueryStatusException(
+                  "Cannot return computed ranges. Query has not completed.");
+            }
 
             // Update data queries and the parent query with the dimension
             // ranges.
-            auto [is_point_ranges, range_data, count] =
-                label_range_queries_by_dim_idx_[dim_idx]->computed_ranges();
+            auto index_data = range_query->index_data();
+            auto is_point_ranges = index_data->ranges_are_points();
+            auto range_data = index_data->data();
+            auto count = index_data->count();
             for (auto& data_query : label_data_queries_by_dim_idx_[dim_idx]) {
               data_query->add_index_ranges_from_label(
                   0, is_point_ranges, range_data, count);

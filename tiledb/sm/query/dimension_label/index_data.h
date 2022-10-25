@@ -58,6 +58,16 @@ class IndexData {
 
   /** Returns pointer to total data size. */
   virtual storage_size_t* data_size() = 0;
+
+  /**
+   * Returns if ranges should be interpreted as points when setting ranges with
+   * the index data.
+   *
+   *  - If this is ``true``, each point represents a range containing just that
+   *    value.
+   *  - If this is ``false``, data is stored in range start/end pairs.
+   */
+  virtual bool ranges_are_points() const = 0;
 };
 
 /** Typed class for internally managed index data for a QueryBuffer. */
@@ -79,7 +89,8 @@ class TypedIndexData : public IndexData {
    */
   TypedIndexData(const type::Range& range)
       : data_{}
-      , data_size_{0} {
+      , data_size_{0}
+      , ranges_are_points_{true} {
     auto range_data = range.typed_data<T>();
     T min_value = range_data[0];
     T max_value = range_data[1];
@@ -97,13 +108,17 @@ class TypedIndexData : public IndexData {
    * Constructor.
    *
    * This will create a vector of the index type large enough to store the
-   * requested number of values.
+   * requested number of values. It uses the same initialization pattern as
+   * std::vector.
    *
    * @param num_values Number of values the data array must be able to store.
+   * @param ranges_are_points If ``true``, it contins point data. Otherwise, the
+   *     data contains alternating start/end values of ranges.
    */
-  TypedIndexData(const storage_size_t num_values)
+  TypedIndexData(const storage_size_t num_values, const bool ranges_are_points)
       : data_(num_values)
-      , data_size_{sizeof(T) * num_values} {
+      , data_size_{sizeof(T) * num_values}
+      , ranges_are_points_{ranges_are_points} {
   }
 
   /** Returns the number of stored elements. */
@@ -121,12 +136,33 @@ class TypedIndexData : public IndexData {
     return &data_size_;
   }
 
+  /**
+   * Returns if ranges should be interpreted as points when setting ranges with
+   * the index data.
+   *
+   *  - If this is ``true``, each point represents a range containing just that
+   *    value.
+   *  - If this is ``false``, data is stored in range start/end pairs.
+   */
+  bool ranges_are_points() const override {
+    return ranges_are_points_;
+  }
+
  private:
   /** Vector of index data. */
   std::vector<T> data_;
 
   /** Size of the index data. */
   storage_size_t data_size_;
+
+  /**
+   * Flag for interpretting data as ranges.
+   *
+   *  - If this is ``true``, each point represents a range containing just that
+   *    value.
+   *  - If this is ``false``, data is stored in range start/end pairs.
+   */
+  bool ranges_are_points_;
 };
 
 /** Index data factory. */
@@ -150,10 +186,14 @@ class IndexDataCreate {
    *
    * @param Datatype of the index data to create.
    * @param num_values The number of contained data points.
+   * @param ranges_are_points If ``true``, it contins point data. Otherwise, the
+   *     data contains alternating start/end values of ranges.
    * @returns A pointer to an index data object.
    */
   static IndexData* make_index_data(
-      const Datatype type, const storage_size_t num_values);
+      const Datatype type,
+      const storage_size_t num_values,
+      const bool ranges_are_points);
 };
 
 }  // namespace tiledb::sm

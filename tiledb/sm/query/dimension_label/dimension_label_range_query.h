@@ -64,17 +64,6 @@ class DimensionLabelRangeQuery : public virtual Query {
   /** Destructor. */
   virtual ~DimensionLabelRangeQuery() = default;
 
-  /**
-   * Retrieves the computed ranges from the query.
-   *
-   * @returns [is_point_range, range_data, count]
-   *   * is_point_range: If ``true`` the returned data is stored as point
-   * ranges, otherwise it stored as [start, end] range pairs.
-   *   * range_data: Pointer to the start of the range data.
-   *   * count: Total number of points stored in the range data.
-   */
-  virtual tuple<bool, const void*, storage_size_t> computed_ranges() const = 0;
-
   /** Returns ``true`` if the query status is completed. */
   virtual bool completed() const = 0;
 
@@ -82,6 +71,9 @@ class DimensionLabelRangeQuery : public virtual Query {
   inline const std::string& name() const {
     return name_;
   }
+
+  /** Returns the internally stored index data. */
+  virtual IndexData* index_data() = 0;
 
  private:
   /** Name of the dimension label. */
@@ -109,18 +101,11 @@ class OrderedRangeQuery : public DimensionLabelRangeQuery {
   DISABLE_COPY_AND_COPY_ASSIGN(OrderedRangeQuery);
   DISABLE_MOVE_AND_MOVE_ASSIGN(OrderedRangeQuery);
 
-  /**
-   * Returns the computed index ranges.
-   *
-   * @returns [is_point_ranges, start, count]
-   *  * is_point_ranges: If ``true`` the data contains point ranges.
-   *  * start: Pointer to the start of the range data.
-   *  * count: Number of total elements in the range data.
-   */
-  tuple<bool, const void*, storage_size_t> computed_ranges() const;
-
   /** Returns ``true`` if the query status is completed. */
-  bool completed() const;
+  bool completed() const override;
+
+  /** TODO Docs */
+  IndexData* index_data() override;
 
  private:
   /** Data to store index data in. */
