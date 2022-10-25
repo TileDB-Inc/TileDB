@@ -46,7 +46,7 @@ using namespace tiledb;
 std::vector<uint8_t> read, write;
 
 // Colorspace stride
-const unsigned colorspace = TILEDB_WEBP_RGB;
+const unsigned colorspace = TILEDB_WEBP_RGBA;
 const unsigned pixel_depth = colorspace < TILEDB_WEBP_RGBA ? 3 : 4;
 const float quality_factor = 100.0f;
 const bool lossless = true;
@@ -98,7 +98,7 @@ std::vector<uint8_t*> read_png(
     // These color_type don't have an alpha channel then fill it with 0xff.
     if (color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY ||
         color_type == PNG_COLOR_TYPE_PALETTE)
-      png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
+      png_set_filler(png, 255, PNG_FILLER_AFTER);
   }
 
   // Since we read in BGR and write in BGR colors will not change
@@ -293,7 +293,7 @@ void ingest_png(const std::string& input_png, const std::string& array_path) {
  * @param output_png Path of .png image to create.
  */
 void read_png_array(
-    const std::string& array_path, const std::string& output_png) {
+    const std::string& output_png, const std::string& array_path) {
   Context ctx;
   Array array(ctx, array_path, TILEDB_READ);
 
@@ -307,38 +307,37 @@ void read_png_array(
   auto output_width = subarray[3], output_height = subarray[1];
 
   // Allocate query and set subarray
-  Query query(ctx, array);
-  query.set_layout(TILEDB_ROW_MAJOR).set_subarray(subarray);
-
-  // Allocate buffer to read into.
   std::vector<uint8_t> rgba(output_height * output_width);
-
-  // Set buffer
-  query.set_data_buffer("rgba", rgba);
-
+  Query query(ctx, array);
+  query.set_layout(TILEDB_ROW_MAJOR)
+      .set_subarray(subarray)
+      .set_data_buffer("rgba", rgba);
   // Read from the array.
   query.submit();
-  query.finalize();
   array.close();
   assert(Query::Status::COMPLETE == query.query_status());
+  std::cout << "Read size: " << rgba.size() << std::endl;
 
   // Allocate a buffer suitable for passing to libpng.
   std::vector<uint8_t*> png_buffer;
-  for (unsigned y = 0; y < output_height; y++)
-    png_buffer.push_back((uint8_t*)std::malloc(output_width * sizeof(uint8_t)));
-
+  write.resize(output_height * output_width);
+  size_t offset = 0;
   for (unsigned y = 0; y < output_height; y++) {
-    uint8_t* row = png_buffer[y];
-    for (unsigned x = 0; x < output_width; x++) {
-      row[x] = rgba[(y * output_width) + x];
-      write.push_back(row[x]);
-      if (lossless) {
-        // This will sometimes pass lossy compression, but always for lossless
-        assert(read[x] == write[x]);
+    png_buffer.push_back((uint8_t*)std::malloc(output_width * sizeof(uint8_t)));
+    std::memcpy(png_buffer[y], rgba.data() + offset, output_width);
+    std::memcpy(write.data() + offset, png_buffer[y], output_width);
+    offset += output_width;
+  }
+
+  if (lossless) {
+    for (unsigned y = 0; y < output_height; y++) {
+      for (unsigned x = 0; x < output_width; x++) {
+          // This will sometimes pass lossy compression, but always for lossless
+          size_t pos = (y * output_width) + x;
+          assert(read[pos] == write[pos]);
       }
     }
   }
-  std::cout << "Read size: " << rgba.size() << std::endl;
 
   // Write the image.
   write_png(png_buffer, output_width / pixel_depth, output_height, output_png);
@@ -363,9 +362,8 @@ int main(int argc, char** argv) {
 
   // Ingest the .png data to a new TileDB array.
   ingest_png(input_png, array_path);
-
   // Read from the array and write it to a new .png image.
-  read_png_array(array_path, output_png);
+  read_png_array(output_png, array_path);
 
   return 0;
 }

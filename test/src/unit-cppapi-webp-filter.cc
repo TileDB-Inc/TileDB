@@ -49,7 +49,8 @@ void write_image(
     unsigned width,
     unsigned height,
     uint8_t depth,
-    uint8_t colorspace) {
+    uint8_t colorspace,
+    const char * path=webp_png_name.c_str()) {
   std::vector<uint8_t*> png_buffer;
   for (unsigned y = 0; y < height; y++)
     png_buffer.push_back(
@@ -64,7 +65,7 @@ void write_image(
   }
 
   // The test images will overwrite one another to avoid creating a gallery
-  FILE* fp = fopen(webp_png_name.c_str(), "wb");
+  FILE* fp = fopen(path, "wb");
   if (!fp)
     abort();
 
@@ -118,17 +119,17 @@ using namespace tiledb;
 static const std::string webp_array_name = "cpp_unit_array_webp";
 
 std::vector<uint8_t> create_image(
-    unsigned width, unsigned height, unsigned pixel_depth) {
+    size_t width, size_t height, uint8_t pixel_depth) {
   // Construct data for test image
   // + Each quadrant of the image will be solid R, G, B, or W
   // + Draw a black border between quadrants
   // This vector is used for all colorspace formats: RGB, RGBA, BGR, BGRA
   std::vector<uint8_t> rgb(height * (width * pixel_depth), 0);
-  unsigned mid_y = height / 2;
-  unsigned mid_x = width / 2;
-  unsigned stride = width * pixel_depth;
-  for (unsigned row = 0; row < height; row++) {
-    for (unsigned col = 0; col < width; col++) {
+  size_t mid_y = height / 2;
+  size_t mid_x = width / 2;
+  size_t stride = width * pixel_depth;
+  for (size_t row = 0; row < height; row++) {
+    for (size_t col = 0; col < width; col++) {
       size_t pos = (stride * row) + (col * pixel_depth);
       if (row < mid_y && col < mid_x) {
         // Red (Blue) top-left
@@ -211,7 +212,8 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
 
   // Test against images of different sizes
   unsigned height = 40;
-  unsigned width = GENERATE(40, 20, 80);
+  unsigned width = GENERATE(40, 20, 80, 1001);
+  height = width == 1001 ? 1000 : height;
   unsigned pixel_depth = format_expected < TILEDB_WEBP_RGBA ? 3 : 4;
   auto y = Dimension::create<unsigned>(ctx, "y", {{1, height}}, height / 2);
   auto x = Dimension::create<unsigned>(

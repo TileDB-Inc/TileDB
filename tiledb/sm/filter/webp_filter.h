@@ -83,10 +83,9 @@ class WebpFilter : public Filter {
    * Caller must set colorspace format filter option
    */
   WebpFilter()
-      : Filter(FilterType::FILTER_WEBP)
-      , quality_(100.0f)
-      , format_(WebpInputFormat::WEBP_NONE)
-      , lossless_(false) {
+      : WebpFilter(100.0f
+      , WebpInputFormat::WEBP_NONE
+      , false) {
   }
 
   /**
@@ -214,7 +213,7 @@ class WebpFilter : public Filter {
    * Set tile extents to be used in tile-based image compression
    * This filter references these extents only on the forward pass during writes
    *
-   * @param Domain Array Domain object
+   * @param extents Extents retrieved from array Domain object
    */
   void set_extent(const std::vector<ByteVecValue>& extents);
 

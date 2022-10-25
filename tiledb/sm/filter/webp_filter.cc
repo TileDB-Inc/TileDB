@@ -34,7 +34,6 @@
 
 #include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/common/status.h"
-#include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/tile/tile.h"
 
 #include "webp/decode.h"
@@ -301,6 +300,7 @@ void WebpFilter::set_extent(const std::vector<ByteVecValue>& extents) {
   }
   extents_ =
       std::make_pair(extents[0].rvalue_as<int>(), extents[1].rvalue_as<int>());
+  Tile::set_max_tile_chunk_size(extents_.first * extents_.second);
 }
 
 }  // namespace tiledb::sm
