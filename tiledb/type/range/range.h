@@ -63,13 +63,13 @@ class Range {
       , partition_depth_(0) {
   }
 
-  /** Constructor setting a range. */
+  /** Constructs a range and sets fixed data. */
   Range(const void* range, uint64_t range_size)
       : Range() {
     set_range(range, range_size);
   }
 
-  /** Constructor setting a range. */
+  /** Constructs a range and sets variable data. */
   Range(const void* range, uint64_t range_size, uint64_t range_start_size)
       : Range() {
     set_range(range, range_size, range_start_size);
@@ -90,6 +90,13 @@ class Range {
       : Range() {
     set_range_var(start, start_size, end, end_size);
   }
+
+  /** Constructs a range and sets variable data. */
+  Range(const std::string& s1, const std::string& s2)
+      : Range() {
+    set_str_range(s1, s2);
+  }
+
   /** Copy constructor. */
   Range(const Range&) = default;
 

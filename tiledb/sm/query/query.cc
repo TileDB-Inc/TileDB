@@ -244,8 +244,7 @@ Status Query::add_range_var(
         " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
 
   // Add range
-  Range r;
-  r.set_range_var(start, start_size, end, end_size);
+  Range r{start, start_size, end, end_size};
   return subarray_.add_range(dim_idx, std::move(r), read_range_oob == "error");
 }
 

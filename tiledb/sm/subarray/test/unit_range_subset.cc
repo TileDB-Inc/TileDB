@@ -363,11 +363,9 @@ TEST_CASE("RangeSetAndSuperset::sort - STRING_ASCII") {
     const std::string d2{"dog"};
     const std::string d3{"ax"};
     const std::string d4{"bird"};
-    Range r1{};
-    r1.set_str_range(d1, d2);
+    Range r1{d1, d2};
     range_subset.add_range(r1);
-    Range r2{};
-    r2.set_str_range(d3, d4);
+    Range r2{d3, d4};
     range_subset.add_range(r2);
     CHECK(range_subset.num_ranges() == 2);
     // Create ThreadPool.

@@ -86,10 +86,9 @@ TEST_CASE("Test range_str for empty range", "[range][!mayfail]") {
 }
 
 TEST_CASE("Test range_str for string range", "[range][!mayfail]") {
-  Range range{};
   std::string start{"start"};
   std::string end{"end"};
-  range.set_str_range(start, end);
+  Range range{start, end};
   std::string expected_output{"[start, end]"};
   REQUIRE(range_str(range, Datatype::STRING_ASCII) == expected_output);
 }

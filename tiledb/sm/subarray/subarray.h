@@ -677,7 +677,7 @@ class Subarray {
    * Retrieves a range of a given dimension at a given range index.
    *
    * @note Note that the retrieved range may be invalid if
-   *     Subarray::set_range() is called after this function. In that case,
+   *     Subarray::add_range() is called after this function. In that case,
    *     make sure to make a copy in the caller function.
    */
   Status get_range(
@@ -688,7 +688,7 @@ class Subarray {
    * The range is in the form (start, end).
    *
    * @note Note that the retrieved range may be invalid if
-   *     Subarray::set_range() is called after this function. In that case,
+   *     Subarray::add_range() is called after this function. In that case,
    *     make sure to make a copy in the caller function.
    */
   Status get_range(

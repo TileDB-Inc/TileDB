@@ -321,8 +321,7 @@ bool Dimension::coincides_with_tiles(const Range& r) const {
 }
 
 template <class T>
-Status Dimension::compute_mbr(const Tile& tile, Range* mbr) {
-  assert(mbr != nullptr);
+Range Dimension::compute_mbr(const Tile& tile) {
   auto cell_num = tile.cell_num();
   assert(cell_num > 0);
 
@@ -332,24 +331,23 @@ Status Dimension::compute_mbr(const Tile& tile, Range* mbr) {
   // Initialize MBR with the first tile values
   const T* const data = static_cast<T*>(tile_buffer);
   T res[] = {data[0], data[0]};
-  mbr->set_range(res, sizeof(res));
+  Range mbr{res, sizeof(res)};
 
   // Expand the MBR with the rest tile values
   for (uint64_t c = 1; c < cell_num; ++c)
-    expand_range_v<T>(&data[c], mbr);
+    expand_range_v<T>(&data[c], &mbr);
 
-  return Status::Ok();
+  return mbr;
 }
 
-Status Dimension::compute_mbr(const Tile& tile, Range* mbr) const {
+Range Dimension::compute_mbr(const Tile& tile) const {
   assert(compute_mbr_func_ != nullptr);
-  return compute_mbr_func_(tile, mbr);
+  return compute_mbr_func_(tile);
 }
 
 template <>
-Status Dimension::compute_mbr_var<char>(
-    const Tile& tile_off, const Tile& tile_val, Range* mbr) {
-  assert(mbr != nullptr);
+Range Dimension::compute_mbr_var<char>(
+    const Tile& tile_off, const Tile& tile_val) {
   auto d_val_size = tile_val.size();
   auto cell_num = tile_off.cell_num();
   assert(cell_num > 0);
@@ -365,22 +363,22 @@ Status Dimension::compute_mbr_var<char>(
 
   // Initialize MBR with the first tile values
   auto size_0 = (cell_num == 1) ? d_val_size : d_off[1];
-  mbr->set_range_var(d_val, size_0, d_val, size_0);
+  Range mbr{d_val, size_0, d_val, size_0};
 
   // Expand the MBR with the rest tile values
   for (uint64_t c = 1; c < cell_num; ++c) {
     auto size =
         (c == cell_num - 1) ? d_val_size - d_off[c] : d_off[c + 1] - d_off[c];
-    expand_range_var_v(&d_val[d_off[c]], size, mbr);
+    expand_range_var_v(&d_val[d_off[c]], size, &mbr);
   }
 
-  return Status::Ok();
+  return mbr;
 }
 
-Status Dimension::compute_mbr_var(
-    const Tile& tile_off, const Tile& tile_val, Range* mbr) const {
+Range Dimension::compute_mbr_var(
+    const Tile& tile_off, const Tile& tile_val) const {
   assert(compute_mbr_var_func_ != nullptr);
-  return compute_mbr_var_func_(tile_off, tile_val, mbr);
+  return compute_mbr_var_func_(tile_off, tile_val);
 }
 
 template <class T>
