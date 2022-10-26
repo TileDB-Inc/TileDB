@@ -249,15 +249,35 @@ Status WebpFilter::set_option_impl(FilterOption option, const void* value) {
         Status_FilterError("Webp filter error; Invalid option value"));
 
   switch (option) {
-    case FilterOption::WEBP_QUALITY:
-      quality_ = *(float*)value;
+    case FilterOption::WEBP_QUALITY: {
+      auto val = *(float*)value;
+      if (val < 0.0f || val > 100.0f) {
+        throw StatusException(Status_FilterError(
+            "Webp filter error; Quality must be in range [0.0, 100.0]"));
+      }
+      quality_ = val;
       break;
-    case FilterOption::WEBP_INPUT_FORMAT:
-      format_ = static_cast<WebpInputFormat>(*(uint8_t*)value);
+    }
+    case FilterOption::WEBP_INPUT_FORMAT: {
+      auto val = static_cast<WebpInputFormat>(*(uint8_t*)value);
+      if (val < WebpInputFormat::WEBP_NONE ||
+          val > WebpInputFormat::WEBP_BGRA) {
+        throw StatusException(Status_FilterError(
+            "Webp filter error; Invalid input format option setting"));
+      }
+      format_ = val;
       break;
-    case FilterOption::WEBP_LOSSLESS:
-      lossless_ = *(uint8_t*)value;
+    }
+    case FilterOption::WEBP_LOSSLESS: {
+      auto val = *(uint8_t*)value;
+      if (val > 1) {
+        throw StatusException(Status_FilterError(
+            "Webp filter error; Lossless compression must be either enabled "
+            "(1) or disabled (0)"));
+      }
+      lossless_ = val;
       break;
+    }
     default:
       throw StatusException(
           Status_FilterError("Webp filter error; Unknown option"));

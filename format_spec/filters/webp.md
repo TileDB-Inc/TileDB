@@ -19,17 +19,20 @@ Attribute rgba = Attribute::create<uint8_t>(ctx, "rgba");
 // Create WebP filter and set options
 Filter webp(ctx, TILEDB_FILTER_WEBP);
 
-// TILEDB_WEBP_RGBA is TILEDB_WEBP_NONE by default
+// TILEDB_WEBP_INPUT_FORMAT is TILEDB_WEBP_NONE by default
+// One of TILEDB_WEBP_{RGB, BGR, RGBA, BGRA}
 // Caller should always set this option based on colorspace preference
 auto fmt = TILEDB_WEBP_RGBA;
 webp.set_option(TILEDB_WEBP_INPUT_FORMAT, &fmt);
 
 // TILEDB_WEBP_QUALITY is 100.0f by default
+// Floats within the range [0, 100] are valid for this option
 // Lossy compression with quality of 100.0 is not lossless
 float quality = 50.0f;
 webp.set_option(TILEDB_WEBP_QUALITY, &quality);
 
 // TILEDB_WEBP_LOSSLESS is 0 by default
+// This option is either enabled (1) or disabled (0)
 // Enable this option for lossless compression; quality will be ignored
 uint8_t lossless = 0;
 webp.set_option(TILEDB_WEBP_LOSSLESS, &quality);

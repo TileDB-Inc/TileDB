@@ -48,9 +48,19 @@ namespace tiledb::sm {
 enum class WebpInputFormat : uint8_t;
 
 /**
- * The WebP filter provides two options: quality and format
- * Quality is used as quality_factor setting for WebP lossy compression
- * Format is used to define colorspace format of image data
+ * The WebP filter provides three options: quality, format, and lossless
+ *
+ * The quality option is used as quality_factor setting for WebP lossy
+ * compression and expects a float value in the range of 0.0f - 100.0f
+ * Quality of 0 corresponds to low quality and small output sizes, whereas 100
+ * is the highest quality and largest output size.
+ *
+ * The format option is used to define colorspace format of image data and
+ * expects an enum of TILEDB_WEBP_RGB, TILEDB_WEBP_BGR, TILEDB_WEBP_RGBA, or
+ * TILEDB_WEBP_BGRA.
+ *
+ * The lossless option is used to enable(1) or disable(0) lossless compression.
+ * With this option enabled, the quality setting will be ignored.
  *
  * On write this filter takes raw colorspace values (RGB, RBGA, etc) and encodes
  * into WebP format before writing data to the array.

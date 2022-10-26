@@ -185,6 +185,10 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
       filter.get_option<float>(TILEDB_WEBP_QUALITY, &quality_found));
   REQUIRE(quality_expected == quality_found);
 
+  // Set invalid options for TILEDB_WEBP_QUALITY
+  REQUIRE_THROWS(filter.set_option(TILEDB_WEBP_QUALITY, -1.0f));
+  REQUIRE_THROWS(filter.set_option(TILEDB_WEBP_QUALITY, 101.0f));
+
   // Set lossy quality back to 100 to test highest quality lossy compression
   REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_QUALITY, 100.0f));
   REQUIRE_NOTHROW(
@@ -196,6 +200,9 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
   REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
   REQUIRE(TILEDB_WEBP_NONE == format_found);
 
+  // Set invalid option for WEBP_INPUT_FORMAT
+  REQUIRE_THROWS(filter.set_option(TILEDB_WEBP_INPUT_FORMAT, (uint8_t)255));
+
   REQUIRE_NOTHROW(
       filter.set_option(TILEDB_WEBP_INPUT_FORMAT, &format_expected));
   REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
@@ -205,6 +212,8 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
   uint8_t lossless_found;
   REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
   REQUIRE(0 == lossless_found);
+
+  REQUIRE_THROWS(filter.set_option(TILEDB_WEBP_LOSSLESS, (uint8_t)2));
 
   REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_LOSSLESS, &lossless_expected));
   REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
