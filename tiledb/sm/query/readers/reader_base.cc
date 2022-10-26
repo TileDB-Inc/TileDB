@@ -1047,18 +1047,25 @@ Status ReaderBase::unfilter_tile_chunk_range(
             BitSortFilterMetadataStorage<HilbertCmpQB> bitsort_storage;
               bitsort_metadata = construct_bitsort_filter_argument<HilbertCmpQB>(
               tile, bitsort_storage);
-          } else {
-            BitSortFilterMetadataStorage<GlobalCmpQB> bitsort_storage;
-              bitsort_metadata = construct_bitsort_filter_argument<GlobalCmpQB>(
-              tile, bitsort_storage);
-          }
-          RETURN_NOT_OK(unfilter_tile_chunk_range(
+            RETURN_NOT_OK(unfilter_tile_chunk_range(
               num_range_threads,
               range_thread_idx,
               name,
               t,
               tile_chunk_data,
               &bitsort_metadata));
+          } else {
+            BitSortFilterMetadataStorage<GlobalCmpQB> bitsort_storage;
+              bitsort_metadata = construct_bitsort_filter_argument<GlobalCmpQB>(
+              tile, bitsort_storage);
+            RETURN_NOT_OK(unfilter_tile_chunk_range(
+              num_range_threads,
+              range_thread_idx,
+              name,
+              t,
+              tile_chunk_data,
+              &bitsort_metadata));
+          }
         } else {
           RETURN_NOT_OK(unfilter_tile_chunk_range(
               num_range_threads, range_thread_idx, name, t, tile_chunk_data));
@@ -1640,12 +1647,13 @@ Status ReaderBase::unfilter_tiles(
                   BitSortFilterMetadataStorage<HilbertCmpQB> bitsort_storage;
                     bitsort_metadata = construct_bitsort_filter_argument<HilbertCmpQB>(
                     tile, bitsort_storage);
+                  RETURN_NOT_OK(unfilter_tile(name, t, &bitsort_metadata));
                 } else {
                   BitSortFilterMetadataStorage<GlobalCmpQB> bitsort_storage;
                     bitsort_metadata = construct_bitsort_filter_argument<GlobalCmpQB>(
                     tile, bitsort_storage);
+                  RETURN_NOT_OK(unfilter_tile(name, t, &bitsort_metadata));
                 }
-                RETURN_NOT_OK(unfilter_tile(name, t, &bitsort_metadata));
               } else {
                 RETURN_NOT_OK(unfilter_tile(name, t));
               }
@@ -1930,7 +1938,7 @@ Status ReaderBase::calculate_hilbert_values(
 
         return Status::Ok();
       });
-      
+
   throw_if_not_ok(status);
   return Status::Ok();
 }

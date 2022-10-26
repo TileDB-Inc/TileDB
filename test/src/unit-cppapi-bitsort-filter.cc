@@ -711,3 +711,23 @@ TEMPLATE_TEST_CASE(
         hilbert_order);
   }
 }
+
+TEST_CASE("Hilbert debugging", "[cppapi][filter][bitsort][whee]") {
+   std::string array_name = "cpp_unit_bitsort_array";
+  uint64_t num_dims = 2;
+  tiledb_layout_t write_layout =
+      TILEDB_UNORDERED;
+  tiledb_layout_t read_layout = TILEDB_GLOBAL_ORDER;
+  bool set_subarray = true;
+  bool set_capacity = false;
+  bool hilbert_order = true;
+
+  bitsort_filter_api_test<int32_t, float, IntDistribution>(
+        array_name,
+        num_dims,
+        write_layout,
+        read_layout,
+        set_subarray,
+        set_capacity,
+        hilbert_order);
+}
