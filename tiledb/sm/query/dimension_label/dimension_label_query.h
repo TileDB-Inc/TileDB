@@ -67,7 +67,7 @@ class DimensionLabelQuery : public Query {
    *
    * @param storage_manager Storage manager object.
    * @param stats Stats object for the dimension label query.
-   * @param name Name of the dimension label.
+   * @param dim_name_label Name of the dimension label.
    * @param dimension_label Opened dimension label for the query.
    * @param parent_subarray Subarray of the parent array.
    * @param label_buffer Query buffer for the label data.
@@ -92,11 +92,13 @@ class DimensionLabelQuery : public Query {
    * Constructor for range queries.
    *
    * @param storage_manager Storage manager object.
+   * @param dim_name_label Name of the dimension label.
    * @param dimension_label Opened dimension label for the query.
    * @param label_ranges Label ranges to read index ranges from.
    */
   DimensionLabelQuery(
       StorageManager* storage_manager,
+      const std::string& label_name,
       DimensionLabel* dimension_label,
       const std::vector<Range>& label_ranges);
 
@@ -113,13 +115,13 @@ class DimensionLabelQuery : public Query {
   }
 
   /** Returns the name of the dimension label. */
-  inline const std::string& name() const {
-    return name_;
+  inline const std::string& dim_label_name() const {
+    return dim_label_name_;
   }
 
  private:
   /** The name of the dimension label. */
-  std::string name_;
+  std::string dim_label_name_;
 
   /**
    * Internally managed index data.

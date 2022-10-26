@@ -145,8 +145,8 @@ void ArrayDimensionLabelQueries::process_data_queries() {
           return Status::Ok();
         } catch (...) {
           std::throw_with_nested(DimensionLabelStatusException(
-              "Failed to process data query for label '" + query->name() +
-              "'."));
+              "Failed to process data query for label '" +
+              query->dim_label_name() + "'."));
         }
       }));
 }
@@ -166,7 +166,7 @@ void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
             throw_if_not_ok(range_query->process());
             if (!range_query->completed()) {
               throw DimensionLabelQueryStatusException(
-                  "Range query for label '" + range_query->name() +
+                  "Range query for label '" + range_query->dim_label_name() +
                   "' failed to complete.");
             }
 
@@ -187,7 +187,7 @@ void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
         } catch (...) {
           std::throw_with_nested(DimensionLabelStatusException(
               "Failed to process and update index ranges for label '" +
-              range_query->name() + "'."));
+              range_query->dim_label_name() + "'."));
         }
       }));
 
@@ -226,7 +226,11 @@ void ArrayDimensionLabelQueries::add_read_queries(
 
       // Create the range query.
       range_queries_.emplace_back(tdb_new(
-          DimensionLabelQuery, storage_manager_, dim_label, label_ranges));
+          DimensionLabelQuery,
+          storage_manager_,
+          label_name,
+          dim_label,
+          label_ranges));
       label_range_queries_by_dim_idx_[dim_idx] = range_queries_.back().get();
     } catch (...) {
       std::throw_with_nested(DimensionLabelStatusException(

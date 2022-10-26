@@ -50,7 +50,7 @@ namespace tiledb::sm {
 DimensionLabelQuery::DimensionLabelQuery(
     StorageManager* storage_manager,
     stats::Stats* stats,
-    const std::string& name,
+    const std::string& label_name,
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
@@ -58,7 +58,7 @@ DimensionLabelQuery::DimensionLabelQuery(
     const uint32_t dim_idx,
     optional<std::string> fragment_name)
     : Query(storage_manager, dimension_label->indexed_array(), fragment_name)
-    , name_{name} {
+    , dim_label_name_{label_name} {
   switch (dimension_label->query_type()) {
     case (QueryType::READ):
       initialize_read_labels_query(
@@ -105,9 +105,11 @@ DimensionLabelQuery::DimensionLabelQuery(
 
 DimensionLabelQuery::DimensionLabelQuery(
     StorageManager* storage_manager,
+    const std::string& label_name,
     DimensionLabel* dimension_label,
     const std::vector<Range>& label_ranges)
     : Query(storage_manager, dimension_label->indexed_array(), nullopt)
+    , dim_label_name_{label_name}
     , index_data_{IndexDataCreate::make_index_data(
           dimension_label->index_dimension()->type(),
           2 * label_ranges.size(),
