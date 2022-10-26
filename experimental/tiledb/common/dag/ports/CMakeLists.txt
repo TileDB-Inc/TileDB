@@ -73,7 +73,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_ports> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
-
+    add_dependencies(check unit_ports)
 endif()
 
 
@@ -117,6 +117,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_pseudo_nodes> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_pseudo_nodes)
 endif()
 
 
@@ -160,5 +161,6 @@ if (TILEDB_TESTS)
 #            COMMAND $<TARGET_FILE:sieve> --durations=yes
 #            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 #    )
+#    add_dependencies(check sieve)
 endif()
 

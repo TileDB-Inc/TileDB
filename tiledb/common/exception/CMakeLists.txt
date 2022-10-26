@@ -57,4 +57,5 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_exception>
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_exception)
 endif()

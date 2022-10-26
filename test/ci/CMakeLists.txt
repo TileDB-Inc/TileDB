@@ -48,3 +48,4 @@ add_test(
   NAME "test_ci_asserts"
   COMMAND test_assert
 )
+add_dependencies(check test_assert)

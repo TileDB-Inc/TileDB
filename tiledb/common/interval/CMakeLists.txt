@@ -53,3 +53,4 @@ add_test(
         COMMAND $<TARGET_FILE:unit_interval>
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+add_dependencies(check unit_interval)

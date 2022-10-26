@@ -63,6 +63,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_nodes> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_nodes)
 endif()
 
 
@@ -92,6 +93,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_nodes_concurrency> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_nodes_concurrency)
 endif()
 
 #
@@ -120,6 +122,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_util_functions> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_util_functions)
 endif()
 
 
@@ -165,4 +168,5 @@ if (TILEDB_TESTS)
 #            COMMAND $<TARGET_FILE:nodes_sieve> --durations=yes
 #            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 #    )
+#    add_dependencies(check nodes_sieve)
 endif()

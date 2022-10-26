@@ -12,6 +12,7 @@ add_test(
     COMMAND $<TARGET_FILE:unit_range_subset>
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+add_dependencies(check unit_range_subset)
 
 add_executable(unit_add_ranges_list EXCLUDE_FROM_ALL)
 target_sources(unit_add_ranges_list PUBLIC main.cc unit_add_ranges_list.cc)
@@ -37,3 +38,4 @@ add_test(
     COMMAND $<TARGET_FILE:unit_add_ranges_list>
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+add_dependencies(check unit_add_ranges_list)

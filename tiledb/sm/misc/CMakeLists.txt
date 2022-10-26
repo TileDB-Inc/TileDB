@@ -152,6 +152,15 @@ if (TILEDB_TESTS)
      "${libmagic_INCLUDE_DIR}"
   )
 
+  if (ENABLE_MAGIC_TEST)
+    add_test(
+      NAME "unit_mgc_dict"
+      COMMAND $<TARGET_FILE:unit_mgc_dict>
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    add_dependencies(check unit_mgc_dict)
+  endif()
+
   add_executable(unit_misc EXCLUDE_FROM_ALL)
   target_link_libraries(unit_misc PRIVATE math)
   find_package(Catch_EP REQUIRED)
@@ -169,4 +178,5 @@ if (TILEDB_TESTS)
       COMMAND $<TARGET_FILE:unit_misc>
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
+  add_dependencies(check unit_misc)
 endif()

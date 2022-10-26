@@ -41,3 +41,4 @@ add_test(
     COMMAND $<TARGET_FILE:unit_capi_error>
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+add_dependencies(check unit_capi_error)

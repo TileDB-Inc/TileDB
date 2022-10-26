@@ -240,10 +240,12 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_filter_create>
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_filter_create)
 
     add_test(
             NAME "unit_filter_pipeline"
             COMMAND $<TARGET_FILE:unit_filter_pipeline>
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_filter_pipeline)
 endif()

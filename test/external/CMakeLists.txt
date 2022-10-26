@@ -31,6 +31,7 @@ else()
 message("adding target unit_link_absl, have TILEDB_ABSEIL")
 
 add_executable(unit_link_absl EXCLUDE_FROM_ALL src/absl_link_test.cc)
+add_dependencies(check unit_link_absl)
 
 find_package(absl CONFIG REQUIRED
   PATHS
@@ -52,6 +53,7 @@ else()
   message("adding target unit_link_absl, have TILEDB_ABSEIL")
 
   add_executable(unit_link_crc32 EXCLUDE_FROM_ALL src/crc32_link_test.cc)
+  add_dependencies(check unit_link_crc32)
 
   find_package(Crc32c CONFIG REQUIRED
     PATHS

@@ -67,7 +67,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_execution> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	    )
-
+    add_dependencies(check unit_execution)
 endif()
 
 if (TILEDB_TESTS)
@@ -93,7 +93,7 @@ if (TILEDB_TESTS)
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 
 	    )
-
+    add_dependencies(check unit_threadpool)
 endif()
 
 if (TILEDB_TESTS)
@@ -118,6 +118,6 @@ if (TILEDB_TESTS)
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 
 	    )
-
+    add_dependencies(check unit_bountiful)
 endif()
 

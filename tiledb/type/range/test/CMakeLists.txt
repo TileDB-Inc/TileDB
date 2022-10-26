@@ -43,3 +43,4 @@ add_test(
   COMMAND $<TARGET_FILE:unit_range>
   WORKING_DIRECTORY ${CMAKE_CURRENT_BUILD_DIR}
 )
+add_dependencies(check unit_range)

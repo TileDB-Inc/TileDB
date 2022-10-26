@@ -73,3 +73,4 @@ add_test(
   COMMAND $<TARGET_FILE:tiledb_regression> --durations=yes
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+add_dependencies(check tiledb_regression)

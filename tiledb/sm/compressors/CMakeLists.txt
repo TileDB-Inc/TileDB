@@ -89,6 +89,7 @@ if (TILEDB_WEBP)
     COMMAND "$<TARGET_FILE:unit_link_webp>" 
     WORKING_DIRECTORY  ${CMAKE_CURRENT_SOURCE_DIR}
   )
+  add_dependencies(check unit_link_webp)
 endif()
 
 # Link to Threads::Threads if library or flag needed to enable threading.
@@ -116,4 +117,5 @@ if (TILEDB_TESTS)
         COMMAND $<TARGET_FILE:unit_compressors>
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_compressors)
 endif()

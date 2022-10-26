@@ -38,6 +38,7 @@ add_test(
   COMMAND $<TARGET_FILE:unit_array>
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+add_dependencies(check unit_array)
 
 # Consistency tests
 add_executable(unit_consistency EXCLUDE_FROM_ALL
@@ -56,3 +57,4 @@ add_test(
   COMMAND $<TARGET_FILE:unit_consistency>
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+add_dependencies(check unit_consistency)

@@ -69,7 +69,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_fsm> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
-
+    add_dependencies(check unit_fsm)
 message(STATUS "+++++++ done unit_fsm")
 
 
@@ -109,7 +109,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_policies> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
-
+    add_dependencies(check unit_policies)
 message(STATUS "+++++++ done unit_policies")
 
 
@@ -150,6 +150,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_item_mover> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_item_mover)
 
 message(STATUS "+++++++ done unit_item_mover")
 
@@ -192,6 +193,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_stop> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_stop)
 endif()
 
 

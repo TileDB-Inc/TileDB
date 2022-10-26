@@ -68,6 +68,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_range_join> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_range_join)
 
     add_executable(unit_spinlock EXCLUDE_FROM_ALL)
     target_link_libraries(unit_spinlock PUBLIC utils)
@@ -89,5 +90,5 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_spinlock> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
-
+    add_dependencies(check unit_spinlock)
 endif()

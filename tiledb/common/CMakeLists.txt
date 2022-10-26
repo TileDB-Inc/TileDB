@@ -106,4 +106,5 @@ if (TILEDB_TESTS)
     NAME "unit_experimental"
     COMMAND $<TARGET_FILE:unit_experimental>
   )
+  add_dependencies(check unit_experimental)
 endif()

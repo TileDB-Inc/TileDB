@@ -54,4 +54,5 @@ if (FALSE AND TILEDB_TESTS) # reserved for later
             COMMAND $<TARGET_FILE:unit_governor>
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_governor)
 endif()

@@ -68,6 +68,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_data_block> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_data_block)
 endif()
 
 list(APPEND POOL_SOURCES
@@ -110,6 +111,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_pool_allocator> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_pool_allocator)
 endif()
 
 # list(APPEND SOURCES
@@ -150,5 +152,6 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_blocks_and_ports> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_blocks_and_ports)
 endif()
 

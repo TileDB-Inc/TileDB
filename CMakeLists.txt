@@ -413,6 +413,9 @@ target_include_directories(local_install INTERFACE ${TILEDB_LOCALINSTALL_INCLUDE
 # Enable testing
 enable_testing()
 
+# Add custom target 'check'
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -V -C ${CMAKE_BUILD_TYPE})
+
 # Aggregate all link-completeness targets
 add_custom_target(all_link_complete)
 
@@ -428,49 +431,6 @@ add_subdirectory(examples)
 # Build unit tests
 if (TILEDB_TESTS)
   add_subdirectory(test)
-
-  # Add cmake target for "tests" to build all unit tests executables
-  add_custom_target(tests)
-  add_dependencies(tests tiledb_unit)
-  add_dependencies(tests test_assert)
-
-  add_dependencies(tests unit_buffer unit_datum unit_dynamic_memory)
-  add_dependencies(tests unit_exception unit_interval unit_thread_pool unit_experimental)
-  add_dependencies(tests unit_array_schema unit_filter_create unit_filter_pipeline unit_metadata)
-  add_dependencies(tests unit_compressors unit_query unit_misc unit_vfs unit_array)
-  add_dependencies(tests unit_config)
-  add_dependencies(tests unit_range_subset)
-  add_dependencies(tests unit_add_ranges_list)
-  add_dependencies(tests unit_consistency)
-  add_dependencies(tests unit_range)
-
-  # C API support
-  add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
-  # C API basics
-  add_dependencies(tests unit_capi_error unit_capi_config unit_capi_context)
-  # C API array schema
-  add_dependencies(tests unit_capi_filter unit_capi_filter_list)
-
-  add_dependencies(tests unit_delete_update_condition)
-  add_dependencies(tests unit_ast)
-  add_dependencies(tests unit_serializers)
-
-  if (TILEDB_CRC32)
-    add_dependencies(tests unit_link_crc32)
-  endif()
-
-  if (TILEDB_WEBP)
-    add_dependencies(tests unit_link_webp)
-  endif()
-
-  if (TILEDB_ABSEIL)
-    add_dependencies(tests unit_link_absl)
-  endif()
-
-  if (ENABLE_MAGIC_TEST)
-    add_dependencies(tests unit_mgc_dict)
-  endif()
-
   add_subdirectory(test/regression)
 endif()
 

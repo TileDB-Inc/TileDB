@@ -398,6 +398,7 @@ add_test(
   COMMAND $<TARGET_FILE:tiledb_unit> --durations=yes
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+add_dependencies(check tiledb_unit)
 
 if(TILEDB_HDFS)
   # need to force flat namespace for the signal chaining to work on macOS
@@ -405,12 +406,6 @@ if(TILEDB_HDFS)
     set_tests_properties("tiledb_unit" PROPERTIES ENVIRONMENT "DYLD_FORCE_FLAT_NAMESPACE=1")
   endif()
 endif()
-
-# Add custom target 'check'
-add_custom_target(
-  check COMMAND ${CMAKE_CTEST_COMMAND} -V -C ${CMAKE_BUILD_TYPE}
-  DEPENDS tiledb_unit
-)
 
 # CI tests
 add_subdirectory(ci)

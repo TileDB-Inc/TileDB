@@ -67,6 +67,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_edge> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_edge)
 endif()
 
 list(APPEND SOURCES
@@ -108,6 +109,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_block_edge> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_block_edge)
 endif()
 
 
@@ -135,6 +137,7 @@ if (TILEDB_TESTS)
             COMMAND $<TARGET_FILE:unit_edge_pseudo_nodes> --durations=yes
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(check unit_edge_pseudo_nodes)
 endif()
 
 
