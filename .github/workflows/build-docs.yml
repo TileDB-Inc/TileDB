@@ -38,12 +38,16 @@ jobs:
           printenv
         shell: bash
 
+      - name: Set up Python
+        uses: actions/setup-python@v2
+
       - name: Install Doxygen (linux only)
         run: |
           set -e pipefail
           sudo apt-get update
           # Install doxygen *before* running cmake
           sudo apt-get install -y  doxygen
+          pip install virtualenv
         shell: bash
         if: ${{ runner.os == 'Linux' }}
 

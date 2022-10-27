@@ -9,7 +9,7 @@ sphinx:
   configuration: doc/source/conf.py
 
 python:
-  version: 3.7
+  version: 3.8
   install:
     # this order is important: we need cmake to build doxygen XML for breathe
-    - requirements: doc/source/requirements.txt
+    - requirements: tiledb/doxygen/source/requirements.txt

@@ -330,7 +330,8 @@ typedef enum {
 
 /** This should move to c_api/tiledb_struct_defs.h when stabilized */
 typedef struct tiledb_experimental_query_status_details_t {
-  tiledb_query_status_details_reason_t incomplete_reason; ///< Reason enum for the incomplete query.
+  tiledb_query_status_details_reason_t
+      incomplete_reason;  ///< Reason enum for the incomplete query.
 } tiledb_query_status_details_t;
 
 /**
@@ -425,7 +426,8 @@ TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
  *     be consolidated.
  * @param[in] fragment_uris URIs of the fragments to consolidate.
  * @param[in] num_fragments Number of URIs to consolidate.
- * @param[in] config Config object to apply to this operation (overrides Context config).
+ * @param[in] config Config object to apply to this operation (overrides Context
+ config).
  *
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */

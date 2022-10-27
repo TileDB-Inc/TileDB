@@ -65,7 +65,7 @@ done
 
 setup_venv() {
   if [ ! -d "${venv_dir}" ]; then
-    virtualenv "${venv_dir}" || die "could not create virtualenv"
+    python -m venv "${venv_dir}" || die "could not create virtualenv"
   fi
   source "${venv_dir}/bin/activate" || die "could not activate virtualenv"
   pip install -r source/requirements.txt || die "could not install doc dependencies"
