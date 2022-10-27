@@ -33,6 +33,7 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/compressor.h"
+#include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
@@ -58,11 +59,12 @@ Attribute::Attribute()
 }
 
 Attribute::Attribute(
-    const std::string& name, const Datatype type, const bool nullable) {
-  name_ = name;
-  type_ = type;
-  nullable_ = nullable;
-  cell_val_num_ = (type == Datatype::ANY) ? constants::var_num : 1;
+    const std::string& name, const Datatype type, const bool nullable)
+    : cell_val_num_(type == Datatype::ANY ? constants::var_num : 1)
+    , nullable_(nullable)
+    , name_(name)
+    , type_(type)
+    , order_(DataOrder::UNORDERED_DATA) {
   set_default_fill_value();
 }
 
@@ -73,14 +75,16 @@ Attribute::Attribute(
     uint32_t cell_val_num,
     const FilterPipeline& filter_pipeline,
     const ByteVecValue& fill_value,
-    uint8_t fill_value_validity)
+    uint8_t fill_value_validity,
+    DataOrder order)
     : cell_val_num_(cell_val_num)
     , nullable_(nullable)
     , filters_(filter_pipeline)
     , name_(name)
     , type_(type)
     , fill_value_(fill_value)
-    , fill_value_validity_(fill_value_validity) {
+    , fill_value_validity_(fill_value_validity)
+    , order_(order) {
 }
 
 Attribute::Attribute(const Attribute* attr) {
@@ -92,6 +96,7 @@ Attribute::Attribute(const Attribute* attr) {
   filters_ = attr->filters_;
   fill_value_ = attr->fill_value_;
   fill_value_validity_ = attr->fill_value_validity_;
+  order_ = attr->order_;
 }
 
 Attribute::~Attribute() = default;
@@ -154,6 +159,12 @@ Attribute Attribute::deserialize(
     fill_value_validity = deserializer.read<uint8_t>();
   }
 
+  // Load order
+  DataOrder order{DataOrder::UNORDERED_DATA};
+  if (version >= 17) {
+    order = data_order_from_int(deserializer.read<uint8_t>());
+  }
+
   return Attribute(
       name,
       datatype,
@@ -161,8 +172,10 @@ Attribute Attribute::deserialize(
       cell_val_num,
       filterpipeline,
       fill_value,
-      fill_value_validity);
+      fill_value_validity,
+      order);
 }
+
 void Attribute::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
@@ -182,6 +195,10 @@ void Attribute::dump(FILE* out) const {
   if (nullable_) {
     fprintf(out, "\n");
     fprintf(out, "- Fill value validity: %u", fill_value_validity_);
+  }
+  if (order_ != DataOrder::UNORDERED_DATA) {
+    fprintf(out, "\n");
+    fprintf(out, "- Data ordering: %s", data_order_str(order_).c_str());
   }
   fprintf(out, "\n");
 }
@@ -204,16 +221,16 @@ const std::string& Attribute::name() const {
 // fill_value (uint8_t[])
 // nullable (bool)
 // fill_value_validity (uint8_t)
+// order (uint8_t)
 void Attribute::serialize(
     Serializer& serializer, const uint32_t version) const {
   // Write attribute name
-  auto attribute_name_size = (uint32_t)name_.size();
+  auto attribute_name_size = static_cast<uint32_t>(name_.size());
   serializer.write<uint32_t>(attribute_name_size);
   serializer.write(name_.data(), attribute_name_size);
 
   // Write type
-  auto type = (uint8_t)type_;
-  serializer.write<uint8_t>(type);
+  serializer.write<uint8_t>(static_cast<uint8_t>(type_));
 
   // Write cell_val_num_
   serializer.write<uint32_t>(cell_val_num_);
@@ -223,7 +240,7 @@ void Attribute::serialize(
 
   // Write fill value
   if (version >= 6) {
-    auto fill_value_size = (uint64_t)fill_value_.size();
+    auto fill_value_size = static_cast<uint64_t>(fill_value_.size());
     assert(fill_value_size != 0);
     serializer.write<uint64_t>(fill_value_size);
     serializer.write(fill_value_.data(), fill_value_.size());
@@ -237,6 +254,11 @@ void Attribute::serialize(
   // Write validity fill value
   if (version >= 7) {
     serializer.write<uint8_t>(fill_value_validity_);
+  }
+
+  // Write order
+  if (version >= 17) {
+    serializer.write<uint8_t>(static_cast<uint8_t>(order_));
   }
 }
 
@@ -416,6 +438,10 @@ bool Attribute::var_size() const {
 
 bool Attribute::nullable() const {
   return nullable_;
+}
+
+DataOrder Attribute::order() const {
+  return order_;
 }
 
 /* ********************************* */
