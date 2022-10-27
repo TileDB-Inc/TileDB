@@ -1308,8 +1308,9 @@ Status Query::process() {
   // Check if we need to process label ranges and update subarray before
   // continuing to the main query.
   if (dim_label_queries_ && !dim_label_queries_->completed_range_queries()) {
-    // Process the dimension label queries.
-    dim_label_queries_->process_range_queries(subarray_);
+    // Process the dimension label queries. Updates the subarray of this query
+    // to have the index ranges computed from the label ranges.
+    dim_label_queries_->process_range_queries(this);
 
     // The dimension label query did not complete. For now, we are failing on
     // this step. In the future, this may be updated to allow incomplete
@@ -2498,6 +2499,14 @@ Status Query::add_update_value(
   attributes_with_update_value_.emplace(field_name);
   update_values_.emplace_back(field_name, update_value, update_value_size);
   return Status::Ok();
+}
+
+void Query::add_index_ranges_from_label(
+    uint32_t dim_idx,
+    const bool is_point_ranges,
+    const void* start,
+    const uint64_t count) {
+  subarray_.add_index_ranges_from_label(dim_idx, is_point_ranges, start, count);
 }
 
 void Query::set_status(QueryStatus status) {

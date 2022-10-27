@@ -150,7 +150,7 @@ class Query {
       optional<std::string> fragment_name = nullopt);
 
   /** Destructor. */
-  ~Query();
+  virtual ~Query();
 
   DISABLE_COPY_AND_COPY_ASSIGN(Query);
   DISABLE_MOVE_AND_MOVE_ASSIGN(Query);
@@ -927,6 +927,21 @@ class Query {
       const char* field_name,
       const void* update_value,
       uint64_t update_value_size);
+
+  /**
+   * Adds ranges to a query initialize with label ranges.
+   *
+   * @param dim_idx The dimension to update.
+   * @param is_point_ranges If ``true`` the data contains point ranges.
+   *     Otherwise, it contains standard ranges.
+   * @param start Pointer to the start of the range data.
+   * @param count Number of total elements in the range data.
+   */
+  void add_index_ranges_from_label(
+      uint32_t dim_idx,
+      const bool is_point_range,
+      const void* start,
+      const uint64_t count);
 
   /**
    * Set query status, needed for json deserialization
