@@ -78,8 +78,10 @@ class DimensionLabelReference {
    * Constructor for accessing an existing dimension label.
    *
    * @param dim_id The index of the dimension the label is attached to.
-   * @param name The name of the dimension label.
+   * @param dim_label_name The name of the dimension label.
    * @param uri The URI of an external dimension label.
+   * @param label_attr_name The name of the attribute in the array that stores
+   *     the label data.
    * @param label_order The order of the dimension label.
    * @param label_type The datatype of the label data.
    * @param cell_val_num The number of values stored in dimension label cell.
@@ -90,8 +92,9 @@ class DimensionLabelReference {
    */
   DimensionLabelReference(
       dimension_size_type dim_id,
-      const std::string& name,
+      const std::string& dim_label_name,
       const URI& uri,
+      const std::string& label_attr_name,
       DataOrder label_order,
       Datatype label_type,
       uint32_t label_cell_val_num,
@@ -104,8 +107,10 @@ class DimensionLabelReference {
    * Constructor for an internally generated dimension label.
    *
    * @param dim_id The index of the dimension the label is attached to.
-   * @param name The name of the dimension label.
+   * @param dim_label_name The name of the dimension label.
    * @param uri The URI of an external dimension label.
+   * @param label_attr_name The name of the attribute in the array that stores
+   *     the label data.
    * @param label_order The order of the dimension label.
    * @param label_type The datatype of the label data.
    * @param label_cell_val_num The number of values stored in dimension cell.
@@ -114,8 +119,9 @@ class DimensionLabelReference {
    */
   DimensionLabelReference(
       dimension_size_type dim_id,
-      const std::string& name,
+      const std::string& dim_label_name,
       const URI& uri,
+      const std::string& label_attr_name,
       DataOrder label_order,
       Datatype label_type,
       uint32_t label_cell_val_num,
@@ -186,7 +192,7 @@ class DimensionLabelReference {
 
   /** The name of the dimension label. */
   inline const std::string& name() const {
-    return name_;
+    return dim_label_name_;
   }
 
   /** The schema of the dimension label. */
@@ -235,10 +241,13 @@ class DimensionLabelReference {
   dimension_size_type dim_id_;
 
   /** The name of the dimension label. */
-  std::string name_;
+  std::string dim_label_name_;
 
   /** The URI of the existing dimension label. */
   URI uri_;
+
+  /** The name of the attribute that stores the label data. */
+  std::string label_attr_name_;
 
   /** The label order of the dimension label. */
   DataOrder label_order_;

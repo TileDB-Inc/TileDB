@@ -49,6 +49,7 @@ TEST_CASE(
   const uint32_t version{14};
   DimensionLabelReference::dimension_size_type dim_id{0};
   std::string name{"label0"};
+  std::string label_attr_name{"label"};
   URI uri{"label/l0", false};
   DataOrder label_order{DataOrder::INCREASING_DATA};
   double domain[2]{0.0, 10.0};
@@ -57,6 +58,7 @@ TEST_CASE(
   DimensionLabelReference label{dim_id,
                                 name,
                                 URI("label/l0", false),
+                                label_attr_name,
                                 label_order,
                                 Datatype::FLOAT64,
                                 1,

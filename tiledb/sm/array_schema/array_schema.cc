@@ -763,6 +763,7 @@ Status ArraySchema::add_dimension_label(
         dim_id,
         name,
         uri,
+        dimension_label_schema->label_attribute()->name(),
         dimension_label_schema->label_order(),
         dimension_label_schema->label_type(),
         dimension_label_schema->label_cell_val_num(),
