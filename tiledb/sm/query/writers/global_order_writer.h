@@ -378,6 +378,11 @@ class GlobalOrderWriter : public WriterBase {
       uint64_t tile_num,
       std::unordered_map<std::string, WriterTileVector>& tiles);
 
+  /**
+   * Close the current fragment and start a new one. The closed fragment will
+   * be added to `frag_uris_to_commit_` so that all fragments in progress can
+   * be written at once.
+   */
   Status start_new_fragment();
 };
 
