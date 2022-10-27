@@ -33,8 +33,8 @@
 #include <tdb_catch.h>
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/enums/label_order.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 #include "tiledb/type/range/range.h"
@@ -50,7 +50,7 @@ TEST_CASE(
   DimensionLabelReference::dimension_size_type dim_id{0};
   std::string name{"label0"};
   URI uri{"label/l0", false};
-  LabelOrder label_order{LabelOrder::INCREASING_LABELS};
+  DataOrder label_order{DataOrder::INCREASING_DATA};
   double domain[2]{0.0, 10.0};
   bool is_external{true};
   bool is_relative{true};

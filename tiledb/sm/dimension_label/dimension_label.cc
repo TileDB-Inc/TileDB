@@ -35,8 +35,8 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/array_schema/dimension_label_schema.h"
+#include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/enums/label_order.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/group/group_v1.h"
 #include "tiledb/sm/misc/tdb_time.h"
@@ -82,9 +82,9 @@ void DimensionLabel::is_compatible(
     throw DimensionLabelStatusException(
         "Error opening dimension label; The label order of the loaded "
         "dimension label is " +
-        label_order_str(schema_->label_order()) +
+        data_order_str(schema_->label_order()) +
         ", but the expected label order was " +
-        label_order_str(dim_label_ref.label_order()) + ".");
+        data_order_str(dim_label_ref.label_order()) + ".");
   }
   if (schema_->label_type() != dim_label_ref.label_type()) {
     throw DimensionLabelStatusException(
@@ -116,7 +116,7 @@ const Attribute* DimensionLabel::label_attribute() const {
   return schema_->label_attribute();
 }
 
-LabelOrder DimensionLabel::label_order() const {
+DataOrder DimensionLabel::label_order() const {
   if (!schema_)
     throw std::logic_error(
         "DimensionLabel schema does not exist. DimensionLabel must be opened.");
@@ -217,7 +217,7 @@ void DimensionLabel::load_schema(shared_ptr<ArraySchema> indexed_array_schema) {
         "[DimensionLabel::load_schema] Unable to load dimension label schema; "
         "Unexpected number of values for the index attribute id.");
   auto label_order =
-      label_order_from_int(*static_cast<const uint8_t*>(label_order_value));
+      data_order_from_int(*static_cast<const uint8_t*>(label_order_value));
 
   // - Close group
   throw_if_not_ok(label_group.close());

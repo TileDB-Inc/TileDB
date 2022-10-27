@@ -256,3 +256,12 @@
     /** application/pdf*/
     TILEDB_MIME_TYPE_ENUM(MIME_PDF) = 2,
 #endif
+
+#ifdef TILEDB_DATA_ORDER_ENUM
+    /** Unordered dimension label. */
+    TILEDB_DATA_ORDER_ENUM(UNORDERED_DATA) = 0,
+    /** Ordered dimension label with increasing values. */
+    TILEDB_DATA_ORDER_ENUM(INCREASING_DATA) = 1,
+    /** Ordered dimension label with decreasing values. */
+    TILEDB_DATA_ORDER_ENUM(DECREASING_DATA) = 2,
+#endif

@@ -132,7 +132,7 @@ std::string DimensionLabelTestFixture::create_single_label_array(
   tiledb_dimension_label_schema_t* dim_label_schema;
   REQUIRE_TILEDB_OK(tiledb_dimension_label_schema_alloc(
       ctx,
-      TILEDB_UNORDERED_LABELS,
+      TILEDB_UNORDERED_DATA,
       label_type,
       TILEDB_UINT64,
       x_domain,
@@ -180,7 +180,7 @@ std::string DimensionLabelTestFixture::create_multi_label_array(
   // l0
   REQUIRE_TILEDB_OK(tiledb_dimension_label_schema_alloc(
       ctx,
-      TILEDB_INCREASING_LABELS,
+      TILEDB_INCREASING_DATA,
       TILEDB_FLOAT64,
       TILEDB_UINT64,
       x_domain,
@@ -192,7 +192,7 @@ std::string DimensionLabelTestFixture::create_multi_label_array(
   // l1
   REQUIRE_TILEDB_OK(tiledb_dimension_label_schema_alloc(
       ctx,
-      TILEDB_UNORDERED_LABELS,
+      TILEDB_UNORDERED_DATA,
       TILEDB_STRING_ASCII,
       TILEDB_UINT64,
       x_domain,
@@ -223,7 +223,7 @@ TEST_CASE(
   tiledb_dimension_label_schema_t* dim_label;
   REQUIRE_TILEDB_OK(tiledb_dimension_label_schema_alloc(
       ctx,
-      TILEDB_INCREASING_LABELS,
+      TILEDB_INCREASING_DATA,
       TILEDB_FLOAT64,
       TILEDB_INT64,
       dim_domain,

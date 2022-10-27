@@ -101,7 +101,7 @@ class ExampleArray : public TemporaryDirectoryFixture {
         array_schema,
         "t",
         3,
-        TILEDB_INCREASING_LABELS,
+        TILEDB_INCREASING_DATA,
         TILEDB_DATETIME_SEC,
         &tile_extent);
 
@@ -110,7 +110,7 @@ class ExampleArray : public TemporaryDirectoryFixture {
         array_schema,
         "x",
         0,
-        TILEDB_INCREASING_LABELS,
+        TILEDB_INCREASING_DATA,
         TILEDB_FLOAT64,
         &tile_extent);
 
@@ -119,7 +119,7 @@ class ExampleArray : public TemporaryDirectoryFixture {
         array_schema,
         "y",
         1,
-        TILEDB_INCREASING_LABELS,
+        TILEDB_INCREASING_DATA,
         TILEDB_FLOAT64,
         &tile_extent);
 
@@ -128,7 +128,7 @@ class ExampleArray : public TemporaryDirectoryFixture {
         array_schema,
         "z",
         2,
-        TILEDB_INCREASING_LABELS,
+        TILEDB_INCREASING_DATA,
         TILEDB_FLOAT64,
         &tile_extent);
 
@@ -137,7 +137,7 @@ class ExampleArray : public TemporaryDirectoryFixture {
         array_schema,
         "alpha",
         0,
-        TILEDB_DECREASING_LABELS,
+        TILEDB_DECREASING_DATA,
         TILEDB_FLOAT64,
         &tile_extent);
 
@@ -146,7 +146,7 @@ class ExampleArray : public TemporaryDirectoryFixture {
         array_schema,
         "beta",
         1,
-        TILEDB_DECREASING_LABELS,
+        TILEDB_DECREASING_DATA,
         TILEDB_FLOAT64,
         &tile_extent);
 
@@ -155,7 +155,7 @@ class ExampleArray : public TemporaryDirectoryFixture {
         array_schema,
         "gamma",
         2,
-        TILEDB_DECREASING_LABELS,
+        TILEDB_DECREASING_DATA,
         TILEDB_FLOAT64,
         &tile_extent);
 
