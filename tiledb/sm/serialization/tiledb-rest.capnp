@@ -62,6 +62,8 @@ struct Array {
 struct ArrayOpen {
   config @0 :Config;
   # Config
+  queryType @1 :Text;
+  # Query type to open the array for
 }
 
 struct ArraySchema {

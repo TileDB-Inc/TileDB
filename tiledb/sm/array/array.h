@@ -445,6 +445,11 @@ class Array {
   /** Checks the config to see if refactored array open should be used. */
   bool use_refactored_array_open() const;
 
+  /** Set the query type to open the array for. */
+  inline void set_query_type(QueryType query_type) {
+    query_type_ = query_type;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

@@ -243,6 +243,8 @@ Status array_open_to_capnp(
   auto config = array.config();
   RETURN_NOT_OK(config_to_capnp(config, &config_builder));
 
+  array_open_builder->setQueryType(query_type_str(array.get_query_type()));
+
   return Status::Ok();
 }
 
@@ -258,6 +260,13 @@ Status array_open_from_capnp(
     RETURN_NOT_OK(
         config_from_capnp(array_open_reader.getConfig(), &decoded_config));
     RETURN_NOT_OK(array->set_config(*decoded_config));
+  }
+
+  if (array_open_reader.hasQueryType()) {
+    auto query_type_str = array_open_reader.getQueryType();
+    QueryType query_type;
+    RETURN_NOT_OK(query_type_enum(query_type_str, &query_type));
+    array->set_query_type(query_type);
   }
 
   return Status::Ok();
