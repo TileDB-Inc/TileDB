@@ -250,14 +250,14 @@ Status ChecksumMD5Filter::compare_checksum_part(
         reinterpret_cast<unsigned char*>(computed_hash->data());
     char md5string[33];
     for (uint64_t i = 0; i < computed_hash->alloced_size(); ++i) {
-      sprintf(&md5string[i * 2], "%02x", (unsigned int)digest[i]);
+      snprintf(&md5string[i * 2], 3, "%02x", (unsigned int)digest[i]);
     }
 
     unsigned char* existing_digest = reinterpret_cast<unsigned char*>(checksum);
     char md5string_existing[33];
     for (uint64_t i = 0; i < Crypto::MD5_DIGEST_BYTES; ++i) {
-      sprintf(
-          &md5string_existing[i * 2], "%02x", (unsigned int)existing_digest[i]);
+      snprintf(
+          &md5string_existing[i * 2], 3, "%02x", (unsigned int)existing_digest[i]);
     }
 
     std::stringstream message;
