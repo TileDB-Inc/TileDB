@@ -380,8 +380,23 @@ class S3 {
   Status write(const URI& uri, const void* buffer, uint64_t length);
 
   /**
-   * Writes the input buffer to an S3 object. Note that this is essentially
-   * an append operation implemented via multipart uploads.
+   * Writes the input buffer to an S3 object. This function buffers inmemory
+   * file_buffer_size_ bytes before calling global_order_write() to execute
+   * the s3 global write logic.
+   * This function should only be called for tiledb global order writes.
+   *
+   * @param uri The URI of the object to be written to.
+   * @param buffer The input buffer.
+   * @param length The size of the input buffer.
+   * @return Status
+   */
+
+  Status global_order_write_buffered(
+      const URI& uri, const void* buffer, uint64_t length);
+
+  /**
+   * Writes the input buffer to an S3 object using the algorithm
+   * described at the BufferedChunk struct definition.
    *
    * @param uri The URI of the object to be written to.
    * @param buffer The input buffer.
@@ -515,8 +530,37 @@ class S3 {
     int upload_part_num;
   };
 
-  // TODO: Add a short version of the algorithm as docs here, it's important
-  // to have it close to code
+  /**
+   * This type holds the location and the size of an intermediate chunk on S3
+   * These chunks are used with remote global writes according to the
+   * algorithm below:
+   *
+   * Intermediate chunks are persisted across cloud executors via serialization
+   * When a new write arrives via global_order_write(URI):
+   * - look if there is a multipart state for the URI, if not,
+   *   create one and initiate multipart request
+   * - look at the sizes of all intermediate chunks persisted before
+   *   for this URI
+   * - If sum(intermediate_chunks[i].size) + current_chunk_size < 5MB
+   *   - persist the new chunk as an intermediate chunk on s3 under
+   *     fragment_uri/__gow_chunks/buffer_name_intID
+   * - Else
+   *   a) read all previous intermediate chunks,
+   *   b) merge them in memory including the current chunk,
+   *   c) upload the merged buffer as a new part using multipart upload
+   *   d) delete all intermediate chunks under __gow_chunks/ for this URI
+   *   e) clear the intermediate chunks from multipart_upload_states[uri]
+   * When the global order write is done and the buffer file is finalized
+   * via finalize_and_flush_object(uri):
+   *   a) read all intermediate chunks (not uploaded as >5mbs multipart parts)
+   *      if any left from the last submit()
+   *   b) merge them with the current chunk and upload as the last multipart
+   *      part (can be smaller than 5mb),
+   *   c) the intermediate chunk list might just be empty if the last submit()
+   *      also triggered a part upload.
+   *   d) send CompleteMultipartUploadRequest for S3 to merge the final buffer
+   * file object.
+   */
   struct BufferedChunk {
     std::string uri;
     uint64_t size;
@@ -553,6 +597,7 @@ class S3 {
       this->upload_id = std::move(other.upload_id);
       this->completed_parts = std::move(other.completed_parts);
       this->st = other.st;
+      this->buffered_chunks = std::move(other.buffered_chunks);
     }
 
     // Copy initialization
@@ -563,6 +608,7 @@ class S3 {
       this->upload_id = other.upload_id;
       this->completed_parts = other.completed_parts;
       this->st = other.st;
+      this->buffered_chunks = other.buffered_chunks;
     }
 
     MultiPartUploadState& operator=(const MultiPartUploadState& other) {
@@ -572,6 +618,7 @@ class S3 {
       this->upload_id = other.upload_id;
       this->completed_parts = other.completed_parts;
       this->st = other.st;
+      this->buffered_chunks = other.buffered_chunks;
       return *this;
     }
 
