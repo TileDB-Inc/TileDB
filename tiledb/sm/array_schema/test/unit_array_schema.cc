@@ -48,7 +48,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     uint64_t index_tile_extent{16};
     auto dim_label_schema = make_shared<DimensionLabelSchema>(
         HERE(),
-        LabelOrder::INCREASING_LABELS,
+        DataOrder::INCREASING_DATA,
         Datatype::FLOAT64,
         Datatype::UINT64,
         index_domain,
@@ -100,7 +100,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     uint64_t index_tile_extent{16};
     auto dim_label_schema = make_shared<DimensionLabelSchema>(
         HERE(),
-        LabelOrder::INCREASING_LABELS,
+        DataOrder::INCREASING_DATA,
         Datatype::UINT64,
         Datatype::UINT64,
         index_domain,
@@ -123,7 +123,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     uint64_t index_tile_extent{16};
     auto dim_label_schema = make_shared<DimensionLabelSchema>(
         HERE(),
-        LabelOrder::INCREASING_LABELS,
+        DataOrder::INCREASING_DATA,
         Datatype::UINT64,
         Datatype::UINT64,
         index_domain,
@@ -146,7 +146,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     uint64_t index_tile_extent{16};
     auto dim_label_schema = make_shared<DimensionLabelSchema>(
         HERE(),
-        LabelOrder::INCREASING_LABELS,
+        DataOrder::INCREASING_DATA,
         Datatype::UINT64,
         Datatype::UINT64,
         index_domain,
@@ -169,7 +169,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     uint64_t index_tile_extent{16};
     auto dim_label_schema = make_shared<DimensionLabelSchema>(
         HERE(),
-        LabelOrder::INCREASING_LABELS,
+        DataOrder::INCREASING_DATA,
         Datatype::UINT64,
         Datatype::UINT64,
         index_domain,
@@ -193,7 +193,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     uint64_t index_tile_extent{16};
     auto dim_label_schema = make_shared<DimensionLabelSchema>(
         HERE(),
-        LabelOrder::INCREASING_LABELS,
+        DataOrder::INCREASING_DATA,
         Datatype::UINT64,
         Datatype::UINT64,
         index_domain,
@@ -214,7 +214,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     uint64_t index_tile_extent{16};
     auto dim_label_schema = make_shared<DimensionLabelSchema>(
         HERE(),
-        LabelOrder::INCREASING_LABELS,
+        DataOrder::INCREASING_DATA,
         Datatype::UINT64,
         Datatype::UINT64,
         index_domain,
@@ -236,7 +236,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     uint64_t index_tile_extent{16};
     auto dim_label_schema = make_shared<DimensionLabelSchema>(
         HERE(),
-        LabelOrder::INCREASING_LABELS,
+        DataOrder::INCREASING_DATA,
         Datatype::UINT64,
         Datatype::UINT64,
         index_domain,
@@ -258,7 +258,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     uint64_t index_tile_extent{16};
     auto dim_label_schema = make_shared<DimensionLabelSchema>(
         HERE(),
-        LabelOrder::INCREASING_LABELS,
+        DataOrder::INCREASING_DATA,
         Datatype::UINT64,
         Datatype::UINT64,
         index_domain,
@@ -280,7 +280,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     uint64_t index_tile_extent{16};
     auto dim_label_schema = make_shared<DimensionLabelSchema>(
         HERE(),
-        LabelOrder::INCREASING_LABELS,
+        DataOrder::INCREASING_DATA,
         Datatype::UINT64,
         Datatype::UINT64,
         index_domain,
@@ -302,7 +302,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     uint64_t index_tile_extent{16};
     auto dim_label_schema = make_shared<DimensionLabelSchema>(
         HERE(),
-        LabelOrder::INCREASING_LABELS,
+        DataOrder::INCREASING_DATA,
         Datatype::UINT64,
         Datatype::UINT64,
         index_domain,
@@ -327,7 +327,7 @@ TEST_CASE(
   uint64_t index_tile_extent{16};
   auto dim_label_schema = make_shared<DimensionLabelSchema>(
       HERE(),
-      LabelOrder::INCREASING_LABELS,
+      DataOrder::INCREASING_DATA,
       Datatype::UINT64,
       Datatype::INT64,
       index_domain,
@@ -353,7 +353,7 @@ TEST_CASE(
   uint64_t index_tile_extent{16};
   auto dim_label_schema = make_shared<DimensionLabelSchema>(
       HERE(),
-      LabelOrder::INCREASING_LABELS,
+      DataOrder::INCREASING_DATA,
       Datatype::UINT64,
       Datatype::UINT64,
       index_domain,

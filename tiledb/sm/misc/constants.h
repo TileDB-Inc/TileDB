@@ -554,14 +554,14 @@ extern const std::string hilbert_str;
 /** The string representation of null. */
 extern const std::string null_str;
 
-/** The string representation of unordered label. */
-extern const std::string label_unordered_str;
+/** The string representation of unordered data. */
+extern const std::string data_unordered_str;
 
-/** The string representation of increasing order label. */
-extern const std::string label_increasing_str;
+/** The string representation of increasing order data. */
+extern const std::string data_increasing_str;
 
-/** The string representation of decreasing order label. */
-extern const std::string label_decreasing_str;
+/** The string representation of decreasing order data. */
+extern const std::string data_decreasing_str;
 
 /** The string representation for object type invalid. */
 extern const std::string object_type_invalid_str;

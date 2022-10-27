@@ -43,9 +43,9 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
+#include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
-#include "tiledb/sm/enums/label_order.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -609,7 +609,7 @@ void ArraySchema::serialize(Serializer& serializer) const {
     attr->serialize(serializer, version);
   }
 
-  // Experimental: Write dimension labels
+  // Write dimension labels
   if constexpr (is_experimental_build) {
     auto label_num = static_cast<uint32_t>(dimension_labels_.size());
     if (label_num != dimension_labels_.size()) {
@@ -763,10 +763,10 @@ Status ArraySchema::add_dimension_label(
         dim_id,
         name,
         uri,
+        dimension_label_schema->label_attribute()->name(),
         dimension_label_schema->label_order(),
         dimension_label_schema->label_type(),
         dimension_label_schema->label_cell_val_num(),
-        dimension_label_schema->label_domain(),
         dimension_label_schema);
     dimension_labels_.emplace_back(dim_label);
     dimension_label_map_[name] = dim_label.get();
@@ -876,7 +876,7 @@ ArraySchema ArraySchema::deserialize(
     attributes.emplace_back(make_shared<Attribute>(HERE(), move(attr)));
   }
 
-  // Experimental: Load dimension labels
+  // Load dimension labels
   std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels;
   if constexpr (is_experimental_build) {
     if (version == constants::format_version) {

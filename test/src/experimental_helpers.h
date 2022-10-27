@@ -61,7 +61,7 @@ void add_dimension_label(
     tiledb_array_schema_t* array_schema,
     const std::string& label_name,
     const uint32_t dim_idx,
-    tiledb_label_order_t label_order,
+    tiledb_data_order_t label_order,
     tiledb_datatype_t label_datatype,
     const void* index_tile_extent);
 
