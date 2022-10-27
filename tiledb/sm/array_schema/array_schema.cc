@@ -610,16 +610,14 @@ void ArraySchema::serialize(Serializer& serializer) const {
   }
 
   // Experimental: Write dimension labels
-  if constexpr (is_experimental_build) {
-    auto label_num = static_cast<uint32_t>(dimension_labels_.size());
-    if (label_num != dimension_labels_.size()) {
-      throw ArraySchemaStatusException(
-          "Overflow when attempting to serialize label number.");
-    }
-    serializer.write<uint32_t>(label_num);
-    for (auto& label : dimension_labels_) {
-      label->serialize(serializer, version);
-    }
+  auto label_num = static_cast<uint32_t>(dimension_labels_.size());
+  if (label_num != dimension_labels_.size()) {
+    throw ArraySchemaStatusException(
+        "Overflow when attempting to serialize label number.");
+  }
+  serializer.write<uint32_t>(label_num);
+  for (auto& label : dimension_labels_) {
+    label->serialize(serializer, version);
   }
 }
 
@@ -879,13 +877,11 @@ ArraySchema ArraySchema::deserialize(
 
   // Experimental: Load dimension labels
   std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels;
-  if constexpr (is_experimental_build) {
-    if (version == constants::format_version) {
-      uint32_t label_num = deserializer.read<uint32_t>();
-      for (uint32_t i{0}; i < label_num; ++i) {
-        dimension_labels.emplace_back(
-            DimensionLabelReference::deserialize(deserializer, version));
-      }
+  if (version >= 17) {
+    uint32_t label_num = deserializer.read<uint32_t>();
+    for (uint32_t i{0}; i < label_num; ++i) {
+      dimension_labels.emplace_back(
+          DimensionLabelReference::deserialize(deserializer, version));
     }
   }
 
