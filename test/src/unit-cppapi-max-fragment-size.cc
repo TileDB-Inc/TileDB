@@ -72,6 +72,7 @@ struct CPPMaxFragmentSizeFx {
   void write_simple_sparse_array(
       uint64_t fragment_size,
       uint64_t start_val,
+      uint64_t step,
       std::vector<uint64_t> write_sizes) {
     // Open array and create query.
     Array array(ctx_, array_name, TILEDB_WRITE);
@@ -84,10 +85,12 @@ struct CPPMaxFragmentSizeFx {
     for (auto num_vals : write_sizes) {
       // Fill in the dimension and attribute with increasing numbers.
       std::vector<int> d1_buff(num_vals);
-      std::iota(d1_buff.begin(), d1_buff.end(), start_val + 1);
-
       std::vector<int> a1_buff(num_vals);
-      std::iota(a1_buff.begin(), a1_buff.end(), start_val);
+
+      for (int i = 0; i < static_cast<int>(num_vals); i++) {
+        d1_buff[i] = start_val + 1 + i * step;
+        a1_buff[i] = start_val + i * step;
+      }
 
       // Perform the write.
       query.set_data_buffer("d1", d1_buff);
@@ -146,6 +149,7 @@ struct CPPMaxFragmentSizeFx {
   void write_complex_sparse_array(
       uint64_t fragment_size,
       uint64_t start_val,
+      uint64_t step,
       std::vector<uint64_t> write_sizes) {
     // Open array and create query.
     Array array(ctx_, array_name, TILEDB_WRITE);
@@ -159,12 +163,8 @@ struct CPPMaxFragmentSizeFx {
       // Fill one the dimension and attributes with increasing numbers. One
       // dimension will have the same value across the board.
       std::vector<int> d1_buff(num_vals);
-      std::iota(d1_buff.begin(), d1_buff.end(), start_val + 1);
-
       std::vector<int> d2_buff(num_vals, 1);
-
       std::vector<int> a1_buff(num_vals);
-      std::iota(a1_buff.begin(), a1_buff.end(), start_val);
 
       // For the string attribute, convert the increasing value from int to
       // string.
@@ -173,8 +173,11 @@ struct CPPMaxFragmentSizeFx {
       a2_offsets.reserve(num_vals);
       std::string a2_var;
       uint64_t offset = 0;
-      for (uint64_t i = start_val; i < start_val + num_vals; i++) {
-        auto val = std::to_string(i);
+
+      for (int i = 0; i < static_cast<int>(num_vals); i++) {
+        d1_buff[i] = start_val + 1 + i * step;
+        a1_buff[i] = start_val + i * step;
+        auto val = std::to_string(start_val + i * step);
         a2_offsets.emplace_back(offset);
         offset += val.size();
         a2_var += val;
@@ -235,8 +238,10 @@ struct CPPMaxFragmentSizeFx {
     }
   }
 
-  void consolidate_fragments() {
+  void consolidate_fragments(
+      uint64_t max_fragment_size = std::numeric_limits<uint64_t>::max()) {
     auto config = ctx_.config();
+    config["sm.consolidation.max_fragment_size"] = max_fragment_size;
     Array::consolidate(ctx_, array_name, &config);
   }
 
@@ -290,6 +295,25 @@ struct CPPMaxFragmentSizeFx {
     CHECK(num_vac == exp_num_vac);
   }
 
+  void validate_disjoint_domains() {
+    // Load non empty domains from fragment info.
+    FragmentInfo fragment_info(ctx_, array_name);
+    fragment_info.load();
+    auto num_frags = fragment_info.fragment_num();
+    std::vector<std::pair<int, int>> non_empty_domains(num_frags);
+    for (uint64_t f = 0; f < num_frags; f++) {
+      fragment_info.get_non_empty_domain(f, 0, &non_empty_domains[f]);
+    }
+    std::sort(non_empty_domains.begin(), non_empty_domains.end());
+
+    // Make sure the non empty domains are now disjoint.
+    CHECK(non_empty_domains[0].first == 1);
+    CHECK(non_empty_domains[non_empty_domains.size() - 1].second == 10000);
+    for (uint64_t f = 0; f < num_frags - 1; f++) {
+      CHECK(non_empty_domains[f].second + 1 == non_empty_domains[f + 1].first);
+    }
+  }
+
   ~CPPMaxFragmentSizeFx() {
     if (vfs_.is_dir(array_name)) {
       vfs_.remove_dir(array_name);
@@ -307,11 +331,11 @@ TEST_CASE_METHOD(
   create_simple_sparse_array();
 
   SECTION("no continuations") {
-    write_simple_sparse_array(10000, 0, {10000});
+    write_simple_sparse_array(10000, 0, 1, {10000});
   }
 
   SECTION("with continuations") {
-    write_simple_sparse_array(10000, 0, {5000, 2495, 2505});
+    write_simple_sparse_array(10000, 0, 1, {5000, 2495, 2505});
   }
   read_simple_sparse_array(10000);
   CHECK(tiledb::test::num_fragments(array_name) == 15);
@@ -324,11 +348,11 @@ TEST_CASE_METHOD(
   create_complex_sparse_array();
 
   SECTION("no continuations") {
-    write_complex_sparse_array(10000, 0, {10000});
+    write_complex_sparse_array(10000, 0, 1, {10000});
   }
 
   SECTION("with continuations") {
-    write_complex_sparse_array(10000, 0, {5000, 2495, 2505});
+    write_complex_sparse_array(10000, 0, 1, {5000, 2495, 2505});
   }
 
   read_complex_sparse_array(10000);
@@ -340,9 +364,10 @@ TEST_CASE_METHOD(
     "C++ API: Max fragment size, consolidate multiple fragments write",
     "[cppapi][max-frag-size][consolidate]") {
   create_simple_sparse_array();
-  write_simple_sparse_array(10000, 0, {5000, 2495, 2505});
+  write_simple_sparse_array(10000, 0, 1, {5000, 2495, 2505});
   CHECK(tiledb::test::num_fragments(array_name) == 15);
-  write_simple_sparse_array(std::numeric_limits<uint64_t>::max(), 10000, {100});
+  write_simple_sparse_array(
+      std::numeric_limits<uint64_t>::max(), 10000, 1, {100});
   CHECK(tiledb::test::num_fragments(array_name) == 16);
 
   // Run fragment consolidation and vacuum.
@@ -359,4 +384,48 @@ TEST_CASE_METHOD(
   vacuum_commits();
   check_num_commits_files(0, 1, 0, 0);
   read_simple_sparse_array(10100);
+}
+
+TEST_CASE_METHOD(
+    CPPMaxFragmentSizeFx,
+    "C++ API: Max fragment size, disentangle fragments, simple schema",
+    "[cppapi][max-frag-size][simple][consolidate][disentangle]") {
+  create_simple_sparse_array();
+
+  // Write 2 fragments with alternating values.
+  write_simple_sparse_array(std::numeric_limits<uint64_t>::max(), 0, 2, {5000});
+  write_simple_sparse_array(std::numeric_limits<uint64_t>::max(), 1, 2, {5000});
+
+  // Run fragment consolidation and vacuum.
+  consolidate_fragments(10000);
+  check_num_commits_files(2, 1, 0, 1);
+  vacuum_fragments();
+  check_num_commits_files(0, 1, 0, 0);
+  read_simple_sparse_array(10000);
+
+  // Validate the fragment domains are now disjoint.
+  validate_disjoint_domains();
+}
+
+TEST_CASE_METHOD(
+    CPPMaxFragmentSizeFx,
+    "C++ API: Max fragment size, disentangle fragments, complex schema",
+    "[cppapi][max-frag-size][complex][consolidate][disentangle]") {
+  create_complex_sparse_array();
+
+  // Write 2 fragments with alternating values.
+  write_complex_sparse_array(
+      std::numeric_limits<uint64_t>::max(), 0, 2, {5000});
+  write_complex_sparse_array(
+      std::numeric_limits<uint64_t>::max(), 1, 2, {5000});
+
+  // Run fragment consolidation and vacuum.
+  consolidate_fragments(10000);
+  check_num_commits_files(2, 1, 0, 1);
+  vacuum_fragments();
+  check_num_commits_files(0, 1, 0, 0);
+  read_complex_sparse_array(10000);
+
+  // Validate the fragment domains are now disjoint.
+  validate_disjoint_domains();
 }
