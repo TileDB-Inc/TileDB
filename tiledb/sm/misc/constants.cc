@@ -584,14 +584,14 @@ const std::string hilbert_str = "hilbert";
 /** The string representation of null. */
 const std::string null_str = "null";
 
-/** The string representation of unordered label. */
-const std::string label_unordered_str = "unordered";
+/** The string representation of unordered data. */
+const std::string data_unordered_str = "unordered";
 
-/** The string representation of increasing order label. */
-const std::string label_increasing_str = "increasing";
+/** The string representation of increasing order data. */
+const std::string data_increasing_str = "increasing";
 
-/** The string representation of decreasing order label. */
-const std::string label_decreasing_str = "decreasing";
+/** The string representation of decreasing order data. */
+const std::string data_decreasing_str = "decreasing";
 
 /** The string representation for object type invalid. */
 const std::string object_type_invalid_str = "INVALID";

@@ -193,6 +193,14 @@ typedef enum {
 #undef TILEDB_MIME_TYPE_ENUM
 } tiledb_mime_type_t;
 
+/** DataOrder Type*/
+typedef enum {
+/** Helper macro for defining DataOrder enums. */
+#define TILEDB_DATA_ORDER_ENUM(id) TILEDB_##id
+#include "tiledb_enum.h"
+#undef TILEDB_DATA_ORDER_ENUM
+} tiledb_data_order_t;
+
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
 /* ****************************** */

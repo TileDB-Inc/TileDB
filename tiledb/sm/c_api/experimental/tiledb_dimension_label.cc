@@ -78,7 +78,7 @@ int32_t tiledb_array_schema_has_dimension_label(
 
 int32_t tiledb_dimension_label_schema_alloc(
     tiledb_ctx_t* ctx,
-    tiledb_label_order_t label_order,
+    tiledb_data_order_t label_order,
     tiledb_datatype_t label_type,
     tiledb_datatype_t index_type,
     const void* index_domain,
@@ -102,7 +102,7 @@ int32_t tiledb_dimension_label_schema_alloc(
   (*dim_label_schema)->dim_label_schema_ =
       make_shared<tiledb::sm::DimensionLabelSchema>(
           HERE(),
-          static_cast<tiledb::sm::LabelOrder>(label_order),
+          static_cast<tiledb::sm::DataOrder>(label_order),
           static_cast<tiledb::sm::Datatype>(label_type),
           static_cast<tiledb::sm::Datatype>(index_type),
           index_domain,
@@ -257,7 +257,7 @@ int32_t tiledb_array_schema_has_dimension_label(
 
 int32_t tiledb_dimension_label_schema_alloc(
     tiledb_ctx_t* ctx,
-    tiledb_label_order_t label_order,
+    tiledb_data_order_t label_order,
     tiledb_datatype_t label_type,
     tiledb_datatype_t index_type,
     const void* index_domain,

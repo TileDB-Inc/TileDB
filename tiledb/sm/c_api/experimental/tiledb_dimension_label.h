@@ -39,12 +39,6 @@
 extern "C" {
 #endif
 
-typedef enum {
-#define TILEDB_LABEL_ORDER_ENUM(id) TILEDB_##id
-#include "tiledb_enum_experimental.h"
-#undef TILEDB_LABEL_ORDER_ENUM
-} tiledb_label_order_t;
-
 typedef struct tiledb_dimension_label_schema_t tiledb_dimension_label_schema_t;
 
 /**
@@ -132,7 +126,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_dimension_label(
  */
 TILEDB_EXPORT int32_t tiledb_dimension_label_schema_alloc(
     tiledb_ctx_t* ctx,
-    tiledb_label_order_t label_order,
+    tiledb_data_order_t label_order,
     tiledb_datatype_t label_type,
     tiledb_datatype_t index_type,
     const void* index_domain,

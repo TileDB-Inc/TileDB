@@ -60,7 +60,7 @@ class Domain;
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
 enum class Datatype : uint8_t;
-enum class LabelOrder : uint8_t;
+enum class DataOrder : uint8_t;
 enum class Layout : uint8_t;
 
 /** Specifies the array schema. */

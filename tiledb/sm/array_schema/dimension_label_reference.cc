@@ -29,8 +29,8 @@
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/enums/label_order.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/type/range/range.h"
 
@@ -51,7 +51,7 @@ DimensionLabelReference::DimensionLabelReference(
     dimension_size_type dim_id,
     const std::string& name,
     const URI& uri,
-    LabelOrder label_order,
+    DataOrder label_order,
     Datatype label_type,
     uint32_t label_cell_val_num,
     const Range& label_domain,
@@ -127,7 +127,7 @@ DimensionLabelReference::DimensionLabelReference(
     dimension_size_type dim_id,
     const std::string& name,
     const URI& uri,
-    LabelOrder label_order,
+    DataOrder label_order,
     Datatype label_type,
     uint32_t label_cell_val_num,
     const Range& label_domain,
@@ -177,7 +177,7 @@ shared_ptr<DimensionLabelReference> DimensionLabelReference::deserialize(
     std::string uri(deserializer.get_ptr<char>(uri_size), uri_size);
 
     // Read label order
-    auto label_order = label_order_from_int(deserializer.read<uint8_t>());
+    auto label_order = data_order_from_int(deserializer.read<uint8_t>());
 
     // Read label datatype
     auto label_type = static_cast<Datatype>(deserializer.read<uint8_t>());

@@ -48,7 +48,7 @@ class Buffer;
 class ConstBuffer;
 class DimensionLabelSchema;
 enum class Datatype : uint8_t;
-enum class LabelOrder : uint8_t;
+enum class DataOrder : uint8_t;
 
 /**
  * Class containing dimension label information required for usage
@@ -92,7 +92,7 @@ class DimensionLabelReference {
       dimension_size_type dim_id,
       const std::string& name,
       const URI& uri,
-      LabelOrder label_order,
+      DataOrder label_order,
       Datatype label_type,
       uint32_t label_cell_val_num,
       const Range& label_domain,
@@ -116,7 +116,7 @@ class DimensionLabelReference {
       dimension_size_type dim_id,
       const std::string& name,
       const URI& uri,
-      LabelOrder label_order,
+      DataOrder label_order,
       Datatype label_type,
       uint32_t label_cell_val_num,
       const Range& label_domain,
@@ -175,7 +175,7 @@ class DimensionLabelReference {
   }
 
   /** The label order of the dimension label. */
-  inline LabelOrder label_order() const {
+  inline DataOrder label_order() const {
     return label_order_;
   }
 
@@ -241,7 +241,7 @@ class DimensionLabelReference {
   URI uri_;
 
   /** The label order of the dimension label. */
-  LabelOrder label_order_;
+  DataOrder label_order_;
 
   /** The datatype of the label data. */
   Datatype label_type_;
