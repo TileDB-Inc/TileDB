@@ -44,20 +44,10 @@ TEST_CASE("Test repeating names", "[array_schema]") {
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
     std::vector<shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
-    uint64_t index_domain[2]{0, 15};
-    uint64_t index_tile_extent{16};
-    auto dim_label_schema = make_shared<DimensionLabelSchema>(
-        HERE(),
-        DataOrder::INCREASING_DATA,
-        Datatype::FLOAT64,
-        Datatype::UINT64,
-        index_domain,
-        &index_tile_extent);
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
-    auto status =
-        schema->add_dimension_label(0, "x", dim_label_schema, false, true);
-    REQUIRE(status.ok());
-    status = schema->check();
+    schema->add_dimension_label(
+        0, "x", DataOrder::INCREASING_DATA, Datatype::FLOAT64, false);
+    auto status = schema->check();
     REQUIRE(status.ok());
   }
 
@@ -96,21 +86,10 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     std::vector<shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
-    uint64_t index_domain[2]{0, 15};
-    uint64_t index_tile_extent{16};
-    auto dim_label_schema = make_shared<DimensionLabelSchema>(
-        HERE(),
-        DataOrder::INCREASING_DATA,
-        Datatype::UINT64,
-        Datatype::UINT64,
-        index_domain,
-        &index_tile_extent);
-    auto status =
-        schema->add_dimension_label(0, "x", dim_label_schema, true, true);
-    REQUIRE(status.ok());
-    status = schema->add_dimension_label(0, "x", dim_label_schema, true, false);
-    INFO(status.to_string());
-    REQUIRE(!status.ok());
+    schema->add_dimension_label(
+        0, "x", DataOrder::INCREASING_DATA, Datatype::UINT64, true);
+    REQUIRE_THROWS(schema->add_dimension_label(
+        0, "x", DataOrder::INCREASING_DATA, Datatype::UINT64, true));
   }
 
   SECTION("Catch repeating label name shared with dim with check") {
@@ -119,20 +98,10 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     std::vector<shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
-    uint64_t index_domain[2]{0, 15};
-    uint64_t index_tile_extent{16};
-    auto dim_label_schema = make_shared<DimensionLabelSchema>(
-        HERE(),
-        DataOrder::INCREASING_DATA,
-        Datatype::UINT64,
-        Datatype::UINT64,
-        index_domain,
-        &index_tile_extent);
-    auto status =
-        schema->add_dimension_label(0, "x", dim_label_schema, false, true);
-    REQUIRE(status.ok());
-    status = schema->add_dimension_label(0, "x", dim_label_schema, false, true);
-    REQUIRE(status.ok());
+    schema->add_dimension_label(
+        0, "x", DataOrder::INCREASING_DATA, Datatype::FLOAT64, false);
+    schema->add_dimension_label(
+        0, "x", DataOrder::INCREASING_DATA, Datatype::FLOAT64, false);
     REQUIRE_THROWS(schema->check());
   }
 
@@ -142,21 +111,10 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     std::vector<shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
-    uint64_t index_domain[2]{0, 15};
-    uint64_t index_tile_extent{16};
-    auto dim_label_schema = make_shared<DimensionLabelSchema>(
-        HERE(),
-        DataOrder::INCREASING_DATA,
-        Datatype::UINT64,
-        Datatype::UINT64,
-        index_domain,
-        &index_tile_extent);
-    auto status =
-        schema->add_dimension_label(0, "y", dim_label_schema, true, true);
-    REQUIRE(status.ok());
-    status = schema->add_dimension_label(0, "y", dim_label_schema, true, false);
-    INFO(status.to_string());
-    REQUIRE(!status.ok());
+    schema->add_dimension_label(
+        0, "y", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true);
+    REQUIRE_THROWS(schema->add_dimension_label(
+        0, "y", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true));
   }
 
   SECTION("Catch repeating label name not shared with dim with check") {
@@ -165,20 +123,10 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     std::vector<shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
-    uint64_t index_domain[2]{0, 15};
-    uint64_t index_tile_extent{16};
-    auto dim_label_schema = make_shared<DimensionLabelSchema>(
-        HERE(),
-        DataOrder::INCREASING_DATA,
-        Datatype::UINT64,
-        Datatype::UINT64,
-        index_domain,
-        &index_tile_extent);
-    auto status =
-        schema->add_dimension_label(0, "y", dim_label_schema, true, true);
-    REQUIRE(status.ok());
-    status = schema->add_dimension_label(0, "y", dim_label_schema, false, true);
-    REQUIRE(status.ok());
+    schema->add_dimension_label(
+        0, "y", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true);
+    schema->add_dimension_label(
+        0, "y", DataOrder::INCREASING_DATA, Datatype::FLOAT64, false);
     REQUIRE_THROWS(schema->check());
   }
 
@@ -189,18 +137,9 @@ TEST_CASE("Test repeating names", "[array_schema]") {
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     auto status = schema->check();
-    uint64_t index_domain[2]{0, 15};
-    uint64_t index_tile_extent{16};
-    auto dim_label_schema = make_shared<DimensionLabelSchema>(
-        HERE(),
-        DataOrder::INCREASING_DATA,
-        Datatype::UINT64,
-        Datatype::UINT64,
-        index_domain,
-        &index_tile_extent);
-    status = schema->add_dimension_label(0, "a", dim_label_schema, true, false);
-    INFO(status.to_string());
-    REQUIRE(!status.ok());
+    REQUIRE(status.ok());
+    REQUIRE_THROWS(schema->add_dimension_label(
+        0, "a", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true));
   }
 
   SECTION("Catch shared label/attribute name with schema check") {
@@ -210,18 +149,9 @@ TEST_CASE("Test repeating names", "[array_schema]") {
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     auto status = schema->check();
-    uint64_t index_domain[2]{0, 15};
-    uint64_t index_tile_extent{16};
-    auto dim_label_schema = make_shared<DimensionLabelSchema>(
-        HERE(),
-        DataOrder::INCREASING_DATA,
-        Datatype::UINT64,
-        Datatype::UINT64,
-        index_domain,
-        &index_tile_extent);
-    status = schema->add_dimension_label(0, "a", dim_label_schema, false, true);
-    REQUIRE(status.ok());
-    REQUIRE_THROWS(schema->check());
+    schema->add_dimension_label(
+        0, "a", DataOrder::INCREASING_DATA, Datatype::FLOAT64, false);
+    REQUIRE_THROWS(throw_if_not_ok(schema->check()));
   }
 
   SECTION("Catch shared label/dimension name when adding label") {
@@ -232,18 +162,9 @@ TEST_CASE("Test repeating names", "[array_schema]") {
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     auto status = schema->check();
-    uint64_t index_domain[2]{0, 15};
-    uint64_t index_tile_extent{16};
-    auto dim_label_schema = make_shared<DimensionLabelSchema>(
-        HERE(),
-        DataOrder::INCREASING_DATA,
-        Datatype::UINT64,
-        Datatype::UINT64,
-        index_domain,
-        &index_tile_extent);
-    status = schema->add_dimension_label(0, "y", dim_label_schema, true, false);
-    INFO(status.to_string());
-    REQUIRE(!status.ok());
+    REQUIRE(status.ok());
+    REQUIRE_THROWS(schema->add_dimension_label(
+        0, "y", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true));
   }
 
   SECTION("Catch shared label/dimension name with check") {
@@ -254,18 +175,9 @@ TEST_CASE("Test repeating names", "[array_schema]") {
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     auto status = schema->check();
-    uint64_t index_domain[2]{0, 15};
-    uint64_t index_tile_extent{16};
-    auto dim_label_schema = make_shared<DimensionLabelSchema>(
-        HERE(),
-        DataOrder::INCREASING_DATA,
-        Datatype::UINT64,
-        Datatype::UINT64,
-        index_domain,
-        &index_tile_extent);
-    status = schema->add_dimension_label(0, "y", dim_label_schema, false, true);
-    REQUIRE(status.ok());
-    REQUIRE_THROWS(schema->check());
+    schema->add_dimension_label(
+        0, "y", DataOrder::INCREASING_DATA, Datatype::FLOAT64, false);
+    REQUIRE_THROWS(throw_if_not_ok(schema->check()));
   }
 
   SECTION("Catch shared label/dimension name when adding label") {
@@ -276,18 +188,9 @@ TEST_CASE("Test repeating names", "[array_schema]") {
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     auto status = schema->check();
-    uint64_t index_domain[2]{0, 15};
-    uint64_t index_tile_extent{16};
-    auto dim_label_schema = make_shared<DimensionLabelSchema>(
-        HERE(),
-        DataOrder::INCREASING_DATA,
-        Datatype::UINT64,
-        Datatype::UINT64,
-        index_domain,
-        &index_tile_extent);
-    status = schema->add_dimension_label(0, "y", dim_label_schema, true, false);
-    INFO(status.to_string());
-    REQUIRE(!status.ok());
+    REQUIRE(status.ok());
+    REQUIRE_THROWS(schema->add_dimension_label(
+        0, "y", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true));
   }
 
   SECTION("Catch shared label/dimension name with check") {
@@ -298,45 +201,10 @@ TEST_CASE("Test repeating names", "[array_schema]") {
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     auto status = schema->check();
-    uint64_t index_domain[2]{0, 15};
-    uint64_t index_tile_extent{16};
-    auto dim_label_schema = make_shared<DimensionLabelSchema>(
-        HERE(),
-        DataOrder::INCREASING_DATA,
-        Datatype::UINT64,
-        Datatype::UINT64,
-        index_domain,
-        &index_tile_extent);
-    status =
-        schema->add_dimension_label(0, "y", dim_label_schema, false, false);
-    REQUIRE(status.ok());
-    REQUIRE_THROWS(schema->check());
+    schema->add_dimension_label(
+        0, "y", DataOrder::INCREASING_DATA, Datatype::FLOAT64, false);
+    REQUIRE_THROWS(throw_if_not_ok(schema->check()));
   }
-}
-
-TEST_CASE(
-    "Test catch mismatched dimension label definition",
-    "[array_schema][dimension_label]") {
-  std::vector<shared_ptr<Dimension>> dims{
-      test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
-  std::vector<shared_ptr<Attribute>> attrs{
-      test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
-  auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
-  auto status = schema->check();
-  uint64_t index_domain[2]{0, 15};
-  uint64_t index_tile_extent{16};
-  auto dim_label_schema = make_shared<DimensionLabelSchema>(
-      HERE(),
-      DataOrder::INCREASING_DATA,
-      Datatype::UINT64,
-      Datatype::INT64,
-      index_domain,
-      &index_tile_extent);
-  status = schema->add_dimension_label(0, "x", dim_label_schema, true, false);
-  REQUIRE(status.ok());
-  status = schema->check();
-  INFO(status.to_string());
-  REQUIRE(!status.ok());
 }
 
 TEST_CASE(
@@ -358,12 +226,12 @@ TEST_CASE(
       Datatype::UINT64,
       index_domain,
       &index_tile_extent);
-  status = schema->add_dimension_label(0, "x", dim_label_schema, true, true);
-  REQUIRE(status.ok());
-  status = schema->add_dimension_label(0, "y", dim_label_schema, true, true);
-  REQUIRE(status.ok());
-  status = schema->add_dimension_label(0, "z", dim_label_schema, true, true);
-  REQUIRE(status.ok());
+  schema->add_dimension_label(
+      0, "x", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true);
+  schema->add_dimension_label(
+      0, "y", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true);
+  schema->add_dimension_label(
+      0, "z", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true);
   // Check dimension label schemas
   const auto& xref = schema->dimension_label_reference("x");
   REQUIRE(

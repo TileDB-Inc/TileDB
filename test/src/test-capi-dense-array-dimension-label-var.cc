@@ -32,21 +32,18 @@
  * labels.
  */
 
-#include "test/src/experimental_helpers.h"
-#include "test/support/src/helpers.h"
-#include "tiledb/api/c_api/context/context_api_internal.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
-#include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
-#include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
-#include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_experimental.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/dimension_label/dimension_label.h"
-#include "tiledb/sm/enums/encryption_type.h"
-
 #include <test/support/tdb_catch.h>
 #include <iostream>
 #include <string>
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
+#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
+#include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/c_api/tiledb_experimental.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/enums/encryption_type.h"
 
 using namespace tiledb::sm;
 using namespace tiledb::test;
@@ -94,14 +91,8 @@ class ArrayExample : public TemporaryDirectoryFixture {
         false);
 
     // Add dimension label.
-    add_dimension_label(
-        ctx,
-        array_schema,
-        "x",
-        0,
-        label_order,
-        TILEDB_STRING_ASCII,
-        &x_tile_extent);
+    tiledb_array_schema_add_dimension_label(
+        ctx, array_schema, 0, "x", label_order, TILEDB_STRING_ASCII);
     // Create array
     array_name = create_temporary_array("array_with_label_1", array_schema);
     tiledb_array_schema_free(&array_schema);

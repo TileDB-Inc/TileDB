@@ -167,6 +167,11 @@ class DimensionLabelReference {
     return schema_ != nullptr;
   }
 
+  /** The name of the label attribute in the dimension label schema. */
+  inline const std::string& label_attr_name() const {
+    return label_attr_name_;
+  }
+
   /** The number of values per label cell. */
   inline uint32_t label_cell_val_num() const {
     return label_cell_val_num_;

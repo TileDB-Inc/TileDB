@@ -254,7 +254,6 @@ endif()
 
 if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
-    src/experimental_helpers.cc
     src/test-capi-array-many-dimension-labels.cc
     src/test-capi-dimension_labels.cc
     src/test-capi-dense-array-dimension-label.cc
