@@ -544,7 +544,7 @@ Status RestClient::post_query_submit(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  std::string url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
+  std::string url = redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
                     curlc.url_escape(array_uri) +
                     "/query/submit?type=" + query_type_str(query->type()) +
                     "&read_all=" + (resubmit_incomplete_ ? "true" : "false");
@@ -819,7 +819,7 @@ Status RestClient::submit_and_finalize_query_to_rest(
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string url =
-      redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
+      redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
       curlc.url_escape(array_uri) +
       "/query/submit_and_finalize?type=" + query_type_str(query->type());
 

@@ -2200,7 +2200,6 @@ TEST_CASE_METHOD(
     tiledb_config_t* config;
     tiledb_error_t* error;
     tiledb_config_alloc(&config, &error);
-    tiledb_config_set(config, "rest.use_refactored_array_open", "true", &error);
     tiledb_config_set(
         config, "rest.load_metadata_on_array_open", "true", &error);
     tiledb_config_set(
@@ -2419,7 +2418,6 @@ TEST_CASE_METHOD(
   tiledb_config_t* config;
   tiledb_error_t* error;
   tiledb_config_alloc(&config, &error);
-  tiledb_config_set(config, "rest.use_refactored_array_open", "true", &error);
   tiledb_config_set(
       config, "rest.load_metadata_on_array_open", "false", &error);
   tiledb_config_set(
@@ -2453,12 +2451,6 @@ TEST_CASE_METHOD(
 
   // Check that the config variables have the right value in deserialized array
   const char* value = nullptr;
-  rc = tiledb_config_get(
-      config, "rest.use_refactored_array_open", &value, &error);
-  CHECK(rc == TILEDB_OK);
-  CHECK(error == nullptr);
-  CHECK(!strcmp(value, "true"));
-  value = nullptr;
   rc = tiledb_config_get(
       config, "rest.load_metadata_on_array_open", &value, &error);
   CHECK(rc == TILEDB_OK);

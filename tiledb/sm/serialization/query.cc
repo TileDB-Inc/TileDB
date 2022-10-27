@@ -1403,16 +1403,16 @@ Status query_from_capnp(
     ThreadPool* compute_tp) {
   using namespace tiledb::sm;
 
-  auto type = query->type();
   auto array = query->array();
-  const auto& schema = query->array_schema();
-
   if (array == nullptr) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; array pointer is null."));
   }
+  // Deserialize array instance.
+  RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
 
   // Deserialize query type (sanity check).
+  auto type = query->type();
   QueryType query_type = QueryType::READ;
   RETURN_NOT_OK(query_type_enum(query_reader.getType().cStr(), &query_type));
   if (query_type != type) {
@@ -1431,9 +1431,6 @@ Status query_from_capnp(
   // Deserialize layout.
   Layout layout = Layout::UNORDERED;
   RETURN_NOT_OK(layout_enum(query_reader.getLayout().cStr(), &layout));
-
-  // Deserialize array instance.
-  RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
 
   // Marks the query as remote
   // Needs to happen before the reset strategy call below so that the marker
@@ -1460,6 +1457,7 @@ Status query_from_capnp(
     }
   }
 
+  const auto& schema = query->array_schema();
   // Deserialize and set attribute buffers.
   if (!query_reader.hasAttributeBufferHeaders()) {
     return LOG_STATUS(Status_SerializationError(

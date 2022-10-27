@@ -756,10 +756,6 @@ class Config {
    *    If true, array non empty domain will be loaded and sent to server
    *    together with the open array <br>
    *    **Default**: true
-   * - `rest.use_refactored_array_open` <br>
-   *    If true, the new, experimental REST routes and APIs for opening an array
-   *    will be used <br>
-   *    **Default**: false
    * - `rest.curl.buffer_size` <br>
    *    Set curl buffer size for REST requests <br>
    *    **Default**: 524288 (512KB)

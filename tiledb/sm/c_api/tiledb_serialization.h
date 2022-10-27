@@ -284,6 +284,33 @@ TILEDB_EXPORT int32_t tiledb_deserialize_query(
     tiledb_query_t* query) TILEDB_NOEXCEPT;
 
 /**
+ * Deserializes into a new query object from the given buffer, while
+ * deserializing at the same time the (open) array object stored in the query
+ * object as a member.
+ *
+ * @note The deserialization is zero-copy, so the source buffer must exceed
+ * the lifetime of the query being deserialized to.
+ *
+ * @param ctx The TileDB context.
+ * @param buffer Buffer to deserialize from.
+ * @param serialization_type Type of deserialization to use.
+ * @param client_side If set to 1, deserialize from "client-side" perspective.
+ *    Else, "server-side."
+ * @param array_uri uri of the array the query is submitted to.
+ * @param query_type The type of the query that is being deserialized.
+ * @param query The query object to allocate and deserialize into.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_deserialize_array_and_query(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    const char* array_uri,
+    tiledb_query_type_t query_type,
+    tiledb_query_t** query) TILEDB_NOEXCEPT;
+
+/**
  * Serializes the given non-empty domain information into the given buffer.
  *
  * @note The caller must free the returned `tiledb_buffer_t`.

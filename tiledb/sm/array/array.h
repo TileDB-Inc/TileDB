@@ -465,9 +465,6 @@ class Array {
    */
   bool serialize_metadata() const;
 
-  /** Checks the config to see if refactored array open should be used. */
-  bool use_refactored_array_open() const;
-
   /** Set the query type to open the array for. */
   inline void set_query_type(QueryType query_type) {
     query_type_ = query_type;
@@ -481,6 +478,12 @@ class Array {
 
   /** Load array directory for non-remote arrays */
   ArrayDirectory& load_array_directory();
+
+  /** Special setter for facilitating the query/array deserialization process */
+  inline void set_serialized_array_open(QueryType query_type) {
+    query_type_ = query_type;
+    set_array_open(query_type);
+  }
 
  private:
   /* ********************************* */
