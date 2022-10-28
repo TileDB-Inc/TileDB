@@ -213,6 +213,8 @@ WriterBase::WriterBase(
   auto frag_dir_uri =
       array_->array_directory().get_fragments_dir(write_version);
   fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
+  throw_if_not_ok(utils::parse::get_timestamp_range(
+      fragment_uri_, &fragment_timestamp_range_));
 }
 
 WriterBase::~WriterBase() {
@@ -308,9 +310,7 @@ Status WriterBase::initialize_memory_budget() {
 /* ****************************** */
 
 Status WriterBase::add_written_fragment_info(const URI& uri) {
-  std::pair<uint64_t, uint64_t> timestamp_range;
-  RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
-  written_fragment_info_.emplace_back(uri, timestamp_range);
+  written_fragment_info_.emplace_back(uri, fragment_timestamp_range_);
   return Status::Ok();
 }
 
@@ -935,7 +935,7 @@ Status WriterBase::split_coords_buffer() {
   return Status::Ok();
 }
 
-Status WriterBase::write_all_tiles(
+Status WriterBase::write_tiles(
     const uint64_t start_tile_idx,
     const uint64_t end_tile_idx,
     shared_ptr<FragmentMetadata> frag_meta,

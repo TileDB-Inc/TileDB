@@ -180,6 +180,9 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /** The name of the new fragment to be created. */
   URI fragment_uri_;
 
+  /** Timestamps for the new fragment to be created. */
+  std::pair<uint64_t, uint64_t> fragment_timestamp_range_;
+
   /** Stores information about the written fragments. */
   std::vector<WrittenFragmentInfo>& written_fragment_info_;
 
@@ -423,7 +426,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    *     attribute or dimension.
    * @return Status
    */
-  Status write_all_tiles(
+  Status write_tiles(
       const uint64_t start_tile_idx,
       const uint64_t end_tile_idx,
       shared_ptr<FragmentMetadata> frag_meta,

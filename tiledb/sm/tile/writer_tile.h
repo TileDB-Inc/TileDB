@@ -192,7 +192,7 @@ class WriterTile {
    *
    * @param size Final size.
    */
-  inline void final_size(uint64_t size) {
+  inline void set_final_size(uint64_t size) {
     cell_num_ = size;
 
     if (var_tile_.has_value()) {

@@ -607,14 +607,14 @@ Status StorageManager::write_commit_ignore_file(
   return Status::Ok();
 }
 
-Status StorageManager::write_consolidated_commits_file(
+void StorageManager::write_consolidated_commits_file(
     format_version_t write_version,
     ArrayDirectory array_dir,
     const std::vector<URI>& commit_uris) {
   // Compute the file name.
   auto&& [st1, name] = array_dir.compute_new_fragment_name(
       commit_uris.front(), commit_uris.back(), write_version);
-  RETURN_NOT_OK(st1);
+  throw_if_not_ok(st1);
 
   // Compute size of consolidated file. Save the sizes of the files to re-use
   // below.
@@ -629,7 +629,7 @@ Status StorageManager::write_consolidated_commits_file(
     // the size variable.
     if (stdx::string::ends_with(
             uri.to_string(), constants::delete_file_suffix)) {
-      RETURN_NOT_OK(this->vfs()->file_size(uri, &file_sizes[i]));
+      throw_if_not_ok(this->vfs()->file_size(uri, &file_sizes[i]));
       total_size += file_sizes[i];
       total_size += sizeof(storage_size_t);
     }
@@ -650,7 +650,7 @@ Status StorageManager::write_consolidated_commits_file(
             uri.to_string(), constants::delete_file_suffix)) {
       memcpy(&data[file_index], &file_sizes[i], sizeof(storage_size_t));
       file_index += sizeof(storage_size_t);
-      RETURN_NOT_OK(
+      throw_if_not_ok(
           this->vfs()->read(uri, 0, &data[file_index], file_sizes[i]));
       file_index += file_sizes[i];
     }
@@ -660,11 +660,9 @@ Status StorageManager::write_consolidated_commits_file(
   URI consolidated_commits_uri =
       array_dir.get_commits_dir(write_version)
           .join_path(name.value() + constants::con_commits_file_suffix);
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       this->vfs()->write(consolidated_commits_uri, data.data(), data.size()));
-  RETURN_NOT_OK(this->vfs()->close_file(consolidated_commits_uri));
-
-  return Status::Ok();
+  throw_if_not_ok(this->vfs()->close_file(consolidated_commits_uri));
 }
 
 Status StorageManager::delete_fragments(

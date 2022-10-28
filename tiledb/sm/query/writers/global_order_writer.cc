@@ -523,7 +523,7 @@ void GlobalOrderWriter::clean_up() {
 Status GlobalOrderWriter::filter_last_tiles(uint64_t cell_num) {
   // Adjust cell num
   for (auto& last_tiles : global_write_state_->last_tiles_) {
-    last_tiles.second[0].final_size(cell_num);
+    last_tiles.second[0].set_final_size(cell_num);
   }
 
   // Compute coordinates metadata
@@ -707,8 +707,8 @@ Status GlobalOrderWriter::finalize_global_write_state() {
     commit_uris.emplace_back(commit_uri);
 
     auto write_version = array_->array_schema_latest().write_version();
-    RETURN_NOT_OK(storage_manager_->write_consolidated_commits_file(
-        write_version, array_->array_directory(), commit_uris));
+    storage_manager_->write_consolidated_commits_file(
+        write_version, array_->array_directory(), commit_uris);
   }
 
   // Delete global write state
@@ -782,13 +782,13 @@ Status GlobalOrderWriter::global_write() {
 
     if (new_num_tiles == 0) {
       throw GlobalOrderWriterStatusException(
-          "Fragment size doesn't allow to write a single tile");
+          "Fragment size is too small to write a single tile");
     }
 
     set_coords_metadata(idx, idx + num, tiles, mbrs, frag_meta);
 
     // Write tiles for all attributes
-    RETURN_CANCEL_OR_ERROR(write_all_tiles(idx, idx + num, frag_meta, &tiles));
+    RETURN_CANCEL_OR_ERROR(write_tiles(idx, idx + num, frag_meta, &tiles));
     idx += num;
 
     // If we didn't write all tiles, close this fragment and start another.
@@ -823,7 +823,7 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
 
   // Write the last tiles
   RETURN_CANCEL_OR_ERROR(
-      write_all_tiles(0, 1, meta, &global_write_state_->last_tiles_));
+      write_tiles(0, 1, meta, &global_write_state_->last_tiles_));
 
   // Increment the tile index base.
   meta->set_tile_index_base(meta->tile_index_base() + 1);
@@ -1350,7 +1350,6 @@ uint64_t GlobalOrderWriter::num_tiles_to_write(
   }
 
   // Make sure we don't write more than the desired fragment size.
-  uint64_t size = current_fragment_size_;
   for (uint64_t t = start; t < tile_num; t++) {
     uint64_t tile_size = 0;
     for (uint64_t a = 0; a < buf_names.size(); a++) {
@@ -1376,15 +1375,14 @@ uint64_t GlobalOrderWriter::num_tiles_to_write(
       }
     }
 
-    if (size + tile_size > fragment_size_) {
+    if (current_fragment_size_ + tile_size > fragment_size_) {
       current_fragment_size_ = 0;
       return t - start;
     }
 
-    size += tile_size;
+    current_fragment_size_ += tile_size;
   }
 
-  current_fragment_size_ = size;
   return tile_num - start;
 }
 
@@ -1404,30 +1402,16 @@ Status GlobalOrderWriter::start_new_fragment() {
   // Flush fragment metadata to storage
   frag_meta->store(array_->get_encryption_key());
 
-  // Check that the same number of cells was written across attributes
-  // and dimensions
-  auto cells_written =
-      global_write_state_->cells_written_[buffers_.begin()->first];
-  for (const auto& it : buffers_) {
-    const auto& name = it.first;
-    if (global_write_state_->cells_written_[name] != cells_written) {
-      return logger_->status(Status_WriterError(
-          "Failed to finalize global write state; Different "
-          "number of cells written across attributes and coordinates"));
-    }
-  }
-
   frag_uris_to_commit_.emplace_back(uri);
 
   // Make a new fragment URI.
   const auto write_version = array_->array_schema_latest().write_version();
-  std::pair<uint64_t, uint64_t> timestamp_range;
-  RETURN_NOT_OK(
-      utils::parse::get_timestamp_range(fragment_uri_, &timestamp_range));
   auto frag_dir_uri =
       array_->array_directory().get_fragments_dir(write_version);
   auto new_fragment_str = storage_format::generate_uri(
-      timestamp_range.first, timestamp_range.second, write_version);
+      fragment_timestamp_range_.first,
+      fragment_timestamp_range_.second,
+      write_version);
   fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
 
   // Create a new fragment.

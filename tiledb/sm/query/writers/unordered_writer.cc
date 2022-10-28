@@ -463,7 +463,7 @@ Status UnorderedWriter::prepare_tiles_fixed(
 
   uint64_t last_tile_cell_num = (cell_num - dups_num) % capacity;
   if (last_tile_cell_num != 0) {
-    tile_it->final_size(last_tile_cell_num);
+    tile_it->set_final_size(last_tile_cell_num);
   }
 
   return Status::Ok();
@@ -582,7 +582,7 @@ Status UnorderedWriter::prepare_tiles_var(
 
   uint64_t last_tile_cell_num = (cell_num - dups_num) % capacity;
   if (last_tile_cell_num != 0) {
-    tile_it->final_size(last_tile_cell_num);
+    tile_it->set_final_size(last_tile_cell_num);
   }
 
   return Status::Ok();
@@ -673,7 +673,7 @@ Status UnorderedWriter::unordered_write() {
   RETURN_CANCEL_OR_ERROR(filter_tiles(&tiles));
 
   // Write tiles for all attributes and coordinates
-  RETURN_CANCEL_OR_ERROR(write_all_tiles(0, tile_num, frag_meta, &tiles));
+  RETURN_CANCEL_OR_ERROR(write_tiles(0, tile_num, frag_meta, &tiles));
 
   // Compute fragment min/max/sum/null count and write the fragment metadata
   frag_meta->compute_fragment_min_max_sum_null_count();
