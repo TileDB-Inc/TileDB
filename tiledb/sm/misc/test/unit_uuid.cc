@@ -1,11 +1,11 @@
 /**
- * @file   unit-uuid.cc
+ * @file   unit_uuid.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,11 +35,20 @@
 #include <thread>
 #include <vector>
 
-#include "test/support/src/helpers.h"
+#include "storage_manager_declaration_override.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/uuid.h"
 
 using namespace tiledb::sm;
+
+std::mutex catch2_macro_mutex;
+
+// A thread-safe variant of the REQUIRE macro.
+#define REQUIRE_SAFE(a)                                   \
+  {                                                       \
+    std::lock_guard<std::mutex> lock(catch2_macro_mutex); \
+    REQUIRE(a);                                           \
+  }
 
 TEST_CASE("UUID: Test generate", "[uuid]") {
   // Initialize global OpenSSL state if required.

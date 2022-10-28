@@ -1,9 +1,9 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/sm/global_state/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,22 +24,22 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
+include(common NO_POLICY_SCOPE)
 
-add_subdirectory(array)
-add_subdirectory(array_schema)
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(config)
-add_subdirectory(crypto)
-add_subdirectory(filesystem)
-add_subdirectory(filter)
-add_subdirectory(global_state)
-add_subdirectory(group)
-add_subdirectory(metadata)
-add_subdirectory(misc)
-add_subdirectory(query)
-add_subdirectory(rtree)
-add_subdirectory(stats)
-add_subdirectory(subarray)
-add_subdirectory(tile)
+#
+# Object library for other units to depend upon
+#
+add_library(global_state OBJECT global_state.cc libcurl_state.cc signal_handlers.cc watchdog.cc)
+target_link_libraries(global_state PUBLIC storage_manager_stub)
+target_link_libraries(global_state PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(global_state PUBLIC config $<TARGET_OBJECTS:config>)
+
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_global_state EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_global_state)
+target_link_libraries(compile_global_state PRIVATE global_state)
+target_sources(compile_global_state PRIVATE
+    test/compile_global_state_main.cc $<TARGET_OBJECTS:global_state>
+)
