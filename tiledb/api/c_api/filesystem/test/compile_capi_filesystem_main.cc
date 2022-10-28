@@ -1,4 +1,8 @@
-/*
+/**
+ * @file tiledb/api/c_api/filesystem/test/compile_capi_filesystem_main.cc
+ *
+ * @section LICENSE
+ *
  * The MIT License
  *
  * @copyright Copyright (c) 2022 TileDB, Inc.
@@ -22,22 +26,9 @@
  * THE SOFTWARE.
  */
 
-/**
- * NOTE: The values of these enums are serialized to the array schema and/or
- * fragment metadata. Therefore, the values below should never change,
- * otherwise backwards compatibility breaks.
- */
+#include "../filesystem_api_external.h"
 
-// clang-format off
-#ifdef TILEDB_FILESYSTEM_ENUM
-    /** HDFS filesystem */
-    TILEDB_FILESYSTEM_ENUM(HDFS) = 0,
-    /** S3 filesystem */
-    TILEDB_FILESYSTEM_ENUM(S3) = 1,
-    /** Azure filesystem */
-    TILEDB_FILESYSTEM_ENUM(AZURE) = 2,
-    /** GCS filesystem */
-    TILEDB_FILESYSTEM_ENUM(GCS) = 3,
-    /** In-memory filesystem */
-    TILEDB_FILESYSTEM_ENUM(MEMFS) = 4,
-#endif
+int main() {
+  tiledb_filesystem_to_str(TILEDB_MEMFS, nullptr);
+  return 0;
+}

@@ -59,10 +59,6 @@ TEST_CASE("C API: Test enum values", "[capi][enums]") {
   REQUIRE(TILEDB_GROUP == 1);
   REQUIRE(TILEDB_ARRAY == 2);
 
-  /** Filesystem type */
-  REQUIRE(TILEDB_HDFS == 0);
-  REQUIRE(TILEDB_S3 == 1);
-
   /** Datatype */
   REQUIRE(TILEDB_INT32 == 0);
   REQUIRE(TILEDB_INT64 == 1);
@@ -177,20 +173,6 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   REQUIRE(
       (tiledb_object_type_from_str("ARRAY", &object_type) == TILEDB_OK &&
        object_type == TILEDB_ARRAY));
-
-  tiledb_filesystem_t filesystem;
-  REQUIRE(
-      (tiledb_filesystem_to_str(TILEDB_HDFS, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "HDFS"));
-  REQUIRE(
-      (tiledb_filesystem_from_str("HDFS", &filesystem) == TILEDB_OK &&
-       filesystem == TILEDB_HDFS));
-  REQUIRE(
-      (tiledb_filesystem_to_str(TILEDB_S3, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "S3"));
-  REQUIRE(
-      (tiledb_filesystem_from_str("S3", &filesystem) == TILEDB_OK &&
-       filesystem == TILEDB_S3));
 
   tiledb_datatype_t datatype;
   REQUIRE(

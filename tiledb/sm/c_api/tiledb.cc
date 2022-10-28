@@ -157,23 +157,6 @@ int32_t tiledb_object_type_from_str(
   return TILEDB_OK;
 }
 
-int32_t tiledb_filesystem_to_str(
-    tiledb_filesystem_t filesystem, const char** str) {
-  const auto& strval =
-      tiledb::sm::filesystem_str((tiledb::sm::Filesystem)filesystem);
-  *str = strval.c_str();
-  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
-}
-
-int32_t tiledb_filesystem_from_str(
-    const char* str, tiledb_filesystem_t* filesystem) {
-  tiledb::sm::Filesystem val = tiledb::sm::Filesystem::S3;
-  if (!tiledb::sm::filesystem_enum(str, &val).ok())
-    return TILEDB_ERR;
-  *filesystem = (tiledb_filesystem_t)val;
-  return TILEDB_OK;
-}
-
 int32_t tiledb_datatype_to_str(tiledb_datatype_t datatype, const char** str) {
   const auto& strval = tiledb::sm::datatype_str((tiledb::sm::Datatype)datatype);
   *str = strval.c_str();
@@ -6266,18 +6249,6 @@ int32_t tiledb_object_type_from_str(
     const char* str, tiledb_object_t* object_type) noexcept {
   return api_entry_plain<tiledb::api::tiledb_object_type_from_str>(
       str, object_type);
-}
-
-int32_t tiledb_filesystem_to_str(
-    tiledb_filesystem_t filesystem, const char** str) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_filesystem_to_str>(
-      filesystem, str);
-}
-
-int32_t tiledb_filesystem_from_str(
-    const char* str, tiledb_filesystem_t* filesystem) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_filesystem_from_str>(
-      str, filesystem);
 }
 
 int32_t tiledb_datatype_to_str(

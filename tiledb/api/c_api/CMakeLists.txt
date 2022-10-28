@@ -58,6 +58,9 @@ add_subdirectory(config)
 # `context`: depends on `config`
 add_subdirectory(context)
 
+# `filesystem`: no dependencies
+add_subdirectory(filesystem)
+
 # `filter`: depends on `context`
 add_subdirectory(filter)
 

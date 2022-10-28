@@ -247,26 +247,6 @@ TILEDB_EXPORT int32_t tiledb_object_type_from_str(
     const char* str, tiledb_object_t* object_type) TILEDB_NOEXCEPT;
 
 /**
- * Returns a string representation of the given filesystem.
- *
- * @param filesystem Filesystem
- * @param str Set to point to a constant string representation of the filesystem
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_filesystem_to_str(
-    tiledb_filesystem_t filesystem, const char** str) TILEDB_NOEXCEPT;
-
-/**
- * Parses a filesystem from the given string.
- *
- * @param str String representation to parse
- * @param filesystem Set to the parsed filesystem
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_filesystem_from_str(
-    const char* str, tiledb_filesystem_t* filesystem) TILEDB_NOEXCEPT;
-
-/**
  * Returns a string representation of the given datatype.
  *
  * @param datatype Datatype
