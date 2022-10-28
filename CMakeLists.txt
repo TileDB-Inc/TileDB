@@ -443,6 +443,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_add_ranges_list)
   add_dependencies(tests unit_consistency)
   add_dependencies(tests unit_range)
+  add_dependencies(tests unit_rtree)
 
   # C API support
   add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
