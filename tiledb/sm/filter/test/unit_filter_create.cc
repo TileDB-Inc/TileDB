@@ -52,6 +52,7 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/sm/filter/webp_filter.h"
 
 using namespace tiledb::sm;
 
@@ -427,38 +428,38 @@ TEST_CASE(
   CHECK(filter1->type() == filtertype0);
 }
 
-#ifdef TILEDB_WEBP
 TEST_CASE("Filter: Test WEBP filter deserialization", "[filter][webp]") {
-  Buffer buffer;
-  FilterType filterType = FilterType::FILTER_WEBP;
-  char serialized_buffer[13];
-  char* p = &serialized_buffer[0];
-  buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filterType);
-  buffer_offset<uint32_t, 1>(p) = sizeof(float) + sizeof(uint8_t);
+  if constexpr (webp_filter_exists) {
+    Buffer buffer;
+    FilterType filterType = FilterType::FILTER_WEBP;
+    char serialized_buffer[13];
+    char* p = &serialized_buffer[0];
+    buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filterType);
+    buffer_offset<uint32_t, 1>(p) = sizeof(float) + sizeof(uint8_t);
 
-  float quality0 = 50.5f;
-  WebpInputFormat fmt0 = WebpInputFormat::WEBP_RGBA;
-  uint8_t lossless0 = 1;
-  buffer_offset<float, 5>(p) = quality0;
-  buffer_offset<uint8_t, 9>(p) = static_cast<uint8_t>(fmt0);
-  buffer_offset<uint8_t, 10>(p) = lossless0;
+    float quality0 = 50.5f;
+    WebpInputFormat fmt0 = WebpInputFormat::WEBP_RGBA;
+    uint8_t lossless0 = 1;
+    buffer_offset<float, 5>(p) = quality0;
+    buffer_offset<uint8_t, 9>(p) = static_cast<uint8_t>(fmt0);
+    buffer_offset<uint8_t, 10>(p) = lossless0;
 
-  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
-  auto filter{
-      FilterCreate::deserialize(deserializer, constants::format_version)};
+    Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
+    auto filter{
+        FilterCreate::deserialize(deserializer, constants::format_version)};
 
-  CHECK(filter->type() == filterType);
+    CHECK(filter->type() == filterType);
 
-  float quality1;
-  REQUIRE(filter->get_option(FilterOption::WEBP_QUALITY, &quality1).ok());
-  CHECK(quality0 == quality1);
+    float quality1;
+    REQUIRE(filter->get_option(FilterOption::WEBP_QUALITY, &quality1).ok());
+    CHECK(quality0 == quality1);
 
-  WebpInputFormat fmt1;
-  REQUIRE(filter->get_option(FilterOption::WEBP_INPUT_FORMAT, &fmt1).ok());
-  CHECK(fmt0 == fmt1);
+    WebpInputFormat fmt1;
+    REQUIRE(filter->get_option(FilterOption::WEBP_INPUT_FORMAT, &fmt1).ok());
+    CHECK(fmt0 == fmt1);
 
-  uint8_t lossless1;
-  REQUIRE(filter->get_option(FilterOption::WEBP_LOSSLESS, &lossless1).ok());
-  CHECK(lossless0 == lossless1);
+    uint8_t lossless1;
+    REQUIRE(filter->get_option(FilterOption::WEBP_LOSSLESS, &lossless1).ok());
+    CHECK(lossless0 == lossless1);
+  }
 }
-#endif  // TILEDB_WEBP

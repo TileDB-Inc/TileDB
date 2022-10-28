@@ -870,12 +870,12 @@ Status WriterBase::filter_tile(
       array_schema_.var_size(name), array_schema_.version(), tile->type());
 
   assert(!tile->filtered());
-#ifdef TILEDB_WEBP
-  auto f_webp = filters.get_filter<WebpFilter>();
-  if (f_webp != nullptr) {
-    f_webp->set_extent(array_schema_.domain().tile_extents());
+  if constexpr (webp_filter_exists) {
+    auto f_webp = filters.get_filter<WebpFilter>();
+    if (f_webp != nullptr) {
+      f_webp->set_extent(array_schema_.domain().tile_extents());
+    }
   }
-#endif
   RETURN_NOT_OK(filters.run_forward(
       stats_,
       tile,

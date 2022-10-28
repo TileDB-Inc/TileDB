@@ -7,37 +7,37 @@ The WebP filter compresses image data using [libwebp](https://developers.google.
 
 ```C++
 Domain domain(ctx);
-// We use `width * 4` for X dimension to allow for RGBA (4) elements per-pixel 
-// Extents must be divisible by pixel depth of colorspace format
-// RGB / BGR is 3; RGBA / BGRA is 4, etc
+// We use `width * 4` for X dimension to allow for RGBA (4) elements per-pixel.
+// Extents must be divisible by pixel depth of colorspace format.
+// RGB / BGR is 3; RGBA / BGRA is 4, etc.
 domain.add_dimension(Dimension::create<unsigned>(ctx, "y", {{1, (height)}}, height/2))
     .add_dimension(Dimension::create<unsigned>(ctx, "x", {{1, (width)*4}}, (width/2)*4));
 // To compress using webp we need RGBA in a single uint8_t buffer
 ArraySchema schema(ctx, TILEDB_DENSE);
 Attribute rgba = Attribute::create<uint8_t>(ctx, "rgba");
 
-// Create WebP filter and set options
+// Create WebP filter and set options.
 Filter webp(ctx, TILEDB_FILTER_WEBP);
 
-// TILEDB_WEBP_INPUT_FORMAT is TILEDB_WEBP_NONE by default
-// One of TILEDB_WEBP_{RGB, BGR, RGBA, BGRA}
-// Caller should always set this option based on colorspace preference
+// TILEDB_WEBP_INPUT_FORMAT is TILEDB_WEBP_NONE by default.
+// Valid options are one of TILEDB_WEBP_{RGB, BGR, RGBA, BGRA}.
+// Caller should always set this option based on colorspace preference.
 auto fmt = TILEDB_WEBP_RGBA;
 webp.set_option(TILEDB_WEBP_INPUT_FORMAT, &fmt);
 
-// TILEDB_WEBP_QUALITY is 100.0f by default
-// Floats within the range [0, 100] are valid for this option
-// Lossy compression with quality of 100.0 is not lossless
+// TILEDB_WEBP_QUALITY is 100.0f by default.
+// Floats within the range [0, 100] are valid for this option.
+// Lossy compression with quality of 100.0 is not lossless.
 float quality = 50.0f;
 webp.set_option(TILEDB_WEBP_QUALITY, &quality);
 
-// TILEDB_WEBP_LOSSLESS is 0 by default
-// This option is either enabled (1) or disabled (0)
-// Enable this option for lossless compression; quality will be ignored
+// TILEDB_WEBP_LOSSLESS is 0 by default.
+// This option is either enabled (1) or disabled (0).
+// Enable this option for lossless compression; quality will be ignored.
 uint8_t lossless = 0;
 webp.set_option(TILEDB_WEBP_LOSSLESS, &quality);
 
-// Add to FilterList and set attribute filters
+// Add to FilterList and set attribute filters.
 FilterList filterList(ctx);
 filterList.add_filter(webp);
 rgba.set_filter_list(filterList);
@@ -46,3 +46,15 @@ rgba.set_filter_list(filterList);
 # Filter Enum Value
 
 The filter enum value for the WEBP filter is `17` (TILEDB_FILTER_WEBP enum).
+
+# Input and Output Layout
+
+Input is a single array of colorspace values in RGB, BGR, RGBA, or BGRA format. For RGB format we would expect the first
+pixel to store R, G, B values at `input[0]`, `input[1]`, and `input[2]` respectively, followed by the remaining pixels 
+in the image. Ingesting a 10x10 image would expect 300 total input values for 10 rows of 30 colorspace values per-row.
+
+Output is organized the same as input. If we compress an image with lossless enabled, all outputs match inputs exactly. 
+If we instead use lossy compression with a quality of 0, output colorspace values will vary due to data lost during
+lossy WebP compression but the organization of the data remains the same.
+
+

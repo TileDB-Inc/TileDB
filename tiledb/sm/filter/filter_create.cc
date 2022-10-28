@@ -85,15 +85,15 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
       return tdb_new(tiledb::sm::XORFilter);
     case tiledb::sm::FilterType::FILTER_BITSORT:
       return tdb_new(tiledb::sm::BitSortFilter);
-#ifdef TILEDB_WEBP
-    case tiledb::sm::FilterType::FILTER_WEBP:
-      return tdb_new(tiledb::sm::WebpFilter);
-#else
-      throw StatusException(
-          "FilterCreate",
-          "Can't create WebP filter; built with TILEDB_WEBP=OFF");
-      break;
-#endif
+    case tiledb::sm::FilterType::FILTER_WEBP: {
+      if constexpr (webp_filter_exists) {
+        return tdb_new(tiledb::sm::WebpFilter);
+      } else {
+        throw StatusException(
+            "FilterCreate",
+            "Can't create WebP filter; built with TILEDB_WEBP=OFF");
+      }
+    }
     default:
       throw StatusException(
           "FilterCreate",
@@ -171,17 +171,18 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     };
     }
     case FilterType::FILTER_WEBP: {
-#ifdef TILEDB_WEBP
-      auto filter_config = deserializer.read<WebpFilter::FilterConfig>();
-      return make_shared<WebpFilter>(
-          HERE(),
-          filter_config.quality,
-          filter_config.format,
-          filter_config.lossless);
-#else
-      throw StatusException(
-          "FilterCreate", "Deserialization error; built with TILEDB_WEBP=OFF");
-#endif
+      if constexpr (webp_filter_exists) {
+        auto filter_config = deserializer.read<WebpFilter::FilterConfig>();
+        return make_shared<WebpFilter>(
+            HERE(),
+            filter_config.quality,
+            filter_config.format,
+            filter_config.lossless);
+      } else {
+        throw StatusException(
+            "FilterCreate",
+            "Deserialization error; built with TILEDB_WEBP=OFF");
+      }
     }
     default:
       throw StatusException(

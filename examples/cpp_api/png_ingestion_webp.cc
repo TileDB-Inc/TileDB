@@ -1,5 +1,5 @@
 /**
- * @file   png_ingestion_webp.cc
+ * @file png_ingestion_webp.cc
  *
  * @section LICENSE
  *
@@ -28,25 +28,24 @@
  * @section DESCRIPTION
  *
  * This is a simple ingestor program for TileDB that ingests PNG data into an
- * array using WebP filter
+ * array using WebP filter.
  */
 
 #include <cassert>
 #include <cstdio>
 
 #include <png.h>
-// Note: on some macOS platforms with a brew-installed libpng, use this instead:
-//#include <libpng16/png.h>
 
-// Include the TileDB C++ API headers
 #include <tiledb/tiledb>
 
 using namespace tiledb;
 
-std::vector<uint8_t> read, write;
+// Vectors to test png data read matches data read from array after ingestion.
+// For lossless compression these vectors should match exactly.
+std::vector<uint8_t> image_read, array_read;
 
-// Colorspace stride
 const unsigned colorspace = TILEDB_WEBP_RGBA;
+// Colorspace stride determines pixel depth. RGB, BGR=3 and RGBA, BGRA=4.
 const unsigned pixel_depth = colorspace < TILEDB_WEBP_RGBA ? 3 : 4;
 const float quality_factor = 100.0f;
 const bool lossless = true;
@@ -93,7 +92,7 @@ std::vector<uint8_t*> read_png(
   if (png_get_valid(png, info, PNG_INFO_tRNS))
     png_set_tRNS_to_alpha(png);
 
-  // If example is ran with RGBA ensure alpha is present
+  // If example is ran with RGBA ensure alpha is present.
   if (colorspace == TILEDB_WEBP_RGBA || colorspace == TILEDB_WEBP_BGRA) {
     // These color_type don't have an alpha channel then fill it with 0xff.
     if (color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY ||
@@ -101,8 +100,7 @@ std::vector<uint8_t*> read_png(
       png_set_filler(png, 255, PNG_FILLER_AFTER);
   }
 
-  // Since we read in BGR and write in BGR colors will not change
-  // + Comment out this condition and colors flip; read in RGB and write in BGR
+  // Inform libpng if we are reading using BGR(A) format.
   if (colorspace == TILEDB_WEBP_BGR || colorspace == TILEDB_WEBP_BGRA) {
     png_set_bgr(png);
   }
@@ -126,7 +124,7 @@ std::vector<uint8_t*> read_png(
 
   for (unsigned y = 0; y < *height; y++) {
     for (unsigned x = 0; x < *width * pixel_depth; x++) {
-      read.push_back(row_pointers[y][x]);
+      image_read.push_back(row_pointers[y][x]);
     }
   }
 
@@ -170,6 +168,8 @@ void write_png(
       colorspace == TILEDB_WEBP_RGB || colorspace == TILEDB_WEBP_BGR ?
           PNG_COLOR_TYPE_RGB :
           PNG_COLOR_TYPE_RGBA;
+
+  // Inform libpng if we are writing using BGR(A) format.
   if (colorspace == TILEDB_WEBP_BGR || colorspace == TILEDB_WEBP_BGRA) {
     png_set_bgr(png);
   }
@@ -186,9 +186,6 @@ void write_png(
       PNG_FILTER_TYPE_DEFAULT);
   png_write_info(png, info);
 
-  // To remove alpha channel for PNG_COLOR_TYPE_RGB format use png_set_filler()
-  //     png_set_filler(png, 0, PNG_FILLER_AFTER);
-
   png_write_image(png, row_pointers.data());
   png_write_end(png, NULL);
 
@@ -199,9 +196,9 @@ void write_png(
 /**
  * Create a TileDB array suitable for storing pixel data.
  *
- * @param width Number of columns in array domain
- * @param height Number of rows in array domain
- * @param array_path Path to array to create
+ * @param width Number of columns in array domain.
+ * @param height Number of rows in array domain.
+ * @param array_path Path to array to create.
  */
 void create_array(
     unsigned width, unsigned height, const std::string& array_path) {
@@ -211,24 +208,24 @@ void create_array(
     vfs.remove_dir(array_path);
   }
   Domain domain(ctx);
-  // We use `width * 4` for X dimension to allow for RGBA (4) elements per-pixel
+  // We use `width * 4` for X dimension to allow RGBA (4) elements per-pixel.
   domain
       .add_dimension(
           Dimension::create<unsigned>(ctx, "y", {{1, height}}, height / 2))
       .add_dimension(Dimension::create<unsigned>(
           ctx, "x", {{1, width * pixel_depth}}, (width / 2) * pixel_depth));
 
-  // To compress using webp we need RGBA in a single buffer
+  // To compress using webp we need RGBA in a single buffer.
   ArraySchema schema(ctx, TILEDB_DENSE);
   Attribute rgba = Attribute::create<uint8_t>(ctx, "rgba");
 
-  // Create WebP filter and set options
+  // Create WebP filter and set options.
   Filter webp(ctx, TILEDB_FILTER_WEBP);
   webp.set_option(TILEDB_WEBP_INPUT_FORMAT, &colorspace);
   webp.set_option(TILEDB_WEBP_QUALITY, &quality_factor);
   webp.set_option(TILEDB_WEBP_LOSSLESS, &lossless);
 
-  // Add to FilterList and set attribute filters
+  // Add to FilterList and set attribute filters.
   FilterList filterList(ctx);
   filterList.add_filter(webp);
   rgba.set_filter_list(filterList);
@@ -236,7 +233,7 @@ void create_array(
   schema.set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}}).set_domain(domain);
   schema.add_attribute(rgba);
 
-  // Create the (empty) array on disk.
+  // Create the empty array on disk.
   Array::create(array_path, schema);
 }
 
@@ -247,7 +244,7 @@ void create_array(
  * @param array_path Path of array to create.
  */
 void ingest_png(const std::string& input_png, const std::string& array_path) {
-  // Read the png file into memory
+  // Read the png file into memory.
   unsigned width, height;
   std::vector<uint8_t*> row_pointers = read_png(input_png, &width, &height);
 
@@ -289,8 +286,8 @@ void ingest_png(const std::string& input_png, const std::string& array_path) {
  * Reads image data from a TileDB array using WebP filter
  * and writes a new image with the resulting image data.
  *
- * @param array_path Path of array to read from.
  * @param output_png Path of .png image to create.
+ * @param array_path Path of array to read from.
  */
 void read_png_array(
     const std::string& output_png, const std::string& array_path) {
@@ -306,7 +303,7 @@ void read_png_array(
   std::vector<unsigned> subarray = {1, array_height, 1, array_width};
   auto output_width = subarray[3], output_height = subarray[1];
 
-  // Allocate query and set subarray
+  // Allocate query and set subarray.
   std::vector<uint8_t> rgba(output_height * output_width);
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR)
@@ -320,21 +317,21 @@ void read_png_array(
 
   // Allocate a buffer suitable for passing to libpng.
   std::vector<uint8_t*> png_buffer;
-  write.resize(output_height * output_width);
+  array_read.resize(output_height * output_width);
   size_t offset = 0;
   for (unsigned y = 0; y < output_height; y++) {
     png_buffer.push_back((uint8_t*)std::malloc(output_width * sizeof(uint8_t)));
     std::memcpy(png_buffer[y], rgba.data() + offset, output_width);
-    std::memcpy(write.data() + offset, png_buffer[y], output_width);
+    std::memcpy(array_read.data() + offset, png_buffer[y], output_width);
     offset += output_width;
   }
 
   if (lossless) {
     for (unsigned y = 0; y < output_height; y++) {
       for (unsigned x = 0; x < output_width; x++) {
-        // This will sometimes pass lossy compression, but always for lossless
+        // This will sometimes pass lossy compression, but always for lossless.
         size_t pos = (y * output_width) + x;
-        assert(read[pos] == write[pos]);
+        assert(image_read[pos] == array_read[pos]);
       }
     }
   }

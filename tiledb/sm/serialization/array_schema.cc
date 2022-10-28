@@ -239,13 +239,14 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
     case FilterType::FILTER_BITSORT: {
       return {Status::Ok(), tiledb::common::make_shared<BitSortFilter>(HERE())};
     }
-    case FilterType::FILTER_WEBP:
-#ifdef TILEDB_WEBP
-      return {Status::Ok(), tiledb::common::make_shared<WebpFilter>(HERE())};
-#else
-      throw std::logic_error(
-          "Can't create WebP filter; built with TILEDB_WEBP=OFF");
-#endif
+    case FilterType::FILTER_WEBP: {
+      if constexpr (webp_filter_exists) {
+        return {Status::Ok(), tiledb::common::make_shared<WebpFilter>(HERE())};
+      } else {
+        throw std::logic_error(
+            "Can't create WebP filter; built with TILEDB_WEBP=OFF");
+      }
+    }
     default: {
       throw std::logic_error(
           "Invalid data received from filter pipeline capnp reader, unknown "

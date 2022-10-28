@@ -69,7 +69,7 @@ class Tile {
       uint32_t* const chunk_size);
 
   /**
-   * Override max_tile_chunk_size_ used to process tile chunks in parallel
+   * Override max_tile_chunk_size_ used to process tile chunks in parallel.
    *
    * @param max_tile_chunk_size The maximum chunk size.
    */

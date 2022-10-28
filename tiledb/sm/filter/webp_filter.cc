@@ -1,5 +1,5 @@
 /**
- * @file   webp_filter.cc
+ * @file webp_filter.cc
  *
  * @section LICENSE
  *
@@ -75,7 +75,7 @@ Status WebpFilter::run_forward(
 
   int extent_y = extents_.first, extent_x = extents_.second,
       pixel_depth = format_ < WebpInputFormat::WEBP_RGBA ? 3 : 4;
-  // X should be divisible by colorspace value count or RGB values will skew
+  // X should be divisible by colorspace pixel_depth or RGB values will skew.
   if (extent_x % pixel_depth != 0) {
     throw StatusException(Status_FilterError(
         pixel_depth == 3 ?
@@ -85,16 +85,16 @@ Status WebpFilter::run_forward(
 
   for (const auto& i : input_parts) {
     auto data = static_cast<const uint8_t*>(i.data());
-    // Number of bytes encoded; Encoded result data buffer
+    // Number of bytes encoded; Encoded result data buffer.
     size_t enc_size = 0;
     uint8_t* result = nullptr;
-    // Cleanup allocated data when we leave scope
+    // Cleanup allocated data when we leave scope.
     ScopedExecutor cleanup([&]() {
       if (enc_size > 0 && result != nullptr)
         WebPFree(result);
     });
-    // We divide extent_x by colorspace value count to get pixel-width of image
-    // + extent_x currently represents row stride
+    // We divide extent_x by colorspace value count to get pixel-width of image,
+    // extent_x currently represents row stride.
     switch (format_) {
       case WebpInputFormat::WEBP_RGB:
         if (lossless_) {
@@ -157,12 +157,12 @@ Status WebpFilter::run_forward(
             "Filter option TILEDB_FILTER_WEBP_FORMAT must be set"));
     }
 
-    // Check if encoding failed
+    // Check if encoding failed.
     if (enc_size == 0) {
       throw StatusException(Status_FilterError("Error encoding image data"));
     }
 
-    // Write encoded data to output buffer
+    // Write encoded data to output buffer.
     throw_if_not_ok(output_metadata->write(&enc_size, sizeof(uint32_t)));
     throw_if_not_ok(output->prepend_buffer(enc_size));
     throw_if_not_ok(output->write(result, enc_size));
@@ -195,18 +195,18 @@ Status WebpFilter::run_reverse(
   for (uint32_t i = 0; i < num_parts; i++) {
     uint32_t enc_size;
     uint8_t* result = nullptr;
-    // Cleanup allocated data when we leave scope
+    // Cleanup allocated data when we leave scope.
     ScopedExecutor cleanup([&]() {
       if (enc_size > 0 && result != nullptr)
         WebPFree(result);
     });
-    // Read size of data encoded from input metadata
+    // Read size of data encoded from input metadata.
     throw_if_not_ok(input_metadata->read(&enc_size, sizeof(uint32_t)));
-    // Read encoded data from input buffer
+    // Read encoded data from input buffer.
     ConstBuffer part(nullptr, 0);
     throw_if_not_ok(input->get_const_buffer(enc_size, &part));
 
-    // Decode data
+    // Decode data.
     auto data = static_cast<const uint8_t*>(part.data());
     int width, height;
     switch (format_) {
@@ -227,7 +227,7 @@ Status WebpFilter::run_reverse(
             "Filter option TILEDB_FILTER_WEBP_FORMAT must be set"));
     }
 
-    // Check if decoding failed
+    // Check if decoding failed.
     if (result == nullptr) {
       throw StatusException(Status_FilterError("Error decoding image data"));
     }
@@ -314,12 +314,8 @@ void WebpFilter::serialize_impl(Serializer& serializer) const {
 }
 
 void WebpFilter::set_extent(const std::vector<ByteVecValue>& extents) {
-  if (extents.size() != 2) {
-    throw StatusException(
-        Status_FilterError("WebP filter can only be applied to 2D arrays"));
-  }
-  extents_ =
-      std::make_pair(extents[0].rvalue_as<int>(), extents[1].rvalue_as<int>());
+  extents_ = std::make_pair(
+      extents[0].rvalue_as<uint64_t>(), extents[1].rvalue_as<uint64_t>());
   Tile::set_max_tile_chunk_size(extents_.first * extents_.second);
 }
 

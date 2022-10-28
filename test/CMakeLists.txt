@@ -348,8 +348,8 @@ if (TILEDB_WEBP)
   find_package(PNG)
   if (PNG_FOUND)
     target_compile_definitions(tiledb_unit PRIVATE -DPNG_FOUND)
-    # If libpng is available, the test can write output images for visual checking
-    # If libpng is not available, the test runs on pixel data alone with no output images
+    # If libpng is available, the test can write output images for visual checking.
+    # If libpng is not available, the test runs on pixel data alone with no output images.
     target_link_libraries(tiledb_unit PRIVATE "${PNG_LIBRARIES}")
     target_include_directories(tiledb_unit PRIVATE "${PNG_INCLUDE_DIRS}")
     target_compile_definitions(tiledb_unit PRIVATE "${PNG_DEFINITIONS}")
