@@ -169,11 +169,11 @@ TEST_CASE_METHOD(
   SECTION("no serialization") {
     serialized_writes = false;
   }
-  SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
     serialized_writes = true;
-#endif
   }
+#endif
 
   for (const auto& attr_name : attr_names) {
     for (const auto& fs : fs_vec_) {
@@ -283,11 +283,11 @@ TEST_CASE_METHOD(
   SECTION("no serialization") {
     serialized_writes = false;
   }
-  SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
     serialized_writes = true;
-#endif
   }
+#endif
   for (const auto& fs : fs_vec_) {
     std::string temp_dir = fs->temp_dir();
     std::string array_name = temp_dir;
@@ -399,11 +399,11 @@ TEST_CASE_METHOD(
   SECTION("no serialization") {
     serialized_writes = false;
   }
-  SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
     serialized_writes = true;
-#endif
   }
+#endif
   for (const auto& fs : fs_vec_) {
     std::string temp_dir = fs->temp_dir();
     std::string array_name = temp_dir;

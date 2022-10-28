@@ -910,6 +910,16 @@ TEST_CASE_METHOD(
 TEST_CASE(
     "Sparse global order reader: user buffer cannot fit single cell",
     "[sparse-global-order][user-buffer][too-small]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   std::string array_name = "test_sparse_global_order";
   Context ctx;
   VFS vfs(ctx);
@@ -948,15 +958,7 @@ TEST_CASE(
   query.set_data_buffer("d1", d1);
   query.set_data_buffer("a", a1_data);
   query.set_offsets_buffer("a", a1_offsets);
-  bool serialized_writes = false;
-  SECTION("no serialization") {
-    serialized_writes = false;
-  }
-  SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
-#endif
-  }
+
   if (!serialized_writes) {
     CHECK_NOTHROW(query.submit());
     query.finalize();

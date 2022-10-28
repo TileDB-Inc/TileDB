@@ -5835,6 +5835,16 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, global order with 0-sized buffers",
     "[capi][sparse][global-check][zero-buffers]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
                            "sparse_write_global_check";
@@ -5881,15 +5891,6 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(ctx, query, "d2", coords_dim2, &zero_size);
   CHECK(rc == TILEDB_OK);
 
-  bool serialized_writes = false;
-  SECTION("no serialization") {
-    serialized_writes = false;
-  }
-  SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
-#endif
-  }
   if (!serialized_writes) {
     rc = tiledb_query_submit(ctx, query);
     CHECK(rc == TILEDB_OK);
@@ -6105,6 +6106,16 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers, global write",
     "[capi][sparse][split-coords][global]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
                            "sparse_split_coords_global";
@@ -6174,15 +6185,6 @@ TEST_CASE_METHOD(
       ctx_, query, "d2", buffer_d2, &buffer_d2_size);
   CHECK(rc == TILEDB_OK);
 
-  bool serialized_writes = false;
-  SECTION("no serialization") {
-    serialized_writes = false;
-  }
-  SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
-#endif
-  }
   if (!serialized_writes) {
     rc = tiledb_query_submit(ctx_, query);
     CHECK(rc == TILEDB_OK);
@@ -6878,6 +6880,16 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "Sparse array: 2D, multi write global order",
     "[capi][sparse][2D][multi-write]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   // Create and write array
   SupportedFsLocal local_fs;
   std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
@@ -6948,15 +6960,6 @@ TEST_CASE_METHOD(
     }
   }
 
-  bool serialized_writes = false;
-  SECTION("no serialization") {
-    serialized_writes = false;
-  }
-  SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
-#endif
-  }
   if (!serialized_writes) {
     rc = tiledb_query_submit(ctx_, query);
     CHECK(rc == TILEDB_OK);

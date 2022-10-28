@@ -1447,6 +1447,7 @@ TEST_CASE(
 }
 
 void write_sparse_array_string_dim(
+    const bool serialized_writes,
     Context ctx,
     const std::string& array_name,
     std::string& data,
@@ -1458,16 +1459,7 @@ void write_sparse_array_string_dim(
   query.set_data_buffer("dim1", (char*)data.data(), data.size());
   query.set_offsets_buffer("dim1", data_offsets.data(), data_offsets.size());
 
-  bool serialized_writes = false;
-  SECTION("no serialization") {
-    serialized_writes = false;
-  }
-  SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
-#endif
-  }
-  if (!serialized_writes || layout != TILEDB_GLOBAL_ORDER) {
+  if (!serialized_writes) {
     CHECK_NOTHROW(query.submit());
     query.finalize();
   } else {
@@ -1552,7 +1544,7 @@ TEST_CASE(
 
   SECTION("Unordered write") {
     write_sparse_array_string_dim(
-        ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
+        false, ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
     SECTION("Row major read") {
       read_and_check_sparse_array_string_dim(
           ctx, array_name, data, data_elem_offsets, TILEDB_ROW_MAJOR);
@@ -1567,8 +1559,18 @@ TEST_CASE(
     }
   }
   SECTION("Global order write") {
+#ifdef TILEDB_SERIALIZATION
+    bool serialized_writes = GENERATE(true, false);
+#else
+    bool serialized_writes = false;
+#endif
     write_sparse_array_string_dim(
-        ctx, array_name, data, data_elem_offsets, TILEDB_GLOBAL_ORDER);
+        serialized_writes,
+        ctx,
+        array_name,
+        data,
+        data_elem_offsets,
+        TILEDB_GLOBAL_ORDER);
     SECTION("Row major read") {
       read_and_check_sparse_array_string_dim(
           ctx, array_name, data, data_elem_offsets, TILEDB_ROW_MAJOR);

@@ -63,7 +63,8 @@ struct DenseNegFx {
   void create_dense_vector(const std::string& path);
   void create_dense_array(const std::string& path);
   void write_dense_vector(const std::string& path);
-  void write_dense_array_global(const std::string& path);
+  void write_dense_array_global(
+      const std::string& path, const bool serialized_writes);
   void write_dense_array_row(const std::string& path);
   void write_dense_array_col(const std::string& path);
   void read_dense_vector(const std::string& path);
@@ -250,7 +251,8 @@ void DenseNegFx::write_dense_vector(const std::string& path) {
   tiledb_query_free(&query);
 }
 
-void DenseNegFx::write_dense_array_global(const std::string& path) {
+void DenseNegFx::write_dense_array_global(
+    const std::string& path, const bool serialized_writes) {
   // Open array
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, path.c_str(), &array);
@@ -270,15 +272,7 @@ void DenseNegFx::write_dense_array_global(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
-  bool serialized_writes = false;
-  SECTION("no serialization") {
-    serialized_writes = false;
-  }
-  SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
-#endif
-  }
+
   if (!serialized_writes) {
     rc = tiledb_query_submit(ctx_, query);
     REQUIRE(rc == TILEDB_OK);
@@ -537,13 +531,23 @@ TEST_CASE_METHOD(
     DenseNegFx,
     "C API: Test 2d dense array with negative domain",
     "[capi][dense-neg][dense-neg-array]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   SupportedFsLocal local_fs;
   std::string vector_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "dense_neg_array";
   create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   create_dense_array(vector_name);
-  write_dense_array_global(vector_name);
+  write_dense_array_global(vector_name, serialized_writes);
   write_dense_array_row(vector_name);
   write_dense_array_col(vector_name);
   read_dense_array_global(vector_name);
