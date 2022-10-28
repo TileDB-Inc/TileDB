@@ -30,9 +30,12 @@
  * Tests the C++ API for bitsort filter related functions.
  */
 
+#include <iostream> // TODO: delete
 #include <optional>
 #include <random>
 #include <tuple>
+#include <utility>
+#include <map>
 #include <vector>
 
 #include <test/support/tdb_catch.h>
@@ -46,6 +49,21 @@ const int BITSORT_DIM_HI = 10;
 const int TILE_EXTENT = 4;
 const int CAPACITY = 32;
 const uint64_t SEED = 0xADA65ED6;
+
+// Global maps to convert coordinates to their index in hilbert order.
+std::map<std::pair<int, int>, uint64_t> hilbert_2d_map;
+// std::unordered_map<std::tuple<int, int, int>, uint64_t> hilbert_3d_map;
+
+void set_hilbert_2d_map() {
+  // TODO: change this to actually generate this!
+  std::vector<std::tuple<int, int>> coords = {
+    std::make_tuple(1, 1), std::make_tuple(2, 1), std::make_tuple(3, 1), std::make_tuple(4, 1), std::make_tuple(5, 1), std::make_tuple(6, 1), std::make_tuple(7, 1), std::make_tuple(8, 1), std::make_tuple(9, 1), std::make_tuple(10, 1), std::make_tuple(1, 2), std::make_tuple(2, 2), std::make_tuple(3, 2), std::make_tuple(4, 2), std::make_tuple(5, 2), std::make_tuple(6, 2), std::make_tuple(7, 2), std::make_tuple(8, 2), std::make_tuple(9, 2), std::make_tuple(10, 2), std::make_tuple(1, 3), std::make_tuple(2, 3), std::make_tuple(3, 3), std::make_tuple(4, 3), std::make_tuple(5, 3), std::make_tuple(6, 3), std::make_tuple(7, 3), std::make_tuple(8, 3), std::make_tuple(9, 3), std::make_tuple(10, 3), std::make_tuple(1, 4), std::make_tuple(2, 4), std::make_tuple(3, 4), std::make_tuple(4, 4), std::make_tuple(5, 4), std::make_tuple(6, 4), std::make_tuple(7, 4), std::make_tuple(8, 4), std::make_tuple(9, 4), std::make_tuple(10, 4), std::make_tuple(1, 5), std::make_tuple(2, 5), std::make_tuple(3, 5), std::make_tuple(4, 5), std::make_tuple(5, 5), std::make_tuple(6, 5), std::make_tuple(7, 5), std::make_tuple(8, 5), std::make_tuple(9, 5), std::make_tuple(10, 5), std::make_tuple(1, 6), std::make_tuple(2, 6), std::make_tuple(3, 6), std::make_tuple(4, 6), std::make_tuple(5, 6), std::make_tuple(6, 6), std::make_tuple(7, 6), std::make_tuple(8, 6), std::make_tuple(9, 6), std::make_tuple(10, 6), std::make_tuple(1, 7), std::make_tuple(2, 7), std::make_tuple(3, 7), std::make_tuple(4, 7), std::make_tuple(5, 7), std::make_tuple(6, 7), std::make_tuple(7, 7), std::make_tuple(8, 7), std::make_tuple(9, 7), std::make_tuple(10, 7), std::make_tuple(1, 8), std::make_tuple(2, 8), std::make_tuple(3, 8), std::make_tuple(4, 8), std::make_tuple(5, 8), std::make_tuple(6, 8), std::make_tuple(7, 8), std::make_tuple(8, 8), std::make_tuple(9, 8), std::make_tuple(10, 8), std::make_tuple(1, 9), std::make_tuple(2, 9), std::make_tuple(3, 9), std::make_tuple(4, 9), std::make_tuple(5, 9), std::make_tuple(6, 9), std::make_tuple(7, 9), std::make_tuple(8, 9), std::make_tuple(9, 9), std::make_tuple(10, 9), std::make_tuple(1, 10), std::make_tuple(2, 10), std::make_tuple(3, 10), std::make_tuple(4, 10), std::make_tuple(5, 10), std::make_tuple(6, 10), std::make_tuple(7, 10), std::make_tuple(8, 10), std::make_tuple(9, 10), std::make_tuple(10, 10)
+  };
+
+  for (uint64_t i = 0; i < coords.size(); ++i) {
+    hilbert_2d_map.insert(std::make_pair(coords[i], i));
+  }
+}
 
 // Defining distribution parameters.
 typedef typename std::uniform_int_distribution<uint64_t>
@@ -122,7 +140,7 @@ DimensionDataMetadata<DimType> set_1d_dim_buffers() {
  * @returns The dimension storage buffers and the dimension index map.
  */
 template <typename DimType>
-DimensionDataMetadata<DimType> set_2d_dim_buffers(tiledb_layout_t read_layout) {
+DimensionDataMetadata<DimType> set_2d_dim_buffers(tiledb_layout_t read_layout, bool hilbert_order) {
   std::vector<DimType> x_dims_data;
   std::vector<DimType> y_dims_data;
   std::vector<DimIdxValue> dim_idx_map;
@@ -155,6 +173,9 @@ DimensionDataMetadata<DimType> set_2d_dim_buffers(tiledb_layout_t read_layout) {
           } else if (read_layout == TILEDB_COL_MAJOR) {
             read_index =
                 ((y - BITSORT_DIM_LO) * element_size) + (x - BITSORT_DIM_LO);
+          } else if (hilbert_order) {
+            std::tuple<int, int> elem = std::make_tuple(x, y);
+            read_index = hilbert_2d_map[elem];
           }
 
           x_dims_data.emplace_back(static_cast<DimType>(x));
@@ -291,6 +312,7 @@ void check_read(
   for (uint64_t i = 0; i < num_cells; ++i) {
     auto& dim_value = dim_idx_map[i];
     int read_idx = dim_value.read_idx_;
+    (void)read_idx;
     CHECK(global_a[i] == a_data_read[read_idx]);
 
     if (has_dimensions) {
@@ -301,15 +323,14 @@ void check_read(
       if (num_dims == 2) {
         // Check y dimension.
         REQUIRE(dim_value.y_.has_value());
-        CHECK(
-            y_dim_data[read_idx] == static_cast<DimType>(dim_value.y_.value()));
+        CHECK(y_dim_data[read_idx] == static_cast<DimType>(dim_value.y_.value()));
+        std::cout << "std::make_tuple(" << x_dim_data[i] << ", " << y_dim_data[i] << "), ";
       }
 
       if (num_dims == 3) {
         // Check z dimension.
         REQUIRE(dim_value.z_.has_value());
-        CHECK(
-            z_dim_data[read_idx] == static_cast<DimType>(dim_value.z_.value()));
+        CHECK(z_dim_data[read_idx] == static_cast<DimType>(dim_value.z_.value()));
       }
     }
   }
@@ -447,7 +468,7 @@ void bitsort_filter_api_test(
   auto&& [x_dims_data, y_dims_data, z_dims_data, dim_idx_map]{
       (num_dims == 1) ?
           set_1d_dim_buffers<DimType>() :
-          ((num_dims == 2) ? set_2d_dim_buffers<DimType>(read_layout) :
+          ((num_dims == 2) ? set_2d_dim_buffers<DimType>(read_layout, hilbert_order) :
                              set_3d_dim_buffers<DimType>(read_layout))};
 
   // Setting data buffers.
@@ -681,6 +702,8 @@ TEMPLATE_TEST_CASE(
   bool set_capacity = GENERATE(true, false);
   bool hilbert_order = false; // TODO: set to true
 
+  // TODO: put map generation code here?
+
   // Run tests.
   if constexpr (std::is_floating_point<TestType>::value) {
     bitsort_filter_api_test<TestType, FloatDistribution>(
@@ -717,10 +740,12 @@ TEST_CASE("Hilbert debugging", "[cppapi][filter][bitsort][whee]") {
   uint64_t num_dims = 2;
   tiledb_layout_t write_layout =
       TILEDB_UNORDERED;
-  tiledb_layout_t read_layout = TILEDB_GLOBAL_ORDER;
+  tiledb_layout_t read_layout = TILEDB_COL_MAJOR;
   bool set_subarray = true;
   bool set_capacity = false;
   bool hilbert_order = true;
+
+  set_hilbert_2d_map();
 
   bitsort_filter_api_test<int32_t, float, IntDistribution>(
         array_name,

@@ -52,7 +52,10 @@ class HilbertCmpQB;
 
 class BitSortFilterMetadataType {
  public:
-  BitSortFilterMetadataType() : dim_tiles_(nullptr), comparator_(nullptr) {}
+  BitSortFilterMetadataType()
+      : dim_tiles_(nullptr)
+      , comparator_(nullptr) {
+  }
 
   BitSortFilterMetadataType(
       std::vector<Tile*>* dim_tiles,

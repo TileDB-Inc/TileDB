@@ -808,11 +808,11 @@ class ReaderBase : public StrategyBase {
    * metadata.
    * @tparam CmpObject The comparator object being stored.
    */
-    template <
-        typename CmpObject,
-        typename std::enable_if_t<
-            std::is_same_v<CmpObject, HilbertCmpQB> ||
-            std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
+  template <
+      typename CmpObject,
+      typename std::enable_if_t<
+          std::is_same_v<CmpObject, HilbertCmpQB> ||
+          std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
   struct BitSortFilterMetadataStorage;
 
   /* ********************************* */
