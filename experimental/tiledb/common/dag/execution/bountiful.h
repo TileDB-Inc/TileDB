@@ -40,56 +40,69 @@
 #define TILEDB_DAG_BOUNTIFUL_H
 
 #include <future>
+#include <iostream>
 #include <thread>
 #include <vector>
 
 namespace tiledb::common {
 
+
+
+template <class Node>
 class BountifulScheduler {
  public:
   BountifulScheduler() = default;
   ~BountifulScheduler() = default;
 
-  template <class Fn>
-  auto async(Fn&& f) {
-    static_assert(std::is_invocable_v<Fn>);
-    return std::async(std::launch::async, std::forward<Fn>(f));
+  std::vector<std::future<void>> futures_{};
+  std::vector<std::function<void()>> tasks_{};
+
+  template <class C = Node>
+  void submit(Node& n, std::enable_if_t<std::is_same_v<decltype(n.resume()), void>, void*> = nullptr)  {
+    tasks_.emplace_back([&n]() {
+
+    auto mover = n.get_mover();
+    if (mover->debug_enabled()) {
+      std::cout << "producer starting run on " << n.get_mover()
+                << std::endl;
+    }
+
+    while (!mover->is_stopping()) {
+      n.resume();
+    }
+    });
   }
 
-  template <class Fn>
-  auto async(std::vector<Fn>&& f) {
-    std::vector<std::future<void>> futures;
-    futures.reserve(size(f));
-    for (auto&& t : f) {
-      futures.emplace_back(std::async(std::launch::async, std::forward<Fn>(t)));
+  template <class C = Node>
+  void submit(Node&& n, std::enable_if_t<std::is_same_v<decltype(n.resume()), void>, void*> = nullptr) {
+    futures_.emplace_back(std::async(std::launch::async, [&n]() { n.resume(); }));    
+  }
+
+  template <class C = Node>
+  void submit(C& n, std::enable_if_t<(!std::is_same_v<decltype(n.resume()), void> && std::is_same_v<decltype(n.run()), void>), void*> = nullptr)  {
+    futures_.emplace_back(std::async(std::launch::async, [&n]() { n.run(); }));
+  }
+
+  template <class C = Node>
+  void submit(C& n, std::enable_if_t<(std::is_same_v<decltype(n.resume()), void> && std::is_same_v<decltype(n.run()), void>), void*> = nullptr)  {
+    futures_.emplace_back(std::async(std::launch::async, [&n]() { n.run(); }));
+  }
+
+
+  auto sync_wait_all() {
+    for (auto&& t : tasks_) {
+      futures_.emplace_back(std::async(std::launch::async, t));
     }
-    return futures;
+    for (auto&& t : futures_) {
+       t.get();
+    }
   }
 };
 
-template <class Fn>
-auto async(BountifulScheduler& sch, Fn&& f) {
-  return sch.async(std::forward<Fn>(f));
-}
 
-template <class R>
-auto sync_wait(std::future<R>& task) {
-  return task.get();
-}
 
-template <class R>
-auto sync_wait(std::future<R>&& task) {
-  return std::forward<std::future<R>>(task).get();
-}
 
-template <class R>
-auto sync_wait_all(std::vector<std::future<R>>&& tasks) {
-  std::vector<R> results;
-  for (auto&& t : tasks) {
-    results.emplace_back(t);
-  }
-  return results;
-}
+
 
 }  // namespace tiledb::common
 

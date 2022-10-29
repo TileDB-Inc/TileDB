@@ -1,5 +1,5 @@
 /**
- * @file throw_catch.cc
+ * @file experimental/tiledb/common/thread_pool/test/unit_throwcatch.h
  *
  * @section LICENSE
  *
@@ -28,4 +28,7 @@
  * @section DESCRIPTION
  */
 
-#include "throw_catch.h"
+#ifndef TILEDB_UNIT_throw_catch_H
+#define TILEDB_UNIT_throw_catch_H
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_UNIT_throw_catch_H

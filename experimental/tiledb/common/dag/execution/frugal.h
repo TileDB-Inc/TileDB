@@ -1,5 +1,5 @@
 /**
- * @file   throw_catch.h
+ * @file   throwcatch.h
  *
  * @section LICENSE
  *
@@ -558,7 +558,6 @@ class ThrowCatchTask : public std::shared_ptr<ThrowCatchTaskImpl<Node>> {
     return (*this)->task_state();
   }
 };
-
 
 template <class Node>
 class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node>> {

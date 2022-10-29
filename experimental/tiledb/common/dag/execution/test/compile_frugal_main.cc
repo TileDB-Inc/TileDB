@@ -1,5 +1,5 @@
 /**
- * @file throw_catch.cc
+ * @file compile_throwcatch_main.cc
  *
  * @section LICENSE
  *
@@ -24,8 +24,12 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
  */
 
-#include "throw_catch.h"
+#include "../throwcatch.h"
+
+using namespace tiledb::common;
+
+int main() {
+  (void)sizeof(ThrowcatchScheduler<size_t>(1));
+}

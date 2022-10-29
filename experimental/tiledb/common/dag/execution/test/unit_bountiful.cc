@@ -49,8 +49,10 @@ struct super_simple {
   }
   super_simple(super_simple&&) = default;
 
-  void operator()() {
-    i_++;
+
+
+  void resume() {
+    ++i_;
   }
 };
 
@@ -58,9 +60,9 @@ TEST_CASE("BountifulScheduler: Test construct one", "[bountiful_scheduler]") {
   i_ = 0;
   super_simple a;
 
-  BountifulScheduler sch;
-  auto b = async(sch, a);
-  sync_wait(b);
+  BountifulScheduler<super_simple> sch;
+  sch.submit(a);
+  sch.sync_wait_all();
   CHECK(i_ == 1);
 }
 
@@ -72,20 +74,19 @@ TEST_CASE(
     v.clear();
     CHECK(v.size() == 0);
 
-    BountifulScheduler sch;
+    BountifulScheduler<super_simple> sch;
 
     for (size_t j = 0; j < i; ++j) {
       v.emplace_back(super_simple{});
     }
     CHECK(v.size() == i);
     for (size_t j = 0; j < i; ++j) {
-      w[i] = async(sch, v[j]);
+      sch.submit(v[j]);
     }
     CHECK(v.size() == i);
     CHECK(w.size() == i);
-    for (size_t j = 0; j < i; ++j) {
-      sync_wait(w[j]);
-    }
+    sch.sync_wait_all();
+
     CHECK(i_ == i);
   }
 }

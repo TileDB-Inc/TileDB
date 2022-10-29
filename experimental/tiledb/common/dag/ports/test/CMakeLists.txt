@@ -31,6 +31,7 @@
 #
 dag_add_header_only_unit_test(pseudo_nodes)
 dag_add_header_only_unit_test(concurrency)
+dag_add_header_only_unit_test(ports)
 #
 # Define sieve test -- it is not catch-based
 #
