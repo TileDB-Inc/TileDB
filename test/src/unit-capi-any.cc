@@ -33,10 +33,10 @@
 
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
+#include <test/support/src/helpers.h>
 
 #include <cstring>
 #include <iostream>
-#include "helpers.h"
 
 struct AnyFx {
   const int C1 = 5;

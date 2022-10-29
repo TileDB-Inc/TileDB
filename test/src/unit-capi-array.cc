@@ -31,14 +31,14 @@
  * Tests of C API for (dense or sparse) array operations.
  */
 
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <iostream>
 
-#include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
-#include "test/src/serialization_wrappers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/serialization_wrappers.h"
+#include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
 #if !defined(NOMINMAX)
 #define NOMINMAX

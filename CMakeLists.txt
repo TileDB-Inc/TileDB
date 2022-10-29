@@ -422,6 +422,8 @@ add_subdirectory(experimental)
 # Build the TileDB library
 add_subdirectory(tiledb)
 
+add_subdirectory(test/support)
+
 # Build examples
 add_subdirectory(examples)
 

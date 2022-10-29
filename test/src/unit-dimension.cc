@@ -30,7 +30,7 @@
  * Tests the `Dimension` class.
  */
 
-#include "test/src/helpers-dimension.h"
+#include "test/support/src/helpers-dimension.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/hilbert.h"
