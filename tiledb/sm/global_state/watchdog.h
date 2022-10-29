@@ -34,6 +34,7 @@
 #define TILEDB_WATCHDOG_H
 
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <thread>
 

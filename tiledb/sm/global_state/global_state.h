@@ -33,6 +33,7 @@
 #ifndef TILEDB_GLOBAL_STATE_H
 #define TILEDB_GLOBAL_STATE_H
 
+#include <functional>
 #include <mutex>
 #include <set>
 #include <string>
