@@ -1041,6 +1041,15 @@ class Query {
    */
   void set_dimension_label_ordered_read(bool increasing_order);
 
+  /**
+   * Set the fragment size.
+   *
+   * @param fragment_size Fragment size.
+   */
+  void set_fragment_size(uint64_t fragment_size) {
+    fragment_size_ = fragment_size;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -1194,6 +1203,14 @@ class Query {
    * NOTE: Only used when is_dimension_label_order_read_ == true.
    */
   bool dimension_label_increasing_;
+
+  /**
+   * The desired fragment size. The writer will create a new fragment once
+   * this size has been reached.
+   *
+   * Note: This is only used for global order writes.
+   */
+  uint64_t fragment_size_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

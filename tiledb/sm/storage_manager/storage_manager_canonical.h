@@ -444,6 +444,18 @@ class StorageManagerCanonical {
       ArrayDirectory array_dir, const std::vector<URI>& commit_uris_to_ignore);
 
   /**
+   * Writes a consolidated commits file.
+   *
+   * @param write_version Write version.
+   * @param array_dir ArrayDirectory where the data is stored.
+   * @param commit_uris Commit files to include.
+   */
+  void write_consolidated_commits_file(
+      format_version_t write_version,
+      ArrayDirectory array_dir,
+      const std::vector<URI>& commit_uris);
+
+  /**
    * Cleans up the array fragments.
    *
    * @param array_name The name of the array to be vacuumed.

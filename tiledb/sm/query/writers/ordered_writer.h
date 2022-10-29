@@ -91,9 +91,15 @@ class OrderedWriter : public WriterBase {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** Fragment URI. */
+  std::optional<URI> frag_uri_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Invoked on error. It removes the directory of the input URI. */
+  void clean_up();
 
   /**
    * Writes in an ordered layout (col- or row-major order). Applicable only
