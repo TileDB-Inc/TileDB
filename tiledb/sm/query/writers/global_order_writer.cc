@@ -772,8 +772,11 @@ Status GlobalOrderWriter::global_write() {
   // Filter all tiles
   RETURN_CANCEL_OR_ERROR(filter_tiles(&tiles));
 
-  for (uint64_t idx = 0; idx < tile_num;) {
+  uint64_t idx = 0;
+  while (idx < tile_num) {
     auto frag_meta = global_write_state_->frag_meta_;
+
+    // Compute the number of tiles that will fit in this fragment.
     auto num = num_tiles_to_write(idx, tile_num, tiles);
 
     // Set new number of tiles in the fragment metadata
@@ -1376,7 +1379,6 @@ uint64_t GlobalOrderWriter::num_tiles_to_write(
     }
 
     if (current_fragment_size_ + tile_size > fragment_size_) {
-      current_fragment_size_ = 0;
       return t - start;
     }
 
@@ -1415,6 +1417,7 @@ Status GlobalOrderWriter::start_new_fragment() {
   fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
 
   // Create a new fragment.
+  current_fragment_size_ = 0;
   RETURN_NOT_OK(create_fragment(
       !coords_info_.has_coords_, global_write_state_->frag_meta_));
 
