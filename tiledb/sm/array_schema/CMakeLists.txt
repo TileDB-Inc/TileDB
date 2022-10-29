@@ -123,6 +123,7 @@ if (TILEDB_TESTS)
         test/unit_dimension_label_reference.cc
         test/unit_dimension_label_schema.cc
         test/unit_domain_data.cc
+        test/unit_tile_domain.cc
     )
 
     add_test(
