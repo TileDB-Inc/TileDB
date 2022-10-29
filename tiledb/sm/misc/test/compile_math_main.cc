@@ -30,6 +30,5 @@
 
 int main() {
   (void)tiledb::sm::utils::math::ceil(1, 1);
-  (void)tiledb::sm::utils::math::log(1, 1);
   return 0;
 }
