@@ -61,7 +61,9 @@ GlobalState::GlobalState() {
   initialized_ = false;
 }
 
-Status GlobalState::init(const Config& config) {
+Status GlobalState::init(
+    std::function<void(StorageManager*)> cancel_all_tasks,
+    const Config& config) {
   std::unique_lock<std::mutex> lck(init_mtx_);
 
   // Get config params
@@ -78,7 +80,7 @@ Status GlobalState::init(const Config& config) {
     if (enable_signal_handlers) {
       RETURN_NOT_OK(SignalHandlers::GetSignalHandlers().initialize());
     }
-    RETURN_NOT_OK(Watchdog::GetWatchdog().initialize());
+    RETURN_NOT_OK(Watchdog::GetWatchdog().initialize(cancel_all_tasks));
     RETURN_NOT_OK(init_libcurl());
 
 #ifdef __linux__

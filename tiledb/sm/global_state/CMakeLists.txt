@@ -30,7 +30,6 @@ include(common NO_POLICY_SCOPE)
 # Object library for other units to depend upon
 #
 add_library(global_state OBJECT global_state.cc libcurl_state.cc signal_handlers.cc watchdog.cc)
-target_link_libraries(global_state PUBLIC storage_manager_stub)
 target_link_libraries(global_state PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(global_state PUBLIC config $<TARGET_OBJECTS:config>)
 

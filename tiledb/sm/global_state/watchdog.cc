@@ -64,7 +64,9 @@ Watchdog::~Watchdog() {
   thread_.join();
 }
 
-Status Watchdog::initialize() {
+Status Watchdog::initialize(
+    std::function<void(StorageManager*)> cancel_all_tasks) {
+  cancel_all_tasks_ = cancel_all_tasks;
   try {
     thread_ = std::thread([this]() { watchdog_thread(this); });
   } catch (const std::exception& e) {
@@ -86,7 +88,7 @@ void Watchdog::watchdog_thread(Watchdog* watchdog) {
 
     if (SignalHandlers::signal_received()) {
       for (auto* sm : GlobalState::GetGlobalState().storage_managers()) {
-        throw_if_not_ok(sm->cancel_all_tasks());
+        watchdog->cancel_all_tasks_(sm);
       }
     }
 

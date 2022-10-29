@@ -107,6 +107,10 @@ StorageManagerCanonical::StorageManagerCanonical(
   throw_if_not_ok(init());
 }
 
+void cancel_all_tasks_global(StorageManager* sm) {
+  throw_if_not_ok(sm->cancel_all_tasks());
+}
+
 Status StorageManagerCanonical::init() {
   // Get config params
   bool found = false;
@@ -121,7 +125,7 @@ Status StorageManagerCanonical::init() {
   // GlobalState must be initialized before `vfs->init` because S3::init calls
   // GetGlobalState
   auto& global_state = global_state::GlobalState::GetGlobalState();
-  RETURN_NOT_OK(global_state.init(config_));
+  RETURN_NOT_OK(global_state.init(cancel_all_tasks_global, config_));
 
   vfs_ = tdb_new(VFS, stats_, compute_tp_, io_tp_, config_);
 #ifdef TILEDB_SERIALIZATION

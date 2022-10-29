@@ -66,10 +66,14 @@ class GlobalState {
   /**
    * Initializes all TileDB global state in an idempotent and threadsafe way.
    *
+   * @param cancel_all_tasks Function to call to cancel all tasks on a storage
+   * manager object.
    * @param config The TileDB configuration parameters (or nullptr).
    * @return Status
    */
-  Status init(const Config& config = Config());
+  Status init(
+      std::function<void(StorageManager*)> cancel_all_tasks,
+      const Config& config = Config());
 
   /**
    * Register the given StorageManger instance.
