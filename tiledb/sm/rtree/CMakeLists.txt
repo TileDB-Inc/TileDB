@@ -1,9 +1,9 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/sm/rtree/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,21 +24,27 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
+include(common NO_POLICY_SCOPE)
 
-add_subdirectory(array)
-add_subdirectory(array_schema)
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(config)
-add_subdirectory(crypto)
-add_subdirectory(filesystem)
-add_subdirectory(filter)
-add_subdirectory(group)
-add_subdirectory(metadata)
-add_subdirectory(misc)
-add_subdirectory(query)
-add_subdirectory(rtree)
-add_subdirectory(stats)
-add_subdirectory(subarray)
-add_subdirectory(tile)
+#
+# Object library for other units to depend upon
+#
+add_library(rtree OBJECT rtree.cc)
+target_link_libraries(rtree PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(rtree PUBLIC dimension $<TARGET_OBJECTS:dimension>)
+target_link_libraries(rtree PUBLIC domain $<TARGET_OBJECTS:domain>)
+target_link_libraries(rtree PUBLIC math $<TARGET_OBJECTS:math>)
+
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_rtree EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_rtree)
+target_link_libraries(compile_rtree PRIVATE rtree)
+target_sources(compile_rtree PRIVATE
+    test/compile_rtree_main.cc $<TARGET_OBJECTS:rtree>
+)
+
+if (TILEDB_TESTS)
+  add_subdirectory(test)
+endif()

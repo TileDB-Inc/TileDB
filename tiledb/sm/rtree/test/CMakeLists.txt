@@ -1,9 +1,9 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/sm/rtree/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,21 +24,18 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
+find_package(Catch_EP REQUIRED)
 
-add_subdirectory(array)
-add_subdirectory(array_schema)
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(config)
-add_subdirectory(crypto)
-add_subdirectory(filesystem)
-add_subdirectory(filter)
-add_subdirectory(group)
-add_subdirectory(metadata)
-add_subdirectory(misc)
-add_subdirectory(query)
-add_subdirectory(rtree)
-add_subdirectory(stats)
-add_subdirectory(subarray)
-add_subdirectory(tile)
+add_executable(unit_rtree EXCLUDE_FROM_ALL)
+target_link_libraries(unit_rtree
+    PRIVATE rtree
+    PUBLIC Catch2::Catch2WithMain
+)
+target_link_libraries(unit_rtree)
+target_sources(unit_rtree PUBLIC main.cc unit_rtree.cc)
+
+add_test(
+    NAME "unit_rtree"
+    COMMAND $<TARGET_FILE:unit_rtree>
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
