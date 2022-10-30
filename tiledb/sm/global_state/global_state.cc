@@ -63,6 +63,7 @@ GlobalState::GlobalState() {
 
 Status GlobalState::init(
     std::function<void(StorageManager*)> cancel_all_tasks,
+    std::function<std::string(Config&)> get_cert_file,
     const Config& config) {
   std::unique_lock<std::mutex> lck(init_mtx_);
 
@@ -83,15 +84,7 @@ Status GlobalState::init(
     RETURN_NOT_OK(Watchdog::GetWatchdog().initialize(cancel_all_tasks));
     RETURN_NOT_OK(init_libcurl());
 
-#ifdef __linux__
-    // We attempt to find the linux ca cert bundle
-    // This only needs to happen one time, and then we will use the file found
-    // for each s3/rest call as appropriate
-    Posix posix;
-    ThreadPool tp{1};
-    throw_if_not_ok(posix.init(config_, &tp));
-    cert_file_ = utils::https::find_ca_certs_linux(posix);
-#endif
+    cert_file_ = get_cert_file(config_);
 
     initialized_ = true;
   }

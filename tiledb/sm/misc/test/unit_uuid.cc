@@ -53,10 +53,15 @@ std::mutex catch2_macro_mutex;
 void cancel_all_tasks(StorageManager*) {
 }
 
+std::string get_cert_file(Config&) {
+  return "";
+}
+
 TEST_CASE("UUID: Test generate", "[uuid]") {
   // Initialize global OpenSSL state if required.
-  REQUIRE(
-      global_state::GlobalState::GetGlobalState().init(cancel_all_tasks).ok());
+  REQUIRE(global_state::GlobalState::GetGlobalState()
+              .init(cancel_all_tasks, get_cert_file)
+              .ok());
 
   SECTION("- Serial") {
     std::string uuid0, uuid1, uuid2;

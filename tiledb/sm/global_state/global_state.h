@@ -69,11 +69,13 @@ class GlobalState {
    *
    * @param cancel_all_tasks Function to call to cancel all tasks on a storage
    * manager object.
+   * @param get_cert_file Functon to call to get the cert file.
    * @param config The TileDB configuration parameters (or nullptr).
    * @return Status
    */
   Status init(
       std::function<void(StorageManager*)> cancel_all_tasks,
+      std::function<std::string(Config&)> get_cert_file,
       const Config& config = Config());
 
   /**

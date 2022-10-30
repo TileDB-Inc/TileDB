@@ -111,6 +111,21 @@ void cancel_all_tasks_global(StorageManager* sm) {
   throw_if_not_ok(sm->cancel_all_tasks());
 }
 
+std::string get_cert_file(Config& config) {
+#ifdef __linux__
+  // We attempt to find the linux ca cert bundle
+  // This only needs to happen one time, and then we will use the file found
+  // for each s3/rest call as appropriate
+  Posix posix;
+  ThreadPool tp{1};
+  throw_if_not_ok(posix.init(config, &tp));
+  return utils::https::find_ca_certs_linux(posix);
+#else
+  (void)config;
+  return "";
+#endif
+}
+
 Status StorageManagerCanonical::init() {
   // Get config params
   bool found = false;
@@ -125,7 +140,8 @@ Status StorageManagerCanonical::init() {
   // GlobalState must be initialized before `vfs->init` because S3::init calls
   // GetGlobalState
   auto& global_state = global_state::GlobalState::GetGlobalState();
-  RETURN_NOT_OK(global_state.init(cancel_all_tasks_global, config_));
+  RETURN_NOT_OK(
+      global_state.init(cancel_all_tasks_global, get_cert_file, config_));
 
   vfs_ = tdb_new(VFS, stats_, compute_tp_, io_tp_, config_);
 #ifdef TILEDB_SERIALIZATION
