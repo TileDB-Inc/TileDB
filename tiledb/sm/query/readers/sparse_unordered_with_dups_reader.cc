@@ -108,6 +108,7 @@ bool SparseUnorderedWithDupsReader<BitmapType>::incomplete() const {
 template <class BitmapType>
 QueryStatusDetailsReason
 SparseUnorderedWithDupsReader<BitmapType>::status_incomplete_reason() const {
+  printf("AAA SparseUnorderedWithDupsReader::status_incomplete_reason\n");
   if (array_->is_remote())
     return QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE;
 

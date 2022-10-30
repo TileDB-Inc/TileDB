@@ -163,6 +163,7 @@ bool Reader::incomplete() const {
 }
 
 QueryStatusDetailsReason Reader::status_incomplete_reason() const {
+  printf("AAA Reader::status_incomplete_reason %d\n", (int)incomplete());
   return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
                         QueryStatusDetailsReason::REASON_NONE;
 }

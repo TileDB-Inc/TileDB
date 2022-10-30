@@ -567,8 +567,12 @@ Status index_read_state_from_capnp(
     SparseIndexReaderBase* reader) {
   auto read_state = reader->read_state();
 
+  printf("AAA serialization/query.cc read_state->done_adding_result_tiles PRE  %d\n",
+    (int)read_state->done_adding_result_tiles_);
   read_state->done_adding_result_tiles_ =
       read_state_reader.getDoneAddingResultTiles();
+  printf("AAA serialization/query.cc read_state->done_adding_result_tiles POST %d\n",
+    (int)read_state->done_adding_result_tiles_);
 
   assert(read_state_reader.hasFragTileIdx());
   read_state->frag_idx_.clear();

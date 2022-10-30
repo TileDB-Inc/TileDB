@@ -2983,6 +2983,8 @@ int32_t tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
 
 int32_t tiledb_query_submit_and_finalize(
     tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  printf("AAA tiledb_query_submit_and_finalize ENTER\n");
+  fflush(stdout);
   // Trivial case
   if (query == nullptr)
     return TILEDB_OK;
@@ -3006,13 +3008,23 @@ void tiledb_query_free(tiledb_query_t** query) {
 }
 
 int32_t tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  printf("AAA tiledb_query_submit ENTER\n");
+  fflush(stdout);
   // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR) {
+    printf("AAA tiledb_query_submit OUT1\n");
+    fflush(stdout);
     return TILEDB_ERR;
+  }
 
-  if (SAVE_ERROR_CATCH(ctx, query->query_->submit()))
+  if (SAVE_ERROR_CATCH(ctx, query->query_->submit())) {
+    printf("AAA tiledb_query_submit OUT2\n");
+    fflush(stdout);
     return TILEDB_ERR;
+  }
 
+  printf("AAA tiledb_query_submit EXIT\n");
+  fflush(stdout);
   return TILEDB_OK;
 }
 
@@ -3021,6 +3033,8 @@ int32_t tiledb_query_submit_async(
     tiledb_query_t* query,
     void (*callback)(void*),
     void* callback_data) {
+  printf("AAA tiledb_query_submit_async ENTER\n");
+  fflush(stdout);
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -8633,6 +8647,8 @@ int32_t tiledb_query_finalize(
 
 int32_t tiledb_query_submit_and_finalize(
     tiledb_ctx_t* ctx, tiledb_query_t* query) noexcept {
+  printf("AAA2 tiledb_query_submit_and_finalize ENTER\n");
+  fflush(stdout);
   return api_entry<detail::tiledb_query_submit_and_finalize>(ctx, query);
 }
 
@@ -8641,7 +8657,14 @@ void tiledb_query_free(tiledb_query_t** query) noexcept {
 }
 
 int32_t tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) noexcept {
-  return api_entry<detail::tiledb_query_submit>(ctx, query);
+  printf("AAA2 ----------------------------------------------------------------\n");
+  printf("AAA2 tiledb_query_submit ENTER\n");
+  fflush(stdout);
+  //return api_entry<detail::tiledb_query_submit>(ctx, query);
+  int32_t retval = api_entry<detail::tiledb_query_submit>(ctx, query);
+  printf("AAA2 tiledb_query_submit EXIT\n");
+  fflush(stdout);
+  return retval;
 }
 
 int32_t tiledb_query_submit_async(
@@ -8649,6 +8672,8 @@ int32_t tiledb_query_submit_async(
     tiledb_query_t* query,
     void (*callback)(void*),
     void* callback_data) noexcept {
+  printf("AAA2 tiledb_query_submit_async ENTER\n");
+  fflush(stdout);
   return api_entry<detail::tiledb_query_submit_async>(
       ctx, query, callback, callback_data);
 }

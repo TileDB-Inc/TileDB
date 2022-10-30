@@ -110,6 +110,9 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
 
 template <class BitmapType>
 bool SparseGlobalOrderReader<BitmapType>::incomplete() const {
+  printf("AAA SparseGlobalOrderReader::incomplete read_state_.done_adding_result_tiles_ %d memory_used_for_coords_total_ %lld\n",
+    (int)read_state_.done_adding_result_tiles_,
+    memory_used_for_coords_total_);
   return !read_state_.done_adding_result_tiles_ ||
          memory_used_for_coords_total_ != 0;
 }
@@ -117,6 +120,7 @@ bool SparseGlobalOrderReader<BitmapType>::incomplete() const {
 template <class BitmapType>
 QueryStatusDetailsReason
 SparseGlobalOrderReader<BitmapType>::status_incomplete_reason() const {
+  printf("AAA SparseGlobalOrderReader::status_incomplete_reason %d\n", (int)incomplete());
   return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
                         QueryStatusDetailsReason::REASON_NONE;
 }
@@ -168,6 +172,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
 
   // Handle empty array.
   if (fragment_metadata_.empty()) {
+    printf("AAA sparse_global_order_reader.cc dowork read_state_.done_adding_result_tiles_ = true\n");
     read_state_.done_adding_result_tiles_ = true;
     return Status::Ok();
   }
@@ -331,6 +336,7 @@ SparseGlobalOrderReader<BitmapType>::add_result_tile(
     const uint64_t t,
     const FragmentMetadata& frag_md) {
   if (ignored_tiles_.count(IgnoredTile(f, t))) {
+    printf("AAA add_result_tile frag = %d tile = %lld budget_exceeded = 0 at start\n", (int)f, (long long)t);
     return {Status::Ok(), false};
   }
 
@@ -348,6 +354,7 @@ SparseGlobalOrderReader<BitmapType>::add_result_tile(
   // Don't load more tiles than the memory budget.
   if (memory_used_for_coords_[f] + tiles_size > memory_budget_coords_tiles ||
       memory_used_for_qc_tiles_[f] + tiles_size_qc > memory_budget_qc_tiles) {
+    printf("AAA add_result_tile frag = %d tile = %lld budget_exceeded = 1\n", (int)f, (long long)t);
     return {Status::Ok(), true};
   }
 
@@ -370,6 +377,7 @@ SparseGlobalOrderReader<BitmapType>::add_result_tile(
       deletes_consolidation_no_purge_,
       frag_md);
 
+    printf("AAA add_result_tile frag = %d tile = %lld budget_exceeded = 0 at end\n", (int)f, (long long)t);
   return {Status::Ok(), false};
 }
 
@@ -433,6 +441,7 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
                       " , num fragments to process " +
                       std::to_string(num_fragments_to_process)));
                 }
+                printf("AAA sparse_global_order_reader.cc w/ subarray frag  %d all loaded = no\n", (int)f);
                 return Status::Ok();
               }
 
@@ -442,6 +451,7 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
             remove_result_tile_range(f);
           }
 
+          printf("AAA sparse_global_order_reader.cc w/ subarray frag  %d all loaded = yes\n", (int)f);
           all_tiles_loaded_[f] = true;
           return Status::Ok();
         });
@@ -470,6 +480,9 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
             RETURN_NOT_OK(st);
             tiles_found = true;
 
+            printf("AAA Budget exceeded = %d adding result tiles, fragment %d tile %lld\n",
+              (int)(*budget_exceeded), (int)f, (long long)t);
+
             if (*budget_exceeded) {
               logger_->debug(
                   "Budget exceeded adding result tiles, fragment {0}, tile {1}",
@@ -488,19 +501,30 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
                     " , num fragments to process " +
                     std::to_string(num_fragments_to_process)));
               }
+              printf("AAA sparse_global_order_reader.cc w/o subarray frag  %d tile_num %lld all_loaded = no\n",
+                (int)f, (long long)tile_num);
               return Status::Ok();
             }
           }
 
           all_tiles_loaded_[f] = true;
+          printf("AAA sparse_global_order_reader.cc w/o subarray frag  %d all_loaded = yes\n", (int)f);
           return Status::Ok();
         });
     RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), nullopt);
   }
 
+  // XXX HERE
   bool done_adding_result_tiles = true;
   uint64_t num_rt = 0;
+  printf("AAA sparse_global_order_reader.cc fragment_num = %d\n", (int)fragment_num);
   for (unsigned int f = 0; f < fragment_num; f++) {
+    printf("AAA sparse_global_order_reader.cc f = %d size = %lld all_tiles_loaded[%d] = %lld\n",
+      (int)f,
+      (long long)result_tiles_[f].size(),
+      (int)f,
+      (long long)all_tiles_loaded_[f]
+      );
     num_rt += result_tiles_[f].size();
     done_adding_result_tiles &= all_tiles_loaded_[f] != 0;
   }
@@ -511,7 +535,11 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
     logger_->debug("All result tiles loaded");
   }
 
+  printf("AAA sparse_global_order_reader.cc create_result_tiles read_state_.done_adding_result_tiles_ PRE  = %d\n",
+    (int)read_state_.done_adding_result_tiles_);
   read_state_.done_adding_result_tiles_ = done_adding_result_tiles;
+  printf("AAA sparse_global_order_reader.cc create_result_tiles read_state_.done_adding_result_tiles_ POST = %d\n",
+    (int)read_state_.done_adding_result_tiles_);
   return {Status::Ok(), tiles_found};
 }
 

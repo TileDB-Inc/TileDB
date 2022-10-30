@@ -103,6 +103,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
 
   /** Writer is never in an imcomplete state. */
   QueryStatusDetailsReason status_incomplete_reason() const {
+    printf("AAA WriterBase::status_incomplete_reason\n");
     return QueryStatusDetailsReason::REASON_NONE;
   }
 

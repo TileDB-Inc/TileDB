@@ -299,7 +299,7 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
       memory_used_result_tile_ranges_ +=
           result_tile_ranges_[i].size() * sizeof(std::pair<uint64_t, uint64_t>);
       if (result_tile_ranges_[i].size() == 0) {
-        all_tiles_loaded_[i] = true;
+        all_tiles_loaded_[i] = true; // XXX TOUCH
       }
     }
 

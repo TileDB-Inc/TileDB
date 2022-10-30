@@ -133,6 +133,7 @@ bool DenseReader::incomplete() const {
 }
 
 QueryStatusDetailsReason DenseReader::status_incomplete_reason() const {
+  printf("AAA DenseReader::status_incomplete_reason %d\n", (int)incomplete());
   return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
                         QueryStatusDetailsReason::REASON_NONE;
 }

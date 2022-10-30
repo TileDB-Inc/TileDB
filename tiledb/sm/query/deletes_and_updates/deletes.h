@@ -83,6 +83,7 @@ class Deletes : public StrategyBase, public IQueryStrategy {
 
   /** Delete is never in an imcomplete state. */
   QueryStatusDetailsReason status_incomplete_reason() const {
+    printf("AAA Deletes::status_incomplete_reason %d\n", (int)incomplete());
     return QueryStatusDetailsReason::REASON_NONE;
   }
 

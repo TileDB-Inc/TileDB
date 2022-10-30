@@ -1185,6 +1185,7 @@ Status Query::cancel() {
 }
 
 Status Query::process() {
+  printf("AAA Query::process ENTER\n");
   if (status_ == QueryStatus::UNINITIALIZED)
     return logger_->status(
         Status_QueryError("Cannot process query; Query is not initialized"));
@@ -1196,11 +1197,13 @@ Status Query::process() {
   // Handle error
   if (!st.ok()) {
     status_ = QueryStatus::FAILED;
+    printf("AAA Query::process FAILED\n");
     return st;
   }
 
   // Check if the query is complete
   bool completed = !strategy_->incomplete();
+  printf("AAA Query::process COMPLETED %s\n", completed ? "yes" : "no");
 
   // Handle callback and status
   if (completed) {
@@ -2393,39 +2396,51 @@ Status Query::check_buffers_correctness() {
 }
 
 Status Query::submit() {
+  printf("AAA Query::submit ENTER\n");
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
+    printf("AAA Query::submit OUT1\n");
     return Status::Ok();
   }
 
   // Check attribute/dimensions buffers completeness before query submits
+  printf("AAA Query::submit ROK1\n");
   RETURN_NOT_OK(check_buffers_correctness());
 
   if (array_->is_remote()) {
     auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
+    if (rest_client == nullptr) {
+      printf("AAA Query::submit OUT2\n");
       return logger_->status(Status_QueryError(
           "Error in query submission; remote array with no rest client."));
-
+    }
     if (status_ == QueryStatus::UNINITIALIZED) {
+      printf("AAA Query::submit ROK2\n");
       RETURN_NOT_OK(create_strategy());
     }
 
     // Check that input buffers are tile-aligned for remote global order writes
+    printf("AAA Query::submit ROK3\n");
     RETURN_NOT_OK(check_tile_alignment());
 
     // Check that input buffers >5mb for remote global order writes
+    printf("AAA Query::submit ROK4\n");
     RETURN_NOT_OK(check_buffer_multipart_size());
 
+    printf("AAA Query::submit ROK5\n");
     RETURN_NOT_OK(rest_client->submit_query_to_rest(array_->array_uri(), this));
 
     reset_coords_markers();
+    printf("AAA Query::submit EXIT1\n");
     return Status::Ok();
   }
+  printf("AAA Query::submit ROK6\n");
   RETURN_NOT_OK(init());
+  printf("AAA Query::submit ROK7\n");
   RETURN_NOT_OK(storage_manager_->query_submit(this));
 
   reset_coords_markers();
+  printf("AAA Query::submit EXIT2\n");
   return Status::Ok();
 }
 
@@ -2452,9 +2467,13 @@ QueryStatus Query::status() const {
 }
 
 QueryStatusDetailsReason Query::status_incomplete_reason() const {
-  if (strategy_ != nullptr)
+  printf("AAA Query::status_incomplete_reason ENTER\n");
+  if (strategy_ != nullptr) {
+    printf("AAA Query::status_incomplete_reason ? %d\n", (int)strategy_->status_incomplete_reason());
     return strategy_->status_incomplete_reason();
+  }
 
+  printf("AAA Query::status_incomplete_reason NONE\n");
   return QueryStatusDetailsReason::REASON_NONE;
 }
 
