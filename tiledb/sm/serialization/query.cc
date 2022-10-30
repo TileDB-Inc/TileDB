@@ -496,8 +496,10 @@ Status read_state_to_capnp(
 Status index_read_state_to_capnp(
     const SparseIndexReaderBase::ReadState* read_state,
     capnp::ReaderIndex::Builder* builder) {
+  printf("AAA index_read_state_to_capnp ENTER\n");
   auto read_state_builder = builder->initReadState();
 
+  printf("AAA index_read_state_to_capnp DONE %d\n", (int)read_state->done_adding_result_tiles_);
   read_state_builder.setDoneAddingResultTiles(
       read_state->done_adding_result_tiles_);
 
@@ -815,6 +817,7 @@ Status index_reader_to_capnp(
     const Query& query,
     const SparseIndexReaderBase& reader,
     capnp::ReaderIndex::Builder* reader_builder) {
+  printf("AAA index_reader_to_capnp ENTER\n");
   const auto& array_schema = query.array_schema();
 
   // Subarray layout
@@ -827,7 +830,7 @@ Status index_reader_to_capnp(
       subarray_to_capnp(array_schema, query.subarray(), &subarray_builder));
 
   // Read state
-  RETURN_NOT_OK(index_read_state_to_capnp(reader.read_state(), reader_builder));
+  RETURN_NOT_OK(index_read_state_to_capnp(reader.read_state(), reader_builder)); // XXX TOUCH
 
   const auto& condition = query.condition();
   if (!condition.empty()) {
@@ -1235,10 +1238,11 @@ Status writer_from_capnp(
   return Status::Ok();
 }
 
-Status query_to_capnp(
+Status query_to_capnp( // XXX TOUCH
     Query& query,
     capnp::Query::Builder* query_builder,
     const bool client_side) {
+  printf("AAA query_to_capnp ENTER client_side=%d\n", (int)client_side);
   // For easy reference
   auto layout = query.layout();
   auto type = query.type();
@@ -1332,7 +1336,7 @@ Status query_to_capnp(
         query.use_refactored_sparse_global_order_reader(layout, schema)) {
       auto builder = query_builder->initReaderIndex();
       auto reader = dynamic_cast<SparseIndexReaderBase*>(query.strategy(true));
-      RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+      RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder)); // XXX TOUCH
     } else if (query.use_refactored_dense_reader(schema, all_dense)) {
       auto builder = query_builder->initDenseReader();
       auto reader = dynamic_cast<DenseReader*>(query.strategy(true));
@@ -1383,6 +1387,7 @@ Status query_to_capnp(
     }
   }
 
+  printf("AAA query_to_capnp status = %d\n", (int) query.status());
   return Status::Ok();
 }
 
@@ -1999,14 +2004,17 @@ Status query_from_capnp(
     }
   }
 
+  printf("AAA query_from_capnp status = %d\n", (int) query->status());
+
   return Status::Ok();
 }
 
-Status query_serialize(
+Status query_serialize( // XXX TOUCH
     Query* query,
     SerializationType serialize_type,
     bool clientside,
     BufferList* serialized_buffer) {
+  printf("AAA query_serialize ENTER clientside=%d\n", (int)clientside);
   if (serialize_type == SerializationType::JSON)
     return LOG_STATUS(Status_SerializationError(
         "Cannot serialize query; json format not supported."));

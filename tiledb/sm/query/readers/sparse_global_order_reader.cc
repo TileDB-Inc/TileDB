@@ -110,19 +110,21 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
 
 template <class BitmapType>
 bool SparseGlobalOrderReader<BitmapType>::incomplete() const {
-  printf("AAA SparseGlobalOrderReader::incomplete read_state_.done_adding_result_tiles_ %d memory_used_for_coords_total_ %lld\n",
+  bool retval = !read_state_.done_adding_result_tiles_ || memory_used_for_coords_total_ != 0;
+  printf("AAA SparseGlobalOrderReader::incomplete=%d read_state_.done_adding_result_tiles_ %d memory_used_for_coords_total_ %lld\n",
+    (int)retval,
     (int)read_state_.done_adding_result_tiles_,
     memory_used_for_coords_total_);
-  return !read_state_.done_adding_result_tiles_ ||
-         memory_used_for_coords_total_ != 0;
+  // return !read_state_.done_adding_result_tiles_ || memory_used_for_coords_total_ != 0;
+  return retval;
 }
 
 template <class BitmapType>
 QueryStatusDetailsReason
 SparseGlobalOrderReader<BitmapType>::status_incomplete_reason() const {
-  printf("AAA SparseGlobalOrderReader::status_incomplete_reason %d\n", (int)incomplete());
-  return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
-                        QueryStatusDetailsReason::REASON_NONE;
+  auto retval = incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE : QueryStatusDetailsReason::REASON_NONE;
+  printf("AAA SparseGlobalOrderReader::status_incomplete_reason: incomplete=%d reason=%d\n", (int)incomplete(), (int)retval);
+  return retval;
 }
 
 template <class BitmapType>
@@ -172,7 +174,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
 
   // Handle empty array.
   if (fragment_metadata_.empty()) {
-    printf("AAA sparse_global_order_reader.cc dowork read_state_.done_adding_result_tiles_ = true\n");
+    printf("AAA SparseGlobalOrderReader::dowork read_state_.done_adding_result_tiles_ = true\n");
     read_state_.done_adding_result_tiles_ = true;
     return Status::Ok();
   }
@@ -363,6 +365,9 @@ SparseGlobalOrderReader<BitmapType>::add_result_tile(
     std::unique_lock<std::mutex> lck(mem_budget_mtx_);
     memory_used_for_coords_total_ += tiles_size;
     memory_used_qc_tiles_total_ += tiles_size_qc;
+    printf("AAA add_result_tile f=%d t=%lld tiles_size=%lld memory_used_for_coords_total -> %lld\n",
+      (int)f, (long long)t,
+      (long long)tiles_size, (long long)memory_used_for_coords_total_);
   }
 
   // Adjust per fragment memory used.
@@ -441,7 +446,7 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
                       " , num fragments to process " +
                       std::to_string(num_fragments_to_process)));
                 }
-                printf("AAA sparse_global_order_reader.cc w/ subarray frag  %d all loaded = no\n", (int)f);
+                printf("AAA SparseGlobalOrderReader::create_result_tiles w/ subarray frag  %d all loaded = no\n", (int)f);
                 return Status::Ok();
               }
 
@@ -458,10 +463,14 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
     RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), nullopt);
   } else {
     // Load as many tiles as the memory budget allows.
+    // XXX HERE
+    printf("AAA SparseGlobalOrderReader::create_result_tiles w/o subarray fragment_num=%lld\n", (long long)fragment_num);
+
     auto status = parallel_for(
         storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
           uint64_t t = 0;
           auto tile_num = fragment_metadata_[f]->tile_num();
+          printf("AAA SparseGlobalOrderReader::create_result_tiles w/o subarray f=%lld tile_num=%lld\n", (long long)f, (long long)tile_num);
 
           // Figure out the start index.
           auto start = read_state_.frag_idx_[f].tile_idx_;
@@ -470,6 +479,8 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
           }
 
           for (t = start; t < tile_num; t++) {
+            printf("AAA SparseGlobalOrderReader::create_result_tiles w/o subarray add_result_tile? f=%lld t=%lld pfm=%lld pfqcm=%lld dn=%lld\n",
+              (long long)f, (long long)t, (long long)per_fragment_memory_, (long long)per_fragment_qc_memory_, (long long)dim_num);
             auto&& [st, budget_exceeded] = add_result_tile(
                 dim_num,
                 per_fragment_memory_,
@@ -501,25 +512,24 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
                     " , num fragments to process " +
                     std::to_string(num_fragments_to_process)));
               }
-              printf("AAA sparse_global_order_reader.cc w/o subarray frag  %d tile_num %lld all_loaded = no\n",
+              printf("AAA SparseGlobalOrderReader::create_result_tiles w/o subarray frag  %d tile_num %lld all_loaded = no\n",
                 (int)f, (long long)tile_num);
               return Status::Ok();
             }
           }
 
           all_tiles_loaded_[f] = true;
-          printf("AAA sparse_global_order_reader.cc w/o subarray frag  %d all_loaded = yes\n", (int)f);
+          printf("AAA SparseGlobalOrderReader::create_result_tiles w/o subarray frag  %d all_loaded = yes\n", (int)f);
           return Status::Ok();
         });
     RETURN_NOT_OK_ELSE_TUPLE(status, logger_->status(status), nullopt);
   }
 
-  // XXX HERE
   bool done_adding_result_tiles = true;
   uint64_t num_rt = 0;
-  printf("AAA sparse_global_order_reader.cc fragment_num = %d\n", (int)fragment_num);
+  printf("AAA SparseGlobalOrderReader::create_result_tiles fragment_num = %d\n", (int)fragment_num);
   for (unsigned int f = 0; f < fragment_num; f++) {
-    printf("AAA sparse_global_order_reader.cc f = %d size = %lld all_tiles_loaded[%d] = %lld\n",
+    printf("AAA SparseGlobalOrderReader::create_result_tiles f = %d size = %lld all_tiles_loaded[%d] = %lld\n",
       (int)f,
       (long long)result_tiles_[f].size(),
       (int)f,
@@ -535,10 +545,10 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
     logger_->debug("All result tiles loaded");
   }
 
-  printf("AAA sparse_global_order_reader.cc create_result_tiles read_state_.done_adding_result_tiles_ PRE  = %d\n",
+  printf("AAA SparseGlobalOrderReader::create_result_tiles read_state_.done_adding_result_tiles_ PRE  = %d\n",
     (int)read_state_.done_adding_result_tiles_);
-  read_state_.done_adding_result_tiles_ = done_adding_result_tiles;
-  printf("AAA sparse_global_order_reader.cc create_result_tiles read_state_.done_adding_result_tiles_ POST = %d\n",
+  read_state_.done_adding_result_tiles_ = done_adding_result_tiles; // XXX WHY WHY WHY
+  printf("AAA SparseGlobalOrderReader::create_result_tiles read_state_.done_adding_result_tiles_ POST = %d\n",
     (int)read_state_.done_adding_result_tiles_);
   return {Status::Ok(), tiles_found};
 }
@@ -2035,6 +2045,9 @@ Status SparseGlobalOrderReader<BitmapType>::remove_result_tile(
     std::unique_lock<std::mutex> lck(mem_budget_mtx_);
     memory_used_for_coords_total_ -= tiles_size;
     memory_used_qc_tiles_total_ -= tiles_size_qc;
+    printf("AAA remove_result_tile frag_idx=%d tiles_size=%lld memory_used_for_coords_total -> %lld\n",
+      (int)frag_idx,
+      (long long)tiles_size, (long long)memory_used_for_coords_total_);
   }
 
   // Delete the tile.
