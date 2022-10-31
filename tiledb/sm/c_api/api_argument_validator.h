@@ -206,16 +206,6 @@ inline int32_t sanity_check(
   return TILEDB_OK;
 }
 
-inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_group_t* group) {
-  if (group == nullptr || group->group_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB group object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
 /**
  * Helper macro similar to save_error() that catches all exceptions when
  * executing 'stmt'.

@@ -103,8 +103,4 @@ struct tiledb_fragment_info_t {
   tiledb::sm::FragmentInfo* fragment_info_ = nullptr;
 };
 
-struct tiledb_group_t {
-  tdb_unique_ptr<tiledb::sm::Group> group_ = nullptr;
-};
-
 #endif

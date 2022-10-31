@@ -73,6 +73,9 @@ add_subdirectory(filter)
 # `filter_list`: depends on `context`, `filter`
 add_subdirectory(filter_list)
 
+# `group`: depends on `config`, `context`
+add_subdirectory(group)
+
 # `object`: no dependencies
 add_subdirectory(object)
 
