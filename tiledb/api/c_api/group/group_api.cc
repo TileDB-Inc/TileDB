@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_group.cc
+ * @file tiledb/api/c_api/group/group_api.cc
  *
  * @section LICENSE
  *
@@ -28,26 +28,36 @@
  *
  * @section DESCRIPTION
  *
- * This file defines the C API of TileDB for groups.
+ * This file defines the group C API of TileDB.
  **/
 
-#include "tiledb/api/c_api/config/config_api_internal.h"
+#include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
+
 #include "tiledb/sm/c_api/api_argument_validator.h"
-#include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_experimental.h"
-#include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/group/group_v1.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/group.h"
 
-namespace tiledb::common::detail {
+#include "group_api_external.h"
 
-/* ****************************** */
-/*              GROUP             */
-/* ****************************** */
+struct tiledb_group_t {
+  tdb_unique_ptr<tiledb::sm::Group> group_ = nullptr;
+};
+
+inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_group_t* group) {
+  if (group == nullptr || group->group_ == nullptr) {
+    auto st = Status_Error("Invalid TileDB group object");
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+namespace tiledb::common::detail {
 
 int32_t tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) {
   if (sanity_check(ctx) == TILEDB_ERR)

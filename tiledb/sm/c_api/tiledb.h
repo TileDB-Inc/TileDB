@@ -63,6 +63,7 @@
 #include "tiledb/api/c_api/filesystem/filesystem_api_external.h"
 #include "tiledb/api/c_api/filter/filter_api_external.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_external.h"
+#include "tiledb/api/c_api/group/group_api_external.h"
 #include "tiledb/api/c_api/object/object_api_external.h"
 #include "tiledb/api/c_api/query/query_api_external.h"
 
@@ -358,9 +359,6 @@ typedef struct tiledb_vfs_fh_t tiledb_vfs_fh_t;
 /** A fragment info object. */
 typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
-/** A group object. */
-typedef struct tiledb_group_t tiledb_group_t;
-
 /* ********************************* */
 /*            BUFFER LIST            */
 /* ********************************* */
@@ -505,26 +503,6 @@ TILEDB_EXPORT int32_t tiledb_buffer_list_flatten(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_list_t* buffer_list,
     tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
-
-/* ********************************* */
-/*                GROUP              */
-/* ********************************* */
-
-/**
- * Creates a new TileDB group.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_create(ctx, "my_group");
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group_uri The group URI.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t
-tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*            ATTRIBUTE              */
