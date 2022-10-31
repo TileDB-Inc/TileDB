@@ -4296,7 +4296,7 @@ int32_t tiledb_deserialize_query(
   return TILEDB_OK;
 }
 
-int32_t tiledb_deserialize_array_and_query(
+int32_t tiledb_deserialize_query_and_array(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
@@ -7521,7 +7521,7 @@ int32_t tiledb_deserialize_query(
       ctx, buffer, serialize_type, client_side, query);
 }
 
-int32_t tiledb_deserialize_array_and_query(
+int32_t tiledb_deserialize_query_and_array(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
@@ -7529,7 +7529,7 @@ int32_t tiledb_deserialize_array_and_query(
     const char* array_uri,
     tiledb_query_type_t query_type,
     tiledb_query_t** query) noexcept {
-  return api_entry<tiledb::api::tiledb_deserialize_array_and_query>(
+  return api_entry<tiledb::api::tiledb_deserialize_query_and_array>(
       ctx, buffer, serialize_type, client_side, array_uri, query_type, query);
 }
 

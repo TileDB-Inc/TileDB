@@ -129,6 +129,8 @@ Status array_to_capnp(
   array_builder->setStartTimestamp(array->timestamp_start());
   array_builder->setEndTimestamp(array->timestamp_end());
 
+  array_builder->setQueryType(query_type_str(array->get_query_type()));
+
   const auto& array_schema_latest = array->array_schema_latest();
   auto array_schema_latest_builder = array_builder->initArraySchemaLatest();
   RETURN_NOT_OK(array_schema_to_capnp(
@@ -154,14 +156,16 @@ Status array_to_capnp(
       array_directory, array_schema_latest, &array_directory_builder);
 
   // Serialize fragment metadata iff loaded (if the array is open for READs)
-  auto fragment_metadata_all = array->fragment_metadata();
-  if (!fragment_metadata_all.empty()) {
-    auto fragment_metadata_all_builder =
-        array_builder->initFragmentMetadataAll(fragment_metadata_all.size());
-    for (size_t i = 0; i < fragment_metadata_all.size(); i++) {
-      auto fragment_metadata_builder = fragment_metadata_all_builder[i];
-      RETURN_NOT_OK(fragment_metadata_to_capnp(
-          *fragment_metadata_all[i], &fragment_metadata_builder));
+  if (array->get_query_type() == QueryType::READ) {
+    auto fragment_metadata_all = array->fragment_metadata();
+    if (!fragment_metadata_all.empty()) {
+      auto fragment_metadata_all_builder =
+          array_builder->initFragmentMetadataAll(fragment_metadata_all.size());
+      for (size_t i = 0; i < fragment_metadata_all.size(); i++) {
+        auto fragment_metadata_builder = fragment_metadata_all_builder[i];
+        RETURN_NOT_OK(fragment_metadata_to_capnp(
+            *fragment_metadata_all[i], &fragment_metadata_builder));
+      }
     }
   }
 
@@ -196,6 +200,13 @@ Status array_from_capnp(
   }
   RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
   RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
+
+  if (array_reader.hasQueryType()) {
+    auto query_type_str = array_reader.getQueryType();
+    QueryType query_type;
+    RETURN_NOT_OK(query_type_enum(query_type_str, &query_type));
+    array->set_serialized_array_open(query_type);
+  }
 
   if (array_reader.hasArraySchemasAll()) {
     std::unordered_map<std::string, shared_ptr<ArraySchema>> all_schemas;

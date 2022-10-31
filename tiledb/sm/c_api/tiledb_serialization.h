@@ -301,7 +301,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_query(
  * @param query The query object to allocate and deserialize into.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_deserialize_array_and_query(
+TILEDB_EXPORT int32_t tiledb_deserialize_query_and_array(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,

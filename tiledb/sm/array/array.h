@@ -481,7 +481,7 @@ class Array {
 
   /** Special setter for facilitating the query/array deserialization process */
   inline void set_serialized_array_open(QueryType query_type) {
-    query_type_ = query_type;
+    set_query_type(query_type);
     set_array_open(query_type);
   }
 
