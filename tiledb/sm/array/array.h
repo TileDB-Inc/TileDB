@@ -495,8 +495,8 @@ class Array {
   /** `True` if the array is currently in the process of opening or closing. */
   std::atomic<bool> is_opening_or_closing_;
 
-  /** The query type the array was opened for. */
-  QueryType query_type_;
+  /** The query type the array was opened for. Default: READ */
+  QueryType query_type_ = QueryType::READ;
 
   /**
    * The starting timestamp between to open `open_array_` at.
