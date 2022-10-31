@@ -33,6 +33,8 @@
 
 #include <test/support/tdb_catch.h>
 #include <string>
+
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 
@@ -157,5 +159,24 @@ int tiledb_fragment_info_serialize(
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_buffer_free(&buffer);
+  return rc;
+}
+
+int tiledb_query_v2_serialize(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const tiledb_query_type_t query_type,
+    tiledb_query_t* query_to_serialize,
+    tiledb_query_t** query_deserialized) {
+  // Serialize and Deserialize
+  std::vector<uint8_t> serialized;
+  int rc =
+      tiledb::test::serialize_query(ctx, query_to_serialize, &serialized, 1);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb::test::deserialize_array_and_query(
+      ctx, serialized, query_deserialized, array_uri, query_type, 0);
+  REQUIRE(rc == TILEDB_OK);
+
   return rc;
 }

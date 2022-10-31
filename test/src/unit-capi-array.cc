@@ -48,10 +48,12 @@
 #else
 #include "tiledb/sm/filesystem/posix.h"
 #endif
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
@@ -2473,5 +2475,116 @@ TEST_CASE_METHOD(
   tiledb_config_free(&config);
   tiledb_ctx_free(&ctx);
   remove_temp_dir(array_name);
+#endif
+}
+
+TEST_CASE_METHOD(
+    ArrayFx,
+    "Test array and query serialization",
+    "[array][serialization][query]") {
+#ifdef TILEDB_SERIALIZATION
+  SupportedFsLocal local_fs;
+  std::string array_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + "array_serialization";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+
+  create_dense_vector(array_name);
+
+  // Set the related config variables (optional)
+  tiledb_ctx_free(&ctx_);
+  tiledb_config_t* config;
+  tiledb_error_t* error;
+  tiledb_config_alloc(&config, &error);
+  tiledb_config_set(config, "rest.load_metadata_on_array_open", "true", &error);
+  tiledb_config_set(
+      config, "rest.load_non_empty_domain_on_array_open", "true", &error);
+  tiledb_ctx_alloc(config, &ctx_);
+
+  // Allocate array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Simulate serializing array_open request to Server and deserializing on
+  // server side First set the query_type that will be serialized
+  auto query_type_w = QueryType::WRITE;
+  array->array_->set_query_type(query_type_w);
+  tiledb_array_t* deserialized_array_server = nullptr;
+  // 1. Client -> Server : Send array_open_request (serialize)
+  // 2. Server : Receive and deserialize array_open_request
+  rc = tiledb_array_open_serialize(
+      ctx_,
+      array,
+      &deserialized_array_server,
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check that the original and de-serialized array have the same query type
+  REQUIRE(deserialized_array_server->array_->get_query_type() == query_type_w);
+
+  // 3. Server: Open the array the request was received for in the requested
+  // mode
+  // This is needed in test, as the deserialized array has a dummy array_uri of
+  // "deserialized_array" set instead of the original one. The Cloud side
+  // already knows the array URI so it's not a problem in the real life scenario
+  deserialized_array_server->array_->set_array_uri(array->array_->array_uri());
+  rc = tiledb_array_open(
+      ctx_,
+      deserialized_array_server,
+      static_cast<tiledb_query_type_t>(query_type_w));
+  REQUIRE(rc == TILEDB_OK);
+
+  // 4. Server -> Client: Send opened Array (serialize)
+  // 5. Client: Receive and deserialize Array (into deserialized_array_client)
+  tiledb_array_t* deserialized_array_client = nullptr;
+  array_serialize_wrapper(
+      deserialized_array_server, &deserialized_array_client);
+
+  // 6. Server: Close array and clean up
+  rc = tiledb_array_close(ctx_, deserialized_array_server);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&deserialized_array_server);
+
+  // 7. Client: Prepare query
+  int buffer_a1[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  uint64_t buffer_a1_size = sizeof(buffer_a1);
+  tiledb_query_t* query_client;
+  rc = tiledb_query_alloc(
+      ctx_,
+      deserialized_array_client,
+      static_cast<tiledb_query_type_t>(query_type_w),
+      &query_client);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query_client, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query_client, "a", buffer_a1, &buffer_a1_size);
+  CHECK(rc == TILEDB_OK);
+
+  // 8. Client -> Server : Send query request for writing into the array we just
+  // opened
+  tiledb_query_t* deserialized_query;
+  rc = tiledb_query_v2_serialize(
+      ctx_,
+      array_name.c_str(),
+      static_cast<tiledb_query_type_t>(query_type_w),
+      query_client,
+      &deserialized_query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // 9. Server: Submit query WITHOUT re-opening the array, using under the hood
+  // the array found in the deserialized query
+  rc = tiledb_query_submit(ctx_, deserialized_query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, deserialized_query);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_array_free(&deserialized_array_client);
+  tiledb_query_free(&query_client);
+  tiledb_query_free(&deserialized_query);
+
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 #endif
 }

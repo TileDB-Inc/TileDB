@@ -2013,6 +2013,63 @@ Status query_from_capnp(
   return Status::Ok();
 }
 
+Status array_from_query_deserialize(
+    const Buffer& serialized_buffer,
+    SerializationType serialize_type,
+    Array& array) {
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        capnp::Query::Builder query_builder =
+            message_builder.initRoot<capnp::Query>();
+        json.decode(
+            kj::StringPtr(
+                static_cast<const char*>(serialized_buffer.cur_data())),
+            query_builder);
+        capnp::Query::Reader query_reader = query_builder.asReader();
+        // Deserialize array instance.
+        RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), &array));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        // Capnp FlatArrayMessageReader requires 64-bit alignment.
+        if (!utils::is_aligned<sizeof(uint64_t)>(serialized_buffer.cur_data()))
+          return LOG_STATUS(Status_SerializationError(
+              "Could not deserialize query; buffer is not 8-byte aligned."));
+
+        // Set traversal limit to 10GI (TODO: make this a config option)
+        ::capnp::ReaderOptions readerOptions;
+        readerOptions.traversalLimitInWords = uint64_t(1024) * 1024 * 1024 * 10;
+        ::capnp::FlatArrayMessageReader reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(
+                    serialized_buffer.cur_data()),
+                (serialized_buffer.size() - serialized_buffer.offset()) /
+                    sizeof(::capnp::word)),
+            readerOptions);
+
+        capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
+        // Deserialize array instance.
+        RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), &array));
+        break;
+      }
+      default:
+        return LOG_STATUS(Status_SerializationError(
+            "Cannot deserialize; unknown serialization type."));
+    }
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Cannot deserialize; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Cannot deserialize; exception: " + std::string(e.what())));
+  }
+  return Status::Ok();
+}
+
 Status query_serialize(
     Query* query,
     SerializationType serialize_type,

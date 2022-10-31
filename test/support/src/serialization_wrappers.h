@@ -114,4 +114,12 @@ int tiledb_fragment_info_serialize(
     tiledb_fragment_info_t* fragment_info_deserialized,
     tiledb_serialization_type_t serialize_type);
 
+// TODO: docstring
+int tiledb_query_v2_serialize(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const tiledb_query_type_t query_type,
+    tiledb_query_t* query_to_serialize,
+    tiledb_query_t** query_deserialized);
+
 #endif  // TILEDB_TEST_SERIALIZATION_WRAPPERS_H

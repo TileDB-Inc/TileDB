@@ -1516,6 +1516,41 @@ int deserialize_query(
       ctx, c_buff, TILEDB_CAPNP, clientside ? 1 : 0, query);
 }
 
+int deserialize_array_and_query(
+    tiledb_ctx_t* ctx,
+    std::vector<uint8_t>& serialized,
+    tiledb_query_t** query,
+    const char* array_uri,
+    tiledb_query_type_t query_type,
+    bool clientside) {
+  tiledb_buffer_t* c_buff;
+  if (tiledb_buffer_alloc(ctx, &c_buff) != TILEDB_OK) {
+    return TILEDB_ERR;
+  }
+
+  // Wrap in a safe pointer
+  auto deleter = [](tiledb_buffer_t* b) { tiledb_buffer_free(&b); };
+  std::unique_ptr<tiledb_buffer_t, decltype(deleter)> buff_ptr(c_buff, deleter);
+
+  if (tiledb_buffer_set_data(
+          ctx,
+          c_buff,
+          reinterpret_cast<void*>(&serialized[0]),
+          static_cast<uint64_t>(serialized.size())) != TILEDB_OK) {
+    return TILEDB_ERR;
+  }
+
+  // Deserialize
+  return tiledb_deserialize_query_and_array(
+      ctx,
+      c_buff,
+      TILEDB_CAPNP,
+      clientside ? 1 : 0,
+      array_uri,
+      query_type,
+      query);
+}
+
 std::vector<void*> allocate_query_buffers(
     const Context& ctx, const Array& array, Query* query) {
   (void)array;

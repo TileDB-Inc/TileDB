@@ -330,6 +330,11 @@ class Array {
    * TileDB 2.5 clients */
   Status set_uri_serialized(const std::string& uri);
 
+  /** Sets the array URI. */
+  void set_array_uri(const URI& array_uri) {
+    array_uri_ = array_uri;
+  }
+
   /**
    * Deletes metadata from an array opened in WRITE mode.
    *
@@ -465,6 +470,13 @@ class Array {
    */
   bool serialize_metadata() const;
 
+  /**
+   * Sets the array state as open.
+   *
+   * @param query_type The QueryType of the Array.
+   */
+  void set_array_open(const QueryType& query_type);
+
   /** Set the query type to open the array for. */
   inline void set_query_type(QueryType query_type) {
     query_type_ = query_type;
@@ -478,12 +490,6 @@ class Array {
 
   /** Load array directory for non-remote arrays */
   ArrayDirectory& load_array_directory();
-
-  /** Special setter for facilitating the query/array deserialization process */
-  inline void set_serialized_array_open(QueryType query_type) {
-    set_query_type(query_type);
-    set_array_open(query_type);
-  }
 
  private:
   /* ********************************* */
@@ -690,13 +696,6 @@ class Array {
 
   /** Computes the non-empty domain of the array. */
   Status compute_non_empty_domain();
-
-  /**
-   * Sets the array state as open.
-   *
-   * @param query_type The QueryType of the Array.
-   */
-  void set_array_open(const QueryType& query_type);
 
   /** Sets the array state as closed.
    *

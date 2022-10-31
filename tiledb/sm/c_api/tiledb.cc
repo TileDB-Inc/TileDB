@@ -4345,12 +4345,15 @@ int32_t tiledb_deserialize_query_and_array(
     return TILEDB_OOM;
   }
 
-  /*
-   * Set the query type and set the array to be deserialized as open so that the
-   * Query creation that follows doesn't fail
-   */
-  array->array_->set_serialized_array_open(
-      static_cast<tiledb::sm::QueryType>(query_type));
+  // First deserialize the array included in the query
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::array_from_query_deserialize(
+              *buffer->buffer_,
+              (tiledb::sm::SerializationType)serialize_type,
+              *array->array_))) {
+    return TILEDB_ERR;
+  }
 
   // Create query struct
   *query = new (std::nothrow) tiledb_query_t;

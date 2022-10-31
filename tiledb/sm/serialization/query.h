@@ -128,6 +128,18 @@ using CopyState =
     std::unordered_map<std::string, serialization::QueryBufferCopyState>;
 
 /**
+ * Deserialize an array from a buffer containing a serialized query
+ *
+ * @param serialized_buffer Buffer containing serialized query
+ * @param serialize_type Serialization type of serialized query
+ * @param array Array object to deserialize into
+ */
+Status array_from_query_deserialize(
+    const Buffer& serialized_buffer,
+    SerializationType serialize_type,
+    Array& array);
+
+/**
  * Serialize a query
  *
  * @param query Query to serialize
