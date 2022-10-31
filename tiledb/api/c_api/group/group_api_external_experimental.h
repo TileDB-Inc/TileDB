@@ -33,6 +33,10 @@
 #ifndef TILEDB_CAPI_GROUP_API_EXTERNAL_EXPERIMENTAL_H
 #define TILEDB_CAPI_GROUP_API_EXTERNAL_EXPERIMENTAL_H
 
+#include "../api_external_common.h"
+#include "../datatype/datatype_api_external.h"
+#include "../object/object_api_external.h"
+#include "../query/query_api_external.h"
 #include "group_api_external.h"
 
 #ifdef __cplusplus
@@ -54,10 +58,25 @@ extern "C" {
  * @param group The TileDB group to be allocated
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_group_alloc(
+TILEDB_EXPORT capi_return_t tiledb_group_alloc(
     tiledb_ctx_t* ctx,
     const char* group_uri,
     tiledb_group_t** group) TILEDB_NOEXCEPT;
+
+/**
+ * Destroys a TileDB group, freeing associated memory.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_group_t* group;
+ * tiledb_group_alloc(ctx, "my_group", &group);
+ * tiledb_group_free(&group);
+ * @endcode
+ *
+ * @param group The TileDB group to be freed
+ */
+TILEDB_EXPORT void tiledb_group_free(tiledb_group_t** group) TILEDB_NOEXCEPT;
 
 /**
  * Opens a TileDB group. The group is opened using a query type as input.
@@ -88,7 +107,7 @@ TILEDB_EXPORT int32_t tiledb_group_alloc(
  *      `timestamp{start, end}` values should be set to a config that's set to
  *       the group object before opening the group.
  */
-TILEDB_EXPORT int32_t tiledb_group_open(
+TILEDB_EXPORT capi_return_t tiledb_group_open(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     tiledb_query_type_t query_type) TILEDB_NOEXCEPT;
@@ -112,23 +131,8 @@ TILEDB_EXPORT int32_t tiledb_group_open(
  * @note If the group object has already been closed, the function has
  *     no effect.
  */
-TILEDB_EXPORT int32_t
+TILEDB_EXPORT capi_return_t
 tiledb_group_close(tiledb_ctx_t* ctx, tiledb_group_t* group) TILEDB_NOEXCEPT;
-
-/**
- * Creates a new TileDB group.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "my_group", &group);
- * tiledb_group_free(&group);
- * @endcode
- *
- * @param group The TileDB group to be freed
- */
-TILEDB_EXPORT void tiledb_group_free(tiledb_group_t** group) TILEDB_NOEXCEPT;
 
 /**
  * Sets the group config.
@@ -153,7 +157,7 @@ TILEDB_EXPORT void tiledb_group_free(tiledb_group_t** group) TILEDB_NOEXCEPT;
  *      this function.
  * @note The config should be set before opening an group.
  */
-TILEDB_EXPORT int32_t tiledb_group_set_config(
+TILEDB_EXPORT capi_return_t tiledb_group_set_config(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     tiledb_config_t* config) TILEDB_NOEXCEPT;
@@ -174,7 +178,7 @@ TILEDB_EXPORT int32_t tiledb_group_set_config(
  * @param config Set to the retrieved config.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_group_get_config(
+TILEDB_EXPORT capi_return_t tiledb_group_get_config(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     tiledb_config_t** config) TILEDB_NOEXCEPT;
@@ -196,7 +200,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_config(
  *
  * @note The writes will take effect only upon closing the group.
  */
-TILEDB_EXPORT int32_t tiledb_group_put_metadata(
+TILEDB_EXPORT capi_return_t tiledb_group_put_metadata(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* key,
@@ -236,7 +240,7 @@ TILEDB_EXPORT int32_t tiledb_group_delete_group(
  * @note If the key does not exist, this will take no effect
  *     (i.e., the function will not error out).
  */
-TILEDB_EXPORT int32_t tiledb_group_delete_metadata(
+TILEDB_EXPORT capi_return_t tiledb_group_delete_metadata(
     tiledb_ctx_t* ctx, tiledb_group_t* group, const char* key) TILEDB_NOEXCEPT;
 
 /**
@@ -257,7 +261,7 @@ TILEDB_EXPORT int32_t tiledb_group_delete_metadata(
  *
  * @note If the key does not exist, then `value` will be NULL.
  */
-TILEDB_EXPORT int32_t tiledb_group_get_metadata(
+TILEDB_EXPORT capi_return_t tiledb_group_get_metadata(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* key,
@@ -274,7 +278,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_metadata(
  * @param num The number of metadata items to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_group_get_metadata_num(
+TILEDB_EXPORT capi_return_t tiledb_group_get_metadata_num(
     tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* num) TILEDB_NOEXCEPT;
 
 /**
@@ -294,7 +298,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_metadata_num(
  * @param value The metadata value in binary form.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_group_get_metadata_from_index(
+TILEDB_EXPORT capi_return_t tiledb_group_get_metadata_from_index(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     uint64_t index,
@@ -317,7 +321,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_metadata_from_index(
  *
  * @note If the key does not exist, then `value` will be NULL.
  */
-TILEDB_EXPORT int32_t tiledb_group_has_metadata_key(
+TILEDB_EXPORT capi_return_t tiledb_group_has_metadata_key(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* key,
@@ -345,7 +349,7 @@ TILEDB_EXPORT int32_t tiledb_group_has_metadata_key(
  * to NULL if wishing to remain unset.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_group_add_member(
+TILEDB_EXPORT capi_return_t tiledb_group_add_member(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* uri,
@@ -368,7 +372,7 @@ TILEDB_EXPORT int32_t tiledb_group_add_member(
  * group member was assigned a name.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_group_remove_member(
+TILEDB_EXPORT capi_return_t tiledb_group_remove_member(
     tiledb_ctx_t* ctx, tiledb_group_t* group, const char* uri) TILEDB_NOEXCEPT;
 
 /**
@@ -393,7 +397,7 @@ TILEDB_EXPORT int32_t tiledb_group_remove_member(
  * @param count number of members in group
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_group_get_member_count(
+TILEDB_EXPORT capi_return_t tiledb_group_get_member_count(
     tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* count) TILEDB_NOEXCEPT;
 
 /**
@@ -428,7 +432,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_member_count(
  *   of the c-string. NULL if name was not set
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_group_get_member_by_index(
+TILEDB_EXPORT capi_return_t tiledb_group_get_member_by_index(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     uint64_t index,
@@ -467,7 +471,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_member_by_index(
  * @param type type of member
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_group_get_member_by_name(
+TILEDB_EXPORT capi_return_t tiledb_group_get_member_by_name(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* name,
@@ -504,7 +508,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_member_by_name(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 /* clang-format on */
-TILEDB_EXPORT int32_t tiledb_group_get_is_relative_uri_by_name(
+TILEDB_EXPORT capi_return_t tiledb_group_get_is_relative_uri_by_name(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* name,
@@ -518,7 +522,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_is_relative_uri_by_name(
  * @param is_open `1` if the group is open and `0` otherwise.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_group_is_open(
+TILEDB_EXPORT capi_return_t tiledb_group_is_open(
     tiledb_ctx_t* ctx, tiledb_group_t* group, int32_t* is_open) TILEDB_NOEXCEPT;
 
 /**
@@ -530,7 +534,7 @@ TILEDB_EXPORT int32_t tiledb_group_is_open(
  * @param group_uri The group URI to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_group_get_uri(
+TILEDB_EXPORT capi_return_t tiledb_group_get_uri(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char** group_uri) TILEDB_NOEXCEPT;
@@ -553,7 +557,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_uri(
  * @param query_type The query type to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_group_get_query_type(
+TILEDB_EXPORT capi_return_t tiledb_group_get_query_type(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     tiledb_query_type_t* query_type) TILEDB_NOEXCEPT;
@@ -568,7 +572,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_query_type(
  * @param recursive should we recurse into sub-groups
  * @return  `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_group_dump_str(
+TILEDB_EXPORT capi_return_t tiledb_group_dump_str(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     char** dump_ascii,
@@ -591,7 +595,7 @@ TILEDB_EXPORT int32_t tiledb_group_dump_str(
  *     (`nullptr` means default, which will use the config from `ctx`).
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
-TILEDB_EXPORT int32_t tiledb_group_consolidate_metadata(
+TILEDB_EXPORT capi_return_t tiledb_group_consolidate_metadata(
     tiledb_ctx_t* ctx,
     const char* group_uri,
     tiledb_config_t* config) TILEDB_NOEXCEPT;
@@ -614,7 +618,7 @@ TILEDB_EXPORT int32_t tiledb_group_consolidate_metadata(
  *     (`nullptr` means default, which will use the config from `ctx`).
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
-TILEDB_EXPORT int32_t tiledb_group_vacuum_metadata(
+TILEDB_EXPORT capi_return_t tiledb_group_vacuum_metadata(
     tiledb_ctx_t* ctx,
     const char* group_uri,
     tiledb_config_t* config) TILEDB_NOEXCEPT;
