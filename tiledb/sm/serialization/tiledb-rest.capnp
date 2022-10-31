@@ -646,6 +646,23 @@ struct MaxBufferSizes {
   # a list of max buffer sizes, one per attribute
 }
 
+
+struct ArrayFragmentsExtremeSizes {
+  struct FragmentSizeExtremes {
+    max @0 : UInt64;
+    min @1 : UInt64;
+  }
+
+  basic_tile_size_in_memory @0 : FragmentSizeExtremes;
+  basic_tile_size_persisted @1 : FragmentSizeExtremes;
+
+  var_tile_size_in_memory @2 : FragmentSizeExtremes;
+  var_tile_size_persisted @3 : FragmentSizeExtremes;
+
+  var_size_tile_size_in_memory @4 : FragmentSizeExtremes;
+  var_size_tile_size_persisted @5 : FragmentSizeExtremes;
+}
+
 struct ArrayMetadata {
   # object representing array metadata
 

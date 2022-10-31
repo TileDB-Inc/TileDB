@@ -45,6 +45,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/api_argument_validator.h"
+#include "tiledb/api/c_api/tiledb_tile_sizes.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
@@ -7137,6 +7138,35 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
   return TILEDB_OK;
 }
 
+TILEDB_EXPORT int32_t tiledb_array_fragment_size_extremes(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    uint64_t* max_in_memory_tile_size,
+    tiledb_config_t* config) {
+  api::ensure_output_pointer_is_valid(max_in_memory_tile_size);
+  try {
+    tiledb::sm::URI uri(array_uri);
+    if (uri.is_invalid()) {
+      auto st =
+          Status_Error("Failed to obtain fragment sizes; Invalid array URI");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+    tiledb_fragment_tile_size_extremes_t tile_extreme_sizes;
+    ctx->storage_manager()->array_get_fragment_tile_size_extremes(
+        uri,
+        &tile_extreme_sizes,
+        config ? config->config_ : nullptr);
+    *max_in_memory_tile_size = tile_extreme_sizes.max_in_memory_tile_size;
+  }
+  catch (...) {
+    // TBD: throw with nested something to identify this routine in path?
+    throw;
+  }
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::common::detail
 
 /* ****************************** */
@@ -10258,4 +10288,13 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
     tiledb_query_t* query,
     tiledb_query_status_details_t* status) noexcept {
   return api_entry<detail::tiledb_query_get_status_details>(ctx, query, status);
+}
+
+TILEDB_EXPORT int32_t tiledb_array_fragment_size_extremes(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    uint64_t* max_in_memory_tile_size,
+    tiledb_config_t* config) {
+  return api_entry_context<detail::tiledb_array_fragment_size_extremes>(
+      ctx, array_uri, max_in_memory_tile_size, config);
 }

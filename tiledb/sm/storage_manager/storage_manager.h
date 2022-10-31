@@ -50,6 +50,9 @@
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/api/c_api/tiledb_tile_sizes.h"
+//#include "tiledb/sm/c_api/tiledb_struct_def.h"
+//#include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/uri.h"
@@ -261,6 +264,35 @@ class StorageManager {
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
       optional<std::vector<shared_ptr<FragmentMetadata>>>>
   load_array_schemas_and_fragment_metadata(
+      const ArrayDirectory& array_dir,
+      MemoryTracker* memory_tracker,
+      const EncryptionKey& enc_key);
+
+  /**
+   * Returns the array schemas and fragment metadata for the given array.
+   * The function will focus only on relevant schemas and metadata as
+   * dictated by the input URI manager.
+   *
+   * @param array_dir The ArrayDirectory object used to retrieve the
+   *     various URIs in the array directory.
+   * @param memory_tracker The memory tracker of the array
+   *     for which the fragment metadata is loaded.
+   * @param enc_key The encryption key to use.
+   * @return tuple of Status, latest ArraySchema, map of all array schemas and
+   * vector of FragmentMetadata
+   *        Status Ok on success, else error
+   *        ArraySchema The array schema to be retrieved after the
+   *           array is opened.
+   *        ArraySchemaMap Map of all array schemas found keyed by name
+   *        fragment_metadata The fragment metadata to be retrieved
+   *           after the array is opened.
+   */
+  tuple<
+      Status,
+      optional<shared_ptr<ArraySchema>>,
+      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
+      optional<std::vector<shared_ptr<FragmentMetadata>>>>
+  load_array_schemas_and_all_fragment_metadata(
       const ArrayDirectory& array_dir,
       MemoryTracker* memory_tracker,
       const EncryptionKey& enc_key);
@@ -1082,6 +1114,31 @@ class StorageManager {
    * @return Status
    */
   Status group_metadata_vacuum(const char* group_name, const Config* config);
+
+  /**
+   * Populates an encryption key from either the option config param or the
+   * member config_, returning a null/empty configuration key in the event of
+   * no sm.encryption_key config data being found.
+   *
+   * @param enc_key to receive the populated EncryptionKey
+   * @param config optional config, if present, taking precedence over internal
+   *     object config
+   */
+  void encryption_key_from_configs(
+      EncryptionKey& enc_key, const Config* config);
+
+  /**
+   * Finds the max tile size(s) across all fragments in the array uri.
+   *
+   * @param uri The URI of the array to examine.
+   * @param tile_sizes The receiver for the obtained sizes.
+   * @param config The Config object to be used for poss encryption and any
+   *     other operation modifiers.
+   */
+  void array_get_fragment_tile_size_extremes(
+      const URI& array_uri,
+      tiledb_fragment_tile_size_extremes_t* tile_extreme_sizes,
+      const Config* config);
 
  private:
   /* ********************************* */

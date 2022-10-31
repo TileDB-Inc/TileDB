@@ -1403,7 +1403,7 @@ Status FragmentMetadata::load_tile_offsets(
       RETURN_NOT_OK(load_tile_var_offsets(encryption_key, idx_map_[name]));
   }
 
-  // Load all of the var offsets.
+  // Load all of the validity offsets.
   for (const auto& name : names) {
     if (array_schema_->is_nullable(name))
       RETURN_NOT_OK(load_tile_validity_offsets(encryption_key, idx_map_[name]));

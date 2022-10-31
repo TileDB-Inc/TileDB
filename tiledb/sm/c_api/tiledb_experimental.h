@@ -1159,6 +1159,32 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_total_cell_num(
     tiledb_fragment_info_t* fragment_info,
     uint64_t* count) TILEDB_NOEXCEPT;
 
+
+/*
+ * Retrieve the max/min tile sizes across all fragments in an array.
+ * Encrypted arrays will be supported via config options.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t max_in_memory_tile_size;
+ * tiledb_fragment_info_get_total_cell_num(ctx, array_uri, &max_in_memory_tile_size, config);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param array_uri Identifies the array for which to retrieve tile size extremes.
+ * @param max_in_memory_tile_size The receiver for the max in memory tile size..
+ * @param config The Config object to be used for poss encryption and any other operation modifiers.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ */
+
+TILEDB_EXPORT int32_t tiledb_array_fragment_size_extremes(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    uint64_t* max_in_memory_tile_size,
+    tiledb_config_t* config);
+
 #ifdef __cplusplus
 }
 #endif

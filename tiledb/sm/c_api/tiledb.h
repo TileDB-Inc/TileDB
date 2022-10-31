@@ -60,6 +60,8 @@
 #include "tiledb/api/c_api/error/error_api_external.h"
 #include "tiledb/api/c_api/filter/filter_api_external.h"
 
+// #include "tiledb/api/c_api/tiledb_tile_sizes.h"
+
 #include <stdint.h>
 #include <stdio.h>
 

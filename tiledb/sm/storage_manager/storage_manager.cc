@@ -260,6 +260,104 @@ StorageManager::load_array_schemas_and_fragment_metadata(
       Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
 }
 
+std::tuple<
+    Status,
+    optional<shared_ptr<ArraySchema>>,
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
+    optional<std::vector<shared_ptr<FragmentMetadata>>>>
+StorageManager::load_array_schemas_and_all_fragment_metadata(
+    const ArrayDirectory& array_dir,
+    MemoryTracker* memory_tracker,
+    const EncryptionKey& enc_key) {
+  auto timer_se =
+      stats_->start_timer("sm_load_array_schemas_and_all_fragment_metadata");
+
+  // Load array schemas
+  auto&& [st_schemas, array_schema_latest, array_schemas_all] =
+      load_array_schemas(array_dir, enc_key);
+  RETURN_NOT_OK_TUPLE(st_schemas, std::nullopt, std::nullopt, std::nullopt);
+
+  auto xfiltered_fragment_uris = array_dir.filtered_fragment_uris(
+      array_schema_latest.value().get()->dense());
+  //const auto& meta_uris = array_dir.fragment_meta_uris();
+  const auto& xfragments_to_load = xfiltered_fragment_uris.fragment_uris();
+  std::cout << "xfragments_to_load.size() " << xfragments_to_load.size()
+            << std::endl;
+  for (auto& f : xfragments_to_load) {
+    std::cout << f.uri_.to_string() << std::endl;
+  }
+
+  const auto& fragments_to_load = array_dir.unfiltered_fragment_uris();
+  std::cout << "fragments_to_load.size() " << fragments_to_load.size()
+            << std::endl;
+  for (auto& f : fragments_to_load) {
+    std::cout << f.to_string() << std::endl;
+  }
+  auto timestamped_uris_from_uris =
+      [](const std::vector<URI>& uris) -> std::vector<TimestampedURI> {
+    std::vector<TimestampedURI> timestamp_uris;
+    for (auto& uri : uris) {
+      std::pair<uint64_t, uint64_t> fragment_timestamp_range;
+      // We only want 'normal' fragment metadata items, skip others
+      // skip '.vac' consolidated metadata files
+      // Note: attempts to load the .vac files in this fashion were leading to
+      // inconsistently occuring hangs, usually in vfs routines within
+      // parallel_[sort|for]()       // activities, currently guessing due to
+      // corruption using load_fragment_metadata() on these .vac files.
+      if (utils::parse::ends_with(
+              uri.to_string(), constants::vacuum_file_suffix))
+        continue;
+      throw_if_not_ok(
+          utils::parse::get_timestamp_range(uri, &fragment_timestamp_range));
+      timestamp_uris.emplace_back(uri, fragment_timestamp_range);
+    }
+    return timestamp_uris;
+  };
+  auto timestamped_fragment_uris_to_load = timestamped_uris_from_uris(fragments_to_load);
+
+  #if 0
+  // Get the consolidated fragment metadatas
+  std::vector<Buffer> f_buffs(meta_uris.size());
+  std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
+      meta_uris.size());
+  auto status = parallel_for(compute_tp_, 0, meta_uris.size(), [&](size_t i) {
+    auto&& [st, buffer_opt, offsets] =
+        load_consolidated_fragment_meta(meta_uris[i], enc_key);
+    RETURN_NOT_OK(st);
+    f_buffs[i] = std::move(*buffer_opt);
+    offsets_vectors[i] = std::move(offsets.value());
+    return st;
+  });
+  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt, nullopt);
+  #endif
+
+  // Get the unique fragment metadatas into a map.
+  std::unordered_map<std::string, std::pair<Buffer*, uint64_t>> offsets;
+  #if 0
+  for (uint64_t i = 0; i < offsets_vectors.size(); i++) {
+    for (auto& offset : offsets_vectors[i]) {
+      if (offsets.count(offset.first) == 0) {
+        offsets.emplace(
+            offset.first, std::make_pair(&f_buffs[i], offset.second));
+      }
+    }
+  }
+  #endif
+
+  // Load the fragment metadata
+  auto&& [st_fragment_meta, fragment_metadata] = load_fragment_metadata(
+      memory_tracker,
+      array_schema_latest.value(),
+      array_schemas_all.value(),
+      enc_key,
+      timestamped_fragment_uris_to_load,
+      offsets);
+  RETURN_NOT_OK_TUPLE(st_fragment_meta, nullopt, nullopt, nullopt);
+
+  return {
+      Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
+}
+
 void ensure_supported_schema_version_for_read(uint32_t version) {
   // We do not allow reading from arrays written by newer version of TileDB
   if (version > constants::format_version) {
@@ -2354,14 +2452,14 @@ tuple<
     optional<Buffer>,
     optional<std::vector<std::pair<std::string, uint64_t>>>>
 StorageManager::load_consolidated_fragment_meta(
-    const URI& uri, const EncryptionKey& enc_key) {
+    const URI& consolidated_metadata_uri, const EncryptionKey& enc_key) {
   auto timer_se = stats_->start_timer("read_load_consolidated_frag_meta");
 
   // No consolidated fragment metadata file
-  if (uri.to_string().empty())
+  if (consolidated_metadata_uri.to_string().empty())
     return {Status::Ok(), nullopt, nullopt};
 
-  auto&& [st, tile_opt] = load_data_from_generic_tile(uri, 0, enc_key);
+  auto&& [st, tile_opt] = load_data_from_generic_tile(consolidated_metadata_uri, 0, enc_key);
   RETURN_NOT_OK_TUPLE(st, nullopt, nullopt);
   auto& tile = *tile_opt;
 
@@ -2461,6 +2559,211 @@ Status StorageManager::group_metadata_vacuum(
   auto consolidator =
       Consolidator::create(ConsolidationMode::GROUP_META, config, this);
   return consolidator->vacuum(group_name);
+}
+
+void StorageManager::encryption_key_from_configs(EncryptionKey &enc_key, const Config* config) {
+  if (!config) {
+    config = &config_;
+  }
+  std::string enc_key_str, enc_type_str;
+  bool found_key = false;
+  bool found_type = false;
+  enc_key_str = config->get("sm.encryption_key", &found_key);
+  if (!found_key) {
+    throw_if_not_ok(enc_key.set_key(
+        static_cast<EncryptionType>(0),
+        nullptr, //enc_key_str.c_str(),
+        static_cast<uint32_t>(0)));
+    return;
+  }
+  enc_type_str = config->get("sm.encryption_type", &found_type);
+  if (!found_type) {
+    throw Status_StorageManagerError("StorageManager encryption_key_from_config cannot populate encryption key, missing encryption type!");
+  }
+  auto [st, et] = encryption_type_enum(enc_type_str);
+  throw_if_not_ok(st);
+  auto enc_type = et.value();
+  throw_if_not_ok(enc_key.set_key(
+      enc_type, enc_key_str.c_str(), static_cast<uint32_t>(enc_key_str.size())));
+}
+
+void StorageManager::array_get_fragment_tile_size_extremes(
+    const URI& array_uri,
+    tiledb_fragment_tile_size_extremes_t* tile_extreme_sizes,
+    const Config* config) {
+
+  //TBD: anything to do about array possibly going away underneath fragments being loaded?
+  //...are other areas protected in any way, is this alone in that or do other areas have
+  //...same issue?
+
+  assert(tile_extreme_sizes);
+  // Check if array exists
+  bool exists = false;
+  throw_if_not_ok(is_array(array_uri, &exists));
+  if (!exists) {
+    throw StatusException(Status_StorageManagerError(
+        std::string("Cannot access array fragment sizes; Array '") + array_uri.c_str() +
+        "' does not exist"));
+  }
+  memset(tile_extreme_sizes, 0, sizeof(*tile_extreme_sizes));
+  EncryptionKey enc_key;
+  encryption_key_from_configs(enc_key, config);
+
+  #if 0
+  // TBD: do we care about this?
+  auto version = array_schema_latest.value()->version();
+  ensure_supported_schema_version_for_read(version);
+  #endif
+
+  uint64_t timestamp_start = 0;
+  uint64_t timestamp_end = UINT64_MAX ; //TBD: check, fix/change if needed!!!
+  // Create an ArrayDirectory object and load
+  auto array_dir = ArrayDirectory(
+      this->vfs(),
+      this->compute_tp(),
+      array_uri,
+      timestamp_start,
+      timestamp_end);
+
+  MemoryTracker memory_tracker;
+  auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
+      load_array_schemas_and_all_fragment_metadata(
+          array_dir,
+          &memory_tracker,
+          enc_key);
+  throw_if_not_ok(st);
+  tiledb_fragment_tile_size_extremes_t& mins_maxs = *tile_extreme_sizes;
+  memset(&mins_maxs, 0, sizeof(mins_maxs));
+
+  // mins_maxs.max_persisted_tile_size = 0;
+
+  // mins_maxs.max_in_memory_basic_tile_size = 0;
+  // mins_maxs.max_persisted_basic_tile_size_var = 0;
+  // mins_maxs.max_in_memory_tile_size_var = 0;
+  // in_memory_validity_size doesn't currently appear to have method to
+  // obtain... is persisted/in_memory the same?
+  // mins_maxs.max_persisted_tile_size_validity = 0;
+  // mins_maxs.max_in_memory_tile_size_validity = 0;
+
+  mins_maxs.min_persisted_basic_tile_size = std::numeric_limits<uint64_t>::max();
+  mins_maxs.min_in_memory_basic_tile_size = std::numeric_limits<uint64_t>::max();
+  mins_maxs.min_persisted_tile_size_var = std::numeric_limits<uint64_t>::max();
+  mins_maxs.min_in_memory_tile_size_var = std::numeric_limits<uint64_t>::max();
+  mins_maxs.min_persisted_tile_size_validity =
+      std::numeric_limits<uint64_t>::max();
+  mins_maxs.min_in_memory_tile_size_validity =
+      std::numeric_limits<uint64_t>::max();
+
+  auto process_attr = [&](FragmentMetadata& f,
+                          const std::string& name,
+                          bool var_size) -> void {
+    uint64_t persisted_tile_size = 0, in_memory_tile_size = 0;
+    uint64_t num_tiles = 0;
+
+    uint64_t max_frag_persisted_basic_tile_size = 0, max_frag_in_memory_basic_tile_size = 0;
+    uint64_t min_frag_persisted_basic_tile_size =
+                 std::numeric_limits<uint64_t>::max(),
+             min_frag_in_memory_basic_tile_size =
+                 std::numeric_limits<uint64_t>::max();
+
+    uint64_t max_frag_persisted_tile_size_var = 0,
+             max_frag_in_memory_tile_size_var = 0;
+    uint64_t min_frag_persisted_tile_size_var =
+                 std::numeric_limits<uint64_t>::max(),
+             min_frag_in_memory_tile_size_var =
+                 std::numeric_limits<uint64_t>::max();
+
+    // for (const auto& f : fragment_metadata) {
+    uint64_t tile_num = f.tile_num();
+    std::vector<std::string> names;
+    names.push_back(name);
+    throw_if_not_ok(f.load_tile_offsets(enc_key, std::move(names)));
+    throw_if_not_ok(f.load_tile_var_sizes(enc_key, name));
+    for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
+      auto&& [st, tile_size] = f.persisted_tile_size(name, tile_idx);
+      throw_if_not_ok(st);
+      persisted_tile_size += *tile_size;
+      // hmm, so appears
+      // for dense, all tiles to be reported as same size
+      // for var, all tiles except last one reported as same size, with last one possible smaller?
+      auto in_mem_tile_size = f.tile_size(name, tile_idx);
+      in_memory_tile_size += in_mem_tile_size;
+      num_tiles++;
+      min_frag_persisted_basic_tile_size =
+          std::min(min_frag_persisted_basic_tile_size, persisted_tile_size);
+      max_frag_persisted_basic_tile_size =
+          std::max(max_frag_persisted_basic_tile_size, persisted_tile_size);
+
+      min_frag_in_memory_basic_tile_size =
+          std::min(min_frag_in_memory_basic_tile_size, in_mem_tile_size);
+      max_frag_in_memory_basic_tile_size =
+          std::max(max_frag_in_memory_basic_tile_size, in_mem_tile_size);
+
+      if (var_size) {
+        auto&& [st_var_persisted, tile_size_var_persisted] =
+            f.persisted_tile_var_size(name, tile_idx);
+        throw_if_not_ok(st_var_persisted);
+        persisted_tile_size += *tile_size_var_persisted;
+        auto&& [st_var, in_mem_tile_size_var] = f.tile_var_size(name, tile_idx);
+        throw_if_not_ok(st_var);
+        in_memory_tile_size += *in_mem_tile_size_var;
+        num_tiles++;
+
+        min_frag_persisted_tile_size_var = std::min(
+            min_frag_persisted_tile_size_var, *tile_size_var_persisted);
+        max_frag_persisted_tile_size_var = std::max(
+            max_frag_persisted_tile_size_var, *tile_size_var_persisted);
+        min_frag_in_memory_tile_size_var =
+            std::min(min_frag_in_memory_tile_size_var, *in_mem_tile_size_var);
+        max_frag_in_memory_tile_size_var =
+            std::max(max_frag_in_memory_tile_size_var, *in_mem_tile_size_var);
+      }
+      //}
+      mins_maxs.max_persisted_basic_tile_size = std::max(
+          mins_maxs.max_persisted_basic_tile_size, max_frag_persisted_basic_tile_size),
+      mins_maxs.max_in_memory_basic_tile_size = std::max(
+          mins_maxs.max_in_memory_basic_tile_size,
+          max_frag_in_memory_basic_tile_size);
+      mins_maxs.min_persisted_basic_tile_size = std::min(
+          mins_maxs.min_persisted_basic_tile_size,
+          min_frag_persisted_basic_tile_size);
+      mins_maxs.min_in_memory_basic_tile_size = std::min(
+          mins_maxs.min_in_memory_basic_tile_size,
+          min_frag_in_memory_basic_tile_size);
+
+      // uint64_t min_persisted_tile_size = std::limits<uint64_t>::max,
+      // min_in_memory_tile_size = std::limits<uint64_t>::max;
+      mins_maxs.max_persisted_tile_size_var = std::max(
+          mins_maxs.max_persisted_tile_size_var,
+          max_frag_persisted_tile_size_var);
+      mins_maxs.max_in_memory_tile_size_var = std::max(
+          mins_maxs.max_in_memory_tile_size_var,
+          max_frag_in_memory_tile_size_var);
+      mins_maxs.min_persisted_tile_size_var = std::min(
+          mins_maxs.min_persisted_tile_size_var,
+          min_frag_persisted_tile_size_var);
+      mins_maxs.min_in_memory_tile_size_var = std::min(
+          mins_maxs.min_in_memory_tile_size_var,
+          min_frag_in_memory_tile_size_var);
+    }
+  };
+  for (auto& frag : *fragment_metadata) {
+    auto & frags_schema = frag->array_schema();
+
+    if (!frags_schema->dense())
+      process_attr(*frag, constants::coords, false);
+
+    auto& attributes = frags_schema->attributes();
+    for (auto& attrib : attributes) {
+      process_attr(*frag, attrib->name(), attrib->var_size());
+    }
+  }
+  mins_maxs.max_in_memory_tile_size = std::max(
+      mins_maxs.max_in_memory_basic_tile_size,
+      mins_maxs.max_in_memory_tile_size_var);
+  mins_maxs.max_persisted_tile_size = std::max(
+      mins_maxs.max_persisted_basic_tile_size,
+      mins_maxs.max_persisted_tile_size_var);
 }
 
 }  // namespace sm
