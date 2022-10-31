@@ -57,6 +57,7 @@
  */
 #include "tiledb/api/c_api/config/config_api_external.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
+#include "tiledb/api/c_api/datatype/datatype_api_external.h"
 #include "tiledb/api/c_api/error/error_api_external.h"
 #include "tiledb/api/c_api/filesystem/filesystem_api_external.h"
 #include "tiledb/api/c_api/filter/filter_api_external.h"
@@ -112,38 +113,6 @@ typedef enum {
 #include "tiledb_enum.h"
 #undef TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM
 } tiledb_query_condition_combination_op_t;
-
-/** TileDB datatype. */
-typedef enum {
-/** Helper macro for defining datatype enums. */
-#define TILEDB_DATATYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_DATATYPE_ENUM
-#ifdef TILEDB_CHAR
-#def TILEDB_CHAR_VAL TILEDB_CHAR
-#undef TILEDB_CHAR
-#define TILEDB_CHAR TILEDB_DEPRECATED TILEDB_CHAR_VAL
-#undef TILEDB_CHAR_VAL
-#endif
-#ifdef TILEDB_STRING_UCS2
-#def TILEDB_STRING_UCS2_VAL TILEDB_STRING_UCS2
-#undef TILEDB_STRING_UCS2
-#define TILEDB_STRING_UCS2 TILEDB_DEPRECATED TILEDB_STRING_UCS2_VAL
-#undef TILEDB_STRING_UCS2_VAL
-#endif
-#ifdef TILEDB_STRING_UCS4
-#def TILEDB_STRING_UCS4_VAL TILEDB_STRING_UCS4
-#undef TILEDB_STRING_UCS4
-#define TILEDB_STRING_UCS4 TILEDB_DEPRECATED TILEDB_STRING_UCS4_VAL
-#undef TILEDB_STRING_UCS4_VAL
-#endif
-#ifdef TILEDB_ANY
-#def TILEDB_ANY_VAL TILEDB_ANY
-#undef TILEDB_ANY
-#define TILEDB_ANY TILEDB_DEPRECATED TILEDB_ANY_VAL
-#undef TILEDB_ANY_VAL
-#endif
-} tiledb_datatype_t;
 
 /** Array type. */
 typedef enum {
@@ -245,26 +214,6 @@ TILEDB_EXPORT int32_t tiledb_object_type_to_str(
  */
 TILEDB_EXPORT int32_t tiledb_object_type_from_str(
     const char* str, tiledb_object_t* object_type) TILEDB_NOEXCEPT;
-
-/**
- * Returns a string representation of the given datatype.
- *
- * @param datatype Datatype
- * @param str Set to point to a constant string representation of the datatype
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_datatype_to_str(
-    tiledb_datatype_t datatype, const char** str) TILEDB_NOEXCEPT;
-
-/**
- * Parses a datatype from the given string.
- *
- * @param str String representation to parse
- * @param datatype Set to the parsed datatype
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_datatype_from_str(
-    const char* str, tiledb_datatype_t* datatype) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given array type.
@@ -412,13 +361,6 @@ TILEDB_EXPORT uint32_t tiledb_max_path(void) TILEDB_NOEXCEPT;
  * attributes).
  */
 TILEDB_EXPORT uint64_t tiledb_offset_size(void) TILEDB_NOEXCEPT;
-
-/**
- * Returns the input datatype size for a given type. Returns zero if the type is
- * not valid.
- */
-TILEDB_EXPORT uint64_t tiledb_datatype_size(tiledb_datatype_t type)
-    TILEDB_NOEXCEPT;
 
 /** Returns the current time in milliseconds. */
 TILEDB_EXPORT uint64_t tiledb_timestamp_now_ms(void) TILEDB_NOEXCEPT;

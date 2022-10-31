@@ -157,20 +157,6 @@ int32_t tiledb_object_type_from_str(
   return TILEDB_OK;
 }
 
-int32_t tiledb_datatype_to_str(tiledb_datatype_t datatype, const char** str) {
-  const auto& strval = tiledb::sm::datatype_str((tiledb::sm::Datatype)datatype);
-  *str = strval.c_str();
-  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
-}
-
-int32_t tiledb_datatype_from_str(const char* str, tiledb_datatype_t* datatype) {
-  tiledb::sm::Datatype val = tiledb::sm::Datatype::UINT8;
-  if (!tiledb::sm::datatype_enum(str, &val).ok())
-    return TILEDB_ERR;
-  *datatype = (tiledb_datatype_t)val;
-  return TILEDB_OK;
-}
-
 int32_t tiledb_array_type_to_str(
     tiledb_array_type_t array_type, const char** str) {
   const auto& strval =
@@ -283,14 +269,6 @@ int32_t tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode) {
     return TILEDB_ERR;
   *vfs_mode = (tiledb_vfs_mode_t)val;
   return TILEDB_OK;
-}
-
-/* ****************************** */
-/*            CONSTANTS           */
-/* ****************************** */
-
-uint64_t tiledb_datatype_size(tiledb_datatype_t type) {
-  return tiledb::sm::datatype_size(static_cast<tiledb::sm::Datatype>(type));
 }
 
 /* ********************************* */
@@ -6251,16 +6229,6 @@ int32_t tiledb_object_type_from_str(
       str, object_type);
 }
 
-int32_t tiledb_datatype_to_str(
-    tiledb_datatype_t datatype, const char** str) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_datatype_to_str>(datatype, str);
-}
-
-int32_t tiledb_datatype_from_str(
-    const char* str, tiledb_datatype_t* datatype) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_datatype_from_str>(str, datatype);
-}
-
 int32_t tiledb_array_type_to_str(
     tiledb_array_type_t array_type, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_array_type_to_str>(
@@ -6359,10 +6327,6 @@ uint32_t tiledb_max_path() noexcept {
 
 uint64_t tiledb_offset_size() noexcept {
   return tiledb::sm::constants::cell_var_offset_size;
-}
-
-uint64_t tiledb_datatype_size(tiledb_datatype_t type) noexcept {
-  return tiledb::sm::datatype_size(static_cast<tiledb::sm::Datatype>(type));
 }
 
 uint64_t tiledb_timestamp_now_ms() noexcept {
