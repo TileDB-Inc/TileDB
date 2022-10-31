@@ -728,6 +728,48 @@ Status Query::submit_and_finalize() {
   return Status::Ok();
 }
 
+Status Query::check_trim_and_buffer_tile_alignment() {
+
+//  query_remote_buffer_storage_;
+
+  uint64_t cell_num_per_tile = array_schema_->dense() ?
+                                   array_schema_->domain().cell_num_per_tile() :
+                                   array_schema_->capacity();
+
+  for (auto&& buff : buffers_) {
+    const bool is_nullable = array_schema_->is_nullable(buff.first);
+    bool is_var_size = false;
+    if (array_schema_->is_attr(buff.first)) {
+      const auto& attr = array_schema_->attribute(buff.first);
+      is_var_size = attr->var_size();
+    } else {
+      const auto& dim = array_schema_->domain().dimension_ptr(buff.first);
+      is_var_size = dim->var_size();
+    }
+    if (is_var_size) {
+      auto offsets_buf_size = *buff.second.buffer_size_;
+      const uint64_t to_trim =
+          (offsets_buf_size / constants::cell_var_offset_size) %
+          cell_num_per_tile;
+      if (to_trim) {
+
+        QueryRemoteBufferStorage storage;
+        storage.buffer.write(static_cast<char*>(buff.second.buffer_) + offsets_buf_size - to_trim - 1, to_trim);
+
+        query_remote_buffer_storage_.emplace(buff.first, storage);
+//        buff.second
+        
+        *buff.second.buffer_size_ -= to_trim;
+      }
+    } else {
+      uint64_t cell_size = array_schema_->cell_size(first_buffer_name);
+      if ((*first_buffer.buffer_size_ / cell_size) % cell_num_per_tile) {
+        buffers_tile_aligned = false;
+      }
+    }
+  }
+}
+
 Status Query::check_tile_alignment() const {
   // Only applicable for remote global order writes
   if (!array_->is_remote() || type_ != QueryType::WRITE ||
@@ -2725,7 +2767,8 @@ Status Query::submit() {
 
     // Check that input buffers are tile-aligned for remote global order
     // writes
-    RETURN_NOT_OK(check_tile_alignment());
+    RETURN_NOT_OK(check_trim_and_buffer_tile_alignment());
+//    RETURN_NOT_OK(check_tile_alignment());
 
     // Check that input buffers >5mb for remote global order writes
     RETURN_NOT_OK(check_buffer_multipart_size());

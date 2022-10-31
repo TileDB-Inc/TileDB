@@ -49,6 +49,7 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
@@ -1109,6 +1110,8 @@ class Query {
    * */
   std::unordered_map<std::string, QueryBuffer> buffers_;
 
+  std::unordered_map<std::string, QueryRemoteBufferStorage> query_remote_buffer_storage_;
+
   /** Maps label names to their buffers. */
   std::unordered_map<std::string, QueryBuffer> label_buffers_;
 
@@ -1302,6 +1305,8 @@ class Query {
    * for both dense and sparse arrays.
    */
   Status check_tile_alignment() const;
+
+  Status check_trim_and_buffer_tile_alignment();
 
   /**
    * Check if input buffers are bigger than 5MB. S3 multipart upload
