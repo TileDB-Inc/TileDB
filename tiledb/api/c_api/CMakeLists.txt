@@ -72,3 +72,9 @@ add_subdirectory(filter_list)
 
 # `object`: no dependencies
 add_subdirectory(object)
+
+# NOTE: Only the tiledb_query_type_t enum has been migrated
+# to the new C API layout.
+#
+# `query`: no dependencies yet but will have some
+add_subdirectory(query)

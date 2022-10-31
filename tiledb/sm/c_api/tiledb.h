@@ -63,6 +63,7 @@
 #include "tiledb/api/c_api/filter/filter_api_external.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_external.h"
 #include "tiledb/api/c_api/object/object_api_external.h"
+#include "tiledb/api/c_api/query/query_api_external.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -74,14 +75,6 @@ extern "C" {
 /* ****************************** */
 /*          TILEDB ENUMS          */
 /* ****************************** */
-
-/** TileDB query type. */
-typedef enum {
-/** Helper macro for defining query type enums. */
-#define TILEDB_QUERY_TYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_QUERY_TYPE_ENUM
-} tiledb_query_type_t;
 
 /** Query status. */
 typedef enum {
@@ -158,26 +151,6 @@ typedef enum {
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
 /* ****************************** */
-
-/**
- * Returns a string representation of the given query type.
- *
- * @param query_type Query type
- * @param str Set to point to a constant string representation of the query type
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_query_type_to_str(
-    tiledb_query_type_t query_type, const char** str) TILEDB_NOEXCEPT;
-
-/**
- * Parses a query type from the given string.
- *
- * @param str String representation to parse
- * @param query_type Set to the parsed query type
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_query_type_from_str(
-    const char* str, tiledb_query_type_t* query_type) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given array type.

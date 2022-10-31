@@ -50,10 +50,6 @@ TEST_CASE("C API: Test enum values", "[capi][enums]") {
    * don't modify the checks below), otherwise backwards compatibility breaks.
    */
 
-  /** Query type */
-  REQUIRE(TILEDB_READ == 0);
-  REQUIRE(TILEDB_WRITE == 1);
-
   /** Array type */
   REQUIRE(TILEDB_DENSE == 0);
   REQUIRE(TILEDB_SPARSE == 1);
@@ -113,20 +109,6 @@ TEST_CASE("C API: Test enum values", "[capi][enums]") {
 
 TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   const char* c_str = nullptr;
-  tiledb_query_type_t query_type;
-  REQUIRE(
-      (tiledb_query_type_to_str(TILEDB_READ, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "READ"));
-  REQUIRE(
-      (tiledb_query_type_from_str("READ", &query_type) == TILEDB_OK &&
-       query_type == TILEDB_READ));
-  REQUIRE(
-      (tiledb_query_type_to_str(TILEDB_WRITE, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "WRITE"));
-  REQUIRE(
-      (tiledb_query_type_from_str("WRITE", &query_type) == TILEDB_OK &&
-       query_type == TILEDB_WRITE));
-
   tiledb_array_type_t array_type;
   REQUIRE(
       (tiledb_array_type_to_str(TILEDB_DENSE, &c_str) == TILEDB_OK &&
