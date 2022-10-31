@@ -41,7 +41,7 @@ extern "C" {
 #endif
 
 /** A group object. */
-typedef struct tiledb_group_t tiledb_group_t;
+typedef struct tiledb_group_handle_t tiledb_group_t;
 
 /**
  * Creates a new TileDB group.
@@ -56,11 +56,11 @@ typedef struct tiledb_group_t tiledb_group_t;
  * @param group_uri The group URI.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_DEPRECATED_EXPORT int32_t
+TILEDB_DEPRECATED_EXPORT capi_return_t
 tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // TILEDB_CAPI_DATATYPE_API_EXTERNAL_H
+#endif  // TILEDB_CAPI_GROUP_API_EXTERNAL_H
