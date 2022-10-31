@@ -612,7 +612,7 @@ Status StorageManagerCanonical::write_commit_ignore_file(
   return Status::Ok();
 }
 
-void StorageManager::write_consolidated_commits_file(
+void StorageManagerCanonical::write_consolidated_commits_file(
     format_version_t write_version,
     ArrayDirectory array_dir,
     const std::vector<URI>& commit_uris) {
