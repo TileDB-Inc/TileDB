@@ -159,10 +159,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    **Default**: 50,000,000
  * - `sm.consolidation.max_fragment_size` <br>
  *    **Experimental** <br>
- *    The size (in bytes) of the maximum fragment size that will be created
- *    by consolidation. When the fragment size is reached, consolidation will
- *    continue the operation in a new fragment. The result will be a multiple
- *    fragments, but with seperate MBRs. <br>
+ *    The size (in bytes) of the maximum on-disk fragment size that will be
+ *    created by consolidation. When it is reached, consolidation will continue
+ *    the operation in a new fragment. The result will be a multiple fragments,
+ *    but with seperate MBRs. <br>
  * - `sm.consolidation.steps` <br>
  *    The number of consolidation steps to be performed when executing
  *    the consolidation algorithm.<br>
