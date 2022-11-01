@@ -84,8 +84,8 @@ class DimensionLabelReference {
    *     the label data.
    * @param label_order The order of the dimension label.
    * @param label_type The datatype of the label data.
-   * @param cell_val_num The number of values stored in dimension label cell.
-   * @param domain The domain the dimension label is defined on.
+   * @param label_cell_val_num The number of values stored in dimension label
+   * cell.
    * @param is_external If ``true``, the dimension label exits outside of the
    * array.
    * @param relative_uri If ``true``, the URI is relative.
@@ -98,7 +98,6 @@ class DimensionLabelReference {
       DataOrder label_order,
       Datatype label_type,
       uint32_t label_cell_val_num,
-      const Range& label_domain,
       shared_ptr<const DimensionLabelSchema> schema,
       bool is_external,
       bool relative_uri);
@@ -114,7 +113,6 @@ class DimensionLabelReference {
    * @param label_order The order of the dimension label.
    * @param label_type The datatype of the label data.
    * @param label_cell_val_num The number of values stored in dimension cell.
-   * @param label_domain The domain the dimension label is defined on.
    * @param schema The array schema
    */
   DimensionLabelReference(
@@ -125,7 +123,6 @@ class DimensionLabelReference {
       DataOrder label_order,
       Datatype label_type,
       uint32_t label_cell_val_num,
-      const Range& label_domain,
       shared_ptr<const DimensionLabelSchema> schema);
 
   /**
@@ -173,11 +170,6 @@ class DimensionLabelReference {
   /** The number of values per label cell. */
   inline uint32_t label_cell_val_num() const {
     return label_cell_val_num_;
-  }
-
-  /** The interval label data is valid on. */
-  inline const Range& label_domain() const {
-    return label_domain_;
   }
 
   /** The label order of the dimension label. */
@@ -257,9 +249,6 @@ class DimensionLabelReference {
 
   /** The number of cells per label value. */
   uint32_t label_cell_val_num_;
-
-  /** The interval the labels are defined on. */
-  Range label_domain_;
 
   /**
    * The dimension label schema.
