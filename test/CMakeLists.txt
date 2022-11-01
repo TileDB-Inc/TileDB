@@ -174,7 +174,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-ordered-dim-label-reader.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
-  src/unit-bytevecvalue.cc
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
   src/unit-resource-pool.cc
@@ -184,13 +183,11 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-s3.cc
   src/unit-sparse-global-order-reader.cc
   src/unit-sparse-unordered-with-dups-reader.cc
-  src/unit-status.cc
   src/unit-Subarray.cc
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
   src/unit-SubarrayPartitioner-sparse.cc
   src/unit-Tile.cc
-  src/unit-TileDomain.cc
   src/unit-uuid.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
