@@ -71,6 +71,28 @@ Attribute::Attribute(
 Attribute::Attribute(
     const std::string& name,
     Datatype type,
+    uint32_t cell_val_num,
+    DataOrder order)
+    : cell_val_num_(cell_val_num)
+    , nullable_(false)
+    , name_(name)
+    , type_(type)
+    , order_(order) {
+  set_default_fill_value();
+
+  if (order_ != DataOrder::UNORDERED_DATA) {
+    ensure_ordered_attribute_datatype_is_valid(type_);
+    if (cell_val_num_ != 1 && type != Datatype::STRING_ASCII) {
+      throw std::invalid_argument(
+          "Ordered attributes with datatype '" + datatype_str(type_) +
+          "' must have cell_val_num=1.");
+    }
+  }
+}
+
+Attribute::Attribute(
+    const std::string& name,
+    Datatype type,
     bool nullable,
     uint32_t cell_val_num,
     const FilterPipeline& filter_pipeline,
