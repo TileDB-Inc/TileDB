@@ -264,7 +264,7 @@ Status array_open_from_capnp(
 
   if (array_open_reader.hasQueryType()) {
     auto query_type_str = array_open_reader.getQueryType();
-    QueryType query_type;
+    QueryType query_type = QueryType::READ;
     RETURN_NOT_OK(query_type_enum(query_type_str, &query_type));
     array->set_query_type(query_type);
   }
