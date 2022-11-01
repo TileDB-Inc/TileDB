@@ -525,6 +525,42 @@ Status Array::close() {
   return Status::Ok();
 }
 
+void Array::delete_array(const URI& uri) {
+  // Check that query type is MODIFY_EXCLUSIVE
+  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+    throw StatusException(Status_ArrayError(
+        "[Array::delete_array] Query type must be MODIFY_EXCLUSIVE"));
+  }
+
+  // Check that array is open
+  if (!is_open() && !controller().is_open(uri)) {
+    throw StatusException(
+        Status_ArrayError("[Array::delete_array] Array is closed"));
+  }
+
+  // Check that array is not in the process of opening or closing
+  if (is_opening_or_closing_) {
+    throw StatusException(Status_ArrayError(
+        "[Array::delete_array] "
+        "May not perform simultaneous open or close operations."));
+  }
+
+  // Delete array data
+  if (remote_) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr) {
+      throw Status_ArrayError(
+          "[Array::delete_array] Remote array with no REST client.");
+    }
+    rest_client->delete_array_from_rest(uri);
+  } else {
+    storage_manager_->delete_array(uri.c_str());
+  }
+
+  // Close the array
+  throw_if_not_ok(this->close());
+}
+
 Status Array::delete_fragments(
     const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
   // Check that query type is MODIFY_EXCLUSIVE

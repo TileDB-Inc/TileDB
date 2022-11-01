@@ -358,10 +358,11 @@ tuple<
 StorageManagerCanonical::array_open_for_writes(Array* array) {
   // Checks
   if (!vfs_->supports_uri_scheme(array->array_uri()))
-    return {logger_->status(Status_StorageManagerError(
-                "Cannot open array; URI scheme unsupported.")),
-            nullopt,
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            "Cannot open array; URI scheme unsupported.")),
+        nullopt,
+        nullopt};
 
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
@@ -380,9 +381,10 @@ StorageManagerCanonical::array_open_for_writes(Array* array) {
       err << version;
       err << ") is not the library format version (";
       err << constants::format_version << ")";
-      return {logger_->status(Status_StorageManagerError(err.str())),
-              nullopt,
-              nullopt};
+      return {
+          logger_->status(Status_StorageManagerError(err.str())),
+          nullopt,
+          nullopt};
     }
   } else {
     if (version > constants::format_version) {
@@ -391,9 +393,10 @@ StorageManagerCanonical::array_open_for_writes(Array* array) {
       err << version;
       err << ") is newer than library format version (";
       err << constants::format_version << ")";
-      return {logger_->status(Status_StorageManagerError(err.str())),
-              nullopt,
-              nullopt};
+      return {
+          logger_->status(Status_StorageManagerError(err.str())),
+          nullopt,
+          nullopt};
     }
   }
 
@@ -412,10 +415,11 @@ StorageManagerCanonical::array_load_fragments(
   // Check if the array is open
   auto it = open_arrays_.find(array);
   if (it == open_arrays_.end()) {
-    return {logger_->status(Status_StorageManagerError(
-                std::string("Cannot load array fragments from ") +
-                array->array_uri().to_string() + "; Array not open")),
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            std::string("Cannot load array fragments from ") +
+            array->array_uri().to_string() + "; Array not open")),
+        nullopt};
   }
 
   // Load the fragment metadata
@@ -443,12 +447,13 @@ StorageManagerCanonical::array_reopen(Array* array) {
   // Check if array is open
   auto it = open_arrays_.find(array);
   if (it == open_arrays_.end()) {
-    return {logger_->status(Status_StorageManagerError(
-                std::string("Cannot reopen array ") +
-                array->array_uri().to_string() + "; Array not open")),
-            nullopt,
-            nullopt,
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            std::string("Cannot reopen array ") +
+            array->array_uri().to_string() + "; Array not open")),
+        nullopt,
+        nullopt,
+        nullopt};
   }
 
   return array_open_for_reads(array);
@@ -581,7 +586,7 @@ Status StorageManagerCanonical::fragments_consolidate(
       array_name, encryption_type, encryption_key, key_length, fragment_uris);
 }
 
-Status StorageManager::write_commit_ignore_file(
+Status StorageManagerCanonical::write_commit_ignore_file(
     ArrayDirectory array_dir, const std::vector<URI>& commit_uris_to_ignore) {
   auto&& [st, name] = array_dir.compute_new_fragment_name(
       commit_uris_to_ignore.front(),
@@ -607,7 +612,7 @@ Status StorageManager::write_commit_ignore_file(
   return Status::Ok();
 }
 
-void StorageManager::write_consolidated_commits_file(
+void StorageManagerCanonical::write_consolidated_commits_file(
     format_version_t write_version,
     ArrayDirectory array_dir,
     const std::vector<URI>& commit_uris) {
@@ -665,12 +670,60 @@ void StorageManager::write_consolidated_commits_file(
   throw_if_not_ok(this->vfs()->close_file(consolidated_commits_uri));
 }
 
-Status StorageManager::delete_fragments(
+void StorageManagerCanonical::delete_array(const char* array_name) {
+  if (array_name == nullptr) {
+    throw Status_StorageManagerError(
+        "[delete_array] Array name cannot be null");
+  }
+
+  // Delete fragments and commits
+  throw_if_not_ok(
+      delete_fragments(array_name, 0, std::numeric_limits<uint64_t>::max()));
+
+  auto array_dir = ArrayDirectory(
+      vfs_,
+      compute_tp_,
+      URI(array_name),
+      0,
+      std::numeric_limits<uint64_t>::max());
+
+  // Get the metadata and schema uris to be deleted
+  /* Note: metadata files may not be present, try to delete anyway */
+  const auto& array_meta_uris = array_dir.array_meta_uris();
+  const auto& fragment_meta_uris = array_dir.fragment_meta_uris();
+  const auto& array_schema_uris = array_dir.array_schema_uris();
+
+  // Delete array metadata files
+  auto status =
+      parallel_for(compute_tp_, 0, array_meta_uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(array_meta_uris[i].uri_));
+        return Status::Ok();
+      });
+  throw_if_not_ok(status);
+
+  // Delete fragment metadata files
+  status =
+      parallel_for(compute_tp_, 0, fragment_meta_uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(fragment_meta_uris[i]));
+        return Status::Ok();
+      });
+  throw_if_not_ok(status);
+
+  // Delete array schema files
+  status =
+      parallel_for(compute_tp_, 0, array_schema_uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(array_schema_uris[i]));
+        return Status::Ok();
+      });
+  throw_if_not_ok(status);
+}
+
+Status StorageManagerCanonical::delete_fragments(
     const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
   Status st;
   if (array_name == nullptr) {
     throw Status_StorageManagerError(
-        "Cannot delete_fragments; Array name cannot be null");
+        "[delete_fragments] Array name cannot be null");
   }
 
   auto array_dir = ArrayDirectory(
@@ -1578,9 +1631,10 @@ StorageManagerCanonical::load_array_schema_from_uri(
   Deserializer deserializer(tile.data(), tile.size());
 
   try {
-    return {Status::Ok(),
-            make_shared<ArraySchema>(
-                HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
+    return {
+        Status::Ok(),
+        make_shared<ArraySchema>(
+            HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
   } catch (const StatusException& e) {
     return {Status_StorageManagerError(e.what()), nullopt};
   }
@@ -1593,9 +1647,10 @@ StorageManagerCanonical::load_array_schema_latest(
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
-    return {logger_->status(Status_StorageManagerError(
-                "Cannot load array schema; Invalid array URI")),
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            "Cannot load array schema; Invalid array URI")),
+        nullopt};
 
   // Load schema from URI
   const URI& schema_uri = array_dir.latest_array_schema_uri();
@@ -1637,15 +1692,17 @@ StorageManagerCanonical::load_all_array_schemas(
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
-    return {logger_->status(Status_StorageManagerError(
-                "Cannot load all array schemas; Invalid array URI")),
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            "Cannot load all array schemas; Invalid array URI")),
+        nullopt};
 
   const std::vector<URI>& schema_uris = array_dir.array_schema_uris();
   if (schema_uris.empty()) {
-    return {logger_->status(Status_StorageManagerError(
-                "Cannot get the array schema vector; No array schemas found.")),
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            "Cannot get the array schema vector; No array schemas found.")),
+        nullopt};
   }
 
   std::vector<shared_ptr<ArraySchema>> schema_vector;
