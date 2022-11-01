@@ -465,6 +465,9 @@ class CAPIFunction<f, H> {
     } catch (const StatusException& e) {
       h.action(e.extract_status());
       return TILEDB_ERR;
+    } catch (const Status& e) {
+      h.action(e);
+      return TILEDB_ERR;
     } catch (const std::exception& e) {
       h.action(exception_to_status(e));
       return TILEDB_ERR;

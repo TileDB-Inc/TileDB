@@ -87,6 +87,7 @@ class WebpFilter : public Filter {
     float quality;
     WebpInputFormat format;
     bool lossless;
+    uint16_t y_extent, x_extent;
   };
 
   /* ********************************* */
@@ -98,19 +99,27 @@ class WebpFilter : public Filter {
    * Caller must set colorspace format filter option.
    */
   WebpFilter()
-      : WebpFilter(100.0f, WebpInputFormat::WEBP_NONE, false) {
+      : WebpFilter(100.0f, WebpInputFormat::WEBP_NONE, false, 0, 0) {
   }
 
   /**
    * @param quality Quality factor to use for WebP lossy compression.
    * @param inputFormat Colorspace format to use for WebP compression.
    * @param lossless Enable lossless compression.
+   * @param y_extent Extent at dimension index 0.
+   * @param x_extent Extent at dimension index 1.
    */
-  WebpFilter(float quality, WebpInputFormat inputFormat, bool lossless)
+  WebpFilter(
+      float quality,
+      WebpInputFormat inputFormat,
+      bool lossless,
+      uint16_t y_extent,
+      uint16_t x_extent)
       : Filter(FilterType::FILTER_WEBP)
       , quality_(quality)
       , format_(inputFormat)
-      , lossless_(lossless) {
+      , lossless_(lossless)
+      , extents_({y_extent, x_extent}) {
   }
 
   /* ****************************** */
@@ -229,7 +238,16 @@ class WebpFilter : public Filter {
    *
    * @param extents Extents retrieved from array Domain object.
    */
-  void set_extent(const std::vector<ByteVecValue>& extents);
+  template <typename T>
+  void set_extents(const std::vector<ByteVecValue>& extents);
+
+  /**
+   * Get tile extents currently in use by this WebpFilter
+   * Used in tests to check filter serialization
+   *
+   * @return Copy of extents_ private member
+   */
+  std::pair<uint16_t, uint16_t> get_extents() const;
 
  private:
   /* ********************************* */
@@ -239,7 +257,7 @@ class WebpFilter : public Filter {
   float quality_;
   WebpInputFormat format_;
   bool lossless_;
-  std::pair<uint64_t, uint64_t> extents_;
+  std::pair<uint16_t, uint16_t> extents_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

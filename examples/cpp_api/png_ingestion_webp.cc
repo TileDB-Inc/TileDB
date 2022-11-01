@@ -47,8 +47,6 @@ std::vector<uint8_t> image_read, array_read;
 const unsigned colorspace = TILEDB_WEBP_RGBA;
 // Colorspace stride determines pixel depth. RGB, BGR=3 and RGBA, BGRA=4.
 const unsigned pixel_depth = colorspace < TILEDB_WEBP_RGBA ? 3 : 4;
-const float quality_factor = 100.0f;
-const bool lossless = true;
 
 /**
  * Reads a .png file at the given path and returns a vector of pointers to
@@ -201,7 +199,11 @@ void write_png(
  * @param array_path Path to array to create.
  */
 void create_array(
-    unsigned width, unsigned height, const std::string& array_path) {
+    unsigned width,
+    unsigned height,
+    const std::string& array_path,
+    float quality_factor,
+    bool lossless) {
   Context ctx;
   VFS vfs(ctx);
   if (vfs.is_dir(array_path)) {
@@ -243,13 +245,17 @@ void create_array(
  * @param input_png Path of .png image to ingest.
  * @param array_path Path of array to create.
  */
-void ingest_png(const std::string& input_png, const std::string& array_path) {
+void ingest_png(
+    const std::string& input_png,
+    const std::string& array_path,
+    float quality_factor,
+    bool lossless) {
   // Read the png file into memory.
   unsigned width, height;
   std::vector<uint8_t*> row_pointers = read_png(input_png, &width, &height);
 
   // Create the empty array.
-  create_array(width, height, array_path);
+  create_array(width, height, array_path, quality_factor, lossless);
 
   // Unpack the row-major pixel data into four attribute buffers.
   std::vector<uint8_t> rgba;
@@ -290,7 +296,9 @@ void ingest_png(const std::string& input_png, const std::string& array_path) {
  * @param array_path Path of array to read from.
  */
 void read_png_array(
-    const std::string& output_png, const std::string& array_path) {
+    const std::string& output_png,
+    const std::string& array_path,
+    bool lossless) {
   Context ctx;
   Array array(ctx, array_path, TILEDB_READ);
 
@@ -345,22 +353,32 @@ void read_png_array(
 }
 
 int main(int argc, char** argv) {
-  if (argc < 4) {
+  if (argc < 4 || argc > 5) {
     std::cout << "USAGE: " << argv[0]
-              << " <input.png> <array-name> <output.png>" << std::endl
+              << " <input.png> <array-name> <output.png> <quality_factor>"
+              << std::endl
               << std::endl
               << "Ingests `input.png` into a new array `my_array_name` and "
                  "produces a new output image `output.png`."
-              << std::endl;
+              << std::endl
+              << "`quality_factor` should be a float in the range [0.0, 200.0] "
+                 "and is used to adjust quality of lossy compression. If no "
+                 "`quality_factor` is given lossless compression will be used.";
     return 1;
   }
-
   std::string input_png(argv[1]), array_path(argv[2]), output_png(argv[3]);
+  float quality_factor;
+  bool lossless = false;
+  if (argc > 4) {
+    quality_factor = std::stof(argv[4]);
+  } else {
+    lossless = true;
+  }
 
   // Ingest the .png data to a new TileDB array.
-  ingest_png(input_png, array_path);
+  ingest_png(input_png, array_path, quality_factor, lossless);
   // Read from the array and write it to a new .png image.
-  read_png_array(output_png, array_path);
+  read_png_array(output_png, array_path, lossless);
 
   return 0;
 }

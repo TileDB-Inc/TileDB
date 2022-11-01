@@ -41,11 +41,6 @@
 // For optional visual verification that images appear as expected.
 #ifdef PNG_FOUND
 #include <png.h>
-static const std::string webp_png_name = "cpp_unit_webp.png";
-constexpr bool png_found = true;
-#else
-constexpr bool png_found = false;
-#endif  // PNG_FOUND
 
 void write_image(
     const std::vector<uint8_t>& data,
@@ -53,70 +48,81 @@ void write_image(
     unsigned height,
     uint8_t depth,
     uint8_t colorspace,
-    const char* path = webp_png_name.c_str()) {
-  if constexpr (png_found) {
-    std::vector<uint8_t*> png_buffer;
-    for (unsigned y = 0; y < height; y++)
-      png_buffer.push_back(
-          (uint8_t*)std::malloc(width * depth * sizeof(uint8_t)));
+    const char* path) {
+  std::vector<uint8_t*> png_buffer;
+  for (unsigned y = 0; y < height; y++)
+    png_buffer.push_back(
+        (uint8_t*)std::malloc(width * depth * sizeof(uint8_t)));
 
-    unsigned row_stride = width * depth;
-    for (size_t y = 0; y < height; y++) {
-      uint8_t* row = png_buffer[y];
-      for (size_t x = 0; x < width * depth; x++) {
-        row[x] = data[(y * row_stride) + x];
-      }
+  unsigned row_stride = width * depth;
+  for (size_t y = 0; y < height; y++) {
+    uint8_t* row = png_buffer[y];
+    for (size_t x = 0; x < width * depth; x++) {
+      row[x] = data[(y * row_stride) + x];
     }
-
-    // The test images will overwrite one another to avoid creating a gallery.
-    FILE* fp = fopen(path, "wb");
-    if (!fp)
-      abort();
-
-    png_structp png =
-        png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    if (!png)
-      abort();
-
-    png_infop info = png_create_info_struct(png);
-    if (!info)
-      abort();
-
-    if (setjmp(png_jmpbuf(png)))
-      abort();
-
-    png_init_io(png, fp);
-
-    int color_type = colorspace < TILEDB_WEBP_RGBA ? PNG_COLOR_TYPE_RGB :
-                                                     PNG_COLOR_TYPE_RGBA;
-
-    // Enable BGR(A) format
-    if (colorspace == TILEDB_WEBP_BGR || colorspace == TILEDB_WEBP_BGRA) {
-      png_set_bgr(png);
-    }
-
-    png_set_IHDR(
-        png,
-        info,
-        width,
-        height,
-        8,
-        color_type,
-        PNG_INTERLACE_NONE,
-        PNG_COMPRESSION_TYPE_DEFAULT,
-        PNG_FILTER_TYPE_DEFAULT);
-    png_write_info(png, info);
-
-    png_write_image(png, png_buffer.data());
-    png_write_end(png, NULL);
-
-    for (size_t i = 0; i < height; i++)
-      std::free(png_buffer[i]);
-
-    fclose(fp);
-    png_destroy_write_struct(&png, &info);
   }
+
+  // The test images will overwrite one another to avoid creating a gallery.
+  FILE* fp = fopen(path != nullptr ? path : "cpp_unit_webp.png", "wb");
+  if (!fp)
+    abort();
+
+  png_structp png =
+      png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+  if (!png)
+    abort();
+
+  png_infop info = png_create_info_struct(png);
+  if (!info)
+    abort();
+
+  if (setjmp(png_jmpbuf(png)))
+    abort();
+
+  png_init_io(png, fp);
+
+  int color_type =
+      colorspace < TILEDB_WEBP_RGBA ? PNG_COLOR_TYPE_RGB : PNG_COLOR_TYPE_RGBA;
+
+  // Enable BGR(A) format
+  if (colorspace == TILEDB_WEBP_BGR || colorspace == TILEDB_WEBP_BGRA) {
+    png_set_bgr(png);
+  }
+
+  png_set_IHDR(
+      png,
+      info,
+      width,
+      height,
+      8,
+      color_type,
+      PNG_INTERLACE_NONE,
+      PNG_COMPRESSION_TYPE_DEFAULT,
+      PNG_FILTER_TYPE_DEFAULT);
+  png_write_info(png, info);
+
+  png_write_image(png, png_buffer.data());
+  png_write_end(png, NULL);
+
+  for (size_t i = 0; i < height; i++)
+    std::free(png_buffer[i]);
+
+  fclose(fp);
+  png_destroy_write_struct(&png, &info);
 }
+
+constexpr bool png_found = true;
+#else
+void write_image(
+    const std::vector<uint8_t>& data,
+    unsigned width,
+    unsigned height,
+    uint8_t depth,
+    uint8_t colorspace,
+    const char* path);
+
+constexpr bool png_found = false;
+#endif  // PNG_FOUND
 
 using namespace tiledb;
 
@@ -162,7 +168,61 @@ std::vector<uint8_t> create_image(
   return rgb;
 }
 
-TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
+template <typename T>
+static Domain create_domain(const Context& ctx, uint8_t format) {
+  T height = GENERATE(131, 217, 1003);
+  T width = GENERATE(103, 277, 1001);
+  uint8_t pixel_depth = format < TILEDB_WEBP_RGBA ? 3 : 4;
+  auto y = Dimension::create<T>(ctx, "y", {{1, height}}, height / 2);
+  auto x = Dimension::create<T>(
+      ctx, "x", {{1, (T)(width * pixel_depth)}}, (width / 2) * pixel_depth);
+  Domain domain(ctx);
+  domain.add_dimensions(y, x);
+  return domain;
+}
+
+template <>
+Domain create_domain<int8_t>(const Context& ctx, uint8_t format) {
+  int8_t height = GENERATE(9, 11, 15);
+  int8_t width = GENERATE(5, 7, 9, 17);
+  uint8_t pixel_depth = format < TILEDB_WEBP_RGBA ? 3 : 4;
+
+  int8_t w = width * pixel_depth;
+  auto y = Dimension::create<int8_t>(ctx, "y", {{1, height}}, height / 2);
+  auto x =
+      Dimension::create<int8_t>(ctx, "x", {{1, w}}, (width / 2) * pixel_depth);
+  Domain domain(ctx);
+  domain.add_dimensions(y, x);
+  return domain;
+}
+
+template <>
+Domain create_domain<uint8_t>(const Context& ctx, uint8_t format) {
+  uint8_t height = GENERATE(13, 35, 47, 61);
+  uint8_t width = GENERATE(10, 11, 23, 39, 60);
+  uint8_t pixel_depth = format < TILEDB_WEBP_RGBA ? 3 : 4;
+  auto y = Dimension::create<uint8_t>(ctx, "y", {{1, height}}, height / 2);
+  auto x = Dimension::create<uint8_t>(
+      ctx,
+      "x",
+      {{1, (uint8_t)(width * pixel_depth)}},
+      (width / 2) * pixel_depth);
+  Domain domain(ctx);
+  domain.add_dimensions(y, x);
+  return domain;
+}
+
+using DimensionTypes = std::tuple<
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t,
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t>;
+TEMPLATE_LIST_TEST_CASE(
+    "C++ API: WEBP Filter", "[cppapi][filter][webp]", DimensionTypes) {
   if constexpr (webp_filter_exists) {
     Context ctx;
     VFS vfs(ctx);
@@ -226,15 +286,11 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
     REQUIRE(lossless_expected == lossless_found);
 
     // Test against images of different sizes.
-    unsigned height = 40;
-    unsigned width = GENERATE(40, 20, 80, 1001);
-    height = width == 1001 ? 1000 : height;
-    unsigned pixel_depth = format_expected < TILEDB_WEBP_RGBA ? 3 : 4;
-    auto y = Dimension::create<unsigned>(ctx, "y", {{1, height}}, height / 2);
-    auto x = Dimension::create<unsigned>(
-        ctx, "x", {{1, width * pixel_depth}}, (width / 2) * pixel_depth);
-    Domain domain(ctx);
-    domain.add_dimensions(y, x);
+    Domain domain = create_domain<TestType>(ctx, format_expected);
+    uint8_t pixel_depth = format_expected < TILEDB_WEBP_RGBA ? 3 : 4;
+    TestType height = domain.dimension(0).template domain<TestType>().second;
+    TestType width =
+        domain.dimension(1).template domain<TestType>().second / pixel_depth;
 
     FilterList filterList(ctx);
     filterList.add_filter(filter);
@@ -260,7 +316,8 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
 
     array.open(TILEDB_READ);
     std::vector<uint8_t> read_rgb((width * pixel_depth) * height);
-    std::vector<unsigned> subarray = {1, height, 1, (width * pixel_depth)};
+    std::vector<TestType> subarray = {
+        1, height, 1, (TestType)(width * pixel_depth)};
     Query read(ctx, array);
     read.set_layout(TILEDB_ROW_MAJOR)
         .set_subarray(subarray)
@@ -274,10 +331,13 @@ TEST_CASE("C++ API: WEBP Filter", "[cppapi][filter][webp]") {
       REQUIRE_THAT(read_rgb, Catch::Matchers::Equals(rgb));
     } else {
       // Lossy compression at 100.0f quality should be approx.
-      REQUIRE_THAT(read_rgb, Catch::Matchers::Approx(rgb).margin(100));
+      REQUIRE_THAT(read_rgb, Catch::Matchers::Approx(rgb).margin(200));
     }
 
-    write_image(read_rgb, width, height, pixel_depth, format_expected);
+    if constexpr (png_found) {
+      write_image(
+          read_rgb, width, height, pixel_depth, format_expected, nullptr);
+    }
 
     if (vfs.is_dir(webp_array_name))
       vfs.remove_dir(webp_array_name);
@@ -454,7 +514,9 @@ TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
       REQUIRE_THAT(read_rgb, Catch::Matchers::Approx(rgb).margin(100));
     }
 
-    write_image(read_rgb, width, height, pixel_depth, expected_fmt);
+    if constexpr (png_found) {
+      write_image(read_rgb, width, height, pixel_depth, expected_fmt, nullptr);
+    }
 
     tiledb_vfs_is_dir(ctx, vfs, webp_array_name.c_str(), &is_dir);
     if (is_dir)

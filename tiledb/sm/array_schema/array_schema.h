@@ -577,6 +577,8 @@ class ArraySchema {
    */
   Status check_string_compressor(const FilterPipeline& coords_filters) const;
 
+  void check_webp_filter() const;
+
   /** Clears all members. Use with caution! */
   void clear();
 };

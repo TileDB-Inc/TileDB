@@ -432,17 +432,28 @@ TEST_CASE("Filter: Test WEBP filter deserialization", "[filter][webp]") {
   if constexpr (webp_filter_exists) {
     Buffer buffer;
     FilterType filterType = FilterType::FILTER_WEBP;
-    char serialized_buffer[13];
+    char serialized_buffer[17];
     char* p = &serialized_buffer[0];
+    // Metadata layout has total size 5.
+    // |          metadata         |
+    // |      1      |       4     |
+    // | filter_type | meta_length |
     buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filterType);
-    buffer_offset<uint32_t, 1>(p) = sizeof(float) + sizeof(uint8_t);
+    buffer_offset<uint32_t, 1>(p) = sizeof(WebpFilter::FilterConfig);
 
+    // WebpFilter::FilterConfig struct has size of 12 with 2 bytes padding.
+    // |                   WebpFilter::FilterConfig                  |
+    // |    4    |   1    |     1    |    2     |    2     |    2    |
+    // | quality | format | lossless | y_extent | x_extent | padding |
     float quality0 = 50.5f;
     WebpInputFormat fmt0 = WebpInputFormat::WEBP_RGBA;
     uint8_t lossless0 = 1;
+    uint16_t y0 = 20, x0 = 40;
     buffer_offset<float, 5>(p) = quality0;
     buffer_offset<uint8_t, 9>(p) = static_cast<uint8_t>(fmt0);
     buffer_offset<uint8_t, 10>(p) = lossless0;
+    buffer_offset<uint16_t, 11>(p) = y0;
+    buffer_offset<uint16_t, 13>(p) = x0;
 
     Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
     auto filter{
@@ -461,5 +472,9 @@ TEST_CASE("Filter: Test WEBP filter deserialization", "[filter][webp]") {
     uint8_t lossless1;
     REQUIRE(filter->get_option(FilterOption::WEBP_LOSSLESS, &lossless1).ok());
     CHECK(lossless0 == lossless1);
+
+    auto extents = dynamic_cast<WebpFilter*>(filter.get())->get_extents();
+    CHECK(y0 == extents.first);
+    CHECK(x0 == extents.second);
   }
 }

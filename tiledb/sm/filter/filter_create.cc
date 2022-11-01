@@ -177,7 +177,9 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
             HERE(),
             filter_config.quality,
             filter_config.format,
-            filter_config.lossless);
+            filter_config.lossless,
+            filter_config.y_extent,
+            filter_config.x_extent);
       } else {
         throw StatusException(
             "FilterCreate",

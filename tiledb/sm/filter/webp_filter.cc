@@ -49,15 +49,12 @@ void WebpFilter::dump(FILE* out) const {
 }
 
 Status WebpFilter::run_forward(
-    const Tile& tile,
+    const Tile&,
     Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  if (tile.type() != Datatype::UINT8) {
-    throw StatusException(Status_FilterError("Unsupported input type"));
-  }
   return run_forward(input_metadata, input, output_metadata, output);
 }
 
@@ -75,14 +72,6 @@ Status WebpFilter::run_forward(
 
   int extent_y = extents_.first, extent_x = extents_.second,
       pixel_depth = format_ < WebpInputFormat::WEBP_RGBA ? 3 : 4;
-  // X should be divisible by colorspace pixel_depth or RGB values will skew.
-  if (extent_x % pixel_depth != 0) {
-    throw StatusException(Status_FilterError(
-        pixel_depth == 3 ?
-            "Colorspace with no alpha must use extents divisible by 3" :
-            "Colorspace with alpha must use extents divisible by 4"));
-  }
-
   for (const auto& i : input_parts) {
     auto data = static_cast<const uint8_t*>(i.data());
     // Number of bytes encoded; Encoded result data buffer.
@@ -153,13 +142,16 @@ Status WebpFilter::run_forward(
         }
         break;
       case WebpInputFormat::WEBP_NONE:
-        throw StatusException(Status_FilterError(
-            "Filter option TILEDB_FILTER_WEBP_FORMAT must be set"));
+        throw Status_FilterError(
+            "Filter option TILEDB_FILTER_WEBP_FORMAT must be set");
+      default:
+        throw Status_FilterError(
+            "Filter option TILEDB_FILTER_WEBP_FORMAT is invalid");
     }
 
     // Check if encoding failed.
     if (enc_size == 0) {
-      throw StatusException(Status_FilterError("Error encoding image data"));
+      throw Status_FilterError("Error encoding image data");
     }
 
     // Write encoded data to output buffer.
@@ -180,7 +172,7 @@ Status WebpFilter::run_reverse(
     FilterBuffer* output,
     const Config&) const {
   if (tile.type() != Datatype::UINT8) {
-    throw StatusException(Status_FilterError("Unsupported input type"));
+    throw Status_FilterError("Unsupported input type");
   }
   return run_reverse(input_metadata, input, output_metadata, output);
 }
@@ -223,13 +215,13 @@ Status WebpFilter::run_reverse(
         result = WebPDecodeBGRA(data, enc_size, &width, &height);
         break;
       default:
-        throw StatusException(Status_FilterError(
-            "Filter option TILEDB_FILTER_WEBP_FORMAT must be set"));
+        throw Status_FilterError(
+            "Filter option TILEDB_FILTER_WEBP_FORMAT must be set");
     }
 
     // Check if decoding failed.
     if (result == nullptr) {
-      throw StatusException(Status_FilterError("Error decoding image data"));
+      throw Status_FilterError("Error decoding image data");
     }
     throw_if_not_ok(output->write(result, output->size()));
   }
@@ -245,15 +237,14 @@ Status WebpFilter::run_reverse(
 
 Status WebpFilter::set_option_impl(FilterOption option, const void* value) {
   if (value == nullptr)
-    throw StatusException(
-        Status_FilterError("Webp filter error; Invalid option value"));
+    throw Status_FilterError("Webp filter error; Invalid option value");
 
   switch (option) {
     case FilterOption::WEBP_QUALITY: {
       auto val = *(float*)value;
       if (val < 0.0f || val > 100.0f) {
-        throw StatusException(Status_FilterError(
-            "Webp filter error; Quality must be in range [0.0, 100.0]"));
+        throw Status_FilterError(
+            "Webp filter error; Quality must be in range [0.0, 100.0]");
       }
       quality_ = val;
       break;
@@ -262,8 +253,8 @@ Status WebpFilter::set_option_impl(FilterOption option, const void* value) {
       auto val = static_cast<WebpInputFormat>(*(uint8_t*)value);
       if (val < WebpInputFormat::WEBP_NONE ||
           val > WebpInputFormat::WEBP_BGRA) {
-        throw StatusException(Status_FilterError(
-            "Webp filter error; Invalid input format option setting"));
+        throw Status_FilterError(
+            "Webp filter error; Invalid input format option setting");
       }
       format_ = val;
       break;
@@ -271,16 +262,15 @@ Status WebpFilter::set_option_impl(FilterOption option, const void* value) {
     case FilterOption::WEBP_LOSSLESS: {
       auto val = *(uint8_t*)value;
       if (val > 1) {
-        throw StatusException(Status_FilterError(
+        throw Status_FilterError(
             "Webp filter error; Lossless compression must be either enabled "
-            "(1) or disabled (0)"));
+            "(1) or disabled (0)");
       }
       lossless_ = val;
       break;
     }
     default:
-      throw StatusException(
-          Status_FilterError("Webp filter error; Unknown option"));
+      throw Status_FilterError("Webp filter error; Unknown option");
   }
 
   return Status::Ok();
@@ -298,26 +288,65 @@ Status WebpFilter::get_option_impl(FilterOption option, void* value) const {
       *(uint8_t*)value = lossless_;
       break;
     default:
-      throw StatusException(
-          Status_FilterError("Webp filter error; Unknown option"));
+      throw Status_FilterError("Webp filter error; Unknown option");
   }
   return Status::Ok();
 }
 
 [[nodiscard]] WebpFilter* WebpFilter::clone_impl() const {
-  return tdb_new(WebpFilter, quality_, format_, lossless_);
+  return tdb_new(
+      WebpFilter,
+      quality_,
+      format_,
+      lossless_,
+      extents_.first,
+      extents_.second);
 }
 
 void WebpFilter::serialize_impl(Serializer& serializer) const {
-  FilterConfig filter_config{quality_, format_, lossless_};
+  FilterConfig filter_config{
+      quality_, format_, lossless_, extents_.first, extents_.second};
   serializer.write(filter_config);
 }
 
-void WebpFilter::set_extent(const std::vector<ByteVecValue>& extents) {
-  extents_ = std::make_pair(
-      extents[0].rvalue_as<uint64_t>(), extents[1].rvalue_as<uint64_t>());
+template <typename T>
+void WebpFilter::set_extents(const std::vector<ByteVecValue>& extents) {
+  extents_ = {extents[0].rvalue_as<T>(), extents[1].rvalue_as<T>()};
+  uint8_t pixel_depth = format_ < WebpInputFormat::WEBP_RGBA ? 3 : 4;
+  // X should be divisible by pixel_depth or RGB values will skew.
+  if (extents_.second % pixel_depth != 0) {
+    throw Status_FilterError(
+        pixel_depth == 3 ?
+            "Colorspace with no alpha must use extents divisible by 3" :
+            "Colorspace with alpha must use extents divisible by 4");
+  }
+  if (extents_.first > 16383 || (extents_.second / pixel_depth) > 16383) {
+    throw Status_FilterError(
+        "Tile extents too large; Max size WebP image is 16383x16383 pixels");
+  }
   Tile::set_max_tile_chunk_size(extents_.first * extents_.second);
 }
+
+std::pair<uint16_t, uint16_t> WebpFilter::get_extents() const {
+  return extents_;
+}
+
+template void WebpFilter::set_extents<uint8_t>(
+    const std::vector<ByteVecValue>& extents);
+template void WebpFilter::set_extents<uint16_t>(
+    const std::vector<ByteVecValue>& extents);
+template void WebpFilter::set_extents<uint32_t>(
+    const std::vector<ByteVecValue>& extents);
+template void WebpFilter::set_extents<uint64_t>(
+    const std::vector<ByteVecValue>& extents);
+template void WebpFilter::set_extents<int8_t>(
+    const std::vector<ByteVecValue>& extents);
+template void WebpFilter::set_extents<int16_t>(
+    const std::vector<ByteVecValue>& extents);
+template void WebpFilter::set_extents<int32_t>(
+    const std::vector<ByteVecValue>& extents);
+template void WebpFilter::set_extents<int64_t>(
+    const std::vector<ByteVecValue>& extents);
 
 }  // namespace tiledb::sm
 
