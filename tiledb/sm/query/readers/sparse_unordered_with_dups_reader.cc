@@ -92,11 +92,13 @@ bool SparseUnorderedWithDupsReader<BitmapType>::incomplete() const {
 template <class BitmapType>
 QueryStatusDetailsReason
 SparseUnorderedWithDupsReader<BitmapType>::status_incomplete_reason() const {
-  if (array_->is_remote())
+  if (array_->is_remote()) {
     return QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE;
+  }
 
-  if (!incomplete())
+  if (!incomplete()) {
     return QueryStatusDetailsReason::REASON_NONE;
+  }
 
   return result_tiles_.empty() ?
              QueryStatusDetailsReason::REASON_MEMORY_BUDGET :
