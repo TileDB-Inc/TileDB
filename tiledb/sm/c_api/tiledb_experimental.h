@@ -1161,7 +1161,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_total_cell_num(
 
 
 /*
- * Retrieve the max/min tile sizes across all fragments in an array.
+ * Retrieve the maximum in memory tile sizes across all fragments in an array.
  * Encrypted arrays will be supported via config options.
  *
  * **Example:**

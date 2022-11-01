@@ -280,19 +280,19 @@ StorageManager::load_array_schemas_and_all_fragment_metadata(
   auto xfiltered_fragment_uris = array_dir.filtered_fragment_uris(
       array_schema_latest.value().get()->dense());
   //const auto& meta_uris = array_dir.fragment_meta_uris();
-  const auto& xfragments_to_load = xfiltered_fragment_uris.fragment_uris();
-  std::cout << "xfragments_to_load.size() " << xfragments_to_load.size()
-            << std::endl;
-  for (auto& f : xfragments_to_load) {
-    std::cout << f.uri_.to_string() << std::endl;
-  }
+  //const auto& xfragments_to_load = xfiltered_fragment_uris.fragment_uris();
+  //std::cout << "xfragments_to_load.size() " << xfragments_to_load.size()
+  //          << std::endl;
+  //for (auto& f : xfragments_to_load) {
+  //   std::cout << f.uri_.to_string() << std::endl;
+  // }
 
   const auto& fragments_to_load = array_dir.unfiltered_fragment_uris();
-  std::cout << "fragments_to_load.size() " << fragments_to_load.size()
-            << std::endl;
-  for (auto& f : fragments_to_load) {
-    std::cout << f.to_string() << std::endl;
-  }
+  //std::cout << "fragments_to_load.size() " << fragments_to_load.size()
+  //          << std::endl;
+  // for (auto& f : fragments_to_load) {
+  //   std::cout << f.to_string() << std::endl;
+  // }
   auto timestamped_uris_from_uris =
       [](const std::vector<URI>& uris) -> std::vector<TimestampedURI> {
     std::vector<TimestampedURI> timestamp_uris;
