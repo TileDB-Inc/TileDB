@@ -24,7 +24,7 @@ There may be multiple such files in the array commits folder. Each delete commit
 | :--- | :--- | :--- |
 | Node type | `uint8_t` | 0 for expression node |
 | Combination op | `uint8_t` | AND(0), OR(1), NOT(2) |
-| Num children | `uint64_t[]` | Number of child nodes |
+| Num children | `uint64_t` | Number of child nodes |
 | Children 1 | `NODE` | children 1 |
 | … | … | … |
 | Children N | `NODE` | Children N |
