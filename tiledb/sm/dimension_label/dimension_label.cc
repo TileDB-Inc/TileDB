@@ -94,11 +94,6 @@ void DimensionLabel::is_compatible(
         ", but the expected label datatype was " +
         datatype_str(dim_label_ref.label_type()) + ".");
   }
-  if (!(schema_->label_domain() == dim_label_ref.label_domain())) {
-    throw DimensionLabelStatusException(
-        "Error opening dimension label; The label domain of the loaded "
-        "dimension label does not match the expected domain.");
-  }
   if (schema_->label_cell_val_num() != dim_label_ref.label_cell_val_num()) {
     throw DimensionLabelStatusException(
         "Error opening dimension label; The label cell value number of the "

@@ -52,7 +52,6 @@ TEST_CASE(
   std::string label_attr_name{"label"};
   URI uri{"label/l0", false};
   DataOrder label_order{DataOrder::INCREASING_DATA};
-  double domain[2]{0.0, 10.0};
   bool is_external{true};
   bool is_relative{true};
   DimensionLabelReference label{dim_id,
@@ -62,7 +61,7 @@ TEST_CASE(
                                 label_order,
                                 Datatype::FLOAT64,
                                 1,
-                                Range(&domain[0], 2 * sizeof(double)),
+
                                 nullptr,
                                 is_external,
                                 is_relative};
@@ -79,10 +78,6 @@ TEST_CASE(
   CHECK(name == label2->name());
   CHECK(label2->label_type() == Datatype::FLOAT64);
   CHECK(label2->label_cell_val_num() == 1);
-  REQUIRE(!label2->label_domain().empty());
-  auto domain2 = static_cast<const double*>(label2->label_domain().data());
-  CHECK(domain2[0] == domain[0]);
-  CHECK(domain2[1] == domain[1]);
   CHECK(label2->is_external() == is_external);
   CHECK(label2->uri().to_string() == uri.to_string());
 }

@@ -801,7 +801,6 @@ Status ArraySchema::add_dimension_label(
         dimension_label_schema->label_order(),
         dimension_label_schema->label_type(),
         dimension_label_schema->label_cell_val_num(),
-        dimension_label_schema->label_domain(),
         dimension_label_schema);
     dimension_labels_.emplace_back(dim_label);
     dimension_label_map_[name] = dim_label.get();

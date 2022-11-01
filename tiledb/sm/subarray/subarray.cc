@@ -3545,7 +3545,7 @@ Subarray::LabelRangeSubset::LabelRangeSubset(
     const DimensionLabelReference& ref, bool coalesce_ranges)
     : name{ref.name()}
     , ranges{RangeSetAndSuperset(
-          ref.label_type(), ref.label_domain(), false, coalesce_ranges)} {
+          ref.label_type(), Range(), false, coalesce_ranges)} {
 }
 
 }  // namespace sm
