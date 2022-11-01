@@ -22,26 +22,29 @@ There may be multiple such files in the array commits folder. Each consolidated 
 
 When fragments that are included inside of a consolidated file are removed, either through vacuuming or other fragment deletion, an [ignore file](./ignore_file.md) needs to be written so that those commits file can be ignored when opening an array and not cause unnecessary file system operations.
 
-There are three types of objects that can be in the file, commits, deletes or updates. For each of those, the first field is the URI of the object, which the extention allows to differentiate between the three: a URI that finishes with .ok/.wrt is a commit object, a URI that finishes with .del is a delete object and a URI that finishes with .upd is an update object. The format for the objects is the following:
+There are three types of objects that can be in the file: commits, deletes or updates. For each of those, the first field is the URI of the object, which determines the subsequent serialized content of the data block:
+- a URI ending with `.ok` or `.wrt` is a commit object containing only the fragment URI
+- a URI ending with `.del` is a delete object containing the serialized delete condition
+- a URI ending with `.upd` is an update object containing the serialized update condition
 
-Fragment commit:
+### Fragment commit:
 
-| **Field** | **Type** | **Description** |
-| :--- | :--- | :--- |
-| Commit URI followed by a new line character | `uint8_t[]` | URI |
+| **Field** | **Type** | **Extension** | **Description** |
+| :--- | :--- | :--- | :--- |
+| Commit URI followed by a new line character | `uint8_t[]` | .ok, .wrt | URI |
 
-Delete commit (see [delete commit file](./delete_commit_file.md) for the format of the serialized delete condition):
+### Delete commit (see [delete commit file](./delete_commit_file.md) for the format of the serialized delete condition):
 
-| **Field** | **Type** | **Description** |
-| :--- | :--- | :--- |
-| URI followed by a new line character | `uint8_t[]` | URI |
-| Serialized delete condition tile size | `uint64_t` | Delete condition tile size |
-| Serialized delete condition tile | `uint8_t[]` | Delete condition tile |
+| **Field** | **Type** | **Extension** | **Description** |
+| :--- | :--- | :--- | :--- |
+| URI followed by a new line character | `uint8_t[]` | .del | URI |
+| Serialized delete condition tile size | `uint64_t` | | Delete condition tile size |
+| Serialized delete condition tile | `uint8_t[]` | | Delete condition tile |
 
-Update commit (see [update commit file](./update_commit_file.md) for the format of the serialized update condition):
+### Update commit (see [update commit file](./update_commit_file.md) for the format of the serialized update condition):
 
-| **Field** | **Type** | **Description** |
-| :--- | :--- | :--- |
-| URI followed by a new line character | `uint8_t[]` | URI |
-| Serialized update condition tile size | `uint64_t` | Update condition tile size |
-| Serialized update condition tile | `uint8_t[]` | Update condition tile |
+| **Field** | **Type** | **Extension** | **Description** |
+| :--- | :--- | :--- | :--- |
+| URI followed by a new line character | `uint8_t[]` | .upd | URI |
+| Serialized update condition tile size | `uint64_t` | | Update condition tile size |
+| Serialized update condition tile | `uint8_t[]` | | Update condition tile |
