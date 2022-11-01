@@ -474,6 +474,13 @@ class StorageManagerCanonical {
       const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /**
+   * Cleans up the group data.
+   *
+   * @param group_name The name of the group whose data is to be deleted.
+   */
+  void delete_group(const char* group_name);
+
+  /**
    * Cleans up the array, such as its consolidated fragments and array
    * metadata. Note that this will coarsen the granularity of time traveling
    * (see docs for more information).

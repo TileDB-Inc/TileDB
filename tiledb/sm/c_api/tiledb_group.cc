@@ -195,7 +195,7 @@ int32_t tiledb_group_delete_group(
     group->group_->delete_group(tiledb::sm::URI(uri), recursive);
   } catch (std::exception& e) {
     auto st = sm::Status_GroupError(e.what());
-    LOG_STATUS(st);
+    LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }

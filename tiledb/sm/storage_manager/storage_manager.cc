@@ -657,7 +657,54 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
   throw_if_not_ok(status);
 }
 
-void StorageManager::delete_group(const char* group_name) {
+Status StorageManagerCanonical::delete_fragments(
+    const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
+  Status st;
+  if (array_name == nullptr) {
+    throw Status_StorageManagerError(
+        "[delete_fragments] Array name cannot be null");
+  }
+
+  auto array_dir = ArrayDirectory(
+      vfs_, compute_tp_, URI(array_name), timestamp_start, timestamp_end);
+
+  // Get the fragment URIs to be deleted
+  auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
+  const auto& fragment_uris = filtered_fragment_uris.fragment_uris();
+
+  // Retrieve commit uris to delete and ignore
+  std::vector<URI> commit_uris_to_delete;
+  std::vector<URI> commit_uris_to_ignore;
+  for (auto& fragment : fragment_uris) {
+    auto commit_uri = array_dir.get_commit_uri(fragment.uri_);
+    commit_uris_to_delete.emplace_back(commit_uri);
+    if (array_dir.consolidated_commit_uris_set().count(commit_uri.c_str()) !=
+        0) {
+      commit_uris_to_ignore.emplace_back(commit_uri);
+    }
+  }
+
+  // Write ignore file
+  if (commit_uris_to_ignore.size() != 0) {
+    RETURN_NOT_OK(write_commit_ignore_file(array_dir, commit_uris_to_ignore));
+  }
+
+  // Delete fragments and commits
+  st = parallel_for(compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
+    RETURN_NOT_OK(vfs_->remove_dir(fragment_uris[i].uri_));
+    bool is_file = false;
+    RETURN_NOT_OK(vfs_->is_file(commit_uris_to_delete[i], &is_file));
+    if (is_file) {
+      RETURN_NOT_OK(vfs_->remove_file(commit_uris_to_delete[i]));
+    }
+    return Status::Ok();
+  });
+  RETURN_NOT_OK(st);
+
+  return Status::Ok();
+}
+
+void StorageManagerCanonical::delete_group(const char* group_name) {
   Status st;
   if (group_name == nullptr) {
     throw Status_StorageManagerError(
@@ -711,53 +758,6 @@ void StorageManager::delete_group(const char* group_name) {
     return Status::Ok();
   });
   throw_if_not_ok(status);
-}
-
-Status StorageManagerCanonical::delete_fragments(
-    const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
-  Status st;
-  if (array_name == nullptr) {
-    throw Status_StorageManagerError(
-        "[delete_fragments] Array name cannot be null");
-  }
-
-  auto array_dir = ArrayDirectory(
-      vfs_, compute_tp_, URI(array_name), timestamp_start, timestamp_end);
-
-  // Get the fragment URIs to be deleted
-  auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
-  const auto& fragment_uris = filtered_fragment_uris.fragment_uris();
-
-  // Retrieve commit uris to delete and ignore
-  std::vector<URI> commit_uris_to_delete;
-  std::vector<URI> commit_uris_to_ignore;
-  for (auto& fragment : fragment_uris) {
-    auto commit_uri = array_dir.get_commit_uri(fragment.uri_);
-    commit_uris_to_delete.emplace_back(commit_uri);
-    if (array_dir.consolidated_commit_uris_set().count(commit_uri.c_str()) !=
-        0) {
-      commit_uris_to_ignore.emplace_back(commit_uri);
-    }
-  }
-
-  // Write ignore file
-  if (commit_uris_to_ignore.size() != 0) {
-    RETURN_NOT_OK(write_commit_ignore_file(array_dir, commit_uris_to_ignore));
-  }
-
-  // Delete fragments and commits
-  st = parallel_for(compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
-    RETURN_NOT_OK(vfs_->remove_dir(fragment_uris[i].uri_));
-    bool is_file = false;
-    RETURN_NOT_OK(vfs_->is_file(commit_uris_to_delete[i], &is_file));
-    if (is_file) {
-      RETURN_NOT_OK(vfs_->remove_file(commit_uris_to_delete[i]));
-    }
-    return Status::Ok();
-  });
-  RETURN_NOT_OK(st);
-
-  return Status::Ok();
 }
 
 Status StorageManagerCanonical::array_vacuum(

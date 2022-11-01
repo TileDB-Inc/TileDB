@@ -1982,12 +1982,14 @@ TEST_CASE_METHOD(
   // Try to delete group
   REQUIRE_THROWS_WITH(
       group.delete_group(GROUP_NAME),
-      Catch::Contains("Query type must be MODIFY_EXCLUSIVE"));
+      Catch::Matchers::ContainsSubstring(
+          "Query type must be MODIFY_EXCLUSIVE"));
   group.close();
 
   // Try to delete group after close
   REQUIRE_THROWS_WITH(
-      group.delete_group(GROUP_NAME), Catch::Contains("Group is not open"));
+      group.delete_group(GROUP_NAME),
+      Catch::Matchers::ContainsSubstring("Group is not open"));
 
   remove_dir(GROUP_NAME);
 }
