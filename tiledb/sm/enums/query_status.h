@@ -81,7 +81,7 @@ inline Status query_status_enum(
   else if (query_status_str == constants::query_status_uninitialized_str)
     *query_status = QueryStatus::UNINITIALIZED;
   else {
-    return Status_Error("Invalid QueryStatus " + query_status_str);
+    return common::Status_Error("Invalid QueryStatus " + query_status_str);
   }
   return Status::Ok();
 }

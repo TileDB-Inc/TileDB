@@ -28,6 +28,8 @@
 
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/common/common.h"
+#include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/dimension_label_schema.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -212,6 +214,15 @@ void DimensionLabelReference::dump(FILE* out) const {
       fprintf(out, "- Label cell val num: var\n") :
       fprintf(out, "- Label cell val num: %u\n", label_cell_val_num_);
   fprintf(out, "\n");
+}
+
+const shared_ptr<ArraySchema> DimensionLabelReference::schema() const {
+  if (!schema_) {
+    throw StatusException(
+        "DimensionLabelReference",
+        "Cannot return dimension label schema; No schema is set.");
+  }
+  return schema_->indexed_array_schema();
 }
 
 // FORMAT:

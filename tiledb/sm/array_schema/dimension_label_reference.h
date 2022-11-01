@@ -44,6 +44,7 @@ using namespace tiledb::type;
 
 namespace tiledb::sm {
 
+class ArraySchema;
 class Buffer;
 class ConstBuffer;
 class DimensionLabelSchema;
@@ -192,14 +193,7 @@ class DimensionLabelReference {
     return dim_label_name_;
   }
 
-  /** The schema of the dimension label. */
-  inline const DimensionLabelSchema& schema() const {
-    if (!schema_)
-      throw StatusException(
-          "DimensionLabelReference",
-          "Cannot return dimension label schema; No schema is set.");
-    return *schema_;
-  }
+  const shared_ptr<ArraySchema> schema() const;
 
   /**
    * Serializes the dimension label object into a buffer.

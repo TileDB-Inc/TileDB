@@ -51,7 +51,6 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
-#include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filesystem.h"
@@ -3569,14 +3568,21 @@ int32_t tiledb_array_create(
           array_schema->array_schema_->dimension_label_reference(ilabel);
       if (dim_label_ref.is_external())
         continue;
-      if (!dim_label_ref.has_schema())
+      if (!dim_label_ref.has_schema()) {
         throw StatusException(
             Status_Error("Failed to create array. Dimension labels that are "
                          "not external must have a schema."));
-      tiledb::sm::create_dimension_label(
-          uri.join_path(dim_label_ref.uri().to_string()),
-          *(ctx->storage_manager()),
-          dim_label_ref.schema());
+      }
+
+      // Create key
+      tiledb::sm::EncryptionKey key;
+      throw_if_not_ok(key.set_key(
+          static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+          nullptr,
+          0));
+      // Create the array
+      throw_if_not_ok(ctx->storage_manager()->array_create(
+          dim_label_ref.uri(uri), dim_label_ref.schema(), key));
     }
   }
   return TILEDB_OK;
@@ -5680,8 +5686,7 @@ int32_t tiledb_fragment_info_set_config(
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
 
-  throw_if_not_ok(
-      fragment_info->fragment_info_->set_config(config->config()));
+  throw_if_not_ok(fragment_info->fragment_info_->set_config(config->config()));
 
   return TILEDB_OK;
 }

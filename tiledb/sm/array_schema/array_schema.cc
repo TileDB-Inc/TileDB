@@ -479,17 +479,13 @@ Status ArraySchema::check() const {
   // created when the array is created.
   for (auto label : dimension_labels_) {
     if (!label->is_external()) {
-      if (!label->has_schema())
+      if (!label->has_schema()) {
         return LOG_STATUS(Status_ArraySchemaError(
             "Array schema check failed; Missing dimension label schema for "
             "dimension label '" +
             label->name() + "'."));
-      if (!label->schema().is_compatible_label(
-              domain_->dimension_ptr(label->dimension_id())))
-        return LOG_STATUS(Status_ArraySchemaError(
-            "Array schema check failed; Dimension label schema for dimension "
-            "label '" +
-            label->name() + "' is not compatible with the array schema."));
+      }
+      check_dimension_label_schema(label->name(), *label->schema());
     }
   }
 
@@ -1206,11 +1202,10 @@ void ArraySchema::set_dimension_label_filter_pipeline(
   if (!dim_label_ref.has_schema()) {
     throw ArraySchemaStatusException(
         "Cannot set filter pipeline for dimension label '" + label_name +
-        "'; That dimension label does not have a stored schema.");
+        "'; No dimension label schema is set.");
   }
-  throw_if_not_ok(const_cast<Attribute*>(
-                      dim_label_ref.schema().indexed_array_schema()->attribute(
-                          dim_label_ref.label_attr_name()))
+  throw_if_not_ok(const_cast<Attribute*>(dim_label_ref.schema()->attribute(
+                                             dim_label_ref.label_attr_name()))
                       ->set_filter_pipeline(pipeline));
 }
 
@@ -1222,9 +1217,9 @@ void ArraySchema::set_dimension_label_tile_extent(
   if (!dim_label_ref.has_schema()) {
     throw ArraySchemaStatusException(
         "Cannot set tile extent for dimension label '" + label_name +
-        "'; That dimension label does not have a stored schema.");
+        "'; No dimension label schema is set.");
   }
-  auto dim = dim_label_ref.schema().indexed_array_schema()->dimension_ptr(0);
+  auto dim = dim_label_ref.schema()->dimension_ptr(0);
   if (type != dim->type()) {
     throw ArraySchemaStatusException(
         "Cannot set tile extent for dimension label '" + label_name +
