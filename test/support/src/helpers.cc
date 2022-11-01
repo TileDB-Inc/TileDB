@@ -34,6 +34,7 @@
 #include <test/support/tdb_catch.h>
 #include "serialization_wrappers.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -1260,7 +1261,15 @@ int32_t num_commits(const std::string& array_name) {
   // Get all URIs in the array directory
   auto uris =
       vfs.ls(array_name + "/" + tiledb::sm::constants::array_commits_dir_name);
-  return static_cast<uint32_t>(uris.size());
+  uint32_t num_commits = static_cast<uint32_t>(uris.size());
+
+  // Filter out non-wrt files
+  for (auto uri : uris) {
+    if (!sm::utils::parse::ends_with(uri, sm::constants::write_file_suffix))
+      num_commits--;
+  }
+
+  return num_commits;
 }
 
 int32_t num_fragments(const std::string& array_name) {
