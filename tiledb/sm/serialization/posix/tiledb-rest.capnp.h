@@ -170,7 +170,7 @@ struct ArrayOpen {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(facceeafd4472c68, 0, 1)
+    CAPNP_DECLARE_STRUCT_HEADER(facceeafd4472c68, 0, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -2061,6 +2061,9 @@ class ArrayOpen::Reader {
   inline bool hasConfig() const;
   inline ::tiledb::sm::serialization::capnp::Config::Reader getConfig() const;
 
+  inline bool hasQueryType() const;
+  inline ::capnp::Text::Reader getQueryType() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -2109,6 +2112,13 @@ class ArrayOpen::Builder {
       ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value);
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
   disownConfig();
+
+  inline bool hasQueryType();
+  inline ::capnp::Text::Builder getQueryType();
+  inline void setQueryType(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initQueryType(unsigned int size);
+  inline void adoptQueryType(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownQueryType();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -12690,6 +12700,44 @@ ArrayOpen::Builder::disownConfig() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::Config>::disown(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayOpen::Reader::hasQueryType() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayOpen::Builder::hasQueryType() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader ArrayOpen::Reader::getQueryType() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder ArrayOpen::Builder::getQueryType() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void ArrayOpen::Builder::setQueryType(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder ArrayOpen::Builder::initQueryType(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      size);
+}
+inline void ArrayOpen::Builder::adoptQueryType(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> ArrayOpen::Builder::disownQueryType() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
 inline bool ArraySchema::Reader::hasArrayType() const {

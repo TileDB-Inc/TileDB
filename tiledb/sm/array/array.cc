@@ -580,12 +580,6 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> Array::get_array_schema()
 }
 
 QueryType Array::get_query_type() const {
-  // Error if the array is not open
-  if (!is_open_) {
-    throw StatusException(
-        Status_ArrayError("Cannot get query_type; Array is not open"));
-  }
-
   return query_type_;
 }
 
