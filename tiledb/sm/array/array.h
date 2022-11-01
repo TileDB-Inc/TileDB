@@ -454,6 +454,11 @@ class Array {
   /** Checks the config to see if refactored array open should be used. */
   bool use_refactored_array_open() const;
 
+  /** Set the query type to open the array for. */
+  inline void set_query_type(QueryType query_type) {
+    query_type_ = query_type;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -499,8 +504,8 @@ class Array {
   /** `True` if the array is currently in the process of opening or closing. */
   std::atomic<bool> is_opening_or_closing_;
 
-  /** The query type the array was opened for. */
-  QueryType query_type_;
+  /** The query type the array was opened for. Default: READ */
+  QueryType query_type_ = QueryType::READ;
 
   /**
    * The starting timestamp between to open `open_array_` at.
