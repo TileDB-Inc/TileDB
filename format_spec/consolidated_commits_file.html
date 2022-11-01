@@ -219,7 +219,15 @@ ul.task-list li input[type="checkbox"] {
 </nav>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#fragment-commit" id="toc-fragment-commit" class="nav-link active" data-scroll-target="#fragment-commit">Fragment commit:</a></li>
+  <li><a href="#delete-commit-see-delete-commit-file-for-the-format-of-the-serialized-delete-condition" id="toc-delete-commit-see-delete-commit-file-for-the-format-of-the-serialized-delete-condition" class="nav-link" data-scroll-target="#delete-commit-see-delete-commit-file-for-the-format-of-the-serialized-delete-condition">Delete commit (see delete commit file for the format of the serialized delete condition):</a></li>
+  <li><a href="#update-commit-see-update-commit-file-for-the-format-of-the-serialized-update-condition" id="toc-update-commit-see-update-commit-file-for-the-format-of-the-serialized-update-condition" class="nav-link" data-scroll-target="#update-commit-see-update-commit-file-for-the-format-of-the-serialized-update-condition">Update commit (see update commit file for the format of the serialized update condition):</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -252,35 +260,50 @@ ul.task-list li input[type="checkbox"] {
 <li><code>uuid</code> is a unique identifier</li>
 <li><code>v</code> is the format version</li>
 </ul>
-<p>There may be multiple such files in the array commits folder. Each consolidated commits file combines a list of fragments commits, delete or update commits. | <strong>Field</strong> | <strong>Type</strong> | <strong>Description</strong> | | :— | :— | :— | | Commit 1 | <code>uint8_t[]</code> | Commit 1 | | … | … | … | | Commit N | <code>uint8_t[]</code> | Commit N |</p>
-<p>For fragment commits, the URIs is written delimited by a new line character:</p>
-<table class="table">
-<thead>
-<tr class="header">
-<th style="text-align: left;"><strong>Field</strong></th>
-<th style="text-align: left;"><strong>Type</strong></th>
-<th style="text-align: left;"><strong>Description</strong></th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">URI followed by a new line character</td>
-<td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">URI</td>
-</tr>
-</tbody>
-</table>
-<p>For delete or update commits, the URIs is written delimited by a new line character and then followed by the delete/update condition <a href="../format_spec/tile.html">tile</a>, preceded by its size:</p>
+<p>There may be multiple such files in the array commits folder. Each consolidated commits file combines a list of fragments commits, delete or update commits that will be considered together when opening an array. They are timestamped (with the smaller/bigger timestamp from contained elements) so that they might be filtered if the array open start/end time don’t interesect anything inside of the file, but any file where there is any intersection will be loaded. There are two situations when these files are added. The first one is when a user decides to improve the open performance of their array (by reducing the listing size) through commits consolidation. The second one is when a user has specified a maximum fragment size for consolidation and multiple fragments needed to be commited at once, this file format will be used so that an atomic file system operation can be performed to do so.</p>
+<p>When fragments that are included inside of a consolidated file are removed, either through vacuuming or other fragment deletion, an <a href="../format_spec/ignore_file.html">ignore file</a> needs to be written so that those commits file can be ignored when opening an array and not cause unnecessary file system operations.</p>
+<p>There are three types of objects that can be in the file: commits, deletes or updates. For each of those, the first field is the URI of the object, which determines the subsequent serialized content of the data block: - a URI ending with <code>.ok</code> or <code>.wrt</code> is a commit object containing only the fragment URI - a URI ending with <code>.del</code> is a delete object containing the serialized delete condition - a URI ending with <code>.upd</code> is an update object containing the serialized update condition</p>
+<section id="fragment-commit" class="level3">
+<h3 class="anchored" data-anchor-id="fragment-commit">Fragment commit:</h3>
 <table class="table">
 <colgroup>
-<col style="width: 33%">
-<col style="width: 33%">
-<col style="width: 33%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
 </colgroup>
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
 <th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Extension</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Commit URI followed by a new line character</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">.ok, .wrt</td>
+<td style="text-align: left;">URI</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="delete-commit-see-delete-commit-file-for-the-format-of-the-serialized-delete-condition" class="level3">
+<h3 class="anchored" data-anchor-id="delete-commit-see-delete-commit-file-for-the-format-of-the-serialized-delete-condition">Delete commit (see <a href="../format_spec/delete_commit_file.html">delete commit file</a> for the format of the serialized delete condition):</h3>
+<table class="table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Extension</strong></th>
 <th style="text-align: left;"><strong>Description</strong></th>
 </tr>
 </thead>
@@ -288,22 +311,65 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td style="text-align: left;">URI followed by a new line character</td>
 <td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">.del</td>
 <td style="text-align: left;">URI</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">Delete/update condition size</td>
+<td style="text-align: left;">Serialized delete condition tile size</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
-<td style="text-align: left;">Delete/update condition size</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Delete condition tile size</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">Delete/update condition tile</td>
+<td style="text-align: left;">Serialized delete condition tile</td>
 <td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">Delete/update condition tile</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Delete condition tile</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="update-commit-see-update-commit-file-for-the-format-of-the-serialized-update-condition" class="level3">
+<h3 class="anchored" data-anchor-id="update-commit-see-update-commit-file-for-the-format-of-the-serialized-update-condition">Update commit (see <a href="../format_spec/update_commit_file.html">update commit file</a> for the format of the serialized update condition):</h3>
+<table class="table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Extension</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">URI followed by a new line character</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">.upd</td>
+<td style="text-align: left;">URI</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Serialized update condition tile size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Update condition tile size</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Serialized update condition tile</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Update condition tile</td>
 </tr>
 </tbody>
 </table>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
