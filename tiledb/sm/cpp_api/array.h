@@ -1519,14 +1519,14 @@ class Array {
     std::memcpy((void*)key->data(), key_c, key_len);
   }
 
-/*
- * Retrieve the maximum in memory tile sizes across all fragments in an array.
- * Encrypted arrays will be supported via config options.
- *
- * @param max_in_memory_tile_size The receiver for the max in memory tile size..
- */
-  void get_max_in_memory_tile_size(
-    uint64_t *max_in_memory_tile_size) {
+  /*
+   * Retrieve the maximum in memory tile sizes across all fragments in an array.
+   * Encrypted arrays will be supported via config options.
+   *
+   * @param max_in_memory_tile_size The receiver for the max in memory tile
+   * size..
+   */
+  void get_max_in_memory_tile_size(uint64_t* max_in_memory_tile_size) {
     tiledb_array_fragment_size_extremes(
         ctx_.get().ptr().get(),
         uri().c_str(),

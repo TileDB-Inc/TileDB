@@ -1159,7 +1159,6 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_total_cell_num(
     tiledb_fragment_info_t* fragment_info,
     uint64_t* count) TILEDB_NOEXCEPT;
 
-
 /*
  * Retrieve the maximum in memory tile sizes across all fragments in an array.
  * Encrypted arrays will be supported via config options.
@@ -1168,13 +1167,16 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_total_cell_num(
  *
  * @code{.c}
  * uint64_t max_in_memory_tile_size;
- * tiledb_fragment_info_get_total_cell_num(ctx, array_uri, &max_in_memory_tile_size, config);
+ * tiledb_fragment_info_get_total_cell_num(ctx, array_uri,
+ * &max_in_memory_tile_size, config);
  * @endcode
  *
  * @param ctx The TileDB context
- * @param array_uri Identifies the array for which to retrieve tile size extremes.
+ * @param array_uri Identifies the array for which to retrieve tile size
+ * extremes.
  * @param max_in_memory_tile_size The receiver for the max in memory tile size..
- * @param config The Config object to be used for poss encryption and any other operation modifiers.
+ * @param config The Config object to be used for poss encryption and any other
+ * operation modifiers.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
  */

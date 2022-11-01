@@ -45,12 +45,12 @@
 #include <string>
 #include <thread>
 
+#include "tiledb/api/c_api/tiledb_tile_sizes.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
-#include "tiledb/api/c_api/tiledb_tile_sizes.h"
 //#include "tiledb/sm/c_api/tiledb_struct_def.h"
 //#include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
 #include "tiledb/sm/config/config.h"

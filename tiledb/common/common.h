@@ -89,10 +89,10 @@ typedef struct tiledb_fragment_tile_size_extremes {
     // is persisted/in_memory the same?
     uint64_t max_persisted_tile_size_validity = 0, max_in_memory_tile_size_validity = 0;
 
-    #if _WIN32
+#if _WIN32
 #pragma push_macro("max")
-    #undef max
-    #endif
+#undef max
+#endif
     uint64_t min_persisted_tile_size = std::numeric_limits<uint64_t>::max(),
              min_in_memory_tile_size = std::numeric_limits<uint64_t>::max();
     uint64_t min_persisted_tile_size_var = std::numeric_limits<uint64_t>::max(),
