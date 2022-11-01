@@ -1,5 +1,5 @@
 /**
- * @file dimension_label_query_create.h
+ * @file compile_rtree_main.cc
  *
  * @section LICENSE
  *
@@ -24,41 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * Factory for creating dimension label query objects.
  */
 
-#ifndef TILEDB_DIMENSION_LABEL_QUERY_CREATE_H
-#define TILEDB_DIMENSION_LABEL_QUERY_CREATE_H
+#include "../rtree.h"
 
-#include "tiledb/sm/query/dimension_label/dimension_label_data_query.h"
-
-using namespace tiledb::common;
-
-namespace tiledb::sm {
-
-enum class LabelOrder : uint8_t;
-
-class DimensionLabelQueryCreate {
- public:
-  /**
-   * Factory method for read data query.
-   */
-  static DimensionLabelDataQuery* make_write_query(
-      const std::string& label_name,
-      LabelOrder label_order,
-      StorageManager* storage_manager,
-      stats::Stats* stats,
-      DimensionLabel* dimension_label,
-      const Subarray& parent_subarray,
-      const QueryBuffer& label_buffer,
-      const QueryBuffer& index_buffer,
-      const uint32_t dim_idx,
-      optional<std::string> fragment_name);
-};
-
-}  // namespace tiledb::sm
-
-#endif
+int main() {
+  (void)sizeof(tiledb::sm::RTree);
+  return 0;
+}

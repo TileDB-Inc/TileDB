@@ -411,13 +411,13 @@ class ArraySchema {
   Status set_tile_order(Layout tile_order);
 
   /** Set version of schema, only used for serialization */
-  void set_version(uint32_t version);
+  void set_version(format_version_t version);
 
   /** Returns the version to write in. */
-  uint32_t write_version() const;
+  format_version_t write_version() const;
 
   /** Returns the array schema version. */
-  uint32_t version() const;
+  format_version_t version() const;
 
   /** Set a timestamp range for the array schema */
   Status set_timestamp_range(
@@ -456,7 +456,7 @@ class ArraySchema {
   URI array_uri_;
 
   /** The format version of this array schema. */
-  uint32_t version_;
+  format_version_t version_;
 
   /**
    * The timestamp the array schema was written.

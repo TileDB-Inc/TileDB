@@ -33,8 +33,8 @@
 #include <cstring>
 #include <numeric>
 
-#include "test/src/ast_helpers.h"
-#include "test/src/helpers.h"
+#include "test/support/src/ast_helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/misc/types.h"
 
 #include <test/support/tdb_catch.h>

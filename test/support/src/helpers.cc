@@ -1253,6 +1253,16 @@ void read_array(
   tiledb_query_free(&query);
 }
 
+int32_t num_commits(const std::string& array_name) {
+  Context ctx;
+  VFS vfs(ctx);
+
+  // Get all URIs in the array directory
+  auto uris =
+      vfs.ls(array_name + "/" + tiledb::sm::constants::array_commits_dir_name);
+  return static_cast<uint32_t>(uris.size());
+}
+
 int32_t num_fragments(const std::string& array_name) {
   Context ctx;
   VFS vfs(ctx);

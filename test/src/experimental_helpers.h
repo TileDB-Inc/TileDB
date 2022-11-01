@@ -34,14 +34,15 @@
 #ifndef TILEDB_TEST_EXPERIMENTAL_HELPERS_H
 #define TILEDB_TEST_EXPERIMENTAL_HELPERS_H
 
-#include "helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
+#include "test/support/tdb_catch.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
 #include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "vfs_helpers.h"
 
 namespace tiledb::test {
 

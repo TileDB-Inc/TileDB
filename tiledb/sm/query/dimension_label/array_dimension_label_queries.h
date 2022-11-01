@@ -36,8 +36,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/query_status.h"
-#include "tiledb/sm/query/dimension_label/dimension_label_data_query.h"
-#include "tiledb/sm/query/dimension_label/dimension_label_range_query.h"
+#include "tiledb/sm/query/dimension_label/dimension_label_query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
@@ -54,14 +53,6 @@ class QueryBuffer;
 class Subarray;
 
 enum class QueryType : uint8_t;
-
-/** Class for locally generated status exceptions. */
-class DimensionLabelQueryStatusException : public StatusException {
- public:
-  explicit DimensionLabelQueryStatusException(const std::string& msg)
-      : StatusException("DimensionLabelQuery", msg) {
-  }
-};
 
 class ArrayDimensionLabelQueries {
  public:
@@ -135,9 +126,9 @@ class ArrayDimensionLabelQueries {
   /**
    * Process all data queries and updates the ranges on the parent subarray.
    *
-   * @param subarray The subarray to set the updated dimension ranges on.
+   * @param parent_query The parent array query to update ranges on.
    */
-  void process_range_queries(Subarray& subarray);
+  void process_range_queries(Query* parent_query);
 
  private:
   /** The storage manager. */
@@ -151,7 +142,7 @@ class ArrayDimensionLabelQueries {
       dimension_labels_;
 
   /** Dimension label range queries */
-  std::vector<tdb_unique_ptr<DimensionLabelRangeQuery>> range_queries_;
+  std::vector<tdb_unique_ptr<DimensionLabelQuery>> range_queries_;
 
   /**
    * Non-owning vector for accessing range query by dimension index.
@@ -160,7 +151,7 @@ class ArrayDimensionLabelQueries {
    * There can be at most on query per dimension. If there is no query on the
    * dimension, it contains a nullpointer.
    */
-  std::vector<DimensionLabelRangeQuery*> label_range_queries_by_dim_idx_;
+  std::vector<DimensionLabelQuery*> label_range_queries_by_dim_idx_;
 
   /**
    * Dimension label data queries.
@@ -168,7 +159,7 @@ class ArrayDimensionLabelQueries {
    * Note: For the data queries, the element order to the queries is
    * unimportant and does not correspond to dimension index or any other value.
    */
-  std::vector<tdb_unique_ptr<DimensionLabelDataQuery>> data_queries_;
+  std::vector<tdb_unique_ptr<DimensionLabelQuery>> data_queries_;
 
   /**
    * Non-owning vector for accessing data query by dimension index.
@@ -177,8 +168,7 @@ class ArrayDimensionLabelQueries {
    * array. There can be multiple queries on a dimension. If there is no query
    * on the dimension, the inner vector will be empty.
    */
-  std::vector<std::vector<DimensionLabelDataQuery*>>
-      label_data_queries_by_dim_idx_;
+  std::vector<std::vector<DimensionLabelQuery*>> label_data_queries_by_dim_idx_;
 
   /** The status of the range queries. */
   QueryStatus range_query_status_;

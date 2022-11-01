@@ -1,3 +1,114 @@
+# TileDB v2.12.0 Release Notes
+
+## Disk Format
+
+* Added [Delete commit file](https://github.com/TileDB-Inc/TileDB/blob/2a7e8dc76a8a41b6696c23cb98c015a07e482653/format_spec/delete_commit_file.md) to format specification.
+* Added XOR filter type [#3383](https://github.com/TileDB-Inc/TileDB/pull/3383).
+
+## New features
+
+* Support for DELETE query type, providing the capability to non-destructively (until consolidation with purge) delete data from array from query timestamp forward
+  <details><summary>DELETE feature pull-requests</summary>
+
+  * Deletes: legacy reader process deletes. [#3387](https://github.com/TileDB-Inc/TileDB/pull/3387)
+  * Deletes: implement delete strategy. [#3337](https://github.com/TileDB-Inc/TileDB/pull/3337)
+  * Deletes: refactored readers process deletes. [#3374](https://github.com/TileDB-Inc/TileDB/pull/3374)
+  * Deletes: adding support for commits consolidation. [#3378](https://github.com/TileDB-Inc/TileDB/pull/3378)
+  * Dense reader: adding num tiles to stats. [#3434](https://github.com/TileDB-Inc/TileDB/pull/3434)
+  * Opt-in core-to-REST-server instrumentation [#3432](https://github.com/TileDB-Inc/TileDB/pull/3432)
+  * Deletes: implement consolidation. [#3402](https://github.com/TileDB-Inc/TileDB/pull/3402)
+  * Deletes: adding examples. [#3437](https://github.com/TileDB-Inc/TileDB/pull/3437)
+  * Deletes: implement serialization. [#3450](https://github.com/TileDB-Inc/TileDB/pull/3450)
+  * Deletes consolidation: switch from marker hashes to condition indexes. [#3451](https://github.com/TileDB-Inc/TileDB/pull/3451)
+  * Deletes: adding purge option for consolidation. [#3458](https://github.com/TileDB-Inc/TileDB/pull/3458)
+  * Deletes: disallow in middle of consolidated fragment with no timestamps. [#3470](https://github.com/TileDB-Inc/TileDB/pull/3470)
+
+  </details>
+
+* Implement delete_fragments API for removing all fragments within a specified time range [#3400](https://github.com/TileDB-Inc/TileDB/pull/3400)
+* Implement XOR Filter [#3383](https://github.com/TileDB-Inc/TileDB/pull/3383)
+* Fragment info serialization support for `tiledb://` URIs [#3530](https://github.com/TileDB-Inc/TileDB/pull/3530)
+* Add support for global order writes to `tiledb://` URIs [#3393](https://github.com/TileDB-Inc/TileDB/pull/3393)
+
+## API Changes
+
+### Config parameters
+
+* Add new config `rest.curl.buffersize` for setting `CURLOPT_BUFFERSIZE`. [#3440](https://github.com/TileDB-Inc/TileDB/pull/3440)
+
+### C API
+
+* Add `tiledb_group_get_is_relative_uri_by_name` [#3550](https://github.com/TileDB-Inc/TileDB/pull/3550)
+* Adding experimental API for getting relevant fragments, `tiledb_query_get_relevant_fragment_num`. [#3413](https://github.com/TileDB-Inc/TileDB/pull/3413)
+* Add `tiledb_query_get_relevant_fragment_num` for experimental API to get relevant fragments. [#3413](https://github.com/TileDB-Inc/TileDB/pull/3413)
+* Add include policy for non-TileDB headers in the C API [#3414](https://github.com/TileDB-Inc/TileDB/pull/3414)
+
+## Improvements
+
+### Performance
+
+* Sparse global order reader: merge algorithm optimization. [#3331](https://github.com/TileDB-Inc/TileDB/pull/3331)
+* Azure: parallelize remove_dir. [#3357](https://github.com/TileDB-Inc/TileDB/pull/3357)
+* Sparse refactored readers, mark empty fragments as fully loaded early. [#3394](https://github.com/TileDB-Inc/TileDB/pull/3394)
+* Reduce the number of requests in dir_size [#3382](https://github.com/TileDB-Inc/TileDB/pull/3382)
+* VFS: Adding option to disable batching for `read_tiles`. [#3421](https://github.com/TileDB-Inc/TileDB/pull/3421)
+* Avoid duplicate string_view creation in `compute_results_count_sparse_string_range` [#3491](https://github.com/TileDB-Inc/TileDB/pull/3491)
+* Memory tracker: using the correct type for setting default budget. [#3509](https://github.com/TileDB-Inc/TileDB/pull/3509)
+* Sparse global order reader: compute hilbert vals before filtering tiles. [#3497](https://github.com/TileDB-Inc/TileDB/pull/3497)
+* Avoid string copy in Dictionary Encoding decompression. [#3490](https://github.com/TileDB-Inc/TileDB/pull/3490)
+
+### Defects removed
+
+* Add check that Dict/RLE for strings is the first filter in the pipeline; allow use w/ other filters [#3510](https://github.com/TileDB-Inc/TileDB/pull/3510)
+* Remove stale declarations from query [#3565](https://github.com/TileDB-Inc/TileDB/pull/3565)
+* Fix SC-19287: segfault due to deref nonexistent filestore key [#3359](https://github.com/TileDB-Inc/TileDB/pull/3359)
+* Demonstrating mingw handle leakage (tiledb_unit extract) [#3362](https://github.com/TileDB-Inc/TileDB/pull/3362)
+* Fix and regression test for SC-19240 [#3360](https://github.com/TileDB-Inc/TileDB/pull/3360)
+* Don't try to consolidate empty array; fixes SC-19516 [#3389](https://github.com/TileDB-Inc/TileDB/pull/3389)
+* Fixes check for experimental schema features to be current version [#3404](https://github.com/TileDB-Inc/TileDB/pull/3404)
+* Prevent possible compiler dependent errors serializing groups [#3399](https://github.com/TileDB-Inc/TileDB/pull/3399)
+* use stoul() to correctly parse (32bit unsigned values) experimental version numbers cross-platform [#3410](https://github.com/TileDB-Inc/TileDB/pull/3410)
+* Fix deserialize to set array_schema_all_ into array object [#3363](https://github.com/TileDB-Inc/TileDB/pull/3363)
+* #3430 [#3431](https://github.com/TileDB-Inc/TileDB/pull/3431)
+* Removes unneeded fabs causing warning on clang [#3484](https://github.com/TileDB-Inc/TileDB/pull/3484)
+* Dictionary encoding should handle zero length strings [#3493](https://github.com/TileDB-Inc/TileDB/pull/3493)
+* Fix empty metadata after array open/query submit [#3495](https://github.com/TileDB-Inc/TileDB/pull/3495)
+* Handle filter_from_capnp FilterType::NONE case [#3516](https://github.com/TileDB-Inc/TileDB/pull/3516)
+* Sparse global order reader: incomplete reads when hitting memory limits. [#3518](https://github.com/TileDB-Inc/TileDB/pull/3518)
+* Fixes silent failure for mismatched layout and bad layout/array combos on query [#3521](https://github.com/TileDB-Inc/TileDB/pull/3521)
+* Correct defect in source of keying material [#3529](https://github.com/TileDB-Inc/TileDB/pull/3529)
+* Rework delete_fragments API [#3505](https://github.com/TileDB-Inc/TileDB/pull/3505)
+* Fix segfault after schema evolution when reading using `TILEDB_UNORDERED` [#3528](https://github.com/TileDB-Inc/TileDB/pull/3528)
+* Fix SC-21741, array evolve via REST [#3532](https://github.com/TileDB-Inc/TileDB/pull/3532)
+* Don't fetch Array data in Controller until the Array is fully open [#3538](https://github.com/TileDB-Inc/TileDB/pull/3538)
+* Do not allow creation of sparse array with zero capacity. [#3546](https://github.com/TileDB-Inc/TileDB/pull/3546)
+* Tile metadata: fixing for ordered writes. [#3527](https://github.com/TileDB-Inc/TileDB/pull/3527)
+
+### Internal
+
+* Array consistency controller [#3130](https://github.com/TileDB-Inc/TileDB/pull/3130)
+* Experimental build format versioning [#3364](https://github.com/TileDB-Inc/TileDB/pull/3364)
+* Implementation of `DataBlock`, `DataBlock` allocator, `join` view, and updates to `Source` and `Sink`. [#3366](https://github.com/TileDB-Inc/TileDB/pull/3366)
+* Implemented basic platform library [#3420](https://github.com/TileDB-Inc/TileDB/pull/3420)
+* Adds Edge and simple Node classes to the TileDB task graph library. [#3453](https://github.com/TileDB-Inc/TileDB/pull/3453)
+* Adds attribute ranges to Subarray for internal usage [#3520](https://github.com/TileDB-Inc/TileDB/pull/3520)
+* Add list of point ranges to Subarray [#3502](https://github.com/TileDB-Inc/TileDB/pull/3502)
+* Add support for new array open REST call [#3339](https://github.com/TileDB-Inc/TileDB/pull/3339)
+* Added `Config::must_find` marker for use with new `Config::get` signature. Throws `Status_ConfigError` if value cannot be found. [#3482](https://github.com/TileDB-Inc/TileDB/pull/3482)
+
+### Build system changes
+
+* Add abseil/absl to build via ExternalProject_Add [#3454](https://github.com/TileDB-Inc/TileDB/pull/3454)
+* Add Crc32c to tiledb build via ExternalProject_Add [#3455](https://github.com/TileDB-Inc/TileDB/pull/3455)
+* Enable superbuild libcurl to support zstd [#3469](https://github.com/TileDB-Inc/TileDB/pull/3469)
+* Adjust example dockerfile so layers can be cached better [#3488](https://github.com/TileDB-Inc/TileDB/pull/3488)
+
+## Full Changelog:
+
+* https://github.com/TileDB-Inc/TileDB/compare/2.11.0...2.12.0
+
+---
+
 # TileDB v2.11.3 Release Notes
 
 ## Improvements
@@ -12,6 +123,7 @@
 # TileDB v2.11.2 Release Notes
 
 ## Improvements
+
 ### Build
 * Adjust example dockerfile so layers can be cached better [#3488](https://github.com/TileDB-Inc/TileDB/pull/3488)
 

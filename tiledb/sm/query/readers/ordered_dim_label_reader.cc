@@ -718,7 +718,7 @@ std::string_view OrderedDimLabelReader::get_range_as<std::string_view>(
 }
 
 template <typename IndexType, typename LabelType, typename Op>
-IndexType OrderedDimLabelReader::search_for_range_fixed(
+IndexType OrderedDimLabelReader::search_for_range(
     uint64_t r,
     uint8_t range_index,
     const IndexType& domain_low,
@@ -783,10 +783,9 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
 
   // Set the results.
   if (increasing_labels_) {
-    dest[0] = search_for_range_fixed<
-        IndexType,
-        LabelType,
-        std::greater_equal<LabelType>>(r, 0, dim_dom[0], tile_extent);
+    dest[0] =
+        search_for_range<IndexType, LabelType, std::greater_equal<LabelType>>(
+            r, 0, dim_dom[0], tile_extent);
 
     // If the result is the last index, make sure the range includes it.
     if (dest[0] == non_empty_domain[1]) {
@@ -797,9 +796,8 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
       }
     }
 
-    dest[1] =
-        search_for_range_fixed<IndexType, LabelType, std::greater<LabelType>>(
-            r, 1, dim_dom[0], tile_extent);
+    dest[1] = search_for_range<IndexType, LabelType, std::greater<LabelType>>(
+        r, 1, dim_dom[0], tile_extent);
 
     // If the result is the first index, make sure the range includes it.
     if (dest[1] == non_empty_domain[0]) {
@@ -810,10 +808,9 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
       }
     }
   } else {
-    dest[0] = search_for_range_fixed<
-        IndexType,
-        LabelType,
-        std::less_equal<LabelType>>(r, 1, dim_dom[0], tile_extent);
+    dest[0] =
+        search_for_range<IndexType, LabelType, std::less_equal<LabelType>>(
+            r, 1, dim_dom[0], tile_extent);
 
     // If the result is the last index, make sure the range includes it.
     if (dest[0] == non_empty_domain[1]) {
@@ -824,9 +821,8 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
       }
     }
 
-    dest[1] =
-        search_for_range_fixed<IndexType, LabelType, std::less<LabelType>>(
-            r, 0, dim_dom[0], tile_extent);
+    dest[1] = search_for_range<IndexType, LabelType, std::less<LabelType>>(
+        r, 0, dim_dom[0], tile_extent);
 
     // If the result is the first index, make sure the range includes it.
     if (dest[1] == non_empty_domain[0]) {

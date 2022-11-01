@@ -444,11 +444,30 @@ class StorageManagerCanonical {
       ArrayDirectory array_dir, const std::vector<URI>& commit_uris_to_ignore);
 
   /**
+   * Writes a consolidated commits file.
+   *
+   * @param write_version Write version.
+   * @param array_dir ArrayDirectory where the data is stored.
+   * @param commit_uris Commit files to include.
+   */
+  void write_consolidated_commits_file(
+      format_version_t write_version,
+      ArrayDirectory array_dir,
+      const std::vector<URI>& commit_uris);
+
+  /**
+   * Cleans up the array data.
+   *
+   * @param array_name The name of the array whose data is to be deleted.
+   */
+  void delete_array(const char* array_name);
+
+  /**
    * Cleans up the array fragments.
    *
-   * @param array_name The name of the array to be vacuumed.
-   * @param timestamp_start The start timestamp at which to vacuum.
-   * @param timestamp_end The end timestamp at which to vacuum.
+   * @param array_name The name of the array whose fragments are to be deleted.
+   * @param timestamp_start The start timestamp at which to delete.
+   * @param timestamp_end The end timestamp at which to delete.
    * @return Status
    */
   Status delete_fragments(
