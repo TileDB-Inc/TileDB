@@ -274,6 +274,10 @@ bool Posix::is_dir(const std::string& path) const {
 }
 
 bool Posix::is_file(const std::string& path) const {
+  return Posix::is_file_static(path);
+}
+
+bool Posix::is_file_static(const std::string& path) {
   struct stat st;
   memset(&st, 0, sizeof(struct stat));
   return (stat(path.c_str(), &st) == 0) && !S_ISDIR(st.st_mode);

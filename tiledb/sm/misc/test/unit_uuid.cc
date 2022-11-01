@@ -35,7 +35,6 @@
 #include <thread>
 #include <vector>
 
-#include "storage_manager_declaration_override.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/uuid.h"
 
@@ -53,15 +52,10 @@ std::mutex catch2_macro_mutex;
 void cancel_all_tasks(StorageManager*) {
 }
 
-std::string get_cert_file(Config&) {
-  return "";
-}
-
 TEST_CASE("UUID: Test generate", "[uuid]") {
   // Initialize global OpenSSL state if required.
-  REQUIRE(global_state::GlobalState::GetGlobalState()
-              .init(cancel_all_tasks, get_cert_file)
-              .ok());
+  REQUIRE(
+      global_state::GlobalState::GetGlobalState().init(cancel_all_tasks).ok());
 
   SECTION("- Serial") {
     std::string uuid0, uuid1, uuid2;

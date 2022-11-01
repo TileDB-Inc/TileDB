@@ -37,12 +37,6 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
-#ifdef __linux__
-#include "tiledb/common/thread_pool.h"
-#include "tiledb/sm/filesystem/posix.h"
-#include "tiledb/sm/misc/utils.h"
-#endif
-
 #include <cassert>
 
 using namespace tiledb::common;
@@ -63,7 +57,7 @@ GlobalState::GlobalState() {
 
 Status GlobalState::init(
     std::function<void(StorageManager*)> cancel_all_tasks,
-    std::function<std::string(Config&)> get_cert_file,
+    std::string cert_file,
     const Config& config) {
   std::unique_lock<std::mutex> lck(init_mtx_);
 
@@ -76,15 +70,13 @@ Status GlobalState::init(
 
   // run these operations once
   if (!initialized_) {
-    config_ = config;
-
     if (enable_signal_handlers) {
       RETURN_NOT_OK(SignalHandlers::GetSignalHandlers().initialize());
     }
     RETURN_NOT_OK(Watchdog::GetWatchdog().initialize(cancel_all_tasks));
     RETURN_NOT_OK(init_libcurl());
 
-    cert_file_ = get_cert_file(config_);
+    cert_file_ = cert_file;
 
     initialized_ = true;
   }
