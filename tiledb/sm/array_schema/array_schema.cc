@@ -645,7 +645,7 @@ void ArraySchema::serialize(Serializer& serializer) const {
     attr->serialize(serializer, version);
   }
 
-  // Experimental: Write dimension labels
+  // Write dimension labels
   auto label_num = static_cast<uint32_t>(dimension_labels_.size());
   if (label_num != dimension_labels_.size()) {
     throw ArraySchemaStatusException(
