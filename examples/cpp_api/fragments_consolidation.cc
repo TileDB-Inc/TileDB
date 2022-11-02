@@ -177,49 +177,23 @@ void read_array() {
   }
 }
 
-void get_fragment_extreme() {
-  Context ctx;
-  tiledb_fragment_tile_size_extremes_t tiledb_fragment_tile_size_extremes;
-  tiledb_array_fragment_size_extremes(
-      &*ctx.ptr(),
-      array_name.c_str(),
-      &tiledb_fragment_tile_size_extremes,
-      nullptr);
-
-  std::cout << "maximum in memory tile size "
-            << tiledb_fragment_tile_size_extremes.max_in_memory_tile_size
-            << std::endl
-            << "maximum persisted tile size "
-            << tiledb_fragment_tile_size_extremes.max_persisted_tile_size
-            << std::endl;
-}
-
 int main(int argc, char* argv[]) {
   Context ctx;
 
   // Create and write array only if it does not exist
   if (Object::object(ctx, array_name).type() == Object::Type::Invalid) {
     create_array();
-    get_fragment_extreme();
     write_array_1();
-    get_fragment_extreme();
     write_array_2();
-    get_fragment_extreme();
     write_array_3();
-    get_fragment_extreme();
     write_array_4();
   }
-  get_fragment_extreme();
 
   // Optionally consolidate
   if (argc > 1 && argv[1] == std::string("consolidate"))
     Array::consolidate(ctx, array_name);
 
-  get_fragment_extreme();
   read_array();
-
-  Array arry(ctx, array_name, TILEDB_READ);
-
 
   return 0;
 }
