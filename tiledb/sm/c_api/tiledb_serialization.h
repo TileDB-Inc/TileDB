@@ -297,7 +297,6 @@ TILEDB_EXPORT int32_t tiledb_deserialize_query(
  * @param client_side If set to 1, deserialize from "client-side" perspective.
  *    Else, "server-side."
  * @param array_uri uri of the array the query is submitted to.
- * @param query_type The type of the query that is being deserialized.
  * @param query The query object to allocate and deserialize into.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
@@ -307,7 +306,6 @@ TILEDB_EXPORT int32_t tiledb_deserialize_query_and_array(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     const char* array_uri,
-    tiledb_query_type_t query_type,
     tiledb_query_t** query) TILEDB_NOEXCEPT;
 
 /**

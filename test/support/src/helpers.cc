@@ -1521,7 +1521,6 @@ int deserialize_array_and_query(
     std::vector<uint8_t>& serialized,
     tiledb_query_t** query,
     const char* array_uri,
-    tiledb_query_type_t query_type,
     bool clientside) {
   tiledb_buffer_t* c_buff;
   if (tiledb_buffer_alloc(ctx, &c_buff) != TILEDB_OK) {
@@ -1542,13 +1541,7 @@ int deserialize_array_and_query(
 
   // Deserialize
   return tiledb_deserialize_query_and_array(
-      ctx,
-      c_buff,
-      TILEDB_CAPNP,
-      clientside ? 1 : 0,
-      array_uri,
-      query_type,
-      query);
+      ctx, c_buff, TILEDB_CAPNP, clientside ? 1 : 0, array_uri, query);
 }
 
 std::vector<void*> allocate_query_buffers(

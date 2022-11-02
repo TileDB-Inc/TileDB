@@ -165,7 +165,6 @@ int tiledb_fragment_info_serialize(
 int tiledb_query_v2_serialize(
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    const tiledb_query_type_t query_type,
     tiledb_query_t* query_to_serialize,
     tiledb_query_t** query_deserialized) {
   // Serialize and Deserialize
@@ -175,7 +174,7 @@ int tiledb_query_v2_serialize(
   REQUIRE(rc == TILEDB_OK);
 
   rc = tiledb::test::deserialize_array_and_query(
-      ctx, serialized, query_deserialized, array_uri, query_type, 0);
+      ctx, serialized, query_deserialized, array_uri, 0);
   REQUIRE(rc == TILEDB_OK);
 
   return rc;

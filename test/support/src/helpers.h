@@ -897,7 +897,6 @@ int deserialize_array_and_query(
     std::vector<uint8_t>& serialized,
     tiledb_query_t** query,
     const char* array_uri,
-    tiledb_query_type_t query_type,
     bool clientside);
 
 void submit_serialized_query(tiledb_ctx_t* ctx, tiledb_query_t* query);

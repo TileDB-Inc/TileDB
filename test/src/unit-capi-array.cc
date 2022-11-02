@@ -2565,11 +2565,7 @@ TEST_CASE_METHOD(
   // opened
   tiledb_query_t* deserialized_query;
   rc = tiledb_query_v2_serialize(
-      ctx_,
-      array_name.c_str(),
-      static_cast<tiledb_query_type_t>(query_type_w),
-      query_client,
-      &deserialized_query);
+      ctx_, array_name.c_str(), query_client, &deserialized_query);
   REQUIRE(rc == TILEDB_OK);
 
   // 9. Server: Submit query WITHOUT re-opening the array, using under the hood
