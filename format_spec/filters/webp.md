@@ -16,6 +16,19 @@ output = [[251,60,84, 148,51,61, 142,42,64]
           [252,63,85, 150,46,67, 139,44,68]]
 ```
 
+The figure below from WebP API documentation may help to understand the format of data passed to and read from the WebP filter.
+
+![](../figures/bgra_layout.png) \
+[Photo](https://developers.google.com/static/speed/webp/images/image_layout.png) by [Google](https://developers.google.com/speed/webp/docs/api) licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+
+Using the figure above from [WebP API documentation](https://developers.google.com/speed/webp/docs/api), `height` should correspond with dimension 0 upper bound, while `stride` corresponds with dimension 1 upper bound.
+The pixel `width` of the image is internally calculated based on colorspace format and tile extents.
+
+Tile extents are used to configure tile-based compression. We should note that the [maximum WebP image size](https://developers.google.com/speed/webp/faq#what_is_the_maximum_size_a_webp_image_can_be) is 16383x16383.
+Because of this, our extents can not exceed `16383` for dimension 0, and `16383 * pixel_depth` for dimension 0.
+`pixel_depth` is defined by our colorspace format selection. `RGB` and `BGR` images have a depth of 3, while `RGBA` and `BGRA` have a depth of 4 for the additional alpha value provided for each pixel.
+
+
 # Filter Enum Value
 
 The filter enum value for the WEBP filter is `17` (TILEDB_FILTER_WEBP enum).

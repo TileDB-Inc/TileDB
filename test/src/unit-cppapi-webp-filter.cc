@@ -349,7 +349,7 @@ TEMPLATE_LIST_TEST_CASE(
 }
 
 TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
-  if constexpr (webp_filter_exists) {
+  if (webp_filter_exists) {
     tiledb_ctx_t* ctx;
     tiledb_ctx_alloc(nullptr, &ctx);
     tiledb_vfs_t* vfs;
