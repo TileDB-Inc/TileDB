@@ -30,7 +30,6 @@
  * Tests the C++ API for bitsort filter related functions.
  */
 
-#include <iostream> // TODO: delete
 #include <optional>
 #include <random>
 #include <tuple>
@@ -126,7 +125,7 @@ DimensionDataMetadata<DimType> set_1d_dim_buffers() {
 }
 
 /**
- * @brief Set the buffer with the appropriate dimensions for a 2D array.
+ * @brief Set the buffers with the appropriate dimensions for a 2D array.
  *
  * @tparam DimType The type of the dimension.
  * @param read_layout The read layout of the read query.
@@ -184,7 +183,7 @@ DimensionDataMetadata<DimType> set_2d_dim_buffers(tiledb_layout_t read_layout) {
 }
 
 /**
- * @brief Set the buffer with the appropriate dimensions for a 3D array.
+ * @brief Set the buffers with the appropriate dimensions for a 3D array.
  *
  * @tparam DimType The type of the dimension.
  * @param read_layout The read layout of the read query.
@@ -259,6 +258,14 @@ DimensionDataMetadata<DimType> set_3d_dim_buffers(tiledb_layout_t read_layout) {
   return std::make_tuple(x_dims_data, y_dims_data, z_dims_data, dim_idx_map);
 }
 
+/**
+ * @brief Calculates hilbert values for the dimension data.
+ * 
+ * @param num_dims The number of dimensions.
+ * @param domain The domain of the array schema.
+ * @param domain_buffers The domain buffers.
+ * @param hilbert_values A reference to store the hilbert values.
+ */
 void calculate_hilbert_values_test(uint64_t num_dims, const tiledb::sm::Domain& domain, const tiledb::sm::DomainBuffersView& domain_buffers,
     std::vector<uint64_t>& hilbert_values) {
   tiledb::sm::Hilbert h(num_dims);
@@ -277,6 +284,23 @@ void calculate_hilbert_values_test(uint64_t num_dims, const tiledb::sm::Domain& 
   }
 }
 
+/**
+ * @brief 
+ * 
+ * @tparam DimType 
+ * @param read_layout 
+ * @param domain 
+ * @return DimensionDataMetadata<DimType> 
+ */
+
+/**
+ * @brief Set the buffers with the appropriate dimensions for a 2D array with hilbert order.
+ *
+ * @tparam DimType The type of the dimension.
+ * @param read_layout The read layout of the read query.
+ * @param domain The domain of the array schema.
+ * @returns The dimension storage buffers and the dimension index map.
+ */
 template<typename DimType>
 DimensionDataMetadata<DimType> set_2d_dim_buffers_hilbert(tiledb_layout_t read_layout, const tiledb::sm::Domain& domain) {
   size_t elements_per_dim = BITSORT_DIM_HI - BITSORT_DIM_LO + 1;
@@ -341,6 +365,14 @@ DimensionDataMetadata<DimType> set_2d_dim_buffers_hilbert(tiledb_layout_t read_l
   return std::make_tuple(x_dims_hilbert, y_dims_hilbert, std::vector<DimType>(), dim_idx_map);
 }
 
+/**
+ * @brief Set the buffers with the appropriate dimensions for a 3D array with hilbert order.
+ *
+ * @tparam DimType The type of the dimension.
+ * @param read_layout The read layout of the read query.
+ * @param domain The domain of the array schema.
+ * @returns The dimension storage buffers and the dimension index map.
+ */
 template<typename DimType>
 DimensionDataMetadata<DimType> set_3d_dim_buffers_hilbert(tiledb_layout_t read_layout, const tiledb::sm::Domain& domain) {
   size_t elements_per_dim = BITSORT_DIM_HI - BITSORT_DIM_LO + 1;
@@ -853,9 +885,7 @@ TEMPLATE_TEST_CASE(
       TILEDB_COL_MAJOR);
   bool set_subarray = GENERATE(true, false);
   bool set_capacity = GENERATE(true, false);
-  bool hilbert_order = true; // TODO
-
-  // TODO: put map generation code here?
+  bool hilbert_order = GENERATE(true, false);
 
   // Run tests.
   if constexpr (std::is_floating_point<TestType>::value) {
@@ -886,24 +916,4 @@ TEMPLATE_TEST_CASE(
         set_capacity,
         hilbert_order);
   }
-}
-
-TEST_CASE("Hilbert debugging", "[cppapi][filter][bitsort][whee]") {
-   std::string array_name = "cpp_unit_bitsort_array";
-  uint64_t num_dims = 2;
-  tiledb_layout_t write_layout =
-      TILEDB_GLOBAL_ORDER;
-  tiledb_layout_t read_layout = TILEDB_GLOBAL_ORDER;
-  bool set_subarray = true;
-  bool set_capacity = false;
-  bool hilbert_order = true;
-
-  bitsort_filter_api_test<int16_t, float, IntDistribution>(
-        array_name,
-        num_dims,
-        write_layout,
-        read_layout,
-        set_subarray,
-        set_capacity,
-        hilbert_order);
 }
