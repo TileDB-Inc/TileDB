@@ -614,6 +614,7 @@ Status FragmentConsolidator::create_queries(
   *query_w = tdb_new(Query, storage_manager_, array_for_writes, fragment_name);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->disable_checks_consolidation());
+  (*query_w)->set_fragment_size(config_.max_fragment_size_);
   if (array_for_reads->array_schema_latest().dense()) {
     RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
   }
@@ -861,6 +862,12 @@ Status FragmentConsolidator::set_config(const Config& config) {
   config_.buffer_size_ = 0;
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.buffer_size", &config_.buffer_size_, &found));
+  assert(found);
+  config_.max_fragment_size_ = 0;
+  RETURN_NOT_OK(merged_config.get<uint64_t>(
+      "sm.consolidation.max_fragment_size",
+      &config_.max_fragment_size_,
+      &found));
   assert(found);
   config_.size_ratio_ = 0.0f;
   RETURN_NOT_OK(merged_config.get<float>(
