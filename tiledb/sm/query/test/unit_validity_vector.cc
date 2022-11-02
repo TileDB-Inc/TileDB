@@ -57,7 +57,7 @@ TEST_CASE(
     bytemap[i] = i % 2;
 
   ValidityVector validity_vector1;
-  validity_vector1.init_bytemap(bytemap, &bytemap_size);
+  REQUIRE(validity_vector1.init_bytemap(bytemap, &bytemap_size).ok());
 
   ValidityVector validity_vector2(std::move(validity_vector1));
 
@@ -76,7 +76,7 @@ TEST_CASE(
     bytemap[i] = i % 2;
 
   ValidityVector validity_vector1;
-  validity_vector1.init_bytemap(bytemap, &bytemap_size);
+  REQUIRE(validity_vector1.init_bytemap(bytemap, &bytemap_size).ok());
 
   ValidityVector validity_vector2 = std::move(validity_vector1);
 
@@ -94,7 +94,7 @@ TEST_CASE(
     bytemap[i] = i % 2;
 
   ValidityVector validity_vector;
-  validity_vector.init_bytemap(bytemap, &bytemap_size);
+  REQUIRE(validity_vector.init_bytemap(bytemap, &bytemap_size).ok());
 
   REQUIRE(validity_vector.bytemap() == bytemap);
   REQUIRE(validity_vector.bytemap_size() == &bytemap_size);

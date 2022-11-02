@@ -57,7 +57,8 @@ class ConsistencySentry;
 
 namespace tiledb::sm {
 
-using entry_type = std::multimap<const URI, Array&>::const_iterator;
+using array_entry = std::tuple<Array&, const QueryType>;
+using entry_type = std::multimap<const URI, array_entry>::const_iterator;
 
 class WhiteboxConsistencyController : public ConsistencyController {
  public:
@@ -65,7 +66,7 @@ class WhiteboxConsistencyController : public ConsistencyController {
   ~WhiteboxConsistencyController() = default;
 
   entry_type register_array(
-      const URI uri, Array& array, const QueryType& query_type) {
+      const URI uri, Array& array, const QueryType query_type) {
     return ConsistencyController::register_array(uri, array, query_type);
   }
 
@@ -74,7 +75,7 @@ class WhiteboxConsistencyController : public ConsistencyController {
   }
 
   ConsistencySentry make_sentry(
-      const URI uri, Array& array, const QueryType& query_type) {
+      const URI uri, Array& array, const QueryType query_type) {
     return ConsistencyController::make_sentry(uri, array, query_type);
   }
 
@@ -92,8 +93,8 @@ class WhiteboxConsistencyController : public ConsistencyController {
     uint64_t tile_extent = 1;
     shared_ptr<Dimension> dim =
         make_shared<Dimension>(HERE(), std::string("dim"), Datatype::UINT64);
-    dim->set_domain(&dim_dom);
-    dim->set_tile_extent(&tile_extent);
+    throw_if_not_ok(dim->set_domain(&dim_dom));
+    throw_if_not_ok(dim->set_tile_extent(&tile_extent));
 
     std::vector<shared_ptr<Dimension>> dims = {dim};
     shared_ptr<Domain> domain =
@@ -102,13 +103,13 @@ class WhiteboxConsistencyController : public ConsistencyController {
     // Create the ArraySchema
     shared_ptr<ArraySchema> schema =
         make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
-    schema->set_domain(domain);
-    schema->add_attribute(
+    throw_if_not_ok(schema->set_domain(domain));
+    throw_if_not_ok(schema->add_attribute(
         make_shared<Attribute>(
             HERE(), std::string("attr"), Datatype::UINT64, false),
-        false);
+        false));
     EncryptionKey key;
-    key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0);
+    throw_if_not_ok(key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
     // Create the (empty) array on disk.
     Status st = sm->array_create(uri, schema, key);

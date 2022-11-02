@@ -40,6 +40,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 namespace tiledb {
 namespace sm {
@@ -47,7 +48,6 @@ namespace sm {
 class Array;
 class ArraySchema;
 class MemoryTracker;
-class StorageManager;
 class Subarray;
 
 class FragIdx {
@@ -337,10 +337,10 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param f Fragment index.
    * @param t Tile index.
    *
-   * @return Status, tiles_size, tiles_size_qc.
+   * @return Tiles_size, tiles_size_qc.
    */
   template <class BitmapType>
-  tuple<Status, optional<std::pair<uint64_t, uint64_t>>> get_coord_tiles_size(
+  std::pair<uint64_t, uint64_t> get_coord_tiles_size(
       bool include_coords, unsigned dim_num, unsigned f, uint64_t t);
 
   /**

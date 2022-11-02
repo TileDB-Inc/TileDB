@@ -387,13 +387,13 @@ class ArraySchema {
   void set_array_uri(const URI& array_uri);
 
   /** Sets the filter pipeline for the variable cell offsets. */
-  Status set_cell_var_offsets_filter_pipeline(const FilterPipeline* pipeline);
+  Status set_cell_var_offsets_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the filter pipeline for the validity cell offsets. */
-  Status set_cell_validity_filter_pipeline(const FilterPipeline* pipeline);
+  Status set_cell_validity_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the filter pipeline for the coordinates. */
-  Status set_coords_filter_pipeline(const FilterPipeline* pipeline);
+  Status set_coords_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the tile capacity. */
   void set_capacity(uint64_t capacity);
@@ -411,13 +411,13 @@ class ArraySchema {
   Status set_tile_order(Layout tile_order);
 
   /** Set version of schema, only used for serialization */
-  void set_version(uint32_t version);
+  void set_version(format_version_t version);
 
   /** Returns the version to write in. */
-  uint32_t write_version() const;
+  format_version_t write_version() const;
 
   /** Returns the array schema version. */
-  uint32_t version() const;
+  format_version_t version() const;
 
   /** Set a timestamp range for the array schema */
   Status set_timestamp_range(
@@ -456,7 +456,7 @@ class ArraySchema {
   URI array_uri_;
 
   /** The format version of this array schema. */
-  uint32_t version_;
+  format_version_t version_;
 
   /**
    * The timestamp the array schema was written.
@@ -546,7 +546,7 @@ class ArraySchema {
    * Returns false if the union of attribute and dimension names contain
    * duplicates.
    */
-  Status check_attribute_dimension_label_names() const;
+  void check_attribute_dimension_label_names() const;
 
   /**
    * Returns error if double delta compression is used in the zipped

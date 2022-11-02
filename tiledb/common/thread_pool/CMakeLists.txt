@@ -50,7 +50,7 @@ if (TILEDB_TESTS)
     add_executable(unit_thread_pool EXCLUDE_FROM_ALL)
     target_link_libraries(unit_thread_pool PUBLIC thread_pool)
     find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_thread_pool PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_thread_pool PUBLIC Catch2::Catch2WithMain)
     target_link_libraries(unit_thread_pool PUBLIC $<TARGET_OBJECTS:cancelable_tasks>)
 
     # Sources for code elsewhere required for tests

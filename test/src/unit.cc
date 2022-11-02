@@ -32,9 +32,9 @@ int main(const int argc, char** const argv) {
 
   // Add a '--vfs' command line argument to override the default VFS.
   std::string vfs;
-  Catch::clara::Parser cli =
+  Catch::Clara::Parser cli =
       session.cli() |
-      Catch::clara::Opt(vfs, vfs_fs_oss.str())["--vfs"](
+      Catch::Clara::Opt(vfs, vfs_fs_oss.str())["--vfs"](
           "Override the VFS filesystem to use for generic tests");
 
   session.cli(cli);
@@ -51,8 +51,8 @@ int main(const int argc, char** const argv) {
   return session.run();
 }
 
-struct CICompletionStatusListener : Catch::TestEventListenerBase {
-  using TestEventListenerBase::TestEventListenerBase;  // inherit constructor
+struct CICompletionStatusListener : Catch::EventListenerBase {
+  using Catch::EventListenerBase::EventListenerBase;  // inherit constructor
 
   // Successful completion hook
   void testRunEnded(Catch::TestRunStats const& testRunStats) override {

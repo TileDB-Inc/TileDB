@@ -76,6 +76,7 @@ UnorderedWriter::UnorderedWriter(
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
+    bool remote_query,
     optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
@@ -90,8 +91,10 @@ UnorderedWriter::UnorderedWriter(
           written_fragment_info,
           false,
           coords_info,
+          remote_query,
           fragment_name,
-          skip_checks_serialization) {
+          skip_checks_serialization)
+    , frag_uri_(std::nullopt) {
   if (layout != Layout::UNORDERED) {
     throw StatusException(Status_WriterError(
         "Failed to initialize UnorderedWriter; The unordered writer does not "
@@ -121,10 +124,20 @@ Status UnorderedWriter::dowork() {
   // In case the user has provided a coordinates buffer
   RETURN_NOT_OK(split_coords_buffer());
 
-  if (check_coord_oob_)
+  if (check_coord_oob_) {
     RETURN_NOT_OK(check_coord_oob());
+  }
 
-  RETURN_NOT_OK(unordered_write());
+  try {
+    auto status = unordered_write();
+    if (!status.ok()) {
+      clean_up();
+      return status;
+    }
+  } catch (...) {
+    clean_up();
+    std::throw_with_nested(std::runtime_error("['UnorderedWriter::dowork] "));
+  }
 
   return Status::Ok();
 }
@@ -141,6 +154,12 @@ void UnorderedWriter::reset() {
 /* ****************************** */
 /*        PRIVATE METHODS         */
 /* ****************************** */
+
+void UnorderedWriter::clean_up() {
+  if (frag_uri_.has_value()) {
+    throw_if_not_ok(storage_manager_->vfs()->remove_dir(frag_uri_.value()));
+  }
+}
 
 Status UnorderedWriter::check_coord_dups(
     const std::vector<uint64_t>& cell_pos) const {
@@ -234,13 +253,9 @@ Status UnorderedWriter::check_coord_dups(
         return Status::Ok();
       });
 
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
   return Status::Ok();
-}
-
-void UnorderedWriter::clean_up(const URI& uri) {
-  storage_manager_->vfs()->remove_dir(uri);
 }
 
 Status UnorderedWriter::compute_coord_dups(
@@ -404,12 +419,7 @@ Status UnorderedWriter::prepare_tiles_fixed(
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
     tiles->emplace_back(WriterTile(
-        array_schema_,
-        coords_info_.has_coords_,
-        false,
-        nullable,
-        cell_size,
-        type));
+        array_schema_, cell_num_per_tile, false, nullable, cell_size, type));
   }
 
   // Write all cells one by one
@@ -453,7 +463,7 @@ Status UnorderedWriter::prepare_tiles_fixed(
 
   uint64_t last_tile_cell_num = (cell_num - dups_num) % capacity;
   if (last_tile_cell_num != 0) {
-    tile_it->final_size(last_tile_cell_num);
+    tile_it->set_final_size(last_tile_cell_num);
   }
 
   return Status::Ok();
@@ -486,12 +496,7 @@ Status UnorderedWriter::prepare_tiles_var(
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
     tiles->emplace_back(WriterTile(
-        array_schema_,
-        coords_info_.has_coords_,
-        true,
-        nullable,
-        cell_size,
-        type));
+        array_schema_, cell_num_per_tile, true, nullable, cell_size, type));
   }
 
   // Write all cells one by one
@@ -577,7 +582,7 @@ Status UnorderedWriter::prepare_tiles_var(
 
   uint64_t last_tile_cell_num = (cell_num - dups_num) % capacity;
   if (last_tile_cell_num != 0) {
-    tile_it->final_size(last_tile_cell_num);
+    tile_it->set_final_size(last_tile_cell_num);
   }
 
   return Status::Ok();
@@ -628,71 +633,59 @@ Status UnorderedWriter::unordered_write() {
 
   // Retrieve coordinate duplicates
   std::set<uint64_t> coord_dups;
-  if (dedup_coords_)
+  if (dedup_coords_) {
     RETURN_CANCEL_OR_ERROR(compute_coord_dups(cell_pos, &coord_dups));
+  }
 
   // Create new fragment
   auto frag_meta = make_shared<FragmentMetadata>(HERE());
   RETURN_CANCEL_OR_ERROR(create_fragment(false, frag_meta));
-  const auto& uri = frag_meta->fragment_uri();
+  frag_uri_ = frag_meta->fragment_uri();
 
   // Prepare tiles
   std::unordered_map<std::string, WriterTileVector> tiles;
-  RETURN_CANCEL_OR_ERROR_ELSE(
-      prepare_tiles(cell_pos, coord_dups, &tiles), clean_up(uri));
+  RETURN_CANCEL_OR_ERROR(prepare_tiles(cell_pos, coord_dups, &tiles));
 
   // Clear the boolean vector for coordinate duplicates
   coord_dups.clear();
 
   // No tiles
   if (tiles.empty() || tiles.begin()->second.empty()) {
-    clean_up(uri);
     return Status::Ok();
   }
 
   // Set the number of tiles in the metadata
   auto it = tiles.begin();
   auto tile_num = it->second.size();
-  frag_meta->set_num_tiles(tile_num);
+  throw_if_not_ok(frag_meta->set_num_tiles(tile_num));
 
   stats_->add_counter("tile_num", tile_num);
   stats_->add_counter("cell_num", cell_pos.size());
 
   // Compute coordinates metadata
-  RETURN_CANCEL_OR_ERROR_ELSE(
-      compute_coords_metadata(tiles, frag_meta), clean_up(uri));
+  auto mbrs = compute_mbrs(tiles);
+  set_coords_metadata(0, tile_num, tiles, mbrs, frag_meta);
 
   // Compute tile metadata.
-  RETURN_CANCEL_OR_ERROR_ELSE(
-      compute_tiles_metadata(tile_num, tiles), clean_up(uri));
+  RETURN_CANCEL_OR_ERROR(compute_tiles_metadata(tile_num, tiles));
 
   // Filter all tiles
-  RETURN_CANCEL_OR_ERROR_ELSE(filter_tiles(&tiles), clean_up(uri));
+  RETURN_CANCEL_OR_ERROR(filter_tiles(&tiles));
 
   // Write tiles for all attributes and coordinates
-  RETURN_CANCEL_OR_ERROR_ELSE(
-      write_all_tiles(frag_meta, &tiles), clean_up(uri));
+  RETURN_CANCEL_OR_ERROR(write_tiles(0, tile_num, frag_meta, &tiles));
 
-  // Compute fragment min/max/sum/null count
-  RETURN_NOT_OK_ELSE(
-      frag_meta->compute_fragment_min_max_sum_null_count(), clean_up(uri));
-
-  // Write the fragment metadata
-  try {
-    frag_meta->store(array_->get_encryption_key());
-  } catch (...) {
-    clean_up(uri);
-    throw;
-  }
+  // Compute fragment min/max/sum/null count and write the fragment metadata
+  frag_meta->compute_fragment_min_max_sum_null_count();
+  frag_meta->store(array_->get_encryption_key());
 
   // Add written fragment info
-  RETURN_NOT_OK_ELSE(add_written_fragment_info(uri), clean_up(uri));
+  RETURN_NOT_OK(add_written_fragment_info(frag_uri_.value()));
 
   // The following will make the fragment visible
-  auto&& [st, commit_uri] = array_->array_directory().get_commit_uri(uri);
-  RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
-  RETURN_NOT_OK_ELSE(
-      storage_manager_->vfs()->touch(commit_uri.value()), clean_up(uri));
+  URI commit_uri = array_->array_directory().get_commit_uri(frag_uri_.value());
+
+  RETURN_NOT_OK(storage_manager_->vfs()->touch(commit_uri));
 
   return Status::Ok();
 }

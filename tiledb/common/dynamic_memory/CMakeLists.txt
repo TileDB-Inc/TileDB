@@ -40,7 +40,7 @@ if (TILEDB_TESTS)
     find_package(Catch_EP REQUIRED)
 
     add_executable(unit_dynamic_memory EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_dynamic_memory PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_dynamic_memory PUBLIC Catch2::Catch2WithMain)
     # Link to Threads::Threads if library or flag needed to enable threading.
     # The heap_profiler dependency requires threads. The dependency should be
     # moved to heap_profiler if/when it is added to its own object library.

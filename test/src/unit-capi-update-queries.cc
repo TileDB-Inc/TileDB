@@ -30,8 +30,8 @@
  * Tests of C API for updates.
  */
 
-#include "catch.hpp"
-#include "test/src/vfs_helpers.h"
+#include "test/support/tdb_catch.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -218,9 +218,8 @@ TEST_CASE_METHOD(
   }
 
   // Check the update value.
-  auto st = query->query_->update_values()[0].check(
-      array->array_->array_schema_latest());
-  CHECK(!st.ok());
+  CHECK_THROWS(query->query_->update_values()[0].check(
+      array->array_->array_schema_latest()));
 
   // Clean up.
   tiledb_query_free(&query);

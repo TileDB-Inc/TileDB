@@ -31,7 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -58,6 +58,7 @@ class NullableArrayFx {
   const string FILE_TEMP_DIR =
       tiledb::sm::Posix::current_dir() + "/tiledb_test/";
 #endif
+  bool serialized_writes;
 
   struct test_dim_t {
     test_dim_t(
@@ -223,6 +224,8 @@ NullableArrayFx::NullableArrayFx() {
   REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
 
   tiledb_config_free(&config);
+
+  serialized_writes = false;
 }
 
 NullableArrayFx::~NullableArrayFx() {
@@ -429,13 +432,15 @@ void NullableArrayFx::write(
     }
   }
 
-  // Submit the query.
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
 
-  // Finalize the query, a no-op for non-global writes.
-  rc = tiledb_query_finalize(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Clean up
   rc = tiledb_array_close(ctx_, array);
@@ -873,6 +878,15 @@ TEST_CASE_METHOD(
   attrs.emplace_back("a1", TILEDB_INT32, 1, true);
   attrs.emplace_back("a2", TILEDB_INT32, 1, true);
   attrs.emplace_back("a3", TILEDB_INT32, TILEDB_VAR_NUM, true);
+
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialized_writes = true;
+#endif
+  }
 
   for (auto attr_iter = attrs.begin(); attr_iter != attrs.end(); ++attr_iter) {
     vector<test_attr_t> test_attrs(attrs.begin(), attr_iter + 1);

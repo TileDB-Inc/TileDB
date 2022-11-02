@@ -106,7 +106,7 @@ if (TILEDB_TESTS)
     add_executable(unit_compressors EXCLUDE_FROM_ALL)
     target_link_libraries(unit_compressors PRIVATE compressors)
     find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_compressors PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_compressors PUBLIC Catch2::Catch2WithMain)
 
     # Sources for tests
     target_sources(unit_compressors PUBLIC test/main.cc test/unit_dict_compressor.cc)

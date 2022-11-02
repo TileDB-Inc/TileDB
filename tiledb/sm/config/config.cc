@@ -135,6 +135,7 @@ const std::string Config::SM_OFFSETS_FORMAT_MODE = "bytes";
 const std::string Config::SM_MAX_TILE_OVERLAP_SIZE = "314572800";  // 300MiB
 const std::string Config::SM_GROUP_TIMESTAMP_START = "0";
 const std::string Config::SM_GROUP_TIMESTAMP_END = std::to_string(UINT64_MAX);
+const std::string Config::SM_FRAGMENT_INFO_PRELOAD_MBRS = "false";
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MAX_BATCH_SIZE = std::to_string(UINT64_MAX);
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
@@ -316,6 +317,8 @@ Config::Config() {
   param_values_["sm.max_tile_overlap_size"] = SM_MAX_TILE_OVERLAP_SIZE;
   param_values_["sm.group.timestamp_start"] = SM_GROUP_TIMESTAMP_START;
   param_values_["sm.group.timestamp_end"] = SM_GROUP_TIMESTAMP_END;
+  param_values_["sm.fragment_info.preload_mbrs"] =
+      SM_FRAGMENT_INFO_PRELOAD_MBRS;
   param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   param_values_["vfs.max_batch_size"] = VFS_MAX_BATCH_SIZE;
   param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
@@ -473,34 +476,9 @@ Status Config::set(const std::string& param, const std::string& value) {
   return Status::Ok();
 }
 
-optional<std::string> Config::get(const std::string& key) const {
-  bool found;
-  const char* val = get_from_config_or_env(key, &found);
-  if (found) {
-    return {std::string{val}};
-  } else {
-    return {nullopt};
-  }
-}
-
-template <class T>
-optional<T> Config::get(const std::string& key) const {
-  auto value{get(key)};
-  if (!value.has_value()) {
-    return {nullopt};
-  }
-  T converted_value;
-  /*
-   * `convert` is only declared for certain types. If the type argument to this
-   * function isn't one of them, this function won't compile.
-   */
-  auto status = utils::parse::convert(value.value(), &converted_value);
-  if (!status.ok()) {
-    throw_config_exception(
-        "Failed to convert configuration value '" + value.value() +
-        std::string("' for key '") + key + "'. Reason: " + status.to_string());
-  }
-  return {converted_value};
+std::string Config::get(const std::string& param, bool* found) const {
+  const char* val = get_from_config_or_env(param, found);
+  return *found ? val : "";
 }
 
 Status Config::get(const std::string& param, const char** value) const {
@@ -509,11 +487,6 @@ Status Config::get(const std::string& param, const char** value) const {
   *value = found ? val : nullptr;
 
   return Status::Ok();
-}
-
-std::string Config::get(const std::string& param, bool* found) const {
-  const char* val = get_from_config_or_env(param, found);
-  return *found ? val : "";
 }
 
 template <class T>
@@ -711,6 +684,9 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.group.timestamp_start"] = SM_GROUP_TIMESTAMP_START;
   } else if (param == "sm.group.timestamp_end") {
     param_values_["sm.group.timestamp_end"] = SM_GROUP_TIMESTAMP_END;
+  } else if (param == "sm.fragment_info.preload_mbrs") {
+    param_values_["sm.fragment_info.preload_mbrs"] =
+        SM_FRAGMENT_INFO_PRELOAD_MBRS;
   } else if (param == "vfs.min_parallel_size") {
     param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   } else if (param == "vfs.max_batch_size") {
@@ -854,7 +830,7 @@ void Config::inherit(const Config& config) {
   for (const auto& p : set_params) {
     auto v = config.get(p, &found);
     assert(found);
-    set(p, v);
+    throw_if_not_ok(set(p, v));
   }
 }
 
@@ -938,6 +914,8 @@ Status Config::sanity_check(
     if (value != "bytes" && value != "elements")
       return LOG_STATUS(
           Status_ConfigError("Invalid offsets format parameter value"));
+  } else if (param == "sm.fragment_info.preload_mbrs") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.max_batch_size") {
@@ -1076,6 +1054,38 @@ const char* Config::get_from_config_or_env(
   return *found ? value_config : "";
 }
 
+template <class T, bool must_find_>
+optional<T> Config::get_internal(const std::string& key) const {
+  auto value = get_internal_string<must_find_>(key);
+  if (value.has_value()) {
+    T converted_value;
+    auto status = utils::parse::convert(value.value(), &converted_value);
+    if (status.ok()) {
+      return {converted_value};
+    }
+    throw_config_exception(
+        "Failed to parse config value '" + std::string(value.value()) +
+        "' for key '" + key + "'. Reason: " + status.to_string());
+  }
+
+  return {nullopt};
+}
+
+template <bool must_find_>
+optional<std::string> Config::get_internal_string(
+    const std::string& key) const {
+  bool found;
+  const char* value = get_from_config_or_env(key, &found);
+  if (found) {
+    return {value};
+  }
+
+  if constexpr (must_find_) {
+    throw_config_exception("Failed to get config value for key: " + key);
+  }
+  return {nullopt};
+}
+
 /*
  * Explicit instantiations
  */
@@ -1103,5 +1113,54 @@ template optional<int64_t> Config::get<int64_t>(const std::string&) const;
 template optional<uint64_t> Config::get<uint64_t>(const std::string&) const;
 template optional<float> Config::get<float>(const std::string&) const;
 template optional<double> Config::get<double>(const std::string&) const;
+
+template bool Config::get<bool>(
+    const std::string&, const Config::MustFindMarker&) const;
+template int Config::get<int>(
+    const std::string&, const Config::MustFindMarker&) const;
+template uint32_t Config::get<uint32_t>(
+    const std::string&, const Config::MustFindMarker&) const;
+template int64_t Config::get<int64_t>(
+    const std::string&, const Config::MustFindMarker&) const;
+template uint64_t Config::get<uint64_t>(
+    const std::string&, const Config::MustFindMarker&) const;
+template float Config::get<float>(
+    const std::string&, const Config::MustFindMarker&) const;
+template double Config::get<double>(
+    const std::string&, const Config::MustFindMarker&) const;
+
+template optional<bool> Config::get_internal<bool, false>(
+    const std::string& key) const;
+template optional<bool> Config::get_internal<bool, true>(
+    const std::string& key) const;
+template optional<int> Config::get_internal<int, false>(
+    const std::string& key) const;
+template optional<int> Config::get_internal<int, true>(
+    const std::string& key) const;
+template optional<uint32_t> Config::get_internal<uint32_t, false>(
+    const std::string& key) const;
+template optional<uint32_t> Config::get_internal<uint32_t, true>(
+    const std::string& key) const;
+template optional<int64_t> Config::get_internal<int64_t, false>(
+    const std::string& key) const;
+template optional<int64_t> Config::get_internal<int64_t, true>(
+    const std::string& key) const;
+template optional<uint64_t> Config::get_internal<uint64_t, false>(
+    const std::string& key) const;
+template optional<uint64_t> Config::get_internal<uint64_t, true>(
+    const std::string& key) const;
+template optional<float> Config::get_internal<float, false>(
+    const std::string& key) const;
+template optional<float> Config::get_internal<float, true>(
+    const std::string& key) const;
+template optional<double> Config::get_internal<double, false>(
+    const std::string& key) const;
+template optional<double> Config::get_internal<double, true>(
+    const std::string& key) const;
+
+template optional<std::string> Config::get_internal_string<true>(
+    const std::string& key) const;
+template optional<std::string> Config::get_internal_string<false>(
+    const std::string& key) const;
 
 }  // namespace tiledb::sm

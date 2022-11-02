@@ -70,7 +70,7 @@ Status ChecksumMD5Filter::run_forward(
   // Set output buffer to input buffer
   RETURN_NOT_OK(output->append_view(input));
   // Add original input metadata as a view to the output metadata
-  output_metadata->append_view(input_metadata);
+  throw_if_not_ok(output_metadata->append_view(input_metadata));
 
   // Compute and write the metadata
   std::vector<ConstBuffer> data_parts = input->buffers(),
@@ -132,7 +132,7 @@ Status ChecksumMD5Filter::run_reverse(
     // Only fetch and store checksum if we are not going to skip it
     if (!skip_validation) {
       Buffer buff;
-      buff.realloc(Crypto::MD5_DIGEST_BYTES);
+      throw_if_not_ok(buff.realloc(Crypto::MD5_DIGEST_BYTES));
       RETURN_NOT_OK(
           input_metadata->read(buff.data(), Crypto::MD5_DIGEST_BYTES));
       metadata_checksums[i] = std::make_pair(metadata_checksummed_bytes, buff);
@@ -149,7 +149,7 @@ Status ChecksumMD5Filter::run_reverse(
     // Only fetch and store checksum if we are not going to skip it
     if (!skip_validation) {
       Buffer buff;
-      buff.realloc(Crypto::MD5_DIGEST_BYTES);
+      throw_if_not_ok(buff.realloc(Crypto::MD5_DIGEST_BYTES));
       RETURN_NOT_OK(
           input_metadata->read(buff.data(), Crypto::MD5_DIGEST_BYTES));
       data_checksums[i] = std::make_pair(data_checksummed_bytes, buff);
@@ -199,7 +199,7 @@ Status ChecksumMD5Filter::checksum_part(
   // Allocate an initial output buffer.
   tdb_unique_ptr<Buffer> computed_hash =
       tdb_unique_ptr<Buffer>(tdb_new(Buffer));
-  computed_hash->realloc(Crypto::MD5_DIGEST_BYTES);
+  throw_if_not_ok(computed_hash->realloc(Crypto::MD5_DIGEST_BYTES));
   RETURN_NOT_OK(Crypto::md5(part, computed_hash.get()));
 
   // Write metadata.
@@ -224,7 +224,7 @@ Status ChecksumMD5Filter::compare_checksum_part(
   if (!part->get_const_buffer(bytes_to_compare, buffer_to_compare.get()).ok()) {
     // If the bytes we need to compare span multiple buffers we will have to
     // copy them out
-    byte_buffer_to_compare->realloc(bytes_to_compare);
+    throw_if_not_ok(byte_buffer_to_compare->realloc(bytes_to_compare));
     RETURN_NOT_OK(part->read(byte_buffer_to_compare->data(), bytes_to_compare));
     // Set the buffer back
     buffer_to_compare = tdb_unique_ptr<ConstBuffer>(
@@ -238,7 +238,7 @@ Status ChecksumMD5Filter::compare_checksum_part(
   // Buffer to store the newly computed hash value for comparison
   tdb_unique_ptr<Buffer> computed_hash =
       tdb_unique_ptr<Buffer>(tdb_new(Buffer));
-  computed_hash->realloc(Crypto::MD5_DIGEST_BYTES);
+  throw_if_not_ok(computed_hash->realloc(Crypto::MD5_DIGEST_BYTES));
 
   RETURN_NOT_OK(Crypto::md5(
       buffer_to_compare->data(), bytes_to_compare, computed_hash.get()));
@@ -250,14 +250,14 @@ Status ChecksumMD5Filter::compare_checksum_part(
         reinterpret_cast<unsigned char*>(computed_hash->data());
     char md5string[33];
     for (uint64_t i = 0; i < computed_hash->alloced_size(); ++i) {
-      sprintf(&md5string[i * 2], "%02x", (unsigned int)digest[i]);
+      snprintf(&md5string[i * 2], 3, "%02x", (unsigned int)digest[i]);
     }
 
     unsigned char* existing_digest = reinterpret_cast<unsigned char*>(checksum);
     char md5string_existing[33];
     for (uint64_t i = 0; i < Crypto::MD5_DIGEST_BYTES; ++i) {
-      sprintf(
-          &md5string_existing[i * 2], "%02x", (unsigned int)existing_digest[i]);
+      snprintf(
+          &md5string_existing[i * 2], 3, "%02x", (unsigned int)existing_digest[i]);
     }
 
     std::stringstream message;

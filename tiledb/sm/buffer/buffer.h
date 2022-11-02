@@ -239,9 +239,8 @@ class Buffer : public BufferBase {
    * offset, data ownership, etc).
    *
    * @param other Buffer to swap with.
-   * @return Status
    */
-  Status swap(Buffer& other);
+  void swap(Buffer& other);
 
   /**
    * Returns the value of type T at the input offset.

@@ -64,7 +64,7 @@ struct WinFx {
 
   WinFx() {
     // Make sure parallel reads/writes are tested.
-    vfs_config_.set("vfs.min_parallel_size", "100");
+    REQUIRE(vfs_config_.set("vfs.min_parallel_size", "100").ok());
     REQUIRE(win_.init(vfs_config_, &thread_pool_).ok());
 
     if (path_exists(TEMP_DIR + "tiledb_test_dir"))

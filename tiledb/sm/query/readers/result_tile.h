@@ -73,6 +73,125 @@ class Subarray;
 class ResultTile {
  public:
   /**
+   * Class definition for tile sizes.
+   *
+   */
+  class TileSizes {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+    TileSizes(
+        const std::shared_ptr<tiledb::sm::FragmentMetadata> fragment,
+        std::string name,
+        const bool var_size,
+        const bool nullable,
+        const uint64_t tile_idx)
+        : tile_size_(fragment->tile_size(name, tile_idx))
+        , tile_persisted_size_(fragment->persisted_tile_size(name, tile_idx))
+        , tile_var_size_(
+              var_size ?
+                  std::optional(fragment->tile_var_size(name, tile_idx)) :
+                  std::nullopt)
+        , tile_var_persisted_size_(
+              var_size ? std::optional(fragment->persisted_tile_var_size(
+                             name, tile_idx)) :
+                         std::nullopt)
+        , tile_validity_size_(
+              nullable ? std::optional(
+                             fragment->cell_num(tile_idx) *
+                             constants::cell_validity_size) :
+                         std::nullopt)
+        , tile_validity_persisted_size_(
+              nullable ? std::optional(fragment->persisted_tile_validity_size(
+                             name, tile_idx)) :
+                         std::nullopt) {
+    }
+
+    TileSizes(
+        const uint64_t tile_size,
+        const uint64_t tile_persisted_size,
+        const optional<uint64_t> tile_var_size,
+        const optional<uint64_t> tile_var_persisted_size,
+        const optional<uint64_t> tile_validity_size,
+        const optional<uint64_t> tile_validity_persisted_size)
+        : tile_size_(tile_size)
+        , tile_persisted_size_(tile_persisted_size)
+        , tile_var_size_(tile_var_size)
+        , tile_var_persisted_size_(tile_var_persisted_size)
+        , tile_validity_size_(tile_validity_size)
+        , tile_validity_persisted_size_(tile_validity_persisted_size) {
+    }
+
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+
+    /** @return The fixed tile in memory size. */
+    inline uint64_t tile_size() const {
+      return tile_size_;
+    }
+
+    /** @return The fixed tile in disk size. */
+    inline uint64_t tile_persisted_size() const {
+      return tile_persisted_size_;
+    }
+
+    /** @return If there is a var tile or not. */
+    inline bool has_var_tile() const {
+      return tile_var_size_.has_value();
+    }
+
+    /** @return The fixed tile in memory size. */
+    inline uint64_t tile_var_size() const {
+      return tile_var_size_.value();
+    }
+
+    /** @return The fixed tile in disk size. */
+    inline uint64_t tile_var_persisted_size() const {
+      return tile_var_persisted_size_.value();
+    }
+
+    /** @return If there is a validity tile or not. */
+    inline bool has_validity_tile() const {
+      return tile_validity_size_.has_value();
+    }
+
+    /** @return The validity tile in memory size. */
+    inline uint64_t tile_validity_size() const {
+      return tile_validity_size_.value();
+    }
+
+    /** @return The validity tile in disk size. */
+    inline uint64_t tile_validity_persisted_size() const {
+      return tile_validity_persisted_size_.value();
+    }
+
+   private:
+    /* ********************************* */
+    /*        PRIVATE ATTRIBUTES         */
+    /* ********************************* */
+
+    /** Stores the fixed tile in memory size. */
+    const uint64_t tile_size_;
+
+    /** Stores the fixed tile on disk size. */
+    const uint64_t tile_persisted_size_;
+
+    /** Stores the var tile in memory size. */
+    const optional<uint64_t> tile_var_size_;
+
+    /** Stores the var tile on disk size. */
+    const optional<uint64_t> tile_var_persisted_size_;
+
+    /** Stores the validity tile in memory size. */
+    const optional<uint64_t> tile_validity_size_;
+
+    /** Stores the validity tile on disk size. */
+    const optional<uint64_t> tile_validity_persisted_size_;
+  };
+
+  /**
    * Class definition for the tile tuple.
    */
   class TileTuple {
@@ -85,13 +204,46 @@ class ResultTile {
     TileTuple() = delete;
 
     /** Constructor with var_size and nullable parameters. */
-    TileTuple(bool var_size, bool nullable) {
-      if (var_size) {
-        var_tile_ = Tile();
+    TileTuple(
+        const format_version_t format_version,
+        const ArraySchema& array_schema,
+        const std::string& name,
+        const TileSizes tile_sizes)
+        : fixed_tile_(
+              tile_sizes.has_var_tile() ?
+                  Tile(
+                      format_version,
+                      constants::cell_var_offset_type,
+                      constants::cell_var_offset_size,
+                      0,
+                      tile_sizes.tile_size(),
+                      tile_sizes.tile_persisted_size()) :
+                  Tile(
+                      format_version,
+                      array_schema.type(name),
+                      array_schema.cell_size(name),
+                      (name == constants::coords) ? array_schema.dim_num() : 0,
+                      tile_sizes.tile_size(),
+                      tile_sizes.tile_persisted_size())) {
+      if (tile_sizes.has_var_tile()) {
+        auto type = array_schema.type(name);
+        var_tile_ = Tile(
+            format_version,
+            type,
+            datatype_size(type),
+            0,
+            tile_sizes.tile_var_size(),
+            tile_sizes.tile_var_persisted_size());
       }
 
-      if (nullable) {
-        validity_tile_ = Tile();
+      if (tile_sizes.has_validity_tile()) {
+        validity_tile_ = Tile(
+            format_version,
+            constants::cell_validity_type,
+            constants::cell_validity_size,
+            0,
+            tile_sizes.tile_validity_size(),
+            tile_sizes.tile_validity_persisted_size());
       }
     }
 
@@ -130,6 +282,10 @@ class ResultTile {
     }
 
    private:
+    /* ********************************* */
+    /*        PRIVATE ATTRIBUTES         */
+    /* ********************************* */
+
     /** Stores the fixed data tile. */
     Tile fixed_tile_;
 
@@ -198,11 +354,19 @@ class ResultTile {
   void erase_tile(const std::string& name);
 
   /** Initializes the result tile for the given attribute. */
-  void init_attr_tile(const std::string& name, bool var_size, bool nullable);
+  void init_attr_tile(
+      const format_version_t format_version,
+      const ArraySchema& array_schema,
+      const std::string& name,
+      const TileSizes tile_sizes);
 
   /** Initializes the result tile for the given dimension name and index. */
   void init_coord_tile(
-      const std::string& name, bool var_size, unsigned dim_idx);
+      const format_version_t format_version,
+      const ArraySchema& array_schema,
+      const std::string& name,
+      const TileSizes tile_sizes,
+      unsigned dim_idx);
 
   /** Returns the tile pair for the input attribute or dimension. */
   TileTuple* tile_tuple(const std::string& name);

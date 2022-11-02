@@ -32,7 +32,8 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/serialization_wrappers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
@@ -1221,6 +1222,16 @@ TEST_CASE(
     "Backwards compatibility: Upgrades an array of older version and "
     "write/read it",
     "[backwards-compat][upgrade-version][write-read-new-version]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   std::string array_name(arrays_dir + "/non_split_coords_v1_4_0");
   Context ctx;
   std::string schema_folder;
@@ -1267,12 +1278,39 @@ TEST_CASE(
   query_write.set_data_buffer("d1", d1_write);
   query_write.set_data_buffer("d2", d2_write);
 
-  query_write.submit();
-  query_write.finalize();
+  if (!serialized_writes) {
+    query_write.submit();
+    query_write.finalize();
+  } else {
+    submit_and_finalize_serialized_query(ctx, query_write);
+  }
+
   array_write.close();
 
   FragmentInfo fragment_info(ctx, array_name);
   fragment_info.load();
+
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
+  if (serialized_load) {
+    FragmentInfo deserialized_fragment_info(ctx, array_name);
+    tiledb_fragment_info_serialize(
+        ctx.ptr().get(),
+        array_name.c_str(),
+        fragment_info.ptr().get(),
+        deserialized_fragment_info.ptr().get(),
+        tiledb_serialization_type_t(0));
+    fragment_info = deserialized_fragment_info;
+  }
+
   fragment_uri = fragment_info.fragment_uri(1);
 
   // old version fragment

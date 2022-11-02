@@ -27,7 +27,7 @@ include(common NO_POLICY_SCOPE)
 
 add_executable(unit_config EXCLUDE_FROM_ALL)
 find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_config PUBLIC Catch2::Catch2)
+target_link_libraries(unit_config PUBLIC Catch2::Catch2WithMain)
 target_link_libraries(unit_config PUBLIC config)
 target_sources(unit_config PUBLIC unit_config.cc)
 add_test(

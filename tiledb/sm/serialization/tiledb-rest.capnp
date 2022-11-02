@@ -62,8 +62,9 @@ struct Array {
 struct ArrayOpen {
   config @0 :Config;
   # Config
+  queryType @1 :Text;
+  # Query type to open the array for
 }
-
 
 struct ArraySchema {
 # ArraySchema during creation or retrieval
@@ -324,6 +325,9 @@ struct Writer {
 
   stats @5 :Stats;
   # Stats object
+
+  globalWriteStateV1 @6 :GlobalWriteState;
+  # All the state necessary for global writes to work in TileDB Cloud
 }
 
 struct SubarrayRanges {
@@ -605,6 +609,10 @@ struct Query {
 
     delete @17 :Delete;
     # delete contains QueryCondition representing deletion expression
+
+    writtenFragmentInfo @18 :List(WrittenFragmentInfo);
+    # Needed in global order writes when WrittenFragmentInfo gets updated
+    # during finalize, but doesn't end up back on the client Query object
 }
 
 struct NonEmptyDomain {
@@ -698,6 +706,36 @@ struct EstimatedResultSize {
   memorySizes @1 :Map(Text, MemorySize);
 }
 
+struct FragmentInfoRequest {
+  config @0 :Config;
+  # Config
+}
+
+struct SingleFragmentInfo {
+  arraySchemaName @0 :Text;
+  # array schema name
+
+  meta @1 :FragmentMetadata;
+  # fragment metadata
+
+  fragmentSize @2 : UInt64;
+  # the size of the entire fragment directory
+}
+
+struct FragmentInfo {
+  arraySchemaLatest @0 :ArraySchema;
+  # latest array schema
+
+  arraySchemasAll @1 :Map(Text, ArraySchema);
+  # map of all array schemas
+
+  fragmentInfo @2 :List(SingleFragmentInfo);
+  # information about fragments in the array
+
+  toVacuum @3 :List(Text);
+  # the URIs of the fragments to vacuum
+}
+
 struct GroupMetadata {
   config @0 :Config;
   # Config
@@ -767,4 +805,149 @@ struct GroupCreate {
   # Config
 
   groupDetails @1 :GroupCreateDetails $Json.name("group_details");
+}
+
+struct GlobalWriteState {
+  cellsWritten @0 :MapUInt64;
+  # number of cells written for each attribute/dimension
+
+  fragMeta @1 :FragmentMetadata;
+  # metadata of the global write fragment
+
+  lastCellCoords @2 :SingleCoord;
+  # the last cell written;
+
+  lastHilbertValue @3 :UInt64;
+  # last hilbert value written
+
+  multiPartUploadStates@4 :Map(Text, MultiPartUploadState);
+  # A mapping of URIs to multipart upload states
+  # Each file involved in a remote global order write (attr files,
+  # offsets files, etc) is partially written as a multipart upload part
+  # with each partial global order write operation (submit,
+  # submit_and_finalize). This mapping makes the multipart upload info
+  # available between partile global order write operations on the cloud side.
+}
+
+struct SingleCoord {
+  coords @0 :List(List(UInt8));
+  # coordinate data per dimension
+
+  sizes @1 :List(UInt64);
+  # sizes of data per dimension
+
+  singleOffset @2 :List(UInt64);
+  # offsets buffer for a var sized  attribute
+}
+
+struct FragmentMetadata {
+  fileSizes @0 :List(UInt64);
+  # The size of each attribute file
+
+  fileVarSizes @1 :List(UInt64);
+  # The size of each var attribute file
+
+  fileValiditySizes @2 :List(UInt64);
+  # The size of each validity attribute file
+
+  fragmentUri @3 :Text;
+  # The uri of the fragment this metadata belongs to
+
+  hasTimestamps @4 :Bool;
+  # True if the fragment has timestamps
+
+  hasDeleteMeta @5 :Bool;
+  # True if the fragment has delete metadata
+
+  sparseTileNum @6 :UInt64;
+  # The number of sparse tiles
+
+  tileIndexBase@7 :UInt64;
+  # Used to track the tile index base between global order writes
+
+  tileOffsets @8 :List(List(UInt64));
+  # Tile offsets in their attribute files
+
+  tileVarOffsets @9 :List(List(UInt64));
+  # Variable tile offsets in their attribute files
+
+  tileVarSizes @10 :List(List(UInt64));
+  # The sizes of the uncompressed variable tiles
+
+  tileValidityOffsets @11 :List(List(UInt64));
+  # Validity tile offests in their attribute files
+
+  tileMinBuffer @12 :List(List(UInt8));
+  # tile min buffers
+
+  tileMinVarBuffer @13 :List(List(UInt8));
+  # tile min buffers for var length data
+
+  tileMaxBuffer @14 :List(List(UInt8));
+  # tile max buffers
+
+  tileMaxVarBuffer @15 :List(List(UInt8));
+  # tile max buffers for var length data
+
+  tileSums @16 :List(List(UInt8));
+  # tile sum values
+
+  tileNullCounts @17 :List(List(UInt64));
+  # tile null count values
+
+  fragmentMins @18 :List(List(UInt8));
+  # fragment min values
+
+  fragmentMaxs @19 :List(List(UInt8));
+  # fragment max values
+
+  fragmentSums @20 :List(UInt64);
+  # fragment sum values
+
+  fragmentNullCounts @21 :List(UInt64);
+  # fragment null count values
+
+  version @22 :UInt32;
+  # the format version of this metadata
+
+  timestampRange @23 :List(UInt64);
+  # A pair of timestamps for fragment
+
+  lastTileCellNum @24 :UInt64;
+  # The number of cells in the last tile
+
+  nonEmptyDomain @25 :NonEmptyDomainList;
+  # The non empty domain of the fragment
+
+  rtree @26 :Data;
+  # The RTree for the MBRs serialized as a blob
+
+  hasConsolidatedFooter @27 :Bool;
+  # if the fragment metadata footer appears in a consolidated file
+}
+
+struct MultiPartUploadState {
+  partNumber@0 :UInt64;
+  # The index of the next part in a multipart upload process
+
+  uploadId@1 :Text;
+  # S3 specific ID identifying a multipart upload process for a file
+
+  status@2 :Text;
+  # Status field used to signal an error in a multipart upload process
+
+  completedParts@3 :List(CompletedPart);
+  # A list of parts that are already uploaded
+}
+struct CompletedPart {
+  eTag@0 :Text;
+  # S3 specific hash for the uploaded part
+
+  partNumber@1 :UInt64;
+  # The index of the uploaded part
+}
+
+struct WrittenFragmentInfo {
+  uri @0 :Text;
+  timestampRange @1 :List(UInt64);
 }

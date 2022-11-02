@@ -45,6 +45,7 @@
 #include "tiledb/sm/query/legacy/read_cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/readers/result_tile.h"
+#include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/cell_slab.h"
@@ -279,14 +280,14 @@ Status Reader::load_initial_data() {
   }
 
   // Load delete conditions.
-  auto&& [st, delete_conditions] =
-      storage_manager_->load_delete_conditions(*array_);
+  auto&& [st, conditions, update_values] =
+      storage_manager_->load_delete_and_update_conditions(*array_);
   RETURN_CANCEL_OR_ERROR(st);
-  delete_conditions_ = std::move(*delete_conditions);
+  delete_and_update_conditions_ = std::move(*conditions);
 
   // Set timestamps variables
   user_requested_timestamps_ = buffers_.count(constants::timestamps) != 0 ||
-                               delete_conditions_.size() > 0;
+                               delete_and_update_conditions_.size() > 0;
   const bool partial_consol_fragment_overlap =
       partial_consolidated_fragment_overlap();
   use_timestamps_ = partial_consol_fragment_overlap ||
@@ -308,16 +309,16 @@ Status Reader::load_initial_data() {
   if (!condition_.empty()) {
     qc_loaded_attr_names_set_.merge(condition_.field_names());
   }
-  for (auto delete_condition : delete_conditions_) {
-    qc_loaded_attr_names_set_.merge(delete_condition.field_names());
+  for (auto delete_and_update_condition : delete_and_update_conditions_) {
+    qc_loaded_attr_names_set_.merge(delete_and_update_condition.field_names());
   }
 
   // Add delete timestamps condition.
   RETURN_NOT_OK(add_delete_timestamps_condition());
 
   // Load processed conditions from fragment metadata.
-  if (delete_conditions_.size() > 0) {
-    load_processed_conditions();
+  if (delete_and_update_conditions_.size() > 0) {
+    throw_if_not_ok(load_processed_conditions());
   }
 
   initial_data_loaded_ = true;
@@ -330,7 +331,7 @@ Status Reader::apply_query_condition(
     std::vector<ResultTile*>& result_tiles,
     Subarray& subarray,
     uint64_t stride) {
-  if ((condition_.empty() && delete_conditions_.empty()) ||
+  if ((condition_.empty() && delete_and_update_conditions_.empty()) ||
       result_cell_slabs.empty()) {
     return Status::Ok();
   }
@@ -360,10 +361,10 @@ Status Reader::apply_query_condition(
   }
 
   // Apply delete conditions.
-  if (!delete_conditions_.empty()) {
-    for (uint64_t i = 0; i < delete_conditions_.size(); i++) {
+  if (!delete_and_update_conditions_.empty()) {
+    for (uint64_t i = 0; i < delete_and_update_conditions_.size(); i++) {
       // For legacy, always run the timestamped condition.
-      RETURN_NOT_OK(timestamped_delete_conditions_[i].apply(
+      RETURN_NOT_OK(timestamped_delete_and_update_conditions_[i].apply(
           array_schema_, fragment_metadata_, result_cell_slabs, stride));
     }
   }
@@ -1542,7 +1543,8 @@ Status Reader::compute_result_cell_slabs_row_col(
   // or in `result_space_tiles` (dense).
   auto rcs_it = ReadCellSlabIter<T>(
       &subarray, &result_space_tiles, &result_coords, *result_coords_pos);
-  for (rcs_it.begin(); !rcs_it.end(); ++rcs_it) {
+  throw_if_not_ok(rcs_it.begin());
+  for (; !rcs_it.end(); ++rcs_it) {
     // Add result cell slab
     auto result_cell_slab = rcs_it.result_cell_slab();
     result_cell_slabs.push_back(result_cell_slab);
@@ -1581,7 +1583,7 @@ Status Reader::compute_result_cell_slabs_global(
     tile_subarrays.emplace_back(
         subarray.crop_to_tile((const T*)&tc[0], cell_order));
     auto& tile_subarray = tile_subarrays.back();
-    tile_subarray.template compute_tile_coords<T>();
+    throw_if_not_ok(tile_subarray.template compute_tile_coords<T>());
 
     RETURN_NOT_OK(compute_result_cell_slabs_row_col<T>(
         tile_subarray,
@@ -2044,8 +2046,8 @@ Status Reader::sparse_read() {
       compute_result_cell_slabs(result_coords, result_cell_slabs));
   result_coords.clear();
 
-  apply_query_condition(
-      result_cell_slabs, result_tiles, read_state_.partitioner_.subarray());
+  throw_if_not_ok(apply_query_condition(
+      result_cell_slabs, result_tiles, read_state_.partitioner_.subarray()));
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
@@ -2166,7 +2168,7 @@ Status Reader::calculate_hilbert_values(
         return Status::Ok();
       });
 
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, throw_if_not_ok(logger_->status(status)));
 
   return Status::Ok();
 }

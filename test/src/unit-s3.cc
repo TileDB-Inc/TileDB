@@ -33,7 +33,7 @@
 #ifdef HAVE_S3
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/s3.h"
@@ -100,7 +100,7 @@ S3Fx::~S3Fx() {
 
   // Delete bucket
   CHECK(s3_.remove_bucket(S3_BUCKET).ok());
-  s3_.disconnect();
+  CHECK(s3_.disconnect().ok());
 }
 
 std::string S3Fx::random_name(const std::string& prefix) {
@@ -387,7 +387,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use BucketCannedACL", "[s3]") {
     REQUIRE(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
     CHECK(is_empty);
 
-    s3_.disconnect();
+    CHECK(s3_.disconnect().ok());
   };
 
   try_with_bucket_canned_acl("NOT_SET");
@@ -544,7 +544,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
 
     exercise_object_canned_acl();
 
-    s3_.disconnect();
+    CHECK(s3_.disconnect().ok());
   };
 
   // basic test, not trying all combinations

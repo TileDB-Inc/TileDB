@@ -124,6 +124,10 @@ Status Logger::status(const Status& st) {
   return st;
 }
 
+void Logger::status_no_return_value(const Status& st) {
+  logger_->error(st.message());
+}
+
 void Logger::trace(const std::string& msg) {
   logger_->trace(msg);
 }
@@ -277,9 +281,14 @@ std::string Logger::add_tag(const std::string& tag, uint64_t id) {
 /* ********************************* */
 
 Logger& global_logger(Logger::Format format) {
-  static std::string name = (format == Logger::Format::JSON) ?
-                                Logger::global_logger_json_name :
-                                Logger::global_logger_default_name;
+  static auto ts_micro =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+          std::chrono::system_clock::now().time_since_epoch())
+          .count();
+  static std::string name =
+      (format == Logger::Format::JSON) ?
+          "\"" + std::to_string(ts_micro) + "-Global\":\"1\"" :
+          std::to_string(ts_micro) + "-Global";
   static Logger l(name, format, true);
   return l;
 }
@@ -313,6 +322,11 @@ void LOG_ERROR(const std::string& msg) {
 Status LOG_STATUS(const Status& st) {
   global_logger().error(st.to_string());
   return st;
+}
+
+/** Logs a status without returning it. */
+void LOG_STATUS_NO_RETURN_VALUE(const Status& st) {
+  global_logger().error(st.to_string());
 }
 
 /** Logs a status. */

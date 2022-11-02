@@ -90,7 +90,7 @@ inline shared_ptr<ArraySchema> make_array_schema(
       make_shared<Domain>(cell_layout, dims, tile_layout));
   CHECK(status.ok());
   for (const auto& attr : attrs) {
-    array_schema->add_attribute(attr);
+    CHECK(array_schema->add_attribute(attr).ok());
   }
   return array_schema;
 }

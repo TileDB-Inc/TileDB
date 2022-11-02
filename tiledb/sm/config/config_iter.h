@@ -54,7 +54,7 @@ class ConfigIter {
   /* ********************************* */
 
   /** Constructor. */
-  ConfigIter(const Config* config, const std::string& prefix = "");
+  ConfigIter(const Config& config, const std::string& prefix = "");
 
   /** Destructor. */
   ~ConfigIter();
@@ -73,7 +73,7 @@ class ConfigIter {
   const std::string& param() const;
 
   /** Resets the iterator. */
-  void reset(const Config* config, const std::string& prefix);
+  void reset(const Config& config, const std::string& prefix);
 
   /** Returns the current parameter value pointed by the iterator. */
   const std::string& value() const;
@@ -100,7 +100,7 @@ class ConfigIter {
   std::string value_;
 
   /** Config */
-  const Config* config_;
+  const Config& config_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */

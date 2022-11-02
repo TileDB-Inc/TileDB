@@ -35,7 +35,7 @@
 #include <thread>
 #include <vector>
 
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/uuid.h"
 

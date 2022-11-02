@@ -32,7 +32,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -656,17 +656,14 @@ void SmokeTestFx::write(
     }
   }
 
-  // Submit the query.
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
-  // Check query status.
   tiledb_query_status_t status;
   rc = tiledb_query_get_status(ctx_, query, &status);
   CHECK(rc == TILEDB_OK);
   CHECK(status == TILEDB_COMPLETED);
 
-  // Finalize the query, a no-op for non-global writes.
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 

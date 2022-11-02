@@ -31,7 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/serialization/query.h"
@@ -61,8 +61,8 @@ struct IncompleteFx {
   // Functions
   void create_dense_array();
   void create_sparse_array();
-  void write_dense_full();
-  void write_sparse_full();
+  void write_dense_full(const bool serialized_writes);
+  void write_sparse_full(const bool serialized_writes);
   void check_dense_incomplete();
   void check_dense_incomplete_serialized();
   void check_dense_until_complete();
@@ -253,7 +253,7 @@ void IncompleteFx::create_sparse_array() {
   tiledb_array_schema_free(&array_schema);
 }
 
-void IncompleteFx::write_dense_full() {
+void IncompleteFx::write_dense_full(const bool serialized_writes) {
   // Set attributes
   const char* attributes[] = {"a1", "a2", "a3"};
 
@@ -314,13 +314,14 @@ void IncompleteFx::write_dense_full() {
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
-  // Submit query
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-
-  // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -331,7 +332,7 @@ void IncompleteFx::write_dense_full() {
   tiledb_query_free(&query);
 }
 
-void IncompleteFx::write_sparse_full() {
+void IncompleteFx::write_sparse_full(const bool serialized_writes) {
   // Prepare cell buffers
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
@@ -401,13 +402,14 @@ void IncompleteFx::write_sparse_full() {
       ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
-  // Submit query
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-
-  // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -1209,9 +1211,19 @@ TEST_CASE_METHOD(
     IncompleteFx,
     "C API: Test incomplete read queries, dense",
     "[capi][incomplete][dense-incomplete]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   remove_dense_array();
   create_dense_array();
-  write_dense_full();
+  write_dense_full(serialized_writes);
   check_dense_incomplete();
   check_dense_until_complete();
   check_dense_shrink_buffer_size();
@@ -1225,9 +1237,19 @@ TEST_CASE_METHOD(
     IncompleteFx,
     "C API: Test incomplete read queries, sparse",
     "[capi][incomplete][sparse]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   remove_sparse_array();
   create_sparse_array();
-  write_sparse_full();
+  write_sparse_full(serialized_writes);
   check_sparse_incomplete();
   check_sparse_until_complete();
   check_sparse_unsplittable_overflow();
@@ -1241,9 +1263,17 @@ TEST_CASE_METHOD(
     IncompleteFx,
     "C API: Test incomplete read queries, dense, serialized",
     "[capi][incomplete][dense][serialization]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+
   remove_dense_array();
   create_dense_array();
-  write_dense_full();
+  write_dense_full(serialized_writes);
   check_dense_incomplete_serialized();
   remove_dense_array();
 }

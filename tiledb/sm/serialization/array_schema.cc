@@ -153,7 +153,7 @@ Status filter_pipeline_to_capnp(
   for (unsigned i = 0; i < num_filters; i++) {
     const auto* filter = filter_pipeline->get_filter(i);
     auto filter_builder = filter_list_builder[i];
-    filter_to_capnp(filter, &filter_builder);
+    throw_if_not_ok(filter_to_capnp(filter, &filter_builder));
   }
 
   return Status::Ok();
@@ -783,7 +783,7 @@ ArraySchema array_schema_from_capnp(
   // This would have been a list of size 3, so only set the version
   // if the list size is 1, meaning tiledb 1.8 or later
   // #TODO Add security validation
-  uint32_t version = constants::format_version;
+  format_version_t version = constants::format_version;
   if (schema_reader.hasVersion() && schema_reader.getVersion().size() == 1) {
     version = schema_reader.getVersion()[0];
   }

@@ -63,7 +63,6 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
     const Config& config) {
-  Tile tile;
   auto&& [st, header_opt] =
       read_generic_tile_header(storage_manager_, uri_, file_offset);
   RETURN_NOT_OK_TUPLE(st, nullopt);
@@ -85,17 +84,15 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
   const auto tile_data_offset =
       GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
 
-  RETURN_NOT_OK_TUPLE(
-      tile.init_filtered(
-          header.version_number,
-          (Datatype)header.datatype,
-          header.cell_size,
-          0),
-      nullopt);
+  Tile tile(
+      header.version_number,
+      (Datatype)header.datatype,
+      header.cell_size,
+      0,
+      header.tile_size,
+      header.persisted_size);
 
   // Read the tile.
-  tile.filtered_buffer().expand(header.persisted_size);
-  RETURN_NOT_OK_TUPLE(tile.alloc_data(header.tile_size), nullopt);
   RETURN_NOT_OK_TUPLE(
       storage_manager_->read(
           uri_,
@@ -235,7 +232,7 @@ Status GenericTileIO::configure_encryption_filter(
       if (f == nullptr)
         return Status_TileIOError(
             "Error getting generic tile; no encryption filter.");
-      RETURN_NOT_OK(f->set_key(encryption_key));
+      f->set_key(encryption_key);
       break;
     }
     default:
@@ -255,9 +252,9 @@ Status GenericTileIO::init_generic_tile_header(
   header->cell_size = tile->cell_size();
   header->encryption_type = (uint8_t)encryption_key.encryption_type();
 
-  RETURN_NOT_OK(header->filters.add_filter(CompressionFilter(
+  header->filters.add_filter(CompressionFilter(
       constants::generic_tile_compressor,
-      constants::generic_tile_compression_level)));
+      constants::generic_tile_compression_level));
 
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &header->filters, encryption_key));

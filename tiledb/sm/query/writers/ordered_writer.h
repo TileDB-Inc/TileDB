@@ -63,6 +63,7 @@ class OrderedWriter : public WriterBase {
       Layout layout,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       Query::CoordsInfo& coords_info_,
+      bool remote_query,
       optional<std::string> fragment_name = nullopt,
       bool skip_checks_serialization = false);
 
@@ -90,9 +91,15 @@ class OrderedWriter : public WriterBase {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** Fragment URI. */
+  std::optional<URI> frag_uri_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Invoked on error. It removes the directory of the input URI. */
+  void clean_up();
 
   /**
    * Writes in an ordered layout (col- or row-major order). Applicable only

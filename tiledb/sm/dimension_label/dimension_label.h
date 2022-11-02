@@ -37,6 +37,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension_label_schema.h"
 #include "tiledb/sm/enums/label_order.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
@@ -44,13 +45,14 @@ namespace tiledb::sm {
 
 class Attribute;
 class Dimension;
-class StorageManager;
 class URI;
 
-/** Return a Status_DimensionLabelError error class Status with a given
- * message **/
-inline Status Status_DimensionLabelError(const std::string& msg) {
-  return {"[TileDB::DimensionLabel] Error", msg};
+/** Class for locally generated status exceptions. */
+class DimensionLabelStatusException : public StatusException {
+ public:
+  explicit DimensionLabelStatusException(const std::string& msg)
+      : StatusException("DimensionLabel", msg) {
+  }
 };
 
 /**
@@ -60,7 +62,6 @@ inline Status Status_DimensionLabelError(const std::string& msg) {
 class DimensionLabel {
  public:
   inline const static std::string indexed_array_name{"indexed"};
-  inline const static std::string labelled_array_name{"labelled"};
   /**
    * Constructor.
    *
@@ -73,11 +74,17 @@ class DimensionLabel {
   /** Closes the arrays and frees all memory. */
   void close();
 
-  /** Returns the index attribute in the labelled array. */
-  const Attribute* index_attribute() const;
-
   /** Returns the index dimension in the indexed array. */
   const Dimension* index_dimension() const;
+
+  /**
+   * Throws an exception if the dimension label is not compatible with an input
+   * dimension label reference.
+   *
+   * @param dim_label_ref Dimension label reference to check compatibility with.
+   */
+  void is_compatible(
+      const DimensionLabelReference& dim_label_ref, const Dimension* dim) const;
 
   /** Returns the array with indices stored on the dimension. */
   inline shared_ptr<Array> indexed_array() const {
@@ -86,14 +93,6 @@ class DimensionLabel {
 
   /** Returns the label attribute in the indexed array. */
   const Attribute* label_attribute() const;
-
-  /** Returns the label dimension in the labelled array. */
-  const Dimension* label_dimension() const;
-
-  /** Returns the array with labels stored on the dimension. */
-  inline shared_ptr<Array> labelled_array() const {
-    return labelled_array_;
-  }
 
   /** Returns the order of the dimension label. */
   LabelOrder label_order() const;
@@ -139,6 +138,9 @@ class DimensionLabel {
   /** Returns the query type the dimension label was opened with. */
   QueryType query_type() const;
 
+  /** Returns a reference to the dimension label schema. */
+  const DimensionLabelSchema& schema() const;
+
  private:
   /**********************/
   /* Private attributes */
@@ -152,9 +154,6 @@ class DimensionLabel {
 
   /** Array with index dimension */
   shared_ptr<Array> indexed_array_;
-
-  /** Array with label dimension */
-  shared_ptr<Array> labelled_array_;
 
   /** Latest dimension label schema  */
   shared_ptr<DimensionLabelSchema> schema_;
@@ -170,11 +169,8 @@ class DimensionLabel {
    * Loads and checks the dimension label schema.
    *
    * @param indexed_array_schema Array schema for the indexed array
-   * @param labelled_array_schema Array schema for the labelled array
    **/
-  void load_schema(
-      shared_ptr<ArraySchema> indexed_array_schema,
-      shared_ptr<ArraySchema> labelled_array_schema);
+  void load_schema(shared_ptr<ArraySchema> indexed_array_schema);
 };
 
 /**
@@ -189,20 +185,6 @@ void create_dimension_label(
     const URI& uri,
     StorageManager& storage_manager,
     const DimensionLabelSchema& schema);
-
-/**
- * Removes all fragments URIs from a fragment list that do not have a similarly
- * named fragment in a comparison fragments list.
- *
- * The comparison here is only on the base name of the fragment URIs. Fragments
- * may be re-ordered upon return.
- *
- * @param comparison_fragment_uris The list of fragment URIs to check against.
- * @param fragment_list The list of fragment URIs to prune.
- */
-void intersect_fragments(
-    const std::vector<TimestampedURI>& comparison_fragment_list,
-    std::vector<TimestampedURI>& fragment_list);
 
 }  // namespace tiledb::sm
 

@@ -87,7 +87,7 @@ Status GlobalState::init(const Config& config) {
     // for each s3/rest call as appropriate
     Posix posix;
     ThreadPool tp{1};
-    posix.init(config_, &tp);
+    throw_if_not_ok(posix.init(config_, &tp));
     cert_file_ = utils::https::find_ca_certs_linux(posix);
 #endif
 

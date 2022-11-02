@@ -287,7 +287,7 @@ TEST_CASE("FilterBuffer: Test clear", "[filter][filter-buffer]") {
   CHECK(!fbuf.write(data, sizeof(data)).ok());
 
   // Prepend a new buffer and write again.
-  fbuf.prepend_buffer(9);
+  CHECK(fbuf.prepend_buffer(9).ok());
   fbuf.reset_offset();
   CHECK(fbuf.write(data, sizeof(data)).ok());
   CHECK(fbuf.size() == 9);
@@ -316,13 +316,13 @@ TEST_CASE("FilterBuffer: Test copy_to", "[filter][filter-buffer]") {
   check_buf(data_r, {3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2});
 
   Buffer buff2;
-  buff2.write(data_r, 1);
+  CHECK(buff2.write(data_r, 1).ok());
   CHECK(fbuf.copy_to(&buff2).ok());
   CHECK(buff2.size() == 13);
   CHECK(fbuf.size() == 12);
   char data_r2[13];
   buff2.reset_offset();
-  buff2.read(data_r2, 13);
+  CHECK(buff2.read(data_r2, 13).ok());
   check_buf(data_r2, {3, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2});
 }
 
@@ -386,12 +386,12 @@ TEST_CASE("FilterBuffer: Test view reclaim", "[filter][filter-buffer]") {
   CHECK(storage.num_in_use() == 1);
 
   // This should not reclaim the original buffer due to the view on it.
-  fbuf.clear();
+  CHECK(fbuf.clear().ok());
   CHECK(storage.num_available() == 0);
   CHECK(storage.num_in_use() == 1);
 
   // Now it should reclaim.
-  fbuf2.clear();
+  CHECK(fbuf2.clear().ok());
   CHECK(storage.num_available() == 1);
   CHECK(storage.num_in_use() == 0);
 }

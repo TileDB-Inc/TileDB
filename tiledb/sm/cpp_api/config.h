@@ -265,7 +265,7 @@ class Config {
    *
    * **Parameters**
    *
-   * - `sm.consolidation.allow_updates_experimental` <br>
+   * - `sm.allow_updates_experimental` <br>
    *    **Experimental** <br>
    *    Allow update queries. Experimental for testing purposes, do not use.<br>
    *    **Default**: false
@@ -454,6 +454,11 @@ class Config {
    *    The end timestamp used for opening the group. <br>
    *    Also used for the write timestamp if set. <br>
    *    **Default**: UINT64_MAX
+   * - `sm.fragment_info.preload_mbrs` <br>
+   *    If `true` MBRs will be loaded at the same time as the rest of fragment
+   *    info, otherwise they will be loaded lazily when some info related to
+   *    MBRs is requested by the user. <br>
+   *    **Default**: false
    * -  `vfs.read_ahead_cache_size` <br>
    *    The the total maximum size of the read-ahead cache, which is an LRU.
    *    <br>

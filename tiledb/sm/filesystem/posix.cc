@@ -76,7 +76,7 @@ uint64_t Posix::read_all(
     ssize_t actual_read =
         ::pread(fd, bytes + nread, nbytes - nread, offset + nread);
     if (actual_read == -1) {
-      LOG_STATUS(
+      LOG_STATUS_NO_RETURN_VALUE(
           Status_Error(std::string("POSIX pread error: ") + strerror(errno)));
       return nread;
     } else {
@@ -95,7 +95,7 @@ uint64_t Posix::pwrite_all(
     ssize_t actual_written =
         ::pwrite(fd, bytes + written, nbytes - written, file_offset + written);
     if (actual_written == -1) {
-      LOG_STATUS(
+      LOG_STATUS_NO_RETURN_VALUE(
           Status_Error(std::string("POSIX write error: ") + strerror(errno)));
       return written;
     } else {
