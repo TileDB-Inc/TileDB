@@ -559,6 +559,7 @@ TEST_CASE_METHOD(
     tiledb::Array::create(array_name, schema);
   };
 
+#if 0
   auto write_array_a = [&]() -> void {
     tiledb::Context ctx;
 
@@ -588,6 +589,7 @@ TEST_CASE_METHOD(
     query.submit();
     array.close();
   };
+#endif
 
   #if 0
   auto read_array_a1 = [&]() -> void {
@@ -848,19 +850,21 @@ TEST_CASE_METHOD(
 
     // std::vector<uint64_t> attr_offsets(attr_data.size());
     std::vector<uint64_t> attr_offsets(dim_data.size(), 0);
-    for (auto i = 0; i < attr_data.size(); i++) {
+    for (decltype(attr_data.size()) i = 0; i < attr_data.size(); i++) {
       attr_offsets[i] = i;
     }
-    for (auto i = attr_data.size(); i < dim_data.size(); ++i) {
+    for (decltype(attr_data.size()) i = attr_data.size(); i < dim_data.size();
+         ++i) {
       attr_offsets[i] = attr_data.size();
     }
     std::vector<uint8_t> attr_val(dim_data.size());
     // same need, non-null buffer address even tho no data
     attr_val.reserve(dim_data.size());
-    for (auto i = 0; i < attr_data.size(); ++i) {
+    for (decltype(attr_data.size()) i = 0; i < attr_data.size(); ++i) {
       attr_val[i] = 1;
     }
-    for (auto i = attr_data.size(); i < dim_data.size(); ++i) {
+    for (decltype(attr_data.size()) i = attr_data.size(); i < dim_data.size();
+         ++i) {
       attr_val[i] = 0;
     }
 
