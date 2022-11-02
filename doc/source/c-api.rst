@@ -33,6 +33,8 @@ Types
     :project: TileDB-C
 .. doxygentypedef:: tiledb_filter_list_t
     :project: TileDB-C
+.. doxygentypedef:: tiledb_fragment_info_t
+    :project: TileDB-C
 .. doxygentypedef:: tiledb_vfs_t
     :project: TileDB-C
 .. doxygentypedef:: tiledb_vfs_fh_t
@@ -680,13 +682,15 @@ Fragment Info
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_free
     :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_set_config
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_config
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_load
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_load_with_key
     :project: TileDB-C
-.. doxygenfunction:: tiledb_fragment_info_get_array_schema
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_fragment_info_get_array_schema_name
+.. doxygenfunction:: tiledb_fragment_info_get_fragment_name
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_get_fragment_num
     :project: TileDB-C
@@ -712,6 +716,20 @@ Fragment Info
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_get_non_empty_domain_var_from_name
     :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_mbr_num
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_mbr_from_index
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_mbr_from_name
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_mbr_var_size_from_index
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_mbr_var_size_from_name
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_mbr_var_from_index
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_mbr_var_from_name
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_get_cell_num
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_get_version
@@ -723,6 +741,10 @@ Fragment Info
 .. doxygenfunction:: tiledb_fragment_info_get_to_vacuum_num
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_get_to_vacuum_uri
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_array_schema
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_get_array_schema_name
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_dump
     :project: TileDB-C

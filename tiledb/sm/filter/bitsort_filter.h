@@ -79,7 +79,7 @@ class BitSortFilter : public Filter {
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
    * @param output Buffer with filtered data (unused by in-place filters).
-   * @return Status_FilterError. This function should never be called.
+   * @return Status
    */
   Status run_forward(
       const Tile& tile,

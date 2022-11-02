@@ -224,15 +224,11 @@ class ArrayDimensionLabelQueries {
    *
    * @param array Array the dimension label is defined on.
    * @param query_type Query type to open the dimension label as.
-   * @param open_indexed_array If ``true``, open the indexed array.
-   * @param open_labelled_array If ``true``, open the labelled array.
    */
   DimensionLabel* open_dimension_label(
       Array* array,
       const DimensionLabelReference& dim_label_ref,
-      const QueryType& query_type,
-      const bool open_indexed_array,
-      const bool open_labelled_array);
+      const QueryType& query_type);
 };
 
 }  // namespace tiledb::sm

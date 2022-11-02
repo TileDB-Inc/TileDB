@@ -43,14 +43,7 @@
 #include "tiledb/sm/query/writers/domain_buffer.h"
 #include "tiledb/sm/tile/tile.h"
 
-#include <algorithm>
-#include <cmath>
-#include <functional>
 #include <numeric>
-#include <optional>
-#include <unordered_map>
-#include <utility>
-#include <vector>
 
 using namespace tiledb::common;
 

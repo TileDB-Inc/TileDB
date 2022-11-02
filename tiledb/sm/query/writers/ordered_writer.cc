@@ -354,6 +354,10 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   const bool var = array_schema_.var_size(name);
   const auto cell_size = array_schema_.cell_size(name);
   const bool nullable = array_schema_.is_nullable(name);
+  const auto& domain{array_schema_.domain()};
+  const auto capacity = array_schema_.capacity();
+  const auto cell_num_per_tile =
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
 
   // Initialization
   auto tile_num = dense_tiler->tile_num();
@@ -373,12 +377,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     tile_batches[b].reserve(batch_size);
     for (uint64_t i = 0; i < batch_size; i++) {
       tile_batches[b].emplace_back(WriterTile(
-          array_schema_,
-          coords_info_.has_coords_,
-          var,
-          nullable,
-          cell_size,
-          type));
+          array_schema_, cell_num_per_tile, var, nullable, cell_size, type));
     }
     auto st = parallel_for(
         storage_manager_->compute_tp(), 0, batch_size, [&](uint64_t i) {

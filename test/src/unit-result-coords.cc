@@ -128,17 +128,18 @@ CResultCoordsFx::~CResultCoordsFx() {
 GlobalOrderResultTile<uint8_t> CResultCoordsFx::make_tile_with_num_cells(
     uint64_t num_cells) {
   GlobalOrderResultTile<uint8_t> result_tile(0, 0, false, false, *frag_md);
-  result_tile.init_attr_tile(constants::coords, false, false);
-  auto tile_tuple = result_tile.tile_tuple(constants::coords);
-  Tile* const tile = &tile_tuple->fixed_tile();
-  auto cell_size = sizeof(int64_t);
-  REQUIRE(tile->init_unfiltered(
-                  constants::format_version,
-                  Datatype::INT64,
-                  num_cells * cell_size,
-                  cell_size,
-                  0)
-              .ok());
+  ResultTile::TileSizes tile_sizes(
+      num_cells * sizeof(int64_t),
+      0,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt);
+  result_tile.init_attr_tile(
+      constants::format_version,
+      array_->array_->array_schema_latest(),
+      constants::coords,
+      tile_sizes);
 
   return result_tile;
 }

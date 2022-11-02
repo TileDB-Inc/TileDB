@@ -4,7 +4,6 @@ find_package(Catch_EP REQUIRED)
 
 add_executable(
   test_assert
-  EXCLUDE_FROM_ALL
   test_assert.cc
 )
 

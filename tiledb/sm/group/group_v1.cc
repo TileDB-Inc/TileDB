@@ -42,13 +42,13 @@ GroupV1::GroupV1(const URI& group_uri, StorageManager* storage_manager)
     : Group(group_uri, storage_manager, GroupV1::format_version_){};
 
 // ===== FORMAT =====
-// format_version (uint32_t)
+// format_version (format_version_t)
 // group_member_num (uint64_t)
 //   group_member #1
 //   group_member #2
 //   ...
 void GroupV1::serialize(Serializer& serializer) {
-  serializer.write<uint32_t>(GroupV1::format_version_);
+  serializer.write<format_version_t>(GroupV1::format_version_);
   uint64_t group_member_num = members_.size();
   serializer.write<uint64_t>(group_member_num);
   for (auto& it : members_) {

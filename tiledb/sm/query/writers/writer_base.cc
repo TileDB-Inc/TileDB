@@ -762,15 +762,15 @@ Status WriterBase::filter_tiles(
 Status WriterBase::filter_tiles_bitsort(
     const std::string& name,
     std::unordered_map<std::string, WriterTileVector>* tiles) {
+  // Cache the dimention tile vectors.
   std::vector<WriterTileVector*> dim_tiles;
   dim_tiles.reserve(array_schema_.dim_num());
   for (const auto& name : array_schema_.dim_names()) {
     dim_tiles.emplace_back(&((*tiles)[name]));
   }
 
+  // Generate arguments to filter all tiles
   auto& attr_tiles = (*tiles)[name];
-
-  // Filter all tiles
   auto tile_num = tiles->size();
   std::vector<std::tuple<Tile*, std::vector<Tile*>, bool, bool>> args;
   args.reserve(tile_num);
@@ -787,6 +787,7 @@ Status WriterBase::filter_tiles_bitsort(
     args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp, false, false);
   }
 
+  // Finally filter the tiles.
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
         auto& [tile, support_tiles, contains_offsets, is_nullable] = args[i];
@@ -880,15 +881,14 @@ Status WriterBase::init_tiles(
   const bool nullable = array_schema_.is_nullable(name);
   const uint64_t cell_size = array_schema_.cell_size(name);
   const auto type = array_schema_.type(name);
+  const auto& domain{array_schema_.domain()};
+  const auto capacity = array_schema_.capacity();
+  const auto cell_num_per_tile =
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
     tiles->emplace_back(WriterTile(
-        array_schema_,
-        coords_info_.has_coords_,
-        var_size,
-        nullable,
-        cell_size,
-        type));
+        array_schema_, cell_num_per_tile, var_size, nullable, cell_size, type));
   }
 
   return Status::Ok();

@@ -88,7 +88,7 @@ class CompressionFilter : public Filter {
   CompressionFilter(
       Compressor compressor,
       int level,
-      const uint32_t version = constants::format_version);
+      const format_version_t version = constants::format_version);
 
   /**
    * Constructor.
@@ -100,7 +100,7 @@ class CompressionFilter : public Filter {
   CompressionFilter(
       FilterType compressor,
       int level,
-      const uint32_t version = constants::format_version);
+      const format_version_t version = constants::format_version);
 
   /** Return the compressor used by this filter instance. */
   Compressor compressor() const;

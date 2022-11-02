@@ -64,7 +64,7 @@ class BitSortFilterMetadataType {
       , comparator_(comparator) {
   }
 
-  std::vector<Tile*>& dim_tiles() {
+  inline std::vector<Tile*>& dim_tiles() {
     return *dim_tiles_;
   }
 

@@ -77,6 +77,7 @@ TEST_CASE(
   CHECK(name == label2->name());
   CHECK(label2->label_type() == Datatype::FLOAT64);
   CHECK(label2->label_cell_val_num() == 1);
+  REQUIRE(!label2->label_domain().empty());
   auto domain2 = static_cast<const double*>(label2->label_domain().data());
   CHECK(domain2[0] == domain[0]);
   CHECK(domain2[1] == domain[1]);

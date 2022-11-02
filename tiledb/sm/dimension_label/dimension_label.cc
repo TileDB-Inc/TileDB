@@ -51,21 +51,11 @@ DimensionLabel::DimensionLabel(const URI& uri, StorageManager* storage_manager)
     , storage_manager_(storage_manager)
     , indexed_array_(make_shared<Array>(
           HERE(), uri.join_path(indexed_array_name), storage_manager))
-    , labelled_array_(make_shared<Array>(
-          HERE(), uri.join_path(labelled_array_name), storage_manager))
     , schema_{nullptr} {
 }
 
 void DimensionLabel::close() {
   throw_if_not_ok(indexed_array_->close());
-  throw_if_not_ok(labelled_array_->close());
-}
-
-const Attribute* DimensionLabel::index_attribute() const {
-  if (!schema_)
-    throw std::logic_error(
-        "DimensionLabel schema does not exist. DimensionLabel must be opened.");
-  return schema_->index_attribute();
 }
 
 const Dimension* DimensionLabel::index_dimension() const {
@@ -96,25 +86,24 @@ void DimensionLabel::is_compatible(
         ", but the expected label order was " +
         label_order_str(dim_label_ref.label_order()) + ".");
   }
-  if (schema_->label_dimension()->type() != dim_label_ref.label_type()) {
+  if (schema_->label_type() != dim_label_ref.label_type()) {
     throw DimensionLabelStatusException(
         "Error opening dimension label; The label datatype of the loaded "
         "dimension label is " +
-        datatype_str(schema_->label_dimension()->type()) +
+        datatype_str(schema_->label_type()) +
         ", but the expected label datatype was " +
         datatype_str(dim_label_ref.label_type()) + ".");
   }
-  if (!(schema_->label_dimension()->domain() == dim_label_ref.label_domain())) {
+  if (!(schema_->label_domain() == dim_label_ref.label_domain())) {
     throw DimensionLabelStatusException(
         "Error opening dimension label; The label domain of the loaded "
         "dimension label does not match the expected domain.");
   }
-  if (schema_->label_dimension()->cell_val_num() !=
-      dim_label_ref.label_cell_val_num()) {
+  if (schema_->label_cell_val_num() != dim_label_ref.label_cell_val_num()) {
     throw DimensionLabelStatusException(
         "Error opening dimension label; The label cell value number of the "
         "loaded dimension label is " +
-        std::to_string(schema_->label_dimension()->cell_val_num()) +
+        std::to_string(schema_->label_cell_val_num()) +
         ", but the expected label cell value number was " +
         std::to_string(dim_label_ref.label_cell_val_num()) + ".");
   }
@@ -125,13 +114,6 @@ const Attribute* DimensionLabel::label_attribute() const {
     throw std::logic_error(
         "DimensionLabel schema does not exist. DimensionLabel must be opened.");
   return schema_->label_attribute();
-}
-
-const Dimension* DimensionLabel::label_dimension() const {
-  if (!schema_)
-    throw std::logic_error(
-        "DimensionLabel schema does not exist. DimensionLabel must be opened.");
-  return schema_->label_dimension();
 }
 
 LabelOrder DimensionLabel::label_order() const {
@@ -165,7 +147,7 @@ void DimensionLabel::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  // Open indexed array and get schema
+  // Open indexed array and get schema.
   throw_if_not_ok(indexed_array_->open(
       query_type,
       timestamp_start,
@@ -177,41 +159,14 @@ void DimensionLabel::open(
       indexed_array_->get_array_schema();
   throw_if_not_ok(index_status);
 
-  // Open labelled array and get schema
-  throw_if_not_ok(labelled_array_->open(
-      query_type,
-      timestamp_start,
-      timestamp_end,
-      encryption_type,
-      encryption_key,
-      key_length));
-  auto&& [label_status, labelled_array_schema] =
-      labelled_array_->get_array_schema();
-  throw_if_not_ok(label_status);
-  load_schema(indexed_array_schema.value(), labelled_array_schema.value());
+  // Open the dimension label schema.
+  load_schema(indexed_array_schema.value());
+
+  // Set the query type.
   query_type_ = query_type;
-
-  // Restrict reading to only shared fragments.
-  if (query_type_ == QueryType::READ) {
-    // Get label names
-    std::vector<TimestampedURI> indexed_frag_uris{
-        indexed_array_->array_directory()
-            .filtered_fragment_uris(false)
-            .fragment_uris()};
-    std::vector<TimestampedURI> labelled_frag_uris{
-        labelled_array_->array_directory()
-            .filtered_fragment_uris(false)
-            .fragment_uris()};
-
-    // Reload with only shared fragments.
-    throw_if_not_ok(indexed_array_->load_fragments(indexed_frag_uris));
-    throw_if_not_ok(labelled_array_->load_fragments(labelled_frag_uris));
-  }
 }
 
-void DimensionLabel::load_schema(
-    shared_ptr<ArraySchema> indexed_array_schema,
-    shared_ptr<ArraySchema> labelled_array_schema) {
+void DimensionLabel::load_schema(shared_ptr<ArraySchema> indexed_array_schema) {
   // Get dimension label schema metadata
   GroupV1 label_group{uri_, storage_manager_};
   throw_if_not_ok(label_group.open(QueryType::READ));
@@ -237,7 +192,8 @@ void DimensionLabel::load_schema(
     throw std::runtime_error(
         "[DimensionLabel::load_schema] Unable to load dimension label schema; "
         "Unexpected number of values for the format version.");
-  uint32_t format_version{*static_cast<const uint32_t*>(format_version_value)};
+  format_version_t format_version{
+      *static_cast<const format_version_t*>(format_version_value)};
   if (format_version > 1)
     throw StatusException(
         "DimensionLabel",
@@ -268,7 +224,7 @@ void DimensionLabel::load_schema(
 
   // Get array schemas
   schema_ = make_shared<DimensionLabelSchema>(
-      HERE(), label_order, indexed_array_schema, labelled_array_schema);
+      HERE(), label_order, indexed_array_schema);
 }
 
 QueryType DimensionLabel::query_type() const {
@@ -303,19 +259,13 @@ void create_dimension_label(
       uri.join_path(indexed_array_name.value()),
       schema.indexed_array_schema(),
       key));
-  std::optional<std::string> labelled_array_name{
-      DimensionLabel::labelled_array_name};
-  throw_if_not_ok(storage_manager.array_create(
-      uri.join_path(labelled_array_name.value()),
-      schema.labelled_array_schema(),
-      key));
 
   // Open dimension label group.
   GroupV1 label_group{uri, &storage_manager};
   throw_if_not_ok(label_group.open(QueryType::WRITE));
 
   // Add metadata to group.
-  const uint32_t format_version{1};
+  const format_version_t format_version{1};
   throw_if_not_ok(label_group.put_metadata(
       "__dimension_label_format_version",
       Datatype::UINT32,
@@ -328,8 +278,6 @@ void create_dimension_label(
   // Add arrays to group.
   throw_if_not_ok(label_group.mark_member_for_addition(
       URI(indexed_array_name.value(), false), true, indexed_array_name));
-  throw_if_not_ok(label_group.mark_member_for_addition(
-      URI(labelled_array_name.value(), false), true, labelled_array_name));
 
   // Close group.
   throw_if_not_ok(label_group.close());

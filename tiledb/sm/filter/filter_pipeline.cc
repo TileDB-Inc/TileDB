@@ -37,7 +37,6 @@
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"
-#include "tiledb/sm/filter/bitsort_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter.h"
@@ -430,7 +429,7 @@ uint32_t FilterPipeline::max_chunk_size() const {
 Status FilterPipeline::run_forward(
     stats::Stats* const writer_stats,
     Tile* const tile,
-    Tile* offsets_tile,
+    Tile* const offsets_tile,
     ThreadPool* const compute_tp,
     void* support_data,
     bool use_chunking) const {
@@ -606,7 +605,6 @@ Status FilterPipeline::run_reverse_internal(
 
   const Status st = filter_chunks_reverse(
       *tile, support_data, filtered_chunks, compute_tp, config);
-
   if (!st.ok()) {
     tile->clear_data();
 
@@ -626,10 +624,9 @@ Status FilterPipeline::run_reverse_internal(
 
   // Zip the coords.
   if (tile->stores_coords()) {
-    // Note that format version < 2 only split the coordinates when
-    // compression was used. See
-    // https://github.com/TileDB-Inc/TileDB/issues/1053 For format version >
-    // 4, a tile never stores coordinates
+    // Note that format version < 2 only split the coordinates when compression
+    // was used. See https://github.com/TileDB-Inc/TileDB/issues/1053
+    // For format version > 4, a tile never stores coordinates
     bool using_compression = get_filter<CompressionFilter>() != nullptr;
     auto version = tile->format_version();
     if (version > 1 || using_compression) {
