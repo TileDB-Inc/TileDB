@@ -40,7 +40,7 @@ jobs:
         os:
           -  macos-11
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
-    timeout-minutes: 90
+    timeout-minutes: 120
     name: Build - ${{ matrix.os }} - S3
     steps:
       - name: 'prep macos for core dumps'
