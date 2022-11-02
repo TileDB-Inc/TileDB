@@ -168,8 +168,10 @@ std::vector<uint8_t> create_image(
   return rgb;
 }
 
+// These templates will not be used if built with TILEDB_WEBP=OFF
 template <typename T>
-static Domain create_domain(const Context& ctx, uint8_t format) {
+[[maybe_unused]] static Domain create_domain(
+    const Context& ctx, uint8_t format) {
   T height = GENERATE(131, 217, 1003);
   T width = GENERATE(103, 277, 1001);
   uint8_t pixel_depth = format < TILEDB_WEBP_RGBA ? 3 : 4;
@@ -182,7 +184,8 @@ static Domain create_domain(const Context& ctx, uint8_t format) {
 }
 
 template <>
-Domain create_domain<int8_t>(const Context& ctx, uint8_t format) {
+[[maybe_unused]] Domain create_domain<int8_t>(
+    const Context& ctx, uint8_t format) {
   int8_t height = GENERATE(9, 11, 15);
   int8_t width = GENERATE(5, 7, 9, 17);
   uint8_t pixel_depth = format < TILEDB_WEBP_RGBA ? 3 : 4;
@@ -197,7 +200,8 @@ Domain create_domain<int8_t>(const Context& ctx, uint8_t format) {
 }
 
 template <>
-Domain create_domain<uint8_t>(const Context& ctx, uint8_t format) {
+[[maybe_unused]] Domain create_domain<uint8_t>(
+    const Context& ctx, uint8_t format) {
   uint8_t height = GENERATE(13, 35, 47, 61);
   uint8_t width = GENERATE(10, 11, 23, 39, 60);
   uint8_t pixel_depth = format < TILEDB_WEBP_RGBA ? 3 : 4;
