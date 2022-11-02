@@ -1,3 +1,12 @@
+# TileDB v2.12.1 Release Notes
+
+## Improvements
+
+### Defects Removed
+
+* Sparse global order reader: fixing incomplete reason for rest queries. [#3620](https://github.com/TileDB-Inc/TileDB/pull/3620)
+* Add missing query_type in array_open capnp [#3616](https://github.com/TileDB-Inc/TileDB/pull/3616)
+
 # TileDB v2.12.0 Release Notes
 
 ## Disk Format
