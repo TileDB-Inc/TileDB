@@ -74,7 +74,7 @@ struct ReaderBase::BitSortFilterMetadataStorage {
   std::optional<CmpObject> cmp_obj_;
   std::function<bool(const uint64_t&, const uint64_t&)> comparator_;
 
-  BitSortFilterMetadataType get_arg() {
+  BitSortFilterMetadataType get_bitsort_filter_metadata_type() {
       return BitSortFilterMetadataType(&dim_tiles_, &comparator_);
   }
 };

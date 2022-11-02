@@ -181,13 +181,6 @@ ArraySchema::ArraySchema(
               "on an array with variable sized dimensions."));
         }
 
-        // An array with a bitsort filter must not be Hilbert order, for now.
-        if (cell_order_ == Layout::HILBERT) {
-          throw StatusException(Status_ArraySchemaError(
-              "Array schema creation failed. Bitsort filter cannot be applied "
-              "on an array with Hilbert order."));
-        }
-
         bitsort_filter_attr_ = attr->name();
       }
     }
