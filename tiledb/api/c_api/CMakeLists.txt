@@ -49,6 +49,9 @@ target_include_directories(export INTERFACE ${TILEDB_SOURCE_ROOT}/tiledb/sm/c_ap
 # depends on `context`, as context handles are often the first argument.
 #
 
+# `buffer`: no dependencies
+add_subdirectory(buffer)
+
 # `error`: no dependencies
 add_subdirectory(error)
 
