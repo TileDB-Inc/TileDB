@@ -338,7 +338,7 @@ void read_png_array(
     for (unsigned y = 0; y < output_height; y++) {
       for (unsigned x = 0; x < output_width; x++) {
         // This will sometimes pass lossy compression, but always for lossless.
-        size_t pos = (y * output_width) + x;
+        [[maybe_unused]] size_t pos = (y * output_width) + x;
         assert(image_read[pos] == array_read[pos]);
       }
     }
@@ -367,7 +367,7 @@ int main(int argc, char** argv) {
     return 1;
   }
   std::string input_png(argv[1]), array_path(argv[2]), output_png(argv[3]);
-  float quality_factor;
+  float quality_factor = 100.0f;
   bool lossless = false;
   if (argc > 4) {
     quality_factor = std::stof(argv[4]);
