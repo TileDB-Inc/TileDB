@@ -764,9 +764,8 @@ class ReaderBase : public StrategyBase {
    *
    * @param domain_buffers
    * @param hilbert_values
-   * @return Status
    */
-  Status calculate_hilbert_values(
+  void calculate_hilbert_values(
       const DomainBuffersView& domain_buffers,
       std::vector<uint64_t>& hilbert_values) const;
 

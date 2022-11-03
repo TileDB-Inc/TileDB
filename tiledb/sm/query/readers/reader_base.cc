@@ -925,8 +925,8 @@ Status ReaderBase::unfilter_tile_chunk_range(
           BitSortFilterMetadataType bitsort_metadata;
           if (array_schema_.cell_order() == Layout::HILBERT) {
             BitSortFilterMetadataStorage<HilbertCmpQB> bitsort_storage;
-              bitsort_metadata = construct_bitsort_filter_argument<HilbertCmpQB>(
-              tile, bitsort_storage);
+            bitsort_metadata = 
+              construct_bitsort_filter_argument<HilbertCmpQB>(tile, bitsort_storage);
             RETURN_NOT_OK(unfilter_tile_chunk_range(
               num_range_threads,
               range_thread_idx,
@@ -936,8 +936,8 @@ Status ReaderBase::unfilter_tile_chunk_range(
               &bitsort_metadata));
           } else {
             BitSortFilterMetadataStorage<GlobalCmpQB> bitsort_storage;
-              bitsort_metadata = construct_bitsort_filter_argument<GlobalCmpQB>(
-              tile, bitsort_storage);
+            bitsort_metadata = 
+              construct_bitsort_filter_argument<GlobalCmpQB>(tile, bitsort_storage);
             RETURN_NOT_OK(unfilter_tile_chunk_range(
               num_range_threads,
               range_thread_idx,
@@ -1791,7 +1791,7 @@ bool ReaderBase::has_coords() const {
   return false;
 }
 
-Status ReaderBase::calculate_hilbert_values(
+void ReaderBase::calculate_hilbert_values(
     const DomainBuffersView& domain_buffers,
     std::vector<uint64_t>& hilbert_values) const {
   auto dim_num = array_schema_.dim_num();
@@ -1801,7 +1801,7 @@ Status ReaderBase::calculate_hilbert_values(
 
   // Calculate Hilbert values in parallel
   uint64_t cell_num = hilbert_values.size();
-  auto status = parallel_for(
+  throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
       cell_num,
@@ -1815,10 +1815,7 @@ Status ReaderBase::calculate_hilbert_values(
         hilbert_values[c] = h.coords_to_hilbert(&coords[0]);
 
         return Status::Ok();
-      });
-
-  throw_if_not_ok(status);
-  return Status::Ok();
+      }));
 }
 
 template <typename CmpObject,
@@ -1855,10 +1852,7 @@ BitSortFilterMetadataType ReaderBase::construct_bitsort_filter_argument(
     assert(dim_tiles.size() > 0);
     uint64_t cell_num = dim_tiles[0]->cell_num();
     hilbert_values.resize(cell_num);
-    Status st = calculate_hilbert_values(bitsort_storage.db_.value(), hilbert_values);
-    if (!st.ok()) {
-      throw std::runtime_error("ReaderBase::construct_bitsort_filter_argument: calculating hilbert values failed.");
-    }
+    calculate_hilbert_values(bitsort_storage.db_.value(), hilbert_values);
     bitsort_storage.cmp_obj_.emplace(HilbertCmpQB(array_schema_.domain(), bitsort_storage.db_.value(), hilbert_values));
   } else if constexpr  (std::is_same<CmpObject, GlobalCmpQB>::value) {
     bitsort_storage.cmp_obj_.emplace(GlobalCmpQB(array_schema_.domain(), bitsort_storage.db_.value()));

@@ -285,15 +285,6 @@ void calculate_hilbert_values_test(uint64_t num_dims, const tiledb::sm::Domain& 
 }
 
 /**
- * @brief 
- * 
- * @tparam DimType 
- * @param read_layout 
- * @param domain 
- * @return DimensionDataMetadata<DimType> 
- */
-
-/**
  * @brief Set the buffers with the appropriate dimensions for a 2D array with hilbert order.
  *
  * @tparam DimType The type of the dimension.
