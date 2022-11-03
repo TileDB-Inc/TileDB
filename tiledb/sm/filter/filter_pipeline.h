@@ -195,6 +195,7 @@ class FilterPipeline {
    * @param tile Tile to filter.
    * @param offsets_tile Offets tile for tile to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
+   * @param support_data Support data for the filter.
    * @param chunking True if the tile should be cut into chunks before
    * filtering, false if not.
    * @return Status
@@ -204,6 +205,7 @@ class FilterPipeline {
       Tile* tile,
       Tile* offsets_tile,
       ThreadPool* compute_tp,
+      void* support_data = nullptr,
       bool chunking = true) const;
 
   /**
@@ -244,6 +246,7 @@ class FilterPipeline {
    * separately
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
+   * @param support_data Support data for the filter.
    * @return Status
    */
   Status run_reverse(
@@ -251,13 +254,15 @@ class FilterPipeline {
       Tile* const tile,
       Tile* const offsets_tile,
       ThreadPool* compute_tp,
-      const Config& config) const;
+      const Config& config,
+      void* support_data = nullptr) const;
 
   /**
    * Run the given chunk range in reverse through the pipeline.
    *
    * @param reader_stats Stats to record in the function
    * @param tile Current tile on which the filter pipeline is being run
+   * @param support_data Support data for the filter
    * @param chunk_data The tile chunk info, buffers and offsets
    * @param min_chunk_index The chunk range index to start from
    * @param max_chunk_index The chunk range index to end at
@@ -265,9 +270,11 @@ class FilterPipeline {
    * @param config The global config.
    * @return Status
    */
+
   Status run_reverse_chunk_range(
       stats::Stats* const reader_stats,
       Tile* const tile,
+      void* support_data,
       const ChunkData& chunk_data,
       const uint64_t min_chunk_index,
       const uint64_t max_chunk_index,
@@ -360,7 +367,7 @@ class FilterPipeline {
    * Run the given buffer forward through the pipeline.
    *
    * @param tile Current tile on which the filter pipeline is being run.
-   * @param offsets_tile Current offsets tile for var sized attributes.
+   * @param support_data Argument for support data passed given to filter.
    * @param input buffer to process.
    * @param chunk_size chunk size.
    * @param chunk_offsets chunk offsets computed for var sized attributes.
@@ -371,7 +378,7 @@ class FilterPipeline {
    */
   Status filter_chunks_forward(
       const Tile& tile,
-      Tile* const offsets_tile,
+      void* support_data,
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,
       FilteredBuffer& output,
@@ -381,8 +388,7 @@ class FilterPipeline {
    * Run the given list of chunks in reverse through the pipeline.
    *
    * @param tile Current tile on which the filter pipeline is being run
-   * @param offsets_tile Current offsets tile for var sized
-   * attributes/dimensions.
+   * @param support_data Argument for support data passed given to filter.
    * @param input Filtered chunk buffers to reverse.
    * @param output Chunked buffer where output of the last stage
    *    will be written.
@@ -392,7 +398,7 @@ class FilterPipeline {
    */
   Status filter_chunks_reverse(
       Tile& tile,
-      Tile* const offsets_tile,
+      void* support_data,
       const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
       ThreadPool* const compute_tp,
       const Config& config) const;
@@ -404,6 +410,7 @@ class FilterPipeline {
    * @param offsets_tile Offsets tile for var sized tile to filter.
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
+   * @param support_data Support data for the filter.
    * @return Status
    */
   Status run_reverse_internal(
@@ -411,7 +418,8 @@ class FilterPipeline {
       Tile* const tile,
       Tile* const offsets_tile,
       ThreadPool* compute_tp,
-      const Config& config) const;
+      const Config& config,
+      void* support_data) const;
 };
 
 }  // namespace sm

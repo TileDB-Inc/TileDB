@@ -33,6 +33,7 @@
 #define TILEDB_QUERY_DOMAIN_BUFFER_H
 
 #include <new>
+
 #include "../query_buffer.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -269,6 +270,23 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
   /**
    * Constructor
    *
+   * @param domain the domain of an open array
+   * @param buffers a buffer map for each dimension of the domain
+   */
+  DomainBuffersView(
+      const Domain& domain,
+      const std::unordered_map<std::string, QueryBuffer>& buffers)
+      : qb_(domain.dim_num()) {
+    auto n_dimensions{domain.dim_num()};
+    for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
+      const auto& name{domain.dimension_ptr(i)->name()};
+      qb_[i] = &buffers.at(name);
+    }
+  }
+
+  /**
+   * Constructor
+   *
    * TODO: Change argument from `ArraySchema` to `Domain`. The current type is
    * the result of code refactoring.
    *
@@ -280,6 +298,20 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
     auto n_dimensions{schema.dim_num()};
     for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
       qb_[i] = coord.get_qb(i);
+    }
+  }
+
+  /**
+   * Constructor
+   *
+   * @param domain the domain of an open array
+   * @param buffers a buffer vector for each dimension of the domain
+   */
+  DomainBuffersView(const Domain& domain, std::vector<QueryBuffer>& qb_vector)
+      : qb_(domain.dim_num()) {
+    auto n_dimensions{domain.dim_num()};
+    for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
+      qb_[i] = &qb_vector[i];
     }
   }
 

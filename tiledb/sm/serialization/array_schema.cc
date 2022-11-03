@@ -51,6 +51,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/bitshuffle_filter.h"
+#include "tiledb/sm/filter/bitsort_filter.h"
 #include "tiledb/sm/filter/byteshuffle_filter.h"
 #include "tiledb/sm/filter/checksum_md5_filter.h"
 #include "tiledb/sm/filter/checksum_sha256_filter.h"
@@ -132,6 +133,7 @@ Status filter_to_capnp(
     case FilterType::FILTER_CHECKSUM_SHA256:
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
     case FilterType::FILTER_XOR:
+    case FilterType::FILTER_BITSORT:
       break;
   }
 
@@ -231,6 +233,9 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
     }
     case FilterType::FILTER_XOR: {
       return {Status::Ok(), tiledb::common::make_shared<XORFilter>(HERE())};
+    }
+    case FilterType::FILTER_BITSORT: {
+      return {Status::Ok(), tiledb::common::make_shared<BitSortFilter>(HERE())};
     }
     default: {
       throw std::logic_error(

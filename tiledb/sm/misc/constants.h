@@ -385,6 +385,9 @@ extern const std::string filter_scale_float_str;
 /** String describing FILTER_XOR. */
 extern const std::string filter_xor_str;
 
+/** String describing FILTER_BITSORT. */
+extern const std::string filter_bitsort_str;
+
 /** The string representation for FilterOption type compression_level. */
 extern const std::string filter_option_compression_level_str;
 

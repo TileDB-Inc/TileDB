@@ -36,6 +36,7 @@
 
 #include "../bit_width_reduction_filter.h"
 #include "../bitshuffle_filter.h"
+#include "../bitsort_filter.h"
 #include "../byteshuffle_filter.h"
 #include "../checksum_md5_filter.h"
 #include "../checksum_sha256_filter.h"
@@ -396,6 +397,23 @@ TEST_CASE(
 TEST_CASE("Filter: Test XOR filter deserialization", "[filter][xor]") {
   Buffer buffer;
   FilterType filtertype0 = FilterType::FILTER_XOR;
+  char serialized_buffer[5];
+  char* p = &serialized_buffer[0];
+  buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+  buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
+
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
+  auto filter1{
+      FilterCreate::deserialize(deserializer, constants::format_version)};
+
+  // Check type
+  CHECK(filter1->type() == filtertype0);
+}
+
+TEST_CASE(
+    "Filter: Test Bit sort filter deserialization", "[filter][bit-sort]") {
+  Buffer buffer;
+  FilterType filtertype0 = FilterType::FILTER_BITSORT;
   char serialized_buffer[5];
   char* p = &serialized_buffer[0];
   buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);

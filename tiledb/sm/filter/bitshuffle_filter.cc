@@ -60,7 +60,7 @@ void BitshuffleFilter::dump(FILE* out) const {
 
 Status BitshuffleFilter::run_forward(
     const Tile& tile,
-    Tile* const,  // offsets_tile
+    void* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -165,7 +165,7 @@ Status BitshuffleFilter::shuffle_part(
 
 Status BitshuffleFilter::run_reverse(
     const Tile& tile,
-    Tile* const,
+    void*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

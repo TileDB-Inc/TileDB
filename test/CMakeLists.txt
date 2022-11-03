@@ -196,6 +196,7 @@ set(TILEDB_UNIT_TEST_SOURCES
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-cppapi-array.cc
+    src/unit-cppapi-bitsort-filter.cc
     src/unit-cppapi-checksum.cc
     src/unit-cppapi-config.cc
     src/unit-cppapi-consolidation-sparse.cc
@@ -208,7 +209,6 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-float-scaling-filter.cc
-    src/unit-cppapi-xor-filter.cc
     src/unit-cppapi-fragment_info.cc
     src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
@@ -226,6 +226,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-util.cc
     src/unit-cppapi-var-offsets.cc
     src/unit-cppapi-vfs.cc
+    src/unit-cppapi-xor-filter.cc
   )
 endif()
 

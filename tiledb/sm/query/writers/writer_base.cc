@@ -38,6 +38,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
@@ -702,20 +703,28 @@ Status WriterBase::create_fragment(
 Status WriterBase::filter_tiles(
     std::unordered_map<std::string, WriterTileVector>* tiles) {
   auto timer_se = stats_->start_timer("filter_tiles");
+  const auto bitsort_attr = array_schema_.bitsort_filter_attr();
 
-  // Coordinates
   auto num = buffers_.size();
   auto status =
       parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
         const auto& name = buff_it->first;
-        RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
+
+        // Run a special function for the bitsort filter.
+        if (bitsort_attr.has_value() && name == bitsort_attr.value()) {
+          RETURN_CANCEL_OR_ERROR(filter_tiles_bitsort(name, tiles));
+        } else if (bitsort_attr.has_value() && array_schema_.is_dim(name)) {
+          // When there is a bitsort filter, dimensions will be filtered at the
+          // same time as the attribute.
+        } else {
+          RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
+        }
         return Status::Ok();
       });
 
   RETURN_NOT_OK(status);
-
   return Status::Ok();
 }
 
@@ -748,7 +757,12 @@ Status WriterBase::filter_tiles(
         const auto& [tile, offset_tile, contains_offsets, is_nullable] =
             args[i];
         RETURN_NOT_OK(filter_tile(
-            name, tile, offset_tile, contains_offsets, is_nullable));
+            name,
+            tile,
+            offset_tile,
+            contains_offsets,
+            is_nullable,
+            offset_tile));
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
@@ -758,12 +772,58 @@ Status WriterBase::filter_tiles(
     auto status = parallel_for(
         storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
           auto& tile = (*tiles)[i];
-          RETURN_NOT_OK(
-              filter_tile(name, &tile.offset_tile(), nullptr, true, false));
+          RETURN_NOT_OK(filter_tile(
+              name, &tile.offset_tile(), nullptr, true, false, nullptr));
           return Status::Ok();
         });
     RETURN_NOT_OK(status);
   }
+
+  return Status::Ok();
+}
+
+Status WriterBase::filter_tiles_bitsort(
+    const std::string& name,
+    std::unordered_map<std::string, WriterTileVector>* tiles) {
+  // Cache the dimention tile vectors.
+  std::vector<WriterTileVector*> dim_tiles;
+  dim_tiles.reserve(array_schema_.dim_num());
+  for (const auto& name : array_schema_.dim_names()) {
+    dim_tiles.emplace_back(&((*tiles)[name]));
+  }
+
+  // Generate arguments to filter all tiles
+  auto& attr_tiles = (*tiles)[name];
+  auto tile_num = tiles->size();
+  std::vector<std::tuple<Tile*, std::vector<Tile*>, bool, bool>> args;
+  args.reserve(tile_num);
+  for (uint64_t i = 0; i < attr_tiles.size(); i++) {
+    auto& tile = attr_tiles[i];
+
+    // Collect the dim tiles argument.
+    std::vector<Tile*> dim_tiles_temp;
+    dim_tiles_temp.reserve(dim_tiles.size());
+    for (const auto& elem : dim_tiles) {
+      dim_tiles_temp.emplace_back(&((*elem)[i].fixed_tile()));
+    }
+
+    args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp, false, false);
+  }
+
+  // Finally filter the tiles.
+  auto status = parallel_for(
+      storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
+        auto& [tile, support_tiles, contains_offsets, is_nullable] = args[i];
+        RETURN_NOT_OK(filter_tile(
+            name,
+            tile,
+            nullptr,
+            contains_offsets,
+            is_nullable,
+            &support_tiles));
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -773,7 +833,8 @@ Status WriterBase::filter_tile(
     Tile* const tile,
     Tile* const offsets_tile,
     const bool offsets,
-    const bool nullable) {
+    const bool nullable,
+    void* support_data) {
   auto timer_se = stats_->start_timer("filter_tile");
 
   // Get a copy of the appropriate filter pipeline.
@@ -813,6 +874,7 @@ Status WriterBase::filter_tile(
       tile,
       offsets_tile,
       storage_manager_->compute_tp(),
+      support_data,
       use_chunking));
   assert(tile->filtered());
 
