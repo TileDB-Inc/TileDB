@@ -50,7 +50,7 @@ void WebpFilter::dump(FILE* out) const {
 
 Status WebpFilter::run_forward(
     const Tile&,
-    Tile* const,
+    void* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -165,7 +165,7 @@ Status WebpFilter::run_forward(
 
 Status WebpFilter::run_reverse(
     const Tile& tile,
-    Tile* const,
+    void* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

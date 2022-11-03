@@ -137,8 +137,7 @@ class WebpFilter : public Filter {
    * encoded WebP data to the TileDB Array.
    *
    * @param tile Current tile on which the filter is being run.
-   * @param offsets_tile Offsets tile of the current tile on which the filter is
-   * being run.
+   * @param support_data Support data for the filter
    * @param input_metadata Buffer with metadata for `input`.
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
@@ -147,7 +146,7 @@ class WebpFilter : public Filter {
    */
   Status run_forward(
       const Tile& tile,
-      Tile* const tile_offsets,
+      void* const support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -173,8 +172,7 @@ class WebpFilter : public Filter {
    * Runs the filter in reverse, returning raw colorspace values to the client.
    *
    * @param tile Current tile on which the filter is being run.
-   * @param offsets_tile Offsets tile of the current tile on which the filter is
-   * being run.
+   * @param support_data Support data for the filter
    * @param input_metadata Buffer with metadata for `input`.
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
@@ -184,7 +182,7 @@ class WebpFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      Tile* const tile_offsets,
+      void* const support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

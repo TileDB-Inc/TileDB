@@ -215,6 +215,7 @@ target_link_libraries(all_filters PUBLIC compression_filter $<TARGET_OBJECTS:com
 target_link_libraries(all_filters PUBLIC encryption_filters $<TARGET_OBJECTS:encryption_filters>)
 target_link_libraries(all_filters PUBLIC float_scaling_filters $<TARGET_OBJECTS:float_scaling_filters>)
 target_link_libraries(all_filters PUBLIC xor_filters $<TARGET_OBJECTS:xor_filters>)
+target_link_libraries(all_filters PUBLIC bitsort_filters $<TARGET_OBJECTS:bitsort_filters>)
 target_link_libraries(all_filters PUBLIC webp_filters $<TARGET_OBJECTS:webp_filters>)
 
 

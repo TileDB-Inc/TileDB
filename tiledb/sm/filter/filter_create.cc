@@ -169,7 +169,6 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     case FilterType::FILTER_BITSORT: {
       return make_shared<BitSortFilter>(HERE());
     };
-    }
     case FilterType::FILTER_WEBP: {
       if constexpr (webp_filter_exists) {
         auto filter_config = deserializer.read<WebpFilter::FilterConfig>();
