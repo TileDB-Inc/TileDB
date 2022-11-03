@@ -50,6 +50,14 @@ using namespace tiledb::type;
 namespace tiledb {
 namespace sm {
 
+/** Class for locally generated status exceptions. */
+class AttributeStatusException : public StatusException {
+ public:
+  explicit AttributeStatusException(const std::string& msg)
+      : StatusException("Attribute", msg) {
+  }
+};
+
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -80,12 +88,21 @@ Attribute::Attribute(
     , order_(order) {
   set_default_fill_value();
 
+  // If ordered, check the number of values of cells is supported.
   if (order_ != DataOrder::UNORDERED_DATA) {
     ensure_ordered_attribute_datatype_is_valid(type_);
-    if (cell_val_num_ != 1 && type != Datatype::STRING_ASCII) {
-      throw std::invalid_argument(
-          "Ordered attributes with datatype '" + datatype_str(type_) +
-          "' must have cell_val_num=1.");
+    if (type == Datatype::STRING_ASCII) {
+      if (cell_val_num_ != constants::var_num) {
+        throw std::invalid_argument(
+            "Ordered attributes with datatype '" + datatype_str(type_) +
+            "' must have cell_val_num=1.");
+      }
+    } else {
+      if (cell_val_num_ != 1) {
+        throw std::invalid_argument(
+            "Ordered attributes with datatype '" + datatype_str(type_) +
+            "' must have cell_val_num=1.");
+      }
     }
   }
 }
@@ -285,10 +302,19 @@ void Attribute::serialize(
 }
 
 Status Attribute::set_cell_val_num(unsigned int cell_val_num) {
-  if (type_ == Datatype::ANY)
+  if (type_ == Datatype::ANY) {
     return LOG_STATUS(Status_AttributeError(
         "Cannot set number of values per cell; Attribute datatype `ANY` is "
         "always variable-sized"));
+  }
+
+  if (order_ != DataOrder::UNORDERED_DATA && type_ != Datatype::STRING_ASCII &&
+      cell_val_num != 1) {
+    throw AttributeStatusException(
+        "Cannot set number of values per cell; An ordered attribute with "
+        "datatype '" +
+        datatype_str(type_) + "' can only have cell_val_num=1.");
+  }
 
   cell_val_num_ = cell_val_num;
   set_default_fill_value();
@@ -297,6 +323,10 @@ Status Attribute::set_cell_val_num(unsigned int cell_val_num) {
 }
 
 Status Attribute::set_nullable(const bool nullable) {
+  if (nullable && order_ != DataOrder::UNORDERED_DATA) {
+    throw AttributeStatusException(
+        "Cannot set to nullable; An ordered attribute cannot be nullable.");
+  }
   nullable_ = nullable;
   return Status::Ok();
 }
