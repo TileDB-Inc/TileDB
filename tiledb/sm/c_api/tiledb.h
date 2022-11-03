@@ -55,6 +55,7 @@
 /*
  * API sections
  */
+#include "tiledb/api/c_api/buffer/buffer_api_external.h"
 #include "tiledb/api/c_api/config/config_api_external.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/api/c_api/datatype/datatype_api_external.h"
@@ -327,9 +328,6 @@ typedef struct tiledb_array_t tiledb_array_t;
 /** A subarray object. */
 typedef struct tiledb_subarray_t tiledb_subarray_t;
 
-/** A generic buffer object. */
-typedef struct tiledb_buffer_t tiledb_buffer_t;
-
 /** A generic buffer list object. */
 typedef struct tiledb_buffer_list_t tiledb_buffer_list_t;
 
@@ -362,150 +360,6 @@ typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
 /** A group object. */
 typedef struct tiledb_group_t tiledb_group_t;
-
-/* ********************************* */
-/*              BUFFER               */
-/* ********************************* */
-
-/**
- * Creates an empty buffer object.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_t* buffer;
- * tiledb_buffer_alloc(ctx, &buffer);
- * @endcode
- *
- * @param ctx TileDB context
- * @param buffer The buffer to be created
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_alloc(
-    tiledb_ctx_t* ctx, tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
-
-/**
- * Destroys a TileDB buffer, freeing associated memory.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_t* buffer;
- * tiledb_buffer_alloc(ctx, &buffer);
- * tiledb_buffer_free(&buffer);
- * @endcode
- *
- * @param buffer The buffer to be destroyed.
- */
-TILEDB_EXPORT void tiledb_buffer_free(tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
-
-/**
- * Sets a datatype for the given buffer. The default datatype is `TILEDB_UINT8`.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_t* buffer;
- * tiledb_buffer_alloc(ctx, &buffer);
- * tiledb_buffer_set_type(ctx, buffer, TILEDB_INT32);
- * @endcode
- *
- * @param ctx TileDB context
- * @param buffer TileDB buffer instance
- * @param datatype The datatype to set on the buffer.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_set_type(
-    tiledb_ctx_t* ctx,
-    tiledb_buffer_t* buffer,
-    tiledb_datatype_t datatype) TILEDB_NOEXCEPT;
-
-/**
- * Gets the datatype from the given buffer.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_datatype_t type;
- * tiledb_buffer_get_type(ctx, buffer, &type);
- * @endcode
- *
- * @param ctx TileDB context
- * @param buffer TileDB buffer instance
- * @param datatype Set to the datatype of the buffer.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_get_type(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_t* buffer,
-    tiledb_datatype_t* datatype) TILEDB_NOEXCEPT;
-
-/**
- * Gets a pointer to the current allocation and the current number of bytes in
- * the specified buffer object.
- *
- * @note For string buffers allocated by TileDB, the number of bytes includes
- * the terminating NULL byte.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_t* buffer;
- * tiledb_buffer_alloc(ctx, &buffer);
- * void* data;
- * uint64_t num_bytes;
- * tiledb_buffer_get_data(ctx, buffer, &data, num_bytes);
- * // data == NULL and num_bytes == 0 because the buffer is currently empty.
- * tiledb_buffer_free(&buffer);
- * @endcode
- *
- * @param ctx TileDB context
- * @param buffer TileDB buffer instance
- * @param data The pointer to the data to be retrieved.
- * @param num_bytes Set to the number of bytes in the buffer.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_get_data(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_t* buffer,
-    void** data,
-    uint64_t* num_bytes) TILEDB_NOEXCEPT;
-
-/**
- * Sets (wraps) a pre-allocated region of memory with the given buffer object.
- * This does not perform a copy.
- *
- * @note The TileDB buffer object does not take ownership of the allocation
- * set with this function. That means the call to `tiledb_buffer_free` will not
- * free a user allocation set via `tiledb_buffer_set_buffer`.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_t* buffer;
- * tiledb_buffer_alloc(ctx, &buffer);
- *
- * void* my_data = malloc(100);
- * tiledb_buffer_set_data(ctx, buffer, my_data, 100);
- *
- * void* data;
- * uint64_t num_bytes;
- * tiledb_buffer_get_data(ctx, buffer, &data, num_bytes);
- * assert(data == my_data);
- * assert(num_bytes == 100);
- *
- * tiledb_buffer_free(&buffer);
- * free(my_data);
- * @endcode
- *
- * @param ctx TileDB context
- * @param buffer TileDB buffer instance
- * @param data Pre-allocated region of memory to wrap with this buffer.
- * @param size Size (in bytes) of the region pointed to by data.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_set_data(
-    tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, void* data, uint64_t size);
 
 /* ********************************* */
 /*            BUFFER LIST            */
