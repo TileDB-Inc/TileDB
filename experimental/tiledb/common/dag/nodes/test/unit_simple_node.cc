@@ -837,19 +837,6 @@ TEMPLATE_TEST_CASE(
   using Producer = typename std::tuple_element<2, TestType>::type;
   constexpr bool delay = std::tuple_element<3, TestType>::type::value;
 
-  /**
-   * Test that we can asynchronously send data from a producer to an attached
-   * function node and then to consumer.  Each of the nodes is launched as an
-   * asynchronous task.
-   *
-   * @param qwt Weighting for source node delay.
-   * @param rwt Weighting for function node delay.
-   * @param swt Weighting for sink node delay.
-   *
-   * @tparam delay Flag indicating whether or not to include a delay at all in
-   * node function bodies to simulate processing time.
-   */
-
   double qwt = GENERATE(1.0, 0.2);
   double rwt = GENERATE(1.0, 0.2);
   double swt = GENERATE(1.0, 0.2);
@@ -983,19 +970,6 @@ TEMPLATE_TEST_CASE(
   using Producer = typename std::tuple_element<2, TestType>::type;
   constexpr bool delay = std::tuple_element<3, TestType>::type::value;
 
-  /**
-   * Test that we can asynchronously send data from a producer to an attached
-   * function node and then to consumer.  Each of the nodes is launched as an
-   * asynchronous task.
-   *
-   * @param qwt Weighting for source node delay.
-   * @param rwt Weighting for function node delay.
-   * @param swt Weighting for function node delay.
-   * @param twt Weighting for sink node delay.
-   *
-   * @tparam delay Flag indicating whether or not to include a delay at all in
-   * node function bodies to simulate processing time.
-   */
   double qwt = GENERATE(1.0, 0.2);
   double rwt = GENERATE(1.0, 0.2);
   double swt = GENERATE(1.0, 0.2);
