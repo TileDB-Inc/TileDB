@@ -278,7 +278,7 @@ TEMPLATE_TEST_CASE(
         function_node<BountifulMover3, size_t>,
         producer_node<BountifulMover3, size_t>,
         BountifulScheduler<node>>)) {
-  bool debug{true};
+  bool debug{false};
 
   auto num_threads = 1;
 
@@ -429,7 +429,7 @@ TEMPLATE_TEST_CASE(
   auto c = C([](const size_t&) {});
   auto sched = S(1);
 
-  const bool debug{true};
+  const bool debug{false};
   if (debug) {
     sched.debug();
 

@@ -1,5 +1,5 @@
 /**
- * @file   throwcatch.h
+ * @file   frugal.h
  *
  * @section LICENSE
  *
@@ -56,8 +56,8 @@
  * can be mixed and matched.
  */
 
-#ifndef TILEDB_DAG_throw_catch_H
-#define TILEDB_DAG_throw_catch_H
+#ifndef TILEDB_DAG_FRUGAL_H
+#define TILEDB_DAG_FRUGAL_H
 
 #include <condition_variable>
 #include <functional>
@@ -79,59 +79,18 @@
 
 namespace tiledb::common {
 
-namespace detail {
-
-enum class throw_catch_target { self, source, sink, last };
-
-class throw_catch_exception {
-  throw_catch_target target_{throw_catch_target::self};
-
- public:
-  constexpr throw_catch_exception(throw_catch_target target = throw_catch_target::self)
-      : target_{target} {
-  }
-
-  throw_catch_target target() const {
-    return target_;
-  }
-};
-
-class throw_catch_exit : public throw_catch_exception {
-  using throw_catch_exception::throw_catch_exception;
-};
-
-class throw_catch_wait : public throw_catch_exception {
-  using throw_catch_exception::throw_catch_exception;
-};
-
-class throw_catch_notify : public throw_catch_exception {
-  using throw_catch_exception::throw_catch_exception;
-};
-
-}  // namespace detail
-
-constexpr const detail::throw_catch_exit throw_catch_exit;
-constexpr const detail::throw_catch_wait throw_catch_sink_wait{
-    detail::throw_catch_target::sink};
-constexpr const detail::throw_catch_wait throw_catch_source_wait{
-    detail::throw_catch_target::source};
-constexpr const detail::throw_catch_notify throw_catch_notify_sink{
-    detail::throw_catch_target::sink};
-constexpr const detail::throw_catch_notify throw_catch_notify_source{
-    detail::throw_catch_target::source};
-
 template <class Mover, class PortState = typename Mover::PortState>
-class ThrowCatchPortPolicy : public PortFiniteStateMachine<
-                             ThrowCatchPortPolicy<Mover, PortState>,
+class FrugalPortPolicy : public PortFiniteStateMachine<
+                             FrugalPortPolicy<Mover, PortState>,
                              PortState> {
   using state_machine_type =
-      PortFiniteStateMachine<ThrowCatchPortPolicy<Mover, PortState>, PortState>;
+      PortFiniteStateMachine<FrugalPortPolicy<Mover, PortState>, PortState>;
   using lock_type = typename state_machine_type::lock_type;
 
   using mover_type = Mover;
 
  public:
-  ThrowCatchPortPolicy() {
+  FrugalPortPolicy() {
     if constexpr (std::is_same_v<PortState, two_stage>) {
       assert(static_cast<Mover*>(this)->state() == PortState::st_00);
     } else if constexpr (std::is_same_v<PortState, three_stage>) {
@@ -153,32 +112,26 @@ class ThrowCatchPortPolicy : public PortFiniteStateMachine<
 
   inline void on_notify_source(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action notify source");
-    throw(detail::throw_catch_notify{detail::throw_catch_target::source});
   }
 
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action notify sink");
-    throw(detail::throw_catch_notify{detail::throw_catch_target::sink});
   }
 
   inline void on_source_wait(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action source wait");
-    throw(detail::throw_catch_wait{detail::throw_catch_target::source});
   }
 
   inline void on_sink_wait(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action sink wait");
-    throw(detail::throw_catch_wait{detail::throw_catch_target::sink});
   }
 
   inline void on_term_source(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action source done");
-    throw(detail::throw_catch_exit{detail::throw_catch_target::source});
   }
 
   inline void on_term_sink(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action sink done");
-    throw(detail::throw_catch_exit{detail::throw_catch_target::sink});
   }
 
  private:
@@ -190,35 +143,35 @@ class ThrowCatchPortPolicy : public PortFiniteStateMachine<
 };
 
 template <class T>
-using ThrowCatchMover3 = ItemMover<ThrowCatchPortPolicy, three_stage, T>;
+using FrugalMover3 = ItemMover<FrugalPortPolicy, three_stage, T>;
 template <class T>
-using ThrowCatchMover2 = ItemMover<ThrowCatchPortPolicy, two_stage, T>;
+using FrugalMover2 = ItemMover<FrugalPortPolicy, two_stage, T>;
 
 template <class Node>
-class ThrowCatchScheduler;
+class FrugalScheduler;
 
 template <class Task>
-class ThrowCatchSchedulerPolicy;
+class FrugalSchedulerPolicy;
 
 template <typename T>
-struct SchedulerTraits<ThrowCatchSchedulerPolicy<T>> {
+struct SchedulerTraits<FrugalSchedulerPolicy<T>> {
   using task_type = T;
   using task_handle_type = T;
 };
 
 template <class Task>
-class ThrowCatchSchedulerPolicy
-    : public SchedulerStateMachine<ThrowCatchSchedulerPolicy<Task>> {
-  using state_machine_type = SchedulerStateMachine<ThrowCatchSchedulerPolicy<Task>>;
+class FrugalSchedulerPolicy
+    : public SchedulerStateMachine<FrugalSchedulerPolicy<Task>> {
+  using state_machine_type = SchedulerStateMachine<FrugalSchedulerPolicy<Task>>;
   using lock_type = typename state_machine_type::lock_type;
 
  public:
   using task_type =
-      typename SchedulerTraits<ThrowCatchSchedulerPolicy<Task>>::task_type;
+      typename SchedulerTraits<FrugalSchedulerPolicy<Task>>::task_type;
   using task_handle_type =
-      typename SchedulerTraits<ThrowCatchSchedulerPolicy<Task>>::task_handle_type;
+      typename SchedulerTraits<FrugalSchedulerPolicy<Task>>::task_handle_type;
 
-  ~ThrowCatchSchedulerPolicy() {
+  ~FrugalSchedulerPolicy() {
     if (this->debug())
       std::cout << "policy destructor\n";
 
@@ -408,8 +361,8 @@ class ThrowCatchSchedulerPolicy
 
 #if 0
 template <class Node>
-class ThrowCatchTaskImpl {
-  using scheduler = ThrowCatchScheduler<Node>;
+class TaskImpl {
+  using scheduler = FrugalScheduler<Node>;
   scheduler* scheduler_{nullptr};
   TaskState state_{TaskState::created};
 
@@ -418,15 +371,15 @@ class ThrowCatchTaskImpl {
   Node node_;
 
  public:
-  ThrowCatchTaskImpl(const Node& n)
+  TaskImpl(const Node& n)
       : node_{n} {
   }
 
-  ThrowCatchTaskImpl() = default;
-  ThrowCatchTaskImpl(const ThrowCatchTaskImpl&) = default;
-  ThrowCatchTaskImpl(ThrowCatchTaskImpl&&) = default;
-  ThrowCatchTaskImpl& operator=(const ThrowCatchTaskImpl&) = default;
-  ThrowCatchTaskImpl& operator=(ThrowCatchTaskImpl&&) = default;
+  TaskImpl() = default;
+  TaskImpl(const TaskImpl&) = default;
+  TaskImpl(TaskImpl&&) = default;
+  TaskImpl& operator=(const TaskImpl&) = default;
+  TaskImpl& operator=(TaskImpl&&) = default;
 
   void set_scheduler(scheduler* sched) {
     scheduler_ = sched;
@@ -460,7 +413,7 @@ class ThrowCatchTaskImpl {
     return node_->id();
   }
 
-  virtual ~ThrowCatchTaskImpl() = default;
+  virtual ~TaskImpl() = default;
 
   void dump_task_state(const std::string msg = "") {
     std::string preface = (msg != "" ? msg + "\n" : "");
@@ -473,8 +426,8 @@ class ThrowCatchTaskImpl {
 
 #else
 template <class Node>
-class ThrowCatchTaskImpl : Node {
-  using scheduler = ThrowCatchScheduler<Node>;
+class TaskImpl : Node {
+  using scheduler = FrugalScheduler<Node>;
   scheduler* scheduler_{nullptr};
   TaskState state_{TaskState::created};
 
@@ -484,15 +437,15 @@ class ThrowCatchTaskImpl : Node {
   using node_ = Node;
 
  public:
-  ThrowCatchTaskImpl(const Node& n)
+  TaskImpl(const Node& n)
       : node_{n} {
   }
 
-  ThrowCatchTaskImpl() = default;
-  ThrowCatchTaskImpl(const ThrowCatchTaskImpl&) = default;
-  ThrowCatchTaskImpl(ThrowCatchTaskImpl&&) = default;
-  ThrowCatchTaskImpl& operator=(const ThrowCatchTaskImpl&) = default;
-  ThrowCatchTaskImpl& operator=(ThrowCatchTaskImpl&&) = default;
+  TaskImpl() = default;
+  TaskImpl(const TaskImpl&) = default;
+  TaskImpl(TaskImpl&&) = default;
+  TaskImpl& operator=(const TaskImpl&) = default;
+  TaskImpl& operator=(TaskImpl&&) = default;
 
   void set_scheduler(scheduler* sched) {
     scheduler_ = sched;
@@ -526,7 +479,7 @@ class ThrowCatchTaskImpl : Node {
     return (*this)->id();
   }
 
-  virtual ~ThrowCatchTaskImpl() = default;
+  virtual ~TaskImpl() = default;
 
   void dump_task_state(const std::string msg = "") {
     std::string preface = (msg != "" ? msg + "\n" : "");
@@ -539,20 +492,20 @@ class ThrowCatchTaskImpl : Node {
 #endif
 
 template <class Node>
-class ThrowCatchTask : public std::shared_ptr<ThrowCatchTaskImpl<Node>> {
-  using Base = std::shared_ptr<ThrowCatchTaskImpl<Node>>;
+class Task : public std::shared_ptr<TaskImpl<Node>> {
+  using Base = std::shared_ptr<TaskImpl<Node>>;
 
  public:
-  ThrowCatchTask(const Node& n)
-      : Base{std::make_shared<ThrowCatchTaskImpl<Node>>(n)} {
+  Task(const Node& n)
+      : Base{std::make_shared<TaskImpl<Node>>(n)} {
   }
 
-  ThrowCatchTask() = default;
+  Task() = default;
 
-  ThrowCatchTask(const ThrowCatchTask& rhs) = default;
-  ThrowCatchTask(ThrowCatchTask&& rhs) = default;
-  ThrowCatchTask& operator=(const ThrowCatchTask& rhs) = default;
-  ThrowCatchTask& operator=(ThrowCatchTask&& rhs) = default;
+  Task(const Task& rhs) = default;
+  Task(Task&& rhs) = default;
+  Task& operator=(const Task& rhs) = default;
+  Task& operator=(Task&& rhs) = default;
 
   TaskState& task_state() const {
     return (*this)->task_state();
@@ -560,9 +513,9 @@ class ThrowCatchTask : public std::shared_ptr<ThrowCatchTaskImpl<Node>> {
 };
 
 template <class Node>
-class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node>> {
-  using Scheduler = ThrowCatchScheduler<Node>;
-  using Policy = ThrowCatchSchedulerPolicy<ThrowCatchTask<Node>>;
+class FrugalScheduler : public FrugalSchedulerPolicy<Task<Node>> {
+  using Scheduler = FrugalScheduler<Node>;
+  using Policy = FrugalSchedulerPolicy<Task<Node>>;
 
  public:
   /* ********************************* */
@@ -578,7 +531,7 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node
    * but not accepting nor executing any tasks.  A value of
    * 256*hardware_concurrency or larger is an error.
    */
-  ThrowCatchScheduler(size_t n)
+  FrugalScheduler(size_t n)
       : concurrency_level_(n) {
     // If concurrency_level_ is set to zero, construct the thread pool in
     // shutdown state.  Explicitly shut down the task queue as well.
@@ -607,7 +560,7 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node
       size_t tries = 3;
       while (tries--) {
         try {
-          tmp = std::thread(&ThrowCatchScheduler::worker, this);
+          tmp = std::thread(&FrugalScheduler::worker, this);
         } catch (const std::system_error& e) {
           if (e.code() != std::errc::resource_unavailable_try_again ||
               tries == 0) {
@@ -631,11 +584,11 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node
   }
 
   /** Deleted default constructor */
-  ThrowCatchScheduler() = delete;
-  ThrowCatchScheduler(const ThrowCatchScheduler&) = delete;
+  FrugalScheduler() = delete;
+  FrugalScheduler(const FrugalScheduler&) = delete;
 
   /** Destructor. */
-  ~ThrowCatchScheduler() {
+  ~FrugalScheduler() {
     if (this->debug())
       std::cout << "scheduler destructor\n";
     shutdown();
@@ -665,15 +618,15 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node
 
  private:
   /** @todo Need to make ConcurrentMap */
-  ConcurrentMap<Node, ThrowCatchTask<Node>> node_to_task;
-  //  ConcurrentMap<Node, ThrowCatchTask<Node>> port_to_task;
+  ConcurrentMap<Node, Task<Node>> node_to_task;
+  //  ConcurrentMap<Node, Task<Node>> port_to_task;
 
  public:
   void submit(Node&& n) {
     ++num_submitted_tasks_;
     ++num_tasks_;
 
-    auto t = ThrowCatchTask{n};
+    auto t = Task{n};
 
     t->set_scheduler(this);
 
@@ -743,7 +696,7 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node
   /** The worker thread routine */
   void worker() {
     [[maybe_unused]] thread_local static auto scheduler = this;
-    thread_local ThrowCatchTask<Node> this_task{nullptr};
+    thread_local Task<Node> this_task{nullptr};
 
     /*
      * The worker threads wait on a condition variable until they are released
@@ -809,11 +762,8 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node
         }
 
         /*
-         * Experimental throw-catch mechanism for cooperative multitasking.
          *
-         * Executing tasks throw on
          */
-
         try {
           if (this->debug())
             task_to_run->dump_task_state("About to resume");
@@ -824,90 +774,8 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node
 
           if (this->debug())
             task_to_run->dump_task_state("Returning from resume");
-
-	  
-
-
-        } catch (const detail::throw_catch_wait& w) {
-          _.lock();
-
-          assert(
-              w.target() == detail::throw_catch_target::sink ||
-              w.target() == detail::throw_catch_target::source);
-
-          if (this->debug())
-            task_to_run->dump_task_state("Caught wait");
-
-          this->task_wait(task_to_run);
-
-          if (this->debug())
-            task_to_run->dump_task_state("Post wait");
-
-        } catch (const detail::throw_catch_notify& n) {
-          _.lock();
-
-          assert(
-              n.target() == detail::throw_catch_target::sink ||
-              n.target() == detail::throw_catch_target::source);
-
-          if (this->debug())
-            task_to_run->dump_task_state("Caught notify");
-
-          /** @note Notification goes to correspondent task of task_to_run */
-          // auto task_to_notify = node_to_task[task_to_run->correspondent()];
-
-          if (n.target() == detail::throw_catch_target::sink) {
-            auto task_to_notify =
-                node_to_task[task_to_run->sink_correspondent()];
-            this->task_notify(task_to_notify);
-
-            if (this->debug()) {
-              task_to_run->dump_task_state("Post notify");
-              task_to_notify->dump_task_state("Correspondent task");
-            }
-
-          } else {
-            auto task_to_notify =
-                node_to_task[task_to_run->source_correspondent()];
-            this->task_notify(task_to_notify);
-
-            if (this->debug()) {
-              task_to_run->dump_task_state("Post notify");
-              task_to_notify->dump_task_state("Correspondent task");
-            }
-          }
-
-        } catch (const detail::throw_catch_exit& ex) {
-          _.lock();
-
-          if (true || ex.target() == detail::throw_catch_target::source) {
-
-
-	    if (this->debug()) {
-	      task_to_run->dump_task_state("Caught exit");
-	      this->dump_queue_state("Caught exit");
-	    }
-	    
-	    --num_tasks_;
-	    ++num_exited_tasks_;
-	    this->task_exit(task_to_run);
-	    
-	    if (this->debug()) {
-	      task_to_run->dump_task_state("Post exit");
-	      this->dump_queue_state("Post exit");
-	    }
-	    
-	    /* Slight optimization to skip call to yield when exiting */
-	    continue;
-	  } else {
-	    std::cout << "*** Caught sink exit\n";
-	  }
-
-          // break; // Don't do this
         } catch (...) {
-          throw;
         }
-
         if (this->debug()) {
           this->dump_queue_state("Pre yield");
           task_to_run->dump_task_state();
@@ -987,4 +855,4 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node
 
 }  // namespace tiledb::common
 
-#endif  // TILEDB_DAG_throw_catch_H
+#endif  // TILEDB_DAG_FRUGAL_H
