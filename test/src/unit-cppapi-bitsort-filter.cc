@@ -333,15 +333,15 @@ DimensionDataMetadata<DimType> set_2d_dim_buffers_hilbert(tiledb_layout_t read_l
 
   for (uint64_t i = 0; i < number_elements; ++i) {
     // Find read index based on the layout.
-    int read_index = i;
+    int read_index = static_cast<int>(i);
     int x = x_dims[pos[i]];
     int y = y_dims[pos[i]];
     if (read_layout == TILEDB_ROW_MAJOR) {
       read_index =
-          ((static_cast<int>(x) - BITSORT_DIM_LO) * elements_per_dim) + (static_cast<int>(y) - BITSORT_DIM_LO);
+          ((static_cast<int>(x) - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) + (static_cast<int>(y) - BITSORT_DIM_LO);
     } else if (read_layout == TILEDB_COL_MAJOR) {
       read_index =
-          ((static_cast<int>(y) - BITSORT_DIM_LO) * elements_per_dim) + (static_cast<int>(x) - BITSORT_DIM_LO);
+          ((static_cast<int>(y) - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) + (static_cast<int>(x) - BITSORT_DIM_LO);
     }
 
     x_dims_hilbert.emplace_back(static_cast<DimType>(x_dims[pos[i]]));
@@ -416,16 +416,16 @@ DimensionDataMetadata<DimType> set_3d_dim_buffers_hilbert(tiledb_layout_t read_l
     int x = x_dims[pos[i]];
     int y = y_dims[pos[i]];
     int z = z_dims[pos[i]];
-    int read_index = i;
+    int read_index = static_cast<int>(i);
     if (read_layout == TILEDB_ROW_MAJOR) {
-      read_index = ((((static_cast<int>(x) - BITSORT_DIM_LO) * elements_per_dim) +
+      read_index = ((((static_cast<int>(x) - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) +
                       (static_cast<int>(y) - BITSORT_DIM_LO)) *
-                    elements_per_dim) +
+                    static_cast<int>(elements_per_dim)) +
                     (static_cast<int>(z) - BITSORT_DIM_LO);
     } else if (read_layout == TILEDB_COL_MAJOR) {
-      read_index = ((((static_cast<int>(z) - BITSORT_DIM_LO) * elements_per_dim) +
+      read_index = ((((static_cast<int>(z) - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) +
                       (static_cast<int>(y) - BITSORT_DIM_LO)) *
-                    elements_per_dim) +
+                    static_cast<int>(elements_per_dim)) +
                     (static_cast<int>(x) - BITSORT_DIM_LO);
     }
 
