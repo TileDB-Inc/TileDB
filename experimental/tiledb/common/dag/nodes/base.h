@@ -61,7 +61,7 @@ class GeneralGraphNode {
   /**
    * Pure virtual function for running graph nodes.
    */
-  virtual void run_once() = 0;
+  virtual void resume() = 0;
   virtual void run() = 0;
   virtual void run_for(size_t iterations = 1) = 0;
   //  virtual void stop();

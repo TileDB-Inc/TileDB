@@ -472,7 +472,7 @@ class GeneralFunctionNode<
    *
    * @note Right now, yielding (waiting) may be done in `Mover` calls (via a
    * `Policy`), i.e., `port_push` and `port_pull`.  Those should interface to
-   * the scheduler, e.g., and cause a return from `resume` or `run_once` that
+   * the scheduler, e.g., and cause a return from `resume` or `resume` that
    * will then be started from when the scheduler is notified (again, down in
    * the `Mover` policy).
    *
@@ -489,7 +489,7 @@ class GeneralFunctionNode<
    * make the nodes almost superfluous.
    *
    */
-  NodeState run_once() {
+  NodeState resume() {
     switch (instruction_counter_) {
       case NodeState::init:
 
@@ -581,12 +581,12 @@ class GeneralFunctionNode<
 
   /**
    *
-   * Function for invoking `run_once` multiple times, as given by the input
+   * Function for invoking `resume` multiple times, as given by the input
    * parameter, or until the node is stopped, whichever happens first.
    *
    * @param rounds The maximum number of times to invoke the producer function.
    * @todo Develop model and API for yielding after each (or some number of)
-   * `run_once`.
+   * `resume`.
    */
   void run_for(size_t rounds) {
     while (rounds--) {
@@ -594,7 +594,7 @@ class GeneralFunctionNode<
         break;
       }
 
-      run_once();
+      resume();
       reset();
     }
     if (!term_sink_all()) {
@@ -604,22 +604,23 @@ class GeneralFunctionNode<
   }
 
   /**
-   * Function for invoking `run_once` multiple times, until the node is
+   * Function for invoking `resume` multiple times, until the node is
    * stopped.
    *
    * @todo Develop model and API for yielding after each (or some number of)
-   * `run_once`.  This doesn't really do a "resume".
+   * `resume`.  This doesn't really do a "resume".
    *
    */
-  NodeState resume() {
+  NodeState run() {
     /*
-     * Call run_once repeatedly until done.
+     * Call resume repeatedly until done.
      *
-     * @note Right now yielding is done inside of run_once.  Perhaps part (or
+     * @note Right now yielding is done inside of resume.  Perhaps part (or
      * all) of Duff's device should happen here instead?
      */
     while (!term_source_all() && !term_sink_all()) {
-      run_once(instruction_counter_);
+      //      resume(instruction_counter_);
+      resume();
       reset();
     }
 
@@ -634,8 +635,8 @@ class GeneralFunctionNode<
   }
 
   /**
-   * `run_once` leaves the `instruction_counter` in the `done` state.  `reset`
-   * sets the `instruction_counter_` to `input` so that `run_once` can be
+   * `resume` leaves the `instruction_counter` in the `done` state.  `reset`
+   * sets the `instruction_counter_` to `input` so that `resume` can be
    * invoked again.
    */
   NodeState reset() {

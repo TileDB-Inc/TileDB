@@ -111,8 +111,8 @@ TEST_CASE(
     Edge(producer_node, consumer_node);
 
     for (size_t i = 0; i < size(v); ++i) {
-      producer_node.run_once();
-      consumer_node.run_once();
+      producer_node.resume();
+      consumer_node.resume();
     }
     CHECK(std::size(v) == 10);
     CHECK(std::size(w) == 10);
@@ -137,8 +137,8 @@ TEST_CASE(
     Edge(producer_node, consumer_node);
 
     for (size_t i = 0; i < size(w); ++i) {
-      producer_node.run_once();
-      consumer_node.run_once();
+      producer_node.resume();
+      consumer_node.resume();
     }
     CHECK(size(v) == 10);
     CHECK(std::equal(begin(v), end(v), begin(w)));
@@ -160,8 +160,8 @@ TEST_CASE(
     Edge(producer_node, consumer_node);
 
     for (size_t i = 0; i < size(w); ++i) {
-      producer_node.run_once();
-      consumer_node.run_once();
+      producer_node.resume();
+      consumer_node.resume();
     }
     CHECK(size(v) == 10);
     CHECK(std::equal(begin(v), end(v), begin(w)));
@@ -270,8 +270,8 @@ TEST_CASE(
     Edge(producer_node, consumer_node);
 
     for (size_t i = 0; i < size(v); ++i) {
-      producer_node.run_once();
-      consumer_node.run_once();
+      producer_node.resume();
+      consumer_node.resume();
     }
     CHECK(std::size(v) == 10);
     CHECK(std::size(w) == 10);
@@ -311,8 +311,8 @@ TEST_CASE(
     Edge(producer_node, consumer_node);
 
     for (size_t i = 0; i < size(v); ++i) {
-      producer_node.run_once();
-      consumer_node.run_once();
+      producer_node.resume();
+      consumer_node.resume();
     }
     CHECK(std::size(v) == 10);
     CHECK(std::size(w) == 10);
@@ -336,8 +336,8 @@ TEST_CASE(
     Edge(producer_node, consumer_node);
 
     for (size_t i = 0; i < size(w); ++i) {
-      producer_node.run_once();
-      consumer_node.run_once();
+      producer_node.resume();
+      consumer_node.resume();
     }
     CHECK(std::size(v) == 10);
     CHECK(std::size(w) == 10);
@@ -359,8 +359,8 @@ TEST_CASE(
     Edge(producer_node, consumer_node);
 
     for (size_t i = 0; i < size(w); ++i) {
-      producer_node.run_once();
-      consumer_node.run_once();
+      producer_node.resume();
+      consumer_node.resume();
     }
     CHECK(std::size(v) == 10);
     CHECK(std::size(w) == 10);

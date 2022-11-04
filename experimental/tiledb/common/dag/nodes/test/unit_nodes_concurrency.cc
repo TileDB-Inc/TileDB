@@ -185,21 +185,21 @@ void simple_graph() {
     auto fun_q = [&]() {
       size_t N = rounds;
       while (N--) {
-        q.run_once();
+        q.resume();
       }
     };
 
     auto fun_r = [&]() {
       size_t N = rounds;
       while (N--) {
-        r.run_once();
+        r.resume();
       }
     };
 
     auto fun_t = [&]() {
       size_t N = rounds;
       while (N--) {
-        t.run_once();
+        t.resume();
       }
     };
 
@@ -213,11 +213,11 @@ void simple_graph() {
 
       auto fut_q = std::async(std::launch::async, fun_q);
 
-      r.run_once();
-      r.run_once();
-      r.run_once();
-      r.run_once();
-      r.run_once();
+      r.resume();
+      r.resume();
+      r.resume();
+      r.resume();
+      r.resume();
 
       fut_q.get();
     }
@@ -231,11 +231,11 @@ void simple_graph() {
 
       auto fut_r = std::async(std::launch::async, fun_r);
 
-      q.run_once();
-      q.run_once();
-      q.run_once();
-      q.run_once();
-      q.run_once();
+      q.resume();
+      q.resume();
+      q.resume();
+      q.resume();
+      q.resume();
 
       fut_r.get();
     }
@@ -252,11 +252,11 @@ void simple_graph() {
       auto fut_q = std::async(std::launch::async, fun_q);
       auto fut_t = std::async(std::launch::async, fun_t);
 
-      r.run_once();
-      r.run_once();
-      r.run_once();
-      r.run_once();
-      r.run_once();
+      r.resume();
+      r.resume();
+      r.resume();
+      r.resume();
+      r.resume();
 
       fut_q.get();
       fut_t.get();
@@ -274,11 +274,11 @@ void simple_graph() {
       auto fut_r = std::async(std::launch::async, fun_r);
       auto fut_t = std::async(std::launch::async, fun_t);
 
-      q.run_once();
-      q.run_once();
-      q.run_once();
-      q.run_once();
-      q.run_once();
+      q.resume();
+      q.resume();
+      q.resume();
+      q.resume();
+      q.resume();
 
       fut_t.get();
       fut_r.get();

@@ -1,5 +1,5 @@
 /**
- * @file   simple.h
+ * @file   simple_node.h
  *
  * @section LICENSE
  *
@@ -158,7 +158,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
    * the item mover.  It will also issue `stop` if the `stop_source` is stopped
    * by the enclosed function.
    */
-  void run_once() override {
+  void resume() override {
     auto mover = this->get_mover();
     if (mover->is_stopping()) {
       throw std::runtime_error("Trying to stop a stopping producer");
@@ -192,7 +192,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
     }
     if (stop_source_.stop_requested()) {
       if (mover->debug_enabled()) {
-        std::cout << "run_once stopping" << std::endl;
+        std::cout << "resume stopping" << std::endl;
       }
       mover->port_exhausted();
       return;
@@ -221,7 +221,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
   }
 
   /**
-   * Invoke `run_once` until stopped.
+   * Invoke `resume` until stopped.
    */
   void run() override {
     auto mover = this->get_mover();
@@ -231,14 +231,14 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
     }
 
     while (!mover->is_stopping()) {
-      run_once();
+      resume();
     }
-    // run_once() will have to have invoked port_exhausted() to break out of the
+    // resume() will have to have invoked port_exhausted() to break out of the
     // loop.
   }
 
   /**
-   * Invoke `run_once` a given number of times, or until stopped, whichever
+   * Invoke `resume` a given number of times, or until stopped, whichever
    * comes first.
    *
    *  @param rounds The maximum number of times to invoke the producer function.
@@ -253,7 +253,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
     }
 
     while (rounds-- && !mover->is_stopping()) {  // or stop_requested()?
-      run_once();
+      resume();
     }
 
     if (!mover->is_stopping()) {  // or stop_requested()?
@@ -290,7 +290,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
       }
       if (stop_source_.stop_requested()) {
         if (mover->debug_enabled()) {
-          std::cout << "run_once stopping" << std::endl;
+          std::cout << "resume stopping" << std::endl;
         }
         break;
       }
@@ -404,7 +404,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
    * Function for obtaining items from the item mover and invoking the stored
    * function on each item.
    */
-  void run_once() override {
+  void resume() override {
     auto mover = this->get_mover();
 
     /*
@@ -472,7 +472,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
   }
 
   /**
-   * Invoke `run_once()` until the node is stopped.
+   * Invoke `resume()` until the node is stopped.
    */
   void run() override {
     auto mover = this->get_mover();
@@ -482,12 +482,12 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
     }
 
     while (!mover->is_done()) {
-      run_once();
+      resume();
     }
   }
 
   /**
-   * Invoke `run_once()` a given number of times, or until the node is stopped,
+   * Invoke `resume()` a given number of times, or until the node is stopped,
    * whichever comes first.
    *
    * @param rounds The maximum number of times to invoke the producer function.
@@ -502,7 +502,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
     }
 
     while (rounds-- && !mover->is_done()) {
-      run_once();
+      resume();
     }
     if (!mover->is_done()) {
       mover->port_pull();
@@ -653,7 +653,7 @@ class FunctionNode : public GraphNode,
    * issue `stop` if either its `Sink` portion or its `Source` portion is
    * stopped.
    */
-  void run_once() override {
+  void resume() override {
     auto source_mover = SourceBase::get_mover();
     auto sink_mover = SinkBase::get_mover();
 
@@ -726,7 +726,7 @@ class FunctionNode : public GraphNode,
   }
 
   /*
-   * Function for invoking `run_once` multiple times, as given by the input
+   * Function for invoking `resume` multiple times, as given by the input
    * parameter, or until the node is stopped, whichever happens first.
    *
    * @param rounds The maximum number of times to invoke the producer function.
@@ -739,7 +739,7 @@ class FunctionNode : public GraphNode,
       if (sink_mover->is_done() || source_mover->is_done()) {
         break;
       }
-      run_once();
+      resume();
     }
     if (!sink_mover->is_done()) {
       if (sink_mover->debug_enabled())
@@ -750,7 +750,7 @@ class FunctionNode : public GraphNode,
   }
 
   /*
-   * Function for invoking `run_once` multiple times, until the node is stopped.
+   * Function for invoking `resume` multiple times, until the node is stopped.
    *
    */
   void run() override {
@@ -758,7 +758,7 @@ class FunctionNode : public GraphNode,
     auto sink_mover = SinkBase::get_mover();
 
     while (!sink_mover->is_done() && !source_mover->is_done()) {
-      run_once();
+      resume();
     }
     if (!sink_mover->is_done()) {
       if (sink_mover->debug_enabled())

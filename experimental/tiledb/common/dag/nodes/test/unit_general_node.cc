@@ -69,7 +69,7 @@ TEST_CASE("GeneralNode: Verify various API approaches", "[general]") {
       a{};
 }
 
-TEST_CASE("GeneralNode: Verify simple run_once", "[general]") {
+TEST_CASE("GeneralNode: Verify simple resume", "[general]") {
   [[maybe_unused]] GeneralFunctionNode<
       AsyncMover2,
       std::tuple<size_t, int>,
@@ -158,8 +158,8 @@ TEST_CASE(
   Edge g{std::get<0>(x.outputs_), std::get<1>(y.inputs_)};
   Edge h{std::get<1>(x.outputs_), std::get<0>(y.inputs_)};
 
-  x.run_once();
-  y.run_once();
+  x.resume();
+  y.resume();
 
   CHECK(ext1 == 3.14159);
   CHECK(ext2 == 5);
@@ -464,23 +464,23 @@ TEST_CASE(
   Edge g{q, std::get<0>(r.inputs_)};
   Edge h{std::get<0>(r.outputs_), s};
 
-  q.run_once();
-  r.run_once();
-  s.run_once();
+  q.resume();
+  r.resume();
+  s.resume();
 
   CHECK(v.size() == 1);
 
-  q.run_once();
+  q.resume();
   r.reset();
-  r.run_once();
-  s.run_once();
+  r.resume();
+  s.resume();
 
   CHECK(v.size() == 2);
 
-  q.run_once();
+  q.resume();
   r.reset();
-  r.run_once();
-  s.run_once();
+  r.resume();
+  s.resume();
 
   CHECK(v.size() == 3);
 
@@ -522,31 +522,31 @@ TEST_CASE(
   Edge h1{std::get<0>(r.outputs_), s1};
   Edge h2{std::get<1>(r.outputs_), s2};
 
-  q1.run_once();
-  q2.run_once();
-  r.run_once();
-  s1.run_once();
-  s2.run_once();
+  q1.resume();
+  q2.resume();
+  r.resume();
+  s1.resume();
+  s2.resume();
 
   CHECK(v.size() == 1);
   CHECK(w.size() == 1);
 
-  q1.run_once();
-  q2.run_once();
+  q1.resume();
+  q2.resume();
   r.reset();
-  r.run_once();
-  s1.run_once();
-  s2.run_once();
+  r.resume();
+  s1.resume();
+  s2.resume();
 
   CHECK(v.size() == 2);
   CHECK(w.size() == 2);
 
-  q1.run_once();
-  q2.run_once();
+  q1.resume();
+  q2.resume();
   r.reset();
-  r.run_once();
-  s1.run_once();
-  s2.run_once();
+  r.resume();
+  s1.resume();
+  s2.resume();
 
   CHECK(v.size() == 3);
   CHECK(w.size() == 3);
@@ -635,20 +635,20 @@ void asynchronous_with_function_node(
   auto fun_a1 = [&]() {
     size_t N = rounds;
     while (N--) {
-      q1.run_once();
+      q1.resume();
     }
   };
   auto fun_a2 = [&]() {
     size_t N = rounds;
     while (N--) {
-      q2.run_once();
+      q2.resume();
     }
   };
 
   auto fun_b = [&]() {
     size_t N = rounds;
     while (N--) {
-      r.run_once();
+      r.resume();
       r.reset();
     }
   };
@@ -656,14 +656,14 @@ void asynchronous_with_function_node(
   auto fun_c1 = [&]() {
     size_t N = rounds;
     while (N--) {
-      s1.run_once();
+      s1.resume();
     }
   };
 
   auto fun_c2 = [&]() {
     size_t N = rounds;
     while (N--) {
-      s2.run_once();
+      s2.resume();
     }
   };
 

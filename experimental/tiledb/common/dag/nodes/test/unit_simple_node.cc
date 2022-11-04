@@ -732,18 +732,18 @@ TEST_CASE("Nodes: Pass some data, two attachment orders", "[nodes]") {
     attach(p, r);
   }
 
-  p.run_once();
-  r.run_once();
+  p.resume();
+  r.resume();
 
   CHECK(v.size() == 1);
 
-  p.run_once();
-  r.run_once();
+  p.resume();
+  r.resume();
 
   CHECK(v.size() == 2);
 
-  p.run_once();
-  r.run_once();
+  p.resume();
+  r.resume();
 
   CHECK(v.size() == 3);
 
@@ -773,14 +773,14 @@ TEST_CASE("Nodes: Asynchronously pass some data", "[nodes]") {
   auto fun_a = [&]() {
     size_t N = rounds;
     while (N--) {
-      p.run_once();
+      p.resume();
     }
   };
 
   auto fun_b = [&]() {
     size_t N = rounds;
     while (N--) {
-      r.run_once();
+      r.resume();
     }
   };
 
@@ -843,14 +843,14 @@ TEST_CASE("Nodes: Asynchronously pass some data, random delays", "[nodes]") {
   auto fun_a = [&]() {
     size_t N = rounds;
     while (N--) {
-      p.run_once();
+      p.resume();
     }
   };
 
   auto fun_b = [&]() {
     size_t N = rounds;
     while (N--) {
-      r.run_once();
+      r.resume();
     }
   };
 
@@ -923,21 +923,21 @@ TEST_CASE(
   attach(q, r);
   attach(r, s);
 
-  q.run_once();
-  r.run_once();
-  s.run_once();
+  q.resume();
+  r.resume();
+  s.resume();
 
   CHECK(v.size() == 1);
 
-  q.run_once();
-  r.run_once();
-  s.run_once();
+  q.resume();
+  r.resume();
+  s.resume();
 
   CHECK(v.size() == 2);
 
-  q.run_once();
-  r.run_once();
-  s.run_once();
+  q.resume();
+  r.resume();
+  s.resume();
 
   CHECK(v.size() == 3);
 
@@ -996,21 +996,21 @@ void asynchronous_with_function_node(
   auto fun_a = [&]() {
     size_t N = rounds;
     while (N--) {
-      q.run_once();
+      q.resume();
     }
   };
 
   auto fun_b = [&]() {
     size_t N = rounds;
     while (N--) {
-      r.run_once();
+      r.resume();
     }
   };
 
   auto fun_c = [&]() {
     size_t N = rounds;
     while (N--) {
-      s.run_once();
+      s.resume();
     }
   };
 
@@ -1143,28 +1143,28 @@ void asynchronous_with_function_node_4(
   auto fun_a = [&]() {
     size_t N = rounds;
     while (N--) {
-      q.run_once();
+      q.resume();
     }
   };
 
   auto fun_b = [&]() {
     size_t N = rounds;
     while (N--) {
-      r.run_once();
+      r.resume();
     }
   };
 
   auto fun_c = [&]() {
     size_t N = rounds;
     while (N--) {
-      s.run_once();
+      s.resume();
     }
   };
 
   auto fun_d = [&]() {
     size_t N = rounds;
     while (N--) {
-      t.run_once();
+      t.resume();
     }
   };
 
