@@ -154,6 +154,8 @@ class FragmentConsolidator : public Consolidator {
     float amplification_;
     /** Attribute buffer size. */
     uint64_t buffer_size_;
+    /** Max fragment size. */
+    uint64_t max_fragment_size_;
     /**
      * Number of consolidation steps performed in a single
      * consolidation invocation.

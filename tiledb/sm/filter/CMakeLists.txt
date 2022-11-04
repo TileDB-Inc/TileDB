@@ -225,8 +225,6 @@ add_executable(compile_filter_pipeline EXCLUDE_FROM_ALL)
 add_dependencies(all_link_complete compile_filter_pipeline)
 target_link_libraries(compile_filter_pipeline PRIVATE filter_pipeline)
 target_sources(compile_filter_pipeline PRIVATE test/compile_filter_pipeline_main.cc)
-add_dependencies(all_link_complete compile_filter_pipeline)
-
 
 if (TILEDB_TESTS)
     add_executable(unit_filter_create EXCLUDE_FROM_ALL)

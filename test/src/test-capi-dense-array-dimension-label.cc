@@ -32,7 +32,7 @@
  */
 
 #include "test/src/experimental_helpers.h"
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"

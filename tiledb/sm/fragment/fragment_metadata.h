@@ -619,10 +619,8 @@ class FragmentMetadata {
 
   /**
    * Compute fragment min, max, sum, null count for all dimensions/attributes.
-   *
-   * @return Status.
    */
-  Status compute_fragment_min_max_sum_null_count();
+  void compute_fragment_min_max_sum_null_count();
 
   /**
    * Sets array schema pointer.

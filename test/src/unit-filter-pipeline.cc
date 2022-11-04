@@ -31,7 +31,7 @@
  * Tests the `FilterPipeline` class.
  */
 
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -66,13 +66,21 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
-class tiledb::sm::WhiteboxTile {
- public:
-  static void reallocate_unfiltered_buffer(Tile& tile, uint64_t tile_size) {
-    tile.size_ = tile_size;
-    tile.data_.reset(static_cast<char*>(tdb_malloc(tile.size_)));
-  }
-};
+Tile recreate_tile_for_unfiltering(
+    const uint32_t dim_num, const uint64_t tile_size, Tile&& tile) {
+  Tile ret(
+      tile.format_version(),
+      tile.type(),
+      tile.cell_size(),
+      dim_num,
+      tile_size,
+      tile.filtered_buffer().size());
+  memcpy(
+      ret.filtered_buffer().data(),
+      tile.filtered_buffer().data(),
+      tile.filtered_buffer().size());
+  return ret;
+}
 
 /**
  * Simple filter that modifies the input stream by adding 1 to every input
@@ -599,7 +607,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
     offset += sizeof(uint64_t);
   }
 
-  WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
   CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
   CHECK(tile.filtered_buffer().size() == 0);
@@ -723,7 +731,7 @@ TEST_CASE(
     }
   }
 
-  WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
   CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
   CHECK(tile.filtered_buffer().size() == 0);
@@ -796,7 +804,7 @@ TEST_CASE(
       offset += sizeof(uint64_t);
     }
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -845,7 +853,7 @@ TEST_CASE(
       offset += sizeof(uint64_t);
     }
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -974,7 +982,7 @@ TEST_CASE(
       }
     }
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -1028,7 +1036,7 @@ TEST_CASE(
       }
     }
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -1105,7 +1113,7 @@ TEST_CASE(
       offset += sizeof(uint64_t);
     }
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -1154,7 +1162,7 @@ TEST_CASE(
       offset += sizeof(uint64_t);
     }
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -1283,7 +1291,7 @@ TEST_CASE(
       }
     }
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -1337,7 +1345,7 @@ TEST_CASE(
       }
     }
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -1413,7 +1421,7 @@ TEST_CASE(
     offset += sizeof(uint64_t);
   }
 
-  WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
   CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
   CHECK(tile.filtered_buffer().size() == 0);
@@ -1541,7 +1549,7 @@ TEST_CASE(
     }
   }
 
-  WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
   CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
   CHECK(tile.filtered_buffer().size() == 0);
@@ -1604,7 +1612,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() < nelts * sizeof(uint64_t));
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -1628,7 +1636,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() < nelts * sizeof(uint64_t));
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -1654,7 +1662,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() < nelts * sizeof(uint64_t));
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -1772,7 +1780,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
         tile.filtered_buffer().value_at_as<uint64_t>(0) ==
         9);  // Number of chunks
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -1799,7 +1807,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
         tile.filtered_buffer().value_at_as<uint64_t>(0) ==
         9);  // Number of chunks
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -1828,7 +1836,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
         tile.filtered_buffer().value_at_as<uint64_t>(0) ==
         9);  // Number of chunks
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -1913,7 +1921,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
       offset += sizeof(uint64_t);
     }
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -1980,7 +1988,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
       offset += sizeof(uint64_t);
     }
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -2118,7 +2126,7 @@ TEST_CASE(
       }
     }
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -2186,7 +2194,7 @@ TEST_CASE(
       }
     }
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -2267,7 +2275,7 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
     offset += sizeof(uint64_t);
   }
 
-  WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
   CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
   CHECK(tile.filtered_buffer().size() == 0);
@@ -2402,7 +2410,7 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
     }
   }
 
-  WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
   CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
   CHECK(tile.filtered_buffer().size() == 0);
@@ -2495,7 +2503,7 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
     offset += sizeof(uint64_t);
   }
 
-  WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
   CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
   CHECK(tile.filtered_buffer().size() == 0);
@@ -2593,7 +2601,7 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -2640,7 +2648,7 @@ TEST_CASE(
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
 
-  WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
   CHECK(md5_pipeline
             .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -2660,7 +2668,7 @@ TEST_CASE(
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
 
-  WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
   CHECK(sha_256_pipeline
             .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -2730,7 +2738,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     auto compressed_size = tile.filtered_buffer().size();
     CHECK(compressed_size < nelts * sizeof(uint64_t));
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -2754,7 +2762,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
       CHECK(tile.size() == 0);
       CHECK(tile.filtered_buffer().size() != 0);
 
-      WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+      tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
       CHECK(pipeline
                 .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
                 .ok());
@@ -2793,7 +2801,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -2835,7 +2843,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size2);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size2, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -2867,7 +2875,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -3012,7 +3020,7 @@ TEST_CASE(
     auto compressed_size = tile.filtered_buffer().size();
     CHECK(compressed_size < nelts * sizeof(uint64_t));
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -3038,7 +3046,7 @@ TEST_CASE(
       CHECK(tile.size() == 0);
       CHECK(tile.filtered_buffer().size() != 0);
 
-      WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+      tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
       CHECK(pipeline
                 .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
                 .ok());
@@ -3078,7 +3086,7 @@ TEST_CASE(
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -3145,7 +3153,7 @@ TEST_CASE(
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size2);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size2, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -3178,7 +3186,7 @@ TEST_CASE(
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -3251,7 +3259,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
         encoded_size == pipeline_metadata_size + filter_metadata_size +
                             nelts * sizeof(uint64_t));
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -3275,7 +3283,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
       CHECK(tile.size() == 0);
       CHECK(tile.filtered_buffer().size() != 0);
 
-      WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+      tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
       CHECK(pipeline
                 .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
                 .ok());
@@ -3432,7 +3440,7 @@ TEST_CASE(
         encoded_size ==
         pipeline_metadata_size + total_md_size + nelts * sizeof(uint64_t));
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -3458,7 +3466,7 @@ TEST_CASE(
       CHECK(tile.size() == 0);
       CHECK(tile.filtered_buffer().size() != 0);
 
-      WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+      tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
       CHECK(pipeline
                 .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
                 .ok());
@@ -3518,7 +3526,7 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -3552,7 +3560,8 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
     CHECK(tile2.size() == 0);
     CHECK(tile2.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile2, tile_size2);
+    tile2 =
+        recreate_tile_for_unfiltering(dim_num, tile_size2, std::move(tile2));
     CHECK(pipeline
               .run_reverse(&test::g_helper_stats, &tile2, nullptr, &tp, config)
               .ok());
@@ -3647,7 +3656,7 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -3683,7 +3692,8 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
     CHECK(tile2.size() == 0);
     CHECK(tile2.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile2, tile_size2);
+    tile2 =
+        recreate_tile_for_unfiltering(dim_num, tile_size2, std::move(tile2));
     CHECK(pipeline
               .run_reverse(&test::g_helper_stats, &tile2, nullptr, &tp, config)
               .ok());
@@ -3730,7 +3740,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -3764,7 +3774,8 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
     CHECK(tile2.size() == 0);
     CHECK(tile2.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile2, tile_size2);
+    tile2 =
+        recreate_tile_for_unfiltering(dim_num, tile_size2, std::move(tile2));
     CHECK(pipeline
               .run_reverse(&test::g_helper_stats, &tile2, nullptr, &tp, config)
               .ok());
@@ -3859,7 +3870,7 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -3895,7 +3906,8 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
     CHECK(tile2.size() == 0);
     CHECK(tile2.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile2, tile_size2);
+    tile2 =
+        recreate_tile_for_unfiltering(dim_num, tile_size2, std::move(tile2));
     CHECK(pipeline
               .run_reverse(&test::g_helper_stats, &tile2, nullptr, &tp, config)
               .ok());
@@ -3954,7 +3966,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(
         pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
@@ -3971,7 +3983,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     key[0]++;
     filter->set_key(key);
 
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     CHECK(!pipeline
                .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
                .ok());
@@ -3979,7 +3991,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     // Fix key and check success. Note: this test depends on the implementation
     // leaving the tile data unmodified when the decryption fails, which is not
     // true in general use of the filter pipeline.
-    WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
     key[0]--;
     filter->set_key(key);
     CHECK(
@@ -4063,7 +4075,7 @@ void testing_float_scaling_filter() {
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
 
-  WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
   CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
   for (uint64_t i = 0; i < nelts; i++) {
@@ -4125,7 +4137,7 @@ void testing_xor_filter(Datatype t) {
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
 
-  WhiteboxTile::reallocate_unfiltered_buffer(tile, tile_size);
+  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
   CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
             .ok());
   for (uint64_t i = 0; i < nelts; i++) {

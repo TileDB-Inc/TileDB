@@ -99,7 +99,8 @@ Query::Query(
     , fragment_name_(fragment_name)
     , remote_query_(false)
     , is_dimension_label_ordered_read_(false)
-    , dimension_label_increasing_(true) {
+    , dimension_label_increasing_(true)
+    , fragment_size_(std::numeric_limits<uint64_t>::max()) {
   assert(array->is_open());
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
@@ -244,8 +245,7 @@ Status Query::add_range_var(
         " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
 
   // Add range
-  Range r;
-  r.set_range_var(start, start_size, end, end_size);
+  Range r{start, start_size, end, end_size};
   return subarray_.add_range(dim_idx, std::move(r), read_range_oob == "error");
 }
 
@@ -1309,8 +1309,9 @@ Status Query::process() {
   // Check if we need to process label ranges and update subarray before
   // continuing to the main query.
   if (dim_label_queries_ && !dim_label_queries_->completed_range_queries()) {
-    // Process the dimension label queries.
-    dim_label_queries_->process_range_queries(subarray_);
+    // Process the dimension label queries. Updates the subarray of this query
+    // to have the index ranges computed from the label ranges.
+    dim_label_queries_->process_range_queries(this);
 
     // The dimension label query did not complete. For now, we are failing on
     // this step. In the future, this may be updated to allow incomplete
@@ -1527,6 +1528,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           buffers_,
           subarray_,
           layout_,
+          fragment_size_,
           written_fragment_info_,
           disable_checks_consolidation_,
           processed_conditions_,
@@ -2501,6 +2503,14 @@ Status Query::add_update_value(
   return Status::Ok();
 }
 
+void Query::add_index_ranges_from_label(
+    uint32_t dim_idx,
+    const bool is_point_ranges,
+    const void* start,
+    const uint64_t count) {
+  subarray_.add_index_ranges_from_label(dim_idx, is_point_ranges, start, count);
+}
+
 void Query::set_status(QueryStatus status) {
   status_ = status;
 }
@@ -2691,6 +2701,13 @@ Status Query::submit() {
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     return Status::Ok();
+  }
+
+  // Make sure fragment size is only set for global order.
+  if (fragment_size_ != std::numeric_limits<uint64_t>::max() &&
+      (layout_ != Layout::GLOBAL_ORDER || type_ != QueryType::WRITE)) {
+    throw StatusException(Status_QueryError(
+        "Fragment size is only supported for global order writes."));
   }
 
   // Check attribute/dimensions buffers completeness before query submits

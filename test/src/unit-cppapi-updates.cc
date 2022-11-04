@@ -31,7 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
@@ -120,6 +120,16 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API updates: empty second write", "[updates][updates-empty-write]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   const std::string array_name = "updates_empty_write";
   Context ctx;
   VFS vfs(ctx);
@@ -145,15 +155,6 @@ TEST_CASE(
   query_w1.set_layout(layout).set_data_buffer("d", data).set_offsets_buffer(
       "d", offsets);
 
-  bool serialized_writes = false;
-  SECTION("no serialization") {
-    serialized_writes = false;
-  }
-  SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
-#endif
-  }
   if (!serialized_writes) {
     query_w1.submit();
     query_w1.finalize();

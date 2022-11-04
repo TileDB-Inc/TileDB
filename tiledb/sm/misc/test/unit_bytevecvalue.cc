@@ -1,5 +1,5 @@
 /**
- * @file unit-bytevecvalue.cc
+ * @file unit_bytevecvalue.cc
  *
  * @section LICENSE
  *
@@ -33,8 +33,7 @@
 #include <cstring>
 #include <numeric>
 
-#include "test/src/ast_helpers.h"
-#include "test/src/helpers.h"
+#include "test/support/src/ast_helpers.h"
 #include "tiledb/sm/misc/types.h"
 
 #include <test/support/tdb_catch.h>

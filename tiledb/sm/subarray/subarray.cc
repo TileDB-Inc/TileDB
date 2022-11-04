@@ -614,9 +614,8 @@ Status Subarray::add_range_var(
   }
 
   // Add range
-  Range r;
-  r.set_range_var(start, start_size, end, end_size);
-  return this->add_range(dim_idx, std::move(r), err_on_range_oob_);
+  return this->add_range(
+      dim_idx, Range(start, start_size, end, end_size), err_on_range_oob_);
 }
 
 Status Subarray::add_range_var_by_name(

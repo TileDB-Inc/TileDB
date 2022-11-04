@@ -45,8 +45,6 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class WhiteboxTile;
-
 /**
  * Handles tile information. A tile can be in main memory if it has been
  * fetched from the disk or has been mmap-ed from a file. However, a tile
@@ -54,8 +52,6 @@ class WhiteboxTile;
  * offset in the file where the tile data begin, plus the tile size.
  */
 class Tile {
-  friend class WhiteboxTile;
-
  public:
   /**
    * Computes the chunk size for a tile.
@@ -118,7 +114,7 @@ class Tile {
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
    * @param buffer The buffer to be encapsulated by the tile object. The
-   * tile will not take ownership of the buffer.
+   *      tile will not take ownership of the buffer.
    * @param size The buffer size.
    */
   Tile(

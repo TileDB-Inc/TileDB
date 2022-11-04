@@ -1,5 +1,5 @@
 /**
- * @file dimension_label_query_create.h
+ * @file   unit_status.cc
  *
  * @section LICENSE
  *
@@ -27,38 +27,25 @@
  *
  * @section DESCRIPTION
  *
- * Factory for creating dimension label query objects.
+ * Tests the `Status` class.
  */
 
-#ifndef TILEDB_DIMENSION_LABEL_QUERY_CREATE_H
-#define TILEDB_DIMENSION_LABEL_QUERY_CREATE_H
-
-#include "tiledb/sm/query/dimension_label/dimension_label_data_query.h"
+#include <test/support/tdb_catch.h>
+#include "tiledb/common/status.h"
 
 using namespace tiledb::common;
 
-namespace tiledb::sm {
+TEST_CASE("Status: Test ok", "[status]") {
+  Status st = Status::Ok();
+  CHECK(st.ok());
+  st = Status_Error("err msg");
+  CHECK(!st.ok());
+}
 
-enum class LabelOrder : uint8_t;
+TEST_CASE("Status: Test to_string", "[status]") {
+  Status ok = Status::Ok();
+  CHECK_THAT(ok.to_string(), Catch::Matchers::Equals("Ok"));
 
-class DimensionLabelQueryCreate {
- public:
-  /**
-   * Factory method for read data query.
-   */
-  static DimensionLabelDataQuery* make_write_query(
-      const std::string& label_name,
-      LabelOrder label_order,
-      StorageManager* storage_manager,
-      stats::Stats* stats,
-      DimensionLabel* dimension_label,
-      const Subarray& parent_subarray,
-      const QueryBuffer& label_buffer,
-      const QueryBuffer& index_buffer,
-      const uint32_t dim_idx,
-      optional<std::string> fragment_name);
-};
-
-}  // namespace tiledb::sm
-
-#endif
+  Status err = Status_Error("err msg");
+  CHECK_THAT(err.to_string(), Catch::Matchers::Equals("Error: err msg"));
+}

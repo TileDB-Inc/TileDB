@@ -88,24 +88,26 @@ IndexData* IndexDataCreate::make_index_data(
 }
 
 IndexData* IndexDataCreate::make_index_data(
-    const Datatype type, const uint64_t num_values) {
+    const Datatype type,
+    const uint64_t num_values,
+    const bool ranges_are_points) {
   switch (type) {
     case Datatype::INT8:
-      return tdb_new(TypedIndexData<int8_t>, num_values);
+      return tdb_new(TypedIndexData<int8_t>, num_values, ranges_are_points);
     case Datatype::UINT8:
-      return tdb_new(TypedIndexData<uint8_t>, num_values);
+      return tdb_new(TypedIndexData<uint8_t>, num_values, ranges_are_points);
     case Datatype::INT16:
-      return tdb_new(TypedIndexData<int16_t>, num_values);
+      return tdb_new(TypedIndexData<int16_t>, num_values, ranges_are_points);
     case Datatype::UINT16:
-      return tdb_new(TypedIndexData<uint16_t>, num_values);
+      return tdb_new(TypedIndexData<uint16_t>, num_values, ranges_are_points);
     case Datatype::INT32:
-      return tdb_new(TypedIndexData<int32_t>, num_values);
+      return tdb_new(TypedIndexData<int32_t>, num_values, ranges_are_points);
     case Datatype::UINT32:
-      return tdb_new(TypedIndexData<uint32_t>, num_values);
+      return tdb_new(TypedIndexData<uint32_t>, num_values, ranges_are_points);
     case Datatype::INT64:
-      return tdb_new(TypedIndexData<int64_t>, num_values);
+      return tdb_new(TypedIndexData<int64_t>, num_values, ranges_are_points);
     case Datatype::UINT64:
-      return tdb_new(TypedIndexData<uint64_t>, num_values);
+      return tdb_new(TypedIndexData<uint64_t>, num_values, ranges_are_points);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -128,7 +130,7 @@ IndexData* IndexDataCreate::make_index_data(
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
-      return tdb_new(TypedIndexData<int64_t>, num_values);
+      return tdb_new(TypedIndexData<int64_t>, num_values, ranges_are_points);
     default:
       stdx::unreachable();
   }

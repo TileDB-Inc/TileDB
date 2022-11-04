@@ -2418,9 +2418,9 @@ Status global_write_state_to_capnp(
 
   auto& cells_written = write_state.cells_written_;
   if (!cells_written.empty()) {
-    auto cells_writen_builder = state_builder->initCellsWritten();
+    auto cells_written_builder = state_builder->initCellsWritten();
     auto entries_builder =
-        cells_writen_builder.initEntries(cells_written.size());
+        cells_written_builder.initEntries(cells_written.size());
     uint64_t index = 0;
     for (auto& entry : cells_written) {
       entries_builder[index].setKey(entry.first);

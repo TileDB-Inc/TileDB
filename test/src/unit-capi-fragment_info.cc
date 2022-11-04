@@ -30,8 +30,8 @@
  * Tests the C API functions for manipulating fragment information.
  */
 
-#include "test/src/helpers.h"
-#include "test/src/serialization_wrappers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/serialization_wrappers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 
