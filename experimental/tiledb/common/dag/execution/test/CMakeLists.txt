@@ -32,7 +32,8 @@
 dag_add_header_only_unit_test(threadpool)
 dag_add_header_only_unit_test(bountiful)
 dag_add_header_only_unit_test(stop_token)
-dag_add_header_only_unit_test(throw_catch)
+dag_add_header_only_unit_test(throw_catch_tasks)
+dag_add_header_only_unit_test(scheduler)
 dag_add_header_only_unit_test(frugal)
 dag_add_header_only_unit_test(task_state_machine)
 

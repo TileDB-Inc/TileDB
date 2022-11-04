@@ -1,5 +1,5 @@
 /**
- * @file compile_throwcatch_main.cc
+ * @file compile_scheduler_main.cc
  *
  * @section LICENSE
  *
@@ -26,10 +26,13 @@
  * THE SOFTWARE.
  */
 
-#include "../throwcatch.h"
+#include "../bountiful.h"
+#include "../throw_catch.h"
 
 using namespace tiledb::common;
 
 int main() {
   (void)sizeof(ThrowcatchScheduler<size_t>(1));
+  (void)sizeof(BountifulScheduler<size_t>(1));
+  (void)sizeof(BountifulScheduler<size_t>());
 }

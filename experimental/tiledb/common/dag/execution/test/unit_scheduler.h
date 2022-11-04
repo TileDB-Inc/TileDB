@@ -1,5 +1,5 @@
 /**
- * @file experimental/tiledb/common/thread_pool/test/unit_throwcatch.h
+ * @file unit_scheduler.h
  *
  * @section LICENSE
  *
@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  */
 
-#ifndef TILEDB_UNIT_throw_catch_H
-#define TILEDB_UNIT_throw_catch_H
+#ifndef TILEDB_UNIT_SCHEDULER_H
+#define TILEDB_UNIT_SCHEDULER_H
 #include <test/support/tdb_catch.h>
-#endif  // TILEDB_UNIT_throw_catch_H
+#endif  // TILEDB_UNIT_SCHEDULER_H
