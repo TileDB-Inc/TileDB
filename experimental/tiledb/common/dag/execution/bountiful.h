@@ -82,6 +82,9 @@ class BountifulScheduler {
  public:
   std::atomic<bool> debug_{false};
 
+  BountifulScheduler([[maybe_unused]] size_t num_threads = 0) {
+  }
+
   /**
    * @brief Turn on debug mode.
    */

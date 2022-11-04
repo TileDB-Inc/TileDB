@@ -379,10 +379,11 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
         ++this->program_counter_;
         mover->port_pull();
 
-        if (is_done(mover->state()) == "") {
+        if (mover->is_done()) {
           if (this->debug()) {
             std::cout << "=== sink mover done\n";
           }
+          break;
         }
       }
         [[fallthrough]];

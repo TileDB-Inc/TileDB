@@ -720,7 +720,7 @@ public:
     std::cout << "About to release worker threads\n";
 
     /*
-     * Once we have put all of tasks into the runnable queue, we release the
+     * Once we have put all tasks into the runnable queue, we release the
      * worker threads.
      */
     {
