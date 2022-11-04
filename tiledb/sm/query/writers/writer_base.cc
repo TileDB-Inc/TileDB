@@ -800,12 +800,15 @@ Status WriterBase::filter_tiles_bitsort(
   args.reserve(tile_num);
   for (uint64_t i = 0; i < attr_tiles.size(); i++) {
     auto& tile = attr_tiles[i];
+    auto cell_num = tile.cell_num();
 
     // Collect the dim tiles argument.
     std::vector<Tile*> dim_tiles_temp;
     dim_tiles_temp.reserve(dim_tiles.size());
     for (const auto& elem : dim_tiles) {
-      dim_tiles_temp.emplace_back(&((*elem)[i].fixed_tile()));
+      Tile* dim_tile = &((*elem)[i].fixed_tile());
+      dim_tiles_temp.emplace_back(dim_tile);
+      dim_tile->filtered_buffer().expand(cell_num * dim_tile->cell_size());
     }
 
     args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp, false, false);
