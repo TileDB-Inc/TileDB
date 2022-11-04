@@ -354,17 +354,17 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
     auto mover = SinkBase::get_mover();
 
     if (this->debug())
-      std::cout << this->name() + " node " + std::to_string(this->id()) + " resuming with " +
-                   std::to_string(consumed_items_) + " consumed_items" + "\n";
+      std::cout << this->name() + " node " + std::to_string(this->id()) +
+                       " resuming with " + std::to_string(consumed_items_) +
+                       " consumed_items" + "\n";
 
     [[maybe_unused]] std::thread::id this_id = std::this_thread::get_id();
 
-
     if (mover->is_done()) {
-
       if (this->debug())
         std::cout << this->name() + " node " + std::to_string(this->id()) +
-                     " got mover done in consumer at top of resume -- returning\n";
+                         " got mover done in consumer at top of resume -- "
+                         "returning\n";
 
       mover->port_exhausted();
 
@@ -372,7 +372,6 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
     }
 
     switch (this->program_counter_) {
-
       /*
        * case 0 is executed only on the very first call to resume.
        */
@@ -433,6 +432,7 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
         }
 #endif
         f_(thing);
+        ++consumed_items_;
       }
 
         // @todo Should skip yield if pull waited;
@@ -459,7 +459,7 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
       std::cout << "consumer starting run on " << this->get_mover()
                 << std::endl;
     }
-    while (!mover->is_stopping()) {
+    while (!mover->is_done()) {
       resume();
     }
   }
@@ -648,6 +648,11 @@ struct function_node_impl : public node_base, public Sink<SinkMover, BlockIn>, p
         this->program_counter_ = 0;
 
         if (source_mover->is_done() || sink_mover->is_done()) {
+          if (this->debug())
+            std::cout << this->name() + " node " + std::to_string(this->id()) +
+                         " at bottom got sink_mover done -- going to exhaust source\n";
+
+          sink_mover->port_exhausted();
           break;
         }
       }
@@ -671,7 +676,7 @@ struct function_node_impl : public node_base, public Sink<SinkMover, BlockIn>, p
         std::cout << "function final pull in run()" << std::endl;
       sink_mover->port_pull();
     }
-    source_mover->port_exhausted();
+    // source_mover->port_exhausted();
   }
 };
 

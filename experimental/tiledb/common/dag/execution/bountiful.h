@@ -41,12 +41,12 @@
 
 #include <future>
 #include <iostream>
-#include <vector>
 #include <thread>
+#include <vector>
+#include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/item_mover.h"
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
-#include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 
 namespace tiledb::common {
 
@@ -73,7 +73,6 @@ struct SchedulerTraits<BountifulSchedulerPolicy<T>> {
 
 template <class Node>
 class BountifulScheduler {
-
   std::vector<std::future<void>> futures_;
 
   /* ********************************* */
@@ -83,9 +82,9 @@ class BountifulScheduler {
  public:
   std::atomic<bool> debug_{false};
 
-/**
- * @brief Turn on debug mode.
- */
+  /**
+   * @brief Turn on debug mode.
+   */
   void enable_debug() {
     debug_.store(true);
   }
@@ -104,12 +103,12 @@ class BountifulScheduler {
     return debug_.load();
   }
 
-/**
- * @brief Submit a task to the scheduler.
- *
- * @param node The task to submit.
- */
-  void submit(Node&& n)  {
+  /**
+   * @brief Submit a task to the scheduler.
+   *
+   * @param node The task to submit.
+   */
+  void submit(Node&& n) {
     if (debug()) {
       std::cout << "Submitting node " << n->id() << std::endl;
     }
@@ -131,11 +130,10 @@ class BountifulScheduler {
    * @brief Wait for all running tasks to complete
    */
   void sync_wait_all() {
-    for (auto&& f: futures_) {
+    for (auto&& f : futures_) {
       f.get();
     }
   }
-
 };
 
 #if 0
@@ -169,7 +167,7 @@ private:
   }
 
   void on_stop_create(task_handle_type&) {
-    if (this->debug())
+     if (this->debug())
       std::cout << "calling on_stop_create"
                 << "\n";
   }
@@ -263,9 +261,7 @@ private:
 };
 #endif
 
-}
-
-
+}  // namespace tiledb::common
 
 #if 0
 namespace tiledb::common {
@@ -366,6 +362,5 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node
   };
 }  // namespace tiledb::common
 #endif
-
 
 #endif  // TILEDB_DAG_BOUNTIFUL_H

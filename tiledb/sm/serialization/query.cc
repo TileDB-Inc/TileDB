@@ -44,8 +44,6 @@
 #endif
 // clang-format on
 
-#include "tiledb/sm/query/ast/query_ast.h"
-#include "tiledb/sm/query/query.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -60,8 +58,10 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/query/readers/dense_reader.h"
+#include "tiledb/sm/query/ast/query_ast.h"
 #include "tiledb/sm/query/legacy/reader.h"
+#include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
 #include "tiledb/sm/query/writers/writer_base.h"

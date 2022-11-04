@@ -42,8 +42,8 @@
 using namespace tiledb::common;
 
 TEMPLATE_TEST_CASE(
-    "BountifulScheduler: Test soft terminate of sink",
-    "[throw_catch]",
+    "BountifulScheduler: Two nodes",
+    "[bountiful]",
     (std::tuple<
         consumer_node<BountifulMover2, size_t>,
         function_node<BountifulMover2, size_t>,
@@ -52,8 +52,7 @@ TEMPLATE_TEST_CASE(
         consumer_node<BountifulMover3, size_t>,
         function_node<BountifulMover3, size_t>,
         producer_node<BountifulMover3, size_t>>)) {
-
-  bool debug{true};
+  bool debug{false};
 
   auto num_threads = 1UL;
   size_t rounds = 5;
@@ -64,7 +63,108 @@ TEMPLATE_TEST_CASE(
   using F = typename std::tuple_element<1, TestType>::type;
   using P = typename std::tuple_element<2, TestType>::type;
   auto p = P([rounds](std::stop_source& stop_source) {
-    static size_t i {0};
+    static size_t i{0};
+    if (i > rounds) {
+      stop_source.request_stop();
+    }
+    return i++;
+  });
+  auto f = F([](const size_t& i) { return i; });
+  auto g = F([](const size_t& i) { return i; });
+  auto c = C([](const size_t&) {});
+
+  connect(p, c);
+
+  Edge(*p, *c);
+
+  sched.submit(p);
+  sched.submit(c);
+
+  if (debug) {
+    //    sched.debug();
+    p->enable_debug();
+    c->enable_debug();
+  }
+
+  sched.sync_wait_all();
+}
+
+TEMPLATE_TEST_CASE(
+    "BountifulScheduler: Three nodes",
+    "[bountiful]",
+    (std::tuple<
+        consumer_node<BountifulMover2, size_t>,
+        function_node<BountifulMover2, size_t>,
+        producer_node<BountifulMover2, size_t>>),
+    (std::tuple<
+        consumer_node<BountifulMover3, size_t>,
+        function_node<BountifulMover3, size_t>,
+        producer_node<BountifulMover3, size_t>>)) {
+  bool debug{false};
+
+  auto num_threads = 1UL;
+  size_t rounds = 5;
+
+  [[maybe_unused]] auto sched = BountifulScheduler<node>();
+
+  using C = typename std::tuple_element<0, TestType>::type;
+  using F = typename std::tuple_element<1, TestType>::type;
+  using P = typename std::tuple_element<2, TestType>::type;
+  auto p = P([rounds](std::stop_source& stop_source) {
+    static size_t i{0};
+    if (i > rounds) {
+      stop_source.request_stop();
+    }
+    return i++;
+  });
+  auto f = F([](const size_t& i) { return i; });
+  auto g = F([](const size_t& i) { return i; });
+  auto c = C([](const size_t&) {});
+
+  connect(p, f);
+  connect(f, c);
+
+  Edge(*p, *f);
+  Edge(*f, *c);
+
+  sched.submit(p);
+  sched.submit(f);
+  sched.submit(c);
+
+  if (debug) {
+    //    sched.debug();
+
+    p->enable_debug();
+    f->enable_debug();
+    c->enable_debug();
+  }
+
+  sched.sync_wait_all();
+}
+
+TEMPLATE_TEST_CASE(
+    "BountifulScheduler: Four nodes",
+    "[bountiful]",
+    (std::tuple<
+        consumer_node<BountifulMover2, size_t>,
+        function_node<BountifulMover2, size_t>,
+        producer_node<BountifulMover2, size_t>>),
+    (std::tuple<
+        consumer_node<BountifulMover3, size_t>,
+        function_node<BountifulMover3, size_t>,
+        producer_node<BountifulMover3, size_t>>)) {
+  bool debug{false};
+
+  auto num_threads = 1UL;
+  size_t rounds = 5;
+
+  [[maybe_unused]] auto sched = BountifulScheduler<node>();
+
+  using C = typename std::tuple_element<0, TestType>::type;
+  using F = typename std::tuple_element<1, TestType>::type;
+  using P = typename std::tuple_element<2, TestType>::type;
+  auto p = P([rounds](std::stop_source& stop_source) {
+    static size_t i{0};
     if (i > rounds) {
       stop_source.request_stop();
     }
@@ -88,7 +188,7 @@ TEMPLATE_TEST_CASE(
   sched.submit(c);
 
   if (debug) {
-    sched.debug();
+    //    sched.debug();
 
     p->enable_debug();
     f->enable_debug();
@@ -99,13 +199,11 @@ TEMPLATE_TEST_CASE(
   sched.sync_wait_all();
 }
 
-
 #if 0
-
 
 TEMPLATE_TEST_CASE(
     "BountifulScheduler: Test soft terminate of sink",
-    "[throw_catch]",
+    "[bountiful]",
     (std::tuple<
         consumer_node<BountifulMover2, size_t>,
         function_node<BountifulMover2, size_t>,

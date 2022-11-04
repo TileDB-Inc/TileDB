@@ -30,7 +30,7 @@
  * This file declares a throw-catch scheduler for dag.
  */
 
-#include "experimental/tiledb/common/dag/execution/test/throw_catch_nodes.h"
+#include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
 
 #include <atomic>
 #include <cassert>
@@ -64,20 +64,19 @@ TEMPLATE_TEST_CASE(
         consumer_node<ThrowCatchMover3, size_t>,
         function_node<ThrowCatchMover3, size_t>,
         producer_node<ThrowCatchMover3, size_t>>)) {
-
   bool debug{false};
 
   auto num_threads = 1;
   [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(num_threads);
 
   size_t rounds = 5;
-  
+
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
   using P = typename std::tuple_element<2, TestType>::type;
 
-  auto p = P([rounds](std::stop_source& stop_source) { 
-    static size_t i {0};
+  auto p = P([rounds](std::stop_source& stop_source) {
+    static size_t i{0};
     if (i > rounds) {
       stop_source.request_stop();
     }
@@ -111,7 +110,6 @@ TEMPLATE_TEST_CASE(
 
   sched.sync_wait_all();
 }
-
 
 TEMPLATE_TEST_CASE(
     "ThrowCatchScheduler: Test creating nodes",
