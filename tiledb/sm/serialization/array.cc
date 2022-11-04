@@ -588,6 +588,180 @@ Status array_open_deserialize(
   return Status::Ok();
 }
 
+Status maximum_tile_size_to_capnp(
+    uint64_t maximum_tile_size,
+    capnp::MaxTileSize::Builder* max_tile_size_builder) {
+  max_tile_size_builder->setMaxInMemoryTileSize(maximum_tile_size);
+  return Status::Ok();
+}
+
+Status max_tile_size_serialize(
+    uint64_t* maximum_tile_size,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  if (maximum_tile_size == nullptr)
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing maximum_tile_size; maximum_tile_size is null"));
+
+  try {
+    // Serialize
+    ::capnp::MallocMessageBuilder message;
+    auto builder = message.initRoot<capnp::MaxTileSize>();
+
+    RETURN_NOT_OK(maximum_tile_size_to_capnp(*maximum_tile_size, &builder));
+
+    // Copy to buffer
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
+        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
+        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status_SerializationError(
+            "Error serializing maximum tile size; Unknown serialization type "
+            "passed"));
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing maximum tile size; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing maximum tile size; exception " +
+        std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
+Status maximum_tile_size_deserialize(
+    uint64_t* maximum_tile_size,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer) {
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        auto builder = message_builder.initRoot<capnp::MaxTileSize>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            builder);
+        auto reader = builder.asReader();
+
+        // Deserialize
+        *maximum_tile_size = reader.getMaxInMemoryTileSize();
+
+        break;
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes =
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
+        ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_buffer.size() / sizeof(::capnp::word)));
+        auto reader = msg_reader.getRoot<capnp::MaxTileSize>();
+
+        // Deserialize
+        *maximum_tile_size = reader.getMaxInMemoryTileSize();
+
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status_SerializationError(
+            "Error deserializing max tile size; Unknown serialization type "
+            "passed"));
+      }
+    }
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error deserializing max tile size; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error deserializing max tile sizes; exception " +
+        std::string(e.what())));
+  }
+  return Status::Ok();
+}
+
+Status maximum_tile_size_serialize(
+    uint64_t* maximum_tile_size,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  if (maximum_tile_size == nullptr)
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing maximum tile size; maximum tile size is null"));
+
+  try {
+    // Serialize
+    ::capnp::MallocMessageBuilder message;
+    auto builder = message.initRoot<capnp::MaxTileSize>();
+
+    RETURN_NOT_OK(maximum_tile_size_to_capnp(*maximum_tile_size, &builder));
+
+    // Copy to buffer
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
+        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
+        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status_SerializationError(
+            "Error serializing maximum tile size; Unknown serialization type "
+            "passed"));
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing maximum tile size; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Error serializing maximum tile size; exception " +
+        std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
 #else
 
 Status array_serialize(Array*, SerializationType, Buffer*, const bool) {
@@ -616,6 +790,19 @@ Status metadata_serialize(Metadata*, SerializationType, Buffer*) {
 }
 
 Status metadata_deserialize(Metadata*, SerializationType, const Buffer&) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot deserialize; serialization not enabled."));
+}
+
+Status maximum_tile_size_deserialize(uint64_t*, SerializationType, const Buffer&) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot deserialize; serialization not enabled."));
+}
+
+Status maximum_tile_size_serialize(
+    uint64_t* maximum_tile_size,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

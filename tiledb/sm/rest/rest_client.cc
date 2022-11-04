@@ -465,6 +465,37 @@ Status RestClient::get_array_metadata_from_rest(
       array->unsafe_metadata(), serialization_type_, returned_data);
 }
 
+#if 0
+Status get_array_maximum_tile_size_from_rest(
+    const URI& uri, uint64_t* maximum_tile_size) {
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string array_ns, array_uri;
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri) +
+                          "/maximum_tile_size";
+
+  // Get the data
+  Buffer returned_data;
+  RETURN_NOT_OK(curlc.get_data(
+      stats_, url, serialization_type_, &returned_data, cache_key));
+  if (returned_data.data() == nullptr || returned_data.size() == 0)
+    return LOG_STATUS(Status_RestError(
+        "Error getting array metadata from REST; server returned no data."));
+
+  // Ensure data has a null delimiter for cap'n proto if using JSON
+  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
+//  return serialization::metadata_deserialize(
+  //      array->unsafe_metadata(), serialization_type_, returned_data);
+  return serialization::maximum_tile_size_deserialize(
+      maximum_tile_size, serialization_type_, returned_data);
+}
+#endif
+
 Status RestClient::post_array_metadata_to_rest(
     const URI& uri,
     uint64_t timestamp_start,
@@ -1344,7 +1375,13 @@ Status RestClient::get_array_metadata_from_rest(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::post_array_metadata_to_rest(
+Status get_array_maximum_tile_size_from_rest(
+    const URI& uri, uint64_t* maximum_tile_size) {
+  return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+  Status RestClient::post_array_metadata_to_rest(
     const URI&, uint64_t, uint64_t, Array*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));

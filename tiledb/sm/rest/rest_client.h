@@ -176,6 +176,18 @@ class RestClient {
       Array* array);
 
   /**
+   * Gets the array's maximum in memory tile size from the
+   * REST server.
+   *
+   * @param uri Array URI
+   * @param max_tile_size receives the maximum in memory tile size found
+   *   in fragments of the array
+   * @return Status
+   */
+  Status get_array_maximum_tile_size_from_rest(
+      const URI& uri, uint64_t* maximum_tile_size);
+
+  /**
    * Posts the array's metadata to the REST server.
    *
    * @param uri Array URI

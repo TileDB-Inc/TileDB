@@ -40,16 +40,23 @@
 
 //  -d=yes --break "C++ API: Max fragment size\, sparse\, fix dimension\, nullable variable string attribute",
 
-//  -d=yes --break "C++ API: Max fragment size\, sparse\, fix dimension\, variable string attribute",
+//  -d=yes --break "C++ API: Max fragment size\, sparse\, fix dimension\, variable string attribute", 
+
+#if TILEDB_SERIALIZATION
+//  -d=yes --break "C++ API: Max tile size\, serialization"
+#endif
+
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "tiledb/common/stdx_string.h"
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/cpp_api/tiledb_experimental"
+#include "tiledb/sm/serialization/array.h"
 
 #include <numeric>
 
@@ -184,7 +191,7 @@ struct CAPI_MaxTileSizeFx {
     //tiledb_fragment_tile_size_extremes_t tiledb_fragment_tile_size_extremes;
     uint64_t max_in_memory_tile_size = 0;
     CHECK(
-        tiledb_array_fragment_size_extremes(
+        tiledb_array_maximum_tile_size(
             &*ctx.ptr(),
             array_uri.c_str(),
             &max_in_memory_tile_size, 
@@ -1082,7 +1089,8 @@ TEST_CASE_METHOD(
     // [1,4].
     tiledb::Domain domain(ctx);
     domain.add_dimension(
-        tiledb::Dimension::create<int>(ctx, "rows", {{1, 24}}, 1));
+        //tiledb::Dimension::create<int>(ctx, "rows", {{1, 24}}, 1));
+        tiledb::Dimension::create<int>(ctx, "rows", {{1, 26}}, 26));
 
     // The array will be dense.
     tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
@@ -1141,6 +1149,10 @@ TEST_CASE_METHOD(
   get_fragments_extreme(array_name);
   // CHECK(get_fragments_extreme(array_name) == 8);
 #endif
+
+  //write_array("lmnopqrstuvwxy", {0}, {1, 1});
+  write_array("lmnopqrstuvwxy", {0,1,2,3,4,5,6,7,8,9,10,11,12,13}, {1, 14});
+  get_fragments_extreme(array_name);
 
   write_array("l", {0}, {1, 1});
   get_fragments_extreme(array_name);
@@ -1251,3 +1263,27 @@ TEST_CASE_METHOD(
 
   get_fragments_extreme(array_name);
 }
+
+#if TILEDB_SERIALIZATION
+TEST_CASE_METHOD(
+    CAPI_MaxTileSizeFx,
+    "C++ API: Max tile size, serialization",
+    "[capi][max-tile-size][serialization]") {
+  std::string array_name("tile_size_array");
+  tiledb::sm::Buffer buff;
+  std::vector<uint64_t> values_to_try{
+      0, 4, 208, 1024, 64 * 1024 * 1024, 64 * 1024 * 1024 + 1};
+  for (auto v : values_to_try) {
+    CHECK(tiledb::sm::serialization::maximum_tile_size_serialize(
+        &v,
+        tiledb::sm::SerializationType::CAPNP,
+        &buff).ok());
+    uint64_t retrieved_val = std::numeric_limits<uint64_t>::max();
+    CHECK(tiledb::sm::serialization::maximum_tile_size_deserialize(
+        &retrieved_val,
+        tiledb::sm::SerializationType::CAPNP,
+        buff).ok());
+    CHECK(v == retrieved_val);
+  }
+}
+#endif

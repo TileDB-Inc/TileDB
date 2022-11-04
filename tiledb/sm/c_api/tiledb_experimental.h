@@ -1217,7 +1217,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_total_cell_num(
  *
  */
 
-TILEDB_EXPORT int32_t tiledb_array_fragment_size_extremes(
+TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     uint64_t* max_in_memory_tile_size,

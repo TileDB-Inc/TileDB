@@ -2753,12 +2753,8 @@ void StorageManager::array_get_fragment_tile_size_extremes(
     const URI& array_uri,
     tiledb_fragment_tile_size_extremes_t* tile_extreme_sizes,
     const Config* config) {
-
-  //TBD: anything to do about array possibly going away underneath fragments being loaded?
-  //...are other areas protected in any way, is this alone in that or do other areas have
-  //...same issue?
-
   assert(tile_extreme_sizes);
+
   // Check if array exists
   bool exists = is_array(array_uri);
   if (!exists) {
@@ -2770,14 +2766,8 @@ void StorageManager::array_get_fragment_tile_size_extremes(
   EncryptionKey enc_key;
   encryption_key_from_configs(enc_key, config);
 
-  #if 0
-  // TBD: do we care about this?
-  auto version = array_schema_latest.value()->version();
-  ensure_supported_schema_version_for_read(version);
-  #endif
-
   uint64_t timestamp_start = 0;
-  uint64_t timestamp_end = UINT64_MAX ; //TBD: check, fix/change if needed!!!
+  uint64_t timestamp_end = UINT64_MAX ;
   // Create an ArrayDirectory object and load
   auto array_dir = ArrayDirectory(
       this->vfs(),
@@ -2793,6 +2783,7 @@ void StorageManager::array_get_fragment_tile_size_extremes(
           &memory_tracker,
           enc_key);
   throw_if_not_ok(st);
+  
   tiledb_fragment_tile_size_extremes_t& mins_maxs = *tile_extreme_sizes;
   memset(&mins_maxs, 0, sizeof(mins_maxs));
 
@@ -2818,8 +2809,6 @@ void StorageManager::array_get_fragment_tile_size_extremes(
   auto process_attr = [&](FragmentMetadata& f,
                           const std::string& name,
                           bool var_size) -> void {
-    //uint64_t persisted_tile_size = 0;
-     //, in_memory_tile_size = 0;
     uint64_t num_tiles = 0;
 
     uint64_t max_frag_persisted_basic_tile_size = 0, max_frag_in_memory_basic_tile_size = 0;

@@ -6618,7 +6618,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t tiledb_array_fragment_size_extremes(
+TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     uint64_t* max_in_memory_tile_size,
@@ -9604,11 +9604,11 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
       ctx, query, status);
 }
 
-TILEDB_EXPORT int32_t tiledb_array_fragment_size_extremes(
+TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     uint64_t* max_in_memory_tile_size,
     tiledb_config_t* config) {
-  return api_entry<tiledb::api::tiledb_array_fragment_size_extremes>(
+  return api_entry<tiledb::api::tiledb_array_maximum_tile_size>(
       ctx, array_uri, max_in_memory_tile_size, config);
 }

@@ -63,6 +63,7 @@ CAPNP_DECLARE_SCHEMA(9df6f2a42c4e5f0b);
 CAPNP_DECLARE_SCHEMA(a18264549448ece3);
 CAPNP_DECLARE_SCHEMA(9be1921b07e6cd2d);
 CAPNP_DECLARE_SCHEMA(f01116579e9ea98e);
+CAPNP_DECLARE_SCHEMA(c71e23a810b5ee21);
 CAPNP_DECLARE_SCHEMA(9737dcafdfce31bb);
 CAPNP_DECLARE_SCHEMA(926fe1c3b12ed651);
 CAPNP_DECLARE_SCHEMA(8cd4e323f1feea3b);
@@ -965,6 +966,23 @@ struct MaxBufferSizes {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(f01116579e9ea98e, 0, 1)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct MaxTileSize {
+  MaxTileSize() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(c71e23a810b5ee21, 1, 0)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -8241,6 +8259,98 @@ class MaxBufferSizes::Builder {
 class MaxBufferSizes::Pipeline {
  public:
   typedef MaxBufferSizes Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class MaxTileSize::Reader {
+ public:
+  typedef MaxTileSize Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline ::uint64_t getMaxInMemoryTileSize() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class MaxTileSize::Builder {
+ public:
+  typedef MaxTileSize Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline ::uint64_t getMaxInMemoryTileSize();
+  inline void setMaxInMemoryTileSize(::uint64_t value);
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class MaxTileSize::Pipeline {
+ public:
+  typedef MaxTileSize Pipelines;
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -20056,6 +20166,20 @@ MaxBufferSizes::Builder::disownMaxBufferSizes() {
                                           .getPointerField(
                                               ::capnp::bounded<0>() *
                                               ::capnp::POINTERS));
+}
+
+inline ::uint64_t MaxTileSize::Reader::getMaxInMemoryTileSize() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t MaxTileSize::Builder::getMaxInMemoryTileSize() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void MaxTileSize::Builder::setMaxInMemoryTileSize(::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool ArrayMetadata::Reader::hasEntries() const {

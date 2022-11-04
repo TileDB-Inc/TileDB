@@ -165,6 +165,16 @@ Status metadata_deserialize(
     SerializationType serialize_type,
     const Buffer& serialized_buffer);
 
+Status maximum_tile_size_deserialize(
+    uint64_t* maximum_tile_size,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer);
+
+Status maximum_tile_size_serialize(
+    uint64_t* maximum_tile_size,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer);
+
 }  // namespace serialization
 }  // namespace sm
 }  // namespace tiledb

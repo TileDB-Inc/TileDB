@@ -1536,7 +1536,7 @@ class Array {
    * size..
    */
   void get_max_in_memory_tile_size(uint64_t* max_in_memory_tile_size) {
-    tiledb_array_fragment_size_extremes(
+    tiledb_array_maximum_tile_size(
         ctx_.get().ptr().get(),
         uri().c_str(),
         max_in_memory_tile_size,
