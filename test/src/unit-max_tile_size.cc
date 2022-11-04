@@ -1079,7 +1079,7 @@ TEST_CASE_METHOD(
 
   remove_temp_dir(array_name);
 
-  auto create_array = [&]() -> void {
+  auto create_array = [&](uint64_t extents = 1) -> void {
     // Create a TileDB context.
     tiledb::Context ctx;
 
@@ -1090,7 +1090,8 @@ TEST_CASE_METHOD(
     tiledb::Domain domain(ctx);
     domain.add_dimension(
         //tiledb::Dimension::create<int>(ctx, "rows", {{1, 24}}, 1));
-        tiledb::Dimension::create<int>(ctx, "rows", {{1, 26}}, 26));
+        //tiledb::Dimension::create<int>(ctx, "rows", {{1, 26}}, 26));
+        tiledb::Dimension::create<int>(ctx, "rows", {{1, 26}}, extents));
 
     // The array will be dense.
     tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
@@ -1132,7 +1133,7 @@ TEST_CASE_METHOD(
   // TBD: disable/remove when its served its purpose...
   showing_data = true;
 
-  create_array();
+  create_array(1);
   // write_array("a", {0}, "", {});
   // std::string basic_key_data{"abcdefghijklmnopqrstuvwxyz"};
 
@@ -1151,52 +1152,70 @@ TEST_CASE_METHOD(
 #endif
 
   //write_array("lmnopqrstuvwxy", {0}, {1, 1});
-  write_array("lmnopqrstuvwxy", {0,1,2,3,4,5,6,7,8,9,10,11,12,13}, {1, 14});
-  get_fragments_extreme(array_name);
+  //write_array("lmnopqrstuvwxy", {0,1,2,3,4,5,6,7,8,9,10,11,12,13}, {1, 14});
+  //get_fragments_extreme(array_name);
 
+  // attribute is variable non-nullable, 
+  // So the single offset (uint64_t) of 8 bytes will be max with strings <= 8 bytes
   write_array("l", {0}, {1, 1});
   get_fragments_extreme(array_name);
 
   write_array("lm", {0}, {1, 1});
-  get_fragments_extreme(array_name);
-  // CHECK(get_fragments_extreme(array_name) == 8);
+  //get_fragments_extreme(array_name);
+  CHECK(get_fragments_extreme(array_name) == 8);
   write_array("lmn", {0}, {1, 1});
-  get_fragments_extreme(array_name);
+  // get_fragments_extreme(array_name);
+  CHECK(get_fragments_extreme(array_name) == 8);
   write_array("lmno", {0}, {1, 1});
-  get_fragments_extreme(array_name);
+  // get_fragments_extreme(array_name);
+  CHECK(get_fragments_extreme(array_name) == 8);
   write_array("lmnop", {0}, {1, 1});
-  get_fragments_extreme(array_name);
+  // get_fragments_extreme(array_name);
+  CHECK(get_fragments_extreme(array_name) == 8);
   write_array("lmnopq", {0}, {1, 1});
-  get_fragments_extreme(array_name);
+  // get_fragments_extreme(array_name);
+  CHECK(get_fragments_extreme(array_name) == 8);
   write_array("lmnopqr", {0}, {1, 1});
-  get_fragments_extreme(array_name);
+  // get_fragments_extreme(array_name);
+  CHECK(get_fragments_extreme(array_name) == 8);
   write_array("lmnopqrs", {0}, {1, 1});
-  get_fragments_extreme(array_name);
+  // get_fragments_extreme(array_name);
+  CHECK(get_fragments_extreme(array_name) == 8);
 
+  // still writing 1 item, but now length of variable 
+  // data greater than the 1 offset
   write_array("lmnopqrst", {0}, {1, 1});
-  get_fragments_extreme(array_name);
+  //get_fragments_extreme(array_name);
+  CHECK(get_fragments_extreme(array_name) == 9);
   write_array("lmnopqrstu", {0}, {1, 1});
-  get_fragments_extreme(array_name);
+  // get_fragments_extreme(array_name);
+  CHECK(get_fragments_extreme(array_name) == 10);
   write_array("lmnopqrstuv", {0}, {1, 1});
-  get_fragments_extreme(array_name);
+  // get_fragments_extreme(array_name);
+  CHECK(get_fragments_extreme(array_name) == 11);
   write_array("lmnopqrstuvw", {0}, {1, 1});
-  get_fragments_extreme(array_name);
+  // get_fragments_extreme(array_name);
+  CHECK(get_fragments_extreme(array_name) == 12);
   write_array("lmnopqrstuvwx", {0}, {1, 1});
-  get_fragments_extreme(array_name);
+  // get_fragments_extreme(array_name);
+  CHECK(get_fragments_extreme(array_name) == 13);
   write_array("lmnopqrstuvwxy", {0}, {1, 1});
-  get_fragments_extreme(array_name);
+  // get_fragments_extreme(array_name);
+  CHECK(get_fragments_extreme(array_name) == 14);
 
-#if 0
+#if 01
+  // 4 items, only 1 has data
   write_array(
       "a",
       {0, 0, 0, 0},
       //{0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
       // 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      {1, 0, 0, 0},
+      //{1, 0, 0, 0},
       {1, 4});
   get_fragments_extreme(array_name);
   // CHECK(get_fragments_extreme(array_name) == 208);
 
+  // 4 items, 2 have data
   write_array(
       "AB",
       {0, 1, 1, 1},
@@ -1208,6 +1227,7 @@ TEST_CASE_METHOD(
   get_fragments_extreme(array_name);
   // CHECK(get_fragments_extreme(array_name) == 208);
 
+  //4 items, all with data
   write_array(
       "AbcDefgHijklMnopqr",
       {0, 3, 7, 13},
@@ -1220,6 +1240,7 @@ TEST_CASE_METHOD(
 #endif
 
   write_array(
+    //1 item, 114 bytes
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
       //{0, 26, 52, 62, 88, 114},
@@ -1230,9 +1251,10 @@ TEST_CASE_METHOD(
       //{1, 1, 1, 1, 1, 1},
       //{1, 1, 1, 1, 1},
       {1,1});
-  get_fragments_extreme(array_name);
-  // CHECK(get_fragments_extreme(array_name) == 208);
+  //get_fragments_extreme(array_name);
+  CHECK(get_fragments_extreme(array_name) == 114);
 
+  // 5 items, max of any individual item is 26 bytes
   write_array(
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
@@ -1247,6 +1269,7 @@ TEST_CASE_METHOD(
   get_fragments_extreme(array_name);
   // CHECK(get_fragments_extreme(array_name) == 208);
 
+  //4 items, various lengths
   write_array(
       "AbcDefgHijklMnopqr",
       {0, 3, 7, 13},
@@ -1259,8 +1282,9 @@ TEST_CASE_METHOD(
 
   // consolidate
   tiledb::Array::consolidate(ctx_, array_name);
-  //tiledb::Array::vacuum(ctx_, array_name);
+  get_fragments_extreme(array_name);
 
+  tiledb::Array::vacuum(ctx_, array_name);
   get_fragments_extreme(array_name);
 }
 

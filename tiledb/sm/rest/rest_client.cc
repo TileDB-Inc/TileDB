@@ -465,8 +465,7 @@ Status RestClient::get_array_metadata_from_rest(
       array->unsafe_metadata(), serialization_type_, returned_data);
 }
 
-#if 0
-Status get_array_maximum_tile_size_from_rest(
+Status RestClient::get_array_maximum_tile_size_from_rest(
     const URI& uri, uint64_t* maximum_tile_size) {
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -494,7 +493,6 @@ Status get_array_maximum_tile_size_from_rest(
   return serialization::maximum_tile_size_deserialize(
       maximum_tile_size, serialization_type_, returned_data);
 }
-#endif
 
 Status RestClient::post_array_metadata_to_rest(
     const URI& uri,
@@ -1376,7 +1374,7 @@ Status RestClient::get_array_metadata_from_rest(
 }
 
 Status get_array_maximum_tile_size_from_rest(
-    const URI& uri, uint64_t* maximum_tile_size) {
+    const URI& , uint64_t* ) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
