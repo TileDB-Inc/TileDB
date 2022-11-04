@@ -40,7 +40,7 @@ die() {
 
 run_cask_minio() {
   # note: minio data directories *must* follow parameter arguments
-  minio server --certs-dir=/tmp/minio-data/test_certs --address localhost:9999 /tmp/minio-data &
+  minio server --certs-dir=/tmp/minio-data/test_certs --address localhost:9998 /tmp/minio-data &
   export MINIO_PID=$!
   [[ "$?" -eq "0" ]] || die "could not run minio server"
 }
@@ -49,7 +49,7 @@ run_docker_minio() {
   # note: minio data directories *must* follow parameter arguments
   docker run -v /tmp/minio-data:/tmp/minio-data \
        -e MINIO_ACCESS_KEY=minio -e MINIO_SECRET_KEY=miniosecretkey \
-       -d -p 9999:9000 \
+       -d -p 9998:9000 \
        minio/minio server -S /tmp/minio-data/test_certs \
          /tmp/minio-data || die "could not run docker minio"
 }

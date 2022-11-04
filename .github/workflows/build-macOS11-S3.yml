@@ -20,6 +20,7 @@ on:
       - '**/.md'
       - 'doc/source/conf.py'
       - 'tiledb/sm/c_api/tiledb_version.h'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -88,6 +89,9 @@ jobs:
           ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
           ls -ld /cores
           ulimit -c
+
+          ps ax | grep minio
+          sudo lsof -i -P -n | grep LISTEN
 
           # Start minio server if S3 is enabled
           source scripts/install-minio.sh;

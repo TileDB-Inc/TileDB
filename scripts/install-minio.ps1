@@ -67,12 +67,12 @@ function Run-Minio {
     if (!(Test-Path $ServerConfigDir)) {
         New-Item -ItemType Directory -Path $ServerConfigDir
     }
-    $minioproc = Start-Process -FilePath $ExePath -ArgumentList "server --address 127.0.0.1:9999 --config-dir `"$ServerConfigDir`" --certs-dir `"$CertsDirectory`" `"$ServerDataDir`"" -PassThru -RedirectStandardError miniostderr.txt -RedirectStandardOutput miniostdout.txt
+    $minioproc = Start-Process -FilePath $ExePath -ArgumentList "server --address 127.0.0.1:9998 --config-dir `"$ServerConfigDir`" --certs-dir `"$CertsDirectory`" `"$ServerDataDir`"" -PassThru -RedirectStandardError miniostderr.txt -RedirectStandardOutput miniostdout.txt
     Start-Sleep 1.0
 
     if ($PSVersionTable.PSVersion.Major -ge 6) {
         Write-Host "Checking Minio with '-SkipCertificateCheck':"
-        Invoke-WebRequest -Uri https://127.0.0.1:9999 -SkipCertificateCheck
+        Invoke-WebRequest -Uri https://127.0.0.1:9998 -SkipCertificateCheck
         Write-Host "--------------------------------------------------------------------------------"
     } else {
         Write-Host "Skipping minio check (powershell version < 6)"
