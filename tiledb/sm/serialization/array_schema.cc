@@ -960,7 +960,7 @@ ArraySchema array_schema_deserialize(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             array_schema_builder);
         array_schema_reader = array_schema_builder.asReader();
-        break;
+        return array_schema_from_capnp(array_schema_reader, URI());
       }
       case SerializationType::CAPNP: {
         const auto mBytes =
@@ -969,7 +969,7 @@ ArraySchema array_schema_deserialize(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             serialized_buffer.size() / sizeof(::capnp::word)));
         array_schema_reader = reader.getRoot<capnp::ArraySchema>();
-        break;
+        return array_schema_from_capnp(array_schema_reader, URI());
       }
       default: {
         throw StatusException(Status_SerializationError(
@@ -986,8 +986,6 @@ ArraySchema array_schema_deserialize(
         "Error deserializing array schema; exception " +
         std::string(e.what())));
   }
-
-  return array_schema_from_capnp(array_schema_reader, URI());
 }
 
 Status nonempty_domain_serialize(
