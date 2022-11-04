@@ -36,7 +36,7 @@
 #include <iostream>
 #include <map>
 #include <type_traits>
-#include "unit_throw_catch.h"
+#include "unit_throw_catch_tasks.h"
 
 #include "../throw_catch.h"
 #include "experimental/tiledb/common/dag/edge/edge.h"
@@ -48,184 +48,6 @@
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
 
 using namespace tiledb::common;
-
-TEMPLATE_TEST_CASE(
-    "ThrowCatchScheduler: Test creating nodes",
-    "[throw_catch]",
-    (std::tuple<
-        consumer_node<ThrowCatchMover2, size_t>,
-        function_node<ThrowCatchMover2, size_t>,
-        producer_node<ThrowCatchMover2, size_t>,
-        ThrowCatchScheduler<node>>),
-    (std::tuple<
-        consumer_node<ThrowCatchMover3, size_t>,
-        function_node<ThrowCatchMover3, size_t>,
-        producer_node<ThrowCatchMover3, size_t>,
-        ThrowCatchScheduler<node>>),
-    (std::tuple<
-        consumer_node<BountifulMover2, size_t>,
-        function_node<BountifulMover2, size_t>,
-        producer_node<BountifulMover2, size_t>,
-        BountifulScheduler<node>>),
-    (std::tuple<
-        consumer_node<BountifulMover3, size_t>,
-        function_node<BountifulMover3, size_t>,
-        producer_node<BountifulMover3, size_t>,
-        BountifulScheduler<node>>)) {
-  using C = typename std::tuple_element<0, TestType>::type;
-  using F = typename std::tuple_element<1, TestType>::type;
-  using P = typename std::tuple_element<2, TestType>::type;
-
-  auto p = P([](std::stop_source&) { return 0; });
-  auto f = F([](const size_t& i) { return i; });
-  auto c = C([](const size_t&) {});
-}
-
-TEMPLATE_TEST_CASE(
-    "ThrowCatchScheduler: Test assigning nodes",
-    "[throw_catch]",
-    (std::tuple<
-            consumer_node<ThrowCatchMover2, size_t>,
-            function_node<ThrowCatchMover2, size_t>,
-            producer_node<ThrowCatchMover2, size_t>,
-            ThrowCatchScheduler<node>>),
-    (std::tuple<
-            consumer_node<ThrowCatchMover3, size_t>,
-            function_node<ThrowCatchMover3, size_t>,
-            producer_node<ThrowCatchMover3, size_t>,
-            ThrowCatchScheduler<node>>),
-    (std::tuple<
-            consumer_node<BountifulMover2, size_t>,
-            function_node<BountifulMover2, size_t>,
-            producer_node<BountifulMover2, size_t>,
-            BountifulScheduler<node>>),
-    (std::tuple<
-            consumer_node<BountifulMover3, size_t>,
-            function_node<BountifulMover3, size_t>,
-            producer_node<BountifulMover3, size_t>,
-            BountifulScheduler<node>>)
-) {
-  using C = typename std::tuple_element<0, TestType>::type;
-  using F = typename std::tuple_element<1, TestType>::type;
-  using P = typename std::tuple_element<2, TestType>::type;
-
-  auto p = P([](std::stop_source&) { return 0; });
-  auto f = F([](const size_t& i) { return i; });
-  auto c = C([](const size_t&) {});
-
-  node q = p;
-  node d = c;
-  node g = f;
-
-  q->source_correspondent_ = p;
-  CHECK(q->source_correspondent() == p);
-
-  q->sink_correspondent_ = p;
-  CHECK(q->sink_correspondent() == p);
-
-  q->source_correspondent_ = f;
-  CHECK(q->source_correspondent() == f);
-
-  q->sink_correspondent_ = f;
-  CHECK(q->sink_correspondent() == f);
-
-  q->source_correspondent_ = c;
-  CHECK(q->source_correspondent() == c);
-
-  q->sink_correspondent_ = c;
-  CHECK(q->sink_correspondent() == c);
-
-  d->source_correspondent_ = p;
-  CHECK(d->source_correspondent() == p);
-
-  d->sink_correspondent_ = p;
-  CHECK(d->sink_correspondent() == p);
-
-  d->source_correspondent_ = f;
-  CHECK(d->source_correspondent() == f);
-
-  d->sink_correspondent_ = f;
-  CHECK(d->sink_correspondent() == f);
-
-  d->source_correspondent_ = c;
-  CHECK(d->source_correspondent() == c);
-
-  d->sink_correspondent_ = c;
-  CHECK(d->sink_correspondent() == c);
-
-  g->source_correspondent_ = p;
-  CHECK(g->source_correspondent() == p);
-
-  g->sink_correspondent_ = p;
-  CHECK(g->sink_correspondent() == p);
-
-  g->source_correspondent_ = f;
-  CHECK(g->source_correspondent() == f);
-
-  g->sink_correspondent_ = f;
-  CHECK(g->sink_correspondent() == f);
-
-  g->source_correspondent_ = c;
-  CHECK(g->source_correspondent() == c);
-
-  g->sink_correspondent_ = c;
-  CHECK(g->sink_correspondent() == c);
-}
-
-TEMPLATE_TEST_CASE(
-    "ThrowCatchScheduler: Test connect nodes",
-    "[throw_catch]",
-    (std::tuple<
-            consumer_node<ThrowCatchMover2, size_t>,
-            function_node<ThrowCatchMover2, size_t>,
-            producer_node<ThrowCatchMover2, size_t>,
-            ThrowCatchScheduler<node>>),
-    (std::tuple<
-            consumer_node<ThrowCatchMover3, size_t>,
-            function_node<ThrowCatchMover3, size_t>,
-            producer_node<ThrowCatchMover3, size_t>,
-            ThrowCatchScheduler<node>>),
-    (std::tuple<
-            consumer_node<BountifulMover2, size_t>,
-            function_node<BountifulMover2, size_t>,
-            producer_node<BountifulMover2, size_t>,
-            BountifulScheduler<node>>),
-    (std::tuple<
-            consumer_node<BountifulMover3, size_t>,
-            function_node<BountifulMover3, size_t>,
-            producer_node<BountifulMover3, size_t>,
-            BountifulScheduler<node>>)
-) {
-  using C = typename std::tuple_element<0, TestType>::type;
-  using F = typename std::tuple_element<1, TestType>::type;
-  using P = typename std::tuple_element<2, TestType>::type;
-
-  auto p = P([](std::stop_source&) { return 0; });
-  auto f = F([](const size_t& i) { return i; });
-  auto c = C([](const size_t&) {});
-
-  node q = p;
-  node d = c;
-  node g = f;
-
-  connect(p, c);
-  CHECK(p->sink_correspondent() == c);
-  CHECK(c->source_correspondent() == p);
-
-  connect(p, f);
-  CHECK(p->sink_correspondent() == f);
-  CHECK(f->source_correspondent() == p);
-
-  connect(f, c);
-  CHECK(f->sink_correspondent() == c);
-  CHECK(c->source_correspondent() == f);
-
-  Edge(*p, *c);
-  detach(*p, *c);
-
-  Edge(*p, *f);
-  Edge(*f, *c);
-}
 
 /*
  * Define some helpers
@@ -275,29 +97,18 @@ bool two_nodes(const node&, const node&) {
 }
 
 TEMPLATE_TEST_CASE(
-    "ThrowCatchScheduler: Extensive tests of nodes",
-    "[throw_catch]",
+    "ThrowCatchTasks: Extensive tests of nodes",
+    "[throw_catch_tasks]",
     (std::tuple<
-            consumer_node<ThrowCatchMover2, size_t>,
-            function_node<ThrowCatchMover2, size_t>,
-            producer_node<ThrowCatchMover2, size_t>,
-            ThrowCatchScheduler<node>>),
+        consumer_node<ThrowCatchMover2, size_t>,
+        function_node<ThrowCatchMover2, size_t>,
+        producer_node<ThrowCatchMover2, size_t>,
+        ThrowCatchScheduler<node>>),
     (std::tuple<
-            consumer_node<ThrowCatchMover3, size_t>,
-            function_node<ThrowCatchMover3, size_t>,
-            producer_node<ThrowCatchMover3, size_t>,
-            ThrowCatchScheduler<node>>),
-    (std::tuple<
-            consumer_node<BountifulMover2, size_t>,
-            function_node<BountifulMover2, size_t>,
-            producer_node<BountifulMover2, size_t>,
-            BountifulScheduler<node>>),
-    (std::tuple<
-            consumer_node<BountifulMover3, size_t>,
-            function_node<BountifulMover3, size_t>,
-            producer_node<BountifulMover3, size_t>,
-            BountifulScheduler<node>>)
-) {
+        consumer_node<ThrowCatchMover3, size_t>,
+        function_node<ThrowCatchMover3, size_t>,
+        producer_node<ThrowCatchMover3, size_t>,
+        ThrowCatchScheduler<node>>)) {
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
   using P = typename std::tuple_element<2, TestType>::type;
@@ -314,30 +125,7 @@ TEMPLATE_TEST_CASE(
   auto fun_node = F([](const size_t& i) { return i; });
   auto con_node = C([](const size_t&) {});
 
-  //  auto pro_specified =
-  //      producer_node<ThrowCatchMover3, size_t>(pro_node_impl);  // bad
-  //  auto pro_deduced = producer_node(pro_node_impl);
-  //  pro_deduced->fill();
-
-  // producer_node_impl<ThrowCatchMover3, size_t>
-  //   ::producer_node_impl<producer_node_impl<ThrowCatchMover3, size_t>>
-
-  //  auto con_specified = consumer_node<ThrowCatchMover3, size_t>(con_node_impl);
-  //  // bad
-  //  auto con_deduced = consumer_node(con_node_impl);
-
-  // The types will print?
-  // print_types(pro_deduced, con_deduced);
-  //   producer_node<ThrowCatchMover3, unsigned long>
-  //   consumer_node<ThrowCatchMover3, unsigned long>
-
-  // print_types(pro_specified, con_specified);
-  //   producer_node<ThrowCatchMover3, unsigned long>
-  //   consumer_node<ThrowCatchMover3, unsigned long>
-
   SECTION("Check specified and deduced are same types") {
-    //    CHECK(std::is_same_v<decltype(pro_specified), decltype(pro_deduced)>);
-    //    CHECK(std::is_same_v<decltype(con_specified), decltype(con_deduced)>);
   }
 
   SECTION("Check polymorphism to node&") {
@@ -349,9 +137,6 @@ TEMPLATE_TEST_CASE(
     CHECK(two_nodes(pro_node, con_node));
     CHECK(two_nodes(pro_node, fun_node));
     CHECK(two_nodes(fun_node, con_node));
-
-    // No conversion from producer_node to node&
-    //    CHECK(two_shared_nodes(pro_node, con_node));
   }
 
   SECTION("Checks with ThrowCatchTask and node (godbolt)") {
@@ -364,7 +149,7 @@ TEMPLATE_TEST_CASE(
     CHECK(shared_nil == shared_pro);
   }
 
-  SECTION("I think this works (godbolt)", "[throw_catch]") {
+  SECTION("I think this works (godbolt)", "[throw_catch_tasks]") {
     auto throw_catch_pro = ThrowCatchTask<node>{pro_node};
     auto throw_catch_fun = ThrowCatchTask<node>{fun_node};
     auto throw_catch_con = ThrowCatchTask<node>{con_node};
@@ -598,29 +383,18 @@ ThrowCatchTask(function_node<M1, T1>)->ThrowCatchTask<node>;
 }  // namespace tiledb::common
 
 TEMPLATE_TEST_CASE(
-    "ThrowCatchScheduler: Test ThrowCatchTask",
-    "[throw_catch]",
+    "ThrowCatchTasks: Test ThrowCatchTask",
+    "[throw_catch_tasks]",
     (std::tuple<
-            consumer_node<ThrowCatchMover2, size_t>,
-            function_node<ThrowCatchMover2, size_t>,
-            producer_node<ThrowCatchMover2, size_t>,
-            ThrowCatchScheduler<node>>),
+        consumer_node<ThrowCatchMover2, size_t>,
+        function_node<ThrowCatchMover2, size_t>,
+        producer_node<ThrowCatchMover2, size_t>,
+        ThrowCatchScheduler<node>>),
     (std::tuple<
-            consumer_node<ThrowCatchMover3, size_t>,
-            function_node<ThrowCatchMover3, size_t>,
-            producer_node<ThrowCatchMover3, size_t>,
-            ThrowCatchScheduler<node>>),
-    (std::tuple<
-            consumer_node<BountifulMover2, size_t>,
-            function_node<BountifulMover2, size_t>,
-            producer_node<BountifulMover2, size_t>,
-            BountifulScheduler<node>>),
-    (std::tuple<
-            consumer_node<BountifulMover3, size_t>,
-            function_node<BountifulMover3, size_t>,
-            producer_node<BountifulMover3, size_t>,
-            BountifulScheduler<node>>)
-) {
+        consumer_node<ThrowCatchMover3, size_t>,
+        function_node<ThrowCatchMover3, size_t>,
+        producer_node<ThrowCatchMover3, size_t>,
+        ThrowCatchScheduler<node>>)) {
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
   using P = typename std::tuple_element<2, TestType>::type;
