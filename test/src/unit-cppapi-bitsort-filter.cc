@@ -338,10 +338,10 @@ DimensionDataMetadata<DimType> set_2d_dim_buffers_hilbert(tiledb_layout_t read_l
     int y = y_dims[pos[i]];
     if (read_layout == TILEDB_ROW_MAJOR) {
       read_index =
-          ((x - BITSORT_DIM_LO) * elements_per_dim) + (y - BITSORT_DIM_LO);
+          ((static_cast<int>(x) - BITSORT_DIM_LO) * elements_per_dim) + (static_cast<int>(y) - BITSORT_DIM_LO);
     } else if (read_layout == TILEDB_COL_MAJOR) {
       read_index =
-          ((y - BITSORT_DIM_LO) * elements_per_dim) + (x - BITSORT_DIM_LO);
+          ((static_cast<int>(y) - BITSORT_DIM_LO) * elements_per_dim) + (static_cast<int>(x) - BITSORT_DIM_LO);
     }
 
     x_dims_hilbert.emplace_back(static_cast<DimType>(x_dims[pos[i]]));
@@ -418,15 +418,15 @@ DimensionDataMetadata<DimType> set_3d_dim_buffers_hilbert(tiledb_layout_t read_l
     int z = z_dims[pos[i]];
     int read_index = i;
     if (read_layout == TILEDB_ROW_MAJOR) {
-      read_index = ((((x - BITSORT_DIM_LO) * elements_per_dim) +
-                      (y - BITSORT_DIM_LO)) *
+      read_index = ((((static_cast<int>(x) - BITSORT_DIM_LO) * elements_per_dim) +
+                      (static_cast<int>(y) - BITSORT_DIM_LO)) *
                     elements_per_dim) +
-                    (z - BITSORT_DIM_LO);
+                    (static_cast<int>(z) - BITSORT_DIM_LO);
     } else if (read_layout == TILEDB_COL_MAJOR) {
-      read_index = ((((z - BITSORT_DIM_LO) * elements_per_dim) +
-                      (y - BITSORT_DIM_LO)) *
+      read_index = ((((static_cast<int>(z) - BITSORT_DIM_LO) * elements_per_dim) +
+                      (static_cast<int>(y) - BITSORT_DIM_LO)) *
                     elements_per_dim) +
-                    (x - BITSORT_DIM_LO);
+                    (static_cast<int>(x) - BITSORT_DIM_LO);
     }
 
     x_dims_hilbert.emplace_back(static_cast<DimType>(x_dims[pos[i]]));
