@@ -401,6 +401,9 @@ const std::string filter_xor_str = "XOR";
 /** String describing FILTER_BITSORT. */
 const std::string filter_bitsort_str = "BITSORT";
 
+/** String describing FILTER_WEBP. */
+const std::string filter_webp_str = "WEBP";
+
 /** The string representation for FilterOption type compression_level. */
 const std::string filter_option_compression_level_str = "COMPRESSION_LEVEL";
 
@@ -421,6 +424,15 @@ const std::string filter_option_scale_float_factor = "SCALE_FLOAT_FACTOR";
 
 /** The string representation for FilterOption type scale_float_offset. */
 const std::string filter_option_scale_float_offset = "SCALE_FLOAT_OFFSET";
+
+/** The string representation for FilterOption type webp_quality. */
+const std::string filter_option_webp_quality = "WEBP_QUALITY";
+
+/** The string representation for FilterOption type webp_input_format. */
+const std::string filter_option_webp_input_format = "WEBP_INPUT_FORMAT";
+
+/** The string representation for FilterOption type webp_lossless. */
+const std::string filter_option_webp_lossless = "WEBP_LOSSLESS";
 
 /** The string representation for type int32. */
 const std::string int32_str = "INT32";

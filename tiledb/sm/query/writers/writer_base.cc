@@ -40,6 +40,7 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
