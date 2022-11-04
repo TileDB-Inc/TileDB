@@ -355,16 +355,16 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
 
     if (this->debug())
       std::cout << this->name() + " node " + std::to_string(this->id()) +
-                       " resuming with " + std::to_string(consumed_items_) +
-                       " consumed_items" + "\n";
+                   " resuming with " + std::to_string(consumed_items_) +
+                   " consumed_items" + "\n";
 
     [[maybe_unused]] std::thread::id this_id = std::this_thread::get_id();
 
     if (mover->is_done()) {
       if (this->debug())
         std::cout << this->name() + " node " + std::to_string(this->id()) +
-                         " got mover done in consumer at top of resume -- "
-                         "returning\n";
+                     " got mover done in consumer at top of resume -- "
+                     "returning\n";
 
       mover->port_exhausted();
 
@@ -614,7 +614,7 @@ struct function_node_impl : public node_base, public Sink<SinkMover, BlockIn>, p
         out_thing = f_(in_thing);
       }
 
-      // inject / fill / push
+        // inject / fill / push
 
       case 5: {
         ++this->program_counter_;
