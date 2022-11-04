@@ -334,21 +334,21 @@ DimensionDataMetadata<DimType> set_2d_dim_buffers_hilbert(tiledb_layout_t read_l
   for (uint64_t i = 0; i < number_elements; ++i) {
     // Find read index based on the layout.
     int read_index = static_cast<int>(i);
-    int x = x_dims[pos[i]];
-    int y = y_dims[pos[i]];
+    int x = static_cast<int>(x_dims[pos[i]]);
+    int y = static_cast<int>(y_dims[pos[i]]);
     if (read_layout == TILEDB_ROW_MAJOR) {
       read_index =
-          ((static_cast<int>(x) - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) + (static_cast<int>(y) - BITSORT_DIM_LO);
+          ((x - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) + (y - BITSORT_DIM_LO);
     } else if (read_layout == TILEDB_COL_MAJOR) {
       read_index =
-          ((static_cast<int>(y) - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) + (static_cast<int>(x) - BITSORT_DIM_LO);
+          ((y - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) + (x - BITSORT_DIM_LO);
     }
 
-    x_dims_hilbert.emplace_back(static_cast<DimType>(x_dims[pos[i]]));
-    y_dims_hilbert.emplace_back(static_cast<DimType>(y_dims[pos[i]]));
+    x_dims_hilbert.emplace_back(x_dims[pos[i]]);
+    y_dims_hilbert.emplace_back(y_dims[pos[i]]);
     dim_idx_map.emplace_back(
-        std::optional(static_cast<int>(x_dims[pos[i]])),
-        std::optional(static_cast<int>(y_dims[pos[i]])),
+        std::optional(x),
+        std::optional(y),
         std::nullopt,
         read_index);
   }
@@ -413,29 +413,29 @@ DimensionDataMetadata<DimType> set_3d_dim_buffers_hilbert(tiledb_layout_t read_l
 
   for (uint64_t i = 0; i < number_elements; ++i) {
     // Find read index based on the layout.
-    int x = x_dims[pos[i]];
-    int y = y_dims[pos[i]];
-    int z = z_dims[pos[i]];
+    int x = static_cast<int>(x_dims[pos[i]]);
+    int y = static_cast<int>(y_dims[pos[i]]);
+    int z = static_cast<int>(z_dims[pos[i]]);
     int read_index = static_cast<int>(i);
     if (read_layout == TILEDB_ROW_MAJOR) {
-      read_index = ((((static_cast<int>(x) - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) +
-                      (static_cast<int>(y) - BITSORT_DIM_LO)) *
+      read_index = ((((x - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) +
+                      (y - BITSORT_DIM_LO)) *
                     static_cast<int>(elements_per_dim)) +
-                    (static_cast<int>(z) - BITSORT_DIM_LO);
+                    (z - BITSORT_DIM_LO);
     } else if (read_layout == TILEDB_COL_MAJOR) {
-      read_index = ((((static_cast<int>(z) - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) +
-                      (static_cast<int>(y) - BITSORT_DIM_LO)) *
+      read_index = ((((z - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) +
+                      (y - BITSORT_DIM_LO)) *
                     static_cast<int>(elements_per_dim)) +
-                    (static_cast<int>(x) - BITSORT_DIM_LO);
+                    (x - BITSORT_DIM_LO);
     }
 
-    x_dims_hilbert.emplace_back(static_cast<DimType>(x_dims[pos[i]]));
-    y_dims_hilbert.emplace_back(static_cast<DimType>(y_dims[pos[i]]));
-    z_dims_hilbert.emplace_back(static_cast<DimType>(z_dims[pos[i]]));
+    x_dims_hilbert.emplace_back(x_dims[pos[i]]);
+    y_dims_hilbert.emplace_back(y_dims[pos[i]]);
+    z_dims_hilbert.emplace_back(z_dims[pos[i]]);
     dim_idx_map.emplace_back(
-        std::optional(static_cast<int>(x_dims[pos[i]])),
-        std::optional(static_cast<int>(y_dims[pos[i]])),
-        std::optional(static_cast<int>(z_dims[pos[i]])),
+        std::optional(x),
+        std::optional(y),
+        std::optional(z),
         read_index);
   }
 
