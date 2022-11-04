@@ -1,3 +1,9 @@
+# TileDB v2.12.2 Release Notes
+
+## Bug fixes
+
+* Fix use-after-free on a capnp::FlatArrayMessageReader [#3631](https://github.com/TileDB-Inc/TileDB/pull/3631)
+
 # TileDB v2.12.1 Release Notes
 
 ## Improvements
