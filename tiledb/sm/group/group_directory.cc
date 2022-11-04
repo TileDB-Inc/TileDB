@@ -152,6 +152,7 @@ Status GroupDirectory::load() {
       is_group = true;
       group_file_uris_.insert(group_file_uris_.begin(), uri);
     }
+
     if (uri.last_path_part() == constants::group_detail_dir_name) {
       is_group = true;
     }

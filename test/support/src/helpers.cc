@@ -1305,6 +1305,45 @@ std::string get_commit_dir(std::string array_dir) {
   return array_dir + "/" + tiledb::sm::constants::array_commits_dir_name;
 }
 
+CommitsDirectory::CommitsDirectory(VFS vfs, std::string path) {
+  auto commits = vfs.ls(path);
+  for (auto commit : commits) {
+    if (tiledb::sm::utils::parse::ends_with(
+            commit, tiledb::sm::constants::vacuum_file_suffix)) {
+      file_count_[tiledb::sm::constants::vacuum_file_suffix]++;
+    } else if (tiledb::sm::utils::parse::ends_with(
+                   commit, tiledb::sm::constants::write_file_suffix)) {
+      file_count_[tiledb::sm::constants::write_file_suffix]++;
+    } else if (tiledb::sm::utils::parse::ends_with(
+                   commit, tiledb::sm::constants::delete_file_suffix)) {
+      file_count_[tiledb::sm::constants::delete_file_suffix]++;
+    } else if (tiledb::sm::utils::parse::ends_with(
+                   commit, tiledb::sm::constants::update_file_suffix)) {
+      file_count_[tiledb::sm::constants::update_file_suffix]++;
+    } else if (tiledb::sm::utils::parse::ends_with(
+                   commit, tiledb::sm::constants::con_commits_file_suffix)) {
+      file_count_[tiledb::sm::constants::con_commits_file_suffix]++;
+    } else if (tiledb::sm::utils::parse::ends_with(
+                   commit, tiledb::sm::constants::ignore_file_suffix)) {
+      file_count_[tiledb::sm::constants::ignore_file_suffix]++;
+    }
+  }
+
+  dir_size_ = commits.size();
+}
+
+const std::map<std::string, uint64_t>& CommitsDirectory::file_count() const {
+  return file_count_;
+}
+
+uint64_t CommitsDirectory::file_count(std::string name) {
+  return file_count_[name];
+}
+
+uint64_t CommitsDirectory::dir_size() {
+  return dir_size_;
+}
+
 template <class T>
 void check_counts(span<T> vals, std::vector<uint64_t> expected) {
   auto expected_size = static_cast<T>(expected.size());

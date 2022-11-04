@@ -633,28 +633,25 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
   const auto& array_schema_uris = array_dir.array_schema_uris();
 
   // Delete array metadata files
-  auto status =
+  throw_if_not_ok(
       parallel_for(compute_tp_, 0, array_meta_uris.size(), [&](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(array_meta_uris[i].uri_));
         return Status::Ok();
-      });
-  throw_if_not_ok(status);
+      }));
 
   // Delete fragment metadata files
-  status =
+  throw_if_not_ok(
       parallel_for(compute_tp_, 0, fragment_meta_uris.size(), [&](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(fragment_meta_uris[i]));
         return Status::Ok();
-      });
-  throw_if_not_ok(status);
+      }));
 
   // Delete array schema files
-  status =
+  throw_if_not_ok(
       parallel_for(compute_tp_, 0, array_schema_uris.size(), [&](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(array_schema_uris[i]));
         return Status::Ok();
-      });
-  throw_if_not_ok(status);
+      }));
 }
 
 Status StorageManagerCanonical::delete_fragments(
@@ -726,38 +723,37 @@ void StorageManagerCanonical::delete_group(const char* group_name) {
   auto group_file_uris = group_dir.group_file_uris();
 
   // Delete the group detail files
-  auto status =
+  throw_if_not_ok(
       parallel_for(compute_tp_, 0, group_detail_uris.size(), [&](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(group_detail_uris[i].uri_));
         return Status::Ok();
-      });
-  throw_if_not_ok(status);
+      }));
 
   // Delete the group metadata files
-  status = parallel_for(compute_tp_, 0, group_meta_uris.size(), [&](size_t i) {
-    RETURN_NOT_OK(vfs_->remove_file(group_meta_uris[i].uri_));
-    return Status::Ok();
-  });
-  throw_if_not_ok(status);
-  status = parallel_for(
+  throw_if_not_ok(
+      parallel_for(compute_tp_, 0, group_meta_uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(group_meta_uris[i].uri_));
+        return Status::Ok();
+      }));
+
+  throw_if_not_ok(parallel_for(
       compute_tp_, 0, group_meta_uris_to_vacuum.size(), [&](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(group_meta_uris_to_vacuum[i]));
         return Status::Ok();
-      });
-  throw_if_not_ok(status);
-  status = parallel_for(
+      }));
+
+  throw_if_not_ok(parallel_for(
       compute_tp_, 0, group_meta_vac_uris_to_vacuum.size(), [&](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(group_meta_vac_uris_to_vacuum[i]));
         return Status::Ok();
-      });
-  throw_if_not_ok(status);
+      }));
 
   // Delete the group files
-  status = parallel_for(compute_tp_, 0, group_file_uris.size(), [&](size_t i) {
-    RETURN_NOT_OK(vfs_->remove_file(group_file_uris[i]));
-    return Status::Ok();
-  });
-  throw_if_not_ok(status);
+  throw_if_not_ok(
+      parallel_for(compute_tp_, 0, group_file_uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs_->remove_file(group_file_uris[i]));
+        return Status::Ok();
+      }));
 }
 
 Status StorageManagerCanonical::array_vacuum(
@@ -1741,7 +1737,7 @@ void StorageManagerCanonical::load_array_metadata(
 
   auto metadata_num = array_metadata_to_load.size();
   std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
-  auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
+  throw_if_not_ok(parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = array_metadata_to_load[m].uri_;
 
     auto&& [st, tile] = load_data_from_generic_tile(uri, 0, encryption_key);
@@ -1750,8 +1746,7 @@ void StorageManagerCanonical::load_array_metadata(
     metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(*tile));
 
     return Status::Ok();
-  });
-  throw_if_not_ok(status);
+  }));
 
   // Compute array metadata size for the statistics
   uint64_t meta_size = 0;
@@ -2348,7 +2343,7 @@ void StorageManagerCanonical::load_group_metadata(
   auto metadata_num = group_metadata_to_load.size();
   // TBD: Might use DynamicArray when it is more capable.
   std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
-  auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
+  throw_if_not_ok(parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = group_metadata_to_load[m].uri_;
 
     auto&& [st, tile] = load_data_from_generic_tile(uri, 0, encryption_key);
@@ -2357,8 +2352,7 @@ void StorageManagerCanonical::load_group_metadata(
     metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(*tile));
 
     return Status::Ok();
-  });
-  throw_if_not_ok(status);
+  }));
 
   // Compute array metadata size for the statistics
   uint64_t meta_size = 0;

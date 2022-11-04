@@ -444,59 +444,6 @@ bool DeletesFx::is_array(const std::string& array_name) {
   return vfs_.is_dir(array_name);
 }
 
-/* List the given path and store the counts of each file type. */
-struct CommitsDirectory {
-  CommitsDirectory() = delete;
-
-  CommitsDirectory(VFS vfs, std::string path) {
-    auto commits = vfs.ls(path);
-    for (auto commit : commits) {
-      if (tiledb::sm::utils::parse::ends_with(
-              commit, tiledb::sm::constants::file_suffix)) {
-        file_count_[tiledb::sm::constants::file_suffix]++;
-      }
-      if (tiledb::sm::utils::parse::ends_with(
-              commit, tiledb::sm::constants::vacuum_file_suffix)) {
-        file_count_[tiledb::sm::constants::vacuum_file_suffix]++;
-      }
-      if (tiledb::sm::utils::parse::ends_with(
-              commit, tiledb::sm::constants::ok_file_suffix)) {
-        file_count_[tiledb::sm::constants::ok_file_suffix]++;
-      }
-      if (tiledb::sm::utils::parse::ends_with(
-              commit, tiledb::sm::constants::write_file_suffix)) {
-        file_count_[tiledb::sm::constants::write_file_suffix]++;
-      }
-      if (tiledb::sm::utils::parse::ends_with(
-              commit, tiledb::sm::constants::delete_file_suffix)) {
-        file_count_[tiledb::sm::constants::delete_file_suffix]++;
-      }
-      if (tiledb::sm::utils::parse::ends_with(
-              commit, tiledb::sm::constants::update_file_suffix)) {
-        file_count_[tiledb::sm::constants::update_file_suffix]++;
-      }
-      if (tiledb::sm::utils::parse::ends_with(
-              commit, tiledb::sm::constants::meta_file_suffix)) {
-        file_count_[tiledb::sm::constants::meta_file_suffix]++;
-      }
-      if (tiledb::sm::utils::parse::ends_with(
-              commit, tiledb::sm::constants::con_commits_file_suffix)) {
-        file_count_[tiledb::sm::constants::con_commits_file_suffix]++;
-      }
-      if (tiledb::sm::utils::parse::ends_with(
-              commit, tiledb::sm::constants::ignore_file_suffix)) {
-        file_count_[tiledb::sm::constants::ignore_file_suffix]++;
-      }
-    }
-
-    dir_size_ = commits.size();
-  };
-
-  // Store the number of each file type
-  std::map<std::string, int> file_count_;
-  int dir_size_;
-};
-
 TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test writing delete condition",
@@ -1668,13 +1615,15 @@ TEST_CASE_METHOD(
   if (consolidate) {
     consolidate_commits_sparse(vacuum);
     CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 4);
-    CommitsDirectory cd(vfs_, commit_dir);
+    CommitsDirectory commits_dir(vfs_, commit_dir);
     if (vacuum) {
-      CHECK(cd.dir_size_ == 1);
+      CHECK(commits_dir.dir_size() == 1);
     } else {
-      CHECK(cd.dir_size_ == 5);
+      CHECK(commits_dir.dir_size() == 5);
     }
-    CHECK(cd.file_count_[tiledb::sm::constants::con_commits_file_suffix] == 1);
+    CHECK(
+        commits_dir.file_count(
+            tiledb::sm::constants::con_commits_file_suffix) == 1);
   }
 
   // Delete fragments
@@ -1688,13 +1637,16 @@ TEST_CASE_METHOD(
   if (consolidate) {
     /* Note: An ignore file is written by delete_fragments if there are
      * consolidated commits to be ignored by the delete. */
-    CommitsDirectory cd(vfs_, commit_dir);
-    CHECK(cd.file_count_[tiledb::sm::constants::con_commits_file_suffix] == 1);
-    CHECK(cd.file_count_[tiledb::sm::constants::ignore_file_suffix] == 1);
+    CommitsDirectory commits_dir(vfs_, commit_dir);
+    CHECK(
+        commits_dir.file_count(
+            tiledb::sm::constants::con_commits_file_suffix) == 1);
+    CHECK(
+        commits_dir.file_count(tiledb::sm::constants::ignore_file_suffix) == 1);
     if (vacuum) {
-      CHECK(cd.dir_size_ == 2);
+      CHECK(commits_dir.dir_size() == 2);
     } else {
-      CHECK(cd.dir_size_ == 4);
+      CHECK(commits_dir.dir_size() == 4);
     }
   }
 
@@ -1737,8 +1689,9 @@ TEST_CASE_METHOD(
   num_fragments++;
   if (!vacuum) {
     std::string commit_dir = tiledb::test::get_commit_dir(SPARSE_ARRAY_NAME);
-    CommitsDirectory cd(vfs_, commit_dir);
-    CHECK(cd.file_count_[tiledb::sm::constants::vacuum_file_suffix] == 1);
+    CommitsDirectory commits_dir(vfs_, commit_dir);
+    CHECK(
+        commits_dir.file_count(tiledb::sm::constants::vacuum_file_suffix) == 1);
   } else {
     num_commits -= 2;
     num_fragments -= 2;
@@ -1864,9 +1817,11 @@ TEST_CASE_METHOD(
     Array::consolidate(ctx_, SPARSE_ARRAY_NAME, &config);
 
     // Validate working directory
-    CommitsDirectory cd(vfs_, commit_dir);
-    CHECK(cd.dir_size_ == 5);
-    CHECK(cd.file_count_[tiledb::sm::constants::con_commits_file_suffix] == 1);
+    CommitsDirectory commits_dir(vfs_, commit_dir);
+    CHECK(commits_dir.dir_size() == 5);
+    CHECK(
+        commits_dir.file_count(
+            tiledb::sm::constants::con_commits_file_suffix) == 1);
     CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 4);
     auto frag_meta = vfs_.ls(
         array_name + "/" + tiledb::sm::constants::array_fragment_meta_dir_name);
@@ -1898,9 +1853,12 @@ TEST_CASE_METHOD(
   if (consolidate) {
     /* Note: An ignore file is written by delete_fragments if there are
      * consolidated commits to be ignored by the delete. */
-    CommitsDirectory cd(vfs_, commit_dir);
-    CHECK(cd.file_count_[tiledb::sm::constants::con_commits_file_suffix] == 1);
-    CHECK(cd.file_count_[tiledb::sm::constants::ignore_file_suffix] == 1);
+    CommitsDirectory commits_dir(vfs_, commit_dir);
+    CHECK(
+        commits_dir.file_count(
+            tiledb::sm::constants::con_commits_file_suffix) == 1);
+    CHECK(
+        commits_dir.file_count(tiledb::sm::constants::ignore_file_suffix) == 1);
   }
   CHECK(tiledb::test::num_commits(array_name) == 0);
 

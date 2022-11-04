@@ -341,31 +341,26 @@ class Group {
   /**
    * Get count of members
    *
-   * @return tuple of Status and optional member count
+   * @return member count
    */
-  tuple<Status, optional<uint64_t>> member_count() const;
+  uint64_t member_count() const;
 
   /**
    * Get a member by index
    *
    * @param index of member
-   * @return Tuple of Status, URI string, ObjectType, optional name
+   * @return Tuple of URI string, ObjectType, name
    */
-  tuple<
-      Status,
-      optional<std::string>,
-      optional<ObjectType>,
-      optional<std::string>>
+  tuple<optional<std::string>, optional<ObjectType>, optional<std::string>>
   member_by_index(uint64_t index);
 
   /**
    * Get a member by name
    *
    * @param name of member
-   * @return Tuple of Status, URI string, ObjectType, optional name
+   * @return Tuple of URI string, ObjectType, name, bool
    */
   tuple<
-      Status,
       optional<std::string>,
       optional<ObjectType>,
       optional<std::string>,

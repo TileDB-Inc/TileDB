@@ -268,31 +268,20 @@ struct CPPMaxFragmentSizeFx {
       uint64_t exp_num_ign,
       uint64_t exp_num_vac) {
     std::string commit_dir = tiledb::test::get_commit_dir(array_name);
-    std::vector<std::string> commits{vfs_.ls(commit_dir)};
-    uint64_t num_wrt = 0;
-    uint64_t num_con_commits = 0;
-    uint64_t num_ign = 0;
-    uint64_t num_vac = 0;
-    for (auto commit : commits) {
-      if (tiledb::sm::utils::parse::ends_with(
-              commit, tiledb::sm::constants::write_file_suffix)) {
-        num_wrt++;
-      } else if (tiledb::sm::utils::parse::ends_with(
-                     commit, tiledb::sm::constants::con_commits_file_suffix)) {
-        num_con_commits++;
-      } else if (tiledb::sm::utils::parse::ends_with(
-                     commit, tiledb::sm::constants::ignore_file_suffix)) {
-        num_ign++;
-      } else if (tiledb::sm::utils::parse::ends_with(
-                     commit, tiledb::sm::constants::vacuum_file_suffix)) {
-        num_vac++;
-      }
-    }
-
-    CHECK(num_wrt == exp_num_wrt);
-    CHECK(num_con_commits == exp_num_con_commits);
-    CHECK(num_ign == exp_num_ign);
-    CHECK(num_vac == exp_num_vac);
+    tiledb::test::CommitsDirectory commits_dir(vfs_, commit_dir);
+    CHECK(
+        commits_dir.file_count(tiledb::sm::constants::write_file_suffix) ==
+        exp_num_wrt);
+    CHECK(
+        commits_dir.file_count(
+            tiledb::sm::constants::con_commits_file_suffix) ==
+        exp_num_con_commits);
+    CHECK(
+        commits_dir.file_count(tiledb::sm::constants::ignore_file_suffix) ==
+        exp_num_ign);
+    CHECK(
+        commits_dir.file_count(tiledb::sm::constants::vacuum_file_suffix) ==
+        exp_num_vac);
   }
 
   void validate_disjoint_domains() {

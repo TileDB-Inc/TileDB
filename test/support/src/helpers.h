@@ -759,6 +759,25 @@ std::string get_fragment_dir(std::string array_dir);
  */
 std::string get_commit_dir(std::string array_dir);
 
+/* List the given path and store the counts of each file type. */
+class CommitsDirectory {
+ public:
+  // Constructors and destructors.
+  CommitsDirectory() = delete;
+  CommitsDirectory(VFS vfs, std::string path);
+  ~CommitsDirectory() = default;
+
+  // Private member accessors.
+  const std::map<std::string, uint64_t>& file_count() const;
+  uint64_t file_count(std::string name);
+  uint64_t dir_size();
+
+ private:
+  // Store the number of each file type.
+  std::map<std::string, uint64_t> file_count_;
+  uint64_t dir_size_;
+};
+
 /**
  * Check count of values against a vector of expected counts for an array.
  */

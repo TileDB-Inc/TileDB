@@ -42,7 +42,7 @@ namespace tiledb {
 class Group {
  public:
   /**
-   * @brief Constructor. This opens the group for the given query type. The
+   * @brief Constructor. Opens the group for the given query type. The
    * destructor calls the `close()` method.
    *
    * **Example:**
@@ -82,7 +82,7 @@ class Group {
   }
 
   /**
-   * @brief Opens the group. The group is opened using a query type as input.
+   * @brief Opens the group using a query type as input.
    *
    * This is to indicate that queries created for this `Group`
    * object will inherit the query type. In other words, `Group`
@@ -187,7 +187,7 @@ class Group {
   }
 
   /**
-   * It puts a metadata key-value item to an open group. The group must
+   * Puts a metadata key-value item to an open group. The group must
    * be opened in WRITE mode, otherwise the function will error out.
    *
    * @param key The key of the metadata item to be added. UTF-8 encodings
@@ -212,7 +212,7 @@ class Group {
   }
 
   /**
-   * It deletes written data from an open group. The group must
+   * Deletes written data from an open group. The group must
    * be opened in MODIFY_EXCLSUIVE mode, otherwise the function will error out.
    *
    * @param uri The address of the group item to be deleted.
@@ -228,7 +228,7 @@ class Group {
   }
 
   /**
-   * It deletes a metadata key-value item from an open group. The group must
+   * Deletes a metadata key-value item from an open group. The group must
    * be opened in WRITE mode, otherwise the function will error out.
    *
    * @param key The key of the metadata item to be deleted.
@@ -246,7 +246,7 @@ class Group {
   }
 
   /**
-   * It gets a metadata key-value item from an open group. The group must
+   * Gets a metadata key-value item from an open group. The group must
    * be opened in READ mode, otherwise the function will error out.
    *
    * @param key The key of the metadata item to be retrieved. UTF-8 encodings
@@ -304,7 +304,7 @@ class Group {
   }
 
   /**
-   * It gets a metadata item from an open group using an index.
+   * Gets a metadata item from an open group using an index.
    * The group must be opened in READ mode, otherwise the function will
    * error out.
    *

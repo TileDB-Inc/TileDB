@@ -48,6 +48,14 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+class DeleteGroupStatusException : public StatusException {
+ public:
+  explicit DeleteGroupStatusException(const std::string& message)
+      : StatusException("DeleteGroup", message) {
+  }
+};
+
 Group::Group(
     const URI& group_uri, StorageManager* storage_manager, uint32_t version)
     : group_uri_(group_uri)
@@ -303,14 +311,12 @@ Status Group::get_query_type(QueryType* query_type) const {
 void Group::delete_group(const URI& uri, bool recursive) {
   // Check that group is open
   if (!is_open_) {
-    throw StatusException(
-        Status_GroupError("[Group::delete_group] Group is not open"));
+    throw DeleteGroupStatusException("Group is not open");
   }
 
   // Check that query type is MODIFY_EXCLUSIVE
   if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw StatusException(Status_GroupError(
-        "[Group::delete_group] Query type must be MODIFY_EXCLUSIVE"));
+    throw DeleteGroupStatusException("Query type must be MODIFY_EXCLUSIVE");
   }
 
   if (recursive) {
@@ -333,8 +339,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      throw StatusException(Status_GroupError(
-          "Cannot open group; remote group with no REST client."));
+      throw DeleteGroupStatusException("Remote group with no REST client.");
     rest_client->delete_group_from_rest(uri);
   } else {
     storage_manager_->delete_group(uri.c_str());
@@ -753,61 +758,41 @@ void Group::set_changes_applied(const bool changes_applied) {
   changes_applied_ = changes_applied;
 }
 
-tuple<Status, optional<uint64_t>> Group::member_count() const {
+uint64_t Group::member_count() const {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    return {
-        Status_GroupError("Cannot get member count; Group is not open"),
-        std::nullopt};
+    throw Status_GroupError("Cannot get member count; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {
-        Status_GroupError(
-            "Cannot get member; Group was not opened in read mode"),
-        std::nullopt};
+    throw Status_GroupError(
+        "Cannot get member; Group was not opened in read mode");
   }
 
-  return {Status::Ok(), members_.size()};
+  return members_.size();
 }
 
-tuple<
-    Status,
-    optional<std::string>,
-    optional<ObjectType>,
-    optional<std::string>>
+tuple<optional<std::string>, optional<ObjectType>, optional<std::string>>
 Group::member_by_index(uint64_t index) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   // Check if group is open
   if (!is_open_) {
-    return {
-        Status_GroupError("Cannot get member by index; Group is not open"),
-        std::nullopt,
-        std::nullopt,
-        std::nullopt};
+    throw Status_GroupError("Cannot get member by index; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {
-        Status_GroupError(
-            "Cannot get member; Group was not opened in read mode"),
-        std::nullopt,
-        std::nullopt,
-        std::nullopt};
+    throw Status_GroupError(
+        "Cannot get member; Group was not opened in read mode");
   }
 
   if (index >= members_vec_.size()) {
-    return {
-        Status_GroupError(
-            "index " + std::to_string(index) + " is larger than member count " +
-            std::to_string(members_vec_.size())),
-        std::nullopt,
-        std::nullopt,
-        std::nullopt};
+    throw Status_GroupError(
+        "index " + std::to_string(index) + " is larger than member count " +
+        std::to_string(members_vec_.size()));
   }
 
   auto member = members_vec_[index];
@@ -817,11 +802,10 @@ Group::member_by_index(uint64_t index) {
     uri = group_uri_.join_path(member->uri().to_string()).to_string();
   }
 
-  return {Status::Ok(), uri, member->type(), member->name()};
+  return {uri, member->type(), member->name()};
 }
 
 tuple<
-    Status,
     optional<std::string>,
     optional<ObjectType>,
     optional<std::string>,
@@ -831,33 +815,18 @@ Group::member_by_name(const std::string& name) {
 
   // Check if group is open
   if (!is_open_) {
-    return {
-        Status_GroupError("Cannot get member by name; Group is not open"),
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt};
+    throw Status_GroupError("Cannot get member by name; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {
-        Status_GroupError(
-            "Cannot get member; Group was not opened in read mode"),
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt};
+    throw Status_GroupError(
+        "Cannot get member; Group was not opened in read mode");
   }
 
   auto it = members_by_name_.find(name);
   if (it == members_by_name_.end()) {
-    return {
-        Status_GroupError(name + " does not exist in group"),
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt};
+    throw Status_GroupError(name + " does not exist in group");
   }
 
   auto member = it->second;
@@ -866,8 +835,7 @@ Group::member_by_name(const std::string& name) {
     uri = group_uri_.join_path(member->uri().to_string()).to_string();
   }
 
-  return {
-      Status::Ok(), uri, member->type(), member->name(), member->relative()};
+  return {uri, member->type(), member->name(), member->relative()};
 }
 
 std::string Group::dump(
