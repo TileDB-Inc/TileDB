@@ -195,7 +195,10 @@ WriterBase::WriterBase(
   }
 
   if (!skip_checks_serialization) {
-    check_subarray();
+    // Consolidation might set a subarray that is not tile aligned.
+    if (!disable_checks_consolidation) {
+      check_subarray();
+    }
     check_buffer_sizes();
   }
 
