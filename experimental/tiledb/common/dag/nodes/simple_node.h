@@ -106,7 +106,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
    */
   ProducerNode(const ProducerNode&) {
   }
-  ProducerNode(ProducerNode&&) = default;
+  ProducerNode(ProducerNode&&)  noexcept = default;
 
   /**
    * Constructor
@@ -116,7 +116,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
    * The function may either take `void` or take a `stop_source` as argument.
    */
   template <class Function>
-  ProducerNode(
+  explicit ProducerNode(
       Function&& f,
       std::enable_if_t<
           !std::is_bind_expression_v<
@@ -129,7 +129,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
    * Constructor: Special constructor for std::bind, no std::stop_source
    */
   template <class Function>
-  ProducerNode(
+  explicit ProducerNode(
       Function&& f,
       std::enable_if_t<
           std::is_bind_expression_v<
@@ -143,7 +143,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
    * Constructor: Special constructor for std::bind, with std::stop_source
    */
   template <class Function>
-  ProducerNode(
+  explicit ProducerNode(
       Function&& f,
       std::enable_if_t<
           std::is_bind_expression_v<
@@ -158,7 +158,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
    * the item mover.  It will also issue `stop` if the `stop_source` is stopped
    * by the enclosed function.
    */
-  void run_once() {
+  void run_once() override {
     auto mover = this->get_mover();
     if (mover->is_stopping()) {
       throw std::runtime_error("Trying to stop a stopping producer");
@@ -223,7 +223,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
   /**
    * Invoke `run_once` until stopped.
    */
-  void run() {
+  void run() override {
     auto mover = this->get_mover();
     if (mover->debug_enabled()) {
       std::cout << "producer starting run on " << this->get_mover()
@@ -243,7 +243,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
    *
    *  @param rounds The maximum number of times to invoke the producer function.
    */
-  void run_for(size_t rounds) {
+  void run_for(size_t rounds) override {
     auto mover = this->get_mover();
 
     if (mover->debug_enabled()) {
@@ -316,7 +316,7 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
     }
 
     // Could have fallen through or gotten stop_requested()
-    // Either way, need to calls port_exhausted
+    // Either way, need to call port_exhausted
     if (mover->debug_enabled())
       std::cout << "run stopping" << std::endl;
     mover->port_exhausted();
@@ -364,7 +364,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
   ConsumerNode() = default;
   ConsumerNode(const ConsumerNode&) {
   }
-  ConsumerNode(ConsumerNode&&) = default;
+  ConsumerNode(ConsumerNode&&)  noexcept = default;
 
   /**
    * Constructor
@@ -404,7 +404,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
    * Function for obtaining items from the item mover and invoking the stored
    * function on each item.
    */
-  void run_once() {
+  void run_once() override {
     auto mover = this->get_mover();
 
     /*
@@ -474,7 +474,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
   /**
    * Invoke `run_once()` until the node is stopped.
    */
-  void run() {
+  void run() override {
     auto mover = this->get_mover();
     if (mover->debug_enabled()) {
       std::cout << "consumer starting run on " << this->get_mover()
@@ -492,7 +492,7 @@ class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
    *
    * @param rounds The maximum number of times to invoke the producer function.
    */
-  void run_for(size_t rounds) {
+  void run_for(size_t rounds) override {
     auto mover = this->get_mover();
 
     if (mover->debug_enabled()) {
@@ -615,7 +615,7 @@ class FunctionNode : public GraphNode,
   FunctionNode() = default;
   FunctionNode(const FunctionNode&) {
   }
-  FunctionNode(FunctionNode&&) = default;
+  FunctionNode(FunctionNode&&)  noexcept = default;
 
   /**
    * Constructor
@@ -653,7 +653,7 @@ class FunctionNode : public GraphNode,
    * issue `stop` if either its `Sink` portion or its `Source` portion is
    * stopped.
    */
-  void run_once() {
+  void run_once() override {
     auto source_mover = SourceBase::get_mover();
     auto sink_mover = SinkBase::get_mover();
 
@@ -726,12 +726,12 @@ class FunctionNode : public GraphNode,
   }
 
   /*
-   * Function for invoking `run_once` mutiple times, as given by the input
+   * Function for invoking `run_once` multiple times, as given by the input
    * parameter, or until the node is stopped, whichever happens first.
    *
    * @param rounds The maximum number of times to invoke the producer function.
    */
-  void run_for(size_t rounds) {
+  void run_for(size_t rounds) override {
     auto source_mover = SourceBase::get_mover();
     auto sink_mover = SinkBase::get_mover();
 
@@ -750,10 +750,10 @@ class FunctionNode : public GraphNode,
   }
 
   /*
-   * Function for invoking `run_once` mutiple times, until the node is stopped.
+   * Function for invoking `run_once` multiple times, until the node is stopped.
    *
    */
-  void run() {
+  void run() override {
     auto source_mover = SourceBase::get_mover();
     auto sink_mover = SinkBase::get_mover();
 

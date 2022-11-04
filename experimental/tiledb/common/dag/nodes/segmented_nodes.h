@@ -541,6 +541,7 @@ struct function_node_impl : public node_base, public Sink<SinkMover, BlockIn>, p
         std::cout << this->name() + " node " + std::to_string(this->id()) +
                      " got sink_mover done at top of resumes -- returning\n";
 
+      // ?? Right place to call this?
       source_mover->port_exhausted();
 
       return;
@@ -676,6 +677,7 @@ struct function_node_impl : public node_base, public Sink<SinkMover, BlockIn>, p
         std::cout << "function final pull in run()" << std::endl;
       sink_mover->port_pull();
     }
+    // ?? port_exhausted is called in resume -- should it be called here instead?
     // source_mover->port_exhausted();
   }
 };
