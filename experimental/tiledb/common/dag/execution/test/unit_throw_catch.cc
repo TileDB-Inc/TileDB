@@ -51,32 +51,30 @@ using namespace tiledb::common;
 size_t problem_size = 1337UL;
 size_t debug_problem_size = 3;
 
-
 TEMPLATE_TEST_CASE(
-        "ThrowCatchScheduler: Threee nodes",
-        "[throw_catch]",
-        (std::tuple<
-                consumer_node<ThrowCatchMover2, size_t>,
-                function_node<ThrowCatchMover2, size_t>,
-                producer_node<ThrowCatchMover2, size_t>>),
-        (std::tuple<
-                consumer_node<ThrowCatchMover3, size_t>,
-                function_node<ThrowCatchMover3, size_t>,
-                producer_node<ThrowCatchMover3, size_t>>)) {
-
+    "ThrowCatchScheduler: Threee nodes",
+    "[throw_catch]",
+    (std::tuple<
+        consumer_node<ThrowCatchMover2, size_t>,
+        function_node<ThrowCatchMover2, size_t>,
+        producer_node<ThrowCatchMover2, size_t>>),
+    (std::tuple<
+        consumer_node<ThrowCatchMover3, size_t>,
+        function_node<ThrowCatchMover3, size_t>,
+        producer_node<ThrowCatchMover3, size_t>>)) {
   bool debug{true};
 
   auto num_threads = 1;
   [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(num_threads);
 
-  size_t rounds = 3;
+  size_t rounds = 5;
 
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
   using P = typename std::tuple_element<2, TestType>::type;
 
   auto p = P([rounds](std::stop_source& stop_source) {
-    static size_t i {0};
+    static size_t i{0};
     if (i > rounds) {
       stop_source.request_stop();
     }
@@ -99,15 +97,13 @@ TEMPLATE_TEST_CASE(
   if (debug) {
     //    sched.debug();
 
-    //p->enable_debug();
+    // p->enable_debug();
     f->enable_debug();
-    //c->enable_debug();
+    // c->enable_debug();
   }
 
   sched.sync_wait_all();
 }
-
-
 
 TEMPLATE_TEST_CASE(
     "ThrowCatchScheduler: Test soft terminate of sink",
@@ -120,20 +116,19 @@ TEMPLATE_TEST_CASE(
         consumer_node<ThrowCatchMover3, size_t>,
         function_node<ThrowCatchMover3, size_t>,
         producer_node<ThrowCatchMover3, size_t>>)) {
-
   bool debug{true};
 
   auto num_threads = 1;
   [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(num_threads);
 
-  size_t rounds = 3;
-  
+  size_t rounds = 5;
+
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
   using P = typename std::tuple_element<2, TestType>::type;
 
-  auto p = P([rounds](std::stop_source& stop_source) { 
-    static size_t i {0};
+  auto p = P([rounds](std::stop_source& stop_source) {
+    static size_t i{0};
     if (i > rounds) {
       stop_source.request_stop();
     }
@@ -167,7 +162,6 @@ TEMPLATE_TEST_CASE(
 
   sched.sync_wait_all();
 }
-
 
 TEMPLATE_TEST_CASE(
     "ThrowCatchScheduler: Test creating nodes",

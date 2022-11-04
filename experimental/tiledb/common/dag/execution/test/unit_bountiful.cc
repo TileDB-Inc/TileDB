@@ -133,7 +133,6 @@ TEMPLATE_TEST_CASE(
 
   if (debug) {
     //    sched.debug();
-
     p->enable_debug();
     f->enable_debug();
     c->enable_debug();
@@ -189,7 +188,6 @@ TEMPLATE_TEST_CASE(
 
   if (debug) {
     //    sched.debug();
-
     p->enable_debug();
     f->enable_debug();
     g->enable_debug();
