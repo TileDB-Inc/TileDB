@@ -1,5 +1,5 @@
 /**
- * @file   unit_throwcatch.cc
+ * @file   unit_throw_catch.cc
  *
  * @section LICENSE
  *
@@ -27,26 +27,24 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a throw-catch scheduler for dag.
+ * This file tests the throw-catch scheduler for dag.
  */
 
-#include "experimental/tiledb/common/dag/execution/test/throw_catch_nodes.h"
+#include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
 
 #include <atomic>
-#include <cassert>
 #include <iostream>
 #include <map>
 #include <type_traits>
-#include "../throwcatch.h"
+#include "../throw_catch.h"
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
-#include "unit_throwcatch.h"
+#include "unit_throw_catch.h"
 
 #include "experimental/tiledb/common/dag/nodes/consumer.h"
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
-#include "experimental/tiledb/common/dag/state_machine/test/types.h"
 
 using namespace tiledb::common;
 
@@ -272,7 +270,7 @@ struct hm<T, node> {
 
 template <class N>
 ThrowCatchTask<node> task_from_node(N& n) {
-  return {n};
+  return ThrowCatchTask<node>{n};
 }
 
 template <class N>

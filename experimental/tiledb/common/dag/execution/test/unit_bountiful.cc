@@ -35,58 +35,130 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+#include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/execution/bountiful.h"
+#include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
 
 using namespace tiledb::common;
 
-std::atomic<size_t> i_;
+TEMPLATE_TEST_CASE(
+    "BountifulScheduler: Test soft terminate of sink",
+    "[throw_catch]",
+    (std::tuple<
+        consumer_node<BountifulMover2, size_t>,
+        function_node<BountifulMover2, size_t>,
+        producer_node<BountifulMover2, size_t>>),
+    (std::tuple<
+        consumer_node<BountifulMover3, size_t>,
+        function_node<BountifulMover3, size_t>,
+        producer_node<BountifulMover3, size_t>>)) {
 
-struct super_simple {
-  explicit super_simple() = default;
-  // super_simple(const super_simple&) = delete;
-  // To make movable :-/
-  super_simple(const super_simple&) {
+  bool debug{true};
+
+  auto num_threads = 1UL;
+  size_t rounds = 5;
+
+  [[maybe_unused]] auto sched = BountifulScheduler<node>();
+
+  using C = typename std::tuple_element<0, TestType>::type;
+  using F = typename std::tuple_element<1, TestType>::type;
+  using P = typename std::tuple_element<2, TestType>::type;
+  auto p = P([rounds](std::stop_source& stop_source) {
+    static size_t i {0};
+    if (i > rounds) {
+      stop_source.request_stop();
+    }
+    return i++;
+  });
+  auto f = F([](const size_t& i) { return i; });
+  auto g = F([](const size_t& i) { return i; });
+  auto c = C([](const size_t&) {});
+
+  connect(p, f);
+  connect(f, g);
+  connect(g, c);
+
+  Edge(*p, *f);
+  Edge(*f, *g);
+  Edge(*g, *c);
+
+  sched.submit(p);
+  sched.submit(f);
+  sched.submit(g);
+  sched.submit(c);
+
+  if (debug) {
+    sched.debug();
+
+    p->enable_debug();
+    f->enable_debug();
+    g->enable_debug();
+    c->enable_debug();
   }
-  super_simple(super_simple&&) = default;
 
-
-
-  void resume() {
-    ++i_;
-  }
-};
-
-TEST_CASE("BountifulScheduler: Test construct one", "[bountiful_scheduler]") {
-  i_ = 0;
-  super_simple a;
-
-  BountifulScheduler<super_simple> sch;
-  sch.submit(a);
-  sch.sync_wait_all();
-  CHECK(i_ == 1);
+  sched.sync_wait_all();
 }
 
-TEST_CASE(
-    "BountifulScheduler: Test construct several", "[bountiful_scheduler]") {
-  for (size_t i = 1; i <= 16; ++i) {
-    std::vector<super_simple> v;
-    std::vector<std::future<void>> w;
-    v.clear();
-    CHECK(v.size() == 0);
 
-    BountifulScheduler<super_simple> sch;
+#if 0
 
-    for (size_t j = 0; j < i; ++j) {
-      v.emplace_back(super_simple{});
+
+TEMPLATE_TEST_CASE(
+    "BountifulScheduler: Test soft terminate of sink",
+    "[throw_catch]",
+    (std::tuple<
+        consumer_node<BountifulMover2, size_t>,
+        function_node<BountifulMover2, size_t>,
+        producer_node<BountifulMover2, size_t>>),
+    (std::tuple<
+        consumer_node<BountifulMover3, size_t>,
+        function_node<BountifulMover3, size_t>,
+        producer_node<BountifulMover3, size_t>>)) {
+
+  bool debug{false};
+
+  auto num_threads = 1;
+  [[maybe_unused]] auto sched = BountifulScheduler<node>(num_threads);
+
+  size_t rounds = 5;
+  
+  using C = typename std::tuple_element<0, TestType>::type;
+  using F = typename std::tuple_element<1, TestType>::type;
+  using P = typename std::tuple_element<2, TestType>::type;
+
+  auto p = P([rounds](std::stop_source& stop_source) { 
+    static size_t i {0};
+    if (i > rounds) {
+      stop_source.request_stop();
     }
-    CHECK(v.size() == i);
-    for (size_t j = 0; j < i; ++j) {
-      sch.submit(v[j]);
-    }
-    CHECK(v.size() == i);
-    CHECK(w.size() == i);
-    sch.sync_wait_all();
+    return i++;
+  });
+  auto f = F([](const size_t& i) { return i; });
+  auto g = F([](const size_t& i) { return i; });
+  auto c = C([](const size_t&) {});
 
-    CHECK(i_ == i);
+  connect(p, f);
+  connect(f, g);
+  connect(g, c);
+
+  Edge(*p, *f);
+  Edge(*f, *g);
+  Edge(*g, *c);
+
+  sched.submit(p);
+  sched.submit(f);
+  sched.submit(g);
+  sched.submit(c);
+
+  if (debug) {
+    //    sched.debug();
+
+    p->enable_debug();
+    f->enable_debug();
+    g->enable_debug();
+    c->enable_debug();
   }
+
+  sched.sync_wait_all();
 }
+#endif

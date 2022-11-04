@@ -37,7 +37,7 @@
  * state machine (defined in task_state_machine.h).
  *
  * Tasks are submitted to the scheduler with the `submit` method.  The
- * `submit` method is variadic, so an arbitray number of tasks can be
+ * `submit` method is variadic, so an arbitrary number of tasks can be
  * submitted.  Task execution is lazy; tasks do not start executing when
  * submit is called.  Rather, after `submit` has been called, a "wait"
  * scheduler function is called, which will begin execution of the submitted
@@ -83,15 +83,15 @@ namespace detail {
 
 enum class throw_catch_target { self, source, sink, last };
 
-class throw_catch_exception {
+class throw_catch_exception : public std::exception {
   throw_catch_target target_{throw_catch_target::self};
 
  public:
-  constexpr throw_catch_exception(throw_catch_target target = throw_catch_target::self)
+   explicit throw_catch_exception(throw_catch_target target = throw_catch_target::self)
       : target_{target} {
   }
 
-  throw_catch_target target() const {
+  [[nodiscard]] throw_catch_target target() const {
     return target_;
   }
 };
@@ -110,14 +110,14 @@ class throw_catch_notify : public throw_catch_exception {
 
 }  // namespace detail
 
-constexpr const detail::throw_catch_exit throw_catch_exit;
-constexpr const detail::throw_catch_wait throw_catch_sink_wait{
+ const detail::throw_catch_exit throw_catch_exit;
+ const detail::throw_catch_wait throw_catch_sink_wait{
     detail::throw_catch_target::sink};
-constexpr const detail::throw_catch_wait throw_catch_source_wait{
+ const detail::throw_catch_wait throw_catch_source_wait{
     detail::throw_catch_target::source};
-constexpr const detail::throw_catch_notify throw_catch_notify_sink{
+ const detail::throw_catch_notify throw_catch_notify_sink{
     detail::throw_catch_target::sink};
-constexpr const detail::throw_catch_notify throw_catch_notify_source{
+ const detail::throw_catch_notify throw_catch_notify_source{
     detail::throw_catch_target::source};
 
 template <class Mover, class PortState = typename Mover::PortState>
@@ -256,7 +256,7 @@ class ThrowCatchSchedulerPolicy
 
   void on_make_running(task_handle_type& task) {
     if (this->debug())
-      std::cout << "calling on_make_runninge"
+      std::cout << "calling on_make_running"
                 << "\n";
     this->running_set_.insert(task);
   }
@@ -324,8 +324,8 @@ class ThrowCatchSchedulerPolicy
     return val;
 #else
     auto val = runnable_queue_.pop();
-#endif
     return val;
+#endif
   }
 
   void p_shutdown() {
@@ -366,7 +366,7 @@ class ThrowCatchSchedulerPolicy
   }
 
   void dump_queue_state(const std::string& msg = "") {
-    std::string preface = (msg != "" ? msg + "\n" : "");
+    std::string preface = (!msg.empty() ? msg + "\n" : "");
 
     std::cout << preface + "    runnable_queue_.size() = " +
                      std::to_string(runnable_queue_.size()) + "\n" +
@@ -484,15 +484,15 @@ class ThrowCatchTaskImpl : Node {
   using node_ = Node;
 
  public:
-  ThrowCatchTaskImpl(const Node& n)
+  explicit ThrowCatchTaskImpl(const Node& n)
       : node_{n} {
   }
 
   ThrowCatchTaskImpl() = default;
   ThrowCatchTaskImpl(const ThrowCatchTaskImpl&) = default;
-  ThrowCatchTaskImpl(ThrowCatchTaskImpl&&) = default;
+  ThrowCatchTaskImpl(ThrowCatchTaskImpl&&)  noexcept = default;
   ThrowCatchTaskImpl& operator=(const ThrowCatchTaskImpl&) = default;
-  ThrowCatchTaskImpl& operator=(ThrowCatchTaskImpl&&) = default;
+  ThrowCatchTaskImpl& operator=(ThrowCatchTaskImpl&&)  noexcept = default;
 
   void set_scheduler(scheduler* sched) {
     scheduler_ = sched;
@@ -518,18 +518,18 @@ class ThrowCatchTaskImpl : Node {
     return (*this)->source_correspondent();
   }
 
-  std::string name() const {
+  [[nodiscard]] std::string name() const {
     return (*this)->name() + " task";
   }
 
-  size_t id() const {
+  [[nodiscard]] size_t id() const {
     return (*this)->id();
   }
 
   virtual ~ThrowCatchTaskImpl() = default;
 
-  void dump_task_state(const std::string msg = "") {
-    std::string preface = (msg != "" ? msg + "\n" : "");
+  void dump_task_state(const std::string& msg = "") {
+    std::string preface = (!msg.empty() ? msg + "\n" : "");
 
     std::cout << preface + "    " + this->name() + " with id " +
                      std::to_string(this->id()) + "\n" +
@@ -543,18 +543,18 @@ class ThrowCatchTask : public std::shared_ptr<ThrowCatchTaskImpl<Node>> {
   using Base = std::shared_ptr<ThrowCatchTaskImpl<Node>>;
 
  public:
-  ThrowCatchTask(const Node& n)
+  explicit ThrowCatchTask(const Node& n)
       : Base{std::make_shared<ThrowCatchTaskImpl<Node>>(n)} {
   }
 
   ThrowCatchTask() = default;
 
   ThrowCatchTask(const ThrowCatchTask& rhs) = default;
-  ThrowCatchTask(ThrowCatchTask&& rhs) = default;
+  ThrowCatchTask(ThrowCatchTask&& rhs)  noexcept = default;
   ThrowCatchTask& operator=(const ThrowCatchTask& rhs) = default;
-  ThrowCatchTask& operator=(ThrowCatchTask&& rhs) = default;
+  ThrowCatchTask& operator=(ThrowCatchTask&& rhs)  noexcept = default;
 
-  TaskState& task_state() const {
+  [[nodiscard]] TaskState& task_state() const {
     return (*this)->task_state();
   }
 };
@@ -579,7 +579,7 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node
    * but not accepting nor executing any tasks.  A value of
    * 256*hardware_concurrency or larger is an error.
    */
-  ThrowCatchScheduler(size_t n)
+  explicit ThrowCatchScheduler(size_t n)
       : concurrency_level_(n) {
     // If concurrency_level_ is set to zero, construct the thread pool in
     // shutdown state.  Explicitly shut down the task queue as well.
@@ -602,7 +602,7 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node
       std::thread tmp;
 
       // Try to launch a thread running the worker() function. If we get
-      // resources_unvailable_try_again error, then try again. Three shall be
+      // resources_unavailable_try_again error, then try again. Three shall be
       // the maximum number of retries and the maximum number of retries shall
       // be three.
       size_t tries = 3;
