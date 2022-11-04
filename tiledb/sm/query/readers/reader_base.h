@@ -745,7 +745,13 @@ class ReaderBase : public StrategyBase {
   /**
    * @brief Class that stores all the storage needed to keep bitsort
    * metadata.
+   * @tparam CmpObject The comparator object being stored.
    */
+  template <
+      typename CmpObject,
+      typename std::enable_if_t<
+          std::is_same_v<CmpObject, HilbertCmpQB> ||
+          std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
   struct BitSortFilterMetadataStorage;
 
   /* ********************************* */
@@ -753,16 +759,34 @@ class ReaderBase : public StrategyBase {
   /* ********************************* */
 
   /**
+   * @brief Calculate Hilbert values. Used to pass in a Hilbert
+   * comparator to the read-reverse path.
+   *
+   * @param domain_buffers
+   * @param hilbert_values
+   */
+  void calculate_hilbert_values(
+      const DomainBuffersView& domain_buffers,
+      std::vector<uint64_t>& hilbert_values) const;
+
+  /**
    * @brief Constructs the bitsort metadata object.
    *
+   * @tparam CmpObject The comparator object being constructed.
    * @param tile Fixed tile that is being unfiltered.
    * @param bitsort_storage Storage for all the vectors needed to construct the
    * bitsort filter.
    * @return BitSortFilterMetadataType the constructed argument.
    */
+
+  template <
+      typename CmpObject,
+      typename std::enable_if_t<
+          std::is_same_v<CmpObject, HilbertCmpQB> ||
+          std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
   BitSortFilterMetadataType construct_bitsort_filter_argument(
       ResultTile* const tile,
-      BitSortFilterMetadataStorage& bitsort_storage) const;
+      BitSortFilterMetadataStorage<CmpObject>& bitsort_storage) const;
 };
 
 }  // namespace sm
