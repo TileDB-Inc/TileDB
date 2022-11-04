@@ -466,7 +466,7 @@ TEMPLATE_TEST_CASE(
         FunctionNode<AsyncMover3, size_t>,
         ProducerNode<AsyncMover3, size_t>>)) {
   using Consumer = typename std::tuple_element<0, TestType>::type;
-  using Function = typename std::tuple_element<1, TestType>::type;
+  //  using Function = typename std::tuple_element<1, TestType>::type;
   using Producer = typename std::tuple_element<2, TestType>::type;
 
   size_t N = 41;
@@ -525,7 +525,7 @@ TEMPLATE_TEST_CASE(
         FunctionNode<AsyncMover3, size_t>,
         ProducerNode<AsyncMover3, size_t>>)) {
   using Consumer = typename std::tuple_element<0, TestType>::type;
-  using Function = typename std::tuple_element<1, TestType>::type;
+  //  using Function = typename std::tuple_element<1, TestType>::type;
   using Producer = typename std::tuple_element<2, TestType>::type;
 
   generator g;
@@ -580,7 +580,7 @@ TEMPLATE_TEST_CASE(
         FunctionNode<AsyncMover3, size_t>,
         ProducerNode<AsyncMover3, size_t>>)) {
   using Consumer = typename std::tuple_element<0, TestType>::type;
-  using Function = typename std::tuple_element<1, TestType>::type;
+  //  using Function = typename std::tuple_element<1, TestType>::type;
   using Producer = typename std::tuple_element<2, TestType>::type;
 
   size_t rounds = 423;
@@ -661,7 +661,7 @@ TEMPLATE_TEST_CASE(
         FunctionNode<AsyncMover3, size_t>,
         ProducerNode<AsyncMover3, size_t>>)) {
   using Consumer = typename std::tuple_element<0, TestType>::type;
-  using Function = typename std::tuple_element<1, TestType>::type;
+  //  using Function = typename std::tuple_element<1, TestType>::type;
   using Producer = typename std::tuple_element<2, TestType>::type;
 
   size_t rounds = 433;
@@ -1112,7 +1112,7 @@ TEMPLATE_TEST_CASE(
         FunctionNode<AsyncMover3, size_t>,
         ProducerNode<AsyncMover3, size_t>>)) {
   using Consumer = typename std::tuple_element<0, TestType>::type;
-  using Function = typename std::tuple_element<1, TestType>::type;
+  //  using Function = typename std::tuple_element<1, TestType>::type;
   using Producer = typename std::tuple_element<2, TestType>::type;
 
   size_t rounds = GENERATE(0, 1, 2, 5, 3379);
