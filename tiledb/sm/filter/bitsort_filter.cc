@@ -194,7 +194,6 @@ void BitSortFilter::run_forward_dim_tile(
 
   // Obtain the pointer to the filtered data buffer.
   FilteredBuffer& filtered_buffer = dim_tile->filtered_buffer();
-  filtered_buffer.expand(cell_num * sizeof(DimType));
   DimType* filtered_buffer_data = filtered_buffer.data_as<DimType>();
 
   // Keep track of the data we should write to the tile.
