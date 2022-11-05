@@ -66,6 +66,7 @@ DeletesAndUpdates::DeletesAndUpdates(
     Layout layout,
     QueryCondition& condition,
     std::vector<UpdateValue>& update_values,
+    uint64_t fragment_timestamp,
     bool skip_checks_serialization)
     : StrategyBase(
           stats,
@@ -77,7 +78,8 @@ DeletesAndUpdates::DeletesAndUpdates(
           subarray,
           layout)
     , condition_(condition)
-    , update_values_(update_values) {
+    , update_values_(update_values)
+    , fragment_timestamp_(fragment_timestamp) {
   // Sanity checks
   if (storage_manager_ == nullptr) {
     throw DeleteAndUpdateStatusException(
@@ -132,10 +134,9 @@ Status DeletesAndUpdates::dowork() {
   }
 
   // Get a new fragment name for the delete.
-  uint64_t timestamp = array_->timestamp_end_opened_at();
   auto write_version = array_->array_schema_latest().write_version();
-  auto new_fragment_str =
-      storage_format::generate_fragment_name(timestamp, write_version);
+  auto new_fragment_str = storage_format::generate_fragment_name(
+      fragment_timestamp_, write_version);
 
   // Check that the delete or update isn't in the middle of a fragment
   // consolidated without timestamps.
@@ -148,8 +149,8 @@ Status DeletesAndUpdates::dowork() {
       std::pair<uint64_t, uint64_t> fragment_timestamp_range;
       RETURN_NOT_OK(
           utils::parse::get_timestamp_range(uri, &fragment_timestamp_range));
-      if (timestamp >= fragment_timestamp_range.first &&
-          timestamp <= fragment_timestamp_range.second) {
+      if (fragment_timestamp_ >= fragment_timestamp_range.first &&
+          fragment_timestamp_ <= fragment_timestamp_range.second) {
         throw DeleteAndUpdateStatusException(
             "Cannot write a delete in the middle of a fragment consolidated "
             "without timestamps.");

@@ -88,6 +88,7 @@ WriterBase::WriterBase(
     bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
     bool remote_query,
+    uint64_t fragment_timestamp,
     optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : StrategyBase(
@@ -217,15 +218,14 @@ WriterBase::WriterBase(
   check_var_attr_offsets();
 
   // Get the timestamp the array was opened and the array write version.
-  uint64_t timestamp = array_->timestamp_end_opened_at();
   auto write_version = array_->array_schema_latest().write_version();
 
   // Set the fragment URI using either the provided fragment name or a generated
   // fragment name.
-  auto new_fragment_str =
-      fragment_name.has_value() ?
-          fragment_name.value() :
-          storage_format::generate_fragment_name(timestamp, write_version);
+  auto new_fragment_str = fragment_name.has_value() ?
+                              fragment_name.value() :
+                              storage_format::generate_fragment_name(
+                                  fragment_timestamp, write_version);
   auto frag_dir_uri =
       array_->array_directory().get_fragments_dir(write_version);
   fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);

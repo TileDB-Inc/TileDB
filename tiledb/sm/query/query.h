@@ -132,22 +132,21 @@ class Query {
 
   /**
    * Constructor. The query type is inherited from the query type of the
-   * input array. An optional fragment URI is given as input in
-   * case the query will be used as writes and the given URI should be used
-   * for the name of the new fragment to be created.
+   * input array.
    *
    * @note Array must be a properly opened array.
    *
+   * @param storage_manager The storage manager object.
    * @param array The array that is being queried.
-   * @param fragment_uri The full URI for the new fragment. Only used for
-   * writes.
-   * @param fragment_base_uri Optional base name for new fragment. Only used for
-   *     writes and only if fragment_uri is empty.
+   * @param fragment_name If set, the name to use for new fragments.
+   * @param fragment_timestamp If set and ``fragment_name`` is not, the
+   *     timestamp to use when generating fragment names.
    */
   Query(
       StorageManager* storage_manager,
       shared_ptr<Array> array,
-      optional<std::string> fragment_name = nullopt);
+      optional<std::string> fragment_name = nullopt,
+      optional<uint64_t> fragment_timestamp = nullopt);
 
   /** Destructor. */
   virtual ~Query();
@@ -1044,6 +1043,17 @@ class Query {
    */
   optional<std::string> fragment_name_;
 
+  /** If set, use this timestamp when creating a new fragment. */
+  optional<uint64_t> default_fragment_timestamp_;
+
+  /**
+   * The current timestamp to use for new fragments.
+   *
+   * This is only set once query is initialized or the strategy is created.
+   * Before it is initialized, it is set to nullopt.
+   */
+  optional<uint64_t> current_fragment_timestamp_;
+
   /** It tracks if this is a remote query */
   bool remote_query_;
 
@@ -1099,6 +1109,9 @@ class Query {
    * 3. At least one label buffer is set.
    */
   bool only_dim_label_query() const;
+
+  /** Sets the timestamp to use for new fragments. */
+  void set_current_fragment_timestamp();
 
   /**
    * This is a deprecated API.

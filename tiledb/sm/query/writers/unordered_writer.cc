@@ -84,6 +84,7 @@ UnorderedWriter::UnorderedWriter(
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
     bool remote_query,
+    uint64_t fragment_timestamp,
     optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
@@ -99,6 +100,7 @@ UnorderedWriter::UnorderedWriter(
           false,
           coords_info,
           remote_query,
+          fragment_timestamp,
           fragment_name,
           skip_checks_serialization)
     , frag_uri_(std::nullopt) {

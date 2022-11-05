@@ -80,6 +80,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       bool disable_checks_consolidation,
       Query::CoordsInfo& coords_info_,
       bool remote_query,
+      uint64_t fragment_timestamp,
       optional<std::string> fragment_name = nullopt,
       bool skip_checks_serialization = false);
 

@@ -120,6 +120,7 @@ class GlobalOrderWriter : public WriterBase {
       std::vector<std::string>& processed_conditions,
       Query::CoordsInfo& coords_info_,
       bool remote_query,
+      uint64_t fragment_timestamp,
       optional<std::string> fragment_name = nullopt,
       bool skip_checks_serialization = false);
 

@@ -62,6 +62,7 @@ class DeletesAndUpdates : public StrategyBase, public IQueryStrategy {
       Layout layout,
       QueryCondition& condition,
       std::vector<UpdateValue>& update_values,
+      uint64_t fragment_timestamp,
       bool skip_checks_serialization = false);
 
   /** Destructor. */
@@ -106,6 +107,9 @@ class DeletesAndUpdates : public StrategyBase, public IQueryStrategy {
 
   /** The update values, owned by the query. */
   std::vector<UpdateValue>& update_values_;
+
+  /** The timestamp to use for the new fragment. */
+  uint64_t fragment_timestamp_;
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
