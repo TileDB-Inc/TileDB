@@ -87,6 +87,7 @@ GlobalOrderWriter::GlobalOrderWriter(
     std::vector<std::string>& processed_conditions,
     Query::CoordsInfo& coords_info,
     bool remote_query,
+    uint64_t fragment_timestamp,
     optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
@@ -102,6 +103,7 @@ GlobalOrderWriter::GlobalOrderWriter(
           disable_checks_consolidation,
           coords_info,
           remote_query,
+          fragment_timestamp,
           fragment_name,
           skip_checks_serialization)
     , processed_conditions_(processed_conditions)
@@ -1428,11 +1430,11 @@ Status GlobalOrderWriter::start_new_fragment() {
   const auto write_version = array_->array_schema_latest().write_version();
   auto frag_dir_uri =
       array_->array_directory().get_fragments_dir(write_version);
-  auto new_fragment_str = storage_format::generate_uri(
+  auto new_fragment_name = storage_format::generate_uri(
       fragment_timestamp_range_.first,
       fragment_timestamp_range_.second,
       write_version);
-  fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
+  fragment_uri_ = frag_dir_uri.join_path(new_fragment_name);
 
   // Create a new fragment.
   current_fragment_size_ = 0;

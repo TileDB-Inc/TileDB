@@ -41,6 +41,7 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parse_argument.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
 #include "tiledb/sm/query/dimension_label/array_dimension_label_queries.h"
 #include "tiledb/sm/query/legacy/reader.h"
@@ -81,7 +82,8 @@ class QueryStatusException : public StatusException {
 Query::Query(
     StorageManager* storage_manager,
     shared_ptr<Array> array,
-    optional<std::string> fragment_name)
+    optional<std::string> fragment_name,
+    optional<uint64_t> fragment_timestamp)
     : array_shared_(array)
     , array_(array_shared_.get())
     , array_schema_(array->array_schema_latest_ptr())
@@ -105,6 +107,8 @@ Query::Query(
     , consolidation_with_timestamps_(false)
     , force_legacy_reader_(false)
     , fragment_name_(fragment_name)
+    , default_fragment_timestamp_(fragment_timestamp)
+    , current_fragment_timestamp_(nullopt)
     , remote_query_(false)
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
@@ -716,6 +720,12 @@ void Query::init() {
 
     throw_if_not_ok(check_buffer_names());
 
+    // Set the timestamp to use for new fragments if the query type is write,
+    // modify exclusive, update or delete (any type but read).
+    if (type_ != QueryType::READ) {
+      set_current_fragment_timestamp();
+    }
+
     // Create dimension label queries and remove labels from subarray.
     if (uses_dimension_labels()) {
       if (!condition_.empty()) {
@@ -886,6 +896,7 @@ Status Query::reset_strategy_with_layout(
     dynamic_cast<StrategyBase*>(strategy_.get())->stats()->reset();
     strategy_ = nullptr;
   }
+  // TODO: Check if this happens before or after initialization
   layout_ = layout;
   subarray_.set_layout(layout);
   RETURN_NOT_OK(create_strategy(true));
@@ -989,6 +1000,12 @@ Status Query::check_buffer_names() {
 
 Status Query::create_strategy(bool skip_checks_serialization) {
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
+    // Set the fragment timestamp if it has not yet been set.
+    if (!current_fragment_timestamp_.has_value()) {
+      set_current_fragment_timestamp();
+    }
+    auto timestamp = current_fragment_timestamp_.value();
+
     if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
       if (!array_schema_->dense()) {
         return Status_QueryError(
@@ -1008,6 +1025,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           written_fragment_info_,
           coords_info_,
           remote_query_,
+          timestamp,
           fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::UNORDERED) {
@@ -1030,6 +1048,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           coords_info_,
           written_buffers_,
           remote_query_,
+          timestamp,
           fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::GLOBAL_ORDER) {
@@ -1049,6 +1068,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           processed_conditions_,
           coords_info_,
           remote_query_,
+          timestamp,
           fragment_name_,
           skip_checks_serialization));
     } else {
@@ -1174,6 +1194,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           skip_checks_serialization));
     }
   } else if (type_ == QueryType::DELETE || type_ == QueryType::UPDATE) {
+    // Set the fragment timestamp if it has not yet been set.
+    if (!current_fragment_timestamp_.has_value()) {
+      set_current_fragment_timestamp();
+    }
+
     strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
         DeletesAndUpdates,
         stats_->create_child("Deletes"),
@@ -1186,6 +1211,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
         layout_,
         condition_,
         update_values_,
+        current_fragment_timestamp_.value(),
         skip_checks_serialization));
   } else {
     return logger_->status(
@@ -1670,7 +1696,7 @@ void Query::set_subarray(const void* subarray) {
           query_type_str(type_) + "'.");
   }
 
-  // Check this isn't an already initialized query using dimension labels.
+  // Check this isn't an already initialized query.
   if (status_ != QueryStatus::UNINITIALIZED) {
     throw QueryStatusException(
         "Cannot set subarray; Setting a subarray on an already initialized  "
@@ -1804,6 +1830,14 @@ bool Query::only_dim_label_query() const {
        (buffers_.size() == 1 &&
         (coord_buffer_is_set_ || coord_data_buffer_is_set_ ||
          coord_offsets_buffer_is_set_))));
+}
+
+void Query::set_current_fragment_timestamp() {
+  // Set the fragment timestamp.
+  auto timestamp_opened = array_->timestamp_end_opened_at();
+  current_fragment_timestamp_ = default_fragment_timestamp_.value_or(
+      timestamp_opened == 0 ? sm::utils::time::timestamp_now_ms() :
+                              timestamp_opened);
 }
 
 Status Query::submit() {

@@ -65,6 +65,7 @@ class UnorderedWriter : public WriterBase {
       Query::CoordsInfo& coords_info,
       std::unordered_set<std::string>& written_buffers,
       bool remote_query,
+      uint64_t fragment_timestamp,
       optional<std::string> fragment_name = nullopt,
       bool skip_checks_serialization = false);
 
