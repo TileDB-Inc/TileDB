@@ -29,13 +29,13 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+if [[ "$BASH_SOURCE" = $0 ]]; then
+  # exit when *not* sourced (https://superuser.com/a/1288646)
+  echo "run-minio.sh was not sourced. Please set keys manually before running tests."
+fi
+
 die() {
   echo "$@" 1>&2 ; popd 2>/dev/null;
-
-  if [[ "$BASH_SOURCE" = $0 ]]; then
-    # exit when *not* sourced (https://superuser.com/a/1288646)
-    exit 1;
-  fi
 }
 
 run_cask_minio() {
@@ -57,8 +57,8 @@ run_docker_minio() {
 export_aws_keys() {
   export AWS_ACCESS_KEY_ID=minio
   export AWS_SECRET_ACCESS_KEY=miniosecretkey
-  export MINIO_ACCESS_KEY=minio
-  export MINIO_SECRET_KEY=miniosecretkey
+  export MINIO_ROOT_USER=minio
+  export MINIO_ROOT_PASSWORD=miniosecretkey
 }
 
 run() {
