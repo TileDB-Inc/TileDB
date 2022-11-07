@@ -330,14 +330,15 @@ enum class state {
   exit
 };
 
-std::string strings[] = {"init",
-                         "top",
-                         "middle",
-                         "bottom",
-                         "alt_top",
-                         "alt_middle",
-                         "alt_bottom",
-                         "exit"};
+std::string strings[] = {
+    "init",
+    "top",
+    "middle",
+    "bottom",
+    "alt_top",
+    "alt_middle",
+    "alt_bottom",
+    "exit"};
 
 std::string str(state st) {
   return strings[static_cast<size_t>(st)];
