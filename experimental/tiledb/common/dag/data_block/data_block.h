@@ -130,7 +130,7 @@ class DataBlockImpl {
   explicit DataBlockImpl(
       size_t init_size = 0UL,
       typename std::enable_if<
-          std::is_same_v<R, PoolAllocator<chunk_size_>>>::type* = 0)
+          std::is_same_v<R, PoolAllocator<chunk_size_>>>::type* = nullptr)
       : capacity_{chunk_size_}
       , size_{init_size}
       , storage_{allocator_.allocate(),
@@ -143,7 +143,7 @@ class DataBlockImpl {
    * NOTE: Copies are shallow.
    */
   DataBlockImpl(const DataBlockImpl&) = default;
-  DataBlockImpl(DataBlockImpl&&) = default;
+  DataBlockImpl(DataBlockImpl&&)  noexcept = default;
   //  DataBlockImpl(DataBlockImpl&& rhs) {
   //    if (storage_.use_count() == 0) {
   //      rhs.size_ = 0;
@@ -152,7 +152,7 @@ class DataBlockImpl {
   //    }
   //  }
   DataBlockImpl& operator=(const DataBlockImpl&) = default;
-  DataBlockImpl& operator=(DataBlockImpl&&) = default;
+  DataBlockImpl& operator=(DataBlockImpl&&)  noexcept = default;
 
   /**
    * Various type aliases expected for a random-access range.
@@ -187,53 +187,53 @@ class DataBlockImpl {
   pointer data() {
     return data_;
   }
-  const_pointer data() const {
+  [[nodiscard]] const_pointer data() const {
     return data_;
   }
 
-  span_t entire_span() const {
+  [[nodiscard]] span_t entire_span() const {
     return {data_, capacity_};
   }
 
-  span_t span() const {
+  [[nodiscard]] span_t span() const {
     return {data_, size_};
   }
 
   iterator begin() {
     return data_;
   }
-  const_iterator begin() const {
+  [[nodiscard]] const_iterator begin() const {
     return data_;
   }
-  const_iterator cbegin() const {
+  [[nodiscard]] const_iterator cbegin() const {
     return data_;
   }
   reverse_iterator rbegin() {
     return span_t(data_, size_).rbegin();
   }
-  const_reverse_iterator rbegin() const {
+  [[nodiscard]] const_reverse_iterator rbegin() const {
     return span_t(data_, size_).rbegin();
   }
-  const_reverse_iterator crbegin() const {
+  [[nodiscard]] const_reverse_iterator crbegin() const {
     return span_t(data_, size_).rbegin();
   }
 
   iterator end() {
     return data_ + size_;
   }
-  const_iterator end() const {
+  [[nodiscard]] const_iterator end() const {
     return data_ + size_;
   }
-  const_iterator cend() const {
+  [[nodiscard]] const_iterator cend() const {
     return data_ + size_;
   }
   reverse_iterator rend() {
     return span_t(data_, size_).rend();
   }
-  const_reverse_iterator rend() const {
+  [[nodiscard]] const_reverse_iterator rend() const {
     return span_t(data_, size_).rend();
   }
-  const_reverse_iterator crend() const {
+  [[nodiscard]] const_reverse_iterator crend() const {
     return span_t(data_, size_).rend();
   }
 
@@ -241,7 +241,7 @@ class DataBlockImpl {
     return data_[size_ - 1];
   }
 
-  const_reference back() const {
+  [[nodiscard]] const_reference back() const {
     return data_[size_ - 1];
   }
 
@@ -253,14 +253,14 @@ class DataBlockImpl {
     return true;
   }
 
-  bool empty() const {
+  [[nodiscard]] bool empty() const {
     return size_ == 0;
   }
 
-  size_t size() const {
+  [[nodiscard]] size_t size() const {
     return size_;
   }
-  size_t capacity() const {
+  [[nodiscard]] size_t capacity() const {
     return capacity_;
   }
 
@@ -274,7 +274,7 @@ class DataBlockImpl {
   /**
    * Get shared pointer use count -- needed for diagnostics / testing
    */
-  size_t use_count() const noexcept {
+  [[nodiscard]] size_t use_count() const noexcept {
     return storage_.use_count();
   }
 };

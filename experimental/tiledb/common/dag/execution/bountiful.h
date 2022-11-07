@@ -38,13 +38,14 @@
  *      state of execution.  Rather, nodes are wrapped up in a lambda that invokes the
  *     `run` method of the node.
  *
- *   - The bountiful scheduler runs nodes eagerly -- as soon as they are submitted,
- *     rather than lazily.  This differs from behavior of other schedulers.
+ *   - The bountiful scheduler runs nodes lazily.  They are not launched until `sync_wait_all` is invoked.
  *
  *   - The bountiful scheduler is assumed to be used in conjunction with an
  *     AsyncPolicy (a policy that does its own synchronization).
  *
- * @todo Implement lazy submission of nodes submitted to the bountiful scheduler.
+ * More complete documentation about the generic interaction between schedulers and item movers can
+ * can be found in the docs subdirectory.
+ *
  * @todo Refactor policies in policies.h to be specific to bountiful scheduler.
  * @todo Implement with Task wrapper ?
  *
@@ -53,8 +54,10 @@
 #ifndef TILEDB_DAG_BOUNTIFUL_H
 #define TILEDB_DAG_BOUNTIFUL_H
 
+#include <condition_variable>
 #include <future>
 #include <iostream>
+#include <mutex>
 #include <thread>
 #include <vector>
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
@@ -85,17 +88,28 @@ struct SchedulerTraits<BountifulSchedulerPolicy<T>> {
   using task_handle_type = T;
 };
 
+/**
+ * @brief A scheduler that launches every task on its own thread and uses standard library mechanisms for synchronization (i.e., std::condition_variable)
+ * The corresponding functionality is provided in policies.h
+ *
+ * @tparam Node The type of node being scheduled.
+ */
 template <class Node>
 class BountifulScheduler {
-  std::vector<std::future<void>> futures_;
+  /* Flag to indicate to enable debugging in the scheduler. */
+  std::atomic<bool> debug_{false};
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
  public:
-  std::atomic<bool> debug_{false};
 
+  /**
+   * @brief Constructor.
+   *
+   * @param num_threads
+   */
   BountifulScheduler([[maybe_unused]] size_t num_threads = 0) {
   }
 
@@ -116,7 +130,7 @@ class BountifulScheduler {
   /**
    * @brief Get state of debug mode.
    */
-  bool debug() {
+  bool debug_enabled() {
     return debug_.load();
   }
 
@@ -126,31 +140,54 @@ class BountifulScheduler {
    * @param node The task to submit.
    */
   void submit(Node&& n) {
-    if (debug()) {
+    if (debug_enabled()) {
       std::cout << "Submitting node " << n->id() << std::endl;
     }
-    auto f = std::async(std::launch::async, [this, n]() mutable {
-      if (debug()) {
-        std::cout << "Running node " << n->id() << std::endl;
-      }
-
-      n->run();
-
-      if (debug()) {
-        std::cout << "Completed node " << n->id() << std::endl;
-      }
-    });
-    futures_.push_back(std::move(f));
+    nodes_.emplace_back(std::move(n));
   }
 
   /**
-   * @brief Wait for all running tasks to complete
+   * @brief Wait for all running tasks to complete.  Since the bountiful scheduler
+   * lazily launches its task, they are launched here.
    */
   void sync_wait_all() {
+    if (debug_enabled()) {
+      std::cout << "Starting sync_wait_all()\n";
+      std::cout << "About to launch all tasks\n";
+    }
+
+    /*
+     * Launch all tasks.
+     */
+    for (auto&& n : nodes_) {
+      auto f = std::async(std::launch::async, [this, n]() mutable {
+        if (debug_enabled()) {
+          std::cout << "Running node " << n->id() << std::endl;
+        }
+
+        n->run();
+
+        if (debug_enabled()) {
+          std::cout << "Completed node " << n->id() << std::endl;
+        }
+      });
+      futures_.emplace_back(std::move(f));
+    }
+
+    /*
+     * Then we wait for the worker threads to complete.
+     *
+     */
     for (auto&& f : futures_) {
       f.get();
     }
   }
+ private:
+  /* Container for all nodes of the submitted task graph. */
+  std::vector<Node> nodes_;
+
+  /* Container of all futures corresponding to the launched tasks. */
+  std::vector<std::future<void>> futures_;
 };
 
 }  // namespace tiledb::common

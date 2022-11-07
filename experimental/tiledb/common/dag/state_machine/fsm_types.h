@@ -32,6 +32,9 @@
 #ifndef TILEDB_DAG_FSM_TYPES_H
 #define TILEDB_DAG_FSM_TYPES_H
 
+#include <vector>
+#include <string>
+
 namespace tiledb::common {
 
 /**
@@ -389,6 +392,42 @@ static auto inline str(PortAction ac) {
   return (full_s_sink(st) || full_x_sink(st));
 }
 
+[[maybe_unused]] static bool empty_s_state(three_stage st) {
+  return (st == three_stage::st_000);
+}
+
+[[maybe_unused]] static bool empty_x_state(three_stage st) {
+  return (st == three_stage::xt_000);
+}
+
+[[maybe_unused]] static bool empty_state(three_stage st) {
+  return (empty_s_state(st) || empty_x_state(st));
+}
+
+[[maybe_unused]] static bool full_s_state(three_stage st) {
+  return (st == three_stage::st_111);
+}
+
+[[maybe_unused]] static bool full_x_state(three_stage st) {
+  return (st == three_stage::xt_111);
+}
+
+[[maybe_unused]] static bool full_state(three_stage st) {
+  return (full_s_state(st) || full_x_state(st));
+}
+
+[[maybe_unused]] static bool terminating(three_stage st) {
+  return st == three_stage::xt_000 || st == three_stage::xt_001 ||
+      st == three_stage::xt_010 || st == three_stage::xt_011;
+}
+
+[[maybe_unused]] static bool terminated(three_stage st) {
+  return st == three_stage::xt_000;
+}
+
+[[maybe_unused]] static bool done(three_stage st) {
+  return st == three_stage::done;
+}
 /**
  *
  */
@@ -452,26 +491,39 @@ static auto inline str(PortAction ac) {
 }
 
 [[maybe_unused]] static bool empty_s_state(two_stage st) {
-  return (st == two_stage::st_00 || st == two_stage::st_01);
+  return (st == two_stage::st_00);
 }
 
 [[maybe_unused]] static bool empty_x_state(two_stage st) {
-  return (st == two_stage::xt_00 || st == two_stage::xt_01);
+  return (st == two_stage::xt_00);
 }
 
 [[maybe_unused]] static bool empty_state(two_stage st) {
   return (empty_s_state(st) || empty_x_state(st));
 }
+
 [[maybe_unused]] static bool full_s_state(two_stage st) {
-  return (st == two_stage::st_10 || st == two_stage::st_11);
+  return (st == two_stage::st_11);
 }
 
 [[maybe_unused]] static bool full_x_state(two_stage st) {
-  return (st == two_stage::xt_10 || st == two_stage::xt_11);
+  return (st == two_stage::xt_11);
 }
 
 [[maybe_unused]] static bool full_state(two_stage st) {
   return (full_s_state(st) || full_x_state(st));
+}
+
+[[maybe_unused]] static bool terminating(two_stage st) {
+  return st == two_stage::xt_00 || st == two_stage::xt_01;
+}
+
+[[maybe_unused]] static bool terminated(two_stage st) {
+  return st == two_stage::xt_00;
+}
+
+[[maybe_unused]] static bool done(two_stage st) {
+  return st == two_stage::done;
 }
 
 }  // namespace tiledb::common

@@ -136,7 +136,7 @@ class Port {
   }
 
  public:
-  auto get_mover() {
+  auto get_mover() const {
     return item_mover_;
   }
 };

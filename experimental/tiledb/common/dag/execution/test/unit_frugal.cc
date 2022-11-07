@@ -40,6 +40,7 @@
 #include "../frugal.h"
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
+#include "experimental/tiledb/common/dag/execution/task.h"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 #include "unit_frugal.h"
 
@@ -154,58 +155,58 @@ TEMPLATE_TEST_CASE(
   node d = c;
   node g = f;
 
-  q->source_correspondent_ = p;
+  q->source_correspondent() = p;
   CHECK(q->source_correspondent() == p);
 
-  q->sink_correspondent_ = p;
+  q->sink_correspondent() = p;
   CHECK(q->sink_correspondent() == p);
 
-  q->source_correspondent_ = f;
+  q->source_correspondent() = f;
   CHECK(q->source_correspondent() == f);
 
-  q->sink_correspondent_ = f;
+  q->sink_correspondent() = f;
   CHECK(q->sink_correspondent() == f);
 
-  q->source_correspondent_ = c;
+  q->source_correspondent() = c;
   CHECK(q->source_correspondent() == c);
 
-  q->sink_correspondent_ = c;
+  q->sink_correspondent() = c;
   CHECK(q->sink_correspondent() == c);
 
-  d->source_correspondent_ = p;
+  d->source_correspondent() = p;
   CHECK(d->source_correspondent() == p);
 
-  d->sink_correspondent_ = p;
+  d->sink_correspondent() = p;
   CHECK(d->sink_correspondent() == p);
 
-  d->source_correspondent_ = f;
+  d->source_correspondent() = f;
   CHECK(d->source_correspondent() == f);
 
-  d->sink_correspondent_ = f;
+  d->sink_correspondent() = f;
   CHECK(d->sink_correspondent() == f);
 
-  d->source_correspondent_ = c;
+  d->source_correspondent() = c;
   CHECK(d->source_correspondent() == c);
 
-  d->sink_correspondent_ = c;
+  d->sink_correspondent() = c;
   CHECK(d->sink_correspondent() == c);
 
-  g->source_correspondent_ = p;
+  g->source_correspondent() = p;
   CHECK(g->source_correspondent() == p);
 
-  g->sink_correspondent_ = p;
+  g->sink_correspondent() = p;
   CHECK(g->sink_correspondent() == p);
 
-  g->source_correspondent_ = f;
+  g->source_correspondent() = f;
   CHECK(g->source_correspondent() == f);
 
-  g->sink_correspondent_ = f;
+  g->sink_correspondent() = f;
   CHECK(g->sink_correspondent() == f);
 
-  g->source_correspondent_ = c;
+  g->source_correspondent() = c;
   CHECK(g->source_correspondent() == c);
 
-  g->sink_correspondent_ = c;
+  g->sink_correspondent() = c;
   CHECK(g->sink_correspondent() == c);
 }
 
@@ -270,7 +271,7 @@ struct hm<T, node> {
 
 template <class N>
 Task<node> task_from_node(N& n) {
-  return {n};
+  return Task<node>(n);
 }
 
 template <class N>
@@ -1208,18 +1209,18 @@ TEMPLATE_TEST_CASE(
       c->enable_debug();
     }
 
-    if (sched.debug())
+    if (sched.debug_enabled())
       std::cout << "==========================================================="
                    "=====\n";
 
     sched.submit(p);
     sched.submit(c);
-    if (sched.debug())
+    if (sched.debug_enabled())
       std::cout << "-----------------------------------------------------------"
                    "-----\n";
     sched.sync_wait_all();
 
-    if (sched.debug())
+    if (sched.debug_enabled())
       std::cout << "==========================================================="
                    "=====\n";
 
@@ -1283,11 +1284,11 @@ TEMPLATE_TEST_CASE(
     }
 
     auto p = P([&sched, &i, &input](std::stop_source& stop_source) {
-      if (sched.debug())
+      if (sched.debug_enabled())
         std::cout << "Producing " + std::to_string(*i) + " with distance " +
                          std::to_string(std::distance(input.begin(), i)) + "\n";
       if (std::distance(input.begin(), i) >= static_cast<long>(problem_size)) {
-        if (sched.debug()) {
+        if (sched.debug_enabled()) {
           std::cout << "Requesting stop\n";
         }
 
@@ -1295,13 +1296,13 @@ TEMPLATE_TEST_CASE(
         return *(input.begin()) + 1;
       }
 
-      if (sched.debug())
+      if (sched.debug_enabled())
         std::cout << "producer function returning " + std::to_string(*i) + "\n";
 
       return (*i++) + 1;
     });
     auto f = F([&sched](std::size_t k) {
-      if (sched.debug())
+      if (sched.debug_enabled())
         std::cout << "Transforming " + std::to_string(k) + " to "
                   << std::to_string(k - 1) + "\n";
       return k - 1;

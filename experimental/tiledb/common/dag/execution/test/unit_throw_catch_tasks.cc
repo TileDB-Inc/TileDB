@@ -1,5 +1,5 @@
 /**
- * @file   unit_throw_catch.cc
+ * @file   unit_throw_catch_tasks.cc
  *
  * @section LICENSE
  *

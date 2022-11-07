@@ -27,6 +27,10 @@
  *
  * @section DESCRIPTION
  *
+ * A `Task` wraps up a task graph node for the purposes of being able to be
+ * scheduled for execution. It is a simple wrapper around a `Node` and maintains
+ * the current state of the task in the scheduler.
+ *
  */
 
 #ifndef TILEDB_DAG_TASK_H
@@ -36,6 +40,11 @@
 
 namespace tiledb::common {
 
+/**
+ * @brief The actual implementation of a task.
+ *
+ * @tparam Node The type of the node.
+ */
 template <class Node>
 class TaskImpl : Node {
   TaskState state_{TaskState::created};
@@ -50,47 +59,71 @@ class TaskImpl : Node {
       : node_{n} {
   }
 
+  /** Default constructor. */
   TaskImpl() = default;
 
+  /** Default copy constructor. */
   TaskImpl(const TaskImpl&) = default;
 
+  /** Default move constructor. */
   TaskImpl(TaskImpl&&) noexcept = default;
 
+  /** Default assignment operator. */
   TaskImpl& operator=(const TaskImpl&) = default;
 
+  /** Default move assignment operator. */
   TaskImpl& operator=(TaskImpl&&) noexcept = default;
 
+  /** Get the current state of the task. */
   TaskState& task_state() {
     return state_;
   }
 
+  /** Get the underlying node */
+  auto node() {
+    return dynamic_cast<node_*>(this);
+  }
+
+  /** Resume the underlying node computation. */
   void resume() {
     (*this)->resume();
   }
 
+/** Decrement program counter of underlying node */
   void decrement_program_counter() {
     (*this)->decrement_program_counter();
   }
 
+  /**
+   * Get correspondent of underlying node, a `Sink`.
+   * @return The corresponding node.
+   */
   Node& sink_correspondent() const {
     return (*this)->sink_correspondent();
   }
 
+  /**
+   * Get correspondent of underlying node, a `Source`.
+   * @return The corresponding node.
+   */
   Node& source_correspondent() const {
     return (*this)->source_correspondent();
   }
 
+  /** Get name of underlying node.  Useful for testing and debugging. */
   [[nodiscard]] std::string name() const {
     return (*this)->name() + " task";
   }
 
+  /** Get id of underlying node.  Useful for testing and debugging. */
   [[nodiscard]] size_t id() const {
     return (*this)->id();
   }
 
-  // virtual ??
+  // @todo virtual ??
   ~TaskImpl() = default;
 
+  /** Dump some debugging information about the task. */
   void dump_task_state(const std::string& msg = "") {
     std::string preface = (!msg.empty() ? msg + "\n" : "");
 
@@ -100,6 +133,7 @@ class TaskImpl : Node {
   }
 };
 
+/** Wrapper around `TaskImpl` to make it a `shared_ptr`. */
 template <class Node>
 class Task : public std::shared_ptr<TaskImpl<Node>> {
   using Base = std::shared_ptr<TaskImpl<Node>>;
