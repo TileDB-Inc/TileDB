@@ -72,6 +72,8 @@
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm_types.h"
 #include "experimental/tiledb/common/dag/utils/print_types.h"
+#include "experimental/tiledb/common/dag/execution/duffs_types.h"
+#include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 
 namespace tiledb::common {
 
