@@ -45,6 +45,9 @@ macro (dag_add_header_only_object_library OBJLIBNAME)
   add_executable(compile_${OBJLIBNAME} EXCLUDE_FROM_ALL)
   add_dependencies(all_link_complete compile_${OBJLIBNAME})
 
+# message("==== ${OBJLIBNAME}")
+# message("====---- compile_${OBJLIBNAME} PRIVATE ${OBJLIBNAME}")
+
   target_link_libraries(compile_${OBJLIBNAME} PRIVATE ${OBJLIBNAME})
   target_sources(compile_${OBJLIBNAME} PRIVATE test/compile_${OBJLIBNAME}_main.cc)
 endmacro (dag_add_header_only_object_library)
@@ -62,7 +65,6 @@ macro (dag_add_header_only_unit_test TESTNAME)
     # Required libraries
     #
     target_link_libraries(unit_${TESTNAME} PUBLIC Catch2::Catch2WithMain)
-    target_link_libraries(unit_${TESTNAME} PUBLIC baseline)
     #
     # Define sources for test
     #
@@ -82,6 +84,7 @@ macro (dag_add_header_only_unit_test TESTNAME)
         COMMAND $<TARGET_FILE:unit_${TESTNAME}> --durations=yes
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    add_dependencies(tests "unit_${TESTNAME}")
 endmacro(dag_add_header_only_unit_test)
 
 if (TILEDB_TESTS)

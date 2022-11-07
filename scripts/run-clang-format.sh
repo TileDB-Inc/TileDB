@@ -32,7 +32,8 @@ shift
 pushd $SOURCE_DIR
 
 src=$SOURCE_DIR
-SOURCE_PATHS=($src/tiledb $src/test $src/examples $src/tools $src/experimental)
+# SOURCE_PATHS=($src/tiledb $src/test $src/examples $src/tools $src/experimental)
+SOURCE_PATHS=($src/experimental)
 FIND_FILES=(-name "*.cc" -or -name "*.c" -or -name "*.h")
 
 if [ "$APPLY_FIXES" == "1" ]; then

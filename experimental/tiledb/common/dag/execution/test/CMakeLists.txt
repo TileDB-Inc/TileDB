@@ -25,38 +25,19 @@
 # THE SOFTWARE.
 #
 
-
 #
-# Define unit tests for threadpool, bountiful, stop_token, throwcatch
+# Define unit tests.  Note that tests for frugal, throw_catch, and bountiful are
+# part of unit_scheduler.  The tests for the duffs scheduler should be
+# migrated to unit_scheduler at some point (and unit_scheduler should be
+# cleaned up per some of the practices in unit_duffs).
 #
+dag_add_header_only_unit_test(scheduler)
+dag_add_header_only_unit_test(duffs)
 dag_add_header_only_unit_test(threadpool)
 dag_add_header_only_unit_test(stop_token)
 dag_add_header_only_unit_test(throw_catch_tasks)
-dag_add_header_only_unit_test(scheduler)
-dag_add_header_only_unit_test(frugal)
 dag_add_header_only_unit_test(task_state_machine)
+dag_add_header_only_unit_test(scheduler_sieve)
 
-
-#
-# Define sieve test -- it is not catch-based
-#
-# Define unit test
-#
-add_executable(unit_throw_catch_sieve EXCLUDE_FROM_ALL)
-#
-# Required libraries
-#
-#
-# Define sources for test
-#
-target_sources(unit_throw_catch_sieve PUBLIC
-    unit_throw_catch_sieve.cc
-)
-#
-# Add unit test to global suite of unit tests
-#
-add_test(
-    NAME "unit_throw_catch_sieve"
-    COMMAND $<TARGET_FILE:unit_throw_catch_sieve> --durations=yes
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+# The unit test for frugal needs to be brought up date
+# dag_add_header_only_unit_test(frugal)

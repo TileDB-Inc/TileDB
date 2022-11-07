@@ -26,7 +26,6 @@
 #
 
 dag_add_header_only_unit_test(fsm)
-dag_add_header_only_unit_test(fxm)
 dag_add_header_only_unit_test(sched)
 dag_add_header_only_unit_test(proof)
 dag_add_header_only_unit_test(policies)

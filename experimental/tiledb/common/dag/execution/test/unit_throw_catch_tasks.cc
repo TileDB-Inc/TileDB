@@ -1,5 +1,5 @@
 /**
- * @file   unit_throw_catch.cc
+ * @file   unit_throw_catch_tasks.cc
  *
  * @section LICENSE
  *
@@ -42,7 +42,7 @@
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
-
+#include "experimental/tiledb/common/dag/execution/task.h"
 #include "experimental/tiledb/common/dag/nodes/consumer.h"
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
@@ -61,23 +61,23 @@ struct hm {
 
 template <template <class> class T>
 struct hm<T, node> {
-  auto operator()(const node& n) {
-    return ThrowCatchTask{n};
+  auto operator()(const node& n) const {
+    return Task<node>{n};
   }
 };
 
 template <class N>
-ThrowCatchTask<node> task_from_node(N& n) {
-  return ThrowCatchTask<node>{n};
+Task<node> task_from_node(N& n) {
+  return Task<node>{n};
 }
 
 template <class N>
-TaskState task_state(const ThrowCatchTask<N>& t) {
+TaskState task_state(const Task<N>& t) {
   return t.task_state();
 }
 
 template <class N>
-TaskState& task_state(ThrowCatchTask<N>& t) {
+TaskState& task_state(Task<N>& t) {
   return t.task_state();
 }
 
@@ -86,7 +86,7 @@ T& task_handle(T& task) {
   return task;
 }
 
-auto hm_ = hm<ThrowCatchTask, node>{};
+auto hm_ = hm<Task, node>{};
 
 bool two_nodes(node_base&, node_base&) {
   return true;
@@ -97,7 +97,7 @@ bool two_nodes(const node&, const node&) {
 }
 
 TEMPLATE_TEST_CASE(
-    "ThrowCatchTasks: Extensive tests of nodes",
+    "Tasks: Extensive tests of nodes",
     "[throw_catch_tasks]",
     (std::tuple<
         consumer_node<ThrowCatchMover2, size_t>,
@@ -139,7 +139,7 @@ TEMPLATE_TEST_CASE(
     CHECK(two_nodes(fun_node, con_node));
   }
 
-  SECTION("Checks with ThrowCatchTask and node (godbolt)") {
+  SECTION("Checks with Task and node (godbolt)") {
     auto shared_pro = node{pro_node};
     auto shared_fun = node{fun_node};
     auto shared_con = node{con_node};
@@ -150,9 +150,9 @@ TEMPLATE_TEST_CASE(
   }
 
   SECTION("I think this works (godbolt)", "[throw_catch_tasks]") {
-    auto throw_catch_pro = ThrowCatchTask<node>{pro_node};
-    auto throw_catch_fun = ThrowCatchTask<node>{fun_node};
-    auto throw_catch_con = ThrowCatchTask<node>{con_node};
+    auto throw_catch_pro = Task<node>{pro_node};
+    auto throw_catch_fun = Task<node>{fun_node};
+    auto throw_catch_con = Task<node>{con_node};
 
     auto throw_catch_from_pro = task_from_node(pro_node);
     auto throw_catch_from_fun = task_from_node(fun_node);
@@ -175,8 +175,8 @@ TEMPLATE_TEST_CASE(
      * Though maybe we should not allow this?
      */
 
-    auto throw_catch_pro_1 = ThrowCatchTask<node>{pro_node};
-    auto throw_catch_pro_2 = ThrowCatchTask<node>{pro_node};
+    auto throw_catch_pro_1 = Task<node>{pro_node};
+    auto throw_catch_pro_2 = Task<node>{pro_node};
     auto throw_catch_pro_3 = task_from_node(pro_node);
     auto throw_catch_pro_4 = hm_(pro_node);
     auto throw_catch_pro_5 = throw_catch_pro_1;
@@ -188,8 +188,8 @@ TEMPLATE_TEST_CASE(
     CHECK(throw_catch_pro_4 != throw_catch_pro_5);
     CHECK(throw_catch_pro_5 != throw_catch_pro_6);
 
-    ThrowCatchTask<node> throw_catch_pro_7{throw_catch_pro_2};
-    ThrowCatchTask throw_catch_pro_8{throw_catch_pro_2};
+    Task<node> throw_catch_pro_7{throw_catch_pro_2};
+    Task throw_catch_pro_8{throw_catch_pro_2};
 
     CHECK(throw_catch_pro_6 != throw_catch_pro_7);
     CHECK(throw_catch_pro_7 == throw_catch_pro_2);
@@ -205,15 +205,15 @@ TEMPLATE_TEST_CASE(
     CHECK(throw_catch_pro_5_x == throw_catch_pro_5);
 
     // Warning danger -- don't use throw_catch_pro_5 after the move
-    ThrowCatchTask<node> throw_catch_pro_5_moved{std::move(throw_catch_pro_5)};
+    Task<node> throw_catch_pro_5_moved{std::move(throw_catch_pro_5)};
     CHECK(throw_catch_pro_5_moved == throw_catch_pro_5_x);
 
     /*
      * Function Case
      */
 
-    auto throw_catch_fun_1 = ThrowCatchTask<node>{fun_node};
-    auto throw_catch_fun_2 = ThrowCatchTask<node>{fun_node};
+    auto throw_catch_fun_1 = Task<node>{fun_node};
+    auto throw_catch_fun_2 = Task<node>{fun_node};
     auto throw_catch_fun_3 = task_from_node(fun_node);
     auto throw_catch_fun_4 = hm_(fun_node);
     auto throw_catch_fun_5 = throw_catch_fun_1;
@@ -225,8 +225,8 @@ TEMPLATE_TEST_CASE(
     CHECK(throw_catch_fun_4 != throw_catch_fun_5);
     CHECK(throw_catch_fun_5 != throw_catch_fun_6);
 
-    ThrowCatchTask<node> throw_catch_fun_7{throw_catch_fun_2};
-    ThrowCatchTask throw_catch_fun_8{throw_catch_fun_2};
+    Task<node> throw_catch_fun_7{throw_catch_fun_2};
+    Task throw_catch_fun_8{throw_catch_fun_2};
 
     CHECK(throw_catch_fun_6 != throw_catch_fun_7);
     CHECK(throw_catch_fun_7 == throw_catch_fun_2);
@@ -242,14 +242,14 @@ TEMPLATE_TEST_CASE(
     CHECK(throw_catch_fun_5_x == throw_catch_fun_5);
 
     // Warning danger -- don't use throw_catch_fun_5 after the move
-    ThrowCatchTask<node> throw_catch_fun_5_moved{std::move(throw_catch_fun_5)};
+    Task<node> throw_catch_fun_5_moved{std::move(throw_catch_fun_5)};
     CHECK(throw_catch_fun_5_moved == throw_catch_fun_5_x);
 
     /*
      * Consumer case
      */
-    auto throw_catch_con_1 = ThrowCatchTask<node>{con_node};
-    auto throw_catch_con_2 = ThrowCatchTask<node>{con_node};
+    auto throw_catch_con_1 = Task<node>{con_node};
+    auto throw_catch_con_2 = Task<node>{con_node};
     auto throw_catch_con_3 = task_from_node(con_node);
     auto throw_catch_con_4 = hm_(con_node);
     auto throw_catch_con_5 = throw_catch_con_1;
@@ -261,8 +261,8 @@ TEMPLATE_TEST_CASE(
     CHECK(throw_catch_con_4 != throw_catch_con_5);
     CHECK(throw_catch_con_5 != throw_catch_con_6);
 
-    ThrowCatchTask<node> throw_catch_con_7{throw_catch_con_2};
-    ThrowCatchTask throw_catch_con_8{throw_catch_con_2};
+    Task<node> throw_catch_con_7{throw_catch_con_2};
+    Task throw_catch_con_8{throw_catch_con_2};
 
     CHECK(throw_catch_con_6 != throw_catch_con_7);
     CHECK(throw_catch_con_7 == throw_catch_con_2);
@@ -278,14 +278,14 @@ TEMPLATE_TEST_CASE(
     CHECK(throw_catch_con_5_x == throw_catch_con_5);
 
     // Warning danger -- don't use throw_catch_con_5 after the move
-    ThrowCatchTask<node> throw_catch_con_5_moved{std::move(throw_catch_con_5)};
+    Task<node> throw_catch_con_5_moved{std::move(throw_catch_con_5)};
     CHECK(throw_catch_con_5_moved == throw_catch_con_5_x);
   }
 
   SECTION("Check states") {
-    auto throw_catch_pro = ThrowCatchTask<node>{pro_node};
-    auto throw_catch_fun = ThrowCatchTask<node>{fun_node};
-    auto throw_catch_con = ThrowCatchTask<node>{con_node};
+    auto throw_catch_pro = Task<node>{pro_node};
+    auto throw_catch_fun = Task<node>{fun_node};
+    auto throw_catch_con = Task<node>{con_node};
 
     auto throw_catch_from_pro = task_from_node(pro_node);
     auto throw_catch_from_fun = task_from_node(fun_node);
@@ -358,15 +358,15 @@ TEMPLATE_TEST_CASE(
  * Some deduction guides
  */
 namespace tiledb::common {
-ThrowCatchTask(node&)->ThrowCatchTask<node>;
+Task(node&)->Task<node>;
 
-ThrowCatchTask(const node&)->ThrowCatchTask<node>;
-
-template <template <class> class M, class T>
-ThrowCatchTask(producer_node<M, T>)->ThrowCatchTask<node>;
+Task(const node&)->Task<node>;
 
 template <template <class> class M, class T>
-ThrowCatchTask(consumer_node<M, T>)->ThrowCatchTask<node>;
+Task(producer_node<M, T>)->Task<node>;
+
+template <template <class> class M, class T>
+Task(consumer_node<M, T>)->Task<node>;
 
 template <
     template <class>
@@ -375,15 +375,15 @@ template <
     template <class>
     class M2,
     class T2>
-ThrowCatchTask(function_node<M1, T1, M2, T2>)->ThrowCatchTask<node>;
+Task(function_node<M1, T1, M2, T2>)->Task<node>;
 
 template <template <class> class M1, class T1>
-ThrowCatchTask(function_node<M1, T1>)->ThrowCatchTask<node>;
+Task(function_node<M1, T1>)->Task<node>;
 
 }  // namespace tiledb::common
 
 TEMPLATE_TEST_CASE(
-    "ThrowCatchTasks: Test ThrowCatchTask",
+    "Tasks: Test Task",
     "[throw_catch_tasks]",
     (std::tuple<
         consumer_node<ThrowCatchMover2, size_t>,
@@ -415,20 +415,20 @@ TEMPLATE_TEST_CASE(
   auto fun_node_2 = F([](const size_t&) { return 0; });
   auto con_node_2 = C([](const size_t&) {});
 
-  auto pro_task = ThrowCatchTask(pro_node);
-  auto fun_task = ThrowCatchTask(fun_node);
-  auto con_task = ThrowCatchTask(con_node);
+  auto pro_task = Task(pro_node);
+  auto fun_task = Task(fun_node);
+  auto con_task = Task(con_node);
 
   auto pro_task_assign = pro_task;
   auto fun_task_assign = fun_task;
   auto con_task_assign = con_task;
 
-  auto pro_task_copy = ThrowCatchTask(pro_task);
-  auto fun_task_copy = ThrowCatchTask(fun_task);
-  auto con_task_copy = ThrowCatchTask(con_task);
+  auto pro_task_copy = Task(pro_task);
+  auto fun_task_copy = Task(fun_task);
+  auto con_task_copy = Task(con_task);
 
-  auto pro_task_2 = ThrowCatchTask(pro_node_2);
-  auto con_task_2 = ThrowCatchTask(con_node_2);
+  auto pro_task_2 = Task(pro_node_2);
+  auto con_task_2 = Task(con_node_2);
 
   SECTION("Names") {
     CHECK(con_node->name() == "consumer");
@@ -457,10 +457,10 @@ TEMPLATE_TEST_CASE(
     CHECK(static_cast<void*>(&(*node_pro)) == static_cast<void*>(&(*pro_node)));
   }
 
-  SECTION("ThrowCatchTask Equality") {
+  SECTION("Task Equality") {
   }
 
-  SECTION("Node and ThrowCatchTask Equality") {
+  SECTION("Node and Task Equality") {
   }
 
   SECTION("Queue") {
@@ -476,24 +476,24 @@ TEMPLATE_TEST_CASE(
     auto con_node_j = C([](const size_t&) {});
     auto con_node_k = CI([](const size_t&) {});
 
-    auto pro_task_i = ThrowCatchTask<node>{pro_node_i};
-    auto pro_task_j = ThrowCatchTask<node>{pro_node_j};
-    auto pro_task_i_deduced = ThrowCatchTask{pro_node_i};
-    auto pro_task_j_deduced = ThrowCatchTask{pro_node_j};
+    auto pro_task_i = Task<node>{pro_node_i};
+    auto pro_task_j = Task<node>{pro_node_j};
+    auto pro_task_i_deduced = Task{pro_node_i};
+    auto pro_task_j_deduced = Task{pro_node_j};
     auto pro_task_i_tfn = task_from_node(pro_node_i);
     auto pro_task_j_tfn = task_from_node(pro_node_j);
 
-    auto fun_task_i = ThrowCatchTask<node>{fun_node_i};
-    auto fun_task_j = ThrowCatchTask<node>{fun_node_j};
-    auto fun_task_i_deduced = ThrowCatchTask{fun_node_i};
-    auto fun_task_j_deduced = ThrowCatchTask{fun_node_j};
+    auto fun_task_i = Task<node>{fun_node_i};
+    auto fun_task_j = Task<node>{fun_node_j};
+    auto fun_task_i_deduced = Task{fun_node_i};
+    auto fun_task_j_deduced = Task{fun_node_j};
     auto fun_task_i_tfn = task_from_node(fun_node_i);
     auto fun_task_j_tfn = task_from_node(fun_node_j);
 
-    auto con_task_i = ThrowCatchTask<node>{con_node_i};
-    auto con_task_j = ThrowCatchTask<node>{con_node_j};
-    auto con_task_i_deduced = ThrowCatchTask{con_node_i};
-    auto con_task_j_deduced = ThrowCatchTask{con_node_j};
+    auto con_task_i = Task<node>{con_node_i};
+    auto con_task_j = Task<node>{con_node_j};
+    auto con_task_i_deduced = Task{con_node_i};
+    auto con_task_j_deduced = Task{con_node_j};
     auto con_task_i_tfn = task_from_node(con_node_i);
     auto con_task_j_tfn = task_from_node(con_node_j);
 
@@ -506,7 +506,7 @@ TEMPLATE_TEST_CASE(
     node_queue.push(fun_node);
     node_queue.push(con_node);
 
-    std::queue<ThrowCatchTask<node>> task_queue;
+    std::queue<Task<node>> task_queue;
 
     task_queue.push(pro_task_i);
     task_queue.push(fun_task_i);
@@ -566,7 +566,7 @@ TEMPLATE_TEST_CASE(
     CHECK(pro_task_copy == pro_task);
     CHECK(pro_task == pro_task_copy);
 
-    auto empty_queue = std::queue<ThrowCatchTask<node>>{};
+    auto empty_queue = std::queue<Task<node>>{};
     task_queue.swap(empty_queue);
     CHECK(task_queue.empty());
 
@@ -617,15 +617,15 @@ SCENARIO(
       [](std::stop_source&) { return 0; });
   auto con_node = consumer_node<ThrowCatchMover3, size_t>([](const size_t&) {});
 
-  auto pro_task = ThrowCatchTask(pro_node);
-  auto con_task = ThrowCatchTask(con_node);
+  auto pro_task = Task(pro_node);
+  auto con_task = Task(con_node);
 
   GIVEN("Tasks pro_task and pro_task_copy (copy of pro_task)") {
     auto pro_task_assign = pro_task;
     auto con_task_assign = con_task;
 
-    auto pro_task_copy = ThrowCatchTask(pro_task);
-    auto con_task_copy = ThrowCatchTask(con_task);
+    auto pro_task_copy = Task(pro_task);
+    auto con_task_copy = Task(con_task);
     THEN("pro_task == pro_task_copy") {
       CHECK(pro_task_assign == pro_task);
       CHECK(con_task_assign == con_task);
@@ -636,8 +636,8 @@ SCENARIO(
       CHECK(pro_task != con_task);
     }
     WHEN("Task with copy is pushed onto a queue") {
-      std::queue<ThrowCatchTask<node>> task_queue;
-      auto pro_task_to_push = ThrowCatchTask(pro_task);
+      std::queue<Task<node>> task_queue;
+      auto pro_task_to_push = Task(pro_task);
       CHECK(pro_task_to_push == pro_task);
       task_queue.push(pro_task_to_push);
 
@@ -657,12 +657,12 @@ SCENARIO(
         }
       }
       AND_WHEN("We push tasks onto the queue") {
-        std::queue<ThrowCatchTask<node>> created_queue;
-        std::queue<ThrowCatchTask<node>> submitted_queue;
+        std::queue<Task<node>> created_queue;
+        std::queue<Task<node>> submitted_queue;
 
-        auto created_pro_task_i = ThrowCatchTask(pro_node);
-        auto created_pro_task_j = ThrowCatchTask(pro_node);
-        auto created_pro_task_k = ThrowCatchTask(pro_node);
+        auto created_pro_task_i = Task(pro_node);
+        auto created_pro_task_j = Task(pro_node);
+        auto created_pro_task_k = Task(pro_node);
 
         auto copied_pro_task_i = created_pro_task_i;
         auto copied_pro_task_j = created_pro_task_j;
@@ -711,15 +711,15 @@ SCENARIO(
       [](std::stop_source&) { return 0; });
   auto con_node = consumer_node<ThrowCatchMover3, size_t>([](const size_t&) {});
 
-  auto pro_task = ThrowCatchTask(pro_node);
-  auto con_task = ThrowCatchTask(con_node);
+  auto pro_task = Task(pro_node);
+  auto con_task = Task(con_node);
 
   GIVEN("Tasks pro_task and pro_task_copy (copy of pro_task)") {
     auto pro_task_assign = pro_task;
     auto con_task_assign = con_task;
 
-    auto pro_task_copy = ThrowCatchTask(pro_task);
-    auto con_task_copy = ThrowCatchTask(con_task);
+    auto pro_task_copy = Task(pro_task);
+    auto con_task_copy = Task(con_task);
 
     THEN("pro_task == pro_task_copy") {
       CHECK(pro_task_assign == pro_task);
@@ -731,9 +731,9 @@ SCENARIO(
       CHECK(pro_task != con_task);
     }
     WHEN("Task with copy is inserted into a set") {
-      std::set<ThrowCatchTask<node>> task_set;
+      std::set<Task<node>> task_set;
 
-      auto pro_task_to_insert = ThrowCatchTask(pro_task);
+      auto pro_task_to_insert = Task(pro_task);
       CHECK(pro_task_to_insert == pro_task);
       task_set.insert(pro_task_to_insert);
 
@@ -749,12 +749,12 @@ SCENARIO(
       }
 
       AND_WHEN("We insert multiple tasks into a set") {
-        std::set<ThrowCatchTask<node>> created_set;
-        std::set<ThrowCatchTask<node>> submitted_set;
+        std::set<Task<node>> created_set;
+        std::set<Task<node>> submitted_set;
 
-        auto created_pro_task_i = ThrowCatchTask(pro_node);
-        auto created_pro_task_j = ThrowCatchTask(pro_node);
-        auto created_pro_task_k = ThrowCatchTask(pro_node);
+        auto created_pro_task_i = Task(pro_node);
+        auto created_pro_task_j = Task(pro_node);
+        auto created_pro_task_k = Task(pro_node);
 
         auto copied_pro_task_i = created_pro_task_i;
         auto copied_pro_task_j = created_pro_task_j;
@@ -826,14 +826,14 @@ SCENARIO(
       [](std::stop_source&) { return 0; });
   auto con_node = consumer_node<ThrowCatchMover3, size_t>([](const size_t&) {});
 
-  auto pro_task = ThrowCatchTask(pro_node);
-  auto con_task = ThrowCatchTask(con_node);
+  auto pro_task = Task(pro_node);
+  auto con_task = Task(con_node);
 
   GIVEN("A node to task map") {
-    std::map<node, ThrowCatchTask<node>> node_to_task_map;
+    std::map<node, Task<node>> node_to_task_map;
 
     WHEN("Insert node-task pair into map") {
-      auto pro_task_copy = ThrowCatchTask(pro_task);
+      auto pro_task_copy = Task(pro_task);
 
       node_to_task_map[pro_node] = pro_task;
 

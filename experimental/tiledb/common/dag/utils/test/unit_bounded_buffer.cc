@@ -47,28 +47,28 @@ struct bar {};
 template <class T>
 struct foo<T, BoundedBuffer<T>> {
   static inline BoundedBuffer<T> make(size_t size) {
-    return {size};
+    return BoundedBuffer<T>{size};
   }
 };
 
 template <class T>
 struct foo<T, ProducerConsumerQueue<T>> {
   static inline ProducerConsumerQueue<T> make(size_t) {
-    return {};
+    return ProducerConsumerQueue<T>{};
   }
 };
 
 template <class T>
 struct foo<T, BoundedBuffer<T, std::queue<T>>> {
   static inline BoundedBuffer<T, std::queue<T>> make(size_t size) {
-    return {size};
+    return BoundedBuffer<T, std::queue<T>>{size};
   }
 };
 
 template <class T>
 struct foo<T, ProducerConsumerQueue<T, std::queue<T>>> {
   static inline ProducerConsumerQueue<T, std::queue<T>> make(size_t) {
-    return {};
+    return ProducerConsumerQueue<T, std::queue<T>>{};
   }
 };
 

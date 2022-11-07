@@ -130,6 +130,7 @@ option(TILEDB_ABSEIL "If true, enables building abseil and a simple linkage test
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
 option(TILEDB_EXPERIMENTAL_FEATURES "If true, build and include experimental features" OFF)
+option(CMAKE_EXPORT_COMPILE_COMMANDS "cmake compile commands" ON)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
@@ -438,6 +439,11 @@ add_custom_target(all_link_complete)
 include(accumulator)
 define_accumulator(object_library_compile_targets)
 
+if (TILEDB_TESTS)
+  # Add cmake target for "tests" to build all unit tests executables
+  add_custom_target(tests)
+endif()
+
 # Build the TileDB library experimental features
 add_subdirectory(experimental)
 
@@ -452,8 +458,6 @@ if (TILEDB_TESTS)
   add_subdirectory(test/support)
   add_subdirectory(test)
 
-  # Add cmake target for "tests" to build all unit tests executables
-  add_custom_target(tests)
   add_dependencies(tests tiledb_unit)
   add_dependencies(tests test_assert)
 

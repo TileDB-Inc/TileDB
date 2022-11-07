@@ -1,5 +1,5 @@
 /**
- * @file unit_fxm.h
+ * @file task.cc
  *
  * @section LICENSE
  *
@@ -28,7 +28,4 @@
  * @section DESCRIPTION
  */
 
-#ifndef TILEDB_UNIT_FXM_H
-#define TILEDB_UNIT_FXM_H
-#include <test/support/tdb_catch.h>
-#endif  // TILEDB_UNIT_FXM_H
+#include "task.h"
