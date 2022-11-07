@@ -43,8 +43,8 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/buffer/buffer_list.h"
-#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/array_schema.h"
 

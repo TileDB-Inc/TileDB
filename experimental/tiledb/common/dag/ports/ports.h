@@ -27,42 +27,29 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the Source and Sink ports for dag.
+ * This file declares the `Port`, `Source`, and `Sink` classes for the dag task
+ * graph library.
  *
+ * A port holds a data item that can be read or written by a client.  The
+ * `Source` and `Sink` classes are derived from `Port` and share a significant
+ * amount of functionality.  They are distinguished from each other in order to
+ * establish "directionality": data items are sent from `Source` to `Sink`.  The
+ * `Source` and `Sink` classes will be used to establish data transfer from dag
+ * task graph nodes via `Edge` classes (or via direct connections, if, for some
+ * reason, buffered data transfer is not desired).
  *
- * States for objects containing Source or Sink member variables.
- *
- * The design goal of these states is to limit the total number of std::thread
- * objects that simultaneously exist. Instead of a worker thread blocking
- * because correspondent source is empty or because a correspondent sink is
- * full, the worker can simply return. Tasks may become dormant without any
- * thread that runs them needing to block.
- *
- * States:
- *   Quiescent: initial and final state. No correspondent sources or sinks
- *   Dormant: Some correspondent exists, but no thread is currently active
- *   Active: Some correspondent exists, and some thread is currently active
- *
- * An element is alive if it is either dormant or active, that is, some
- * correspondent exists, regardless of thread state.
- *
- * Invariant: an element is registered with the scheduler as alive if and only
- * if the element is alive. Invariant: each element is registered with the
- * scheduler as either alive or quiescent.
- *
- * @todo: Refactor `Source` and `Sink` to use a Port base class.
  */
 
 #ifndef TILEDB_DAG_PORTS_H
 #define TILEDB_DAG_PORTS_H
 
+#include <atomic>
+#include <cassert>
 #include <condition_variable>
 #include <iostream>
 #include <memory>
 #include <mutex>
 #include <optional>
-
-#include "../utils/print_types.h"
 
 namespace tiledb::common {
 
@@ -84,6 +71,8 @@ class Port {
   using source_type = Source<Mover_T, Block>;
   using sink_type = Sink<Mover_T, Block>;
 
+  std::mutex mutex_;
+
   /**
    * Pointer to the item_mover_ to be used by the `Port`
    */
@@ -94,10 +83,14 @@ class Port {
    */
   std::optional<Block> item_{};
 
+  constexpr inline std::optional<Block>& get_item() {
+    return item_;
+  }
+
   /**
    * Flag indicating whether the `Port` has been connected to another `Port`.
    */
-  bool attached_{false};
+  std::atomic<bool> attached_{false};
 
   /**
    * Function return whether the `Port` has been connected to another `Port`.
@@ -108,6 +101,8 @@ class Port {
 
   /**
    * Set attached flag to true.
+   *
+   * @pre Called under lock
    */
   bool set_attached() {
     attached_ = true;
@@ -116,6 +111,8 @@ class Port {
 
   /**
    * Set attached flag to false.
+   *
+   * @pre Called under lock
    */
   bool clear_attached() {
     attached_ = false;
@@ -126,8 +123,10 @@ class Port {
    * Remove the current attachment, if any.
    *
    * @pre Called under lock
+   *
    */
-  void unattach() {
+  void detach() {
+    std::lock_guard(this->mutex_);
     if (!is_attached()) {
       throw std::runtime_error(
           "Attempting to unattach unattached correspondent");
@@ -166,24 +165,49 @@ class Source : public Port<Mover_T, Block> {
   Source& operator=(Source&& rhs) = delete;
 
  public:
+  using base_port_type = port_type;
+
   /**
-   * Inject an item into the `Source`.
+   * Inject an item into the `Source`.  The `item_` will not be set if it
+   * already contains a value.
+   *
+   * @param value The `Block` with which to set `item`
+   * @return `true` if `item_` was successfully set, otherwise `false`.
+   *
+   * @pre The `Source` port is attached to a `Sink` port.
    */
   bool inject(const Block& value) {
-    if (!this->is_attached() || this->item_.has_value()) {
+    std::lock_guard(this->mutex_);
+    if (!this->is_attached()) {
+      throw std::logic_error("Sink not attached in inject");
+      return {};
+    }
+
+    if (this->item_.has_value()) {
       return false;
     }
+
     this->item_ = value;
     return true;
   }
+
   /**
-   * Extract an item into the `Source`.  Used only for testing.
+   * Extract an item from the `Source` by swapping `item_` with an empty
+   * `std::optional<Block>`.  Used only for testing/debugging.
+   *
+   * @post `item_` will be empty.
    */
   std::optional<Block> extract() {
+    std::lock_guard(this->mutex_);
     if (!this->is_attached()) {
-      throw std::logic_error("Sink not attached in extract");
+      throw std::logic_error("Source not attached in extract");
       return {};
     }
+    if (!this->item_.has_value() && this->get_mover()->debug_enabled()) {
+      std::cout << "Source extract no value with state = "
+                << str(this->item_mover_->state()) << std::endl;
+    }
+
     std::optional<Block> ret{};
     std::swap(ret, this->item_);
 
@@ -214,6 +238,8 @@ class Sink : public Port<Mover_T, Block> {
   using sink_type = Sink<Mover_T, Block>;
 
  public:
+  using base_port_type = port_type;
+
   Sink() = default;
 
   Sink(const Sink& rhs) = delete;
@@ -227,6 +253,7 @@ class Sink : public Port<Mover_T, Block> {
    * `Sink` and `Source` ports.
    */
   void attach(source_type& predecessor) {
+    std::lock_guard(this->mutex_);
     if (this->is_attached() || predecessor.is_attached()) {
       throw std::runtime_error(
           "Sink attempting to attach to already attached ports");
@@ -240,6 +267,7 @@ class Sink : public Port<Mover_T, Block> {
   }
 
   void attach(source_type& predecessor, std::shared_ptr<mover_type> mover) {
+    std::lock_guard(this->mutex_);
     if (this->is_attached() || predecessor.is_attached()) {
       throw std::runtime_error(
           "Sink attempting to attach to already attached ports");
@@ -252,11 +280,12 @@ class Sink : public Port<Mover_T, Block> {
   }
 
   void detach(source_type& predecessor) {
+    std::lock_guard(this->mutex_);
     if (!this->is_attached() || !predecessor.is_attached()) {
       throw std::runtime_error("Sink attempting to detach unattached ports");
     } else {
       this->item_mover_->deregister_items();
-      detach();
+      this->clear_attached();
       predecessor.detach();
     }
   }
@@ -317,30 +346,38 @@ class Sink : public Port<Mover_T, Block> {
    * Inject an item into the `Sink`.  Used only for testing.
    */
   bool inject(const Block& value) {
-    if (!this->is_attached() || this->item_.has_value()) {
+    std::lock_guard(this->mutex_);
+    if (!this->is_attached()) {
+      throw std::logic_error("Sink not attached in inject");
+      return {};
+    }
+
+    if (this->item_.has_value()) {
       return false;
     }
+
     this->item_ = value;
     return true;
   }
 
   /**
-   * Remove an item from the `Sink`
+   * Extract an item from the `Sink` by swapping `item_` with an empty
+   * `std::optional<Block>`.
+   *
+   * @post `item_` will be empty.
    */
   std::optional<Block> extract() {
+    std::lock_guard(this->mutex_);
     if (!this->is_attached()) {
       throw std::logic_error("Sink not attached in extract");
       return {};
     }
-    std::optional<Block> ret{};
-
-    if (!this->item_.has_value()) {
-      if (this->get_mover()->debug_enabled()) {
-        std::cout << "extract no value with state = "
-                  << str(this->item_mover_->state()) << std::endl;
-      }
+    if (!this->item_.has_value() && this->get_mover()->debug_enabled()) {
+      std::cout << "Sink extract no value with state = "
+                << str(this->item_mover_->state()) << std::endl;
     }
 
+    std::optional<Block> ret{};
     std::swap(ret, this->item_);
 
     return ret;
