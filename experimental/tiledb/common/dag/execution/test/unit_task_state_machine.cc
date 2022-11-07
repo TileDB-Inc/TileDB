@@ -31,8 +31,8 @@
 
 #include <memory>
 
-#include "unit_task_state_machine.h"
 #include "../task_state_machine.h"
+#include "unit_task_state_machine.h"
 
 using namespace tiledb::common;
 
@@ -46,19 +46,20 @@ struct _unit_test_task {
   }
 };
 
-//using unit_test_task = std::shared_ptr<_unit_test_task>;
+// using unit_test_task = std::shared_ptr<_unit_test_task>;
 
 struct unit_test_task : public std::shared_ptr<_unit_test_task> {
   using Base = std::shared_ptr<_unit_test_task>;
-  unit_test_task() : Base{std::make_shared<_unit_test_task>()}{}
+  unit_test_task()
+      : Base{std::make_shared<_unit_test_task>()} {
+  }
 };
-
 
 TEST_CASE(
     "Scheduler FSM: Construct SchedulerStateMachine<EmptySchedulerPolicy>",
     "[scheduler]") {
   [[maybe_unused]] auto sched = SchedulerStateMachine<
-    //      unit_test_task,
+      //      unit_test_task,
       EmptySchedulerPolicy<unit_test_task>>{};
   unit_test_task a;
   CHECK(str(a->task_state()) == "created");
@@ -69,7 +70,7 @@ TEST_CASE(
     "SchedulerStateMachine<EmptySchedulerPolicy>",
     "[scheduler]") {
   [[maybe_unused]] auto sched = SchedulerStateMachine<
-    //      unit_test_task,
+      //      unit_test_task,
       EmptySchedulerPolicy<unit_test_task>>{};
   unit_test_task a;
   CHECK(str(a->task_state()) == "created");
@@ -150,7 +151,6 @@ std::atomic<bool> running;
 std::atomic<bool> waiting;
 std::atomic<bool> terminated;
 
-
 template <class Task>
 class UnitTestSchedulerPolicy;
 
@@ -160,18 +160,16 @@ struct SchedulerTraits<UnitTestSchedulerPolicy<T>> {
   using task_handle_type = T;
 };
 
-
-
 template <class Task>
-class UnitTestSchedulerPolicy : public SchedulerStateMachine<
-  //                                    unit_test_task,
-                                    UnitTestSchedulerPolicy<Task>> {
+class UnitTestSchedulerPolicy
+    : public SchedulerStateMachine<
+          //                                    unit_test_task,
+          UnitTestSchedulerPolicy<Task>> {
  public:
   using task_type =
       typename SchedulerTraits<EmptySchedulerPolicy<Task>>::task_type;
   using task_handle_type =
       typename SchedulerTraits<EmptySchedulerPolicy<Task>>::task_handle_type;
-
 
   UnitTestSchedulerPolicy() {
     created.store(true);
