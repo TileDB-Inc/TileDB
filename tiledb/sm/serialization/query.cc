@@ -59,10 +59,7 @@
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/query/ast/query_ast.h"
-<<<<<<< HEAD
-=======
 #include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
->>>>>>> origin/dev
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
