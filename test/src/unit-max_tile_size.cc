@@ -451,7 +451,7 @@ auto  write_array = [&](uint64_t num_rows)->void {
 };
 
 #if 0
-auto  read_array = [&](int num_rows) -> void {
+auto read_array = [&](int num_rows) -> void {
   // Prepare the array for reading
   tiledb::Array array(ctx, array_name, TILEDB_READ);
 
@@ -524,7 +524,7 @@ auto  read_array = [&](int num_rows) -> void {
     create_array();
     write_array(1);
     //CHECK(get_fragments_extreme(array_name) == 4);
-    //sizeof(uint64_t) offset greater than size of int data
+    //sizeof(uint64_t) offset for dimension greater than size of int data in attribute
     CHECK(get_fragments_extreme(array_name) == 8);
     write_array(2);
     //size of data and the single offset to start of extent same

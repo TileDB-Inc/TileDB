@@ -1373,13 +1373,13 @@ Status RestClient::get_array_metadata_from_rest(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status get_array_maximum_tile_size_from_rest(
+Status RestClient::get_array_maximum_tile_size_from_rest(
     const URI& , uint64_t* ) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-  Status RestClient::post_array_metadata_to_rest(
+Status RestClient::post_array_metadata_to_rest(
     const URI&, uint64_t, uint64_t, Array*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
