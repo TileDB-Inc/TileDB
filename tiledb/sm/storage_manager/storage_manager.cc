@@ -2891,6 +2891,10 @@ void StorageManager::array_get_fragment_tile_size_extremes(
     for (auto& attrib : attributes) {
       process_attr(*frag, attrib->name(), attrib->var_size());
     }
+    auto dim_names = frags_schema->dim_names();
+    for (auto& dim_name : dim_names) {
+      process_attr(*frag, dim_name, frags_schema->var_size(dim_name));
+    }
   }
   mins_maxs.max_in_memory_tile_size = std::max(
       mins_maxs.max_in_memory_basic_tile_size,
