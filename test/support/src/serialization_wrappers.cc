@@ -165,10 +165,10 @@ int tiledb_fragment_info_serialize(
 int tiledb_query_v2_serialize(
     tiledb_ctx_t* ctx,
     const char* array_uri,
+    std::vector<uint8_t>& serialized,
     tiledb_query_t* query_to_serialize,
     tiledb_query_t** query_deserialized) {
   // Serialize and Deserialize
-  std::vector<uint8_t> serialized;
   int rc =
       tiledb::test::serialize_query(ctx, query_to_serialize, &serialized, 1);
   REQUIRE(rc == TILEDB_OK);

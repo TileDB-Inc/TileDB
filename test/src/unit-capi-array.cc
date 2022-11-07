@@ -2564,8 +2564,9 @@ TEST_CASE_METHOD(
   // 8. Client -> Server : Send query request for writing into the array we just
   // opened
   tiledb_query_t* deserialized_query;
+  std::vector<uint8_t> serialized;
   rc = tiledb_query_v2_serialize(
-      ctx_, array_name.c_str(), query_client, &deserialized_query);
+      ctx_, array_name.c_str(), serialized, query_client, &deserialized_query);
   REQUIRE(rc == TILEDB_OK);
 
   // 9. Server: Submit query WITHOUT re-opening the array, using under the hood
