@@ -2516,77 +2516,12 @@ void Query::set_status(QueryStatus status) {
 }
 
 Status Query::set_subarray(const void* subarray) {
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot set subarray; Unsupported query type."));
-  }
-
-  if (!array_schema_->domain().all_dims_same_type())
-    return logger_->status(
-        Status_QueryError("Cannot set subarray; Function not applicable to "
-                          "heterogeneous domains"));
-
-  if (!array_schema_->domain().all_dims_fixed())
-    return logger_->status(
-        Status_QueryError("Cannot set subarray; Function not applicable to "
-                          "domains with variable-sized dimensions"));
-
-  // Prepare a subarray object
+  // Create subarray object from subarray data.
   Subarray sub(array_, layout_, stats_, logger_);
-  if (subarray != nullptr) {
-    auto dim_num = array_schema_->dim_num();
-    auto s_ptr = (const unsigned char*)subarray;
-    uint64_t offset = 0;
+  RETURN_NOT_OK(sub.set_subarray(subarray));
 
-    bool err_on_range_oob = true;
-    if (type_ == QueryType::READ) {
-      // Get read_range_oob config setting
-      bool found = false;
-      std::string read_range_oob_str =
-          config().get("sm.read_range_oob", &found);
-      assert(found);
-      if (read_range_oob_str != "error" && read_range_oob_str != "warn")
-        return logger_->status(Status_QueryError(
-            "Invalid value " + read_range_oob_str +
-            " for sm.read_range_obb. Acceptable values are 'error' or "
-            "'warn'."));
-      err_on_range_oob = read_range_oob_str == "error";
-    }
-
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto r_size{2 * array_schema_->dimension_ptr(d)->coord_size()};
-      Range range(&s_ptr[offset], r_size);
-      RETURN_NOT_OK(sub.add_range(d, std::move(range), err_on_range_oob));
-      offset += r_size;
-    }
-  }
-
-  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
-    // Not applicable to sparse arrays
-    if (!array_schema_->dense())
-      return logger_->status(Status_WriterError(
-          "Setting a subarray is not supported in sparse writes"));
-
-    // Subarray must be unary for dense writes
-    if (sub.range_num() != 1)
-      return logger_->status(
-          Status_WriterError("Cannot set subarray; Multi-range dense writes "
-                             "are not supported"));
-
-    // When executed from serialization, resetting the strategy will delete
-    // the fragment for global order writes. We need to prevent this, thus
-    // persist the fragment between remote global order write submits.
-    if (strategy_ != nullptr && layout_ != Layout::GLOBAL_ORDER) {
-      strategy_->reset();
-    }
-  }
-
-  subarray_ = sub;
-
-  status_ = QueryStatus::UNINITIALIZED;
-
-  return Status::Ok();
+  // Set the subarray object.
+  return set_subarray(sub);
 }
 
 const Subarray* Query::subarray() const {
@@ -2598,9 +2533,10 @@ Status Query::set_subarray_unsafe(const Subarray& subarray) {
   return Status::Ok();
 }
 
-Status Query::set_subarray(const tiledb::sm::Subarray& subarray) {
+Status Query::set_subarray(const Subarray& subarray) {
   auto query_status = status();
   if (query_status != tiledb::sm::QueryStatus::UNINITIALIZED &&
+      query_status != tiledb::sm::QueryStatus::INCOMPLETE &&
       query_status != tiledb::sm::QueryStatus::COMPLETED) {
     // Can be in this initialized state when query has been de-serialized
     // server-side and are trying to perform local submit.
