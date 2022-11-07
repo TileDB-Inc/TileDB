@@ -38,9 +38,9 @@
 
 //  -d=yes --break "C++ API: Max fragment size\, sparse\, variable string dimension\, variable string attribute"
 
-//  -d=yes --break "C++ API: Max fragment size\, sparse\, fix dimension\, nullable variable string attribute",
-
 //  -d=yes --break "C++ API: Max fragment size\, sparse\, fix dimension\, variable string attribute", 
+
+//  -d=yes --break "C++ API: Max fragment size\, sparse\, fix dimension\, nullable variable string attribute",
 
 #if TILEDB_SERIALIZATION
 //  -d=yes --break "C++ API: Max tile size\, serialization"
@@ -361,7 +361,7 @@ TEST_CASE_METHOD(
 
   tiledb::Context ctx;
 
-  // Create and write array only if it does not exist
+  // Create and write array
   create_array();
   CHECK(get_fragments_extreme(array_name) == 0);
   write_array_1();
@@ -377,6 +377,11 @@ TEST_CASE_METHOD(
   tiledb::Array::consolidate(ctx, array_name);
 
   CHECK(get_fragments_extreme(array_name) == 4 * sizeof(int32_t));
+
+  // consolidate
+  tiledb::Array::vacuum(ctx, array_name);
+
+  CHECK(get_fragments_extreme(array_name) == 4 * sizeof(int32_t));
 }
 
 TEST_CASE_METHOD(
@@ -384,10 +389,9 @@ TEST_CASE_METHOD(
     "C++ API: Max fragment size, sparse, variable string dimension, fix attr",
     "[capi][max-tile-size][sparse][var-dimension]") {
 std::string array_name("sparse_string_dimension");
+tiledb::Context ctx;
 
-auto  create_array = [&]()-> void {
-  // Create a TileDB context.
-  tiledb::Context ctx;
+  auto  create_array = [&]()-> void {
 
   remove_temp_dir(array_name);
 
@@ -409,7 +413,6 @@ auto  create_array = [&]()-> void {
 };
 
 auto  write_array = [&](uint64_t num_rows)->void {
-  tiledb::Context ctx;
 
   std::vector<int> a_buff(num_rows);
   auto start_val = 0;
@@ -426,7 +429,8 @@ auto  write_array = [&](uint64_t num_rows)->void {
   std::string d1_var;
   uint64_t offset = 0;
   for (uint64_t i = start_val; i < start_val + num_rows; i++) {
-    auto val = std::to_string(i);
+    //auto val = std::to_string(i);
+    auto val = std::to_string(d1_buff[i]);
     d1_offsets.emplace_back(offset);
     offset += val.size();
     d1_var += val;
@@ -446,10 +450,8 @@ auto  write_array = [&](uint64_t num_rows)->void {
   array.close();
 };
 
-#if 0
+#if 01
 auto  read_array = [&](int num_rows) -> void {
-  tiledb::Context ctx;
-
   // Prepare the array for reading
   tiledb::Array array(ctx, array_name, TILEDB_READ);
 
@@ -504,6 +506,7 @@ auto  read_array = [&](int num_rows) -> void {
         //r == result_num.first - 1 ? result_num.first : d1_offsets[r + 1] - 1;
         //r == result_num.first - 1 ? &d1_var.back()+1 : d1_offsets[r + 1] - 1;
         r == result_num.first - 1 ? d1_var.end() - d1_var.begin() - 1 :
+        //r == result_num.second - 1 ? d1_var.end() - d1_var.begin() - 1 :
                                     d1_offsets[r + 1] - 1;
     // std::string i(rows.data() + row_start, row_end - row_start + 1);
     std::string i(d1_var.data() + row_start, row_end - row_start + 1);
@@ -519,19 +522,44 @@ auto  read_array = [&](int num_rows) -> void {
 
     showing_data = true; //TBD: disable/remove me production
     create_array();
-    // write_array(9);
     write_array(1);
-    // TBD: get correct values for the max size!!!
     CHECK(get_fragments_extreme(array_name) == 4);
-    // write_array(99);
     write_array(2);
-    // TBD: get correct values for the max size!!!
     CHECK(get_fragments_extreme(array_name) == 8);
-    // write_array(999);
-    write_array(3);
-    // TBD: get correct values for the max size!!!
+
+    // consolidate
+    tiledb::Array::consolidate(ctx, array_name);
+    // now '12' after consolidate(), data tiles pick up extra
+    // overhead to support time traveling.
     CHECK(get_fragments_extreme(array_name) == 12);
 
+    write_array(3);
+    CHECK(get_fragments_extreme(array_name) == 12);
+    write_array(1);
+    CHECK(get_fragments_extreme(array_name) == 12);
+
+    // consolidate
+    tiledb::Array::consolidate(ctx, array_name);
+    // now '28' after consolidate(), data tiles pick up extra
+    // overhead to support time traveling.
+    CHECK(get_fragments_extreme(array_name) == 28);
+
+    // vacuum
+    tiledb::Array::vacuum(ctx, array_name);
+    // still '28', vacuuming does not remove the earlier data.
+    CHECK(get_fragments_extreme(array_name) == 28);
+
+    // secondary attempt still retains the overhead.
+    tiledb::Array::consolidate(ctx, array_name);
+    // now '28' after consolidate(), data tiles pick up extra
+    // overhead to support time traveling, preserved across multiple attempts.
+    CHECK(get_fragments_extreme(array_name) == 28);
+
+    // vacuum
+    tiledb::Array::vacuum(ctx, array_name);
+    // still '28', vacuuming does not remove the earlier data, even after a
+    // secondary consolidate against previously vacuumed data.
+    CHECK(get_fragments_extreme(array_name) == 28);
 }
 
 TEST_CASE_METHOD(
@@ -927,151 +955,6 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CAPI_MaxTileSizeFx,
-    "C++ API: Max fragment size, sparse, fix dimension, nullable variable "
-    "string attribute",
-    "[capi][max-tile-size][dense][evolve]") {
-  std::string array_name("tile_size_array");
-
-  remove_temp_dir(array_name);
-
-  auto create_array = [&]() -> void {
-    // Create a TileDB context.
-    tiledb::Context ctx;
-
-    remove_temp_dir(array_name);
-
-    // The array will be 1x4 with dimensions "rows"  with domain
-    // [1,4].
-    tiledb::Domain domain(ctx);
-    domain.add_dimension(
-        tiledb::Dimension::create<int>(ctx, "rows", {{1, 24}}, 1));
-
-    // The array will be dense.
-    tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
-    schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-
-    // Add one attribute "a1", so each (i) cell can store
-    // a string on "a1".
-    schema.add_attribute(
-        tiledb::Attribute::create<std::string>(ctx, "a1").set_nullable(true));
-
-    // Create the (empty) array on disk.
-    tiledb::Array::create(array_name, schema);
-  };
-  auto write_array =
-      [&](std::string&&
-              attr_data,  // expecting single-char values, one for each row
-          std::vector<uint64_t>&& attr_offsets,
-          std::vector<uint8_t>&& attr_val,
-          std::vector<int>&& subrange) -> void {
-
-    // Create a TileDB context.
-    tiledb::Context ctx;
-
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Query query(ctx, array);
-    tiledb::Subarray subarray(ctx, array);
-    //subarray.add_range(0, 1, 2);
-    subarray.add_range(0, subrange[0], subrange[1]);
-    
-    query.set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a1", attr_data)
-        .set_offsets_buffer("a1", attr_offsets)
-        .set_validity_buffer("a1", attr_val)
-        .set_subarray(subarray);
-
-    // Perform the write and close the array.
-    query.submit();
-    array.close();
-  };
-
-  // TBD: disable/remove when its served its purpose...
-  showing_data = true;
-
-  create_array();
-  // write_array("a", {0}, "", {});
-  //std::string basic_key_data{"abcdefghijklmnopqrstuvwxyz"};
-
-  get_fragments_extreme(array_name);
-  // CHECK(get_fragments_extreme(array_name) == 8);
-#if 0
-  write_array(
-      "",
-      {0, 0, 0, 0},
-      {0},
-      {1, 1});  // will core choke on empty string?
-  get_fragments_extreme(array_name);
-  // CHECK(get_fragments_extreme(array_name) == 8);
-
-  write_array("z", {0, 0, 0, 0}, {0}, {1, 1});
-
-  get_fragments_extreme(array_name);
-  // CHECK(get_fragments_extreme(array_name) == 8);
-
-  write_array(
-      "a",
-      {0, 0, 0, 0},
-      //{0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-      // 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      {1, 0, 0, 0},
-      {1, 4});
-  get_fragments_extreme(array_name);
-  // CHECK(get_fragments_extreme(array_name) == 208);
-
-  write_array(
-      "AB",
-      {0, 1, 1, 1},
-      //{0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-      // 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      {1, 1, 0, 0},
-      {1, 4});
-
-  get_fragments_extreme(array_name);
-  // CHECK(get_fragments_extreme(array_name) == 208);
-
-  write_array(
-      "AbcDefgHijklMnopqr",
-      {0, 3, 7, 13},
-      //{0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-      // 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      {1, 1, 1, 1},
-      {3,6});
-
-  get_fragments_extreme(array_name);
-#endif
-
-  write_array(
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
-      //{0, 26, 52, 62, 88, 114},
-      {0, 26, 52, 62, 88},
-      //{0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-      // 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      //{1, 1, 1, 1, 1, 1},
-      {1, 1, 1, 1, 1},
-      {3, 7});
-
-  get_fragments_extreme(array_name);
-  // CHECK(get_fragments_extreme(array_name) == 208);
-  // CHECK(get_fragments_extreme(array_name) == 208);
-
-  write_array(
-      "AbcDefgHijklMnopqr",
-      {0, 3, 7, 13},
-      //{0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-      // 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      {1, 1, 1, 1},
-      {3, 6});
-
-  get_fragments_extreme(array_name);
-
-  // consolidate
-  tiledb::Array::consolidate(ctx_, array_name);
-
-  get_fragments_extreme(array_name);
-}
-
-TEST_CASE_METHOD(
-    CAPI_MaxTileSizeFx,
     "C++ API: Max fragment size, sparse, fix dimension, variable "
     "string attribute",
     "[capi][max-tile-size][dense][evolve]") {
@@ -1091,7 +974,7 @@ TEST_CASE_METHOD(
     domain.add_dimension(
         //tiledb::Dimension::create<int>(ctx, "rows", {{1, 24}}, 1));
         //tiledb::Dimension::create<int>(ctx, "rows", {{1, 26}}, 26));
-        tiledb::Dimension::create<int>(ctx, "rows", {{1, 26}}, extents));
+        tiledb::Dimension::create<int>(ctx, "rows", {{1, 27}}, extents));
 
     // The array will be dense.
     tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
@@ -1116,13 +999,11 @@ TEST_CASE_METHOD(
     tiledb::Array array(ctx, array_name, TILEDB_WRITE);
     tiledb::Query query(ctx, array);
     tiledb::Subarray subarray(ctx, array);
-    // subarray.add_range(0, 1, 2);
     subarray.add_range(0, subrange[0], subrange[1]);
 
     query.set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a1", attr_data)
         .set_offsets_buffer("a1", attr_offsets)
-        //.set_validity_buffer("a1", attr_val)
         .set_subarray(subarray);
 
     // Perform the write and close the array.
@@ -1134,158 +1015,413 @@ TEST_CASE_METHOD(
   showing_data = true;
 
   create_array(1);
-  // write_array("a", {0}, "", {});
-  // std::string basic_key_data{"abcdefghijklmnopqrstuvwxyz"};
+  CHECK(get_fragments_extreme(array_name) == 0);
 
-  get_fragments_extreme(array_name);
-  // CHECK(get_fragments_extreme(array_name) == 8);
-
-#if 0
+  // zero-len data written
+  // at index 1
   write_array(
       "",
-      //{0, 0, 0, 0},
       {0},
-      //{0},
       {1, 1});  // will core choke on empty string?
-  get_fragments_extreme(array_name);
-  // CHECK(get_fragments_extreme(array_name) == 8);
-#endif
-
-  //write_array("lmnopqrstuvwxy", {0}, {1, 1});
-  //write_array("lmnopqrstuvwxy", {0,1,2,3,4,5,6,7,8,9,10,11,12,13}, {1, 14});
-  //get_fragments_extreme(array_name);
+  // size of single offset (sizeof(uint64_t)) dominates
+  CHECK(get_fragments_extreme(array_name) == 8);
 
   // attribute is variable non-nullable, 
   // So the single offset (uint64_t) of 8 bytes will be max with strings <= 8 bytes
+  // writing len 1 data at idx 1
   write_array("l", {0}, {1, 1});
-  get_fragments_extreme(array_name);
+  // size of single offset dominates
+  CHECK(get_fragments_extreme(array_name) == 8);
 
+  // writing len 2 data at idx1
   write_array("lm", {0}, {1, 1});
-  //get_fragments_extreme(array_name);
   CHECK(get_fragments_extreme(array_name) == 8);
+  // writing len 3 data at idx 1
   write_array("lmn", {0}, {1, 1});
-  // get_fragments_extreme(array_name);
   CHECK(get_fragments_extreme(array_name) == 8);
+  // writing len 4 data at idx 1
   write_array("lmno", {0}, {1, 1});
-  // get_fragments_extreme(array_name);
   CHECK(get_fragments_extreme(array_name) == 8);
+  // writing len 5 data at idx 1
   write_array("lmnop", {0}, {1, 1});
-  // get_fragments_extreme(array_name);
   CHECK(get_fragments_extreme(array_name) == 8);
+  // writing len 6 data at idx 1
   write_array("lmnopq", {0}, {1, 1});
-  // get_fragments_extreme(array_name);
   CHECK(get_fragments_extreme(array_name) == 8);
+  // writing len 7 data at idx 1
   write_array("lmnopqr", {0}, {1, 1});
-  // get_fragments_extreme(array_name);
   CHECK(get_fragments_extreme(array_name) == 8);
+  // writing len 8 data at idx 1
   write_array("lmnopqrs", {0}, {1, 1});
-  // get_fragments_extreme(array_name);
   CHECK(get_fragments_extreme(array_name) == 8);
 
   // still writing 1 item, but now length of variable 
   // data greater than the 1 offset
+  // writing len 9 data at idx 1
   write_array("lmnopqrst", {0}, {1, 1});
-  //get_fragments_extreme(array_name);
+  //length of data dominates
   CHECK(get_fragments_extreme(array_name) == 9);
+  // writing len 10 data at idx 1
   write_array("lmnopqrstu", {0}, {1, 1});
-  // get_fragments_extreme(array_name);
+  // length of data dominates
   CHECK(get_fragments_extreme(array_name) == 10);
+  // writing len 11 data at idx 1
   write_array("lmnopqrstuv", {0}, {1, 1});
-  // get_fragments_extreme(array_name);
+  // length of data dominates
   CHECK(get_fragments_extreme(array_name) == 11);
+  // writing len 12 data at idx 1
   write_array("lmnopqrstuvw", {0}, {1, 1});
-  // get_fragments_extreme(array_name);
+  // length of data dominates
   CHECK(get_fragments_extreme(array_name) == 12);
+  // writing len 13 data at idx 1
   write_array("lmnopqrstuvwx", {0}, {1, 1});
-  // get_fragments_extreme(array_name);
+  // length of data dominates
   CHECK(get_fragments_extreme(array_name) == 13);
+  // writing len 14 data at idx 1
   write_array("lmnopqrstuvwxy", {0}, {1, 1});
-  // get_fragments_extreme(array_name);
+  // length of data dominates
   CHECK(get_fragments_extreme(array_name) == 14);
 
-#if 01
-  // 4 items, only 1 has data
+  // 4 items, 
+  // idx 1 "a", idx 2 "", idx 3 "", idx 4 ""
   write_array(
       "a",
       {0, 0, 0, 0},
-      //{0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-      // 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      //{1, 0, 0, 0},
       {1, 4});
-  get_fragments_extreme(array_name);
-  // CHECK(get_fragments_extreme(array_name) == 208);
+  // earlier item len 14 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 14);
 
-  // 4 items, 2 have data
+  // 4 items, 
+  // idx 1 "A", idx 2 "B", idx 3 "", idx 4 ""
   write_array(
       "AB",
       {0, 1, 1, 1},
-      //{0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-      // 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      //{1, 1, 0, 0},
       {1, 4});
 
-  get_fragments_extreme(array_name);
-  // CHECK(get_fragments_extreme(array_name) == 208);
+  // earlier item len 14 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 14);
 
-  //4 items, all with data
+  //4 items, 
+  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijkl, idx 6 "nopqr"
   write_array(
-      "AbcDefgHijklMnopqr",
+      "AbcDefgHijklmNopqr",
       {0, 3, 7, 13},
-      //{0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-      // 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      //{1, 1, 1, 1},
       {3,6});
 
-  get_fragments_extreme(array_name);
-#endif
-
-  write_array(
-    //1 item, 114 bytes
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
-      "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
-      //{0, 26, 52, 62, 88, 114},
-      //{0, 26, 52, 62, 88},
-      {0},
-      //{0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-      // 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      //{1, 1, 1, 1, 1, 1},
-      //{1, 1, 1, 1, 1},
-      {1,1});
-  //get_fragments_extreme(array_name);
-  CHECK(get_fragments_extreme(array_name) == 114);
+  // earlier item len 14 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 14);
 
   // 5 items, max of any individual item is 26 bytes
+  // 26 @ idx 3, 26 @idx 4, 10 @ idx 5, 26 @ idx 6, 26 @ id x7
   write_array(
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
       //{0, 26, 52, 62, 88, 114},
       {0, 26, 52, 62, 88},
-      //{0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-      // 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      //{1, 1, 1, 1, 1, 1},
-      //{1, 1, 1, 1, 1},
       {3, 7});
+  CHECK(get_fragments_extreme(array_name) == 26);
 
-  get_fragments_extreme(array_name);
-  // CHECK(get_fragments_extreme(array_name) == 208);
-
-  //4 items, various lengths
   write_array(
-      "AbcDefgHijklMnopqr",
-      {0, 3, 7, 13},
-      //{0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-      // 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      //{1, 1, 1, 1},
-      {3, 6});
+    //1 item, 114 bytes @ idx 1
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
+      "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+      //{0, 26, 52, 62, 88, 114},
+      //{0, 26, 52, 62, 88},
+      {0}, //offsets
+      {1,1});
+  CHECK(get_fragments_extreme(array_name) == 114);
 
-  get_fragments_extreme(array_name);
+  // 5 items, max of any individual item is 26 bytes
+  // 26 @ idx 3, 26 @idx 4, 10 @ idx 5, 26 @ idx 6, 26 @ id x7
+  write_array(
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
+      "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+      //{0, 26, 52, 62, 88, 114},
+      {0, 26, 52, 62, 88},
+      {3, 7});
+  // earlier item len 114 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 114);
+
+  // 4 items, various lengths
+  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "Nopqr"
+  write_array(
+      "AbcDefgHijklmNopqr",
+      {0, 3, 7, 13},
+      {3, 6});
+  // earlier item len 114 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 114);
 
   // consolidate
   tiledb::Array::consolidate(ctx_, array_name);
-  get_fragments_extreme(array_name);
+  // earlier item len 114 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 114);
 
   tiledb::Array::vacuum(ctx_, array_name);
-  get_fragments_extreme(array_name);
+  // earlier item len 114 idx 1 still dominates (even after vacuum, still present)
+  CHECK(get_fragments_extreme(array_name) == 114);
+
+  // 4 items, various lengths
+  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "Nopqr"
+  write_array(
+      "AbcDefgHijklmNopqr",
+      {0, 3, 7, 13},
+      {1, 4});
+  // earlier item len 114 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 114);
+
+  // consolidate
+  tiledb::Array::consolidate(ctx_, array_name);
+  // earlier item len 114 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 114);
+
+  tiledb::Array::vacuum(ctx_, array_name);
+  // some earlier item(s) len 26 from idx 3..7 now dominates
+  CHECK(get_fragments_extreme(array_name) == 26);
+
+  // 4 items, various lengths
+  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "N", idx 7 "Opqr"
+  write_array(
+      "AbcDefgHijklmNOpqr",
+      {0, 3, 7, 13, 14},
+      {3, 7});
+  // earlier item(s) len 26 idx 3..7 dominates
+  CHECK(get_fragments_extreme(array_name) == 26);
+
+  // consolidate
+  tiledb::Array::consolidate(ctx_, array_name);
+  // earlier item(s) len 26 idx 3..7 dominates
+  CHECK(get_fragments_extreme(array_name) == 26);
+
+  tiledb::Array::vacuum(ctx_, array_name);
+  // after vacuum, now down to lesser items, offset sizeof(uint64_t) again dominant
+  CHECK(get_fragments_extreme(array_name) == 8);
+}
+
+TEST_CASE_METHOD(
+    CAPI_MaxTileSizeFx,
+    "C++ API: Max fragment size, sparse, fix dimension, nullable variable "
+    "string attribute",
+    "[capi][max-tile-size][dense][evolve]") {
+  std::string array_name("tile_size_array");
+
+  remove_temp_dir(array_name);
+
+  auto create_array = [&](int extents = 1) -> void {
+    // Create a TileDB context.
+    tiledb::Context ctx;
+
+    remove_temp_dir(array_name);
+
+    // The array will be 1x4 with dimensions "rows"  with domain
+    // [1,4].
+    tiledb::Domain domain(ctx);
+    domain.add_dimension(
+        tiledb::Dimension::create<int>(ctx, "rows", {{1, 27}}, extents));
+
+    // The array will be dense.
+    tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
+    schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+
+    // Add one attribute "a1", so each (i) cell can store
+    // a string on "a1".
+    schema.add_attribute(
+        tiledb::Attribute::create<std::string>(ctx, "a1").set_nullable(true));
+
+    // Create the (empty) array on disk.
+    tiledb::Array::create(array_name, schema);
+  };
+  auto write_array = [&](std::string&& attr_data,  // expecting single-char
+                                                   // values, one for each row
+                         std::vector<uint64_t>&& attr_offsets,
+                         std::vector<uint8_t>&& attr_val,
+                         std::vector<int>&& subrange) -> void {
+    // Create a TileDB context.
+    tiledb::Context ctx;
+
+    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+    tiledb::Query query(ctx, array);
+    tiledb::Subarray subarray(ctx, array);
+    subarray.add_range(0, subrange[0], subrange[1]);
+
+    query.set_layout(TILEDB_ROW_MAJOR)
+        .set_data_buffer("a1", attr_data)
+        .set_offsets_buffer("a1", attr_offsets)
+        .set_validity_buffer("a1", attr_val)
+        .set_subarray(subarray);
+
+    // Perform the write and close the array.
+    query.submit();
+    array.close();
+  };
+
+  // TBD: disable/remove when its served its purpose...
+  showing_data = true;
+
+  create_array(1);
+  CHECK(get_fragments_extreme(array_name) == 0);
+
+  // zero-len data written
+  // at index 1
+  write_array("", {0}, {1}, {1, 1});  // will core choke on empty string?
+  // size of single offset (sizeof(uint64_t)) dominates
+  CHECK(get_fragments_extreme(array_name) == 8);
+
+  // attribute is variable non-nullable,
+  // So the single offset (uint64_t) of 8 bytes will be max with strings <= 8
+  // bytes writing len 1 data at idx 1
+  write_array("l", {0}, {1}, {1, 1});
+  // size of single offset dominates
+  CHECK(get_fragments_extreme(array_name) == 8);
+
+  // writing len 2 data at idx1
+  write_array("lm", {0}, {1}, {1, 1});
+  CHECK(get_fragments_extreme(array_name) == 8);
+  // writing len 3 data at idx 1
+  write_array("lmn", {0}, {1}, {1, 1});
+  CHECK(get_fragments_extreme(array_name) == 8);
+  // writing len 4 data at idx 1
+  write_array("lmno", {0}, {1}, {1, 1});
+  CHECK(get_fragments_extreme(array_name) == 8);
+  // writing len 5 data at idx 1
+  write_array("lmnop", {0}, {1}, {1, 1});
+  CHECK(get_fragments_extreme(array_name) == 8);
+  // writing len 6 data at idx 1
+  write_array("lmnopq", {0}, {1}, {1, 1});
+  CHECK(get_fragments_extreme(array_name) == 8);
+  // writing len 7 data at idx 1
+  write_array("lmnopqr", {0}, {1}, {1, 1});
+  CHECK(get_fragments_extreme(array_name) == 8);
+  // writing len 8 data at idx 1
+  write_array("lmnopqrs", {0}, {1}, {1, 1});
+  CHECK(get_fragments_extreme(array_name) == 8);
+
+  // still writing 1 item, but now length of variable
+  // data greater than the 1 offset
+  // writing len 9 data at idx 1
+  write_array("lmnopqrst", {0}, {1}, {1, 1});
+  // length of data dominates
+  CHECK(get_fragments_extreme(array_name) == 9);
+  // writing len 10 data at idx 1
+  write_array("lmnopqrstu", {0}, {1}, {1, 1});
+  // length of data dominates
+  CHECK(get_fragments_extreme(array_name) == 10);
+  // writing len 11 data at idx 1
+  write_array("lmnopqrstuv", {0}, {1}, {1, 1});
+  // length of data dominates
+  CHECK(get_fragments_extreme(array_name) == 11);
+  // writing len 12 data at idx 1
+  write_array("lmnopqrstuvw", {0}, {1}, {1, 1});
+  // length of data dominates
+  CHECK(get_fragments_extreme(array_name) == 12);
+  // writing len 13 data at idx 1
+  write_array("lmnopqrstuvwx", {0}, {1}, {1, 1});
+  // length of data dominates
+  CHECK(get_fragments_extreme(array_name) == 13);
+  // writing len 14 data at idx 1
+  write_array("lmnopqrstuvwxy", {0}, {1}, {1, 1});
+  // length of data dominates
+  CHECK(get_fragments_extreme(array_name) == 14);
+
+  // 4 items,
+  // idx 1 "a", idx 2 "", idx 3 "", idx 4 ""
+  write_array("a", {0, 0, 0, 0}, {1,1,1,1}, {1, 4});
+  // earlier item len 14 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 14);
+
+  // 4 items,
+  // idx 1 "A", idx 2 "B", idx 3 "", idx 4 ""
+  write_array("AB", {0, 1, 1, 1}, {1, 1, 1, 1}, {1, 4});
+
+  // earlier item len 14 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 14);
+
+  // 4 items,
+  //  idx 3 "Abc, idx 4 "Defg", idx 5 "Hijkl, idx 6 "nopqr"
+  write_array("AbcDefgHijklmNopqr", {0, 3, 7, 13}, {1, 1, 1, 1}, {3, 6});
+
+  // earlier item len 14 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 14);
+
+  // 5 items, max of any individual item is 26 bytes
+  // 26 @ idx 3, 26 @idx 4, 10 @ idx 5, 26 @ idx 6, 26 @ id x7
+  write_array(
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
+      "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+      //{0, 26, 52, 62, 88, 114},
+      {0, 26, 52, 62, 88},
+      {1, 1, 1, 1, 1},
+      {3, 7});
+  CHECK(get_fragments_extreme(array_name) == 26);
+
+  write_array(
+      // 1 item, 114 bytes @ idx 1
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
+      "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+      //{0, 26, 52, 62, 88, 114},
+      //{0, 26, 52, 62, 88},
+      {0},  // offsets
+      {1},
+      {1, 1});
+  CHECK(get_fragments_extreme(array_name) == 114);
+
+  // 5 items, max of any individual item is 26 bytes
+  // 26 @ idx 3, 26 @idx 4, 10 @ idx 5, 26 @ idx 6, 26 @ id x7
+  write_array(
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
+      "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+      //{0, 26, 52, 62, 88, 114},
+      {0, 26, 52, 62, 88},
+      {1, 1, 1, 1, 1},
+      {3, 7});
+  // earlier item len 114 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 114);
+
+  // 4 items, various lengths
+  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "Nopqr"
+  write_array("AbcDefgHijklmNopqr", {0, 3, 7, 13}, {1, 1, 1, 1}, {3, 6});
+  // earlier item len 114 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 114);
+
+  // consolidate
+  tiledb::Array::consolidate(ctx_, array_name);
+  // earlier item len 114 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 114);
+
+  tiledb::Array::vacuum(ctx_, array_name);
+  // earlier item len 114 idx 1 still dominates (even after vacuum, still
+  // present)
+  CHECK(get_fragments_extreme(array_name) == 114);
+
+  // 4 items, various lengths
+  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "Nopqr"
+  write_array("AbcDefgHijklmNopqr", {0, 3, 7, 13}, {1, 1, 1, 1}, {1, 4});
+  // earlier item len 114 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 114);
+
+  // consolidate
+  tiledb::Array::consolidate(ctx_, array_name);
+  // earlier item len 114 idx 1 still dominates
+  CHECK(get_fragments_extreme(array_name) == 114);
+
+  tiledb::Array::vacuum(ctx_, array_name);
+  // some earlier item(s) len 26 from idx 3..7 now dominates
+  CHECK(get_fragments_extreme(array_name) == 26);
+
+  // 4 items, various lengths
+  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "N", idx 7 "Opqr"
+  write_array("AbcDefgHijklmNOpqr", {0, 3, 7, 13, 14}, {1, 1, 1, 1, 1}, {3, 7});
+  // earlier item(s) len 26 idx 3..7 dominates
+  CHECK(get_fragments_extreme(array_name) == 26);
+
+  // consolidate
+  tiledb::Array::consolidate(ctx_, array_name);
+  // earlier item(s) len 26 idx 3..7 dominates
+  CHECK(get_fragments_extreme(array_name) == 26);
+
+  tiledb::Array::vacuum(ctx_, array_name);
+  // after vacuum, now down to lesser items, offset sizeof(uint64_t) again
+  // dominant
+  CHECK(get_fragments_extreme(array_name) == 8);
 }
 
 #if TILEDB_SERIALIZATION
@@ -1296,7 +1432,13 @@ TEST_CASE_METHOD(
   std::string array_name("tile_size_array");
   tiledb::sm::Buffer buff;
   std::vector<uint64_t> values_to_try{
-      0, 4, 208, 1024, 64 * 1024 * 1024, 64 * 1024 * 1024 + 1};
+      0,
+      4,
+      208,
+      1024,
+      64 * 1024 * 1024,
+      64 * 1024 * 1024 + 1,
+      std::numeric_limits<uint64_t>::max()};
   for (auto v : values_to_try) {
     CHECK(tiledb::sm::serialization::maximum_tile_size_serialize(
         &v,

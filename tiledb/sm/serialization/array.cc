@@ -800,9 +800,9 @@ Status maximum_tile_size_deserialize(uint64_t*, SerializationType, const Buffer&
 }
 
 Status maximum_tile_size_serialize(
-    uint64_t* maximum_tile_size,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    uint64_t* ,
+    SerializationType ,
+    Buffer* ) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

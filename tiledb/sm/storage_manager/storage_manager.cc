@@ -2809,8 +2809,6 @@ void StorageManager::array_get_fragment_tile_size_extremes(
   auto process_attr = [&](FragmentMetadata& f,
                           const std::string& name,
                           bool var_size) -> void {
-    uint64_t num_tiles = 0;
-
     uint64_t max_frag_persisted_basic_tile_size = 0, max_frag_in_memory_basic_tile_size = 0;
     uint64_t min_frag_persisted_basic_tile_size =
                  std::numeric_limits<uint64_t>::max(),
@@ -2824,7 +2822,6 @@ void StorageManager::array_get_fragment_tile_size_extremes(
              min_frag_in_memory_tile_size_var =
                  std::numeric_limits<uint64_t>::max();
 
-    // for (const auto& f : fragment_metadata) {
     uint64_t tile_num = f.tile_num();
     std::vector<std::string> names;
     names.push_back(name);
@@ -2832,13 +2829,9 @@ void StorageManager::array_get_fragment_tile_size_extremes(
     throw_if_not_ok(f.load_tile_var_sizes(enc_key, name));
     for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
       auto persisted_tile_size = f.persisted_tile_size(name, tile_idx);
-      //persisted_tile_size += *tile_size;
-      // hmm, so appears
       // for dense, all tiles to be reported as same size
-      // for var, all tiles except last one reported as same size, with last one possible smaller?
+      // for var, all tiles except last one reported as same size, with last one possibly smaller.
       auto in_mem_tile_size = f.tile_size(name, tile_idx);
-      //in_memory_tile_size += in_mem_tile_size;
-      num_tiles++;
       min_frag_persisted_basic_tile_size =
           std::min(min_frag_persisted_basic_tile_size, persisted_tile_size);
       max_frag_persisted_basic_tile_size =
@@ -2851,10 +2844,7 @@ void StorageManager::array_get_fragment_tile_size_extremes(
 
       if (var_size) {
         auto tile_size_var_persisted = f.persisted_tile_var_size(name, tile_idx);
-        //persisted_tile_size += *tile_size_var_persisted;
         auto tile_size_var_in_mem = f.tile_var_size(name, tile_idx);
-        //in_memory_tile_size += *tile_size_var_in_mem;
-        num_tiles++;
 
         min_frag_persisted_tile_size_var = std::min(
             min_frag_persisted_tile_size_var, tile_size_var_persisted);
@@ -2865,7 +2855,6 @@ void StorageManager::array_get_fragment_tile_size_extremes(
         max_frag_in_memory_tile_size_var =
             std::max(max_frag_in_memory_tile_size_var, tile_size_var_in_mem);
       }
-      //}
       mins_maxs.max_persisted_basic_tile_size = std::max(
           mins_maxs.max_persisted_basic_tile_size, max_frag_persisted_basic_tile_size),
       mins_maxs.max_in_memory_basic_tile_size = std::max(
@@ -2878,8 +2867,6 @@ void StorageManager::array_get_fragment_tile_size_extremes(
           mins_maxs.min_in_memory_basic_tile_size,
           min_frag_in_memory_basic_tile_size);
 
-      // uint64_t min_persisted_tile_size = std::limits<uint64_t>::max,
-      // min_in_memory_tile_size = std::limits<uint64_t>::max;
       mins_maxs.max_persisted_tile_size_var = std::max(
           mins_maxs.max_persisted_tile_size_var,
           max_frag_persisted_tile_size_var);
