@@ -285,12 +285,8 @@ class ManualPolicy
 template <class Mover, class PortState = typename Mover::PortState>
 class AsyncPolicy
     : public PortFiniteStateMachine<AsyncPolicy<Mover, PortState>, PortState>
-
 {
   using mover_type = Mover;
-  using state_machine_type =
-      PortFiniteStateMachine<AsyncPolicy<Mover, PortState>, PortState>;
-  using lock_type = typename state_machine_type::lock_type;
 
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;
@@ -298,10 +294,14 @@ class AsyncPolicy
   std::array<size_t, 2> moves_{0, 0};
 
  public:
+  using state_machine_type =
+      PortFiniteStateMachine<AsyncPolicy<Mover, PortState>, PortState>;
+  using lock_type = typename state_machine_type::lock_type;
+
   AsyncPolicy() = default;
   AsyncPolicy(const AsyncPolicy&) {
   }
-  AsyncPolicy(AsyncPolicy&&) = default;
+  AsyncPolicy(AsyncPolicy&&) noexcept = default;
 
   /**
    * Function for handling `ac_return` action.
@@ -338,11 +338,11 @@ class AsyncPolicy
     static_cast<Mover*>(this)->on_move(event);
   }
 
-  size_t source_swaps() const {
+  [[nodiscard]] size_t source_swaps() const {
     return moves_[0];
   }
 
-  size_t sink_swaps() const {
+  [[nodiscard]] size_t sink_swaps() const {
     return moves_[1];
   }
 
@@ -510,17 +510,17 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
                                UnifiedAsyncPolicy<Mover, PortState>,
                                PortState> {
   using mover_type = Mover;
+  std::condition_variable cv_;
+
+ public:
   using state_machine_type =
       PortFiniteStateMachine<UnifiedAsyncPolicy<Mover, PortState>, PortState>;
   using lock_type = typename state_machine_type::lock_type;
 
-  std::condition_variable cv_;
-
- public:
   UnifiedAsyncPolicy() = default;
   UnifiedAsyncPolicy(const UnifiedAsyncPolicy&) {
   }
-  UnifiedAsyncPolicy(UnifiedAsyncPolicy&&) = default;
+  UnifiedAsyncPolicy(UnifiedAsyncPolicy&&)  noexcept = default;
 
   /**
    * Function for handling `ac_return` action.

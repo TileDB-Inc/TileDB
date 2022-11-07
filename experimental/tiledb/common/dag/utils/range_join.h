@@ -195,9 +195,9 @@ class join {
 
   // Default copy constructor and assignment operators are fine.
   join(const join&) = default;
-  join(join&&) = default;
+  join(join&&)  noexcept = default;
   join& operator=(const join&) = default;
-  join& operator=(join&&) = default;
+  join& operator=(join&&)  noexcept = default;
 
   /**
    * Iterator class for the joined data structure.  Currently it is a (legacy)
@@ -278,10 +278,10 @@ class join {
 
     join_iterator() = default;
     join_iterator(const join_iterator&) = default;
-    join_iterator(join_iterator&&) = default;
+    join_iterator(join_iterator&&)  noexcept = default;
 
     template <bool is_const_ = is_const, class = std::enable_if<is_const_>>
-    join_iterator(const join_iterator<false>& rhs)
+    explicit join_iterator(const join_iterator<false>& rhs)
         : first_(rhs.first_)
         , last_(rhs.last_)
         , inner_begin_(rhs.inner_begin_)
@@ -289,7 +289,7 @@ class join {
     }
 
     join_iterator& operator=(const join_iterator&) = default;
-    join_iterator& operator=(join_iterator&&) = default;
+    join_iterator& operator=(join_iterator&&)  noexcept = default;
 
     template <bool is_const_ = is_const, class = std::enable_if<is_const_>>
     join_iterator& operator=(
@@ -431,7 +431,7 @@ class join {
    *
    * @invariant Equal to the sum of the sizes of the inner containers.
    */
-  std::size_t size() const {
+  [[nodiscard]] std::size_t size() const {
     size_t n = 0;
 
     auto tmp = outer_begin_;
@@ -446,7 +446,7 @@ class join {
   /**
    * Return whether the joined view is empty.
    */
-  bool empty() const {
+  [[nodiscard]] bool empty() const {
     return begin() == end();
   }
 };

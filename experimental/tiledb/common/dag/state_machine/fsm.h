@@ -80,7 +80,7 @@ transition_table<two_stage>[num_states<two_stage>][n_events] {
   /* xt_10 */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::xt_01, two_stage::xt_01, two_stage::unreach },
   /* xt_11 */ { two_stage::error, two_stage::error, two_stage::error, two_stage::xt_10, two_stage::xt_11, two_stage::xt_11, two_stage::unreach },
 						    		    		                                          
-  /* done  */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error },
+  /* done  */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::/*error*/done },
   /* error */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error },
 								                                          
   /* last */  { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error },
@@ -122,12 +122,12 @@ constexpr const PortAction entry_table<two_stage> [num_states<two_stage>][n_even
   /* st_11 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::none },
 								                           						                            
 
-  /* xt_00 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::term_source },
-  /* xt_01 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::term_source },
+  /* xt_00 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::term_source  },
+  /* xt_01 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::term_source  },
   /* xt_10 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::source_throw },
   /* xt_11 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::source_throw },
 								                           						                            
-  /* done  */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::term_sink, PortAction::term_sink, PortAction::none },
+  /* done  */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::term_sink, PortAction::term_sink, PortAction::/*none*/term_source },
   /* error */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::none },
 								                           						                            
   /* last */  { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::none },
@@ -159,7 +159,7 @@ transition_table<three_stage>[num_states<three_stage>][n_events] {
   /* xt_110 */ { three_stage::unreach,  three_stage::unreach,  three_stage::unreach,  three_stage::unreach,  three_stage::xt_011,  three_stage::xt_011,  three_stage::unreach,},
   /* xt_111 */ { three_stage::unreach,  three_stage::unreach,  three_stage::unreach,  three_stage::xt_110, three_stage::xt_111,  three_stage::xt_111,  three_stage::unreach,},
 							                        					                         
-  /* done   */ { three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,   three_stage::error,   three_stage::error },
+  /* done   */ { three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,   three_stage::error,   three_stage::/*error*/done },
   /* error  */ { three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,   three_stage::error,   three_stage::error },
 							                        					                         
   /* last  */  { three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,   three_stage::error,   three_stage::error },
@@ -224,7 +224,7 @@ constexpr const PortAction entry_table<three_stage>[num_states<three_stage>][n_e
   /* xt_110 */ { PortAction::source_throw, PortAction::source_throw, PortAction::source_throw, PortAction::sink_throw, PortAction::sink_throw, PortAction::sink_throw, PortAction::source_throw },
   /* xt_111 */ { PortAction::source_throw, PortAction::source_throw, PortAction::source_throw, PortAction::sink_throw, PortAction::sink_throw, PortAction::sink_throw, PortAction::source_throw },
 								   			   			                                                  
-  /* done   */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::term_sink, PortAction::term_sink, PortAction::none },
+  /* done   */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::term_sink, PortAction::term_sink, PortAction::/*none*/term_source },
   /* error  */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::none },
 								   			   			                                                  
   /* last   */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::none },
@@ -333,7 +333,10 @@ class PortFiniteStateMachine {
   void event(PortEvent event, const std::string& msg = "") {
     std::unique_lock lock(mutex_);
 
-    assert(state_ != PortState::error);
+    //assert(state_ != PortState::error);
+    if (state_ == PortState::error) {
+      throw std::logic_error("PortFiniteStateMachine::event: state_ == PortState::error");
+    }
 
   retry:
 
@@ -343,13 +346,16 @@ class PortFiniteStateMachine {
     next_state_ =
         transition_table<port_state>[to_index(state_)][to_index(event)];
 
+    if (next_state_ == PortState::error) {
+      throw std::logic_error("PortFiniteStateMachine::event: next_state_ == PortState::error");
+    }
     //    assert(next_state_ != PortState::error);
 
     auto exit_action{exit_table<port_state>[to_index(state_)][to_index(event)]};
     auto entry_action{
         entry_table<port_state>[to_index(next_state_)][to_index(event)]};
 
-    auto old_state = state_;
+    // auto old_state = state_;
 
     if (!msg.empty() || debug_) {
       std::cout << "\n"
@@ -369,6 +375,7 @@ class PortFiniteStateMachine {
                 << ") " + str(next_state_) << std::endl;
     }
 
+#if 0
     if (!msg.empty() || debug_) {
       std::cout << event_counter++
                 << " Pre exit event: " + msg + " " + str(event) + ": " +
@@ -376,7 +383,7 @@ class PortFiniteStateMachine {
                        str(entry_action)
                 << ") " + str(next_state_) << std::endl;
     }
-
+#endif
     /**
      * Perform any exit actions.  Based on the exit action in the exit action
      * table, we dispatch to a function provided by the policy.  Since Policy
@@ -478,6 +485,7 @@ class PortFiniteStateMachine {
             " -> " + str(next_state_));
     }
 
+#if 0
     if (!msg.empty() || debug_) {
       if (!msg.empty())
         std::cout << event_counter++
@@ -486,7 +494,7 @@ class PortFiniteStateMachine {
                          str(entry_action)
                   << ") " + str(next_state_) << std::endl;
     }
-
+#endif
     /*
      * Assign new state.
      */
@@ -500,6 +508,7 @@ class PortFiniteStateMachine {
     entry_action =
         entry_table<port_state>[to_index(next_state_)][to_index(event)];
 
+#if 0
     if (!msg.empty() || debug_) {
       std::cout << event_counter++
                 << " Pre entry event: " + msg + " " + str(event) + ": " +
@@ -507,6 +516,7 @@ class PortFiniteStateMachine {
                        str(entry_action)
                 << ") " + str(state_) << std::endl;
     }
+#endif
 
     /**
      * Perform any entry actions.
@@ -696,6 +706,7 @@ class PortFiniteStateMachine {
             str(state_) + " -> " + str(next_state_));
     }
 
+#if 0
     if (!msg.empty() || debug_) {
       std::cout << event_counter++
                 << " Post entry event: " + msg + " " + str(event) + ": " +
@@ -703,6 +714,7 @@ class PortFiniteStateMachine {
                        str(entry_action)
                 << ") " + str(next_state_) << std::endl;
     }
+#endif
   }
 
  public:
