@@ -56,8 +56,8 @@
  * can be mixed and matched.
  */
 
-#ifndef TILEDB_DAG_throw_catch_H
-#define TILEDB_DAG_throw_catch_H
+#ifndef TILEDB_DAG_THROW_CATCH_H
+#define TILEDB_DAG_THROW_CATCH_H
 
 #include <condition_variable>
 #include <functional>
@@ -69,6 +69,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include "experimental/tiledb/common/dag/execution/task.h"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/item_mover.h"
@@ -81,16 +82,15 @@ namespace tiledb::common {
 
 namespace detail {
 
-enum class throw_catch_target {
-  self, source, sink, last
-};
+enum class throw_catch_target { self, source, sink, last };
 
 class throw_catch_exception : public std::exception {
   throw_catch_target target_{throw_catch_target::self};
 
-public:
-  explicit throw_catch_exception(throw_catch_target target = throw_catch_target::self)
-          : target_{target} {
+ public:
+  explicit throw_catch_exception(
+      throw_catch_target target = throw_catch_target::self)
+      : target_{target} {
   }
 
   [[nodiscard]] throw_catch_target target() const {
@@ -114,111 +114,112 @@ class throw_catch_notify : public throw_catch_exception {
 
 const detail::throw_catch_exit throw_catch_exit;
 const detail::throw_catch_wait throw_catch_sink_wait{
-        detail::throw_catch_target::sink};
+    detail::throw_catch_target::sink};
 const detail::throw_catch_wait throw_catch_source_wait{
-        detail::throw_catch_target::source};
+    detail::throw_catch_target::source};
 const detail::throw_catch_notify throw_catch_notify_sink{
-        detail::throw_catch_target::sink};
+    detail::throw_catch_target::sink};
 const detail::throw_catch_notify throw_catch_notify_source{
-        detail::throw_catch_target::source};
+    detail::throw_catch_target::source};
 
-template<class Mover, class PortState = typename Mover::PortState>
+template <class Mover, class PortState = typename Mover::PortState>
 class ThrowCatchPortPolicy : public PortFiniteStateMachine<
-        ThrowCatchPortPolicy<Mover, PortState>,
-        PortState> {
+                                 ThrowCatchPortPolicy<Mover, PortState>,
+                                 PortState> {
   using state_machine_type =
-          PortFiniteStateMachine<ThrowCatchPortPolicy<Mover, PortState>, PortState>;
+      PortFiniteStateMachine<ThrowCatchPortPolicy<Mover, PortState>, PortState>;
   using lock_type = typename state_machine_type::lock_type;
 
   using mover_type = Mover;
 
-public:
+ public:
   ThrowCatchPortPolicy() {
     if constexpr (std::is_same_v<PortState, two_stage>) {
-      assert(static_cast<Mover *>(this)->state() == PortState::st_00);
+      assert(static_cast<Mover*>(this)->state() == PortState::st_00);
     } else if constexpr (std::is_same_v<PortState, three_stage>) {
-      assert(static_cast<Mover *>(this)->state() == PortState::st_000);
+      assert(static_cast<Mover*>(this)->state() == PortState::st_000);
     }
   }
 
-  inline void on_ac_return(lock_type &, std::atomic<int> &) {
+  inline void on_ac_return(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action return");
   }
 
-  inline void on_source_move(lock_type &, std::atomic<int> &event) {
-    static_cast<Mover *>(this)->on_move(event);
+  inline void on_source_move(lock_type&, std::atomic<int>& event) {
+    static_cast<Mover*>(this)->on_move(event);
   }
 
-  inline void on_sink_move(lock_type &, std::atomic<int> &event) {
-    static_cast<Mover *>(this)->on_move(event);
+  inline void on_sink_move(lock_type&, std::atomic<int>& event) {
+    static_cast<Mover*>(this)->on_move(event);
   }
 
-  inline void on_notify_source(lock_type &, std::atomic<int> &) {
+  inline void on_notify_source(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action notify source");
-    throw (detail::throw_catch_notify{detail::throw_catch_target::source});
+    throw(detail::throw_catch_notify{detail::throw_catch_target::source});
   }
 
-  inline void on_notify_sink(lock_type &, std::atomic<int> &) {
+  inline void on_notify_sink(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action notify sink");
-    throw (detail::throw_catch_notify{detail::throw_catch_target::sink});
+    throw(detail::throw_catch_notify{detail::throw_catch_target::sink});
   }
 
-  inline void on_source_wait(lock_type &, std::atomic<int> &) {
+  inline void on_source_wait(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action source wait");
-    throw (detail::throw_catch_wait{detail::throw_catch_target::source});
+    throw(detail::throw_catch_wait{detail::throw_catch_target::source});
   }
 
-  inline void on_sink_wait(lock_type &, std::atomic<int> &) {
+  inline void on_sink_wait(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action sink wait");
-    throw (detail::throw_catch_wait{detail::throw_catch_target::sink});
+    throw(detail::throw_catch_wait{detail::throw_catch_target::sink});
   }
 
-  inline void on_term_source(lock_type &, std::atomic<int> &) {
+  inline void on_term_source(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action source done");
-    throw (detail::throw_catch_exit{detail::throw_catch_target::source});
+    throw(detail::throw_catch_exit{detail::throw_catch_target::source});
   }
 
-  inline void on_term_sink(lock_type &, std::atomic<int> &) {
+  inline void on_term_sink(lock_type&, std::atomic<int>&) {
     debug_msg("ScheduledPolicy Action sink done");
-    throw (detail::throw_catch_exit{detail::throw_catch_target::sink});
+    throw(detail::throw_catch_exit{detail::throw_catch_target::sink});
   }
 
-private:
-  void debug_msg(const std::string &msg) {
-    if (static_cast<Mover *>(this)->debug_enabled()) {
+ private:
+  void debug_msg(const std::string& msg) {
+    if (static_cast<Mover*>(this)->debug_enabled()) {
       std::cout << msg << "\n";
     }
   }
 };
 
-template<class T>
+template <class T>
 using ThrowCatchMover3 = ItemMover<ThrowCatchPortPolicy, three_stage, T>;
-template<class T>
+template <class T>
 using ThrowCatchMover2 = ItemMover<ThrowCatchPortPolicy, two_stage, T>;
 
-template<class Node>
+template <class Node>
 class ThrowCatchScheduler;
 
-template<class Task>
+template <class Task>
 class ThrowCatchSchedulerPolicy;
 
-template<typename T>
+template <typename T>
 struct SchedulerTraits<ThrowCatchSchedulerPolicy<T>> {
   using task_type = T;
   using task_handle_type = T;
 };
 
-template<class Task>
+template <class Task>
 class ThrowCatchSchedulerPolicy
-        : public SchedulerStateMachine<ThrowCatchSchedulerPolicy<Task>> {
-  using state_machine_type = SchedulerStateMachine<ThrowCatchSchedulerPolicy<Task>>;
+    : public SchedulerStateMachine<ThrowCatchSchedulerPolicy<Task>> {
+  using state_machine_type =
+      SchedulerStateMachine<ThrowCatchSchedulerPolicy<Task>>;
   using lock_type = typename state_machine_type::lock_type;
 
-public:
+ public:
   using task_type =
-          typename SchedulerTraits<ThrowCatchSchedulerPolicy<Task>>::task_type;
-  using task_handle_type =
-          typename SchedulerTraits<ThrowCatchSchedulerPolicy<Task>>::task_handle_type;
+      typename SchedulerTraits<ThrowCatchSchedulerPolicy<Task>>::task_type;
+  using task_handle_type = typename SchedulerTraits<
+      ThrowCatchSchedulerPolicy<Task>>::task_handle_type;
 
   ~ThrowCatchSchedulerPolicy() {
     if (this->debug())
@@ -230,40 +231,40 @@ public:
     finished_queue_.drain();
   }
 
-  void on_create(task_handle_type &task) {
+  void on_create(task_handle_type& task) {
     if (this->debug())
       std::cout << "calling on_create"
                 << "\n";
     this->submission_queue_.push(task);
   }
 
-  void on_stop_create(task_handle_type &) {
+  void on_stop_create(task_handle_type&) {
     if (this->debug())
       std::cout << "calling on_stop_create"
                 << "\n";
   }
 
-  void on_make_runnable(task_handle_type &task) {
+  void on_make_runnable(task_handle_type& task) {
     if (this->debug())
       std::cout << "calling on_make_runnable"
                 << "\n";
     this->runnable_queue_.push(task);
   }
 
-  void on_stop_runnable(task_handle_type &) {
+  void on_stop_runnable(task_handle_type&) {
     if (this->debug())
       std::cout << "calling on_stop_runnable"
                 << "\n";
   }
 
-  void on_make_running(task_handle_type &task) {
+  void on_make_running(task_handle_type& task) {
     if (this->debug())
       std::cout << "calling on_make_running"
                 << "\n";
     this->running_set_.insert(task);
   }
 
-  void on_stop_running(task_handle_type &task) {
+  void on_stop_running(task_handle_type& task) {
     if (this->debug())
       std::cout << "calling on_stop_running"
                 << "\n";
@@ -272,14 +273,14 @@ public:
     assert(!n.empty());
   }
 
-  void on_make_waiting(task_handle_type &task) {
+  void on_make_waiting(task_handle_type& task) {
     if (this->debug())
       std::cout << "calling on_make_waiting"
                 << "\n";
     this->waiting_set_.insert(task);
   }
 
-  void on_stop_waiting(task_handle_type &task) {
+  void on_stop_waiting(task_handle_type& task) {
     if (this->debug())
       std::cout << "calling on_stop_waiting"
                 << "\n";
@@ -292,7 +293,7 @@ public:
     n.value()->decrement_program_counter();
   }
 
-  void on_terminate(task_handle_type &task) {
+  void on_terminate(task_handle_type& task) {
     if (this->debug())
       std::cout << "calling on_terminate"
                 << "\n";
@@ -318,265 +319,40 @@ public:
   }
 
   auto get_runnable_task() {
-#if 1
     auto val = runnable_queue_.try_pop();
     while (val && ((*val)->task_state() == TaskState::terminated)) {
       val = runnable_queue_.try_pop();
     }
     return val;
-#else
-    auto val = runnable_queue_.pop();
-    return val;
-#endif
   }
 
-  void p_shutdown() {
-#if 0
-    if (this->debug())
-      std::cout << "policy shutdown\n";
-
-    size_t loops = waiting_set_.size();
-
-    for (size_t i = 0; i < loops; ++i) {
-      std::vector<Task> notified_waiters_;
-      notified_waiters_.reserve(waiting_set_.size());
-
-      for (auto t : waiting_set_) {
-
-  // Notify can change the waiting_set_
-  // But it should be empty by here?
-        this->task_notify(t);
-      }
-
-      for (auto&& t : notified_waiters_) {
-        this->task_dispatch(t);
-        waiting_set_.erase(t);
-        runnable_queue_.push(t);
-      }
-      notified_waiters_.clear();
-    }
-
-    // all waiters must have been notified
-    assert(waiting_set_.empty());
-
-    runnable_queue_.drain();
-    finished_queue_.drain();
-
-    waiting_set_.clear();
-    running_set_.clear();
-#endif
-  }
-
-  void dump_queue_state(const std::string &msg = "") {
+  void dump_queue_state(const std::string& msg = "") {
     std::string preface = (!msg.empty() ? msg + "\n" : "");
 
     std::cout << preface + "    runnable_queue_.size() = " +
-                 std::to_string(runnable_queue_.size()) + "\n" +
-                 "    running_set_.size() = " +
-                 std::to_string(running_set_.size()) + "\n" +
-                 "    waiting_set_.size() = " +
-                 std::to_string(waiting_set_.size()) + "\n" +
-                 "    finished_queue_.size() = " +
-                 std::to_string(finished_queue_.size()) + "\n" + "\n";
+                     std::to_string(runnable_queue_.size()) + "\n" +
+                     "    running_set_.size() = " +
+                     std::to_string(running_set_.size()) + "\n" +
+                     "    waiting_set_.size() = " +
+                     std::to_string(waiting_set_.size()) + "\n" +
+                     "    finished_queue_.size() = " +
+                     std::to_string(finished_queue_.size()) + "\n" + "\n";
   }
 
-private:
-#if 1
+ private:
   ConcurrentSet<Task> waiting_set_;
   ConcurrentSet<Task> running_set_;
   BoundedBufferQ<Task, std::queue<Task>, false> submission_queue_;
   BoundedBufferQ<Task, std::queue<Task>, false> runnable_queue_;
   BoundedBufferQ<Task, std::queue<Task>, false> finished_queue_;
-#else
-  ConcurrentSet<std::shared_ptr<Task>> waiting_set_;
-  ConcurrentSet<std::shared_ptr<Task>> running_set_;
-  BoundedBufferQ<
-      std::shared_ptr<Task>,
-      std::queue<std::shared_ptr<Task>>,
-      false>
-      submission_queue_;
-  BoundedBufferQ<
-      std::shared_ptr<Task>,
-      std::queue<std::shared_ptr<Task>>,
-      false>
-      runnable_queue_;
-  BoundedBufferQ<
-      std::shared_ptr<Task>,
-      std::queue<std::shared_ptr<Task>>,
-      false>
-      finished_queue_;
-#endif
 };
 
-#if 0
 template <class Node>
-class ThrowCatchTaskImpl {
-  using scheduler = ThrowCatchScheduler<Node>;
-  scheduler* scheduler_{nullptr};
-  TaskState state_{TaskState::created};
-
-  /** @todo Is there a way to derive from Node to be able to use statements like
-   * `using Node::resume` even though it is a `shared_ptr`? */
-  Node node_;
+class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<Task<Node>> {
+  using Scheduler = ThrowCatchScheduler<Node>;
+  using Policy = ThrowCatchSchedulerPolicy<Task<Node>>;
 
  public:
-  ThrowCatchTaskImpl(const Node& n)
-      : node_{n} {
-  }
-
-  ThrowCatchTaskImpl() = default;
-  ThrowCatchTaskImpl(const ThrowCatchTaskImpl&) = default;
-  ThrowCatchTaskImpl(ThrowCatchTaskImpl&&) = default;
-  ThrowCatchTaskImpl& operator=(const ThrowCatchTaskImpl&) = default;
-  ThrowCatchTaskImpl& operator=(ThrowCatchTaskImpl&&) = default;
-
-  void set_scheduler(scheduler* sched) {
-    scheduler_ = sched;
-  }
-
-  TaskState& task_state() {
-    return state_;
-  }
-
-  void resume() {
-    node_->resume();
-  }
-
-  void decrement_program_counter() {
-    node_->decrement_program_counter();
-  }
-
-  Node* sink_correspondent() const {
-    return node_->sink_correspondent();
-  }
-
-  Node* source_correspondent() const {
-    return node_->source_correspondent();
-  }
-
-  std::string name() const {
-    return node_->name() + " task";
-  }
-
-  auto id() const {
-    return node_->id();
-  }
-
-  virtual ~ThrowCatchTaskImpl() = default;
-
-  void dump_task_state(const std::string msg = "") {
-    std::string preface = (msg != "" ? msg + "\n" : "");
-
-    std::cout << preface + "    " + this->name() + " with id " +
-                     std::to_string(this->id()) + "\n" +
-                     "    state = " + str(this->task_state()) + "\n";
-  }
-};
-
-#else
-
-template<class Node>
-class ThrowCatchTaskImpl : Node {
-  using scheduler = ThrowCatchScheduler<Node>;
-  scheduler *scheduler_{nullptr};
-  TaskState state_{TaskState::created};
-
-  /** @todo Is there a way to derive from Node to be able to use statements like
-   * `using Node::resume` even though it is a `shared_ptr`? */
-  //  Node node_;
-  using node_ = Node;
-
-public:
-  explicit ThrowCatchTaskImpl(const Node &n)
-          : node_{n} {
-  }
-
-  ThrowCatchTaskImpl() = default;
-
-  ThrowCatchTaskImpl(const ThrowCatchTaskImpl &) = default;
-
-  ThrowCatchTaskImpl(ThrowCatchTaskImpl &&) noexcept = default;
-
-  ThrowCatchTaskImpl &operator=(const ThrowCatchTaskImpl &) = default;
-
-  ThrowCatchTaskImpl &operator=(ThrowCatchTaskImpl &&) noexcept = default;
-
-  void set_scheduler(scheduler *sched) {
-    scheduler_ = sched;
-  }
-
-  TaskState &task_state() {
-    return state_;
-  }
-
-  void resume() {
-    (*this)->resume();
-  }
-
-  void decrement_program_counter() {
-    (*this)->decrement_program_counter();
-  }
-
-  Node &sink_correspondent() const {
-    return (*this)->sink_correspondent();
-  }
-
-  Node &source_correspondent() const {
-    return (*this)->source_correspondent();
-  }
-
-  [[nodiscard]] std::string name() const {
-    return (*this)->name() + " task";
-  }
-
-  [[nodiscard]] size_t id() const {
-    return (*this)->id();
-  }
-
-  virtual ~ThrowCatchTaskImpl() = default;
-
-  void dump_task_state(const std::string &msg = "") {
-    std::string preface = (!msg.empty() ? msg + "\n" : "");
-
-    std::cout << preface + "    " + this->name() + " with id " +
-                 std::to_string(this->id()) + "\n" +
-                 "    state = " + str(this->task_state()) + "\n";
-  }
-};
-
-#endif
-
-template<class Node>
-class ThrowCatchTask : public std::shared_ptr<ThrowCatchTaskImpl<Node>> {
-  using Base = std::shared_ptr<ThrowCatchTaskImpl<Node>>;
-
-public:
-  explicit ThrowCatchTask(const Node &n)
-          : Base{std::make_shared<ThrowCatchTaskImpl<Node>>(n)} {
-  }
-
-  ThrowCatchTask() = default;
-
-  ThrowCatchTask(const ThrowCatchTask &rhs) = default;
-
-  ThrowCatchTask(ThrowCatchTask &&rhs) noexcept = default;
-
-  ThrowCatchTask &operator=(const ThrowCatchTask &rhs) = default;
-
-  ThrowCatchTask &operator=(ThrowCatchTask &&rhs) noexcept = default;
-
-  [[nodiscard]] TaskState &task_state() const {
-    return (*this)->task_state();
-  }
-};
-
-
-template<class Node>
-class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node>> {
-  using Scheduler = ThrowCatchScheduler<Node>;
-  using Policy = ThrowCatchSchedulerPolicy<ThrowCatchTask<Node>>;
-
-public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -591,7 +367,7 @@ public:
    * 256*hardware_concurrency or larger is an error.
    */
   explicit ThrowCatchScheduler(size_t n)
-          : concurrency_level_(n) {
+      : concurrency_level_(n) {
     // If concurrency_level_ is set to zero, construct the thread pool in
     // shutdown state.  Explicitly shut down the task queue as well.
     if (concurrency_level_ == 0) {
@@ -602,8 +378,8 @@ public:
     // in testing error conditions in creating a context.
     if (concurrency_level_ >= 256 * std::thread::hardware_concurrency()) {
       std::string msg =
-              "Error initializing throw_catch scheduler of concurrency level " +
-              std::to_string(concurrency_level_) + "; Requested size too large";
+          "Error initializing throw_catch scheduler of concurrency level " +
+          std::to_string(concurrency_level_) + "; Requested size too large";
       throw std::runtime_error(msg);
     }
 
@@ -620,13 +396,13 @@ public:
       while (tries--) {
         try {
           tmp = std::thread(&ThrowCatchScheduler::worker, this);
-        } catch (const std::system_error &e) {
+        } catch (const std::system_error& e) {
           if (e.code() != std::errc::resource_unavailable_try_again ||
               tries == 0) {
             shutdown();
             throw std::runtime_error(
-                    "Error initializing thread pool of concurrency level " +
-                    std::to_string(concurrency_level_) + "; " + e.what());
+                "Error initializing thread pool of concurrency level " +
+                std::to_string(concurrency_level_) + "; " + e.what());
           }
           continue;
         }
@@ -645,7 +421,7 @@ public:
   /** Deleted default constructor */
   ThrowCatchScheduler() = delete;
 
-  ThrowCatchScheduler(const ThrowCatchScheduler &) = delete;
+  ThrowCatchScheduler(const ThrowCatchScheduler&) = delete;
 
   /** Destructor. */
   ~ThrowCatchScheduler() {
@@ -658,7 +434,7 @@ public:
   /*                API                */
   /* ********************************* */
 
-public:
+ public:
   size_t concurrency_level() {
     return concurrency_level_;
   }
@@ -677,19 +453,19 @@ public:
     return debug_.load();
   }
 
-private:
+ private:
   /** @todo Need to make ConcurrentMap */
-  ConcurrentMap<Node, ThrowCatchTask<Node>> node_to_task;
-  //  ConcurrentMap<Node, ThrowCatchTask<Node>> port_to_task;
+  ConcurrentMap<Node, Task<Node>> node_to_task;
+  //  ConcurrentMap<Node, Task<Node>> port_to_task;
 
-public:
-  void submit(Node &&n) {
+ public:
+  void submit(Node&& n) {
     ++num_submitted_tasks_;
     ++num_tasks_;
 
-    auto t = ThrowCatchTask{n};
+    auto t = Task<Node>{n};
 
-    t->set_scheduler(this);
+    //    t->set_scheduler(this);
 
     node_to_task[n] = t;
 
@@ -734,7 +510,7 @@ public:
      * @todo switch to using tasks with `std::async` so we can catch
      * exceptions.
      */
-    for (auto &&t: threads_) {
+    for (auto&& t : threads_) {
       t.join();
     }
     threads_.clear();
@@ -744,7 +520,7 @@ public:
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-private:
+ private:
   std::atomic<bool> ready_to_run_{false};
 
   void make_ready_to_run() {
@@ -758,7 +534,7 @@ private:
   /** The worker thread routine */
   void worker() {
     [[maybe_unused]] thread_local static auto scheduler = this;
-    thread_local ThrowCatchTask<Node> this_task{nullptr};
+    thread_local Task<Node> this_task{nullptr};
 
     /*
      * The worker threads wait on a condition variable until they are released
@@ -782,10 +558,10 @@ private:
         if (num_exited_tasks_ == num_submitted_tasks_) {
           if (this->debug()) {
             std::cout << "Breaking at top of while true with " +
-                         std::to_string(num_exited_tasks_) +
-                         " exited tasks and " +
-                         std::to_string(num_submitted_tasks_) +
-                         " submitted tasks\n";
+                             std::to_string(num_exited_tasks_) +
+                             " exited tasks and " +
+                             std::to_string(num_submitted_tasks_) +
+                             " submitted tasks\n";
             this->dump_queue_state("Breaking at top of while true");
           }
           break;
@@ -840,13 +616,12 @@ private:
           if (this->debug())
             task_to_run->dump_task_state("Returning from resume");
 
-
-        } catch (const detail::throw_catch_wait &w) {
+        } catch (const detail::throw_catch_wait& w) {
           _.lock();
 
           assert(
-                  w.target() == detail::throw_catch_target::sink ||
-                  w.target() == detail::throw_catch_target::source);
+              w.target() == detail::throw_catch_target::sink ||
+              w.target() == detail::throw_catch_target::source);
 
           if (this->debug())
             task_to_run->dump_task_state("Caught wait");
@@ -856,12 +631,12 @@ private:
           if (this->debug())
             task_to_run->dump_task_state("Post wait");
 
-        } catch (const detail::throw_catch_notify &n) {
+        } catch (const detail::throw_catch_notify& n) {
           _.lock();
 
           assert(
-                  n.target() == detail::throw_catch_target::sink ||
-                  n.target() == detail::throw_catch_target::source);
+              n.target() == detail::throw_catch_target::sink ||
+              n.target() == detail::throw_catch_target::source);
 
           if (this->debug())
             task_to_run->dump_task_state("Caught notify");
@@ -871,7 +646,7 @@ private:
 
           if (n.target() == detail::throw_catch_target::sink) {
             auto task_to_notify =
-                    node_to_task[task_to_run->sink_correspondent()];
+                node_to_task[task_to_run->sink_correspondent()];
             this->task_notify(task_to_notify);
 
             if (this->debug()) {
@@ -881,7 +656,7 @@ private:
 
           } else {
             auto task_to_notify =
-                    node_to_task[task_to_run->source_correspondent()];
+                node_to_task[task_to_run->source_correspondent()];
             this->task_notify(task_to_notify);
 
             if (this->debug()) {
@@ -890,12 +665,10 @@ private:
             }
           }
 
-        } catch (const detail::throw_catch_exit &ex) {
+        } catch (const detail::throw_catch_exit& ex) {
           _.lock();
 
           if (true || ex.target() == detail::throw_catch_target::source) {
-
-
             if (this->debug()) {
               task_to_run->dump_task_state("Caught exit");
               this->dump_queue_state("Caught exit");
@@ -938,10 +711,10 @@ private:
         if (num_exited_tasks_ == num_submitted_tasks_) {
           if (this->debug()) {
             std::cout << "Breaking at bottom of while true with " +
-                         std::to_string(num_exited_tasks_) +
-                         " exited tasks and " +
-                         std::to_string(num_submitted_tasks_) +
-                         " submitted tasks\n";
+                             std::to_string(num_exited_tasks_) +
+                             " exited tasks and " +
+                             std::to_string(num_submitted_tasks_) +
+                             " submitted tasks\n";
             this->dump_queue_state("Breaking at bottom of while true");
             task_to_run->dump_task_state();
           }
@@ -955,24 +728,22 @@ private:
 
   }  // worker()
 
-  /** Terminate threads in the thread pool */
+  /*
+   * Terminate threads in the thread pool
+   */
   void shutdown() {
     if (this->debug())
       std::cout << "scheduler shutdown\n";
 
-    /** Clear out any submitted tasks that haven't been put into the scheduler
+    /*
+     * Clear out any submitted tasks that haven't been put into the scheduler
      */
     this->make_ready_to_run();
     start_cv_.notify_all();
 
-    // This doesn't seem to be necessary
-    // All queues should be empty by the time we come to shutdown
-
-    // Policy::p_shutdown();
-
     concurrency_level_.store(0);
 
-    for (auto &&t: threads_) {
+    for (auto&& t : threads_) {
       t.join();
     }
     threads_.clear();
@@ -1000,4 +771,4 @@ private:
 
 }  // namespace tiledb::common
 
-#endif  // TILEDB_DAG_throw_catch_H
+#endif  // TILEDB_DAG_THROW_CATCH_H

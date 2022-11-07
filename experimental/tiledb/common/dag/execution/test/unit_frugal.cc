@@ -1,5 +1,5 @@
 /**
- * @file   unit_throwcatch.cc
+ * @file   unit_frugal.cc
  *
  * @section LICENSE
  *
@@ -54,20 +54,20 @@ size_t problem_size = 1337UL;
 size_t debug_problem_size = 3;
 
 TEMPLATE_TEST_CASE(
-    "ThrowCatchScheduler: Test soft terminate of sink",
+    "FrugalScheduler: Test soft terminate of sink",
     "[throw_catch]",
     (std::tuple<
-        consumer_node<ThrowCatchMover2, size_t>,
-        function_node<ThrowCatchMover2, size_t>,
-        producer_node<ThrowCatchMover2, size_t>>),
+        consumer_node<FrugalMover2, size_t>,
+        function_node<FrugalMover2, size_t>,
+        producer_node<FrugalMover2, size_t>>),
     (std::tuple<
-        consumer_node<ThrowCatchMover3, size_t>,
-        function_node<ThrowCatchMover3, size_t>,
-        producer_node<ThrowCatchMover3, size_t>>)) {
-  bool debug{false};
+        consumer_node<FrugalMover3, size_t>,
+        function_node<FrugalMover3, size_t>,
+        producer_node<FrugalMover3, size_t>>)) {
+  bool debug{true};
 
   auto num_threads = 1;
-  [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(num_threads);
+  [[maybe_unused]] auto sched = FrugalScheduler<node>(num_threads);
 
   size_t rounds = 5;
 
@@ -112,16 +112,16 @@ TEMPLATE_TEST_CASE(
 }
 
 TEMPLATE_TEST_CASE(
-    "ThrowCatchScheduler: Test creating nodes",
+    "FrugalScheduler: Test creating nodes",
     "[throw_catch]",
     (std::tuple<
-        consumer_node<ThrowCatchMover2, size_t>,
-        function_node<ThrowCatchMover2, size_t>,
-        producer_node<ThrowCatchMover2, size_t>>),
+        consumer_node<FrugalMover2, size_t>,
+        function_node<FrugalMover2, size_t>,
+        producer_node<FrugalMover2, size_t>>),
     (std::tuple<
-        consumer_node<ThrowCatchMover3, size_t>,
-        function_node<ThrowCatchMover3, size_t>,
-        producer_node<ThrowCatchMover3, size_t>>)) {
+        consumer_node<FrugalMover3, size_t>,
+        function_node<FrugalMover3, size_t>,
+        producer_node<FrugalMover3, size_t>>)) {
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
   using P = typename std::tuple_element<2, TestType>::type;
@@ -132,16 +132,16 @@ TEMPLATE_TEST_CASE(
 }
 
 TEMPLATE_TEST_CASE(
-    "ThrowCatchScheduler: Test assigning nodes",
+    "FrugalScheduler: Test assigning nodes",
     "[throw_catch]",
     (std::tuple<
-        consumer_node<ThrowCatchMover2, size_t>,
-        function_node<ThrowCatchMover2, size_t>,
-        producer_node<ThrowCatchMover2, size_t>>),
+        consumer_node<FrugalMover2, size_t>,
+        function_node<FrugalMover2, size_t>,
+        producer_node<FrugalMover2, size_t>>),
     (std::tuple<
-        consumer_node<ThrowCatchMover3, size_t>,
-        function_node<ThrowCatchMover3, size_t>,
-        producer_node<ThrowCatchMover3, size_t>>)) {
+        consumer_node<FrugalMover3, size_t>,
+        function_node<FrugalMover3, size_t>,
+        producer_node<FrugalMover3, size_t>>)) {
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
   using P = typename std::tuple_element<2, TestType>::type;
@@ -210,16 +210,16 @@ TEMPLATE_TEST_CASE(
 }
 
 TEMPLATE_TEST_CASE(
-    "ThrowCatchScheduler: Test connect nodes",
+    "FrugalScheduler: Test connect nodes",
     "[throw_catch]",
     (std::tuple<
-        consumer_node<ThrowCatchMover2, size_t>,
-        function_node<ThrowCatchMover2, size_t>,
-        producer_node<ThrowCatchMover2, size_t>>),
+        consumer_node<FrugalMover2, size_t>,
+        function_node<FrugalMover2, size_t>,
+        producer_node<FrugalMover2, size_t>>),
     (std::tuple<
-        consumer_node<ThrowCatchMover3, size_t>,
-        function_node<ThrowCatchMover3, size_t>,
-        producer_node<ThrowCatchMover3, size_t>>)) {
+        consumer_node<FrugalMover3, size_t>,
+        function_node<FrugalMover3, size_t>,
+        producer_node<FrugalMover3, size_t>>)) {
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
   using P = typename std::tuple_element<2, TestType>::type;
@@ -264,22 +264,22 @@ struct hm {
 template <template <class> class T>
 struct hm<T, node> {
   auto operator()(const node& n) {
-    return ThrowCatchTask{n};
+    return Task{n};
   }
 };
 
 template <class N>
-ThrowCatchTask<node> task_from_node(N& n) {
+Task<node> task_from_node(N& n) {
   return {n};
 }
 
 template <class N>
-TaskState task_state(const ThrowCatchTask<N>& t) {
+TaskState task_state(const Task<N>& t) {
   return t.task_state();
 }
 
 template <class N>
-TaskState& task_state(ThrowCatchTask<N>& t) {
+TaskState& task_state(Task<N>& t) {
   return t.task_state();
 }
 
@@ -288,7 +288,7 @@ T& task_handle(T& task) {
   return task;
 }
 
-auto hm_ = hm<ThrowCatchTask, node>{};
+auto hm_ = hm<Task, node>{};
 
 bool two_nodes(node_base&, node_base&) {
   return true;
@@ -299,16 +299,16 @@ bool two_nodes(const node&, const node&) {
 }
 
 TEMPLATE_TEST_CASE(
-    "ThrowCatchScheduler: Extensive tests of nodes",
+    "FrugalScheduler: Extensive tests of nodes",
     "[throw_catch]",
     (std::tuple<
-        consumer_node<ThrowCatchMover2, size_t>,
-        function_node<ThrowCatchMover2, size_t>,
-        producer_node<ThrowCatchMover2, size_t>>),
+        consumer_node<FrugalMover2, size_t>,
+        function_node<FrugalMover2, size_t>,
+        producer_node<FrugalMover2, size_t>>),
     (std::tuple<
-        consumer_node<ThrowCatchMover3, size_t>,
-        function_node<ThrowCatchMover3, size_t>,
-        producer_node<ThrowCatchMover3, size_t>>)) {
+        consumer_node<FrugalMover3, size_t>,
+        function_node<FrugalMover3, size_t>,
+        producer_node<FrugalMover3, size_t>>)) {
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
   using P = typename std::tuple_element<2, TestType>::type;
@@ -326,25 +326,26 @@ TEMPLATE_TEST_CASE(
   auto con_node = C([](const size_t&) {});
 
   //  auto pro_specified =
-  //      producer_node<ThrowCatchMover3, size_t>(pro_node_impl);  // bad
+  //      producer_node<FrugalMover3, size_t>(pro_node_impl);  // bad
   //  auto pro_deduced = producer_node(pro_node_impl);
   //  pro_deduced->fill();
 
-  // producer_node_impl<ThrowCatchMover3, size_t>
-  //   ::producer_node_impl<producer_node_impl<ThrowCatchMover3, size_t>>
+  // producer_node_impl<FrugalMover3, size_t>
+  //   ::producer_node_impl<producer_node_impl<FrugalMover3, size_t>>
 
-  //  auto con_specified = consumer_node<ThrowCatchMover3, size_t>(con_node_impl);
+  //  auto con_specified = consumer_node<FrugalMover3,
+  //  size_t>(con_node_impl);
   //  // bad
   //  auto con_deduced = consumer_node(con_node_impl);
 
   // The types will print?
   // print_types(pro_deduced, con_deduced);
-  //   producer_node<ThrowCatchMover3, unsigned long>
-  //   consumer_node<ThrowCatchMover3, unsigned long>
+  //   producer_node<FrugalMover3, unsigned long>
+  //   consumer_node<FrugalMover3, unsigned long>
 
   // print_types(pro_specified, con_specified);
-  //   producer_node<ThrowCatchMover3, unsigned long>
-  //   consumer_node<ThrowCatchMover3, unsigned long>
+  //   producer_node<FrugalMover3, unsigned long>
+  //   consumer_node<FrugalMover3, unsigned long>
 
   SECTION("Check specified and deduced are same types") {
     //    CHECK(std::is_same_v<decltype(pro_specified), decltype(pro_deduced)>);
@@ -365,7 +366,7 @@ TEMPLATE_TEST_CASE(
     //    CHECK(two_shared_nodes(pro_node, con_node));
   }
 
-  SECTION("Checks with ThrowCatchTask and node (godbolt)") {
+  SECTION("Checks with Task and node (godbolt)") {
     auto shared_pro = node{pro_node};
     auto shared_fun = node{fun_node};
     auto shared_con = node{con_node};
@@ -376,9 +377,9 @@ TEMPLATE_TEST_CASE(
   }
 
   SECTION("I think this works (godbolt)", "[throw_catch]") {
-    auto throw_catch_pro = ThrowCatchTask<node>{pro_node};
-    auto throw_catch_fun = ThrowCatchTask<node>{fun_node};
-    auto throw_catch_con = ThrowCatchTask<node>{con_node};
+    auto throw_catch_pro = Task<node>{pro_node};
+    auto throw_catch_fun = Task<node>{fun_node};
+    auto throw_catch_con = Task<node>{con_node};
 
     auto throw_catch_from_pro = task_from_node(pro_node);
     auto throw_catch_from_fun = task_from_node(fun_node);
@@ -401,8 +402,8 @@ TEMPLATE_TEST_CASE(
      * Though maybe we should not allow this?
      */
 
-    auto throw_catch_pro_1 = ThrowCatchTask<node>{pro_node};
-    auto throw_catch_pro_2 = ThrowCatchTask<node>{pro_node};
+    auto throw_catch_pro_1 = Task<node>{pro_node};
+    auto throw_catch_pro_2 = Task<node>{pro_node};
     auto throw_catch_pro_3 = task_from_node(pro_node);
     auto throw_catch_pro_4 = hm_(pro_node);
     auto throw_catch_pro_5 = throw_catch_pro_1;
@@ -414,8 +415,8 @@ TEMPLATE_TEST_CASE(
     CHECK(throw_catch_pro_4 != throw_catch_pro_5);
     CHECK(throw_catch_pro_5 != throw_catch_pro_6);
 
-    ThrowCatchTask<node> throw_catch_pro_7{throw_catch_pro_2};
-    ThrowCatchTask throw_catch_pro_8{throw_catch_pro_2};
+    Task<node> throw_catch_pro_7{throw_catch_pro_2};
+    Task throw_catch_pro_8{throw_catch_pro_2};
 
     CHECK(throw_catch_pro_6 != throw_catch_pro_7);
     CHECK(throw_catch_pro_7 == throw_catch_pro_2);
@@ -431,15 +432,15 @@ TEMPLATE_TEST_CASE(
     CHECK(throw_catch_pro_5_x == throw_catch_pro_5);
 
     // Warning danger -- don't use throw_catch_pro_5 after the move
-    ThrowCatchTask<node> throw_catch_pro_5_moved{std::move(throw_catch_pro_5)};
+    Task<node> throw_catch_pro_5_moved{std::move(throw_catch_pro_5)};
     CHECK(throw_catch_pro_5_moved == throw_catch_pro_5_x);
 
     /*
      * Function Case
      */
 
-    auto throw_catch_fun_1 = ThrowCatchTask<node>{fun_node};
-    auto throw_catch_fun_2 = ThrowCatchTask<node>{fun_node};
+    auto throw_catch_fun_1 = Task<node>{fun_node};
+    auto throw_catch_fun_2 = Task<node>{fun_node};
     auto throw_catch_fun_3 = task_from_node(fun_node);
     auto throw_catch_fun_4 = hm_(fun_node);
     auto throw_catch_fun_5 = throw_catch_fun_1;
@@ -451,8 +452,8 @@ TEMPLATE_TEST_CASE(
     CHECK(throw_catch_fun_4 != throw_catch_fun_5);
     CHECK(throw_catch_fun_5 != throw_catch_fun_6);
 
-    ThrowCatchTask<node> throw_catch_fun_7{throw_catch_fun_2};
-    ThrowCatchTask throw_catch_fun_8{throw_catch_fun_2};
+    Task<node> throw_catch_fun_7{throw_catch_fun_2};
+    Task throw_catch_fun_8{throw_catch_fun_2};
 
     CHECK(throw_catch_fun_6 != throw_catch_fun_7);
     CHECK(throw_catch_fun_7 == throw_catch_fun_2);
@@ -468,14 +469,14 @@ TEMPLATE_TEST_CASE(
     CHECK(throw_catch_fun_5_x == throw_catch_fun_5);
 
     // Warning danger -- don't use throw_catch_fun_5 after the move
-    ThrowCatchTask<node> throw_catch_fun_5_moved{std::move(throw_catch_fun_5)};
+    Task<node> throw_catch_fun_5_moved{std::move(throw_catch_fun_5)};
     CHECK(throw_catch_fun_5_moved == throw_catch_fun_5_x);
 
     /*
      * Consumer case
      */
-    auto throw_catch_con_1 = ThrowCatchTask<node>{con_node};
-    auto throw_catch_con_2 = ThrowCatchTask<node>{con_node};
+    auto throw_catch_con_1 = Task<node>{con_node};
+    auto throw_catch_con_2 = Task<node>{con_node};
     auto throw_catch_con_3 = task_from_node(con_node);
     auto throw_catch_con_4 = hm_(con_node);
     auto throw_catch_con_5 = throw_catch_con_1;
@@ -487,8 +488,8 @@ TEMPLATE_TEST_CASE(
     CHECK(throw_catch_con_4 != throw_catch_con_5);
     CHECK(throw_catch_con_5 != throw_catch_con_6);
 
-    ThrowCatchTask<node> throw_catch_con_7{throw_catch_con_2};
-    ThrowCatchTask throw_catch_con_8{throw_catch_con_2};
+    Task<node> throw_catch_con_7{throw_catch_con_2};
+    Task throw_catch_con_8{throw_catch_con_2};
 
     CHECK(throw_catch_con_6 != throw_catch_con_7);
     CHECK(throw_catch_con_7 == throw_catch_con_2);
@@ -504,14 +505,14 @@ TEMPLATE_TEST_CASE(
     CHECK(throw_catch_con_5_x == throw_catch_con_5);
 
     // Warning danger -- don't use throw_catch_con_5 after the move
-    ThrowCatchTask<node> throw_catch_con_5_moved{std::move(throw_catch_con_5)};
+    Task<node> throw_catch_con_5_moved{std::move(throw_catch_con_5)};
     CHECK(throw_catch_con_5_moved == throw_catch_con_5_x);
   }
 
   SECTION("Check states") {
-    auto throw_catch_pro = ThrowCatchTask<node>{pro_node};
-    auto throw_catch_fun = ThrowCatchTask<node>{fun_node};
-    auto throw_catch_con = ThrowCatchTask<node>{con_node};
+    auto throw_catch_pro = Task<node>{pro_node};
+    auto throw_catch_fun = Task<node>{fun_node};
+    auto throw_catch_con = Task<node>{con_node};
 
     auto throw_catch_from_pro = task_from_node(pro_node);
     auto throw_catch_from_fun = task_from_node(fun_node);
@@ -584,15 +585,15 @@ TEMPLATE_TEST_CASE(
  * Some deduction guides
  */
 namespace tiledb::common {
-ThrowCatchTask(node&)->ThrowCatchTask<node>;
+Task(node&)->Task<node>;
 
-ThrowCatchTask(const node&)->ThrowCatchTask<node>;
-
-template <template <class> class M, class T>
-ThrowCatchTask(producer_node<M, T>)->ThrowCatchTask<node>;
+Task(const node&)->Task<node>;
 
 template <template <class> class M, class T>
-ThrowCatchTask(consumer_node<M, T>)->ThrowCatchTask<node>;
+Task(producer_node<M, T>)->Task<node>;
+
+template <template <class> class M, class T>
+Task(consumer_node<M, T>)->Task<node>;
 
 template <
     template <class>
@@ -601,24 +602,24 @@ template <
     template <class>
     class M2,
     class T2>
-ThrowCatchTask(function_node<M1, T1, M2, T2>)->ThrowCatchTask<node>;
+Task(function_node<M1, T1, M2, T2>)->Task<node>;
 
 template <template <class> class M1, class T1>
-ThrowCatchTask(function_node<M1, T1>)->ThrowCatchTask<node>;
+Task(function_node<M1, T1>)->Task<node>;
 
 }  // namespace tiledb::common
 
 TEMPLATE_TEST_CASE(
-    "ThrowCatchScheduler: Test ThrowCatchTask",
+    "FrugalScheduler: Test Task",
     "[throw_catch]",
     (std::tuple<
-        consumer_node<ThrowCatchMover2, size_t>,
-        function_node<ThrowCatchMover2, size_t>,
-        producer_node<ThrowCatchMover2, size_t>>),
+        consumer_node<FrugalMover2, size_t>,
+        function_node<FrugalMover2, size_t>,
+        producer_node<FrugalMover2, size_t>>),
     (std::tuple<
-        consumer_node<ThrowCatchMover3, size_t>,
-        function_node<ThrowCatchMover3, size_t>,
-        producer_node<ThrowCatchMover3, size_t>>)) {
+        consumer_node<FrugalMover3, size_t>,
+        function_node<FrugalMover3, size_t>,
+        producer_node<FrugalMover3, size_t>>)) {
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
   using P = typename std::tuple_element<2, TestType>::type;
@@ -639,20 +640,20 @@ TEMPLATE_TEST_CASE(
   auto fun_node_2 = F([](const size_t&) { return 0; });
   auto con_node_2 = C([](const size_t&) {});
 
-  auto pro_task = ThrowCatchTask(pro_node);
-  auto fun_task = ThrowCatchTask(fun_node);
-  auto con_task = ThrowCatchTask(con_node);
+  auto pro_task = Task(pro_node);
+  auto fun_task = Task(fun_node);
+  auto con_task = Task(con_node);
 
   auto pro_task_assign = pro_task;
   auto fun_task_assign = fun_task;
   auto con_task_assign = con_task;
 
-  auto pro_task_copy = ThrowCatchTask(pro_task);
-  auto fun_task_copy = ThrowCatchTask(fun_task);
-  auto con_task_copy = ThrowCatchTask(con_task);
+  auto pro_task_copy = Task(pro_task);
+  auto fun_task_copy = Task(fun_task);
+  auto con_task_copy = Task(con_task);
 
-  auto pro_task_2 = ThrowCatchTask(pro_node_2);
-  auto con_task_2 = ThrowCatchTask(con_node_2);
+  auto pro_task_2 = Task(pro_node_2);
+  auto con_task_2 = Task(con_node_2);
 
   SECTION("Names") {
     CHECK(con_node->name() == "consumer");
@@ -681,10 +682,10 @@ TEMPLATE_TEST_CASE(
     CHECK(static_cast<void*>(&(*node_pro)) == static_cast<void*>(&(*pro_node)));
   }
 
-  SECTION("ThrowCatchTask Equality") {
+  SECTION("Task Equality") {
   }
 
-  SECTION("Node and ThrowCatchTask Equality") {
+  SECTION("Node and Task Equality") {
   }
 
   SECTION("Queue") {
@@ -700,24 +701,24 @@ TEMPLATE_TEST_CASE(
     auto con_node_j = C([](const size_t&) {});
     auto con_node_k = CI([](const size_t&) {});
 
-    auto pro_task_i = ThrowCatchTask<node>{pro_node_i};
-    auto pro_task_j = ThrowCatchTask<node>{pro_node_j};
-    auto pro_task_i_deduced = ThrowCatchTask{pro_node_i};
-    auto pro_task_j_deduced = ThrowCatchTask{pro_node_j};
+    auto pro_task_i = Task<node>{pro_node_i};
+    auto pro_task_j = Task<node>{pro_node_j};
+    auto pro_task_i_deduced = Task{pro_node_i};
+    auto pro_task_j_deduced = Task{pro_node_j};
     auto pro_task_i_tfn = task_from_node(pro_node_i);
     auto pro_task_j_tfn = task_from_node(pro_node_j);
 
-    auto fun_task_i = ThrowCatchTask<node>{fun_node_i};
-    auto fun_task_j = ThrowCatchTask<node>{fun_node_j};
-    auto fun_task_i_deduced = ThrowCatchTask{fun_node_i};
-    auto fun_task_j_deduced = ThrowCatchTask{fun_node_j};
+    auto fun_task_i = Task<node>{fun_node_i};
+    auto fun_task_j = Task<node>{fun_node_j};
+    auto fun_task_i_deduced = Task{fun_node_i};
+    auto fun_task_j_deduced = Task{fun_node_j};
     auto fun_task_i_tfn = task_from_node(fun_node_i);
     auto fun_task_j_tfn = task_from_node(fun_node_j);
 
-    auto con_task_i = ThrowCatchTask<node>{con_node_i};
-    auto con_task_j = ThrowCatchTask<node>{con_node_j};
-    auto con_task_i_deduced = ThrowCatchTask{con_node_i};
-    auto con_task_j_deduced = ThrowCatchTask{con_node_j};
+    auto con_task_i = Task<node>{con_node_i};
+    auto con_task_j = Task<node>{con_node_j};
+    auto con_task_i_deduced = Task{con_node_i};
+    auto con_task_j_deduced = Task{con_node_j};
     auto con_task_i_tfn = task_from_node(con_node_i);
     auto con_task_j_tfn = task_from_node(con_node_j);
 
@@ -730,7 +731,7 @@ TEMPLATE_TEST_CASE(
     node_queue.push(fun_node);
     node_queue.push(con_node);
 
-    std::queue<ThrowCatchTask<node>> task_queue;
+    std::queue<Task<node>> task_queue;
 
     task_queue.push(pro_task_i);
     task_queue.push(fun_task_i);
@@ -790,7 +791,7 @@ TEMPLATE_TEST_CASE(
     CHECK(pro_task_copy == pro_task);
     CHECK(pro_task == pro_task_copy);
 
-    auto empty_queue = std::queue<ThrowCatchTask<node>>{};
+    auto empty_queue = std::queue<Task<node>>{};
     task_queue.swap(empty_queue);
     CHECK(task_queue.empty());
 
@@ -838,18 +839,18 @@ SCENARIO(
     "Tasks can be pushed and popped into a queue without invalidating "
     "references to them") {
   auto pro_node =
-      producer_node<ThrowCatchMover3, size_t>([](std::stop_source&) { return 0; });
-  auto con_node = consumer_node<ThrowCatchMover3, size_t>([](const size_t&) {});
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto con_node = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
 
-  auto pro_task = ThrowCatchTask(pro_node);
-  auto con_task = ThrowCatchTask(con_node);
+  auto pro_task = Task(pro_node);
+  auto con_task = Task(con_node);
 
   GIVEN("Tasks pro_task and pro_task_copy (copy of pro_task)") {
     auto pro_task_assign = pro_task;
     auto con_task_assign = con_task;
 
-    auto pro_task_copy = ThrowCatchTask(pro_task);
-    auto con_task_copy = ThrowCatchTask(con_task);
+    auto pro_task_copy = Task(pro_task);
+    auto con_task_copy = Task(con_task);
     THEN("pro_task == pro_task_copy") {
       CHECK(pro_task_assign == pro_task);
       CHECK(con_task_assign == con_task);
@@ -860,8 +861,8 @@ SCENARIO(
       CHECK(pro_task != con_task);
     }
     WHEN("Task with copy is pushed onto a queue") {
-      std::queue<ThrowCatchTask<node>> task_queue;
-      auto pro_task_to_push = ThrowCatchTask(pro_task);
+      std::queue<Task<node>> task_queue;
+      auto pro_task_to_push = Task(pro_task);
       CHECK(pro_task_to_push == pro_task);
       task_queue.push(pro_task_to_push);
 
@@ -881,12 +882,12 @@ SCENARIO(
         }
       }
       AND_WHEN("We push tasks onto the queue") {
-        std::queue<ThrowCatchTask<node>> created_queue;
-        std::queue<ThrowCatchTask<node>> submitted_queue;
+        std::queue<Task<node>> created_queue;
+        std::queue<Task<node>> submitted_queue;
 
-        auto created_pro_task_i = ThrowCatchTask(pro_node);
-        auto created_pro_task_j = ThrowCatchTask(pro_node);
-        auto created_pro_task_k = ThrowCatchTask(pro_node);
+        auto created_pro_task_i = Task(pro_node);
+        auto created_pro_task_j = Task(pro_node);
+        auto created_pro_task_k = Task(pro_node);
 
         auto copied_pro_task_i = created_pro_task_i;
         auto copied_pro_task_j = created_pro_task_j;
@@ -932,18 +933,18 @@ SCENARIO(
     "Tasks can be inserted into and extracted from a set without invalidating "
     "references to them") {
   auto pro_node =
-      producer_node<ThrowCatchMover3, size_t>([](std::stop_source&) { return 0; });
-  auto con_node = consumer_node<ThrowCatchMover3, size_t>([](const size_t&) {});
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto con_node = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
 
-  auto pro_task = ThrowCatchTask(pro_node);
-  auto con_task = ThrowCatchTask(con_node);
+  auto pro_task = Task(pro_node);
+  auto con_task = Task(con_node);
 
   GIVEN("Tasks pro_task and pro_task_copy (copy of pro_task)") {
     auto pro_task_assign = pro_task;
     auto con_task_assign = con_task;
 
-    auto pro_task_copy = ThrowCatchTask(pro_task);
-    auto con_task_copy = ThrowCatchTask(con_task);
+    auto pro_task_copy = Task(pro_task);
+    auto con_task_copy = Task(con_task);
 
     THEN("pro_task == pro_task_copy") {
       CHECK(pro_task_assign == pro_task);
@@ -955,9 +956,9 @@ SCENARIO(
       CHECK(pro_task != con_task);
     }
     WHEN("Task with copy is inserted into a set") {
-      std::set<ThrowCatchTask<node>> task_set;
+      std::set<Task<node>> task_set;
 
-      auto pro_task_to_insert = ThrowCatchTask(pro_task);
+      auto pro_task_to_insert = Task(pro_task);
       CHECK(pro_task_to_insert == pro_task);
       task_set.insert(pro_task_to_insert);
 
@@ -973,12 +974,12 @@ SCENARIO(
       }
 
       AND_WHEN("We insert multiple tasks into a set") {
-        std::set<ThrowCatchTask<node>> created_set;
-        std::set<ThrowCatchTask<node>> submitted_set;
+        std::set<Task<node>> created_set;
+        std::set<Task<node>> submitted_set;
 
-        auto created_pro_task_i = ThrowCatchTask(pro_node);
-        auto created_pro_task_j = ThrowCatchTask(pro_node);
-        auto created_pro_task_k = ThrowCatchTask(pro_node);
+        auto created_pro_task_i = Task(pro_node);
+        auto created_pro_task_j = Task(pro_node);
+        auto created_pro_task_k = Task(pro_node);
 
         auto copied_pro_task_i = created_pro_task_i;
         auto copied_pro_task_j = created_pro_task_j;
@@ -1047,17 +1048,17 @@ SCENARIO(
     "Tasks can be inserted into and looked up from a map, using nodes as "
     "keys") {
   auto pro_node =
-      producer_node<ThrowCatchMover3, size_t>([](std::stop_source&) { return 0; });
-  auto con_node = consumer_node<ThrowCatchMover3, size_t>([](const size_t&) {});
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto con_node = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
 
-  auto pro_task = ThrowCatchTask(pro_node);
-  auto con_task = ThrowCatchTask(con_node);
+  auto pro_task = Task(pro_node);
+  auto con_task = Task(con_node);
 
   GIVEN("A node to task map") {
-    std::map<node, ThrowCatchTask<node>> node_to_task_map;
+    std::map<node, Task<node>> node_to_task_map;
 
     WHEN("Insert node-task pair into map") {
-      auto pro_task_copy = ThrowCatchTask(pro_task);
+      auto pro_task_copy = Task(pro_task);
 
       node_to_task_map[pro_node] = pro_task;
 
@@ -1077,21 +1078,21 @@ SCENARIO(
   }
 }
 
-TEST_CASE("ThrowCatchScheduler: Test construct scheduler", "[throw_catch]") {
-  [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(1);
+TEST_CASE("FrugalScheduler: Test construct scheduler", "[throw_catch]") {
+  [[maybe_unused]] auto sched = FrugalScheduler<node>(1);
   // sched goes out of scope and shuts down the scheduler
 }
 
-TEST_CASE("ThrowCatchScheduler: Test ThrowCatchTask state changes", "[throw_catch]") {
+TEST_CASE("FrugalScheduler: Test Task state changes", "[throw_catch]") {
   [[maybe_unused]] auto sched =
-      SchedulerStateMachine<EmptySchedulerPolicy<ThrowCatchTask<node>>>{};
+      SchedulerStateMachine<EmptySchedulerPolicy<Task<node>>>{};
 
   auto p =
-      producer_node<ThrowCatchMover3, size_t>([](std::stop_source&) { return 0; });
-  auto c = consumer_node<ThrowCatchMover3, size_t>([](const size_t&) {});
+      producer_node<FrugalMover3, size_t>([](std::stop_source&) { return 0; });
+  auto c = consumer_node<FrugalMover3, size_t>([](const size_t&) {});
 
-  auto q = ThrowCatchTask<node>{p};
-  auto d = ThrowCatchTask<node>{c};
+  auto q = Task<node>{p};
+  auto d = Task<node>{c};
 
   // Can't directly compare nodes of different types
   // CHECK(p != c);
@@ -1130,18 +1131,18 @@ TEST_CASE("ThrowCatchScheduler: Test ThrowCatchTask state changes", "[throw_catc
 }
 
 TEMPLATE_TEST_CASE(
-    "ThrowCatchScheduler: Test submit nodes",
+    "FrugalScheduler: Test submit nodes",
     "[throw_catch]",
     (std::tuple<
-        consumer_node<ThrowCatchMover2, size_t>,
-        producer_node<ThrowCatchMover2, size_t>>),
+        consumer_node<FrugalMover2, size_t>,
+        producer_node<FrugalMover2, size_t>>),
     (std::tuple<
-        consumer_node<ThrowCatchMover3, size_t>,
-        producer_node<ThrowCatchMover3, size_t>>)) {
+        consumer_node<FrugalMover3, size_t>,
+        producer_node<FrugalMover3, size_t>>)) {
   using C = typename std::tuple_element<0, TestType>::type;
   using P = typename std::tuple_element<1, TestType>::type;
 
-  [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(1);
+  [[maybe_unused]] auto sched = FrugalScheduler<node>(1);
 
   auto p = P([](std::stop_source&) { return 0; });
   auto c = C([](const size_t&) {});
@@ -1153,14 +1154,14 @@ TEMPLATE_TEST_CASE(
 }
 
 TEMPLATE_TEST_CASE(
-    "ThrowCatchScheduler: Test submit and wait nodes",
+    "FrugalScheduler: Test submit and wait nodes",
     "[throw_catch]",
     (std::tuple<
-        consumer_node<ThrowCatchMover2, size_t>,
-        producer_node<ThrowCatchMover2, size_t>>),
+        consumer_node<FrugalMover2, size_t>,
+        producer_node<FrugalMover2, size_t>>),
     (std::tuple<
-        consumer_node<ThrowCatchMover3, size_t>,
-        producer_node<ThrowCatchMover3, size_t>>)) {
+        consumer_node<FrugalMover3, size_t>,
+        producer_node<FrugalMover3, size_t>>)) {
   using C = typename std::tuple_element<0, TestType>::type;
   using P = typename std::tuple_element<1, TestType>::type;
 
@@ -1175,7 +1176,7 @@ TEMPLATE_TEST_CASE(
   }
 
   SECTION("With " + std::to_string(num_threads) + " threads") {
-    [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(num_threads);
+    [[maybe_unused]] auto sched = FrugalScheduler<node>(num_threads);
 
     if (debug) {
       sched.enable_debug();
@@ -1183,15 +1184,16 @@ TEMPLATE_TEST_CASE(
 
     size_t i{0};
 
-    auto p = P([rounds,debug,&i](std::stop_source& stop_source) {
+    auto p = P([rounds, debug, &i](std::stop_source& stop_source) {
       CHECK(!stop_source.stop_requested());
 
       if (debug)
         std::cout << "Producing\n";
       if (i >= rounds) {
-	stop_source.request_stop();
+        stop_source.request_stop();
       }
-      return i++;;
+      return i++;
+      ;
     });
     auto c = C([debug](const size_t&) {
       if (debug)
@@ -1201,8 +1203,7 @@ TEMPLATE_TEST_CASE(
     connect(p, c);
     Edge(*p, *c);
 
-    if (debug) 
-	    {
+    if (debug) {
       p->enable_debug();
       c->enable_debug();
     }
@@ -1236,16 +1237,16 @@ TEMPLATE_TEST_CASE(
 }
 
 TEMPLATE_TEST_CASE(
-    "ThrowCatchScheduler: Test passing integers",
+    "FrugalScheduler: Test passing integers",
     "[throw_catch]",
     (std::tuple<
-        consumer_node<ThrowCatchMover2, size_t>,
-        function_node<ThrowCatchMover2, size_t>,
-        producer_node<ThrowCatchMover2, size_t>>),
+        consumer_node<FrugalMover2, size_t>,
+        function_node<FrugalMover2, size_t>,
+        producer_node<FrugalMover2, size_t>>),
     (std::tuple<
-        consumer_node<ThrowCatchMover3, size_t>,
-        function_node<ThrowCatchMover3, size_t>,
-        producer_node<ThrowCatchMover3, size_t>>)) {
+        consumer_node<FrugalMover3, size_t>,
+        function_node<FrugalMover3, size_t>,
+        producer_node<FrugalMover3, size_t>>)) {
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
   using P = typename std::tuple_element<2, TestType>::type;
@@ -1275,7 +1276,7 @@ TEMPLATE_TEST_CASE(
   SECTION(
       "With " + std::to_string(num_threads) + " threads and " +
       std::to_string(rounds) + " integers") {
-    [[maybe_unused]] auto sched = ThrowCatchScheduler<node>(num_threads);
+    [[maybe_unused]] auto sched = FrugalScheduler<node>(num_threads);
 
     if (debug) {
       sched.enable_debug();
@@ -1344,4 +1345,3 @@ TEMPLATE_TEST_CASE(
 
   CHECK(std::distance(input.begin(), i) == static_cast<long>(rounds));
 }
-
