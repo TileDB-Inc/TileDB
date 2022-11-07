@@ -450,7 +450,7 @@ auto  write_array = [&](uint64_t num_rows)->void {
   array.close();
 };
 
-#if 01
+#if 0
 auto  read_array = [&](int num_rows) -> void {
   // Prepare the array for reading
   tiledb::Array array(ctx, array_name, TILEDB_READ);
