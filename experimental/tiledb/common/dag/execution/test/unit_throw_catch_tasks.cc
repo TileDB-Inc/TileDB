@@ -613,8 +613,8 @@ TEMPLATE_TEST_CASE(
 SCENARIO(
     "Tasks can be pushed and popped into a queue without invalidating "
     "references to them") {
-  auto pro_node = producer_node<ThrowCatchMover3, size_t>(
-      [](std::stop_source&) { return 0; });
+  auto pro_node =
+      producer_node<ThrowCatchMover3, size_t>([](std::stop_source&) { return 0; });
   auto con_node = consumer_node<ThrowCatchMover3, size_t>([](const size_t&) {});
 
   auto pro_task = ThrowCatchTask(pro_node);
@@ -707,8 +707,8 @@ SCENARIO(
 SCENARIO(
     "Tasks can be inserted into and extracted from a set without invalidating "
     "references to them") {
-  auto pro_node = producer_node<ThrowCatchMover3, size_t>(
-      [](std::stop_source&) { return 0; });
+  auto pro_node =
+      producer_node<ThrowCatchMover3, size_t>([](std::stop_source&) { return 0; });
   auto con_node = consumer_node<ThrowCatchMover3, size_t>([](const size_t&) {});
 
   auto pro_task = ThrowCatchTask(pro_node);

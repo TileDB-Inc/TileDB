@@ -87,8 +87,7 @@ class throw_catch_exception {
   throw_catch_target target_{throw_catch_target::self};
 
  public:
-  constexpr throw_catch_exception(
-      throw_catch_target target = throw_catch_target::self)
+  constexpr throw_catch_exception(throw_catch_target target = throw_catch_target::self)
       : target_{target} {
   }
 
@@ -123,8 +122,8 @@ constexpr const detail::throw_catch_notify throw_catch_notify_source{
 
 template <class Mover, class PortState = typename Mover::PortState>
 class ThrowCatchPortPolicy : public PortFiniteStateMachine<
-                                 ThrowCatchPortPolicy<Mover, PortState>,
-                                 PortState> {
+                             ThrowCatchPortPolicy<Mover, PortState>,
+                             PortState> {
   using state_machine_type =
       PortFiniteStateMachine<ThrowCatchPortPolicy<Mover, PortState>, PortState>;
   using lock_type = typename state_machine_type::lock_type;
@@ -210,15 +209,14 @@ struct SchedulerTraits<ThrowCatchSchedulerPolicy<T>> {
 template <class Task>
 class ThrowCatchSchedulerPolicy
     : public SchedulerStateMachine<ThrowCatchSchedulerPolicy<Task>> {
-  using state_machine_type =
-      SchedulerStateMachine<ThrowCatchSchedulerPolicy<Task>>;
+  using state_machine_type = SchedulerStateMachine<ThrowCatchSchedulerPolicy<Task>>;
   using lock_type = typename state_machine_type::lock_type;
 
  public:
   using task_type =
       typename SchedulerTraits<ThrowCatchSchedulerPolicy<Task>>::task_type;
-  using task_handle_type = typename SchedulerTraits<
-      ThrowCatchSchedulerPolicy<Task>>::task_handle_type;
+  using task_handle_type =
+      typename SchedulerTraits<ThrowCatchSchedulerPolicy<Task>>::task_handle_type;
 
   ~ThrowCatchSchedulerPolicy() {
     if (this->debug())
@@ -562,8 +560,7 @@ class ThrowCatchTask : public std::shared_ptr<ThrowCatchTaskImpl<Node>> {
 };
 
 template <class Node>
-class ThrowCatchScheduler
-    : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node>> {
+class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node>> {
   using Scheduler = ThrowCatchScheduler<Node>;
   using Policy = ThrowCatchSchedulerPolicy<ThrowCatchTask<Node>>;
 
@@ -713,7 +710,7 @@ class ThrowCatchScheduler
      * worker threads.
      */
     {
-      std::unique_lock lock(mutex_);
+      std::unique_lock _(mutex_);
       start_cv_.notify_all();
     }
 
@@ -753,8 +750,8 @@ class ThrowCatchScheduler
      * by a call to `sync_wait_all` (e.g.)
      */
     {
-      std::unique_lock lock(mutex_);
-      start_cv_.wait(lock, [this]() { return this->ready_to_run(); });
+      std::unique_lock _(mutex_);
+      start_cv_.wait(_, [this]() { return this->ready_to_run(); });
     }
 
     if (num_submitted_tasks_ == 0) {
@@ -765,7 +762,7 @@ class ThrowCatchScheduler
 
     while (true) {
       {
-        std::unique_lock lock(mutex_);
+        std::unique_lock _(mutex_);
 
         if (num_exited_tasks_ == num_submitted_tasks_) {
           if (this->debug()) {
@@ -821,15 +818,18 @@ class ThrowCatchScheduler
           if (this->debug())
             task_to_run->dump_task_state("About to resume");
 
-          lock.unlock();
+          _.unlock();
           task_to_run->resume();
-          lock.lock();
+          _.lock();
 
           if (this->debug())
             task_to_run->dump_task_state("Returning from resume");
 
+	  
+
+
         } catch (const detail::throw_catch_wait& w) {
-          lock.lock();
+          _.lock();
 
           assert(
               w.target() == detail::throw_catch_target::sink ||
@@ -844,7 +844,7 @@ class ThrowCatchScheduler
             task_to_run->dump_task_state("Post wait");
 
         } catch (const detail::throw_catch_notify& n) {
-          lock.lock();
+          _.lock();
 
           assert(
               n.target() == detail::throw_catch_target::sink ||
@@ -878,28 +878,30 @@ class ThrowCatchScheduler
           }
 
         } catch (const detail::throw_catch_exit& ex) {
-          lock.lock();
+          _.lock();
 
           if (true || ex.target() == detail::throw_catch_target::source) {
-            if (this->debug()) {
-              task_to_run->dump_task_state("Caught exit");
-              this->dump_queue_state("Caught exit");
-            }
 
-            --num_tasks_;
-            ++num_exited_tasks_;
-            this->task_exit(task_to_run);
 
-            if (this->debug()) {
-              task_to_run->dump_task_state("Post exit");
-              this->dump_queue_state("Post exit");
-            }
-
-            /* Slight optimization to skip call to yield when exiting */
-            continue;
-          } else {
-            std::cout << "*** Caught sink exit\n";
-          }
+	    if (this->debug()) {
+	      task_to_run->dump_task_state("Caught exit");
+	      this->dump_queue_state("Caught exit");
+	    }
+	    
+	    --num_tasks_;
+	    ++num_exited_tasks_;
+	    this->task_exit(task_to_run);
+	    
+	    if (this->debug()) {
+	      task_to_run->dump_task_state("Post exit");
+	      this->dump_queue_state("Post exit");
+	    }
+	    
+	    /* Slight optimization to skip call to yield when exiting */
+	    continue;
+	  } else {
+	    std::cout << "*** Caught sink exit\n";
+	  }
 
           // break; // Don't do this
         } catch (...) {

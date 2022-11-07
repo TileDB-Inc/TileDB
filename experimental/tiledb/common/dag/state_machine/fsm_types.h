@@ -118,19 +118,20 @@ template <class PortState>
 static std::vector<std::string> port_state_strings;
 
 template <>
-std::vector<std::string> port_state_strings<two_stage>{"st_00",
-                                                       "st_01",
-                                                       "st_10",
-                                                       "st_11",
-                                                       "xt_00",
-                                                       "xt_01",
-                                                       "xt_10",
-                                                       "xt_11",
-                                                       "done",
-                                                       "na",
-                                                       "error",
-                                                       "unreach",
-                                                       "last"};
+std::vector<std::string> port_state_strings<two_stage>{
+    "st_00",
+    "st_01",
+    "st_10",
+    "st_11",
+    "xt_00",
+    "xt_01",
+    "xt_10",
+    "xt_11",
+    "done",
+    "na",
+    "error",
+    "unreach",
+    "last"};
 
 template <>
 std::vector<std::string> port_state_strings<three_stage>{
@@ -191,14 +192,15 @@ constexpr unsigned int n_events = to_index(PortEvent::last) + 1;
 /**
  * Strings for each enum member, useful for debugging.
  */
-static std::vector<std::string> event_strings{"source_fill",
-                                              "source_push",
-                                              "try_push",
-                                              "sink_drain",
-                                              "sink_pull",
-                                              "try_pull",
-                                              "exhausted",
-                                              "last"};
+static std::vector<std::string> event_strings{
+    "source_fill",
+    "source_push",
+    "try_push",
+    "sink_drain",
+    "sink_pull",
+    "try_pull",
+    "exhausted",
+    "last"};
 
 /**
  * Function to convert event to a string.
