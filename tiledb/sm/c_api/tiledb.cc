@@ -2748,8 +2748,12 @@ int32_t tiledb_query_add_update_value(
   }
 
   // Add update value.
-  throw_if_not_ok(query->query_->add_update_value(
-      field_name, update_value, update_value_size));
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          query->query_->add_update_value(
+              field_name, update_value, update_value_size))) {
+    return TILEDB_ERR;
+  }
 
   // Success
   return TILEDB_OK;
