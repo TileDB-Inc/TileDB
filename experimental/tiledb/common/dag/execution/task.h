@@ -88,7 +88,8 @@ class TaskImpl : Node {
     return (*this)->id();
   }
 
-  virtual ~TaskImpl() = default;
+  // virtual ??
+  ~TaskImpl() = default;
 
   void dump_task_state(const std::string& msg = "") {
     std::string preface = (!msg.empty() ? msg + "\n" : "");

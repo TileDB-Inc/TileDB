@@ -1,5 +1,5 @@
 /**
- * @file   unit_throw_catch.cc
+ * @file unit_scheduler.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file tests the throw-catch scheduler for dag.
+ * This file tests schedulers that may be used with dag.  All schedulers undergo
+ * identical unit tests to ensure functional and API compatibility.
  */
 
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
@@ -40,6 +41,7 @@
 
 #include "../bountiful.h"
 #include "../throw_catch.h"
+
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
