@@ -166,7 +166,7 @@ class PoolAllocatorImpl {
    * @pre a lock is held by function calling this one.
    */
   pointer pop_chunk() {
-    if ((num_free_ == 0) || (the_free_list == NULL))
+    if ((num_free_ == 0) || (the_free_list == nullptr))
       free_list_more();
 
     pointer the_new_chunk = the_free_list;
@@ -373,8 +373,7 @@ class PoolAllocatorImpl {
 template <size_t chunk_size>
 class SingletonPoolAllocator : public PoolAllocatorImpl<chunk_size> {
   // Private constructor so that no objects can be created.
-  SingletonPoolAllocator() {
-  }
+  SingletonPoolAllocator() = default;
 
  public:
   SingletonPoolAllocator(const SingletonPoolAllocator&) = delete;
@@ -404,8 +403,7 @@ template <size_t chunk_size>
 class PoolAllocator {
  public:
   using value_type = typename SingletonPoolAllocator<chunk_size>::value_type;
-  PoolAllocator() {
-  }
+  PoolAllocator() = default;
   value_type* allocate() {
     return _allocator<chunk_size>.allocate();
   }

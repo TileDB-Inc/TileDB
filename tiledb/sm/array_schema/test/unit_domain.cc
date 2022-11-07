@@ -47,7 +47,11 @@ inline T& dom_buffer_offset(void* p) {
   return *static_cast<T*>(static_cast<void*>(static_cast<char*>(p) + n));
 }
 
+<<<<<<< Updated upstream
 TEST_CASE("Domain: Test deserialization", "[domain][deserialize]") {
+=======
+TEST_CASE("Domain: Test deserialization", "[domain][deserialize") {
+>>>>>>> Stashed changes
   char serialized_buffer[72];
   char* p = &serialized_buffer[0];
 

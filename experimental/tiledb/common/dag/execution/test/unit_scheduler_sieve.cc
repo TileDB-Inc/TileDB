@@ -1,5 +1,5 @@
 /**
- * @file nodes_sieve.cpp
+ * @file unit_throw_catch_sieve.cpp
  *
  * @section LICENSE
  *
@@ -55,6 +55,9 @@
  * These functions take regular values as input parameters and return regular
  * values. They can be composed together to produce the sieve algorithm
  * described above.
+ *
+ * This program constructs primitive graphs for the sieve and executes that
+ * graph with various configurations of schedulers and movers.
  */
 
 #include <cassert>
@@ -72,25 +75,32 @@
  * Nullify the CHECK macro that might be spread throughout the code for
  * debugging/testing purposes.
  */
-#define CHECK(str)
 
+#include <catch2/internal/catch_clara.hpp>
 #include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/execution/task_state_machine.h"
-#include "experimental/tiledb/common/dag/execution/test/throw_catch_nodes.h"
+#include "experimental/tiledb/common/dag/execution/bountiful.h"
+#include "experimental/tiledb/common/dag/execution/duffs.h"
+#include "experimental/tiledb/common/dag/execution/frugal.h"
 #include "experimental/tiledb/common/dag/execution/throw_catch.h"
-// #include "experimental/tiledb/common/dag/nodes/nodes.h"
-// #include "experimental/tiledb/common/dag/ports/ports.h"
-// #include "experimental/tiledb/common/dag/state_machine/fsm.h"
-// #include "experimental/tiledb/common/dag/state_machine/item_mover.h"
-// #include "experimental/tiledb/common/dag/state_machine/policies.h"
-#include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
-#include "experimental/tiledb/common/dag/state_machine/test/types.h"
-#include "experimental/tiledb/common/dag/utils/print_types.h"
-
-// #include "experimental/tiledb/common/dag/execution/threadpool.h"
+#include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
 
 using namespace tiledb::common;
 using namespace std::placeholders;
+
+template <template <class> class Mover, class T>
+using ConsumerNode = consumer_node<Mover, T>;
+
+template <template <class> class Mover, class T>
+using ProducerNode = producer_node<Mover, T>;
+
+template <
+    template <class>
+    class SinkMover,
+    class BlockIn,
+    template <class>
+    class SourceMover,
+    class BlockOut>
+using FunctionNode = function_node<SinkMover, BlockIn, SourceMover, BlockOut>;
 
 /*
  * File-local variables for enabling debugging and tracing
@@ -314,134 +324,13 @@ auto output_body(
 };
 
 /**
- * Some structures to simulate a task graph.  Here, a "task graph" is a tuple of
- * task graph nodes.  We later construct a vector of these graphs so that we can
- * run multiple graphs in parallel.
+ * Some structures to simulate a task graph.  Here, a "task graph" is a set of
+ * nodes and edges, submitted to a scheduler.
  *
  * @todo (IMPORTANT) Only run a subset of graphs at a time, rather than all of
  * them.
  *
- * @todo Run with TileDB ThreadPool.
  */
-template <class... Ts>
-using the = std::vector<std::tuple<Ts...>>;
-
-// For future evaluation
-// ThreadPool<true, false, true> tp(std::thread::hardware_concurrency());
-
-/**
- * Utility function for putting Ith node in a single sieve task graph into the
- * vector of task graph nodes.
- */
-template <size_t I, class Futs, class Graph, class TimeStamp, class StartTime>
-void do_emplace(
-    Futs& futs,
-    Graph& graph,
-    size_t N,
-    size_t w,
-    TimeStamp& timestamps,
-    std::atomic<size_t>& time_index,
-    StartTime start_time) {
-  futs.emplace_back(std::async(std::launch::async, [&, N, w]() {
-    stamp_time("start", I, timestamps, time_index, start_time);
-    std::get<I>(graph[w]).run_for(N);
-    stamp_time("stop", I, timestamps, time_index, start_time);
-  }));
-};
-
-/*
- * Attempt at generating all graph nodes for the vector in one call.
- */
-template <
-    class Futs,
-    class Graph,
-    class TimeStamp,
-    class StartTime,
-    size_t... Is>
-void do_emplace_x(
-    Futs& futs,
-    Graph& graph,
-    size_t N,
-    size_t w,
-    TimeStamp& timestamps,
-    std::atomic<size_t>& time_index,
-    StartTime start_time,
-    std::index_sequence<Is...>) {
-  ((futs.emplace_back(std::async(
-       std::launch::async,
-       [&, w]() {
-         stamp_time("start", Is, timestamps, time_index, start_time);
-         std::get<Is>(graph[w]).run_for(N);
-         stamp_time("stop", Is, timestamps, time_index, start_time);
-       }))),
-   ...);
-
-#if 0
-  std::apply(
-      [&, w](auto&&... args) {
-        ((
-
-             /* args.dosomething() */
-             futs.emplace_back(std::async(
-                 std::launch::async,
-                 [&, args, w]() {
-                   stamp_time(
-                       "start", args, timestamps, time_index, start_time);
-                   std::get<args>(graph[w]).run_for(N);
-                   stamp_time("stop", args, timestamps, time_index, start_time);
-                 }))
-
-             ),
-         ...);
-      },
-      is);
-#endif
-}
-
-/*
- * Another attempt at generating all graph nodes for the vector in one call.
- */
-template <
-    class Futs,
-    class Graph,
-    class TimeStamp,
-    class StartTime,
-    size_t... Is>
-void do_emplace_x_width(
-    Futs& futs,
-    Graph& graph,
-    size_t N,
-    size_t width,
-    TimeStamp& timestamps,
-    std::atomic<size_t>& time_index,
-    StartTime start_time,
-    std::index_sequence<Is...>) {
-  (([&]() {
-     for (size_t w = 0; w < width; ++w) {
-       futs.emplace_back(std::async(std::launch::async, [&, w]() {
-         stamp_time("start", Is, timestamps, time_index, start_time);
-         std::get<Is>(graph[w]).run_for(N);
-         stamp_time("stop", Is, timestamps, time_index, start_time);
-       }));
-     }
-   }()),
-   ...);
-}
-
-template <template <class> class Mover, class T>
-using ProducerNode = producer_node<Mover, T>;
-
-template <
-    template <class>
-    class M1,
-    class T1,
-    template <class>
-    class M2,
-    class T2>
-using FunctionNode = function_node<M1, T1, M2, T2>;
-
-template <template <class> class Mover, class T>
-using ConsumerNode = consumer_node<Mover, T>;
 
 /**
  * Main sieve function
@@ -451,15 +340,15 @@ using ConsumerNode = consumer_node<Mover, T>;
  * @param n upper bound of sieve
  * @param block_size how many primes to search for given a base set of primes
  */
-template <template <class> class Mover, class bool_t>
+template <class Scheduler, template <class> class Mover, class bool_t>
 auto sieve_async_block(
     size_t n,
     size_t block_size,
     size_t width,
     bool reverse_order,
     bool grouped,
-    bool use_futures,
-    bool use_threadpool) {
+    [[maybe_unused]] bool use_futures,
+    [[maybe_unused]] bool use_threadpool) {
   if (debug)
     std::cout << "== I am running" << std::endl;
 
@@ -479,24 +368,23 @@ auto sieve_async_block(
    * chain)
    */
   std::vector<std::shared_ptr<std::vector<size_t>>> prime_list(
-      n / block_size + 2 + n % block_size);
+      n / block_size + 2);  // + n % block_size);
 
   if (debug)
-    std::cout << prime_list.size() << std::endl;
+    std::cout << "Prime list size " << prime_list.size() << std::endl;
 
   prime_list[0] = std::make_shared<std::vector<size_t>>(base_primes);
 
   size_t rounds = (n / block_size + 2) / width + 1;
 
-  auto sched = ThrowCatchScheduler<node>(width);
+  auto sched = Scheduler(width);
 
   //  if (debug)
   //    sched.enable_debug();
 
   if (debug)
-    std::cout << n << " "
-              << " " << block_size << " " << width << " " << rounds
-              << std::endl;
+    std::cout << "n: " << n << " block_size:  " << block_size
+              << " width: " << width << " rounds:  " << rounds << std::endl;
 
   using time_t = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
@@ -506,7 +394,8 @@ auto sieve_async_block(
   auto start_time = std::chrono::high_resolution_clock::now();
 
   /*
-   * Create the "graphs" by emplacing the nodes for each "graph" into a vector.
+   * Create the "graphs" by creating nodes, edges, and submitting to the
+   * scheduler.
    */
 
   if (grouped == false && reverse_order == false) {
@@ -514,7 +403,7 @@ auto sieve_async_block(
       if (debug)
         std::cout << "w: " << w << std::endl;
 
-      auto a = producer_node<Mover, size_t>{gen};
+      auto a = ProducerNode<Mover, size_t>{gen};
       auto b = FunctionNode<Mover, size_t, Mover, part_info<bool_t>>{
           std::bind(gen_range<bool_t>, _1, block_size, sqrt_n, n)};
       auto c = FunctionNode<Mover, part_info<bool_t>, Mover, part_info<bool_t>>{
@@ -578,8 +467,10 @@ auto sieve_async_block(
     sched.sync_wait_all();
   }
   if (grouped == true && reverse_order == false) {
+    // TBD
   }
   if (grouped == true && reverse_order == true) {
+    // TBD
   }
 
   /*
@@ -611,7 +502,7 @@ auto sieve_async_block(
 }
 
 /*
- * Program for running different sieve function configurations.
+ * Driver function for running different sieve function configurations.
  */
 template <class F>
 auto timer_2(
@@ -640,104 +531,166 @@ auto timer_2(
       num += j->size();
     }
   }
-  std::cout << "Found " + std::to_string(num) << " primes\n";
+  std::cout << "Found " + std::to_string(num) << " primes ";
 
   return stop - start;
 }
 
+using namespace Catch::Clara;
+
 int main(int argc, char* argv[]) {
   size_t number = 100'000'000;
   size_t block_size = 100;
-
-  if (argc >= 2) {
-    number = std::stol(argv[1]);
-  }
-  if (argc >= 3) {
-    block_size = std::stol(argv[2]);
-  }
-
-#if 0
-#ifdef __clang__
-  std::cout << "Found __clang__" << std::endl;
-#endif
-#ifdef __GNUG__
-  std::cout << "Found __GNUG__" << std::endl;
-#endif
-
-#ifdef _GLIBCXX_USE_TBB_PAR_BACKEND
-#if _GLIBCXX_USE_TBB_PAR_BACKEND
-  std::cout << "Found _GLIBCXX_USE_TBB_PAR_BACKEND is true" << std::endl;
-#else
-  std::cout << "Found _GLIBCXX_USE_TBB_PAR_BACKEND is false" << std::endl;
-#endif
-#else
-  std::cout << "Did not find _GLIBCXX_USE_TBB_PAR_BACKEND" << std::endl;
-#endif
-
-  tbb::global_control(tbb::global_control::max_allowed_parallelism, 2);
-#endif
   size_t width = std::thread::hardware_concurrency();
+  bool reverse_order = false;
+  bool grouped = false;
+  std::string scheduler = "bountiful";
+  size_t stages = 2;
+  size_t trips = 2;
 
-  /*
-   * Test with two_stage connections
-   */
-  for (auto reverse_order : {false, true}) {
-    for (auto grouped : {false, true}) {
-      for (size_t i = 0; i < 3; ++i) {
-        auto using_char_async_block = timer_2(
-            sieve_async_block<ThrowCatchMover2, char>,
+  auto cli = Opt(block_size, "block_size")["-b"]["--block_size"]("Block size") |
+             Opt(width, "width")["-w"]["--width"]("Width") |
+             Opt(number, "number")["-n"]["--number"]("Number") |
+             Opt(reverse_order)["-r"]["--reverse_order"]("Reverse order") |
+             Opt(grouped)["-g"]["--grouped"]("Grouped") |
+             Opt(scheduler, "scheduler")["-s"]["--scheduler"](
+                 "Scheduler (bountiful, duffs, throw_catch, or frugal") |
+             Opt(stages, "stages")["-t"]["--stages"]("Stages (2 or 3)") |
+             Opt(trips, "trips")["-p"]["--trips"]("Trips");
+
+  auto result = cli.parse(Args(argc, argv));
+  if (!result) {
+    std::cerr << "Error in command line: " << result.errorMessage()
+              << std::endl;
+    exit(1);
+  }
+
+  auto log = [=](std::chrono::duration<double> d) {
+    std::cout << "using " + std::to_string(stages) + " stage " + scheduler +
+                     " scheduler with " + std::to_string(block_size) +
+                     " sized blocks" +
+                     (reverse_order ? ", reverse order," :
+                                      ", forward order, ") +
+                     " and " + std::to_string(width) + " threads: " +
+                     std::to_string(
+                         std::chrono::duration_cast<std::chrono::milliseconds>(
+                             d)
+                             .count()) +
+                     " ms\n";
+  };
+
+  for (size_t i = 0; i < trips; ++i) {
+    if (scheduler == "bountiful") {
+      if (stages == 2) {
+        [[maybe_unused]] auto x =
+            sieve_async_block<BountifulScheduler<node>, BountifulMover2, char>;
+
+        auto t1 = timer_2(
+            sieve_async_block<BountifulScheduler<node>, BountifulMover2, char>,
             number,
             block_size * 1024,
             width,
             reverse_order,
-            grouped, /* grouped */
-            true,    /* use_futures */
-            false);  /* use_threadpool */
-
-        std::cout << "Time using throw_catch block, two stage, " +
-                         std::string(
-                             reverse_order ? "reverse order" :
-                                             "forward order") +
-                         "  " + std::string(grouped ? "grouped" : "ungrouped")
-                  << " : "
-                  << std::chrono::duration_cast<std::chrono::milliseconds>(
-                         using_char_async_block)
-                         .count()
-                  << "\n";
-      }
-
-      /*
-       * Test with three_stage connections
-       */
-      for (size_t i = 0; i < 3; ++i) {
-        if (i == 0) {
-          debug = false;
-        } else {
-          debug = false;
-        }
-
-        auto using_char_async_block = timer_2(
-            sieve_async_block<ThrowCatchMover3, char>,
+            grouped,
+            true, /* use_futures */
+            false);
+        log(t1);
+      } else if (stages == 3) {
+        auto t1 = timer_2(
+            sieve_async_block<BountifulScheduler<node>, BountifulMover3, char>,
             number,
             block_size * 1024,
             width,
             reverse_order,
-            grouped, /* grouped */
-            true,    /* use_futures */
-            false);  /* use_threadpool */
-        std::cout << "Time using throw_catch async block, three stage, " +
-                         std::string(
-                             reverse_order ? "reverse order" :
-                                             "forward order") +
-                         "  " + std::string(grouped ? "grouped" : "ungrouped")
-                  << " : "
-                  << std::chrono::duration_cast<std::chrono::milliseconds>(
-                         using_char_async_block)
-                         .count()
-                  << "\n";
+            grouped,
+            true, /* use_futures */
+            false);
+        log(t1);
       }
+    } else if (scheduler == "duffs") {
+      if (stages == 2) {
+        auto t1 = timer_2(
+            sieve_async_block<DuffsScheduler<node>, DuffsMover2, char>,
+            number,
+            block_size * 1024,
+            width,
+            reverse_order,
+            grouped,
+            true, /* use_futures */
+            false);
+        log(t1);
+      } else if (stages == 3) {
+        auto t1 = timer_2(
+            sieve_async_block<DuffsScheduler<node>, DuffsMover3, char>,
+            number,
+            block_size * 1024,
+            width,
+            reverse_order,
+            grouped,
+            true, /* use_futures */
+            false);
+        log(t1);
+      }
+    } else if (scheduler == "throw_catch") {
+      if (stages == 2) {
+        auto t1 = timer_2(
+            sieve_async_block<
+                ThrowCatchScheduler<node>,
+                ThrowCatchMover2,
+                char>,
+            number,
+            block_size * 1024,
+            width,
+            reverse_order,
+            grouped,
+            true, /* use_futures */
+            false);
+        log(t1);
+      } else if (stages == 3) {
+        auto t1 = timer_2(
+            sieve_async_block<
+                ThrowCatchScheduler<node>,
+                ThrowCatchMover3,
+                char>,
+            number,
+            block_size * 1024,
+            width,
+            reverse_order,
+            grouped,
+            true, /* use_futures */
+            false);
+        log(t1);
+      }
+    } else if (scheduler == "frugal") {
+      std::cout << "The frugal scheduler will almost surely deadlock"
+                << std::endl;
+      if (stages == 2) {
+        auto t1 = timer_2(
+            sieve_async_block<FrugalScheduler<node>, FrugalMover2, char>,
+            number,
+            block_size * 1024,
+            width,
+            reverse_order,
+            grouped,
+            true, /* use_futures */
+            false);
+        log(t1);
+      } else if (stages == 3) {
+        auto t1 = timer_2(
+            sieve_async_block<FrugalScheduler<node>, FrugalMover3, char>,
+            number,
+            block_size * 1024,
+            width,
+            reverse_order,
+            grouped,
+            true, /* use_futures */
+            false);
+        log(t1);
+      }
+
+    } else {
+      std::cout << "Invalid scheduler: " << scheduler << std::endl;
+      return 1;
     }
   }
-
-  return 0;
 }

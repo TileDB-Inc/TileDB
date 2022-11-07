@@ -1,5 +1,5 @@
 /**
- * @file compile_scheduler_main.cc
+ * @file unit_duffs.h
  *
  * @section LICENSE
  *
@@ -24,15 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
  */
 
-#include "../bountiful.h"
-#include "../throw_catch.h"
-
-using namespace tiledb::common;
-
-int main() {
-  (void)sizeof(ThrowcatchScheduler<size_t>(1));
-  (void)sizeof(BountifulScheduler<size_t>(1));
-  (void)sizeof(BountifulScheduler<size_t>());
-}
+#ifndef TILEDB_UNIT_DUFFS_H
+#define TILEDB_UNIT_DUFFS_H
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_UNIT_DUFFS_H
