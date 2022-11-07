@@ -278,7 +278,7 @@ class AsyncPolicy
   AsyncPolicy() = default;
   AsyncPolicy(const AsyncPolicy&) {
   }
-  AsyncPolicy(AsyncPolicy&&) noexcept = default;
+  AsyncPolicy(AsyncPolicy&&) = default;
 
   /**
    * Function for handling `ac_return` action.
@@ -307,11 +307,11 @@ class AsyncPolicy
     return scheduler_event_type::noop;
   }
 
-  [[nodiscard]] size_t source_swaps() const {
+  size_t source_swaps() const {
     return moves_[0];
   }
 
-  [[nodiscard]] size_t sink_swaps() const {
+  size_t sink_swaps() const {
     return moves_[1];
   }
 
