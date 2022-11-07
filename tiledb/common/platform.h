@@ -1,5 +1,5 @@
 /**
- * @file print_types.hpp
+ * @file   tiledb/common/platform.h
  *
  * @section LICENSE
  *
@@ -27,29 +27,16 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a compile-time check that prints the types of its
- * arguments.  Useful for debugging type-related compilation problems.
- *
- * Original copyright statements from NWGraph:
- * @copyright SPDX-FileCopyrightText: 2022 Battelle Memorial Institute
- * @copyright SPDX-FileCopyrightText: 2022 University of Washington
- *
- * SPDX-License-Identifier: BSD-3-Clause
- *
- * @authors
- *   Luke D'Alessandro
- *
+ * Platform/machine config of the TileDB library.
  */
 
-#ifndef PRINT_TYPES_HPP
-#define PRINT_TYPES_HPP
+#ifndef TILEDB_COMMON_PLATFORM_H
+#define TILEDB_COMMON_PLATFORM_H
 
-template <class... Ts>
-struct print_types_t;
+#ifdef _WIN32
+constexpr bool is_windows = true;
+#else
+constexpr bool is_windows = false;
+#endif  // TILEDB_EXPERIMENTAL_FEATURES
 
-template <class... Ts>
-constexpr auto print_types(Ts...) {
-  return print_types_t<Ts...>{};
-}
-
-#endif  // PRINT_TYPES_HPP
+#endif  // TILEDB_COMMON_PLATFORM_H
