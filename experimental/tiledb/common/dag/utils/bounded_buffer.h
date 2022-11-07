@@ -27,7 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a classic/basic generic producer-consumer queue.
+ * This file declares a classic/basic generic bounded-buffer producer-consumer
+ * queue. The class supports a purely unbounded option.
  */
 
 #ifndef TILEDB_BOUNDED_BUFFER_H
@@ -47,12 +48,25 @@ namespace tiledb::common {
 template <class Item, class Container, bool Bounded>
 class BoundedBufferQ {
  public:
-  BoundedBufferQ(size_t max_size = std::numeric_limits<size_t>::max())
+  template <bool B = Bounded>
+  BoundedBufferQ(size_t max_size, std::enable_if_t<B, void*> = nullptr)
       : max_size_(max_size) {
   }
+
+  /**
+   * Constructor for bounded buffer
+   */
+  template <bool B = Bounded>
+  BoundedBufferQ(std::enable_if_t<!B, void*> = nullptr)
+      : max_size_(0) {
+  }
+
   BoundedBufferQ(const BoundedBufferQ&) = delete;
   BoundedBufferQ& operator=(const BoundedBufferQ&) = delete;
 
+  /**
+   * Copy Constructor
+   */
   BoundedBufferQ(BoundedBufferQ&& rhs)
       : max_size_(rhs.max_size_)
       , queue_(std::move(rhs.queue_))
@@ -80,9 +94,9 @@ class BoundedBufferQ {
       return false;
     }
 
-    if constexpr (std::is_same<Container, std::queue<Item>>::value) {
+    if constexpr (std::is_same_v<Container, std::queue<Item>>) {
       queue_.push(item);
-    } else if constexpr (std::is_same<Container, std::deque<Item>>::value) {
+    } else if constexpr (std::is_same_v<Container, std::deque<Item>>) {
       queue_.push_front(item);
     } else {
       // Compile-time error if neither std::queue nor std::deque
@@ -94,29 +108,31 @@ class BoundedBufferQ {
   }
 
   /**
-   * Push an item onto the producer-consumer queue.
+   * Try to push an item onto the producer-consumer queue.
    *
    * @param item Item to be pushed onto the queue.
    * @return bool indicating whether the item was successfully pushed or not.
    */
-  bool push(Item&& item) {
+  bool try_push(const Item& item) {
     std::unique_lock lock{mutex_};
+
     if constexpr (Bounded) {
       if (queue_.size() >= max_size_) {
-        full_cv_.wait(lock, [this]() {
-          return queue_.size() < max_size_ || draining_ || shutdown_;
-        });
+        return false;
       }
     }
-
     if (draining_ || shutdown_) {
       return false;
     }
 
-    if constexpr (std::is_same<Container, std::queue<Item>>::value) {
-      queue_.push(std::move(item));
-    } else if constexpr (std::is_same<Container, std::deque<Item>>::value) {
-      queue_.push_front(std::move(item));
+    /*
+     * Bounded queue_ has space for a new item.
+     * Or, there is no upper bound so push will always succeed.
+     */
+    if constexpr (std::is_same_v<Container, std::queue<Item>>) {
+      queue_.push(item);
+    } else if constexpr (std::is_same_v<Container, std::deque<Item>>) {
+      queue_.push_front(item);
     } else {
       // Compile-time error if neither std::queue nor std::deque
       queue_.no_push(item);
@@ -140,9 +156,9 @@ class BoundedBufferQ {
     }
     Item item = queue_.front();
 
-    if constexpr (std::is_same<Container, std::queue<Item>>::value) {
-      queue_.pop(item);
-    } else if constexpr (std::is_same<Container, std::deque<Item>>::value) {
+    if constexpr (std::is_same_v<Container, std::queue<Item>>) {
+      queue_.pop();
+    } else if constexpr (std::is_same_v<Container, std::deque<Item>>) {
       queue_.pop_front();
     } else {
       // Compile-time error if neither std::queue nor std::deque
@@ -173,9 +189,9 @@ class BoundedBufferQ {
     }
     Item item = queue_.front();
 
-    if constexpr (std::is_same<Container, std::queue<Item>>::value) {
+    if constexpr (std::is_same_v<Container, std::queue<Item>>) {
       queue_.pop();
-    } else if constexpr (std::is_same<Container, std::deque<Item>>::value) {
+    } else if constexpr (std::is_same_v<Container, std::deque<Item>>) {
       queue_.pop_front();
     } else {
       // Compile-time error if neither std::queue nor std::deque
@@ -240,6 +256,19 @@ class BoundedBufferQ {
     return item;
   }
 
+  inline size_t size() const {
+    return queue_.size();
+  }
+
+  /**
+   * Swap only data contents.  Synchronization variables must all be empty.
+   */
+  void swap_data(BoundedBufferQ& rhs) {
+    std::scoped_lock lock{mutex_};
+    std::swap(max_size_, rhs.max_size_);
+    std::swap(queue_, rhs.queue_);
+  }
+
   /**
    * Soft shutdown of the queue.  The queue is closed and all threads waiting on
    * items are notified.  Any threads waiting on pop() will then return nothing.
@@ -263,7 +292,7 @@ class BoundedBufferQ {
   }
 
   /**
-   * TODO: Conditionally include max_size and full_cv.
+   * @todo: Conditionally include max_size and full_cv.
    */
  private:
   size_t max_size_;
