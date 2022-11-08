@@ -2599,15 +2599,6 @@ Status Query::set_subarray_unsafe(const Subarray& subarray) {
 }
 
 Status Query::set_subarray(const tiledb::sm::Subarray& subarray) {
-  auto query_status = status();
-  if (query_status != tiledb::sm::QueryStatus::UNINITIALIZED &&
-      query_status != tiledb::sm::QueryStatus::COMPLETED) {
-    // Can be in this initialized state when query has been de-serialized
-    // server-side and are trying to perform local submit.
-    // Don't change anything and return indication of success.
-    return Status::Ok();
-  }
-
   // Set subarray
   auto prev_layout = subarray_.layout();
   subarray_ = subarray;
