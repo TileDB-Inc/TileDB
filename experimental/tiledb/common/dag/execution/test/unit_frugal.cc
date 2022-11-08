@@ -333,7 +333,8 @@ TEMPLATE_TEST_CASE(
   // producer_node_impl<ThrowCatchMover3, size_t>
   //   ::producer_node_impl<producer_node_impl<ThrowCatchMover3, size_t>>
 
-  //  auto con_specified = consumer_node<ThrowCatchMover3, size_t>(con_node_impl);
+  //  auto con_specified = consumer_node<ThrowCatchMover3,
+  //  size_t>(con_node_impl);
   //  // bad
   //  auto con_deduced = consumer_node(con_node_impl);
 
@@ -837,8 +838,8 @@ TEMPLATE_TEST_CASE(
 SCENARIO(
     "Tasks can be pushed and popped into a queue without invalidating "
     "references to them") {
-  auto pro_node =
-      producer_node<ThrowCatchMover3, size_t>([](std::stop_source&) { return 0; });
+  auto pro_node = producer_node<ThrowCatchMover3, size_t>(
+      [](std::stop_source&) { return 0; });
   auto con_node = consumer_node<ThrowCatchMover3, size_t>([](const size_t&) {});
 
   auto pro_task = ThrowCatchTask(pro_node);
@@ -931,8 +932,8 @@ SCENARIO(
 SCENARIO(
     "Tasks can be inserted into and extracted from a set without invalidating "
     "references to them") {
-  auto pro_node =
-      producer_node<ThrowCatchMover3, size_t>([](std::stop_source&) { return 0; });
+  auto pro_node = producer_node<ThrowCatchMover3, size_t>(
+      [](std::stop_source&) { return 0; });
   auto con_node = consumer_node<ThrowCatchMover3, size_t>([](const size_t&) {});
 
   auto pro_task = ThrowCatchTask(pro_node);
@@ -1046,8 +1047,8 @@ SCENARIO(
 SCENARIO(
     "Tasks can be inserted into and looked up from a map, using nodes as "
     "keys") {
-  auto pro_node =
-      producer_node<ThrowCatchMover3, size_t>([](std::stop_source&) { return 0; });
+  auto pro_node = producer_node<ThrowCatchMover3, size_t>(
+      [](std::stop_source&) { return 0; });
   auto con_node = consumer_node<ThrowCatchMover3, size_t>([](const size_t&) {});
 
   auto pro_task = ThrowCatchTask(pro_node);
@@ -1082,12 +1083,13 @@ TEST_CASE("ThrowCatchScheduler: Test construct scheduler", "[throw_catch]") {
   // sched goes out of scope and shuts down the scheduler
 }
 
-TEST_CASE("ThrowCatchScheduler: Test ThrowCatchTask state changes", "[throw_catch]") {
+TEST_CASE(
+    "ThrowCatchScheduler: Test ThrowCatchTask state changes", "[throw_catch]") {
   [[maybe_unused]] auto sched =
       SchedulerStateMachine<EmptySchedulerPolicy<ThrowCatchTask<node>>>{};
 
-  auto p =
-      producer_node<ThrowCatchMover3, size_t>([](std::stop_source&) { return 0; });
+  auto p = producer_node<ThrowCatchMover3, size_t>(
+      [](std::stop_source&) { return 0; });
   auto c = consumer_node<ThrowCatchMover3, size_t>([](const size_t&) {});
 
   auto q = ThrowCatchTask<node>{p};
@@ -1183,15 +1185,16 @@ TEMPLATE_TEST_CASE(
 
     size_t i{0};
 
-    auto p = P([rounds,debug,&i](std::stop_source& stop_source) {
+    auto p = P([rounds, debug, &i](std::stop_source& stop_source) {
       CHECK(!stop_source.stop_requested());
 
       if (debug)
         std::cout << "Producing\n";
       if (i >= rounds) {
-	stop_source.request_stop();
+        stop_source.request_stop();
       }
-      return i++;;
+      return i++;
+      ;
     });
     auto c = C([debug](const size_t&) {
       if (debug)
@@ -1201,8 +1204,7 @@ TEMPLATE_TEST_CASE(
     connect(p, c);
     Edge(*p, *c);
 
-    if (debug) 
-	    {
+    if (debug) {
       p->enable_debug();
       c->enable_debug();
     }
@@ -1344,4 +1346,3 @@ TEMPLATE_TEST_CASE(
 
   CHECK(std::distance(input.begin(), i) == static_cast<long>(rounds));
 }
-

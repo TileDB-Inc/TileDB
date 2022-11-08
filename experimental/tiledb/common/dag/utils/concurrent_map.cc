@@ -29,6 +29,7 @@
  *
  * This file declares a rudimentary thread-safe map.
  *
- * @todo Integrate with scheduler so that we don't need system calls for blocking
+ * @todo Integrate with scheduler so that we don't need system calls for
+ * blocking
  */
 #include "concurrent_map.h"

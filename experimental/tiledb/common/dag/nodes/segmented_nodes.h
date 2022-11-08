@@ -30,11 +30,11 @@
  * This file defines segmented execution nodes for dag.
  */
 
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
-#include "experimental/tiledb/common/dag/ports/ports.h"
 #include <atomic>
 #include <iostream>
 #include <memory>
+#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
+#include "experimental/tiledb/common/dag/ports/ports.h"
 
 #include "experimental/tiledb/common/dag/utils/print_types.h"
 
@@ -43,12 +43,17 @@ namespace tiledb::common {
 /*
  * Forward declarations
  */
-template<template<class> class Mover, class T>
+template <template <class> class Mover, class T>
 struct producer_node_impl;
-template<template<class> class Mover, class T>
+template <template <class> class Mover, class T>
 struct consumer_node_impl;
-template<template<class> class SinkMover, class BlockIn,
-        template<class> class SourceMover, class BlockOut>
+template <
+    template <class>
+    class SinkMover,
+    class BlockIn,
+    template <class>
+    class SourceMover,
+    class BlockOut>
 struct function_node_impl;
 
 /**
@@ -65,17 +70,17 @@ struct node_base {
   node_type sink_correspondent_{nullptr};
   node_type source_correspondent_{nullptr};
 
-  virtual node_type &sink_correspondent() {
+  virtual node_type& sink_correspondent() {
     return sink_correspondent_;
   }
 
-  virtual node_type &source_correspondent() {
+  virtual node_type& source_correspondent() {
     return source_correspondent_;
   }
 
-  node_base(node_base &&) = default;
+  node_base(node_base&&) = default;
 
-  node_base(const node_base &) {
+  node_base(const node_base&) {
     std::cout << "Nonsense copy constructor" << std::endl;
   }
 
@@ -85,11 +90,12 @@ struct node_base {
     return id_;
   }
 
-  inline size_t &id() {
+  inline size_t& id() {
     return id_;
   }
 
-  explicit node_base(size_t id) : id_{id} {
+  explicit node_base(size_t id)
+      : id_{id} {
   }
 
   virtual void resume() = 0;
@@ -123,7 +129,6 @@ struct node_base {
  */
 using node = std::shared_ptr<node_base>;
 
-
 /**
  * Connect two nodes.
  * @tparam From Source node type.
@@ -131,8 +136,8 @@ using node = std::shared_ptr<node_base>;
  * @param from Source node.
  * @param to Sink node.
  */
-template<class From, class To>
-void connect(From &from, To &to) {
+template <class From, class To>
+void connect(From& from, To& to) {
   (*from).sink_correspondent() = to;
   (*to).source_correspondent() = from;
 }
@@ -149,14 +154,14 @@ std::atomic<size_t> id_counter{0};
  *
  * @todo Simplify API by removing the need for the user to specify the mover.
  */
-template<template<class> class Mover, class T>
+template <template <class> class Mover, class T>
 struct producer_node_impl : public node_base, public Source<Mover, T> {
   using SourceBase = Source<Mover, T>;
 
   using mover_type = Mover<T>;
   using node_base_type = node_base;
 
-  std::function<T(std::stop_source &)> f_;
+  std::function<T(std::stop_source&)> f_;
 
   /**
    * Counter to keep track of how many times the producer has been resumed.
@@ -169,31 +174,37 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
    */
   size_t produced_items() {
     if (this->debug())
-      std::cout << std::to_string(produced_items_.load()) << " produced items in produced_items()\n";
+      std::cout << std::to_string(produced_items_.load())
+                << " produced items in produced_items()\n";
     return produced_items_.load();
   }
 
   /**
- * @brief Set the item mover for this node.
- * @param mover The item mover.
- */
+   * @brief Set the item mover for this node.
+   * @param mover The item mover.
+   */
   void set_item_mover(std::shared_ptr<mover_type> mover) {
     this->item_mover_ = mover;
   }
 
-/**
- * @brief Constructor, takes a function that produces items.
- * @tparam Function type
- * @param f The function that produces items.
- *
- */
-  template<class Function>
-  explicit producer_node_impl(Function &&f,
-                              std::enable_if_t<std::is_invocable_r_v<T, Function, std::stop_source &>, void **> = nullptr)
-          : node_base_type(id_counter++), f_{std::forward<Function>(f)}, produced_items_{0} {
+  /**
+   * @brief Constructor, takes a function that produces items.
+   * @tparam Function type
+   * @param f The function that produces items.
+   *
+   */
+  template <class Function>
+  explicit producer_node_impl(
+      Function&& f,
+      std::enable_if_t<
+          std::is_invocable_r_v<T, Function, std::stop_source&>,
+          void**> = nullptr)
+      : node_base_type(id_counter++)
+      , f_{std::forward<Function>(f)}
+      , produced_items_{0} {
   }
 
-  producer_node_impl(producer_node_impl &&rhs) noexcept = default;
+  producer_node_impl(producer_node_impl&& rhs) noexcept = default;
 
   std::string name() override {
     return {"producer"};
@@ -211,8 +222,9 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
     if (this->debug()) {
       std::cout << "producer resuming\n";
 
-      std::cout << this->name() + " node " + std::to_string(this->id()) + " resuming with " +
-                   std::to_string(produced_items_) + " produced_items" + "\n";
+      std::cout << this->name() + " node " + std::to_string(this->id()) +
+                       " resuming with " + std::to_string(produced_items_) +
+                       " produced_items" + "\n";
     }
 
     [[maybe_unused]] std::thread::id this_id = std::this_thread::get_id();
@@ -248,9 +260,10 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
 
         if (stop_source_.stop_requested()) {
           if (this->debug())
-            std::cout << this->name() + " node " + std::to_string(this->id()) +
-                         " has gotten stop -- calling port_exhausted with " + std::to_string(produced_items_) +
-                         " produced items\n";
+            std::cout
+                << this->name() + " node " + std::to_string(this->id()) +
+                       " has gotten stop -- calling port_exhausted with " +
+                       std::to_string(produced_items_) + " produced items\n";
 
           mover->port_exhausted();
           break;
@@ -308,19 +321,18 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
   }
 };
 
-
 /**
  * @brief Implementation of a segmented consumer node.
  * @tparam Mover The item mover type.
  * @tparam T The item type.
  */
-template<template<class> class Mover, class T>
+template <template <class> class Mover, class T>
 struct consumer_node_impl : public node_base, public Sink<Mover, T> {
   using SinkBase = Sink<Mover, T>;
   using mover_type = Mover<T>;
   using node_base_type = node_base;
 
-  std::function<void(const T &)> f_;
+  std::function<void(const T&)> f_;
 
   std::atomic<size_t> consumed_items_{0};
 
@@ -332,10 +344,15 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
     return consumed_items_.load();
   }
 
-  template<class Function>
-  explicit consumer_node_impl(Function &&f,
-                              std::enable_if_t<std::is_invocable_r_v<void, Function, const T &>, void **> = nullptr)
-          : node_base_type(id_counter++), f_{std::forward<Function>(f)}, consumed_items_{0} {
+  template <class Function>
+  explicit consumer_node_impl(
+      Function&& f,
+      std::enable_if_t<
+          std::is_invocable_r_v<void, Function, const T&>,
+          void**> = nullptr)
+      : node_base_type(id_counter++)
+      , f_{std::forward<Function>(f)}
+      , consumed_items_{0} {
   }
 
   std::string name() override {
@@ -355,16 +372,16 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
 
     if (this->debug())
       std::cout << this->name() + " node " + std::to_string(this->id()) +
-                   " resuming with " + std::to_string(consumed_items_) +
-                   " consumed_items" + "\n";
+                       " resuming with " + std::to_string(consumed_items_) +
+                       " consumed_items" + "\n";
 
     [[maybe_unused]] std::thread::id this_id = std::this_thread::get_id();
 
     if (mover->is_done()) {
       if (this->debug())
         std::cout << this->name() + " node " + std::to_string(this->id()) +
-                     " got mover done in consumer at top of resume -- "
-                     "returning\n";
+                         " got mover done in consumer at top of resume -- "
+                         "returning\n";
 
       mover->port_exhausted();
 
@@ -474,9 +491,15 @@ struct consumer_node_impl : public node_base, public Sink<Mover, T> {
  * @tparam SourceMover The mover type for the source port.
  * @tparam BlockOut The type of data emitted by the function node.
  */
-template<template<class> class SinkMover, class BlockIn,
-        template<class> class SourceMover = SinkMover, class BlockOut = BlockIn>
-struct function_node_impl : public node_base, public Sink<SinkMover, BlockIn>, public Source<SourceMover, BlockOut> {
+template <
+    template <class>
+    class SinkMover,
+    class BlockIn,
+    template <class> class SourceMover = SinkMover,
+    class BlockOut = BlockIn>
+struct function_node_impl : public node_base,
+                            public Sink<SinkMover, BlockIn>,
+                            public Source<SourceMover, BlockOut> {
   using sink_mover_type = SinkMover<BlockIn>;
   using source_mover_type = SourceMover<BlockOut>;
   using node_base_type = node_base;
@@ -484,7 +507,7 @@ struct function_node_impl : public node_base, public Sink<SinkMover, BlockIn>, p
   using SinkBase = Sink<SinkMover, BlockIn>;
   using SourceBase = Source<SourceMover, BlockOut>;
 
-  std::function<BlockOut(const BlockIn &)> f_;
+  std::function<BlockOut(const BlockIn&)> f_;
 
   std::atomic<size_t> processed_items_{0};
 
@@ -492,10 +515,15 @@ struct function_node_impl : public node_base, public Sink<SinkMover, BlockIn>, p
     return processed_items_.load();
   }
 
-  template<class Function>
-  explicit function_node_impl(Function &&f,
-                              std::enable_if_t<std::is_invocable_r_v<BlockOut, Function, const BlockIn &>, void **> = nullptr)
-          : node_base_type(id_counter++), f_{std::forward<Function>(f)}, processed_items_{0} {
+  template <class Function>
+  explicit function_node_impl(
+      Function&& f,
+      std::enable_if_t<
+          std::is_invocable_r_v<BlockOut, Function, const BlockIn&>,
+          void**> = nullptr)
+      : node_base_type(id_counter++)
+      , f_{std::forward<Function>(f)}
+      , processed_items_{0} {
   }
 
   /**
@@ -524,23 +552,26 @@ struct function_node_impl : public node_base, public Sink<SinkMover, BlockIn>, p
   /**
    * @brief Resume executing the node.
    *
-   * This is the main function of the node. It is called by the scheduler to execute the enclosed function one time.
+   * This is the main function of the node. It is called by the scheduler to
+   * execute the enclosed function one time.
    */
   void resume() override {
     auto source_mover = SourceBase::get_mover();
     auto sink_mover = SinkBase::get_mover();
 
     if (this->debug())
-      std::cout << this->name() + " node " + std::to_string(this->id()) + " resuming at program counter = " +
-                   std::to_string(this->program_counter_) + " and " + std::to_string(processed_items_) +
-                   " consumed_items\n";
+      std::cout << this->name() + " node " + std::to_string(this->id()) +
+                       " resuming at program counter = " +
+                       std::to_string(this->program_counter_) + " and " +
+                       std::to_string(processed_items_) + " consumed_items\n";
 
     [[maybe_unused]] std::thread::id this_id = std::this_thread::get_id();
 
     if (source_mover->is_done() || sink_mover->is_done()) {
       if (this->debug())
-        std::cout << this->name() + " node " + std::to_string(this->id()) +
-                     " got sink_mover done at top of resumes -- returning\n";
+        std::cout
+            << this->name() + " node " + std::to_string(this->id()) +
+                   " got sink_mover done at top of resumes -- returning\n";
 
       // ?? Right place to call this?
       source_mover->port_exhausted();
@@ -549,7 +580,6 @@ struct function_node_impl : public node_base, public Sink<SinkMover, BlockIn>, p
     }
 
     switch (this->program_counter_) {
-
       // pull / extract drain
       case 0: {
         ++this->program_counter_;
@@ -557,8 +587,9 @@ struct function_node_impl : public node_base, public Sink<SinkMover, BlockIn>, p
 
         if (source_mover->is_done() || sink_mover->is_done()) {
           if (this->debug())
-            std::cout << this->name() + " node " + std::to_string(this->id()) +
-                         " got sink_mover done -- going to exhaust source\n";
+            std::cout
+                << this->name() + " node " + std::to_string(this->id()) +
+                       " got sink_mover done -- going to exhaust source\n";
 
           source_mover->port_exhausted();
           break;
@@ -572,7 +603,8 @@ struct function_node_impl : public node_base, public Sink<SinkMover, BlockIn>, p
         in_thing = *(SinkBase::extract());
 
         if (this->debug())
-          std::cout << "function in_thing is " + std::to_string(in_thing) + "\n";
+          std::cout << "function in_thing is " + std::to_string(in_thing) +
+                           "\n";
       }
         [[fallthrough]];
 
@@ -652,7 +684,8 @@ struct function_node_impl : public node_base, public Sink<SinkMover, BlockIn>, p
         if (source_mover->is_done() || sink_mover->is_done()) {
           if (this->debug())
             std::cout << this->name() + " node " + std::to_string(this->id()) +
-                         " at bottom got sink_mover done -- going to exhaust source\n";
+                             " at bottom got sink_mover done -- going to "
+                             "exhaust source\n";
 
           sink_mover->port_exhausted();
           break;
@@ -678,72 +711,89 @@ struct function_node_impl : public node_base, public Sink<SinkMover, BlockIn>, p
         std::cout << "function final pull in run()" << std::endl;
       sink_mover->port_pull();
     }
-    // ?? port_exhausted is called in resume -- should it be called here instead?
-    // source_mover->port_exhausted();
+    // ?? port_exhausted is called in resume -- should it be called here
+    // instead? source_mover->port_exhausted();
   }
 };
 
 /*
  * Forward references.
  */
-template<template<class> class Mover, class T>
+template <template <class> class Mover, class T>
 struct consumer_node;
 
-template<template<class> class Mover, class T>
+template <template <class> class Mover, class T>
 struct producer_node;
 
-template<template<class> class SinkMover, class BlockIn,
-        template<class> class SourceMover, class BlockOut>
+template <
+    template <class>
+    class SinkMover,
+    class BlockIn,
+    template <class>
+    class SourceMover,
+    class BlockOut>
 struct function_node;
 
-template<class T>
-struct correspondent_traits {
-};
+template <class T>
+struct correspondent_traits {};
 
-template<template<class> class Mover, class T>
+template <template <class> class Mover, class T>
 struct producer_node : public std::shared_ptr<producer_node_impl<Mover, T>> {
   using Base = std::shared_ptr<producer_node_impl<Mover, T>>;
   using Base::Base;
 
-  template<class Function>
-  explicit producer_node(Function &&f)
-          : Base{std::make_shared<producer_node_impl<Mover, T>>(std::forward<Function>(f))} {
+  template <class Function>
+  explicit producer_node(Function&& f)
+      : Base{std::make_shared<producer_node_impl<Mover, T>>(
+            std::forward<Function>(f))} {
   }
 
-  explicit producer_node(producer_node_impl<Mover, T> &impl) : Base{
-          std::make_shared<producer_node_impl<Mover, T>>(std::move(impl))} {
+  explicit producer_node(producer_node_impl<Mover, T>& impl)
+      : Base{std::make_shared<producer_node_impl<Mover, T>>(std::move(impl))} {
   }
 };
 
-template<template<class> class Mover, class T>
+template <template <class> class Mover, class T>
 struct consumer_node : public std::shared_ptr<consumer_node_impl<Mover, T>> {
   using Base = std::shared_ptr<consumer_node_impl<Mover, T>>;
   using Base::Base;
 
-  template<class Function>
-  explicit consumer_node(Function &&f)
-          : Base{std::make_shared<consumer_node_impl<Mover, T>>(std::forward<Function>(f))} {
+  template <class Function>
+  explicit consumer_node(Function&& f)
+      : Base{std::make_shared<consumer_node_impl<Mover, T>>(
+            std::forward<Function>(f))} {
   }
 
-  explicit consumer_node(consumer_node_impl<Mover, T> &impl) : Base{
-          std::make_shared<consumer_node_impl<Mover, T>>(std::move(impl))} {
+  explicit consumer_node(consumer_node_impl<Mover, T>& impl)
+      : Base{std::make_shared<consumer_node_impl<Mover, T>>(std::move(impl))} {
   }
 };
 
-template<template<class> class SinkMover, class BlockIn,
-        template<class> class SourceMover = SinkMover, class BlockOut = BlockIn>
-struct function_node : public std::shared_ptr<function_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>> {
-  using Base = std::shared_ptr<function_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>>;
+template <
+    template <class>
+    class SinkMover,
+    class BlockIn,
+    template <class> class SourceMover = SinkMover,
+    class BlockOut = BlockIn>
+struct function_node
+    : public std::shared_ptr<
+          function_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>> {
+  using Base = std::shared_ptr<
+      function_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>>;
   using Base::Base;
 
-  template<class Function>
-  explicit function_node(Function &&f)
-          : Base{
-          std::make_shared<function_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>>(std::forward<Function>(f))} {
+  template <class Function>
+  explicit function_node(Function&& f)
+      : Base{std::make_shared<
+            function_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>>(
+            std::forward<Function>(f))} {
   }
 
-  explicit function_node(function_node_impl<SinkMover, BlockIn, SourceMover, BlockOut> &impl) : Base{
-          std::make_shared<function_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>>(std::move(impl))} {
+  explicit function_node(
+      function_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>& impl)
+      : Base{std::make_shared<
+            function_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>>(
+            std::move(impl))} {
   }
 };
-}// namespace tiledb::common
+}  // namespace tiledb::common

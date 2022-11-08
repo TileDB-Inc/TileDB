@@ -66,7 +66,7 @@ namespace tiledb::common {
  * @note We include the two-stage proof outline for Source inline here.
  */
 
-template<template<class> class Mover_T, class Block>
+template <template <class> class Mover_T, class Block>
 class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
   using Base = Source<Mover_T, Block>;
   using source_type = Source<Mover_T, Block>;
@@ -78,13 +78,13 @@ class ProducerNode : public GraphNode, public Source<Mover_T, Block> {
   /**
    * The function to be invoked by the `ProducerNode`
    */
-  std::variant<std::function<Block()>, std::function<Block(std::stop_source &)>>
-          f_;
+  std::variant<std::function<Block()>, std::function<Block(std::stop_source&)>>
+      f_;
 
   constexpr static inline bool is_source_port_ = true;
   constexpr static inline bool is_sink_port_ = false;
 
-public:
+ public:
   using source_port_type = Base;
   using base_port_type = typename Base::base_port_type;
 
@@ -104,10 +104,10 @@ public:
   /**
    * Trivial copy constructor, needed to satisfy `is_movable`
    */
-  ProducerNode(const ProducerNode &) {
+  ProducerNode(const ProducerNode&) {
   }
 
-  ProducerNode(ProducerNode &&) noexcept = default;
+  ProducerNode(ProducerNode&&) noexcept = default;
 
   /**
    * Constructor
@@ -116,42 +116,42 @@ public:
    * @tparam The type of the function (or function object) that generates items.
    * The function may either take `void` or take a `stop_source` as argument.
    */
-  template<class Function>
+  template <class Function>
   explicit ProducerNode(
-          Function &&f,
-          std::enable_if_t<
-                  !std::is_bind_expression_v<
-                          std::remove_cv_t<std::remove_reference_t<Function>>>,
-                  void **> = nullptr)
-          : f_{std::forward<Function>(f)} {
+      Function&& f,
+      std::enable_if_t<
+          !std::is_bind_expression_v<
+              std::remove_cv_t<std::remove_reference_t<Function>>>,
+          void**> = nullptr)
+      : f_{std::forward<Function>(f)} {
   }
 
   /**
    * Constructor: Special constructor for std::bind, no std::stop_source
    */
-  template<class Function>
+  template <class Function>
   explicit ProducerNode(
-          Function &&f,
-          std::enable_if_t<
-                  std::is_bind_expression_v<
-                          std::remove_cv_t<std::remove_reference_t<Function>>> &&
-                  std::is_invocable_r_v<Block, Function, void>,
-                  void **> = nullptr)
-          : f_{[&f]() { return std::forward<Function>(f)(); }} {
+      Function&& f,
+      std::enable_if_t<
+          std::is_bind_expression_v<
+              std::remove_cv_t<std::remove_reference_t<Function>>> &&
+              std::is_invocable_r_v<Block, Function, void>,
+          void**> = nullptr)
+      : f_{[&f]() { return std::forward<Function>(f)(); }} {
   }
 
   /**
    * Constructor: Special constructor for std::bind, with std::stop_source
    */
-  template<class Function>
+  template <class Function>
   explicit ProducerNode(
-          Function &&f,
-          std::enable_if_t<
-                  std::is_bind_expression_v<
-                          std::remove_cv_t<std::remove_reference_t<Function>>> &&
-                  std::is_invocable_r_v<Block, Function, std::stop_source &>,
-                  void **> = nullptr)
-          : f_{[&f](std::stop_source &s) { return std::forward<Function>(f)(s); }} {
+      Function&& f,
+      std::enable_if_t<
+          std::is_bind_expression_v<
+              std::remove_cv_t<std::remove_reference_t<Function>>> &&
+              std::is_invocable_r_v<Block, Function, std::stop_source&>,
+          void**> = nullptr)
+      : f_{[&f](std::stop_source& s) { return std::forward<Function>(f)(s); }} {
   }
 
   /**
@@ -337,14 +337,14 @@ public:
  *
  * @note We include the two-stage proof outline for Sink inline here.
  */
-template<template<class> class Mover_T, class Block>
+template <template <class> class Mover_T, class Block>
 class ConsumerNode : public GraphNode, public Sink<Mover_T, Block> {
-  std::function<void(const Block &)> f_;
+  std::function<void(const Block&)> f_;
 
   constexpr static inline bool is_source_port_ = false;
   constexpr static inline bool is_sink_port_ = true;
 
-public:
+ public:
   using Base = Sink<Mover_T, Block>;
 
   using sink_port_type = Base;
@@ -358,32 +358,33 @@ public:
     return is_source_port_;
   }
 
-public:
+ public:
   /**
    * Trivial default constructor, for testing.
    */
   ConsumerNode() = default;
 
-  ConsumerNode(const ConsumerNode &) {
+  ConsumerNode(const ConsumerNode&) {
   }
 
-  ConsumerNode(ConsumerNode &&) noexcept = default;
+  ConsumerNode(ConsumerNode&&) noexcept = default;
 
   /**
    * Constructor
    *
-   * @tparam Function The type of the function (or function object) that accepts items.
-   * May be an actual function, a function object, or the result of `std::bind`.
+   * @tparam Function The type of the function (or function object) that accepts
+   * items. May be an actual function, a function object, or the result of
+   * `std::bind`.
    *
    * @param f A function that accepts items.  Must be invocable with an object
    * of type `Block`.
    */
-  template<class Function>
+  template <class Function>
   explicit ConsumerNode(
-          Function &&f,
-          std::enable_if_t<std::is_invocable_r_v<void, Function, Block>, void **> =
+      Function&& f,
+      std::enable_if_t<std::is_invocable_r_v<void, Function, Block>, void**> =
           nullptr)
-          : f_{std::forward<Function>(f)} {
+      : f_{std::forward<Function>(f)} {
   }
 
 #if 0
@@ -460,7 +461,7 @@ public:
     if (mover->debug_enabled())
       std::cout << "consumer drained " << std::endl;
 
-    if(!b.has_value()) {
+    if (!b.has_value()) {
       throw(std::runtime_error("ConsumerNode::resume() - no value"));
     }
 
@@ -593,23 +594,23 @@ public:
  *
  * @todo Do we want to be able to put things directly into the `Sink`?
  */
-template<
-        template<class>
-        class SinkMover_T,
-        class BlockIn,
-        template<class> class SourceMover_T = SinkMover_T,
-        class BlockOut = BlockIn>
+template <
+    template <class>
+    class SinkMover_T,
+    class BlockIn,
+    template <class> class SourceMover_T = SinkMover_T,
+    class BlockOut = BlockIn>
 class FunctionNode : public GraphNode,
                      public Sink<SinkMover_T, BlockIn>,
                      public Source<SourceMover_T, BlockOut> {
-  std::function<BlockOut(const BlockIn &)> f_;
+  std::function<BlockOut(const BlockIn&)> f_;
   using SourceBase = Source<SourceMover_T, BlockOut>;
   using SinkBase = Sink<SinkMover_T, BlockIn>;
 
   constexpr static inline bool is_source_port_ = true;
   constexpr static inline bool is_sink_port_ = true;
 
-public:
+ public:
   using source_port_type = SourceBase;
   using sink_port_type = SinkBase;
   using base_port_type = typename SinkBase::base_port_type;
@@ -619,23 +620,23 @@ public:
    */
   FunctionNode() = default;
 
-  FunctionNode(const FunctionNode &) {
+  FunctionNode(const FunctionNode&) {
   }
 
-  FunctionNode(FunctionNode &&) noexcept = default;
+  FunctionNode(FunctionNode&&) noexcept = default;
 
   /**
    * Constructor
    * @param f A function that accepts items.
    * @tparam The type of the function (or function object) that accepts items.
    */
-  template<class Function>
+  template <class Function>
   explicit FunctionNode(
-          Function &&f,
-          std::enable_if_t<
-                  std::is_invocable_r_v<BlockOut, Function, BlockIn>,
-                  void **> = nullptr)
-          : f_{std::forward<Function>(f)} {
+      Function&& f,
+      std::enable_if_t<
+          std::is_invocable_r_v<BlockOut, Function, BlockIn>,
+          void**> = nullptr)
+      : f_{std::forward<Function>(f)} {
   }
 
   /**
@@ -643,15 +644,15 @@ public:
    * meaningful error messages when the constructor is called with wrong type of
    * arguments.
    */
-  template<class Function>
+  template <class Function>
   explicit FunctionNode(
-          Function &&,
-          std::enable_if_t<
-                  !std::is_invocable_r_v<BlockOut, Function, BlockIn>,
-                  void **> = nullptr) {
+      Function&&,
+      std::enable_if_t<
+          !std::is_invocable_r_v<BlockOut, Function, BlockIn>,
+          void**> = nullptr) {
     static_assert(
-            std::is_invocable_r_v<BlockOut, Function, BlockIn>,
-            "Function constructor with non-invocable type");
+        std::is_invocable_r_v<BlockOut, Function, BlockIn>,
+        "Function constructor with non-invocable type");
   }
 
   /**
@@ -696,7 +697,7 @@ public:
       std::cout << "function drained " << std::endl;
 
     if (!b.has_value()) {
-      throw (std::runtime_error("FunctionNode::resume() called with no data"));
+      throw(std::runtime_error("FunctionNode::resume() called with no data"));
     }
 
     auto j = f_(*b);

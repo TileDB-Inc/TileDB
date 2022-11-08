@@ -43,8 +43,8 @@
 #ifndef TILEDB_DAG_SCHEDULER_H
 #define TILEDB_DAG_SCHEDULER_H
 
-#include "experimental/tiledb/common/dag/execution/threadpool.h"
 #include <cassert>
+#include "experimental/tiledb/common/dag/execution/threadpool.h"
 
 namespace tiledb::common {
 /*
@@ -68,7 +68,7 @@ constexpr unsigned short to_index(TaskState x) {
 
 namespace {
 std::vector<std::string> task_state_strings{
-        "created", "runnable", "running", "waiting", "terminated", "error", "last"};
+    "created", "runnable", "running", "waiting", "terminated", "error", "last"};
 }
 
 static inline auto str(TaskState st) {
@@ -98,7 +98,7 @@ constexpr unsigned short to_index(TaskEvent x) {
 
 namespace {
 std::vector<std::string> task_event_strings{
-        "create", "admit", "dispatch", "wait", "notify", "exit", "yield", "last"};
+    "create", "admit", "dispatch", "wait", "notify", "exit", "yield", "last"};
 }
 static inline auto str(TaskEvent st) {
   return task_event_strings[to_index(st)];
@@ -195,50 +195,50 @@ namespace detail {
     /* last       */ { TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::none,         TaskAction::none,          TaskAction::none,           TaskAction::none,          },
   };
 // clang-format on
-}// namespace detail
+}  // namespace detail
 
 // Declare a traits class.
-template<typename T>
+template <typename T>
 struct SchedulerTraits;
-template<class Task>
+template <class Task>
 class ThrowCatchSchedulerPolicy;
-template<class Task>
+template <class Task>
 class EmptySchedulerPolicy;
-template<typename T>
+template <typename T>
 struct SchedulerTraits;
 
-template<class Policy>
+template <class Policy>
 class SchedulerStateMachine {
   std::mutex mutex_;
   bool debug_{false};
 
-public:
+ public:
   using task_handle_type = typename SchedulerTraits<Policy>::task_handle_type;
   using lock_type = std::unique_lock<std::mutex>;
 
   SchedulerStateMachine() = default;
 
-  SchedulerStateMachine(SchedulerStateMachine &&) noexcept = default;
+  SchedulerStateMachine(SchedulerStateMachine&&) noexcept = default;
 
-  SchedulerStateMachine(const SchedulerStateMachine &) {
+  SchedulerStateMachine(const SchedulerStateMachine&) {
     std::cout << "Nonsense copy constructor" << std::endl;
   }
 
-protected:
-  void event(TaskEvent event, task_handle_type &task, const std::string &) {
+ protected:
+  void event(TaskEvent event, task_handle_type& task, const std::string&) {
     std::unique_lock lock(mutex_);
 
     assert(is_valid_state(task->task_state()));
     assert(is_valid_event(event));
 
     auto next_state =
-            detail::transition_table[to_index(task->task_state())][to_index(event)];
+        detail::transition_table[to_index(task->task_state())][to_index(event)];
 
     auto exit_action{
-            detail::exit_table[to_index(task->task_state())][to_index(event)]};
+        detail::exit_table[to_index(task->task_state())][to_index(event)]};
 
     auto entry_action{
-            detail::entry_table[to_index(next_state)][to_index(event)]};
+        detail::entry_table[to_index(next_state)][to_index(event)]};
 
     // assert(next_state != TaskState::error);
     // CHECK(next_state != TaskState::error);
@@ -248,35 +248,35 @@ protected:
         break;
 
       case TaskAction::create:
-        static_cast<Policy *>(this)->on_create(task);
+        static_cast<Policy*>(this)->on_create(task);
         break;
 
       case TaskAction::stop_create:
-        static_cast<Policy *>(this)->on_stop_create(task);
+        static_cast<Policy*>(this)->on_stop_create(task);
         break;
 
       case TaskAction::make_runnable:
-        static_cast<Policy *>(this)->on_make_runnable(task);
+        static_cast<Policy*>(this)->on_make_runnable(task);
         break;
 
       case TaskAction::stop_runnable:
-        static_cast<Policy *>(this)->on_stop_runnable(task);
+        static_cast<Policy*>(this)->on_stop_runnable(task);
         break;
 
       case TaskAction::make_running:
-        static_cast<Policy *>(this)->on_make_running(task);
+        static_cast<Policy*>(this)->on_make_running(task);
         break;
 
       case TaskAction::stop_running:
-        static_cast<Policy *>(this)->on_stop_running(task);
+        static_cast<Policy*>(this)->on_stop_running(task);
         break;
 
       case TaskAction::make_waiting:
-        static_cast<Policy *>(this)->on_make_waiting(task);
+        static_cast<Policy*>(this)->on_make_waiting(task);
         break;
 
       case TaskAction::stop_waiting:
-        static_cast<Policy *>(this)->on_stop_waiting(task);
+        static_cast<Policy*>(this)->on_stop_waiting(task);
         break;
 
       case TaskAction::ac_return:
@@ -284,7 +284,7 @@ protected:
         // break;
 
       case TaskAction::terminate:
-        static_cast<Policy *>(this)->on_terminate(task);
+        static_cast<Policy*>(this)->on_terminate(task);
         break;
 
       case TaskAction::last:
@@ -300,35 +300,35 @@ protected:
         break;
 
       case TaskAction::create:
-        static_cast<Policy *>(this)->on_create(task);
+        static_cast<Policy*>(this)->on_create(task);
         break;
 
       case TaskAction::stop_create:
-        static_cast<Policy *>(this)->on_stop_create(task);
+        static_cast<Policy*>(this)->on_stop_create(task);
         break;
 
       case TaskAction::make_runnable:
-        static_cast<Policy *>(this)->on_make_runnable(task);
+        static_cast<Policy*>(this)->on_make_runnable(task);
         break;
 
       case TaskAction::stop_runnable:
-        static_cast<Policy *>(this)->on_stop_runnable(task);
+        static_cast<Policy*>(this)->on_stop_runnable(task);
         break;
 
       case TaskAction::make_running:
-        static_cast<Policy *>(this)->on_make_running(task);
+        static_cast<Policy*>(this)->on_make_running(task);
         break;
 
       case TaskAction::stop_running:
-        static_cast<Policy *>(this)->on_stop_running(task);
+        static_cast<Policy*>(this)->on_stop_running(task);
         break;
 
       case TaskAction::make_waiting:
-        static_cast<Policy *>(this)->on_make_waiting(task);
+        static_cast<Policy*>(this)->on_make_waiting(task);
         break;
 
       case TaskAction::stop_waiting:
-        static_cast<Policy *>(this)->on_stop_waiting(task);
+        static_cast<Policy*>(this)->on_stop_waiting(task);
         break;
 
       case TaskAction::ac_return:
@@ -336,7 +336,7 @@ protected:
         // break;
 
       case TaskAction::terminate:
-        static_cast<Policy *>(this)->on_terminate(task);
+        static_cast<Policy*>(this)->on_terminate(task);
         break;
 
       case TaskAction::last:
@@ -346,7 +346,7 @@ protected:
     }
   }
 
-public:
+ public:
   void enable_debug() {
     debug_ = true;
   }
@@ -358,31 +358,31 @@ public:
   bool debug() {
     return debug_;
   }
-  void task_create(task_handle_type &task) {
+  void task_create(task_handle_type& task) {
     event(TaskEvent::create, task, "");
   }
 
-  void task_admit(task_handle_type &task) {
+  void task_admit(task_handle_type& task) {
     event(TaskEvent::admit, task, "");
   }
 
-  void task_dispatch(task_handle_type &task) {
+  void task_dispatch(task_handle_type& task) {
     event(TaskEvent::dispatch, task, "");
   }
 
-  void task_wait(task_handle_type &task) {
+  void task_wait(task_handle_type& task) {
     event(TaskEvent::wait, task, "");
   }
 
-  void task_notify(task_handle_type &task) {
+  void task_notify(task_handle_type& task) {
     event(TaskEvent::notify, task, "");
   }
 
-  void task_exit(task_handle_type &task) {
+  void task_exit(task_handle_type& task) {
     event(TaskEvent::exit, task, "");
   }
 
-  void task_yield(task_handle_type &task) {
+  void task_yield(task_handle_type& task) {
     event(TaskEvent::yield, task, "");
   }
 };
@@ -425,88 +425,88 @@ class SchedulerBase {
 
 #endif
 
-template<typename T>
+template <typename T>
 struct SchedulerTraits<EmptySchedulerPolicy<T>> {
   using task_type = T;
   using task_handle_type = T;
 };
 
-template<class Task>
+template <class Task>
 class EmptySchedulerPolicy
     : public SchedulerStateMachine<EmptySchedulerPolicy<Task>> {
-public:
+ public:
   using task_type =
-          typename SchedulerTraits<EmptySchedulerPolicy<Task>>::task_type;
+      typename SchedulerTraits<EmptySchedulerPolicy<Task>>::task_type;
   using task_handle_type =
-          typename SchedulerTraits<EmptySchedulerPolicy<Task>>::task_handle_type;
+      typename SchedulerTraits<EmptySchedulerPolicy<Task>>::task_handle_type;
 
-  EmptySchedulerPolicy(EmptySchedulerPolicy &&) noexcept = default;
-  EmptySchedulerPolicy(EmptySchedulerPolicy &) {
+  EmptySchedulerPolicy(EmptySchedulerPolicy&&) noexcept = default;
+  EmptySchedulerPolicy(EmptySchedulerPolicy&) {
     std::cout << "Nonsense copy constructor" << std::endl;
   }
 
-  void on_create(Task &) {
+  void on_create(Task&) {
   }
-  void on_stop_create(Task &) {
+  void on_stop_create(Task&) {
   }
-  void on_make_runnable(Task &) {
+  void on_make_runnable(Task&) {
   }
-  void on_stop_runnable(Task &) {
+  void on_stop_runnable(Task&) {
   }
-  void on_make_running(Task &) {
+  void on_make_running(Task&) {
   }
-  void on_stop_running(Task &) {
+  void on_stop_running(Task&) {
   }
-  void on_make_waiting(Task &) {
+  void on_make_waiting(Task&) {
   }
-  void on_stop_waiting(Task &) {
+  void on_stop_waiting(Task&) {
   }
-  void on_terminate(Task &) {
+  void on_terminate(Task&) {
   }
 };
 
-template<class Task>
+template <class Task>
 class DebugSchedulerPolicy;
 
-template<typename T>
+template <typename T>
 struct SchedulerTraits<DebugSchedulerPolicy<T>> {
   using task_handle_type = typename DebugSchedulerPolicy<T>::task_handle_type;
 };
 
-template<class Task>
+template <class Task>
 class DebugSchedulerPolicy
     : public SchedulerStateMachine<DebugSchedulerPolicy<Task>> {
-public:
+ public:
   using task_handle_type = Task;
 
-  void on_create(Task &) {
+  void on_create(Task&) {
     std::cout << "calling on_create" << std::endl;
   }
-  void on_stop_create(Task &) {
+  void on_stop_create(Task&) {
     std::cout << "calling on_stop_create" << std::endl;
   }
-  void on_make_runnable(Task &) {
+  void on_make_runnable(Task&) {
     std::cout << "calling on_make_runnable" << std::endl;
   }
-  void on_stop_runnable(Task &) {
+  void on_stop_runnable(Task&) {
     std::cout << "calling on_stop_runnable" << std::endl;
   }
-  void on_make_running(Task &) {
+  void on_make_running(Task&) {
     std::cout << "calling on_make_running" << std::endl;
   }
-  void on_stop_running(Task &) {
+  void on_stop_running(Task&) {
     std::cout << "calling on_stop_running" << std::endl;
   }
-  void on_make_waiting(Task &) {
+  void on_make_waiting(Task&) {
     std::cout << "calling on_make_waiting" << std::endl;
   }
-  void on_stop_waiting(Task &) {
+  void on_stop_waiting(Task&) {
     std::cout << "calling on_stop_waiting" << std::endl;
   }
-  void on_terminate(Task &) {
+  void on_terminate(Task&) {
     std::cout << "calling on_terminate" << std::endl;
   }
 };
 
-}// namespace tiledb::common
-#endif// TILEDB_DAG_SCHEDULER_H
+}  // namespace tiledb::common
+#endif  // TILEDB_DAG_SCHEDULER_H
