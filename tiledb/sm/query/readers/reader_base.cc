@@ -1796,6 +1796,537 @@ bool ReaderBase::has_coords() const {
   return false;
 }
 
+template <typename IndexType>
+tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data() {
+  // Cache the non empty domains and tile index for the first tile of each
+  // fragment.
+  auto index_dim{array_schema_.domain().dimension_ptr(0)};
+  const IndexType* dim_dom = index_dim->domain().typed_data<IndexType>();
+  auto tile_extent{index_dim->tile_extent().rvalue_as<IndexType>()};
+  std::vector<const void*> non_empty_domains(fragment_metadata_.size());
+  std::vector<uint64_t> frag_first_array_tile_idx(fragment_metadata_.size());
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      fragment_metadata_.size(),
+      [&](unsigned f) {
+        non_empty_domains[f] =
+            fragment_metadata_[f]->non_empty_domain()[0].data();
+        auto ned = static_cast<const IndexType*>(non_empty_domains[f]);
+        frag_first_array_tile_idx[f] =
+            index_dim->tile_idx<IndexType>(ned[0], dim_dom[0], tile_extent);
+
+        return Status::Ok();
+      }));
+
+  // Compute the array non empty domain.
+  IndexType min = std::numeric_limits<IndexType>::max();
+  IndexType max = std::numeric_limits<IndexType>::min();
+  for (uint64_t f = 0; f < fragment_metadata_.size(); f++) {
+    auto ned = static_cast<const IndexType*>(non_empty_domains[f]);
+    min = std::min(min, ned[0]);
+    max = std::max(max, ned[1]);
+  }
+
+  return {Range(&min, &max, sizeof(IndexType)),
+          std::move(non_empty_domains),
+          std::move(frag_first_array_tile_idx)};
+}
+
+template <typename IndexType>
+void ReaderBase::ensure_continuous_domain_written(
+    std::vector<const void*>& non_empty_domains) {
+  // Store the non empty domains in a vector and sort them by min.
+  std::vector<std::pair<IndexType, IndexType>> sorted_non_empty_domains(
+      fragment_metadata_.size());
+  for (uint64_t f = 0; f < fragment_metadata_.size(); f++) {
+    auto ned = static_cast<const IndexType*>(non_empty_domains[f]);
+    sorted_non_empty_domains[f] = std::make_pair(ned[0], ned[1]);
+  }
+  std::sort(sorted_non_empty_domains.begin(), sorted_non_empty_domains.end());
+
+  // Go through the sorted non empty domains and make sure there is no holes.
+  IndexType max_value = sorted_non_empty_domains[0].second;
+  for (auto& non_empty_domain : sorted_non_empty_domains) {
+    // If the start is greater than the current max, there is a discountinuity.
+    if (non_empty_domain.first > max_value + 1) {
+      throw ReaderBaseStatusException("Discontiuity found in array domain");
+    }
+
+    // Adjust the max. Since the non empty domains are sorted, the min never
+    // changes.
+    max_value = std::max(max_value, non_empty_domain.second);
+  }
+}
+
+/**
+ * Utilitary function that returns if a value is contained in a non empty
+ * domain.
+ *
+ * @tparam Index type
+ * @param v Value to check.
+ * @param domain Pointer to the domain values.
+ * @return Is the value in the given domain or not.
+ */
+template <typename IndexType>
+bool in_domain(IndexType v, const IndexType* domain) {
+  return v >= domain[0] && v <= domain[1];
+}
+
+template <typename IndexType>
+std::pair<bool, bool> ReaderBase::attribute_order_ned_bounds_already_validated(
+    IndexType array_min_idx,
+    IndexType array_max_idx,
+    uint64_t f,
+    std::vector<const void*>& non_empty_domains) {
+  std::pair<bool, bool> ret{false, false};
+  const IndexType* non_empty_domain =
+      static_cast<const IndexType*>(non_empty_domains[f]);
+
+  // Value is the array minimum, no need to validate.
+  auto min = non_empty_domain[0];
+  if (min == array_min_idx) {
+    ret.first = true;
+  }
+
+  // Value is the array maximum, no need to validate.
+  auto max = non_empty_domain[1];
+  if (max == array_max_idx) {
+    ret.second = true;
+  }
+
+  // Look at all the more recent fragments.
+  for (uint64_t f2 = f + 1; f2 < fragment_metadata_.size(); f2++) {
+    const IndexType* non_empty_domain2 =
+        static_cast<const IndexType*>(non_empty_domains[f2]);
+    if (!ret.first) {
+      // See if the min is covered.
+      ret.first |= in_domain(min, non_empty_domain2);
+
+      // If the min if next to the max of a previous fragment, it will already
+      // be validated when processing that fragment.
+      ret.first |= min - 1 == non_empty_domain2[1];
+    }
+
+    if (!ret.second) {
+      // See if the max is covered.
+      ret.second |= in_domain(max, non_empty_domain2);
+
+      // If the max if next to the min of a previous fragment, it will already
+      // be validated when processing that fragment.
+      ret.second |= max + 1 == non_empty_domain2[0];
+    }
+  }
+
+  return ret;
+}
+
+template <typename IndexType, typename AttributeType>
+void ReaderBase::validate_attribute_order(
+    std::string& attribute_name,
+    bool increasing_data,
+    Range& array_non_empty_domain,
+    std::vector<const void*>& non_empty_domains,
+    std::vector<uint64_t>& frag_first_array_tile_idx) {
+  // For only one fragment, no work to do.
+  if (fragment_metadata_.size() == 1) {
+    return;
+  }
+
+  // For easy reference.
+  auto array_min_idx = array_non_empty_domain.typed_data<IndexType>()[0];
+  auto array_max_idx = array_non_empty_domain.typed_data<IndexType>()[1];
+  auto index_dim{array_schema_.domain().dimension_ptr(0)};
+  auto index_name = index_dim->name();
+  const IndexType* dim_dom = index_dim->domain().typed_data<IndexType>();
+  auto tile_extent{index_dim->tile_extent().rvalue_as<IndexType>()};
+
+  // See if some values will already be processed by previous fragments.
+  AttributeOrderValidationData order_validation_data(fragment_metadata_.size());
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      fragment_metadata_.size(),
+      [&](uint64_t f) {
+        auto bounds_validated = attribute_order_ned_bounds_already_validated(
+            array_min_idx, array_max_idx, f, non_empty_domains);
+        order_validation_data.min_validated(f) = bounds_validated.first;
+        order_validation_data.max_validated(f) = bounds_validated.second;
+
+        return Status::Ok();
+      }));
+
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      fragment_metadata_.size(),
+      [&](int64_t f) {
+        const IndexType* non_empty_domain =
+            static_cast<const IndexType*>(non_empty_domains[f]);
+
+        if (!order_validation_data.min_validated(f)) {
+          // See if the min is tile aligned.
+          auto min = non_empty_domain[0];
+          bool min_tile_aligned = min == index_dim->round_to_tile<IndexType>(
+                                             min, dim_dom[0], tile_extent);
+
+          // Find a fragment that contains min - 1.
+          for (int64_t f2 = f - 1; f2 >= 0; f2--) {
+            const IndexType* non_empty_domain2 =
+                static_cast<const IndexType*>(non_empty_domains[f2]);
+            if (in_domain<IndexType>(min - 1, non_empty_domain2)) {
+              // Get the min of the current fragment.
+              auto value =
+                  increasing_data ?
+                      fragment_metadata_[f]->get_tile_min_as<AttributeType>(
+                          attribute_name, 0) :
+                      fragment_metadata_[f]->get_tile_max_as<AttributeType>(
+                          attribute_name, 0);
+
+              // Get the max from the intersecting fragment. If the min
+              // is tile aligned, get the tile before.
+              uint64_t f2_tile_idx = frag_first_array_tile_idx[f] -
+                                     frag_first_array_tile_idx[f2] -
+                                     min_tile_aligned;
+              auto value_previous =
+                  increasing_data ?
+                      fragment_metadata_[f2]->get_tile_max_as<AttributeType>(
+                          attribute_name, f2_tile_idx) :
+                      fragment_metadata_[f2]->get_tile_min_as<AttributeType>(
+                          attribute_name, f2_tile_idx);
+
+              // If we are tile aligned or the min is right next to the other
+              // fragment's max, we can validate. Otherwise we'll need to load
+              // the tile.
+              if (min_tile_aligned || min - 1 == non_empty_domain2[1]) {
+                order_validation_data.min_validated(f) = true;
+
+                // Check the order.
+                if (increasing_data) {
+                  if (value_previous > value) {
+                    throw ReaderBaseStatusException("Attribute out of order");
+                  }
+                } else {
+                  if (value_previous < value) {
+                    throw ReaderBaseStatusException("Attribute out of order");
+                  }
+                }
+              } else {
+                // Add the tile to the list of tiles to load.
+                order_validation_data.add_tile_to_load(
+                    f, true, f2, f2_tile_idx, array_schema_);
+              }
+
+              break;
+            }
+
+            if (f2 == 0) {
+              throw std::logic_error(
+                  "Shouldn't reach the last fragment without finding overlap.");
+            }
+          }
+        }
+
+        if (!order_validation_data.max_validated(f)) {
+          // See if the max is tile aligned.
+          auto max = non_empty_domain[1];
+          bool max_tile_aligned =
+              max + 1 == index_dim->round_to_tile<IndexType>(
+                             max + 1, dim_dom[0], tile_extent);
+
+          // Find a fragment that contains max + 1.
+          for (int64_t f2 = f - 1; f2 >= 0; f2--) {
+            const IndexType* non_empty_domain2 =
+                static_cast<const IndexType*>(non_empty_domains[f2]);
+            if (in_domain<IndexType>(max + 1, non_empty_domain2)) {
+              // Get the max of the current fragment.
+              auto max_tile_idx = fragment_metadata_[f]->tile_num() - 1;
+              auto value =
+                  increasing_data ?
+                      fragment_metadata_[f]->get_tile_max_as<AttributeType>(
+                          attribute_name, max_tile_idx) :
+                      fragment_metadata_[f]->get_tile_min_as<AttributeType>(
+                          attribute_name, max_tile_idx);
+
+              // Get the min from the intersecting fragment. If the max
+              // is tile aligned, get the tile after.
+              uint64_t f2_tile_idx =
+                  max_tile_idx + frag_first_array_tile_idx[f] -
+                  frag_first_array_tile_idx[f2] + max_tile_aligned;
+              auto value_next =
+                  increasing_data ?
+                      fragment_metadata_[f2]->get_tile_min_as<AttributeType>(
+                          attribute_name, f2_tile_idx) :
+                      fragment_metadata_[f2]->get_tile_max_as<AttributeType>(
+                          attribute_name, f2_tile_idx);
+
+              // If we are tile aligned or the max is right next to the
+              // other fragment's min, we can validate. Otherwise we'll
+              // need to load the tile.
+              if (max_tile_aligned || max + 1 == non_empty_domain2[0]) {
+                order_validation_data.max_validated(f) = true;
+
+                // Check the order.
+                if (increasing_data) {
+                  if (value_next < value) {
+                    throw ReaderBaseStatusException("Attribute out of order");
+                  }
+                } else {
+                  if (value_next > value) {
+                    throw ReaderBaseStatusException("Attribute out of order");
+                  }
+                }
+              } else {
+                // Add the tile to the list of tiles to load.
+                order_validation_data.add_tile_to_load(
+                    f, false, f2, f2_tile_idx, array_schema_);
+              }
+
+              break;
+            }
+
+            if (f2 == 0) {
+              throw std::logic_error(
+                  "Shouldn't reach the last fragment without finding overlap.");
+            }
+          }
+        }
+
+        return Status::Ok();
+      }));
+
+  // If we need tiles to finish order validation, load them, then finish the
+  // validation.
+  if (order_validation_data.need_to_load_tiles()) {
+    auto tiles_to_load = order_validation_data.tiles_to_load();
+    throw_if_not_ok(read_attribute_tiles({attribute_name}, tiles_to_load));
+    throw_if_not_ok(unfilter_tiles(attribute_name, tiles_to_load));
+    validate_attribute_order_with_tile_data<IndexType, AttributeType>(
+        attribute_name,
+        increasing_data,
+        non_empty_domains,
+        frag_first_array_tile_idx,
+        order_validation_data);
+  }
+}
+
+template <typename IndexType>
+void ReaderBase::validate_attribute_order(
+    Datatype attribute_type,
+    std::string& attribute_name,
+    bool increasing_data,
+    Range& array_non_empty_domain,
+    std::vector<const void*>& non_empty_domains,
+    std::vector<uint64_t>& frag_first_array_tile_idx) {
+  auto timer_se = stats_->start_timer("validate_attribute_order");
+
+  switch (attribute_type) {
+    case Datatype::INT8:
+      validate_attribute_order<IndexType, int8_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::UINT8:
+      validate_attribute_order<IndexType, uint8_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::INT16:
+      validate_attribute_order<IndexType, int16_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::UINT16:
+      validate_attribute_order<IndexType, uint16_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::INT32:
+      validate_attribute_order<IndexType, int32_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::UINT32:
+      validate_attribute_order<IndexType, uint32_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::INT64:
+      validate_attribute_order<IndexType, int64_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::UINT64:
+      validate_attribute_order<IndexType, uint64_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::FLOAT32:
+      validate_attribute_order<IndexType, float>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::FLOAT64:
+      validate_attribute_order<IndexType, double>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+      validate_attribute_order<IndexType, int64_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::STRING_ASCII:
+      validate_attribute_order<IndexType, std::string_view>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    default:
+      throw ReaderBaseStatusException("Invalid attribute type");
+  }
+}
+
+template <typename IndexType, typename AttributeType>
+void ReaderBase::validate_attribute_order_with_tile_data(
+    std::string& attribute_name,
+    bool increasing_data,
+    std::vector<const void*>& non_empty_domains,
+    std::vector<uint64_t>& frag_first_array_tile_idx,
+    AttributeOrderValidationData& order_validation_data) {
+  // For easy reference.
+  auto index_dim{array_schema_.domain().dimension_ptr(0)};
+  auto tile_extent = index_dim->tile_extent().rvalue_as<IndexType>();
+  const IndexType* dim_dom = index_dim->domain().typed_data<IndexType>();
+
+  // Validate bounds not validated using tile data.
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      fragment_metadata_.size(),
+      [&](unsigned f) {
+        const IndexType* non_empty_domain =
+            static_cast<const IndexType*>(non_empty_domains[f]);
+        if (!order_validation_data.min_validated(f)) {
+          // Get the min of the current fragment.
+          auto value = fragment_metadata_[f]->get_tile_min_as<AttributeType>(
+              attribute_name, 0);
+
+          // Get the previous value from the loaded tile.
+          auto rt = order_validation_data.min_tile_to_compare_against(f);
+          const auto cell_idx =
+              non_empty_domain[0] -
+              index_dim->tile_coord_low(
+                  rt->tile_idx() + frag_first_array_tile_idx[rt->frag_idx()],
+                  dim_dom[0],
+                  tile_extent) -
+              1;
+          AttributeType value_previous =
+              rt->attribute_value<AttributeType>(attribute_name, cell_idx);
+
+          // Validate the order.
+          if (increasing_data) {
+            if (value_previous > value) {
+              throw ReaderBaseStatusException("Attribute out of order");
+            }
+          } else {
+            if (value_previous < value) {
+              throw ReaderBaseStatusException("Attribute out of order");
+            }
+          }
+        }
+
+        if (!order_validation_data.max_validated(f)) {
+          // Get the min of the current fragment.
+          auto max_tile_idx = fragment_metadata_[f]->tile_num() - 1;
+          auto value = fragment_metadata_[f]->get_tile_max_as<AttributeType>(
+              attribute_name, max_tile_idx);
+
+          // Get the previous value from the loaded tile.
+          auto rt = order_validation_data.max_tile_to_compare_against(f);
+          const auto cell_idx =
+              non_empty_domain[1] -
+              index_dim->tile_coord_low(
+                  rt->tile_idx() + frag_first_array_tile_idx[rt->frag_idx()],
+                  dim_dom[0],
+                  tile_extent) +
+              1;
+          AttributeType value_next =
+              rt->attribute_value<AttributeType>(attribute_name, cell_idx);
+
+          // Validate the order.
+          if (increasing_data) {
+            if (value > value_next) {
+              throw ReaderBaseStatusException("Attribute out of order");
+            }
+          } else {
+            if (value < value_next) {
+              throw ReaderBaseStatusException("Attribute out of order");
+            }
+          }
+        }
+
+        return Status::Ok();
+      }));
+}
+
 void ReaderBase::calculate_hilbert_values(
     const DomainBuffersView& domain_buffers,
     std::vector<uint64_t>& hilbert_values) const {
@@ -1909,6 +2440,94 @@ template void ReaderBase::compute_result_space_tiles<uint64_t>(
     const Subarray&,
     const Subarray&,
     std::map<const uint64_t*, ResultSpaceTile<uint64_t>>&) const;
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<int8_t>();
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<uint8_t>();
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<int16_t>();
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<uint16_t>();
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<int32_t>();
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<uint32_t>();
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<int64_t>();
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<uint64_t>();
+template void ReaderBase::ensure_continuous_domain_written<int8_t>(
+    std::vector<const void*>&);
+template void ReaderBase::ensure_continuous_domain_written<uint8_t>(
+    std::vector<const void*>&);
+template void ReaderBase::ensure_continuous_domain_written<int16_t>(
+    std::vector<const void*>&);
+template void ReaderBase::ensure_continuous_domain_written<uint16_t>(
+    std::vector<const void*>&);
+template void ReaderBase::ensure_continuous_domain_written<int32_t>(
+    std::vector<const void*>&);
+template void ReaderBase::ensure_continuous_domain_written<uint32_t>(
+    std::vector<const void*>&);
+template void ReaderBase::ensure_continuous_domain_written<int64_t>(
+    std::vector<const void*>&);
+template void ReaderBase::ensure_continuous_domain_written<uint64_t>(
+    std::vector<const void*>&);
+template void ReaderBase::validate_attribute_order<int8_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
+template void ReaderBase::validate_attribute_order<uint8_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
+template void ReaderBase::validate_attribute_order<int16_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
+template void ReaderBase::validate_attribute_order<uint16_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
+template void ReaderBase::validate_attribute_order<int32_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
+template void ReaderBase::validate_attribute_order<uint32_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
+template void ReaderBase::validate_attribute_order<int64_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
+template void ReaderBase::validate_attribute_order<uint64_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
 
 }  // namespace sm
 }  // namespace tiledb

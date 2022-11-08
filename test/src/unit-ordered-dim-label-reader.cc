@@ -35,6 +35,7 @@
 using namespace Catch::Matchers;
 
 #include <test/support/src/helpers.h>
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
@@ -868,4 +869,215 @@ TEST_CASE_METHOD(
   write_labels(26, 35, {1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0});
   auto index = read_labels({0.85, 1.25, 0.15, 0.75, 1.75, 2.05});
   CHECK(index == std::vector({24, 27, 17, 22, 33, 35}));
+}
+
+TEST_CASE_METHOD(
+    CPPOrderedDimLabelReaderFixedIntFx,
+    "Ordered dimension label reader: fixed int labels, discountinuity",
+    "[ordered-dim-label-reader][fixed][int][discountinuity]") {
+  SECTION("Test 1") {
+    write_labels(16, 20, {1, 2, 3, 4, 5});
+    write_labels(22, 25, {7, 8, 9, 10});
+  }
+
+  SECTION("Test 2") {
+    write_labels(16, 20, {1, 2, 3, 4, 5});
+    write_labels(21, 25, {6, 7, 8, 9, 10});
+    write_labels(27, 27, {12});
+  }
+
+  REQUIRE_THROWS_WITH(
+      read_labels({8, 9}),
+      "Error: Internal TileDB uncaught exception; ReaderBase: Discontiuity "
+      "found in array domain");
+}
+
+TEST_CASE_METHOD(
+    CPPOrderedDimLabelReaderFixedIntFx,
+    "Ordered dimension label reader: fixed int labels, out of order",
+    "[ordered-dim-label-reader][fixed][int][out-of-order]") {
+  SECTION("Non tile aligned, overlapped 1") {
+    write_labels(11, 20, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
+    write_labels(15, 16, {3, 6});
+  }
+
+  SECTION("Non tile aligned, overlapped 2") {
+    write_labels(11, 20, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
+    write_labels(15, 16, {5, 8});
+  }
+
+  SECTION("Non tile aligned, overlapped 3") {
+    write_labels(11, 30, {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
+                          11, 12, 13, 14, 15, 16, 17, 18, 19, 20});
+    write_labels(15, 26, {3, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16});
+  }
+
+  SECTION("Non tile aligned, overlapped 4") {
+    write_labels(11, 30, {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
+                          11, 12, 13, 14, 15, 16, 17, 18, 19, 20});
+    write_labels(15, 26, {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 18});
+  }
+
+  SECTION("Tile aligned validate min") {
+    write_labels(16, 20, {1, 2, 3, 4, 5});
+    write_labels(21, 25, {4, 7, 8, 9, 10});
+  }
+
+  SECTION("Non tile aligned, contiguous, validate min") {
+    write_labels(16, 21, {1, 2, 3, 4, 5, 6});
+    write_labels(22, 25, {5, 8, 9, 10});
+  }
+
+  SECTION("Tile aligned, overlapped, validate min") {
+    write_labels(6, 15, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
+    write_labels(11, 20, {4, 5, 6, 7, 8, 9, 10, 11, 12, 13});
+  }
+
+  SECTION("Tile aligned validate max") {
+    write_labels(21, 25, {4, 7, 8, 9, 10});
+    write_labels(16, 20, {1, 2, 3, 4, 5});
+  }
+
+  SECTION("Non tile aligned, contiguous, validate max") {
+    write_labels(22, 25, {5, 8, 9, 10});
+    write_labels(16, 21, {1, 2, 3, 4, 5, 6});
+  }
+
+  SECTION("Tile aligned, overlapped, validate max") {
+    write_labels(16, 25, {4, 5, 6, 7, 8, 9, 10, 11, 12, 13});
+    write_labels(11, 20, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
+  }
+
+  REQUIRE_THROWS_WITH(
+      read_labels({8, 9}),
+      "Error: Internal TileDB uncaught exception; ReaderBase: Attribute out of "
+      "order");
+}
+
+TEST_CASE_METHOD(
+    CPPOrderedDimLabelReaderFixedDoubleFx,
+    "Ordered dimension label reader: fixed double labels, out of order",
+    "[ordered-dim-label-reader][fixed][double][out-of-order]") {
+  SECTION("Non tile aligned, overlapped 1") {
+    write_labels(11, 20, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0});
+    write_labels(15, 16, {0.3, 0.6});
+  }
+
+  SECTION("Non tile aligned, overlapped 2") {
+    write_labels(11, 20, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0});
+    write_labels(15, 16, {0.5, 0.8});
+  }
+
+  SECTION("Non tile aligned, overlapped 3") {
+    write_labels(11, 30, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+                          1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0});
+    write_labels(
+        15, 26, {0.3, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6});
+  }
+
+  SECTION("Non tile aligned, overlapped 4") {
+    write_labels(11, 30, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+                          1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0});
+    write_labels(
+        15, 26, {0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.8});
+  }
+
+  SECTION("Tile aligned validate min") {
+    write_labels(16, 20, {0.1, 0.2, 0.3, 0.4, 0.5});
+    write_labels(21, 25, {0.4, 0.7, 0.8, 0.9, 1.0});
+  }
+
+  SECTION("Non tile aligned, contiguous, validate min") {
+    write_labels(16, 21, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6});
+    write_labels(22, 25, {0.5, 0.8, 0.9, 1.0});
+  }
+
+  SECTION("Tile aligned, overlapped, validate min") {
+    write_labels(6, 15, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0});
+    write_labels(11, 20, {0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3});
+  }
+
+  SECTION("Tile aligned validate max") {
+    write_labels(21, 25, {0.4, 0.7, 0.8, 0.9, 1.0});
+    write_labels(16, 20, {0.1, 0.2, 0.3, 0.4, 0.5});
+  }
+
+  SECTION("Non tile aligned, contiguous, validate max") {
+    write_labels(22, 25, {0.5, 0.8, 0.9, 1.0});
+    write_labels(16, 21, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6});
+  }
+
+  SECTION("Tile aligned, overlapped, validate max") {
+    write_labels(16, 25, {0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3});
+    write_labels(11, 20, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0});
+  }
+
+  REQUIRE_THROWS_WITH(
+      read_labels({0.8, 0.9}),
+      "Error: Internal TileDB uncaught exception; ReaderBase: Attribute out of "
+      "order");
+}
+
+TEST_CASE_METHOD(
+    CPPOrderedDimLabelReaderVarFx,
+    "Ordered dimension label reader: var labels, out of order",
+    "[ordered-dim-label-reader][var][out-of-order]") {
+  SECTION("Non tile aligned, overlapped 1") {
+    write_labels(11, 20, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0});
+    write_labels(15, 16, {0.3, 0.6});
+  }
+
+  SECTION("Non tile aligned, overlapped 2") {
+    write_labels(11, 20, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0});
+    write_labels(15, 16, {0.5, 0.8});
+  }
+
+  SECTION("Non tile aligned, overlapped 3") {
+    write_labels(11, 30, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+                          1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0});
+    write_labels(
+        15, 26, {0.3, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6});
+  }
+
+  SECTION("Non tile aligned, overlapped 4") {
+    write_labels(11, 30, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+                          1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0});
+    write_labels(
+        15, 26, {0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.8});
+  }
+
+  SECTION("Tile aligned validate min") {
+    write_labels(16, 20, {0.1, 0.2, 0.3, 0.4, 0.5});
+    write_labels(21, 25, {0.4, 0.7, 0.8, 0.9, 1.0});
+  }
+
+  SECTION("Non tile aligned, contiguous, validate min") {
+    write_labels(16, 21, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6});
+    write_labels(22, 25, {0.5, 0.8, 0.9, 1.0});
+  }
+
+  SECTION("Tile aligned, overlapped, validate min") {
+    write_labels(6, 15, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0});
+    write_labels(11, 20, {0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3});
+  }
+
+  SECTION("Tile aligned validate max") {
+    write_labels(21, 25, {0.4, 0.7, 0.8, 0.9, 1.0});
+    write_labels(16, 20, {0.1, 0.2, 0.3, 0.4, 0.5});
+  }
+
+  SECTION("Non tile aligned, contiguous, validate max") {
+    write_labels(22, 25, {0.5, 0.8, 0.9, 1.0});
+    write_labels(16, 21, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6});
+  }
+
+  SECTION("Tile aligned, overlapped, validate max") {
+    write_labels(16, 25, {0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3});
+    write_labels(11, 20, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0});
+  }
+
+  REQUIRE_THROWS_WITH(
+      read_labels({0.8, 0.9}),
+      "Error: Internal TileDB uncaught exception; ReaderBase: Attribute out of "
+      "order");
 }

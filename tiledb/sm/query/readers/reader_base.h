@@ -103,6 +103,149 @@ class ReaderBase : public StrategyBase {
     }
   };
 
+  class AttributeOrderValidationData {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+    AttributeOrderValidationData() = delete;
+
+    /**
+     * Construct a new Order Validation Data object.
+     *
+     * @param num_frags Number of fragments.
+     */
+    AttributeOrderValidationData(uint64_t num_frags)
+        : result_tiles_to_load_(num_frags)
+        , value_validated_(num_frags)
+        , tile_to_compare_against_(num_frags) {
+    }
+
+    /* ********************************* */
+    /*                 API               */
+    /* ********************************* */
+
+    /**
+     * Add a tile to compare against when running the order validation against
+     * tile data.
+     *
+     * @param f Current fragment index.
+     * @param is_lower_bound Is this for the lower bound or upper bound.
+     * @param f_to_compare Fragment index of the tile to compare against.
+     * @param t_to_compare Tile index of the tile to compare against.
+     * @param schema Array schema.
+     */
+    inline void add_tile_to_load(
+        unsigned f,
+        bool is_lower_bound,
+        uint64_t f_to_compare,
+        uint64_t t_to_compare,
+        const ArraySchema& schema) {
+      auto it = result_tiles_to_load_[f].find(t_to_compare);
+      if (it == result_tiles_to_load_[f].end()) {
+        result_tiles_to_load_[f].emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(t_to_compare),
+            std::forward_as_tuple(f_to_compare, t_to_compare, schema));
+      }
+
+      if (is_lower_bound) {
+        tile_to_compare_against_[f].first = t_to_compare;
+      } else {
+        tile_to_compare_against_[f].second = t_to_compare;
+      }
+    }
+
+    /**
+     * Return the min validated value for a fragment.
+     *
+     * @param f Fragment index.
+     * @return reference to the min validated value.
+     */
+    inline bool& min_validated(unsigned f) {
+      return value_validated_[f].first;
+    }
+
+    /**
+     * Return the max validated value for a fragment.
+     *
+     * @param f Fragment index.
+     * @return reference to the max validated value.
+     */
+    inline bool& max_validated(unsigned f) {
+      return value_validated_[f].second;
+    }
+
+    /**
+     * Return the tile, for the fragment min, to compare against.
+     *
+     * @param f Fragment index.
+     * @return Tile to compare against.
+     */
+    inline ResultTile* min_tile_to_compare_against(unsigned f) {
+      return &result_tiles_to_load_[f][tile_to_compare_against_[f].first];
+    }
+
+    /**
+     * Return the tile, for the fragment max, to compare against.
+     *
+     * @param f Fragment index.
+     * @return Tile to compare against.
+     */
+    inline ResultTile* max_tile_to_compare_against(unsigned f) {
+      return &result_tiles_to_load_[f][tile_to_compare_against_[f].second];
+    }
+
+    /** Returns 'true' if tiles need to be loaded. */
+    inline bool need_to_load_tiles() {
+      for (auto& rt_map : result_tiles_to_load_) {
+        if (!rt_map.empty()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    /** Returns a vector of pointers to tiles to load. */
+    std::vector<ResultTile*> tiles_to_load() {
+      std::vector<ResultTile*> ret;
+      uint64_t size = 0;
+      for (auto& rt_map : result_tiles_to_load_) {
+        size += rt_map.size();
+      }
+
+      ret.reserve(size);
+      for (auto& rt_map : result_tiles_to_load_) {
+        for (auto& rt : rt_map) {
+          ret.emplace_back(&rt.second);
+        }
+      }
+
+      return ret;
+    }
+
+   private:
+    /* ********************************* */
+    /*         PRIVATE ATTRIBUTES        */
+    /* ********************************* */
+
+    /** Map of result tiles to load, per fragments. */
+    std::vector<std::unordered_map<uint64_t, ResultTile>> result_tiles_to_load_;
+
+    /**
+     * Vector of pairs to store, per fragment, which min/max has been validated
+     * already.
+     */
+    std::vector<std::pair<bool, bool>> value_validated_;
+
+    /**
+     * Vector of pairs to store, per fragment, which tile we should compate data
+     * against for the min/max. The value is an index into
+     * `result_tiles_to_load_`.
+     */
+    std::vector<std::pair<uint64_t, uint64_t>> tile_to_compare_against_;
+  };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -741,6 +884,117 @@ class ReaderBase : public StrategyBase {
       const bool var_size,
       const bool nullable) const;
 
+  /**
+   * Cache data to be used by dimension label code.
+   *
+   * @tparam Index type.
+   * @return non empty domain, non empty domains, fragment first array tile
+   * indexes.
+   */
+  template <typename IndexType>
+  tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+  cache_dimension_label_data();
+
+  /**
+   * Ensures a continuous (with no holes) domain is written. Compute non empty
+   * domain at the same time.
+   *
+   * @tparam Index type.
+   * @param non_empty_domains Vector of pointers to the non empty domains for
+   * each fragments.
+   */
+  template <typename IndexType>
+  void ensure_continuous_domain_written(
+      std::vector<const void*>& non_empty_domains);
+
+  /**
+   * Computes, for attribute ordering check, for a fragment if the non empty
+   * domain bounds are already validated by previous fragments.
+   *
+   * @tparam Index type.
+   * @param array_min_idx Minimum index value for the array.
+   * @param array_max_idx Maximum index value for the array.
+   * @param f Fragment index.
+   * @param non_empty_domains Vector of pointers to the non empty domains for
+   * each fragments.
+   * @return Min validated, max validated.
+   */
+  template <typename IndexType>
+  std::pair<bool, bool> attribute_order_ned_bounds_already_validated(
+      IndexType array_min_idx,
+      IndexType array_max_idx,
+      uint64_t f,
+      std::vector<const void*>& non_empty_domains);
+
+  /**
+   * Validate the attribute order using the tile min/max. The list of tiles to
+   * load to process the remaining bounds is returned in
+   * AttributeOrderValidationData with the list of bounds that are already
+   * validated.
+   *
+   * @tparam Index type
+   * @tparam Attribute type
+   * @param attribute_name Name of the attribute to validate.
+   * @param increasing_data Is the order of the data increasing?
+   * @param array_non_empty_domain Range storing the array non empty domain.
+   * @param non_empty_domains Pointer, per fragment, to the non empty domains.
+   * @param frag_first_array_tile_idx First tile index (in full domain), per
+   * fragment.
+   * @return Order validation data.
+   */
+  template <typename IndexType, typename AttributeType>
+  void validate_attribute_order(
+      std::string& attribute_name,
+      bool increasing_data,
+      Range& array_non_empty_domain,
+      std::vector<const void*>& non_empty_domains,
+      std::vector<uint64_t>& frag_first_array_tile_idx);
+
+  /**
+   * Validate the attribute order using the tile min/max. The list of tiles to
+   * load to process the remaining bounds is returned in
+   * AttributeOrderValidationData with the list of bounds that are already
+   * validated.
+   *
+   * @tparam Index type
+   * @param attribute_type Type of the attribute to validate.
+   * @param attribute_name Name of the attribute to validate.
+   * @param increasing_data Is the order of the data increasing?
+   * @param array_non_empty_domain Range storing the array non empty domain.
+   * @param non_empty_domains Pointer, per fragment, to the non empty domains.
+   * @param frag_first_array_tile_idx First tile index (in full domain), per
+   * fragment.
+   */
+  template <typename IndexType>
+  void validate_attribute_order(
+      Datatype attribute_type,
+      std::string& attribute_name,
+      bool increasing_data,
+      Range& array_non_empty_domain,
+      std::vector<const void*>& non_empty_domains,
+      std::vector<uint64_t>& frag_first_array_tile_idx);
+
+  /**
+   * Complete order validation after required tiles have been loaded by the
+   * reader.
+   *
+   * @tparam Index type
+   * @tparam Attribute type
+   * @param attribute_name Name of the attribute to validate.
+   * @param increasing_data Is the order of the data increasing?
+   * @param non_empty_domains Pointer, per fragment, to the non empty domains.
+   * @param frag_first_array_tile_idx First tile index (in full domain), per
+   * fragment.
+   * @param order_validation_data Order validation data.
+   */
+  template <typename IndexType, typename AttributeType>
+  void validate_attribute_order_with_tile_data(
+      std::string& attribute_name,
+      bool increasing_data,
+      std::vector<const void*>& non_empty_domains,
+      std::vector<uint64_t>& frag_first_array_tile_idx,
+      AttributeOrderValidationData& order_validation_data);
+
  private:
   /**
    * @brief Class that stores all the storage needed to keep bitsort
@@ -759,7 +1013,7 @@ class ReaderBase : public StrategyBase {
   /* ********************************* */
 
   /**
-   * @brief Calculate Hilbert values. Used to pass in a Hilbert
+   * Calculate Hilbert values. Used to pass in a Hilbert
    * comparator to the read-reverse path.
    *
    * @param domain_buffers
@@ -770,12 +1024,12 @@ class ReaderBase : public StrategyBase {
       std::vector<uint64_t>& hilbert_values) const;
 
   /**
-   * @brief Constructs the bitsort metadata object.
+   * Constructs the bitsort metadata object.
    *
    * @tparam CmpObject The comparator object being constructed.
    * @param tile Fixed tile that is being unfiltered.
-   * @param bitsort_storage Storage for all the vectors needed to construct the
-   * bitsort filter.
+   * @param bitsort_storage Storage for all the vectors needed to construct
+   * the bitsort filter.
    * @return BitSortFilterMetadataType the constructed argument.
    */
 
