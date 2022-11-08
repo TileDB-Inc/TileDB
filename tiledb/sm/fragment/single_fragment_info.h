@@ -191,82 +191,10 @@ class SingleFragmentInfo {
       const std::vector<Datatype>& dim_types) const {
     std::stringstream ss;
     for (uint32_t d = 0; d < (uint32_t)dim_types.size(); ++d) {
-      switch (dim_types[d]) {
-        case Datatype::INT8:
-          ss << "[" << ((int8_t*)non_empty_domain_[d].data())[0] << ", "
-             << ((int8_t*)non_empty_domain_[d].data())[1] << "]";
-          break;
-        case Datatype::UINT8:
-          ss << "[" << ((uint8_t*)non_empty_domain_[d].data())[0] << ", "
-             << ((uint8_t*)non_empty_domain_[d].data())[1] << "]";
-          break;
-        case Datatype::INT16:
-          ss << "[" << ((int16_t*)non_empty_domain_[d].data())[0] << ", "
-             << ((int16_t*)non_empty_domain_[d].data())[1] << "]";
-          break;
-        case Datatype::UINT16:
-          ss << "[" << ((uint16_t*)non_empty_domain_[d].data())[0] << ", "
-             << ((uint16_t*)non_empty_domain_[d].data())[1] << "]";
-          break;
-        case Datatype::INT32:
-          ss << "[" << ((int32_t*)non_empty_domain_[d].data())[0] << ", "
-             << ((int32_t*)non_empty_domain_[d].data())[1] << "]";
-          break;
-        case Datatype::UINT32:
-          ss << "[" << ((uint32_t*)non_empty_domain_[d].data())[0] << ", "
-             << ((uint32_t*)non_empty_domain_[d].data())[1] << "]";
-          break;
-        case Datatype::INT64:
-          ss << "[" << ((int64_t*)non_empty_domain_[d].data())[0] << ", "
-             << ((int64_t*)non_empty_domain_[d].data())[1] << "]";
-          break;
-        case Datatype::UINT64:
-          ss << "[" << ((uint64_t*)non_empty_domain_[d].data())[0] << ", "
-             << ((uint64_t*)non_empty_domain_[d].data())[1] << "]";
-          break;
-        case Datatype::FLOAT32:
-          ss << "[" << ((float*)non_empty_domain_[d].data())[0] << ", "
-             << ((float*)non_empty_domain_[d].data())[1] << "]";
-          break;
-        case Datatype::FLOAT64:
-          ss << "[" << ((double*)non_empty_domain_[d].data())[0] << ", "
-             << ((double*)non_empty_domain_[d].data())[1] << "]";
-          break;
-        case Datatype::DATETIME_YEAR:
-        case Datatype::DATETIME_MONTH:
-        case Datatype::DATETIME_WEEK:
-        case Datatype::DATETIME_DAY:
-        case Datatype::DATETIME_HR:
-        case Datatype::DATETIME_MIN:
-        case Datatype::DATETIME_SEC:
-        case Datatype::DATETIME_MS:
-        case Datatype::DATETIME_US:
-        case Datatype::DATETIME_NS:
-        case Datatype::DATETIME_PS:
-        case Datatype::DATETIME_FS:
-        case Datatype::DATETIME_AS:
-        case Datatype::TIME_HR:
-        case Datatype::TIME_MIN:
-        case Datatype::TIME_SEC:
-        case Datatype::TIME_MS:
-        case Datatype::TIME_US:
-        case Datatype::TIME_NS:
-        case Datatype::TIME_PS:
-        case Datatype::TIME_FS:
-        case Datatype::TIME_AS:
-          ss << "[" << ((int64_t*)non_empty_domain_[d].data())[0] << ", "
-             << ((int64_t*)non_empty_domain_[d].data())[1] << "]";
-          break;
-        case Datatype::STRING_ASCII:
-          ss << "[" << std::string(non_empty_domain_[d].start_str()) << ", "
-             << std::string(non_empty_domain_[d].end_str()) << "]";
-          break;
-        default:
-          assert(false);
-          break;
-      }
-      if (d != (uint32_t)dim_types.size() - 1)
+      ss << type::range_str(non_empty_domain_[d], dim_types[d]);
+      if (d != (uint32_t)dim_types.size() - 1) {
         ss << " x ";
+      }
     }
 
     return ss.str();
