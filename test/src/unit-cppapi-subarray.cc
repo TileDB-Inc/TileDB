@@ -748,7 +748,7 @@ TEST_CASE(
   }
 
   // Resubmit
-  query.set_subarray(subarray);
+  // query.set_subarray(subarray);
   st = query.submit();
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
@@ -758,7 +758,7 @@ TEST_CASE(
   REQUIRE(data[1] == 'm');
 
   // Resubmit
-  query.set_subarray(subarray);
+  // query.set_subarray(subarray);
   st = query.submit();
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
@@ -773,7 +773,7 @@ TEST_CASE(
   }
 
   // Resubmit
-  query.set_subarray(subarray);
+  // query.set_subarray(subarray);
   st = query.submit();
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
@@ -788,7 +788,7 @@ TEST_CASE(
   }
 
   // Resubmit
-  query.set_subarray(subarray);
+  // query.set_subarray(subarray);
   st = query.submit();
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
@@ -803,7 +803,7 @@ TEST_CASE(
   }
 
   // Resubmit
-  query.set_subarray(subarray);
+  // query.set_subarray(subarray);
   st = query.submit();
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
@@ -818,7 +818,7 @@ TEST_CASE(
   }
 
   // Resubmit
-  query.set_subarray(subarray);
+  // query.set_subarray(subarray);
   st = query.submit();
   if (test::use_refactored_sparse_global_order_reader()) {
     REQUIRE(st == tiledb::Query::Status::COMPLETE);
@@ -1036,7 +1036,7 @@ TEST_CASE(
     REQUIRE(data[0] == 'l');
   }
 
-  query.set_subarray(subarray);
+  // query.set_subarray(subarray);
   st = query.submit();
   REQUIRE(st == tiledb::Query::Status::COMPLETE);
   result_elts = query.result_buffer_elements();
