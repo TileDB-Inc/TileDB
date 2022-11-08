@@ -34,12 +34,10 @@
 #define TILEDB_WATCHDOG_H
 
 #include <condition_variable>
-#include <functional>
 #include <mutex>
 #include <thread>
 
 #include "tiledb/common/status.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
@@ -64,11 +62,9 @@ class Watchdog {
   /**
    * Initializes the Watchdog thread.
    *
-   * @param cancel_all_tasks Function to call to cancel all tasks on a storage
-   * manager object.
    * @return Status
    */
-  Status initialize(std::function<void(StorageManager*)> cancel_all_tasks);
+  Status initialize();
 
  private:
   /** Condition variable for coordinating with the watchdog thread. */
@@ -82,9 +78,6 @@ class Watchdog {
 
   /** Watchdog thread handle. */
   std::thread thread_;
-
-  /** Function to call to cancel tasks on a storage manager. */
-  std::function<void(StorageManager* sm)> cancel_all_tasks_;
 
   /** Constructor. */
   Watchdog();

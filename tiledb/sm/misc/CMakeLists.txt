@@ -156,7 +156,7 @@ if (TILEDB_TESTS)
   target_link_libraries(unit_misc PRIVATE math)
   find_package(Catch_EP REQUIRED)
   target_link_libraries(unit_misc PUBLIC Catch2::Catch2WithMain)
-  target_link_libraries(unit_misc PUBLIC global_state tiledb_test_support_lib uuid)
+  target_link_libraries(unit_misc PUBLIC tiledb_test_support_lib uuid)
   target_include_directories(unit_misc
     PRIVATE
     "${CMAKE_SOURCE_DIR}"

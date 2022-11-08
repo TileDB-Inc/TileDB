@@ -53,27 +53,21 @@ namespace sm {
 
 namespace utils {
 
-namespace https {
-std::string find_ca_certs() {
 #ifdef __linux__
-  // We attempt to find the linux ca cert bundle
-  // This only needs to happen one time, and then we will use the file found
-  // for each s3/rest call as appropriate
-
+namespace https {
+std::string find_ca_certs_linux(const Posix& posix) {
   // Check ever cert file location to see if the certificate exists
   for (const std::string& cert : constants::cert_files_linux) {
     // Check if the file exists, any errors are treated as the file not existing
-    if (Posix::is_file_static(cert)) {
+    if (posix.is_file(cert)) {
       return cert;
     }
   }
   // Could not find the ca bundle
   return "";
-#else
-  return "";
-#endif
 }
 }  // namespace https
+#endif
 
 /* ****************************** */
 /*         TYPE FUNCTIONS         */

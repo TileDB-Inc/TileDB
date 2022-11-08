@@ -107,10 +107,6 @@ StorageManagerCanonical::StorageManagerCanonical(
   throw_if_not_ok(init());
 }
 
-void cancel_all_tasks_global(StorageManager* sm) {
-  throw_if_not_ok(sm->cancel_all_tasks());
-}
-
 Status StorageManagerCanonical::init() {
   // Get config params
   bool found = false;
@@ -125,8 +121,7 @@ Status StorageManagerCanonical::init() {
   // GlobalState must be initialized before `vfs->init` because S3::init calls
   // GetGlobalState
   auto& global_state = global_state::GlobalState::GetGlobalState();
-  RETURN_NOT_OK(global_state.init(
-      cancel_all_tasks_global, utils::https::find_ca_certs(), config_));
+  RETURN_NOT_OK(global_state.init(config_));
 
   vfs_ = tdb_new(VFS, stats_, compute_tp_, io_tp_, config_);
 #ifdef TILEDB_SERIALIZATION
@@ -363,11 +358,10 @@ tuple<
 StorageManagerCanonical::array_open_for_writes(Array* array) {
   // Checks
   if (!vfs_->supports_uri_scheme(array->array_uri()))
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot open array; URI scheme unsupported.")),
-        nullopt,
-        nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot open array; URI scheme unsupported.")),
+            nullopt,
+            nullopt};
 
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
@@ -386,10 +380,9 @@ StorageManagerCanonical::array_open_for_writes(Array* array) {
       err << version;
       err << ") is not the library format version (";
       err << constants::format_version << ")";
-      return {
-          logger_->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
+      return {logger_->status(Status_StorageManagerError(err.str())),
+              nullopt,
+              nullopt};
     }
   } else {
     if (version > constants::format_version) {
@@ -398,10 +391,9 @@ StorageManagerCanonical::array_open_for_writes(Array* array) {
       err << version;
       err << ") is newer than library format version (";
       err << constants::format_version << ")";
-      return {
-          logger_->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
+      return {logger_->status(Status_StorageManagerError(err.str())),
+              nullopt,
+              nullopt};
     }
   }
 
@@ -420,11 +412,10 @@ StorageManagerCanonical::array_load_fragments(
   // Check if the array is open
   auto it = open_arrays_.find(array);
   if (it == open_arrays_.end()) {
-    return {
-        logger_->status(Status_StorageManagerError(
-            std::string("Cannot load array fragments from ") +
-            array->array_uri().to_string() + "; Array not open")),
-        nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                std::string("Cannot load array fragments from ") +
+                array->array_uri().to_string() + "; Array not open")),
+            nullopt};
   }
 
   // Load the fragment metadata
@@ -452,13 +443,12 @@ StorageManagerCanonical::array_reopen(Array* array) {
   // Check if array is open
   auto it = open_arrays_.find(array);
   if (it == open_arrays_.end()) {
-    return {
-        logger_->status(Status_StorageManagerError(
-            std::string("Cannot reopen array ") +
-            array->array_uri().to_string() + "; Array not open")),
-        nullopt,
-        nullopt,
-        nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                std::string("Cannot reopen array ") +
+                array->array_uri().to_string() + "; Array not open")),
+            nullopt,
+            nullopt,
+            nullopt};
   }
 
   return array_open_for_reads(array);
@@ -1636,10 +1626,9 @@ StorageManagerCanonical::load_array_schema_from_uri(
   Deserializer deserializer(tile.data(), tile.size());
 
   try {
-    return {
-        Status::Ok(),
-        make_shared<ArraySchema>(
-            HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
+    return {Status::Ok(),
+            make_shared<ArraySchema>(
+                HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
   } catch (const StatusException& e) {
     return {Status_StorageManagerError(e.what()), nullopt};
   }
@@ -1652,10 +1641,9 @@ StorageManagerCanonical::load_array_schema_latest(
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot load array schema; Invalid array URI")),
-        nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot load array schema; Invalid array URI")),
+            nullopt};
 
   // Load schema from URI
   const URI& schema_uri = array_dir.latest_array_schema_uri();
@@ -1697,17 +1685,15 @@ StorageManagerCanonical::load_all_array_schemas(
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot load all array schemas; Invalid array URI")),
-        nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot load all array schemas; Invalid array URI")),
+            nullopt};
 
   const std::vector<URI>& schema_uris = array_dir.array_schema_uris();
   if (schema_uris.empty()) {
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot get the array schema vector; No array schemas found.")),
-        nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot get the array schema vector; No array schemas found.")),
+            nullopt};
   }
 
   std::vector<shared_ptr<ArraySchema>> schema_vector;

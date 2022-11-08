@@ -153,14 +153,6 @@ class Posix {
   bool is_file(const std::string& path) const;
 
   /**
-   * Checks if the input is an existing file.
-   *
-   * @param file The file to be checked.
-   * @return *True* if *file* is an existing file, and *false* otherwise.
-   */
-  static bool is_file_static(const std::string& path);
-
-  /**
    *
    * Lists files one level deep under a given path.
    *
