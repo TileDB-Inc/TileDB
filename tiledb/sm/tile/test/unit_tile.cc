@@ -1,5 +1,5 @@
 /**
- * @file unit_Tile.cc
+ * @file unit_tile.cc
  *
  * @section LICENSE
  *
@@ -49,19 +49,19 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
   CHECK(tile.size() == tile_size);
 
   // Create a buffer to write to the test Tile.
-  uint32_t* const write_buffer = static_cast<uint32_t*>(malloc(tile_size));
   const uint32_t buffer_len = tile_size / sizeof(uint32_t);
+  std::vector<uint32_t> write_buffer(buffer_len);
   for (uint32_t i = 0; i < buffer_len; ++i) {
     write_buffer[i] = i;
   }
 
   // Write the buffer to the test Tile.
-  CHECK(tile.write(write_buffer, 0, tile_size).ok());
+  CHECK(tile.write(write_buffer.data(), 0, tile_size).ok());
   CHECK(tile.size() == tile_size);
 
   // Ensure the internal data was deep-copied:
   void* tile_chunk_0 = tile.data();
-  CHECK(tile_chunk_0 != static_cast<void*>(write_buffer));
+  CHECK(tile_chunk_0 != write_buffer.data());
 
   // Test a partial read at offset 8, which should be a uint32_t with
   // a value of two.
@@ -70,11 +70,10 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
   CHECK(two == 2);
 
   // Test a full read.
-  uint32_t* const read_buffer = static_cast<uint32_t*>(malloc(tile_size));
-  memset(read_buffer, 0, tile_size);
+  std::vector<uint32_t> read_buffer(buffer_len);
   uint64_t read_offset = 0;
-  CHECK(tile.read(read_buffer, read_offset, tile_size).ok());
-  CHECK(memcmp(read_buffer, write_buffer, tile_size) == 0);
+  CHECK(tile.read(read_buffer.data(), read_offset, tile_size).ok());
+  CHECK(memcmp(read_buffer.data(), write_buffer.data(), tile_size) == 0);
 
   // Test a write at a non-zero offset. Overwrite the two at offset 8.
   uint32_t magic = 5234549;
@@ -90,32 +89,26 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
   CHECK(tile.write(&two, 8, sizeof(uint32_t)).ok());
 
   // Test a read at an out-of-bounds offset.
-  memset(read_buffer, 0, tile_size);
+  memset(read_buffer.data(), 0, tile_size);
   read_offset = tile_size;
-  CHECK(!tile.read(read_buffer, read_offset, tile_size).ok());
+  CHECK(!tile.read(read_buffer.data(), read_offset, tile_size).ok());
 
   // Test a read at a valid offset but with a size that
   // exceeds the written buffer size.
   const uint32_t large_buffer_size = tile_size * 2;
-  uint32_t* const large_read_buffer =
-      static_cast<uint32_t*>(malloc(large_buffer_size));
-  memset(large_read_buffer, 0, large_buffer_size);
+  std::vector<uint32_t> large_read_buffer(buffer_len * 2);
   read_offset = 0;
-  CHECK(!tile.read(large_read_buffer, read_offset, large_buffer_size).ok());
+  CHECK(!tile.read(large_read_buffer.data(), read_offset, large_buffer_size)
+             .ok());
 
   // Free the write buffer to ensure that it was deep-copied
   // within the initial write.
-  uint32_t* const write_buffer_copy = static_cast<uint32_t*>(malloc(tile_size));
-  memcpy(write_buffer_copy, write_buffer, tile_size);
-  free(write_buffer);
-  memset(read_buffer, 0, tile_size);
+  std::vector<uint32_t> write_buffer_copy = write_buffer;
+  write_buffer.clear();
+  memset(read_buffer.data(), 0, tile_size);
   read_offset = 0;
-  CHECK(tile.read(read_buffer, read_offset, tile_size).ok());
-  CHECK(memcmp(read_buffer, write_buffer_copy, tile_size) == 0);
-
-  free(read_buffer);
-  free(large_read_buffer);
-  free(write_buffer_copy);
+  CHECK(tile.read(read_buffer.data(), read_offset, tile_size).ok());
+  CHECK(memcmp(read_buffer.data(), write_buffer_copy.data(), tile_size) == 0);
 }
 
 TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
@@ -129,13 +122,13 @@ TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
 
   // Create a buffer to write to the first test Tile.
   const uint32_t buffer_len = tile_size / sizeof(uint32_t);
-  uint32_t* const buffer = static_cast<uint32_t*>(malloc(tile_size));
+  std::vector<uint32_t> buffer(buffer_len);
   for (uint32_t i = 0; i < buffer_len; ++i) {
     buffer[i] = i;
   }
 
   // Write the buffer to the first test Tile.
-  CHECK(tile1.write(buffer, 0, tile_size).ok());
+  CHECK(tile1.write(buffer.data(), 0, tile_size).ok());
 
   // Instantiate a second test tile with the move constructor.
   Tile tile2(std::move(tile1));
@@ -152,14 +145,10 @@ TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
 
   // Read the second test tile to verify it contains the data
   // written to the first test tile.
-  uint32_t* const read_buffer = static_cast<uint32_t*>(malloc(tile_size));
-  memset(read_buffer, 0, tile_size);
+  std::vector<uint32_t> read_buffer(buffer_len);
   uint64_t read_offset = 0;
-  CHECK(tile2.read(read_buffer, read_offset, tile_size).ok());
-  CHECK(memcmp(read_buffer, buffer, tile_size) == 0);
-
-  free(buffer);
-  free(read_buffer);
+  CHECK(tile2.read(read_buffer.data(), read_offset, tile_size).ok());
+  CHECK(memcmp(read_buffer.data(), buffer.data(), tile_size) == 0);
 }
 
 TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
@@ -173,13 +162,13 @@ TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
 
   // Create a buffer to write to the first test Tile.
   const uint32_t buffer_len = tile_size / sizeof(uint32_t);
-  uint32_t* const buffer = static_cast<uint32_t*>(malloc(tile_size));
+  std::vector<uint32_t> buffer(buffer_len);
   for (uint32_t i = 0; i < buffer_len; ++i) {
     buffer[i] = i;
   }
 
   // Write the buffer to the first test Tile.
-  CHECK(tile1.write(buffer, 0, tile_size).ok());
+  CHECK(tile1.write(buffer.data(), 0, tile_size).ok());
 
   // Instantiate a third test tile with the move constructor.
   Tile tile2 = std::move(tile1);
@@ -196,12 +185,8 @@ TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
 
   // Read the second test tile to verify it contains the data
   // written to the first test tile.
-  uint32_t* const read_buffer = static_cast<uint32_t*>(malloc(tile_size));
-  memset(read_buffer, 0, tile_size);
+  std::vector<uint32_t> read_buffer(buffer_len);
   uint64_t read_offset = 0;
-  CHECK(tile2.read(read_buffer, read_offset, tile_size).ok());
-  CHECK(memcmp(read_buffer, buffer, tile_size) == 0);
-
-  free(buffer);
-  free(read_buffer);
+  CHECK(tile2.read(read_buffer.data(), read_offset, tile_size).ok());
+  CHECK(memcmp(read_buffer.data(), buffer.data(), tile_size) == 0);
 }
