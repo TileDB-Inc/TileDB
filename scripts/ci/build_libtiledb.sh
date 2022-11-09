@@ -39,7 +39,7 @@ popd
 # Build and test libtiledb
 
 # Set up arguments for bootstrap.sh
-bootstrap_args="${bootstrap_args} --enable=verbose";
+bootstrap_args="${bootstrap_args} --enable-verbose";
 
 mkdir -p $GITHUB_WORKSPACE/build
 cd $GITHUB_WORKSPACE/build
