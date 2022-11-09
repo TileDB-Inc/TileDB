@@ -392,6 +392,8 @@ Status DenseReader::dense_read() {
   // Pre-load all attribute offsets into memory for attributes
   // in query condition to be read.
   RETURN_CANCEL_OR_ERROR(
+      load_tile_var_sizes(read_state_.partitioner_.subarray(), var_names));
+  RETURN_CANCEL_OR_ERROR(
       load_tile_offsets(read_state_.partitioner_.subarray(), names));
 
   auto&& [st, qc_result] = apply_query_condition<DimType, OffType>(
