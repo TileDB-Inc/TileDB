@@ -220,6 +220,16 @@ class ArraySchema {
   Status check_attributes(const std::vector<std::string>& attributes) const;
 
   /**
+   * Throws an error if the provided schema does not match the definition given
+   * in the dimension label reference.
+   *
+   * @param name The name of the dimension label.
+   * @param schema The dimension label schema to check.
+   */
+  void check_dimension_label_schema(
+      const std::string& name, const ArraySchema& schema) const;
+
+  /**
    * Return the filter pipeline for the given attribute/dimension (can be
    * TILEDB_COORDS).
    */

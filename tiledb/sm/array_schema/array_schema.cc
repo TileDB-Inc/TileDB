@@ -510,6 +510,74 @@ Status ArraySchema::check_attributes(
   return Status::Ok();
 }
 
+void ArraySchema::check_dimension_label_schema(
+    const std::string& name, const ArraySchema& schema) const {
+  // Check there is a dimension label with the requested name and get the
+  // dimension label reference for it.
+  auto dim_iter = dimension_label_map_.find(name);
+  if (dim_iter == dimension_label_map_.end()) {
+    throw ArraySchemaStatusException(
+        "No dimension label with the name '" + name + "'.");
+  }
+  const auto* dim_label_ref = dim_iter->second;
+
+  // Check there is only one dimension in the provided schema.
+  if (schema.dim_num() != 1) {
+    throw ArraySchemaStatusException(
+        "Invalid schema for label '" + name + "'; Schema has " +
+        std::to_string(schema.dim_num()) + " dimensions.");
+  }
+
+  // Check the dimension in the schema matches the local dimension.
+  const auto* dim_internal = dimension_ptr(dim_label_ref->dimension_id());
+  const auto* dim_provided = schema.dimension_ptr(0);
+  if (dim_provided->type() != dim_internal->type()) {
+    throw ArraySchemaStatusException(
+        "The dimension datatype of the dimension label is '" +
+        datatype_str(dim_provided->type()) + "', but expected datatype was '" +
+        datatype_str(dim_internal->type()) + "'");
+  }
+  if (dim_provided->cell_val_num() != dim_internal->cell_val_num()) {
+    throw ArraySchemaStatusException(
+        "The cell value number of the dimension in the dimension label is " +
+        std::to_string(dim_provided->cell_val_num()) +
+        ", but the expected datatype was " +
+        std::to_string(dim_internal->cell_val_num()) + ".");
+  }
+
+  // Check there is an attribute the schema with the label attribute name.
+  const auto& label_attr_name = dim_label_ref->label_attr_name();
+  if (!schema.is_attr(label_attr_name)) {
+    throw ArraySchemaStatusException(
+        "The dimension label is missing an attribute with name '" +
+        label_attr_name + "'.");
+  }
+
+  // Check the label attribute matches the expected attribute.
+  const auto* label_attr = schema.attribute(label_attr_name);
+  if (label_attr->order() != dim_label_ref->label_order()) {
+    throw ArraySchemaStatusException(
+        "The label order of the dimension label is " +
+        data_order_str(label_attr->order()) +
+        ", but the expected label order was " +
+        data_order_str(dim_label_ref->label_order()) + ".");
+  }
+  if (label_attr->type() != dim_label_ref->label_type()) {
+    throw ArraySchemaStatusException(
+        "The datatype of the dimension label is " +
+        datatype_str(label_attr->type()) +
+        ", but the expected label datatype was " +
+        datatype_str(dim_label_ref->label_type()) + ".");
+  }
+  if (label_attr->cell_val_num() != dim_label_ref->label_cell_val_num()) {
+    throw ArraySchemaStatusException(
+        "The cell value number of the label attribute in the dimension label " +
+        std::to_string(label_attr->cell_val_num()) +
+        ", but the expected cell value number was " +
+        std::to_string(dim_label_ref->label_cell_val_num()) + ".");
+  }
+}
+
 const FilterPipeline& ArraySchema::filters(const std::string& name) const {
   if (is_special_attribute(name)) {
     return coords_filters();
