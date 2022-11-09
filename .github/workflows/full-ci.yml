@@ -71,8 +71,8 @@ jobs:
 
   ci7:
     uses: ./.github/workflows/ci-linux_mac.yml
-    ci_option: Experimental
     with:
+      ci_option: Experimental
       matrix_image: ubuntu-22.04
       bootstrap_args: '--enable=experimental-features,serialization --enable-release-symbols'
 
