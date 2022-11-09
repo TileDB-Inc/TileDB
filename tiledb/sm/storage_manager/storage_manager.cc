@@ -2799,7 +2799,8 @@ void StorageManager::array_get_fragment_tile_size_extremes(
   auto process_attr = [&](FragmentMetadata& f,
                           const std::string& name,
                           bool var_size) -> void {
-    uint64_t max_frag_persisted_basic_tile_size = 0, max_frag_in_memory_basic_tile_size = 0;
+    uint64_t max_frag_persisted_basic_tile_size = 0,
+             max_frag_in_memory_basic_tile_size = 0;
     uint64_t min_frag_persisted_basic_tile_size =
                  std::numeric_limits<uint64_t>::max(),
              min_frag_in_memory_basic_tile_size =
