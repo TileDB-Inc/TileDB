@@ -2787,16 +2787,6 @@ void StorageManager::array_get_fragment_tile_size_extremes(
   tiledb_fragment_tile_size_extremes_t& mins_maxs = *tile_extreme_sizes;
   memset(&mins_maxs, 0, sizeof(mins_maxs));
 
-  // mins_maxs.max_persisted_tile_size = 0;
-
-  // mins_maxs.max_in_memory_basic_tile_size = 0;
-  // mins_maxs.max_persisted_basic_tile_size_var = 0;
-  // mins_maxs.max_in_memory_tile_size_var = 0;
-  // in_memory_validity_size doesn't currently appear to have method to
-  // obtain... is persisted/in_memory the same?
-  // mins_maxs.max_persisted_tile_size_validity = 0;
-  // mins_maxs.max_in_memory_tile_size_validity = 0;
-
   mins_maxs.min_persisted_basic_tile_size = std::numeric_limits<uint64_t>::max();
   mins_maxs.min_in_memory_basic_tile_size = std::numeric_limits<uint64_t>::max();
   mins_maxs.min_persisted_tile_size_var = std::numeric_limits<uint64_t>::max();
