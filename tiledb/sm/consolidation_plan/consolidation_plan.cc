@@ -1,11 +1,11 @@
 /**
- * @file   tiledb_experimental
+ * @file   consolidation_plan.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,15 +27,32 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the experimental C++ API for TileDB.
+ * This file implements the ConsolidationPlan class.
  */
 
-#ifndef TILEDB_EXPERIMENTAL_CPP_H
-#define TILEDB_EXPERIMENTAL_CPP_H
+#include "tiledb/sm/consolidation_plan/consolidation_plan.h"
+#include "tiledb/common/common.h"
+#include "tiledb/common/logger.h"
 
-#include "array_schema_evolution.h"
-#include "consolidation_plan_experimental.h"
-#include "group_experimental.h"
-#include "query_experimental.h"
+using namespace tiledb::sm;
+using namespace tiledb::common;
 
-#endif  // TILEDB_EXPERIMENTAL_CPP_H
+/* ****************************** */
+/*   CONSTRUCTORS & DESTRUCTORS   */
+/* ****************************** */
+
+ConsolidationPlan::ConsolidationPlan(StorageManager*, shared_ptr<Array>)
+    : num_nodes_(0)
+    , num_fragments_(num_nodes_)
+    , fragment_uris_(num_nodes_) {
+}
+
+ConsolidationPlan::~ConsolidationPlan() = default;
+
+/* ********************************* */
+/*                API                */
+/* ********************************* */
+
+/* ********************************* */
+/*          PRIVATE METHODS          */
+/* ********************************* */

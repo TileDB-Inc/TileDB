@@ -130,6 +130,10 @@ class Deleter {
     tiledb_group_free(&p);
   }
 
+  void operator()(tiledb_consolidation_plan_t* p) const {
+    tiledb_consolidation_plan_free(&p);
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

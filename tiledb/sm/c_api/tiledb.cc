@@ -6221,6 +6221,114 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
   return TILEDB_OK;
 }
 
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_alloc(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_consolidation_plan_t** consolidation_plan) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  // Create consolidation plan struct
+  *consolidation_plan = new (std::nothrow) tiledb_consolidation_plan_t;
+  if (*consolidation_plan == nullptr) {
+    auto st = Status_Error(
+        "Failed to create TileDB consolidation plan object; Memory allocation "
+        "error");
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Allocate a consolidation plan object
+  try {
+    (*consolidation_plan)->consolidation_plan_ =
+        make_shared<tiledb::sm::ConsolidationPlan>(
+            HERE(), ctx->storage_manager(), array->array_);
+  } catch (std::bad_alloc&) {
+    auto st = Status_Error(
+        "Failed to create TileDB consolidation plan object; Memory allocation "
+        "error");
+    delete *consolidation_plan;
+    *consolidation_plan = nullptr;
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  return TILEDB_OK;
+}
+
+void tiledb_consolidation_plan_free(
+    tiledb_consolidation_plan_t** consolidation_plan) {
+  if (consolidation_plan != nullptr && *consolidation_plan != nullptr) {
+    delete *consolidation_plan;
+    *consolidation_plan = nullptr;
+  }
+}
+
+int32_t tiledb_consolidation_plan_get_num_nodes(
+    tiledb_ctx_t* ctx,
+    tiledb_consolidation_plan_t* consolidation_plan,
+    uint64_t* num_nodes) noexcept {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  *num_nodes = consolidation_plan->consolidation_plan_->get_num_nodes();
+  return TILEDB_OK;
+}
+
+int32_t tiledb_consolidation_plan_get_num_fragments(
+    tiledb_ctx_t* ctx,
+    tiledb_consolidation_plan_t* consolidation_plan,
+    uint64_t node_index,
+    uint64_t* num_fragments) noexcept {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  try {
+    *num_fragments =
+        consolidation_plan->consolidation_plan_->get_num_fragments(node_index);
+  } catch (StatusException& e) {
+    auto st = Status_Error(e.what());
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_consolidation_plan_get_fragment_uri(
+    tiledb_ctx_t* ctx,
+    tiledb_consolidation_plan_t* consolidation_plan,
+    uint64_t node_index,
+    uint64_t fragment_index,
+    const char** uri) noexcept {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  try {
+    *uri = consolidation_plan->consolidation_plan_->get_fragment_uri(
+        node_index, fragment_index);
+  } catch (StatusException& e) {
+    auto st = Status_Error(e.what());
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 /* ****************************** */
@@ -9177,4 +9285,45 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
     tiledb_query_status_details_t* status) noexcept {
   return api_entry<tiledb::api::tiledb_query_get_status_details>(
       ctx, query, status);
+}
+
+int32_t tiledb_consolidation_plan_alloc(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_consolidation_plan_t** consolidation_plan) noexcept {
+  return api_entry<tiledb::api::tiledb_consolidation_plan_alloc>(
+      ctx, array, consolidation_plan);
+}
+
+void tiledb_consolidation_plan_free(
+    tiledb_consolidation_plan_t** consolidation_plan) noexcept {
+  return api_entry_void<tiledb::api::tiledb_consolidation_plan_free>(
+      consolidation_plan);
+}
+
+int32_t tiledb_consolidation_plan_get_num_nodes(
+    tiledb_ctx_t* ctx,
+    tiledb_consolidation_plan_t* consolidation_plan,
+    uint64_t* num_nodes) noexcept {
+  return api_entry<tiledb::api::tiledb_consolidation_plan_get_num_nodes>(
+      ctx, consolidation_plan, num_nodes);
+}
+
+int32_t tiledb_consolidation_plan_get_num_fragments(
+    tiledb_ctx_t* ctx,
+    tiledb_consolidation_plan_t* consolidation_plan,
+    uint64_t node_index,
+    uint64_t* num_fragments) noexcept {
+  return api_entry<tiledb::api::tiledb_consolidation_plan_get_num_fragments>(
+      ctx, consolidation_plan, node_index, num_fragments);
+}
+
+int32_t tiledb_consolidation_plan_get_fragment_uri(
+    tiledb_ctx_t* ctx,
+    tiledb_consolidation_plan_t* consolidation_plan,
+    uint64_t node_index,
+    uint64_t fragment_index,
+    const char** uri) noexcept {
+  return api_entry<tiledb::api::tiledb_consolidation_plan_get_fragment_uri>(
+      ctx, consolidation_plan, node_index, fragment_index, uri);
 }

@@ -1234,6 +1234,111 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_total_cell_num(
     tiledb_fragment_info_t* fragment_info,
     uint64_t* count) TILEDB_NOEXCEPT;
 
+/**
+ * Creates a consolidation plan object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_consolidation_plan_t* consolidation_plan;
+ * tiledb_consolidation_plan_alloc(ctx, array, &consolidation_plan);
+ * @endcode
+ *
+ * @param ctx TileDB context.
+ * @param array The array to create the plan for.
+ * @param consolidation_plan The consolidation plan object to be created and
+ * populated.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_alloc(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_consolidation_plan_t** consolidation_plan) TILEDB_NOEXCEPT;
+
+/**
+ * Frees a consolidation plan object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_consolidation_plan_free(&consolidation_plan);
+ * @endcode
+ *
+ * @param consolidation_plan The consolidation plan object to be freed.
+ */
+TILEDB_EXPORT void tiledb_consolidation_plan_free(
+    tiledb_consolidation_plan_t** consolidation_plan) TILEDB_NOEXCEPT;
+
+/**
+ * Get the number of nodes of a consolidation plan object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t num_nodes;
+ * tiledb_consolidation_plan_get_num_nodes(ctx, consolidation_plan, &num_nodes);
+ * @endcode
+ *
+ * @param ctx TileDB context.
+ * @param consolidation_plan The consolidation plan.
+ * @param num_nodes The number of nodes to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_get_num_nodes(
+    tiledb_ctx_t* ctx,
+    tiledb_consolidation_plan_t* consolidation_plan,
+    uint64_t* num_nodes) TILEDB_NOEXCEPT;
+
+/**
+ * Get the number of fragments for a specific node of a consolidation plan
+ * object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t num_fragments;
+ * tiledb_consolidation_plan_get_num_fragments(ctx, consolidation_plan, 0,
+ * &num_fragments);
+ * @endcode
+ *
+ * @param ctx TileDB context.
+ * @param consolidation_plan The consolidation plan.
+ * @param node_index The node index.
+ * @param num_fragments The number of fragments to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_get_num_fragments(
+    tiledb_ctx_t* ctx,
+    tiledb_consolidation_plan_t* consolidation_plan,
+    uint64_t node_index,
+    uint64_t* num_fragments) TILEDB_NOEXCEPT;
+
+/**
+ * Get the number of fragments for a specific node of a consolidation plan
+ * object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t num_fragments;
+ * tiledb_consolidation_plan_get_num_fragments(ctx, consolidation_plan, 0,
+ * &num_fragments);
+ * @endcode
+ *
+ * @param ctx TileDB context.
+ * @param consolidation_plan The consolidation plan.
+ * @param node_index The node index.
+ * @param fragment_index The fragment index.
+ * @param uri The fragment uri to be retreived.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_get_fragment_uri(
+    tiledb_ctx_t* ctx,
+    tiledb_consolidation_plan_t* consolidation_plan,
+    uint64_t node_index,
+    uint64_t fragment_index,
+    const char** uri) TILEDB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif
