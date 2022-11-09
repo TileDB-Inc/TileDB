@@ -741,6 +741,16 @@ class ReaderBase : public StrategyBase {
       const bool var_size,
       const bool nullable) const;
 
+  /**
+   * Computes a tile's Hilbert values for a tile.
+   *
+   * @param result_tiles Result tiles to process.
+   *
+   * @return Status.
+   */
+  template<typename ResultTileType, typename ResultCoordsType>
+  void compute_hilbert_values(std::vector<ResultTile*>& result_tiles);
+
  private:
   /**
    * @brief Class that stores all the storage needed to keep bitsort
@@ -757,17 +767,6 @@ class ReaderBase : public StrategyBase {
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
-
-  /**
-   * @brief Calculate Hilbert values. Used to pass in a Hilbert
-   * comparator to the read-reverse path.
-   *
-   * @param domain_buffers
-   * @param hilbert_values
-   */
-  void calculate_hilbert_values(
-      const DomainBuffersView& domain_buffers,
-      std::vector<uint64_t>& hilbert_values) const;
 
   /**
    * @brief Constructs the bitsort metadata object.

@@ -312,15 +312,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       TileMinHeap<CompType>& tile_queue);
 
   /**
-   * Computes a tile's Hilbert values for a tile.
-   *
-   * @param result_tiles Result tiles to process.
-   *
-   * @return Status.
-   */
-  Status compute_hilbert_values(std::vector<ResultTile*>& result_tiles);
-
-  /**
    * Update the fragment index to the larger between current one and the one
    * passed in.
    *

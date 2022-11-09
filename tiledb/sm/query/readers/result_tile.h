@@ -599,6 +599,23 @@ class ResultTile {
       const Layout& cell_order,
       const uint64_t min_cell,
       const uint64_t max_cell) const;
+  
+  /** Allocate space for the hilbert values vector. */
+  inline void allocate_hilbert_vector() {
+    hilbert_values_.resize(ResultTile::cell_num());
+  }
+
+  /** Get the hilbert value at an index. */
+  inline uint64_t hilbert_value(uint64_t i) {
+    return hilbert_values_[i];
+  }
+
+  /** Set a hilbert value. */
+  inline void set_hilbert_value(uint64_t i, uint64_t v) {
+    hilbert_values_[i] = v;
+  }
+
+  inline size_t hilbert_values_size() { return hilbert_values_.size(); }
 
  private:
   /* ********************************* */
@@ -634,6 +651,9 @@ class ResultTile {
    * dimension order.
    */
   std::vector<std::pair<std::string, optional<TileTuple>>> coord_tiles_;
+
+  /** Hilbert values for this tile. */
+  std::vector<uint64_t> hilbert_values_;
 
   /**
    * Stores the appropriate templated compute_results_dense() function based for
@@ -959,7 +979,6 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   void swap(GlobalOrderResultTile& tile) {
     ResultTileWithBitmap<uint8_t>::swap(tile);
     std::swap(used_, tile.used_);
-    std::swap(hilbert_values_, tile.hilbert_values_);
     std::swap(post_dedup_bitmap_, tile.post_dedup_bitmap_);
     std::swap(per_cell_delete_condition_, tile.per_cell_delete_condition_);
   }
@@ -1034,21 +1053,6 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
     }
   }
 
-  /** Allocate space for the hilbert values vector. */
-  inline void allocate_hilbert_vector() {
-    hilbert_values_.resize(ResultTile::cell_num());
-  }
-
-  /** Get the hilbert value at an index. */
-  inline uint64_t hilbert_value(uint64_t i) {
-    return hilbert_values_[i];
-  }
-
-  /** Set a hilbert value. */
-  inline void set_hilbert_value(uint64_t i, uint64_t v) {
-    hilbert_values_[i] = v;
-  }
-
   /** Return first cell index in bitmap. */
   uint64_t first_cell_in_bitmap() {
     uint64_t ret = 0;
@@ -1115,9 +1119,6 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
-
-  /** Hilbert values for this tile. */
-  std::vector<uint64_t> hilbert_values_;
 
   /**
    * An extra bitmap will be needed for array with no duplicates. For those,

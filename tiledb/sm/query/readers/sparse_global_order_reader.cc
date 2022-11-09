@@ -854,52 +854,6 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
 }
 
 template <class BitmapType>
-Status SparseGlobalOrderReader<BitmapType>::compute_hilbert_values(
-    std::vector<ResultTile*>& result_tiles) {
-  auto timer_se = stats_->start_timer("compute_hilbert_values");
-
-  // For easy reference.
-  auto dim_num = array_schema_.dim_num();
-
-  // Create a Hilbet class.
-  Hilbert h(dim_num);
-  auto bits = h.bits();
-  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
-
-  // Parallelize on tiles.
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
-        auto tile =
-            static_cast<GlobalOrderResultTile<BitmapType>*>(result_tiles[t]);
-        auto cell_num =
-            fragment_metadata_[tile->frag_idx()]->cell_num(tile->tile_idx());
-        auto rc = GlobalOrderResultCoords(tile, 0);
-        std::vector<uint64_t> coords(dim_num);
-
-        tile->allocate_hilbert_vector();
-        for (rc.pos_ = 0; rc.pos_ < cell_num; rc.pos_++) {
-          // Process only values in bitmap.
-          if (!tile->has_bmp() || tile->bitmap()[rc.pos_]) {
-            // Compute Hilbert number for all dimensions first.
-            for (uint32_t d = 0; d < dim_num; ++d) {
-              auto dim{array_schema_.dimension_ptr(d)};
-              coords[d] = hilbert_order::map_to_uint64(
-                  *dim, rc, d, bits, max_bucket_val);
-            }
-
-            // Now we are ready to get the final number.
-            tile->set_hilbert_value(rc.pos_, h.coords_to_hilbert(&coords[0]));
-          }
-        }
-
-        return Status::Ok();
-      });
-  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
-
-  return Status::Ok();
-}
-
-template <class BitmapType>
 void SparseGlobalOrderReader<BitmapType>::update_frag_idx(
     GlobalOrderResultTile<BitmapType>* tile, uint64_t c) {
   auto& frag_idx = read_state_.frag_idx_[tile->frag_idx()];

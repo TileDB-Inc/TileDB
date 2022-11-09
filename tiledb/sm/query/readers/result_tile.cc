@@ -93,6 +93,7 @@ void ResultTile::swap(ResultTile& tile) {
   std::swap(delete_timestamps_tile_, tile.delete_timestamps_tile_);
   std::swap(coords_tile_, tile.coords_tile_);
   std::swap(coord_tiles_, tile.coord_tiles_);
+  std::swap(hilbert_values_, tile.hilbert_values_);
   std::swap(compute_results_dense_func_, tile.compute_results_dense_func_);
   std::swap(coord_func_, tile.coord_func_);
   std::swap(compute_results_sparse_func_, tile.compute_results_sparse_func_);
