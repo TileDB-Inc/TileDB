@@ -6,7 +6,7 @@ formats: []
 version: 2
 
 sphinx:
-  configuration: doc/source/conf.py
+  configuration: tiledb/doxygen/source/conf.py
 
 python:
   version: 3.8
