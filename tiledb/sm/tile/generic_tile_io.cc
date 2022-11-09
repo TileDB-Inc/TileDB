@@ -38,7 +38,6 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
@@ -50,8 +49,10 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-GenericTileIO::GenericTileIO(StorageManager* storage_manager, const URI& uri)
-    : storage_manager_(storage_manager)
+GenericTileIO::GenericTileIO(VFS* vfs, stats::Stats* stats, ThreadPool* compute_tp, const URI& uri)
+    : vfs_(vfs)
+    , stats_(stats)
+    , compute_tp_(compute_tp)
     , uri_(uri) {
 }
 
@@ -64,7 +65,7 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
     const EncryptionKey& encryption_key,
     const Config& config) {
   auto&& [st, header_opt] =
-      read_generic_tile_header(storage_manager_, uri_, file_offset);
+      read_generic_tile_header(vfs_, uri_, file_offset);
   RETURN_NOT_OK_TUPLE(st, nullopt);
   auto& header = *header_opt;
 
@@ -94,7 +95,7 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
 
   // Read the tile.
   RETURN_NOT_OK_TUPLE(
-      storage_manager_->read(
+      vfs_->read(
           uri_,
           file_offset + tile_data_offset,
           tile.filtered_buffer().data(),
@@ -105,10 +106,10 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
   assert(tile.filtered());
   RETURN_NOT_OK_TUPLE(
       header.filters.run_reverse(
-          storage_manager_->stats(),
+          stats_,
           &tile,
           nullptr,
-          storage_manager_->compute_tp(),
+          compute_tp_,
           config,
           nullptr),
       nullopt);
@@ -119,13 +120,13 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
 
 tuple<Status, optional<GenericTileIO::GenericTileHeader>>
 GenericTileIO::read_generic_tile_header(
-    const StorageManager* sm, const URI& uri, uint64_t file_offset) {
+    VFS* vfs, const URI& uri, uint64_t file_offset) {
   GenericTileHeader header;
 
   // Read the fixed-sized part of the header from file
   tdb_unique_ptr<Buffer> header_buff(tdb_new(Buffer));
   RETURN_NOT_OK_TUPLE(
-      sm->read(
+      vfs->read(
           uri, file_offset, header_buff.get(), GenericTileHeader::BASE_SIZE),
       nullopt);
 
@@ -150,7 +151,7 @@ GenericTileIO::read_generic_tile_header(
   header_buff->reset_size();
   header_buff->reset_offset();
   RETURN_NOT_OK_TUPLE(
-      sm->read(
+      vfs->read(
           uri,
           file_offset + GenericTileHeader::BASE_SIZE,
           header_buff.get(),
@@ -173,16 +174,16 @@ Status GenericTileIO::write_generic(
   // Filter tile
   assert(!tile->filtered());
   RETURN_NOT_OK(header.filters.run_forward(
-      storage_manager_->stats(),
+      stats_,
       tile,
       nullptr,
-      storage_manager_->compute_tp()));
+      compute_tp_));
   header.persisted_size = tile->filtered_buffer().size();
   assert(tile->filtered());
 
   RETURN_NOT_OK(write_generic_tile_header(&header));
 
-  RETURN_NOT_OK(storage_manager_->write(
+  RETURN_NOT_OK(vfs_->write(
       uri_, tile->filtered_buffer().data(), tile->filtered_buffer().size()));
 
   *nbytes = GenericTileIO::GenericTileHeader::BASE_SIZE +
@@ -217,7 +218,7 @@ Status GenericTileIO::write_generic_tile_header(GenericTileHeader* header) {
   serialize_generic_tile_header(serializer, *header);
 
   // Write buffer to file
-  Status st = storage_manager_->write(uri_, data.data(), data.size());
+  Status st = vfs_->write(uri_, data.data(), data.size());
 
   return st;
 }

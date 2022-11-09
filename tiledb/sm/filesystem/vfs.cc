@@ -1189,6 +1189,19 @@ Status VFS::read(
   }
 }
 
+Status VFS::read(
+    const URI& uri,
+    uint64_t offset,
+    Buffer* buffer,
+    uint64_t nbytes) {
+  RETURN_NOT_OK(buffer->realloc(nbytes));
+  RETURN_NOT_OK(read(uri, offset, buffer->data(), nbytes));
+  buffer->set_size(nbytes);
+  buffer->reset_offset();
+
+  return Status::Ok();
+}
+
 Status VFS::read_impl(
     const URI& uri,
     const uint64_t offset,

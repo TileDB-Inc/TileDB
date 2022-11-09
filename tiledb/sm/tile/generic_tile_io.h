@@ -33,11 +33,13 @@
 #ifndef TILEDB_GENERIC_TILE_IO_H
 #define TILEDB_GENERIC_TILE_IO_H
 
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/sm/stats/stats.h"
 
 using namespace tiledb::common;
 
@@ -99,10 +101,13 @@ class GenericTileIO {
   /**
    * Constructor.
    *
-   * @param storage_manager The storage manager.
+   * @param vfs The VFS instance to use for IO
+   * @param stats The stats instance to use
+   * @param compute_tp The thread pool instance to use for filters
    * @param uri The name of the file that stores data.
    */
-  GenericTileIO(StorageManager* storage_manager, const URI& uri);
+  GenericTileIO(
+      VFS* vfs, stats::Stats* stats, ThreadPool* compute_tp, const URI& uri);
 
   GenericTileIO() = delete;
   DISABLE_COPY_AND_COPY_ASSIGN(GenericTileIO);
@@ -135,7 +140,7 @@ class GenericTileIO {
   /**
    * Reads the generic tile header from the file.
    *
-   * @param sm The StorageManager instance to use for reading.
+   * @param vfs The VFS instance to use for reading.
    * @param uri The URI of the generic tile.
    * @param file_offset The offset where the header read will begin.
    * @param encryption_key If the array is encrypted, the private encryption
@@ -143,7 +148,7 @@ class GenericTileIO {
    * @return Status, Header
    */
   static tuple<Status, optional<GenericTileHeader>> read_generic_tile_header(
-      const StorageManager* sm, const URI& uri, uint64_t file_offset);
+      VFS* vfs, const URI& uri, uint64_t file_offset);
 
   /**
    * Writes a tile generically to the file. This means that a header will be
@@ -181,8 +186,14 @@ class GenericTileIO {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The storage manager object. */
-  StorageManager* storage_manager_;
+  /** The VFS object. */
+  VFS* vfs_;
+
+  /** The stats object. */
+  stats::Stats* stats_;
+
+  /** The compute threadpool object. */
+  ThreadPool* compute_tp_;
 
   /** The file URI. */
   URI uri_;

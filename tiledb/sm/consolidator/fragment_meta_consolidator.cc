@@ -168,7 +168,11 @@ Status FragmentMetaConsolidator::consolidate(
       buff.data(),
       buff.size());
 
-  GenericTileIO tile_io(storage_manager_, uri);
+  GenericTileIO tile_io(
+          storage_manager_->vfs(),
+          storage_manager_->stats(),
+          storage_manager_->compute_tp(),
+          uri);
   uint64_t nbytes = 0;
   RETURN_NOT_OK_ELSE(
       tile_io.write_generic(&tile, enc_key, &nbytes), buff.clear());
