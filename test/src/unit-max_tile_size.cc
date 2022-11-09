@@ -85,7 +85,7 @@ struct CAPI_MaxTileSizeFx {
 
     remove_temp_dir(array_name.c_str());
 
-    // The array will be 1x4 with dimension "rows", with domain
+    // The array will be 1d with dimension "rows", with domain
     // [1,4].
     tiledb::Domain domain(ctx);
     domain.add_dimension(
@@ -205,6 +205,20 @@ struct CAPI_MaxTileSizeFx {
     return max_in_memory_tile_size;
   }
 
+  uint64_t cpp_get_fragments_extreme(const std::string& array_uri) {
+    tiledb::Context ctx;
+    tiledb::Array array(ctx, array_uri, TILEDB_READ);
+    // tiledb_fragment_tile_size_extremes_t tiledb_fragment_tile_size_extremes;
+    uint64_t max_in_memory_tile_size = 0;
+    array.get_max_in_memory_tile_size(&max_in_memory_tile_size);
+
+    if (showing_data) {
+      std::cout << "maximum in memory tile size " << max_in_memory_tile_size
+                << std::endl;
+    }
+    return max_in_memory_tile_size;
+  }
+
   tiledb::Context ctx_;
   tiledb::VFS vfs_;
 };
@@ -212,7 +226,7 @@ struct CAPI_MaxTileSizeFx {
 TEST_CASE_METHOD(
     CAPI_MaxTileSizeFx,
     "C++ API: Max tile size, dense, fixed, with consolidation",
-    "[capi][max-tile-size][dense][consolidate]") {
+    "[capi][cppapi][max-tile-size][dense][consolidate]") {
   // Name of array.
   std::string array_name("fragments_consolidation_array");
 
@@ -361,22 +375,36 @@ TEST_CASE_METHOD(
 
   tiledb::Context ctx;
 
+  uint64_t capi_max = 0; // init to avoid msvc warning as error miss inside CHECK()
+  uint64_t cppapi_max;
   // Create and write array
   create_array();
-  CHECK(get_fragments_extreme(array_name) == 0);
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 0);
+  cppapi_max=cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
   write_array_1();
-  CHECK(get_fragments_extreme(array_name) == 4 * sizeof(int32_t));
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 4 * sizeof(int32_t));
+  cppapi_max = cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
   write_array_2();
-  CHECK(get_fragments_extreme(array_name) == 4 * sizeof(int32_t));
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 4 * sizeof(int32_t));
+  cppapi_max = cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
   write_array_3();
-  CHECK(get_fragments_extreme(array_name) == 4 * sizeof(int32_t));
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 4 * sizeof(int32_t));
+  cppapi_max = cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
   write_array_4();
-  CHECK(get_fragments_extreme(array_name) == 4 * sizeof(int32_t));
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 4 * sizeof(int32_t));
+  cppapi_max=cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
 
   // consolidate
   tiledb::Array::consolidate(ctx, array_name);
 
-  CHECK(get_fragments_extreme(array_name) == 4 * sizeof(int32_t));
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 4 * sizeof(int32_t));
+  cppapi_max=cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
 
   // consolidate
   tiledb::Array::vacuum(ctx, array_name);
@@ -395,7 +423,7 @@ tiledb::Context ctx;
 
   remove_temp_dir(array_name);
 
-  // The array will be 2d array with dimensions "rows" and "cols"
+  // The array will be 1d array with dimension "rows"
   // "rows" is a string dimension type, so the domain and extent is null
   tiledb::Domain domain(ctx);
   domain.add_dimension(tiledb::Dimension::create(
@@ -410,176 +438,197 @@ tiledb::Context ctx;
 
   // Create the (empty) array on disk.
   tiledb::Array::create(array_name, schema);
-};
+  };
 
-auto  write_array = [&](uint64_t num_rows)->void {
+  auto  write_array = [&](uint64_t num_rows)->void {
 
-  std::vector<int> a_buff(num_rows);
-  auto start_val = 0;
-  std::iota(a_buff.begin(), a_buff.end(), start_val);
+    std::vector<int> a_buff(num_rows);
+    auto start_val = 0;
+    std::iota(a_buff.begin(), a_buff.end(), start_val);
 
-  // For the string dimension, convert the increasing value from int to
-  // string.
+    // For the string dimension, convert the increasing value from int to
+    // string.
 
-  std::vector<int> d1_buff(num_rows);
-  std::iota(d1_buff.begin(), d1_buff.end(), start_val + 1);
+    std::vector<int> d1_buff(num_rows);
+    std::iota(d1_buff.begin(), d1_buff.end(), start_val + 1);
 
-  std::vector<uint64_t> d1_offsets;
-  d1_offsets.reserve(num_rows);
-  std::string d1_var;
-  uint64_t offset = 0;
-  for (uint64_t i = start_val; i < start_val + num_rows; i++) {
-    //auto val = std::to_string(i);
-    auto val = std::to_string(d1_buff[i]);
-    d1_offsets.emplace_back(offset);
-    offset += val.size();
-    d1_var += val;
-  }
+    std::vector<uint64_t> d1_offsets;
+    d1_offsets.reserve(num_rows);
+    std::string d1_var;
+    uint64_t offset = 0;
+    for (uint64_t i = start_val; i < start_val + num_rows; i++) {
+      //auto val = std::to_string(i);
+      auto val = std::to_string(d1_buff[i]);
+      d1_offsets.emplace_back(offset);
+      offset += val.size();
+      d1_var += val;
+    }
 
-  // Open the array for writing and create the query.
-  tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-  tiledb::Query query(ctx, array, TILEDB_WRITE);
-  query.set_layout(TILEDB_UNORDERED) 
-      .set_data_buffer("a", a_buff)
-      .set_data_buffer("rows", d1_var)
-      .set_offsets_buffer("rows", d1_offsets)
-      ;
+    // Open the array for writing and create the query.
+    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+    tiledb::Query query(ctx, array, TILEDB_WRITE);
+    query.set_layout(TILEDB_UNORDERED) 
+        .set_data_buffer("a", a_buff)
+        .set_data_buffer("rows", d1_var)
+        .set_offsets_buffer("rows", d1_offsets)
+        ;
 
-  // Perform the write and close the array.
-  query.submit();
-  array.close();
-};
+    // Perform the write and close the array.
+    query.submit();
+    array.close();
+  };
 
 #if 0
-auto read_array = [&](int num_rows) -> void {
-  // Prepare the array for reading
-  tiledb::Array array(ctx, array_name, TILEDB_READ);
+  auto read_array = [&](int num_rows) -> void {
+    // Prepare the array for reading
+    tiledb::Array array(ctx, array_name, TILEDB_READ);
 
-  // Slice only rows "bb", "c" and cols 3, 4
-//  Subarray subarray(ctx, array);
-  //subarray.add_range(0, std::string("a"), std::string("c"));
-   //.add_range<int32_t>(1, 2, 4);
-//  subarray.add_range(0, std::string("0"), std::to_string(num_rows));
+    // Slice only rows "bb", "c" and cols 3, 4
+  //  Subarray subarray(ctx, array);
+    //subarray.add_range(0, std::string("a"), std::string("c"));
+     //.add_range<int32_t>(1, 2, 4);
+  //  subarray.add_range(0, std::string("0"), std::to_string(num_rows));
 
-  // Prepare the query
-  tiledb::Query query(ctx, array, TILEDB_READ);
-  //  query.set_subarray(subarray);
+    // Prepare the query
+    tiledb::Query query(ctx, array, TILEDB_READ);
+    //  query.set_subarray(subarray);
 
-  // Prepare the vector that will hold the result.
-  // We take an upper bound on the result size, as we do not
-  // know a priori how big it is (since the array is sparse)
-  // std::vector<int32_t> data(3);
-  // std::vector<char> rows(4);
-  // std::vector<uint64_t> rows_offsets(3);
-  // std::vector<int32_t> cols(3);
+    // Prepare the vector that will hold the result.
+    // We take an upper bound on the result size, as we do not
+    // know a priori how big it is (since the array is sparse)
+    // std::vector<int32_t> data(3);
+    // std::vector<char> rows(4);
+    // std::vector<uint64_t> rows_offsets(3);
+    // std::vector<int32_t> cols(3);
 
-  //std::vector<int> d1_buff(num_rows);
-  //std::vector<int> d2_buff(num_vals);
-  std::vector<int> a1_buff(num_rows);
-  std::vector<uint64_t> d1_offsets(num_rows);
-  //std::vector<uint8_t> a2_val(num_vals);
-  std::string d1_var;
-  d1_var.resize(num_rows * std::to_string(num_rows).size());
+    //std::vector<int> d1_buff(num_rows);
+    //std::vector<int> d2_buff(num_vals);
+    std::vector<int> a1_buff(num_rows);
+    std::vector<uint64_t> d1_offsets(num_rows);
+    //std::vector<uint8_t> a2_val(num_vals);
+    std::string d1_var;
+    d1_var.resize(num_rows * std::to_string(num_rows).size());
 
-  //query.set_layout(TILEDB_ROW_MAJOR)
-  //query.set_layout(TILEDB_GLOBAL_ORDER) 
-  query.set_layout(TILEDB_UNORDERED)
-      .set_data_buffer("a", a1_buff)  // data)
-      //.set_data_buffer("rows", d1_buff)        // rows)
-      .set_data_buffer("rows", d1_var)        // rows)
-      .set_offsets_buffer("rows", d1_offsets)  // rows_offsets)
-      ;
-  //.set_data_buffer("cols", cols);
+    //query.set_layout(TILEDB_ROW_MAJOR)
+    //query.set_layout(TILEDB_GLOBAL_ORDER) 
+    query.set_layout(TILEDB_UNORDERED)
+        .set_data_buffer("a", a1_buff)  // data)
+        //.set_data_buffer("rows", d1_buff)        // rows)
+        .set_data_buffer("rows", d1_var)        // rows)
+        .set_offsets_buffer("rows", d1_offsets)  // rows_offsets)
+        ;
+    //.set_data_buffer("cols", cols);
 
-  // Submit the query and close the array.
-  query.submit();
-  array.close();
+    // Submit the query and close the array.
+    query.submit();
+    array.close();
 
-  // Print out the results.
-  auto result_num = query.result_buffer_elements()["rows"];
-  //auto result_num = query.result_buffer_elements()["a"];
-  uint64_t rownumcnt = 0;
-  for (uint64_t r = 0; r < result_num.first; r++) {
-    // For strings we must compute the length based on the offsets
-    uint64_t row_start = d1_offsets[r];
-    uint64_t row_end =
-        //r == result_num.first - 1 ? result_num.first : d1_offsets[r + 1] - 1;
-        //r == result_num.first - 1 ? &d1_var.back()+1 : d1_offsets[r + 1] - 1;
-        r == result_num.first - 1 ? d1_var.end() - d1_var.begin() - 1 :
-        //r == result_num.second - 1 ? d1_var.end() - d1_var.begin() - 1 :
-                                    d1_offsets[r + 1] - 1;
-    // std::string i(rows.data() + row_start, row_end - row_start + 1);
-    std::string i(d1_var.data() + row_start, row_end - row_start + 1);
-    // int32_t j = cols[r];
-    //int32_t a = data[r];
-    int32_t a = a1_buff[r];
-    std::cout << rownumcnt++ << ": "
-              << "Cell (" << i  //<< ", " << j 
-      << ") has data " << a << "\n";
-  }
-};
+    // Print out the results.
+    auto result_num = query.result_buffer_elements()["rows"];
+    //auto result_num = query.result_buffer_elements()["a"];
+    uint64_t rownumcnt = 0;
+    for (uint64_t r = 0; r < result_num.first; r++) {
+      // For strings we must compute the length based on the offsets
+      uint64_t row_start = d1_offsets[r];
+      uint64_t row_end =
+          //r == result_num.first - 1 ? result_num.first : d1_offsets[r + 1] - 1;
+          //r == result_num.first - 1 ? &d1_var.back()+1 : d1_offsets[r + 1] - 1;
+          r == result_num.first - 1 ? d1_var.end() - d1_var.begin() - 1 :
+          //r == result_num.second - 1 ? d1_var.end() - d1_var.begin() - 1 :
+                                      d1_offsets[r + 1] - 1;
+      // std::string i(rows.data() + row_start, row_end - row_start + 1);
+      std::string i(d1_var.data() + row_start, row_end - row_start + 1);
+      // int32_t j = cols[r];
+      //int32_t a = data[r];
+      int32_t a = a1_buff[r];
+      std::cout << rownumcnt++ << ": "
+                << "Cell (" << i  //<< ", " << j 
+        << ") has data " << a << "\n";
+    }
+  };
 #endif
 
-    showing_data = true; //TBD: disable/remove me production
-    create_array();
-    write_array(1);
-    //CHECK(get_fragments_extreme(array_name) == 4);
-    //sizeof(uint64_t) offset for dimension greater than size of int data in attribute
-    CHECK(get_fragments_extreme(array_name) == 8);
-    write_array(2);
-    //size of data and the single offset to start of extent same
-    //CHECK(get_fragments_extreme(array_name) == 8);
-    // TBD: mismatch between reality and expectations...
-    // hmm.... why 16? something not meeting with my expectations
-    CHECK(get_fragments_extreme(array_name) == 16);
+  showing_data = true; //TBD: disable/remove me production
+  // init to avoid msvc warning as error miss inside CHECK()
+  uint64_t capi_max = 0;  
+  uint64_t cppapi_max;
+  create_array();
+  write_array(1);
+  //CHECK(get_fragments_extreme(array_name) == 4);
+  //sizeof(uint64_t) offset for dimension greater than size of int data in attribute
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 8);
+  cppapi_max = cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
+  write_array(2);
+  //size of data and the single offset to start of extent same
+  //CHECK(get_fragments_extreme(array_name) == 8);
+  // TBD: mismatch between reality and expectations...
+  // hmm.... why 16? something not meeting with my expectations
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 16);
+  cppapi_max = cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
 
-    // consolidate
-    tiledb::Array::consolidate(ctx, array_name);
-    // now '12' after consolidate(), data tiles pick up extra
-    // overhead to support time traveling.
-    // CHECK(get_fragments_extreme(array_name) == 12);
-    // TBD: mismatch between reality and expectations...
-    CHECK(get_fragments_extreme(array_name) == 24);
+  // consolidate
+  tiledb::Array::consolidate(ctx, array_name);
+  // now '12' after consolidate(), data tiles pick up extra
+  // overhead to support time traveling.
+  // CHECK(get_fragments_extreme(array_name) == 12);
+  // TBD: mismatch between reality and expectations...
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 24);
+  cppapi_max = cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
 
-    write_array(3);
-    //CHECK(get_fragments_extreme(array_name) == 12);
-    // TBD: mismatch between reality and expectations...
-    CHECK(get_fragments_extreme(array_name) == 24);
-    write_array(1);
-    //CHECK(get_fragments_extreme(array_name) == 12);
-    // TBD: mismatch between reality and expectations...
-    CHECK(get_fragments_extreme(array_name) == 24);
+  write_array(3);
+  //CHECK(get_fragments_extreme(array_name) == 12);
+  // TBD: mismatch between reality and expectations...
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 24);
+  cppapi_max = cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
+  write_array(1);
+  //CHECK(get_fragments_extreme(array_name) == 12);
+  // TBD: mismatch between reality and expectations...
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 24);
+  cppapi_max = cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
 
-    // consolidate
-    tiledb::Array::consolidate(ctx, array_name);
-    // now '28' after consolidate(), data tiles pick up extra
-    // overhead to support time traveling.
-    //CHECK(get_fragments_extreme(array_name) == 28);
-    // TBD: mismatch between reality and expectations...
-    CHECK(get_fragments_extreme(array_name) == 56);
+  // consolidate
+  tiledb::Array::consolidate(ctx, array_name);
+  // now '28' after consolidate(), data tiles pick up extra
+  // overhead to support time traveling.
+  //CHECK(get_fragments_extreme(array_name) == 28);
+  // TBD: mismatch between reality and expectations...
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 56);
+  cppapi_max = cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
 
-    // vacuum
-    tiledb::Array::vacuum(ctx, array_name);
-    // still '28', vacuuming does not remove the earlier data.
-    //CHECK(get_fragments_extreme(array_name) == 28);
-    // TBD: mismatch between reality and expectations...
-    CHECK(get_fragments_extreme(array_name) == 56);
+  // vacuum
+  tiledb::Array::vacuum(ctx, array_name);
+  // still '28', vacuuming does not remove the earlier data.
+  //CHECK(get_fragments_extreme(array_name) == 28);
+  // TBD: mismatch between reality and expectations...
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 56);
+  cppapi_max = cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
 
-    // secondary attempt still retains the overhead.
-    tiledb::Array::consolidate(ctx, array_name);
-    // now '28' after consolidate(), data tiles pick up extra
-    // overhead to support time traveling, preserved across multiple attempts.
-    //CHECK(get_fragments_extreme(array_name) == 28);
-    // TBD: mismatch between reality and expectations...
-    CHECK(get_fragments_extreme(array_name) == 56);
+  // secondary attempt still retains the overhead.
+  tiledb::Array::consolidate(ctx, array_name);
+  // now '28' after consolidate(), data tiles pick up extra
+  // overhead to support time traveling, preserved across multiple attempts.
+  //CHECK(get_fragments_extreme(array_name) == 28);
+  // TBD: mismatch between reality and expectations...
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 56);
+  cppapi_max = cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
 
-    // vacuum
-    tiledb::Array::vacuum(ctx, array_name);
-    // still '28', vacuuming does not remove the earlier data, even after a
-    // secondary consolidate against previously vacuumed data.
-    //CHECK(get_fragments_extreme(array_name) == 28);
-    // TBD: mismatch between reality and expectations...
-    CHECK(get_fragments_extreme(array_name) == 56);
+  // vacuum
+  tiledb::Array::vacuum(ctx, array_name);
+  // still '28', vacuuming does not remove the earlier data, even after a
+  // secondary consolidate against previously vacuumed data.
+  //CHECK(get_fragments_extreme(array_name) == 28);
+  // TBD: mismatch between reality and expectations...
+  CHECK((capi_max=get_fragments_extreme(array_name)) == 56);
+  cppapi_max = cpp_get_fragments_extreme(array_name);
+  CHECK(cppapi_max == capi_max);
 }
 
 TEST_CASE_METHOD(
@@ -595,7 +644,7 @@ TEST_CASE_METHOD(
 
     remove_temp_dir(array_name.c_str());
 
-    // The array will be 1x4 with dimensions "rows"  with domain
+    // The array will be 1x4 with dimension "rows"  with domain
     // [1,4].
     tiledb::Domain domain(ctx);
     domain.add_dimension(
@@ -820,7 +869,7 @@ TEST_CASE_METHOD(
         vfs.remove_dir(path.c_str());
       }
     };
-#endif
+    #endif
     remove_temp_dir(array_name);
 
     // TBD: non-existent array may -not- return zero, hmm...
@@ -870,8 +919,8 @@ TEST_CASE_METHOD(
 
     remove_temp_dir(array_name);
 
-    // The array will be 1x4 with dimensions "rows"  with domain
-    // [1,4].
+    // The array will be 1d array with dimension "rows"
+    // "rows" is a string dimension type, so the domain and extent is null
     tiledb::Domain domain(ctx);
     domain.add_dimension(
         tiledb::Dimension::create(ctx, "rows", TILEDB_STRING_ASCII, nullptr, nullptr));
@@ -996,12 +1045,10 @@ TEST_CASE_METHOD(
 
     remove_temp_dir(array_name);
 
-    // The array will be 1x4 with dimensions "rows"  with domain
-    // [1,4].
+    // The array will be 1x27 with dimension "rows"  with domain
+    // [1,27] and extent specified by parameter.
     tiledb::Domain domain(ctx);
     domain.add_dimension(
-        //tiledb::Dimension::create<int>(ctx, "rows", {{1, 24}}, 1));
-        //tiledb::Dimension::create<int>(ctx, "rows", {{1, 26}}, 26));
         tiledb::Dimension::create<int>(ctx, "rows", {{1, 27}}, extents));
 
     // The array will be dense.
@@ -1240,8 +1287,8 @@ TEST_CASE_METHOD(
 
     remove_temp_dir(array_name);
 
-    // The array will be 1x4 with dimensions "rows"  with domain
-    // [1,4].
+    // The array will be 1d with dimensions "rows"  with domain
+    // [1,27].
     tiledb::Domain domain(ctx);
     domain.add_dimension(
         tiledb::Dimension::create<int>(ctx, "rows", {{1, 27}}, extents));
@@ -1456,7 +1503,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CAPI_MaxTileSizeFx,
     "C++ API: Max tile size, serialization",
-    "[capi][max-tile-size][serialization]") {
+    "[max-tile-size][serialization]") {
   std::string array_name("tile_size_array");
   tiledb::sm::Buffer buff;
   std::vector<uint64_t> values_to_try{
