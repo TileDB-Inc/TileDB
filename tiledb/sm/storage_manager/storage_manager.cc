@@ -1277,10 +1277,9 @@ Status StorageManagerCanonical::array_get_encryption(
   const URI& schema_uri = array_dir.latest_array_schema_uri();
 
   // Read tile header
-  auto&& [st, header] =
-      GenericTileIO::read_generic_tile_header(this, schema_uri, 0);
-  RETURN_NOT_OK(st);
-  *encryption_type = static_cast<EncryptionType>(header->encryption_type);
+  auto&& header = GenericTileIO::read_generic_tile_header(
+      resources_, schema_uri, 0);
+  *encryption_type = static_cast<EncryptionType>(header.encryption_type);
 
   return Status::Ok();
 }
@@ -2053,7 +2052,7 @@ Status StorageManagerCanonical::store_metadata(
 
 Status StorageManagerCanonical::store_data_to_generic_tile(
     Tile& tile, const URI& uri, const EncryptionKey& encryption_key) {
-  GenericTileIO tile_io(this, uri);
+  GenericTileIO tile_io(resources_, uri);
   uint64_t nbytes = 0;
   Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
 
@@ -2246,7 +2245,7 @@ void StorageManagerCanonical::load_group_metadata(
 tuple<Status, optional<Tile>>
 StorageManagerCanonical::load_data_from_generic_tile(
     const URI& uri, uint64_t offset, const EncryptionKey& encryption_key) {
-  GenericTileIO tile_io(this, uri);
+  GenericTileIO tile_io(resources_, uri);
 
   // Get encryption key from config
   if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
