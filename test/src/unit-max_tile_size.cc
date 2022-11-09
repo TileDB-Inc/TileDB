@@ -117,13 +117,6 @@ struct CAPI_MaxTileSizeFx {
       memset(&buf[0], 'a' + i, nchars);
       a.emplace_back(buf);
     }
-    #if 0
-    std::vector<float> a2 = {1.1f,  1.2f,  2.1f,  2.2f,  3.1f,  3.2f,  4.1f,
-                             4.2f,  5.1f,  5.2f,  6.1f,  6.2f,  7.1f,  7.2f,
-                             8.1f,  8.2f,  9.1f,  9.2f,  10.1f, 10.2f, 11.1f,
-                             11.2f, 12.1f, 12.2f, 13.1f, 13.2f, 14.1f, 14.2f,
-                             15.1f, 15.2f, 16.1f, 16.2f};
-    #endif
 
     // Open the array for writing and create the query.
     tiledb::Array array(ctx, array_name, TILEDB_WRITE);
@@ -134,57 +127,6 @@ struct CAPI_MaxTileSizeFx {
     query.submit();
     array.close();
   };
-
-  #if 0
-  template <const int nchars = 1>
-  void read_array_attr(const char* array_name, const char* attr_name) {
-    tiledb::Context ctx;
-
-    // Prepare the array for reading
-    tiledb::Array array(ctx, array_name, TILEDB_READ);
-
-    // Slice only rows 1, 2 and cols 2, 3, 4
-    tiledb::Subarray subarray(ctx, array);
-    subarray.add_range(0, 1, 4);
-    //.add_range(1, 2, 4);
-
-    // Prepare the vector that will hold the result
-    // (of size 6 elements for "a1" and 12 elements for "a2" since
-    // it stores two floats per cell)
-    //  std::vector<char> data_a1(6);
-    //  std::vector<std::array<char,2>> data_a1(6);
-    std::vector<std::array<char, nchars>> data_a(6);
-    std::vector<float> data_a2(12);
-
-    // Prepare the query
-    tiledb::Query query(ctx, array);
-    query.set_subarray(subarray)
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer(attr_name, data_a);
-    //  .set_data_buffer("a1", data_a1);
-    //.set_data_buffer("a2", data_a2);
-
-    // Submit the query and close the array.
-    query.submit();
-    array.close();
-
-    // Print out the results.
-    std::cout << "Reading both attributes a1 and a2:\n";
-    for (int i = 0; i < 6; ++i) {
-      //    std::cout << "a1: " << data_a1[i] << ", a2: (" << data_a2[2 * i] <<
-      //    ","
-      //              << data_a2[2 * i + 1] << ")\n";
-      // std::cout << "a1: " << data_a[i][0] << "\n";
-      std::cout << attr_name << ": ";
-      for (auto i2 = 0; i2 < nchars; ++i2) {
-        std::cout << data_a[i][i2];
-      }
-
-      // std::cout << "a1: " << data_a1[i][0] << data_a1[i][1] << "\n";
-      std::cout << "\n";
-    }
-  };
-  #endif
 
   uint64_t get_fragments_extreme(const std::string& array_uri) {
     tiledb::Context ctx;
@@ -335,44 +277,6 @@ TEST_CASE_METHOD(
     array.close();
   };
 
-  #if 0
-  auto read_array = [&]() -> void {
-    tiledb::Context ctx;
-
-    // Prepare the array for reading
-    tiledb::Array array(ctx, array_name, TILEDB_READ);
-
-    // Read the entire array
-    tiledb::Subarray subarray(ctx, array);
-    subarray.add_range(0, 1, 4).add_range(1, 1, 4);
-
-    // Prepare the vector that will hold the result
-    std::vector<int> data(16);
-    std::vector<int> coords_rows(16);
-    std::vector<int> coords_cols(16);
-
-    // Prepare the query
-    tiledb::Query query(ctx, array);
-    query.set_subarray(subarray)
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", data)
-        .set_data_buffer("rows", coords_rows)
-        .set_data_buffer("cols", coords_cols);
-
-    // Submit the query and close the array.
-    query.submit();
-    array.close();
-
-    // Print out the results.
-    for (int r = 0; r < 16; r++) {
-      int i = coords_rows[r];
-      int j = coords_cols[r];
-      int a = data[r];
-      std::cout << "Cell (" << i << ", " << j << ") has data " << a << "\n";
-    }
-  };
-  #endif
-
   tiledb::Context ctx;
 
   uint64_t capi_max = 0; // init to avoid msvc warning as error miss inside CHECK()
@@ -477,76 +381,6 @@ tiledb::Context ctx;
     query.submit();
     array.close();
   };
-
-#if 0
-  auto read_array = [&](int num_rows) -> void {
-    // Prepare the array for reading
-    tiledb::Array array(ctx, array_name, TILEDB_READ);
-
-    // Slice only rows "bb", "c" and cols 3, 4
-  //  Subarray subarray(ctx, array);
-    //subarray.add_range(0, std::string("a"), std::string("c"));
-     //.add_range<int32_t>(1, 2, 4);
-  //  subarray.add_range(0, std::string("0"), std::to_string(num_rows));
-
-    // Prepare the query
-    tiledb::Query query(ctx, array, TILEDB_READ);
-    //  query.set_subarray(subarray);
-
-    // Prepare the vector that will hold the result.
-    // We take an upper bound on the result size, as we do not
-    // know a priori how big it is (since the array is sparse)
-    // std::vector<int32_t> data(3);
-    // std::vector<char> rows(4);
-    // std::vector<uint64_t> rows_offsets(3);
-    // std::vector<int32_t> cols(3);
-
-    //std::vector<int> d1_buff(num_rows);
-    //std::vector<int> d2_buff(num_vals);
-    std::vector<int> a1_buff(num_rows);
-    std::vector<uint64_t> d1_offsets(num_rows);
-    //std::vector<uint8_t> a2_val(num_vals);
-    std::string d1_var;
-    d1_var.resize(num_rows * std::to_string(num_rows).size());
-
-    //query.set_layout(TILEDB_ROW_MAJOR)
-    //query.set_layout(TILEDB_GLOBAL_ORDER) 
-    query.set_layout(TILEDB_UNORDERED)
-        .set_data_buffer("a", a1_buff)  // data)
-        //.set_data_buffer("rows", d1_buff)        // rows)
-        .set_data_buffer("rows", d1_var)        // rows)
-        .set_offsets_buffer("rows", d1_offsets)  // rows_offsets)
-        ;
-    //.set_data_buffer("cols", cols);
-
-    // Submit the query and close the array.
-    query.submit();
-    array.close();
-
-    // Print out the results.
-    auto result_num = query.result_buffer_elements()["rows"];
-    //auto result_num = query.result_buffer_elements()["a"];
-    uint64_t rownumcnt = 0;
-    for (uint64_t r = 0; r < result_num.first; r++) {
-      // For strings we must compute the length based on the offsets
-      uint64_t row_start = d1_offsets[r];
-      uint64_t row_end =
-          //r == result_num.first - 1 ? result_num.first : d1_offsets[r + 1] - 1;
-          //r == result_num.first - 1 ? &d1_var.back()+1 : d1_offsets[r + 1] - 1;
-          r == result_num.first - 1 ? d1_var.end() - d1_var.begin() - 1 :
-          //r == result_num.second - 1 ? d1_var.end() - d1_var.begin() - 1 :
-                                      d1_offsets[r + 1] - 1;
-      // std::string i(rows.data() + row_start, row_end - row_start + 1);
-      std::string i(d1_var.data() + row_start, row_end - row_start + 1);
-      // int32_t j = cols[r];
-      //int32_t a = data[r];
-      int32_t a = a1_buff[r];
-      std::cout << rownumcnt++ << ": "
-                << "Cell (" << i  //<< ", " << j 
-        << ") has data " << a << "\n";
-    }
-  };
-#endif
 
   showing_data = true; //TBD: disable/remove me production
   // init to avoid msvc warning as error miss inside CHECK()
@@ -663,115 +497,6 @@ TEST_CASE_METHOD(
     tiledb::Array::create(array_name, schema);
   };
 
-#if 0
-  auto write_array_a = [&]() -> void {
-    tiledb::Context ctx;
-
-    // Prepare some data for the array
-    std::vector<char> a = {'a',
-                          'b',
-                          'c',  
-                          'd' ,
-                          'e',
-                          'f',
-                          'g',
-                          'h'};
-    #if 0
-    std::vector<float> a2 = {1.1f,  1.2f,  2.1f,  2.2f,  3.1f,  3.2f,  4.1f,
-                             4.2f,  5.1f,  5.2f,  6.1f,  6.2f,  7.1f,  7.2f,
-                             8.1f,  8.2f,  9.1f,  9.2f,  10.1f, 10.2f, 11.1f,
-                             11.2f, 12.1f, 12.2f, 13.1f, 13.2f, 14.1f, 14.2f,
-                             15.1f, 15.2f, 16.1f, 16.2f};
-    #endif
-
-    // Open the array for writing and create the query.
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Query query(ctx, array);
-    query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a2", a);
-
-    // Perform the write and close the array.
-    query.submit();
-    array.close();
-  };
-#endif
-
-  #if 0
-  auto read_array_a1 = [&]() -> void {
-    tiledb::Context ctx;
-
-    // Prepare the array for reading
-    tiledb::Array array(ctx, array_name, TILEDB_READ);
-
-    // Slice only rows 1, 2 and cols 2, 3, 4
-    tiledb::Subarray subarray(ctx, array);
-    subarray.add_range(0, 1, 4);
-    //.add_range(1, 2, 4);
-
-    // Prepare the vector that will hold the result
-    // (of size 6 elements for "a1" and 12 elements for "a2" since
-    // it stores two floats per cell)
-    //  std::vector<char> data_a1(6);
-    //  std::vector<std::array<char,2>> data_a1(6);
-    std::vector<std::array<char, 1>> data_a1(6);
-    std::vector<float> data_a2(12);
-
-    // Prepare the query
-    tiledb::Query query(ctx, array);
-    query.set_subarray(subarray)
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a1", data_a1);
-    //.set_data_buffer("a2", data_a2);
-
-    // Submit the query and close the array.
-    query.submit();
-    array.close();
-
-    if (showing_data) {
-      // Print out the results.
-      std::cout << "Reading attribute a1:\n";
-      for (int i = 0; i < 6; ++i)
-        //    std::cout << "a1: " << data_a1[i] << ", a2: (" << data_a2[2 * i] <<
-        //    ","
-        //              << data_a2[2 * i + 1] << ")\n";
-        std::cout << "a1: " << data_a1[i][0] << "\n";
-      // std::cout << "a1: " << data_a1[i][0] << data_a1[i][1] << "\n";
-      std::cout << "\n";
-    }
-  };
-  #endif
-
-  #if 0
-  auto read_array_subselect_a2 = [&](const char* array_name) -> void {
-    tiledb::Context ctx;
-
-    // Prepare the array for reading
-    tiledb::Array array(ctx, array_name, TILEDB_READ);
-
-    // Slice only rows 1, 2
-    tiledb::Subarray subarray(ctx, array);
-    subarray.add_range(0, 1, 2);
-
-    // Prepare the vector that will hold the result
-    // (of size 6 elements for "a1")
-    std::vector<char> data_a1(6);
-
-    // Prepare the query - subselect over "a1" only
-    tiledb::Query query(ctx, array);
-    query.set_subarray(subarray)
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a2", data_a1);
-
-    // Submit the query and close the array.
-    query.submit();
-    array.close();
-
-    // Print out the results.
-    std::cout << "Subselecting on attribute a2:\n";
-    for (int i = 0; i < 6; ++i)
-      std::cout << "a2: " << data_a1[i] << "\n";
-  };
-  #endif
-
   auto array_schema_evolve_A = [&](/* const Context& ctx*/) -> void {
     tiledb::Context ctx;
     tiledb::ArraySchemaEvolution schemaEvolution =
@@ -809,17 +534,6 @@ TEST_CASE_METHOD(
     tiledb::Context ctx(cfg);
     tiledb::VFS vfs(ctx);
 
-    //const char* array_name = "max_tile_size_evolve";
-    //const char* glob_array_name = array_name.c_str();
-    //const char* array_name = glob_array_name;
-
-    #if 0
-    auto remove_temp_dir = [&vfs](const std::string& path) {
-      if (vfs.is_dir(path.c_str())) {
-        vfs.remove_dir(path.c_str());
-      }
-    };
-    #endif
     remove_temp_dir(array_name);
 
     // CHECK(get_fragments_extreme(array_name) == 0);
@@ -863,13 +577,6 @@ TEST_CASE_METHOD(
 
     const char* array_name = "max_tile_size";
 
-    #if 0
-    auto remove_temp_dir = [&vfs](const std::string& path) {
-      if (vfs.is_dir(path.c_str())) {
-        vfs.remove_dir(path.c_str());
-      }
-    };
-    #endif
     remove_temp_dir(array_name);
 
     // TBD: non-existent array may -not- return zero, hmm...
