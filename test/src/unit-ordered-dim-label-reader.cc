@@ -1051,6 +1051,11 @@ TEST_CASE_METHOD(
     write_labels(21, 25, {0.4, 0.7, 0.8, 0.9, 1.0});
   }
 
+  SECTION("Tile aligned validate min, equality") {
+    write_labels(16, 20, {0.1, 0.2, 0.3, 0.4, 0.5});
+    write_labels(21, 25, {0.5, 0.7, 0.8, 0.9, 1.0});
+  }
+
   SECTION("Non tile aligned, contiguous, validate min") {
     write_labels(16, 21, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6});
     write_labels(22, 25, {0.5, 0.8, 0.9, 1.0});

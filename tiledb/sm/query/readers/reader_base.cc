@@ -48,6 +48,7 @@
 #include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_macros.h"
+#include "tiledb/sm/query/readers/attribute_order_validator.h"
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -445,8 +446,8 @@ Status ReaderBase::load_tile_offsets(
             continue;
           }
 
-          // Not a member of array schema, this field was added in array schema
-          // evolution, ignore for this fragment's tile offsets
+          // Not a member of array schema, this field was added in array
+          // schema evolution, ignore for this fragment's tile offsets
           if (!schema->is_field(name)) {
             continue;
           }
@@ -495,8 +496,8 @@ Status ReaderBase::load_tile_var_sizes(
 
         const auto& schema = fragment->array_schema();
         for (const auto& name : names) {
-          // Not a member of array schema, this field was added in array schema
-          // evolution, ignore for this fragment's tile var sizes.
+          // Not a member of array schema, this field was added in array
+          // schema evolution, ignore for this fragment's tile var sizes.
           if (!schema->is_field(name))
             continue;
 
@@ -1520,8 +1521,8 @@ Status ReaderBase::unfilter_tiles(
             }
           }
 
-          // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
-          // 't_var' for var-sized tiles.
+          // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't'
+          // and 't_var' for var-sized tiles.
           if (!var_size) {
             if (!nullable) {
               if (array_schema_.bitsort_filter_attr().has_value()) {
@@ -1849,7 +1850,8 @@ void ReaderBase::ensure_continuous_domain_written(
   // Go through the sorted non empty domains and make sure there is no holes.
   IndexType max_value = sorted_non_empty_domains[0].second;
   for (auto& non_empty_domain : sorted_non_empty_domains) {
-    // If the start is greater than the current max, there is a discountinuity.
+    // If the start is greater than the current max, there is a
+    // discountinuity.
     if (non_empty_domain.first > max_value + 1) {
       throw ReaderBaseStatusException("Discontiuity found in array domain");
     }
@@ -1858,68 +1860,6 @@ void ReaderBase::ensure_continuous_domain_written(
     // changes.
     max_value = std::max(max_value, non_empty_domain.second);
   }
-}
-
-/**
- * Utilitary function that returns if a value is contained in a non empty
- * domain.
- *
- * @tparam Index type
- * @param v Value to check.
- * @param domain Pointer to the domain values.
- * @return Is the value in the given domain or not.
- */
-template <typename IndexType>
-bool in_domain(IndexType v, const IndexType* domain) {
-  return v >= domain[0] && v <= domain[1];
-}
-
-template <typename IndexType>
-std::pair<bool, bool> ReaderBase::attribute_order_ned_bounds_already_validated(
-    IndexType array_min_idx,
-    IndexType array_max_idx,
-    uint64_t f,
-    std::vector<const void*>& non_empty_domains) {
-  std::pair<bool, bool> ret{false, false};
-  const IndexType* non_empty_domain =
-      static_cast<const IndexType*>(non_empty_domains[f]);
-
-  // Value is the array minimum, no need to validate.
-  auto min = non_empty_domain[0];
-  if (min == array_min_idx) {
-    ret.first = true;
-  }
-
-  // Value is the array maximum, no need to validate.
-  auto max = non_empty_domain[1];
-  if (max == array_max_idx) {
-    ret.second = true;
-  }
-
-  // Look at all the more recent fragments.
-  for (uint64_t f2 = f + 1; f2 < fragment_metadata_.size(); f2++) {
-    const IndexType* non_empty_domain2 =
-        static_cast<const IndexType*>(non_empty_domains[f2]);
-    if (!ret.first) {
-      // See if the min is covered.
-      ret.first |= in_domain(min, non_empty_domain2);
-
-      // If the min if next to the max of a previous fragment, it will already
-      // be validated when processing that fragment.
-      ret.first |= min - 1 == non_empty_domain2[1];
-    }
-
-    if (!ret.second) {
-      // See if the max is covered.
-      ret.second |= in_domain(max, non_empty_domain2);
-
-      // If the max if next to the min of a previous fragment, it will already
-      // be validated when processing that fragment.
-      ret.second |= max + 1 == non_empty_domain2[0];
-    }
-  }
-
-  return ret;
 }
 
 template <typename IndexType, typename AttributeType>
@@ -1939,20 +1879,16 @@ void ReaderBase::validate_attribute_order(
   auto array_max_idx = array_non_empty_domain.typed_data<IndexType>()[1];
   auto index_dim{array_schema_.domain().dimension_ptr(0)};
   auto index_name = index_dim->name();
-  const IndexType* dim_dom = index_dim->domain().typed_data<IndexType>();
-  auto tile_extent{index_dim->tile_extent().rvalue_as<IndexType>()};
 
   // See if some values will already be processed by previous fragments.
-  AttributeOrderValidationData order_validation_data(fragment_metadata_.size());
+  AttributeOrderValidator validator(attribute_name, fragment_metadata_.size());
   throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
       fragment_metadata_.size(),
       [&](uint64_t f) {
-        auto bounds_validated = attribute_order_ned_bounds_already_validated(
+        validator.find_fragments_to_check(
             array_min_idx, array_max_idx, f, non_empty_domains);
-        order_validation_data.min_validated(f) = bounds_validated.first;
-        order_validation_data.max_validated(f) = bounds_validated.second;
 
         return Status::Ok();
       }));
@@ -1962,152 +1898,38 @@ void ReaderBase::validate_attribute_order(
       0,
       fragment_metadata_.size(),
       [&](int64_t f) {
-        const IndexType* non_empty_domain =
-            static_cast<const IndexType*>(non_empty_domains[f]);
-
-        if (!order_validation_data.min_validated(f)) {
-          // See if the min is tile aligned.
-          auto min = non_empty_domain[0];
-          bool min_tile_aligned = min == index_dim->round_to_tile<IndexType>(
-                                             min, dim_dom[0], tile_extent);
-
-          // Find a fragment that contains min - 1.
-          for (int64_t f2 = f - 1; f2 >= 0; f2--) {
-            const IndexType* non_empty_domain2 =
-                static_cast<const IndexType*>(non_empty_domains[f2]);
-            if (in_domain<IndexType>(min - 1, non_empty_domain2)) {
-              // Get the min of the current fragment.
-              auto value =
-                  increasing_data ?
-                      fragment_metadata_[f]->get_tile_min_as<AttributeType>(
-                          attribute_name, 0) :
-                      fragment_metadata_[f]->get_tile_max_as<AttributeType>(
-                          attribute_name, 0);
-
-              // Get the max from the intersecting fragment. If the min
-              // is tile aligned, get the tile before.
-              uint64_t f2_tile_idx = frag_first_array_tile_idx[f] -
-                                     frag_first_array_tile_idx[f2] -
-                                     min_tile_aligned;
-              auto value_previous =
-                  increasing_data ?
-                      fragment_metadata_[f2]->get_tile_max_as<AttributeType>(
-                          attribute_name, f2_tile_idx) :
-                      fragment_metadata_[f2]->get_tile_min_as<AttributeType>(
-                          attribute_name, f2_tile_idx);
-
-              // If we are tile aligned or the min is right next to the other
-              // fragment's max, we can validate. Otherwise we'll need to load
-              // the tile.
-              if (min_tile_aligned || min - 1 == non_empty_domain2[1]) {
-                order_validation_data.min_validated(f) = true;
-
-                // Check the order.
-                if (increasing_data) {
-                  if (value_previous > value) {
-                    throw ReaderBaseStatusException("Attribute out of order");
-                  }
-                } else {
-                  if (value_previous < value) {
-                    throw ReaderBaseStatusException("Attribute out of order");
-                  }
-                }
-              } else {
-                // Add the tile to the list of tiles to load.
-                order_validation_data.add_tile_to_load(
-                    f, true, f2, f2_tile_idx, array_schema_);
-              }
-
-              break;
-            }
-
-            if (f2 == 0) {
-              throw std::logic_error(
-                  "Shouldn't reach the last fragment without finding overlap.");
-            }
-          }
-        }
-
-        if (!order_validation_data.max_validated(f)) {
-          // See if the max is tile aligned.
-          auto max = non_empty_domain[1];
-          bool max_tile_aligned =
-              max + 1 == index_dim->round_to_tile<IndexType>(
-                             max + 1, dim_dom[0], tile_extent);
-
-          // Find a fragment that contains max + 1.
-          for (int64_t f2 = f - 1; f2 >= 0; f2--) {
-            const IndexType* non_empty_domain2 =
-                static_cast<const IndexType*>(non_empty_domains[f2]);
-            if (in_domain<IndexType>(max + 1, non_empty_domain2)) {
-              // Get the max of the current fragment.
-              auto max_tile_idx = fragment_metadata_[f]->tile_num() - 1;
-              auto value =
-                  increasing_data ?
-                      fragment_metadata_[f]->get_tile_max_as<AttributeType>(
-                          attribute_name, max_tile_idx) :
-                      fragment_metadata_[f]->get_tile_min_as<AttributeType>(
-                          attribute_name, max_tile_idx);
-
-              // Get the min from the intersecting fragment. If the max
-              // is tile aligned, get the tile after.
-              uint64_t f2_tile_idx =
-                  max_tile_idx + frag_first_array_tile_idx[f] -
-                  frag_first_array_tile_idx[f2] + max_tile_aligned;
-              auto value_next =
-                  increasing_data ?
-                      fragment_metadata_[f2]->get_tile_min_as<AttributeType>(
-                          attribute_name, f2_tile_idx) :
-                      fragment_metadata_[f2]->get_tile_max_as<AttributeType>(
-                          attribute_name, f2_tile_idx);
-
-              // If we are tile aligned or the max is right next to the
-              // other fragment's min, we can validate. Otherwise we'll
-              // need to load the tile.
-              if (max_tile_aligned || max + 1 == non_empty_domain2[0]) {
-                order_validation_data.max_validated(f) = true;
-
-                // Check the order.
-                if (increasing_data) {
-                  if (value_next < value) {
-                    throw ReaderBaseStatusException("Attribute out of order");
-                  }
-                } else {
-                  if (value_next > value) {
-                    throw ReaderBaseStatusException("Attribute out of order");
-                  }
-                }
-              } else {
-                // Add the tile to the list of tiles to load.
-                order_validation_data.add_tile_to_load(
-                    f, false, f2, f2_tile_idx, array_schema_);
-              }
-
-              break;
-            }
-
-            if (f2 == 0) {
-              throw std::logic_error(
-                  "Shouldn't reach the last fragment without finding overlap.");
-            }
-          }
-        }
-
+        validator.validate_without_loading_tiles<IndexType, AttributeType>(
+            array_schema_,
+            index_dim,
+            increasing_data,
+            f,
+            non_empty_domains,
+            fragment_metadata_,
+            frag_first_array_tile_idx);
         return Status::Ok();
       }));
 
   // If we need tiles to finish order validation, load them, then finish the
   // validation.
-  if (order_validation_data.need_to_load_tiles()) {
-    auto tiles_to_load = order_validation_data.tiles_to_load();
+  if (validator.need_to_load_tiles()) {
+    auto tiles_to_load = validator.tiles_to_load();
     throw_if_not_ok(read_attribute_tiles({attribute_name}, tiles_to_load));
     throw_if_not_ok(unfilter_tiles(attribute_name, tiles_to_load));
-    validate_attribute_order_with_tile_data<IndexType, AttributeType>(
-        attribute_name,
-        increasing_data,
-        non_empty_domains,
-        frag_first_array_tile_idx,
-        order_validation_data);
+    // Validate bounds not validated using tile data.
+    throw_if_not_ok(parallel_for(
+        storage_manager_->compute_tp(),
+        0,
+        fragment_metadata_.size(),
+        [&](unsigned f) {
+          validator.validate_with_loaded_tiles<IndexType, AttributeType>(
+              index_dim,
+              increasing_data,
+              f,
+              non_empty_domains,
+              fragment_metadata_,
+              frag_first_array_tile_idx);
+          return Status::Ok();
+        }));
   }
 }
 
@@ -2242,89 +2064,6 @@ void ReaderBase::validate_attribute_order(
     default:
       throw ReaderBaseStatusException("Invalid attribute type");
   }
-}
-
-template <typename IndexType, typename AttributeType>
-void ReaderBase::validate_attribute_order_with_tile_data(
-    std::string& attribute_name,
-    bool increasing_data,
-    std::vector<const void*>& non_empty_domains,
-    std::vector<uint64_t>& frag_first_array_tile_idx,
-    AttributeOrderValidationData& order_validation_data) {
-  // For easy reference.
-  auto index_dim{array_schema_.domain().dimension_ptr(0)};
-  auto tile_extent = index_dim->tile_extent().rvalue_as<IndexType>();
-  const IndexType* dim_dom = index_dim->domain().typed_data<IndexType>();
-
-  // Validate bounds not validated using tile data.
-  throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      fragment_metadata_.size(),
-      [&](unsigned f) {
-        const IndexType* non_empty_domain =
-            static_cast<const IndexType*>(non_empty_domains[f]);
-        if (!order_validation_data.min_validated(f)) {
-          // Get the min of the current fragment.
-          auto value = fragment_metadata_[f]->get_tile_min_as<AttributeType>(
-              attribute_name, 0);
-
-          // Get the previous value from the loaded tile.
-          auto rt = order_validation_data.min_tile_to_compare_against(f);
-          const auto cell_idx =
-              non_empty_domain[0] -
-              index_dim->tile_coord_low(
-                  rt->tile_idx() + frag_first_array_tile_idx[rt->frag_idx()],
-                  dim_dom[0],
-                  tile_extent) -
-              1;
-          AttributeType value_previous =
-              rt->attribute_value<AttributeType>(attribute_name, cell_idx);
-
-          // Validate the order.
-          if (increasing_data) {
-            if (value_previous > value) {
-              throw ReaderBaseStatusException("Attribute out of order");
-            }
-          } else {
-            if (value_previous < value) {
-              throw ReaderBaseStatusException("Attribute out of order");
-            }
-          }
-        }
-
-        if (!order_validation_data.max_validated(f)) {
-          // Get the min of the current fragment.
-          auto max_tile_idx = fragment_metadata_[f]->tile_num() - 1;
-          auto value = fragment_metadata_[f]->get_tile_max_as<AttributeType>(
-              attribute_name, max_tile_idx);
-
-          // Get the previous value from the loaded tile.
-          auto rt = order_validation_data.max_tile_to_compare_against(f);
-          const auto cell_idx =
-              non_empty_domain[1] -
-              index_dim->tile_coord_low(
-                  rt->tile_idx() + frag_first_array_tile_idx[rt->frag_idx()],
-                  dim_dom[0],
-                  tile_extent) +
-              1;
-          AttributeType value_next =
-              rt->attribute_value<AttributeType>(attribute_name, cell_idx);
-
-          // Validate the order.
-          if (increasing_data) {
-            if (value > value_next) {
-              throw ReaderBaseStatusException("Attribute out of order");
-            }
-          } else {
-            if (value < value_next) {
-              throw ReaderBaseStatusException("Attribute out of order");
-            }
-          }
-        }
-
-        return Status::Ok();
-      }));
 }
 
 void ReaderBase::calculate_hilbert_values(

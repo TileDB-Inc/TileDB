@@ -264,9 +264,6 @@ void OrderedDimLabelReader::label_read() {
   frag_first_array_tile_idx_ = std::move(frag_first_array_tile_idx);
   compute_array_tile_indexes_for_ranges<IndexType>();
 
-  // Make sure there are no holes in the written index data.
-  ensure_continuous_domain_written<IndexType>(non_empty_domains_);
-
   // Validate order of the label data.
   validate_attribute_order<IndexType>(
       label_type_,
