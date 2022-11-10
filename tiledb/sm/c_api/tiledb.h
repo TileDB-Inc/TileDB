@@ -4618,24 +4618,6 @@ TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_end(
     uint64_t* timestamp_end) TILEDB_NOEXCEPT;
 
 /**
- * Deletes all written array data.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_delete_array(
- *   ctx, array, "hdfs:///temp/my_array");
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The array to delete the data from.
- * @param uri The Array's URI.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_delete_array(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) TILEDB_NOEXCEPT;
-
-/**
  * Deletes array fragments written between the input timestamps.
  *
  * **Example:**
