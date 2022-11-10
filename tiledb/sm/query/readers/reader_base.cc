@@ -72,7 +72,6 @@ template <
 struct ReaderBase::BitSortFilterMetadataStorage {
   std::vector<Tile*> dim_tiles_;
   std::vector<QueryBuffer> query_buffers_;
-  std::vector<uint64_t> hilbert_values_;
   std::optional<DomainBuffersView> db_;
   std::optional<CmpObject> cmp_obj_;
   std::function<bool(const uint64_t&, const uint64_t&)> comparator_;
@@ -1004,7 +1003,7 @@ Status ReaderBase::zip_tile_coordinates(
 }
 
 template<typename ResultTileType, typename ResultCoordsType>
-void ReaderBase::compute_hilbert_values(std::vector<ResultTile*>& result_tiles) {
+void ReaderBase::compute_hilbert_values(const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("compute_hilbert_values");
 
   // For easy reference.
@@ -1020,18 +1019,19 @@ void ReaderBase::compute_hilbert_values(std::vector<ResultTile*>& result_tiles) 
       storage_manager_->compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
        auto tile =
             static_cast<ResultTileType*>(result_tiles[t]);
-    
-      auto cell_num = result_tile[t]->cell_num();
+  
+      size_t cell_num = result_tiles[t]->cell_num();
+      if constexpr (!std::is_same<ResultCoords, ResultCoordsType>::value) {
+        cell_num = fragment_metadata_[tile->frag_idx()]->cell_num(tile->tile_idx());
+      }
       auto rc = ResultCoordsType(tile, 0);
-        
         std::vector<uint64_t> coords(dim_num);
-
         result_tiles[t]->allocate_hilbert_vector();
         for (rc.pos_ = 0; rc.pos_ < cell_num; rc.pos_++) {
           // Process only values in bitmap.
-          if constexpr (std:)
-
-          if (!tile->has_bmp() || tile->bitmap()[rc.pos_]) {
+          // TODO: how to do this cleanly without using boost?
+           if constexpr (!std::is_same<ResultCoords, ResultCoordsType>::value) {
+            if (!tile->has_bmp() || tile->bitmap()[rc.pos_]) {
             // Compute Hilbert number for all dimensions first.
             for (uint32_t d = 0; d < dim_num; ++d) {
               auto dim{array_schema_.dimension_ptr(d)};
@@ -1042,11 +1042,21 @@ void ReaderBase::compute_hilbert_values(std::vector<ResultTile*>& result_tiles) 
             // Now we are ready to get the final number.
             result_tiles[t]->set_hilbert_value(rc.pos_, h.coords_to_hilbert(&coords[0]));
           }
+           } else {
+            for (uint32_t d = 0; d < dim_num; ++d) {
+              auto dim{array_schema_.dimension_ptr(d)};
+              coords[d] = hilbert_order::map_to_uint64(
+                  *dim, rc, d, bits, max_bucket_val);
+            }
+
+            // Now we are ready to get the final number.
+            result_tiles[t]->set_hilbert_value(rc.pos_, h.coords_to_hilbert(&coords[0]));
+           }
         }
 
         return Status::Ok();
       });
-  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
+  throw_if_not_ok(status);
 }
 
 Status ReaderBase::post_process_unfiltered_tile(
@@ -1462,6 +1472,8 @@ Status ReaderBase::unfilter_tiles(
     // We omit running unfilter_tiles when there is a dimension, since we
     // process the dimension tiles in the bitsort filter.
     return Status::Ok();
+  } else if (array_schema_.bitsort_filter_attr().has_value()) {
+    compute_hilbert_values<ResultTile, ResultCoords>(result_tiles);
   }
 
   auto chunking = true;
@@ -1904,12 +1916,10 @@ BitSortFilterMetadataType ReaderBase::construct_bitsort_filter_argument(
   bitsort_storage.db_.emplace(
       DomainBuffersView(array_schema_.domain(), query_buffers));
   if constexpr (std::is_same<CmpObject, HilbertCmpQB>::value) {
-    std::vector<uint64_t>& hilbert_values = bitsort_storage.hilbert_values_;
+    std::vector<uint64_t>& hilbert_values = tile->hilbert_values();
     assert(dim_tiles.size() > 0);
     uint64_t cell_num = dim_tiles[0]->cell_num();
     hilbert_values.resize(cell_num);
-    // TODO: get rid of
-    calculate_hilbert_values(bitsort_storage.db_.value(), hilbert_values);
     bitsort_storage.cmp_obj_.emplace(HilbertCmpQB(
         array_schema_.domain(), bitsort_storage.db_.value(), hilbert_values));
   } else if constexpr (std::is_same<CmpObject, GlobalCmpQB>::value) {
@@ -1960,6 +1970,11 @@ template void ReaderBase::compute_result_space_tiles<uint64_t>(
     const Subarray&,
     const Subarray&,
     std::map<const uint64_t*, ResultSpaceTile<uint64_t>>&) const;
+
+template void ReaderBase::compute_hilbert_values<GlobalOrderResultTile<uint8_t>, GlobalOrderResultCoords<uint8_t>>(
+  const std::vector<ResultTile*>& result_tiles) const;
+template void ReaderBase::compute_hilbert_values<GlobalOrderResultTile<uint64_t>, GlobalOrderResultCoords<uint64_t>>(
+  const std::vector<ResultTile*>& result_tiles) const;
 
 }  // namespace sm
 }  // namespace tiledb

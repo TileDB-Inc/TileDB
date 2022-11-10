@@ -617,6 +617,8 @@ class ResultTile {
 
   inline size_t hilbert_values_size() { return hilbert_values_.size(); }
 
+  std::vector<uint64_t>& hilbert_values() { return hilbert_values_; }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

@@ -231,7 +231,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
 
       // Compute hilbert values.
       if (array_schema_.cell_order() == Layout::HILBERT) {
-        RETURN_NOT_OK(compute_hilbert_values(tmp_result_tiles));
+        compute_hilbert_values<GlobalOrderResultTile<BitmapType>, GlobalOrderResultCoords<BitmapType>>(tmp_result_tiles);
       }
 
       // Clear result tiles that are not necessary anymore.

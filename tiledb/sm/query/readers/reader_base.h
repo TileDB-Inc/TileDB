@@ -749,7 +749,7 @@ class ReaderBase : public StrategyBase {
    * @return Status.
    */
   template<typename ResultTileType, typename ResultCoordsType>
-  void compute_hilbert_values(std::vector<ResultTile*>& result_tiles);
+  void compute_hilbert_values(const std::vector<ResultTile*>& result_tiles) const;
 
  private:
   /**
