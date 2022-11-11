@@ -7152,18 +7152,12 @@ TEST_CASE_METHOD(
   tiledb::sm::ArrayDirectory array_dir =
       tiledb::sm::ArrayDirectory(sm->vfs(), &tp, array_uri, 0, 5);
 
-  // Load array schema and check number of labels.
-  tiledb_array_schema_t* loaded_array_schema{nullptr};
-  REQUIRE_TILEDB_OK(
-      tiledb_array_schema_load(ctx_, array_name.c_str(), &loaded_array_schema));
-  auto schema = loaded_array_schema->array_schema_;
-
   // Serialize and deserialize it
   ::capnp::MallocMessageBuilder message;
   tiledb::sm::serialization::capnp::ArrayDirectory::Builder array_dir_builder =
       message.initRoot<tiledb::sm::serialization::capnp::ArrayDirectory>();
   tiledb::sm::serialization::array_directory_to_capnp(
-      array_dir, *schema, &array_dir_builder);
+      array_dir, &array_dir_builder);
   auto deserialized_array_dir =
       tiledb::sm::serialization::array_directory_from_capnp(
           array_dir_builder, array_uri);

@@ -142,6 +142,10 @@ bool URI::is_file(const std::string& path) {
 #endif
 }
 
+bool URI::contains(const std::string_view& str) const {
+  return uri_.find(str, 0) != std::string::npos;
+}
+
 bool URI::is_file() const {
 #ifdef _WIN32
   return is_file(uri_);

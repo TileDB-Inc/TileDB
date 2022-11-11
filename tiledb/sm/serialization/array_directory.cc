@@ -56,7 +56,6 @@ namespace serialization {
 
 void array_directory_to_capnp(
     const ArrayDirectory& array_directory,
-    const ArraySchema& array_schema,
     capnp::ArrayDirectory::Builder* array_directory_builder) {
   // set unfiltered fragment uris
   const auto& unfiltered_fragment_uris =
@@ -66,8 +65,8 @@ void array_directory_to_capnp(
         array_directory_builder->initUnfilteredFragmentUris(
             unfiltered_fragment_uris.size());
     for (size_t i = 0; i < unfiltered_fragment_uris.size(); i++) {
-      auto relative_uri = serialize_uri_to_relative(
-          unfiltered_fragment_uris[i], array_schema.write_version());
+      const auto& relative_uri =
+          serialize_array_dir_uri_to_relative(unfiltered_fragment_uris[i]);
       unfiltered_uris_builder.set(i, relative_uri);
     }
   }
@@ -81,8 +80,7 @@ void array_directory_to_capnp(
             consolidated_commit_uris.size());
     size_t i = 0;
     for (auto& uri : consolidated_commit_uris) {
-      auto relative_uri =
-          serialize_uri_to_relative(URI(uri), array_schema.write_version());
+      const auto& relative_uri = serialize_array_dir_uri_to_relative(URI(uri));
       consolidated_commit_uris_builder.set(i++, relative_uri);
     }
   }
@@ -93,17 +91,16 @@ void array_directory_to_capnp(
     auto array_schema_uris_builder =
         array_directory_builder->initArraySchemaUris(array_schema_uris.size());
     for (size_t i = 0; i < array_schema_uris.size(); i++) {
-      auto relative_uri = serialize_uri_to_relative(
-          array_schema_uris[i], array_schema.write_version());
+      const auto& relative_uri =
+          serialize_array_dir_uri_to_relative(array_schema_uris[i]);
       array_schema_uris_builder.set(i, relative_uri);
     }
   }
 
   // set latest array schema uri
   if (!array_directory.latest_array_schema_uri().to_string().empty()) {
-    auto relative_uri = serialize_uri_to_relative(
-        array_directory.latest_array_schema_uri(),
-        array_schema.write_version());
+    const auto& relative_uri = serialize_array_dir_uri_to_relative(
+        array_directory.latest_array_schema_uri());
     array_directory_builder->setLatestArraySchemaUri(relative_uri);
   }
 
@@ -115,8 +112,8 @@ void array_directory_to_capnp(
         array_directory_builder->initArrayMetaUrisToVacuum(
             array_meta_uris_to_vacuum.size());
     for (size_t i = 0; i < array_meta_uris_to_vacuum.size(); i++) {
-      auto relative_uri = serialize_uri_to_relative(
-          array_meta_uris_to_vacuum[i], array_schema.write_version());
+      const auto& relative_uri =
+          serialize_array_dir_uri_to_relative(array_meta_uris_to_vacuum[i]);
       array_meta_uris_to_vacuum_builder.set(i, relative_uri);
     }
   }
@@ -129,8 +126,8 @@ void array_directory_to_capnp(
         array_directory_builder->initArrayMetaVacUrisToVacuum(
             array_meta_vac_uris_to_vacuum.size());
     for (size_t i = 0; i < array_meta_vac_uris_to_vacuum.size(); i++) {
-      auto relative_uri = serialize_uri_to_relative(
-          array_meta_vac_uris_to_vacuum[i], array_schema.write_version());
+      const auto& relative_uri =
+          serialize_array_dir_uri_to_relative(array_meta_vac_uris_to_vacuum[i]);
       array_meta_vac_uris_to_vacuum_builder.set(i, relative_uri);
     }
   }
@@ -143,8 +140,8 @@ void array_directory_to_capnp(
         array_directory_builder->initCommitUrisToConsolidate(
             commit_uris_to_consolidate.size());
     for (size_t i = 0; i < commit_uris_to_consolidate.size(); i++) {
-      auto relative_uri = serialize_uri_to_relative(
-          commit_uris_to_consolidate[i], array_schema.write_version());
+      const auto& relative_uri =
+          serialize_array_dir_uri_to_relative(commit_uris_to_consolidate[i]);
       commit_uris_to_consolidate_builder.set(i, relative_uri);
     }
   }
@@ -156,8 +153,8 @@ void array_directory_to_capnp(
         array_directory_builder->initCommitUrisToVacuum(
             commit_uris_to_vacuum.size());
     for (size_t i = 0; i < commit_uris_to_vacuum.size(); i++) {
-      auto relative_uri = serialize_uri_to_relative(
-          commit_uris_to_vacuum[i], array_schema.write_version());
+      const auto& relative_uri =
+          serialize_array_dir_uri_to_relative(commit_uris_to_vacuum[i]);
       commit_uris_to_vacuum_builder.set(i, relative_uri);
     }
   }
@@ -170,8 +167,8 @@ void array_directory_to_capnp(
         array_directory_builder->initConsolidatedCommitUrisToVacuum(
             consolidated_commit_uris_to_vacuum.size());
     for (size_t i = 0; i < consolidated_commit_uris_to_vacuum.size(); i++) {
-      auto relative_uri = serialize_uri_to_relative(
-          consolidated_commit_uris_to_vacuum[i], array_schema.write_version());
+      const auto& relative_uri = serialize_array_dir_uri_to_relative(
+          consolidated_commit_uris_to_vacuum[i]);
       consolidated_commit_uris_to_vacuum_builder.set(i, relative_uri);
     }
   }
@@ -183,8 +180,8 @@ void array_directory_to_capnp(
         array_directory_builder->initArrayMetaUris(array_meta_uris.size());
     for (size_t i = 0; i < array_meta_uris.size(); i++) {
       auto timestamped_uri_builder = array_meta_uris_builder[i];
-      auto relative_uri = serialize_uri_to_relative(
-          array_meta_uris[i].uri_, array_schema.write_version());
+      const auto& relative_uri =
+          serialize_array_dir_uri_to_relative(array_meta_uris[i].uri_);
       timestamped_uri_builder.setUri(relative_uri);
       timestamped_uri_builder.setTimestampStart(
           array_meta_uris[i].timestamp_range_.first);
@@ -200,8 +197,8 @@ void array_directory_to_capnp(
         array_directory_builder->initFragmentMetaUris(
             fragment_meta_uris.size());
     for (size_t i = 0; i < fragment_meta_uris.size(); i++) {
-      auto relative_uri = serialize_uri_to_relative(
-          fragment_meta_uris[i], array_schema.write_version());
+      const auto& relative_uri =
+          serialize_array_dir_uri_to_relative(fragment_meta_uris[i]);
       fragment_meta_uris_builder.set(i, relative_uri);
     }
   }
@@ -216,9 +213,8 @@ void array_directory_to_capnp(
     for (size_t i = 0; i < delete_and_update_tile_location.size(); i++) {
       auto del_tile_location_builder =
           delete_and_update_tile_location_builder[i];
-      auto relative_uri = serialize_uri_to_relative(
-          delete_and_update_tile_location[i].uri(),
-          array_schema.write_version());
+      const auto& relative_uri = serialize_array_dir_uri_to_relative(
+          delete_and_update_tile_location[i].uri());
       del_tile_location_builder.setUri(relative_uri);
       del_tile_location_builder.setConditionMarker(
           delete_and_update_tile_location[i].condition_marker());
@@ -247,7 +243,7 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
       array_directory->unfiltered_fragment_uris().reserve(
           array_directory_reader.getUnfilteredFragmentUris().size());
       array_directory->unfiltered_fragment_uris().emplace_back(
-          deserialize_uri_to_absolute(uri.cStr(), array_uri));
+          deserialize_array_dir_uri_to_absolute(uri.cStr(), array_uri));
     }
   }
 
@@ -257,7 +253,8 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
       array_directory->consolidated_commit_uris_set().reserve(
           array_directory_reader.getConsolidatedCommitUris().size());
       array_directory->consolidated_commit_uris_set().emplace(
-          deserialize_uri_to_absolute(uri.cStr(), array_uri).to_string());
+          deserialize_array_dir_uri_to_absolute(uri.cStr(), array_uri)
+              .to_string());
     }
   }
 
@@ -267,14 +264,14 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
       array_directory->array_schema_uris().reserve(
           array_directory_reader.getArraySchemaUris().size());
       array_directory->array_schema_uris().emplace_back(
-          deserialize_uri_to_absolute(uri.cStr(), array_uri));
+          deserialize_array_dir_uri_to_absolute(uri.cStr(), array_uri));
     }
   }
 
   // Get latest array schema uri
   if (array_directory_reader.hasLatestArraySchemaUri()) {
     array_directory->latest_array_schema_uri() =
-        URI(deserialize_uri_to_absolute(
+        URI(deserialize_array_dir_uri_to_absolute(
             array_directory_reader.getLatestArraySchemaUri().cStr(),
             array_uri));
   }
@@ -285,7 +282,7 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
       array_directory->array_meta_uris_to_vacuum().reserve(
           array_directory_reader.getArrayMetaUrisToVacuum().size());
       array_directory->array_meta_uris_to_vacuum().emplace_back(
-          deserialize_uri_to_absolute(uri.cStr(), array_uri));
+          deserialize_array_dir_uri_to_absolute(uri.cStr(), array_uri));
     }
   }
 
@@ -295,7 +292,7 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
       array_directory->array_meta_vac_uris_to_vacuum().reserve(
           array_directory_reader.getArrayMetaVacUrisToVacuum().size());
       array_directory->array_meta_vac_uris_to_vacuum().emplace_back(
-          deserialize_uri_to_absolute(uri.cStr(), array_uri));
+          deserialize_array_dir_uri_to_absolute(uri.cStr(), array_uri));
     }
   }
 
@@ -305,7 +302,7 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
       array_directory->commit_uris_to_consolidate().reserve(
           array_directory_reader.getCommitUrisToConsolidate().size());
       array_directory->commit_uris_to_consolidate().emplace_back(
-          deserialize_uri_to_absolute(uri.cStr(), array_uri));
+          deserialize_array_dir_uri_to_absolute(uri.cStr(), array_uri));
     }
   }
 
@@ -315,7 +312,7 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
       array_directory->commit_uris_to_vacuum().reserve(
           array_directory_reader.getCommitUrisToVacuum().size());
       array_directory->commit_uris_to_vacuum().emplace_back(
-          deserialize_uri_to_absolute(uri.cStr(), array_uri));
+          deserialize_array_dir_uri_to_absolute(uri.cStr(), array_uri));
     }
   }
 
@@ -326,7 +323,7 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
       array_directory->consolidated_commits_uris_to_vacuum().reserve(
           array_directory_reader.getConsolidatedCommitUrisToVacuum().size());
       array_directory->consolidated_commits_uris_to_vacuum().emplace_back(
-          deserialize_uri_to_absolute(uri.cStr(), array_uri));
+          deserialize_array_dir_uri_to_absolute(uri.cStr(), array_uri));
     }
   }
 
@@ -336,7 +333,7 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
       array_directory->array_meta_uris().reserve(
           array_directory_reader.getArrayMetaUris().size());
       array_directory->array_meta_uris().emplace_back(
-          URI(deserialize_uri_to_absolute(
+          URI(deserialize_array_dir_uri_to_absolute(
               timestamp_reader.getUri().cStr(), array_uri)),
           std::make_pair<uint64_t, uint64_t>(
               timestamp_reader.getTimestampStart(),
@@ -350,7 +347,7 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
       array_directory->fragment_meta_uris().reserve(
           array_directory_reader.getFragmentMetaUris().size());
       array_directory->fragment_meta_uris().emplace_back(
-          deserialize_uri_to_absolute(uri.cStr(), array_uri));
+          deserialize_array_dir_uri_to_absolute(uri.cStr(), array_uri));
     }
   }
 
@@ -361,7 +358,7 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
       array_directory->delete_and_update_tiles_location().reserve(
           array_directory_reader.getDeleteAndUpdateTileLocation().size());
       array_directory->delete_and_update_tiles_location().emplace_back(
-          URI(deserialize_uri_to_absolute(
+          URI(deserialize_array_dir_uri_to_absolute(
               del_tile_reader.getUri().cStr(), array_uri)),
           del_tile_reader.getConditionMarker(),
           del_tile_reader.getOffset());

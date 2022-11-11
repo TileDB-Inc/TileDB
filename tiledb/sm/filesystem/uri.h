@@ -135,6 +135,14 @@ class URI {
   bool is_file() const;
 
   /**
+   * Checks if the URI contains a string.
+   *
+   * @param str the string to search for in the URI
+   * @return The result of the check.
+   */
+  bool contains(const std::string_view& str) const;
+
+  /**
    * Checks if the input path is HDFS.
    *
    * @param path The path to be checked.
