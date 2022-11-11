@@ -3590,19 +3590,19 @@ Status FragmentMetadata::load_footer(
   if (loaded_metadata_.footer_)
     return Status::Ok();
 
-  Tile tile;
+  std::shared_ptr<Tile> tile;
   if (f_tile == nullptr) {
     has_consolidated_footer_ = false;
-    RETURN_NOT_OK(read_file_footer(&tile, &footer_offset_, &footer_size_));
+    RETURN_NOT_OK(read_file_footer(tile, &footer_offset_, &footer_size_));
 
-    f_tile = &tile;
+    f_tile = tile.get();
     offset = 0;
   } else {
     footer_size_ = 0; // adjusted at end of routine based on buffer consumed
     footer_offset_ = offset;
     has_consolidated_footer_ = true;
   }
-  Deserializer deserializer(static_cast<uint8_t*>(f_tile->data()) + offset, f_tile->size() - offset);
+  Deserializer deserializer(f_tile->data_as<uint8_t>() + offset, f_tile->size() - offset);
   auto starting_deserializer_size = deserializer.size();
 
   load_version(deserializer);
@@ -3885,12 +3885,14 @@ tuple<Status, optional<Tile>> FragmentMetadata::read_generic_tile_from_file(
 }
 
 Status FragmentMetadata::read_file_footer(
-    Tile* tile, uint64_t* footer_offset, uint64_t* footer_size) const {
+    std::shared_ptr<Tile>& tile, uint64_t* footer_offset, uint64_t* footer_size) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
   // Get footer offset
   RETURN_NOT_OK(get_footer_offset_and_size(footer_offset, footer_size));
+
+  tile = std::make_shared<Tile>(Tile::from_generic(*footer_size));
 
   storage_manager_->stats()->add_counter("read_frag_meta_size", *footer_size);
 
@@ -3906,7 +3908,10 @@ Status FragmentMetadata::read_file_footer(
 
   // Read footer
   return storage_manager_->read(
-      fragment_metadata_uri, *footer_offset, tile, *footer_size);
+      fragment_metadata_uri,
+      *footer_offset,
+      tile->data_as<uint8_t>(),
+      *footer_size);
 }
 
 Status FragmentMetadata::write_generic_tile_to_file(

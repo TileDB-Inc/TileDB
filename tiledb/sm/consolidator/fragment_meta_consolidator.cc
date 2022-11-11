@@ -73,7 +73,6 @@ Status FragmentMetaConsolidator::consolidate(
       array.open(QueryType::READ, encryption_type, encryption_key, key_length));
 
   // Include only fragments with footers / separate basic metadata
-  Buffer buff;
   const auto& tmp_meta = array.fragment_metadata();
   std::vector<shared_ptr<FragmentMetadata>> meta;
   for (auto m : tmp_meta) {
@@ -85,9 +84,6 @@ Status FragmentMetaConsolidator::consolidate(
   // Do not consolidate if the number of fragments is not >1
   if (fragment_num < 2)
     return array.close();
-
-  // Write number of fragments
-  RETURN_NOT_OK(buff.write(&fragment_num, sizeof(uint32_t)));
 
   // Compute new URI
   URI uri;
@@ -123,64 +119,68 @@ Status FragmentMetaConsolidator::consolidate(
     offset += sizeof(uint64_t);  // Offset
   }
 
-  // Serialize all fragment names and footer offsets into a single buffer
-  for (auto m : meta) {
-    // Write name size and name
-    std::string name;
-    if (meta_version >= 9) {
-      name = m->fragment_uri().last_path_part();
-    } else {
-      name = m->fragment_uri().to_string();
-    }
-    auto name_size = (uint64_t)name.size();
-    RETURN_NOT_OK(buff.write(&name_size, sizeof(uint64_t)));
-    RETURN_NOT_OK(buff.write(name.c_str(), name_size));
-    RETURN_NOT_OK(buff.write(&offset, sizeof(uint64_t)));
-
-    offset += m->footer_size();
-  }
-
   // Serialize all fragment metadata footers in parallel
-  std::vector<Buffer> buffs(meta.size());
+  std::vector<std::unique_ptr<Tile>> tiles(meta.size());
   auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, buffs.size(), [&](size_t i) {
+      storage_manager_->compute_tp(), 0, tiles.size(), [&](size_t i) {
 
         SizeComputationSerializer size_computation_serializer;
         meta[i]->write_footer(size_computation_serializer);
-        Tile tile{Tile::from_generic(size_computation_serializer.size())};
-        Serializer serializer(tile.data(), tile.size());
+        tiles[i] = std::make_unique<Tile>(
+            Tile::from_generic(size_computation_serializer.size()));
+        Serializer serializer(tiles[i]->data(), tiles[i]->size());
         meta[i]->write_footer(serializer);
 
-        RETURN_NOT_OK(buffs[i].write(tile.data(), tile.size()));
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
 
-  // Combine serialized fragment metadata footers into a single buffer
-  for (const auto& b : buffs)
-    RETURN_NOT_OK(buff.write(b.data(), b.size()));
+  auto serialize_data = [&](Serializer& serializer, uint64_t offset) {
+
+    // Write number of fragments
+    serializer.write<uint32_t>(fragment_num);
+
+    // Serialize all fragment names and footer offsets into a single buffer
+    for (auto m : meta) {
+      // Write name size and name
+      std::string name;
+      if (meta_version >= 9) {
+        name = m->fragment_uri().last_path_part();
+      } else {
+        name = m->fragment_uri().to_string();
+      }
+      auto name_size = (uint64_t)name.size();
+      serializer.write<uint64_t>(name_size);
+      serializer.write(name.c_str(), name_size);
+      serializer.write<uint64_t>(offset);
+      offset += m->footer_size();
+    }
+
+    // Combine serialized fragment metadata footers into a single buffer
+    for (const auto& t : tiles)
+      serializer.write(t->data(), t->size());
+  };
+
+  SizeComputationSerializer size_computation_serializer;
+  serialize_data(size_computation_serializer, offset);
+
+  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+
+  Serializer serializer(tile.data(), tile.size());
+  serialize_data(serializer, offset);
 
   // Close array
   RETURN_NOT_OK(array.close());
 
-  // Write to file
   EncryptionKey enc_key;
   RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
-  Tile tile(
-      constants::generic_tile_datatype,
-      constants::generic_tile_cell_size,
-      0,
-      buff.data(),
-      buff.size());
 
   GenericTileIO tile_io(storage_manager_, uri);
   uint64_t nbytes = 0;
-  RETURN_NOT_OK_ELSE(
-      tile_io.write_generic(&tile, enc_key, &nbytes), buff.clear());
+  RETURN_NOT_OK(
+      tile_io.write_generic(&tile, enc_key, &nbytes));
   (void)nbytes;
-  RETURN_NOT_OK_ELSE(storage_manager_->close_file(uri), buff.clear());
-
-  buff.clear();
+  RETURN_NOT_OK(storage_manager_->close_file(uri));
 
   return Status::Ok();
 }

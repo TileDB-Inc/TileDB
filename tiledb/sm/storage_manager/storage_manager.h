@@ -952,19 +952,6 @@ class StorageManager {
       const URI& uri, uint64_t offset, Buffer* buffer, uint64_t nbytes) const;
 
   /**
-   * Reads from a file into the output tile.
-   *
-   * @param uri The URI file to read from.
-   * @param offset The offset in the file the read will start from.
-   * @param tile The tile to write into. The function reallocates memory
-   *     for the tile.
-   * @param nbytes The number of bytes to read.
-   * @return Status.
-   */
-  Status read(
-      const URI& uri, uint64_t offset, Tile* tile, uint64_t nbytes) const;
-
-  /**
    * Reads from a file into the raw input buffer.
    *
    * @param uri The URI file to read from.

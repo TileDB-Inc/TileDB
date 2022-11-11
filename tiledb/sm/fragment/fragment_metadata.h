@@ -1714,7 +1714,7 @@ class FragmentMetadata {
    * offsets) into the input buffer.
    */
   Status read_file_footer(
-      Tile* tile, uint64_t* footer_offset, uint64_t* footer_size) const;
+      std::shared_ptr<Tile>& tile, uint64_t* footer_offset, uint64_t* footer_size) const;
 
   /**
    * Writes the contents of the input buffer as a separate

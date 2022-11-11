@@ -229,7 +229,6 @@ StorageManager::load_array_schemas_and_fragment_metadata(
     auto&& [st, tile_opt, offsets] =
         load_consolidated_fragment_meta(meta_uris[i], enc_key);
     RETURN_NOT_OK(st);
-    //f_tiles[i] = std::move(*tile_opt);
     f_tiles[i] = make_shared<Tile>(HERE(), std::move(*tile_opt));
     offsets_vectors[i] = std::move(offsets.value());
     return st;
@@ -1944,16 +1943,6 @@ Status StorageManager::read(
   RETURN_NOT_OK(vfs_->read(uri, offset, buffer->data(), nbytes));
   buffer->set_size(nbytes);
   buffer->reset_offset();
-  return Status::Ok();
-}
-
-Status StorageManager::read(
-    const URI& uri,
-    uint64_t offset,
-    Tile* tile,
-    uint64_t nbytes) const {
-  tile->alloc_data(nbytes);
-  RETURN_NOT_OK(vfs_->read(uri, offset, tile->data(), nbytes));
   return Status::Ok();
 }
 
