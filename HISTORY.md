@@ -39,6 +39,7 @@
 * Add missing query_type in array_open capnp [#3616](https://github.com/TileDB-Inc/TileDB/pull/3616)
 * Fix use-after-free on a capnp::FlatArrayMessageReader [#3631](https://github.com/TileDB-Inc/TileDB/pull/3631)
 * Bitsort filter: preallocate filtered buffer for dim tiles. [#3632](https://github.com/TileDB-Inc/TileDB/pull/3632)
+* Add Boolean Support For Sparse Query Conditions [#3651](https://github.com/TileDB-Inc/TileDB/pull/3651)
 
 ### Internal
 
@@ -65,6 +66,7 @@
 ### Build system changes
 
 * Update to catch2 ver3 [#3504](https://github.com/TileDB-Inc/TileDB/pull/3504)
+* Linux release artifacts now target manylinux2014 [#3656](https://github.com/TileDB-Inc/TileDB/pull/3656)
 
 ## Full Changelog:
 
