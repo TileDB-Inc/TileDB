@@ -629,8 +629,7 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
       storage_manager_->io_tp(), 0, file_uris.size(), [&](uint64_t i) {
         const auto& file_uri = file_uris[i];
         if (layout_ == Layout::GLOBAL_ORDER && remote_query()) {
-          RETURN_NOT_OK(
-              storage_manager_->vfs()->finalize_and_close_file(file_uri));
+          storage_manager_->vfs()->finalize_and_close_file(file_uri);
         } else {
           RETURN_NOT_OK(storage_manager_->vfs()->close_file(file_uri));
         }
@@ -1154,8 +1153,8 @@ Status WriterBase::write_tiles(
     auto& tile = (*tiles)[i];
     auto& t = var_size ? tile.offset_tile() : tile.fixed_tile();
     if (remote_global_order_write) {
-      RETURN_NOT_OK(storage_manager_->vfs()->global_order_write(
-          *uri, t.filtered_buffer().data(), t.filtered_buffer().size()));
+      storage_manager_->vfs()->global_order_write(
+          *uri, t.filtered_buffer().data(), t.filtered_buffer().size());
     } else {
       RETURN_NOT_OK(storage_manager_->vfs()->write(
           *uri, t.filtered_buffer().data(), t.filtered_buffer().size()));
@@ -1166,10 +1165,10 @@ Status WriterBase::write_tiles(
     if (var_size) {
       auto& t_var = tile.var_tile();
       if (remote_global_order_write) {
-        RETURN_NOT_OK(storage_manager_->vfs()->global_order_write(
+        storage_manager_->vfs()->global_order_write(
             *var_uri,
             t_var.filtered_buffer().data(),
-            t_var.filtered_buffer().size()));
+            t_var.filtered_buffer().size());
       } else {
         RETURN_NOT_OK(storage_manager_->vfs()->write(
             *var_uri,
@@ -1197,10 +1196,10 @@ Status WriterBase::write_tiles(
     if (nullable) {
       auto& t_val = tile.validity_tile();
       if (remote_global_order_write) {
-        RETURN_NOT_OK(storage_manager_->vfs()->global_order_write(
+        storage_manager_->vfs()->global_order_write(
             *validity_uri,
             t_val.filtered_buffer().data(),
-            t_val.filtered_buffer().size()));
+            t_val.filtered_buffer().size());
       } else {
         RETURN_NOT_OK(storage_manager_->vfs()->write(
             *validity_uri,

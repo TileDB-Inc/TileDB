@@ -451,9 +451,9 @@ class VFS {
    * global order writes.
    *
    * @param uri The URI of the file.
-   * @return Status
+   * @return nothing
    */
-  Status finalize_and_close_file(const URI& uri);
+  void finalize_and_close_file(const URI& uri);
 
   /**
    * Writes the contents of a buffer into a file.
@@ -473,9 +473,9 @@ class VFS {
    * @param uri The URI of the file.
    * @param buffer The buffer to write from.
    * @param buffer_size The buffer size.
-   * @return Status
+   * @return nothing
    */
-  Status global_order_write(
+  void global_order_write(
       const URI& uri, const void* buffer, uint64_t buffer_size);
 
   /**

@@ -742,7 +742,8 @@ const uint64_t s3_min_multipart_part_size = 5242880;
  * The dir name under fragment uri used by s3 to store remote
  * global order writes intermediate chunks
  */
-const std::string s3_multipart_buffering_dirname = "__gow_chunks";
+const std::string s3_multipart_buffering_dirname =
+    "__global_order_write_chunks";
 
 const void* fill_value(Datatype type) {
   switch (type) {

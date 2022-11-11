@@ -160,9 +160,9 @@ class S3 {
    * finalize() call.
    *
    * @param uri The URI of the object to be flushed.
-   * @return Status
+   * @return nothing
    */
-  Status finalize_and_flush_object(const URI& uri);
+  void finalize_and_flush_object(const URI& uri);
 
   /** Checks if a bucket is empty. */
   Status is_empty_bucket(const URI& bucket, bool* is_empty) const;
@@ -380,7 +380,7 @@ class S3 {
   Status write(const URI& uri, const void* buffer, uint64_t length);
 
   /**
-   * Writes the input buffer to an S3 object. This function buffers inmemory
+   * Writes the input buffer to an S3 object. This function buffers in memory
    * file_buffer_size_ bytes before calling global_order_write() to execute
    * the s3 global write logic.
    * This function should only be called for tiledb global order writes.
@@ -388,10 +388,10 @@ class S3 {
    * @param uri The URI of the object to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
-   * @return Status
+   * @return nothing
    */
 
-  Status global_order_write_buffered(
+  void global_order_write_buffered(
       const URI& uri, const void* buffer, uint64_t length);
 
   /**
@@ -401,10 +401,9 @@ class S3 {
    * @param uri The URI of the object to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
-   * @return Status
+   * @return nothing
    */
-  Status global_order_write(
-      const URI& uri, const void* buffer, uint64_t length);
+  void global_order_write(const URI& uri, const void* buffer, uint64_t length);
 
  private:
   /* ********************************* */
