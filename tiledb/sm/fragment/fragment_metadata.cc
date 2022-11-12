@@ -3901,7 +3901,7 @@ Status FragmentMetadata::read_file_footer(
   // Get footer offset
   RETURN_NOT_OK(get_footer_offset_and_size(footer_offset, footer_size));
 
-  tile = std::make_shared<Tile>(Tile::from_generic(*footer_size));
+  tile = make_shared<Tile>(HERE(), Tile::from_generic(*footer_size));
 
   storage_manager_->stats()->add_counter("read_frag_meta_size", *footer_size);
 
