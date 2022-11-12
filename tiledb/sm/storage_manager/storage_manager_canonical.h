@@ -1272,7 +1272,7 @@ class StorageManagerCanonical {
           array_schemas_all,
       const EncryptionKey& encryption_key,
       const std::vector<TimestampedURI>& fragments_to_load,
-      const std::unordered_map<std::string, std::pair<Tile *, uint64_t>>&
+      const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
           offsets);
 
   /**
