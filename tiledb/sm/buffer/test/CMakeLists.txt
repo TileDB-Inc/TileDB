@@ -29,7 +29,7 @@ find_package(Catch_EP REQUIRED)
 add_executable(unit_buffer EXCLUDE_FROM_ALL)
 target_link_libraries(unit_buffer
     PRIVATE buffer
-    PUBLIC Catch2::Catch2
+    PUBLIC Catch2::Catch2WithMain
 )
 target_sources(unit_buffer PUBLIC main.cc unit_buffer.cc)
 

@@ -117,8 +117,6 @@ Status array_to_capnp(
     Array* array,
     capnp::Array::Builder* array_builder,
     const bool client_side) {
-  // Currently unused
-  (void)client_side;
   // The serialized URI is set if it exists
   // this is used for backwards compatibility with pre TileDB 2.5 clients that
   // want to serialized a query object TileDB >= 2.5 no longer needs to send the
@@ -202,6 +200,7 @@ Status array_from_capnp(
       for (auto array_schema_build : entries) {
         auto schema{array_schema_from_capnp(
             array_schema_build.getValue(), array->array_uri())};
+        schema.set_array_uri(array->array_uri());
         all_schemas[array_schema_build.getKey()] =
             make_shared<ArraySchema>(HERE(), schema);
       }
@@ -213,6 +212,7 @@ Status array_from_capnp(
     auto array_schema_latest_reader = array_reader.getArraySchemaLatest();
     auto array_schema_latest{array_schema_from_capnp(
         array_schema_latest_reader, array->array_uri())};
+    array_schema_latest.set_array_uri(array->array_uri());
     array->set_array_schema_latest(
         make_shared<ArraySchema>(HERE(), array_schema_latest));
   }
@@ -241,7 +241,9 @@ Status array_open_to_capnp(
   // Set config
   auto config_builder = array_open_builder->initConfig();
   auto config = array.config();
-  RETURN_NOT_OK(config_to_capnp(&config, &config_builder));
+  RETURN_NOT_OK(config_to_capnp(config, &config_builder));
+
+  array_open_builder->setQueryType(query_type_str(array.get_query_type()));
 
   return Status::Ok();
 }
@@ -258,6 +260,13 @@ Status array_open_from_capnp(
     RETURN_NOT_OK(
         config_from_capnp(array_open_reader.getConfig(), &decoded_config));
     RETURN_NOT_OK(array->set_config(*decoded_config));
+  }
+
+  if (array_open_reader.hasQueryType()) {
+    auto query_type_str = array_open_reader.getQueryType();
+    QueryType query_type = QueryType::READ;
+    RETURN_NOT_OK(query_type_enum(query_type_str, &query_type));
+    array->set_query_type(query_type);
   }
 
   return Status::Ok();

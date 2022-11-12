@@ -31,8 +31,8 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
 #include "tiledb/sm/filesystem/win.h"
@@ -413,10 +413,10 @@ TEST_CASE_METHOD(
     rc = tiledb_object_walk(
         ctx_, temp_dir.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
     CHECK(rc == TILEDB_OK);
-    CHECK_THAT(golden_walk, Catch::Equals(walk_str));
+    CHECK_THAT(golden_walk, Catch::Matchers::Equals(walk_str));
     rc = tiledb_object_ls(ctx_, temp_dir.c_str(), write_path, &ls_str);
     CHECK(rc == TILEDB_OK);
-    CHECK_THAT(golden_ls, Catch::Equals(ls_str));
+    CHECK_THAT(golden_ls, Catch::Matchers::Equals(ls_str));
     remove_temp_dir(temp_dir);
   } else if (dynamic_cast<SupportedFsHDFS*>(fs) != nullptr) {
     std::string temp_dir = "hdfs://localhost:9000/tiledb_test/";
@@ -432,10 +432,10 @@ TEST_CASE_METHOD(
     rc = tiledb_object_walk(
         ctx_, temp_dir.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
     CHECK(rc == TILEDB_OK);
-    CHECK_THAT(golden_walk, Catch::Equals(walk_str));
+    CHECK_THAT(golden_walk, Catch::Matchers::Equals(walk_str));
     rc = tiledb_object_ls(ctx_, temp_dir.c_str(), write_path, &ls_str);
     CHECK(rc == TILEDB_OK);
-    CHECK_THAT(golden_ls, Catch::Equals(ls_str));
+    CHECK_THAT(golden_ls, Catch::Matchers::Equals(ls_str));
     remove_temp_dir(temp_dir);
   } else {
     // TODO: refactor for each supported FS.
@@ -452,10 +452,10 @@ TEST_CASE_METHOD(
     rc = tiledb_object_walk(
         ctx_, temp_dir.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
     CHECK(rc == TILEDB_OK);
-    CHECK_THAT(golden_walk, Catch::Equals(walk_str));
+    CHECK_THAT(golden_walk, Catch::Matchers::Equals(walk_str));
     rc = tiledb_object_ls(ctx_, temp_dir.c_str(), write_path, &ls_str);
     CHECK(rc == TILEDB_OK);
-    CHECK_THAT(golden_ls, Catch::Equals(ls_str));
+    CHECK_THAT(golden_ls, Catch::Matchers::Equals(ls_str));
     remove_temp_dir(temp_dir);
   }
 }

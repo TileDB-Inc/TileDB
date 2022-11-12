@@ -37,6 +37,8 @@
 #include <cinttypes>
 #include <string>
 
+#include "tiledb/common/common.h"
+
 namespace tiledb {
 namespace sm {
 
@@ -212,6 +214,9 @@ extern const std::string write_file_suffix;
 /** Suffix for the special delete files used in TileDB. */
 extern const std::string delete_file_suffix;
 
+/** Suffix for the special update files used in TileDB. */
+extern const std::string update_file_suffix;
+
 /** Suffix for the special metadata files used in TileDB. */
 extern const std::string meta_file_suffix;
 
@@ -380,6 +385,12 @@ extern const std::string filter_scale_float_str;
 /** String describing FILTER_XOR. */
 extern const std::string filter_xor_str;
 
+/** String describing FILTER_BITSORT. */
+extern const std::string filter_bitsort_str;
+
+/** String describing FILTER_WEBP. */
+extern const std::string filter_webp_str;
+
 /** The string representation for FilterOption type compression_level. */
 extern const std::string filter_option_compression_level_str;
 
@@ -398,6 +409,15 @@ extern const std::string filter_option_scale_float_factor;
 
 /** The string representation for FilterOption type scale_float_offset. */
 extern const std::string filter_option_scale_float_offset;
+
+/** The string representation for FilterOption type webp_quality. */
+extern const std::string filter_option_webp_quality;
+
+/** The string representation for FilterOption type webp_input_format. */
+extern const std::string filter_option_webp_input_format;
+
+/** The string representation for FilterOption type webp_lossless. */
+extern const std::string filter_option_webp_lossless;
 
 /** The string representation for type int32. */
 extern const std::string int32_str;
@@ -604,19 +624,19 @@ extern const int32_t library_version[3];
 extern const uint32_t base_format_version;
 
 /** The TileDB serialization format version number. */
-extern const uint32_t format_version;
+extern const format_version_t format_version;
 
 /** The lowest version supported for back compat writes. */
-extern const uint32_t back_compat_writes_min_format_version;
+extern const format_version_t back_compat_writes_min_format_version;
 
 /** The lowest version supported for consolidation with timestamps. */
-extern const uint32_t consolidation_with_timestamps_min_version;
+extern const format_version_t consolidation_with_timestamps_min_version;
 
 /** The lowest version supported for deletes. */
-extern const uint32_t deletes_min_version;
+extern const format_version_t deletes_min_version;
 
 /** The lowest version supported for updates. */
-extern const uint32_t updates_min_version;
+extern const format_version_t updates_min_version;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;

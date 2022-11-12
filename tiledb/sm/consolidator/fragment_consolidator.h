@@ -40,6 +40,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 #include <vector>
 
@@ -51,7 +52,6 @@ namespace sm {
 class ArraySchema;
 class Config;
 class Query;
-class StorageManager;
 class URI;
 
 /** Handles fragment consolidation. */
@@ -68,7 +68,7 @@ class FragmentConsolidator : public Consolidator {
    * @param storage_manager Storage manager.
    */
   explicit FragmentConsolidator(
-      const Config* config, StorageManager* storage_manager);
+      const Config& config, StorageManager* storage_manager);
 
   /** Destructor. */
   ~FragmentConsolidator() = default;
@@ -154,6 +154,8 @@ class FragmentConsolidator : public Consolidator {
     float amplification_;
     /** Attribute buffer size. */
     uint64_t buffer_size_;
+    /** Max fragment size. */
+    uint64_t max_fragment_size_;
     /**
      * Number of consolidation steps performed in a single
      * consolidation invocation.
@@ -300,7 +302,7 @@ class FragmentConsolidator : public Consolidator {
       NDRange* union_non_empty_domains) const;
 
   /** Checks and sets the input configuration parameters. */
-  Status set_config(const Config* config);
+  Status set_config(const Config& config);
 
   /**
    * Sets the buffers to the query, using all the attributes in the

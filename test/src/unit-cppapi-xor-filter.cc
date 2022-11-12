@@ -33,7 +33,7 @@
 #include <random>
 #include <vector>
 
-#include "catch.hpp"
+#include "test/support/tdb_catch.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
 

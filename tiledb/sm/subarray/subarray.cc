@@ -155,6 +155,16 @@ Subarray& Subarray::operator=(Subarray&& subarray) noexcept {
 /*               API              */
 /* ****************************** */
 
+void Subarray::add_index_ranges_from_label(
+    const uint32_t dim_idx,
+    const bool is_point_ranges,
+    const void* start,
+    const uint64_t count) {
+  is_point_ranges ?
+      throw_if_not_ok(add_point_ranges(dim_idx, start, count, false)) :
+      throw_if_not_ok(add_ranges_list(dim_idx, start, count, false));
+}
+
 void Subarray::add_label_range(
     const DimensionLabelReference& dim_label_ref,
     Range&& range,
@@ -273,11 +283,6 @@ Status Subarray::add_range(
     return logger_->status(Status_SubarrayError(
         "Cannot add range to dimension; Invalid dimension index"));
   }
-  if (label_range_subset_[dim_idx].has_value()) {
-    return logger_->status(Status_SubarrayError(
-        "Cannot add range to to dimension; A range is already set on a "
-        "dimension label for this dimension"));
-  }
 
   // Must reset the result size and tile overlap
   est_result_size_computed_ = false;
@@ -314,7 +319,7 @@ Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
   tile_overlap_.clear();
 
   // Add the range
-  range_subset_[dim_idx].add_range_unrestricted(range);
+  throw_if_not_ok(range_subset_[dim_idx].add_range_unrestricted(range));
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
   return Status::Ok();
 }
@@ -352,6 +357,12 @@ Status Subarray::add_range(
   if (dim_idx >= this->array_->array_schema_latest().dim_num())
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
+
+  if (label_range_subset_[dim_idx].has_value()) {
+    return logger_->status(Status_SubarrayError(
+        "Cannot add range to to dimension; A range is already set on a "
+        "dimension label for this dimension"));
+  }
 
   QueryType array_query_type{array_->get_query_type()};
   if (array_query_type == QueryType::WRITE ||
@@ -403,10 +414,16 @@ Status Subarray::add_range(
 }
 
 Status Subarray::add_point_ranges(
-    unsigned dim_idx, const void* start, uint64_t count) {
+    unsigned dim_idx, const void* start, uint64_t count, bool check_for_label) {
   if (dim_idx >= this->array_->array_schema_latest().dim_num()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
+  }
+
+  if (check_for_label && label_range_subset_[dim_idx].has_value()) {
+    return logger_->status(Status_SubarrayError(
+        "Cannot add range to to dimension; A range is already set on a "
+        "dimension label for this dimension"));
   }
 
   QueryType array_query_type{array_->get_query_type()};
@@ -414,7 +431,7 @@ Status Subarray::add_point_ranges(
       array_query_type == QueryType::MODIFY_EXCLUSIVE) {
     if (!array_->array_schema_latest().dense()) {
       return LOG_STATUS(Status_SubarrayError(
-          "Adding a subarray range to a write or modify_exclsuive query is not "
+          "Adding a subarray range to a write or modify_exclusive query is not "
           "supported in sparse arrays"));
     }
     if (this->is_set(dim_idx)) {
@@ -466,6 +483,77 @@ Status Subarray::add_point_ranges(
   return Status::Ok();
 }
 
+Status Subarray::add_ranges_list(
+    unsigned dim_idx, const void* start, uint64_t count, bool check_for_label) {
+  if (dim_idx >= this->array_->array_schema_latest().dim_num()) {
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add range; Invalid dimension index"));
+  }
+
+  if (check_for_label && label_range_subset_[dim_idx].has_value()) {
+    return logger_->status(Status_SubarrayError(
+        "Cannot add range to to dimension; A range is already set on a "
+        "dimension label for this dimension"));
+  }
+
+  if (count % 2) {
+    return LOG_STATUS(Status_SubarrayError(
+        "add_ranges_list: Invalid count " + std::to_string(count) +
+        ", count must be a multiple of 2 "));
+  }
+
+  QueryType array_query_type{array_->get_query_type()};
+  if (array_query_type == QueryType::WRITE ||
+      array_query_type == QueryType::MODIFY_EXCLUSIVE) {
+    if (!array_->array_schema_latest().dense()) {
+      return LOG_STATUS(Status_SubarrayError(
+          "Adding a subarray range to a write or modify_exclusive query is not "
+          "supported in sparse arrays"));
+    }
+    if (this->is_set(dim_idx)) {
+      return LOG_STATUS(
+          Status_SubarrayError("Cannot add range; Multi-range dense writes "
+                               "are not supported"));
+    }
+  }
+
+  if (array_query_type != QueryType::READ &&
+      array_query_type != QueryType::WRITE &&
+      array_query_type != QueryType::MODIFY_EXCLUSIVE) {
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add range; Unsupported query type"));
+  }
+
+  if (start == nullptr) {
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add ranges; Invalid start pointer"));
+  }
+
+  if (this->array_->array_schema_latest()
+          .domain()
+          .dimension_ptr(dim_idx)
+          ->var_size()) {
+    return LOG_STATUS(
+        Status_SubarrayError("Cannot add range; Range must be fixed-sized"));
+  }
+
+  // Prepare a temp range
+  auto coord_size =
+      this->array_->array_schema_latest().dimension_ptr(dim_idx)->coord_size();
+
+  for (size_t i = 0; i < count / 2; i++) {
+    uint8_t* ptr = (uint8_t*)start + 2 * coord_size * i;
+
+    // Add range
+    auto st =
+        this->add_range(dim_idx, Range(ptr, 2 * coord_size), err_on_range_oob_);
+    if (!st.ok()) {
+      return LOG_STATUS(std::move(st));
+    }
+  }
+  return Status::Ok();
+}
+
 Status Subarray::add_range_by_name(
     const std::string& dim_name,
     const void* start,
@@ -487,6 +575,12 @@ Status Subarray::add_range_var(
   if (dim_idx >= array_->array_schema_latest().dim_num()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
+  }
+
+  if (label_range_subset_[dim_idx].has_value()) {
+    return logger_->status(Status_SubarrayError(
+        "Cannot add range to to dimension; A range is already set on a "
+        "dimension label for this dimension"));
   }
 
   if ((start == nullptr && start_size != 0) ||
@@ -520,9 +614,8 @@ Status Subarray::add_range_var(
   }
 
   // Add range
-  Range r;
-  r.set_range_var(start, start_size, end, end_size);
-  return this->add_range(dim_idx, std::move(r), err_on_range_oob_);
+  return this->add_range(
+      dim_idx, Range(start, start_size, end, end_size), err_on_range_oob_);
 }
 
 Status Subarray::add_range_var_by_name(
@@ -542,6 +635,10 @@ const std::vector<Range>& Subarray::get_attribute_ranges(
     const std::string& attr_name) const {
   const auto& ranges = attr_range_subset_.at(attr_name);
   return ranges;
+}
+
+const std::string& Subarray::get_label_name(const uint32_t dim_index) const {
+  return label_range_subset_[dim_index]->name;
 }
 
 void Subarray::get_label_range(
@@ -624,7 +721,8 @@ Status Subarray::get_range_var(
 
   uint64_t start_size = 0;
   uint64_t end_size = 0;
-  this->get_range_var_size(dim_idx, range_idx, &start_size, &end_size);
+  throw_if_not_ok(
+      this->get_range_var_size(dim_idx, range_idx, &start_size, &end_size));
 
   const void* range_start;
   const void* range_end;
@@ -868,6 +966,10 @@ bool Subarray::empty() const {
   return range_num() == 0;
 }
 
+bool Subarray::empty(uint32_t dim_idx) const {
+  return range_subset_[dim_idx].is_empty();
+}
+
 QueryType Subarray::get_query_type() const {
   if (array_ == nullptr)
     throw StatusException(Status_SubarrayError(
@@ -992,7 +1094,7 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   for (unsigned d = 0; d < dim_num; ++d) {
     if (!range_subset_[d].is_implicitly_initialized()) {
       for (uint64_t r = start_coords[d]; r <= end_coords[d]; ++r) {
-        ret.add_range_unsafe(d, range_subset_[d][r]);
+        throw_if_not_ok(ret.add_range_unsafe(d, range_subset_[d][r]));
       }
     }
   }
@@ -1004,6 +1106,20 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   ret.compute_range_offsets();
 
   return ret;
+}
+
+bool Subarray::has_label_ranges() const {
+  return std::any_of(
+      label_range_subset_.cbegin(),
+      label_range_subset_.cend(),
+      [](const auto& range_subset) {
+        return range_subset.has_value() && !range_subset->ranges.is_empty();
+      });
+}
+
+bool Subarray::has_label_ranges(const uint32_t dim_index) const {
+  return label_range_subset_[dim_index].has_value() &&
+         !label_range_subset_[dim_index]->ranges.is_empty();
 }
 
 bool Subarray::is_default(uint32_t dim_index) const {
@@ -1471,7 +1587,7 @@ Status Subarray::get_max_memory_size(
   }
 
   // Compute tile overlap for each fragment
-  compute_est_result_size(config, compute_tp);
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
   *size = max_mem_size_[name].size_fixed_;
 
   return Status::Ok();
@@ -1516,7 +1632,7 @@ Status Subarray::get_max_memory_size(
                              "Attribute/Dimension must not be nullable"));
 
   // Compute tile overlap for each fragment
-  compute_est_result_size(config, compute_tp);
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
   *size_off = max_mem_size_[name].size_fixed_;
   *size_val = max_mem_size_[name].size_var_;
 
@@ -1561,7 +1677,7 @@ Status Subarray::get_max_memory_size_nullable(
                              "Attribute must be nullable"));
 
   // Compute tile overlap for each fragment
-  compute_est_result_size(config, compute_tp);
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
   *size = max_mem_size_[name].size_fixed_;
   *size_validity = max_mem_size_[name].size_validity_;
 
@@ -1607,7 +1723,7 @@ Status Subarray::get_max_memory_size_nullable(
                              "Attribute must be nullable"));
 
   // Compute tile overlap for each fragment
-  compute_est_result_size(config, compute_tp);
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
   *size_off = max_mem_size_[name].size_fixed_;
   *size_val = max_mem_size_[name].size_var_;
   *size_validity = max_mem_size_[name].size_validity_;
@@ -1764,6 +1880,20 @@ void Subarray::set_attribute_ranges(
   attr_range_subset_[attr_name] = ranges;
 }
 
+const std::vector<Range>& Subarray::ranges_for_label(
+    const std::string& label_name) const {
+  auto dim_idx = array_->array_schema_latest()
+                     .dimension_label_reference(label_name)
+                     .dimension_id();
+  if (!label_range_subset_[dim_idx].has_value() ||
+      label_range_subset_[dim_idx].value().name != label_name) {
+    throw StatusException(Status_SubarrayError(
+        "Cannot get label ranges; No ranges set on dimension label '" +
+        label_name + "'"));
+  }
+  return label_range_subset_[dim_idx]->get_ranges();
+}
+
 Status Subarray::set_ranges_for_dim(
     uint32_t dim_idx, const std::vector<Range>& ranges) {
   auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
@@ -1773,7 +1903,7 @@ Status Subarray::set_ranges_for_dim(
   // Add each range individually so that contiguous
   // ranges may be coalesced.
   for (const auto& range : ranges)
-    range_subset_[dim_idx].add_range_unrestricted(range);
+    throw_if_not_ok(range_subset_[dim_idx].add_range_unrestricted(range));
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
   return Status::Ok();
 }
@@ -2001,14 +2131,12 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
               mem_vec[i].size_validity_ +=
                   tile_size / cell_size * constants::cell_validity_size;
           } else {
-            auto&& [st, tile_var_size] =
-                meta->tile_var_size(names[i], ft.second);
-            RETURN_NOT_OK(st);
+            auto tile_var_size = meta->tile_var_size(names[i], ft.second);
             mem_vec[i].size_fixed_ += tile_size;
-            mem_vec[i].size_var_ += *tile_var_size;
+            mem_vec[i].size_var_ += tile_var_size;
             if (nullable[i])
               mem_vec[i].size_validity_ +=
-                  *tile_var_size / cell_size * constants::cell_validity_size;
+                  tile_var_size / cell_size * constants::cell_validity_size;
           }
         }
       }
@@ -2023,7 +2151,7 @@ Subarray::get_est_result_size_map(
     const Config* const config, ThreadPool* const compute_tp) {
   // If the result sizes have not been computed, compute them first
   if (!est_result_size_computed_)
-    compute_est_result_size(config, compute_tp);
+    throw_if_not_ok(compute_est_result_size(config, compute_tp));
 
   return est_result_size_;
 }
@@ -2033,7 +2161,7 @@ Subarray::get_max_mem_size_map(
     const Config* const config, ThreadPool* const compute_tp) {
   // If the result sizes have not been computed, compute them first
   if (!est_result_size_computed_)
-    compute_est_result_size(config, compute_tp);
+    throw_if_not_ok(compute_est_result_size(config, compute_tp));
 
   return max_mem_size_;
 }
@@ -2308,12 +2436,11 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
                   constants::cell_validity_size;
           } else {
             (*result_sizes)[n].size_fixed_ += tile_size;
-            auto&& [st, tile_var_size] = meta->tile_var_size(names[n], tid);
-            RETURN_NOT_OK(st);
-            (*result_sizes)[n].size_var_ += *tile_var_size;
+            auto tile_var_size = meta->tile_var_size(names[n], tid);
+            (*result_sizes)[n].size_var_ += tile_var_size;
             if (nullable[n])
               (*result_sizes)[n].size_validity_ +=
-                  *tile_var_size / attr_datatype_size *
+                  tile_var_size / attr_datatype_size *
                   constants::cell_validity_size;
           }
         }
@@ -2348,12 +2475,11 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
 
         } else {
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
-          auto&& [st, tile_var_size] = meta->tile_var_size(names[n], tid);
-          RETURN_NOT_OK(st);
-          (*result_sizes)[n].size_var_ += *tile_var_size * ratio;
+          auto tile_var_size = meta->tile_var_size(names[n], tid);
+          (*result_sizes)[n].size_var_ += tile_var_size * ratio;
           if (nullable[n])
             (*result_sizes)[n].size_validity_ +=
-                (*tile_var_size / attr_datatype_size *
+                (tile_var_size / attr_datatype_size *
                  constants::cell_validity_size) *
                 ratio;
         }
@@ -3317,7 +3443,7 @@ void Subarray::crop_to_tile_impl(const T* tile_coords, Subarray& ret) const {
           &overlaps);
 
       if (overlaps) {
-        ret.add_range_unsafe(d, Range(new_range, r_size));
+        throw_if_not_ok(ret.add_range_unsafe(d, Range(new_range, r_size)));
         ret.original_range_idx_.resize(dim_num());
         ret.original_range_idx_[d].resize(i + 1);
         ret.original_range_idx_[d][i++] = r;

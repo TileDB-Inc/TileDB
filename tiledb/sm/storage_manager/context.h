@@ -34,6 +34,8 @@
 #define TILEDB_CONTEXT_H
 
 #include "tiledb/common/exception/exception.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
@@ -41,21 +43,25 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /**
  * This class manages the context for the C API, wrapping a
  * storage manager object.
- * */
+ */
 class Context {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  /**
+   * Default constructor is deleted.
+   */
+  Context() = delete;
+
   /** Constructor. */
-  Context(const Config& = Config());
+  explicit Context(const Config&);
 
   /** Destructor. */
   ~Context() = default;
@@ -77,8 +83,15 @@ class Context {
    */
   void save_error(const StatusException& st);
 
-  /** Returns a pointer to the underlying storage manager. */
-  StorageManager* storage_manager() const;
+  /** Pointer to the underlying storage manager. */
+  inline StorageManager* storage_manager() {
+    return &storage_manager_;
+  }
+
+  /** Pointer to the underlying storage manager. */
+  inline const StorageManager* storage_manager() const {
+    return &storage_manager_;
+  }
 
   /** Returns the thread pool for compute-bound tasks. */
   ThreadPool* compute_tp() const;
@@ -97,11 +110,25 @@ class Context {
   /** The last error occurred. */
   optional<std::string> last_error_{nullopt};
 
-  /** A mutex for thread-safety. */
+  /**
+   * Mutex protects access to `last_error_`.
+   */
   std::mutex mtx_;
 
   /** The class logger. */
   shared_ptr<Logger> logger_;
+
+  /** The class unique logger prefix */
+  inline static std::string logger_prefix_ =
+      std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                         std::chrono::system_clock::now().time_since_epoch())
+                         .count()) +
+      "-Context: ";
+
+  /**
+   * Counter for generating unique identifiers for `Logger` objects.
+   */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** The thread pool for compute-bound tasks. */
   mutable ThreadPool compute_tp_;
@@ -112,20 +139,14 @@ class Context {
   /** The class stats. */
   shared_ptr<stats::Stats> stats_;
 
-  /** The storage manager. */
-  tdb_unique_ptr<StorageManager> storage_manager_;
-
-  inline static std::atomic<uint64_t> logger_id_ = 0;
+  /**
+   * The storage manager.
+   */
+  StorageManager storage_manager_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */
-
-  /**
-   * Initializes the context with the input config. Called only from
-   * constructor.
-   */
-  Status init(const Config& config);
 
   /**
    * Get maximum number of threads to use in thread pools, based on config
@@ -167,7 +188,6 @@ class Context {
   Status init_loggers(const Config& config);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_CONTEXT_H

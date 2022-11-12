@@ -76,6 +76,7 @@ OrderedWriter::OrderedWriter(
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
+    bool remote_query,
     optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
@@ -90,8 +91,10 @@ OrderedWriter::OrderedWriter(
           written_fragment_info,
           false,
           coords_info,
+          remote_query,
           fragment_name,
-          skip_checks_serialization) {
+          skip_checks_serialization)
+    , frag_uri_(std::nullopt) {
   if (layout != Layout::ROW_MAJOR && layout != Layout::COL_MAJOR) {
     throw StatusException(Status_WriterError(
         "Failed to initialize OrderedWriter; The ordered writer does not "
@@ -125,7 +128,16 @@ Status OrderedWriter::dowork() {
     RETURN_NOT_OK(check_coord_oob());
   }
 
-  RETURN_NOT_OK(ordered_write());
+  try {
+    auto status = ordered_write();
+    if (!status.ok()) {
+      clean_up();
+      return status;
+    }
+  } catch (...) {
+    clean_up();
+    std::throw_with_nested(std::runtime_error("[OrderedWriter::dowork] "));
+  }
 
   return Status::Ok();
 }
@@ -142,6 +154,12 @@ void OrderedWriter::reset() {
 /* ****************************** */
 /*        PRIVATE METHODS         */
 /* ****************************** */
+
+void OrderedWriter::clean_up() {
+  if (frag_uri_.has_value()) {
+    throw_if_not_ok(storage_manager_->vfs()->remove_dir(frag_uri_.value()));
+  }
+}
 
 Status OrderedWriter::ordered_write() {
   // Applicable only to ordered write on dense arrays
@@ -204,7 +222,7 @@ Status OrderedWriter::ordered_write() {
   // Create new fragment
   auto frag_meta = make_shared<FragmentMetadata>(HERE());
   RETURN_CANCEL_OR_ERROR(create_fragment(true, frag_meta));
-  const auto& uri = frag_meta->fragment_uri();
+  frag_uri_ = frag_meta->fragment_uri();
 
   // Create a dense tiler
   DenseTiler<T> dense_tiler(
@@ -217,7 +235,7 @@ Status OrderedWriter::ordered_write() {
   auto tile_num = dense_tiler.tile_num();
 
   // Set number of tiles in the fragment metadata
-  frag_meta->set_num_tiles(tile_num);
+  throw_if_not_ok(frag_meta->set_num_tiles(tile_num));
 
   // Prepare, filter and write tiles for all attributes
   auto attr_num = buffers_.size();
@@ -229,34 +247,26 @@ Status OrderedWriter::ordered_write() {
   }
 
   if (attr_num > tile_num) {  // Parallelize over attributes
-    auto st = parallel_for(compute_tp, 0, attr_num, [&](uint64_t i) {
+    RETURN_NOT_OK(parallel_for(compute_tp, 0, attr_num, [&](uint64_t i) {
       auto buff_it = buffers_.begin();
       std::advance(buff_it, i);
       const auto& attr = buff_it->first;
       auto& attr_tile_batches = tiles[attr];
       return prepare_filter_and_write_tiles<T>(
           attr, attr_tile_batches, frag_meta, &dense_tiler, 1);
-    });
-    RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
+    }));
   } else {  // Parallelize over tiles
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
       auto& attr_tile_batches = tiles[attr];
-      try {
-        RETURN_NOT_OK_ELSE(
-            prepare_filter_and_write_tiles<T>(
-                attr, attr_tile_batches, frag_meta, &dense_tiler, thread_num),
-            storage_manager_->vfs()->remove_dir(uri));
-      } catch (const std::logic_error& le) {
-        storage_manager_->vfs()->remove_dir(uri);
-        return Status_WriterError(le.what());
-      }
+      RETURN_NOT_OK(prepare_filter_and_write_tiles<T>(
+          attr, attr_tile_batches, frag_meta, &dense_tiler, thread_num));
     }
   }
 
   // Fix the tile metadata for var size attributes.
   if (attr_num > tile_num) {  // Parallelize over attributes
-    auto st = parallel_for(compute_tp, 0, attr_num, [&](uint64_t i) {
+    RETURN_NOT_OK(parallel_for(compute_tp, 0, attr_num, [&](uint64_t i) {
       auto buff_it = buffers_.begin();
       std::advance(buff_it, i);
       const auto& attr = buff_it->first;
@@ -275,8 +285,7 @@ Status OrderedWriter::ordered_write() {
         }
       }
       return Status::Ok();
-    });
-    RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
+    }));
   } else {  // Parallelize over tiles
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
@@ -285,7 +294,7 @@ Status OrderedWriter::ordered_write() {
       if (has_min_max_metadata(attr, var_size) &&
           array_schema_.var_size(attr)) {
         frag_meta->convert_tile_min_max_var_sizes_to_offsets(attr);
-        auto st = parallel_for(
+        RETURN_NOT_OK(parallel_for(
             compute_tp, 0, attr_tile_batches.size(), [&](uint64_t b) {
               const auto& attr = buff.first;
               auto& batch = tiles[attr][b];
@@ -296,40 +305,21 @@ Status OrderedWriter::ordered_write() {
                 idx++;
               }
               return Status::Ok();
-            });
-        RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
+            }));
       }
     }
   }
 
-  // Compute fragment min/max/sum/null count
-  RETURN_NOT_OK_ELSE(
-      frag_meta->compute_fragment_min_max_sum_null_count(),
-      storage_manager_->vfs()->remove_dir(uri));
-
-  // Write the fragment metadata
-  try {
-    frag_meta->store(array_->get_encryption_key());
-  } catch (...) {
-    storage_manager_->vfs()->remove_dir(uri);
-    throw;
-  }
+  // Compute fragment min/max/sum/null count and write the fragment metadata
+  frag_meta->compute_fragment_min_max_sum_null_count();
+  frag_meta->store(array_->get_encryption_key());
 
   // Add written fragment info
-  RETURN_NOT_OK_ELSE(
-      add_written_fragment_info(uri), storage_manager_->vfs()->remove_dir(uri));
+  RETURN_NOT_OK(add_written_fragment_info(frag_uri_.value()));
 
   // The following will make the fragment visible
-  URI commit_uri;
-  try {
-    commit_uri = array_->array_directory().get_commit_uri(uri);
-  } catch (std::exception& e) {
-    RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri));
-    std::throw_with_nested(std::logic_error("[OrderedWriter::ordered_write] "));
-  }
-  RETURN_NOT_OK_ELSE(
-      storage_manager_->vfs()->touch(commit_uri),
-      storage_manager_->vfs()->remove_dir(uri));
+  URI commit_uri = array_->array_directory().get_commit_uri(frag_uri_.value());
+  RETURN_NOT_OK(storage_manager_->vfs()->touch(commit_uri));
 
   return Status::Ok();
 }
@@ -348,6 +338,10 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   const bool var = array_schema_.var_size(name);
   const auto cell_size = array_schema_.cell_size(name);
   const bool nullable = array_schema_.is_nullable(name);
+  const auto& domain{array_schema_.domain()};
+  const auto capacity = array_schema_.capacity();
+  const auto cell_num_per_tile =
+      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
 
   // Initialization
   auto tile_num = dense_tiler->tile_num();
@@ -367,12 +361,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     tile_batches[b].reserve(batch_size);
     for (uint64_t i = 0; i < batch_size; i++) {
       tile_batches[b].emplace_back(WriterTile(
-          array_schema_,
-          coords_info_.has_coords_,
-          var,
-          nullable,
-          cell_size,
-          type));
+          array_schema_, cell_num_per_tile, var, nullable, cell_size, type));
     }
     auto st = parallel_for(
         storage_manager_->compute_tp(), 0, batch_size, [&](uint64_t i) {
@@ -383,16 +372,32 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
 
           if (!var) {
             RETURN_NOT_OK(filter_tile(
-                name, &writer_tile.fixed_tile(), nullptr, false, false));
+                name,
+                &writer_tile.fixed_tile(),
+                nullptr,
+                false,
+                false,
+                nullptr));
           } else {
             auto offset_tile = &writer_tile.offset_tile();
             RETURN_NOT_OK(filter_tile(
-                name, &writer_tile.var_tile(), offset_tile, false, false));
-            RETURN_NOT_OK(filter_tile(name, offset_tile, nullptr, true, false));
+                name,
+                &writer_tile.var_tile(),
+                offset_tile,
+                false,
+                false,
+                offset_tile));
+            RETURN_NOT_OK(
+                filter_tile(name, offset_tile, nullptr, true, false, nullptr));
           }
           if (nullable) {
             RETURN_NOT_OK(filter_tile(
-                name, &writer_tile.validity_tile(), nullptr, false, true));
+                name,
+                &writer_tile.validity_tile(),
+                nullptr,
+                false,
+                true,
+                nullptr));
           }
           return Status::Ok();
         });
@@ -401,7 +406,13 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     // Write tiles
     close_files = (b == batch_num - 1);
     RETURN_NOT_OK(write_tiles(
-        name, frag_meta, frag_tile_id, &tile_batches[b], close_files));
+        0,
+        tile_batches[b].size(),
+        name,
+        frag_meta,
+        frag_tile_id,
+        &tile_batches[b],
+        close_files));
 
     frag_tile_id += batch_size;
   }

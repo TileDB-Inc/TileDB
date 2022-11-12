@@ -117,6 +117,8 @@ const std::string Config::SM_IO_CONCURRENCY_LEVEL =
 const std::string Config::SM_SKIP_CHECKSUM_VALIDATION = "false";
 const std::string Config::SM_CONSOLIDATION_AMPLIFICATION = "1.0";
 const std::string Config::SM_CONSOLIDATION_BUFFER_SIZE = "50000000";
+const std::string Config::SM_CONSOLIDATION_MAX_FRAGMENT_SIZE =
+    std::to_string(UINT64_MAX);
 const std::string Config::SM_CONSOLIDATION_PURGE_DELETED_CELLS = "false";
 const std::string Config::SM_CONSOLIDATION_STEPS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_MIN_FRAGS = "4294967295";
@@ -135,6 +137,7 @@ const std::string Config::SM_OFFSETS_FORMAT_MODE = "bytes";
 const std::string Config::SM_MAX_TILE_OVERLAP_SIZE = "314572800";  // 300MiB
 const std::string Config::SM_GROUP_TIMESTAMP_START = "0";
 const std::string Config::SM_GROUP_TIMESTAMP_END = std::to_string(UINT64_MAX);
+const std::string Config::SM_FRAGMENT_INFO_PRELOAD_MBRS = "false";
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MAX_BATCH_SIZE = std::to_string(UINT64_MAX);
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
@@ -295,6 +298,8 @@ Config::Config() {
   param_values_["sm.consolidation.amplification"] =
       SM_CONSOLIDATION_AMPLIFICATION;
   param_values_["sm.consolidation.buffer_size"] = SM_CONSOLIDATION_BUFFER_SIZE;
+  param_values_["sm.consolidation.max_fragment_size"] =
+      SM_CONSOLIDATION_MAX_FRAGMENT_SIZE;
   param_values_["sm.consolidation.purge_deleted_cells"] =
       SM_CONSOLIDATION_PURGE_DELETED_CELLS;
   param_values_["sm.consolidation.step_min_frags"] =
@@ -316,6 +321,8 @@ Config::Config() {
   param_values_["sm.max_tile_overlap_size"] = SM_MAX_TILE_OVERLAP_SIZE;
   param_values_["sm.group.timestamp_start"] = SM_GROUP_TIMESTAMP_START;
   param_values_["sm.group.timestamp_end"] = SM_GROUP_TIMESTAMP_END;
+  param_values_["sm.fragment_info.preload_mbrs"] =
+      SM_FRAGMENT_INFO_PRELOAD_MBRS;
   param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   param_values_["vfs.max_batch_size"] = VFS_MAX_BATCH_SIZE;
   param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
@@ -645,6 +652,9 @@ Status Config::unset(const std::string& param) {
   } else if (param == "sm.consolidation.buffer_size") {
     param_values_["sm.consolidation.buffer_size"] =
         SM_CONSOLIDATION_BUFFER_SIZE;
+  } else if (param == "sm.consolidation.max_fragment_size") {
+    param_values_["sm.consolidation.max_fragment_size"] =
+        SM_CONSOLIDATION_MAX_FRAGMENT_SIZE;
   } else if (param == "sm.consolidation.purge_deleted_cells") {
     param_values_["sm.consolidation.steps"] =
         SM_CONSOLIDATION_PURGE_DELETED_CELLS;
@@ -681,6 +691,9 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.group.timestamp_start"] = SM_GROUP_TIMESTAMP_START;
   } else if (param == "sm.group.timestamp_end") {
     param_values_["sm.group.timestamp_end"] = SM_GROUP_TIMESTAMP_END;
+  } else if (param == "sm.fragment_info.preload_mbrs") {
+    param_values_["sm.fragment_info.preload_mbrs"] =
+        SM_FRAGMENT_INFO_PRELOAD_MBRS;
   } else if (param == "vfs.min_parallel_size") {
     param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   } else if (param == "vfs.max_batch_size") {
@@ -824,7 +837,7 @@ void Config::inherit(const Config& config) {
   for (const auto& p : set_params) {
     auto v = config.get(p, &found);
     assert(found);
-    set(p, v);
+    throw_if_not_ok(set(p, v));
   }
 }
 
@@ -890,6 +903,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vf));
   } else if (param == "sm.consolidation.buffer_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
+  } else if (param == "sm.consolidation.max_fragment_size") {
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.consolidation.purge_deleted_cells") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.consolidation.steps") {
@@ -908,6 +923,8 @@ Status Config::sanity_check(
     if (value != "bytes" && value != "elements")
       return LOG_STATUS(
           Status_ConfigError("Invalid offsets format parameter value"));
+  } else if (param == "sm.fragment_info.preload_mbrs") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.max_batch_size") {

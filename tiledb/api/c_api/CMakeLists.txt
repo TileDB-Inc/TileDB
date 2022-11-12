@@ -60,3 +60,6 @@ add_subdirectory(context)
 
 # `filter`: depends on `context`
 add_subdirectory(filter)
+
+# `filter_list`: depends on `context`, `filter`
+add_subdirectory(filter_list)

@@ -31,14 +31,14 @@
  * Tests of C API for (dense or sparse) array operations.
  */
 
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <iostream>
 
-#include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
-#include "test/src/serialization_wrappers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/serialization_wrappers.h"
+#include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
 #if !defined(NOMINMAX)
 #define NOMINMAX
@@ -870,14 +870,31 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "array-open-at-reads";
+  bool serialized_writes = false;
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
     encryption_key_ = nullptr;
+    SECTION("no serialization") {
+      serialized_writes = false;
+    }
+#ifdef TILEDB_SERIALIZATION
+    SECTION("serialization enabled global order write") {
+      serialized_writes = true;
+    }
+#endif
   }
 
   SECTION("- with encryption") {
     encryption_type_ = TILEDB_AES_256_GCM;
     encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    SECTION("no serialization") {
+      serialized_writes = false;
+    }
+    SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+      serialized_writes = true;
+#endif
+    }
   }
 
   create_temp_dir(temp_dir);
@@ -927,10 +944,14 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array and clean up
   rc = tiledb_array_close(ctx_, array);
@@ -1431,14 +1452,31 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "array-open-at-writes";
+  bool serialized_writes = false;
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
     encryption_key_ = nullptr;
+    SECTION("no serialization") {
+      serialized_writes = false;
+    }
+#ifdef TILEDB_SERIALIZATION
+    SECTION("serialization enabled global order write") {
+      serialized_writes = true;
+    }
+#endif
   }
 
   SECTION("- with encryption") {
     encryption_type_ = TILEDB_AES_256_GCM;
     encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    SECTION("no serialization") {
+      serialized_writes = false;
+    }
+    SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+      serialized_writes = true;
+#endif
+    }
   }
 
   create_temp_dir(temp_dir);
@@ -1490,10 +1528,14 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Get written timestamp
   uint64_t timestamp_get;
@@ -1761,10 +1803,11 @@ TEST_CASE_METHOD(
     CHECK(rc == TILEDB_OK);
   }
   rc = tiledb_query_submit(ctx, query);
-  if (check_coords_oob)
+  if (check_coords_oob) {
     CHECK(rc == TILEDB_ERR);
-  else
+  } else {
     CHECK(rc == TILEDB_OK);
+  }
   rc = tiledb_query_finalize(ctx, query);
   CHECK(rc == TILEDB_OK);
 
@@ -2116,7 +2159,7 @@ TEST_CASE_METHOD(
   // this here by forcing metadata loading
   if (!array_v2) {
     Metadata* metadata = nullptr;
-    array->array_->metadata(&metadata);
+    CHECK(array->array_->metadata(&metadata).ok());
     array->array_->non_empty_domain();
   }
 

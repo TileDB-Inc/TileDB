@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 #include "tiledb/type/range/range.h"
 
@@ -149,6 +150,13 @@ class DimensionLabelReference {
   }
 
   /**
+   * Returns ``true`` if the label cells are variable length.
+   */
+  inline bool is_var() const {
+    return label_cell_val_num_ == constants::var_num;
+  }
+
+  /**
    * Returns ``true`` if the dimension label schema if set and ``false``
    * otherwise.
    */
@@ -203,6 +211,25 @@ class DimensionLabelReference {
     return uri_;
   }
 
+  /**
+   * Returns a copy of the dimension label URI.
+   *
+   * If the dimension label is relative to the array URI, it will append the
+   * dimension label URI to the array URI.
+   *
+   * @param array_uri URI of the parent array for this dimension label
+   *     reference.
+   * @returns URI of the dimension label.
+   */
+  inline URI uri(const URI& array_uri) const {
+    return relative_uri_ ? array_uri.join_path(uri_) : uri_;
+  }
+
+  /** Returns ``true`` if the URI is relative to the array URI. */
+  inline bool uri_is_relative() const {
+    return relative_uri_;
+  }
+
  private:
   /** The index of the dimension the labels are attached to. */
   dimension_size_type dim_id_;
@@ -225,7 +252,12 @@ class DimensionLabelReference {
   /** The interval the labels are defined on. */
   Range label_domain_;
 
-  /** The dimension label schema */
+  /**
+   * The dimension label schema.
+   *
+   * The schema is used for creating the dimension label and is not included in
+   * the dimension label schema serialization and deserialization from disk.
+   */
   shared_ptr<const DimensionLabelSchema> schema_;
 
   /**

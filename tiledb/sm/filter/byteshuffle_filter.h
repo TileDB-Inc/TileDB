@@ -79,7 +79,7 @@ class ByteshuffleFilter : public Filter {
    */
   Status run_forward(
       const Tile& tile,
-      Tile* const tile_offsets,
+      void* const support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -90,7 +90,7 @@ class ByteshuffleFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      Tile* const tile_offsets,
+      void* support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

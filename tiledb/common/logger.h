@@ -295,6 +295,13 @@ class Logger {
   Status status(const Status& st);
 
   /**
+   * Log a message from a Status object without returning it.
+   *
+   * @param st The Status object to log
+   */
+  void status_no_return_value(const Status& st);
+
+  /**
    * Log an error and exit with a non-zero status.
    *
    * @param msg The string to log.
@@ -363,12 +370,6 @@ class Logger {
     DEFAULT,
     JSON,
   };
-
-  /** The name of the global logger */
-  static inline constexpr char global_logger_default_name[] = "Global";
-
-  /** The name of the global logger in json format */
-  static inline constexpr char global_logger_json_name[] = "\"Global\":\"1\"";
 
  private:
   /* ********************************* */

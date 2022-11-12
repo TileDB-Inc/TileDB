@@ -31,7 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
@@ -81,8 +81,8 @@ TEMPLATE_LIST_TEST_CASE(
   ArraySchema schema;
   schema.set_capacity(num_cells);
   Attribute a("a", tiledb_type);
-  a.set_cell_val_num(cell_val_num);
-  schema.add_attribute(make_shared<Attribute>(HERE(), &a));
+  CHECK(a.set_cell_val_num(cell_val_num).ok());
+  CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), &a)).ok());
 
   // Generate random, sorted strings for the string ascii type.
   std::vector<std::string> string_ascii;
@@ -96,7 +96,12 @@ TEMPLATE_LIST_TEST_CASE(
 
   // Initialize a new tile.
   WriterTile writer_tile(
-      schema, true, false, nullable, cell_val_num * sizeof(T), tiledb_type);
+      schema,
+      num_cells,
+      false,
+      nullable,
+      cell_val_num * sizeof(T),
+      tiledb_type);
   auto tile_buff = (T*)writer_tile.fixed_tile().data();
   uint8_t* nullable_buff = nullptr;
   if (nullable) {
@@ -254,11 +259,11 @@ TEMPLATE_LIST_TEST_CASE(
   ArraySchema schema;
   schema.set_capacity(4);
   Attribute a("a", (Datatype)type.tiledb_type);
-  schema.add_attribute(make_shared<Attribute>(HERE(), &a));
+  CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), &a)).ok());
 
   // Initialize a new tile.
   auto tiledb_type = static_cast<Datatype>(type.tiledb_type);
-  WriterTile writer_tile(schema, true, false, false, sizeof(T), tiledb_type);
+  WriterTile writer_tile(schema, 4, false, false, sizeof(T), tiledb_type);
   auto tile_buff = (T*)writer_tile.fixed_tile().data();
 
   // Once an overflow happens, the computation should abort, try to add a few
@@ -283,7 +288,7 @@ TEMPLATE_LIST_TEST_CASE(
   // Test negative overflow.
   if constexpr (std::is_signed_v<T>) {
     // Initialize a new tile.
-    WriterTile writer_tile(schema, true, false, false, sizeof(T), tiledb_type);
+    WriterTile writer_tile(schema, 4, false, false, sizeof(T), tiledb_type);
     auto tile_buff = (T*)writer_tile.fixed_tile().data();
 
     // Once an overflow happens, the computation should abort, try to add a few
@@ -328,8 +333,8 @@ TEST_CASE(
   ArraySchema schema;
   schema.set_capacity(num_cells);
   Attribute a("a", Datatype::STRING_ASCII);
-  a.set_cell_val_num(constants::var_num);
-  schema.add_attribute(make_shared<Attribute>(HERE(), &a));
+  CHECK(a.set_cell_val_num(constants::var_num).ok());
+  CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), &a)).ok());
 
   // Generate random, sorted strings for the string ascii type.
   std::vector<std::string> strings;
@@ -349,7 +354,7 @@ TEST_CASE(
   }
 
   // Initialize tile.
-  WriterTile writer_tile(schema, true, true, nullable, 1, Datatype::CHAR);
+  WriterTile writer_tile(schema, num_cells, true, nullable, 1, Datatype::CHAR);
   auto offsets_tile_buff = (uint64_t*)writer_tile.offset_tile().data();
 
   // Initialize a new nullable tile.
@@ -380,7 +385,8 @@ TEST_CASE(
 
     *offsets_tile_buff = offset;
     auto& val = strings[values[i]];
-    writer_tile.var_tile().write_var(val.c_str(), offset, val.size());
+    CHECK(
+        writer_tile.var_tile().write_var(val.c_str(), offset, val.size()).ok());
 
     offset += val.size();
     offsets_tile_buff++;
@@ -426,19 +432,19 @@ TEST_CASE(
   ArraySchema schema;
   schema.set_capacity(2);
   Attribute a("a", Datatype::CHAR);
-  a.set_cell_val_num(constants::var_num);
-  schema.add_attribute(make_shared<Attribute>(HERE(), &a));
+  CHECK(a.set_cell_val_num(constants::var_num).ok());
+  CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), &a)).ok());
 
   // Store '123' and '12'
   // Initialize offsets tile.
-  WriterTile writer_tile(schema, true, true, false, 1, Datatype::CHAR);
+  WriterTile writer_tile(schema, 2, true, false, 1, Datatype::CHAR);
   auto offsets_tile_buff = (uint64_t*)writer_tile.offset_tile().data();
   offsets_tile_buff[0] = 0;
   offsets_tile_buff[1] = 3;
 
   // Initialize var tile.
   std::string data = "12312";
-  writer_tile.var_tile().write_var(data.c_str(), 0, 5);
+  CHECK(writer_tile.var_tile().write_var(data.c_str(), 0, 5).ok());
   writer_tile.var_tile().set_size(5);
 
   // Call the tile metadata generator.

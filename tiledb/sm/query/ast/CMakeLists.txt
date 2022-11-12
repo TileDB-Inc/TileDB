@@ -24,6 +24,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+
+set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+
 include(common NO_POLICY_SCOPE)
 
 list(APPEND SOURCES
@@ -52,6 +55,8 @@ if (TILEDB_TESTS)
     target_link_libraries(unit_ast PRIVATE query_ast)
     target_link_libraries(unit_ast PRIVATE array_schema)
 
+    target_include_directories(unit_ast PRIVATE "${TILEDB_CORE_INCLUDE_DIR}")
+
     ################################################################
     #
     # Define test support library for ast.
@@ -59,18 +64,14 @@ if (TILEDB_TESTS)
     ################################################################
 
     set(AST_TEST_SUPPORT_SOURCES
-      ${CMAKE_SOURCE_DIR}/test/src/ast_helpers.h
-      ${CMAKE_SOURCE_DIR}/test/src/ast_helpers.cc
+      ${CMAKE_SOURCE_DIR}/test/support/src/ast_helpers.h
+      ${CMAKE_SOURCE_DIR}/test/support/src/ast_helpers.cc
       )
 
     add_library(ast_test_support_lib EXCLUDE_FROM_ALL ${AST_TEST_SUPPORT_SOURCES})
 
     find_package(Catch_EP REQUIRED)
 
-    target_include_directories(ast_test_support_lib
-      PUBLIC
-	$<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
-    )
 
     # We want tests to continue as normal even as the API is changing,
     # so don't warn for deprecations, since they'll be escalated to errors.
@@ -78,7 +79,7 @@ if (TILEDB_TESTS)
       target_compile_options(ast_test_support_lib PRIVATE -Wno-deprecated-declarations)
     endif()
 
-    target_link_libraries(unit_ast PRIVATE ast_test_support_lib)
+    target_link_libraries(unit_ast PRIVATE ast_test_support_lib Catch2::Catch2WithMain)
 
     ################################################################
     #

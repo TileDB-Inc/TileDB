@@ -48,6 +48,7 @@
 #include "tiledb/sm/enums/label_order.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
@@ -61,6 +62,14 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+/** Class for locally generated status exceptions. */
+class ArraySchemaStatusException : public StatusException {
+ public:
+  explicit ArraySchemaStatusException(const std::string& msg)
+      : StatusException("ArraySchema", msg) {
+  }
+};
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -83,6 +92,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
   version_ = constants::format_version;
   auto timestamp = utils::time::timestamp_now_ms();
   timestamp_range_ = std::make_pair(timestamp, timestamp);
+  bitsort_filter_attr_ = std::nullopt;
 
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
@@ -95,7 +105,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
       constants::cell_validity_compression_level));
 
   // Generate URI and name for ArraySchema
-  generate_uri();
+  throw_if_not_ok(generate_uri());
 }
 
 ArraySchema::ArraySchema(
@@ -139,10 +149,41 @@ ArraySchema::ArraySchema(
   }
 
   // Create attribute map
+  bitsort_filter_attr_ = std::nullopt;
   if (!attributes_.empty()) {
     for (auto attr_iter : attributes_) {
       auto attr = attr_iter.get();
       attribute_map_[attr->name()] = attr;
+      if (attr->filters().has_filter(FilterType::FILTER_BITSORT)) {
+        if (bitsort_filter_attr_.has_value()) {
+          throw StatusException(
+              Status_ArraySchemaError("Array schema creation failed. More than "
+                                      "one attribute has a bitsort filter."));
+        }
+
+        // An attribute with a bitsort filter must be not nullable.
+        if (attr->nullable()) {
+          throw StatusException(Status_ArraySchemaError(
+              "Array schema creation failed. Attribute with a bitsort filter "
+              "must be not nullable."));
+        }
+
+        // An array with a bitsort filter must be sparse.
+        if (array_type != ArrayType::SPARSE) {
+          throw StatusException(
+              Status_ArraySchemaError("Array schema creation failed. Array "
+                                      "with a bitsort filter must be sparse."));
+        }
+
+        // An array with a bitsort filter must have only fixed size dimensions.
+        if (!domain_->all_dims_fixed()) {
+          throw StatusException(Status_ArraySchemaError(
+              "Array schema creation failed. Bitsort filter cannot be applied "
+              "on an array with variable sized dimensions."));
+        }
+
+        bitsort_filter_attr_ = attr->name();
+      }
     }
   }
 
@@ -153,19 +194,19 @@ ArraySchema::ArraySchema(
 
   // Check array schema is valid.
   st = check_double_delta_compressor(coords_filters_);
-  if (!st.ok())
-    throw StatusException(
-        Status_ArraySchemaError("Array schema check failed; Double delta "
-                                "compression used in zipped coords."));
+  if (!st.ok()) {
+    throw ArraySchemaStatusException(
+        "Array schema check failed; Double delta compression used in zipped "
+        "coords.");
+  }
 
   st = check_string_compressor(coords_filters_);
-  if (!st.ok())
-    throw StatusException(Status_ArraySchemaError(
-        "Array schema check failed; RLE compression used."));
+  if (!st.ok()) {
+    throw ArraySchemaStatusException(
+        "Array schema check failed; RLE compression used.");
+  }
 
-  st = check_attribute_dimension_label_names();
-  if (!st.ok())
-    throw StatusException(st);
+  check_attribute_dimension_label_names();
 }
 
 ArraySchema::ArraySchema(const ArraySchema& array_schema) {
@@ -183,12 +224,13 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema) {
   coords_filters_ = array_schema.coords_filters_;
   tile_order_ = array_schema.tile_order_;
   version_ = array_schema.version_;
+  bitsort_filter_attr_ = array_schema.bitsort_filter_attr_;
 
-  set_domain(array_schema.domain_);
+  throw_if_not_ok(set_domain(array_schema.domain_));
 
   attribute_map_.clear();
   for (auto attr : array_schema.attributes_)
-    add_attribute(attr, false);
+    throw_if_not_ok(add_attribute(attr, false));
 
   // Create dimension label map
   for (const auto& label : array_schema.dimension_labels_) {
@@ -339,11 +381,16 @@ Status ArraySchema::check() const {
     }
   }
 
+  if (array_type_ == ArrayType::SPARSE && capacity_ == 0) {
+    throw LOG_STATUS(
+        Status_ArraySchemaError("Array schema check failed; Sparse arrays "
+                                "cannot have their capacity equal to zero."));
+  }
+
   RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
   RETURN_NOT_OK(check_string_compressor(coords_filters()));
-  auto st = check_attribute_dimension_label_names();
-  if (!st.ok())
-    return LOG_STATUS(st);
+  check_attribute_dimension_label_names();
+  check_webp_filter();
 
   // Check all internal dimension labels have a schema set and the schema is
   // compatible with the definition of the array it was added to.
@@ -365,6 +412,7 @@ Status ArraySchema::check() const {
             label->name() + "' is not compatible with the array schema."));
     }
   }
+
   // Success
   return Status::Ok();
 }
@@ -417,9 +465,9 @@ const DimensionLabelReference& ArraySchema::dimension_label_reference(
     const std::string& name) const {
   auto iter = dimension_label_map_.find(name);
   if (iter == dimension_label_map_.end())
-    throw StatusException(Status_ArraySchemaError(
+    throw ArraySchemaStatusException(
         "Unable to get dimension label reference; No dimension label named '" +
-        name + "'."));
+        name + "'.");
   return *iter->second;
 }
 
@@ -559,8 +607,8 @@ void ArraySchema::serialize(Serializer& serializer) const {
   // Write version, which is always the current version. Despite
   // the in-memory `version_`, we will serialize every array schema
   // as the latest version.
-  const uint32_t version = constants::format_version;
-  serializer.write<uint32_t>(version);
+  const format_version_t version = constants::format_version;
+  serializer.write<format_version_t>(version);
 
   // Write allows_dups
   serializer.write<uint8_t>(allows_dups_);
@@ -601,8 +649,8 @@ void ArraySchema::serialize(Serializer& serializer) const {
   if constexpr (is_experimental_build) {
     auto label_num = static_cast<uint32_t>(dimension_labels_.size());
     if (label_num != dimension_labels_.size()) {
-      throw StatusException(Status_ArraySchemaError(
-          "Overflow when attempting to serialize label number."));
+      throw ArraySchemaStatusException(
+          "Overflow when attempting to serialize label number.");
     }
     serializer.write<uint32_t>(label_num);
     for (auto& label : dimension_labels_) {
@@ -745,18 +793,23 @@ Status ArraySchema::add_dimension_label(
               std::to_string(nlabel_internal_),
           false};
   // Add dimension label
-  auto dim_label = make_shared<DimensionLabelReference>(
-      HERE(),
-      dim_id,
-      name,
-      uri,
-      dimension_label_schema->label_order(),
-      dimension_label_schema->label_dimension()->type(),
-      dimension_label_schema->label_dimension()->cell_val_num(),
-      dimension_label_schema->label_dimension()->domain(),
-      dimension_label_schema);
-  dimension_labels_.emplace_back(dim_label);
-  dimension_label_map_[name] = dim_label.get();
+  try {
+    auto dim_label = make_shared<DimensionLabelReference>(
+        HERE(),
+        dim_id,
+        name,
+        uri,
+        dimension_label_schema->label_order(),
+        dimension_label_schema->label_type(),
+        dimension_label_schema->label_cell_val_num(),
+        dimension_label_schema->label_domain(),
+        dimension_label_schema);
+    dimension_labels_.emplace_back(dim_label);
+    dimension_label_map_[name] = dim_label.get();
+  } catch (...) {
+    std::throw_with_nested(ArraySchemaStatusException(
+        "Failed to add dimension label '" + name + "'."));
+  }
   ++nlabel_internal_;  // WARNING: not atomic
   return Status::Ok();
 }
@@ -796,8 +849,8 @@ ArraySchema ArraySchema::deserialize(
   // #TODO Add security validation
   auto version = deserializer.read<uint32_t>();
   if (!(version <= constants::format_version)) {
-    throw StatusException(Status_ArraySchemaError(
-        "[ArraySchema::deserialize] Incompatible format version."));
+    throw ArraySchemaStatusException(
+        "Failed to deserialize array schema; Incompatible format version.");
   }
 
   // Load allows_dups
@@ -874,21 +927,21 @@ ArraySchema ArraySchema::deserialize(
   // Validate
   if (cell_order == Layout::HILBERT &&
       domain->dim_num() > Hilbert::HC_MAX_DIM) {
-    throw StatusException(Status_ArraySchemaError(
+    throw ArraySchemaStatusException(
         "Array schema check failed; Maximum dimensions supported by Hilbert "
-        "order exceeded"));
+        "order exceeded");
   }
 
   if (array_type == ArrayType::DENSE) {
     auto type{domain->dimension_ptr(0)->type()};
     if (datatype_is_real(type)) {
-      throw StatusException(
-          Status_ArraySchemaError("Array schema check failed; Dense arrays "
-                                  "cannot have floating point domains"));
+      throw ArraySchemaStatusException(
+          "Array schema check failed; Dense arrays cannot have floating point "
+          "domains");
     }
     if (attributes.size() == 0) {
-      throw StatusException(Status_ArraySchemaError(
-          "Array schema check failed; No attributes provided"));
+      throw ArraySchemaStatusException(
+          "Array schema check failed; No attributes provided");
     }
   }
 
@@ -947,21 +1000,24 @@ void ArraySchema::set_name(const std::string& name) {
 }
 
 void ArraySchema::set_capacity(uint64_t capacity) {
+  if (array_type_ == ArrayType::SPARSE && capacity == 0) {
+    throw ArraySchemaStatusException(
+        "Sparse arrays cannot have their capacity equal to zero.");
+  }
+
   capacity_ = capacity;
 }
 
-Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline* pipeline) {
-  assert(pipeline);
-  RETURN_NOT_OK(check_string_compressor(*pipeline));
-  RETURN_NOT_OK(check_double_delta_compressor(*pipeline));
-
-  coords_filters_ = *pipeline;
+Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline& pipeline) {
+  RETURN_NOT_OK(check_string_compressor(pipeline));
+  RETURN_NOT_OK(check_double_delta_compressor(pipeline));
+  coords_filters_ = pipeline;
   return Status::Ok();
 }
 
 Status ArraySchema::set_cell_var_offsets_filter_pipeline(
-    const FilterPipeline* pipeline) {
-  cell_var_offsets_filters_ = *pipeline;
+    const FilterPipeline& pipeline) {
+  cell_var_offsets_filters_ = pipeline;
   return Status::Ok();
 }
 
@@ -977,8 +1033,8 @@ Status ArraySchema::set_cell_order(Layout cell_order) {
 }
 
 Status ArraySchema::set_cell_validity_filter_pipeline(
-    const FilterPipeline* pipeline) {
-  cell_validity_filters_ = *pipeline;
+    const FilterPipeline& pipeline) {
+  cell_validity_filters_ = pipeline;
   return Status::Ok();
 }
 
@@ -1034,17 +1090,17 @@ Status ArraySchema::set_tile_order(Layout tile_order) {
   return Status::Ok();
 }
 
-void ArraySchema::set_version(uint32_t version) {
+void ArraySchema::set_version(format_version_t version) {
   version_ = version;
 }
 
-uint32_t ArraySchema::write_version() const {
+format_version_t ArraySchema::write_version() const {
   return version_ < constants::back_compat_writes_min_format_version ?
              constants::format_version :
              version_;
 }
 
-uint32_t ArraySchema::version() const {
+format_version_t ArraySchema::version() const {
   return version_;
 }
 
@@ -1074,8 +1130,7 @@ const std::string& ArraySchema::name() const {
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
-
-Status ArraySchema::check_attribute_dimension_label_names() const {
+void ArraySchema::check_attribute_dimension_label_names() const {
   std::set<std::string> names;
   // Check attribute and dimension names are unique.
   auto dim_num = this->dim_num();
@@ -1084,10 +1139,11 @@ Status ArraySchema::check_attribute_dimension_label_names() const {
     names.insert(attr->name());
   for (dimension_size_type i = 0; i < dim_num; ++i)
     names.insert(domain_->dimension_ptr(i)->name());
-  if (names.size() != expected_unique_names)
-    return Status_ArraySchemaError(
+  if (names.size() != expected_unique_names) {
+    throw ArraySchemaStatusException(
         "Array schema check failed; Attributes and dimensions must have unique "
         "names");
+  }
   // Check dimension label names are unique except at most 1 label / dimension
   // that has the same name as the dimension it is on.
   expected_unique_names += dimension_labels_.size();
@@ -1098,10 +1154,11 @@ Status ArraySchema::check_attribute_dimension_label_names() const {
     // Check if the dimension label has the same name as the dimension
     if (label_name == domain_->dimension_ptr(dim_id)->name()) {
       // Check if there is already a dimension label with that name.
-      if (label_with_dim_name[dim_id])
-        return Status_ArraySchemaError(
+      if (label_with_dim_name[dim_id]) {
+        throw ArraySchemaStatusException(
             "Array schema check failed; At most one dimension label can share "
             "a name with the dimension it is on");
+      }
       --expected_unique_names;  // decrement number of unique name - this name
                                 // is not unique
       label_with_dim_name[dim_id] = true;
@@ -1109,11 +1166,11 @@ Status ArraySchema::check_attribute_dimension_label_names() const {
       names.insert(label_name);
     }
   }
-  return (names.size() == expected_unique_names) ?
-             Status::Ok() :
-             Status_ArraySchemaError(
-                 "Array schema check failed; Dimension labels must have unique "
-                 "names from other labels, attributes, and dimensions");
+  if (names.size() != expected_unique_names) {
+    throw ArraySchemaStatusException(
+        "Array schema check failed; Dimension labels must have unique "
+        "names from other labels, attributes, and dimensions");
+  }
 }
 
 Status ArraySchema::check_double_delta_compressor(
@@ -1150,15 +1207,15 @@ Status ArraySchema::check_double_delta_compressor(
 
 Status ArraySchema::check_string_compressor(
     const FilterPipeline& filters) const {
-  // There is no error if only 1 filter is used for RLE or Dictionary-encoding
+  // There is no error if only 1 filter is used
   if (filters.size() <= 1 ||
       !(filters.has_filter(FilterType::FILTER_RLE) ||
         filters.has_filter(FilterType::FILTER_DICTIONARY))) {
     return Status::Ok();
   }
 
-  // Error if there are also other filters set for a string dimension together
-  // with RLE or Dictionary-encoding
+  // If RLE or Dictionary-encoding is set for strings, they need to be
+  // the first filter in the list
   auto dim_num = domain_->dim_num();
   for (dimension_size_type d = 0; d < dim_num; ++d) {
     auto dim{domain_->dimension_ptr(d)};
@@ -1167,19 +1224,88 @@ Status ArraySchema::check_string_compressor(
     // list already set for that dimension (then coords_filters_ will be used)
     if (dim->type() == Datatype::STRING_ASCII && dim->var_size() &&
         dim_filters.empty()) {
-      if (filters.has_filter(FilterType::FILTER_RLE)) {
+      if (filters.has_filter(FilterType::FILTER_RLE) &&
+          filters.get_filter(0)->type() != FilterType::FILTER_RLE) {
         return LOG_STATUS(Status_ArraySchemaError(
-            "RLE filter cannot be combined with other filters when applied to "
+            "RLE filter must be the first filter to apply when used on "
             "variable length string dimensions"));
-      } else {
+      }
+      if (filters.has_filter(FilterType::FILTER_DICTIONARY) &&
+          filters.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
         return LOG_STATUS(Status_ArraySchemaError(
-            "Dictionary-encoding filter cannot be combined with other filters "
-            "when applied to variable length string dimensions"));
+            "Dictionary filter must be the first filter to apply when used on "
+            "variable length string dimensions"));
       }
     }
   }
 
   return Status::Ok();
+}
+
+void ArraySchema::check_webp_filter() const {
+  if constexpr (webp_filter_exists) {
+    WebpFilter* webp = nullptr;
+    for (const auto& attr : attributes_) {
+      webp = attr->filters().get_filter<WebpFilter>();
+      if (webp != nullptr) {
+        // WebP attributes must be of type uint8_t.
+        if (attr->type() != Datatype::UINT8) {
+          throw Status_ArraySchemaError(
+              "WebP filter supports only uint8 attributes");
+        }
+      }
+    }
+    // If no attribute is using WebP filter we don't need to continue checks.
+    if (webp == nullptr) {
+      return;
+    }
+    if (array_type_ != ArrayType::DENSE) {
+      throw Status_ArraySchemaError(
+          "WebP filter can only be applied to dense arrays");
+    }
+
+    // WebP filter requires at least 2 dimensions for Y, X.
+    if (dim_map_.size() < 2) {
+      throw Status_ArraySchemaError(
+          "WebP filter requires at least 2 dimensions");
+    }
+    auto y_dim = dimension_ptr(0);
+    auto x_dim = dimension_ptr(1);
+    if (y_dim->type() != x_dim->type()) {
+      throw Status_ArraySchemaError(
+          "WebP filter dimensions 0, 1 should have matching integral types");
+    }
+
+    switch (x_dim->type()) {
+      case Datatype::INT8:
+        webp->set_extents<int8_t>(domain_->tile_extents());
+        break;
+      case Datatype::INT16:
+        webp->set_extents<int16_t>(domain_->tile_extents());
+        break;
+      case Datatype::INT32:
+        webp->set_extents<int32_t>(domain_->tile_extents());
+        break;
+      case Datatype::INT64:
+        webp->set_extents<int64_t>(domain_->tile_extents());
+        break;
+      case Datatype::UINT8:
+        webp->set_extents<uint8_t>(domain_->tile_extents());
+        break;
+      case Datatype::UINT16:
+        webp->set_extents<uint16_t>(domain_->tile_extents());
+        break;
+      case Datatype::UINT32:
+        webp->set_extents<uint32_t>(domain_->tile_extents());
+        break;
+      case Datatype::UINT64:
+        webp->set_extents<uint64_t>(domain_->tile_extents());
+        break;
+      default:
+        throw Status_ArraySchemaError(
+            "WebP filter requires integral dimensions at index 0, 1");
+    }
+  }
 }
 
 void ArraySchema::clear() {
@@ -1226,6 +1352,10 @@ Status ArraySchema::generate_uri(
       array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
 
   return Status::Ok();
+}
+
+std::optional<std::string> ArraySchema::bitsort_filter_attr() const {
+  return bitsort_filter_attr_;
 }
 
 }  // namespace sm

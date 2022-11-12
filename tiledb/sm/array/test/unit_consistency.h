@@ -93,8 +93,8 @@ class WhiteboxConsistencyController : public ConsistencyController {
     uint64_t tile_extent = 1;
     shared_ptr<Dimension> dim =
         make_shared<Dimension>(HERE(), std::string("dim"), Datatype::UINT64);
-    dim->set_domain(&dim_dom);
-    dim->set_tile_extent(&tile_extent);
+    throw_if_not_ok(dim->set_domain(&dim_dom));
+    throw_if_not_ok(dim->set_tile_extent(&tile_extent));
 
     std::vector<shared_ptr<Dimension>> dims = {dim};
     shared_ptr<Domain> domain =
@@ -103,13 +103,13 @@ class WhiteboxConsistencyController : public ConsistencyController {
     // Create the ArraySchema
     shared_ptr<ArraySchema> schema =
         make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
-    schema->set_domain(domain);
-    schema->add_attribute(
+    throw_if_not_ok(schema->set_domain(domain));
+    throw_if_not_ok(schema->add_attribute(
         make_shared<Attribute>(
             HERE(), std::string("attr"), Datatype::UINT64, false),
-        false);
+        false));
     EncryptionKey key;
-    key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0);
+    throw_if_not_ok(key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
     // Create the (empty) array on disk.
     Status st = sm->array_create(uri, schema, key);

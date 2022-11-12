@@ -69,7 +69,7 @@ class Tile {
       uint32_t* const chunk_size);
 
   /**
-   * Override max_tile_chunk_size_. Used in tests only.
+   * Override max_tile_chunk_size_ used to process tile chunks in parallel.
    *
    * @param max_tile_chunk_size The maximum chunk size.
    */
@@ -87,8 +87,24 @@ class Tile {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  Tile();
+  /**
+   * Constructor.
+   *
+   * @param format_version The format version.
+   * @param type The data type.
+   * @param cell_size The cell size.
+   * @param zipped_coords_dim_num The number of dimensions in case the tile
+   *      stores coordinates.
+   * @param size The size of the tile.
+   * @param filtered_size The filtered size to allocate.
+   */
+  Tile(
+      const format_version_t format_version,
+      const Datatype type,
+      const uint64_t cell_size,
+      const unsigned int zipped_coords_dim_num,
+      const uint64_t size,
+      const uint64_t filtered_size);
 
   /**
    * Constructor.
@@ -97,8 +113,8 @@ class Tile {
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
-   * @param buffer The buffer to be encapsulated by the tile object. The tile
-   *      will not take ownership of the buffer.
+   * @param buffer The buffer to be encapsulated by the tile object. The
+   *      tile will not take ownership of the buffer.
    * @param size The buffer size.
    */
   Tile(
@@ -135,46 +151,6 @@ class Tile {
   /** Returns the number of cells stored in the tile. */
   uint64_t cell_num() const;
 
-  /**
-   * Tile initializer for storing unfiltered bytes.
-   *
-   * @param format_version The format version of the data in this tile.
-   * @param type The type of the data to be stored.
-   * @param tile_size The tile size. The internal buffer will be allocated
-   *     that much space upon construction.
-   * @param cell_size The cell size.
-   * @param dim_num The number of dimensions in case the tile stores
-   *      coordinates.
-   * @param fill_with_zeros If true, it fills the entire tile with zeros,
-   *      allocating memory and setting the size.
-   * @return Status
-   */
-  Status init_unfiltered(
-      uint32_t format_version,
-      Datatype type,
-      uint64_t tile_size,
-      uint64_t cell_size,
-      unsigned int dim_num,
-      bool fill_with_zeros = false);
-
-  /**
-   * Tile initializer for storing filtered bytes.
-   *
-   * @param format_version The format version of the data in this tile.
-   * @param type The type of the data to be stored.
-   * @param tile_size The tile size. The internal buffer will be allocated
-   *     that much space upon construction.
-   * @param cell_size The cell size.
-   * @param dim_num The number of dimensions in case the tile stores
-   *      coordinates.
-   * @return Status
-   */
-  Status init_filtered(
-      uint32_t format_version,
-      Datatype type,
-      uint64_t cell_size,
-      unsigned int dim_num);
-
   /** Returns the internal buffer. */
   inline void* data() const {
     return data_.get();
@@ -182,14 +158,6 @@ class Tile {
 
   /** Clears the internal buffer. */
   void clear_data();
-
-  /**
-   * Allocate the internal buffer.
-   *
-   * @param size New size.
-   * @return Status.
-   */
-  Status alloc_data(uint64_t size);
 
   /** Returns the cell size. */
   inline uint64_t cell_size() const {
@@ -201,9 +169,6 @@ class Tile {
   inline unsigned int zipped_coords_dim_num() const {
     return zipped_coords_dim_num_;
   }
-
-  /** Checks if the tile is empty. */
-  bool empty() const;
 
   /**
    * Returns the current filtered state of the tile data in the buffer. When
@@ -309,7 +274,7 @@ class Tile {
   unsigned int zipped_coords_dim_num_;
 
   /** The format version of the data in this tile. */
-  uint32_t format_version_;
+  format_version_t format_version_;
 
   /** The tile data type. */
   Datatype type_;

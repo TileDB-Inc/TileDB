@@ -265,6 +265,24 @@ Status Array::open(
   try {
     set_array_open(query_type);
 
+    if (query_type == QueryType::UPDATE) {
+      bool found = false;
+      bool allow_updates = false;
+      if (!config_
+               .get<bool>(
+                   "sm.allow_updates_experimental", &allow_updates, &found)
+               .ok()) {
+        throw Status_ArrayError("Cannot get setting");
+      }
+      assert(found);
+
+      if (!allow_updates) {
+        throw Status_ArrayError(
+            "Cannot open array; Update query type is only experimental, do "
+            "not use.");
+      }
+    }
+
     // Get encryption key from config
     std::string encryption_key_from_cfg;
     if (!encryption_key) {
@@ -317,24 +335,8 @@ Status Array::open(
       } else if (
           query_type == QueryType::WRITE ||
           query_type == QueryType::MODIFY_EXCLUSIVE ||
-          query_type == QueryType::DELETE) {
+          query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
         timestamp_end_opened_at_ = 0;
-      } else if (query_type == QueryType::UPDATE) {
-        bool found = false;
-        bool allow_updates = false;
-        if (!config_
-                 .get<bool>(
-                     "sm.allow_updates_experimental", &allow_updates, &found)
-                 .ok()) {
-          throw Status_ArrayError("Cannot get setting");
-        }
-        assert(found);
-
-        if (!allow_updates) {
-          throw Status_ArrayError(
-              "Cannot open array; Update query type is only experimental, do "
-              "not use.");
-        }
       } else {
         throw Status_ArrayError("Cannot open array; Unsupported query type.");
       }
@@ -523,6 +525,42 @@ Status Array::close() {
   return Status::Ok();
 }
 
+void Array::delete_array(const URI& uri) {
+  // Check that query type is MODIFY_EXCLUSIVE
+  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+    throw StatusException(Status_ArrayError(
+        "[Array::delete_array] Query type must be MODIFY_EXCLUSIVE"));
+  }
+
+  // Check that array is open
+  if (!is_open() && !controller().is_open(uri)) {
+    throw StatusException(
+        Status_ArrayError("[Array::delete_array] Array is closed"));
+  }
+
+  // Check that array is not in the process of opening or closing
+  if (is_opening_or_closing_) {
+    throw StatusException(Status_ArrayError(
+        "[Array::delete_array] "
+        "May not perform simultaneous open or close operations."));
+  }
+
+  // Delete array data
+  if (remote_) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr) {
+      throw Status_ArrayError(
+          "[Array::delete_array] Remote array with no REST client.");
+    }
+    rest_client->delete_array_from_rest(uri);
+  } else {
+    storage_manager_->delete_array(uri.c_str());
+  }
+
+  // Close the array
+  throw_if_not_ok(this->close());
+}
+
 Status Array::delete_fragments(
     const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
   // Check that query type is MODIFY_EXCLUSIVE
@@ -580,12 +618,6 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> Array::get_array_schema()
 }
 
 QueryType Array::get_query_type() const {
-  // Error if the array is not open
-  if (!is_open_) {
-    throw StatusException(
-        Status_ArrayError("Cannot get query_type; Array is not open"));
-  }
-
   return query_type_;
 }
 
@@ -1190,8 +1222,8 @@ Status Array::load_metadata() {
         array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
   } else {
     assert(array_dir_.loaded());
-    RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_dir_, *encryption_key_, &metadata_));
+    storage_manager_->load_array_metadata(
+        array_dir_, *encryption_key_, &metadata_);
   }
   metadata_loaded_ = true;
   return Status::Ok();
@@ -1233,7 +1265,7 @@ Status Array::compute_non_empty_domain() {
         // If the fragment's non-empty domain is indeed empty, lets log it so
         // the user gets a message warning that this fragment might be corrupt
         // Note: LOG_STATUS only prints if TileDB is built in verbose mode.
-        LOG_STATUS(Status_ArrayError(
+        LOG_STATUS_NO_RETURN_VALUE(Status_ArrayError(
             "Non empty domain unexpectedly empty for fragment: " +
             fragment_metadata_[j]->fragment_uri().to_string()));
       }

@@ -397,6 +397,20 @@ class Group {
     return tiledb::Object(type, uri_str, name);
   }
 
+  /**
+   * retrieve the relative attribute for a named member
+   *
+   * @param name of member to retrieve associated relative indicator.
+   */
+  bool is_relative(std::string name) const {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    uint8_t is_relative;
+    ctx.handle_error(tiledb_group_get_is_relative_uri_by_name(
+        c_ctx, group_.get(), name.c_str(), &is_relative));
+    return is_relative != 0;
+  }
+
   std::string dump(const bool recursive) const {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();

@@ -30,7 +30,7 @@
  * Tests for the sparse global order reader.
  */
 
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -910,6 +910,16 @@ TEST_CASE_METHOD(
 TEST_CASE(
     "Sparse global order reader: user buffer cannot fit single cell",
     "[sparse-global-order][user-buffer][too-small]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   std::string array_name = "test_sparse_global_order";
   Context ctx;
   VFS vfs(ctx);
@@ -948,10 +958,13 @@ TEST_CASE(
   query.set_data_buffer("d1", d1);
   query.set_data_buffer("a", a1_data);
   query.set_offsets_buffer("a", a1_offsets);
-  CHECK_NOTHROW(query.submit());
 
-  // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
+  if (!serialized_writes) {
+    CHECK_NOTHROW(query.submit());
+    query.finalize();
+  } else {
+    submit_and_finalize_serialized_query(ctx, query);
+  }
 
   // Read using a buffer that can't fit a single result
   Array array2(ctx, array_name, TILEDB_READ);

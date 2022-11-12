@@ -260,6 +260,9 @@ class Config {
   /** The buffer size for each attribute used in consolidation. */
   static const std::string SM_CONSOLIDATION_BUFFER_SIZE;
 
+  /** The maximum fragment size used in consolidation. */
+  static const std::string SM_CONSOLIDATION_MAX_FRAGMENT_SIZE;
+
   /** Purge deleted cells or not. */
   static const std::string SM_CONSOLIDATION_PURGE_DELETED_CELLS;
 
@@ -351,6 +354,13 @@ class Config {
    * An group will open between timestamp_start and this value.
    */
   static const std::string SM_GROUP_TIMESTAMP_END;
+
+  /**
+   * If `true` MBRs will be loaded at the same time as the rest of fragment
+   * info, otherwise they will be loaded lazily when some info related to MBRs
+   * is requested by the user
+   */
+  static const std::string SM_FRAGMENT_INFO_PRELOAD_MBRS;
 
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;

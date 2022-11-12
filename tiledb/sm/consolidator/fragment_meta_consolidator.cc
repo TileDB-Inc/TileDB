@@ -67,6 +67,8 @@ Status FragmentMetaConsolidator::consolidate(
     uint32_t key_length) {
   auto timer_se = stats_->start_timer("consolidate_frag_meta");
 
+  check_array_uri(array_name);
+
   // Open array for reading
   Array array(URI(array_name), storage_manager_);
   RETURN_NOT_OK(
@@ -125,11 +127,11 @@ Status FragmentMetaConsolidator::consolidate(
       storage_manager_->compute_tp(), 0, tiles.size(), [&](size_t i) {
 
         SizeComputationSerializer size_computation_serializer;
-        meta[i]->write_footer(size_computation_serializer);
+        throw_if_not_ok(meta[i]->write_footer(size_computation_serializer));
         tiles[i] = std::make_unique<Tile>(
             Tile::from_generic(size_computation_serializer.size()));
         Serializer serializer(tiles[i]->data(), tiles[i]->size());
-        meta[i]->write_footer(serializer);
+        throw_if_not_ok(meta[i]->write_footer(serializer));
 
         return Status::Ok();
       });

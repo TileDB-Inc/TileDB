@@ -33,17 +33,19 @@
 #ifndef TILEDB_READER_BASE_H
 #define TILEDB_READER_BASE_H
 
-#include <queue>
 #include "../strategy_base.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
+#include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_space_tile.h"
+#include "tiledb/sm/query/writers/domain_buffer.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 namespace tiledb {
@@ -51,7 +53,6 @@ namespace sm {
 
 class Array;
 class ArraySchema;
-class StorageManager;
 class Subarray;
 
 /** Processes read queries. */
@@ -161,16 +162,24 @@ class ReaderBase : public StrategyBase {
   /** The query condition. */
   QueryCondition& condition_;
 
-  /** The delete conditions. */
-  std::vector<QueryCondition> delete_conditions_;
+  /**
+   * The delete and update conditions.
+   *
+   * Note: These will be ordered by timestamps.
+   */
+  std::vector<QueryCondition> delete_and_update_conditions_;
 
   /**
-   * Timestamped delete conditions. This the same as delete_conditions_ but
-   * adds a conditional in the condition with the timestamp of the condition.
-   * It will be used to process fragments with timestamps when a delete
-   * condition timestamp falls within the fragment timestamps.
+   * Timestamped delete and update conditions. This the same as
+   * delete_and_update_conditions_ but adds a conditional in the condition with
+   * the timestamp of the condition. It will be used to process fragments with
+   * timestamps when a delete or update condition timestamp falls within the
+   * fragment timestamps.
+   *
+   * Note: These should have the same order as in the
+   * `delete_and_update_conditions_` vector.
    */
-  std::vector<QueryCondition> timestamped_delete_conditions_;
+  std::vector<QueryCondition> timestamped_delete_and_update_conditions_;
 
   /** The fragment metadata that the reader will focus on. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
@@ -206,7 +215,7 @@ class ReaderBase : public StrategyBase {
    * Boolean, per fragment, to specify that we need to load timestamps for
    * deletes. This matches the fragments in 'fragment_metadata_'
    */
-  std::vector<bool> timestamps_needed_for_deletes_;
+  std::vector<bool> timestamps_needed_for_deletes_and_updates_;
 
   /** Names of dim/attr loaded for query condition. */
   std::unordered_set<std::string> qc_loaded_attr_names_set_;
@@ -360,64 +369,6 @@ class ReaderBase : public StrategyBase {
   Status load_processed_conditions();
 
   /**
-   * Initializes a fixed-sized tile.
-   *
-   * @param format_version The format version of the tile.
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The tile to be initialized.
-   * @return Status
-   */
-  Status init_tile(
-      uint32_t format_version, const std::string& name, Tile* tile) const;
-
-  /**
-   * Initializes a var-sized tile.
-   *
-   * @param format_version The format version of the tile.
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The offsets tile to be initialized.
-   * @param tile_var The var-sized data tile to be initialized.
-   * @return Status
-   */
-  Status init_tile(
-      uint32_t format_version,
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_var) const;
-
-  /**
-   * Initializes a fixed-sized tile.
-   *
-   * @param format_version The format version of the tile.
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The tile to be initialized.
-   * @param tile_validity The validity tile to be initialized.
-   * @return Status
-   */
-  Status init_tile_nullable(
-      uint32_t format_version,
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_validity) const;
-
-  /**
-   * Initializes a var-sized tile.
-   *
-   * @param format_version The format version of the tile.
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The offsets tile to be initialized.
-   * @param tile_var The var-sized data tile to be initialized.
-   * @param tile_validity The validity tile to be initialized.
-   * @return Status
-   */
-  Status init_tile_nullable(
-      uint32_t format_version,
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_var,
-      Tile* tile_validity) const;
-
-  /**
    * Concurrently executes across each name in `names` and each result tile
    * in 'result_tiles'.
    *
@@ -489,6 +440,7 @@ class ReaderBase : public StrategyBase {
    * @param name Attribute/dimension the tile belong to.
    * @param tile Tile to be unfiltered.
    * @param tile_chunk_data Tile chunk info, buffers and offsets
+   * @param support_data Support data for the filter
    * @return Status
    */
   Status unfilter_tile_chunk_range(
@@ -496,7 +448,8 @@ class ReaderBase : public StrategyBase {
       uint64_t thread_idx,
       const std::string& name,
       Tile* tile,
-      const ChunkData& tile_chunk_data) const;
+      const ChunkData& tile_chunk_data,
+      void* support_data = nullptr) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -593,9 +546,11 @@ class ReaderBase : public StrategyBase {
    *
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be unfiltered.
+   * @param support_data Support data for the filter.
    * @return Status
    */
-  Status unfilter_tile(const std::string& name, Tile* tile) const;
+  Status unfilter_tile(
+      const std::string& name, Tile* tile, void* support_data = nullptr) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -651,9 +606,9 @@ class ReaderBase : public StrategyBase {
    * @param name The attribute name.
    * @param f The fragment idx.
    * @param t The tile idx.
-   * @return Status, tile size.
+   * @return Tile size.
    */
-  tuple<Status, optional<uint64_t>> get_attribute_tile_size(
+  uint64_t get_attribute_tile_size(
       const std::string& name, unsigned f, uint64_t t);
 
   /**
@@ -785,6 +740,53 @@ class ReaderBase : public StrategyBase {
       ResultTile* const tile,
       const bool var_size,
       const bool nullable) const;
+
+ private:
+  /**
+   * @brief Class that stores all the storage needed to keep bitsort
+   * metadata.
+   * @tparam CmpObject The comparator object being stored.
+   */
+  template <
+      typename CmpObject,
+      typename std::enable_if_t<
+          std::is_same_v<CmpObject, HilbertCmpQB> ||
+          std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
+  struct BitSortFilterMetadataStorage;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  /**
+   * @brief Calculate Hilbert values. Used to pass in a Hilbert
+   * comparator to the read-reverse path.
+   *
+   * @param domain_buffers
+   * @param hilbert_values
+   */
+  void calculate_hilbert_values(
+      const DomainBuffersView& domain_buffers,
+      std::vector<uint64_t>& hilbert_values) const;
+
+  /**
+   * @brief Constructs the bitsort metadata object.
+   *
+   * @tparam CmpObject The comparator object being constructed.
+   * @param tile Fixed tile that is being unfiltered.
+   * @param bitsort_storage Storage for all the vectors needed to construct the
+   * bitsort filter.
+   * @return BitSortFilterMetadataType the constructed argument.
+   */
+
+  template <
+      typename CmpObject,
+      typename std::enable_if_t<
+          std::is_same_v<CmpObject, HilbertCmpQB> ||
+          std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
+  BitSortFilterMetadataType construct_bitsort_filter_argument(
+      ResultTile* const tile,
+      BitSortFilterMetadataStorage<CmpObject>& bitsort_storage) const;
 };
 
 }  // namespace sm

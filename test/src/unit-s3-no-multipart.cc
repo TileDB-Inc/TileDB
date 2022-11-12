@@ -33,7 +33,7 @@
 #ifdef HAVE_S3
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/s3.h"
@@ -104,7 +104,7 @@ S3DirectFx::~S3DirectFx() {
 
   // Delete bucket
   CHECK(s3_.remove_bucket(S3_BUCKET).ok());
-  s3_.disconnect();
+  CHECK(s3_.disconnect().ok());
 }
 
 TEST_CASE_METHOD(

@@ -73,7 +73,8 @@ std::string generate_uri(
  *
  * @return new fragment name.
  */
-std::string generate_fragment_name(uint64_t timestamp, uint32_t format_version);
+std::string generate_fragment_name(
+    uint64_t timestamp, format_version_t format_version);
 
 }  // namespace tiledb::storage_format
 

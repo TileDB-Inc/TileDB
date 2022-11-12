@@ -245,16 +245,45 @@ class TypedRangeSetAndSupersetImpl : public RangeSetAndSupersetImpl {
   Range superset_{};
 };
 
+template <typename T, bool CoalesceAdds>
+class TypedRangeSetAndFullsetImpl : public RangeSetAndSupersetImpl {
+ public:
+  TypedRangeSetAndFullsetImpl() = default;
+
+  Status add_range(
+      std::vector<Range>& ranges, const Range& new_range) const override {
+    return AddStrategy<T, CoalesceAdds>::add_range(ranges, new_range);
+  }
+
+  void check_range_is_valid(const Range& range) const override {
+    type::check_range_is_valid<T>(range);
+  }
+
+  Status check_range_is_subset(const Range&) const override {
+    // No check needed.
+    return Status::Ok();
+  }
+
+  optional<std::string> crop_range_with_warning(Range&) const override {
+    // No check needed.
+    return nullopt;
+  }
+
+  Status sort_ranges(
+      ThreadPool* const compute_tp, std::vector<Range>& ranges) const override {
+    return SortStrategy<T>::sort(compute_tp, ranges);
+  }
+};
+
 /**
  * Implementation for the RangeSetAndSuperset for string ranges. Assumes
  * superset is always the full typeset.
  */
 template <bool CoalesceAdds>
-class TypedRangeSetAndSupersetImpl<std::string, CoalesceAdds>
+class TypedRangeSetAndFullsetImpl<std::string, CoalesceAdds>
     : public RangeSetAndSupersetImpl {
  public:
-  TypedRangeSetAndSupersetImpl(const Range& superset)
-      : superset_(superset){};
+  TypedRangeSetAndFullsetImpl() = default;
 
   Status add_range(
       std::vector<Range>& ranges, const Range& new_range) const override {
@@ -279,10 +308,6 @@ class TypedRangeSetAndSupersetImpl<std::string, CoalesceAdds>
       ThreadPool* const compute_tp, std::vector<Range>& ranges) const override {
     return SortStrategy<std::string>::sort(compute_tp, ranges);
   }
-
- private:
-  /** Maximum possible range. */
-  Range superset_{};
 };
 
 }  // namespace detail

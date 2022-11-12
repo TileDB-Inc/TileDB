@@ -152,7 +152,7 @@ class SingleFragmentInfo {
     return timestamp_range_;
   }
 
-  uint32_t format_version() const {
+  format_version_t format_version() const {
     return version_;
   }
 
@@ -179,6 +179,11 @@ class SingleFragmentInfo {
   /** Returns a pointer to the fragment's metadata. */
   shared_ptr<FragmentMetadata> meta() const {
     return meta_;
+  }
+
+  /** Returns the array schema name. */
+  const std::string& array_schema_name() const {
+    return array_schema_name_;
   }
 
   /** Returns the non-empty domain in string format. */
@@ -267,9 +272,19 @@ class SingleFragmentInfo {
     return ss.str();
   }
 
-  /** Returns the array schema name. */
-  const std::string& array_schema_name() const {
-    return array_schema_name_;
+  /** Accessor to the fragment size. */
+  uint64_t& fragment_size() {
+    return fragment_size_;
+  }
+
+  /** Accessor to the metadata pointer. */
+  shared_ptr<FragmentMetadata>& meta() {
+    return meta_;
+  }
+
+  /** Accessor to the metadata pointer. */
+  NDRange& non_empty_domain() {
+    return non_empty_domain_;
   }
 
  private:
@@ -277,7 +292,7 @@ class SingleFragmentInfo {
   URI uri_;
 
   /** The format version of the fragment. */
-  uint32_t version_;
+  format_version_t version_;
 
   /** True if the fragment is sparse, and false if it is dense. */
   bool sparse_;

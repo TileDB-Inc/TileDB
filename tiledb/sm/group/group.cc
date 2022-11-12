@@ -278,9 +278,7 @@ Status Group::close() {
   metadata_.clear();
   metadata_loaded_ = false;
   is_open_ = false;
-  clear();
-
-  return Status::Ok();
+  return clear();
 }
 
 bool Group::is_open() const {
@@ -483,8 +481,8 @@ QueryType Group::query_type() const {
   return query_type_;
 }
 
-const Config* Group::config() const {
-  return &config_;
+const Config& Group::config() const {
+  return config_;
 }
 
 Status Group::set_config(Config config) {
@@ -658,7 +656,7 @@ Group::members() const {
   return members_;
 }
 
-void Group::serialize(Serializer &) {
+void Group::serialize(Serializer&) {
   throw StatusException(Status_GroupError("Invalid call to Group::serialize"));
 }
 
@@ -668,15 +666,17 @@ void Group::apply_and_serialize(Serializer& serializer) {
 }
 
 std::optional<tdb_shared_ptr<Group>> Group::deserialize(
-    Deserializer &deserializer, const URI& group_uri, StorageManager* storage_manager) {
+    Deserializer& deserializer,
+    const URI& group_uri,
+    StorageManager* storage_manager) {
   uint32_t version = 0;
   version = deserializer.read<uint32_t>();
   if (version == 1) {
     return GroupV1::deserialize(deserializer, group_uri, storage_manager);
   }
 
-  throw StatusException(
-      Status_GroupError("Unsupported group version " + std::to_string(version)));
+  throw StatusException(Status_GroupError(
+      "Unsupported group version " + std::to_string(version)));
 }
 
 const URI& Group::group_uri() const {
@@ -776,13 +776,15 @@ tuple<
     Status,
     optional<std::string>,
     optional<ObjectType>,
-    optional<std::string>>
+    optional<std::string>,
+    optional<bool>>
 Group::member_by_name(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   // Check if group is open
   if (!is_open_) {
     return {Status_GroupError("Cannot get member by name; Group is not open"),
+            std::nullopt,
             std::nullopt,
             std::nullopt,
             std::nullopt};
@@ -794,12 +796,14 @@ Group::member_by_name(const std::string& name) {
                 "Cannot get member; Group was not opened in read mode"),
             std::nullopt,
             std::nullopt,
+            std::nullopt,
             std::nullopt};
   }
 
   auto it = members_by_name_.find(name);
   if (it == members_by_name_.end()) {
     return {Status_GroupError(name + " does not exist in group"),
+            std::nullopt,
             std::nullopt,
             std::nullopt,
             std::nullopt};
@@ -811,7 +815,8 @@ Group::member_by_name(const std::string& name) {
     uri = group_uri_.join_path(member->uri().to_string()).to_string();
   }
 
-  return {Status::Ok(), uri, member->type(), member->name()};
+  return {
+      Status::Ok(), uri, member->type(), member->name(), member->relative()};
 }
 
 std::string Group::dump(
@@ -838,9 +843,9 @@ std::string Group::dump(
       }
 
       GroupV1 group_rec(uri, storage_manager_);
-      group_rec.open(QueryType::READ);
+      throw_if_not_ok(group_rec.open(QueryType::READ));
       ss << group_rec.dump(indent_size, num_indents + 2, recursive, false);
-      group_rec.close();
+      throw_if_not_ok(group_rec.close());
     }
   }
 
@@ -872,8 +877,8 @@ Status Group::load_metadata() {
     RETURN_NOT_OK(rest_client->post_group_metadata_from_rest(group_uri_, this));
   } else {
     assert(group_dir_->loaded());
-    RETURN_NOT_OK(storage_manager_->load_group_metadata(
-        group_dir_, *encryption_key_, &metadata_));
+    storage_manager_->load_group_metadata(
+        group_dir_, *encryption_key_, &metadata_);
   }
   metadata_loaded_ = true;
   return Status::Ok();

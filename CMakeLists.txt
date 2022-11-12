@@ -332,8 +332,11 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/context/context_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter_list/filter_list_api_external.h"
 )
 set(TILEDB_C_API_RELATIVE_HEADER_BASE "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -424,11 +427,13 @@ add_subdirectory(examples)
 
 # Build unit tests
 if (TILEDB_TESTS)
+  add_subdirectory(test/support)
   add_subdirectory(test)
 
   # Add cmake target for "tests" to build all unit tests executables
   add_custom_target(tests)
   add_dependencies(tests tiledb_unit)
+  add_dependencies(tests test_assert)
 
   add_dependencies(tests unit_buffer unit_datum unit_dynamic_memory)
   add_dependencies(tests unit_exception unit_interval unit_thread_pool unit_experimental)
@@ -436,9 +441,19 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_compressors unit_query unit_misc unit_vfs unit_array)
   add_dependencies(tests unit_config)
   add_dependencies(tests unit_range_subset)
+  add_dependencies(tests unit_add_ranges_list)
   add_dependencies(tests unit_consistency)
   add_dependencies(tests unit_range)
-  add_dependencies(tests unit_capi_handle unit_capi_filter)
+  add_dependencies(tests unit_rtree)
+  add_dependencies(tests unit_tile)
+
+  # C API support
+  add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
+  # C API basics
+  add_dependencies(tests unit_capi_error unit_capi_config unit_capi_context)
+  # C API array schema
+  add_dependencies(tests unit_capi_filter unit_capi_filter_list)
+
   add_dependencies(tests unit_delete_update_condition)
   add_dependencies(tests unit_ast)
   add_dependencies(tests unit_serializers)

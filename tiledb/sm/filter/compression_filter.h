@@ -88,7 +88,7 @@ class CompressionFilter : public Filter {
   CompressionFilter(
       Compressor compressor,
       int level,
-      const uint32_t version = constants::format_version);
+      const format_version_t version = constants::format_version);
 
   /**
    * Constructor.
@@ -100,7 +100,7 @@ class CompressionFilter : public Filter {
   CompressionFilter(
       FilterType compressor,
       int level,
-      const uint32_t version = constants::format_version);
+      const format_version_t version = constants::format_version);
 
   /** Return the compressor used by this filter instance. */
   Compressor compressor() const;
@@ -116,7 +116,7 @@ class CompressionFilter : public Filter {
    */
   Status run_forward(
       const Tile& tile,
-      Tile* const tile_offsets,
+      void* const support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -127,7 +127,7 @@ class CompressionFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      Tile* const tile_offsets,
+      void* support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

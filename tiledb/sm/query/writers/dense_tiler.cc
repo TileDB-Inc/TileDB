@@ -218,13 +218,13 @@ Status DenseTiler<T>::get_tile(
     std::vector<uint8_t> fill_var(sizeof(uint64_t), 0);
 
     // Initialize position tile
-    Tile tile_pos;
-    RETURN_NOT_OK(tile_pos.init_unfiltered(
+    Tile tile_pos(
         constants::format_version,
         constants::cell_var_offset_type,
-        tile_off_size,
         constants::cell_var_offset_size,
-        0));
+        0,
+        tile_off_size,
+        0);
 
     // Fill entire tile with MAX_UINT64
     std::vector<uint64_t> to_write(
@@ -576,7 +576,7 @@ Status DenseTiler<T>::copy_tile(
 }
 
 template <class T>
-Status DenseTiler<T>::compute_tile_metadata(
+void DenseTiler<T>::compute_tile_metadata(
     const std::string& name, uint64_t id, WriterTile& tile) const {
   // Calculate copy plan
   const CopyPlan copy_plan = this->copy_plan(id);
@@ -640,7 +640,6 @@ Status DenseTiler<T>::compute_tile_metadata(
   }
 
   md_generator.set_tile_metadata(tile);
-  return Status::Ok();
 }
 
 // Explicit template instantiations

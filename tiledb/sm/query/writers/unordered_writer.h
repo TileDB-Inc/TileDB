@@ -63,6 +63,7 @@ class UnorderedWriter : public WriterBase {
       Layout layout,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       Query::CoordsInfo& coords_info_,
+      bool remote_query,
       optional<std::string> fragment_name = nullopt,
       bool skip_checks_serialization = false);
 
@@ -90,9 +91,15 @@ class UnorderedWriter : public WriterBase {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** Fragment URI. */
+  std::optional<URI> frag_uri_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Invoked on error. It removes the directory of the input URI. */
+  void clean_up();
 
   /**
    * Throws an error if there are coordinate duplicates.
@@ -102,12 +109,6 @@ class UnorderedWriter : public WriterBase {
    * @return Status
    */
   Status check_coord_dups(const std::vector<uint64_t>& cell_pos) const;
-
-  /**
-   * Invoked on error. It removes the directory of the input URI and
-   * resets the global write state.
-   */
-  void clean_up(const URI& uri);
 
   /**
    * Computes the positions of the coordinate duplicates (if any). Note

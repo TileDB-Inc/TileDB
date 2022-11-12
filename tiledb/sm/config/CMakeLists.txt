@@ -29,7 +29,7 @@ include(common NO_POLICY_SCOPE)
 #
 # `config` object library
 #
-add_library(config OBJECT config.cc)
+add_library(config OBJECT config.cc config_iter.cc)
 target_link_libraries(config PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(config PUBLIC constants $<TARGET_OBJECTS:constants>)
 target_link_libraries(config PUBLIC parse_argument $<TARGET_OBJECTS:parse_argument>)

@@ -30,8 +30,8 @@
  * Tests the `Subarray` class.
  */
 
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
@@ -125,7 +125,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{5, 7, 6, 15, 33, 43}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Prepare correct tile coordinates
   std::vector<std::vector<uint8_t>> c_tile_coords;
@@ -248,7 +248,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{2, 2, 6, 10}, {2, 6, 5, 10}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   auto tile_coords = subarray.tile_coords();
   CHECK(tile_coords == c_tile_coords);

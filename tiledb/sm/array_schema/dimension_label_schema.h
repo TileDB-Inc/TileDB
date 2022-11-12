@@ -37,12 +37,9 @@
 #include "tiledb/sm/enums/label_order.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;
-
-namespace tiledb::type {
-class Range;
-}
 
 using namespace tiledb::type;
 
@@ -53,13 +50,6 @@ class Attribute;
 class Dimension;
 class ByteVecValue;
 class FilterPipeline;
-
-/**
- * Return a Status_DimensionLabelSchema error class Status with a given message
- **/
-inline Status Status_DimensionLabelSchemaError(const std::string& msg) {
-  return {"[TileDB::DimensionLabelSchema] Error", msg};
-}
 
 /**
  * Schema for an dimension label. An dimension label consists of two
@@ -81,25 +71,21 @@ class DimensionLabelSchema {
   /**
    * Constructor.
    *
-   * @param label_type The label type.
-   * @param index_type The datatype for the original dimension data. Must be the
-   * same as the dimension the dimension label is applied to.
-   * @param index_domain The range the original dimension is defined on. Must be
-   * the same as the dimension the dimension label is applied to.
-   * @param index_tile_extent The tile extent for the original dimension data on
-   * the dimension label.
+   * @param label_order The label order.
    * @param label_type The datatype for the new label dimension data.
-   * @param label_dim_domain The range the label data is defined on domain.
-   * @param label_tile_extent The tile extent for the label data.
+   * @param index_type The datatype for the original dimension data. Must be the
+   *     same as the dimension the dimension label is applied to.
+   * @param index_domain The range the original dimension is defined on. Must be
+   *     the same as the dimension the dimension label is applied to.
+   * @param index_tile_extent The tile extent for the original dimension data on
+   *     the dimension label.
    */
   DimensionLabelSchema(
       LabelOrder label_order,
+      Datatype label_type,
       Datatype index_type,
       const void* index_domain,
-      const void* index_tile_extent,
-      Datatype label_type,
-      const void* label_domain,
-      const void* label_tile_extent);
+      const void* index_tile_extent);
 
   /**
    * Constructor.
@@ -108,13 +94,9 @@ class DimensionLabelSchema {
    * dimension label.
    * @param indexed_array_schema Array schema for the array with indices defined
    * on the dimension.
-   * @param labelled_array_schema Array schema for the array with labels defined
-   * on the dimension.
    */
   DimensionLabelSchema(
-      LabelOrder label_order,
-      shared_ptr<ArraySchema> indexed_array_schema,
-      shared_ptr<ArraySchema> labelled_array_schema);
+      LabelOrder label_order, shared_ptr<ArraySchema> indexed_array_schema);
 
   /**
    * Constructor.
@@ -125,11 +107,17 @@ class DimensionLabelSchema {
    */
   explicit DimensionLabelSchema(const DimensionLabelSchema* dim_label);
 
-  /** Returns the index attribute from the labelled array. */
-  const Attribute* index_attribute() const;
-
   /** Returns the index dimension from the indexed array. */
   const Dimension* index_dimension() const;
+
+  /** Returns the number of values per cell for the index. */
+  uint32_t index_cell_val_num() const;
+
+  /** Returns a reference to the index domain. */
+  const Range& index_domain() const;
+
+  /** Returns the index datatype. */
+  Datatype index_type() const;
 
   /** Returns the indexed array schema. */
   inline const shared_ptr<ArraySchema> indexed_array_schema() const {
@@ -148,17 +136,18 @@ class DimensionLabelSchema {
   /** Returns the label attribute from the indexed array. */
   const Attribute* label_attribute() const;
 
-  /** Returns the label dimension from the labelled array. */
-  const Dimension* label_dimension() const;
+  /** Returns the number of values per cell for the index. */
+  uint32_t label_cell_val_num() const;
+
+  /** Returns a reference to the index domain. */
+  const Range& label_domain() const;
+
+  /** Returns the index datatype. */
+  Datatype label_type() const;
 
   /** Returns the label order type of this dimension label. */
   inline LabelOrder label_order() const {
     return label_order_;
-  }
-
-  /** Returns the indexed array schema. */
-  inline const shared_ptr<ArraySchema> labelled_array_schema() const {
-    return labelled_array_schema_;
   }
 
  private:
@@ -168,8 +157,8 @@ class DimensionLabelSchema {
   /** Schema for the array with indices defined on the dimension. */
   shared_ptr<ArraySchema> indexed_array_schema_;
 
-  /** Schema for the array with labels defined on the dimension. */
-  shared_ptr<ArraySchema> labelled_array_schema_;
+  /** The label domain. */
+  Range label_domain_;
 };
 
 }  // namespace tiledb::sm

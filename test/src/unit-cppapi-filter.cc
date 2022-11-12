@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 static void check_filters(
@@ -231,6 +232,7 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter]") {
 }
 
 void write_sparse_array_string_attr(
+    const bool serialized_writes,
     tiledb::Context ctx,
     const std::string& array_name,
     std::string& data,
@@ -247,11 +249,13 @@ void write_sparse_array_string_attr(
   query.set_data_buffer("d1", d1);
   query.set_data_buffer("d2", d2);
   query.set_data_buffer("a1", data).set_offsets_buffer("a1", data_offsets);
-  CHECK_NOTHROW(query.submit());
-  array.close();
 
-  // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
+  if (!serialized_writes) {
+    CHECK_NOTHROW(query.submit());
+    query.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query);
+  }
 
   array.close();
 }
@@ -329,7 +333,7 @@ TEST_CASE(
 
   SECTION("Unordered write") {
     write_sparse_array_string_attr(
-        ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
+        false, ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
     SECTION("Row major read") {
       read_and_check_sparse_array_string_attr(
           ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
@@ -344,8 +348,18 @@ TEST_CASE(
     }
   }
   SECTION("Global order write") {
+#ifdef TILEDB_SERIALIZATION
+    bool serialized_writes = GENERATE(true, false);
+#else
+    bool serialized_writes = false;
+#endif
     write_sparse_array_string_attr(
-        ctx, array_name, a1_data, a1_offsets, TILEDB_GLOBAL_ORDER);
+        serialized_writes,
+        ctx,
+        array_name,
+        a1_data,
+        a1_offsets,
+        TILEDB_GLOBAL_ORDER);
     SECTION("Row major read") {
       read_and_check_sparse_array_string_attr(
           ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
@@ -366,6 +380,7 @@ TEST_CASE(
 }
 
 void write_dense_array_string_attr(
+    const bool serialized_writes,
     tiledb::Context ctx,
     const std::string& array_name,
     std::string& data,
@@ -380,10 +395,12 @@ void write_dense_array_string_attr(
   query.set_layout(layout);
   query.set_subarray<int64_t>({0, 1, 0, 2});
 
-  CHECK_NOTHROW(query.submit());
-
-  // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
+  if (!serialized_writes) {
+    CHECK_NOTHROW(query.submit());
+    query.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx, query);
+  }
 
   array.close();
 }
@@ -462,13 +479,23 @@ TEST_CASE(
 
   SECTION("Ordered write") {
     write_dense_array_string_attr(
-        ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
+        false, ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
     read_and_check_dense_array_string_attr(
         ctx, array_name, a1_data, a1_offsets);
   }
   SECTION("Global order write") {
+#ifdef TILEDB_SERIALIZATION
+    bool serialized_writes = GENERATE(true, false);
+#else
+    bool serialized_writes = false;
+#endif
     write_dense_array_string_attr(
-        ctx, array_name, a1_data, a1_offsets, TILEDB_GLOBAL_ORDER);
+        serialized_writes,
+        ctx,
+        array_name,
+        a1_data,
+        a1_offsets,
+        TILEDB_GLOBAL_ORDER);
     read_and_check_dense_array_string_attr(
         ctx, array_name, a1_data, a1_offsets);
   }

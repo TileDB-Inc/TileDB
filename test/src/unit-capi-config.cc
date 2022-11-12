@@ -246,6 +246,8 @@ void check_save_to_file() {
      << "\n";
   ss << "sm.consolidation.amplification 1.0\n";
   ss << "sm.consolidation.buffer_size 50000000\n";
+  ss << "sm.consolidation.max_fragment_size " << std::to_string(UINT64_MAX)
+     << "\n";
   ss << "sm.consolidation.mode fragments\n";
   ss << "sm.consolidation.purge_deleted_cells false\n";
   ss << "sm.consolidation.step_max_frags 4294967295\n";
@@ -257,6 +259,7 @@ void check_save_to_file() {
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.encryption_type NO_ENCRYPTION\n";
+  ss << "sm.fragment_info.preload_mbrs false\n";
   ss << "sm.group.timestamp_end 18446744073709551615\n";
   ss << "sm.group.timestamp_start 0\n";
   ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
@@ -564,6 +567,10 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
       config, "rest.use_refactored_array_open", "true", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.fragment_info.preload_mbrs", "true", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
 
   // Prepare maps
   std::map<std::string, std::string> all_param_values;
@@ -633,6 +640,8 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.consolidation.step_min_frags"] = "4294967295";
   all_param_values["sm.consolidation.step_max_frags"] = "4294967295";
   all_param_values["sm.consolidation.buffer_size"] = "50000000";
+  all_param_values["sm.consolidation.max_fragment_size"] =
+      std::to_string(UINT64_MAX);
   all_param_values["sm.consolidation.step_size_ratio"] = "0.0";
   all_param_values["sm.consolidation.mode"] = "fragments";
   all_param_values["sm.read_range_oob"] = "warn";
@@ -641,6 +650,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.var_offsets.extra_element"] = "true";
   all_param_values["sm.var_offsets.mode"] = "elements";
   all_param_values["sm.max_tile_overlap_size"] = "314572800";
+  all_param_values["sm.fragment_info.preload_mbrs"] = "true";
 
   all_param_values["vfs.disable_batching"] = "false";
   all_param_values["vfs.max_batch_size"] = std::to_string(UINT64_MAX);
