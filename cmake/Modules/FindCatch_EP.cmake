@@ -31,6 +31,10 @@
 #   - TILEDB_CATCH2_SOURCES_DIR directory containing headers, lib source
 #   - The Catch2::Catch2 imported target
 
+if (NOT TILEDB_TESTS)
+  message(FATAL_ERROR "FindCatch_EP should not be used with TILEDB_TESTS=OFF")
+endif()
+
 # Include some common helper functions.
 include(TileDBCommon)
 

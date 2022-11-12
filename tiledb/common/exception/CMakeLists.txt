@@ -50,6 +50,7 @@ if (TILEDB_TESTS)
     target_sources(unit_exception PUBLIC
       test/main.cc
       test/unit_exception.cc
+      test/unit_status.cc
     )
 
     add_test(

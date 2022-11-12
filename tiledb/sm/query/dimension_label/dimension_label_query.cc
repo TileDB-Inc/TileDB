@@ -31,13 +31,12 @@
  * dimension for setting the subarray.
  */
 
-#include "tiledb/sm/query/dimension_label/dimension_label_data_query.h"
+#include "tiledb/sm/query/dimension_label/dimension_label_query.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/unreachable.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
+#include "tiledb/sm/enums/label_order.h"
 #include "tiledb/sm/enums/query_status.h"
-#include "tiledb/sm/query/dimension_label/index_data.h"
-#include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/subarray/subarray.h"
 
@@ -48,45 +47,132 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-DimensionLabelReadDataQuery::DimensionLabelReadDataQuery(
+DimensionLabelQuery::DimensionLabelQuery(
     StorageManager* storage_manager,
+    stats::Stats* stats,
+    const std::string& label_name,
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
-    const uint32_t dim_idx)
-    : query_{tdb_unique_ptr<Query>(tdb_new(
-          Query, storage_manager, dimension_label->indexed_array(), nullopt))} {
+    const QueryBuffer& index_buffer,
+    const uint32_t dim_idx,
+    optional<std::string> fragment_name)
+    : Query(storage_manager, dimension_label->indexed_array(), fragment_name)
+    , dim_label_name_{label_name} {
+  switch (dimension_label->query_type()) {
+    case (QueryType::READ):
+      initialize_read_labels_query(
+          dimension_label, parent_subarray, label_buffer, dim_idx);
+      break;
+
+    case (QueryType::WRITE):
+      // Initialize write query for the appropriate label order type.
+      switch (dimension_label->label_order()) {
+        case (LabelOrder::INCREASING_LABELS):
+        case (LabelOrder::DECREASING_LABELS):
+          initialize_ordered_write_query(
+              stats,
+              dimension_label,
+              parent_subarray,
+              label_buffer,
+              index_buffer,
+              dim_idx);
+          break;
+
+        case (LabelOrder::UNORDERED_LABELS):
+          initialize_unordered_write_query(
+              dimension_label,
+              parent_subarray,
+              label_buffer,
+              index_buffer,
+              dim_idx);
+          break;
+
+        default:
+          // Invalid label order type.
+          throw DimensionLabelQueryStatusException(
+              "Unrecognized label order " +
+              label_order_str(dimension_label->label_order()));
+      }
+      break;
+
+    default:
+      throw DimensionLabelQueryStatusException(
+          "Query type " + query_type_str(dimension_label->query_type()) +
+          " not supported for dimension label queries.");
+  }
+}
+
+DimensionLabelQuery::DimensionLabelQuery(
+    StorageManager* storage_manager,
+    const std::string& label_name,
+    DimensionLabel* dimension_label,
+    const std::vector<Range>& label_ranges)
+    : Query(storage_manager, dimension_label->indexed_array(), nullopt)
+    , dim_label_name_{label_name}
+    , index_data_{IndexDataCreate::make_index_data(
+          dimension_label->index_dimension()->type(),
+          2 * label_ranges.size(),
+          false)} {
+  // Check dimension label order is supported.
+  switch (dimension_label->label_order()) {
+    case (LabelOrder::INCREASING_LABELS):
+    case (LabelOrder::DECREASING_LABELS):
+      break;
+    case (LabelOrder::UNORDERED_LABELS):
+      throw DimensionLabelQueryStatusException(
+          "Support for reading ranges from unordered labels is not yet "
+          "implemented.");
+    default:
+      // Invalid label order type.
+      throw DimensionLabelQueryStatusException(
+          "Unrecognized label order " +
+          label_order_str(dimension_label->label_order()));
+  }
+
+  // Set the basic query properies.
+  throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
+  set_dimension_label_ordered_read(
+      dimension_label->label_order() == LabelOrder::INCREASING_LABELS);
+
+  // Set the subarray.
+  Subarray subarray{*this->subarray()};
+  subarray.set_attribute_ranges(
+      dimension_label->label_attribute()->name(), label_ranges);
+  throw_if_not_ok(set_subarray(subarray));
+
+  // Set index data buffer that will store the computed ranges.
+  throw_if_not_ok(set_data_buffer(
+      dimension_label->index_dimension()->name(),
+      index_data_->data(),
+      index_data_->data_size(),
+      true));
+}
+
+bool DimensionLabelQuery::completed() const {
+  return status() == QueryStatus::COMPLETED;
+}
+
+void DimensionLabelQuery::initialize_read_labels_query(
+    DimensionLabel* dimension_label,
+    const Subarray& parent_subarray,
+    const QueryBuffer& label_buffer,
+    const uint32_t dim_idx) {
   // Set the layout (ordered, 1D).
-  throw_if_not_ok(query_->set_layout(Layout::ROW_MAJOR));
+  throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
 
   // Set the subarray if it has index ranges added to it.
   if (!parent_subarray.is_default(dim_idx) &&
       !parent_subarray.has_label_ranges(dim_idx)) {
-    Subarray subarray{*query_->subarray()};
+    Subarray subarray{*this->subarray()};
     throw_if_not_ok(subarray.set_ranges_for_dim(
         0, parent_subarray.ranges_for_dim(dim_idx)));
-    throw_if_not_ok(query_->set_subarray(subarray));
+    throw_if_not_ok(set_subarray(subarray));
   }
 
   // Set the label data buffer.
-  query_->set_dimension_label_buffer(
+  set_dimension_label_buffer(
       dimension_label->label_attribute()->name(), label_buffer);
-}
-
-void DimensionLabelReadDataQuery::add_index_ranges_from_label(
-    const bool is_point_ranges, const void* start, const uint64_t count) {
-  Subarray subarray{*query_->subarray()};
-  subarray.add_index_ranges_from_label(0, is_point_ranges, start, count);
-  throw_if_not_ok(query_->set_subarray(subarray));
-}
-
-bool DimensionLabelReadDataQuery::completed() const {
-  return query_->status() == QueryStatus::COMPLETED;
-}
-
-void DimensionLabelReadDataQuery::process() {
-  throw_if_not_ok(query_->init());
-  throw_if_not_ok(query_->process());
 }
 
 /**
@@ -295,93 +381,73 @@ bool is_sorted_buffer(
                      buffer.data_buffer_as<char>(),
                      buffer.buffer_var_size_);
     default:
-      throw DimensionLabelDataQueryStatusException(
+      throw DimensionLabelQueryStatusException(
           "Unexpected label datatype " + datatype_str(type));
   }
 
   return true;
 }
 
-OrderedWriteDataQuery::OrderedWriteDataQuery(
-    StorageManager* storage_manager,
+void DimensionLabelQuery::initialize_ordered_write_query(
     stats::Stats* stats,
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
     const QueryBuffer& index_buffer,
-    const uint32_t dim_idx,
-    optional<std::string> fragment_name)
-    : stats_{stats}
-    , query_{tdb_unique_ptr<Query>(tdb_new(
-          Query,
-          storage_manager,
-          dimension_label->indexed_array(),
-          fragment_name))} {
+    const uint32_t dim_idx) {
   // Set query layout.
-  throw_if_not_ok(query_->set_layout(Layout::ROW_MAJOR));
+  throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
 
   // Verify the label data is sorted in the correct order and set label buffer.
   if (!is_sorted_buffer(
-          stats_,
+          stats,
           label_buffer,
           dimension_label->label_attribute()->type(),
           dimension_label->label_order() == LabelOrder::INCREASING_LABELS)) {
-    throw DimensionLabelDataQueryStatusException(
-        "Failed to create dimension label query. The label data is not in the "
-        "expected order.");
+    throw DimensionLabelQueryStatusException(
+        "The label data is not in the expected order.");
   }
-  query_->set_dimension_label_buffer(
+  set_dimension_label_buffer(
       dimension_label->label_attribute()->name(), label_buffer);
 
   // Set the subarray.
   if (index_buffer.buffer_ == nullptr) {
     // Set the subarray if it has index ranges added to it.
     if (!parent_subarray.is_default(dim_idx)) {
-      Subarray subarray{*query_->subarray()};
+      Subarray subarray{*this->subarray()};
       throw_if_not_ok(subarray.set_ranges_for_dim(
           0, parent_subarray.ranges_for_dim(dim_idx)));
-      throw_if_not_ok(query_->set_subarray(subarray));
+      if (subarray.range_num() > 1) {
+        throw DimensionLabelQueryStatusException(
+            "The index data must contain consecutive points when writing to a "
+            "dimension label.");
+      }
+      throw_if_not_ok(set_subarray(subarray));
     }
 
   } else {
-    // Set the subarray using the points from the index buffer.
+    // Set the subarray using the points from the index buffer. Throw an error
+    // if more than one range is created (only happens if index data is not
+    // ordered).
     uint64_t count = *index_buffer.buffer_size_ /
                      datatype_size(dimension_label->index_dimension()->type());
-    Subarray subarray{*query_->subarray()};
+    Subarray subarray{*this->subarray()};
     throw_if_not_ok(subarray.set_coalesce_ranges(true));
     throw_if_not_ok(subarray.add_point_ranges(0, index_buffer.buffer_, count));
-    throw_if_not_ok(query_->set_subarray(subarray));
+    if (subarray.range_num() > 1) {
+      throw DimensionLabelQueryStatusException(
+          "The index data must be for consecutive values.");
+    }
+    throw_if_not_ok(set_subarray(subarray));
   }
 }
 
-bool OrderedWriteDataQuery::completed() const {
-  return query_->status() == QueryStatus::COMPLETED;
-}
-
-void OrderedWriteDataQuery::process() {
-  throw_if_not_ok(query_->init());
-  throw_if_not_ok(query_->process());
-}
-
-void OrderedWriteDataQuery::add_index_ranges_from_label(
-    const bool, const void*, const uint64_t) {
-  throw DimensionLabelDataQueryStatusException(
-      "Updating index ranges is not supported on writes.");
-}
-
-UnorderedWriteDataQuery::UnorderedWriteDataQuery(
-    StorageManager* storage_manager,
+void DimensionLabelQuery::initialize_unordered_write_query(
     DimensionLabel* dimension_label,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
     const QueryBuffer& index_buffer,
-    const uint32_t dim_idx,
-    optional<std::string> fragment_name)
-    : indexed_array_query_{tdb_unique_ptr<Query>(tdb_new(
-          Query,
-          storage_manager,
-          dimension_label->indexed_array(),
-          fragment_name))} {
+    const uint32_t dim_idx) {
   // Create locally stored index data if the index buffer is empty.
   bool use_local_index = index_buffer.buffer_ == nullptr;
   if (use_local_index) {
@@ -389,9 +455,8 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
     if (!parent_subarray.is_default(dim_idx)) {
       const auto& ranges = parent_subarray.ranges_for_dim(dim_idx);
       if (ranges.size() != 1) {
-        throw DimensionLabelDataQueryStatusException(
-            "Failed to create dimension label query. Dimension label writes "
-            "can only be set for a single range.");
+        throw DimensionLabelQueryStatusException(
+            "Dimension label writes can only be set for a single range.");
       }
     }
 
@@ -402,35 +467,19 @@ UnorderedWriteDataQuery::UnorderedWriteDataQuery(
   }
 
   // Set-up indexed array query (sparse array).
-  throw_if_not_ok(indexed_array_query_->set_layout(Layout::UNORDERED));
-  indexed_array_query_->set_dimension_label_buffer(
+  throw_if_not_ok(set_layout(Layout::UNORDERED));
+  set_dimension_label_buffer(
       dimension_label->label_attribute()->name(), label_buffer);
   if (use_local_index) {
-    throw_if_not_ok(indexed_array_query_->set_data_buffer(
+    throw_if_not_ok(set_data_buffer(
         dimension_label->index_dimension()->name(),
         index_data_->data(),
         index_data_->data_size(),
         true));
   } else {
-    indexed_array_query_->set_dimension_label_buffer(
+    set_dimension_label_buffer(
         dimension_label->index_dimension()->name(), index_buffer);
   }
-}
-
-void UnorderedWriteDataQuery::add_index_ranges_from_label(
-    const bool, const void*, const uint64_t) {
-  throw DimensionLabelDataQueryStatusException(
-      "Updating index ranges is not supported on writes.");
-}
-
-bool UnorderedWriteDataQuery::completed() const {
-  return indexed_array_query_->status() == QueryStatus::COMPLETED;
-}
-
-void UnorderedWriteDataQuery::process() {
-  // Write to main dimension label array.
-  throw_if_not_ok(indexed_array_query_->init());
-  throw_if_not_ok(indexed_array_query_->process());
 }
 
 }  // namespace tiledb::sm

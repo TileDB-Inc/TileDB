@@ -87,6 +87,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           subarray,
           layout,
           condition) {
+  include_coords_ = subarray_.is_set() || bitsort_attribute_.has_value();
   SparseIndexReaderBase::init(skip_checks_serialization);
 
   // Initialize memory budget variables.
@@ -108,11 +109,13 @@ bool SparseUnorderedWithDupsReader<BitmapType>::incomplete() const {
 template <class BitmapType>
 QueryStatusDetailsReason
 SparseUnorderedWithDupsReader<BitmapType>::status_incomplete_reason() const {
-  if (array_->is_remote())
+  if (array_->is_remote()) {
     return QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE;
+  }
 
-  if (!incomplete())
+  if (!incomplete()) {
     return QueryStatusDetailsReason::REASON_NONE;
+  }
 
   return result_tiles_.empty() ?
              QueryStatusDetailsReason::REASON_MEMORY_BUDGET :
@@ -182,7 +185,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
 
   // Load initial data, if not loaded already. Coords are only included if the
   // subarray is set.
-  RETURN_NOT_OK(load_initial_data(subarray_.is_set()));
+  RETURN_NOT_OK(load_initial_data());
 
   // Attributes names to process.
   std::vector<std::string> names;
@@ -221,8 +224,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
 
     if (!result_tiles_created.empty()) {
       // Read and unfilter coords.
-      RETURN_NOT_OK(
-          read_and_unfilter_coords(subarray_.is_set(), result_tiles_created));
+      RETURN_NOT_OK(read_and_unfilter_coords(result_tiles_created));
 
       // Compute the tile bitmaps.
       RETURN_NOT_OK(compute_tile_bitmaps<BitmapType>(result_tiles_created));
@@ -298,8 +300,8 @@ template <class BitmapType>
 std::pair<uint64_t, uint64_t>
 SparseUnorderedWithDupsReader<BitmapType>::get_coord_tiles_size(
     unsigned dim_num, unsigned f, uint64_t t) {
-  auto tiles_sizes = SparseIndexReaderBase::get_coord_tiles_size<BitmapType>(
-      subarray_.is_set(), dim_num, f, t);
+  auto tiles_sizes =
+      SparseIndexReaderBase::get_coord_tiles_size<BitmapType>(dim_num, f, t);
 
   auto frag_meta = fragment_metadata_[f];
 
@@ -1399,8 +1401,14 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
 
         // For dimensions, when we have a subarray, tiles are already all
         // loaded in memory.
-        if ((subarray_.is_set() && array_schema_.is_dim(name)) ||
+        if ((include_coords_ && array_schema_.is_dim(name)) ||
             qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps) {
+          return Status::Ok();
+        }
+
+        // Bitsort attribute is already loaded in memory.
+        if (bitsort_attribute_.has_value() &&
+            name == bitsort_attribute_.value()) {
           return Status::Ok();
         }
 
@@ -1640,8 +1648,12 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         for (const auto& idx : *index_to_copy) {
           const auto& name_to_clear = names[idx];
           const auto is_dim_to_clear = array_schema_.is_dim(name_to_clear);
-          if (qc_loaded_attr_names_set_.count(name_to_clear) == 0 &&
-              (!subarray_.is_set() || !is_dim_to_clear)) {
+          const auto is_bitsort_attr =
+              bitsort_attribute_.has_value() &&
+              bitsort_attribute_.value() == name_to_clear;
+          if (!is_bitsort_attr &&
+              qc_loaded_attr_names_set_.count(name_to_clear) == 0 &&
+              (!include_coords_ || !is_dim_to_clear)) {
             clear_tiles(name_to_clear, result_tiles, new_result_tiles_size);
           }
         }
@@ -1677,8 +1689,10 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         *query_buffer.validity_vector_.buffer_size() = total_cells;
 
       // Clear tiles from memory.
-      if (qc_loaded_attr_names_set_.count(name) == 0 &&
-          (!subarray_.is_set() || !is_dim) && name != constants::timestamps &&
+      const auto is_bitsort_attr =
+          bitsort_attribute_.has_value() && bitsort_attribute_.value() == name;
+      if (!is_bitsort_attr && qc_loaded_attr_names_set_.count(name) == 0 &&
+          (!include_coords_ || !is_dim) && name != constants::timestamps &&
           name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);
       }

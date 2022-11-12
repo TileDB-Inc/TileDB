@@ -4623,8 +4623,8 @@ TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_end(
  * **Example:**
  *
  * @code{.c}
- * tiledb_vfs_delete_fragments(
- *   ctx, vfs, "hdfs:///temp/my_array", 0, UINT64_MAX);
+ * tiledb_array_delete_fragments(
+ *   ctx, array, "hdfs:///temp/my_array", 0, UINT64_MAX);
  * @endcode
  *
  * @param ctx The TileDB context.

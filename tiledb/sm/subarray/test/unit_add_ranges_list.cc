@@ -41,7 +41,7 @@
 #include <tiledb/sm/storage_manager/context.h>
 #include <tiledb/sm/subarray/subarray.h>
 
-#include <test/src/helpers.h>
+#include <test/support/src/helpers.h>
 
 using namespace tiledb;
 using namespace tiledb::common;

@@ -51,6 +51,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/bitshuffle_filter.h"
+#include "tiledb/sm/filter/bitsort_filter.h"
 #include "tiledb/sm/filter/byteshuffle_filter.h"
 #include "tiledb/sm/filter/checksum_md5_filter.h"
 #include "tiledb/sm/filter/checksum_sha256_filter.h"
@@ -60,6 +61,7 @@
 #include "tiledb/sm/filter/float_scaling_filter.h"
 #include "tiledb/sm/filter/noop_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
+#include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
@@ -132,6 +134,8 @@ Status filter_to_capnp(
     case FilterType::FILTER_CHECKSUM_SHA256:
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
     case FilterType::FILTER_XOR:
+    case FilterType::FILTER_BITSORT:
+    case FilterType::FILTER_WEBP:
       break;
   }
 
@@ -231,6 +235,17 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
     }
     case FilterType::FILTER_XOR: {
       return {Status::Ok(), tiledb::common::make_shared<XORFilter>(HERE())};
+    }
+    case FilterType::FILTER_BITSORT: {
+      return {Status::Ok(), tiledb::common::make_shared<BitSortFilter>(HERE())};
+    }
+    case FilterType::FILTER_WEBP: {
+      if constexpr (webp_filter_exists) {
+        return {Status::Ok(), tiledb::common::make_shared<WebpFilter>(HERE())};
+      } else {
+        throw std::logic_error(
+            "Can't create WebP filter; built with TILEDB_WEBP=OFF");
+      }
     }
     default: {
       throw std::logic_error(
@@ -960,7 +975,7 @@ ArraySchema array_schema_deserialize(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             array_schema_builder);
         array_schema_reader = array_schema_builder.asReader();
-        break;
+        return array_schema_from_capnp(array_schema_reader, URI());
       }
       case SerializationType::CAPNP: {
         const auto mBytes =
@@ -969,7 +984,7 @@ ArraySchema array_schema_deserialize(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             serialized_buffer.size() / sizeof(::capnp::word)));
         array_schema_reader = reader.getRoot<capnp::ArraySchema>();
-        break;
+        return array_schema_from_capnp(array_schema_reader, URI());
       }
       default: {
         throw StatusException(Status_SerializationError(
@@ -986,8 +1001,6 @@ ArraySchema array_schema_deserialize(
         "Error deserializing array schema; exception " +
         std::string(e.what())));
   }
-
-  return array_schema_from_capnp(array_schema_reader, URI());
 }
 
 Status nonempty_domain_serialize(

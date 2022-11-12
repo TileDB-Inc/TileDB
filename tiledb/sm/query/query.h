@@ -150,7 +150,7 @@ class Query {
       optional<std::string> fragment_name = nullopt);
 
   /** Destructor. */
-  ~Query();
+  virtual ~Query();
 
   DISABLE_COPY_AND_COPY_ASSIGN(Query);
   DISABLE_MOVE_AND_MOVE_ASSIGN(Query);
@@ -929,6 +929,21 @@ class Query {
       uint64_t update_value_size);
 
   /**
+   * Adds ranges to a query initialize with label ranges.
+   *
+   * @param dim_idx The dimension to update.
+   * @param is_point_ranges If ``true`` the data contains point ranges.
+   *     Otherwise, it contains standard ranges.
+   * @param start Pointer to the start of the range data.
+   * @param count Number of total elements in the range data.
+   */
+  void add_index_ranges_from_label(
+      uint32_t dim_idx,
+      const bool is_point_range,
+      const void* start,
+      const uint64_t count);
+
+  /**
    * Set query status, needed for json deserialization
    * @param status
    * @return Status
@@ -1025,6 +1040,15 @@ class Query {
    * not assume decreasing order.
    */
   void set_dimension_label_ordered_read(bool increasing_order);
+
+  /**
+   * Set the fragment size.
+   *
+   * @param fragment_size Fragment size.
+   */
+  void set_fragment_size(uint64_t fragment_size) {
+    fragment_size_ = fragment_size;
+  }
 
  private:
   /* ********************************* */
@@ -1179,6 +1203,14 @@ class Query {
    * NOTE: Only used when is_dimension_label_order_read_ == true.
    */
   bool dimension_label_increasing_;
+
+  /**
+   * The desired fragment size. The writer will create a new fragment once
+   * this size has been reached.
+   *
+   * Note: This is only used for global order writes.
+   */
+  uint64_t fragment_size_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

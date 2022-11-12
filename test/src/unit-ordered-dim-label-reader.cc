@@ -34,7 +34,7 @@
 #include <catch2/matchers/catch_matchers_string.hpp>
 using namespace Catch::Matchers;
 
-#include "helpers.h"
+#include <test/support/src/helpers.h>
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"

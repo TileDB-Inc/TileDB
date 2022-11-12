@@ -33,17 +33,18 @@
 #ifndef TILEDB_READER_BASE_H
 #define TILEDB_READER_BASE_H
 
-#include <queue>
 #include "../strategy_base.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
+#include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_space_tile.h"
+#include "tiledb/sm/query/writers/domain_buffer.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
@@ -439,6 +440,7 @@ class ReaderBase : public StrategyBase {
    * @param name Attribute/dimension the tile belong to.
    * @param tile Tile to be unfiltered.
    * @param tile_chunk_data Tile chunk info, buffers and offsets
+   * @param support_data Support data for the filter
    * @return Status
    */
   Status unfilter_tile_chunk_range(
@@ -446,7 +448,8 @@ class ReaderBase : public StrategyBase {
       uint64_t thread_idx,
       const std::string& name,
       Tile* tile,
-      const ChunkData& tile_chunk_data) const;
+      const ChunkData& tile_chunk_data,
+      void* support_data = nullptr) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -543,9 +546,11 @@ class ReaderBase : public StrategyBase {
    *
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be unfiltered.
+   * @param support_data Support data for the filter.
    * @return Status
    */
-  Status unfilter_tile(const std::string& name, Tile* tile) const;
+  Status unfilter_tile(
+      const std::string& name, Tile* tile, void* support_data = nullptr) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -735,6 +740,53 @@ class ReaderBase : public StrategyBase {
       ResultTile* const tile,
       const bool var_size,
       const bool nullable) const;
+
+ private:
+  /**
+   * @brief Class that stores all the storage needed to keep bitsort
+   * metadata.
+   * @tparam CmpObject The comparator object being stored.
+   */
+  template <
+      typename CmpObject,
+      typename std::enable_if_t<
+          std::is_same_v<CmpObject, HilbertCmpQB> ||
+          std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
+  struct BitSortFilterMetadataStorage;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  /**
+   * @brief Calculate Hilbert values. Used to pass in a Hilbert
+   * comparator to the read-reverse path.
+   *
+   * @param domain_buffers
+   * @param hilbert_values
+   */
+  void calculate_hilbert_values(
+      const DomainBuffersView& domain_buffers,
+      std::vector<uint64_t>& hilbert_values) const;
+
+  /**
+   * @brief Constructs the bitsort metadata object.
+   *
+   * @tparam CmpObject The comparator object being constructed.
+   * @param tile Fixed tile that is being unfiltered.
+   * @param bitsort_storage Storage for all the vectors needed to construct the
+   * bitsort filter.
+   * @return BitSortFilterMetadataType the constructed argument.
+   */
+
+  template <
+      typename CmpObject,
+      typename std::enable_if_t<
+          std::is_same_v<CmpObject, HilbertCmpQB> ||
+          std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
+  BitSortFilterMetadataType construct_bitsort_filter_argument(
+      ResultTile* const tile,
+      BitSortFilterMetadataStorage<CmpObject>& bitsort_storage) const;
 };
 
 }  // namespace sm

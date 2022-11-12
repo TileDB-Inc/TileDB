@@ -1,11 +1,11 @@
 /**
- * @file   unit-status.cc
+ * @file compile_webp_filter_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,28 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * Tests the `Status` class.
  */
 
-#include <test/support/tdb_catch.h>
-#include "tiledb/common/status.h"
+#include "tiledb/sm/filter/webp_filter.h"
 
-using namespace tiledb::common;
-
-TEST_CASE("Status: Test ok", "[status]") {
-  Status st = Status::Ok();
-  CHECK(st.ok());
-  st = Status_Error("err msg");
-  CHECK(!st.ok());
-}
-
-TEST_CASE("Status: Test to_string", "[status]") {
-  Status ok = Status::Ok();
-  CHECK_THAT(ok.to_string(), Catch::Matchers::Equals("Ok"));
-
-  Status err = Status_Error("err msg");
-  CHECK_THAT(err.to_string(), Catch::Matchers::Equals("Error: err msg"));
+int main() {
+  (void)sizeof(tiledb::sm::WebpFilter);
+  return 0;
 }

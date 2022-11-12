@@ -38,7 +38,9 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -193,7 +195,10 @@ WriterBase::WriterBase(
   }
 
   if (!skip_checks_serialization) {
-    check_subarray();
+    // Consolidation might set a subarray that is not tile aligned.
+    if (!disable_checks_consolidation) {
+      check_subarray();
+    }
     check_buffer_sizes();
   }
 
@@ -213,6 +218,8 @@ WriterBase::WriterBase(
   auto frag_dir_uri =
       array_->array_directory().get_fragments_dir(write_version);
   fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
+  throw_if_not_ok(utils::parse::get_timestamp_range(
+      fragment_uri_, &fragment_timestamp_range_));
 }
 
 WriterBase::~WriterBase() {
@@ -308,9 +315,7 @@ Status WriterBase::initialize_memory_budget() {
 /* ****************************** */
 
 Status WriterBase::add_written_fragment_info(const URI& uri) {
-  std::pair<uint64_t, uint64_t> timestamp_range;
-  RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
-  written_fragment_info_.emplace_back(uri, timestamp_range);
+  written_fragment_info_.emplace_back(uri, fragment_timestamp_range_);
   return Status::Ok();
 }
 
@@ -516,18 +521,19 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
   return Status::Ok();
 }
 
-Status WriterBase::compute_coords_metadata(
-    const std::unordered_map<std::string, WriterTileVector>& tiles,
-    shared_ptr<FragmentMetadata> meta) const {
+std::vector<NDRange> WriterBase::compute_mbrs(
+    const std::unordered_map<std::string, WriterTileVector>& tiles) const {
   auto timer_se = stats_->start_timer("compute_coord_meta");
 
   // Applicable only if there are coordinates
-  if (!coords_info_.has_coords_)
-    return Status::Ok();
+  if (!coords_info_.has_coords_) {
+    return std::vector<NDRange>();
+  }
 
   // Check if tiles are empty
-  if (tiles.empty() || tiles.begin()->second.empty())
-    return Status::Ok();
+  if (tiles.empty() || tiles.begin()->second.empty()) {
+    return std::vector<NDRange>();
+  }
 
   // Compute number of tiles. Assumes all attributes and
   // and dimensions have the same number of tiles
@@ -535,36 +541,61 @@ Status WriterBase::compute_coords_metadata(
   auto dim_num = array_schema_.dim_num();
 
   // Compute MBRs
+  std::vector<NDRange> mbrs(tile_num);
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t i) {
-        NDRange mbr(dim_num);
+        mbrs[i].resize(dim_num);
         std::vector<const void*> data(dim_num);
         for (unsigned d = 0; d < dim_num; ++d) {
           auto dim{array_schema_.dimension_ptr(d)};
           const auto& dim_name = dim->name();
           auto tiles_it = tiles.find(dim_name);
           assert(tiles_it != tiles.end());
-          mbr[d] = dim->var_size() ?
-                       dim->compute_mbr_var(
-                           tiles_it->second[i].offset_tile(),
-                           tiles_it->second[i].var_tile()) :
-                       dim->compute_mbr(tiles_it->second[i].fixed_tile());
+          mbrs[i][d] = dim->var_size() ?
+                           dim->compute_mbr_var(
+                               tiles_it->second[i].offset_tile(),
+                               tiles_it->second[i].var_tile()) :
+                           dim->compute_mbr(tiles_it->second[i].fixed_tile());
         }
 
-        throw_if_not_ok(meta->set_mbr(i, mbr));
         return Status::Ok();
       });
+  throw_if_not_ok(status);
 
-  RETURN_NOT_OK(status);
+  return mbrs;
+}
+
+void WriterBase::set_coords_metadata(
+    const uint64_t start_tile_idx,
+    const uint64_t end_tile_idx,
+    const std::unordered_map<std::string, WriterTileVector>& tiles,
+    const std::vector<NDRange>& mbrs,
+    shared_ptr<FragmentMetadata> meta) const {
+  // Applicable only if there are coordinates
+  if (!coords_info_.has_coords_) {
+    return;
+  }
+
+  // Check if tiles are empty
+  if (tiles.empty() || tiles.begin()->second.empty()) {
+    return;
+  }
+
+  auto status = parallel_for(
+      storage_manager_->compute_tp(),
+      start_tile_idx,
+      end_tile_idx,
+      [&](uint64_t i) {
+        throw_if_not_ok(meta->set_mbr(i - start_tile_idx, mbrs[i]));
+        return Status::Ok();
+      });
+  throw_if_not_ok(status);
 
   // Set last tile cell number
   auto dim_0{array_schema_.dimension_ptr(0)};
   const auto& dim_tiles = tiles.find(dim_0->name())->second;
-  const auto& last_tile_pos = dim_tiles.size() - 1;
-  auto cell_num = dim_tiles[last_tile_pos].cell_num();
+  auto cell_num = dim_tiles[end_tile_idx - 1].cell_num();
   meta->set_last_tile_cell_num(cell_num);
-
-  return Status::Ok();
 }
 
 Status WriterBase::compute_tiles_metadata(
@@ -676,20 +707,28 @@ Status WriterBase::create_fragment(
 Status WriterBase::filter_tiles(
     std::unordered_map<std::string, WriterTileVector>* tiles) {
   auto timer_se = stats_->start_timer("filter_tiles");
+  const auto bitsort_attr = array_schema_.bitsort_filter_attr();
 
-  // Coordinates
   auto num = buffers_.size();
   auto status =
       parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
         const auto& name = buff_it->first;
-        RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
+
+        // Run a special function for the bitsort filter.
+        if (bitsort_attr.has_value() && name == bitsort_attr.value()) {
+          RETURN_CANCEL_OR_ERROR(filter_tiles_bitsort(name, tiles));
+        } else if (bitsort_attr.has_value() && array_schema_.is_dim(name)) {
+          // When there is a bitsort filter, dimensions will be filtered at the
+          // same time as the attribute.
+        } else {
+          RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
+        }
         return Status::Ok();
       });
 
   RETURN_NOT_OK(status);
-
   return Status::Ok();
 }
 
@@ -722,7 +761,12 @@ Status WriterBase::filter_tiles(
         const auto& [tile, offset_tile, contains_offsets, is_nullable] =
             args[i];
         RETURN_NOT_OK(filter_tile(
-            name, tile, offset_tile, contains_offsets, is_nullable));
+            name,
+            tile,
+            offset_tile,
+            contains_offsets,
+            is_nullable,
+            offset_tile));
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
@@ -732,12 +776,61 @@ Status WriterBase::filter_tiles(
     auto status = parallel_for(
         storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
           auto& tile = (*tiles)[i];
-          RETURN_NOT_OK(
-              filter_tile(name, &tile.offset_tile(), nullptr, true, false));
+          RETURN_NOT_OK(filter_tile(
+              name, &tile.offset_tile(), nullptr, true, false, nullptr));
           return Status::Ok();
         });
     RETURN_NOT_OK(status);
   }
+
+  return Status::Ok();
+}
+
+Status WriterBase::filter_tiles_bitsort(
+    const std::string& name,
+    std::unordered_map<std::string, WriterTileVector>* tiles) {
+  // Cache the dimention tile vectors.
+  std::vector<WriterTileVector*> dim_tiles;
+  dim_tiles.reserve(array_schema_.dim_num());
+  for (const auto& name : array_schema_.dim_names()) {
+    dim_tiles.emplace_back(&((*tiles)[name]));
+  }
+
+  // Generate arguments to filter all tiles
+  auto& attr_tiles = (*tiles)[name];
+  auto tile_num = tiles->size();
+  std::vector<std::tuple<Tile*, std::vector<Tile*>, bool, bool>> args;
+  args.reserve(tile_num);
+  for (uint64_t i = 0; i < attr_tiles.size(); i++) {
+    auto& tile = attr_tiles[i];
+    auto cell_num = tile.cell_num();
+
+    // Collect the dim tiles argument.
+    std::vector<Tile*> dim_tiles_temp;
+    dim_tiles_temp.reserve(dim_tiles.size());
+    for (const auto& elem : dim_tiles) {
+      Tile* dim_tile = &((*elem)[i].fixed_tile());
+      dim_tiles_temp.emplace_back(dim_tile);
+      dim_tile->filtered_buffer().expand(cell_num * dim_tile->cell_size());
+    }
+
+    args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp, false, false);
+  }
+
+  // Finally filter the tiles.
+  auto status = parallel_for(
+      storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
+        auto& [tile, support_tiles, contains_offsets, is_nullable] = args[i];
+        RETURN_NOT_OK(filter_tile(
+            name,
+            tile,
+            nullptr,
+            contains_offsets,
+            is_nullable,
+            &support_tiles));
+        return Status::Ok();
+      });
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -747,7 +840,8 @@ Status WriterBase::filter_tile(
     Tile* const tile,
     Tile* const offsets_tile,
     const bool offsets,
-    const bool nullable) {
+    const bool nullable,
+    void* support_data) {
   auto timer_se = stats_->start_timer("filter_tile");
 
   // Get a copy of the appropriate filter pipeline.
@@ -787,6 +881,7 @@ Status WriterBase::filter_tile(
       tile,
       offsets_tile,
       storage_manager_->compute_tp(),
+      support_data,
       use_chunking));
   assert(tile->filtered());
 
@@ -909,10 +1004,12 @@ Status WriterBase::split_coords_buffer() {
   return Status::Ok();
 }
 
-Status WriterBase::write_all_tiles(
+Status WriterBase::write_tiles(
+    const uint64_t start_tile_idx,
+    const uint64_t end_tile_idx,
     shared_ptr<FragmentMetadata> frag_meta,
     std::unordered_map<std::string, WriterTileVector>* const tiles) {
-  auto timer_se = stats_->start_timer("tiles");
+  auto timer_se = stats_->start_timer("write_num_tiles");
 
   assert(!tiles->empty());
 
@@ -921,7 +1018,8 @@ Status WriterBase::write_all_tiles(
     tasks.push_back(storage_manager_->io_tp()->execute([&, this]() {
       auto& attr = it.first;
       auto& tiles = it.second;
-      RETURN_CANCEL_OR_ERROR(write_tiles(attr, frag_meta, 0, &tiles));
+      RETURN_CANCEL_OR_ERROR(write_tiles(
+          start_tile_idx, end_tile_idx, attr, frag_meta, 0, &tiles));
 
       // Fix var size attributes metadata.
       const auto var_size = array_schema_.var_size(attr);
@@ -929,11 +1027,11 @@ Status WriterBase::write_all_tiles(
           array_schema_.var_size(attr)) {
         frag_meta->convert_tile_min_max_var_sizes_to_offsets(attr);
 
-        uint64_t idx = 0;
-        for (auto& tile : tiles) {
-          frag_meta->set_tile_min_var(attr, idx, tile.min());
-          frag_meta->set_tile_max_var(attr, idx, tile.max());
-          idx++;
+        for (uint64_t idx = start_tile_idx; idx < end_tile_idx; idx++) {
+          frag_meta->set_tile_min_var(
+              attr, idx - start_tile_idx, tiles[idx].min());
+          frag_meta->set_tile_max_var(
+              attr, idx - start_tile_idx, tiles[idx].max());
         }
       }
       return Status::Ok();
@@ -949,6 +1047,8 @@ Status WriterBase::write_all_tiles(
 }
 
 Status WriterBase::write_tiles(
+    const uint64_t start_tile_idx,
+    const uint64_t end_tile_idx,
     const std::string& name,
     shared_ptr<FragmentMetadata> frag_meta,
     uint64_t start_tile_id,
@@ -957,8 +1057,9 @@ Status WriterBase::write_tiles(
   auto timer_se = stats_->start_timer("tiles");
 
   // Handle zero tiles
-  if (tiles->empty())
+  if (tiles->empty()) {
     return Status::Ok();
+  }
 
   // For easy reference
   const bool var_size = array_schema_.var_size(name);
@@ -986,10 +1087,10 @@ Status WriterBase::write_tiles(
   // Compute and set var buffer sizes for the min/max metadata
   const auto has_min_max_md = has_min_max_metadata(name, var_size);
   const auto has_sum_md = has_sum_metadata(name, var_size);
-  auto tile_num = tiles->size();
 
   // Write tiles
-  for (size_t i = 0, tile_id = start_tile_id; i < tile_num; ++i, ++tile_id) {
+  for (size_t i = start_tile_idx, tile_id = start_tile_id; i < end_tile_idx;
+       ++i, ++tile_id) {
     auto& tile = (*tiles)[i];
     auto& t = var_size ? tile.offset_tile() : tile.fixed_tile();
     RETURN_NOT_OK(storage_manager_->write(

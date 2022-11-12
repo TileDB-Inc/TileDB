@@ -1,13 +1,11 @@
 /**
- * TODO: This file will be moved to tiledb/sm/array_schema/test after PR
- * 2865(object library part 7) is merged to dev.
- * @file unit-domain.cc
+ * @file unit_domain.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,7 +47,7 @@ inline T& dom_buffer_offset(void* p) {
   return *static_cast<T*>(static_cast<void*>(static_cast<char*>(p) + n));
 }
 
-TEST_CASE("Domain: Test deserialization", "[domain][deserialize") {
+TEST_CASE("Domain: Test deserialization", "[domain][deserialize]") {
   char serialized_buffer[72];
   char* p = &serialized_buffer[0];
 

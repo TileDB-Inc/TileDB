@@ -32,7 +32,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
@@ -108,6 +108,7 @@ struct CPPFixedTileMetadataFx {
   }
 
   void write_fragment(
+      const bool serialized_writes,
       uint64_t f,
       tiledb_layout_t layout,
       bool nullable,
@@ -254,15 +255,6 @@ struct CPPFixedTileMetadataFx {
       query.set_validity_buffer("a", a_val);
     }
 
-    bool serialized_writes = false;
-    SECTION("no serialization") {
-      serialized_writes = false;
-    }
-    SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-      serialized_writes = true;
-#endif
-    }
     if (!serialized_writes) {
       query.submit();
       query.finalize();
@@ -325,12 +317,14 @@ struct CPPFixedTileMetadataFx {
           // Validate no min.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_min("d"),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access fragment min metadata that's "
+              "not present");
 
           // Validate no max.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_max("d"),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access fragment max metadata that's "
+              "not present");
 
           // Validate sum.
           auto sum = frag_meta[f]->get_sum("d");
@@ -346,12 +340,14 @@ struct CPPFixedTileMetadataFx {
           // Validate no min.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_tile_min_as<TestType>("d", tile_idx),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access tile min metadata that's not "
+              "present");
 
           // Validate no max.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_tile_max_as<TestType>("d", tile_idx),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access tile max metadata that's not "
+              "present");
 
           // Validate sum.
           auto sum = frag_meta[f]->get_tile_sum("d", tile_idx);
@@ -367,17 +363,20 @@ struct CPPFixedTileMetadataFx {
         // Validate no min.
         CHECK_THROWS_WITH(
             frag_meta[f]->get_min("a"),
-            "FragmentMetadata: Trying to access metadata that's not present");
+            "FragmentMetadata: Trying to access fragment min metadata that's "
+            "not present");
 
         // Validate no max.
         CHECK_THROWS_WITH(
             frag_meta[f]->get_max("a"),
-            "FragmentMetadata: Trying to access metadata that's not present");
+            "FragmentMetadata: Trying to access fragment max metadata that's "
+            "not present");
 
         // Validate no sum.
         CHECK_THROWS_WITH(
             frag_meta[f]->get_sum("a"),
-            "FragmentMetadata: Trying to access metadata that's not present");
+            "FragmentMetadata: Trying to access fragment sum metadata that's "
+            "not present");
       } else {
         // Min/max/sum for all null tile are invalid.
         if (!all_null) {
@@ -413,7 +412,8 @@ struct CPPFixedTileMetadataFx {
             // Validate no sum.
             CHECK_THROWS_WITH(
                 frag_meta[f]->get_sum("a"),
-                "FragmentMetadata: Trying to access metadata that's not "
+                "FragmentMetadata: Trying to access fragment sum metadata "
+                "that's not "
                 "present");
           } else {
             // Validate min.
@@ -446,7 +446,8 @@ struct CPPFixedTileMetadataFx {
       } else {
         CHECK_THROWS_WITH(
             frag_meta[f]->get_null_count("a"),
-            "FragmentMetadata: Trying to access metadata that's not "
+            "FragmentMetadata: Trying to access fragment null count metadata "
+            "that's not "
             "present");
       }
     }
@@ -475,17 +476,20 @@ struct CPPFixedTileMetadataFx {
       // Validate no min.
       CHECK_THROWS_WITH(
           frag_meta[f]->get_tile_min_as<TestType>("a", 0),
-          "FragmentMetadata: Trying to access metadata that's not present");
+          "FragmentMetadata: Trying to access tile min metadata that's not "
+          "present");
 
       // Validate no max.
       CHECK_THROWS_WITH(
           frag_meta[f]->get_tile_max_as<TestType>("a", 0),
-          "FragmentMetadata: Trying to access metadata that's not present");
+          "FragmentMetadata: Trying to access tile max metadata that's not "
+          "present");
 
       // Validate no sum.
       CHECK_THROWS_WITH(
           frag_meta[f]->get_tile_sum("a", 0),
-          "FragmentMetadata: Trying to access metadata that's not present");
+          "FragmentMetadata: Trying to access tile sum metadata that's not "
+          "present");
     } else {
       if (!all_null) {
         if constexpr (std::is_same<TestType, char>::value) {
@@ -519,7 +523,8 @@ struct CPPFixedTileMetadataFx {
             // Validate no sum.
             CHECK_THROWS_WITH(
                 frag_meta[f]->get_tile_sum("a", tile_idx),
-                "FragmentMetadata: Trying to access metadata that's not "
+                "FragmentMetadata: Trying to access tile sum metadata that's "
+                "not "
                 "present");
           }
         } else {
@@ -563,7 +568,8 @@ struct CPPFixedTileMetadataFx {
       } else {
         CHECK_THROWS_WITH(
             frag_meta[f]->get_tile_null_count("a", tile_idx),
-            "FragmentMetadata: Trying to access metadata that's not "
+            "FragmentMetadata: Trying to access tile null count metadata "
+            "that's not "
             "present");
       }
     }
@@ -620,6 +626,16 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   typedef TestType T;
   std::string test = GENERATE("nullable", "all null", "non nullable");
 
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   tiledb_layout_t layout =
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER, TILEDB_ROW_MAJOR);
 
@@ -636,7 +652,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   for (uint64_t f = 0; f < num_frag; f++) {
     // Write a fragment.
     CPPFixedTileMetadataFx<T>::write_fragment(
-        f, layout, nullable, all_null, cell_val_num);
+        serialized_writes, f, layout, nullable, all_null, cell_val_num);
   }
 
   for (uint64_t f = 0; f < num_frag; f++) {
@@ -681,7 +697,11 @@ struct CPPVarTileMetadataFx {
   }
 
   void write_fragment(
-      uint64_t f, tiledb_layout_t layout, bool nullable, bool all_null) {
+      const bool serialized_writes,
+      uint64_t f,
+      tiledb_layout_t layout,
+      bool nullable,
+      bool all_null) {
     std::default_random_engine random_engine;
 
     uint64_t max_string_size = 100;
@@ -775,15 +795,6 @@ struct CPPVarTileMetadataFx {
       query.set_validity_buffer("a", a_val);
     }
 
-    bool serialized_writes = false;
-    SECTION("no serialization") {
-      serialized_writes = false;
-    }
-    SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-      serialized_writes = true;
-#endif
-    }
     if (!serialized_writes) {
       query.submit();
       query.finalize();
@@ -842,12 +853,14 @@ struct CPPVarTileMetadataFx {
           // Validate no min.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_min("d"),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access fragment min metadata that's "
+              "not present");
 
           // Validate no max.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_max("d"),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access fragment max metadata that's "
+              "not present");
 
           // Validate sum.
           auto sum = frag_meta[f]->get_sum("d");
@@ -863,12 +876,14 @@ struct CPPVarTileMetadataFx {
           // Validate no min.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_tile_min_as<uint32_t>("d", tile_idx),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access tile min metadata that's not "
+              "present");
 
           // Validate no max.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_tile_max_as<uint32_t>("d", tile_idx),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access tile max metadata that's not "
+              "present");
 
           // Validate sum.
           auto sum = frag_meta[f]->get_tile_sum("d", tile_idx);
@@ -902,7 +917,8 @@ struct CPPVarTileMetadataFx {
         // Validate no sum.
         CHECK_THROWS_WITH(
             frag_meta[f]->get_sum("a"),
-            "FragmentMetadata: Trying to access metadata that's not present");
+            "FragmentMetadata: Trying to access fragment sum metadata that's "
+            "not present");
       }
 
       // Check null count.
@@ -912,7 +928,8 @@ struct CPPVarTileMetadataFx {
       } else {
         CHECK_THROWS_WITH(
             frag_meta[f]->get_null_count("a"),
-            "FragmentMetadata: Trying to access metadata that's not "
+            "FragmentMetadata: Trying to access fragment null count metadata "
+            "that's not "
             "present");
       }
     }
@@ -960,7 +977,8 @@ struct CPPVarTileMetadataFx {
         // Validate no sum.
         CHECK_THROWS_WITH(
             frag_meta[f]->get_tile_sum("a", tile_idx),
-            "FragmentMetadata: Trying to access metadata that's not present");
+            "FragmentMetadata: Trying to access tile sum metadata that's not "
+            "present");
       }
     }
 
@@ -972,7 +990,8 @@ struct CPPVarTileMetadataFx {
       } else {
         CHECK_THROWS_WITH(
             frag_meta[f]->get_tile_null_count("a", tile_idx),
-            "FragmentMetadata: Trying to access metadata that's not "
+            "FragmentMetadata: Trying to access tile null count metadata "
+            "that's not "
             "present");
       }
     }
@@ -1008,6 +1027,16 @@ TEST_CASE_METHOD(
     "[tile-metadata][var-data]") {
   std::string test = GENERATE("nullable", "all null", "non nullable");
 
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   tiledb_layout_t layout =
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER, TILEDB_ROW_MAJOR);
 
@@ -1021,7 +1050,8 @@ TEST_CASE_METHOD(
 
   for (uint64_t f = 0; f < num_frag; f++) {
     // Write a fragment.
-    CPPVarTileMetadataFx::write_fragment(f, layout, nullable, all_null);
+    CPPVarTileMetadataFx::write_fragment(
+        serialized_writes, f, layout, nullable, all_null);
   }
 
   for (uint64_t f = 0; f < num_frag; f++) {

@@ -243,7 +243,6 @@ Status FragmentConsolidator::consolidate_fragments(
       count++;
       domain.expand_ndrange(
           frag_info.non_empty_domain(), &union_non_empty_domains);
-      domain.expand_to_tiles(&union_non_empty_domains);
       to_consolidate.emplace_back(frag_info.uri(), frag_info.timestamp_range());
     }
   }
@@ -590,9 +589,12 @@ Status FragmentConsolidator::create_queries(
   *query_r = tdb_new(Query, storage_manager_, array_for_reads);
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
 
-  // Refactored reader optimizes for no subarray.
-  if (!config_.use_refactored_reader_ || dense) {
-    RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
+  // Dense consolidation will do a tile aligned read.
+  if (dense) {
+    NDRange read_subarray = subarray;
+    auto& domain{array_for_reads->array_schema_latest().domain()};
+    domain.expand_to_tiles(&read_subarray);
+    RETURN_NOT_OK((*query_r)->set_subarray_unsafe(read_subarray));
   }
 
   // Enable consolidation with timestamps on the reader, if applicable.
@@ -614,6 +616,7 @@ Status FragmentConsolidator::create_queries(
   *query_w = tdb_new(Query, storage_manager_, array_for_writes, fragment_name);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->disable_checks_consolidation());
+  (*query_w)->set_fragment_size(config_.max_fragment_size_);
   if (array_for_reads->array_schema_latest().dense()) {
     RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
   }
@@ -700,7 +703,6 @@ Status FragmentConsolidator::compute_next_to_consolidate(
           m_union[i][j] = m_union[i - 1][j];
           domain.expand_ndrange(
               fragments[i + j].non_empty_domain(), &m_union[i][j]);
-          domain.expand_to_tiles(&m_union[i][j]);
           if (!sparse && !are_consolidatable(
                              domain, fragment_info, j, j + i, m_union[i][j])) {
             // Mark this entry as invalid
@@ -861,6 +863,12 @@ Status FragmentConsolidator::set_config(const Config& config) {
   config_.buffer_size_ = 0;
   RETURN_NOT_OK(merged_config.get<uint64_t>(
       "sm.consolidation.buffer_size", &config_.buffer_size_, &found));
+  assert(found);
+  config_.max_fragment_size_ = 0;
+  RETURN_NOT_OK(merged_config.get<uint64_t>(
+      "sm.consolidation.max_fragment_size",
+      &config_.max_fragment_size_,
+      &found));
   assert(found);
   config_.size_ratio_ = 0.0f;
   RETURN_NOT_OK(merged_config.get<float>(

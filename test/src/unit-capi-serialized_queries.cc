@@ -31,7 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
@@ -1178,6 +1178,16 @@ TEST_CASE_METHOD(
     SerializationFx,
     "Global order writes serialization",
     "[global-order-write][serialization][dense]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   uint64_t tile_extent = 2;
   ArraySchema schema(ctx, TILEDB_DENSE);
   Domain domain(ctx);
@@ -1225,15 +1235,6 @@ TEST_CASE_METHOD(
 
   uint64_t begin = 0;
   uint64_t end = chunk_size - 1;
-  bool serialized_writes = false;
-  SECTION("no serialization") {
-    serialized_writes = false;
-  }
-  SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
-#endif
-  }
   while (begin < end) {
     query.set_data_buffer("a1", a1.data() + begin, end - begin + 1);
     query.set_data_buffer("a2", a2.data() + begin * 2, (end - begin + 1) * 2);

@@ -733,6 +733,12 @@ void read_array(
     const QueryBuffers& buffers);
 
 /**
+ * Returns the number of commits in the input array,
+ * appropriately excluding special files and subdirectories.
+ */
+int32_t num_commits(const std::string& array_name);
+
+/**
  * Returns the number of fragments in the input array,
  * appropriately excluding special files and subdirectories.
  */

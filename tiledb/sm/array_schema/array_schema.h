@@ -411,13 +411,13 @@ class ArraySchema {
   Status set_tile_order(Layout tile_order);
 
   /** Set version of schema, only used for serialization */
-  void set_version(uint32_t version);
+  void set_version(format_version_t version);
 
   /** Returns the version to write in. */
-  uint32_t write_version() const;
+  format_version_t write_version() const;
 
   /** Returns the array schema version. */
-  uint32_t version() const;
+  format_version_t version() const;
 
   /** Set a timestamp range for the array schema */
   Status set_timestamp_range(
@@ -444,6 +444,16 @@ class ArraySchema {
   /** Generates a new array schema URI with specified timestamp range. */
   Status generate_uri(const std::pair<uint64_t, uint64_t>& timestamp_range);
 
+  /**
+   * Returns the name of the attribute in this schema with a bitsort filter.
+   * If none exists, then this function returns std::nullopt. Note that
+   * there should only be one attribute per schema with a bitsort filter in
+   * place, as the bitsort filter will use the dimension tiles to store the
+   * positions, and there is only one set of dimension tiles per set of
+   * attribute tiles.
+   */
+  std::optional<std::string> bitsort_filter_attr() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -456,7 +466,7 @@ class ArraySchema {
   URI array_uri_;
 
   /** The format version of this array schema. */
-  uint32_t version_;
+  format_version_t version_;
 
   /**
    * The timestamp the array schema was written.
@@ -531,6 +541,12 @@ class ArraySchema {
   mutable std::mutex mtx_;
 
   /**
+   * Attribute with bitsort filter in its filter pipeline.
+   * Set to nullopt when none exists.
+   */
+  std::optional<std::string> bitsort_filter_attr_;
+
+  /**
    * Number of internal dimension labels - used for constructing label URI.
    *
    * WARNING: This is only for array schema construction. It is not
@@ -560,6 +576,8 @@ class ArraySchema {
    * dimensions but it is not the only filter in the filter list.
    */
   Status check_string_compressor(const FilterPipeline& coords_filters) const;
+
+  void check_webp_filter() const;
 
   /** Clears all members. Use with caution! */
   void clear();

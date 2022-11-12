@@ -48,6 +48,7 @@
 #include "tiledb/sm/enums/label_order.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
@@ -91,6 +92,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
   version_ = constants::format_version;
   auto timestamp = utils::time::timestamp_now_ms();
   timestamp_range_ = std::make_pair(timestamp, timestamp);
+  bitsort_filter_attr_ = std::nullopt;
 
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
@@ -147,10 +149,41 @@ ArraySchema::ArraySchema(
   }
 
   // Create attribute map
+  bitsort_filter_attr_ = std::nullopt;
   if (!attributes_.empty()) {
     for (auto attr_iter : attributes_) {
       auto attr = attr_iter.get();
       attribute_map_[attr->name()] = attr;
+      if (attr->filters().has_filter(FilterType::FILTER_BITSORT)) {
+        if (bitsort_filter_attr_.has_value()) {
+          throw StatusException(
+              Status_ArraySchemaError("Array schema creation failed. More than "
+                                      "one attribute has a bitsort filter."));
+        }
+
+        // An attribute with a bitsort filter must be not nullable.
+        if (attr->nullable()) {
+          throw StatusException(Status_ArraySchemaError(
+              "Array schema creation failed. Attribute with a bitsort filter "
+              "must be not nullable."));
+        }
+
+        // An array with a bitsort filter must be sparse.
+        if (array_type != ArrayType::SPARSE) {
+          throw StatusException(
+              Status_ArraySchemaError("Array schema creation failed. Array "
+                                      "with a bitsort filter must be sparse."));
+        }
+
+        // An array with a bitsort filter must have only fixed size dimensions.
+        if (!domain_->all_dims_fixed()) {
+          throw StatusException(Status_ArraySchemaError(
+              "Array schema creation failed. Bitsort filter cannot be applied "
+              "on an array with variable sized dimensions."));
+        }
+
+        bitsort_filter_attr_ = attr->name();
+      }
     }
   }
 
@@ -191,6 +224,7 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema) {
   coords_filters_ = array_schema.coords_filters_;
   tile_order_ = array_schema.tile_order_;
   version_ = array_schema.version_;
+  bitsort_filter_attr_ = array_schema.bitsort_filter_attr_;
 
   throw_if_not_ok(set_domain(array_schema.domain_));
 
@@ -356,6 +390,7 @@ Status ArraySchema::check() const {
   RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
   RETURN_NOT_OK(check_string_compressor(coords_filters()));
   check_attribute_dimension_label_names();
+  check_webp_filter();
 
   // Check all internal dimension labels have a schema set and the schema is
   // compatible with the definition of the array it was added to.
@@ -377,6 +412,7 @@ Status ArraySchema::check() const {
             label->name() + "' is not compatible with the array schema."));
     }
   }
+
   // Success
   return Status::Ok();
 }
@@ -1054,17 +1090,17 @@ Status ArraySchema::set_tile_order(Layout tile_order) {
   return Status::Ok();
 }
 
-void ArraySchema::set_version(uint32_t version) {
+void ArraySchema::set_version(format_version_t version) {
   version_ = version;
 }
 
-uint32_t ArraySchema::write_version() const {
+format_version_t ArraySchema::write_version() const {
   return version_ < constants::back_compat_writes_min_format_version ?
              constants::format_version :
              version_;
 }
 
-uint32_t ArraySchema::version() const {
+format_version_t ArraySchema::version() const {
   return version_;
 }
 
@@ -1206,6 +1242,72 @@ Status ArraySchema::check_string_compressor(
   return Status::Ok();
 }
 
+void ArraySchema::check_webp_filter() const {
+  if constexpr (webp_filter_exists) {
+    WebpFilter* webp = nullptr;
+    for (const auto& attr : attributes_) {
+      webp = attr->filters().get_filter<WebpFilter>();
+      if (webp != nullptr) {
+        // WebP attributes must be of type uint8_t.
+        if (attr->type() != Datatype::UINT8) {
+          throw Status_ArraySchemaError(
+              "WebP filter supports only uint8 attributes");
+        }
+      }
+    }
+    // If no attribute is using WebP filter we don't need to continue checks.
+    if (webp == nullptr) {
+      return;
+    }
+    if (array_type_ != ArrayType::DENSE) {
+      throw Status_ArraySchemaError(
+          "WebP filter can only be applied to dense arrays");
+    }
+
+    // WebP filter requires at least 2 dimensions for Y, X.
+    if (dim_map_.size() < 2) {
+      throw Status_ArraySchemaError(
+          "WebP filter requires at least 2 dimensions");
+    }
+    auto y_dim = dimension_ptr(0);
+    auto x_dim = dimension_ptr(1);
+    if (y_dim->type() != x_dim->type()) {
+      throw Status_ArraySchemaError(
+          "WebP filter dimensions 0, 1 should have matching integral types");
+    }
+
+    switch (x_dim->type()) {
+      case Datatype::INT8:
+        webp->set_extents<int8_t>(domain_->tile_extents());
+        break;
+      case Datatype::INT16:
+        webp->set_extents<int16_t>(domain_->tile_extents());
+        break;
+      case Datatype::INT32:
+        webp->set_extents<int32_t>(domain_->tile_extents());
+        break;
+      case Datatype::INT64:
+        webp->set_extents<int64_t>(domain_->tile_extents());
+        break;
+      case Datatype::UINT8:
+        webp->set_extents<uint8_t>(domain_->tile_extents());
+        break;
+      case Datatype::UINT16:
+        webp->set_extents<uint16_t>(domain_->tile_extents());
+        break;
+      case Datatype::UINT32:
+        webp->set_extents<uint32_t>(domain_->tile_extents());
+        break;
+      case Datatype::UINT64:
+        webp->set_extents<uint64_t>(domain_->tile_extents());
+        break;
+      default:
+        throw Status_ArraySchemaError(
+            "WebP filter requires integral dimensions at index 0, 1");
+    }
+  }
+}
+
 void ArraySchema::clear() {
   array_uri_ = URI();
   uri_ = URI();
@@ -1250,6 +1352,10 @@ Status ArraySchema::generate_uri(
       array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
 
   return Status::Ok();
+}
+
+std::optional<std::string> ArraySchema::bitsort_filter_attr() const {
+  return bitsort_filter_attr_;
 }
 
 }  // namespace sm

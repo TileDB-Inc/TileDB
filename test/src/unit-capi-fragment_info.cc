@@ -30,8 +30,8 @@
  * Tests the C API functions for manipulating fragment information.
  */
 
-#include "test/src/helpers.h"
-#include "test/src/serialization_wrappers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/serialization_wrappers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 
@@ -1883,7 +1883,7 @@ TEST_CASE(
       "- To vacuum URIs:\n" + "  > " + written_frag_uri_1 + "\n  > " +
       written_frag_uri_2 + "\n  > " + written_frag_uri_3 + "\n" +
       "- Fragment #1:\n" + "  > URI: " + uri + "\n" + "  > Type: dense\n" +
-      "  > Non-empty domain: [1, 10]\n" + "  > Size: 3208\n" +
+      "  > Non-empty domain: [1, 6]\n" + "  > Size: 3208\n" +
       "  > Cell num: 10\n" + "  > Timestamp range: [1, 3]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";
