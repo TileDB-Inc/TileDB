@@ -157,47 +157,22 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 /*               API              */
 /* ****************************** */
 
-Status StorageManagerCanonical::array_close_for_reads(Array* array) {
-  assert(open_arrays_.find(array) != open_arrays_.end());
-
-  // Remove entry from open arrays
-  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
-  open_arrays_.erase(array);
-
+Status StorageManagerCanonical::array_close_for_reads(Array*) {
   return Status::Ok();
 }
 
 Status StorageManagerCanonical::array_close_for_writes(Array* array) {
-  assert(open_arrays_.find(array) != open_arrays_.end());
-
   // Flush the array metadata
   RETURN_NOT_OK(store_metadata(
       array->array_uri(), *array->encryption_key(), array->unsafe_metadata()));
-
-  // Remove entry from open arrays
-  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
-  open_arrays_.erase(array);
-
   return Status::Ok();
 }
 
-Status StorageManagerCanonical::array_close_for_deletes(Array* array) {
-  assert(open_arrays_.find(array) != open_arrays_.end());
-
-  // Remove entry from open arrays
-  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
-  open_arrays_.erase(array);
-
+Status StorageManagerCanonical::array_close_for_deletes(Array*) {
   return Status::Ok();
 }
 
-Status StorageManagerCanonical::array_close_for_updates(Array* array) {
-  assert(open_arrays_.find(array) != open_arrays_.end());
-
-  // Remove entry from open arrays
-  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
-  open_arrays_.erase(array);
-
+Status StorageManagerCanonical::array_close_for_updates(Array*) {
   return Status::Ok();
 }
 
@@ -320,10 +295,6 @@ StorageManagerCanonical::array_open_for_reads(Array* array) {
   auto version = array_schema_latest.value()->version();
   ensure_supported_schema_version_for_read(version);
 
-  // Mark the array as open
-  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
-  open_arrays_.insert(array);
-
   return {
       Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
 }
@@ -343,10 +314,6 @@ StorageManagerCanonical::array_open_for_reads_without_fragments(Array* array) {
 
   auto version = array_schema_latest.value()->version();
   ensure_supported_schema_version_for_read(version);
-
-  // Mark the array as now open
-  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
-  open_arrays_.insert(array);
 
   return {Status::Ok(), array_schema_latest, array_schemas_all};
 }
@@ -397,10 +364,6 @@ StorageManagerCanonical::array_open_for_writes(Array* array) {
     }
   }
 
-  // Mark the array as open
-  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
-  open_arrays_.insert(array);
-
   return {Status::Ok(), array_schema_latest, array_schemas_all};
 }
 
@@ -408,15 +371,6 @@ tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManagerCanonical::array_load_fragments(
     Array* array, const std::vector<TimestampedURI>& fragments_to_load) {
   auto timer_se = stats_->start_timer("array_load_fragments");
-
-  // Check if the array is open
-  auto it = open_arrays_.find(array);
-  if (it == open_arrays_.end()) {
-    return {logger_->status(Status_StorageManagerError(
-                std::string("Cannot load array fragments from ") +
-                array->array_uri().to_string() + "; Array not open")),
-            nullopt};
-  }
 
   // Load the fragment metadata
   std::unordered_map<std::string, std::pair<Buffer*, uint64_t>> offsets;
@@ -439,18 +393,6 @@ tuple<
     optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManagerCanonical::array_reopen(Array* array) {
   auto timer_se = stats_->start_timer("read_array_open");
-
-  // Check if array is open
-  auto it = open_arrays_.find(array);
-  if (it == open_arrays_.end()) {
-    return {logger_->status(Status_StorageManagerError(
-                std::string("Cannot reopen array ") +
-                array->array_uri().to_string() + "; Array not open")),
-            nullopt,
-            nullopt,
-            nullopt};
-  }
-
   return array_open_for_reads(array);
 }
 
