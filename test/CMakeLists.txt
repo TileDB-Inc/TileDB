@@ -161,7 +161,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-ctx.cc
   src/unit-DenseTiler.cc
   src/unit-dimension.cc
-  src/unit-domain.cc
   src/unit-duplicates.cc
   src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc
@@ -187,8 +186,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
   src/unit-SubarrayPartitioner-sparse.cc
-  src/unit-Tile.cc
-  src/unit-uuid.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   )

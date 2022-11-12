@@ -188,6 +188,24 @@ TILEDB_EXPORT int32_t tiledb_array_schema_timestamp_range(
 /* ********************************* */
 
 /**
+ * Deletes all written array data.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_delete_array(
+ *   ctx, array, "hdfs:///temp/my_array");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to delete the data from.
+ * @param uri The Array's URI.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_delete_array(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) TILEDB_NOEXCEPT;
+
+/**
  * Evolve array schema of an array.
  *
  * **Example:**
