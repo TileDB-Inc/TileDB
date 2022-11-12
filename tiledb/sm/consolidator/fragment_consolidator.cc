@@ -242,7 +242,6 @@ Status FragmentConsolidator::consolidate_fragments(
       count++;
       domain.expand_ndrange(
           frag_info.non_empty_domain(), &union_non_empty_domains);
-      domain.expand_to_tiles(&union_non_empty_domains);
       to_consolidate.emplace_back(frag_info.uri(), frag_info.timestamp_range());
     }
   }
@@ -586,9 +585,12 @@ Status FragmentConsolidator::create_queries(
   *query_r = tdb_new(Query, storage_manager_, array_for_reads);
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
 
-  // Refactored reader optimizes for no subarray.
-  if (!config_.use_refactored_reader_ || dense) {
-    RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
+  // Dense consolidation will do a tile aligned read.
+  if (dense) {
+    NDRange read_subarray = subarray;
+    auto& domain{array_for_reads->array_schema_latest().domain()};
+    domain.expand_to_tiles(&read_subarray);
+    RETURN_NOT_OK((*query_r)->set_subarray_unsafe(read_subarray));
   }
 
   // Enable consolidation with timestamps on the reader, if applicable.
@@ -696,7 +698,6 @@ Status FragmentConsolidator::compute_next_to_consolidate(
           m_union[i][j] = m_union[i - 1][j];
           domain.expand_ndrange(
               fragments[i + j].non_empty_domain(), &m_union[i][j]);
-          domain.expand_to_tiles(&m_union[i][j]);
           if (!sparse && !are_consolidatable(
                              domain, fragment_info, j, j + i, m_union[i][j])) {
             // Mark this entry as invalid
