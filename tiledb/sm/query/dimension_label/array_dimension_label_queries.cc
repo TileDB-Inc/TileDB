@@ -55,16 +55,17 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
     const Subarray& subarray,
     const std::unordered_map<std::string, QueryBuffer>& label_buffers,
     const std::unordered_map<std::string, QueryBuffer>& array_buffers,
-    const optional<std::string>& fragment_name)
+    const optional<std::string>& fragment_name,
+    optional<uint64_t> fragment_timestamp)
     : storage_manager_(storage_manager)
     , label_range_queries_by_dim_idx_(subarray.dim_num(), nullptr)
     , label_data_queries_by_dim_idx_(subarray.dim_num())
-    , range_query_status_{QueryStatus::UNINITIALIZED}
-    , fragment_name_{fragment_name} {
+    , range_query_status_{QueryStatus::UNINITIALIZED} {
   switch (array->get_query_type()) {
     case (QueryType::READ):
       // Add dimension label queries for parent array open for reading.
-      add_read_queries(array, subarray, label_buffers, array_buffers);
+      add_read_queries(
+          array, subarray, label_buffers, fragment_name, fragment_timestamp);
       break;
 
     case (QueryType::WRITE):
@@ -72,7 +73,8 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
       // If no label buffers, then we are reading index ranges from label ranges
       // for writing to the main array.
       if (label_buffers.empty()) {
-        add_read_queries(array, subarray, label_buffers, array_buffers);
+        add_read_queries(
+            array, subarray, label_buffers, fragment_name, fragment_timestamp);
         break;
 
       } else {
@@ -83,20 +85,14 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
               "buffer and label range on a write query.");
         }
 
-        // If fragment name is not set, set it.
-        // TODO: As implemented, the timestamp for the dimension label fragment
-        // may be different than the main array. This should be updated to
-        // either always get the fragment name from the parent array on writes
-        // or to get the timestamp_end from the parent array. This fix is
-        // blocked by current discussion on a timestamp refactor design.
-        if (!fragment_name_.has_value()) {
-          fragment_name_ = storage_format::generate_fragment_name(
-              array->timestamp_end_opened_at(),
-              array->array_schema_latest().write_version());
-        }
-
         // Add dimension label queries for parent array open for writing.
-        add_write_queries(array, subarray, label_buffers, array_buffers);
+        add_write_queries(
+            array,
+            subarray,
+            label_buffers,
+            array_buffers,
+            fragment_name,
+            fragment_timestamp);
         break;
       }
 
@@ -195,7 +191,8 @@ void ArrayDimensionLabelQueries::add_read_queries(
     Array* array,
     const Subarray& subarray,
     const std::unordered_map<std::string, QueryBuffer>& label_buffers,
-    const std::unordered_map<std::string, QueryBuffer>&) {
+    const optional<std::string>& fragment_name,
+    optional<uint64_t> fragment_timestamp) {
   // Add queries for the dimension labels that have ranges added to the
   // subarray.
   for (ArraySchema::dimension_size_type dim_idx{0};
@@ -266,7 +263,8 @@ void ArrayDimensionLabelQueries::add_read_queries(
           subarray,
           label_buffer,
           QueryBuffer(),
-          nullopt));
+          fragment_name,
+          fragment_timestamp));
       label_data_queries_by_dim_idx_[dim_label_ref.dimension_index()].push_back(
           data_queries_.back().get());
     } catch (const StatusException& err) {
@@ -281,7 +279,9 @@ void ArrayDimensionLabelQueries::add_write_queries(
     Array* array,
     const Subarray& subarray,
     const std::unordered_map<std::string, QueryBuffer>& label_buffers,
-    const std::unordered_map<std::string, QueryBuffer>& array_buffers) {
+    const std::unordered_map<std::string, QueryBuffer>& array_buffers,
+    const optional<std::string>& fragment_name,
+    optional<uint64_t> fragment_timestamp) {
   // Add queries to write data to dimension labels.
   for (const auto& [label_name, label_buffer] : label_buffers) {
     try {
@@ -319,7 +319,8 @@ void ArrayDimensionLabelQueries::add_write_queries(
           (index_buffer_pair == array_buffers.end()) ?
               QueryBuffer() :
               index_buffer_pair->second,
-          fragment_name_));
+          fragment_name,
+          fragment_timestamp));
       label_data_queries_by_dim_idx_[dim_label_ref.dimension_index()].push_back(
           data_queries_.back().get());
     } catch (const StatusException& err) {

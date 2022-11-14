@@ -761,7 +761,8 @@ void Query::init() {
           subarray_,
           label_buffers_,
           buffers_,
-          fragment_name_));
+          fragment_name_,
+          current_fragment_timestamp_));
     }
 
     // Create the query strategy if querying main array and the Subarray does

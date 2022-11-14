@@ -75,6 +75,8 @@ class ArrayDimensionLabelQueries {
    * @param array_bufffers A map of query buffers containing dimension and
    *     attribute data for the parent array.
    * @param fragment_name Optional fragment name for writing fragments.
+   * @param fragment_timestamp Timestamp to use for new fragments if
+   *     fragment_name is not set.
    */
   ArrayDimensionLabelQueries(
       StorageManager* storage_manager,
@@ -82,7 +84,8 @@ class ArrayDimensionLabelQueries {
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers,
       const std::unordered_map<std::string, QueryBuffer>& array_buffers,
-      const optional<std::string>& fragment_name);
+      const optional<std::string>& fragment_name,
+      optional<uint64_t> fragment_timestamp);
 
   /** Disable copy and move. */
   DISABLE_COPY_AND_COPY_ASSIGN(ArrayDimensionLabelQueries);
@@ -167,26 +170,21 @@ class ArrayDimensionLabelQueries {
   QueryStatus range_query_status_;
 
   /**
-   * The name of the new fragment to be created for writes.
-   *
-   * If not set, the fragment will be created using the latest array timestamp
-   * and a generated UUID.
-   */
-  optional<std::string> fragment_name_;
-
-  /**
    * Initializes read queries.
    *
    * @param array Array for the parent query.
    * @param subarray Subarray for the parent query.
    * @param label_buffers A map of query buffers with label buffers.
-   * @param array_buffers Non-label buffers set on the parent query.
+   * @param fragment_name Optional fragment name for writing fragments.
+   * @param fragment_timestamp Timestamp to use for new fragments if
+   *     fragment_name is not set.
    */
   void add_read_queries(
       Array* array,
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers,
-      const std::unordered_map<std::string, QueryBuffer>& array_buffers);
+      const optional<std::string>& fragment_name,
+      optional<uint64_t> fragment_timestamp);
 
   /**
    * Initializes write queries.
@@ -195,12 +193,17 @@ class ArrayDimensionLabelQueries {
    * @param subarray Subarray for the parent query.
    * @param label_buffers A map of query buffers with label buffers.
    * @param array_buffers Non-label buffers set on the parent query.
+   * @param fragment_name Optional fragment name for writing fragments.
+   * @param fragment_timestamp Timestamp to use for new fragments if
+   *     fragment_name is not set.
    */
   void add_write_queries(
       Array* array,
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers,
-      const std::unordered_map<std::string, QueryBuffer>& array_buffers);
+      const std::unordered_map<std::string, QueryBuffer>& array_buffers,
+      const optional<std::string>& fragment_name,
+      optional<uint64_t> fragment_timestamp);
 
   /**
    * Opens a dimension label.

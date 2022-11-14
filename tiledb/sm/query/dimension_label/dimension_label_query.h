@@ -74,6 +74,8 @@ class DimensionLabelQuery : public Query {
    * @param index_buffer Query buffer for the index data. May be empty if no
    *     index buffer is set.
    * @param fragment_name Name to use when writing the fragment.
+   * @param fragment_timestamp Timestamp to use for new fragments if fragment
+   *     name isn't set.
    */
   DimensionLabelQuery(
       StorageManager* storage_manager,
@@ -82,7 +84,8 @@ class DimensionLabelQuery : public Query {
       const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,
       const QueryBuffer& index_buffer,
-      optional<std::string> fragment_name);
+      const optional<std::string>& fragment_name,
+      optional<uint64_t> fragment_timestamp);
 
   /**
    * Constructor for range queries.
