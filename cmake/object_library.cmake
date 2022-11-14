@@ -209,7 +209,7 @@ macro(this_target_link_libraries)
     append_this_property(link_library_dependencies ${ARGV})
 endmacro()
 
-macro(target_compile_definitions)
+macro(this_target_compile_definitions)
     append_this_property(compile_definitions ${ARGV})
 endmacro()
 
