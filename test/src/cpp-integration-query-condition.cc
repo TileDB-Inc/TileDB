@@ -30,6 +30,17 @@
  * Tests the integration of query conditions by running queries.
  */
 
+Template-ize the TestArray/TestQuery classes so that the `b` attribute
+is a test provided type. This will allow us to go over all of the
+checks that show we can only do primitive types and strings. I can
+probably also add dimension tempated dimensions as well to make things
+easier as well.
+
+Also add tests to see if I can break things with that missing std::min
+check I spotted in the QueryCondition code in the query ast thinger where
+conditions are implemented.
+
+
 #include <algorithm>
 #include <cstdlib>
 #include <ctime>
@@ -45,6 +56,7 @@ using namespace tiledb;
 int NUM_ROWS = 20;
 int A_FILL = -1;
 float B_FILL = -1.0;
+int C_FILL[2] = {-1, -1};
 const std::string ARRAY_NAME = "cpp_integration_query_condition_array";
 
 typedef const std::array<int, 2> TRange;
@@ -83,13 +95,15 @@ struct TestArray {
   TestParams& params_;
   std::vector<int> a_;
   std::vector<float> b_;
+  std::vector<std::array<int, 2>> c_;
 };
 
 TestArray::TestArray(TestParams& params)
     : vfs_(ctx_)
     , params_(params)
     , a_(NUM_ROWS * NUM_ROWS)
-    , b_(NUM_ROWS * NUM_ROWS) {
+    , b_(NUM_ROWS * NUM_ROWS)
+    , c_(NUM_ROWS * NUM_ROWS) {
 
   if (vfs_.is_dir(ARRAY_NAME)) {
     vfs_.remove_dir(ARRAY_NAME);
@@ -105,26 +119,33 @@ TestArray::TestArray(TestParams& params)
 
   Attribute attr_a = Attribute::create<int>(ctx_, "a");
   Attribute attr_b = Attribute::create<float>(ctx_, "b");
+  Attribute attr_c = Attribute::create<int[2]>(ctx_, "c");
 
   if (params_.array_type_ == TILEDB_DENSE) {
     attr_a.set_fill_value(&A_FILL, sizeof(int));
     attr_b.set_fill_value(&B_FILL, sizeof(float));
+    attr_c.set_fill_value(&C_FILL, sizeof(int[2]));
   } else {
     schema.set_capacity(16);
   }
   schema.add_attribute(attr_a);
   schema.add_attribute(attr_b);
+  schema.add_attribute(attr_c);
 
   Array::create(ARRAY_NAME, schema);
 
   std::vector<int> row_dims(NUM_ROWS * NUM_ROWS);
   std::vector<int> col_dims(NUM_ROWS * NUM_ROWS);
+  std::vector<uint64_t> c_offsets(NUM_ROWS * NUM_ROWS);
 
   for (int i = 0; i < NUM_ROWS * NUM_ROWS; i++) {
     row_dims[i] = (i / NUM_ROWS) + 1;
     col_dims[i] = (i % NUM_ROWS) + 1;
     a_[i] = static_cast<int>(rand_float() * 10);
     b_[i] = rand_float() * 100.0;
+    c_[i][0] = static_cast<int>(rand_float() * 10);
+    c_[i][1] = static_cast<int>(rand_float() * 20);
+    c_offsets[i] = i * 2 * sizeof(int);
   }
 
   Array array_w(ctx_, ARRAY_NAME, TILEDB_WRITE);
@@ -135,11 +156,15 @@ TestArray::TestArray(TestParams& params)
         .set_data_buffer("rows", row_dims)
         .set_data_buffer("cols", col_dims)
         .set_data_buffer("a", a_)
-        .set_data_buffer("b", b_);
+        .set_data_buffer("b", b_)
+        .set_data_buffer("c", c_)
+        ;//.set_offsets_buffer("c", c_offsets);
   } else {
     query_w.set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", a_)
-        .set_data_buffer("b", b_);
+        .set_data_buffer("b", b_)
+        .set_data_buffer("c", c_)
+        ;//.set_offsets_buffer("c", c_offsets);
   }
 
   query_w.submit();
@@ -274,6 +299,7 @@ void TestQuery::verify(
     }
   }
 
+  REQUIRE(num_elems > 0);
   REQUIRE(elems["a"].second == num_elems);
   REQUIRE(elems["b"].second == num_elems);
 }
@@ -380,6 +406,19 @@ TEST_CASE(
 
     auto pred = [](int, int, int a, float b) {
       return a == 1 || b < 50.0f;
+    };
+
+    t_query.verify(qc, {1, NUM_ROWS}, {1, NUM_ROWS}, pred);
+  }
+
+  SECTION("multi-valued attribute test") {
+    TestQuery t_query(t_array, config);
+
+    int c[2] = {5, 5};
+    auto qc = t_query.qcb("c", c, TILEDB_LT);
+
+    auto pred = [](int, int, int, float) {
+      return true;
     };
 
     t_query.verify(qc, {1, NUM_ROWS}, {1, NUM_ROWS}, pred);
