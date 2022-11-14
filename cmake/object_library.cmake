@@ -154,17 +154,19 @@ macro(TileDB_Environment_object_library_end)
     get_this_property(sources TileDB_Environment_object_library_end_Sources)
     get_this_property(object_library_dependencies TileDB_Environment_object_library_end_OL_Dependencies)
     get_this_property(link_library_dependencies TileDB_Environment_object_library_end_Link_Dependencies)
+    get_this_property(compile_definitions TileDB_Environment_object_library_end_Compile_Definitions)
 
     message(${TileDB_Environment_object_library_end_Log_Level} "  library=${TileDB_Environment_object_library_end_Library}")
     message(${TileDB_Environment_object_library_end_Log_Level} "  sources=${TileDB_Environment_object_library_end_Sources}")
     message(${TileDB_Environment_object_library_end_Log_Level} "  depends on object libraries=${TileDB_Environment_object_library_end_OL_Dependencies}")
     message(${TileDB_Environment_object_library_end_Log_Level} "  depends on link libraries=${TileDB_Environment_object_library_end_Link_Dependencies}")
+    message(${TileDB_Environment_object_library_end_Log_Level} "  has compile definitions=${TileDB_Environment_object_library_end_Compile_Definitions}")
 
     set(TileDB_Environment_object_library_end_Compile "compile_${TileDB_Environment_object_library_end_Library}")
     # ----------------------------------
     # code generation
     # ----------------------------------
-    # Sources and object library dependencies
+    # Sources and object library dependencies, compile definitions
     target_sources(${TileDB_Environment_object_library_end_Library} PRIVATE ${TileDB_Environment_object_library_end_Sources})
     foreach(Object_Library IN LISTS TileDB_Environment_object_library_end_OL_Dependencies)
         target_link_libraries(${TileDB_Environment_object_library_end_Library} PUBLIC ${Object_Library} $<TARGET_OBJECTS:${Object_Library}>)
@@ -172,6 +174,10 @@ macro(TileDB_Environment_object_library_end)
     foreach(Link_Library IN LISTS TileDB_Environment_object_library_end_Link_Dependencies)
         target_link_libraries(${TileDB_Environment_object_library_end_Library} PUBLIC ${Link_Library})
     endforeach()
+    foreach(Compile_Definition IN LISTS TileDB_Environment_object_library_end_Compile_Definitions)
+        target_compile_definitions(${TileDB_Environment_object_library_end_Library} PUBLIC ${Compile_Definition})
+    endforeach()
+
     # Compile test
     add_executable(${TileDB_Environment_object_library_end_Compile} EXCLUDE_FROM_ALL)
     target_link_libraries(${TileDB_Environment_object_library_end_Compile} PRIVATE ${TileDB_Environment_object_library_end_Library})
@@ -201,6 +207,10 @@ endmacro()
 
 macro(this_target_link_libraries)
     append_this_property(link_library_dependencies ${ARGV})
+endmacro()
+
+macro(target_compile_definitions)
+    append_this_property(compile_definitions ${ARGV})
 endmacro()
 
 verify_outside_of_environment()

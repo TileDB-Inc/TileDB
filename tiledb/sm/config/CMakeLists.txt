@@ -30,8 +30,8 @@ include(object_library)
 #
 # `config` object library
 #
-commence(object_library config config_iter.cc)
-    this_target_sources(config.cc)
+commence(object_library config)
+    this_target_sources(config.cc config_iter.cc)
     this_target_object_libraries(baseline constants parse_argument)
 conclude(object_library)
 

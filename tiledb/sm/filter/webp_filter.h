@@ -51,7 +51,11 @@ namespace tiledb::sm {
 
 class WebpNotPresentError : public std::runtime_error {
  public:
-  WebpNotPresentError() : std::runtime_error("WebP filter not available; this library instance built with TILEDB_WEBP=OFF") {}
+  WebpNotPresentError()
+      : std::runtime_error(
+            "WebP filter not available; this library instance built with "
+            "TILEDB_WEBP=OFF") {
+  }
 };
 
 enum class WebpInputFormat : uint8_t;
