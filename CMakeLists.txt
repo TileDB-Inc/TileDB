@@ -85,14 +85,20 @@ if(APPLE)
   set(CMAKE_FIND_FRAMEWORK NEVER)
 endif()
 
-# Set C++17 as required standard for all C++ targets.
-set(CMAKE_CXX_STANDARD 17)
+# Set C++17 as default required standard for all C++ targets.
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ Standard")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(CMAKE_SYSTEM_NAME MATCHES "CYGWIN")
   # Use GNU extensions under Cygwin
   set(CMAKE_CXX_EXTENSIONS ON)
 else()
   set(CMAKE_CXX_EXTENSIONS OFF)
+endif()
+
+if (CMAKE_CXX_STANDARD STREQUAL "20")
+  # Disable char8_t to silence errors around use of u8"literals"
+  # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1423r2.html
+  add_compile_options("-fno-char8_t")
 endif()
 
 # Set -fvisibility=hidden (or equivalent) flags by default.
