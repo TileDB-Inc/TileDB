@@ -64,7 +64,7 @@ class AttributeOrderValidatorStatusException : public StatusException {
  * @return Is the value in the given domain or not.
  */
 template <typename IndexType>
-bool in_domain(IndexType v, const IndexType* domain) {
+uint8_t in_domain(IndexType v, const IndexType* domain) {
   return v >= domain[0] && v <= domain[1];
 };
 
