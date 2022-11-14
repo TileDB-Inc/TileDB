@@ -243,8 +243,7 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
       if constexpr (webp_filter_exists) {
         return {Status::Ok(), tiledb::common::make_shared<WebpFilter>(HERE())};
       } else {
-        throw std::logic_error(
-            "Can't create WebP filter; built with TILEDB_WEBP=OFF");
+        throw WebpNotPresentError();
       }
     }
     default: {

@@ -136,24 +136,34 @@ target_link_libraries(compile_bitsort_filters PRIVATE bitsort_filters)
 target_sources(compile_bitsort_filters PRIVATE test/compile_bitsort_filter_main.cc)
 
 #
-# `webp_filters` object library.
+# `webp_filter` object library.
 #
-add_library(webp_filters OBJECT webp_filter.cc)
-target_link_libraries(webp_filters PUBLIC filter $<TARGET_OBJECTS:filter>)
-target_link_libraries(webp_filters PUBLIC misc_types $<TARGET_OBJECTS:misc_types>)
-target_link_libraries(webp_filters PUBLIC tile $<TARGET_OBJECTS:tile>)
-if(TILEDB_WEBP)
-    target_compile_definitions(webp_filters PUBLIC -DTILEDB_WEBP)
-    find_package(Webp_EP REQUIRED)
-    target_link_libraries(webp_filters PRIVATE WebP::webp)
-endif()
+#add_library(webp_filter OBJECT webp_filter.cc)
+#target_link_libraries(webp_filter PUBLIC filter $<TARGET_OBJECTS:filter>)
+#target_link_libraries(webp_filter PUBLIC misc_types $<TARGET_OBJECTS:misc_types>)
+#target_link_libraries(webp_filter PUBLIC tile $<TARGET_OBJECTS:tile>)
+#if(TILEDB_WEBP)
+#    target_compile_definitions(webp_filter PUBLIC -DTILEDB_WEBP)
+#    find_package(Webp_EP REQUIRED)
+#    target_link_libraries(webp_filter PRIVATE WebP::webp)
+#endif()
+
+commence(object_library webp_filter)
+    this_target_sources(webp_filter.cc)
+    this_target_object_libraries(filter misc_types tile)
+    if(TILEDB_WEBP)
+        this_target_compile_definitions(-DTILEDB_WEBP)
+        find_package(Webp_EP REQUIRED)
+        this_target_link_libraries(WebP::webp)
+    endif()
+conclude(object_library)
 
 #
 # Test-compile of object library ensures link-completeness.
 #
-add_executable(compile_webp_filters EXCLUDE_FROM_ALL)
-target_link_libraries(compile_webp_filters PRIVATE webp_filters)
-target_sources(compile_webp_filters PRIVATE test/compile_webp_filter_main.cc)
+#add_executable(compile_webp_filter EXCLUDE_FROM_ALL)
+#target_link_libraries(compile_webp_filter PRIVATE webp_filter)
+#target_sources(compile_webp_filter PRIVATE test/compile_webp_filter_main.cc)
 
 #
 # `all_filters` object library
@@ -163,7 +173,7 @@ commence(object_library all_filters)
         bit_width_reduction_filter.cc noop_filter.cc positive_delta_filter.cc)
     this_target_object_libraries(bitshuffle_filter byteshuffle_filter
         checksum_filters compression_filter encryption_filters float_scaling_filter
-        xor_filter bitsort_filters webp_filters)
+        xor_filter bitsort_filters webp_filter)
 conclude(object_library)
 
 #

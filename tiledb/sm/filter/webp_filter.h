@@ -39,7 +39,7 @@ constexpr bool webp_filter_exists = true;
 constexpr bool webp_filter_exists = false;
 #endif  // TILEDB_WEBP
 
-#include "tiledb/common/status.h"
+#include "tiledb/common/common.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter.h"
@@ -48,6 +48,11 @@ constexpr bool webp_filter_exists = false;
 using namespace tiledb::common;
 
 namespace tiledb::sm {
+
+class WebpNotPresentError : public std::runtime_error {
+ public:
+  WebpNotPresentError() : std::runtime_error("WebP filter not available; this library instance built with TILEDB_WEBP=OFF") {}
+};
 
 enum class WebpInputFormat : uint8_t;
 
