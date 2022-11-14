@@ -84,7 +84,8 @@ class AttributeOrderValidator {
   AttributeOrderValidator(const std::string& attribute_name, uint64_t num_frags)
       : attribute_name_(attribute_name)
       , result_tiles_to_load_(num_frags)
-      , value_validated_(num_frags, {false, false})
+      , min_validated_(num_frags, false)
+      , max_validated_(num_frags, false)
       , fragment_to_compare_against_(num_frags, {nullopt, nullopt})
       , tile_to_compare_against_(num_frags) {
   }
@@ -146,7 +147,6 @@ class AttributeOrderValidator {
       uint64_t f,
       const std::vector<const void*>& non_empty_domains) {
     // Set useful variables for this fragment.
-    auto& validated = value_validated_[f];
     auto& frag_to_compare = fragment_to_compare_against_[f];
     const IndexType* non_empty_domain =
         static_cast<const IndexType*>(non_empty_domains[f]);
@@ -155,15 +155,15 @@ class AttributeOrderValidator {
 
     // If the fragment minimum is also the array minimum, then it necessarily
     // satisfies the required ordering.
-    validated.first = (min == array_min_idx);
+    min_validated_[f] = (min == array_min_idx);
 
     // If the fragment maximum is also the array maximum, then it necessarily
     // satisfies the required ordering.
-    validated.second = (max == array_max_idx);
+    max_validated_[f] = (max == array_max_idx);
 
     // If both bounds are validated, then no fragments need to be checked and we
     // can return.
-    if (validated.first && validated.second) {
+    if (min_validated_[f] && max_validated_[f]) {
       return;
     }
 
@@ -174,43 +174,43 @@ class AttributeOrderValidator {
           static_cast<const IndexType*>(non_empty_domains[f2]);
 
       // Check if the lower bound can be validated.
-      if (!validated.first) {
+      if (!min_validated_[f]) {
         // See if the min is covered by this fragment.
-        validated.first |= in_domain(min, non_empty_domain2);
+        min_validated_[f] |= in_domain(min, non_empty_domain2);
 
         // If the min is next to the max of a more recent fragment, it will
         // be validated when processing that fragment.
-        validated.first |= min - 1 == non_empty_domain2[1];
+        min_validated_[f] |= min - 1 == non_empty_domain2[1];
       }
 
       // Check if the upper bound can be validated.
-      if (!validated.second) {
+      if (!max_validated_[f]) {
         // See if the max is covered.
-        validated.second |= in_domain(max, non_empty_domain2);
+        max_validated_[f] |= in_domain(max, non_empty_domain2);
 
         // If the max is next to the min of a more recent fragment, it will
         // be validated when processing that fragment.
-        validated.second |= max + 1 == non_empty_domain2[0];
+        max_validated_[f] |= max + 1 == non_empty_domain2[0];
       }
 
       // If both bounds are validated, then no fragments need to be checked and
       // we can return.
-      if (validated.first && validated.second) {
+      if (min_validated_[f] && max_validated_[f]) {
         return;
       }
     }
 
     // Get fragment to check against for both the lower and upper boundaries
     // of this fragment.
-    bool finished_lower_search = validated.first;
-    bool finished_upper_search = validated.second;
+    bool finished_lower_search = min_validated_[f];
+    bool finished_upper_search = max_validated_[f];
     for (int64_t f2 = f - 1; f2 >= 0; --f2) {
       // Get the non-empty domain for this fragment.
       const IndexType* non_empty_domain2 =
           static_cast<const IndexType*>(non_empty_domains[f2]);
 
       // If not validated and fragment to check is not yet found, check if
-      // this fragment is over-lapping or directly proceeding the min.
+      // this fragment is over-lapping or directly preceeding the min.
       if (!finished_lower_search && (in_domain(min, non_empty_domain2) ||
                                      min - 1 == non_empty_domain2[1])) {
         frag_to_compare.first = f2;
@@ -266,7 +266,7 @@ class AttributeOrderValidator {
     const IndexType* dim_dom = index_dim->domain().typed_data<IndexType>();
     auto tile_extent{index_dim->tile_extent().rvalue_as<IndexType>()};
 
-    if (!min_validated(f)) {
+    if (!min_validated_[f]) {
       // Get the fragment number to compare against.
       if (!fragment_to_compare_against_[f].first.has_value()) {
         throw std::logic_error(
@@ -291,7 +291,7 @@ class AttributeOrderValidator {
       const IndexType* non_empty_domain2 =
           static_cast<const IndexType*>(non_empty_domains[f2]);
       if (min_tile_aligned || min - 1 == non_empty_domain2[1]) {
-        min_validated(f) = true;
+        min_validated_[f] = true;
 
         // Check the order.
         if (increasing_data) {
@@ -331,7 +331,7 @@ class AttributeOrderValidator {
       }
     }
 
-    if (!max_validated(f)) {
+    if (!max_validated_[f]) {
       // Get the fragment number to compare against.
       if (!fragment_to_compare_against_[f].second.has_value()) {
         throw std::logic_error(
@@ -356,7 +356,7 @@ class AttributeOrderValidator {
       const IndexType* non_empty_domain2 =
           static_cast<const IndexType*>(non_empty_domains[f2]);
       if (max_tile_aligned || max + 1 == non_empty_domain2[0]) {
-        max_validated(f) = true;
+        max_validated_[f] = true;
 
         // Check the order.
         if (increasing_data) {
@@ -423,7 +423,7 @@ class AttributeOrderValidator {
     const IndexType* dim_dom = index_dim->domain().typed_data<IndexType>();
     auto tile_extent = index_dim->tile_extent().rvalue_as<IndexType>();
 
-    if (!min_validated(f)) {
+    if (!min_validated_[f]) {
       // Get the min of the current fragment.
       auto value = fragment_metadata[f]->get_tile_min_as<AttributeType>(
           attribute_name_, 0);
@@ -454,7 +454,7 @@ class AttributeOrderValidator {
       }
     }
 
-    if (!max_validated(f)) {
+    if (!max_validated_[f]) {
       // Get the min of the current fragment.
       auto max_tile_idx = fragment_metadata[f]->tile_num() - 1;
       auto value = fragment_metadata[f]->get_tile_max_as<AttributeType>(
@@ -492,19 +492,23 @@ class AttributeOrderValidator {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** Name of the attribute to validate. */
   std::string attribute_name_;
 
   /** Map of result tiles to load, per fragments. */
   std::vector<std::unordered_map<uint64_t, ResultTile>> result_tiles_to_load_;
 
-  /**
-   * Vector of pairs to store, per fragment, which min/max has been validated
-   * already.
-   */
-  std::vector<std::pair<bool, bool>> value_validated_;
+  /** Vector to store, per fragment, which min has been validated already. */
+  std::vector<uint8_t> min_validated_;
+
+  /** Vector to store, per fragment, which max has been validated already. */
+  std::vector<uint8_t> max_validated_;
 
   /**
-   * Fragment to compare.
+   * Fragments to compare against, per fragments. This will contain a value for
+   * both the min and the max bound of a fragment. If it was possible to
+   * validate the value without looking at another fragment, this will be
+   * nullopt.
    */
   std::vector<std::pair<optional<uint64_t>, optional<uint64_t>>>
       fragment_to_compare_against_;
@@ -549,26 +553,6 @@ class AttributeOrderValidator {
     } else {
       tile_to_compare_against_[f].second = t_to_compare;
     }
-  }
-
-  /**
-   * Return the min validated value for a fragment.
-   *
-   * @param f Fragment index.
-   * @return reference to the min validated value.
-   */
-  inline bool& min_validated(unsigned f) {
-    return value_validated_[f].first;
-  }
-
-  /**
-   * Return the max validated value for a fragment.
-   *
-   * @param f Fragment index.
-   * @return reference to the max validated value.
-   */
-  inline bool& max_validated(unsigned f) {
-    return value_validated_[f].second;
   }
 
   /**

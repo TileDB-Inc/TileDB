@@ -1888,6 +1888,7 @@ void ReaderBase::validate_attribute_order(
     auto tiles_to_load = validator.tiles_to_load();
     throw_if_not_ok(read_attribute_tiles({attribute_name}, tiles_to_load));
     throw_if_not_ok(unfilter_tiles(attribute_name, tiles_to_load));
+
     // Validate bounds not validated using tile data.
     throw_if_not_ok(parallel_for(
         storage_manager_->compute_tp(),
