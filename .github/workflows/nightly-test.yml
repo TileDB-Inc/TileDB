@@ -12,6 +12,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest, windows-2019]
+        std: [17, 20]
       fail-fast: false
 
     permissions:
@@ -28,7 +29,7 @@ jobs:
 
       - name: Configure TileDB CMake
         run: |
-          cmake -S . -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=${{ matrix.std }}
 
       - name: Build TileDB
         run: |
@@ -38,16 +39,16 @@ jobs:
         run: |
           cmake --build build --target check --config Release
 
-  create_issue_on_fail:
-    runs-on: ubuntu-latest
-    needs: test
-    if: failure() || cancelled()
-    steps:
-      - name: Checkout TileDB `dev`
-        uses: actions/checkout@v2
-      - name: Create Issue if Build Fails
-        uses: JasonEtco/create-an-issue@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          filename: .github/workflows/nightly-failure-issue-template.md
+#  create_issue_on_fail:
+#    runs-on: ubuntu-latest
+#    needs: test
+#    if: failure() || cancelled()
+#    steps:
+#      - name: Checkout TileDB `dev`
+#        uses: actions/checkout@v2
+#      - name: Create Issue if Build Fails
+#        uses: JasonEtco/create-an-issue@v2
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          filename: .github/workflows/nightly-failure-issue-template.md
