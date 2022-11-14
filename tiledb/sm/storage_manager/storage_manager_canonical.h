@@ -1180,12 +1180,6 @@ class StorageManagerCanonical {
   /** Stores the TileDB configuration parameters. */
   Config config_;
 
-  /** Keeps track of which arrays are open. */
-  std::set<Array*> open_arrays_;
-
-  /** Mutex for managing open arrays. */
-  std::mutex open_arrays_mtx_;
-
   /** Keeps track of which groups are open. */
   std::set<Group*> open_groups_;
 
