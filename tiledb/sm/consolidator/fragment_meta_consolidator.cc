@@ -31,7 +31,9 @@
  */
 
 #include "tiledb/sm/consolidator/fragment_meta_consolidator.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -122,14 +124,14 @@ Status FragmentMetaConsolidator::consolidate(
   }
 
   // Serialize all fragment metadata footers in parallel
-  std::vector<tdb_unique_ptr<Tile>> tiles(meta.size());
+  std::vector<tiledb_unique_ptr<Tile>> tiles(meta.size());
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tiles.size(), [&](size_t i) {
 
         SizeComputationSerializer size_computation_serializer;
         throw_if_not_ok(meta[i]->write_footer(size_computation_serializer));
-        tiles[i] = make_unique<Tile>(
-            Tile::from_generic(size_computation_serializer.size()));
+        tiles[i].reset(tdb_new(
+            Tile, Tile::from_generic(size_computation_serializer.size())));
         Serializer serializer(tiles[i]->data(), tiles[i]->size());
         throw_if_not_ok(meta[i]->write_footer(serializer));
 
