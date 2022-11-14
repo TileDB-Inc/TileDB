@@ -95,11 +95,6 @@ WebpFilter* WebpFilter::clone_impl() const {
 using namespace tiledb::common;
 
 namespace tiledb::sm {
-void WebpFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-  fprintf(out, "WebpFilter");
-}
 
 Status WebpFilter::run_forward(
     const Tile&,
