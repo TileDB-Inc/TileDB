@@ -56,8 +56,9 @@ DimensionLabelQuery::DimensionLabelQuery(
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
     const QueryBuffer& index_buffer,
-    optional<std::string> fragment_name)
-    : Query(storage_manager, dim_label, fragment_name)
+    const optional<std::string>& fragment_name,
+    optional<uint64_t> fragment_timestamp)
+    : Query(storage_manager, dim_label, fragment_name, fragment_timestamp)
     , dim_label_name_{dim_label_ref.name()} {
   switch (dim_label->get_query_type()) {
     case (QueryType::READ):
