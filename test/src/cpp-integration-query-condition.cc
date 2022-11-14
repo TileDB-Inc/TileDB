@@ -30,15 +30,15 @@
  * Tests the integration of query conditions by running queries.
  */
 
-Template-ize the TestArray/TestQuery classes so that the `b` attribute
-is a test provided type. This will allow us to go over all of the
-checks that show we can only do primitive types and strings. I can
-probably also add dimension tempated dimensions as well to make things
-easier as well.
-
-Also add tests to see if I can break things with that missing std::min
-check I spotted in the QueryCondition code in the query ast thinger where
-conditions are implemented.
+// Template-ize the TestArray/TestQuery classes so that the `b` attribute
+// is a test provided type. This will allow us to go over all of the
+// checks that show we can only do primitive types and strings. I can
+// probably also add dimension tempated dimensions as well to make things
+// easier as well.
+//
+// Also add tests to see if I can break things with that missing std::min
+// check I spotted in the QueryCondition code in the query ast thinger where
+// conditions are implemented.
 
 
 #include <algorithm>
@@ -56,7 +56,6 @@ using namespace tiledb;
 int NUM_ROWS = 20;
 int A_FILL = -1;
 float B_FILL = -1.0;
-int C_FILL[2] = {-1, -1};
 const std::string ARRAY_NAME = "cpp_integration_query_condition_array";
 
 typedef const std::array<int, 2> TRange;
@@ -64,6 +63,20 @@ typedef const std::array<int, 2> TRange;
 float
 rand_float() {
   return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+}
+
+std::string
+rand_string(int min_len, int max_len) {
+  const char* data =
+      "0123456789abcedefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  int len = static_cast<int>(rand_float() * (max_len - min_len)) + min_len;
+  std::string ret;
+  for(int i = 0; i < len; i++) {
+    ret += data[static_cast<size_t>(rand_float() * 62)];
+  }
+
+  return ret;
 }
 
 struct TestParams {
@@ -84,26 +97,49 @@ struct TestParams {
   bool legacy_;
 };
 
+template<typename AType, typename BType>
+struct TestCell {
+  using a_type = AType;
+  using b_type = BType;
+
+  TestCell() {}
+  TestCell(a_type a, b_type b) : a_(a), b_(b) {}
+
+  static TestCell<a_type, b_type> generate();
+
+  a_type a_;
+  b_type b_;
+};
+
+template<>
+TestCell<int, float> TestCell<int, float>::generate() {
+  return TestCell(static_cast<int>(rand_float() * 10), rand_float() * 100);
+}
+
+template<>
+TestCell<int, std::string> TestCell<int, std::string>::generate() {
+  return TestCell(static_cast<int>(rand_float() * 10), rand_string(1, 10));
+}
+
+template<typename CellType>
 struct TestArray {
   TestArray(TestParams& params);
   ~TestArray();
 
-  std::pair<int, float> get_cell(int row, int col);
+  void update(int rm, int rx, int cm, int cx, CellType cell);
+  CellType get_cell(int row, int col);
 
   Context ctx_;
   VFS vfs_;
   TestParams& params_;
-  std::vector<int> a_;
-  std::vector<float> b_;
-  std::vector<std::array<int, 2>> c_;
+  std::vector<CellType> cells_;
 };
 
-TestArray::TestArray(TestParams& params)
+template<typename CellType>
+TestArray<CellType>::TestArray(TestParams& params)
     : vfs_(ctx_)
     , params_(params)
-    , a_(NUM_ROWS * NUM_ROWS)
-    , b_(NUM_ROWS * NUM_ROWS)
-    , c_(NUM_ROWS * NUM_ROWS) {
+    , cells_(NUM_ROWS * NUM_ROWS) {
 
   if (vfs_.is_dir(ARRAY_NAME)) {
     vfs_.remove_dir(ARRAY_NAME);
@@ -117,35 +153,31 @@ TestArray::TestArray(TestParams& params)
   schema.set_allows_dups(params_.allows_dups_);
   schema.set_domain(dom).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
-  Attribute attr_a = Attribute::create<int>(ctx_, "a");
-  Attribute attr_b = Attribute::create<float>(ctx_, "b");
-  Attribute attr_c = Attribute::create<int[2]>(ctx_, "c");
+  Attribute attr_a = Attribute::create<typename CellType::a_type>(ctx_, "a");
+  Attribute attr_b = Attribute::create<typename CellType::b_type>(ctx_, "b");
 
   if (params_.array_type_ == TILEDB_DENSE) {
-    attr_a.set_fill_value(&A_FILL, sizeof(int));
-    attr_b.set_fill_value(&B_FILL, sizeof(float));
-    attr_c.set_fill_value(&C_FILL, sizeof(int[2]));
+    attr_a.set_fill_value(&A_FILL, sizeof(typename CellType::a_type));
+    attr_b.set_fill_value(&B_FILL, sizeof(typename CellType::b_type));
   } else {
     schema.set_capacity(16);
   }
   schema.add_attribute(attr_a);
   schema.add_attribute(attr_b);
-  schema.add_attribute(attr_c);
 
   Array::create(ARRAY_NAME, schema);
 
   std::vector<int> row_dims(NUM_ROWS * NUM_ROWS);
   std::vector<int> col_dims(NUM_ROWS * NUM_ROWS);
-  std::vector<uint64_t> c_offsets(NUM_ROWS * NUM_ROWS);
+  std::vector<typename CellType::a_type> a_vals(NUM_ROWS * NUM_ROWS);
+  std::vector<typename CellType::b_type> b_vals(NUM_ROWS * NUM_ROWS);
 
   for (int i = 0; i < NUM_ROWS * NUM_ROWS; i++) {
     row_dims[i] = (i / NUM_ROWS) + 1;
     col_dims[i] = (i % NUM_ROWS) + 1;
-    a_[i] = static_cast<int>(rand_float() * 10);
-    b_[i] = rand_float() * 100.0;
-    c_[i][0] = static_cast<int>(rand_float() * 10);
-    c_[i][1] = static_cast<int>(rand_float() * 20);
-    c_offsets[i] = i * 2 * sizeof(int);
+    cells_[i] = CellType::generate();
+    a_vals[i] = cells_[i].a_;
+    b_vals[i] = cells_[i].b_;
   }
 
   Array array_w(ctx_, ARRAY_NAME, TILEDB_WRITE);
@@ -155,16 +187,12 @@ TestArray::TestArray(TestParams& params)
     query_w.set_layout(TILEDB_UNORDERED)
         .set_data_buffer("rows", row_dims)
         .set_data_buffer("cols", col_dims)
-        .set_data_buffer("a", a_)
-        .set_data_buffer("b", b_)
-        .set_data_buffer("c", c_)
-        ;//.set_offsets_buffer("c", c_offsets);
+        .set_data_buffer("a", a_vals)
+        .set_data_buffer("b", b_vals);
   } else {
     query_w.set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", a_)
-        .set_data_buffer("b", b_)
-        .set_data_buffer("c", c_)
-        ;//.set_offsets_buffer("c", c_offsets);
+        .set_data_buffer("a", a_vals)
+        .set_data_buffer("b", b_vals);
   }
 
   query_w.submit();
@@ -172,20 +200,67 @@ TestArray::TestArray(TestParams& params)
   array_w.close();
 }
 
-TestArray::~TestArray() {
+template<typename CellType>
+TestArray<CellType>::~TestArray() {
   if (vfs_.is_dir(ARRAY_NAME)) {
     vfs_.remove_dir(ARRAY_NAME);
   }
 }
 
-std::pair<int, float>
-TestArray::get_cell(int row, int col) {
-  int idx = (row - 1) * NUM_ROWS + (col - 1);
-  return std::pair(a_[idx], b_[idx]);
+template<typename CellType>
+void TestArray<CellType>::update(
+    int rm, int rx, int cm, int cx, CellType cell) {
+  REQUIRE(vfs_.is_dir(ARRAY_NAME));
+  int num_cells = (rx - rm + 1) * (cx - cm + 1);
+  std::vector<int> row_dims(num_cells);
+  std::vector<int> col_dims(num_cells);
+  std::vector<typename CellType::a_type> a_vals(num_cells);
+  std::vector<typename CellType::b_type> b_vals(num_cells);
+
+  int w_idx = 0;
+  for(int r = rm; r <= rx; r++) {
+    for(int c = cm; c <= cx; c++) {
+      int idx = (r - 1) * NUM_ROWS + (c - 1);
+      cells_[idx] = cell;
+      row_dims[w_idx] = r;
+      col_dims[w_idx] = c;
+      a_vals[w_idx] = cell.a_;
+      b_vals[w_idx] = cell.b_;
+      w_idx++;
+    }
+  }
+
+  Array array_w(ctx_, ARRAY_NAME, TILEDB_WRITE);
+  Query query_w(ctx_, array_w);
+
+  if (params_.array_type_ == TILEDB_SPARSE) {
+    query_w.set_layout(TILEDB_UNORDERED)
+        .set_data_buffer("rows", row_dims)
+        .set_data_buffer("cols", col_dims)
+        .set_data_buffer("a", a_vals)
+        .set_data_buffer("b", b_vals);
+  } else {
+    query_w.set_layout(TILEDB_ROW_MAJOR)
+        .add_range("rows", rm, rx)
+        .add_range("cols", cm, cx)
+        .set_data_buffer("a", a_vals)
+        .set_data_buffer("b", b_vals);
+  }
+
+  query_w.submit();
+  query_w.finalize();
+  array_w.close();
 }
 
+template<typename CellType>
+CellType TestArray<CellType>::get_cell(int row, int col) {
+  int idx = (row - 1) * NUM_ROWS + (col - 1);
+  return cells_[idx];
+}
+
+template<typename CellType>
 struct TestQuery {
-  TestQuery(TestArray& t_array, Config& cfg);
+  TestQuery(TestArray<CellType>& t_array, Config& cfg);
   ~TestQuery();
 
   template<typename F>
@@ -208,7 +283,7 @@ struct TestQuery {
   template<typename T>
   QueryCondition qcb(std::string name, T val, tiledb_query_condition_op_t op);
 
-  TestArray& t_array_;
+  TestArray<CellType>& t_array_;
   Config& cfg_;
   Context ctx_;
   Array array_;
@@ -219,7 +294,8 @@ struct TestQuery {
   std::vector<float> b_;
 };
 
-TestQuery::TestQuery(TestArray& t_array, Config& cfg)
+template<typename CellType>
+TestQuery<CellType>::TestQuery(TestArray<CellType>& t_array, Config& cfg)
     : t_array_(t_array)
     , cfg_(cfg)
     , ctx_(cfg_)
@@ -230,12 +306,14 @@ TestQuery::TestQuery(TestArray& t_array, Config& cfg)
     , b_(NUM_ROWS * NUM_ROWS) {
 }
 
-TestQuery::~TestQuery() {
+template<typename CellType>
+TestQuery<CellType>::~TestQuery() {
   array_.close();
 }
 
+template<typename CellType>
 template<typename F>
-void TestQuery::verify(QueryCondition& qc, F&& predicate) {
+void TestQuery<CellType>::verify(QueryCondition& qc, F&& predicate) {
   Query query(ctx_, array_);
   query.set_layout(t_array_.params_.layout_)
     .set_data_buffer("rows", rows_)
@@ -247,8 +325,9 @@ void TestQuery::verify(QueryCondition& qc, F&& predicate) {
   verify(query, {1, NUM_ROWS}, {1, NUM_ROWS}, predicate);
 }
 
+template<typename CellType>
 template<typename F>
-void TestQuery::verify(
+void TestQuery<CellType>::verify(
     QueryCondition& qc,
     TRange& row_range,
     TRange& col_range,
@@ -269,8 +348,9 @@ void TestQuery::verify(
   verify(query, row_range, col_range, predicate);
 }
 
+template<typename CellType>
 template<typename F>
-void TestQuery::verify(
+void TestQuery<CellType>::verify(
     Query& query,
     TRange& row_range,
     TRange& col_range,
@@ -287,6 +367,7 @@ void TestQuery::verify(
     for(int c = col_range[0]; c <= col_range[1]; c++) {
       // This cell should be in our query set
       auto [a, b] = t_array_.get_cell(r, c);
+      fprintf(stderr, "%d %f\n", a, b);
       if (predicate(r, c, a, b)) {
         num_elems++;
         REQUIRE(results[std::pair(r, c)] == std::pair(a, b));
@@ -299,13 +380,14 @@ void TestQuery::verify(
     }
   }
 
-  REQUIRE(num_elems > 0);
   REQUIRE(elems["a"].second == num_elems);
   REQUIRE(elems["b"].second == num_elems);
 }
 
+template<typename CellType>
 template<typename T>
-QueryCondition TestQuery::qcb(std::string name, T val, tiledb_query_condition_op_t op) {
+QueryCondition TestQuery<CellType>::qcb(
+    std::string name, T val, tiledb_query_condition_op_t op) {
   return QueryCondition::create(ctx_, name, val, op);
 }
 
@@ -327,7 +409,7 @@ TEST_CASE(
     TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
     TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
 
-  TestArray t_array(params);
+  TestArray<TestCell<int, float>> t_array(params);
 
   Config config;
   if (params.legacy_) {
@@ -410,19 +492,6 @@ TEST_CASE(
 
     t_query.verify(qc, {1, NUM_ROWS}, {1, NUM_ROWS}, pred);
   }
-
-  SECTION("multi-valued attribute test") {
-    TestQuery t_query(t_array, config);
-
-    int c[2] = {5, 5};
-    auto qc = t_query.qcb("c", c, TILEDB_LT);
-
-    auto pred = [](int, int, int, float) {
-      return true;
-    };
-
-    t_query.verify(qc, {1, NUM_ROWS}, {1, NUM_ROWS}, pred);
-  }
 }
 
 TEST_CASE(
@@ -434,7 +503,7 @@ TEST_CASE(
     TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, false),
     TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false));
 
-  TestArray t_array(params);
+  TestArray<TestCell<int, float>> t_array(params);
 
   Config config;
   if (params.legacy_) {
@@ -442,7 +511,8 @@ TEST_CASE(
     config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   }
 
-  auto qc_builder = [](TestQuery& t_query, int r1, int r2, int c1, int c2) {
+  auto qc_builder = [](
+      TestQuery<TestCell<int, float>>& t_query, int r1, int r2, int c1, int c2) {
     auto qc = t_query.qcb("rows", r1, TILEDB_GE);
     qc = qc & t_query.qcb("rows", r2, TILEDB_LE);
     qc = qc & t_query.qcb("cols", c1, TILEDB_GE);
@@ -520,6 +590,46 @@ TEST_CASE(
   }
 }
 
+TEST_CASE(
+    "Test read queries on updated arrays",
+    "[query][query-condition]") {
+
+  TestParams params = GENERATE(
+    TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
+    TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, false),
+    TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
+    TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
+
+  TestArray<TestCell<int, float>> t_array(params);
+  REQUIRE(NUM_ROWS >= 20);
+  t_array.update(6, 15, 6, 15, TestCell(11, 101.0f));
+
+  Config config;
+  if (params.legacy_) {
+    config.set("sm.query.sparse_global_order.reader", "legacy");
+    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
+  }
+
+  SECTION("simple query condition on all tiles") {
+    TestQuery t_query(t_array, config);
+
+    // Notice that the query condition and predicate are
+    // executing different logic to assert that the query
+    // is only returning values from the updated square
+    // centered in the middle of the array.
+    auto qc = t_query.qcb("b", 100.0f, TILEDB_GT);
+    auto pred = [](int r, int c, int, float) {
+      return r >= 6 && r <= 15 && c >= 6 && c <= 15;
+    };
+
+    t_query.verify(qc, {1, NUM_ROWS}, {1, NUM_ROWS}, pred);
+    t_query.verify(qc, {1, 10}, {1, 10}, pred);
+    t_query.verify(qc, {1, 10}, {11, NUM_ROWS}, pred);
+    t_query.verify(qc, {11, NUM_ROWS}, {1, 10}, pred);
+    t_query.verify(qc, {11, NUM_ROWS}, {11, NUM_ROWS}, pred);
+    t_query.verify(qc, {8, 12}, {8, 12}, pred);
+  }
+}
 
 // TEST_CASE(
 //     "Testing read query with simple QC, condition on dimensions, string dim",
@@ -600,74 +710,3 @@ TEST_CASE(
 //   }
 // }
 
-
-// TEST_CASE(
-//     "Testing dense query condition with overlapping fragment domains",
-//     "[query][query-condition][dense][overlapping-fd]") {
-//   Context ctx;
-//   VFS vfs(ctx);
-//
-//   if (vfs.is_dir(array_name)) {
-//     vfs.remove_dir(array_name);
-//   }
-//
-//   // Create a simple 1D vector with domain 1-10 and one attribute.
-//   Domain domain(ctx);
-//   domain.add_dimension(Dimension::create<int>(ctx, "d", {{1, 10}}, 5));
-//   ArraySchema schema(ctx, TILEDB_DENSE);
-//   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-//   Attribute attr = Attribute::create<int>(ctx, "a");
-//   int fill_value = -1;
-//   attr.set_fill_value(&fill_value, sizeof(int));
-//   schema.add_attribute(attr);
-//   Array::create(array_name, schema);
-//
-//   // Open array for write.
-//   Array array(ctx, array_name, TILEDB_WRITE);
-//
-//   // Write all values as 3 in the array.
-//   std::vector<int> vals = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
-//   Query query_w(ctx, array, TILEDB_WRITE);
-//   int range[] = {1, 10};
-//   query_w.add_range("d", range[0], range[1]);
-//   query_w.set_layout(TILEDB_ROW_MAJOR);
-//   query_w.set_buffer("a", vals);
-//   REQUIRE(query_w.submit() == Query::Status::COMPLETE);
-//
-//   // Write values from 3-6 as 7 in the array.
-//   std::vector<int> vals2 = {7, 7, 7, 7};
-//   Query query_w2(ctx, array, TILEDB_WRITE);
-//   int range2[] = {3, 6};
-//   query_w2.add_range("d", range2[0], range2[1]);
-//   query_w2.set_layout(TILEDB_ROW_MAJOR);
-//   query_w2.set_buffer("a", vals2);
-//   REQUIRE(query_w2.submit() == Query::Status::COMPLETE);
-//
-//   array.close();
-//
-//   // Open the array for read.
-//   Array array_r(ctx, array_name, TILEDB_READ);
-//
-//   // Query the data with query condition a > 4.
-//   QueryCondition qc(ctx);
-//   int val1 = 4;
-//   qc.init("a", &val1, sizeof(int), TILEDB_GT);
-//
-//   std::vector<int> vals_read(10);
-//   Query query_r(ctx, array_r, TILEDB_READ);
-//   query_r.add_range("d", range[0], range[1]);
-//   query_r.set_layout(TILEDB_ROW_MAJOR);
-//   query_r.set_buffer("a", vals_read);
-//   query_r.set_condition(qc);
-//   REQUIRE(query_r.submit() == Query::Status::COMPLETE);
-//
-//   std::vector<int> c_vals_read = {-1, -1, 7, 7, 7, 7, -1, -1, -1, -1};
-//   CHECK(0 == memcmp(vals_read.data(), c_vals_read.data(), 10 * sizeof(int)));
-//
-//   array_r.close();
-//
-//   if (vfs.is_dir(array_name)) {
-//     vfs.remove_dir(array_name);
-//   }
-// }
-//
