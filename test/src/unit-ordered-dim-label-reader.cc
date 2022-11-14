@@ -233,8 +233,9 @@ TEST_CASE_METHOD(
 
   REQUIRE_THROWS_WITH(
       query.submit(),
-      ContainsSubstring("OrderedDimLabelReader: "
-      "Cannot initialize ordered dim label reader; Buffers not set"));
+      ContainsSubstring(
+          "OrderedDimLabelReader: "
+          "Cannot initialize ordered dim label reader; Buffers not set"));
 
   array.close();
 }
@@ -264,8 +265,9 @@ TEST_CASE_METHOD(
 
   REQUIRE_THROWS_WITH(
       query.submit(),
-      ContainsSubstring("OrderedDimLabelReader: "
-      "Cannot initialize ordered dim label reader; Wrong buffer set"));
+      ContainsSubstring(
+          "OrderedDimLabelReader: "
+          "Cannot initialize ordered dim label reader; Wrong buffer set"));
 
   array.close();
 }
@@ -295,8 +297,9 @@ TEST_CASE_METHOD(
 
   REQUIRE_THROWS_WITH(
       query.submit(),
-      ContainsSubstring("OrderedDimLabelReader: "
-      "Cannot initialize ordered dim label reader; Wrong buffer size"));
+      ContainsSubstring(
+          "OrderedDimLabelReader: "
+          "Cannot initialize ordered dim label reader; Wrong buffer size"));
 
   array.close();
 }
@@ -327,8 +330,9 @@ TEST_CASE_METHOD(
 
   REQUIRE_THROWS_WITH(
       query.submit(),
-      ContainsSubstring("OrderedDimLabelReader: "
-      "Cannot initialize ordered dim label reader; Subarray is set"));
+      ContainsSubstring(
+          "OrderedDimLabelReader: "
+          "Cannot initialize ordered dim label reader; Subarray is set"));
 
   array.close();
 }
@@ -887,9 +891,7 @@ TEST_CASE_METHOD(
   }
 
   REQUIRE_THROWS_WITH(
-      read_labels({8, 9}),
-      "Error: Internal TileDB uncaught exception; ReaderBase: Discontiuity "
-      "found in array domain");
+      read_labels({8, 9}), "ReaderBase: Discontiuity found in array domain");
 }
 
 TEST_CASE_METHOD(
@@ -949,9 +951,7 @@ TEST_CASE_METHOD(
   }
 
   REQUIRE_THROWS_WITH(
-      read_labels({8, 9}),
-      "Error: Internal TileDB uncaught exception; ReaderBase: Attribute out of "
-      "order");
+      read_labels({8, 9}), "ReaderBase: Attribute out of order");
 }
 
 TEST_CASE_METHOD(
@@ -1013,9 +1013,7 @@ TEST_CASE_METHOD(
   }
 
   REQUIRE_THROWS_WITH(
-      read_labels({0.8, 0.9}),
-      "Error: Internal TileDB uncaught exception; ReaderBase: Attribute out of "
-      "order");
+      read_labels({0.8, 0.9}), "ReaderBase: Attribute out of order");
 }
 
 TEST_CASE_METHOD(
@@ -1082,7 +1080,5 @@ TEST_CASE_METHOD(
   }
 
   REQUIRE_THROWS_WITH(
-      read_labels({0.8, 0.9}),
-      "Error: Internal TileDB uncaught exception; ReaderBase: Attribute out of "
-      "order");
+      read_labels({0.8, 0.9}), "ReaderBase: Attribute out of order");
 }
