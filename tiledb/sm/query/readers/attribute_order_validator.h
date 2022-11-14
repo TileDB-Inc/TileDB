@@ -510,7 +510,7 @@ class AttributeOrderValidator {
       fragment_to_compare_against_;
 
   /**
-   * Vector of pairs to store, per fragment, which tile we should compate data
+   * Vector of pairs to store, per fragment, which tile we should compare data
    * against for the min/max. The value is an index into
    * `result_tiles_to_load_`.
    */

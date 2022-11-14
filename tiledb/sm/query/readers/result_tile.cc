@@ -339,7 +339,7 @@ template <typename LabelType>
 LabelType ResultTile::attribute_value(
     const std::string& label_name, const uint64_t pos) {
   const auto label_data =
-      tile_tuple(label_name)->fixed_tile().template data_as<LabelType>();
+      tile_tuple(label_name)->fixed_tile().data_as<LabelType>();
   return label_data[pos];
 }
 
@@ -347,14 +347,14 @@ template <>
 std::string_view ResultTile::attribute_value<std::string_view>(
     const std::string& label_name, const uint64_t pos) {
   auto tuple = tile_tuple(label_name);
-  auto offsets_data = tuple->fixed_tile().template data_as<uint64_t>();
+  auto offsets_data = tuple->fixed_tile().data_as<uint64_t>();
   auto& var_tile = tuple->var_tile();
   auto offset = offsets_data[pos];
 
   auto size = static_cast<size_t>(pos) == cell_num() - 1 ?
                   var_tile.size() - offset :
                   offsets_data[pos + 1] - offset;
-  return std::string_view(&var_tile.template data_as<char>()[offset], size);
+  return std::string_view(&var_tile.data_as<char>()[offset], size);
 }
 
 unsigned ResultTile::frag_idx() const {

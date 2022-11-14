@@ -1835,33 +1835,6 @@ ReaderBase::cache_dimension_label_data() {
           std::move(frag_first_array_tile_idx)};
 }
 
-template <typename IndexType>
-void ReaderBase::ensure_continuous_domain_written(
-    std::vector<const void*>& non_empty_domains) {
-  // Store the non empty domains in a vector and sort them by min.
-  std::vector<std::pair<IndexType, IndexType>> sorted_non_empty_domains(
-      fragment_metadata_.size());
-  for (uint64_t f = 0; f < fragment_metadata_.size(); f++) {
-    auto ned = static_cast<const IndexType*>(non_empty_domains[f]);
-    sorted_non_empty_domains[f] = std::make_pair(ned[0], ned[1]);
-  }
-  std::sort(sorted_non_empty_domains.begin(), sorted_non_empty_domains.end());
-
-  // Go through the sorted non empty domains and make sure there is no holes.
-  IndexType max_value = sorted_non_empty_domains[0].second;
-  for (auto& non_empty_domain : sorted_non_empty_domains) {
-    // If the start is greater than the current max, there is a
-    // discountinuity.
-    if (non_empty_domain.first > max_value + 1) {
-      throw ReaderBaseStatusException("Discontiuity found in array domain");
-    }
-
-    // Adjust the max. Since the non empty domains are sorted, the min never
-    // changes.
-    max_value = std::max(max_value, non_empty_domain.second);
-  }
-}
-
 template <typename IndexType, typename AttributeType>
 void ReaderBase::validate_attribute_order(
     std::string& attribute_name,
@@ -2195,22 +2168,6 @@ template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
 ReaderBase::cache_dimension_label_data<int64_t>();
 template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
 ReaderBase::cache_dimension_label_data<uint64_t>();
-template void ReaderBase::ensure_continuous_domain_written<int8_t>(
-    std::vector<const void*>&);
-template void ReaderBase::ensure_continuous_domain_written<uint8_t>(
-    std::vector<const void*>&);
-template void ReaderBase::ensure_continuous_domain_written<int16_t>(
-    std::vector<const void*>&);
-template void ReaderBase::ensure_continuous_domain_written<uint16_t>(
-    std::vector<const void*>&);
-template void ReaderBase::ensure_continuous_domain_written<int32_t>(
-    std::vector<const void*>&);
-template void ReaderBase::ensure_continuous_domain_written<uint32_t>(
-    std::vector<const void*>&);
-template void ReaderBase::ensure_continuous_domain_written<int64_t>(
-    std::vector<const void*>&);
-template void ReaderBase::ensure_continuous_domain_written<uint64_t>(
-    std::vector<const void*>&);
 template void ReaderBase::validate_attribute_order<int8_t>(
     Datatype,
     std::string&,

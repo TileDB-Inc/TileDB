@@ -753,18 +753,6 @@ class ReaderBase : public StrategyBase {
   cache_dimension_label_data();
 
   /**
-   * Ensures a continuous (with no holes) domain is written. Compute non empty
-   * domain at the same time.
-   *
-   * @tparam Index type.
-   * @param non_empty_domains Vector of pointers to the non empty domains for
-   * each fragments.
-   */
-  template <typename IndexType>
-  void ensure_continuous_domain_written(
-      std::vector<const void*>& non_empty_domains);
-
-  /**
    * Validate the attribute order using the tile min/max. The list of tiles to
    * load to process the remaining bounds is returned in
    * AttributeOrderValidationData with the list of bounds that are already
