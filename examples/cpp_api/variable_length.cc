@@ -72,8 +72,6 @@ void write_array() {
   std::vector<int> a2_data = {1, 1, 2, 2,  3,  4,  5,  6,  6,  7,  7,  8,  8,
                               8, 9, 9, 10, 11, 12, 12, 13, 14, 14, 14, 15, 16};
   std::vector<uint64_t> a2_el_off = {
-    // These are actually indices into a2_data, further below converted to
-    // actual byte offsets which are used with the query.
       0, 2, 4, 5, 6, 7, 9, 11, 14, 16, 17, 18, 20, 21, 24, 25};
   std::vector<uint64_t> a2_off;
   for (auto e : a2_el_off)

@@ -190,17 +190,8 @@ void array_schema_evolve(const Context& ctx) {
 int main() {
   Config cfg;
   Context ctx(cfg);
-  VFS vfs(ctx);
 
-  auto remove_temp_dir =
-      [&vfs](const std::string& path) {
-    if (vfs.is_dir(path.c_str())) {
-      vfs.remove_dir(path.c_str());
-    }
-  };
-  remove_temp_dir(array_uri);
-
-if (Object::object(ctx, array_uri).type() != Object::Type::Array) {
+  if (Object::object(ctx, array_uri).type() != Object::Type::Array) {
     create_array(ctx);
     write_array(ctx);
     read_array(ctx);
