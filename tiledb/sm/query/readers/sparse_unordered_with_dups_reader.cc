@@ -30,7 +30,7 @@
  * This file implements class SparseUnorderedWithDupsReader.
  */
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
-#include "tiledb/common/logger.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -390,10 +390,8 @@ void SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
 
             // Make sure we can add at least one tile.
             if (budget_exceeded) {
-              logger_->debug(
-                  "Budget exceeded adding result tiles, fragment {0}, tile {1}",
-                  f,
-                  t);
+              LOG_DEBUG("Budget exceeded adding result tiles, fragment " +
+                        std::to_string(f) + ", tile " + std::to_string(t));
               if (result_tiles_.empty())
                 throw SparseUnorderedWithDupsReaderStatusException(
                     "Cannot load a single tile, increase memory budget");
@@ -437,10 +435,8 @@ void SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
               *fragment_metadata_[f]);
           // Make sure we can add at least one tile.
           if (budget_exceeded) {
-            logger_->debug(
-                "Budget exceeded adding result tiles, fragment {0}, tile {1}",
-                f,
-                t);
+            LOG_DEBUG("Budget exceeded adding result tiles, fragment " +
+                      std::to_string(f) + ", tile " + std::to_string(t));
             if (result_tiles_.empty())
               throw SparseUnorderedWithDupsReaderStatusException(
                   "Cannot load a single tile, increase memory budget");
@@ -458,11 +454,11 @@ void SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
     done_adding_result_tiles &= all_tiles_loaded_[f] != 0;
   }
 
-  logger_->debug(
-      "Done adding result tiles, num result tiles {0}", result_tiles_.size());
+  LOG_DEBUG("Done adding result tiles, num result tiles " +
+            std::to_string(result_tiles_.size()));
 
   if (done_adding_result_tiles) {
-    logger_->debug("All result tiles loaded");
+    LOG_DEBUG("All result tiles loaded");
   }
 
   read_state_.done_adding_result_tiles_ = done_adding_result_tiles;
@@ -1723,7 +1719,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         last_tile->pos_with_given_result_sum(0, last_tile_cells_copied) + 1;
   }
 
-  logger_->debug("Done copying tiles");
+  LOG_DEBUG("Done copying tiles");
   return Status::Ok();
 }
 
@@ -1769,8 +1765,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::end_iteration() {
     assert(memory_used_result_tile_ranges_ == 0);
   }
 
-  logger_->debug(
-      "Done with iteration, num result tiles {0}", result_tiles_.size());
+  LOG_DEBUG("Done with iteration, num result tiles " +
+            std::to_string(result_tiles_.size()));
 
   const auto uint64_t_max = std::numeric_limits<uint64_t>::max();
   array_memory_tracker_->set_budget(uint64_t_max);
