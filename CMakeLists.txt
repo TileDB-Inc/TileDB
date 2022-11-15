@@ -95,12 +95,6 @@ else()
   set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 
-if (CMAKE_CXX_STANDARD STREQUAL "20")
-  # Disable char8_t to silence errors around use of u8"literals"
-  # https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1423r2.html
-  add_compile_options("-fno-char8_t")
-endif()
-
 # Set -fvisibility=hidden (or equivalent) flags by default.
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
