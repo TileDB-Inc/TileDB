@@ -714,13 +714,11 @@ void StorageManagerCanonical::delete_group(const char* group_name) {
   vfs_->remove_files(compute_tp_, group_file_uris);
 }
 
-Status StorageManagerCanonical::array_vacuum(
+void StorageManagerCanonical::array_vacuum(
     const char* array_name, const Config& config) {
   auto mode = Consolidator::mode_from_config(config, true);
   auto consolidator = Consolidator::create(mode, config, this);
-  return consolidator->vacuum(array_name);
-
-  return Status::Ok();
+  consolidator->vacuum(array_name);
 }
 
 Status StorageManagerCanonical::array_metadata_consolidate(
@@ -2538,27 +2536,27 @@ Status StorageManagerCanonical::group_metadata_consolidate(
       group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
 }
 
-Status StorageManagerCanonical::group_metadata_vacuum(
+void StorageManagerCanonical::group_metadata_vacuum(
     const char* group_name, const Config& config) {
   // Check group URI
   URI group_uri(group_name);
   if (group_uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum group metadata; Invalid URI"));
+    throw Status_StorageManagerError(
+        "Cannot vacuum group metadata; Invalid URI");
   }
 
   // Check if group exists
   ObjectType obj_type;
-  RETURN_NOT_OK(object_type(group_uri, &obj_type));
+  throw_if_not_ok(object_type(group_uri, &obj_type));
 
   if (obj_type != ObjectType::GROUP) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum group metadata; Group does not exist"));
+    throw Status_StorageManagerError(
+        "Cannot vacuum group metadata; Group does not exist");
   }
 
   auto consolidator =
       Consolidator::create(ConsolidationMode::GROUP_META, config, this);
-  return consolidator->vacuum(group_name);
+  consolidator->vacuum(group_name);
 }
 
 }  // namespace sm

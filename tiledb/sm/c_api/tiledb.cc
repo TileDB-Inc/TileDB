@@ -3711,10 +3711,17 @@ int32_t tiledb_array_vacuum(
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(ctx->storage_manager()->array_vacuum(
-      array_uri,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
+  try {
+    ctx->storage_manager()->array_vacuum(
+        array_uri,
+        (config == nullptr) ? ctx->storage_manager()->config() :
+                              config->config());
+  } catch (std::exception& e) {
+    auto st = Status_StorageManagerError(e.what());
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }

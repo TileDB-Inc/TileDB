@@ -43,8 +43,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Handles array metadata consolidation. */
 class ArrayMetaConsolidator : public Consolidator {
@@ -92,9 +91,8 @@ class ArrayMetaConsolidator : public Consolidator {
    * Performs the vacuuming operation.
    *
    * @param array_name URI of array to consolidate.
-   * @return Status
    */
-  Status vacuum(const char* array_name);
+  void vacuum(const char* array_name);
 
  private:
   /* ********************************* */
@@ -112,7 +110,6 @@ class ArrayMetaConsolidator : public Consolidator {
   Consolidator::ConsolidationConfigBase config_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_ARRAY_META_CONSOLIDATOR_H

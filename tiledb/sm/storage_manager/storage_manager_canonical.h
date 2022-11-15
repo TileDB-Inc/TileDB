@@ -487,9 +487,8 @@ class StorageManagerCanonical {
    *
    * @param array_name The name of the array to be vacuumed.
    * @param config Configuration parameters for vacuuming.
-   * @return Status
    */
-  Status array_vacuum(const char* array_name, const Config& config);
+  void array_vacuum(const char* array_name, const Config& config);
 
   /**
    * Consolidates the metadata of an array into a single file.
@@ -1119,9 +1118,8 @@ class StorageManagerCanonical {
    * @param config Configuration parameters for vacuuming
    *     (`nullptr` means default, which will use the config associated with
    *      this instance).
-   * @return Status
    */
-  Status group_metadata_vacuum(const char* group_name, const Config& config);
+  void group_metadata_vacuum(const char* group_name, const Config& config);
 
  private:
   /* ********************************* */

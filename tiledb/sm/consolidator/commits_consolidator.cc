@@ -43,8 +43,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*          CONSTRUCTOR           */
@@ -103,10 +102,11 @@ Status CommitsConsolidator::consolidate(
   return Status::Ok();
 }
 
-Status CommitsConsolidator::vacuum(const char* array_name) {
-  if (array_name == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum array metadata; Array name cannot be null"));
+void CommitsConsolidator::vacuum(const char* array_name) {
+  if (array_name == nullptr) {
+    throw Status_StorageManagerError(
+        "Cannot vacuum array metadata; Array name cannot be null");
+  }
 
   // Get the array metadata URIs and vacuum file URIs to be vacuum
   auto vfs = storage_manager_->vfs();
@@ -125,15 +125,8 @@ Status CommitsConsolidator::vacuum(const char* array_name) {
       array_dir.consolidated_commits_uris_to_vacuum();
 
   // Delete the commits and vacuum files
-  try {
-    vfs->remove_files(compute_tp, commits_uris_to_vacuum);
-    vfs->remove_files(compute_tp, consolidated_commits_uris_to_vacuum);
-  } catch (std::exception& e) {
-    RETURN_NOT_OK(Status_Error(e.what()));
-  }
-
-  return Status::Ok();
+  vfs->remove_files(compute_tp, commits_uris_to_vacuum);
+  vfs->remove_files(compute_tp, consolidated_commits_uris_to_vacuum);
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

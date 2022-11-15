@@ -40,8 +40,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*          CONSTRUCTOR           */
@@ -146,10 +145,11 @@ Status ArrayMetaConsolidator::consolidate(
   return Status::Ok();
 }
 
-Status ArrayMetaConsolidator::vacuum(const char* array_name) {
-  if (array_name == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum array metadata; Array name cannot be null"));
+void ArrayMetaConsolidator::vacuum(const char* array_name) {
+  if (array_name == nullptr) {
+    throw Status_StorageManagerError(
+        "Cannot vacuum array metadata; Array name cannot be null");
+  }
 
   // Get the array metadata URIs and vacuum file URIs to be vacuum
   auto vfs = storage_manager_->vfs();
@@ -166,14 +166,8 @@ Status ArrayMetaConsolidator::vacuum(const char* array_name) {
   auto vac_uris_to_vacuum = array_dir.array_meta_vac_uris_to_vacuum();
 
   // Delete the array metadata and vacuum files
-  try {
-    vfs->remove_files(compute_tp, array_meta_uris_to_vacuum);
-    vfs->remove_files(compute_tp, vac_uris_to_vacuum);
-  } catch (std::exception& e) {
-    RETURN_NOT_OK(Status_Error(e.what()));
-  }
-
-  return Status::Ok();
+  vfs->remove_files(compute_tp, array_meta_uris_to_vacuum);
+  vfs->remove_files(compute_tp, vac_uris_to_vacuum);
 }
 
 /* ****************************** */
@@ -195,5 +189,4 @@ Status ArrayMetaConsolidator::set_config(const Config& config) {
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

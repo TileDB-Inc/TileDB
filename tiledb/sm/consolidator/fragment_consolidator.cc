@@ -47,8 +47,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*          CONSTRUCTOR           */
@@ -283,10 +282,11 @@ Status FragmentConsolidator::consolidate_fragments(
   return Status::Ok();
 }
 
-Status FragmentConsolidator::vacuum(const char* array_name) {
-  if (array_name == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum fragments; Array name cannot be null"));
+void FragmentConsolidator::vacuum(const char* array_name) {
+  if (array_name == nullptr) {
+    throw Status_StorageManagerError(
+        "Cannot vacuum fragments; Array name cannot be null");
+  }
 
   // Get the fragment URIs and vacuum file URIs to be vacuumed
   auto vfs = storage_manager_->vfs();
@@ -309,17 +309,13 @@ Status FragmentConsolidator::vacuum(const char* array_name) {
       filtered_fragment_uris.fragment_vac_uris_to_vacuum();
 
   if (commit_uris_to_ignore.size() > 0) {
-    RETURN_NOT_OK(storage_manager_->write_commit_ignore_file(
+    throw_if_not_ok(storage_manager_->write_commit_ignore_file(
         array_dir, commit_uris_to_ignore));
   }
 
   // Delete the commit and vacuum files
-  try {
-    vfs->remove_files(compute_tp, commit_uris_to_vacuum);
-    vfs->remove_files(compute_tp, vac_uris_to_vacuum);
-  } catch (std::exception& e) {
-    RETURN_NOT_OK(Status_Error(e.what()));
-  }
+  vfs->remove_files(compute_tp, commit_uris_to_vacuum);
+  vfs->remove_files(compute_tp, vac_uris_to_vacuum);
 
   // Delete fragment directories
   auto status = parallel_for(
@@ -328,9 +324,7 @@ Status FragmentConsolidator::vacuum(const char* array_name) {
 
         return Status::Ok();
       });
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+  throw_if_not_ok(status);
 }
 
 /* ****************************** */
@@ -923,5 +917,4 @@ Status FragmentConsolidator::write_vacuum_file(
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
