@@ -31,6 +31,7 @@ include(common NO_POLICY_SCOPE)
 #
 add_library(crypto OBJECT crypto.cc crypto_openssl.cc crypto_win32.cc encryption_key.cc)
 target_link_libraries(crypto PUBLIC buffer $<TARGET_OBJECTS:buffer>)
+target_link_libraries(crypto PUBLIC config $<TARGET_OBJECTS:config>)
 if(WIN32)
     if(MSVC)
         find_library(BCRYPT_LIBRARY bcrypt)
