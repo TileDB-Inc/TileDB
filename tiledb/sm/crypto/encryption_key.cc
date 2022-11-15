@@ -50,6 +50,34 @@ EncryptionKey::~EncryptionKey() {
   std::memset(key_, 0, max_key_length_);
 }
 
+EncryptionKey::EncryptionKey(const Config& config)
+    : EncryptionKey() {
+  std::string enc_key_str, enc_type_str;
+  bool found = false;
+  enc_key_str = config.get("sm.encryption_key", &found);
+  if (!found) {
+    throw_if_not_ok(set_key(
+        static_cast<EncryptionType>(0),
+        nullptr,
+        static_cast<uint32_t>(0)));
+    return;
+  }
+
+  enc_type_str = config.get("sm.encryption_type", &found);
+  if (!found) {
+    throw Status_StorageManagerError(
+        "StorageManager encryption_key_from_config cannot populate encryption "
+        "key, missing encryption type!");
+  }
+  auto [st, et] = encryption_type_enum(enc_type_str);
+  throw_if_not_ok(st);
+  auto enc_type = et.value();
+  throw_if_not_ok(set_key(
+      enc_type,
+      enc_key_str.c_str(),
+      static_cast<uint32_t>(enc_key_str.size())));
+}
+
 EncryptionType EncryptionKey::encryption_type() const {
   return encryption_type_;
 }

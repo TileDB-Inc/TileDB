@@ -35,6 +35,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/config/config.h"
 
 #include <cstddef>
 
@@ -55,6 +56,8 @@ class EncryptionKey {
 
   /** Destructor. This zeroes the underlying key buffer. */
   ~EncryptionKey();
+
+  EncryptionKey(const Config& config);
 
   /** Deleted rule-of-5 functions to prevent unintended copies/moves. */
   EncryptionKey(const EncryptionKey& other) = delete;
