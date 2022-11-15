@@ -181,7 +181,7 @@ macro(TileDB_Environment_object_library_end)
     # Compile test
     add_executable(${TileDB_Environment_object_library_end_Compile} EXCLUDE_FROM_ALL)
     target_link_libraries(${TileDB_Environment_object_library_end_Compile} PRIVATE ${TileDB_Environment_object_library_end_Library})
-    # There must be a file named `test/<object_library>_main.cc` for each object library.
+    # There must be a file named `test/compile_<object_library>_main.cc` for each object library.
     # TODO: Add explicit check for missing `..._main.cc` file.
     target_sources(${TileDB_Environment_object_library_end_Compile} PRIVATE
         test/${TileDB_Environment_object_library_end_Compile}_main.cc $<TARGET_OBJECTS:${TileDB_Environment_object_library_end_Library}>

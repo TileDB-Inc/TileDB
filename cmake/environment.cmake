@@ -184,7 +184,7 @@ message(${TileDB_Environment_Log_Level} ">>> environment.cmake begin >>>")
 # - Set properties in the macro. Do as much as possible otherwise in the
 #   function.
 #
-# Recommended practive for defining environments
+# Recommended practice for defining environments
 # - Put the environment definition into a separate `.cmake` module and
 #   `include()` it when the environment is needed.
 # - Use `include_guard()` at the top of the `.cmake` file. Environments don't
@@ -630,7 +630,7 @@ endfunction()
 #   - The <environment-name> argument must have been the argument of the most
 #     recent, unconcluded `commence` statement.
 #
-macro(conclude Environment)
+macro(conclude Environment_Name)
     set(TileDB_Environment_Log_Level_conclude VERBOSE)
     message(${TileDB_Environment_Log_Level_conclude} ">>> conclude begin >>>")
     #
@@ -648,7 +648,7 @@ macro(conclude Environment)
         # Call the conclude-hook for the environment
         #
         message(${TileDB_Environment_Log_Level_conclude} ">>> call end-hook >>>")
-        cmake_language(CALL "${TileDB_Environment_End_${Environment}}" ${ARGN})
+        cmake_language(CALL "${TileDB_Environment_End_${Environment_Name}}" ${ARGN})
         message(${TileDB_Environment_Log_Level_conclude} "<<< return end-hook <<<")
     endif()
 
