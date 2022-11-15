@@ -122,7 +122,7 @@ template <class T>
     *a++ += 1;
   }
 
-  return x;
+  return std::move(x);
 }
 
 template <class T>
