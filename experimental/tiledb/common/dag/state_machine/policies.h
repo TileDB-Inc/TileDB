@@ -40,6 +40,7 @@
 
 #include <array>
 #include <cassert>
+#include <condition_variable>
 #include <optional>
 #include <string>
 #include <tuple>
@@ -301,7 +302,7 @@ class AsyncPolicy
   AsyncPolicy() = default;
   AsyncPolicy(const AsyncPolicy&) {
   }
-  AsyncPolicy(AsyncPolicy&&) = default;
+  AsyncPolicy(AsyncPolicy&&) noexcept = default;
 
   /**
    * Function for handling `ac_return` action.
@@ -338,11 +339,11 @@ class AsyncPolicy
     static_cast<Mover*>(this)->on_move(event);
   }
 
-  size_t source_swaps() const {
+  [[nodiscard]] size_t source_swaps() const {
     return moves_[0];
   }
 
-  size_t sink_swaps() const {
+  [[nodiscard]] size_t sink_swaps() const {
     return moves_[1];
   }
 
