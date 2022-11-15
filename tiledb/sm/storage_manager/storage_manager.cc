@@ -2429,7 +2429,7 @@ StorageManagerCanonical::load_fragment_metadata(
 
     // Potentially find the basic fragment metadata in the consolidated
     // metadata buffer
-    Tile* f_tile = nullptr;
+    Tile* fragment_metadata_tile = nullptr;
     uint64_t offset = 0;
 
     auto it = offsets.end();
@@ -2439,13 +2439,13 @@ StorageManagerCanonical::load_fragment_metadata(
       it = offsets.find(sf.uri_.to_string());
     }
     if (it != offsets.end()) {
-      f_tile = it->second.first;
+      fragment_metadata_tile = it->second.first;
       offset = it->second.second;
     }
 
     // Load fragment metadata
     RETURN_NOT_OK(
-        metadata->load(encryption_key, f_tile, offset, array_schemas_all));
+        metadata->load(encryption_key, fragment_metadata_tile, offset, array_schemas_all));
 
     fragment_metadata[f] = metadata;
     return Status::Ok();

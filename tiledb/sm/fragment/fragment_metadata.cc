@@ -786,14 +786,14 @@ Status FragmentMetadata::init(const NDRange& non_empty_domain) {
 
 Status FragmentMetadata::load(
     const EncryptionKey& encryption_key,
-    Tile* f_tile,
+    Tile* fragment_metadata_tile,
     uint64_t offset,
     std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
   auto meta_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
   // Load the metadata file size when we are not reading from consolidated
   // buffer
-  if (f_tile == nullptr) {
+  if (fragment_metadata_tile == nullptr) {
     RETURN_NOT_OK(
         storage_manager_->vfs()->file_size(meta_uri, &meta_file_size_));
   }
@@ -813,7 +813,7 @@ Status FragmentMetadata::load(
   //    * __t1_t2_uuid_version
   if (f_version == 1)
     return load_v1_v2(encryption_key, array_schemas);
-  return load_v3_or_higher(encryption_key, f_tile, offset, array_schemas);
+  return load_v3_or_higher(encryption_key, fragment_metadata_tile, offset, array_schemas);
 }
 
 void FragmentMetadata::store(const EncryptionKey& encryption_key) {
@@ -2833,13 +2833,11 @@ void FragmentMetadata::load_non_empty_domain_v5_or_higher(
       auto dim{domain.dimension_ptr(d)};
       if (!dim->var_size()) {  // Fixed-sized
         auto r_size = 2 * dim->coord_size();
-        //non_empty_domain_[d].set_range(deserializer.get_ptr<char>(r_size), r_size);
         non_empty_domain_[d] = Range(deserializer.get_ptr<char>(r_size), r_size);
       } else {  // Var-sized
         uint64_t r_size, start_size;
         r_size = deserializer.read<uint64_t>();
         start_size = deserializer.read<uint64_t>();
-        //non_empty_domain_[d].set_range(deserializer.get_ptr<char>(r_size), r_size, start_size);
         non_empty_domain_[d] = Range(deserializer.get_ptr<char>(r_size), r_size, start_size);
       }
     }
@@ -3581,16 +3579,17 @@ Status FragmentMetadata::load_v1_v2(
 
 Status FragmentMetadata::load_v3_or_higher(
     const EncryptionKey& encryption_key,
-    Tile* f_tile,
+    Tile* fragment_metadata_tile,
     uint64_t offset,
     std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
-  RETURN_NOT_OK(load_footer(encryption_key, f_tile, offset, array_schemas));
+  RETURN_NOT_OK(load_footer(
+      encryption_key, fragment_metadata_tile, offset, array_schemas));
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_footer(
     const EncryptionKey& encryption_key,
-    Tile* f_tile,
+    Tile* fragment_metadata_tile,
     uint64_t offset,
     std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
   (void)encryption_key;  // Not used for now, perhaps in the future
@@ -3600,18 +3599,20 @@ Status FragmentMetadata::load_footer(
     return Status::Ok();
 
   std::shared_ptr<Tile> tile;
-  if (f_tile == nullptr) {
+  if (fragment_metadata_tile == nullptr) {
     has_consolidated_footer_ = false;
     RETURN_NOT_OK(read_file_footer(tile, &footer_offset_, &footer_size_));
 
-    f_tile = tile.get();
+    fragment_metadata_tile = tile.get();
     offset = 0;
   } else {
     footer_size_ = 0; // adjusted at end of routine based on buffer consumed
     footer_offset_ = offset;
     has_consolidated_footer_ = true;
   }
-  Deserializer deserializer(f_tile->data_as<uint8_t>() + offset, f_tile->size() - offset);
+  Deserializer deserializer(
+      fragment_metadata_tile->data_as<uint8_t>() + offset,
+      fragment_metadata_tile->size() - offset);
   auto starting_deserializer_size = deserializer.size();
 
   load_version(deserializer);
@@ -4614,7 +4615,6 @@ Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
 
   Serializer serializer(tile.data(), tile.size());
   RETURN_NOT_OK(write_footer(serializer));
-
   RETURN_NOT_OK(write_footer_to_file(tile));
 
   storage_manager_->stats()->add_counter(
