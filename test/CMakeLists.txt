@@ -136,7 +136,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-group.cc
   src/unit-capi-incomplete.cc
   src/unit-capi-incomplete-2.cc
-  src/unit-max_tile_size.cc
+  src/unit-max-tile-size.cc
   src/unit-capi-metadata.cc
   src/unit-capi-nullable.cc
   src/unit-capi-object_mgmt.cc

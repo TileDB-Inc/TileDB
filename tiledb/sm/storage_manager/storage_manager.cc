@@ -308,8 +308,8 @@ StorageManager::load_array_schemas_and_all_fragment_metadata(
       load_array_schemas(array_dir, enc_key);
   RETURN_NOT_OK_TUPLE(st_schemas, std::nullopt, std::nullopt, std::nullopt);
 
-  auto xfiltered_fragment_uris = array_dir.filtered_fragment_uris(
-      array_schema_latest.value().get()->dense());
+  //auto xfiltered_fragment_uris = array_dir.filtered_fragment_uris(
+  //    array_schema_latest.value().get()->dense());
   //const auto& meta_uris = array_dir.fragment_meta_uris();
   //const auto& xfragments_to_load = xfiltered_fragment_uris.fragment_uris();
   //std::cout << "xfragments_to_load.size() " << xfragments_to_load.size()
@@ -333,7 +333,7 @@ StorageManager::load_array_schemas_and_all_fragment_metadata(
       // skip '.vac' consolidated metadata files
       // Note: attempts to load the .vac files in this fashion were leading to
       // inconsistently occuring hangs, usually in vfs routines within
-      // parallel_[sort|for]()       // activities, currently guessing due to
+      // parallel_[sort|for]() activities, currently guessing due to
       // corruption using load_fragment_metadata() on these .vac files.
       if (utils::parse::ends_with(
               uri.to_string(), constants::vacuum_file_suffix))
@@ -2723,32 +2723,6 @@ Status StorageManagerCanonical::group_metadata_vacuum(
   return consolidator->vacuum(group_name);
 }
 
-void StorageManager::encryption_key_from_configs(EncryptionKey &enc_key, const Config* config) {
-  if (!config) {
-    config = &config_;
-  }
-  std::string enc_key_str, enc_type_str;
-  bool found_key = false;
-  bool found_type = false;
-  enc_key_str = config->get("sm.encryption_key", &found_key);
-  if (!found_key) {
-    throw_if_not_ok(enc_key.set_key(
-        static_cast<EncryptionType>(0),
-        nullptr, //enc_key_str.c_str(),
-        static_cast<uint32_t>(0)));
-    return;
-  }
-  enc_type_str = config->get("sm.encryption_type", &found_type);
-  if (!found_type) {
-    throw Status_StorageManagerError("StorageManager encryption_key_from_config cannot populate encryption key, missing encryption type!");
-  }
-  auto [st, et] = encryption_type_enum(enc_type_str);
-  throw_if_not_ok(st);
-  auto enc_type = et.value();
-  throw_if_not_ok(enc_key.set_key(
-      enc_type, enc_key_str.c_str(), static_cast<uint32_t>(enc_key_str.size())));
-}
-
 void StorageManager::array_get_fragment_tile_size_extremes(
     const URI& array_uri,
     tiledb_fragment_tile_size_extremes_t* tile_extreme_sizes,
@@ -2762,12 +2736,12 @@ void StorageManager::array_get_fragment_tile_size_extremes(
         std::string("Cannot access array fragment sizes; Array '") + array_uri.c_str() +
         "' does not exist"));
   }
-  memset(tile_extreme_sizes, 0, sizeof(*tile_extreme_sizes));
-  EncryptionKey enc_key;
-  encryption_key_from_configs(enc_key, config);
 
+  memset(tile_extreme_sizes, 0, sizeof(*tile_extreme_sizes));
+  EncryptionKey enc_key(config ? *config : config_);
   uint64_t timestamp_start = 0;
   uint64_t timestamp_end = UINT64_MAX ;
+
   // Create an ArrayDirectory object and load
   auto array_dir = ArrayDirectory(
       this->vfs(),

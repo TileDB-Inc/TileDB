@@ -39,8 +39,6 @@
 #ifndef TILEDB_COMMON_COMMON_H
 #define TILEDB_COMMON_COMMON_H
 
-#include <limits>
-
 /*
  * All the standard library commonality is declared in "common-std.h".
  */
@@ -80,29 +78,5 @@ constexpr bool is_experimental_build = false;
  * Platform/machine config
  */
 #include "platform.h"
-
-#if 0
-typedef struct tiledb_fragment_tile_size_extremes {
-    uint64_t max_persisted_tile_size = 0, max_in_memory_tile_size = 0;
-    uint64_t max_persisted_tile_size_var = 0, max_in_memory_tile_size_var = 0;
-    // in_memory_validity_size doesn't currently appear to have method to obtain...
-    // is persisted/in_memory the same?
-    uint64_t max_persisted_tile_size_validity = 0, max_in_memory_tile_size_validity = 0;
-
-#if _WIN32
-#pragma push_macro("max")
-#undef max
-#endif
-    uint64_t min_persisted_tile_size = std::numeric_limits<uint64_t>::max(),
-             min_in_memory_tile_size = std::numeric_limits<uint64_t>::max();
-    uint64_t min_persisted_tile_size_var = std::numeric_limits<uint64_t>::max(),
-             min_in_memory_tile_size_var = std::numeric_limits<uint64_t>::max();
-    uint64_t min_persisted_tile_size_validity = std::numeric_limits<uint64_t>::max(),
-             min_in_memory_tile_size_validity = std::numeric_limits<uint64_t>::max();
-#if _WIN32
-#pragma pop_macro("max")
-#endif
-} tiledb_fragment_tile_size_extremes_t;
-#endif
 
 #endif  // TILEDB_COMMON_COMMON_H
