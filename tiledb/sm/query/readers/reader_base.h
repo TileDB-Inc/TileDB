@@ -753,10 +753,10 @@ class ReaderBase : public StrategyBase {
   cache_dimension_label_data();
 
   /**
-   * Validate the attribute order using the tile min/max. The list of tiles to
-   * load to process the remaining bounds is returned in
-   * AttributeOrderValidationData with the list of bounds that are already
-   * validated.
+   * Validates the attribute order for all loaded fragments.
+   *
+   * Throws an error if the there is a gap between fragments or the attribute
+   * order between fragments is not maintained.
    *
    * @tparam Index type
    * @tparam Attribute type
@@ -766,7 +766,6 @@ class ReaderBase : public StrategyBase {
    * @param non_empty_domains Pointer, per fragment, to the non empty domains.
    * @param frag_first_array_tile_idx First tile index (in full domain), per
    * fragment.
-   * @return Order validation data.
    */
   template <typename IndexType, typename AttributeType>
   void validate_attribute_order(
@@ -777,10 +776,10 @@ class ReaderBase : public StrategyBase {
       std::vector<uint64_t>& frag_first_array_tile_idx);
 
   /**
-   * Validate the attribute order using the tile min/max. The list of tiles to
-   * load to process the remaining bounds is returned in
-   * AttributeOrderValidationData with the list of bounds that are already
-   * validated.
+   * Validates the attribute order for all loaded fragments.
+   *
+   * Throws an error if the there is a gap between fragments or the attribute
+   * order between fragments is not maintained.
    *
    * @tparam Index type
    * @param attribute_type Type of the attribute to validate.

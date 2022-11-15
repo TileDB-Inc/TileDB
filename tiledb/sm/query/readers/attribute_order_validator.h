@@ -61,7 +61,7 @@ class AttributeOrderValidatorStatusException : public StatusException {
  * @tparam Index type
  * @param v Value to check.
  * @param domain Pointer to the domain values.
- * @return Is the value in the given domain or not.
+ * @return 1 if the value is in the given domain and 0 if it is not.
  */
 template <typename IndexType>
 uint8_t in_domain(IndexType v, const IndexType* domain) {
@@ -123,7 +123,8 @@ class AttributeOrderValidator {
   }
 
   /**
-   * Removes duplicate checks for attribute ordering.
+   * Find fragments to check against, for each bounds, or mark the bound as
+   * already validated if we don't need further validation.
    *
    * For fragments with adjacent non-empty domains, we only need to check the
    * interface once. This method marks all fragment bounds as validated except
@@ -232,7 +233,7 @@ class AttributeOrderValidator {
       }
     }
 
-    // If the search/validation failed, then there is  a discontinuity in this
+    // If the search/validation failed, then there is a discontinuity in this
     // array.
     throw AttributeOrderValidatorStatusException(
         "Discontiuity found in array domain");
@@ -241,7 +242,8 @@ class AttributeOrderValidator {
   /**
    * Performs validation that can be done without loading tile.
    *
-   * If a validation check fails, this will throw an error.
+   * If a validation check fails, this will throw an error. This requires
+   * `find_fragments_to_check` to be ran prior to execution.
    *
    * @tparam Index type.
    * @tparam Attribute type.
@@ -249,7 +251,6 @@ class AttributeOrderValidator {
    * @param f Fragment index.
    * @param non_empty_domains Vector of pointers to the non-empty domain for
    *     each fragment.
-   *
    */
   template <typename IndexType, typename AttributeType>
   void validate_without_loading_tiles(
@@ -285,9 +286,9 @@ class AttributeOrderValidator {
       uint64_t f2_tile_idx = frag_first_array_tile_idx[f] -
                              frag_first_array_tile_idx[f2] - min_tile_aligned;
 
-      // If we are tile aligned or the min is right next to the other
-      // fragment's max, we can validate. Otherwise we'll need to load
-      // the tile.
+      // If we are tile aligned or non-overlapping (the min is right next to
+      // the other fragment's max), we can validate. Otherwise, we'll need to
+      // load the tile.
       const IndexType* non_empty_domain2 =
           static_cast<const IndexType*>(non_empty_domains[f2]);
       if (min_tile_aligned || min - 1 == non_empty_domain2[1]) {
@@ -351,8 +352,9 @@ class AttributeOrderValidator {
       uint64_t f2_tile_idx = max_tile_idx + frag_first_array_tile_idx[f] -
                              frag_first_array_tile_idx[f2] + max_tile_aligned;
 
-      // If we are tile aligned or the max is right next to the other fragment's
-      // min, we can validate. Otherwise we'll need to load the tile.
+      // If we are tile aligned or non-overlapping (the max is right next to
+      // the other fragment's min), we can validate. Otherwise, we'll need to
+      // load the tile.
       const IndexType* non_empty_domain2 =
           static_cast<const IndexType*>(non_empty_domains[f2]);
       if (max_tile_aligned || max + 1 == non_empty_domain2[0]) {
@@ -399,7 +401,8 @@ class AttributeOrderValidator {
    * Performs validation that requires tile data.
    *
    * For best performance, only execute this method after first validating
-   * without loading tiles. If a validation check fails, this will throw an
+   * without loading tiles.  This requires `find_fragments_to_check` to be
+   * ran prior to execution.  If a validation check fails, this will throw an
    * error.
    *
    * @tparam Index type.
@@ -408,7 +411,6 @@ class AttributeOrderValidator {
    * @param f Fragment index.
    * @param non_empty_domains Vector of pointers to the non-empty domain for
    *     each fragment.
-   *
    */
   template <typename IndexType, typename AttributeType>
   void validate_with_loaded_tiles(
