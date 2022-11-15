@@ -31,6 +31,7 @@
  */
 
 #include <atomic>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"

@@ -79,43 +79,43 @@ class ConcurrentSet : public std::set<Key, Compare, Allocator> {
   using insert_return_type = typename Base::insert_return_type;
 
   bool empty() const {
-    std::scoped_lock _(mutex_);
+    std::scoped_lock lock(mutex_);
     return Base::empty();
   }
 
   size_type size() const {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     return Base::size();
   }
 
   void clear() {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     return Base::clear();
   }
 
   std::pair<iterator, bool> insert(value_type& value) {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     return Base::insert(value);
   }
 
   std::pair<iterator, bool> insert(value_type&& value) {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     return Base::insert(std::forward<value_type>(value));
   }
 
   insert_return_type insert(node_type&& nh) {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     return Base::insert(std::forward<node_type>(nh));
   }
 
   template <class... Args>
   std::pair<iterator, bool> emplace(Args&&... args) {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     return Base::emplace(std::forward<Args>(args)...);
   }
 
   iterator erase(iterator pos) {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     return Base::erase(pos);
   }
 
@@ -124,44 +124,44 @@ class ConcurrentSet : public std::set<Key, Compare, Allocator> {
       const_iterator pos,
       std::enable_if<std::is_same_v<iterator, const_iterator>, void*> =
           nullptr) {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     return Base::erase(pos);
   }
 
   size_type erase(const Key& key) {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     return Base::erase(key);
   }
 
   void swap(ConcurrentSet& other) {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     Base::swap(other);
   }
 
   node_type extract(const Key& k) {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     return Base::extract(k);
   }
 
   iterator find(const Key& key) {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     return Base::find(key);
   }
 
   const_iterator find(const Key& key) const {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     return Base::find(key);
   }
 
   template <class K>
   iterator find(const K& x) {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     return Base::find(x);
   }
 
   template <class K>
   const_iterator find(const K& x) const {
-    std::lock_guard _(mutex_);
+    std::lock_guard lock(mutex_);
     return Base::find(x);
   }
 };

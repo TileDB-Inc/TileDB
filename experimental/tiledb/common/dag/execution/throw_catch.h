@@ -724,7 +724,7 @@ class ThrowCatchScheduler
      * worker threads.
      */
     {
-      std::unique_lock _(mutex_);
+      std::unique_lock lock(mutex_);
       start_cv_.notify_all();
     }
 
@@ -765,8 +765,8 @@ class ThrowCatchScheduler
      * by a call to `sync_wait_all` (e.g.)
      */
     {
-      std::unique_lock _(mutex_);
-      start_cv_.wait(_, [this]() { return this->ready_to_run(); });
+      std::unique_lock lock(mutex_);
+      start_cv_.wait(lock, [this]() { return this->ready_to_run(); });
     }
 
     if (num_submitted_tasks_ == 0) {
@@ -777,7 +777,7 @@ class ThrowCatchScheduler
 
     while (true) {
       {
-        std::unique_lock _(mutex_);
+        std::unique_lock lock(mutex_);
 
         if (num_exited_tasks_ == num_submitted_tasks_) {
           if (this->debug()) {
@@ -833,15 +833,15 @@ class ThrowCatchScheduler
           if (this->debug())
             task_to_run->dump_task_state("About to resume");
 
-          _.unlock();
+          lock.unlock();
           task_to_run->resume();
-          _.lock();
+          lock.lock();
 
           if (this->debug())
             task_to_run->dump_task_state("Returning from resume");
 
         } catch (const detail::throw_catch_wait& w) {
-          _.lock();
+          lock.lock();
 
           assert(
               w.target() == detail::throw_catch_target::sink ||
@@ -856,7 +856,7 @@ class ThrowCatchScheduler
             task_to_run->dump_task_state("Post wait");
 
         } catch (const detail::throw_catch_notify& n) {
-          _.lock();
+          lock.lock();
 
           assert(
               n.target() == detail::throw_catch_target::sink ||
@@ -890,7 +890,7 @@ class ThrowCatchScheduler
           }
 
         } catch (const detail::throw_catch_exit& ex) {
-          _.lock();
+          lock.lock();
 
           if (true || ex.target() == detail::throw_catch_target::source) {
             if (this->debug()) {
