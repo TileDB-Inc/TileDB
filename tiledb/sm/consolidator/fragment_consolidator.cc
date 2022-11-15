@@ -302,11 +302,10 @@ Status FragmentConsolidator::vacuum(const char* array_name) {
   auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
   const auto& fragment_uris_to_vacuum =
       filtered_fragment_uris.fragment_uris_to_vacuum();
-  const auto& commit_uris_to_vacuum =
-      filtered_fragment_uris.commit_uris_to_vacuum();
+  auto commit_uris_to_vacuum = filtered_fragment_uris.commit_uris_to_vacuum();
   const auto& commit_uris_to_ignore =
       filtered_fragment_uris.commit_uris_to_ignore();
-  const auto& vac_uris_to_vacuum =
+  auto vac_uris_to_vacuum =
       filtered_fragment_uris.fragment_vac_uris_to_vacuum();
 
   if (commit_uris_to_ignore.size() > 0) {
@@ -314,28 +313,19 @@ Status FragmentConsolidator::vacuum(const char* array_name) {
         array_dir, commit_uris_to_ignore));
   }
 
-  // Delete the commit files
-  auto status =
-      parallel_for(compute_tp, 0, commit_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs->remove_file(commit_uris_to_vacuum[i]));
-
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
+  // Delete the commit and vacuum files
+  try {
+    vfs->remove_files(compute_tp, commit_uris_to_vacuum);
+    vfs->remove_files(compute_tp, vac_uris_to_vacuum);
+  } catch (std::exception& e) {
+    RETURN_NOT_OK(Status_Error(e.what()));
+  }
 
   // Delete fragment directories
-  status = parallel_for(
+  auto status = parallel_for(
       compute_tp, 0, fragment_uris_to_vacuum.size(), [&](size_t i) {
         RETURN_NOT_OK(vfs->remove_dir(fragment_uris_to_vacuum[i]));
 
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  // Delete vacuum files
-  status =
-      parallel_for(compute_tp, 0, vac_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs->remove_file(vac_uris_to_vacuum[i]));
         return Status::Ok();
       });
   RETURN_NOT_OK(status);

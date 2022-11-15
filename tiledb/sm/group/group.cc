@@ -774,8 +774,8 @@ uint64_t Group::member_count() const {
   return members_.size();
 }
 
-tuple<optional<std::string>, optional<ObjectType>, optional<std::string>>
-Group::member_by_index(uint64_t index) {
+tuple<std::string, ObjectType, optional<std::string>> Group::member_by_index(
+    uint64_t index) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   // Check if group is open
@@ -805,11 +805,7 @@ Group::member_by_index(uint64_t index) {
   return {uri, member->type(), member->name()};
 }
 
-tuple<
-    optional<std::string>,
-    optional<ObjectType>,
-    optional<std::string>,
-    optional<bool>>
+tuple<std::string, ObjectType, optional<std::string>, bool>
 Group::member_by_name(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
 

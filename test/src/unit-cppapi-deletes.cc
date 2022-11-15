@@ -279,6 +279,7 @@ std::vector<tiledb::Object> DeletesFx::read_group(
     const tiledb::Group& group) const {
   std::vector<tiledb::Object> ret;
   uint64_t count = group.member_count();
+  ret.reserve(count);
   for (uint64_t i = 0; i < count; i++) {
     tiledb::Object obj = group.member(i);
     ret.emplace_back(obj);
@@ -423,17 +424,15 @@ void DeletesFx::check_delete_conditions(
 }
 
 void DeletesFx::remove_dir(const std::string& path) {
-  if (!vfs_.is_dir(path))
-    return;
-
-  vfs_.remove_dir(path);
+  if (vfs_.is_dir(path)) {
+    vfs_.remove_dir(path);
+  }
 }
 
 void DeletesFx::remove_array(const std::string& array_name) {
-  if (!is_array(array_name))
-    return;
-
-  vfs_.remove_dir(array_name);
+  if (is_array(array_name)) {
+    vfs_.remove_dir(array_name);
+  }
 }
 
 void DeletesFx::remove_sparse_array() {
@@ -871,9 +870,8 @@ TEST_CASE_METHOD(
     "[cppapi][deletes][commits][consolidation]") {
   remove_sparse_array();
 
-  create_sparse_array();
-
   bool vacuum = GENERATE(false, true);
+  create_sparse_array();
 
   // Write fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -1597,6 +1595,13 @@ TEST_CASE_METHOD(
     "[cppapi][deletes][fragments]") {
   remove_sparse_array();
 
+  // Conditionally consolidate and vacuum
+  bool consolidate = GENERATE(true, false);
+  bool vacuum = GENERATE(true, false);
+  if (!consolidate && vacuum) {
+    return;
+  }
+
   // Write fragments at timestamps 1, 3, 5, 7
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -1604,13 +1609,6 @@ TEST_CASE_METHOD(
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 5);
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 7);
   std::string commit_dir = tiledb::test::get_commit_dir(SPARSE_ARRAY_NAME);
-
-  // Conditionally consolidate and vacuum
-  bool consolidate = GENERATE(true, false);
-  bool vacuum = GENERATE(true, false);
-  if (!consolidate && vacuum) {
-    return;
-  }
 
   if (consolidate) {
     consolidate_commits_sparse(vacuum);
@@ -1672,6 +1670,7 @@ TEST_CASE_METHOD(
     "CPP API: Deletion of fragment writes consolidated with timestamps",
     "[cppapi][deletes][fragments][consolidation_with_timestamps]") {
   remove_sparse_array();
+  bool vacuum = GENERATE(true, false);
 
   // Write fragments at timestamps 1, 3, 5, 7
   create_sparse_array();
@@ -1683,7 +1682,6 @@ TEST_CASE_METHOD(
   int num_fragments = 4;
 
   // Consolidate and conditionally vacuum fragments at timestamps 1 - 3
-  bool vacuum = GENERATE(true, false);
   consolidate_sparse_with_timestamps(vacuum, 1, 3);
   num_commits++;
   num_fragments++;
@@ -1737,7 +1735,7 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Deletion of invalid array writes",
     "[cppapi][deletes][array][invalid]") {
-  /* Note: An array must be open in MODIFY_EXCLUSIVE mode to delete data */
+  // Note: An array must be open in MODIFY_EXCLUSIVE mode to delete data
   remove_sparse_array();
   auto array_name = std::string(SPARSE_ARRAY_NAME);
 
@@ -1777,6 +1775,10 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   auto array_name = std::string(SPARSE_ARRAY_NAME);
 
+  // Conditionally consolidate
+  // Note: there's no need to vacuum; delete_array will delete all fragments
+  bool consolidate = GENERATE(true, false);
+
   // Write array data
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -1800,10 +1802,6 @@ TEST_CASE_METHOD(
   auto meta = vfs_.ls(
       array_name + "/" + tiledb::sm::constants::array_metadata_dir_name);
   CHECK(meta.size() == 1);
-
-  // Conditionally consolidate
-  /* Note: there's no need to vacuum; delete_array will delete all fragments */
-  bool consolidate = GENERATE(true, false);
   std::string commit_dir = tiledb::test::get_commit_dir(SPARSE_ARRAY_NAME);
 
   if (consolidate) {
@@ -1833,7 +1831,7 @@ TEST_CASE_METHOD(
       std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
   array->delete_array(array_name);
 
-  /* Note: delete_array closes the array; closing here is an extraneous no-op */
+  // Note: delete_array closes the array; closing here is an extraneous no-op
   array->close();
 
   // Check working directory after delete
@@ -1960,6 +1958,13 @@ TEST_CASE_METHOD(
     "[cppapi][deletes][group]") {
   create_dir(GROUP_NAME);
 
+  // Conditionally consolidate and vacuum
+  bool consolidate = GENERATE(true, false);
+  bool vacuum = GENERATE(true, false);
+  if (!consolidate && vacuum) {
+    return;
+  }
+
   // Create group
   tiledb::Group::create(ctx_, GROUP_NAME);
   std::string array_path = tiledb::sm::URI(GROUP_NAME + "array/").to_string();
@@ -2004,13 +2009,6 @@ TEST_CASE_METHOD(
       vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_metadata_dir_name);
   CHECK(group_meta_dir.size() == 3);
 
-  // Conditionally consolidate and vacuum
-  bool consolidate = GENERATE(true, false);
-  bool vacuum = GENERATE(true, false);
-  if (!consolidate && vacuum) {
-    return;
-  }
-
   if (consolidate) {
     auto config = ctx_.config();
     config["sm.consolidation.mode"] = "group_meta";
@@ -2029,7 +2027,7 @@ TEST_CASE_METHOD(
   }
 
   // Delete group in modify exclusive mode
-  /* Note: delete_group will close the group, no need to do so here. */
+  // Note: delete_group will close the group, no need to do so here.
   group.open(TILEDB_MODIFY_EXCLUSIVE);
   group.delete_group(GROUP_NAME.c_str());
 

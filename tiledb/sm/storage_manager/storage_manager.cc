@@ -627,31 +627,15 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
       std::numeric_limits<uint64_t>::max());
 
   // Get the metadata and schema uris to be deleted
-  /* Note: metadata files may not be present, try to delete anyway */
-  const auto& array_meta_uris = array_dir.array_meta_uris();
-  const auto& fragment_meta_uris = array_dir.fragment_meta_uris();
-  const auto& array_schema_uris = array_dir.array_schema_uris();
+  // Note: metadata files may not be present, try to delete anyway
+  auto array_meta_uris = array_dir.array_meta_uris();
+  auto fragment_meta_uris = array_dir.fragment_meta_uris();
+  auto array_schema_uris = array_dir.array_schema_uris();
 
-  // Delete array metadata files
-  throw_if_not_ok(
-      parallel_for(compute_tp_, 0, array_meta_uris.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(array_meta_uris[i].uri_));
-        return Status::Ok();
-      }));
-
-  // Delete fragment metadata files
-  throw_if_not_ok(
-      parallel_for(compute_tp_, 0, fragment_meta_uris.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(fragment_meta_uris[i]));
-        return Status::Ok();
-      }));
-
-  // Delete array schema files
-  throw_if_not_ok(
-      parallel_for(compute_tp_, 0, array_schema_uris.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(array_schema_uris[i]));
-        return Status::Ok();
-      }));
+  // Delete array metadata, fragment metadata and array schema files
+  vfs_->remove_files(compute_tp_, array_meta_uris);
+  vfs_->remove_files(compute_tp_, fragment_meta_uris);
+  vfs_->remove_files(compute_tp_, array_schema_uris);
 }
 
 Status StorageManagerCanonical::delete_fragments(
@@ -722,38 +706,12 @@ void StorageManagerCanonical::delete_group(const char* group_name) {
       group_dir.group_meta_vac_uris_to_vacuum();
   auto group_file_uris = group_dir.group_file_uris();
 
-  // Delete the group detail files
-  throw_if_not_ok(
-      parallel_for(compute_tp_, 0, group_detail_uris.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(group_detail_uris[i].uri_));
-        return Status::Ok();
-      }));
-
-  // Delete the group metadata files
-  throw_if_not_ok(
-      parallel_for(compute_tp_, 0, group_meta_uris.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(group_meta_uris[i].uri_));
-        return Status::Ok();
-      }));
-
-  throw_if_not_ok(parallel_for(
-      compute_tp_, 0, group_meta_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(group_meta_uris_to_vacuum[i]));
-        return Status::Ok();
-      }));
-
-  throw_if_not_ok(parallel_for(
-      compute_tp_, 0, group_meta_vac_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(group_meta_vac_uris_to_vacuum[i]));
-        return Status::Ok();
-      }));
-
-  // Delete the group files
-  throw_if_not_ok(
-      parallel_for(compute_tp_, 0, group_file_uris.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(group_file_uris[i]));
-        return Status::Ok();
-      }));
+  // Delete the group detail, group metadata and group files
+  vfs_->remove_files(compute_tp_, group_detail_uris);
+  vfs_->remove_files(compute_tp_, group_meta_uris);
+  vfs_->remove_files(compute_tp_, group_meta_uris_to_vacuum);
+  vfs_->remove_files(compute_tp_, group_meta_vac_uris_to_vacuum);
+  vfs_->remove_files(compute_tp_, group_file_uris);
 }
 
 Status StorageManagerCanonical::array_vacuum(

@@ -349,23 +349,19 @@ class Group {
    * Get a member by index
    *
    * @param index of member
-   * @return Tuple of URI string, ObjectType, name
+   * @return Tuple of URI string, ObjectType, optional name
    */
-  tuple<optional<std::string>, optional<ObjectType>, optional<std::string>>
-  member_by_index(uint64_t index);
+  tuple<std::string, ObjectType, optional<std::string>> member_by_index(
+      uint64_t index);
 
   /**
    * Get a member by name
    *
    * @param name of member
-   * @return Tuple of URI string, ObjectType, name, bool
+   * @return Tuple of URI string, ObjectType, optional name, bool
    */
-  tuple<
-      optional<std::string>,
-      optional<ObjectType>,
-      optional<std::string>,
-      optional<bool>>
-  member_by_name(const std::string& name);
+  tuple<std::string, ObjectType, optional<std::string>, bool> member_by_name(
+      const std::string& name);
 
   /** Returns `true` if the group is open. */
   bool is_open() const;

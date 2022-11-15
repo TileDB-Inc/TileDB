@@ -404,13 +404,13 @@ int32_t tiledb_group_get_member_by_index(
     auto&& [uri_str, object_type, name_str] =
         group->group_->member_by_index(index);
 
-    *type = static_cast<tiledb_object_t>(object_type.value());
-    *uri = static_cast<char*>(std::malloc(uri_str.value().size() + 1));
+    *type = static_cast<tiledb_object_t>(object_type);
+    *uri = static_cast<char*>(std::malloc(uri_str.size() + 1));
     if (*uri == nullptr)
       return TILEDB_ERR;
 
-    std::memcpy(*uri, uri_str.value().data(), uri_str.value().size());
-    (*uri)[uri_str.value().size()] = '\0';
+    std::memcpy(*uri, uri_str.data(), uri_str.size());
+    (*uri)[uri_str.size()] = '\0';
 
     *name = nullptr;
     if (name_str.has_value()) {
@@ -446,13 +446,13 @@ int32_t tiledb_group_get_member_by_name(
     auto&& [uri_str, object_type, name_str, ignored_relative] =
         group->group_->member_by_name(name);
 
-    *type = static_cast<tiledb_object_t>(object_type.value());
-    *uri = static_cast<char*>(std::malloc(uri_str.value().size() + 1));
+    *type = static_cast<tiledb_object_t>(object_type);
+    *uri = static_cast<char*>(std::malloc(uri_str.size() + 1));
     if (*uri == nullptr)
       return TILEDB_ERR;
 
-    std::memcpy(*uri, uri_str.value().data(), uri_str.value().size());
-    (*uri)[uri_str.value().size()] = '\0';
+    std::memcpy(*uri, uri_str.data(), uri_str.size());
+    (*uri)[uri_str.size()] = '\0';
 
   } catch (const std::exception& e) {
     auto st = Status_Error(
@@ -480,7 +480,7 @@ int32_t tiledb_group_get_is_relative_uri_by_name(
   try {
     auto&& [uri_str, object_type, name_str, relative] =
         group->group_->member_by_name(name);
-    *is_relative = *relative ? 1 : 0;
+    *is_relative = relative ? 1 : 0;
   } catch (const std::exception& e) {
     auto st = Status_Error(
         std::string("Internal TileDB uncaught exception; ") + e.what());

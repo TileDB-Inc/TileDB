@@ -120,26 +120,17 @@ Status CommitsConsolidator::vacuum(const char* array_name) {
       utils::time::timestamp_now_ms(),
       ArrayDirectoryMode::COMMITS);
 
-  const auto& commits_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
-  const auto& consolidated_commits_uris_to_vacuum =
+  auto commits_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
+  auto consolidated_commits_uris_to_vacuum =
       array_dir.consolidated_commits_uris_to_vacuum();
 
-  // Delete the commits files
-  auto status =
-      parallel_for(compute_tp, 0, commits_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs->remove_file(commits_uris_to_vacuum[i]));
-
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  // Delete vacuum files
-  status = parallel_for(
-      compute_tp, 0, consolidated_commits_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs->remove_file(consolidated_commits_uris_to_vacuum[i]));
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
+  // Delete the commits and vacuum files
+  try {
+    vfs->remove_files(compute_tp, commits_uris_to_vacuum);
+    vfs->remove_files(compute_tp, consolidated_commits_uris_to_vacuum);
+  } catch (std::exception& e) {
+    RETURN_NOT_OK(Status_Error(e.what()));
+  }
 
   return Status::Ok();
 }

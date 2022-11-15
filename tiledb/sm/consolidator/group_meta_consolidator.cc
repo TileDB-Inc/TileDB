@@ -165,25 +165,16 @@ Status GroupMetaConsolidator::vacuum(const char* group_name) {
     return LOG_STATUS(Status_GroupDirectoryError(le.what()));
   }
 
-  const auto& group_meta_uris_to_vacuum = group_dir.group_meta_uris_to_vacuum();
-  const auto& vac_uris_to_vacuum = group_dir.group_meta_vac_uris_to_vacuum();
+  auto group_meta_uris_to_vacuum = group_dir.group_meta_uris_to_vacuum();
+  auto vac_uris_to_vacuum = group_dir.group_meta_vac_uris_to_vacuum();
 
-  // Delete the group metadata files
-  auto status = parallel_for(
-      compute_tp, 0, group_meta_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs->remove_file(group_meta_uris_to_vacuum[i]));
-
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  // Delete vacuum files
-  status =
-      parallel_for(compute_tp, 0, vac_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs->remove_file(vac_uris_to_vacuum[i]));
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
+  // Delete the group metadata and vacuum files
+  try {
+    vfs->remove_files(compute_tp, group_meta_uris_to_vacuum);
+    vfs->remove_files(compute_tp, vac_uris_to_vacuum);
+  } catch (std::exception& e) {
+    RETURN_NOT_OK(Status_Error(e.what()));
+  }
 
   return Status::Ok();
 }
