@@ -487,20 +487,11 @@ class AttributeOrderValidator {
 
   class AttributeOrderValidationData {
    public:
-    AttributeOrderValidationData()
-        : min_validated_(false)
-        , max_validated_(false)
-        , min_frag_to_compare_to_(nullopt)
-        , max_frag_to_compare_to_(nullopt)
-        , min_tile_to_compare_to_(nullopt)
-        , max_tile_to_compare_to_(nullopt) {
-    }
-
     /** Has the min has been validated already. */
-    bool min_validated_;
+    bool min_validated_{false};
 
     /** Has the max has been validated already. */
-    bool max_validated_;
+    bool max_validated_{false};
 
     /*
      * Which fragment index to validate the min bound against.
@@ -508,7 +499,7 @@ class AttributeOrderValidator {
      * If it was possible to validate the value without looking at another
      * fragment, this will be nullopt.
      */
-    optional<uint64_t> min_frag_to_compare_to_;
+    optional<uint64_t> min_frag_to_compare_to_{nullopt};
 
     /*
      * Which fragment index to validate the max bound against.
@@ -516,19 +507,19 @@ class AttributeOrderValidator {
      * If it was possible to validate the value without looking at another
      * fragment, this will be nullopt.
      */
-    optional<uint64_t> max_frag_to_compare_to_;
+    optional<uint64_t> max_frag_to_compare_to_{nullopt};
 
     /**
      * Which tile we should compare data against for the min. The value is an
      * index into `result_tiles_to_load_`.
      */
-    optional<uint64_t> min_tile_to_compare_to_;
+    optional<uint64_t> min_tile_to_compare_to_{nullopt};
 
     /**
      * Which tile we should compare data against for the max. The value is an
      * index into `result_tiles_to_load_`.
      */
-    optional<uint64_t> max_tile_to_compare_to_;
+    optional<uint64_t> max_tile_to_compare_to_ {nullopt};
   };
 
   /* ********************************* */
