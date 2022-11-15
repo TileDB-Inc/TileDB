@@ -1,5 +1,5 @@
 /**
- * @file compile_throwcatch_main.cc
+ * @file compile_xor_filter_main.cc
  *
  * @section LICENSE
  *
@@ -26,10 +26,9 @@
  * THE SOFTWARE.
  */
 
-#include "../throw_catch.h"
-
-using namespace tiledb::common;
+#include "../xor_filter.h"
 
 int main() {
-  (void)sizeof(ThrowCatchScheduler<size_t>(1));
+  (void)sizeof(tiledb::sm::XORFilter);
+  return 0;
 }

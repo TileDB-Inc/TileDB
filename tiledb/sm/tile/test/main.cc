@@ -1,5 +1,5 @@
 /**
- * @file compile_throwcatch_main.cc
+ * @file tiledb/sm/tile/test/main.cc
  *
  * @section LICENSE
  *
@@ -24,12 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file defines a test `main()`
  */
 
-#include "../throw_catch.h"
-
-using namespace tiledb::common;
-
-int main() {
-  (void)sizeof(ThrowCatchScheduler<size_t>(1));
-}
+#define CATCH_CONFIG_MAIN
+#include <test/support/tdb_catch.h>

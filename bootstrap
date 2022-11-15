@@ -141,7 +141,7 @@ while test $# != 0; do
     --enable-abseil) tiledb_build_abseil="ON";;
     --enable-experimental-features) tiledb_experimental_features="ON";;
     --enable=*) s=`arg "$1"`
-                enable_multiple="$s";;
+                enable_multiple+="${enable_multiple:+,}${s}";;
     --help) usage ;;
     *) die "Unknown option: $1" ;;
     esac

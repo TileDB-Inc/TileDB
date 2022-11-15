@@ -25,13 +25,11 @@
 # THE SOFTWARE.
 #
 
-message(STATUS "+++++++ in experimental")
-
 if(NOT TILEDB_EXPERIMENTAL_FEATURES)
     return()
 endif()
 
-message(STATUS "+++++++ past experimental")
+message("TileDB is compiled with experimental features enabled")
 
 include(common NO_POLICY_SCOPE)
 

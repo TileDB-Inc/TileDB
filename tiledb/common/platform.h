@@ -1,5 +1,5 @@
 /**
- * @file compile_throwcatch_main.cc
+ * @file   tiledb/common/platform.h
  *
  * @section LICENSE
  *
@@ -24,12 +24,19 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * Platform/machine config of the TileDB library.
  */
 
-#include "../throw_catch.h"
+#ifndef TILEDB_COMMON_PLATFORM_H
+#define TILEDB_COMMON_PLATFORM_H
 
-using namespace tiledb::common;
+#ifdef _WIN32
+constexpr bool is_windows = true;
+#else
+constexpr bool is_windows = false;
+#endif  // TILEDB_EXPERIMENTAL_FEATURES
 
-int main() {
-  (void)sizeof(ThrowCatchScheduler<size_t>(1));
-}
+#endif  // TILEDB_COMMON_PLATFORM_H
