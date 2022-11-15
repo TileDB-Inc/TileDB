@@ -31,7 +31,7 @@
  */
 
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
-#include "tiledb/common/logger.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -417,11 +417,8 @@ bool SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
               tiles_found = true;
 
               if (budget_exceeded) {
-                logger_->debug(
-                    "Budget exceeded adding result tiles, fragment {0}, tile "
-                    "{1}",
-                    f,
-                    t);
+                LOG_DEBUG("Budget exceeded adding result tiles, fragment " +
+                          std::to_string(f) + ", tile " + std::to_string(t));
 
                 if (result_tiles_[f].empty()) {
                   auto tile_sizes = get_coord_tiles_size(dim_num, f, t);
@@ -472,10 +469,8 @@ bool SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
             tiles_found = true;
 
             if (budget_exceeded) {
-              logger_->debug(
-                  "Budget exceeded adding result tiles, fragment {0}, tile {1}",
-                  f,
-                  t);
+              LOG_DEBUG("Budget exceeded adding result tiles, fragment " +
+                        std::to_string(f) + ", tile " + std::to_string(t));
 
               if (result_tiles_[f].empty()) {
                 auto tile_sizes = get_coord_tiles_size(dim_num, f, t);
@@ -506,10 +501,11 @@ bool SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
     done_adding_result_tiles &= all_tiles_loaded_[f] != 0;
   }
 
-  logger_->debug("Done adding result tiles, num result tiles {0}", num_rt);
+  LOG_DEBUG("Done adding result tiles, num result tiles "
+            + std::to_string(num_rt));
 
   if (done_adding_result_tiles) {
-    logger_->debug("All result tiles loaded");
+    LOG_DEBUG("All result tiles loaded");
   }
 
   read_state_.done_adding_result_tiles_ = done_adding_result_tiles;
@@ -589,7 +585,7 @@ Status SparseGlobalOrderReader<BitmapType>::dedup_tiles_with_timestamps(
       });
   RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
 
-  logger_->debug("Done processing fragments with timestamps");
+  LOG_DEBUG("Done processing fragments with timestamps");
   return Status::Ok();
 }
 
@@ -1113,10 +1109,9 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
 
   buffers_full_ = num_cells == 0;
 
-  logger_->debug(
-      "Done merging result cell slabs, num slabs {0}, buffers full {1}",
-      result_cell_slabs.size(),
-      buffers_full_);
+  LOG_DEBUG("Done merging result cell slabs, num slabs " +
+            std::to_string(result_cell_slabs.size()) + ", buffers full "
+            + std::to_string(buffers_full_));
 
   return {Status::Ok(), std::move(result_cell_slabs)};
 };  // namespace sm
@@ -1990,7 +1985,8 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
     }
   }
 
-  logger_->debug("Done copying tiles, buffers full {0}", buffers_full_);
+  LOG_DEBUG("Done copying tiles, buffers full " +
+            std::to_string(buffers_full_));
   return Status::Ok();
 }
 
@@ -2056,7 +2052,7 @@ Status SparseGlobalOrderReader<BitmapType>::end_iteration() {
     num_rt += result_tiles_[f].size();
   }
 
-  logger_->debug("Done with iteration, num result tiles {0}", num_rt);
+  LOG_DEBUG("Done with iteration, num result tiles " + std::to_string(num_rt));
 
   array_memory_tracker_->set_budget(std::numeric_limits<uint64_t>::max());
   return Status::Ok();
