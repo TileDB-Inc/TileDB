@@ -31,7 +31,7 @@
  */
 
 #include "tiledb/sm/query/readers/sparse_index_reader_base.h"
-#include "tiledb/common/logger_public.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -518,7 +518,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   RETURN_CANCEL_OR_ERROR(
       load_tile_offsets(subarray_, attr_tile_offsets_to_load));
 
-  LOG_DEBUG("Initial data loaded");
+  logger_->debug("Initial data loaded");
   initial_data_loaded_ = true;
   return Status::Ok();
 }
@@ -570,7 +570,7 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
   }
 
-  LOG_DEBUG("Done reading and unfiltering coords tiles");
+  logger_->debug("Done reading and unfiltering coords tiles");
   return Status::Ok();
 }
 
@@ -726,7 +726,7 @@ Status SparseIndexReaderBase::compute_tile_bitmaps(
     RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
   }
 
-  LOG_DEBUG("Done computing tile bitmaps");
+  logger_->debug("Done computing tile bitmaps");
   return Status::Ok();
 }
 
@@ -852,7 +852,7 @@ Status SparseIndexReaderBase::apply_query_condition(
     RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
   }
 
-  LOG_DEBUG("Done applying query condition");
+  logger_->debug("Done applying query condition");
   return Status::Ok();
 }
 

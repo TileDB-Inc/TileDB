@@ -127,7 +127,7 @@ class Logger {
    */
   template <typename Arg1, typename... Args>
   void trace(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->trace(fmt, arg1, args...);
+    logger_->trace(fmt::runtime(fmt), arg1, args...);
   }
 
   /**
@@ -161,7 +161,7 @@ class Logger {
    */
   template <typename Arg1, typename... Args>
   void debug(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->debug(fmt, arg1, args...);
+    logger_->debug(fmt::runtime(fmt), arg1, args...);
   }
 
   /**
@@ -195,7 +195,7 @@ class Logger {
    */
   template <typename Arg1, typename... Args>
   void info(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->info(fmt, arg1, args...);
+    logger_->info(fmt::runtime(fmt), arg1, args...);
   }
 
   /**
@@ -229,7 +229,7 @@ class Logger {
    */
   template <typename Arg1, typename... Args>
   void warn(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->warn(fmt, arg1, args...);
+    logger_->warn(fmt::runtime(fmt), arg1, args...);
   }
 
   /**
@@ -262,7 +262,7 @@ class Logger {
    */
   template <typename Arg1, typename... Args>
   void error(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->error(fmt, arg1, args...);
+    logger_->error(fmt::runtime(fmt), arg1, args...);
   }
 
   /**
@@ -332,7 +332,7 @@ class Logger {
    */
   template <typename Arg1, typename... Args>
   void critical(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->critical(fmt, arg1, args...);
+    logger_->critical(fmt::runtime(fmt), arg1, args...);
   }
 
   /**
