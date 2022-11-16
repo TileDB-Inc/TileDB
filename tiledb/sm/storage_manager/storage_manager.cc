@@ -228,26 +228,28 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
   const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
 
   // Get the consolidated fragment metadatas
-  std::vector<Buffer> f_buffs(meta_uris.size());
+  std::vector<shared_ptr<Tile>> fragment_metadata_tiles(meta_uris.size());
   std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
       meta_uris.size());
   auto status = parallel_for(compute_tp_, 0, meta_uris.size(), [&](size_t i) {
-    auto&& [st, buffer_opt, offsets] =
+    auto&& [st, tile_opt, offsets] =
         load_consolidated_fragment_meta(meta_uris[i], enc_key);
     RETURN_NOT_OK(st);
-    f_buffs[i] = std::move(*buffer_opt);
+    fragment_metadata_tiles[i] =
+        make_shared<Tile>(HERE(), std::move(*tile_opt));
     offsets_vectors[i] = std::move(offsets.value());
     return st;
   });
   RETURN_NOT_OK_TUPLE(status, nullopt, nullopt, nullopt);
 
   // Get the unique fragment metadatas into a map.
-  std::unordered_map<std::string, std::pair<Buffer*, uint64_t>> offsets;
+  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
   for (uint64_t i = 0; i < offsets_vectors.size(); i++) {
     for (auto& offset : offsets_vectors[i]) {
       if (offsets.count(offset.first) == 0) {
         offsets.emplace(
-            offset.first, std::make_pair(&f_buffs[i], offset.second));
+            offset.first,
+            std::make_pair(fragment_metadata_tiles[i].get(), offset.second));
       }
     }
   }
@@ -373,7 +375,7 @@ StorageManagerCanonical::array_load_fragments(
   auto timer_se = stats_->start_timer("array_load_fragments");
 
   // Load the fragment metadata
-  std::unordered_map<std::string, std::pair<Buffer*, uint64_t>> offsets;
+  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
   auto&& [st_fragment_meta, fragment_metadata] = load_fragment_metadata(
       array->memory_tracker(),
       array->array_schema_latest_ptr(),
@@ -1980,7 +1982,6 @@ Status StorageManagerCanonical::read(
   RETURN_NOT_OK(vfs_->read(uri, offset, buffer->data(), nbytes));
   buffer->set_size(nbytes);
   buffer->reset_offset();
-
   return Status::Ok();
 }
 
@@ -2385,7 +2386,7 @@ StorageManagerCanonical::load_fragment_metadata(
         array_schemas_all,
     const EncryptionKey& encryption_key,
     const std::vector<TimestampedURI>& fragments_to_load,
-    const std::unordered_map<std::string, std::pair<Buffer*, uint64_t>>&
+    const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
         offsets) {
   auto timer_se = stats_->start_timer("load_fragment_metadata");
 
@@ -2430,7 +2431,7 @@ StorageManagerCanonical::load_fragment_metadata(
 
     // Potentially find the basic fragment metadata in the consolidated
     // metadata buffer
-    Buffer* f_buff = nullptr;
+    Tile* fragment_metadata_tile = nullptr;
     uint64_t offset = 0;
 
     auto it = offsets.end();
@@ -2440,13 +2441,13 @@ StorageManagerCanonical::load_fragment_metadata(
       it = offsets.find(sf.uri_.to_string());
     }
     if (it != offsets.end()) {
-      f_buff = it->second.first;
+      fragment_metadata_tile = it->second.first;
       offset = it->second.second;
     }
 
     // Load fragment metadata
-    RETURN_NOT_OK(
-        metadata->load(encryption_key, f_buff, offset, array_schemas_all));
+    RETURN_NOT_OK(metadata->load(
+        encryption_key, fragment_metadata_tile, offset, array_schemas_all));
 
     fragment_metadata[f] = metadata;
     return Status::Ok();
@@ -2458,7 +2459,7 @@ StorageManagerCanonical::load_fragment_metadata(
 
 tuple<
     Status,
-    optional<Buffer>,
+    optional<Tile>,
     optional<std::vector<std::pair<std::string, uint64_t>>>>
 StorageManagerCanonical::load_consolidated_fragment_meta(
     const URI& uri, const EncryptionKey& enc_key) {
@@ -2474,29 +2475,23 @@ StorageManagerCanonical::load_consolidated_fragment_meta(
 
   stats_->add_counter("consolidated_frag_meta_size", tile.size());
 
-  Buffer buffer;
-  RETURN_NOT_OK_TUPLE(buffer.realloc(tile.size()), nullopt, nullopt);
-  buffer.set_size(tile.size());
-  RETURN_NOT_OK_TUPLE(
-      tile.read(buffer.data(), 0, buffer.size()), nullopt, nullopt);
-
   uint32_t fragment_num;
-  buffer.reset_offset();
-  throw_if_not_ok(buffer.read(&fragment_num, sizeof(uint32_t)));
+  Deserializer deserializer(tile.data(), tile.size());
+  fragment_num = deserializer.read<uint32_t>();
 
   uint64_t name_size, offset;
   std::string name;
   std::vector<std::pair<std::string, uint64_t>> ret;
   ret.reserve(fragment_num);
   for (uint32_t f = 0; f < fragment_num; ++f) {
-    throw_if_not_ok(buffer.read(&name_size, sizeof(uint64_t)));
+    name_size = deserializer.read<uint64_t>();
     name.resize(name_size);
-    throw_if_not_ok(buffer.read(&name[0], name_size));
-    throw_if_not_ok(buffer.read(&offset, sizeof(uint64_t)));
+    deserializer.read(&name[0], name_size);
+    offset = deserializer.read<uint64_t>();
     ret.emplace_back(name, offset);
   }
 
-  return {Status::Ok(), buffer, ret};
+  return {Status::Ok(), std::move(tile), ret};
 }
 
 Status StorageManagerCanonical::set_default_tags() {

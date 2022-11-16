@@ -1266,7 +1266,7 @@ class StorageManagerCanonical {
           array_schemas_all,
       const EncryptionKey& encryption_key,
       const std::vector<TimestampedURI>& fragments_to_load,
-      const std::unordered_map<std::string, std::pair<Buffer*, uint64_t>>&
+      const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
           offsets);
 
   /**
@@ -1280,7 +1280,7 @@ class StorageManagerCanonical {
    */
   tuple<
       Status,
-      optional<Buffer>,
+      optional<Tile>,
       optional<std::vector<std::pair<std::string, uint64_t>>>>
   load_consolidated_fragment_meta(const URI& uri, const EncryptionKey& enc_key);
 
