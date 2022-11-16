@@ -70,7 +70,7 @@ capi_return_t tiledb_ctx_get_stats(
     tiledb_ctx_handle_t* ctx, char** stats_json) {
   ensure_output_pointer_is_valid(stats_json);
 
-  const std::string str = ctx->context().stats()->dump(2, 0);
+  const std::string str = ctx->context().resources().stats().dump(2, 0);
 
   *stats_json = static_cast<char*>(std::malloc(str.size() + 1));
   if (*stats_json == nullptr)

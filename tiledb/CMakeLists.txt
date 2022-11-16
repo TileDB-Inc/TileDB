@@ -268,6 +268,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/global_stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context_resources.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/storage_manager.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/range_subset.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/relevant_fragment_generator.cc
@@ -380,7 +381,7 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 # Use BUILD_INTERFACE generator to work around
 #   https://gitlab.kitware.com/cmake/cmake/-/issues/20736
 target_link_libraries(TILEDB_CORE_OBJECTS PRIVATE $<BUILD_INTERFACE:common>)
-target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE TILEDB_OBJECT_STORE_ILIB)
+target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE object_store_definitions)
 
 ############################################################
 # provide actions/target for preparation of magic.mgc data for embedding/build
@@ -501,7 +502,7 @@ endif()
 add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
 
 # Object Store Configuration
-target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE TILEDB_OBJECT_STORE_ILIB)
+target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE object_store_definitions)
 
 # blosc link dependencies
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPTIONS})
@@ -1081,7 +1082,7 @@ if (TILEDB_STATIC)
   list(APPEND TILEDB_INSTALL_TARGETS
     tiledb_static
     TILEDB_CORE_OBJECTS_ILIB
-    TILEDB_OBJECT_STORE_ILIB
+    object_store_definitions
   )
 endif()
 
