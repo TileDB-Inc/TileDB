@@ -2026,8 +2026,8 @@ Status StorageManagerCanonical::store_group_detail(
   if (!group_detail_dir_exists)
     RETURN_NOT_OK(create_dir(group_detail_folder_uri));
 
-  RETURN_NOT_OK(store_data_to_generic_tile(
-      tile.data(), tile.size(), *group_detail_uri, encryption_key));
+  RETURN_NOT_OK(
+      store_data_to_generic_tile(tile, *group_detail_uri, encryption_key));
 
   return st;
 }
@@ -2094,25 +2094,9 @@ Status StorageManagerCanonical::store_metadata(
   URI metadata_uri;
   RETURN_NOT_OK(metadata->get_uri(uri, &metadata_uri));
 
-  RETURN_NOT_OK(store_data_to_generic_tile(
-      tile.data(), tile.size(), metadata_uri, encryption_key));
+  RETURN_NOT_OK(store_data_to_generic_tile(tile, metadata_uri, encryption_key));
 
   return Status::Ok();
-}
-
-Status StorageManagerCanonical::store_data_to_generic_tile(
-    void* data,
-    const size_t size,
-    const URI& uri,
-    const EncryptionKey& encryption_key) {
-  Tile tile(
-      constants::generic_tile_datatype,
-      constants::generic_tile_cell_size,
-      0,
-      data,
-      size);
-
-  return store_data_to_generic_tile(tile, uri, encryption_key);
 }
 
 Status StorageManagerCanonical::store_data_to_generic_tile(

@@ -1028,21 +1028,6 @@ class StorageManagerCanonical {
   /**
    * Stores data into persistent storage.
    *
-   * @param data Data to store.
-   * @param size Size of the data.
-   * @param uri The object URI.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status store_data_to_generic_tile(
-      void* data,
-      const size_t size,
-      const URI& uri,
-      const EncryptionKey& encryption_key);
-
-  /**
-   * Stores data into persistent storage.
-   *
    * @param tile Tile to store.
    * @param uri The object URI.
    * @param encryption_key The encryption key to use.
