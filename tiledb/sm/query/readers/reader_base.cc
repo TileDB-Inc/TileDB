@@ -31,7 +31,7 @@
  */
 
 #include "tiledb/sm/query/readers/reader_base.h"
-#include "tiledb/common/logger_public.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -1476,7 +1476,7 @@ Status ReaderBase::unfilter_tiles(
               nullable ? &tile_tuple->validity_tile() : nullptr;
 
           if (disable_cache_ == false) {
-            LOG_INFO("Using cache");
+            logger_->info("using cache");
             // Get information about the tile in its fragment.
             auto&& [status, tile_attr_uri] = fragment->uri(name);
             RETURN_NOT_OK(status);

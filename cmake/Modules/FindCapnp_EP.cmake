@@ -35,10 +35,10 @@ include(TileDBCommon)
 # If the EP was built, it will install the CapnProtoConfig.cmake file, which we
 # can use with find_package.
 
-set(TILEDB_CAPNPROTO_VERSION 0.10.2)
-set(TILEDB_CAPNPROTO_GITTAG "v0.10.2")
-set(TILEDB_CAPNPROTO_HASH_SPEC "SHA1=04862baa3e1ed3df20f7bebbc572b5c589108744")
-set(TILEDB_CAPNPROTO_URL "https://github.com/capnproto/capnproto/archive/v0.10.2.tar.gz")
+set(TILEDB_CAPNPROTO_VERSION 0.8.0)
+set(TILEDB_CAPNPROTO_GITTAG "v0.8.0")
+set(TILEDB_CAPNPROTO_HASH_SPEC "SHA1=6910b8872602c46c8b0e9692dc2889c1808a5950")
+set(TILEDB_CAPNPROTO_URL "https://github.com/capnproto/capnproto/archive/v0.8.0.tar.gz")
 
 # First try the CMake find module.
 if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CAPNP_EP_BUILT)

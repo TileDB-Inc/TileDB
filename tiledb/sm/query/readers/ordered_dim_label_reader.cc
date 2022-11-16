@@ -30,7 +30,7 @@
  * This file implements class OrderedDimLabelReader.
  */
 
-#include "tiledb/common/logger_public.h"
+#include "tiledb/common/logger.h"
 
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"

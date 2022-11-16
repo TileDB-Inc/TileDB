@@ -31,7 +31,7 @@
  */
 
 #include "tiledb/sm/rest/curl.h"
-#include "tiledb/common/logger_public.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/tdb_time.h"
@@ -585,10 +585,13 @@ Status Curl::make_curl_request_common(
         return LOG_STATUS(Status_RestError(
             "Error checking curl error; could not get HTTP code."));
 
-      LOG_DEBUG("Request to " + url + " failed with http response code " +
-                std::to_string(http_code) ", will sleep " +
-                std::to_string(retry_delay) + "ms, retry count " +
-                std::to_string(i));
+      global_logger().debug(
+          "Request to {} failed with http response code {}, will sleep {}ms, "
+          "retry count {}",
+          url,
+          http_code,
+          retry_delay,
+          i);
       // Increment counter for number of retries
       stats->add_counter("rest_http_retries", 1);
       stats->add_counter("rest_http_retry_time", retry_delay);
@@ -758,7 +761,7 @@ Status Curl::post_data_common(
   } else {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
   }
-  LOG_DEBUG("posting " + std::to_string(data->total_size()) + " bytes to");
+  logger_->debug("posting {} bytes to", data->total_size());
 
   // Set auth and content-type for request
   *headers = nullptr;
