@@ -11,8 +11,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest, windows-2019]
         include:
+          - os: ubuntu-latest
+            cxxflags: "-std=c++17"
+          - os: macos-latest
+            cxxflags: "-std=c++17"
+          - os: windows-latest
+            cxxflags: "/std:c++17"
+          - os: windows-2019
+            cxxflags: "/std:c++17"
           - os: ubuntu-latest
             cxxflags: "-std=c++2a"
           - os: macos-latest
@@ -33,7 +40,7 @@ jobs:
         run: printenv
 
       - name: Checkout TileDB `dev`
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Configure TileDB CMake
         env:
@@ -55,7 +62,7 @@ jobs:
 #    if: failure() || cancelled()
 #    steps:
 #      - name: Checkout TileDB `dev`
-#        uses: actions/checkout@v2
+#        uses: actions/checkout@v3
 #      - name: Create Issue if Build Fails
 #        uses: JasonEtco/create-an-issue@v2
 #        env:
