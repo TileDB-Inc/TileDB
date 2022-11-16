@@ -29,5 +29,5 @@
  */
 #ifndef TILEDB_UNIT_BLOCK_EDGE_H
 #define TILEDB_UNIT_BLOCK_EDGE_H
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 #endif  // TILEDB_UNIT_BLOCK_EDGE_H

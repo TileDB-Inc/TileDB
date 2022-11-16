@@ -34,4 +34,4 @@
 #include <cassert>
 
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
-#include "tiledb/common/logger.h"
+// #include "tiledb/common/logger.h"

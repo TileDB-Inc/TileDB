@@ -60,6 +60,13 @@ struct GraphEdge {};
  * `Source` and `Sink` it probably doesn't need those as template parameters,
  * but rather we could make the constructor a function template.
  */
+
+template <template <class> class Mover_T, class Block>
+class Edge;
+
+// template <template <class> class Mover_T, class Block>
+// Edge(Source<Mover_T, Block>&, Sink<Mover_T, Block>&)->Edge<Mover_T, Block>;
+
 template <template <class> class Mover_T, class Block>
 class Edge : public GraphEdge {
   using source_type = Source<Mover_T, Block>;
@@ -68,7 +75,7 @@ class Edge : public GraphEdge {
   using mover_type = Mover_T<Block>;
 
   /**
-   * Indicates whether ther is a buffer item in the item mover, or if the
+   * Indicates whether there is a buffer item in the item mover, or if the
    * `Source` and `Sink` can be directly connected.
    */
   constexpr static bool edgeful = mover_type::edgeful;
