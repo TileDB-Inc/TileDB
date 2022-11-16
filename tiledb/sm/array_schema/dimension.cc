@@ -246,7 +246,7 @@ void Dimension::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
   // Retrieve domain and tile extent strings
-  std::string domain_s = domain_str();
+  std::string domain_s = type::range_str(domain_, type_);
   std::string tile_extent_s = tile_extent_str();
 
   // Dump
@@ -1712,109 +1712,6 @@ Status Dimension::check_tile_extent_upper_floor_internal(
   }
 
   return Status::Ok();
-}
-
-std::string Dimension::domain_str() const {
-  std::stringstream ss;
-
-  if (domain_.empty())
-    return constants::null_str;
-
-  const int* domain_int32;
-  const int64_t* domain_int64;
-  const float* domain_float32;
-  const double* domain_float64;
-  const int8_t* domain_int8;
-  const uint8_t* domain_uint8;
-  const int16_t* domain_int16;
-  const uint16_t* domain_uint16;
-  const uint32_t* domain_uint32;
-  const uint64_t* domain_uint64;
-
-  switch (type_) {
-    case Datatype::INT32:
-      domain_int32 = (const int32_t*)domain_.data();
-      ss << "[" << domain_int32[0] << "," << domain_int32[1] << "]";
-      return ss.str();
-    case Datatype::INT64:
-      domain_int64 = (const int64_t*)domain_.data();
-      ss << "[" << domain_int64[0] << "," << domain_int64[1] << "]";
-      return ss.str();
-    case Datatype::FLOAT32:
-      domain_float32 = (const float*)domain_.data();
-      ss << "[" << domain_float32[0] << "," << domain_float32[1] << "]";
-      return ss.str();
-    case Datatype::FLOAT64:
-      domain_float64 = (const double*)domain_.data();
-      ss << "[" << domain_float64[0] << "," << domain_float64[1] << "]";
-      return ss.str();
-    case Datatype::INT8:
-      domain_int8 = (const int8_t*)domain_.data();
-      ss << "[" << int(domain_int8[0]) << "," << int(domain_int8[1]) << "]";
-      return ss.str();
-    case Datatype::UINT8:
-      domain_uint8 = (const uint8_t*)domain_.data();
-      ss << "[" << int(domain_uint8[0]) << "," << int(domain_uint8[1]) << "]";
-      return ss.str();
-    case Datatype::INT16:
-      domain_int16 = (const int16_t*)domain_.data();
-      ss << "[" << domain_int16[0] << "," << domain_int16[1] << "]";
-      return ss.str();
-    case Datatype::UINT16:
-      domain_uint16 = (const uint16_t*)domain_.data();
-      ss << "[" << domain_uint16[0] << "," << domain_uint16[1] << "]";
-      return ss.str();
-    case Datatype::UINT32:
-      domain_uint32 = (const uint32_t*)domain_.data();
-      ss << "[" << domain_uint32[0] << "," << domain_uint32[1] << "]";
-      return ss.str();
-    case Datatype::UINT64:
-      domain_uint64 = (const uint64_t*)domain_.data();
-      ss << "[" << domain_uint64[0] << "," << domain_uint64[1] << "]";
-      return ss.str();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      domain_int64 = (const int64_t*)domain_.data();
-      ss << "[" << domain_int64[0] << "," << domain_int64[1] << "]";
-      return ss.str();
-
-    case Datatype::BLOB:
-    case Datatype::CHAR:
-    case Datatype::BOOL:
-    case Datatype::STRING_ASCII:
-    case Datatype::STRING_UTF8:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    case Datatype::ANY:
-      // Not supported domain type
-      assert(false);
-      return "";
-  }
-
-  assert(false);
-  return "";
 }
 
 void Dimension::ensure_datatype_is_supported(Datatype type) const {
