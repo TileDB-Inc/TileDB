@@ -33,6 +33,9 @@ window.document.addEventListener("DOMContentLoaded", function (_event) {
     tab.addEventListener("shown.bs.tab", fireSlideEnter);
   });
 
+  // fire slideEnter for tabby tab activations (for htmlwidget resize behavior)
+  document.addEventListener("tabby", fireSlideEnter, false);
+
   // Track scrolling and mark TOC links as active
   // get table of contents and sidebar (bail if we don't have at least one)
   const tocLinks = tocEl
@@ -420,18 +423,21 @@ window.document.addEventListener("DOMContentLoaded", function (_event) {
   const marginChildren = window.document.querySelectorAll(
     ".column-margin.column-container > * "
   );
-  let lastBottom = 0;
-  for (const marginChild of marginChildren) {
-    const top = marginChild.getBoundingClientRect().top;
-    if (top < lastBottom) {
-      const margin = lastBottom - top;
-      marginChild.style.marginTop = `${margin}px`;
-    }
-    const styles = window.getComputedStyle(marginChild);
-    const marginTop = parseFloat(styles["marginTop"]);
 
-    lastBottom = top + marginChild.getBoundingClientRect().height + marginTop;
-  }
+  nexttick(() => {
+    let lastBottom = 0;
+    for (const marginChild of marginChildren) {
+      const top = marginChild.getBoundingClientRect().top + window.scrollY;
+      if (top < lastBottom) {
+        const margin = lastBottom - top;
+        marginChild.style.marginTop = `${margin}px`;
+      }
+      const styles = window.getComputedStyle(marginChild);
+      const marginTop = parseFloat(styles["marginTop"]);
+
+      lastBottom = top + marginChild.getBoundingClientRect().height + marginTop;
+    }
+  });
 
   // Manage the visibility of the toc and the sidebar
   const marginScrollVisibility = manageSidebarVisiblity(marginSidebarEl, {
@@ -757,4 +763,8 @@ function throttle(func, wait) {
       }, wait);
     }
   };
+}
+
+function nexttick(func) {
+  return setTimeout(func, 0);
 }
