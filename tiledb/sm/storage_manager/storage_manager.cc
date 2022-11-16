@@ -228,14 +228,15 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
   const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
 
   // Get the consolidated fragment metadatas
-  std::vector<shared_ptr<Tile>> f_tiles(meta_uris.size());
+  std::vector<shared_ptr<Tile>> fragment_metadata_tiles(meta_uris.size());
   std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
       meta_uris.size());
   auto status = parallel_for(compute_tp_, 0, meta_uris.size(), [&](size_t i) {
     auto&& [st, tile_opt, offsets] =
         load_consolidated_fragment_meta(meta_uris[i], enc_key);
     RETURN_NOT_OK(st);
-    f_tiles[i] = make_shared<Tile>(HERE(), std::move(*tile_opt));
+    fragment_metadata_tiles[i] =
+        make_shared<Tile>(HERE(), std::move(*tile_opt));
     offsets_vectors[i] = std::move(offsets.value());
     return st;
   });
@@ -247,7 +248,8 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
     for (auto& offset : offsets_vectors[i]) {
       if (offsets.count(offset.first) == 0) {
         offsets.emplace(
-            offset.first, std::make_pair(f_tiles[i].get(), offset.second));
+            offset.first,
+            std::make_pair(fragment_metadata_tiles[i].get(), offset.second));
       }
     }
   }
@@ -2444,8 +2446,8 @@ StorageManagerCanonical::load_fragment_metadata(
     }
 
     // Load fragment metadata
-    RETURN_NOT_OK(
-        metadata->load(encryption_key, fragment_metadata_tile, offset, array_schemas_all));
+    RETURN_NOT_OK(metadata->load(
+        encryption_key, fragment_metadata_tile, offset, array_schemas_all));
 
     fragment_metadata[f] = metadata;
     return Status::Ok();
@@ -2472,7 +2474,6 @@ StorageManagerCanonical::load_consolidated_fragment_meta(
   auto& tile = *tile_opt;
 
   stats_->add_counter("consolidated_frag_meta_size", tile.size());
-
 
   uint32_t fragment_num;
   Deserializer deserializer(tile.data(), tile.size());

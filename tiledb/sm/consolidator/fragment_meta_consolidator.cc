@@ -31,9 +31,7 @@
  */
 
 #include "tiledb/sm/consolidator/fragment_meta_consolidator.h"
-#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
-#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -127,7 +125,6 @@ Status FragmentMetaConsolidator::consolidate(
   std::vector<tiledb_unique_ptr<Tile>> tiles(meta.size());
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tiles.size(), [&](size_t i) {
-
         SizeComputationSerializer size_computation_serializer;
         throw_if_not_ok(meta[i]->write_footer(size_computation_serializer));
         tiles[i].reset(tdb_new(
@@ -140,7 +137,6 @@ Status FragmentMetaConsolidator::consolidate(
   RETURN_NOT_OK(status);
 
   auto serialize_data = [&](Serializer& serializer, uint64_t offset) {
-
     // Write number of fragments
     serializer.write<uint32_t>(fragment_num);
 
@@ -181,8 +177,7 @@ Status FragmentMetaConsolidator::consolidate(
 
   GenericTileIO tile_io(storage_manager_, uri);
   uint64_t nbytes = 0;
-  RETURN_NOT_OK(
-      tile_io.write_generic(&tile, enc_key, &nbytes));
+  RETURN_NOT_OK(tile_io.write_generic(&tile, enc_key, &nbytes));
   (void)nbytes;
   RETURN_NOT_OK(storage_manager_->close_file(uri));
 

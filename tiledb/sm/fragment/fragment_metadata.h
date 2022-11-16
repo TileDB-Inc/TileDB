@@ -405,7 +405,7 @@ class FragmentMetadata {
    */
   Status load(
       const EncryptionKey& encryption_key,
-      Tile* f_tile,
+      Tile* fragment_metadata_tile,
       uint64_t offset,
       std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
 
@@ -1717,7 +1717,7 @@ class FragmentMetadata {
    */
   Status load_v3_or_higher(
       const EncryptionKey& encryption_key,
-      Tile* f_tile,
+      Tile* fragment_metadata_tile,
       uint64_t offset,
       std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
 
@@ -1729,7 +1729,7 @@ class FragmentMetadata {
    */
   Status load_footer(
       const EncryptionKey& encryption_key,
-      Tile* f_tile,
+      Tile* fragment_metadata_tile,
       uint64_t offset,
       std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
 
