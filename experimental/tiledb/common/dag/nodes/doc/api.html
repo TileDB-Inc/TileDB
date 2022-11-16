@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.2.269">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>api</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1.6em;
+  vertical-align: middle;
+}
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+
+<script src="../../../../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../../../../">
+<link href="../../../../../../images/favicon.ico" rel="icon">
+<script src="../../../../../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../../../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../../../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../../../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../../../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../../../../../../quarto-materials/tiledb.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container">
+    <a href="../../../../../../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="../../../../../../quarto-materials/tiledb-logo.png" alt="" class="navbar-logo">
+    </a>
+  </div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://tiledb.com">
+ <span class="menu-text">Home page</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://tiledb.com/contact">
+ <span class="menu-text">Contact us</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://github.com/TileDB-Inc/TileDB">
+ <span class="menu-text">Repo</span></a>
+  </li>  
+</ul>
+              <div id="quarto-search" class="" title="Search"></div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+    <div class="container-fluid d-flex justify-content-between">
+      <h1 class="quarto-secondary-nav-title"></h1>
+      <button type="button" class="quarto-btn-toggle btn" aria-label="Show secondary navigation">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../../../../../index.html" class="sidebar-item-text sidebar-link">Public code docs</a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../../../../../../format_spec/FORMAT_SPEC.html" class="sidebar-item-text sidebar-link">Format Specification</a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-expanded="true">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="false">Array</a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="false">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../../../../../format_spec/array_file_hierarchy.html" class="sidebar-item-text sidebar-link">Array File Hierarchy</a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../../../../../format_spec/array_schema.html" class="sidebar-item-text sidebar-link">Array Schema</a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../../../../../format_spec/fragment.html" class="sidebar-item-text sidebar-link">Fragment</a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../../../../../format_spec/tile.html" class="sidebar-item-text sidebar-link">Tile</a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../../../../../format_spec/generic_tile.html" class="sidebar-item-text sidebar-link">Generic Tile</a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="false">Group</a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="false">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../../../../../format_spec/group_file_hierarchy.html" class="sidebar-item-text sidebar-link">Group File Hierarchy</a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-expanded="false">Other</a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-expanded="false">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../../../../../format_spec/consolidated_fragment_metadata_file.html" class="sidebar-item-text sidebar-link">Consolidated Fragment Metadata File</a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../../../../../format_spec/filter_pipeline.html" class="sidebar-item-text sidebar-link">Filter Pipeline</a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../../../../../format_spec/vacuum_file.html" class="sidebar-item-text sidebar-link">Vacuum File</a>
+  </div>
+</li>
+      </ul>
+  </li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" aria-expanded="true">Developer Docs</a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" aria-expanded="true">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../../../../../doc/dev/style/index.html" class="sidebar-item-text sidebar-link">Style Guide</a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#task-graph-node-api" id="toc-task-graph-node-api" class="nav-link active" data-scroll-target="#task-graph-node-api">Task Graph Node API</a>
+  <ul class="collapse">
+  <li><a href="#terminology" id="toc-terminology" class="nav-link" data-scroll-target="#terminology">Terminology</a></li>
+  <li><a href="#nodes" id="toc-nodes" class="nav-link" data-scroll-target="#nodes">Nodes</a>
+  <ul class="collapse">
+  <li><a href="#class-producernode" id="toc-class-producernode" class="nav-link" data-scroll-target="#class-producernode"><code>class ProducerNode</code></a></li>
+  <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
+  <li><a href="#class-consumernode" id="toc-class-consumernode" class="nav-link" data-scroll-target="#class-consumernode"><code>class ConsumerNode</code></a></li>
+  <li><a href="#example-1" id="toc-example-1" class="nav-link" data-scroll-target="#example-1">Example</a></li>
+  <li><a href="#class-functionnode" id="toc-class-functionnode" class="nav-link" data-scroll-target="#class-functionnode"><code>class FunctionNode</code></a></li>
+  <li><a href="#class-mimofunctionnode" id="toc-class-mimofunctionnode" class="nav-link" data-scroll-target="#class-mimofunctionnode"><code>class MIMOFunctionNode</code></a></li>
+  </ul></li>
+  <li><a href="#edges" id="toc-edges" class="nav-link" data-scroll-target="#edges">Edges</a>
+  <ul class="collapse">
+  <li><a href="#class-edge" id="toc-class-edge" class="nav-link" data-scroll-target="#class-edge"><code>class Edge</code></a></li>
+  </ul></li>
+  <li><a href="#schedulers" id="toc-schedulers" class="nav-link" data-scroll-target="#schedulers">Schedulers</a>
+  <ul class="collapse">
+  <li><a href="#class-scheduler" id="toc-class-scheduler" class="nav-link" data-scroll-target="#class-scheduler"><code>class Scheduler</code></a></li>
+  </ul></li>
+  <li><a href="#extended-example-constructing-and-executing-a-primitive-graph" id="toc-extended-example-constructing-and-executing-a-primitive-graph" class="nav-link" data-scroll-target="#extended-example-constructing-and-executing-a-primitive-graph">Extended Example: Constructing and Executing a Primitive Graph</a>
+  <ul class="collapse">
+  <li><a href="#define-the-functions-to-be-executed" id="toc-define-the-functions-to-be-executed" class="nav-link" data-scroll-target="#define-the-functions-to-be-executed">Define the Functions to be Executed</a></li>
+  <li><a href="#create-graph-nodes" id="toc-create-graph-nodes" class="nav-link" data-scroll-target="#create-graph-nodes">Create Graph Nodes</a></li>
+  <li><a href="#connect-graph-nodes-with-edges" id="toc-connect-graph-nodes-with-edges" class="nav-link" data-scroll-target="#connect-graph-nodes-with-edges">Connect Graph Nodes with Edges</a></li>
+  <li><a href="#execute-the-graph" id="toc-execute-the-graph" class="nav-link" data-scroll-target="#execute-the-graph">Execute the Graph</a></li>
+  <li><a href="#an-emulated-scheduler" id="toc-an-emulated-scheduler" class="nav-link" data-scroll-target="#an-emulated-scheduler">An Emulated Scheduler</a></li>
+  </ul></li>
+  <li><a href="#appendix" id="toc-appendix" class="nav-link" data-scroll-target="#appendix">Appendix</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+
+<section id="task-graph-node-api" class="level1">
+<h1>Task Graph Node API</h1>
+<section id="terminology" class="level2">
+<h2 class="anchored" data-anchor-id="terminology">Terminology</h2>
+<p>A <strong>task graph node</strong> is a computational unit that applies user-provided functions to data flowing through the graph. Data flows through the graph (and through the nodes) via <strong>task graph ports</strong>. A <strong>function node</strong> takes input data from its <strong>input port</strong>, applies a user-defined function and creates output data on its <strong>output port</strong>. A <strong>producer node</strong> only creates output; a <strong>consumer node</strong> only takes input. Output ports from one node connect to the input ports of another via an <strong>edge</strong>. A <strong>simple</strong> node takes one piece of data and produces on piece of data for each input. A <strong>simple MIMO</strong> node may take multiple inputs and produce multiple outputs; it creates its outputs using one piece of data from each input.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./simple_node.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">simple_node</figcaption><p></p>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./mimo_node.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">mimo_node</figcaption><p></p>
+</figure>
+</div>
+<p>API</p>
+<hr>
+<p>****Note:*** Based on feedback from Isaiah, the following updated API is proposed. The current API will be updated to reflect this new one over the course of the current sprint.*</p>
+</section>
+<section id="nodes" class="level2">
+<h2 class="anchored" data-anchor-id="nodes">Nodes</h2>
+<section id="class-producernode" class="level3">
+<h3 class="anchored" data-anchor-id="class-producernode"><code>class ProducerNode</code></h3>
+<div class="sourceCode" id="cb1"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span> Item<span class="op">&gt;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ProducerNode<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li><code>Item</code> the type of data to be produced by the <code>ProducerNode</code></li>
+</ul>
+<section id="constructors" class="level4">
+<h4 class="anchored" data-anchor-id="constructors"><strong>Constructors</strong></h4>
+<div class="sourceCode" id="cb2"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span> Function<span class="op">&gt;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  ProducerNode<span class="op">(</span>Function<span class="op">&amp;&amp;</span> f<span class="op">);</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li><code>Function</code> must meet the requirements of <code>std::function&lt;Item())&gt;</code> or of <code>std::function&lt;Item(std::stop_source))&gt;</code>.</li>
+<li>If the latter constructor is used, a <code>stop_source</code> variable is passed to the enclosed function. If the enclosed function invokes <code>stop_source::request_stop()</code>, the <code>ProducerNode</code> will enter the stopping state, which will propagate throught its output port to the connected input port. The connected node will the enter its shutdown state, and so on, thus stopping computation throughout the entire task graph.</li>
+<li>Class Template Argument Deduction (CTAD) guides have been specified so that explicit template arguments are not required to construct objects with the above constructor. The CTAD guides work in the cases where <code>Function</code> is a regular function, a lambda, or a function object. The current CTAD guides do not work when <code>Function</code> is a <code>bind</code> object; a template argument is still required in the case of <code>std::bind</code>.</li>
+<li>Note that in the case of a lambda, the unary <code>+</code> operator is required to decay the lambda into a normal function.</li>
+</ul>
+</section>
+</section>
+<section id="example" class="level3">
+<h3 class="anchored" data-anchor-id="example">Example</h3>
+<div class="sourceCode" id="cb3"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Create a `ProducerNode` with a function</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">size_t</span> source_function<span class="op">(</span><span class="bu">std::</span>stop_source<span class="op"> &amp;);</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> a <span class="op">=</span> ProducerNode <span class="op">{</span>source_function<span class="op">};</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Nodes can also be created with function objects</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">class</span> source_function_object <span class="op">{</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">size_t</span> <span class="kw">operator</span><span class="op">()(</span><span class="bu">std::</span>stop_source<span class="op"> &amp;);</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    source_function_object f<span class="op">;</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> b <span class="op">=</span> ProducerNode <span class="op">{</span>f<span class="op">};</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">// And with lambdas.  IMPORTANT: Note the unary `+`!</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> c <span class="op">=</span> ProducerNode <span class="op">{+[]()</span> <span class="op">{</span> <span class="cf">return</span> <span class="dv">0</span><span class="bu">UL</span><span class="op">;</span> <span class="op">}};</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Bind requires specifying node type (so it seems)</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> g <span class="op">=</span> <span class="bu">std::</span>bind<span class="op">([](</span><span class="dt">double</span> i<span class="op">)</span> <span class="op">-&gt;</span><span class="dt">size_t</span> <span class="op">{</span> <span class="cf">return</span> <span class="dv">0</span><span class="bu">UL</span><span class="op">;},</span> <span class="fl">0.0</span><span class="op">);</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> d <span class="op">=</span> ProducerNode<span class="op">&lt;</span><span class="dt">size_t</span><span class="op">&gt;</span> <span class="op">(</span>bb<span class="op">);</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Emulating bind will work, not requiring template type</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    <span class="dt">size_t</span> bind_function<span class="op">(</span><span class="dt">double</span><span class="op">)</span> <span class="op">{</span> <span class="cf">return</span> <span class="dv">0</span><span class="bu">UL</span><span class="op">;</span> <span class="op">}</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> e <span class="op">=</span> ProducerNode<span class="op">(+[]()</span> <span class="op">-&gt;</span> <span class="dt">size_t</span> <span class="op">{</span> <span class="cf">return</span> bind_function<span class="op">(</span><span class="fl">0.0</span><span class="op">);</span> <span class="op">});</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li>Note: Future enhancements to the API will include variants to support one-shot or multi-shot (for a specified number of runs) operation, with an implicit stop following execution. Using one-shot or multi-shot variants will obviate the need for the user to invoke the <code>stop_source</code>.</li>
+</ul>
+<p>In the following, we omit all of the variations for creating different kinds of nodes. But it should be understood that all the constructor variants may be used for the node types below.</p>
+</section>
+<section id="class-consumernode" class="level3">
+<h3 class="anchored" data-anchor-id="class-consumernode"><code>class ConsumerNode</code></h3>
+<div class="sourceCode" id="cb4"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span> Item<span class="op">&gt;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ConsumerNode<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li><code>Item</code> the type of data to be produced by the <code>ConsumerNode</code></li>
+</ul>
+<section id="constructor" class="level4">
+<h4 class="anchored" data-anchor-id="constructor"><strong>Constructor</strong></h4>
+<div class="sourceCode" id="cb5"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span> Function<span class="op">&gt;</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  ProducerNode<span class="op">(</span>Function<span class="op">&amp;&amp;</span> f<span class="op">);</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span> <span class="er">`</span>Function<span class="er">`</span> must meet the requirements of <span class="er">`</span><span class="bu">std::</span>function<span class="op">&lt;</span><span class="dt">void</span><span class="op">(</span><span class="at">const</span> Item<span class="op">&amp;)&gt;</span><span class="er">`</span><span class="op">.</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+</section>
+<section id="example-1" class="level3">
+<h3 class="anchored" data-anchor-id="example-1">Example</h3>
+<div class="sourceCode" id="cb6"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> sink_function<span class="op">(</span><span class="at">const</span> <span class="dt">size_t</span><span class="op">&amp;);</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    Consumer Node b<span class="op">{</span>sink_function<span class="op">};</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="class-functionnode" class="level3">
+<h3 class="anchored" data-anchor-id="class-functionnode"><code>class FunctionNode</code></h3>
+<div class="sourceCode" id="cb7"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span> InItem<span class="op">,</span> <span class="kw">class</span> OutItem <span class="op">=</span> InItem<span class="op">&gt;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> FunctionNode<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li><code>InItem</code> the type of data to be consumed on the input of the <code>FunctionNode</code></li>
+<li><code>OutItem</code> the type of data to be created on the output of the <code>FunctionNode</code></li>
+</ul>
+<section id="constructor-1" class="level4">
+<h4 class="anchored" data-anchor-id="constructor-1"><strong>Constructor</strong></h4>
+<div class="sourceCode" id="cb8"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span> Function<span class="op">&gt;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  ProducerNode<span class="op">(</span>Function<span class="op">&amp;&amp;</span> f<span class="op">);</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li><code>Function</code> must meet the requirements of <code>std::function&lt;OutItem(const InItem&amp;)&gt;</code>.</li>
+</ul>
+</section>
+<section id="example-2" class="level4">
+<h4 class="anchored" data-anchor-id="example-2"><strong>Example</strong></h4>
+<div class="sourceCode" id="cb9"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>    <span class="dt">size_t</span> function<span class="op">(</span><span class="at">const</span> <span class="dt">size_t</span><span class="op">&amp;);</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    FunctionNode b<span class="op">{</span>function<span class="op">};</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+</section>
+<section id="class-mimofunctionnode" class="level3">
+<h3 class="anchored" data-anchor-id="class-mimofunctionnode"><code>class MIMOFunctionNode</code></h3>
+<div class="sourceCode" id="cb10"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span> <span class="op">&lt;</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span><span class="op">&gt;</span> <span class="kw">class</span> SinkMover<span class="op">,</span> <span class="kw">class</span><span class="op">...</span> ItemsIn<span class="op">,</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span><span class="op">&gt;</span> <span class="kw">class</span> SourceMover<span class="op">,</span> <span class="kw">class</span><span class="op">...</span> ItemsOut<span class="op">&gt;</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MimoFunctionNode<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<section id="constructor-2" class="level4">
+<h4 class="anchored" data-anchor-id="constructor-2"><strong>Constructor</strong></h4>
+<div class="sourceCode" id="cb11"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span> Function<span class="op">&gt;</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">explicit</span> MimoFunctionNode<span class="op">(</span>Function<span class="op">&amp;&amp;</span> f<span class="op">);</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li><code>f</code> must meet the requirements of <code>std::function&lt;std::tuple&lt;ItemsOut...(std::tuple&lt;ItemsIn...&gt;)&gt;</code>f</li>
+</ul>
+</section>
+</section>
+</section>
+<section id="edges" class="level2">
+<h2 class="anchored" data-anchor-id="edges">Edges</h2>
+<section id="class-edge" class="level3">
+<h3 class="anchored" data-anchor-id="class-edge"><code>class Edge</code></h3>
+<section id="constructor-3" class="level4">
+<h4 class="anchored" data-anchor-id="constructor-3"><strong>Constructor</strong></h4>
+<div class="sourceCode" id="cb12"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span> <span class="op">&lt;</span><span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span><span class="op">&gt;</span> <span class="kw">class</span> Mover<span class="op">,</span> <span class="kw">class</span> Item<span class="op">&gt;</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Edge<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li><code>Mover</code> the type of data item mover to be transferred by the <code>Edge</code></li>
+<li><code>Item</code> the type of data to be transferred by the <code>Edge</code></li>
+<li>Class Template Argument Deduction rules have been specified so that template argument for <code>Item</code> is not required. The type of the <code>Mover</code> must still be explicitly specified.</li>
+</ul>
+<p><strong>Note:</strong> When connecting an output port to an input port, the Item types of the input port, output port, and edge must be the same.</p>
+</section>
+<section id="example-3" class="level4">
+<h4 class="anchored" data-anchor-id="example-3"><strong>Example</strong></h4>
+<div class="sourceCode" id="cb13"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>ProducerNode a<span class="op">{</span>source_function<span class="op">{}};</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>ConsumerNode b<span class="op">{</span>sink_function<span class="op">{}};</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>Edge<span class="op">&lt;</span>AsyncMover3<span class="op">&gt;</span> e<span class="op">{</span>a<span class="op">,</span> b<span class="op">};</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="dt">double</span> other_source_function<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="fl">0.0</span><span class="op">;</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>ProducerNode c <span class="op">{</span>other_source_function<span class="op">{}};</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>ConsumerNode d<span class="op">{</span>sink_function<span class="op">{}};</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>Edge<span class="op">&lt;</span>AsyncMover3<span class="op">&gt;</span> f<span class="op">{</span>c<span class="op">,</span> d<span class="op">};</span>  <span class="co">// This will fail to compile because Item types of Producer and Consumer don't match.</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li>If we decide to use the same type of <code>Edge</code> throughout a given graph, we can make a type alias such as</li>
+</ul>
+<div class="sourceCode" id="cb14"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span> Item<span class="op">&gt;</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="kw">using</span> GraphEdge <span class="op">=</span> Edge<span class="op">&lt;</span>AsyncMover3<span class="op">,</span> Item<span class="op">&gt;;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>in which case we could simply invoke</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>ProducerNode a<span class="op">{</span>source_function<span class="op">{}};</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>ConsumerNode b<span class="op">{</span>sink_function<span class="op">{}};</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>GraphEdge e<span class="op">{</span>a<span class="op">,</span> b<span class="op">};</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li>(Note that <code>AsyncMover3</code> is itself a type alias, using some specific types given to the more general <code>ItemMover</code> class. This will likely be further generalized to include a <code>Scheduler</code>. However, since a given graph will use a specified scheduler, we can likely hide this behind type aliases and specific types for certain template parameters. In general, users will not need to see the <code>Scheduler</code> type in the API.</li>
+</ul>
+</section>
+</section>
+</section>
+<section id="schedulers" class="level2">
+<h2 class="anchored" data-anchor-id="schedulers">Schedulers</h2>
+<section id="class-scheduler" class="level3">
+<h3 class="anchored" data-anchor-id="class-scheduler"><code>class Scheduler</code></h3>
+<div class="sourceCode" id="cb16"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Scheduler<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li>Base class for schedulers.</li>
+</ul>
+<section id="constructor-4" class="level4">
+<h4 class="anchored" data-anchor-id="constructor-4"><strong>Constructor</strong></h4>
+<div class="sourceCode" id="cb17"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>Scheduler<span class="op">(</span><span class="dt">size_t</span> concurrency_level <span class="op">=</span> <span class="bu">std::</span>thread<span class="bu">::</span>hardware_concurrency<span class="op">();</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="submitting-tasks" class="level4">
+<h4 class="anchored" data-anchor-id="submitting-tasks"><strong>Submitting Tasks</strong></h4>
+<div class="sourceCode" id="cb18"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span><span class="op">...</span> Tasks<span class="op">&gt;</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>Scheduler<span class="op">::</span>submit<span class="op">(</span>Tasks<span class="op">&amp;&amp;...</span> tasks<span class="op">);</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li>Submits <code>tasks</code> to scheduler</li>
+<li>Note: Task execution is lazy. Tasks do not begin execution until a <code>wait</code> function is called.</li>
+</ul>
+</section>
+<section id="waiting-on-tasks" class="level4">
+<h4 class="anchored" data-anchor-id="waiting-on-tasks"><strong>Waiting on Tasks</strong></h4>
+<div class="sourceCode" id="cb19"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span><span class="op">...</span> Tasks<span class="op">&gt;</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>Scheduler<span class="op">::</span>sync_wait_all<span class="op">();</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li>Synchronously wait for tasks to complete.</li>
+<li>Note: Task execution is lazy. Tasks previously submitted to <code>submit</code> will be launched on calling <code>sync_wait_all()</code></li>
+</ul>
+</section>
+<section id="example-4" class="level4">
+<h4 class="anchored" data-anchor-id="example-4"><strong>Example</strong></h4>
+<p>See also full example below;</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Define nodes</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>ProducerNode a<span class="op">;</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>ConsumerNode b<span class="op">;</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="co">// Connect nodes</span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>Edge <span class="op">{</span>a<span class="op">,</span> b<span class="op">};</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>BountifulScheduler sched<span class="op">;</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a><span class="co">// Submit jobs</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>sched<span class="op">.</span>submit<span class="op">(</span>a<span class="op">,</span> b<span class="op">);</span></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a><span class="co">// Wait on their completion</span></span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>sched<span class="op">.</span>sync_wait_all<span class="op">();</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="how-nodes-are-scheduled" class="level4">
+<h4 class="anchored" data-anchor-id="how-nodes-are-scheduled"><strong>How nodes are scheduled</strong></h4>
+<p>A node is repeatedly run until it is stopped. It is expected that a simple node will produce one data item each time it is run. Suppose we wish to have a <code>ProducerNode</code> that generates a finite sequence of numbers. Consider the following.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="dt">size_t</span> source_function_1<span class="op">(</span><span class="bu">std::</span>stop_source<span class="op">&amp;</span> stop_source<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> <span class="op">(</span><span class="dt">size_t</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> <span class="dv">42</span><span class="op">;</span> <span class="op">++</span>i<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> i<span class="op">;</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>  stop_source<span class="op">.</span>request_stop<span class="op">();</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="dv">0</span><span class="bu">UL</span><span class="op">;</span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>source_function_1 src_1<span class="op">;</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> a <span class="op">=</span> ProducerNode <span class="op">{</span> src_1<span class="op">;</span> <span class="op">);</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>This node will not produce the desired result. Each time it is called, it will return 10. Moreover, it will never invoke <code>request_stop()</code>.</p>
+<p>A correctly behaving function would be something like</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="dt">size_t</span> source_function_2<span class="op">(</span><span class="bu">std::</span>stop_source<span class="op">&amp;</span> stop_source<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">static</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> <span class="op">(</span>i <span class="op">&lt;</span> <span class="dv">42</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> i<span class="op">++;</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>  stop_source<span class="op">.</span>request_stop<span class="op">();</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="dv">0</span><span class="bu">UL</span><span class="op">;</span></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>source_function_2 src_2<span class="op">;</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> a <span class="op">=</span> ProducerNode <span class="op">{</span> src_2<span class="op">;</span> <span class="op">);</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Here. we make <code>i</code> static so that its value is saved across invocations of the node. It will generate numbers from 0 to 41 and then stop. (Again note that the value returned after <code>request_stop()</code> is ignored.</p>
+</section>
+</section>
+</section>
+<section id="extended-example-constructing-and-executing-a-primitive-graph" class="level2">
+<h2 class="anchored" data-anchor-id="extended-example-constructing-and-executing-a-primitive-graph">Extended Example: Constructing and Executing a Primitive Graph</h2>
+<section id="define-the-functions-to-be-executed" class="level3">
+<h3 class="anchored" data-anchor-id="define-the-functions-to-be-executed">Define the Functions to be Executed</h3>
+<div class="sourceCode" id="cb23"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="co">// This function object generates a sequence of numbers up to a specified limit</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="co">// (non-inclusive), aftter which it invokes `std::stop_source::request_stop()`.</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="co">// The stop will propagate and shut down the rest of the nodes. (The stop will</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="co">// essentially propagate behind the data items in flight.  All of the</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a><span class="co">// data items will complete transmission through the graph and all nodes</span></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a><span class="co">// will continue to run until the data items are exhausted.</span></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> source_function <span class="op">{</span></span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a> <span class="kw">public</span><span class="op">:</span></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">size_t</span> <span class="kw">operator</span><span class="op">()(</span><span class="bu">std::</span>stop_source<span class="op">&amp;</span> stopper<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">static</span> <span class="dt">size_t</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>i <span class="op">&lt;</span> <span class="dv">42</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> i<span class="op">++;</span></span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>    stopper<span class="op">.</span>request_stop<span class="op">();</span></span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="bu">UL</span><span class="op">;</span></span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-19"><a href="#cb23-19" aria-hidden="true" tabindex="-1"></a><span class="co">// Function object to transform data items</span></span>
+<span id="cb23-20"><a href="#cb23-20" aria-hidden="true" tabindex="-1"></a><span class="co">// This trivial function simply propagates its input to its output</span></span>
+<span id="cb23-21"><a href="#cb23-21" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span> InItem <span class="op">=</span> <span class="dt">size_t</span><span class="op">,</span> <span class="kw">class</span> OutItem <span class="op">=</span> InItem<span class="op">&gt;</span></span>
+<span id="cb23-22"><a href="#cb23-22" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> function <span class="op">{</span></span>
+<span id="cb23-23"><a href="#cb23-23" aria-hidden="true" tabindex="-1"></a> <span class="kw">public</span><span class="op">:</span></span>
+<span id="cb23-24"><a href="#cb23-24" aria-hidden="true" tabindex="-1"></a>  OutItem <span class="kw">operator</span><span class="op">()(</span><span class="at">const</span> InItem<span class="op">&amp;</span> in<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb23-25"><a href="#cb23-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> in<span class="op">;</span></span>
+<span id="cb23-26"><a href="#cb23-26" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb23-27"><a href="#cb23-27" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb23-28"><a href="#cb23-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-29"><a href="#cb23-29" aria-hidden="true" tabindex="-1"></a><span class="co">// Sink function object to absorb data items</span></span>
+<span id="cb23-30"><a href="#cb23-30" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span> Item <span class="op">=</span> <span class="dt">size_t</span><span class="op">&gt;</span></span>
+<span id="cb23-31"><a href="#cb23-31" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> sink_function <span class="op">{</span></span>
+<span id="cb23-32"><a href="#cb23-32" aria-hidden="true" tabindex="-1"></a> <span class="kw">public</span><span class="op">:</span></span>
+<span id="cb23-33"><a href="#cb23-33" aria-hidden="true" tabindex="-1"></a>  <span class="dt">void</span> <span class="kw">operator</span><span class="op">()(</span>Item<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb23-34"><a href="#cb23-34" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb23-35"><a href="#cb23-35" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb23-36"><a href="#cb23-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-37"><a href="#cb23-37" aria-hidden="true" tabindex="-1"></a><span class="co">// Function to generate items.  Generates a sequence of numbers until a </span></span>
+<span id="cb23-38"><a href="#cb23-38" aria-hidden="true" tabindex="-1"></a><span class="co">// limit is reached, at which point a stop is requested.  See above</span></span>
+<span id="cb23-39"><a href="#cb23-39" aria-hidden="true" tabindex="-1"></a><span class="co">// for description of stopping.</span></span>
+<span id="cb23-40"><a href="#cb23-40" aria-hidden="true" tabindex="-1"></a><span class="dt">size_t</span> actual_source_function<span class="op">(</span><span class="bu">std::</span>stop_source<span class="op"> </span>stop_source<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb23-41"><a href="#cb23-41" aria-hidden="true" tabindex="-1"></a>  <span class="at">static</span> <span class="dt">size_t</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb23-42"><a href="#cb23-42" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> <span class="op">(</span>i <span class="op">&lt;</span> <span class="dv">42</span><span class="op">)</span> <span class="op">{}</span></span>
+<span id="cb23-43"><a href="#cb23-43" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> i<span class="op">++;</span></span>
+<span id="cb23-44"><a href="#cb23-44" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb23-45"><a href="#cb23-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-46"><a href="#cb23-46" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Initiate stopping execution of the graph</span></span>
+<span id="cb23-47"><a href="#cb23-47" aria-hidden="true" tabindex="-1"></a>  stop_source<span class="op">.</span>request_stop<span class="op">();</span></span>
+<span id="cb23-48"><a href="#cb23-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-49"><a href="#cb23-49" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Return to make compiler happy. The return value is ignored and</span></span>
+<span id="cb23-50"><a href="#cb23-50" aria-hidden="true" tabindex="-1"></a>  <span class="co">// not sent into the graph</span></span>
+<span id="cb23-51"><a href="#cb23-51" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb23-52"><a href="#cb23-52" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="create-graph-nodes" class="level3">
+<h3 class="anchored" data-anchor-id="create-graph-nodes">Create Graph Nodes</h3>
+<div class="sourceCode" id="cb24"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Create nodes</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>ProducerNode a<span class="op">{</span>actual_source_function<span class="op">};</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>FunctionNode b<span class="op">{</span>function<span class="op">{}};</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>FunctionNode c<span class="op">{[](</span><span class="dt">size_t</span> i<span class="op">)</span> <span class="op">(</span> <span class="cf">return</span> i<span class="op">;</span> <span class="op">};</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>ConsumerNode d<span class="op">{</span>sink_function<span class="op">{}};</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="connect-graph-nodes-with-edges" class="level3">
+<h3 class="anchored" data-anchor-id="connect-graph-nodes-with-edges">Connect Graph Nodes with Edges</h3>
+<div class="sourceCode" id="cb25"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Connect a to b</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>Edge f<span class="op">{</span>a<span class="op">,</span> b<span class="op">};</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Connect b to c</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>Edge g<span class="op">{</span>b<span class="op">,</span> c<span class="op">};</span></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a><span class="co">// Connect c to d</span></span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>Edge h<span class="op">{</span>c<span class="op">,</span> d<span class="op">};</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="execute-the-graph" class="level3">
+<h3 class="anchored" data-anchor-id="execute-the-graph">Execute the Graph</h3>
+<div class="sourceCode" id="cb26"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Run the primitive graph</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>BountifulScheduler sched<span class="op">;</span>  <span class="co">// Could also use throw_catchSchedular</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Until we have an actual `graph` class, we can submit a primitive</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="co">// graph for execution by submitting its nodes</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>sched<span class="op">.</span>submit<span class="op">(</span>a<span class="op">,</span> b<span class="op">,</span> c<span class="op">,</span> d<span class="op">);</span></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a><span class="co">// Wait on completion of the graph's execution</span></span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>sched<span class="op">.</span>sync_wait_all<span class="op">();</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="an-emulated-scheduler" class="level3">
+<h3 class="anchored" data-anchor-id="an-emulated-scheduler">An Emulated Scheduler</h3>
+<p>We can also emulate a bountiful scheduler, where we run each node inside of an asynchronous task. The <code>run</code> member function of a node invokes the node continually until stop is invoked.</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="co">// Task to invoke `ProducerNode a`.  Invoke stop after `rounds` iterations.</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> fun_a <span class="op">=</span> <span class="op">[&amp;]()</span> <span class="op">{</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  a<span class="op">.</span>run<span class="op">();</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a><span class="co">// Task to invoke `FunctionNode b`.  Run until stopped.</span></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> fun_b <span class="op">=</span> <span class="op">[&amp;]()</span> <span class="op">{</span></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>  b<span class="op">.</span>run<span class="op">();</span></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a><span class="co">// Task to invoke `ConsumerNode c`.  Run until stopped.</span></span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> fun_c <span class="op">=</span> <span class="op">[&amp;]()</span> <span class="op">{</span></span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>  c<span class="op">.</span>run<span class="op">();</span></span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a><span class="co">// Task to invoke `ConsumerNode c`.  Run until stopped.</span></span>
+<span id="cb27-18"><a href="#cb27-18" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> fun_d <span class="op">=</span> <span class="op">[&amp;]()</span> <span class="op">{</span></span>
+<span id="cb27-19"><a href="#cb27-19" aria-hidden="true" tabindex="-1"></a>  d<span class="op">.</span>run<span class="op">();</span></span>
+<span id="cb27-20"><a href="#cb27-20" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb27-21"><a href="#cb27-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-22"><a href="#cb27-22" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> fut_a <span class="op">=</span> <span class="bu">std::</span>async<span class="op">(</span><span class="bu">std::</span>launch<span class="bu">::</span>async<span class="op">,</span> fun_a<span class="op">);</span></span>
+<span id="cb27-23"><a href="#cb27-23" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> fut_b <span class="op">=</span> <span class="bu">std::</span>async<span class="op">(</span><span class="bu">std::</span>launch<span class="bu">::</span>async<span class="op">,</span> fun_b<span class="op">);</span></span>
+<span id="cb27-24"><a href="#cb27-24" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> fut_c <span class="op">=</span> <span class="bu">std::</span>async<span class="op">(</span><span class="bu">std::</span>launch<span class="bu">::</span>async<span class="op">,</span> fun_c<span class="op">);</span></span>
+<span id="cb27-25"><a href="#cb27-25" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> fut_d <span class="op">=</span> <span class="bu">std::</span>async<span class="op">(</span><span class="bu">std::</span>launch<span class="bu">::</span>async<span class="op">,</span> fun_d<span class="op">);</span></span>
+<span id="cb27-26"><a href="#cb27-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-27"><a href="#cb27-27" aria-hidden="true" tabindex="-1"></a><span class="co">// Wait for completion</span></span>
+<span id="cb27-28"><a href="#cb27-28" aria-hidden="true" tabindex="-1"></a>fut_a<span class="op">.</span>get<span class="op">();</span></span>
+<span id="cb27-29"><a href="#cb27-29" aria-hidden="true" tabindex="-1"></a>fut_b<span class="op">.</span>get<span class="op">();</span></span>
+<span id="cb27-30"><a href="#cb27-30" aria-hidden="true" tabindex="-1"></a>fut_c<span class="op">.</span>get<span class="op">();</span></span>
+<span id="cb27-31"><a href="#cb27-31" aria-hidden="true" tabindex="-1"></a>fut_d<span class="op">.</span>get<span class="op">();</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+</section>
+<section id="appendix" class="level2">
+<h2 class="anchored" data-anchor-id="appendix">Appendix</h2>
+<p>The basic idea of the updated API is to allow task graph nodes to be created with following simplified syntax:</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span> Item<span class="op">&gt;</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">class</span> ProducerNode<span class="op">;</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">auto</span> node <span class="op">=</span> ProducerNode<span class="op">{</span>function<span class="op">};</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>where <code>function</code> is an appropriately defined function for execution in the task graphs. Note that the template parameter for <code>ProducerNode</code> does not have to be explicitly specified. Rather, it is deduced (via a library-defined deduction rule) from the type of <code>function</code>.</p>
+<p>The previous API for task graph nodes was</p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">template</span> <span class="op">&lt;</span><span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span><span class="op">&gt;</span> <span class="kw">class</span> Mover<span class="op">,</span> <span class="kw">class</span> Item<span class="op">&gt;</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">class</span> ProducerNode<span class="op">;</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">auto</span> node <span class="op">=</span> ProducerNode<span class="op">{</span>function<span class="op">};</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>which would require the <code>Mover</code> type to be specified (<code>Item</code> could still be deduced). There are two ways to achieve the simplified API. One, as above, is to define task graph nodes as taking only one interface, and allowing the <code>Mover</code> to be an abstract base class within the node class, which would be set when the <code>Edge</code> connects two nodes. This will add a small bit of overhead to each call to the <code>Mover</code>, which may or may not be significant. There is also a slight entanglement of all of the node classes with the <code>Mover</code> class (a slight lessening of the separation of concerns). In the templated case, the node classes do not need to “know” about the <code>Mover</code> class until instantiation time.</p>
+<p>With the templated API, the <code>Mover</code> does not need to be an abstract base class. To eliminate having to specify the <code>Mover</code> at each node instantiation, we could do something like the following: The previous API for task graph nodes was</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">template</span> <span class="op">&lt;</span><span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span><span class="op">&gt;</span> <span class="kw">class</span> Mover<span class="op">,</span> <span class="kw">class</span> Item<span class="op">&gt;</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">class</span> GraphProducerNode<span class="op">;</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">template</span> <span class="op">&lt;</span><span class="kw">class</span> Item<span class="op">&gt;</span></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">using</span> ProducerNode <span class="op">=</span> GraphProducerNode<span class="op">&lt;</span>DefaultMover<span class="op">,</span> Item<span class="op">&gt;;</span></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">auto</span> node <span class="op">=</span> ProducerNode<span class="op">{</span>function<span class="op">};</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Here, <code>DefaultMover</code> is a concrete class. With this approach, if one wanted to used different types of concrete <code>Mover</code> classes, one would need define type aliases for different instantiations with the <code>GraphProducerNode</code>.</p>
+<p>All in all, the first approach (using <code>Mover</code> as an abstract base class) seems to be the cleanest and will be the approach taken. The task graph API will be revised accordingly.</p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
