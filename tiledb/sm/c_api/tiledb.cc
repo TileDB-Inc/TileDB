@@ -6329,6 +6329,17 @@ int32_t tiledb_consolidation_plan_get_fragment_uri(
   return TILEDB_OK;
 }
 
+int32_t tiledb_consolidation_plan_dump(
+    tiledb_ctx_t* ctx,
+    const tiledb_consolidation_plan_t* consolidation_plan,
+    FILE* out) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, consolidation_plan) == TILEDB_ERR)
+    return TILEDB_ERR;
+  consolidation_plan->consolidation_plan_->dump(out);
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 /* ****************************** */
@@ -9326,4 +9337,12 @@ int32_t tiledb_consolidation_plan_get_fragment_uri(
     const char** uri) noexcept {
   return api_entry<tiledb::api::tiledb_consolidation_plan_get_fragment_uri>(
       ctx, consolidation_plan, node_index, fragment_index, uri);
+}
+
+int32_t tiledb_consolidation_plan_dump(
+    tiledb_ctx_t* ctx,
+    const tiledb_consolidation_plan_t* consolidation_plan,
+    FILE* out) noexcept {
+  return api_entry<tiledb::api::tiledb_consolidation_plan_dump>(
+      ctx, consolidation_plan, out);
 }

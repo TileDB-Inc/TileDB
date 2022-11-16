@@ -184,7 +184,9 @@ void ConsolidationPlanFx::check_last_error(std::string expected) {
 }
 
 TEST_CASE_METHOD(
-    ConsolidationPlanFx, "Consolidation plan", "[capi][consolidation_plan]") {
+    ConsolidationPlanFx,
+    "CAPI: Consolidation plan",
+    "[capi][consolidation_plan]") {
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
@@ -218,6 +220,41 @@ TEST_CASE_METHOD(
   CHECK(frag_uri == nullptr);
   check_last_error(
       "Error: ConsolidationPlan: Trying to access a node that doesn't exists");
+
+  tiledb_consolidation_plan_free(&consolidation_plan);
+}
+
+TEST_CASE_METHOD(
+    ConsolidationPlanFx,
+    "CAPI: Consolidation plan dump",
+    "[capi][consolidation_plan][dump]") {
+  create_sparse_array();
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+
+  Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
+
+  tiledb_consolidation_plan_t* consolidation_plan;
+  CHECK(
+      TILEDB_OK ==
+      tiledb_consolidation_plan_alloc(
+          ctx_.ptr().get(), array.ptr().get(), &consolidation_plan));
+
+  // Check dump
+  std::string dump_str = "Not implemented\n";
+  FILE* gold_fout = fopen("gold_fout.txt", "w");
+  const char* dump = dump_str.c_str();
+  fwrite(dump, sizeof(char), strlen(dump), gold_fout);
+  fclose(gold_fout);
+  FILE* fout = fopen("fout.txt", "w");
+  tiledb_consolidation_plan_dump(ctx_.ptr().get(), consolidation_plan, fout);
+  fclose(fout);
+#ifdef _WIN32
+  CHECK(!system("FC gold_fout.txt fout.txt > nul"));
+#else
+  CHECK(!system("diff gold_fout.txt fout.txt"));
+#endif
+  CHECK_NOTHROW(vfs_.remove_file("gold_fout.txt"));
+  CHECK_NOTHROW(vfs_.remove_file("fout.txt"));
 
   tiledb_consolidation_plan_free(&consolidation_plan);
 }

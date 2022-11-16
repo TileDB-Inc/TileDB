@@ -183,7 +183,7 @@ void CppConsolidationPlanFx::check_last_error(std::string expected) {
 
 TEST_CASE_METHOD(
     CppConsolidationPlanFx,
-    "Consolidation plan",
+    "C++ API: Consolidation plan",
     "[cppapi][consolidation_plan]") {
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -201,4 +201,32 @@ TEST_CASE_METHOD(
   CHECK_THROWS_WITH(
       consolidation_plan.fragment_uri(0, 0),
       "Error: ConsolidationPlan: Trying to access a node that doesn't exists");
+}
+
+TEST_CASE_METHOD(
+    CppConsolidationPlanFx,
+    "C++ API: Consolidation plan dump",
+    "[cppapi][consolidation_plan][dump]") {
+  create_sparse_array();
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+
+  Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
+  ConsolidationPlan consolidation_plan(ctx_, array);
+
+  // Check dump
+  std::string dump_str = "Not implemented\n";
+  FILE* gold_fout = fopen("gold_fout.txt", "w");
+  const char* dump = dump_str.c_str();
+  fwrite(dump, sizeof(char), strlen(dump), gold_fout);
+  fclose(gold_fout);
+  FILE* fout = fopen("fout.txt", "w");
+  consolidation_plan.dump(fout);
+  fclose(fout);
+#ifdef _WIN32
+  CHECK(!system("FC gold_fout.txt fout.txt > nul"));
+#else
+  CHECK(!system("diff gold_fout.txt fout.txt"));
+#endif
+  CHECK_NOTHROW(vfs_.remove_file("gold_fout.txt"));
+  CHECK_NOTHROW(vfs_.remove_file("fout.txt"));
 }

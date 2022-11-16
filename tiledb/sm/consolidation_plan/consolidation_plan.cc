@@ -53,6 +53,16 @@ ConsolidationPlan::~ConsolidationPlan() = default;
 /*                API                */
 /* ********************************* */
 
+void ConsolidationPlan::dump(FILE* out) const {
+  if (out == nullptr) {
+    out = stdout;
+  }
+
+  std::stringstream ss;
+  ss << "Not implemented\n";
+  fprintf(out, "%s", ss.str().c_str());
+}
+
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */

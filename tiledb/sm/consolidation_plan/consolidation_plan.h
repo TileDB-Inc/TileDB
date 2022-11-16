@@ -101,6 +101,8 @@ class ConsolidationPlan {
     return fragment_uris_[node_idx][fragment_idx].c_str();
   }
 
+  void dump(FILE* out) const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

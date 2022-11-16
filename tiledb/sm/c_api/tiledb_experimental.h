@@ -1339,6 +1339,27 @@ TILEDB_EXPORT int32_t tiledb_consolidation_plan_get_fragment_uri(
     uint64_t fragment_index,
     const char** uri) TILEDB_NOEXCEPT;
 
+/**
+ * Dumps the consolidation plan in JSON format in the selected output.
+ *
+ * **Example:**
+ *
+ * The following prints the consolidation plan dump in standard output.
+ *
+ * @code{.c}
+ * tiledb_consolidation_plan_dump(ctx, consolidation_plan, stdout);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param consolidation_plan The consolidation plan.
+ * @param out The output.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_dump(
+    tiledb_ctx_t* ctx,
+    const tiledb_consolidation_plan_t* consolidation_plan,
+    FILE* out) TILEDB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif

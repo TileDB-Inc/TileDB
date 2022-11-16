@@ -110,6 +110,18 @@ class ConsolidationPlan {
     return std::string(uri_c);
   }
 
+  /**
+   * Dumps the consolidation plan in a JSON representation to an output.
+   *
+   * @param out (Optional) File to dump output to. Defaults to `nullptr`
+   * which will lead to selection of `stdout`.
+   */
+  void dump(FILE* out = nullptr) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_consolidation_plan_dump(
+        ctx.ptr().get(), consolidation_plan_.get(), out));
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
