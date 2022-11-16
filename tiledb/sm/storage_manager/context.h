@@ -37,6 +37,7 @@
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <mutex>
@@ -93,14 +94,19 @@ class Context {
     return &storage_manager_;
   }
 
+  [[nodiscard]] inline ContextResources& resources() const {
+    return resources_;
+  }
+
   /** Returns the thread pool for compute-bound tasks. */
-  ThreadPool* compute_tp() const;
+  [[nodiscard]] inline ThreadPool* compute_tp() const {
+    return &(resources_.compute_tp());
+  }
 
   /** Returns the thread pool for io-bound tasks. */
-  ThreadPool* io_tp() const;
-
-  /** Returns the internal stats object. */
-  stats::Stats* stats() const;
+  [[nodiscard]] inline ThreadPool* io_tp() const {
+    return &(resources_.io_tp());
+  }
 
  private:
   /* ********************************* */
@@ -130,14 +136,8 @@ class Context {
    */
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
-  /** The thread pool for compute-bound tasks. */
-  mutable ThreadPool compute_tp_;
-
-  /** The thread pool for io-bound tasks. */
-  mutable ThreadPool io_tp_;
-
-  /** The class stats. */
-  shared_ptr<stats::Stats> stats_;
+  /** The class resources. */
+  mutable ContextResources resources_;
 
   /**
    * The storage manager.
