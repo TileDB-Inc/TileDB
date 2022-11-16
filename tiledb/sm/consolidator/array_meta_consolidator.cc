@@ -162,12 +162,9 @@ void ArrayMetaConsolidator::vacuum(const char* array_name) {
       0,
       std::numeric_limits<uint64_t>::max());
 
-  auto array_meta_uris_to_vacuum = array_dir.array_meta_uris_to_vacuum();
-  auto vac_uris_to_vacuum = array_dir.array_meta_vac_uris_to_vacuum();
-
   // Delete the array metadata and vacuum files
-  vfs->remove_files(compute_tp, array_meta_uris_to_vacuum);
-  vfs->remove_files(compute_tp, vac_uris_to_vacuum);
+  vfs->remove_files(compute_tp, array_dir.array_meta_uris_to_vacuum());
+  vfs->remove_files(compute_tp, array_dir.array_meta_vac_uris_to_vacuum());
 }
 
 /* ****************************** */

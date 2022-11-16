@@ -502,7 +502,8 @@ Status VFS::remove_file(const URI& uri) const {
       Status_VFSError("Unsupported URI scheme: " + uri.to_string()));
 }
 
-void VFS::remove_files(ThreadPool* compute_tp, std::vector<URI>& uris) const {
+void VFS::remove_files(
+    ThreadPool* compute_tp, const std::vector<URI>& uris) const {
   throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
     RETURN_NOT_OK(remove_file(uris[i]));
     return Status::Ok();
@@ -510,7 +511,7 @@ void VFS::remove_files(ThreadPool* compute_tp, std::vector<URI>& uris) const {
 }
 
 void VFS::remove_files(
-    ThreadPool* compute_tp, std::vector<TimestampedURI>& uris) const {
+    ThreadPool* compute_tp, const std::vector<TimestampedURI>& uris) const {
   throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
     RETURN_NOT_OK(remove_file(uris[i].uri_));
     return Status::Ok();

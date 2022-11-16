@@ -120,13 +120,10 @@ void CommitsConsolidator::vacuum(const char* array_name) {
       utils::time::timestamp_now_ms(),
       ArrayDirectoryMode::COMMITS);
 
-  auto commits_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
-  auto consolidated_commits_uris_to_vacuum =
-      array_dir.consolidated_commits_uris_to_vacuum();
-
   // Delete the commits and vacuum files
-  vfs->remove_files(compute_tp, commits_uris_to_vacuum);
-  vfs->remove_files(compute_tp, consolidated_commits_uris_to_vacuum);
+  vfs->remove_files(compute_tp, array_dir.commit_uris_to_vacuum());
+  vfs->remove_files(
+      compute_tp, array_dir.consolidated_commits_uris_to_vacuum());
 }
 
 }  // namespace tiledb::sm

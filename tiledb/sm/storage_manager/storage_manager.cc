@@ -626,16 +626,11 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
       0,
       std::numeric_limits<uint64_t>::max());
 
-  // Get the metadata and schema uris to be deleted
-  // Note: metadata files may not be present, try to delete anyway
-  auto array_meta_uris = array_dir.array_meta_uris();
-  auto fragment_meta_uris = array_dir.fragment_meta_uris();
-  auto array_schema_uris = array_dir.array_schema_uris();
-
   // Delete array metadata, fragment metadata and array schema files
-  vfs_->remove_files(compute_tp_, array_meta_uris);
-  vfs_->remove_files(compute_tp_, fragment_meta_uris);
-  vfs_->remove_files(compute_tp_, array_schema_uris);
+  // Note: metadata files may not be present, try to delete anyway
+  vfs_->remove_files(compute_tp_, array_dir.array_meta_uris());
+  vfs_->remove_files(compute_tp_, array_dir.fragment_meta_uris());
+  vfs_->remove_files(compute_tp_, array_dir.array_schema_uris());
 }
 
 Status StorageManagerCanonical::delete_fragments(
@@ -699,19 +694,12 @@ void StorageManagerCanonical::delete_group(const char* group_name) {
       0,
       std::numeric_limits<uint64_t>::max());
 
-  auto group_detail_uris = group_dir.group_detail_uris();
-  auto group_meta_uris = group_dir.group_meta_uris();
-  auto group_meta_uris_to_vacuum = group_dir.group_meta_uris_to_vacuum();
-  auto group_meta_vac_uris_to_vacuum =
-      group_dir.group_meta_vac_uris_to_vacuum();
-  auto group_file_uris = group_dir.group_file_uris();
-
   // Delete the group detail, group metadata and group files
-  vfs_->remove_files(compute_tp_, group_detail_uris);
-  vfs_->remove_files(compute_tp_, group_meta_uris);
-  vfs_->remove_files(compute_tp_, group_meta_uris_to_vacuum);
-  vfs_->remove_files(compute_tp_, group_meta_vac_uris_to_vacuum);
-  vfs_->remove_files(compute_tp_, group_file_uris);
+  vfs_->remove_files(compute_tp_, group_dir.group_detail_uris());
+  vfs_->remove_files(compute_tp_, group_dir.group_meta_uris());
+  vfs_->remove_files(compute_tp_, group_dir.group_meta_uris_to_vacuum());
+  vfs_->remove_files(compute_tp_, group_dir.group_meta_vac_uris_to_vacuum());
+  vfs_->remove_files(compute_tp_, group_dir.group_file_uris());
 }
 
 void StorageManagerCanonical::array_vacuum(
