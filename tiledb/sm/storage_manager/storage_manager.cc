@@ -87,18 +87,14 @@ namespace sm {
 /* ****************************** */
 
 StorageManagerCanonical::StorageManagerCanonical(
-    ThreadPool* const compute_tp,
-    ThreadPool* const io_tp,
-    stats::Stats* const parent_stats,
+    ContextResources& resources,
     shared_ptr<Logger> logger,
     const Config& config)
-    : stats_(parent_stats->create_child("StorageManager"))
+    : resources_(resources)
     , logger_(logger)
     , cancellation_in_progress_(false)
     , config_(config)
     , queries_in_progress_(0)
-    , compute_tp_(compute_tp)
-    , io_tp_(io_tp)
     , vfs_(nullptr) {
   /*
    * This is a transitional version the implementation of this constructor. To
@@ -118,12 +114,13 @@ Status StorageManagerCanonical::init() {
   tile_cache_ =
       tdb_unique_ptr<BufferLRUCache>(tdb_new(BufferLRUCache, tile_cache_size));
 
+
   // GlobalState must be initialized before `vfs->init` because S3::init calls
   // GetGlobalState
   auto& global_state = global_state::GlobalState::GetGlobalState();
   RETURN_NOT_OK(global_state.init(config_));
 
-  vfs_ = tdb_new(VFS, stats_, compute_tp_, io_tp_, config_);
+  vfs_ = tdb_new(VFS, stats(), compute_tp(), io_tp(), config_);
 #ifdef TILEDB_SERIALIZATION
   RETURN_NOT_OK(init_rest_client());
 #endif
@@ -215,7 +212,7 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
     MemoryTracker* memory_tracker,
     const EncryptionKey& enc_key) {
   auto timer_se =
-      stats_->start_timer("sm_load_array_schemas_and_fragment_metadata");
+      stats()->start_timer("sm_load_array_schemas_and_fragment_metadata");
 
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
@@ -231,7 +228,7 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
   std::vector<Buffer> f_buffs(meta_uris.size());
   std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
       meta_uris.size());
-  auto status = parallel_for(compute_tp_, 0, meta_uris.size(), [&](size_t i) {
+  auto status = parallel_for(compute_tp(), 0, meta_uris.size(), [&](size_t i) {
     auto&& [st, buffer_opt, offsets] =
         load_consolidated_fragment_meta(meta_uris[i], enc_key);
     RETURN_NOT_OK(st);
@@ -284,7 +281,7 @@ tuple<
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
     optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManagerCanonical::array_open_for_reads(Array* array) {
-  auto timer_se = stats_->start_timer("array_open_for_reads");
+  auto timer_se = stats()->start_timer("array_open_for_reads");
   auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
       load_array_schemas_and_fragment_metadata(
           array->array_directory(),
@@ -305,7 +302,7 @@ tuple<
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManagerCanonical::array_open_for_reads_without_fragments(Array* array) {
   auto timer_se =
-      stats_->start_timer("sm_array_open_for_reads_without_fragments");
+      stats()->start_timer("sm_array_open_for_reads_without_fragments");
 
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
@@ -370,7 +367,7 @@ StorageManagerCanonical::array_open_for_writes(Array* array) {
 tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManagerCanonical::array_load_fragments(
     Array* array, const std::vector<TimestampedURI>& fragments_to_load) {
-  auto timer_se = stats_->start_timer("array_load_fragments");
+  auto timer_se = stats()->start_timer("array_load_fragments");
 
   // Load the fragment metadata
   std::unordered_map<std::string, std::pair<Buffer*, uint64_t>> offsets;
@@ -392,7 +389,7 @@ tuple<
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
     optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManagerCanonical::array_reopen(Array* array) {
-  auto timer_se = stats_->start_timer("read_array_open");
+  auto timer_se = stats()->start_timer("read_array_open");
   return array_open_for_reads(array);
 }
 
@@ -571,7 +568,7 @@ void StorageManagerCanonical::write_consolidated_commits_file(
     // the size variable.
     if (stdx::string::ends_with(
             uri.to_string(), constants::delete_file_suffix)) {
-      throw_if_not_ok(this->vfs()->file_size(uri, &file_sizes[i]));
+      throw_if_not_ok(this->vfs_->file_size(uri, &file_sizes[i]));
       total_size += file_sizes[i];
       total_size += sizeof(storage_size_t);
     }
@@ -593,7 +590,7 @@ void StorageManagerCanonical::write_consolidated_commits_file(
       memcpy(&data[file_index], &file_sizes[i], sizeof(storage_size_t));
       file_index += sizeof(storage_size_t);
       throw_if_not_ok(
-          this->vfs()->read(uri, 0, &data[file_index], file_sizes[i]));
+          this->vfs_->read(uri, 0, &data[file_index], file_sizes[i]));
       file_index += file_sizes[i];
     }
   }
@@ -603,8 +600,8 @@ void StorageManagerCanonical::write_consolidated_commits_file(
       array_dir.get_commits_dir(write_version)
           .join_path(name.value() + constants::con_commits_file_suffix);
   throw_if_not_ok(
-      this->vfs()->write(consolidated_commits_uri, data.data(), data.size()));
-  throw_if_not_ok(this->vfs()->close_file(consolidated_commits_uri));
+      this->vfs_->write(consolidated_commits_uri, data.data(), data.size()));
+  throw_if_not_ok(this->vfs_->close_file(consolidated_commits_uri));
 }
 
 void StorageManagerCanonical::delete_array(const char* array_name) {
@@ -619,7 +616,7 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
 
   auto array_dir = ArrayDirectory(
       vfs_,
-      compute_tp_,
+      compute_tp(),
       URI(array_name),
       0,
       std::numeric_limits<uint64_t>::max());
@@ -632,7 +629,7 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
 
   // Delete array metadata files
   auto status =
-      parallel_for(compute_tp_, 0, array_meta_uris.size(), [&](size_t i) {
+      parallel_for(compute_tp(), 0, array_meta_uris.size(), [&](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(array_meta_uris[i].uri_));
         return Status::Ok();
       });
@@ -640,7 +637,7 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
 
   // Delete fragment metadata files
   status =
-      parallel_for(compute_tp_, 0, fragment_meta_uris.size(), [&](size_t i) {
+      parallel_for(compute_tp(), 0, fragment_meta_uris.size(), [&](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(fragment_meta_uris[i]));
         return Status::Ok();
       });
@@ -648,7 +645,7 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
 
   // Delete array schema files
   status =
-      parallel_for(compute_tp_, 0, array_schema_uris.size(), [&](size_t i) {
+      parallel_for(compute_tp(), 0, array_schema_uris.size(), [&](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(array_schema_uris[i]));
         return Status::Ok();
       });
@@ -664,7 +661,7 @@ Status StorageManagerCanonical::delete_fragments(
   }
 
   auto array_dir = ArrayDirectory(
-      vfs_, compute_tp_, URI(array_name), timestamp_start, timestamp_end);
+      vfs_, compute_tp(), URI(array_name), timestamp_start, timestamp_end);
 
   // Get the fragment URIs to be deleted
   auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
@@ -893,7 +890,7 @@ Status StorageManager::array_evolve_schema(
 
   // Load URIs from the array directory
   tiledb::sm::ArrayDirectory array_dir{
-      this->vfs(),
+      this->vfs_,
       this->io_tp(),
       array_uri,
       0,
@@ -936,7 +933,7 @@ Status StorageManagerCanonical::array_upgrade_version(
 
   // Load URIs from the array directory
   tiledb::sm::ArrayDirectory array_dir{
-      this->vfs(),
+      this->vfs_,
       this->io_tp(),
       array_uri,
       0,
@@ -1321,7 +1318,7 @@ Status StorageManagerCanonical::array_get_encryption(
 
 Status StorageManagerCanonical::async_push_query(Query* query) {
   cancelable_tasks_.execute(
-      compute_tp_,
+      compute_tp(),
       [this, query]() {
         // Process query.
         Status st = query_submit(query);
@@ -1481,11 +1478,11 @@ Status StorageManagerCanonical::group_create(const std::string& group_uri) {
 }
 
 ThreadPool* StorageManagerCanonical::compute_tp() const {
-  return compute_tp_;
+  return resources_.compute_tp();
 }
 
 ThreadPool* StorageManagerCanonical::io_tp() const {
-  return io_tp_;
+  return resources_.io_tp();
 }
 
 RestClient* StorageManagerCanonical::rest_client() const {
@@ -1555,14 +1552,14 @@ Status StorageManagerCanonical::is_group(const URI& uri, bool* is_group) const {
 tuple<Status, optional<shared_ptr<ArraySchema>>>
 StorageManagerCanonical::load_array_schema_from_uri(
     const URI& schema_uri, const EncryptionKey& encryption_key) {
-  auto timer_se = stats_->start_timer("sm_load_array_schema_from_uri");
+  auto timer_se = stats()->start_timer("sm_load_array_schema_from_uri");
 
   auto&& [st, tile_opt] =
       load_data_from_generic_tile(schema_uri, 0, encryption_key);
   RETURN_NOT_OK_TUPLE(st, nullopt);
   auto& tile = *tile_opt;
 
-  stats_->add_counter("read_array_schema_size", tile.size());
+  stats()->add_counter("read_array_schema_size", tile.size());
 
   // Deserialize
   Deserializer deserializer(tile.data(), tile.size());
@@ -1579,7 +1576,7 @@ StorageManagerCanonical::load_array_schema_from_uri(
 tuple<Status, optional<shared_ptr<ArraySchema>>>
 StorageManagerCanonical::load_array_schema_latest(
     const ArrayDirectory& array_dir, const EncryptionKey& encryption_key) {
-  auto timer_se = stats_->start_timer("sm_load_array_schema_latest");
+  auto timer_se = stats()->start_timer("sm_load_array_schema_latest");
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
@@ -1623,7 +1620,7 @@ tuple<
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManagerCanonical::load_all_array_schemas(
     const ArrayDirectory& array_dir, const EncryptionKey& encryption_key) {
-  auto timer_se = stats_->start_timer("sm_load_all_array_schemas");
+  auto timer_se = stats()->start_timer("sm_load_all_array_schemas");
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
@@ -1643,7 +1640,7 @@ StorageManagerCanonical::load_all_array_schemas(
   schema_vector.resize(schema_num);
 
   auto status =
-      parallel_for(compute_tp_, 0, schema_num, [&](size_t schema_ith) {
+      parallel_for(compute_tp(), 0, schema_num, [&](size_t schema_ith) {
         auto& schema_uri = schema_uris[schema_ith];
         try {
           auto&& [st, array_schema] =
@@ -1671,7 +1668,7 @@ void StorageManagerCanonical::load_array_metadata(
     const ArrayDirectory& array_dir,
     const EncryptionKey& encryption_key,
     Metadata* metadata) {
-  auto timer_se = stats_->start_timer("sm_load_array_metadata");
+  auto timer_se = stats()->start_timer("sm_load_array_metadata");
 
   // Special case
   if (metadata == nullptr) {
@@ -1683,7 +1680,7 @@ void StorageManagerCanonical::load_array_metadata(
 
   auto metadata_num = array_metadata_to_load.size();
   std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
-  auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
+  auto status = parallel_for(compute_tp(), 0, metadata_num, [&](size_t m) {
     const auto& uri = array_metadata_to_load[m].uri_;
 
     auto&& [st, tile] = load_data_from_generic_tile(uri, 0, encryption_key);
@@ -1700,7 +1697,7 @@ void StorageManagerCanonical::load_array_metadata(
   for (const auto& t : metadata_tiles) {
     meta_size += t->size();
   }
-  stats_->add_counter("read_array_meta_size", meta_size);
+  stats()->add_counter("read_array_meta_size", meta_size);
 
   *metadata = Metadata::deserialize(metadata_tiles);
 
@@ -1717,7 +1714,7 @@ StorageManagerCanonical::load_delete_and_update_conditions(const Array& array) {
   auto conditions = std::vector<QueryCondition>(locations.size());
   auto update_values = std::vector<std::vector<UpdateValue>>(locations.size());
 
-  auto status = parallel_for(compute_tp_, 0, locations.size(), [&](size_t i) {
+  auto status = parallel_for(compute_tp(), 0, locations.size(), [&](size_t i) {
     // Get condition marker.
     auto& uri = locations[i].uri();
 
@@ -2016,7 +2013,7 @@ Status StorageManagerCanonical::store_group_detail(
   Serializer serializer(tile.data(), tile.size());
   group->serialize(serializer);
 
-  stats_->add_counter("write_group_size", tile.size());
+  stats()->add_counter("write_group_size", tile.size());
 
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
@@ -2044,7 +2041,7 @@ Status StorageManagerCanonical::store_array_schema(
   Serializer serializer(tile.data(), tile.size());
   array_schema->serialize(serializer);
 
-  stats_->add_counter("write_array_schema_size", tile.size());
+  stats()->add_counter("write_array_schema_size", tile.size());
 
   // Delete file if it exists already
   bool exists;
@@ -2068,7 +2065,7 @@ Status StorageManagerCanonical::store_array_schema(
 
 Status StorageManagerCanonical::store_metadata(
     const URI& uri, const EncryptionKey& encryption_key, Metadata* metadata) {
-  auto timer_se = stats_->start_timer("write_meta");
+  auto timer_se = stats()->start_timer("write_meta");
 
   // Trivial case
   if (metadata == nullptr)
@@ -2087,7 +2084,7 @@ Status StorageManagerCanonical::store_metadata(
   Serializer serializer(tile.data(), tile.size());
   metadata->serialize(serializer);
 
-  stats_->add_counter("write_meta_size", serializer.size());
+  stats()->add_counter("write_meta_size", serializer.size());
 
   // Create a metadata file name
   URI metadata_uri;
@@ -2135,6 +2132,10 @@ Status StorageManagerCanonical::sync(const URI& uri) {
   return vfs_->sync(uri);
 }
 
+ContextResources& StorageManagerCanonical::resources() const {
+  return resources_;
+}
+
 VFS* StorageManagerCanonical::vfs() const {
   return vfs_;
 }
@@ -2150,7 +2151,7 @@ Status StorageManagerCanonical::init_rest_client() {
   RETURN_NOT_OK(config_.get("rest.server_address", &server_address));
   if (server_address != nullptr) {
     rest_client_.reset(tdb_new(RestClient));
-    RETURN_NOT_OK(rest_client_->init(stats_, &config_, compute_tp_, logger_));
+    RETURN_NOT_OK(rest_client_->init(stats(), &config_, compute_tp(), logger_));
   }
 
   return Status::Ok();
@@ -2185,7 +2186,7 @@ Status StorageManagerCanonical::write(
 }
 
 stats::Stats* StorageManagerCanonical::stats() {
-  return stats_;
+  return resources_.stats();
 }
 
 shared_ptr<Logger> StorageManagerCanonical::logger() const {
@@ -2195,13 +2196,13 @@ shared_ptr<Logger> StorageManagerCanonical::logger() const {
 tuple<Status, optional<shared_ptr<Group>>>
 StorageManagerCanonical::load_group_from_uri(
     const URI& group_uri, const URI& uri, const EncryptionKey& encryption_key) {
-  auto timer_se = stats_->start_timer("sm_load_group_from_uri");
+  auto timer_se = stats()->start_timer("sm_load_group_from_uri");
 
   auto&& [st, tile_opt] = load_data_from_generic_tile(uri, 0, encryption_key);
   RETURN_NOT_OK_TUPLE(st, nullopt);
   auto& tile = *tile_opt;
 
-  stats_->add_counter("read_group_size", tile.size());
+  stats()->add_counter("read_group_size", tile.size());
 
   // Deserialize
   Deserializer deserializer(tile.data(), tile.size());
@@ -2213,7 +2214,7 @@ tuple<Status, optional<shared_ptr<Group>>>
 StorageManagerCanonical::load_group_details(
     const shared_ptr<GroupDirectory>& group_directory,
     const EncryptionKey& encryption_key) {
-  auto timer_se = stats_->start_timer("sm_load_group_details");
+  auto timer_se = stats()->start_timer("sm_load_group_details");
   const URI& latest_group_uri = group_directory->latest_group_details_uri();
   if (latest_group_uri.is_invalid()) {
     // Returning ok because not having the latest group details means the group
@@ -2229,7 +2230,7 @@ std::tuple<
     std::optional<
         const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>>>
 StorageManagerCanonical::group_open_for_reads(Group* group) {
-  auto timer_se = stats_->start_timer("group_open_for_reads");
+  auto timer_se = stats()->start_timer("group_open_for_reads");
 
   // Load group data
   auto&& [st, group_deserialized] =
@@ -2254,7 +2255,7 @@ std::tuple<
     std::optional<
         const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>>>
 StorageManagerCanonical::group_open_for_writes(Group* group) {
-  auto timer_se = stats_->start_timer("group_open_for_writes");
+  auto timer_se = stats()->start_timer("group_open_for_writes");
 
   // Load group data
   auto&& [st, group_deserialized] =
@@ -2278,7 +2279,7 @@ void StorageManagerCanonical::load_group_metadata(
     const shared_ptr<GroupDirectory>& group_dir,
     const EncryptionKey& encryption_key,
     Metadata* metadata) {
-  auto timer_se = stats_->start_timer("sm_load_group_metadata");
+  auto timer_se = stats()->start_timer("sm_load_group_metadata");
 
   // Special case
   if (metadata == nullptr) {
@@ -2291,7 +2292,7 @@ void StorageManagerCanonical::load_group_metadata(
   auto metadata_num = group_metadata_to_load.size();
   // TBD: Might use DynamicArray when it is more capable.
   std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
-  auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
+  auto status = parallel_for(compute_tp(), 0, metadata_num, [&](size_t m) {
     const auto& uri = group_metadata_to_load[m].uri_;
 
     auto&& [st, tile] = load_data_from_generic_tile(uri, 0, encryption_key);
@@ -2308,7 +2309,7 @@ void StorageManagerCanonical::load_group_metadata(
   for (const auto& t : metadata_tiles) {
     meta_size += t->size();
   }
-  stats_->add_counter("read_array_meta_size", meta_size);
+  stats()->add_counter("read_array_meta_size", meta_size);
 
   // Copy the deserialized metadata into the original Metadata object
   *metadata = Metadata::deserialize(metadata_tiles);
@@ -2387,13 +2388,13 @@ StorageManagerCanonical::load_fragment_metadata(
     const std::vector<TimestampedURI>& fragments_to_load,
     const std::unordered_map<std::string, std::pair<Buffer*, uint64_t>>&
         offsets) {
-  auto timer_se = stats_->start_timer("load_fragment_metadata");
+  auto timer_se = stats()->start_timer("load_fragment_metadata");
 
   // Load the metadata for each fragment
   auto fragment_num = fragments_to_load.size();
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata;
   fragment_metadata.resize(fragment_num);
-  auto status = parallel_for(compute_tp_, 0, fragment_num, [&](size_t f) {
+  auto status = parallel_for(compute_tp(), 0, fragment_num, [&](size_t f) {
     const auto& sf = fragments_to_load[f];
 
     URI coords_uri =
@@ -2462,7 +2463,7 @@ tuple<
     optional<std::vector<std::pair<std::string, uint64_t>>>>
 StorageManagerCanonical::load_consolidated_fragment_meta(
     const URI& uri, const EncryptionKey& enc_key) {
-  auto timer_se = stats_->start_timer("read_load_consolidated_frag_meta");
+  auto timer_se = stats()->start_timer("read_load_consolidated_frag_meta");
 
   // No consolidated fragment metadata file
   if (uri.to_string().empty())
@@ -2472,7 +2473,7 @@ StorageManagerCanonical::load_consolidated_fragment_meta(
   RETURN_NOT_OK_TUPLE(st, nullopt, nullopt);
   auto& tile = *tile_opt;
 
-  stats_->add_counter("consolidated_frag_meta_size", tile.size());
+  stats()->add_counter("consolidated_frag_meta_size", tile.size());
 
   Buffer buffer;
   RETURN_NOT_OK_TUPLE(buffer.realloc(tile.size()), nullopt, nullopt);

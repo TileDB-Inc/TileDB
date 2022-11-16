@@ -1,11 +1,11 @@
 /**
- * @file storage_manager_override.cc
+ * @file context_resources.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,51 +27,46 @@
  *
  * @section DESCRIPTION
  *
- * This file declares `class StorageManagerStub`.
+ * This file implements class ContextResources.
  */
 
-#ifndef TILEDB_C_API_TEST_SUPPORT_STORAGE_MANAGER_OVERRIDE_H
-#define TILEDB_C_API_TEST_SUPPORT_STORAGE_MANAGER_OVERRIDE_H
-
-#include <memory>
-#include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 
-namespace tiledb::common {
-class ThreadPool;
-class Logger;
-}  // namespace tiledb::common
-namespace tiledb::stats {
-class Stats;
-}
+using namespace tiledb::common;
+
 namespace tiledb::sm {
-class Config;
-class VFS;
 
-class StorageManagerStub {
-  Config config_;
+/* ****************************** */
+/*   CONSTRUCTORS & DESTRUCTORS   */
+/* ****************************** */
 
- public:
-  static constexpr bool is_overriding_class = true;
-  StorageManagerStub(
-      ContextResources&, std::shared_ptr<common::Logger>, const Config& config)
-      : config_(config) {
-  }
+// PJD: "StorageManager" is not a typo here. I don't want to suddenly
+// change naming conventions in the stats hierarchy. Though I am
+// 100% making the assumption that this label is visible to users.
+ContextResources::ContextResources(
+      size_t compute_thread_count,
+      size_t io_thread_count,
+      stats::Stats* stats)
+    : compute_tp_(compute_thread_count)
+    , io_tp_(io_thread_count)
+    , stats_(stats->create_child("StorageManager")) {
+}
 
-  const Config& config() {
-    return config_;
-  }
-  inline VFS* vfs() {
-    throw std::logic_error("StorageManagerStub does not instantiate a VFS");
-  }
-  inline Status cancel_all_tasks() {
-    return Status{};
-  };
-  inline Status set_tag(const std::string&, const std::string&) {
-    return Status{};
-  }
-};
+/* ****************************** */
+/*                API             */
+/* ****************************** */
+
+ThreadPool* ContextResources::compute_tp() const {
+  return &compute_tp_;
+}
+
+ThreadPool* ContextResources::io_tp() const {
+  return &io_tp_;
+}
+
+stats::Stats* ContextResources::stats() const {
+  return stats_;
+}
 
 }  // namespace tiledb::sm
-
-#endif  // TILEDB_C_API_TEST_SUPPORT_STORAGE_MANAGER_OVERRIDE_H

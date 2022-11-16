@@ -50,10 +50,13 @@ Context::Context(const Config& config)
     : last_error_(nullopt)
     , logger_(make_shared<Logger>(
           HERE(), logger_prefix_ + std::to_string(++logger_id_)))
-    , compute_tp_(get_compute_thread_count(config))
-    , io_tp_(get_io_thread_count(config))
     , stats_(make_shared<stats::Stats>(HERE(), "Context"))
-    , storage_manager_{&compute_tp_, &io_tp_, stats_.get(), logger_, config} {
+    , resources_(
+        get_compute_thread_count(config),
+        get_io_thread_count(config),
+        stats_.get()
+      )
+    , storage_manager_{resources_, logger_, config} {
   /*
    * Logger class is not yet C.41-compliant
    */
@@ -83,12 +86,16 @@ void Context::save_error(const StatusException& st) {
   last_error_ = st.what();
 }
 
+ContextResources& Context::resources() const {
+  return resources_;
+}
+
 ThreadPool* Context::compute_tp() const {
-  return &compute_tp_;
+  return resources_.compute_tp();
 }
 
 ThreadPool* Context::io_tp() const {
-  return &io_tp_;
+  return resources_.io_tp();
 }
 
 stats::Stats* Context::stats() const {

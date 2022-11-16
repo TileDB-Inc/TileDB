@@ -56,6 +56,7 @@
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/tile/filtered_buffer.h"
 
 using namespace tiledb::common;
@@ -122,9 +123,7 @@ class StorageManagerCanonical {
    * @param config The configuration parameters.
    */
   StorageManagerCanonical(
-      ThreadPool* compute_tp,
-      ThreadPool* io_tp,
-      stats::Stats* parent_stats,
+      ContextResources& resources,
       shared_ptr<Logger> logger,
       const Config& config);
 
@@ -1057,6 +1056,8 @@ class StorageManagerCanonical {
   /** Syncs a file or directory, flushing its contents to persistent storage. */
   Status sync(const URI& uri);
 
+  ContextResources& resources() const;
+
   /** Returns the virtual filesystem object. */
   VFS* vfs() const;
 
@@ -1155,8 +1156,8 @@ class StorageManagerCanonical {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  /** The class stats. */
-  stats::Stats* stats_;
+  /** Context create resources object. */
+  ContextResources& resources_;
 
   /** The class logger. */
   shared_ptr<Logger> logger_;
@@ -1194,12 +1195,6 @@ class StorageManagerCanonical {
 
   /** Guards queries_in_progress_ counter. */
   std::condition_variable queries_in_progress_cv_;
-
-  /** The thread pool for compute-bound tasks. */
-  ThreadPool* const compute_tp_;
-
-  /** The thread pool for io-bound tasks. */
-  ThreadPool* const io_tp_;
 
   /** Tracks all scheduled tasks that can be safely cancelled before execution.
    */
