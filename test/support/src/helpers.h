@@ -759,13 +759,17 @@ std::string get_fragment_dir(std::string array_dir);
  */
 std::string get_commit_dir(std::string array_dir);
 
-/* List the given path and store the counts of each file type. */
-class CommitsDirectory {
+/**
+ * Base class that lists the given path, ensures each directory has the
+ * expected file extensions, and stores the counts of each file type.
+ */
+class FileCount {
  public:
   // Constructors and destructors.
-  CommitsDirectory() = delete;
-  CommitsDirectory(VFS vfs, std::string path);
-  ~CommitsDirectory() = default;
+  FileCount() = delete;
+  FileCount(
+      VFS vfs, std::string path, std::vector<std::string> expected_extensions);
+  ~FileCount() = default;
 
   // Private member accessors.
   const std::map<std::string, uint64_t>& file_count() const;
@@ -776,6 +780,24 @@ class CommitsDirectory {
   // Store the number of each file type.
   std::map<std::string, uint64_t> file_count_;
   uint64_t dir_size_;
+};
+
+/* Inherit the FileCount base class for commits file extensions. */
+class CommitsDirectory : public FileCount {
+ public:
+  // Constructors and destructors.
+  CommitsDirectory() = delete;
+  CommitsDirectory(VFS vfs, std::string path)
+      : FileCount(
+            vfs,
+            path,
+            {tiledb::sm::constants::vacuum_file_suffix,
+             tiledb::sm::constants::write_file_suffix,
+             tiledb::sm::constants::delete_file_suffix,
+             tiledb::sm::constants::update_file_suffix,
+             tiledb::sm::constants::con_commits_file_suffix,
+             tiledb::sm::constants::ignore_file_suffix}){};
+  ~CommitsDirectory() = default;
 };
 
 /**
