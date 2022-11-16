@@ -920,14 +920,34 @@ TEST_CASE_METHOD(
     write_labels(15, 26, {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 18});
   }
 
+  SECTION("Non tile aligned, overlapped, equality 1") {
+    write_labels(11, 20, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
+    write_labels(15, 16, {4, 6});
+  }
+
+  SECTION("Non tile aligned, overlapped, equality 2") {
+    write_labels(11, 20, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
+    write_labels(15, 16, {5, 7});
+  }
+
   SECTION("Tile aligned validate min") {
     write_labels(16, 20, {1, 2, 3, 4, 5});
     write_labels(21, 25, {4, 7, 8, 9, 10});
   }
 
+  SECTION("Tile aligned validate min, equality") {
+    write_labels(16, 20, {1, 2, 3, 4, 5});
+    write_labels(21, 25, {5, 7, 8, 9, 10});
+  }
+
   SECTION("Non tile aligned, contiguous, validate min") {
     write_labels(16, 21, {1, 2, 3, 4, 5, 6});
     write_labels(22, 25, {5, 8, 9, 10});
+  }
+
+  SECTION("Non tile aligned, contiguous, validate min, equality") {
+    write_labels(16, 21, {1, 2, 3, 4, 5, 6});
+    write_labels(22, 25, {6, 8, 9, 10});
   }
 
   SECTION("Tile aligned, overlapped, validate min") {
@@ -940,8 +960,18 @@ TEST_CASE_METHOD(
     write_labels(16, 20, {1, 2, 3, 4, 5});
   }
 
+  SECTION("Tile aligned validate max, equality") {
+    write_labels(21, 25, {5, 7, 8, 9, 10});
+    write_labels(16, 20, {1, 2, 3, 4, 5});
+  }
+
   SECTION("Non tile aligned, contiguous, validate max") {
     write_labels(22, 25, {5, 8, 9, 10});
+    write_labels(16, 21, {1, 2, 3, 4, 5, 6});
+  }
+
+  SECTION("Non tile aligned, contiguous, validate max, equality") {
+    write_labels(22, 25, {6, 8, 9, 10});
     write_labels(16, 21, {1, 2, 3, 4, 5, 6});
   }
 
@@ -982,13 +1012,33 @@ TEST_CASE_METHOD(
         15, 26, {0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.8});
   }
 
+  SECTION("Non tile aligned, overlapped, equality 1") {
+    write_labels(11, 20, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0});
+    write_labels(15, 16, {0.4, 0.6});
+  }
+
+  SECTION("Non tile aligned, overlapped, equality 2") {
+    write_labels(11, 20, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0});
+    write_labels(15, 16, {0.5, 0.7});
+  }
+
   SECTION("Tile aligned validate min") {
     write_labels(16, 20, {0.1, 0.2, 0.3, 0.4, 0.5});
     write_labels(21, 25, {0.4, 0.7, 0.8, 0.9, 1.0});
   }
 
+  SECTION("Tile aligned validate min, equality") {
+    write_labels(16, 20, {0.1, 0.2, 0.3, 0.4, 0.5});
+    write_labels(21, 25, {0.5, 0.7, 0.8, 0.9, 1.0});
+  }
+
   SECTION("Non tile aligned, contiguous, validate min") {
     write_labels(16, 21, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6});
+    write_labels(22, 25, {0.5, 0.8, 0.9, 1.0});
+  }
+
+  SECTION("Non tile aligned, contiguous, validate min, equality") {
+    write_labels(16, 21, {0.1, 0.2, 0.3, 0.4, 0.45, 0.5});
     write_labels(22, 25, {0.5, 0.8, 0.9, 1.0});
   }
 
@@ -1002,9 +1052,19 @@ TEST_CASE_METHOD(
     write_labels(16, 20, {0.1, 0.2, 0.3, 0.4, 0.5});
   }
 
+  SECTION("Tile aligned validate max, equality") {
+    write_labels(21, 25, {0.5, 0.7, 0.8, 0.9, 1.0});
+    write_labels(16, 20, {0.1, 0.2, 0.3, 0.4, 0.5});
+  }
+
   SECTION("Non tile aligned, contiguous, validate max") {
     write_labels(22, 25, {0.5, 0.8, 0.9, 1.0});
     write_labels(16, 21, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6});
+  }
+
+  SECTION("Non tile aligned, contiguous, validate max, equality") {
+    write_labels(22, 25, {0.5, 0.8, 0.9, 1.0});
+    write_labels(16, 21, {0.1, 0.2, 0.3, 0.4, 0.45, 0.5});
   }
 
   SECTION("Tile aligned, overlapped, validate max") {
@@ -1044,6 +1104,16 @@ TEST_CASE_METHOD(
         15, 26, {0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.8});
   }
 
+  SECTION("Non tile aligned, overlapped, equality 1") {
+    write_labels(11, 20, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0});
+    write_labels(15, 16, {0.4, 0.6});
+  }
+
+  SECTION("Non tile aligned, overlapped, equality 2") {
+    write_labels(11, 20, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0});
+    write_labels(15, 16, {0.5, 0.7});
+  }
+
   SECTION("Tile aligned validate min") {
     write_labels(16, 20, {0.1, 0.2, 0.3, 0.4, 0.5});
     write_labels(21, 25, {0.4, 0.7, 0.8, 0.9, 1.0});
@@ -1059,6 +1129,11 @@ TEST_CASE_METHOD(
     write_labels(22, 25, {0.5, 0.8, 0.9, 1.0});
   }
 
+  SECTION("Non tile aligned, contiguous, validate min, equality") {
+    write_labels(16, 21, {0.1, 0.2, 0.3, 0.4, 0.45, 0.5});
+    write_labels(22, 25, {0.5, 0.8, 0.9, 1.0});
+  }
+
   SECTION("Tile aligned, overlapped, validate min") {
     write_labels(6, 15, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0});
     write_labels(11, 20, {0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3});
@@ -1069,9 +1144,19 @@ TEST_CASE_METHOD(
     write_labels(16, 20, {0.1, 0.2, 0.3, 0.4, 0.5});
   }
 
+  SECTION("Tile aligned validate max, equality") {
+    write_labels(21, 25, {0.5, 0.7, 0.8, 0.9, 1.0});
+    write_labels(16, 20, {0.1, 0.2, 0.3, 0.4, 0.5});
+  }
+
   SECTION("Non tile aligned, contiguous, validate max") {
     write_labels(22, 25, {0.5, 0.8, 0.9, 1.0});
     write_labels(16, 21, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6});
+  }
+
+  SECTION("Non tile aligned, contiguous, validate max, equality") {
+    write_labels(22, 25, {0.5, 0.8, 0.9, 1.0});
+    write_labels(16, 21, {0.1, 0.2, 0.3, 0.4, 0.45, 0.5});
   }
 
   SECTION("Tile aligned, overlapped, validate max") {

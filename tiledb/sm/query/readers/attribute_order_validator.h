@@ -519,7 +519,7 @@ class AttributeOrderValidator {
      * Which tile we should compare data against for the max. The value is an
      * index into `result_tiles_to_load_`.
      */
-    optional<uint64_t> max_tile_to_compare_to_ {nullopt};
+    optional<uint64_t> max_tile_to_compare_to_{nullopt};
   };
 
   /* ********************************* */
