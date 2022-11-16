@@ -56,6 +56,7 @@
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/tile/filtered_buffer.h"
 
 using namespace tiledb::common;
@@ -122,9 +123,7 @@ class StorageManagerCanonical {
    * @param config The configuration parameters.
    */
   StorageManagerCanonical(
-      ThreadPool* compute_tp,
-      ThreadPool* io_tp,
-      stats::Stats* parent_stats,
+      ContextResources& resources,
       shared_ptr<Logger> logger,
       const Config& config);
 
@@ -689,10 +688,14 @@ class StorageManagerCanonical {
   Status group_create(const std::string& group);
 
   /** Returns the thread pool for compute-bound tasks. */
-  ThreadPool* compute_tp() const;
+  [[nodiscard]] inline ThreadPool* compute_tp() const {
+    return &(resources_.compute_tp());
+  }
 
   /** Returns the thread pool for io-bound tasks. */
-  ThreadPool* io_tp() const;
+  [[nodiscard]] inline ThreadPool* io_tp() const {
+    return &(resources_.io_tp());
+  }
 
   /**
    * If the storage manager was configured with a REST server, return the
@@ -1016,8 +1019,14 @@ class StorageManagerCanonical {
   /** Syncs a file or directory, flushing its contents to persistent storage. */
   Status sync(const URI& uri);
 
+  [[nodiscard]] inline ContextResources& resources() const {
+    return resources_;
+  }
+
   /** Returns the virtual filesystem object. */
-  VFS* vfs() const;
+  [[nodiscard]] inline VFS* vfs() const {
+    return &(resources_.vfs());
+  }
 
   /**
    * Writes the contents of a buffer into the cache. `uri` and `offset`
@@ -1045,7 +1054,9 @@ class StorageManagerCanonical {
   Status write(const URI& uri, void* data, uint64_t size) const;
 
   /** Returns `stats_`. */
-  stats::Stats* stats();
+  [[nodiscard]] inline stats::Stats* stats() {
+    return &(resources_.stats());
+  }
 
   /** Returns the internal logger object. */
   shared_ptr<Logger> logger() const;
@@ -1113,8 +1124,8 @@ class StorageManagerCanonical {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  /** The class stats. */
-  stats::Stats* stats_;
+  /** Context create resources object. */
+  ContextResources& resources_;
 
   /** The class logger. */
   shared_ptr<Logger> logger_;
@@ -1153,12 +1164,6 @@ class StorageManagerCanonical {
   /** Guards queries_in_progress_ counter. */
   std::condition_variable queries_in_progress_cv_;
 
-  /** The thread pool for compute-bound tasks. */
-  ThreadPool* const compute_tp_;
-
-  /** The thread pool for io-bound tasks. */
-  ThreadPool* const io_tp_;
-
   /** Tracks all scheduled tasks that can be safely cancelled before execution.
    */
   CancelableTasks cancelable_tasks_;
@@ -1168,12 +1173,6 @@ class StorageManagerCanonical {
 
   /** A tile cache. */
   tdb_unique_ptr<BufferLRUCache> tile_cache_;
-
-  /**
-   * Virtual filesystem handler. It directs queries to the appropriate
-   * filesystem backend. Note that this is stateful.
-   */
-  VFS* vfs_;
 
   /** The rest client (may be null if none was configured). */
   tdb_unique_ptr<RestClient> rest_client_;
