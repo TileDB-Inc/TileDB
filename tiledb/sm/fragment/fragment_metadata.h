@@ -1531,8 +1531,7 @@ class FragmentMetadata {
   /**
    * Loads the bounding coordinates from the fragment metadata buffer.
    *
-   * @param buff Metadata buffer.
-   * @return Status
+   * @param deserializer Deserializer to get data from.
    */
   void load_bounding_coords(Deserializer& deserializer);
 
@@ -1575,32 +1574,28 @@ class FragmentMetadata {
   /**
    * Loads the cell number of the last tile from the fragment metadata buffer.
    *
-   * @param buff Metadata buffer.
-   * @return Status
+   * @param deserializer Deserializer to get data from.
    */
   void load_last_tile_cell_num(Deserializer& deserializer);
 
   /**
    * Loads the `has_timestamps_` field from the buffer.
    *
-   * @param buff Metadata buffer.
-   * @return Status
+   * @param deserializer Deserializer to get data from.
    */
   void load_has_timestamps(Deserializer& deserializer);
 
   /**
    * Loads the `has_delete_meta_` field from the buffer.
    *
-   * @param buff Metadata buffer.
-   * @return Status
+   * @param deserializer Deserializer to get data from.
    */
   void load_has_delete_meta(Deserializer& deserializer);
 
   /**
    * Loads the MBRs from the fragment metadata buffer.
    *
-   * @param buff Metadata buffer.
-   * @return Status
+   * @param deserializer Deserializer to get data from.
    */
   void load_mbrs(Deserializer& deserializer);
 
@@ -1843,14 +1838,14 @@ class FragmentMetadata {
    * offsets.
    * @return Status
    */
-  Status store_tile_validity_offsets(
+  void store_tile_validity_offsets(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the validity tile offsets of the input attribute idx to the
    * input buffer.
    */
-  Status write_tile_validity_offsets(unsigned idx, Buffer* buff);
+  void write_tile_validity_offsets(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the mins of the input attribute to storage.
@@ -1858,7 +1853,6 @@ class FragmentMetadata {
    * @param idx The index of the attribute.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the mins.
-   * @return Status
    */
   void store_tile_mins(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
@@ -1874,7 +1868,6 @@ class FragmentMetadata {
    * @param idx The index of the attribute.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the maxs.
-   * @return Status
    */
   void store_tile_maxs(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
@@ -1890,7 +1883,6 @@ class FragmentMetadata {
    * @param idx The index of the attribute.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the sums.
-   * @return Status
    */
   void store_tile_sums(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
@@ -1906,7 +1898,6 @@ class FragmentMetadata {
    * @param idx The index of the attribute.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the null counts.
-   * @return Status
    */
   void store_tile_null_counts(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
@@ -1931,7 +1922,6 @@ class FragmentMetadata {
    *
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written.
-   * @return Status
    */
   void store_processed_conditions(
       const EncryptionKey& encryption_key, uint64_t* nbytes);
@@ -1984,20 +1974,6 @@ class FragmentMetadata {
       std::shared_ptr<Tile>& tile,
       uint64_t* footer_offset,
       uint64_t* footer_size) const;
-
-  /**
-   * Writes the contents of the input buffer as a separate
-   * generic tile to the metadata file.
-   *
-   * @param encryption_key The encryption key.
-   * @param buff The buffer whose contents the function will write.
-   * @param nbytes The total number of bytes written to the file.
-   * @return Status
-   */
-  Status write_generic_tile_to_file(
-      const EncryptionKey& encryption_key,
-      Buffer& buff,
-      uint64_t* nbytes) const;
 
   /**
    * Writes the contents of the input tile as a separate
