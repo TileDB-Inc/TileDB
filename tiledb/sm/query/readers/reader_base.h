@@ -741,6 +741,64 @@ class ReaderBase : public StrategyBase {
       const bool var_size,
       const bool nullable) const;
 
+  /**
+   * Cache data to be used by dimension label code.
+   *
+   * @tparam Index type.
+   * @return non empty domain, non empty domains, fragment first array tile
+   * indexes.
+   */
+  template <typename IndexType>
+  tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+  cache_dimension_label_data();
+
+  /**
+   * Validates the attribute order for all loaded fragments.
+   *
+   * Throws an error if the there is a gap between fragments or the attribute
+   * order between fragments is not maintained.
+   *
+   * @tparam Index type
+   * @tparam Attribute type
+   * @param attribute_name Name of the attribute to validate.
+   * @param increasing_data Is the order of the data increasing?
+   * @param array_non_empty_domain Range storing the array non empty domain.
+   * @param non_empty_domains Pointer, per fragment, to the non empty domains.
+   * @param frag_first_array_tile_idx First tile index (in full domain), per
+   * fragment.
+   */
+  template <typename IndexType, typename AttributeType>
+  void validate_attribute_order(
+      std::string& attribute_name,
+      bool increasing_data,
+      Range& array_non_empty_domain,
+      std::vector<const void*>& non_empty_domains,
+      std::vector<uint64_t>& frag_first_array_tile_idx);
+
+  /**
+   * Validates the attribute order for all loaded fragments.
+   *
+   * Throws an error if the there is a gap between fragments or the attribute
+   * order between fragments is not maintained.
+   *
+   * @tparam Index type
+   * @param attribute_type Type of the attribute to validate.
+   * @param attribute_name Name of the attribute to validate.
+   * @param increasing_data Is the order of the data increasing?
+   * @param array_non_empty_domain Range storing the array non empty domain.
+   * @param non_empty_domains Pointer, per fragment, to the non empty domains.
+   * @param frag_first_array_tile_idx First tile index (in full domain), per
+   * fragment.
+   */
+  template <typename IndexType>
+  void validate_attribute_order(
+      Datatype attribute_type,
+      std::string& attribute_name,
+      bool increasing_data,
+      Range& array_non_empty_domain,
+      std::vector<const void*>& non_empty_domains,
+      std::vector<uint64_t>& frag_first_array_tile_idx);
+
  private:
   /**
    * @brief Class that stores all the storage needed to keep bitsort
@@ -759,7 +817,7 @@ class ReaderBase : public StrategyBase {
   /* ********************************* */
 
   /**
-   * @brief Calculate Hilbert values. Used to pass in a Hilbert
+   * Calculate Hilbert values. Used to pass in a Hilbert
    * comparator to the read-reverse path.
    *
    * @param domain_buffers
@@ -770,12 +828,12 @@ class ReaderBase : public StrategyBase {
       std::vector<uint64_t>& hilbert_values) const;
 
   /**
-   * @brief Constructs the bitsort metadata object.
+   * Constructs the bitsort metadata object.
    *
    * @tparam CmpObject The comparator object being constructed.
    * @param tile Fixed tile that is being unfiltered.
-   * @param bitsort_storage Storage for all the vectors needed to construct the
-   * bitsort filter.
+   * @param bitsort_storage Storage for all the vectors needed to construct
+   * the bitsort filter.
    * @return BitSortFilterMetadataType the constructed argument.
    */
 

@@ -326,12 +326,6 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   /** Non empty domain for the array. */
   Range non_empty_domain_;
 
-  /** Minimum array tile index of the non-empty domain. */
-  uint64_t tile_idx_min_;
-
-  /** Maximum array tile index of the non-empty domain. */
-  uint64_t tile_idx_max_;
-
   /**
    * Per fragment map to hold the result tiles. The key for the maps is the
    * tile index.
@@ -366,16 +360,6 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
    */
   template <typename IndexType>
   void label_read();
-
-  /**
-   * Compute the non empty domain for the index dimension. Also caches the non
-   * empty domain of each fragments for future use and saves the non empty
-   * domain in tile indexes in `tile_idx_min_` and `tile_idx_max_`.
-   *
-   * @tparam The index type.
-   */
-  template <typename IndexType>
-  void compute_non_empty_domain();
 
   /**
    * Compute the tile indexes (min/max) that can potentially contain the label

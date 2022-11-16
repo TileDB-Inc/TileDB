@@ -413,8 +413,7 @@ struct CPPFixedTileMetadataFx {
             CHECK_THROWS_WITH(
                 frag_meta[f]->get_sum("a"),
                 "FragmentMetadata: Trying to access fragment sum metadata "
-                "that's not "
-                "present");
+                "that's not present");
           } else {
             // Validate min.
             auto& min = frag_meta[f]->get_min("a");
@@ -447,8 +446,7 @@ struct CPPFixedTileMetadataFx {
         CHECK_THROWS_WITH(
             frag_meta[f]->get_null_count("a"),
             "FragmentMetadata: Trying to access fragment null count metadata "
-            "that's not "
-            "present");
+            "that's not present");
       }
     }
 
@@ -569,8 +567,7 @@ struct CPPFixedTileMetadataFx {
         CHECK_THROWS_WITH(
             frag_meta[f]->get_tile_null_count("a", tile_idx),
             "FragmentMetadata: Trying to access tile null count metadata "
-            "that's not "
-            "present");
+            "that's not present");
       }
     }
 
@@ -929,8 +926,7 @@ struct CPPVarTileMetadataFx {
         CHECK_THROWS_WITH(
             frag_meta[f]->get_null_count("a"),
             "FragmentMetadata: Trying to access fragment null count metadata "
-            "that's not "
-            "present");
+            "that's not present");
       }
     }
 
@@ -991,8 +987,7 @@ struct CPPVarTileMetadataFx {
         CHECK_THROWS_WITH(
             frag_meta[f]->get_tile_null_count("a", tile_idx),
             "FragmentMetadata: Trying to access tile null count metadata "
-            "that's not "
-            "present");
+            "that's not present");
       }
     }
 
