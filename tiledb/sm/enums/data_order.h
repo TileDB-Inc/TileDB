@@ -1,5 +1,5 @@
 /**
- * @file label_order.h
+ * @file data_order.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This defines the TileDB Label Order enum.
+ * This defines the TileDB Data Order enum.
  */
 
-#ifndef TILEDB_LABEL_ORDER_H
-#define TILEDB_LABEL_ORDER_H
+#ifndef TILEDB_DATA_ORDER_H
+#define TILEDB_DATA_ORDER_H
 
 #include <cassert>
 
@@ -42,46 +42,46 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-/** Defines the ordering of data in a dimension label. */
-enum class LabelOrder : uint8_t {
-#define TILEDB_LABEL_ORDER_ENUM(id) id
-#include "tiledb/sm/c_api/experimental/tiledb_enum_experimental.h"
-#undef TILEDB_LABEL_ORDER_ENUM
+/** Defines the ordering of data in a dimension data. */
+enum class DataOrder : uint8_t {
+#define TILEDB_DATA_ORDER_ENUM(id) id
+#include "tiledb/sm/c_api/tiledb_enum.h"
+#undef TILEDB_DATA_ORDER_ENUM
 };
 
-inline const std::string& label_order_str(LabelOrder order) {
+inline const std::string& data_order_str(DataOrder order) {
   switch (order) {
-    case LabelOrder::UNORDERED_LABELS:
-      return constants::label_unordered_str;
-    case LabelOrder::INCREASING_LABELS:
-      return constants::label_increasing_str;
-    case LabelOrder::DECREASING_LABELS:
-      return constants::label_decreasing_str;
+    case DataOrder::UNORDERED_DATA:
+      return constants::data_unordered_str;
+    case DataOrder::INCREASING_DATA:
+      return constants::data_increasing_str;
+    case DataOrder::DECREASING_DATA:
+      return constants::data_decreasing_str;
     default:
       return constants::empty_str;
   }
 }
 
 /**
- * Converts an uint8_t value to a LabelOrder enum.
+ * Converts an uint8_t value to a DataOrder enum.
  *
- * Used for deserializing the label order. Throws an error if the label order's
+ * Used for deserializing the data order. Throws an error if the data order's
  * enumeration is not valid.
  */
-inline LabelOrder label_order_from_int(uint8_t label_order_int) {
-  auto label_order = LabelOrder(label_order_int);
-  switch (label_order) {
-    case LabelOrder::UNORDERED_LABELS:
-    case LabelOrder::INCREASING_LABELS:
-    case LabelOrder::DECREASING_LABELS:
-      return label_order;
+inline DataOrder data_order_from_int(uint8_t data_order_int) {
+  auto data_order = DataOrder(data_order_int);
+  switch (data_order) {
+    case DataOrder::UNORDERED_DATA:
+    case DataOrder::INCREASING_DATA:
+    case DataOrder::DECREASING_DATA:
+      return data_order;
     default:
       throw std::runtime_error(
-          "Invalid LabelOrder( " +
-          std::to_string(static_cast<uint16_t>(label_order_int)) + ")");
+          "Invalid DataOrder( " +
+          std::to_string(static_cast<uint16_t>(data_order_int)) + ")");
   }
 }
 
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_LABEL_ORDER_H
+#endif  // TILEDB_DATA_ORDER_H

@@ -4,7 +4,7 @@ title: Format Specification
 
 **Notes:**
 
-* The current TileDB format version number is **16** (`uint32_t`).
+* The current TileDB format version number is **17** (`uint32_t`).
 * Data written by TileDB and referenced in this document is **little-endian**
   with the following exceptions:
 

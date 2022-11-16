@@ -41,7 +41,7 @@ using namespace tiledb::type;
 namespace tiledb::sm {
 
 DimensionLabelSchema::DimensionLabelSchema(
-    LabelOrder label_order,
+    DataOrder label_order,
     Datatype label_type,
     Datatype index_type,
     const void* index_domain,
@@ -49,8 +49,8 @@ DimensionLabelSchema::DimensionLabelSchema(
     : label_order_(label_order)
     , indexed_array_schema_(make_shared<ArraySchema>(
           HERE(),
-          label_order == LabelOrder::UNORDERED_LABELS ? ArrayType::SPARSE :
-                                                        ArrayType::DENSE))
+          label_order == DataOrder::UNORDERED_DATA ? ArrayType::SPARSE :
+                                                     ArrayType::DENSE))
     , label_domain_{} {
   // Check the index data type is valid.
   if (!(datatype_is_integer(index_type) || datatype_is_datetime(index_type) ||
@@ -71,7 +71,7 @@ DimensionLabelSchema::DimensionLabelSchema(
   }
 
   // Create indexed array.
-  if (label_order == LabelOrder::UNORDERED_LABELS) {
+  if (label_order == DataOrder::UNORDERED_DATA) {
     throw_if_not_ok(indexed_array_schema_->set_allows_dups(true));
   }
   std::vector<shared_ptr<Dimension>> index_dims{
@@ -88,7 +88,7 @@ DimensionLabelSchema::DimensionLabelSchema(
 }
 
 DimensionLabelSchema::DimensionLabelSchema(
-    LabelOrder label_order, shared_ptr<ArraySchema> indexed_array_schema)
+    DataOrder label_order, shared_ptr<ArraySchema> indexed_array_schema)
     : label_order_(label_order)
     , indexed_array_schema_(indexed_array_schema)
     , label_domain_{} {

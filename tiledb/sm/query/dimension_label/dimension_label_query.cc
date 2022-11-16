@@ -35,7 +35,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/unreachable.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
-#include "tiledb/sm/enums/label_order.h"
+#include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -68,8 +68,8 @@ DimensionLabelQuery::DimensionLabelQuery(
     case (QueryType::WRITE):
       // Initialize write query for the appropriate label order type.
       switch (dimension_label->label_order()) {
-        case (LabelOrder::INCREASING_LABELS):
-        case (LabelOrder::DECREASING_LABELS):
+        case (DataOrder::INCREASING_DATA):
+        case (DataOrder::DECREASING_DATA):
           initialize_ordered_write_query(
               stats,
               dimension_label,
@@ -79,7 +79,7 @@ DimensionLabelQuery::DimensionLabelQuery(
               dim_idx);
           break;
 
-        case (LabelOrder::UNORDERED_LABELS):
+        case (DataOrder::UNORDERED_DATA):
           initialize_unordered_write_query(
               dimension_label,
               parent_subarray,
@@ -92,7 +92,7 @@ DimensionLabelQuery::DimensionLabelQuery(
           // Invalid label order type.
           throw DimensionLabelQueryStatusException(
               "Unrecognized label order " +
-              label_order_str(dimension_label->label_order()));
+              data_order_str(dimension_label->label_order()));
       }
       break;
 
@@ -116,10 +116,10 @@ DimensionLabelQuery::DimensionLabelQuery(
           false)} {
   // Check dimension label order is supported.
   switch (dimension_label->label_order()) {
-    case (LabelOrder::INCREASING_LABELS):
-    case (LabelOrder::DECREASING_LABELS):
+    case (DataOrder::INCREASING_DATA):
+    case (DataOrder::DECREASING_DATA):
       break;
-    case (LabelOrder::UNORDERED_LABELS):
+    case (DataOrder::UNORDERED_DATA):
       throw DimensionLabelQueryStatusException(
           "Support for reading ranges from unordered labels is not yet "
           "implemented.");
@@ -127,13 +127,13 @@ DimensionLabelQuery::DimensionLabelQuery(
       // Invalid label order type.
       throw DimensionLabelQueryStatusException(
           "Unrecognized label order " +
-          label_order_str(dimension_label->label_order()));
+          data_order_str(dimension_label->label_order()));
   }
 
   // Set the basic query properies.
   throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
   set_dimension_label_ordered_read(
-      dimension_label->label_order() == LabelOrder::INCREASING_LABELS);
+      dimension_label->label_order() == DataOrder::INCREASING_DATA);
 
   // Set the subarray.
   Subarray subarray{*this->subarray()};
@@ -403,7 +403,7 @@ void DimensionLabelQuery::initialize_ordered_write_query(
           stats,
           label_buffer,
           dimension_label->label_attribute()->type(),
-          dimension_label->label_order() == LabelOrder::INCREASING_LABELS)) {
+          dimension_label->label_order() == DataOrder::INCREASING_DATA)) {
     throw DimensionLabelQueryStatusException(
         "The label data is not in the expected order.");
   }

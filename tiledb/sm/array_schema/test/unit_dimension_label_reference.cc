@@ -33,8 +33,8 @@
 #include <tdb_catch.h>
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/enums/label_order.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 #include "tiledb/type/range/range.h"
@@ -49,18 +49,19 @@ TEST_CASE(
   const uint32_t version{14};
   DimensionLabelReference::dimension_size_type dim_id{0};
   std::string name{"label0"};
+  std::string label_attr_name{"label"};
   URI uri{"label/l0", false};
-  LabelOrder label_order{LabelOrder::INCREASING_LABELS};
-  double domain[2]{0.0, 10.0};
+  DataOrder label_order{DataOrder::INCREASING_DATA};
   bool is_external{true};
   bool is_relative{true};
   DimensionLabelReference label{dim_id,
                                 name,
                                 URI("label/l0", false),
+                                label_attr_name,
                                 label_order,
                                 Datatype::FLOAT64,
                                 1,
-                                Range(&domain[0], 2 * sizeof(double)),
+
                                 nullptr,
                                 is_external,
                                 is_relative};
@@ -77,10 +78,6 @@ TEST_CASE(
   CHECK(name == label2->name());
   CHECK(label2->label_type() == Datatype::FLOAT64);
   CHECK(label2->label_cell_val_num() == 1);
-  REQUIRE(!label2->label_domain().empty());
-  auto domain2 = static_cast<const double*>(label2->label_domain().data());
-  CHECK(domain2[0] == domain[0]);
-  CHECK(domain2[1] == domain[1]);
   CHECK(label2->is_external() == is_external);
   CHECK(label2->uri().to_string() == uri.to_string());
 }
