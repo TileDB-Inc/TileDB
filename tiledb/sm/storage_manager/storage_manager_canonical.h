@@ -1166,7 +1166,7 @@ class StorageManagerCanonical {
    */
   void array_get_fragment_tile_size_extremes(
       const URI& array_uri,
-      tiledb_fragment_tile_size_extremes_t* tile_extreme_sizes,
+      tiledb_fragment_max_tile_sizes_t* max_tile_sizes,
       const Config* config);
 
  private:

@@ -6651,16 +6651,17 @@ TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
         return TILEDB_ERR;
       }
     } else {
-      tiledb_fragment_tile_size_extremes_t tile_extreme_sizes;
+      tiledb_fragment_max_tile_sizes_t max_tile_sizes;
       ctx->storage_manager()->array_get_fragment_tile_size_extremes(
           uri,
-          &tile_extreme_sizes, config ? &config->config() : nullptr);
-      *max_in_memory_tile_size = tile_extreme_sizes.max_in_memory_tile_size;
+          &max_tile_sizes, config ? &config->config() : nullptr);
+      *max_in_memory_tile_size = max_tile_sizes.max_in_memory_tile_size;
     }
   }
+  // TBD: What's the (Is this an) appropriate catch and (re-)throw series for this API?
   catch (...) {
-    // TBD: throw with nested something to identify this routine in path?
-    throw;
+    std::throw_with_nested(api::CAPIStatusException(
+        "Failed to obtain max tile size "));
   }
   return TILEDB_OK;
 }

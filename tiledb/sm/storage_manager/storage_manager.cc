@@ -308,22 +308,7 @@ StorageManager::load_array_schemas_and_all_fragment_metadata(
       load_array_schemas(array_dir, enc_key);
   RETURN_NOT_OK_TUPLE(st_schemas, std::nullopt, std::nullopt, std::nullopt);
 
-  //auto xfiltered_fragment_uris = array_dir.filtered_fragment_uris(
-  //    array_schema_latest.value().get()->dense());
-  //const auto& meta_uris = array_dir.fragment_meta_uris();
-  //const auto& xfragments_to_load = xfiltered_fragment_uris.fragment_uris();
-  //std::cout << "xfragments_to_load.size() " << xfragments_to_load.size()
-  //          << std::endl;
-  //for (auto& f : xfragments_to_load) {
-  //   std::cout << f.uri_.to_string() << std::endl;
-  // }
-
   const auto& fragments_to_load = array_dir.unfiltered_fragment_uris();
-  //std::cout << "fragments_to_load.size() " << fragments_to_load.size()
-  //          << std::endl;
-  // for (auto& f : fragments_to_load) {
-  //   std::cout << f.to_string() << std::endl;
-  // }
   auto timestamped_uris_from_uris =
       [](const std::vector<URI>& uris) -> std::vector<TimestampedURI> {
     std::vector<TimestampedURI> timestamp_uris;
@@ -346,34 +331,8 @@ StorageManager::load_array_schemas_and_all_fragment_metadata(
   };
   auto timestamped_fragment_uris_to_load = timestamped_uris_from_uris(fragments_to_load);
 
-  #if 0
-  // Get the consolidated fragment metadatas
-  std::vector<Buffer> f_buffs(meta_uris.size());
-  std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
-      meta_uris.size());
-  auto status = parallel_for(compute_tp_, 0, meta_uris.size(), [&](size_t i) {
-    auto&& [st, buffer_opt, offsets] =
-        load_consolidated_fragment_meta(meta_uris[i], enc_key);
-    RETURN_NOT_OK(st);
-    f_buffs[i] = std::move(*buffer_opt);
-    offsets_vectors[i] = std::move(offsets.value());
-    return st;
-  });
-  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt, nullopt);
-  #endif
-
   // Get the unique fragment metadatas into a map.
   std::unordered_map<std::string, std::pair<Buffer*, uint64_t>> offsets;
-  #if 0
-  for (uint64_t i = 0; i < offsets_vectors.size(); i++) {
-    for (auto& offset : offsets_vectors[i]) {
-      if (offsets.count(offset.first) == 0) {
-        offsets.emplace(
-            offset.first, std::make_pair(&f_buffs[i], offset.second));
-      }
-    }
-  }
-  #endif
 
   // Load the fragment metadata
   auto&& [st_fragment_meta, fragment_metadata] = load_fragment_metadata(
@@ -2725,7 +2684,7 @@ Status StorageManagerCanonical::group_metadata_vacuum(
 
 void StorageManager::array_get_fragment_tile_size_extremes(
     const URI& array_uri,
-    tiledb_fragment_tile_size_extremes_t* tile_extreme_sizes,
+    tiledb_fragment_max_tile_sizes_t* max_tile_sizes,
     const Config* config) {
   assert(tile_extreme_sizes);
 
@@ -2737,7 +2696,8 @@ void StorageManager::array_get_fragment_tile_size_extremes(
         "' does not exist"));
   }
 
-  memset(tile_extreme_sizes, 0, sizeof(*tile_extreme_sizes));
+  memset(max_tile_sizes, 0, sizeof(*max_tile_sizes));
+
   EncryptionKey enc_key(config ? *config : config_);
   uint64_t timestamp_start = 0;
   uint64_t timestamp_end = UINT64_MAX ;
@@ -2758,34 +2718,17 @@ void StorageManager::array_get_fragment_tile_size_extremes(
           enc_key);
   throw_if_not_ok(st);
   
-  tiledb_fragment_tile_size_extremes_t& mins_maxs = *tile_extreme_sizes;
+  tiledb_fragment_max_tile_sizes_t& mins_maxs = *max_tile_sizes;
   memset(&mins_maxs, 0, sizeof(mins_maxs));
-
-  mins_maxs.min_persisted_basic_tile_size = std::numeric_limits<uint64_t>::max();
-  mins_maxs.min_in_memory_basic_tile_size = std::numeric_limits<uint64_t>::max();
-  mins_maxs.min_persisted_tile_size_var = std::numeric_limits<uint64_t>::max();
-  mins_maxs.min_in_memory_tile_size_var = std::numeric_limits<uint64_t>::max();
-  mins_maxs.min_persisted_tile_size_validity =
-      std::numeric_limits<uint64_t>::max();
-  mins_maxs.min_in_memory_tile_size_validity =
-      std::numeric_limits<uint64_t>::max();
 
   auto process_attr = [&](FragmentMetadata& f,
                           const std::string& name,
                           bool var_size) -> void {
     uint64_t max_frag_persisted_basic_tile_size = 0,
              max_frag_in_memory_basic_tile_size = 0;
-    uint64_t min_frag_persisted_basic_tile_size =
-                 std::numeric_limits<uint64_t>::max(),
-             min_frag_in_memory_basic_tile_size =
-                 std::numeric_limits<uint64_t>::max();
 
     uint64_t max_frag_persisted_tile_size_var = 0,
              max_frag_in_memory_tile_size_var = 0;
-    uint64_t min_frag_persisted_tile_size_var =
-                 std::numeric_limits<uint64_t>::max(),
-             min_frag_in_memory_tile_size_var =
-                 std::numeric_limits<uint64_t>::max();
 
     uint64_t tile_num = f.tile_num();
     std::vector<std::string> names;
@@ -2797,13 +2740,9 @@ void StorageManager::array_get_fragment_tile_size_extremes(
       // for dense, all tiles to be reported as same size
       // for var, all tiles except last one reported as same size, with last one possibly smaller.
       auto in_mem_tile_size = f.tile_size(name, tile_idx);
-      min_frag_persisted_basic_tile_size =
-          std::min(min_frag_persisted_basic_tile_size, persisted_tile_size);
       max_frag_persisted_basic_tile_size =
           std::max(max_frag_persisted_basic_tile_size, persisted_tile_size);
 
-      min_frag_in_memory_basic_tile_size =
-          std::min(min_frag_in_memory_basic_tile_size, in_mem_tile_size);
       max_frag_in_memory_basic_tile_size =
           std::max(max_frag_in_memory_basic_tile_size, in_mem_tile_size);
 
@@ -2811,12 +2750,8 @@ void StorageManager::array_get_fragment_tile_size_extremes(
         auto tile_size_var_persisted = f.persisted_tile_var_size(name, tile_idx);
         auto tile_size_var_in_mem = f.tile_var_size(name, tile_idx);
 
-        min_frag_persisted_tile_size_var = std::min(
-            min_frag_persisted_tile_size_var, tile_size_var_persisted);
         max_frag_persisted_tile_size_var = std::max(
             max_frag_persisted_tile_size_var, tile_size_var_persisted);
-        min_frag_in_memory_tile_size_var =
-            std::min(min_frag_in_memory_tile_size_var, tile_size_var_in_mem);
         max_frag_in_memory_tile_size_var =
             std::max(max_frag_in_memory_tile_size_var, tile_size_var_in_mem);
       }
@@ -2825,12 +2760,6 @@ void StorageManager::array_get_fragment_tile_size_extremes(
       mins_maxs.max_in_memory_basic_tile_size = std::max(
           mins_maxs.max_in_memory_basic_tile_size,
           max_frag_in_memory_basic_tile_size);
-      mins_maxs.min_persisted_basic_tile_size = std::min(
-          mins_maxs.min_persisted_basic_tile_size,
-          min_frag_persisted_basic_tile_size);
-      mins_maxs.min_in_memory_basic_tile_size = std::min(
-          mins_maxs.min_in_memory_basic_tile_size,
-          min_frag_in_memory_basic_tile_size);
 
       mins_maxs.max_persisted_tile_size_var = std::max(
           mins_maxs.max_persisted_tile_size_var,
@@ -2838,12 +2767,6 @@ void StorageManager::array_get_fragment_tile_size_extremes(
       mins_maxs.max_in_memory_tile_size_var = std::max(
           mins_maxs.max_in_memory_tile_size_var,
           max_frag_in_memory_tile_size_var);
-      mins_maxs.min_persisted_tile_size_var = std::min(
-          mins_maxs.min_persisted_tile_size_var,
-          min_frag_persisted_tile_size_var);
-      mins_maxs.min_in_memory_tile_size_var = std::min(
-          mins_maxs.min_in_memory_tile_size_var,
-          min_frag_in_memory_tile_size_var);
     }
   };
   for (auto& frag : *fragment_metadata) {

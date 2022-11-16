@@ -43,12 +43,12 @@
 
 #include <numeric>
 
-struct CandCXXAPI_MaxTileSizeFx {
+struct MaxTileSizeFx {
   const std::string main_array_name = "max_tile_size";
 
   bool showing_data = false;
 
-  CandCXXAPI_MaxTileSizeFx()
+  MaxTileSizeFx()
     : vfs_(ctx_) {
   }
 
@@ -60,28 +60,22 @@ struct CandCXXAPI_MaxTileSizeFx {
 
   template <const int nchars = 1>
   void create_array_with_attr(const std::string& array_name, const std::string&& attr_name){
-    // Create a TileDB context.
-    // Context ctx;
-    tiledb::Config cfg;
-    tiledb::Context ctx(cfg);
-    tiledb::VFS vfs(ctx);
-
     remove_temp_dir(array_name.c_str());
 
     // The array will be 1d with dimension "rows", with domain
     // [1,4].
-    tiledb::Domain domain(ctx);
+    tiledb::Domain domain(ctx_);
     domain.add_dimension(
-        tiledb::Dimension::create<int>(ctx, "rows", {{1, 4}}, 1));
+        tiledb::Dimension::create<int>(ctx_, "rows", {{1, 4}}, 1));
 
     // The array will be dense.
-    tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
+    tiledb::ArraySchema schema(ctx_, TILEDB_DENSE);
     schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
     // Add one attribute "a1", so each (i) cell can store
     // a nchars characters on "attr_name".
     schema.add_attribute(
-        tiledb::Attribute::create<std::array<char, nchars>>(ctx, attr_name));
+        tiledb::Attribute::create<std::array<char, nchars>>(ctx_, attr_name));
 
     // Create the (empty) array on disk.
     tiledb::Array::create(array_name, schema);
@@ -89,8 +83,6 @@ struct CandCXXAPI_MaxTileSizeFx {
 
   template <const int nchars = 1>
   void write_array_attr(const std::string& array_name, const std::string&& attr_name) {
-    tiledb::Context ctx;
-
     // Prepare some data for the array
     std::vector<std::array<char, nchars>> a;
     for (auto i = 0; i < 4; ++i) {
@@ -100,8 +92,8 @@ struct CandCXXAPI_MaxTileSizeFx {
     }
 
     // Open the array for writing and create the query.
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Query query(ctx, array);
+    tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
+    tiledb::Query query(ctx_, array);
     query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer(attr_name, a);
 
     // Perform the write and close the array.
@@ -109,12 +101,34 @@ struct CandCXXAPI_MaxTileSizeFx {
     array.close();
   };
 
-  uint64_t c_get_fragments_max_in_memory_tile_size(const std::string& array_uri) {
-    tiledb::Context ctx;
+  template <typename dimtype>
+  void write_array_2_dims(
+      const std::string array_name,
+      std::vector<dimtype> data,
+      std::array<dimtype, 2> dim1_range,
+      std::array<dimtype, 2> dim2_range) {
+    // Prepare some data for the array
+    // Open the array for writing and create the query.
+    tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
+    tiledb::Subarray subarray(ctx_, array);
+    subarray.add_range(0, dim1_range[0], dim1_range[1])
+        .add_range(1, dim2_range[0], dim2_range[1]);
+    tiledb::Query query(ctx_, array);
+    query.set_layout(TILEDB_ROW_MAJOR)
+        .set_data_buffer("a", data)
+        .set_subarray(subarray);
+
+    // Perform the write and close the array.
+    query.submit();
+    array.close();
+  }
+
+  uint64_t c_get_fragments_max_in_memory_tile_size(
+      const std::string& array_uri) {
     uint64_t max_in_memory_tile_size = 0;
     CHECK(
         tiledb_array_maximum_tile_size(
-            &*ctx.ptr(),
+            &*ctx_.ptr(),
             array_uri.c_str(),
             &max_in_memory_tile_size, 
             nullptr) == TILEDB_OK);
@@ -128,8 +142,7 @@ struct CandCXXAPI_MaxTileSizeFx {
   }
 
   uint64_t cpp_get_fragments_max_in_memory_tile_size(const std::string& array_uri) {
-    tiledb::Context ctx;
-    tiledb::Array array(ctx, array_uri, TILEDB_READ);
+    tiledb::Array array(ctx_, array_uri, TILEDB_READ);
     uint64_t max_in_memory_tile_size = 0;
     array.get_max_in_memory_tile_size(&max_in_memory_tile_size);
 
@@ -145,118 +158,33 @@ struct CandCXXAPI_MaxTileSizeFx {
 };
 
 TEST_CASE_METHOD(
-    CandCXXAPI_MaxTileSizeFx,
+    MaxTileSizeFx,
     "C++ API: Max tile size, dense, fixed, with consolidation",
     "[capi][cppapi][max-tile-size][dense][consolidate]") {
   // Name of array.
   auto& array_name = main_array_name;
 
   auto create_array = [&]() -> void {
-    // Create a TileDB context.
-    tiledb::Context ctx;
-
     remove_temp_dir(array_name.c_str());
 
     // The array will be 4x4 with dimensions "rows" and "cols", with domain
     // [1,4] and space tiles 2x2
-    tiledb::Domain domain(ctx);
+    tiledb::Domain domain(ctx_);
     domain
-        .add_dimension(tiledb::Dimension::create<int>(ctx, "rows", {{1, 4}}, 2))
+        .add_dimension(tiledb::Dimension::create<int>(ctx_, "rows", {{1, 4}}, 2))
         .add_dimension(
-            tiledb::Dimension::create<int>(ctx, "cols", {{1, 4}}, 2));
+            tiledb::Dimension::create<int>(ctx_, "cols", {{1, 4}}, 2));
 
     // The array will be dense.
-    tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
+    tiledb::ArraySchema schema(ctx_, TILEDB_DENSE);
     schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
     // Add a single attribute "a" so each (i,j) cell can store an integer.
-    schema.add_attribute(tiledb::Attribute::create<int32_t>(ctx, "a"));
+    schema.add_attribute(tiledb::Attribute::create<int32_t>(ctx_, "a"));
 
     // Create the (empty) array on disk.
     tiledb::Array::create(array_name, schema);
   };
-
-  auto write_array_1 = [&]() -> void {
-    tiledb::Context ctx;
-
-    // Prepare some data for the array
-    std::vector<int> data = {1, 2, 3, 4, 5, 6, 7, 8};
-
-    // Open the array for writing and create the query.
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Subarray subarray(ctx, array);
-    subarray.add_range(0, 1, 2).add_range(1, 1, 4);
-    tiledb::Query query(ctx, array);
-    query.set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", data)
-        .set_subarray(subarray);
-
-    // Perform the write and close the array.
-    query.submit();
-    array.close();
-  };
-
-  auto write_array_2 = [&]() -> void {
-    tiledb::Context ctx;
-
-    // Prepare some data for the array
-    std::vector<int> data = {101, 102, 103, 104};
-
-    // Open the array for writing and create the query.
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Subarray subarray(ctx, array);
-    subarray.add_range(0, 2, 3).add_range(1, 2, 3);
-    tiledb::Query query(ctx, array);
-    query.set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", data)
-        .set_subarray(subarray);
-
-    // Perform the write and close the array.
-    query.submit();
-    array.close();
-  };
-
-  auto write_array_3 = [&]() -> void {
-    tiledb::Context ctx;
-
-    // Prepare some data for the array
-    std::vector<int> data = {201};
-
-    // Open the array for writing and create the query.
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Subarray subarray(ctx, array);
-    subarray.add_range(0, 1, 1).add_range(1, 1, 1);
-    tiledb::Query query(ctx, array);
-    query.set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", data)
-        .set_subarray(subarray);
-
-    // Perform the write and close the array.
-    query.submit();
-    array.close();
-  };
-
-  auto write_array_4 = [&]() -> void {
-    tiledb::Context ctx;
-
-    // Prepare some data for the array
-    std::vector<int> data = {202};
-
-    // Open the array for writing and create the query.
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Subarray subarray(ctx, array);
-    subarray.add_range(0, 3, 3).add_range(1, 4, 4);
-    tiledb::Query query(ctx, array);
-    query.set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", data)
-        .set_subarray(subarray);
-
-    // Perform the write and close the array.
-    query.submit();
-    array.close();
-  };
-
-  tiledb::Context ctx;
 
   uint64_t capi_max = 0; // init to avoid msvc warning as error miss inside CHECK()
   uint64_t cppapi_max;
@@ -265,41 +193,40 @@ TEST_CASE_METHOD(
   CHECK((capi_max= c_get_fragments_max_in_memory_tile_size(array_name)) == 0 * sizeof(int32_t));
   cppapi_max=cpp_get_fragments_max_in_memory_tile_size(array_name);
   CHECK(cppapi_max == capi_max);
-  write_array_1();
+  write_array_2_dims<int>(array_name, {1, 2, 3, 4, 5, 6, 6, 8}, {1, 2}, {1, 4});
   CHECK((capi_max= c_get_fragments_max_in_memory_tile_size(array_name)) == 4 * sizeof(int32_t));
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(array_name);
   CHECK(cppapi_max == capi_max);
-  write_array_2();
+  write_array_2_dims<int>(array_name, {101, 102, 103, 104}, {2, 3}, {2, 3});
   CHECK((capi_max= c_get_fragments_max_in_memory_tile_size(array_name)) == 4 * sizeof(int32_t));
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(array_name);
   CHECK(cppapi_max == capi_max);
-  write_array_3();
+  write_array_2_dims<int>(array_name, {201}, {1, 1}, {1, 1});
   CHECK((capi_max= c_get_fragments_max_in_memory_tile_size(array_name)) == 4 * sizeof(int32_t));
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(array_name);
   CHECK(cppapi_max == capi_max);
-  write_array_4();
+  write_array_2_dims<int>(array_name, {202}, {3, 3}, {4, 4});
   CHECK((capi_max= c_get_fragments_max_in_memory_tile_size(array_name)) == 4 * sizeof(int32_t));
   cppapi_max=cpp_get_fragments_max_in_memory_tile_size(array_name);
   CHECK(cppapi_max == capi_max);
 
   // consolidate
-  tiledb::Array::consolidate(ctx, array_name);
+  tiledb::Array::consolidate(ctx_, array_name);
 
   CHECK((capi_max= c_get_fragments_max_in_memory_tile_size(array_name)) == 4 * sizeof(int32_t));
   cppapi_max=cpp_get_fragments_max_in_memory_tile_size(array_name);
   CHECK(cppapi_max == capi_max);
 
   // consolidate
-  tiledb::Array::vacuum(ctx, array_name);
+  tiledb::Array::vacuum(ctx_, array_name);
 
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 4 * sizeof(int32_t));
 }
 
 TEST_CASE_METHOD(
-    CandCXXAPI_MaxTileSizeFx,
+    MaxTileSizeFx,
     "C++ API: Max fragment size, sparse, variable string dimension, fix attr",
     "[capi][max-tile-size][sparse][var-dimension]") {
-tiledb::Context ctx;
   auto& array_name = main_array_name;
 
   auto  create_array = [&]()-> void {
@@ -308,16 +235,16 @@ tiledb::Context ctx;
 
   // The array will be 1d array with dimension "rows"
   // "rows" is a string dimension type, so the domain and extent is null
-  tiledb::Domain domain(ctx);
+  tiledb::Domain domain(ctx_);
   domain.add_dimension(tiledb::Dimension::create(
-      ctx, "rows", TILEDB_STRING_ASCII, nullptr, nullptr));
+      ctx_, "rows", TILEDB_STRING_ASCII, nullptr, nullptr));
 
   // The array will be sparse.
-  tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
+  tiledb::ArraySchema schema(ctx_, TILEDB_SPARSE);
   schema.set_domain(domain);
 
   // Add a single attribute "a" so each (i,j) cell can store an integer.
-  schema.add_attribute(tiledb::Attribute::create<int32_t>(ctx, "a"));
+  schema.add_attribute(tiledb::Attribute::create<int32_t>(ctx_, "a"));
 
   // Create the (empty) array on disk.
   tiledb::Array::create(array_name, schema);
@@ -347,8 +274,8 @@ tiledb::Context ctx;
     }
 
     // Open the array for writing and create the query.
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Query query(ctx, array, TILEDB_WRITE);
+    tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
+    tiledb::Query query(ctx_, array, TILEDB_WRITE);
     query.set_layout(TILEDB_UNORDERED) 
         .set_data_buffer("a", a_buff)
         .set_data_buffer("rows", d1_var)
@@ -375,7 +302,7 @@ tiledb::Context ctx;
   CHECK(cppapi_max == capi_max);
 
   // consolidate
-  tiledb::Array::consolidate(ctx, array_name);
+  tiledb::Array::consolidate(ctx_, array_name);
   // now '12' after consolidate(), data tiles pick up extra
   // overhead to support time traveling.
   CHECK((capi_max= c_get_fragments_max_in_memory_tile_size(array_name)) == 24);
@@ -392,7 +319,7 @@ tiledb::Context ctx;
   CHECK(cppapi_max == capi_max);
 
   // consolidate
-  tiledb::Array::consolidate(ctx, array_name);
+  tiledb::Array::consolidate(ctx_, array_name);
   // now '28' after consolidate(), data tiles pick up extra
   // overhead to support time traveling.
   CHECK((capi_max= c_get_fragments_max_in_memory_tile_size(array_name)) == 56);
@@ -400,14 +327,14 @@ tiledb::Context ctx;
   CHECK(cppapi_max == capi_max);
 
   // vacuum
-  tiledb::Array::vacuum(ctx, array_name);
+  tiledb::Array::vacuum(ctx_, array_name);
   // still '28', vacuuming does not remove the earlier data.
   CHECK((capi_max= c_get_fragments_max_in_memory_tile_size(array_name)) == 56);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(array_name);
   CHECK(cppapi_max == capi_max);
 
   // secondary attempt still retains the overhead.
-  tiledb::Array::consolidate(ctx, array_name);
+  tiledb::Array::consolidate(ctx_, array_name);
   // now '28' after consolidate(), data tiles pick up extra
   // overhead to support time traveling, preserved across multiple attempts.
   CHECK((capi_max= c_get_fragments_max_in_memory_tile_size(array_name)) == 56);
@@ -415,7 +342,7 @@ tiledb::Context ctx;
   CHECK(cppapi_max == capi_max);
 
   // vacuum
-  tiledb::Array::vacuum(ctx, array_name);
+  tiledb::Array::vacuum(ctx_, array_name);
   // still '28', vacuuming does not remove the earlier data, even after a
   // secondary consolidate against previously vacuumed data.
   CHECK((capi_max= c_get_fragments_max_in_memory_tile_size(array_name)) == 56);
@@ -424,44 +351,40 @@ tiledb::Context ctx;
 }
 
 TEST_CASE_METHOD(
-    CandCXXAPI_MaxTileSizeFx,
+    MaxTileSizeFx,
     "C++ API: Max fragment size, dense create/evolve, fixed dim/attr",
     "[capi][max-tile-size][dense][evolve]") {
   auto& array_name = main_array_name;
 
   auto create_array = [&](const std::string& array_name) -> void {
-    // Create a TileDB context.
-    tiledb::Context ctx;
-
     remove_temp_dir(array_name.c_str());
 
     // The array will be 1x4 with dimension "rows"  with domain
     // [1,4].
-    tiledb::Domain domain(ctx);
+    tiledb::Domain domain(ctx_);
     domain.add_dimension(
-        tiledb::Dimension::create<int>(ctx, "rows", {{1, 4}}, 1));
+        tiledb::Dimension::create<int>(ctx_, "rows", {{1, 4}}, 1));
 
     // The array will be dense.
-    tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
+    tiledb::ArraySchema schema(ctx_, TILEDB_DENSE);
     schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
     // Add one attribute "a1", so each (i) cell can store
     // a character on "a1".
     schema.add_attribute(
-        tiledb::Attribute::create<std::array<char, 2>>(ctx, "a2"));
+        tiledb::Attribute::create<std::array<char, 2>>(ctx_, "a2"));
 
     // Create the (empty) array on disk.
     tiledb::Array::create(array_name, schema);
   };
 
   auto array_schema_evolve_A = [&](/* const Context& ctx*/) -> void {
-    tiledb::Context ctx;
     tiledb::ArraySchemaEvolution schemaEvolution =
-        tiledb::ArraySchemaEvolution(ctx);
+        tiledb::ArraySchemaEvolution(ctx_);
 
     // Add attribute b
     tiledb::Attribute b =
-        tiledb::Attribute::create<std::array<char, 257>>(ctx, "b257");
+        tiledb::Attribute::create<std::array<char, 257>>(ctx_, "b257");
     schemaEvolution.add_attribute(b);
 
     schemaEvolution.drop_attribute(std::string("a2"));
@@ -471,13 +394,12 @@ TEST_CASE_METHOD(
   };
 
   auto array_schema_evolve_B = [&](/* const Context& ctx*/) -> void {
-    tiledb::Context ctx;
     tiledb::ArraySchemaEvolution schemaEvolution =
-        tiledb::ArraySchemaEvolution(ctx);
+        tiledb::ArraySchemaEvolution(ctx_);
 
     // Add attribute c
     tiledb::Attribute c =
-        tiledb::Attribute::create<std::array<char, 42>>(ctx, "c42");
+        tiledb::Attribute::create<std::array<char, 42>>(ctx_, "c42");
     schemaEvolution.add_attribute(c);
 
     schemaEvolution.drop_attribute(std::string("b257"));
@@ -485,10 +407,6 @@ TEST_CASE_METHOD(
     // evolve array
     schemaEvolution.array_evolve(array_name);
   };
-
-  tiledb::Config cfg;
-  tiledb::Context ctx(cfg);
-  tiledb::VFS vfs(ctx);
 
   remove_temp_dir(array_name);
 
@@ -529,18 +447,18 @@ TEST_CASE_METHOD(
 
     // now want to consolidate, but not vacuum, max
     // should still be 257
-    tiledb::Array::consolidate(ctx, array_name);
+    tiledb::Array::consolidate(ctx_, array_name);
     // After consolidation, old fragment should still be there with 257
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 257);
 
     // then vacuum, now max should become 42 ...
-    tiledb::Array::vacuum(ctx, array_name);
+    tiledb::Array::vacuum(ctx_, array_name);
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 42);
   }
 }
 
 TEST_CASE_METHOD(
-    CandCXXAPI_MaxTileSizeFx,
+    MaxTileSizeFx,
     "C++ API: Max fragment size, sparse, variable string dimension, variable string attribute",
     "[capi][max-tile-size][sparse][evolve]") {
   std::string array_name("tile_size_array");
@@ -548,24 +466,21 @@ TEST_CASE_METHOD(
   remove_temp_dir(array_name);
 
   auto create_array = [&]() -> void {
-    // Create a TileDB context.
-    tiledb::Context ctx;
-
     remove_temp_dir(array_name);
 
     // The array will be 1d array with dimension "rows"
     // "rows" is a string dimension type, so the domain and extent is null
-    tiledb::Domain domain(ctx);
+    tiledb::Domain domain(ctx_);
     domain.add_dimension(
-        tiledb::Dimension::create(ctx, "rows", TILEDB_STRING_ASCII, nullptr, nullptr));
+        tiledb::Dimension::create(ctx_, "rows", TILEDB_STRING_ASCII, nullptr, nullptr));
 
     // The array will be dense.
-    tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
+    tiledb::ArraySchema schema(ctx_, TILEDB_SPARSE);
     schema.set_domain(domain);
 
     // Add one attribute "a1", so each (i) cell can store
     // a character on "a1".
-    schema.add_attribute(tiledb::Attribute::create<std::string>(ctx, "a1")
+    schema.add_attribute(tiledb::Attribute::create<std::string>(ctx_, "a1")
                              .set_nullable(true));
 
     // Create the (empty) array on disk.
@@ -580,12 +495,6 @@ TEST_CASE_METHOD(
     // std::vector<uint64_t> &attr_offsets
     std::vector<uint8_t> &genned_validity
     ) -> void {
-
-    //assert(attr_data.size() <= dim_data().size());
-
-    // Create a TileDB context.
-    tiledb::Context ctx;
-
     // need buffer to be non-null (x.data()) even if there is not data
     // to avoid internal API failure even tho there will be no actual data,
     // when all validity values are zero.
@@ -611,8 +520,8 @@ TEST_CASE_METHOD(
       attr_val[i] = 0;
     }
 
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Query query(ctx, array);
+    tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
+    tiledb::Query query(ctx_, array);
     query.set_layout(TILEDB_UNORDERED)
         .set_data_buffer("a1", attr_data)
         .set_offsets_buffer("a1", attr_offsets)
@@ -658,7 +567,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    CandCXXAPI_MaxTileSizeFx,
+    MaxTileSizeFx,
     "C++ API: Max fragment size, sparse, fix dimension, variable "
     "string attribute",
     "[capi][max-tile-size][dense][evolve]") {
@@ -667,24 +576,21 @@ TEST_CASE_METHOD(
   remove_temp_dir(array_name);
 
   auto create_array = [&](uint64_t extents = 1) -> void {
-    // Create a TileDB context.
-    tiledb::Context ctx;
-
     remove_temp_dir(array_name);
 
     // The array will be 1x27 with dimension "rows"  with domain
     // [1,27] and extent specified by parameter.
-    tiledb::Domain domain(ctx);
+    tiledb::Domain domain(ctx_);
     domain.add_dimension(
-        tiledb::Dimension::create<int>(ctx, "rows", {{1, 27}}, extents));
+        tiledb::Dimension::create<int>(ctx_, "rows", {{1, 27}}, extents));
 
     // The array will be dense.
-    tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
+    tiledb::ArraySchema schema(ctx_, TILEDB_DENSE);
     schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
     // Add one attribute "a1", so each (i) cell can store
     // a string on "a1".
-    schema.add_attribute(tiledb::Attribute::create<std::string>(ctx, "a1"));
+    schema.add_attribute(tiledb::Attribute::create<std::string>(ctx_, "a1"));
 
     // Create the (empty) array on disk.
     tiledb::Array::create(array_name, schema);
@@ -693,12 +599,9 @@ TEST_CASE_METHOD(
                                                    // values, one for each row
                          std::vector<uint64_t>&& attr_offsets,
                          std::vector<int>&& subrange) -> void {
-    // Create a TileDB context.
-    tiledb::Context ctx;
-
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Query query(ctx, array);
-    tiledb::Subarray subarray(ctx, array);
+    tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
+    tiledb::Query query(ctx_, array);
+    tiledb::Subarray subarray(ctx_, array);
     subarray.add_range(0, subrange[0], subrange[1]);
 
     query.set_layout(TILEDB_ROW_MAJOR)
@@ -895,7 +798,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    CandCXXAPI_MaxTileSizeFx,
+    MaxTileSizeFx,
     "C++ API: Max fragment size, sparse, fix dimension, nullable variable "
     "string attribute",
     "[capi][max-tile-size][dense][evolve]") {
@@ -904,25 +807,22 @@ TEST_CASE_METHOD(
   remove_temp_dir(array_name);
 
   auto create_array = [&](int extents = 1) -> void {
-    // Create a TileDB context.
-    tiledb::Context ctx;
-
     remove_temp_dir(array_name);
 
     // The array will be 1d with dimensions "rows"  with domain
     // [1,27].
-    tiledb::Domain domain(ctx);
+    tiledb::Domain domain(ctx_);
     domain.add_dimension(
-        tiledb::Dimension::create<int>(ctx, "rows", {{1, 27}}, extents));
+        tiledb::Dimension::create<int>(ctx_, "rows", {{1, 27}}, extents));
 
     // The array will be dense.
-    tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
+    tiledb::ArraySchema schema(ctx_, TILEDB_DENSE);
     schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
     // Add one attribute "a1", so each (i) cell can store
     // a string on "a1".
     schema.add_attribute(
-        tiledb::Attribute::create<std::string>(ctx, "a1").set_nullable(true));
+        tiledb::Attribute::create<std::string>(ctx_, "a1").set_nullable(true));
 
     // Create the (empty) array on disk.
     tiledb::Array::create(array_name, schema);
@@ -932,12 +832,9 @@ TEST_CASE_METHOD(
                          std::vector<uint64_t>&& attr_offsets,
                          std::vector<uint8_t>&& attr_val,
                          std::vector<int>&& subrange) -> void {
-    // Create a TileDB context.
-    tiledb::Context ctx;
-
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Query query(ctx, array);
-    tiledb::Subarray subarray(ctx, array);
+    tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
+    tiledb::Query query(ctx_, array);
+    tiledb::Subarray subarray(ctx_, array);
     subarray.add_range(0, subrange[0], subrange[1]);
 
     query.set_layout(TILEDB_ROW_MAJOR)
@@ -1120,7 +1017,7 @@ TEST_CASE_METHOD(
 
 #ifdef TILEDB_SERIALIZATION
 TEST_CASE_METHOD(
-    CandCXXAPI_MaxTileSizeFx,
+    MaxTileSizeFx,
     "C++ API: Max tile size, serialization",
     "[max-tile-size][serialization]") {
   std::string array_name("tile_size_array");

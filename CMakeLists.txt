@@ -329,7 +329,6 @@ list(APPEND TILEDB_C_API_FILENAME_HEADERS
 )
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
-#    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/tiledb_tile_sizes.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/context/context_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"

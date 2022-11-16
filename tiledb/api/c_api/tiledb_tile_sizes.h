@@ -41,8 +41,7 @@
 extern "C" {
 #endif
 
-#if 01
-typedef struct tiledb_fragment_tile_size_extremes_t {
+typedef struct tiledb_fragment_max_tile_sizes_t {
   uint64_t max_in_memory_tile_size;
   uint64_t max_persisted_tile_size;
 
@@ -55,14 +54,7 @@ typedef struct tiledb_fragment_tile_size_extremes_t {
   uint64_t max_persisted_tile_size_validity;
   uint64_t max_in_memory_tile_size_validity;
 
-  uint64_t min_persisted_basic_tile_size;
-  uint64_t min_in_memory_basic_tile_size;
-  uint64_t min_persisted_tile_size_var;
-  uint64_t min_in_memory_tile_size_var;
-  uint64_t min_persisted_tile_size_validity;
-  uint64_t min_in_memory_tile_size_validity;
-} tiledb_fragment_tile_size_extremes_t;
-#endif
+} tiledb_fragment_max_tile_sizes_t;
 
 #ifdef __cplusplus
 }
