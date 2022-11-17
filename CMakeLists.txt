@@ -339,6 +339,8 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter_list/filter_list_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_external.h"
 )
 set(TILEDB_C_API_RELATIVE_HEADER_BASE "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -454,8 +456,10 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
   # C API basics
   add_dependencies(tests unit_capi_error unit_capi_config unit_capi_context)
-  add_dependencies(tests unit_capi_filesystem)
   add_dependencies(tests unit_capi_datatype)
+  add_dependencies(tests unit_capi_filesystem)
+  add_dependencies(tests unit_capi_object_type)
+  add_dependencies(tests unit_capi_object_walk_order)
   # C API array schema
   add_dependencies(tests unit_capi_filter unit_capi_filter_list)
 

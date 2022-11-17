@@ -55,16 +55,6 @@
 #endif
 // clang-format on
 
-#ifdef TILEDB_OBJECT_TYPE_ENUM
-    /** Invalid object */
-    TILEDB_OBJECT_TYPE_ENUM(INVALID) = 0,
-    /** Group object */
-    TILEDB_OBJECT_TYPE_ENUM(GROUP) = 1,
-    /** Array object */
-    TILEDB_OBJECT_TYPE_ENUM(ARRAY) = 2,
-// We remove 3 (KEY_VALUE), so we should probably reserve it
-#endif
-
 #ifdef TILEDB_ARRAY_TYPE_ENUM
     /** Dense array */
     TILEDB_ARRAY_TYPE_ENUM(DENSE) = 0,
@@ -142,13 +132,6 @@
     TILEDB_SERIALIZATION_TYPE_ENUM(JSON),
     /** Serialize to capnp */
     TILEDB_SERIALIZATION_TYPE_ENUM(CAPNP),
-#endif
-
-#ifdef TILEDB_WALK_ORDER_ENUM
-    /** Pre-order traversal */
-    TILEDB_WALK_ORDER_ENUM(PREORDER) = 0,
-    /** Post-order traversal */
-    TILEDB_WALK_ORDER_ENUM(POSTORDER) = 1,
 #endif
 
 /** TileDB VFS mode */

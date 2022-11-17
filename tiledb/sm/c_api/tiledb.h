@@ -62,6 +62,7 @@
 #include "tiledb/api/c_api/filesystem/filesystem_api_external.h"
 #include "tiledb/api/c_api/filter/filter_api_external.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_external.h"
+#include "tiledb/api/c_api/object/object_api_external.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -73,14 +74,6 @@ extern "C" {
 /* ****************************** */
 /*          TILEDB ENUMS          */
 /* ****************************** */
-
-/** TileDB object type. */
-typedef enum {
-/** Helper macro for defining object type enums. */
-#define TILEDB_OBJECT_TYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_OBJECT_TYPE_ENUM
-} tiledb_object_t;
 
 /** TileDB query type. */
 typedef enum {
@@ -138,14 +131,6 @@ typedef enum {
 #undef TILEDB_ENCRYPTION_TYPE_ENUM
 } tiledb_encryption_type_t;
 
-/** Walk traversal order. */
-typedef enum {
-/** Helper macro for defining walk order enums. */
-#define TILEDB_WALK_ORDER_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_WALK_ORDER_ENUM
-} tiledb_walk_order_t;
-
 /** VFS mode. */
 typedef enum {
 /** Helper macro for defining VFS mode enums. */
@@ -193,27 +178,6 @@ TILEDB_EXPORT int32_t tiledb_query_type_to_str(
  */
 TILEDB_EXPORT int32_t tiledb_query_type_from_str(
     const char* str, tiledb_query_type_t* query_type) TILEDB_NOEXCEPT;
-
-/**
- * Returns a string representation of the given object type.
- *
- * @param object_type Object type
- * @param str Set to point to a constant string representation of the object
- * type
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_object_type_to_str(
-    tiledb_object_t object_type, const char** str) TILEDB_NOEXCEPT;
-
-/**
- * Parses a object type from the given string.
- *
- * @param str String representation to parse
- * @param object_type Set to the parsed object type
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_object_type_from_str(
-    const char* str, tiledb_object_t* object_type) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given array type.
@@ -296,26 +260,6 @@ TILEDB_EXPORT int32_t tiledb_query_status_to_str(
  */
 TILEDB_EXPORT int32_t tiledb_query_status_from_str(
     const char* str, tiledb_query_status_t* query_status) TILEDB_NOEXCEPT;
-
-/**
- * Returns a string representation of the given walk order.
- *
- * @param walk_order Walk order
- * @param str Set to point to a constant string representation of the walk order
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_walk_order_to_str(
-    tiledb_walk_order_t walk_order, const char** str) TILEDB_NOEXCEPT;
-
-/**
- * Parses a walk order from the given string.
- *
- * @param str String representation to parse
- * @param walk_order Set to the parsed walk order
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_walk_order_from_str(
-    const char* str, tiledb_walk_order_t* walk_order) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given VFS mode.

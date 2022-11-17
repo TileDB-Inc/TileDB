@@ -140,23 +140,6 @@ int32_t tiledb_query_type_from_str(
   return TILEDB_OK;
 }
 
-int32_t tiledb_object_type_to_str(
-    tiledb_object_t object_type, const char** str) {
-  const auto& strval =
-      tiledb::sm::object_type_str((tiledb::sm::ObjectType)object_type);
-  *str = strval.c_str();
-  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
-}
-
-int32_t tiledb_object_type_from_str(
-    const char* str, tiledb_object_t* object_type) {
-  tiledb::sm::ObjectType val = tiledb::sm::ObjectType::INVALID;
-  if (!tiledb::sm::object_type_enum(str, &val).ok())
-    return TILEDB_ERR;
-  *object_type = (tiledb_object_t)val;
-  return TILEDB_OK;
-}
-
 int32_t tiledb_array_type_to_str(
     tiledb_array_type_t array_type, const char** str) {
   const auto& strval =
@@ -237,23 +220,6 @@ int32_t tiledb_serialization_type_from_str(
   if (!tiledb::sm::serialization_type_enum(str, &val).ok())
     return TILEDB_ERR;
   *serialization_type = (tiledb_serialization_type_t)val;
-  return TILEDB_OK;
-}
-
-int32_t tiledb_walk_order_to_str(
-    tiledb_walk_order_t walk_order, const char** str) {
-  const auto& strval =
-      tiledb::sm::walkorder_str((tiledb::sm::WalkOrder)walk_order);
-  *str = strval.c_str();
-  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
-}
-
-int32_t tiledb_walk_order_from_str(
-    const char* str, tiledb_walk_order_t* walk_order) {
-  tiledb::sm::WalkOrder val = tiledb::sm::WalkOrder::PREORDER;
-  if (!tiledb::sm::walkorder_enum(str, &val).ok())
-    return TILEDB_ERR;
-  *walk_order = (tiledb_walk_order_t)val;
   return TILEDB_OK;
 }
 
@@ -6217,18 +6183,6 @@ int32_t tiledb_query_type_from_str(
       str, query_type);
 }
 
-int32_t tiledb_object_type_to_str(
-    tiledb_object_t object_type, const char** str) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_object_type_to_str>(
-      object_type, str);
-}
-
-int32_t tiledb_object_type_from_str(
-    const char* str, tiledb_object_t* object_type) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_object_type_from_str>(
-      str, object_type);
-}
-
 int32_t tiledb_array_type_to_str(
     tiledb_array_type_t array_type, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_array_type_to_str>(
@@ -6285,18 +6239,6 @@ int32_t tiledb_serialization_type_from_str(
     const char* str, tiledb_serialization_type_t* serialization_type) noexcept {
   return api_entry_plain<tiledb::api::tiledb_serialization_type_from_str>(
       str, serialization_type);
-}
-
-int32_t tiledb_walk_order_to_str(
-    tiledb_walk_order_t walk_order, const char** str) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_walk_order_to_str>(
-      walk_order, str);
-}
-
-int32_t tiledb_walk_order_from_str(
-    const char* str, tiledb_walk_order_t* walk_order) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_walk_order_from_str>(
-      str, walk_order);
 }
 
 int32_t tiledb_vfs_mode_to_str(

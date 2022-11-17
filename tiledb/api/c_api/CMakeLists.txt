@@ -69,3 +69,6 @@ add_subdirectory(filter)
 
 # `filter_list`: depends on `context`, `filter`
 add_subdirectory(filter_list)
+
+# `object`: no dependencies
+add_subdirectory(object)
