@@ -81,6 +81,20 @@ class Attribute {
    *
    * @param name The name of the attribute.
    * @param type The type of the attribute.
+   * @param cell_val_num The cell number of the attribute.
+   * @param order The ordering of the attribute.
+   */
+  Attribute(
+      const std::string& name,
+      Datatype type,
+      uint32_t cell_val_num,
+      DataOrder order);
+
+  /**
+   * Constructor.
+   *
+   * @param name The name of the attribute.
+   * @param type The type of the attribute.
    * @param nullable The nullable of the attribute.
    * @param cell_val_num The cell number of the attribute.
    * @param filter_pipeline The filters of the attribute.

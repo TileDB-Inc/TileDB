@@ -53,6 +53,7 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
+#include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <set>
@@ -458,6 +459,19 @@ Status ArraySchema::check() const {
   check_attribute_dimension_label_names();
   check_webp_filter();
 
+  // Check for ordered attributes on sparse arrays and arrays with more than one
+  // dimension.
+  if (array_type_ == ArrayType::SPARSE || this->dim_num() != 1) {
+    if (std::any_of(
+            attributes_.cbegin(), attributes_.cend(), [](const auto& attr) {
+              return attr->order() != DataOrder::UNORDERED_DATA;
+            })) {
+      throw ArraySchemaStatusException(
+          "Array schema check failed; Ordered attributes are only supported on "
+          "dense arrays with 1 dimension.");
+    }
+  }
+
   // Check all internal dimension labels have a schema set and the schema is
   // compatible with the definition of the array it was added to.
   //
@@ -781,9 +795,10 @@ bool ArraySchema::var_size(const std::string& name) const {
 Status ArraySchema::add_attribute(
     shared_ptr<const Attribute> attr, bool check_special) {
   // Sanity check
-  if (attr == nullptr)
+  if (attr == nullptr) {
     return LOG_STATUS(Status_ArraySchemaError(
         "Cannot add attribute; Input attribute is null"));
+  }
 
   // Do not allow attributes with special names
   if (check_special && attr->name().find(constants::special_name_prefix) == 0) {
