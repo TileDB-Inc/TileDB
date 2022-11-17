@@ -309,7 +309,7 @@ StorageManager::load_array_schemas_and_all_fragment_metadata(
   auto timestamped_fragment_uris_to_load = timestamped_uris_from_uris(fragments_to_load);
 
   // Get the unique fragment metadatas into a map.
-  std::unordered_map<std::string, std::pair<Buffer*, uint64_t>> offsets;
+  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
 
   // Load the fragment metadata
   auto&& [st_fragment_meta, fragment_metadata] = load_fragment_metadata(
