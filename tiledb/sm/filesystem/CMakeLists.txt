@@ -44,8 +44,6 @@ commence(object_library vfs)
             message(STATUS "Linking to Win32 lib shlwapi")
             this_target_link_libraries(-lshlwapi)
         endif()
-find_package(Zstd_EP REQUIRED)
-target_link_libraries(vfs PUBLIC Zstd::Zstd)
     endif()
 conclude(object_library)
 

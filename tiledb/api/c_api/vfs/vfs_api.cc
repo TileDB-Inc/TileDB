@@ -30,11 +30,9 @@
  * This file defines C API functions for the virtual filesystem section.
  */
 
-//#include "tiledb/sm/c_api/api_exception_safety.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "vfs_api_external.h"
 #include "vfs_api_internal.h"
-//#include "tiledb/sm/enums/vfs_mode.h"
 
 namespace tiledb::api {
 
@@ -57,7 +55,6 @@ capi_return_t tiledb_vfs_mode_from_str(
 capi_return_t tiledb_vfs_alloc(
     tiledb_ctx_t* ctx, tiledb_config_t* config, tiledb_vfs_t** vfs) {
   ensure_output_pointer_is_valid(vfs);
-  ensure_config_is_valid(config);
 
   // Create VFS object
   auto stats = ctx->storage_manager()->stats();
