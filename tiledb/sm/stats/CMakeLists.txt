@@ -24,20 +24,12 @@
 # THE SOFTWARE.
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # Object library for other units to depend upon
 #
-add_library(stats OBJECT stats.cc)
-target_link_libraries(stats PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(stats PUBLIC stringx $<TARGET_OBJECTS:stringx>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_stats EXCLUDE_FROM_ALL)
-add_dependencies(all_link_complete compile_stats)
-target_link_libraries(compile_stats PRIVATE stats)
-target_sources(compile_stats PRIVATE
-    test/compile_stats_main.cc $<TARGET_OBJECTS:stats>
-)
+commence(object_library stats)
+    this_target_sources(stats.cc)
+    this_target_object_libraries(baseline stringx)
+conclude(object_library)

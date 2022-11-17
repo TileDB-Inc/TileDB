@@ -25,23 +25,14 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # `array` object library
 #
-add_library(array OBJECT array_directory.cc)
-target_link_libraries(array PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(array PUBLIC vfs $<TARGET_OBJECTS:vfs>)
-target_link_libraries(array PUBLIC uri_format $<TARGET_OBJECTS:uri_format>)
-target_link_libraries(array PUBLIC uuid $<TARGET_OBJECTS:uuid>)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_array EXCLUDE_FROM_ALL)
-add_dependencies(all_link_complete compile_array)
-target_link_libraries(compile_array PRIVATE config)
-target_sources(compile_array PRIVATE test/compile_array_directory_main.cc)
+commence(object_library array)
+    this_target_sources(array_directory.cc)
+    this_target_object_libraries(baseline uri_format uuid vfs)
+conclude(object_library)
 
-if (TILEDB_TESTS)
-  add_subdirectory(test)
-endif()
+add_test_subdirectory()
