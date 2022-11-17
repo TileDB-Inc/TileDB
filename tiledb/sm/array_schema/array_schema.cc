@@ -38,7 +38,6 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
-#include "tiledb/sm/array_schema/dimension_label_schema.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -936,35 +935,16 @@ void ArraySchema::add_dimension_label(
 
   // Add dimension label
   try {
-    // Create dimension label schema.
-    // - Note: This is a placeholder until dimension label schema is replace
-    // directly with an array schema.
-    auto dimension_label_schema = make_shared<DimensionLabelSchema>(
-        HERE(),
-        label_order,
-        label_type,
-        dim->type(),
-        dim->domain().data(),
-        dim->tile_extent().data());
-
     // Create relative URI in dimension label directory
     URI uri{constants::array_dimension_labels_dir_name + "/l" +
                 std::to_string(nlabel_internal_),
             false};
 
     // Create the dimension label reference.
-    auto dim_label = make_shared<DimensionLabelReference>(
-        HERE(),
-        dim_id,
-        name,
-        uri,
-        dimension_label_schema->label_attribute()->name(),
-        dimension_label_schema->label_order(),
-        dimension_label_schema->label_type(),
-        dimension_label_schema->label_cell_val_num(),
-        dimension_label_schema);
-    dimension_labels_.emplace_back(dim_label);
-    dimension_label_map_[name] = dim_label.get();
+    auto dim_label_ref = make_shared<DimensionLabelReference>(
+        HERE(), dim_id, name, uri, dim, label_order, label_type);
+    dimension_labels_.emplace_back(dim_label_ref);
+    dimension_label_map_[name] = dim_label_ref.get();
   } catch (...) {
     std::throw_with_nested(ArraySchemaStatusException(
         "Failed to add dimension label '" + name + "'."));

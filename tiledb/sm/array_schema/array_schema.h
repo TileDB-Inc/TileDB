@@ -54,7 +54,6 @@ class Buffer;
 class ConstBuffer;
 class Dimension;
 class DimensionLabelReference;
-class DimensionLabelSchema;
 class Domain;
 
 enum class ArrayType : uint8_t;

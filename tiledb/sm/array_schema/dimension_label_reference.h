@@ -47,7 +47,7 @@ namespace tiledb::sm {
 class ArraySchema;
 class Buffer;
 class ConstBuffer;
-class DimensionLabelSchema;
+class Dimension;
 enum class Datatype : uint8_t;
 enum class DataOrder : uint8_t;
 
@@ -86,7 +86,8 @@ class DimensionLabelReference {
    * @param label_order The order of the dimension label.
    * @param label_type The datatype of the label data.
    * @param label_cell_val_num The number of values stored in dimension label
-   * cell.
+   *     cell.
+   * @param schema The schema of the dimension label.
    * @param is_external If ``true``, the dimension label exits outside of the
    * array.
    * @param relative_uri If ``true``, the URI is relative.
@@ -99,7 +100,7 @@ class DimensionLabelReference {
       DataOrder label_order,
       Datatype label_type,
       uint32_t label_cell_val_num,
-      shared_ptr<const DimensionLabelSchema> schema,
+      shared_ptr<ArraySchema> schema,
       bool is_external,
       bool relative_uri);
 
@@ -109,22 +110,17 @@ class DimensionLabelReference {
    * @param dim_id The index of the dimension the label is attached to.
    * @param dim_label_name The name of the dimension label.
    * @param uri The URI of an external dimension label.
-   * @param label_attr_name The name of the attribute in the array that stores
-   *     the label data.
+   * @param dim The dimension the label is being added to.
    * @param label_order The order of the dimension label.
    * @param label_type The datatype of the label data.
-   * @param label_cell_val_num The number of values stored in dimension cell.
-   * @param schema The array schema
    */
   DimensionLabelReference(
       dimension_size_type dim_id,
       const std::string& dim_label_name,
       const URI& uri,
-      const std::string& label_attr_name,
+      const Dimension* dim,
       DataOrder label_order,
-      Datatype label_type,
-      uint32_t label_cell_val_num,
-      shared_ptr<const DimensionLabelSchema> schema);
+      Datatype label_type);
 
   /**
    * Populates the object members from the data in the input binary buffer.
@@ -255,7 +251,7 @@ class DimensionLabelReference {
    * The schema is used for creating the dimension label and is not included in
    * the dimension label schema serialization and deserialization from disk.
    */
-  shared_ptr<const DimensionLabelSchema> schema_;
+  shared_ptr<ArraySchema> schema_;
 
   /**
    * If ``true`` the dimension label exists outside the array, otherwise

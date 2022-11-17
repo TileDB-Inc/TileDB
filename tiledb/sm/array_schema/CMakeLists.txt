@@ -52,20 +52,12 @@ commence(object_library domain)
 conclude(object_library)
 
 #
-# `dimension_label_reference` object library
-#
-commence(object_library dimension_label_reference)
-    this_target_sources(dimension_label_reference.cc)
-    this_target_object_libraries(baseline buffer constants range vfs)
-conclude(object_library)
-
-#
 # `array_schema` object library
 #
 commence(object_library array_schema)
-    this_target_sources(array_schema.cc dimension_label_schema.cc)
+    this_target_sources(array_schema.cc dimension_label_reference.cc)
     this_target_object_libraries(
-        attribute domain dimension_label_reference time uri_format uuid vfs)
+        attribute domain time uri_format uuid vfs)
 conclude(object_library)
 
 if (TILEDB_TESTS)
@@ -82,7 +74,6 @@ if (TILEDB_TESTS)
         test/unit_array_schema.cc
         test/unit_dimension.cc
         test/unit_dimension_label_reference.cc
-        test/unit_dimension_label_schema.cc
         test/unit_domain_data.cc
         test/unit_tile_domain.cc
     )
