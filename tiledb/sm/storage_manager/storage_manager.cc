@@ -157,25 +157,6 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 /*               API              */
 /* ****************************** */
 
-Status StorageManagerCanonical::array_close_for_reads(Array*) {
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::array_close_for_writes(Array* array) {
-  // Flush the array metadata
-  RETURN_NOT_OK(store_metadata(
-      array->array_uri(), *array->encryption_key(), array->unsafe_metadata()));
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::array_close_for_deletes(Array*) {
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::array_close_for_updates(Array*) {
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::group_close_for_reads(Group* group) {
   assert(open_groups_.find(group) != open_groups_.end());
 
