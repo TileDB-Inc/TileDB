@@ -751,6 +751,11 @@ class ReaderBase : public StrategyBase {
   template<typename ResultTileType, typename ResultCoordsType>
   void compute_hilbert_values(const std::vector<ResultTile*>& result_tiles) const;
 
+// TODO: delete
+  void old_calculate_hilbert_values(
+    const DomainBuffersView& domain_buffers,
+    std::vector<uint64_t>& hilbert_values) const;
+
  private:
   /**
    * @brief Class that stores all the storage needed to keep bitsort

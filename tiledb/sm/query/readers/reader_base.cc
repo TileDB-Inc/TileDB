@@ -75,6 +75,7 @@ struct ReaderBase::BitSortFilterMetadataStorage {
   std::optional<DomainBuffersView> db_;
   std::optional<CmpObject> cmp_obj_;
   std::function<bool(const uint64_t&, const uint64_t&)> comparator_;
+  std::vector<uint64_t> old_hilbert_values_;
 
   BitSortFilterMetadataType get_bitsort_filter_metadata_type() {
     return BitSortFilterMetadataType(&dim_tiles_, &comparator_);
@@ -1017,6 +1018,10 @@ void ReaderBase::compute_hilbert_values(const std::vector<ResultTile*>& result_t
   // Parallelize on tiles.
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
+        /*
+        if constexpr (std::is_same<ResultCoords, ResultCoordsType>::value) {
+          result_tiles[t]->set_zipped();
+        } */
        auto tile =
             static_cast<ResultTileType*>(result_tiles[t]);
   
@@ -1026,6 +1031,7 @@ void ReaderBase::compute_hilbert_values(const std::vector<ResultTile*>& result_t
       }
       auto rc = ResultCoordsType(tile, 0);
         std::vector<uint64_t> coords(dim_num);
+        std::cout << "hilbert vector size: " << result_tiles[t]->hilbert_values_size() << std::endl;
         result_tiles[t]->allocate_hilbert_vector();
         for (rc.pos_ = 0; rc.pos_ < cell_num; rc.pos_++) {
           // Process only values in bitmap.
@@ -1053,6 +1059,11 @@ void ReaderBase::compute_hilbert_values(const std::vector<ResultTile*>& result_t
             result_tiles[t]->set_hilbert_value(rc.pos_, h.coords_to_hilbert(&coords[0]));
            }
         }
+
+        /*
+        if constexpr (std::is_same<ResultCoords, ResultCoordsType>::value) {
+          result_tiles[t]->set_unzipped();
+        } */
 
         return Status::Ok();
       });
@@ -1854,8 +1865,8 @@ bool ReaderBase::has_coords() const {
   return false;
 }
 
-/**
-void ReaderBase::calculate_hilbert_values(
+// TODO: delete
+void ReaderBase::old_calculate_hilbert_values(
     const DomainBuffersView& domain_buffers,
     std::vector<uint64_t>& hilbert_values) const {
   auto dim_num = array_schema_.dim_num();
@@ -1878,7 +1889,6 @@ void ReaderBase::calculate_hilbert_values(
         return Status::Ok();
       }));
 }
-*/
 
 template <
     typename CmpObject,
@@ -1888,8 +1898,6 @@ template <
 BitSortFilterMetadataType ReaderBase::construct_bitsort_filter_argument(
     ResultTile* const tile,
     BitSortFilterMetadataStorage<CmpObject>& bitsort_storage) const {
-  std::cout << "hilbert values size: " << tile->hilbert_values_size() << std::endl;
-
   // Collect the storage vectors.
   std::vector<Tile*>& dim_tiles = bitsort_storage.dim_tiles_;
   std::vector<QueryBuffer>& query_buffers = bitsort_storage.query_buffers_;
@@ -1916,10 +1924,20 @@ BitSortFilterMetadataType ReaderBase::construct_bitsort_filter_argument(
   bitsort_storage.db_.emplace(
       DomainBuffersView(array_schema_.domain(), query_buffers));
   if constexpr (std::is_same<CmpObject, HilbertCmpQB>::value) {
-    std::vector<uint64_t>& hilbert_values = tile->hilbert_values();
-    assert(dim_tiles.size() > 0);
-    uint64_t cell_num = dim_tiles[0]->cell_num();
-    hilbert_values.resize(cell_num);
+    // std::vector<uint64_t>& hilbert_values = tile->hilbert_values();
+    std::vector<uint64_t> &hilbert_values = bitsort_storage.old_hilbert_values_;
+    hilbert_values.resize(dim_tiles[0]->cell_num());
+    old_calculate_hilbert_values(bitsort_storage.db_.value(), hilbert_values);
+
+    std::cout << "printing old hilbert values.\n";
+    for (uint64_t j = 0; j < dim_tiles[0]->cell_num(); ++j) {
+      std::cout << tile->hilbert_values()[j] << ", " << hilbert_values[j] << std::endl;
+      if (tile->hilbert_values()[j] != hilbert_values[j]) {
+        std::cout << "NOT EQUAL\n";
+      }
+    }
+    std::cout << "\n";
+
     bitsort_storage.cmp_obj_.emplace(HilbertCmpQB(
         array_schema_.domain(), bitsort_storage.db_.value(), hilbert_values));
   } else if constexpr (std::is_same<CmpObject, GlobalCmpQB>::value) {

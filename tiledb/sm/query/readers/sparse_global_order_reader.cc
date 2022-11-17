@@ -231,6 +231,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
 
       // Compute hilbert values.
       if (array_schema_.cell_order() == Layout::HILBERT) {
+        std::cout << "compute hilbert values: sparse global order reader\n";
         compute_hilbert_values<GlobalOrderResultTile<BitmapType>, GlobalOrderResultCoords<BitmapType>>(tmp_result_tiles);
       }
 
