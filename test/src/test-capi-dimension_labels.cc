@@ -35,7 +35,6 @@
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
-#include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -96,9 +95,9 @@ class DimensionLabelTestFixture : public TemporaryDirectoryFixture {
    *    - x: (type=UINT64, domain=[0, 63], tile=64)
    *  * Attributes:
    *    - a: (type=FLOAT64)
-   *  * Dimesnion labels:
-   *    - x: (dim_idx=0, type=FLOAT64, domain=[-10, 10], tile=4.0)
-   *    - id: (dim_idx=0, type=STRING_ASCII, domain=null, tile=null)
+   *  * Dimension labels:
+   *    - x: (dim_idx=0, type=FLOAT64)
+   *    - id: (dim_idx=0, type=STRING_ASCII)
    *
    * @param array_name Array name relative to the fixture temporary directory.
    * @returns Full URI to the generated array.
@@ -129,19 +128,8 @@ std::string DimensionLabelTestFixture::create_single_label_array(
       4096,
       false);
 
-  tiledb_dimension_label_schema_t* dim_label_schema;
-  REQUIRE_TILEDB_OK(tiledb_dimension_label_schema_alloc(
-      ctx,
-      TILEDB_UNORDERED_LABELS,
-      label_type,
-      TILEDB_UINT64,
-      x_domain,
-      &x_tile_extent,
-      &dim_label_schema));
-
   REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
-      ctx, array_schema, 0, "x", dim_label_schema));
-  tiledb_dimension_label_schema_free(&dim_label_schema);
+      ctx, array_schema, 0, "x", TILEDB_INCREASING_DATA, label_type));
 
   // Check array schema and number of dimension labels.
   REQUIRE_TILEDB_OK(tiledb_array_schema_check(ctx, array_schema));
@@ -175,32 +163,11 @@ std::string DimensionLabelTestFixture::create_multi_label_array(
       4096,
       false);
 
-  // Create and add dimension labels to schema.
-  tiledb_dimension_label_schema_t* dim_label_schema;
-  // l0
-  REQUIRE_TILEDB_OK(tiledb_dimension_label_schema_alloc(
-      ctx,
-      TILEDB_INCREASING_LABELS,
-      TILEDB_FLOAT64,
-      TILEDB_UINT64,
-      x_domain,
-      &x_tile_extent,
-      &dim_label_schema));
+  // Add dimension labels.
   REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
-      ctx, array_schema, 0, "x", dim_label_schema));
-  tiledb_dimension_label_schema_free(&dim_label_schema);
-  // l1
-  REQUIRE_TILEDB_OK(tiledb_dimension_label_schema_alloc(
-      ctx,
-      TILEDB_UNORDERED_LABELS,
-      TILEDB_STRING_ASCII,
-      TILEDB_UINT64,
-      x_domain,
-      &x_tile_extent,
-      &dim_label_schema));
+      ctx, array_schema, 0, "x", TILEDB_INCREASING_DATA, TILEDB_FLOAT64));
   REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
-      ctx, array_schema, 0, "id", dim_label_schema));
-  tiledb_dimension_label_schema_free(&dim_label_schema);
+      ctx, array_schema, 0, "id", TILEDB_INCREASING_DATA, TILEDB_STRING_ASCII));
 
   // Check array schema and number of dimension labels.
   REQUIRE_TILEDB_OK(tiledb_array_schema_check(ctx, array_schema));
@@ -211,25 +178,6 @@ std::string DimensionLabelTestFixture::create_multi_label_array(
   auto array_uri = create_temporary_array(std::move(array_name), array_schema);
   tiledb_array_schema_free(&array_schema);
   return array_uri;
-}
-
-TEST_CASE(
-    "Create dimension label schema",
-    "[capi][DimensionLabelSchema][DimensionLabel]") {
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(NULL, &ctx);
-  int64_t dim_domain[] = {1, 10};
-  int64_t tile_extent = 5;
-  tiledb_dimension_label_schema_t* dim_label;
-  REQUIRE_TILEDB_OK(tiledb_dimension_label_schema_alloc(
-      ctx,
-      TILEDB_INCREASING_LABELS,
-      TILEDB_FLOAT64,
-      TILEDB_INT64,
-      dim_domain,
-      &tile_extent,
-      &dim_label));
-  tiledb_dimension_label_schema_free(&dim_label);
 }
 
 TEST_CASE_METHOD(

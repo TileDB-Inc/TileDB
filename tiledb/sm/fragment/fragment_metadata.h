@@ -405,7 +405,7 @@ class FragmentMetadata {
    */
   Status load(
       const EncryptionKey& encryption_key,
-      Buffer* f_buff,
+      Tile* fragment_metadata_tile,
       uint64_t offset,
       std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
 
@@ -869,7 +869,7 @@ class FragmentMetadata {
   bool operator<(const FragmentMetadata& metadata) const;
 
   /** Serializes the fragment metadata footer into the input buffer. */
-  Status write_footer(Buffer* buff) const;
+  Status write_footer(Serializer& serializer) const;
 
   /** Loads the R-tree from storage. */
   Status load_rtree(const EncryptionKey& encryption_key);
@@ -1485,151 +1485,146 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key, unsigned idx);
 
   /** Loads the generic tile offsets from the buffer. */
-  Status load_generic_tile_offsets(ConstBuffer* buff);
+  void load_generic_tile_offsets(Deserializer& deserializer);
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
    * versions 3 and 4.
    */
-  Status load_generic_tile_offsets_v3_v4(ConstBuffer* buff);
+  void load_generic_tile_offsets_v3_v4(Deserializer& deserializer);
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
    * versions 5 and 6.
    */
-  Status load_generic_tile_offsets_v5_v6(ConstBuffer* buff);
+  void load_generic_tile_offsets_v5_v6(Deserializer& deserializer);
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
    * versions 7 to 10.
    */
-  Status load_generic_tile_offsets_v7_v10(ConstBuffer* buff);
+  void load_generic_tile_offsets_v7_v10(Deserializer& deserializer);
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
    * versions 11.
    */
-  Status load_generic_tile_offsets_v11(ConstBuffer* buff);
+  void load_generic_tile_offsets_v11(Deserializer& deserializer);
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
    * versions 12 to 15.
    */
-  Status load_generic_tile_offsets_v12_v15(ConstBuffer* buff);
+  void load_generic_tile_offsets_v12_v15(Deserializer& deserializer);
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
    * versions 16 or higher.
    */
-  Status load_generic_tile_offsets_v16_or_higher(ConstBuffer* buff);
+  void load_generic_tile_offsets_v16_or_higher(Deserializer& deserializer);
 
   /**
    * Loads the array schema name.
    */
-  Status load_array_schema_name(ConstBuffer* buff);
+  void load_array_schema_name(Deserializer& deserializer);
 
   /**
    * Loads the bounding coordinates from the fragment metadata buffer.
    *
-   * @param buff Metadata buffer.
-   * @return Status
+   * @param deserializer Deserializer to get data from.
    */
-  Status load_bounding_coords(ConstBuffer* buff);
+  void load_bounding_coords(Deserializer& deserializer);
 
   /** Loads the sizes of each attribute or dimension file from the buffer. */
-  Status load_file_sizes(ConstBuffer* buff);
+  void load_file_sizes(Deserializer& deserializer);
 
   /**
    * Loads the sizes of each attribute or dimension file from the buffer.
    * Applicable to format versions 1 to 4.
    */
-  Status load_file_sizes_v1_v4(ConstBuffer* buff);
+  void load_file_sizes_v1_v4(Deserializer& deserializer);
 
   /**
    * Loads the sizes of each attribute or dimension file from the buffer.
    * Applicable to format version 5 or higher.
    */
-  Status load_file_sizes_v5_or_higher(ConstBuffer* buff);
+  void load_file_sizes_v5_or_higher(Deserializer& deserializer);
 
   /**
    * Loads the sizes of each variable attribute or dimension file from the
    * buffer.
    */
-  Status load_file_var_sizes(ConstBuffer* buff);
+  void load_file_var_sizes(Deserializer& deserializer);
 
   /**
    * Loads the sizes of each variable attribute or dimension file from the
    * buffer. Applicable to version 1 to 4.
    */
-  Status load_file_var_sizes_v1_v4(ConstBuffer* buff);
+  void load_file_var_sizes_v1_v4(Deserializer& deserializer);
 
   /**
    * Loads the sizes of each variable attribute or dimension file from the
    * buffer. Applicable to version 5 or higher.
    */
-  Status load_file_var_sizes_v5_or_higher(ConstBuffer* buff);
+  void load_file_var_sizes_v5_or_higher(Deserializer& deserializer);
 
   /** Loads the sizes of each attribute validity file from the buffer. */
-  Status load_file_validity_sizes(ConstBuffer* buff);
+  void load_file_validity_sizes(Deserializer& deserializer);
 
   /**
    * Loads the cell number of the last tile from the fragment metadata buffer.
    *
-   * @param buff Metadata buffer.
-   * @return Status
+   * @param deserializer Deserializer to get data from.
    */
-  Status load_last_tile_cell_num(ConstBuffer* buff);
+  void load_last_tile_cell_num(Deserializer& deserializer);
 
   /**
    * Loads the `has_timestamps_` field from the buffer.
    *
-   * @param buff Metadata buffer.
-   * @return Status
+   * @param deserializer Deserializer to get data from.
    */
-  Status load_has_timestamps(ConstBuffer* buff);
+  void load_has_timestamps(Deserializer& deserializer);
 
   /**
    * Loads the `has_delete_meta_` field from the buffer.
    *
-   * @param buff Metadata buffer.
-   * @return Status
+   * @param deserializer Deserializer to get data from.
    */
-  Status load_has_delete_meta(ConstBuffer* buff);
+  void load_has_delete_meta(Deserializer& deserializer);
 
   /**
    * Loads the MBRs from the fragment metadata buffer.
    *
-   * @param buff Metadata buffer.
-   * @return Status
+   * @param deserializer Deserializer to get data from.
    */
-  Status load_mbrs(ConstBuffer* buff);
+  void load_mbrs(Deserializer& deserializer);
 
   /** Loads the non-empty domain from the input buffer. */
-  Status load_non_empty_domain(ConstBuffer* buff);
+  void load_non_empty_domain(Deserializer& deserializer);
 
   /**
    * Loads the non-empty domain from the input buffer,
    * for format versions <= 2.
    */
-  Status load_non_empty_domain_v1_v2(ConstBuffer* buff);
+  void load_non_empty_domain_v1_v2(Deserializer& deserializer);
 
   /**
    * Loads the non-empty domain from the input buffer,
    * for format versions 3 and 4.
    */
-  Status load_non_empty_domain_v3_v4(ConstBuffer* buff);
+  void load_non_empty_domain_v3_v4(Deserializer& deserializer);
 
   /**
    * Loads the non-empty domain from the input buffer,
    * for format versions >= 5.
    */
-  Status load_non_empty_domain_v5_or_higher(ConstBuffer* buff);
+  void load_non_empty_domain_v5_or_higher(Deserializer& deserializer);
 
   /**
    * Loads the tile offsets for the input attribute from the input buffer.
    * Applicable to versions 1 and 2
    */
-  Status load_tile_offsets(ConstBuffer* cbuff);
+  void load_tile_offsets(Deserializer& deserializer);
 
   /**
    * Loads the tile offsets for the input attribute or dimension from the
@@ -1641,7 +1636,7 @@ class FragmentMetadata {
    * Loads the variable tile offsets from the input buffer.
    * Applicable to versions 1 and 2
    */
-  Status load_tile_var_offsets(ConstBuffer* buff);
+  void load_tile_var_offsets(Deserializer& deserializer);
 
   /**
    * Loads the variable tile offsets for the input attribute or dimension from
@@ -1650,7 +1645,7 @@ class FragmentMetadata {
   void load_tile_var_offsets(unsigned idx, Deserializer& deserializer);
 
   /** Loads the variable tile sizes from the input buffer. */
-  Status load_tile_var_sizes(ConstBuffer* buff);
+  void load_tile_var_sizes(Deserializer& deserializer);
 
   /**
    * Loads the variable tile sizes for the input attribute or dimension
@@ -1697,13 +1692,13 @@ class FragmentMetadata {
   void load_processed_conditions(Deserializer& deserializer);
 
   /** Loads the format version from the buffer. */
-  Status load_version(ConstBuffer* buff);
+  void load_version(Deserializer& deserializer);
 
   /** Loads the `dense_` field from the buffer. */
-  Status load_dense(ConstBuffer* buff);
+  void load_dense(Deserializer& deserializer);
 
   /** Loads the number of sparse tiles from the buffer. */
-  Status load_sparse_tile_num(ConstBuffer* buff);
+  void load_sparse_tile_num(Deserializer& deserializer);
 
   /** Loads the basic metadata from storage (version 2 or before). */
   Status load_v1_v2(
@@ -1717,7 +1712,7 @@ class FragmentMetadata {
    */
   Status load_v3_or_higher(
       const EncryptionKey& encryption_key,
-      Buffer* f_buff,
+      Tile* fragment_metadata_tile,
       uint64_t offset,
       std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
 
@@ -1729,39 +1724,39 @@ class FragmentMetadata {
    */
   Status load_footer(
       const EncryptionKey& encryption_key,
-      Buffer* f_buff,
+      Tile* fragment_metadata_tile,
       uint64_t offset,
       std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
 
   /** Writes the sizes of each attribute file to the buffer. */
-  Status write_file_sizes(Buffer* buff) const;
+  void write_file_sizes(Serializer& serializer) const;
 
   /** Writes the sizes of each variable attribute file to the buffer. */
-  Status write_file_var_sizes(Buffer* buff) const;
+  void write_file_var_sizes(Serializer& serializer) const;
 
   /** Writes the sizes of each validitiy attribute file to the buffer. */
-  Status write_file_validity_sizes(Buffer* buff) const;
+  void write_file_validity_sizes(Serializer& serializer) const;
 
   /** Writes the generic tile offsets to the buffer. */
-  Status write_generic_tile_offsets(Buffer* buff) const;
+  void write_generic_tile_offsets(Serializer& serializer) const;
 
   /** Writes the array schema name. */
-  Status write_array_schema_name(Buffer* buff) const;
+  void write_array_schema_name(Serializer& serializer) const;
 
   /**
    * Writes the cell number of the last tile to the fragment metadata buffer.
    */
-  Status write_last_tile_cell_num(Buffer* buff) const;
+  void write_last_tile_cell_num(Serializer& serializer) const;
 
   /**
    * Writes the `has_timestamps_` field to the fragment metadata buffer.
    */
-  Status write_has_timestamps(Buffer* buff) const;
+  void write_has_timestamps(Serializer& serializer) const;
 
   /**
    * Writes the `has_delete_meta_` field to the fragment metadata buffer.
    */
-  Status write_has_delete_meta(Buffer* buff) const;
+  void write_has_delete_meta(Serializer& serializer) const;
 
   /**
    * Writes the R-tree to storage.
@@ -1779,7 +1774,7 @@ class FragmentMetadata {
   Tile write_rtree();
 
   /** Writes the non-empty domain to the input buffer. */
-  Status write_non_empty_domain(Buffer* buff) const;
+  void write_non_empty_domain(Serializer& serializer) const;
 
   /**
    * Writes the tile offsets of the input attribute or dimension to storage.
@@ -1843,14 +1838,14 @@ class FragmentMetadata {
    * offsets.
    * @return Status
    */
-  Status store_tile_validity_offsets(
+  void store_tile_validity_offsets(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the validity tile offsets of the input attribute idx to the
    * input buffer.
    */
-  Status write_tile_validity_offsets(unsigned idx, Buffer* buff);
+  void write_tile_validity_offsets(unsigned idx, Serializer& serializer);
 
   /**
    * Writes the mins of the input attribute to storage.
@@ -1858,7 +1853,6 @@ class FragmentMetadata {
    * @param idx The index of the attribute.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the mins.
-   * @return Status
    */
   void store_tile_mins(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
@@ -1874,7 +1868,6 @@ class FragmentMetadata {
    * @param idx The index of the attribute.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the maxs.
-   * @return Status
    */
   void store_tile_maxs(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
@@ -1890,7 +1883,6 @@ class FragmentMetadata {
    * @param idx The index of the attribute.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the sums.
-   * @return Status
    */
   void store_tile_sums(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
@@ -1906,7 +1898,6 @@ class FragmentMetadata {
    * @param idx The index of the attribute.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the null counts.
-   * @return Status
    */
   void store_tile_null_counts(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
@@ -1931,7 +1922,6 @@ class FragmentMetadata {
    *
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written.
-   * @return Status
    */
   void store_processed_conditions(
       const EncryptionKey& encryption_key, uint64_t* nbytes);
@@ -1961,13 +1951,13 @@ class FragmentMetadata {
   void min_max_var(const std::string& name);
 
   /** Writes the format version to the buffer. */
-  Status write_version(Buffer* buff) const;
+  void write_version(Serializer& serializer) const;
 
   /** Writes the `dense_` field to the buffer. */
-  Status write_dense(Buffer* buff) const;
+  void write_dense(Serializer& serializer) const;
 
   /** Writes the number of sparse tiles to the buffer. */
-  Status write_sparse_tile_num(Buffer* buff) const;
+  void write_sparse_tile_num(Serializer& serializer) const;
 
   /**
    * Reads the contents of a generic tile starting at the input offset,
@@ -1981,21 +1971,9 @@ class FragmentMetadata {
    * offsets) into the input buffer.
    */
   Status read_file_footer(
-      Buffer* buff, uint64_t* footer_offset, uint64_t* footer_size) const;
-
-  /**
-   * Writes the contents of the input buffer as a separate
-   * generic tile to the metadata file.
-   *
-   * @param encryption_key The encryption key.
-   * @param buff The buffer whose contents the function will write.
-   * @param nbytes The total number of bytes written to the file.
-   * @return Status
-   */
-  Status write_generic_tile_to_file(
-      const EncryptionKey& encryption_key,
-      Buffer& buff,
-      uint64_t* nbytes) const;
+      std::shared_ptr<Tile>& tile,
+      uint64_t* footer_offset,
+      uint64_t* footer_size) const;
 
   /**
    * Writes the contents of the input tile as a separate
@@ -2015,7 +1993,7 @@ class FragmentMetadata {
    * retrieval upon reading (as its size is predictable based on the
    * number of attributes).
    */
-  Status write_footer_to_file(Buffer* buff) const;
+  Status write_footer_to_file(Tile&) const;
 
   /**
    * Simple clean up function called in the case of error. It removes the

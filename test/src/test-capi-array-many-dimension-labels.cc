@@ -31,16 +31,14 @@
  * array.
  */
 
-#include "test/src/experimental_helpers.h"
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
-#include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/encryption_type.h"
 
 #include <test/support/tdb_catch.h>
@@ -96,68 +94,26 @@ class ExampleArray : public TemporaryDirectoryFixture {
         false);
 
     // Add dimension labels.
-    add_dimension_label(
-        ctx,
-        array_schema,
-        "t",
-        3,
-        TILEDB_INCREASING_LABELS,
-        TILEDB_DATETIME_SEC,
-        &tile_extent);
+    tiledb_array_schema_add_dimension_label(
+        ctx, array_schema, 3, "t", TILEDB_INCREASING_DATA, TILEDB_DATETIME_SEC);
 
-    add_dimension_label(
-        ctx,
-        array_schema,
-        "x",
-        0,
-        TILEDB_INCREASING_LABELS,
-        TILEDB_FLOAT64,
-        &tile_extent);
+    tiledb_array_schema_add_dimension_label(
+        ctx, array_schema, 0, "x", TILEDB_INCREASING_DATA, TILEDB_FLOAT64);
 
-    add_dimension_label(
-        ctx,
-        array_schema,
-        "y",
-        1,
-        TILEDB_INCREASING_LABELS,
-        TILEDB_FLOAT64,
-        &tile_extent);
+    tiledb_array_schema_add_dimension_label(
+        ctx, array_schema, 1, "y", TILEDB_INCREASING_DATA, TILEDB_FLOAT64);
 
-    add_dimension_label(
-        ctx,
-        array_schema,
-        "z",
-        2,
-        TILEDB_INCREASING_LABELS,
-        TILEDB_FLOAT64,
-        &tile_extent);
+    tiledb_array_schema_add_dimension_label(
+        ctx, array_schema, 2, "z", TILEDB_INCREASING_DATA, TILEDB_FLOAT64);
 
-    add_dimension_label(
-        ctx,
-        array_schema,
-        "alpha",
-        0,
-        TILEDB_DECREASING_LABELS,
-        TILEDB_FLOAT64,
-        &tile_extent);
+    tiledb_array_schema_add_dimension_label(
+        ctx, array_schema, 0, "alpha", TILEDB_DECREASING_DATA, TILEDB_FLOAT64);
 
-    add_dimension_label(
-        ctx,
-        array_schema,
-        "beta",
-        1,
-        TILEDB_DECREASING_LABELS,
-        TILEDB_FLOAT64,
-        &tile_extent);
+    tiledb_array_schema_add_dimension_label(
+        ctx, array_schema, 1, "beta", TILEDB_DECREASING_DATA, TILEDB_FLOAT64);
 
-    add_dimension_label(
-        ctx,
-        array_schema,
-        "gamma",
-        2,
-        TILEDB_DECREASING_LABELS,
-        TILEDB_FLOAT64,
-        &tile_extent);
+    tiledb_array_schema_add_dimension_label(
+        ctx, array_schema, 2, "gamma", TILEDB_DECREASING_DATA, TILEDB_FLOAT64);
 
     // Create array
     array_name =

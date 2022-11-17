@@ -272,6 +272,8 @@ if (COMPILER_SUPPORTS_AVX2)
   add_compile_options(${COMPILER_AVX2_FLAG})
 endif()
 
+
+
 #######################################################
 # Header Files
 #######################################################
@@ -413,8 +415,28 @@ target_include_directories(local_install INTERFACE ${TILEDB_LOCALINSTALL_INCLUDE
 # Enable testing
 enable_testing()
 
-# Aggregate all link-completeness targets
+# -------------------------------------------------------
+# Accumulators for object libraries and unit tests
+# -------------------------------------------------------
+#
+# Aggregate all link-completeness targets from object libraries.
+#
+# 1. Before any subdirectories are added:
+#    a) Declare a target for all link-completess checks. It's a phantom target
+#       having only dependencies and with no build actions of its own.
+#    b) Declare an accumulator for link-completeness targets.
+# 2. For each object library within the various subdirectories, add a
+#    link-completeness target, either
+#    a) manually, as an explicit dependency of the `all_link_complete` target.
+#    b) automatically, as an implicit part of an object library environment.
+#       The environment puts the link-completess target into the accumulator.
+# 3. After all the subdirectories are added:
+#    a) The list of all targets from the accumulator is added as a dependency
+#       of `all_link_complete`.
+#
 add_custom_target(all_link_complete)
+include(accumulator)
+define_accumulator(object_library_compile_targets)
 
 # Build the TileDB library experimental features
 add_subdirectory(experimental)
@@ -445,6 +467,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_consistency)
   add_dependencies(tests unit_range)
   add_dependencies(tests unit_rtree)
+  add_dependencies(tests unit_tile)
 
   # C API support
   add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
@@ -480,6 +503,14 @@ endif()
 if (TILEDB_TOOLS)
   add_subdirectory(tools)
 endif()
+
+# -------------------------------------------------------
+#
+# Add all the compile-targets from object library definitions as
+# dependencies of the `all_link_complete` phantom target.
+#
+retrieve_from(Compile_Targets ACCUMULATOR object_library_compile_targets)
+add_dependencies(all_link_complete ${Compile_Targets})
 
 ###########################################################
 # Uninstall

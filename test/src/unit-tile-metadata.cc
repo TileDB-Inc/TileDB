@@ -317,12 +317,14 @@ struct CPPFixedTileMetadataFx {
           // Validate no min.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_min("d"),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access fragment min metadata that's "
+              "not present");
 
           // Validate no max.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_max("d"),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access fragment max metadata that's "
+              "not present");
 
           // Validate sum.
           auto sum = frag_meta[f]->get_sum("d");
@@ -338,12 +340,14 @@ struct CPPFixedTileMetadataFx {
           // Validate no min.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_tile_min_as<TestType>("d", tile_idx),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access tile min metadata that's not "
+              "present");
 
           // Validate no max.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_tile_max_as<TestType>("d", tile_idx),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access tile max metadata that's not "
+              "present");
 
           // Validate sum.
           auto sum = frag_meta[f]->get_tile_sum("d", tile_idx);
@@ -359,17 +363,20 @@ struct CPPFixedTileMetadataFx {
         // Validate no min.
         CHECK_THROWS_WITH(
             frag_meta[f]->get_min("a"),
-            "FragmentMetadata: Trying to access metadata that's not present");
+            "FragmentMetadata: Trying to access fragment min metadata that's "
+            "not present");
 
         // Validate no max.
         CHECK_THROWS_WITH(
             frag_meta[f]->get_max("a"),
-            "FragmentMetadata: Trying to access metadata that's not present");
+            "FragmentMetadata: Trying to access fragment max metadata that's "
+            "not present");
 
         // Validate no sum.
         CHECK_THROWS_WITH(
             frag_meta[f]->get_sum("a"),
-            "FragmentMetadata: Trying to access metadata that's not present");
+            "FragmentMetadata: Trying to access fragment sum metadata that's "
+            "not present");
       } else {
         // Min/max/sum for all null tile are invalid.
         if (!all_null) {
@@ -405,8 +412,8 @@ struct CPPFixedTileMetadataFx {
             // Validate no sum.
             CHECK_THROWS_WITH(
                 frag_meta[f]->get_sum("a"),
-                "FragmentMetadata: Trying to access metadata that's not "
-                "present");
+                "FragmentMetadata: Trying to access fragment sum metadata "
+                "that's not present");
           } else {
             // Validate min.
             auto& min = frag_meta[f]->get_min("a");
@@ -438,8 +445,8 @@ struct CPPFixedTileMetadataFx {
       } else {
         CHECK_THROWS_WITH(
             frag_meta[f]->get_null_count("a"),
-            "FragmentMetadata: Trying to access metadata that's not "
-            "present");
+            "FragmentMetadata: Trying to access fragment null count metadata "
+            "that's not present");
       }
     }
 
@@ -467,17 +474,20 @@ struct CPPFixedTileMetadataFx {
       // Validate no min.
       CHECK_THROWS_WITH(
           frag_meta[f]->get_tile_min_as<TestType>("a", 0),
-          "FragmentMetadata: Trying to access metadata that's not present");
+          "FragmentMetadata: Trying to access tile min metadata that's not "
+          "present");
 
       // Validate no max.
       CHECK_THROWS_WITH(
           frag_meta[f]->get_tile_max_as<TestType>("a", 0),
-          "FragmentMetadata: Trying to access metadata that's not present");
+          "FragmentMetadata: Trying to access tile max metadata that's not "
+          "present");
 
       // Validate no sum.
       CHECK_THROWS_WITH(
           frag_meta[f]->get_tile_sum("a", 0),
-          "FragmentMetadata: Trying to access metadata that's not present");
+          "FragmentMetadata: Trying to access tile sum metadata that's not "
+          "present");
     } else {
       if (!all_null) {
         if constexpr (std::is_same<TestType, char>::value) {
@@ -511,7 +521,8 @@ struct CPPFixedTileMetadataFx {
             // Validate no sum.
             CHECK_THROWS_WITH(
                 frag_meta[f]->get_tile_sum("a", tile_idx),
-                "FragmentMetadata: Trying to access metadata that's not "
+                "FragmentMetadata: Trying to access tile sum metadata that's "
+                "not "
                 "present");
           }
         } else {
@@ -555,8 +566,8 @@ struct CPPFixedTileMetadataFx {
       } else {
         CHECK_THROWS_WITH(
             frag_meta[f]->get_tile_null_count("a", tile_idx),
-            "FragmentMetadata: Trying to access metadata that's not "
-            "present");
+            "FragmentMetadata: Trying to access tile null count metadata "
+            "that's not present");
       }
     }
 
@@ -839,12 +850,14 @@ struct CPPVarTileMetadataFx {
           // Validate no min.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_min("d"),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access fragment min metadata that's "
+              "not present");
 
           // Validate no max.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_max("d"),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access fragment max metadata that's "
+              "not present");
 
           // Validate sum.
           auto sum = frag_meta[f]->get_sum("d");
@@ -860,12 +873,14 @@ struct CPPVarTileMetadataFx {
           // Validate no min.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_tile_min_as<uint32_t>("d", tile_idx),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access tile min metadata that's not "
+              "present");
 
           // Validate no max.
           CHECK_THROWS_WITH(
               frag_meta[f]->get_tile_max_as<uint32_t>("d", tile_idx),
-              "FragmentMetadata: Trying to access metadata that's not present");
+              "FragmentMetadata: Trying to access tile max metadata that's not "
+              "present");
 
           // Validate sum.
           auto sum = frag_meta[f]->get_tile_sum("d", tile_idx);
@@ -899,7 +914,8 @@ struct CPPVarTileMetadataFx {
         // Validate no sum.
         CHECK_THROWS_WITH(
             frag_meta[f]->get_sum("a"),
-            "FragmentMetadata: Trying to access metadata that's not present");
+            "FragmentMetadata: Trying to access fragment sum metadata that's "
+            "not present");
       }
 
       // Check null count.
@@ -909,8 +925,8 @@ struct CPPVarTileMetadataFx {
       } else {
         CHECK_THROWS_WITH(
             frag_meta[f]->get_null_count("a"),
-            "FragmentMetadata: Trying to access metadata that's not "
-            "present");
+            "FragmentMetadata: Trying to access fragment null count metadata "
+            "that's not present");
       }
     }
 
@@ -957,7 +973,8 @@ struct CPPVarTileMetadataFx {
         // Validate no sum.
         CHECK_THROWS_WITH(
             frag_meta[f]->get_tile_sum("a", tile_idx),
-            "FragmentMetadata: Trying to access metadata that's not present");
+            "FragmentMetadata: Trying to access tile sum metadata that's not "
+            "present");
       }
     }
 
@@ -969,8 +986,8 @@ struct CPPVarTileMetadataFx {
       } else {
         CHECK_THROWS_WITH(
             frag_meta[f]->get_tile_null_count("a", tile_idx),
-            "FragmentMetadata: Trying to access metadata that's not "
-            "present");
+            "FragmentMetadata: Trying to access tile null count metadata "
+            "that's not present");
       }
     }
 

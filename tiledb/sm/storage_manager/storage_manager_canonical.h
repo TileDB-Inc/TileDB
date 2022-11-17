@@ -1056,21 +1056,6 @@ class StorageManagerCanonical {
   /**
    * Stores data into persistent storage.
    *
-   * @param data Data to store.
-   * @param size Size of the data.
-   * @param uri The object URI.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status store_data_to_generic_tile(
-      void* data,
-      const size_t size,
-      const URI& uri,
-      const EncryptionKey& encryption_key);
-
-  /**
-   * Stores data into persistent storage.
-   *
    * @param tile Tile to store.
    * @param uri The object URI.
    * @param encryption_key The encryption key to use.
@@ -1233,12 +1218,6 @@ class StorageManagerCanonical {
   /** Stores the TileDB configuration parameters. */
   Config config_;
 
-  /** Keeps track of which arrays are open. */
-  std::set<Array*> open_arrays_;
-
-  /** Mutex for managing open arrays. */
-  std::mutex open_arrays_mtx_;
-
   /** Keeps track of which groups are open. */
   std::set<Group*> open_groups_;
 
@@ -1325,7 +1304,7 @@ class StorageManagerCanonical {
           array_schemas_all,
       const EncryptionKey& encryption_key,
       const std::vector<TimestampedURI>& fragments_to_load,
-      const std::unordered_map<std::string, std::pair<Buffer*, uint64_t>>&
+      const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
           offsets);
 
   /**
@@ -1339,7 +1318,7 @@ class StorageManagerCanonical {
    */
   tuple<
       Status,
-      optional<Buffer>,
+      optional<Tile>,
       optional<std::vector<std::pair<std::string, uint64_t>>>>
   load_consolidated_fragment_meta(const URI& uri, const EncryptionKey& enc_key);
 

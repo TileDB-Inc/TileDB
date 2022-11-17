@@ -62,8 +62,7 @@ int32_t tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) {
   }
 
   // Create the group
-  if (SAVE_ERROR_CATCH(ctx, ctx->storage_manager()->group_create(group_uri)))
-    return TILEDB_ERR;
+  throw_if_not_ok(ctx->storage_manager()->group_create(group_uri));
 
   // Success
   return TILEDB_OK;
@@ -121,10 +120,8 @@ int32_t tiledb_group_open(
     return TILEDB_ERR;
 
   // Open group
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          group->group_->open(static_cast<tiledb::sm::QueryType>(query_type))))
-    return TILEDB_ERR;
+  throw_if_not_ok(
+      group->group_->open(static_cast<tiledb::sm::QueryType>(query_type)));
 
   return TILEDB_OK;
 }
@@ -134,8 +131,7 @@ int32_t tiledb_group_close(tiledb_ctx_t* ctx, tiledb_group_t* group) {
     return TILEDB_ERR;
 
   // Close group
-  if (SAVE_ERROR_CATCH(ctx, group->group_->close()))
-    return TILEDB_ERR;
+  throw_if_not_ok(group->group_->close());
 
   return TILEDB_OK;
 }
@@ -155,8 +151,7 @@ int32_t tiledb_group_set_config(
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
 
-  if (SAVE_ERROR_CATCH(ctx, group->group_->set_config(config->config())))
-    return TILEDB_ERR;
+  throw_if_not_ok(group->group_->set_config(config->config()));
 
   return TILEDB_OK;
 }
@@ -181,14 +176,8 @@ int32_t tiledb_group_put_metadata(
     return TILEDB_ERR;
 
   // Put metadata
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          group->group_->put_metadata(
-              key,
-              static_cast<tiledb::sm::Datatype>(value_type),
-              value_num,
-              value)))
-    return TILEDB_ERR;
+  throw_if_not_ok(group->group_->put_metadata(
+      key, static_cast<tiledb::sm::Datatype>(value_type), value_num, value));
 
   return TILEDB_OK;
 }
@@ -199,8 +188,7 @@ int32_t tiledb_group_delete_metadata(
     return TILEDB_ERR;
 
   // Put metadata
-  if (SAVE_ERROR_CATCH(ctx, group->group_->delete_metadata(key)))
-    return TILEDB_ERR;
+  throw_if_not_ok(group->group_->delete_metadata(key));
 
   return TILEDB_OK;
 }
@@ -217,9 +205,7 @@ int32_t tiledb_group_get_metadata(
 
   // Get metadata
   tiledb::sm::Datatype type;
-  if (SAVE_ERROR_CATCH(
-          ctx, group->group_->get_metadata(key, &type, value_num, value)))
-    return TILEDB_ERR;
+  throw_if_not_ok(group->group_->get_metadata(key, &type, value_num, value));
 
   *value_type = static_cast<tiledb_datatype_t>(type);
 
@@ -232,8 +218,7 @@ int32_t tiledb_group_get_metadata_num(
     return TILEDB_ERR;
 
   // Get metadata num
-  if (SAVE_ERROR_CATCH(ctx, group->group_->get_metadata_num(num)))
-    return TILEDB_ERR;
+  throw_if_not_ok(group->group_->get_metadata_num(num));
 
   return TILEDB_OK;
 }
@@ -252,11 +237,8 @@ int32_t tiledb_group_get_metadata_from_index(
 
   // Get metadata
   tiledb::sm::Datatype type;
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          group->group_->get_metadata(
-              index, key, key_len, &type, value_num, value)))
-    return TILEDB_ERR;
+  throw_if_not_ok(group->group_->get_metadata(
+      index, key, key_len, &type, value_num, value));
 
   *value_type = static_cast<tiledb_datatype_t>(type);
 
@@ -275,9 +257,7 @@ int32_t tiledb_group_has_metadata_key(
   // Check whether metadata has_key
   bool has_the_key;
   tiledb::sm::Datatype type;
-  if (SAVE_ERROR_CATCH(
-          ctx, group->group_->has_metadata_key(key, &type, &has_the_key)))
-    return TILEDB_ERR;
+  throw_if_not_ok(group->group_->has_metadata_key(key, &type, &has_the_key));
 
   *has_key = has_the_key ? 1 : 0;
   if (has_the_key) {
@@ -330,13 +310,10 @@ int32_t tiledb_deserialize_group(
       sanity_check(ctx, buffer) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          tiledb::sm::serialization::group_deserialize(
-              group->group_.get(),
-              (tiledb::sm::SerializationType)serialize_type,
-              *buffer->buffer_)))
-    return TILEDB_ERR;
+  throw_if_not_ok(tiledb::sm::serialization::group_deserialize(
+      group->group_.get(),
+      (tiledb::sm::SerializationType)serialize_type,
+      *buffer->buffer_));
 
   return TILEDB_OK;
 }
@@ -356,11 +333,8 @@ int32_t tiledb_group_add_member(
     name_optional = name;
   }
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          group->group_->mark_member_for_addition(
-              tiledb::sm::URI(uri, !relative), relative, name_optional)))
-    return TILEDB_ERR;
+  throw_if_not_ok(group->group_->mark_member_for_addition(
+      tiledb::sm::URI(uri, !relative), relative, name_optional));
 
   return TILEDB_OK;
 }
@@ -371,8 +345,7 @@ int32_t tiledb_group_remove_member(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, group->group_->mark_member_for_removal(uri)))
-    return TILEDB_ERR;
+  throw_if_not_ok(group->group_->mark_member_for_removal(uri));
 
   return TILEDB_OK;
 }
@@ -533,8 +506,7 @@ int32_t tiledb_group_get_query_type(
 
   // Get query_type
   tiledb::sm::QueryType type;
-  if (SAVE_ERROR_CATCH(ctx, group->group_->get_query_type(&type)))
-    return TILEDB_ERR;
+  throw_if_not_ok(group->group_->get_query_type(&type));
 
   *query_type = static_cast<tiledb_query_type_t>(type);
 
@@ -620,14 +592,10 @@ int32_t tiledb_deserialize_group_metadata(
     return TILEDB_ERR;
 
   // Deserialize
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          tiledb::sm::serialization::metadata_deserialize(
-              group->group_->unsafe_metadata(),
-              (tiledb::sm::SerializationType)serialize_type,
-              *(buffer->buffer_)))) {
-    return TILEDB_ERR;
-  }
+  throw_if_not_ok(tiledb::sm::serialization::metadata_deserialize(
+      group->group_->unsafe_metadata(),
+      (tiledb::sm::SerializationType)serialize_type,
+      *(buffer->buffer_)));
 
   return TILEDB_OK;
 }
@@ -639,13 +607,10 @@ int32_t tiledb_group_consolidate_metadata(
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          ctx->storage_manager()->group_metadata_consolidate(
-              group_uri,
-              (config == nullptr) ? ctx->storage_manager()->config() :
-                                    config->config())))
-    return TILEDB_ERR;
+  throw_if_not_ok(ctx->storage_manager()->group_metadata_consolidate(
+      group_uri,
+      (config == nullptr) ? ctx->storage_manager()->config() :
+                            config->config()));
 
   return TILEDB_OK;
 }
@@ -656,13 +621,10 @@ int32_t tiledb_group_vacuum_metadata(
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          ctx->storage_manager()->group_metadata_vacuum(
-              group_uri,
-              (config == nullptr) ? ctx->storage_manager()->config() :
-                                    config->config())))
-    return TILEDB_ERR;
+  throw_if_not_ok(ctx->storage_manager()->group_metadata_vacuum(
+      group_uri,
+      (config == nullptr) ? ctx->storage_manager()->config() :
+                            config->config()));
 
   return TILEDB_OK;
 }

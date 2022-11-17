@@ -54,8 +54,8 @@
 
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
-#include "tiledb/sm/group/group.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/group/group.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/endian.h"
 #include "tiledb/sm/misc/parse_argument.h"

@@ -25,7 +25,7 @@
 # THE SOFTWARE.
 #
 
-# Add custom target 'examples_coo'
+# Add custom target 'examples_cpp'
 add_custom_target(examples_cpp DEPENDS tiledb_shared)
 
 # Function that builds an executable per example
@@ -54,6 +54,21 @@ foreach(EXAMPLE_SOURCE ${TILEDB_EXAMPLE_SOURCES_CPPAPI})
     REPLACE ".cc$" ""
     EXAMPLE_BIN ${EXAMPLE_STRIPPED}
   )
+
+  # Add WebP example if built with TILEDB_WEBP and libpng is found
+  if (${EXAMPLE_BIN} STREQUAL "png_ingestion_webp")
+    find_package(PNG)
+    if (PNG_FOUND AND TILEDB_WEBP)
+      build_TileDB_example_cppapi(${EXAMPLE_BIN})
+      target_link_libraries(png_ingestion_webp_cpp PRIVATE "${PNG_LIBRARIES}")
+      target_include_directories(png_ingestion_webp_cpp PRIVATE "${PNG_INCLUDE_DIRS}")
+      target_compile_definitions(png_ingestion_webp_cpp PRIVATE "${PNG_DEFINITIONS}")
+      find_package(Webp_EP REQUIRED)
+      target_link_libraries(png_ingestion_webp_cpp PRIVATE WebP::webp)
+      target_compile_definitions(png_ingestion_webp_cpp PRIVATE -DTILEDB_WEBP)
+    endif()
+    continue()
+  endif()
 
   # Build example executable
   build_TileDB_example_cppapi(${EXAMPLE_BIN})

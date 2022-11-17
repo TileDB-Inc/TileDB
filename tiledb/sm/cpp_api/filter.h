@@ -281,6 +281,10 @@ class Filter {
         return "SCALE_FLOAT";
       case TILEDB_FILTER_XOR:
         return "XOR";
+      case TILEDB_FILTER_BITSORT:
+        return "BITSORT";
+      case TILEDB_FILTER_WEBP:
+        return "WEBP";
     }
     return "";
   }
@@ -327,6 +331,15 @@ class Filter {
       case TILEDB_SCALE_FLOAT_OFFSET:
         if (!std::is_same<double, T>::value)
           throw std::invalid_argument("Option value must be double.");
+        break;
+      case TILEDB_WEBP_QUALITY:
+        if (!std::is_same<float, T>::value)
+          throw std::invalid_argument("Option value must be float.");
+        break;
+      case TILEDB_WEBP_INPUT_FORMAT:
+      case TILEDB_WEBP_LOSSLESS:
+        if (!std::is_same<uint8_t, T>::value)
+          throw std::invalid_argument("Option value must be uint8_t.");
         break;
       default:
         throw std::invalid_argument("Invalid option type");

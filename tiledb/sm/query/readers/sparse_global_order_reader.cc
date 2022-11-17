@@ -95,6 +95,7 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     , memory_used_for_qc_tiles_(array->fragment_metadata().size())
     , consolidation_with_timestamps_(consolidation_with_timestamps)
     , last_cells_(array->fragment_metadata().size()) {
+  include_coords_ = true;
   SparseIndexReaderBase::init(skip_checks_serialization);
 
   // Initialize memory budget variables.
@@ -117,6 +118,10 @@ bool SparseGlobalOrderReader<BitmapType>::incomplete() const {
 template <class BitmapType>
 QueryStatusDetailsReason
 SparseGlobalOrderReader<BitmapType>::status_incomplete_reason() const {
+  if (array_->is_remote()) {
+    return QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE;
+  }
+
   return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
                         QueryStatusDetailsReason::REASON_NONE;
 }
@@ -173,7 +178,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   }
 
   // Load initial data, if not loaded already.
-  RETURN_NOT_OK(load_initial_data(true));
+  RETURN_NOT_OK(load_initial_data());
   purge_deletes_consolidation_ = !deletes_consolidation_no_purge_ &&
                                  consolidation_with_timestamps_ &&
                                  !delete_and_update_conditions_.empty();
@@ -210,7 +215,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
       }
 
       // Read and unfilter coords.
-      RETURN_NOT_OK(read_and_unfilter_coords(true, tmp_result_tiles));
+      RETURN_NOT_OK(read_and_unfilter_coords(tmp_result_tiles));
 
       // Compute the tile bitmaps.
       RETURN_NOT_OK(compute_tile_bitmaps<BitmapType>(tmp_result_tiles));
@@ -296,8 +301,8 @@ template <class BitmapType>
 std::pair<uint64_t, uint64_t>
 SparseGlobalOrderReader<BitmapType>::get_coord_tiles_size(
     unsigned dim_num, unsigned f, uint64_t t) {
-  auto tiles_sizes = SparseIndexReaderBase::get_coord_tiles_size<BitmapType>(
-      true, dim_num, f, t);
+  auto tiles_sizes =
+      SparseIndexReaderBase::get_coord_tiles_size<BitmapType>(dim_num, f, t);
   auto frag_meta = fragment_metadata_[f];
 
   // Add the result tile structure size.
@@ -1651,8 +1656,15 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
         // For dimensions or query condition fields, tiles are already all
         // loaded in memory.
         if (array_schema_.is_dim(name) ||
-            qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps)
+            qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps) {
           return Status::Ok();
+        }
+
+        // Bitsort attribute is already loaded in memory.
+        if (bitsort_attribute_.has_value() &&
+            name == bitsort_attribute_.value()) {
+          return Status::Ok();
+        }
 
         // Get the size for all tiles.
         uint64_t idx = 0;
@@ -1967,7 +1979,10 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
       }
 
       // Clear tiles from memory.
-      if (!is_dim && qc_loaded_attr_names_set_.count(name) == 0 &&
+      const auto is_bitsort_attr =
+          bitsort_attribute_.has_value() && bitsort_attribute_.value() == name;
+      if (!is_bitsort_attr && !is_dim &&
+          qc_loaded_attr_names_set_.count(name) == 0 &&
           name != constants::timestamps &&
           name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);

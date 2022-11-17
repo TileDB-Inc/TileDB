@@ -385,6 +385,12 @@ extern const std::string filter_scale_float_str;
 /** String describing FILTER_XOR. */
 extern const std::string filter_xor_str;
 
+/** String describing FILTER_BITSORT. */
+extern const std::string filter_bitsort_str;
+
+/** String describing FILTER_WEBP. */
+extern const std::string filter_webp_str;
+
 /** The string representation for FilterOption type compression_level. */
 extern const std::string filter_option_compression_level_str;
 
@@ -403,6 +409,15 @@ extern const std::string filter_option_scale_float_factor;
 
 /** The string representation for FilterOption type scale_float_offset. */
 extern const std::string filter_option_scale_float_offset;
+
+/** The string representation for FilterOption type webp_quality. */
+extern const std::string filter_option_webp_quality;
+
+/** The string representation for FilterOption type webp_input_format. */
+extern const std::string filter_option_webp_input_format;
+
+/** The string representation for FilterOption type webp_lossless. */
+extern const std::string filter_option_webp_lossless;
 
 /** The string representation for type int32. */
 extern const std::string int32_str;
@@ -554,14 +569,14 @@ extern const std::string hilbert_str;
 /** The string representation of null. */
 extern const std::string null_str;
 
-/** The string representation of unordered label. */
-extern const std::string label_unordered_str;
+/** The string representation of unordered data. */
+extern const std::string data_unordered_str;
 
-/** The string representation of increasing order label. */
-extern const std::string label_increasing_str;
+/** The string representation of increasing order data. */
+extern const std::string data_increasing_str;
 
-/** The string representation of decreasing order label. */
-extern const std::string label_decreasing_str;
+/** The string representation of decreasing order data. */
+extern const std::string data_decreasing_str;
 
 /** The string representation for object type invalid. */
 extern const std::string object_type_invalid_str;

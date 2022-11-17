@@ -157,47 +157,22 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 /*               API              */
 /* ****************************** */
 
-Status StorageManagerCanonical::array_close_for_reads(Array* array) {
-  assert(open_arrays_.find(array) != open_arrays_.end());
-
-  // Remove entry from open arrays
-  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
-  open_arrays_.erase(array);
-
+Status StorageManagerCanonical::array_close_for_reads(Array*) {
   return Status::Ok();
 }
 
 Status StorageManagerCanonical::array_close_for_writes(Array* array) {
-  assert(open_arrays_.find(array) != open_arrays_.end());
-
   // Flush the array metadata
   RETURN_NOT_OK(store_metadata(
       array->array_uri(), *array->encryption_key(), array->unsafe_metadata()));
-
-  // Remove entry from open arrays
-  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
-  open_arrays_.erase(array);
-
   return Status::Ok();
 }
 
-Status StorageManagerCanonical::array_close_for_deletes(Array* array) {
-  assert(open_arrays_.find(array) != open_arrays_.end());
-
-  // Remove entry from open arrays
-  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
-  open_arrays_.erase(array);
-
+Status StorageManagerCanonical::array_close_for_deletes(Array*) {
   return Status::Ok();
 }
 
-Status StorageManagerCanonical::array_close_for_updates(Array* array) {
-  assert(open_arrays_.find(array) != open_arrays_.end());
-
-  // Remove entry from open arrays
-  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
-  open_arrays_.erase(array);
-
+Status StorageManagerCanonical::array_close_for_updates(Array*) {
   return Status::Ok();
 }
 
@@ -253,26 +228,28 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
   const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
 
   // Get the consolidated fragment metadatas
-  std::vector<Buffer> f_buffs(meta_uris.size());
+  std::vector<shared_ptr<Tile>> fragment_metadata_tiles(meta_uris.size());
   std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
       meta_uris.size());
   auto status = parallel_for(compute_tp_, 0, meta_uris.size(), [&](size_t i) {
-    auto&& [st, buffer_opt, offsets] =
+    auto&& [st, tile_opt, offsets] =
         load_consolidated_fragment_meta(meta_uris[i], enc_key);
     RETURN_NOT_OK(st);
-    f_buffs[i] = std::move(*buffer_opt);
+    fragment_metadata_tiles[i] =
+        make_shared<Tile>(HERE(), std::move(*tile_opt));
     offsets_vectors[i] = std::move(offsets.value());
     return st;
   });
   RETURN_NOT_OK_TUPLE(status, nullopt, nullopt, nullopt);
 
   // Get the unique fragment metadatas into a map.
-  std::unordered_map<std::string, std::pair<Buffer*, uint64_t>> offsets;
+  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
   for (uint64_t i = 0; i < offsets_vectors.size(); i++) {
     for (auto& offset : offsets_vectors[i]) {
       if (offsets.count(offset.first) == 0) {
         offsets.emplace(
-            offset.first, std::make_pair(&f_buffs[i], offset.second));
+            offset.first,
+            std::make_pair(fragment_metadata_tiles[i].get(), offset.second));
       }
     }
   }
@@ -377,10 +354,6 @@ StorageManagerCanonical::array_open_for_reads(Array* array) {
   auto version = array_schema_latest.value()->version();
   ensure_supported_schema_version_for_read(version);
 
-  // Mark the array as open
-  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
-  open_arrays_.insert(array);
-
   return {
       Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
 }
@@ -401,10 +374,6 @@ StorageManagerCanonical::array_open_for_reads_without_fragments(Array* array) {
   auto version = array_schema_latest.value()->version();
   ensure_supported_schema_version_for_read(version);
 
-  // Mark the array as now open
-  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
-  open_arrays_.insert(array);
-
   return {Status::Ok(), array_schema_latest, array_schemas_all};
 }
 
@@ -415,11 +384,10 @@ tuple<
 StorageManagerCanonical::array_open_for_writes(Array* array) {
   // Checks
   if (!vfs_->supports_uri_scheme(array->array_uri()))
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot open array; URI scheme unsupported.")),
-        nullopt,
-        nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot open array; URI scheme unsupported.")),
+            nullopt,
+            nullopt};
 
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
@@ -438,10 +406,9 @@ StorageManagerCanonical::array_open_for_writes(Array* array) {
       err << version;
       err << ") is not the library format version (";
       err << constants::format_version << ")";
-      return {
-          logger_->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
+      return {logger_->status(Status_StorageManagerError(err.str())),
+              nullopt,
+              nullopt};
     }
   } else {
     if (version > constants::format_version) {
@@ -450,16 +417,11 @@ StorageManagerCanonical::array_open_for_writes(Array* array) {
       err << version;
       err << ") is newer than library format version (";
       err << constants::format_version << ")";
-      return {
-          logger_->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
+      return {logger_->status(Status_StorageManagerError(err.str())),
+              nullopt,
+              nullopt};
     }
   }
-
-  // Mark the array as open
-  std::lock_guard<std::mutex> lock{open_arrays_mtx_};
-  open_arrays_.insert(array);
 
   return {Status::Ok(), array_schema_latest, array_schemas_all};
 }
@@ -469,18 +431,8 @@ StorageManagerCanonical::array_load_fragments(
     Array* array, const std::vector<TimestampedURI>& fragments_to_load) {
   auto timer_se = stats_->start_timer("array_load_fragments");
 
-  // Check if the array is open
-  auto it = open_arrays_.find(array);
-  if (it == open_arrays_.end()) {
-    return {
-        logger_->status(Status_StorageManagerError(
-            std::string("Cannot load array fragments from ") +
-            array->array_uri().to_string() + "; Array not open")),
-        nullopt};
-  }
-
   // Load the fragment metadata
-  std::unordered_map<std::string, std::pair<Buffer*, uint64_t>> offsets;
+  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
   auto&& [st_fragment_meta, fragment_metadata] = load_fragment_metadata(
       array->memory_tracker(),
       array->array_schema_latest_ptr(),
@@ -500,19 +452,6 @@ tuple<
     optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManagerCanonical::array_reopen(Array* array) {
   auto timer_se = stats_->start_timer("read_array_open");
-
-  // Check if array is open
-  auto it = open_arrays_.find(array);
-  if (it == open_arrays_.end()) {
-    return {
-        logger_->status(Status_StorageManagerError(
-            std::string("Cannot reopen array ") +
-            array->array_uri().to_string() + "; Array not open")),
-        nullopt,
-        nullopt,
-        nullopt};
-  }
-
   return array_open_for_reads(array);
 }
 
@@ -1688,10 +1627,9 @@ StorageManagerCanonical::load_array_schema_from_uri(
   Deserializer deserializer(tile.data(), tile.size());
 
   try {
-    return {
-        Status::Ok(),
-        make_shared<ArraySchema>(
-            HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
+    return {Status::Ok(),
+            make_shared<ArraySchema>(
+                HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
   } catch (const StatusException& e) {
     return {Status_StorageManagerError(e.what()), nullopt};
   }
@@ -1704,10 +1642,9 @@ StorageManagerCanonical::load_array_schema_latest(
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot load array schema; Invalid array URI")),
-        nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot load array schema; Invalid array URI")),
+            nullopt};
 
   // Load schema from URI
   const URI& schema_uri = array_dir.latest_array_schema_uri();
@@ -1749,17 +1686,15 @@ StorageManagerCanonical::load_all_array_schemas(
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot load all array schemas; Invalid array URI")),
-        nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot load all array schemas; Invalid array URI")),
+            nullopt};
 
   const std::vector<URI>& schema_uris = array_dir.array_schema_uris();
   if (schema_uris.empty()) {
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot get the array schema vector; No array schemas found.")),
-        nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot get the array schema vector; No array schemas found.")),
+            nullopt};
   }
 
   std::vector<shared_ptr<ArraySchema>> schema_vector;
@@ -2104,7 +2039,6 @@ Status StorageManagerCanonical::read(
   RETURN_NOT_OK(vfs_->read(uri, offset, buffer->data(), nbytes));
   buffer->set_size(nbytes);
   buffer->reset_offset();
-
   return Status::Ok();
 }
 
@@ -2149,8 +2083,8 @@ Status StorageManagerCanonical::store_group_detail(
   if (!group_detail_dir_exists)
     RETURN_NOT_OK(create_dir(group_detail_folder_uri));
 
-  RETURN_NOT_OK(store_data_to_generic_tile(
-      tile.data(), tile.size(), *group_detail_uri, encryption_key));
+  RETURN_NOT_OK(
+      store_data_to_generic_tile(tile, *group_detail_uri, encryption_key));
 
   return st;
 }
@@ -2217,25 +2151,9 @@ Status StorageManagerCanonical::store_metadata(
   URI metadata_uri;
   RETURN_NOT_OK(metadata->get_uri(uri, &metadata_uri));
 
-  RETURN_NOT_OK(store_data_to_generic_tile(
-      tile.data(), tile.size(), metadata_uri, encryption_key));
+  RETURN_NOT_OK(store_data_to_generic_tile(tile, metadata_uri, encryption_key));
 
   return Status::Ok();
-}
-
-Status StorageManagerCanonical::store_data_to_generic_tile(
-    void* data,
-    const size_t size,
-    const URI& uri,
-    const EncryptionKey& encryption_key) {
-  Tile tile(
-      constants::generic_tile_datatype,
-      constants::generic_tile_cell_size,
-      0,
-      data,
-      size);
-
-  return store_data_to_generic_tile(tile, uri, encryption_key);
 }
 
 Status StorageManagerCanonical::store_data_to_generic_tile(
@@ -2509,7 +2427,7 @@ StorageManagerCanonical::load_fragment_metadata(
         array_schemas_all,
     const EncryptionKey& encryption_key,
     const std::vector<TimestampedURI>& fragments_to_load,
-    const std::unordered_map<std::string, std::pair<Buffer*, uint64_t>>&
+    const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
         offsets) {
   auto timer_se = stats_->start_timer("load_fragment_metadata");
 
@@ -2554,7 +2472,7 @@ StorageManagerCanonical::load_fragment_metadata(
 
     // Potentially find the basic fragment metadata in the consolidated
     // metadata buffer
-    Buffer* f_buff = nullptr;
+    Tile* fragment_metadata_tile = nullptr;
     uint64_t offset = 0;
 
     auto it = offsets.end();
@@ -2564,13 +2482,13 @@ StorageManagerCanonical::load_fragment_metadata(
       it = offsets.find(sf.uri_.to_string());
     }
     if (it != offsets.end()) {
-      f_buff = it->second.first;
+      fragment_metadata_tile = it->second.first;
       offset = it->second.second;
     }
 
     // Load fragment metadata
-    RETURN_NOT_OK(
-        metadata->load(encryption_key, f_buff, offset, array_schemas_all));
+    RETURN_NOT_OK(metadata->load(
+        encryption_key, fragment_metadata_tile, offset, array_schemas_all));
 
     fragment_metadata[f] = metadata;
     return Status::Ok();
@@ -2582,7 +2500,7 @@ StorageManagerCanonical::load_fragment_metadata(
 
 tuple<
     Status,
-    optional<Buffer>,
+    optional<Tile>,
     optional<std::vector<std::pair<std::string, uint64_t>>>>
 StorageManagerCanonical::load_consolidated_fragment_meta(
     const URI& consolidated_metadata_uri, const EncryptionKey& enc_key) {
@@ -2598,29 +2516,23 @@ StorageManagerCanonical::load_consolidated_fragment_meta(
 
   stats_->add_counter("consolidated_frag_meta_size", tile.size());
 
-  Buffer buffer;
-  RETURN_NOT_OK_TUPLE(buffer.realloc(tile.size()), nullopt, nullopt);
-  buffer.set_size(tile.size());
-  RETURN_NOT_OK_TUPLE(
-      tile.read(buffer.data(), 0, buffer.size()), nullopt, nullopt);
-
   uint32_t fragment_num;
-  buffer.reset_offset();
-  throw_if_not_ok(buffer.read(&fragment_num, sizeof(uint32_t)));
+  Deserializer deserializer(tile.data(), tile.size());
+  fragment_num = deserializer.read<uint32_t>();
 
   uint64_t name_size, offset;
   std::string name;
   std::vector<std::pair<std::string, uint64_t>> ret;
   ret.reserve(fragment_num);
   for (uint32_t f = 0; f < fragment_num; ++f) {
-    throw_if_not_ok(buffer.read(&name_size, sizeof(uint64_t)));
+    name_size = deserializer.read<uint64_t>();
     name.resize(name_size);
-    throw_if_not_ok(buffer.read(&name[0], name_size));
-    throw_if_not_ok(buffer.read(&offset, sizeof(uint64_t)));
+    deserializer.read(&name[0], name_size);
+    offset = deserializer.read<uint64_t>();
     ret.emplace_back(name, offset);
   }
 
-  return {Status::Ok(), buffer, ret};
+  return {Status::Ok(), std::move(tile), ret};
 }
 
 Status StorageManagerCanonical::set_default_tags() {

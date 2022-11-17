@@ -164,25 +164,19 @@ Status DeletesAndUpdates::dowork() {
 
   // Serialize the negated condition (aud update values if they are not empty)
   // and write to disk.
-  std::vector<uint8_t> serialized_condition;
-  if (update_values_.empty()) {
-    new_fragment_str += constants::delete_file_suffix;
-    serialized_condition =
-        tiledb::sm::deletes_and_updates::serialization::serialize_condition(
-            condition_.negated_condition());
-  } else {
-    new_fragment_str += constants::update_file_suffix;
-    serialized_condition = tiledb::sm::deletes_and_updates::serialization::
-        serialize_update_condition_and_values(
-            condition_.negated_condition(), update_values_);
-  }
+  Tile serialized_condition =
+      update_values_.empty() ?
+          tiledb::sm::deletes_and_updates::serialization::serialize_condition(
+              condition_.negated_condition()) :
+          tiledb::sm::deletes_and_updates::serialization::
+              serialize_update_condition_and_values(
+                  condition_.negated_condition(), update_values_);
+  new_fragment_str += update_values_.empty() ? constants::delete_file_suffix :
+                                               constants::update_file_suffix;
 
   auto uri = commit_uri.join_path(new_fragment_str);
   RETURN_NOT_OK(storage_manager_->store_data_to_generic_tile(
-      serialized_condition.data(),
-      serialized_condition.size(),
-      uri,
-      *array_->encryption_key()));
+      serialized_condition, uri, *array_->encryption_key()));
 
   return Status::Ok();
 }

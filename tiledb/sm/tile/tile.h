@@ -69,7 +69,7 @@ class Tile {
       uint32_t* const chunk_size);
 
   /**
-   * Override max_tile_chunk_size_. Used in tests only.
+   * Override max_tile_chunk_size_ used to process tile chunks in parallel.
    *
    * @param max_tile_chunk_size The maximum chunk size.
    */
@@ -105,24 +105,6 @@ class Tile {
       const unsigned int zipped_coords_dim_num,
       const uint64_t size,
       const uint64_t filtered_size);
-
-  /**
-   * Constructor.
-   *
-   * @param type The type of the data to be stored.
-   * @param cell_size The cell size.
-   * @param dim_num The number of dimensions in case the tile stores
-   *      coordinates.
-   * @param buffer The buffer to be encapsulated by the tile object. The
-   *      tile will not take ownership of the buffer.
-   * @param size The buffer size.
-   */
-  Tile(
-      Datatype type,
-      uint64_t cell_size,
-      unsigned int dim_num,
-      void* buffer,
-      uint64_t size);
 
   /** Move constructor. */
   Tile(Tile&& tile);
