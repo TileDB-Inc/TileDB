@@ -392,7 +392,7 @@ inline void ensure_datatype_is_valid(const std::string& datatype_str) {
   ensure_datatype_is_valid(datatype_type);
 }
 
-/** Throws an error if the input type is not supported on dimenions. */
+/** Throws an error if the input type is not supported for dimensions. */
 inline void ensure_dimension_datatype_is_valid(Datatype type) {
   switch (type) {
     case Datatype::INT32:
