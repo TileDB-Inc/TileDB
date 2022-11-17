@@ -54,11 +54,6 @@ TEST_CASE("C API: Test enum values", "[capi][enums]") {
   REQUIRE(TILEDB_READ == 0);
   REQUIRE(TILEDB_WRITE == 1);
 
-  /** Object type */
-  REQUIRE(TILEDB_INVALID == 0);
-  REQUIRE(TILEDB_GROUP == 1);
-  REQUIRE(TILEDB_ARRAY == 2);
-
   /** Array type */
   REQUIRE(TILEDB_DENSE == 0);
   REQUIRE(TILEDB_SPARSE == 1);
@@ -131,26 +126,6 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   REQUIRE(
       (tiledb_query_type_from_str("WRITE", &query_type) == TILEDB_OK &&
        query_type == TILEDB_WRITE));
-
-  tiledb_object_t object_type;
-  REQUIRE(
-      (tiledb_object_type_to_str(TILEDB_INVALID, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "INVALID"));
-  REQUIRE(
-      (tiledb_object_type_from_str("INVALID", &object_type) == TILEDB_OK &&
-       object_type == TILEDB_INVALID));
-  REQUIRE(
-      (tiledb_object_type_to_str(TILEDB_GROUP, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "GROUP"));
-  REQUIRE(
-      (tiledb_object_type_from_str("GROUP", &object_type) == TILEDB_OK &&
-       object_type == TILEDB_GROUP));
-  REQUIRE(
-      (tiledb_object_type_to_str(TILEDB_ARRAY, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "ARRAY"));
-  REQUIRE(
-      (tiledb_object_type_from_str("ARRAY", &object_type) == TILEDB_OK &&
-       object_type == TILEDB_ARRAY));
 
   tiledb_array_type_t array_type;
   REQUIRE(

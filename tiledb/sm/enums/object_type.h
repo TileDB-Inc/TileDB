@@ -44,7 +44,7 @@ namespace sm {
 
 enum class ObjectType : uint8_t {
 #define TILEDB_OBJECT_TYPE_ENUM(id) id
-#include "tiledb/sm/c_api/tiledb_enum.h"
+#include "tiledb/api/c_api/object/object_api_enum.h"
 #undef TILEDB_OBJECT_TYPE_ENUM
 };
 
