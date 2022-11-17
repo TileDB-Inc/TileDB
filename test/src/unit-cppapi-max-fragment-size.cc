@@ -267,8 +267,7 @@ struct CPPMaxFragmentSizeFx {
       uint64_t exp_num_con_commits,
       uint64_t exp_num_ign,
       uint64_t exp_num_vac) {
-    std::string commit_dir = tiledb::test::get_commit_dir(array_name);
-    tiledb::test::CommitsDirectory commits_dir(vfs_, commit_dir);
+    tiledb::test::CommitsDirectory commits_dir(vfs_, array_name);
     CHECK(
         commits_dir.file_count(tiledb::sm::constants::write_file_suffix) ==
         exp_num_wrt);

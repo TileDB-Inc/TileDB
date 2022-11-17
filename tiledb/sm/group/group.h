@@ -349,7 +349,7 @@ class Group {
    * Get a member by index
    *
    * @param index of member
-   * @return Tuple of URI string, ObjectType, optional name
+   * @return Tuple of URI string, ObjectType, optional GroupMember name
    */
   tuple<std::string, ObjectType, optional<std::string>> member_by_index(
       uint64_t index);
@@ -358,7 +358,8 @@ class Group {
    * Get a member by name
    *
    * @param name of member
-   * @return Tuple of URI string, ObjectType, optional name, bool
+   * @return Tuple of URI string, ObjectType, optional GroupMember name,
+   * bool which is true if the URI is relative to the group.
    */
   tuple<std::string, ObjectType, optional<std::string>, bool> member_by_name(
       const std::string& name);

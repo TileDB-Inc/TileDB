@@ -210,7 +210,7 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
   }
 
   // Vacuum
-  auto status =
+  throw_if_not_ok(
       parallel_for(compute_tp, 0, fragment_meta_uris.size(), [&](size_t i) {
         auto& uri = fragment_meta_uris[i];
         std::pair<uint64_t, uint64_t> timestamp_range;
@@ -218,8 +218,7 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
         if (timestamp_range.second != t_latest)
           RETURN_NOT_OK(vfs->remove_file(uri));
         return Status::Ok();
-      });
-  throw_if_not_ok(status);
+      }));
 }
 
 }  // namespace tiledb::sm

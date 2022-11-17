@@ -1608,12 +1608,11 @@ TEST_CASE_METHOD(
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 3);
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 5);
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 7);
-  std::string commit_dir = tiledb::test::get_commit_dir(SPARSE_ARRAY_NAME);
 
   if (consolidate) {
     consolidate_commits_sparse(vacuum);
     CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 4);
-    CommitsDirectory commits_dir(vfs_, commit_dir);
+    CommitsDirectory commits_dir(vfs_, SPARSE_ARRAY_NAME);
     if (vacuum) {
       CHECK(commits_dir.dir_size() == 1);
     } else {
@@ -1635,7 +1634,7 @@ TEST_CASE_METHOD(
   if (consolidate) {
     /* Note: An ignore file is written by delete_fragments if there are
      * consolidated commits to be ignored by the delete. */
-    CommitsDirectory commits_dir(vfs_, commit_dir);
+    CommitsDirectory commits_dir(vfs_, SPARSE_ARRAY_NAME);
     CHECK(
         commits_dir.file_count(
             tiledb::sm::constants::con_commits_file_suffix) == 1);
@@ -1686,8 +1685,7 @@ TEST_CASE_METHOD(
   num_commits++;
   num_fragments++;
   if (!vacuum) {
-    std::string commit_dir = tiledb::test::get_commit_dir(SPARSE_ARRAY_NAME);
-    CommitsDirectory commits_dir(vfs_, commit_dir);
+    CommitsDirectory commits_dir(vfs_, SPARSE_ARRAY_NAME);
     CHECK(
         commits_dir.file_count(tiledb::sm::constants::vacuum_file_suffix) == 1);
   } else {
@@ -1802,7 +1800,6 @@ TEST_CASE_METHOD(
   auto meta = vfs_.ls(
       array_name + "/" + tiledb::sm::constants::array_metadata_dir_name);
   CHECK(meta.size() == 1);
-  std::string commit_dir = tiledb::test::get_commit_dir(SPARSE_ARRAY_NAME);
 
   if (consolidate) {
     // Consolidate commits
@@ -1815,7 +1812,7 @@ TEST_CASE_METHOD(
     Array::consolidate(ctx_, SPARSE_ARRAY_NAME, &config);
 
     // Validate working directory
-    CommitsDirectory commits_dir(vfs_, commit_dir);
+    CommitsDirectory commits_dir(vfs_, SPARSE_ARRAY_NAME);
     CHECK(commits_dir.dir_size() == 5);
     CHECK(
         commits_dir.file_count(
@@ -1851,7 +1848,7 @@ TEST_CASE_METHOD(
   if (consolidate) {
     /* Note: An ignore file is written by delete_fragments if there are
      * consolidated commits to be ignored by the delete. */
-    CommitsDirectory commits_dir(vfs_, commit_dir);
+    CommitsDirectory commits_dir(vfs_, SPARSE_ARRAY_NAME);
     CHECK(
         commits_dir.file_count(
             tiledb::sm::constants::con_commits_file_suffix) == 1);
@@ -2009,6 +2006,7 @@ TEST_CASE_METHOD(
       vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_metadata_dir_name);
   CHECK(group_meta_dir.size() == 3);
 
+  // Conditionally consolidate and vacuum group and validate data
   if (consolidate) {
     auto config = ctx_.config();
     config["sm.consolidation.mode"] = "group_meta";

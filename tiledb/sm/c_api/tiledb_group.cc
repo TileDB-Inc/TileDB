@@ -190,15 +190,7 @@ int32_t tiledb_group_delete_group(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Delete group
-  try {
-    group->group_->delete_group(tiledb::sm::URI(uri), recursive);
-  } catch (std::exception& e) {
-    auto st = sm::Status_GroupError(e.what());
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
+  group->group_->delete_group(tiledb::sm::URI(uri), recursive);
   return TILEDB_OK;
 }
 
@@ -628,17 +620,10 @@ int32_t tiledb_group_vacuum_metadata(
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  try {
-    ctx->storage_manager()->group_metadata_vacuum(
-        group_uri,
-        (config == nullptr) ? ctx->storage_manager()->config() :
-                              config->config());
-  } catch (std::exception& e) {
-    auto st = Status_StorageManagerError(e.what());
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
+  ctx->storage_manager()->group_metadata_vacuum(
+      group_uri,
+      (config == nullptr) ? ctx->storage_manager()->config() :
+                            config->config());
 
   return TILEDB_OK;
 }

@@ -319,6 +319,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
     throw DeleteGroupStatusException("Query type must be MODIFY_EXCLUSIVE");
   }
 
+  // Delete group members within the group when deleting recursively
   if (recursive) {
     for (auto member : members_vec_) {
       URI uri = member->uri();
@@ -336,6 +337,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
     }
   }
 
+  // Delete group data
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)

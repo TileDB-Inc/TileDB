@@ -316,13 +316,12 @@ void FragmentConsolidator::vacuum(const char* array_name) {
       compute_tp, filtered_fragment_uris.fragment_vac_uris_to_vacuum());
 
   // Delete fragment directories
-  auto status = parallel_for(
+  throw_if_not_ok(parallel_for(
       compute_tp, 0, fragment_uris_to_vacuum.size(), [&](size_t i) {
         RETURN_NOT_OK(vfs->remove_dir(fragment_uris_to_vacuum[i]));
 
         return Status::Ok();
-      });
-  throw_if_not_ok(status);
+      }));
 }
 
 /* ****************************** */

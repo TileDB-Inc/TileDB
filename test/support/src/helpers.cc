@@ -1258,18 +1258,9 @@ int32_t num_commits(const std::string& array_name) {
   Context ctx;
   VFS vfs(ctx);
 
-  // Get all URIs in the array directory
-  auto uris =
-      vfs.ls(array_name + "/" + tiledb::sm::constants::array_commits_dir_name);
-  uint32_t num_commits = static_cast<uint32_t>(uris.size());
-
-  // Filter out non-wrt files
-  for (auto uri : uris) {
-    if (!sm::utils::parse::ends_with(uri, sm::constants::write_file_suffix))
-      num_commits--;
-  }
-
-  return num_commits;
+  // Get the number of write files in the commit directory
+  CommitsDirectory commits_dir(vfs, array_name);
+  return commits_dir.file_count(sm::constants::write_file_suffix);
 }
 
 int32_t num_fragments(const std::string& array_name) {
@@ -1327,8 +1318,8 @@ const std::map<std::string, uint64_t>& FileCount::file_count() const {
   return file_count_;
 }
 
-uint64_t FileCount::file_count(std::string name) {
-  return file_count_[name];
+uint64_t FileCount::file_count(std::string extension) {
+  return file_count_[extension];
 }
 
 uint64_t FileCount::dir_size() {
