@@ -2594,11 +2594,11 @@ Status StorageManagerCanonical::group_metadata_vacuum(
   return consolidator->vacuum(group_name);
 }
 
-void StorageManager::array_get_fragment_tile_size_extremes(
+void StorageManager::array_get_fragment_tile_max_size(
     const URI& array_uri,
     tiledb_fragment_max_tile_sizes_t* max_tile_sizes,
     const Config* config) {
-  assert(tile_extreme_sizes);
+  assert(max_tile_sizes);
 
   // Check if array exists
   bool exists = is_array(array_uri);

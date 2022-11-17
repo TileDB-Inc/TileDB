@@ -1149,7 +1149,7 @@ class StorageManagerCanonical {
    * @param config The Config object to be used for poss encryption and any
    *     other operation modifiers.
    */
-  void array_get_fragment_tile_size_extremes(
+  void array_get_fragment_tile_max_size(
       const URI& array_uri,
       tiledb_fragment_max_tile_sizes_t* max_tile_sizes,
       const Config* config);

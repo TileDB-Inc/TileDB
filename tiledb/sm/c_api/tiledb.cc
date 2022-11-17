@@ -6261,7 +6261,7 @@ TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
       }
     } else {
       tiledb_fragment_max_tile_sizes_t max_tile_sizes;
-      ctx->storage_manager()->array_get_fragment_tile_size_extremes(
+      ctx->storage_manager()->array_get_fragment_tile_max_size(
           uri,
           &max_tile_sizes, config ? &config->config() : nullptr);
       *max_in_memory_tile_size = max_tile_sizes.max_in_memory_tile_size;
