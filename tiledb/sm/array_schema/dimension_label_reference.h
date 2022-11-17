@@ -133,7 +133,7 @@ class DimensionLabelReference {
       Deserializer& deserializer, uint32_t version);
 
   /** Index of the dimension the label is attached to. */
-  inline dimension_size_type dimension_id() const {
+  inline dimension_size_type dimension_index() const {
     return dim_id_;
   }
 

@@ -551,11 +551,12 @@ class ArraySchema {
   std::vector<shared_ptr<const Attribute>> attributes_;
 
   /** The array dimension labels. */
-  std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels_;
+  std::vector<shared_ptr<const DimensionLabelReference>>
+      dimension_label_references_;
 
   /** A map from the dimension label names to the label schemas. */
   std::unordered_map<std::string, const DimensionLabelReference*>
-      dimension_label_map_;
+      dimension_label_reference_map_;
 
   /** The filter pipeline run on offset tiles for var-length attributes. */
   FilterPipeline cell_var_offsets_filters_;

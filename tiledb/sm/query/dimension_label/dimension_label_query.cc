@@ -52,21 +52,21 @@ namespace tiledb::sm {
 DimensionLabelQuery::DimensionLabelQuery(
     StorageManager* storage_manager,
     stats::Stats* stats,
-    shared_ptr<Array> dimension_label,
+    shared_ptr<Array> dim_label,
     const DimensionLabelReference& dim_label_ref,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
     const QueryBuffer& index_buffer,
     optional<std::string> fragment_name)
-    : Query(storage_manager, dimension_label, fragment_name)
+    : Query(storage_manager, dim_label, fragment_name)
     , dim_label_name_{dim_label_ref.name()} {
-  switch (dimension_label->get_query_type()) {
+  switch (dim_label->get_query_type()) {
     case (QueryType::READ):
       initialize_read_labels_query(
           parent_subarray,
           dim_label_ref.label_attr_name(),
           label_buffer,
-          dim_label_ref.dimension_id());
+          dim_label_ref.dimension_index());
       break;
 
     case (QueryType::WRITE): {
@@ -80,7 +80,7 @@ DimensionLabelQuery::DimensionLabelQuery(
               dim_label_ref.label_attr_name(),
               label_buffer,
               index_buffer,
-              dim_label_ref.dimension_id());
+              dim_label_ref.dimension_index());
           break;
 
         case (DataOrder::UNORDERED_DATA):
@@ -89,7 +89,7 @@ DimensionLabelQuery::DimensionLabelQuery(
               dim_label_ref.label_attr_name(),
               label_buffer,
               index_buffer,
-              dim_label_ref.dimension_id());
+              dim_label_ref.dimension_index());
           break;
 
         default:
@@ -103,17 +103,17 @@ DimensionLabelQuery::DimensionLabelQuery(
 
     default:
       throw DimensionLabelQueryStatusException(
-          "Query type " + query_type_str(dimension_label->get_query_type()) +
+          "Query type " + query_type_str(dim_label->get_query_type()) +
           " not supported for dimension label queries.");
   }
 }
 
 DimensionLabelQuery::DimensionLabelQuery(
     StorageManager* storage_manager,
-    shared_ptr<Array> dimension_label,
+    shared_ptr<Array> dim_label,
     const DimensionLabelReference& dim_label_ref,
     const std::vector<Range>& label_ranges)
-    : Query(storage_manager, dimension_label, nullopt)
+    : Query(storage_manager, dim_label, nullopt)
     , dim_label_name_{dim_label_ref.name()}
     , index_data_{IndexDataCreate::make_index_data(
           array_schema().dimension_ptr(0)->type(),

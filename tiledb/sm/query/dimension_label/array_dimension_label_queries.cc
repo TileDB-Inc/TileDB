@@ -270,7 +270,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
           label_buffer,
           QueryBuffer(),
           nullopt));
-      label_data_queries_by_dim_idx_[dim_label_ref.dimension_id()].push_back(
+      label_data_queries_by_dim_idx_[dim_label_ref.dimension_index()].push_back(
           data_queries_.back().get());
     } catch (...) {
       std::throw_with_nested(DimensionLabelQueryStatusException(
@@ -293,7 +293,7 @@ void ArrayDimensionLabelQueries::add_write_queries(
           array->array_schema_latest().dimension_label_reference(label_name);
 
       // Verify that this subarray is not set to use labels.
-      if (subarray.has_label_ranges(dim_label_ref.dimension_id())) {
+      if (subarray.has_label_ranges(dim_label_ref.dimension_index())) {
         throw DimensionLabelQueryStatusException(
             "Cannot write label data when subarray is set by label range.");
       }
@@ -307,7 +307,7 @@ void ArrayDimensionLabelQueries::add_write_queries(
 
       // Get the index_buffer from the array buffers.
       const auto& dim_name = array->array_schema_latest()
-                                 .dimension_ptr(dim_label_ref.dimension_id())
+                                 .dimension_ptr(dim_label_ref.dimension_index())
                                  ->name();
       const auto& index_buffer_pair = array_buffers.find(dim_name);
 
@@ -324,7 +324,7 @@ void ArrayDimensionLabelQueries::add_write_queries(
               QueryBuffer() :
               index_buffer_pair->second,
           fragment_name_));
-      label_data_queries_by_dim_idx_[dim_label_ref.dimension_id()].push_back(
+      label_data_queries_by_dim_idx_[dim_label_ref.dimension_index()].push_back(
           data_queries_.back().get());
     } catch (...) {
       std::throw_with_nested(DimensionLabelQueryStatusException(

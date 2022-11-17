@@ -68,7 +68,7 @@ class DimensionLabelQuery : public Query {
    *
    * @param storage_manager Storage manager object.
    * @param stats Stats object for the dimension label query.
-   * @param dimension_label Opened dimension label for the query.
+   * @param dim_label Opened dimension label for the query.
    * @param dim_label_ref Description of the dimension label.
    * @param parent_subarray Subarray of the parent array.
    * @param label_buffer Query buffer for the label data.
@@ -79,7 +79,7 @@ class DimensionLabelQuery : public Query {
   DimensionLabelQuery(
       StorageManager* storage_manager,
       stats::Stats* stats,
-      shared_ptr<Array> dimension_label,
+      shared_ptr<Array> dim_label,
       const DimensionLabelReference& dim_label_ref,
       const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,
@@ -90,13 +90,13 @@ class DimensionLabelQuery : public Query {
    * Constructor for range queries.
    *
    * @param storage_manager Storage manager object.
-   * @param dimension_label Opened dimension label for the query.
+   * @param dim_label Opened dimension label for the query.
    * @param dim_label_ref Description of the dimension label.
    * @param label_ranges Label ranges to read index ranges from.
    */
   DimensionLabelQuery(
       StorageManager* storage_manager,
-      shared_ptr<Array> dimension_label,
+      shared_ptr<Array> dim_label,
       const DimensionLabelReference& dim_label_ref,
       const std::vector<Range>& label_ranges);
 
