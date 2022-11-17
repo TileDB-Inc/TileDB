@@ -2522,7 +2522,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SparseArrayFx,
-    "C API: Test sparse array, set subarray should error",
+    "C API: Test sparse array, error setting subarray on sparse write",
     "[capi][sparse][set-subarray]") {
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -2550,6 +2550,10 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit
+  rc = tiledb_query_submit(ctx, query);
   REQUIRE(rc == TILEDB_ERR);
 
   // Close array

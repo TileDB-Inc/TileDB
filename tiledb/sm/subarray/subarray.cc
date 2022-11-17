@@ -288,15 +288,6 @@ Status Subarray::add_range(
   est_result_size_computed_ = false;
   tile_overlap_.clear();
 
-  // Global layout can only have one range in the range subset. Check if the
-  // range was already set.
-  if (layout_ == Layout::GLOBAL_ORDER &&
-      range_subset_[dim_idx].is_explicitly_initialized()) {
-    return logger_->status(
-        Status_SubarrayError("Cannot add more than one range per dimension "
-                             "to global order query"));
-  }
-
   // Restrict the range to the dimension domain and add.
   auto dim_name = array_->array_schema_latest().dimension_ptr(dim_idx)->name();
   auto&& [error_status, oob_warning] =
@@ -364,28 +355,6 @@ Status Subarray::add_range(
         "dimension label for this dimension"));
   }
 
-  QueryType array_query_type{array_->get_query_type()};
-  if (array_query_type == QueryType::WRITE ||
-      array_query_type == QueryType::MODIFY_EXCLUSIVE) {
-    if (!array_->array_schema_latest().dense()) {
-      return LOG_STATUS(Status_SubarrayError(
-          "Adding a subarray range to a write or modify_exclusive query is not "
-          "supported in sparse arrays"));
-    }
-    if (this->is_set(dim_idx)) {
-      return LOG_STATUS(
-          Status_SubarrayError("Cannot add range; Multi-range dense writes "
-                               "are not supported"));
-    }
-  }
-
-  if (array_query_type != QueryType::READ &&
-      array_query_type != QueryType::WRITE &&
-      array_query_type != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(
-        Status_SubarrayError("Cannot add range; Unsupported query type"));
-  }
-
   if (start == nullptr || end == nullptr)
     return LOG_STATUS(Status_SubarrayError("Cannot add range; Invalid range"));
 
@@ -424,28 +393,6 @@ Status Subarray::add_point_ranges(
     return logger_->status(Status_SubarrayError(
         "Cannot add range to to dimension; A range is already set on a "
         "dimension label for this dimension"));
-  }
-
-  QueryType array_query_type{array_->get_query_type()};
-  if (array_query_type == QueryType::WRITE ||
-      array_query_type == QueryType::MODIFY_EXCLUSIVE) {
-    if (!array_->array_schema_latest().dense()) {
-      return LOG_STATUS(Status_SubarrayError(
-          "Adding a subarray range to a write or modify_exclusive query is not "
-          "supported in sparse arrays"));
-    }
-    if (this->is_set(dim_idx)) {
-      return LOG_STATUS(
-          Status_SubarrayError("Cannot add range; Multi-range dense writes "
-                               "are not supported"));
-    }
-  }
-
-  if (array_query_type != QueryType::READ &&
-      array_query_type != QueryType::WRITE &&
-      array_query_type != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(
-        Status_SubarrayError("Cannot add range; Unsupported query type"));
   }
 
   if (start == nullptr) {
@@ -500,28 +447,6 @@ Status Subarray::add_ranges_list(
     return LOG_STATUS(Status_SubarrayError(
         "add_ranges_list: Invalid count " + std::to_string(count) +
         ", count must be a multiple of 2 "));
-  }
-
-  QueryType array_query_type{array_->get_query_type()};
-  if (array_query_type == QueryType::WRITE ||
-      array_query_type == QueryType::MODIFY_EXCLUSIVE) {
-    if (!array_->array_schema_latest().dense()) {
-      return LOG_STATUS(Status_SubarrayError(
-          "Adding a subarray range to a write or modify_exclusive query is not "
-          "supported in sparse arrays"));
-    }
-    if (this->is_set(dim_idx)) {
-      return LOG_STATUS(
-          Status_SubarrayError("Cannot add range; Multi-range dense writes "
-                               "are not supported"));
-    }
-  }
-
-  if (array_query_type != QueryType::READ &&
-      array_query_type != QueryType::WRITE &&
-      array_query_type != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(
-        Status_SubarrayError("Cannot add range; Unsupported query type"));
   }
 
   if (start == nullptr) {
@@ -594,12 +519,6 @@ Status Subarray::add_range_var(
            ->var_size()) {
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Range must be variable-sized"));
-  }
-
-  QueryType array_query_type{array_->get_query_type()};
-  if (array_query_type != QueryType::READ) {
-    return LOG_STATUS(Status_SubarrayError(
-        "Cannot add range; Function applicable only to reads"));
   }
 
   // Get read_range_oob config setting
@@ -713,12 +632,6 @@ void Subarray::get_label_range_var_size(
 
 Status Subarray::get_range_var(
     unsigned dim_idx, uint64_t range_idx, void* start, void* end) const {
-  QueryType array_query_type{array_->get_query_type()};
-  if (array_query_type != QueryType::READ) {
-    return LOG_STATUS(Status_SubarrayError(
-        "Getting a var range for an unsupported query type"));
-  }
-
   uint64_t start_size = 0;
   uint64_t end_size = 0;
   throw_if_not_ok(
@@ -751,21 +664,6 @@ Status Subarray::get_range(
     const void** start,
     const void** end,
     const void** stride) const {
-  QueryType array_query_type{array_->get_query_type()};
-  if (array_query_type == QueryType::WRITE ||
-      array_query_type == QueryType::MODIFY_EXCLUSIVE) {
-    if (!array_->array_schema_latest().dense())
-      return LOG_STATUS(Status_SubarrayError(
-          "Getting a range from a write or modify_exclsuive query is not "
-          "applicable to sparse arrays"));
-  }
-
-  if (array_query_type != QueryType::READ &&
-      array_query_type != QueryType::WRITE) {
-    return LOG_STATUS(
-        Status_SubarrayError("Getting a range for an unsupported query type"));
-  }
-
   *stride = nullptr;
   return this->get_range(dim_idx, range_idx, start, end);
 }
@@ -1054,28 +952,11 @@ Status Subarray::get_range_var_size(
 Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
   auto dim_num = array_->array_schema_latest().dim_num();
   if (dim_idx >= dim_num) {
-    std::stringstream msg;
-    msg << "Cannot get number of ranges for a dimension; "
-           "Invalid dimension index "
-        << dim_idx << " requested, " << dim_num - 1 << " max avail.";
-    return LOG_STATUS(Status_SubarrayError(msg.str()));
-  }
-
-  QueryType array_query_type{array_->get_query_type()};
-  if ((array_query_type == QueryType::WRITE ||
-       array_query_type == QueryType::MODIFY_EXCLUSIVE) &&
-      !array_->array_schema_latest().dense()) {
     return LOG_STATUS(Status_SubarrayError(
-        "Getting the number of ranges from a write or modify_exclusive query "
-        "is not applicable to sparse arrays"));
-  }
-
-  if (array_query_type != QueryType::READ &&
-      array_query_type != QueryType::WRITE &&
-      array_query_type != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(
-        Status_SubarrayError("Getting the number of ranges for an unsupported "
-                             "query type"));
+        "Cannot get number of ranges for a dimension; Invalid dimension "
+        "index " +
+        std::to_string(dim_idx) + " requested, " + std::to_string(dim_num - 1) +
+        " max avail."));
   }
 
   *range_num = range_subset_[dim_idx].num_ranges();

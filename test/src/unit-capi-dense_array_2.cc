@@ -488,6 +488,10 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_range(ctx_, query, 0, &start, &end, nullptr);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_add_range(ctx_, query, 0, &start, &end, nullptr);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_ERR);
 
   // Clean up
