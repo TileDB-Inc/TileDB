@@ -29,7 +29,7 @@ find_package(Catch_EP REQUIRED)
 target_link_libraries(unit_capi_error PUBLIC Catch2::Catch2WithMain)
 
 # Sources for code under test
-target_link_libraries(unit_capi_error PUBLIC capi_error_stub)
+target_link_libraries(unit_capi_error PUBLIC capi_error)
 
 # Sources for tests
 target_sources(unit_capi_error PUBLIC
