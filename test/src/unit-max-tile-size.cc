@@ -566,21 +566,21 @@ TEST_CASE_METHOD(
 
     remove_temp_dir(array_name);
     create_dense_1d_d1_var_a1_fix<int, std::array<char, 257>>(
-        array_name, {1, 4}, {1}, "b257");
+        array_name, {1, 4}, 1, "b257");
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 0);
     write_array_attr<257>(array_name, "b257");
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 257);
 
     remove_temp_dir(array_name);
     create_dense_1d_d1_var_a1_fix<int, std::array<char, 42>>(
-        array_name, {1, 4}, {1}, "c42");
+        array_name, {1, 4}, 1, "c42");
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 0);
     write_array_attr<42>(array_name, "c42");
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 42);
   }
   SECTION(" - Evolve") {
     create_dense_1d_d1_var_a1_fix<int, std::array<char, 2>>(
-        array_name, {1, 4}, {1}, "a2");
+        array_name, {1, 4}, 1, "a2");
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 0);
     write_array_attr<2>(array_name, "a2");
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 4);
