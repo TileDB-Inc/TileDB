@@ -123,6 +123,25 @@ int tiledb_array_open_serialize(
   return rc;
 }
 
+int array_serialize_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_array_t** new_array,
+    tiledb_serialization_type_t serialize_type) {
+  // Serialize the array
+  tiledb_buffer_t* buff;
+  int rc = tiledb_serialize_array(ctx, array, serialize_type, 1, &buff);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Load array from the rest server
+  rc = tiledb_deserialize_array(ctx, buff, serialize_type, 0, new_array);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up.
+  tiledb_buffer_free(&buff);
+  return rc;
+}
+
 int tiledb_fragment_info_request_serialize(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info_before_serialization,
@@ -166,6 +185,7 @@ int tiledb_query_v2_serialize(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     std::vector<uint8_t>& serialized,
+    bool client_to_server,
     tiledb_query_t* query_to_serialize,
     tiledb_query_t** query_deserialized) {
   // Serialize and Deserialize
@@ -173,9 +193,14 @@ int tiledb_query_v2_serialize(
       tiledb::test::serialize_query(ctx, query_to_serialize, &serialized, 1);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb::test::deserialize_array_and_query(
-      ctx, serialized, query_deserialized, array_uri, 0);
-  REQUIRE(rc == TILEDB_OK);
+  if (client_to_server) {
+    rc = tiledb::test::deserialize_array_and_query(
+        ctx, serialized, query_deserialized, array_uri, 0);
+  } else {
+    rc = tiledb::test::deserialize_query(
+        ctx, serialized, *query_deserialized, 0);
+  }
 
+  REQUIRE(rc == TILEDB_OK);
   return rc;
 }

@@ -246,6 +246,7 @@ Status array_from_capnp(
   }
 
   if (array_reader.hasFragmentMetadataAll()) {
+    array->fragment_metadata().clear();
     array->fragment_metadata().reserve(
         array_reader.getFragmentMetadataAll().size());
     for (auto frag_meta_reader : array_reader.getFragmentMetadataAll()) {
