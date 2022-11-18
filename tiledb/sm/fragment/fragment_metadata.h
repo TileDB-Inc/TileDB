@@ -748,6 +748,16 @@ class FragmentMetadata {
   uint64_t tile_size(const std::string& name, uint64_t tile_idx) const;
 
   /**
+   * Returns the validity tile size for a given attribute
+   * and tile index.
+   *
+   * @param name The input attribute.
+   * @param tile_idx The index of the tile in the metadata.
+   * @return The validity tile size.
+   */
+  uint64_t tile_validity_size(
+      const std::string& name, uint64_t tile_idx) const;
+  /**
    * Retrieves the (uncompressed) tile size for a given var-sized attribute or
    * dimension and tile index.
    *

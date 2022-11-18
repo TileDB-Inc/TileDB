@@ -49,8 +49,6 @@ typedef struct tiledb_fragment_max_tile_sizes_t {
   uint64_t max_in_memory_basic_tile_size;
   uint64_t max_persisted_tile_size_var;
   uint64_t max_in_memory_tile_size_var;
-  // in_memory_validity_size doesn't currently appear to have method to
-  // obtain... is persisted/in_memory the same?
   uint64_t max_persisted_tile_size_validity;
   uint64_t max_in_memory_tile_size_validity;
 

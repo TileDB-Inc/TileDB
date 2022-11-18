@@ -1641,6 +1641,13 @@ uint64_t FragmentMetadata::tile_size(
                       cell_num * array_schema_->cell_size(name);
 }
 
+uint64_t FragmentMetadata::tile_validity_size(
+    const std::string& name, uint64_t tile_idx) const {
+  auto is_nullable = array_schema_->is_nullable(name);
+  auto cell_num = this->cell_num(tile_idx);
+  return (is_nullable) ? cell_num * sizeof(uint8_t) : 0;
+}
+
 uint64_t FragmentMetadata::tile_var_size(
     const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
