@@ -2337,7 +2337,7 @@ void SparseArrayFx::write_sparse_array_missing_attributes(
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, sorted reads",
-    "[capi][sparse][sorted-reads]") {
+    "[capi][sparse][sorted-reads][longtest]") {
   std::string array_name;
 
   SECTION("- no compression, row/row-major") {

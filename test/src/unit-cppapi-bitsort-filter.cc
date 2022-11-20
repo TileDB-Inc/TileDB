@@ -30,24 +30,24 @@
  * Tests the C++ API for bitsort filter related functions.
  */
 
+#include <map>
 #include <optional>
 #include <random>
 #include <tuple>
 #include <utility>
-#include <map>
 #include <vector>
 
 #include <test/support/tdb_catch.h>
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/domain.h"
-#include "tiledb/sm/query/query_buffer.h"
-#include "tiledb/sm/query/writers/domain_buffer.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/query/hilbert_order.h"
+#include "tiledb/sm/query/query_buffer.h"
+#include "tiledb/sm/query/writers/domain_buffer.h"
 
 using namespace tiledb;
 
@@ -260,13 +260,16 @@ DimensionDataMetadata<DimType> set_3d_dim_buffers(tiledb_layout_t read_layout) {
 
 /**
  * @brief Calculates hilbert values for the dimension data.
- * 
+ *
  * @param num_dims The number of dimensions.
  * @param domain The domain of the array schema.
  * @param domain_buffers The domain buffers.
  * @param hilbert_values A reference to store the hilbert values.
  */
-void calculate_hilbert_values_test(uint64_t num_dims, const tiledb::sm::Domain& domain, const tiledb::sm::DomainBuffersView& domain_buffers,
+void calculate_hilbert_values_test(
+    uint64_t num_dims,
+    const tiledb::sm::Domain& domain,
+    const tiledb::sm::DomainBuffersView& domain_buffers,
     std::vector<uint64_t>& hilbert_values) {
   tiledb::sm::Hilbert h(num_dims);
   auto bits = h.bits();
@@ -285,15 +288,17 @@ void calculate_hilbert_values_test(uint64_t num_dims, const tiledb::sm::Domain& 
 }
 
 /**
- * @brief Set the buffers with the appropriate dimensions for a 2D array with hilbert order.
+ * @brief Set the buffers with the appropriate dimensions for a 2D array with
+ * hilbert order.
  *
  * @tparam DimType The type of the dimension.
  * @param read_layout The read layout of the read query.
  * @param domain The domain of the array schema.
  * @returns The dimension storage buffers and the dimension index map.
  */
-template<typename DimType>
-DimensionDataMetadata<DimType> set_2d_dim_buffers_hilbert(tiledb_layout_t read_layout, const tiledb::sm::Domain& domain) {
+template <typename DimType>
+DimensionDataMetadata<DimType> set_2d_dim_buffers_hilbert(
+    tiledb_layout_t read_layout, const tiledb::sm::Domain& domain) {
   size_t elements_per_dim = BITSORT_DIM_HI - BITSORT_DIM_LO + 1;
   uint64_t number_elements = elements_per_dim * elements_per_dim;
   std::vector<DimType> x_dims;
@@ -322,7 +327,7 @@ DimensionDataMetadata<DimType> set_2d_dim_buffers_hilbert(tiledb_layout_t read_l
   calculate_hilbert_values_test(2, domain, domain_view, hilbert_values);
   tiledb::sm::HilbertCmpQB cmp_obj(domain, domain_view, hilbert_values);
   std::sort(pos.begin(), pos.end(), cmp_obj);
-  
+
   std::vector<DimType> x_dims_hilbert;
   std::vector<DimType> y_dims_hilbert;
   std::vector<DimIdxValue> dim_idx_map;
@@ -337,37 +342,38 @@ DimensionDataMetadata<DimType> set_2d_dim_buffers_hilbert(tiledb_layout_t read_l
     int x = static_cast<int>(x_dims[pos[i]]);
     int y = static_cast<int>(y_dims[pos[i]]);
     if (read_layout == TILEDB_ROW_MAJOR) {
-      read_index =
-          ((x - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) + (y - BITSORT_DIM_LO);
+      read_index = ((x - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) +
+                   (y - BITSORT_DIM_LO);
     } else if (read_layout == TILEDB_COL_MAJOR) {
-      read_index =
-          ((y - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) + (x - BITSORT_DIM_LO);
+      read_index = ((y - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) +
+                   (x - BITSORT_DIM_LO);
     }
 
     x_dims_hilbert.emplace_back(x_dims[pos[i]]);
     y_dims_hilbert.emplace_back(y_dims[pos[i]]);
     dim_idx_map.emplace_back(
-        std::optional(x),
-        std::optional(y),
-        std::nullopt,
-        read_index);
+        std::optional(x), std::optional(y), std::nullopt, read_index);
   }
 
-  return std::make_tuple(x_dims_hilbert, y_dims_hilbert, std::vector<DimType>(), dim_idx_map);
+  return std::make_tuple(
+      x_dims_hilbert, y_dims_hilbert, std::vector<DimType>(), dim_idx_map);
 }
 
 /**
- * @brief Set the buffers with the appropriate dimensions for a 3D array with hilbert order.
+ * @brief Set the buffers with the appropriate dimensions for a 3D array with
+ * hilbert order.
  *
  * @tparam DimType The type of the dimension.
  * @param read_layout The read layout of the read query.
  * @param domain The domain of the array schema.
  * @returns The dimension storage buffers and the dimension index map.
  */
-template<typename DimType>
-DimensionDataMetadata<DimType> set_3d_dim_buffers_hilbert(tiledb_layout_t read_layout, const tiledb::sm::Domain& domain) {
+template <typename DimType>
+DimensionDataMetadata<DimType> set_3d_dim_buffers_hilbert(
+    tiledb_layout_t read_layout, const tiledb::sm::Domain& domain) {
   size_t elements_per_dim = BITSORT_DIM_HI - BITSORT_DIM_LO + 1;
-  uint64_t number_elements = elements_per_dim * elements_per_dim * elements_per_dim;
+  uint64_t number_elements =
+      elements_per_dim * elements_per_dim * elements_per_dim;
   std::vector<DimType> x_dims;
   x_dims.reserve(number_elements);
   std::vector<DimType> y_dims;
@@ -379,8 +385,8 @@ DimensionDataMetadata<DimType> set_3d_dim_buffers_hilbert(tiledb_layout_t read_l
 
   uint64_t i = 0;
   for (int x = BITSORT_DIM_LO; x <= BITSORT_DIM_HI; ++x) {
-   for (int y = BITSORT_DIM_LO; y <= BITSORT_DIM_HI; ++y) {
-    for (int z = BITSORT_DIM_LO; z <= BITSORT_DIM_HI; ++z) {
+    for (int y = BITSORT_DIM_LO; y <= BITSORT_DIM_HI; ++y) {
+      for (int z = BITSORT_DIM_LO; z <= BITSORT_DIM_HI; ++z) {
         x_dims.emplace_back(static_cast<DimType>(x));
         y_dims.emplace_back(static_cast<DimType>(y));
         z_dims.emplace_back(static_cast<DimType>(z));
@@ -418,28 +424,28 @@ DimensionDataMetadata<DimType> set_3d_dim_buffers_hilbert(tiledb_layout_t read_l
     int z = static_cast<int>(z_dims[pos[i]]);
     int read_index = static_cast<int>(i);
     if (read_layout == TILEDB_ROW_MAJOR) {
-      read_index = ((((x - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) +
-                      (y - BITSORT_DIM_LO)) *
-                    static_cast<int>(elements_per_dim)) +
-                    (z - BITSORT_DIM_LO);
+      read_index =
+          ((((x - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) +
+            (y - BITSORT_DIM_LO)) *
+           static_cast<int>(elements_per_dim)) +
+          (z - BITSORT_DIM_LO);
     } else if (read_layout == TILEDB_COL_MAJOR) {
-      read_index = ((((z - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) +
-                      (y - BITSORT_DIM_LO)) *
-                    static_cast<int>(elements_per_dim)) +
-                    (x - BITSORT_DIM_LO);
+      read_index =
+          ((((z - BITSORT_DIM_LO) * static_cast<int>(elements_per_dim)) +
+            (y - BITSORT_DIM_LO)) *
+           static_cast<int>(elements_per_dim)) +
+          (x - BITSORT_DIM_LO);
     }
 
     x_dims_hilbert.emplace_back(x_dims[pos[i]]);
     y_dims_hilbert.emplace_back(y_dims[pos[i]]);
     z_dims_hilbert.emplace_back(z_dims[pos[i]]);
     dim_idx_map.emplace_back(
-        std::optional(x),
-        std::optional(y),
-        std::optional(z),
-        read_index);
+        std::optional(x), std::optional(y), std::optional(z), read_index);
   }
 
-  return std::make_tuple(x_dims_hilbert, y_dims_hilbert, z_dims_hilbert, dim_idx_map);
+  return std::make_tuple(
+      x_dims_hilbert, y_dims_hilbert, z_dims_hilbert, dim_idx_map);
 }
 
 /**
@@ -495,13 +501,15 @@ void check_read(
       if (num_dims == 2) {
         // Check y dimension.
         REQUIRE(dim_value.y_.has_value());
-        CHECK(y_dim_data[read_idx] == static_cast<DimType>(dim_value.y_.value()));
+        CHECK(
+            y_dim_data[read_idx] == static_cast<DimType>(dim_value.y_.value()));
       }
 
       if (num_dims == 3) {
         // Check z dimension.
         REQUIRE(dim_value.z_.has_value());
-        CHECK(z_dim_data[read_idx] == static_cast<DimType>(dim_value.z_.value()));
+        CHECK(
+            z_dim_data[read_idx] == static_cast<DimType>(dim_value.z_.value()));
       }
     }
   }
@@ -555,7 +563,7 @@ void bitsort_filter_api_test(
     tiledb_layout_t write_layout,
     tiledb_layout_t read_layout,
     bool set_subarray,
-    bool set_capacity, 
+    bool set_capacity,
     bool hilbert_order) {
   // Setup.
   Context ctx;
@@ -637,15 +645,20 @@ void bitsort_filter_api_test(
   query_w.set_layout(write_layout).set_data_buffer("a", a_write);
 
   // Set dimension buffers and the dimension index map.
-  auto &&[st, write_schema]{array_w.ptr().get()->array_->get_array_schema()};
+  auto&& [st, write_schema]{array_w.ptr().get()->array_->get_array_schema()};
   REQUIRE(st.ok());
   const tiledb::sm::Domain& domain_raw = write_schema.value().get()->domain();
 
   auto&& [x_dims_data, y_dims_data, z_dims_data, dim_idx_map]{
       (num_dims == 1) ?
           set_1d_dim_buffers<DimType>() :
-          ((num_dims == 2) ? (hilbert_order ? set_2d_dim_buffers_hilbert<DimType>(read_layout, domain_raw) : set_2d_dim_buffers<DimType>(read_layout)) :
-           (hilbert_order ? set_3d_dim_buffers_hilbert<DimType>(read_layout, domain_raw) : set_3d_dim_buffers<DimType>(read_layout)))};
+          ((num_dims == 2) ?
+               (hilbert_order ? set_2d_dim_buffers_hilbert<DimType>(
+                                    read_layout, domain_raw) :
+                                set_2d_dim_buffers<DimType>(read_layout)) :
+               (hilbert_order ? set_3d_dim_buffers_hilbert<DimType>(
+                                    read_layout, domain_raw) :
+                                set_3d_dim_buffers<DimType>(read_layout)))};
 
   // Setting data buffers.
   query_w.set_data_buffer("x", x_dims_data);
@@ -857,7 +870,7 @@ void bitsort_filter_api_test(
 
 TEMPLATE_TEST_CASE(
     "C++ API: Bitsort Filter Read on Array",
-    "[cppapi][filter][bitsort]",
+    "[cppapi][filter][bitsort][longtest]",
     int16_t,
     int64_t,
     uint8_t,
