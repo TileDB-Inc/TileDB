@@ -182,12 +182,24 @@ int32_t tiledb_group_put_metadata(
   return TILEDB_OK;
 }
 
+int32_t tiledb_group_delete_group(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* uri,
+    const uint8_t recursive) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  group->group_->delete_group(tiledb::sm::URI(uri), recursive);
+  return TILEDB_OK;
+}
+
 int32_t tiledb_group_delete_metadata(
     tiledb_ctx_t* ctx, tiledb_group_t* group, const char* key) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, group) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Put metadata
+  // Delete metadata
   throw_if_not_ok(group->group_->delete_metadata(key));
 
   return TILEDB_OK;
@@ -357,15 +369,7 @@ int32_t tiledb_group_get_member_count(
     return TILEDB_ERR;
 
   try {
-    auto&& [st, member_count] = group->group_->member_count();
-    if (!st.ok()) {
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    *count = member_count.value();
-
-    return TILEDB_OK;
+    *count = group->group_->member_count();
   } catch (const std::exception& e) {
     auto st = Status_Error(
         std::string("Internal TileDB uncaught exception; ") + e.what());
@@ -374,7 +378,7 @@ int32_t tiledb_group_get_member_count(
     return TILEDB_ERR;
   }
 
-  return TILEDB_ERR;
+  return TILEDB_OK;
 }
 
 int32_t tiledb_group_get_member_by_index(
@@ -389,20 +393,16 @@ int32_t tiledb_group_get_member_by_index(
     return TILEDB_ERR;
 
   try {
-    auto&& [st, uri_str, object_type, name_str] =
+    auto&& [uri_str, object_type, name_str] =
         group->group_->member_by_index(index);
-    if (!st.ok()) {
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
 
-    *type = static_cast<tiledb_object_t>(object_type.value());
-    *uri = static_cast<char*>(std::malloc(uri_str.value().size() + 1));
+    *type = static_cast<tiledb_object_t>(object_type);
+    *uri = static_cast<char*>(std::malloc(uri_str.size() + 1));
     if (*uri == nullptr)
       return TILEDB_ERR;
 
-    std::memcpy(*uri, uri_str.value().data(), uri_str.value().size());
-    (*uri)[uri_str.value().size()] = '\0';
+    std::memcpy(*uri, uri_str.data(), uri_str.size());
+    (*uri)[uri_str.size()] = '\0';
 
     *name = nullptr;
     if (name_str.has_value()) {
@@ -413,8 +413,6 @@ int32_t tiledb_group_get_member_by_index(
       std::memcpy(*name, name_str.value().data(), name_str.value().size());
       (*name)[name_str.value().size()] = '\0';
     }
-
-    return TILEDB_OK;
   } catch (const std::exception& e) {
     auto st = Status_Error(
         std::string("Internal TileDB uncaught exception; ") + e.what());
@@ -423,7 +421,7 @@ int32_t tiledb_group_get_member_by_index(
     return TILEDB_ERR;
   }
 
-  return TILEDB_ERR;
+  return TILEDB_OK;
 }
 
 int32_t tiledb_group_get_member_by_name(
@@ -437,22 +435,17 @@ int32_t tiledb_group_get_member_by_name(
     return TILEDB_ERR;
 
   try {
-    auto&& [st, uri_str, object_type, name_str, ignored_relative] =
+    auto&& [uri_str, object_type, name_str, ignored_relative] =
         group->group_->member_by_name(name);
-    if (!st.ok()) {
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
 
-    *type = static_cast<tiledb_object_t>(object_type.value());
-    *uri = static_cast<char*>(std::malloc(uri_str.value().size() + 1));
+    *type = static_cast<tiledb_object_t>(object_type);
+    *uri = static_cast<char*>(std::malloc(uri_str.size() + 1));
     if (*uri == nullptr)
       return TILEDB_ERR;
 
-    std::memcpy(*uri, uri_str.value().data(), uri_str.value().size());
-    (*uri)[uri_str.value().size()] = '\0';
+    std::memcpy(*uri, uri_str.data(), uri_str.size());
+    (*uri)[uri_str.size()] = '\0';
 
-    return TILEDB_OK;
   } catch (const std::exception& e) {
     auto st = Status_Error(
         std::string("Internal TileDB uncaught exception; ") + e.what());
@@ -461,7 +454,7 @@ int32_t tiledb_group_get_member_by_name(
     return TILEDB_ERR;
   }
 
-  return TILEDB_ERR;
+  return TILEDB_OK;
 }
 
 int32_t tiledb_group_get_is_relative_uri_by_name(
@@ -476,11 +469,17 @@ int32_t tiledb_group_get_is_relative_uri_by_name(
     return TILEDB_ERR;
   }
 
-  auto&& [st, uri_str, object_type, name_str, relative] =
-      group->group_->member_by_name(name);
-  throw_if_not_ok(st);
-
-  *is_relative = *relative ? 1 : 0;
+  try {
+    auto&& [uri_str, object_type, name_str, relative] =
+        group->group_->member_by_name(name);
+    *is_relative = relative ? 1 : 0;
+  } catch (const std::exception& e) {
+    auto st = Status_Error(
+        std::string("Internal TileDB uncaught exception; ") + e.what());
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }
@@ -621,10 +620,10 @@ int32_t tiledb_group_vacuum_metadata(
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(ctx->storage_manager()->group_metadata_vacuum(
+  ctx->storage_manager()->group_metadata_vacuum(
       group_uri,
       (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
+                            config->config());
 
   return TILEDB_OK;
 }
@@ -685,6 +684,15 @@ TILEDB_EXPORT int32_t tiledb_group_put_metadata(
     const void* value) TILEDB_NOEXCEPT {
   return api_entry<detail::tiledb_group_put_metadata>(
       ctx, group, key, value_type, value_num, value);
+}
+
+TILEDB_EXPORT int32_t tiledb_group_delete_group(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* uri,
+    const uint8_t recursive) TILEDB_NOEXCEPT {
+  return api_entry<detail::tiledb_group_delete_group>(
+      ctx, group, uri, recursive);
 }
 
 TILEDB_EXPORT int32_t tiledb_group_delete_metadata(

@@ -623,7 +623,25 @@ TILEDB_EXPORT int32_t tiledb_group_put_metadata(
     const void* value) TILEDB_NOEXCEPT;
 
 /**
- * It deletes a metadata key-value item from an open group. The group must
+ * Deletes written data from an open group. The group must
+ * be opened in MODIFY_EXCLSUIVE mode, otherwise the function will error out.
+ *
+ * @param ctx The TileDB context.
+ * @param group An group opened in MODIFY_EXCLUSIVE mode.
+ * @param uri The address of the group item to be deleted.
+ * @param recursive True if all data inside the group is to be deleted.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note if recursive == false, data added to the group will be left as-is.
+ */
+TILEDB_EXPORT int32_t tiledb_group_delete_group(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* uri,
+    const uint8_t recursive) TILEDB_NOEXCEPT;
+
+/**
+ * Deletes a metadata key-value item from an open group. The group must
  * be opened in WRITE mode, otherwise the function will error out.
  *
  * @param ctx The TileDB context.

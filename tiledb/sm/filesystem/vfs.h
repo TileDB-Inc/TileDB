@@ -263,6 +263,23 @@ class VFS {
   Status remove_file(const URI& uri) const;
 
   /**
+   * Deletes files in parallel from the given vector of files.
+   *
+   * @param compute_tp The compute-bound ThreadPool.
+   * @param uris The URIs of the files.
+   */
+  void remove_files(ThreadPool* compute_tp, const std::vector<URI>& uris) const;
+
+  /**
+   * Deletes files in parallel from the given vector of timestamped files.
+   *
+   * @param compute_tp The compute-bound ThreadPool.
+   * @param uris The TimestampedURIs of the files.
+   */
+  void remove_files(
+      ThreadPool* compute_tp, const std::vector<TimestampedURI>& uris) const;
+
+  /**
    * Retrieves the size of a file.
    *
    * @param uri The URI of the file.

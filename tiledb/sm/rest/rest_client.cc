@@ -225,11 +225,12 @@ RestClient::get_array_schema_from_rest(const URI& uri) {
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK_TUPLE(
       ensure_json_null_delimited_string(&returned_data), nullopt);
-  return {Status::Ok(),
-          make_shared<ArraySchema>(
-              HERE(),
-              serialization::array_schema_deserialize(
-                  serialization_type_, returned_data))};
+  return {
+      Status::Ok(),
+      make_shared<ArraySchema>(
+          HERE(),
+          serialization::array_schema_deserialize(
+              serialization_type_, returned_data))};
 }
 
 Status RestClient::post_array_schema_to_rest(
@@ -316,7 +317,7 @@ Status RestClient::post_array_from_rest(const URI& uri, Array* array) {
 }
 
 void RestClient::delete_array_from_rest(const URI& uri) {
-  /* #TODO Implement API endpoint on TileDBCloud. */
+  // #TODO Implement API endpoint on TileDBCloud.
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
@@ -1270,6 +1271,23 @@ Status RestClient::patch_group_to_rest(const URI& uri, Group* group) {
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
+void RestClient::delete_group_from_rest(const URI& uri) {
+  // #TODO Implement API endpoint on TileDBCloud.
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string group_ns, group_uri;
+  throw_if_not_ok(uri.get_rest_components(&group_ns, &group_uri));
+  const std::string cache_key = group_ns + ":" + group_uri;
+  throw_if_not_ok(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
+                          "/" + curlc.url_escape(group_uri);
+
+  Buffer returned_data;
+  throw_if_not_ok(curlc.delete_data(
+      stats_, url, serialization_type_, &returned_data, cache_key));
+}
+
 Status RestClient::ensure_json_null_delimited_string(Buffer* buffer) {
   if (serialization_type_ == SerializationType::JSON &&
       buffer->value<char>(buffer->size() - 1) != '\0') {
@@ -1299,9 +1317,10 @@ Status RestClient::set_header(const std::string&, const std::string&) {
 
 tuple<Status, optional<shared_ptr<ArraySchema>>>
 RestClient::get_array_schema_from_rest(const URI&) {
-  return {LOG_STATUS(Status_RestError(
-              "Cannot use rest client; serialization not enabled.")),
-          nullopt};
+  return {
+      LOG_STATUS(Status_RestError(
+          "Cannot use rest client; serialization not enabled.")),
+      nullopt};
 }
 
 Status RestClient::post_array_schema_to_rest(const URI&, const ArraySchema&) {
@@ -1378,16 +1397,18 @@ Status RestClient::post_array_schema_evolution_to_rest(
 
 tuple<Status, std::optional<bool>> RestClient::check_array_exists_from_rest(
     const URI&) {
-  return {LOG_STATUS(Status_RestError(
-              "Cannot use rest client; serialization not enabled.")),
-          std::nullopt};
+  return {
+      LOG_STATUS(Status_RestError(
+          "Cannot use rest client; serialization not enabled.")),
+      std::nullopt};
 }
 
 tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
     const URI&) {
-  return {LOG_STATUS(Status_RestError(
-              "Cannot use rest client; serialization not enabled.")),
-          std::nullopt};
+  return {
+      LOG_STATUS(Status_RestError(
+          "Cannot use rest client; serialization not enabled.")),
+      std::nullopt};
 }
 
 Status RestClient::post_group_metadata_from_rest(const URI&, Group*) {
@@ -1417,6 +1438,11 @@ Status RestClient::post_group_from_rest(const URI&, Group*) {
 
 Status RestClient::patch_group_to_rest(const URI&, Group*) {
   return LOG_STATUS(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+void RestClient::delete_group_from_rest(const URI&) {
+  throw StatusException(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 

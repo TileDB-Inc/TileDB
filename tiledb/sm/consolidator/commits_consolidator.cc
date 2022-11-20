@@ -43,8 +43,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*          CONSTRUCTOR           */
@@ -103,10 +102,11 @@ Status CommitsConsolidator::consolidate(
   return Status::Ok();
 }
 
-Status CommitsConsolidator::vacuum(const char* array_name) {
-  if (array_name == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum array metadata; Array name cannot be null"));
+void CommitsConsolidator::vacuum(const char* array_name) {
+  if (array_name == nullptr) {
+    throw Status_StorageManagerError(
+        "Cannot vacuum array metadata; Array name cannot be null");
+  }
 
   // Get the array metadata URIs and vacuum file URIs to be vacuum
   auto vfs = storage_manager_->vfs();
@@ -120,29 +120,10 @@ Status CommitsConsolidator::vacuum(const char* array_name) {
       utils::time::timestamp_now_ms(),
       ArrayDirectoryMode::COMMITS);
 
-  const auto& commits_uris_to_vacuum = array_dir.commit_uris_to_vacuum();
-  const auto& consolidated_commits_uris_to_vacuum =
-      array_dir.consolidated_commits_uris_to_vacuum();
-
-  // Delete the commits files
-  auto status =
-      parallel_for(compute_tp, 0, commits_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs->remove_file(commits_uris_to_vacuum[i]));
-
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  // Delete vacuum files
-  status = parallel_for(
-      compute_tp, 0, consolidated_commits_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs->remove_file(consolidated_commits_uris_to_vacuum[i]));
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+  // Delete the commits and vacuum files
+  vfs->remove_files(compute_tp, array_dir.commit_uris_to_vacuum());
+  vfs->remove_files(
+      compute_tp, array_dir.consolidated_commits_uris_to_vacuum());
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

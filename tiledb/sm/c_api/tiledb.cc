@@ -3707,14 +3707,10 @@ int32_t tiledb_array_consolidate_fragments(
 
 int32_t tiledb_array_vacuum(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
-  // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(ctx->storage_manager()->array_vacuum(
+  ctx->storage_manager()->array_vacuum(
       array_uri,
       (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
+                            config->config());
 
   return TILEDB_OK;
 }
@@ -5680,8 +5676,7 @@ int32_t tiledb_fragment_info_set_config(
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
 
-  throw_if_not_ok(
-      fragment_info->fragment_info_->set_config(config->config()));
+  throw_if_not_ok(fragment_info->fragment_info_->set_config(config->config()));
 
   return TILEDB_OK;
 }

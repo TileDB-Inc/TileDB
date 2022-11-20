@@ -44,8 +44,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*          CONSTRUCTOR           */
@@ -184,10 +183,11 @@ Status FragmentMetaConsolidator::consolidate(
   return Status::Ok();
 }
 
-Status FragmentMetaConsolidator::vacuum(const char* array_name) {
-  if (array_name == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum fragment metadata; Array name cannot be null"));
+void FragmentMetaConsolidator::vacuum(const char* array_name) {
+  if (array_name == nullptr) {
+    throw Status_StorageManagerError(
+        "Cannot vacuum fragment metadata; Array name cannot be null");
+  }
 
   // Get the consolidated fragment metadata URIs to be deleted
   // (all except the last one)
@@ -203,14 +203,14 @@ Status FragmentMetaConsolidator::vacuum(const char* array_name) {
   uint64_t t_latest = 0;
   for (const auto& uri : fragment_meta_uris) {
     std::pair<uint64_t, uint64_t> timestamp_range;
-    RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
+    throw_if_not_ok(utils::parse::get_timestamp_range(uri, &timestamp_range));
     if (timestamp_range.second > t_latest) {
       t_latest = timestamp_range.second;
     }
   }
 
   // Vacuum
-  auto status =
+  throw_if_not_ok(
       parallel_for(compute_tp, 0, fragment_meta_uris.size(), [&](size_t i) {
         auto& uri = fragment_meta_uris[i];
         std::pair<uint64_t, uint64_t> timestamp_range;
@@ -218,11 +218,7 @@ Status FragmentMetaConsolidator::vacuum(const char* array_name) {
         if (timestamp_range.second != t_latest)
           RETURN_NOT_OK(vfs->remove_file(uri));
         return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
