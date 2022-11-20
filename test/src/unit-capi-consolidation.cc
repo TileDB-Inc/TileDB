@@ -138,7 +138,8 @@ struct ConsolidationFx {
       uint64_t start = 0,
       uint64_t end = UINT64_MAX);
   void consolidate_sparse_heterogeneous();
-  void consolidate_sparse_string();
+  void consolidate_sparse_string(
+      uint64_t buffer_size = 10000, bool error_expected = false);
   void vacuum_dense(const std::string& mode = "fragments");
   void vacuum_sparse(
       const std::string& mode = "fragments",
@@ -4326,7 +4327,8 @@ void ConsolidationFx::consolidate_sparse_heterogeneous() {
   REQUIRE(rc == TILEDB_OK);
 }
 
-void ConsolidationFx::consolidate_sparse_string() {
+void ConsolidationFx::consolidate_sparse_string(
+    uint64_t buffer_size, bool error_expected) {
   int rc;
 
   tiledb_config_t* cfg;
@@ -4336,7 +4338,9 @@ void ConsolidationFx::consolidate_sparse_string() {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
 
-  rc = tiledb_config_set(cfg, "sm.consolidation.buffer_size", "10000", &err);
+  auto buffer_size_string = std::to_string(buffer_size);
+  rc = tiledb_config_set(
+      cfg, "sm.consolidation.buffer_size", buffer_size_string.c_str(), &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
 
@@ -4356,7 +4360,7 @@ void ConsolidationFx::consolidate_sparse_string() {
   }
 
   tiledb_config_free(&cfg);
-  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(rc == (error_expected ? TILEDB_ERR : TILEDB_OK));
 }
 
 void ConsolidationFx::vacuum_dense(const std::string& mode) {
@@ -7065,4 +7069,27 @@ TEST_CASE_METHOD(
     vacuum_dense(mode);
     remove_dense_array();
   }
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidation, sparse string, no progress",
+    "[capi][consolidation][sparse][string][no-progress]") {
+  remove_sparse_string_array();
+  create_sparse_string_array();
+
+  write_sparse_string_full(false);
+  write_sparse_string_unordered();
+  consolidate_sparse_string(1, true);
+
+  tiledb_error_t* err = NULL;
+  tiledb_ctx_get_last_error(ctx_, &err);
+
+  const char* msg;
+  tiledb_error_message(err, &msg);
+  CHECK(
+      std::string("FragmentConsolidator: Consolidation read 0 cells, no "
+                  "progress can be made") == msg);
+
+  remove_sparse_string_array();
 }

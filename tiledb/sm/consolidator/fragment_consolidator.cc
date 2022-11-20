@@ -50,6 +50,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class FragmentConsolidatorStatusException : public StatusException {
+ public:
+  explicit FragmentConsolidatorStatusException(const std::string& message)
+      : StatusException("FragmentConsolidator", message) {
+  }
+};
+
 /* ****************************** */
 /*          CONSTRUCTOR           */
 /* ****************************** */
@@ -512,6 +519,12 @@ Status FragmentConsolidator::copy_array(
   do {
     // READ
     RETURN_NOT_OK(query_r->submit());
+
+    // If Consolidation cannot make any progress, throw.
+    if (buffer_sizes->at(0) == 0) {
+      throw FragmentConsolidatorStatusException(
+          "Consolidation read 0 cells, no progress can be made");
+    }
 
     // Set explicitly the write query buffers, as the sizes may have
     // been altered by the read query.
