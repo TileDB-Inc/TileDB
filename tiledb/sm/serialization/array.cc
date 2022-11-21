@@ -207,7 +207,7 @@ Status array_from_capnp(
     RETURN_NOT_OK(query_type_enum(query_type_str, &query_type));
     array->set_query_type(query_type);
     if (!array->is_open()) {
-      array->set_array_open(query_type);
+      array->set_serialized_array_open(query_type);
     }
   }
 

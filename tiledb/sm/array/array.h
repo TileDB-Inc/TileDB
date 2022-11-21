@@ -477,6 +477,14 @@ class Array {
    */
   void set_array_open(const QueryType& query_type);
 
+  /**
+   * Sets the array state as open and adds the array to
+   * open arrays
+   *
+   * @param query_type The QueryType of the Array.
+   */
+  void set_serialized_array_open(const QueryType& query_type);
+
   /** Set the query type to open the array for. */
   inline void set_query_type(QueryType query_type) {
     query_type_ = query_type;

@@ -1471,6 +1471,10 @@ void ensure_supported_schema_version_for_read(format_version_t version) {
   }
 }
 
+void Array::set_serialized_array_open(const QueryType& query_type) {
+  set_array_open(query_type);
+}
+
 bool Array::serialize_non_empty_domain() const {
   auto found = false;
   auto serialize_ned_array_open = false;
