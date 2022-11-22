@@ -15,7 +15,7 @@ on:
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
-      - 'doc/source/conf.py'
+      - 'tiledb/doxygen/source/*'
       - 'tiledb/sm/c_api/tiledb_version.h'
 
 jobs:
