@@ -2036,7 +2036,7 @@ Status SparseGlobalOrderReader<BitmapType>::end_iteration() {
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
         while (!result_tiles_[f].empty() &&
-               result_tiles_[f].front().tile_idx() !=
+               result_tiles_[f].front().tile_idx() <
                    read_state_.frag_idx_[f].tile_idx_) {
           RETURN_NOT_OK(remove_result_tile(f, result_tiles_[f].begin()));
         }
