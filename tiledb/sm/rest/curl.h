@@ -53,6 +53,7 @@
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/global_state/libcurl_state.h"
 #include "tiledb/sm/stats/stats.h"
 
 using namespace tiledb::common;
@@ -335,6 +336,13 @@ class Curl {
   tuple<Status, optional<long>> last_http_status_code();
 
  private:
+  /**
+   * A libcurl initializer instance. This should remain
+   * the first member variable to ensure that libcurl is
+   * initialized before any calls that may require it.
+   */
+  global_state::LibCurlInitializer curl_inited_;
+
   /** TileDB config parameters. */
   const Config* config_;
 

@@ -1,11 +1,11 @@
 /**
- * @file   libcurl_state.h
+ * @file cert_file.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,28 +27,16 @@
  *
  * @section DESCRIPTION
  *
- * This file initializes the libcurl state, if libcurl is present.
+ * Platform/machine config of the TileDB library.
  */
 
-#ifndef TILEDB_LIBCURL_STATE_H
-#define TILEDB_LIBCURL_STATE_H
+#include "tiledb/platform/cert_file.h"
 
-namespace tiledb::sm::global_state {
+namespace tiledb::platform {
 
-/**
- * A sentry class for ensuring that libcurl has
- * been initialized for any classes that use it.
- */
-class LibCurlInitializer {
- public:
-  /**
-   * Construct an instance of LibCurlInitializer which
-   * has the side effect of ensuring that libcurl has
-   * been initialized for use.
-   */
-  LibCurlInitializer();
-};
-
-}  // namespace tiledb::sm::global_state
-
+#if defined(__linux__)
+std::once_flag CertFileTraits<LinuxOS>::cert_file_initialized_;
+std::string CertFileTraits<LinuxOS>::cert_file_;
 #endif
+
+} // namespce tiledb::platform

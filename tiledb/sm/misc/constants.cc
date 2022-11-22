@@ -808,21 +808,6 @@ const void* fill_value(Datatype type) {
   return nullptr;
 }
 
-#ifdef __linux__
-/** Possible certificate files; stop after finding one.
- * inspired by
- * https://github.com/golang/go/blob/f0e940ebc985661f54d31c8d9ba31a553b87041b/src/crypto/x509/root_linux.go
- */
-const std::array<std::string, 6> cert_files_linux = {
-    "/etc/ssl/certs/ca-certificates.crt",  // Debian/Ubuntu/Gentoo etc.
-    "/etc/pki/tls/certs/ca-bundle.crt",    // Fedora/RHEL 6
-    "/etc/ssl/ca-bundle.pem",              // OpenSUSE
-    "/etc/pki/tls/cacert.pem",             // OpenELEC
-    "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",  // CentOS/RHEL 7
-    "/etc/ssl/cert.pem"                                   // Alpine Linux
-};
-#endif
-
 const std::string config_delimiter = ",";
 }  // namespace constants
 

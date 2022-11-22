@@ -35,26 +35,33 @@
 
 #ifdef TILEDB_SERIALIZATION
 #include <curl/curl.h>
+// This ifdef'ed definition of LIBCURL_INIT only exists
+// because the preprocessor is unable to parse
+// CURL_GLOBAL_DEFAULT properly inside a constexpr block
+// when the curl.h header hasn't been included.
+#define LIBCURL_INIT curl_global_init(CURL_GLOBAL_DEFAULT)
+#else
+#define LIBCURL_INIT 0
 #endif
 
-using namespace tiledb::common;
+namespace tiledb::sm::global_state {
 
-namespace tiledb {
-namespace sm {
-namespace global_state {
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
 
-Status init_libcurl() {
-#ifdef TILEDB_SERIALIZATION
-  auto rc = curl_global_init(CURL_GLOBAL_DEFAULT);
-  if (rc != 0)
-    return LOG_STATUS(Status_Error(
-        "Cannot initialize libcurl global state: got non-zero return code " +
-        std::to_string(rc)));
-#endif
+/** Ensures that the cURL library is only initialized once per process. */
+static std::once_flag curl_lib_initialized;
 
-  return Status::Ok();
+LibCurlInitializer::LibCurlInitializer() {
+  std::call_once(curl_lib_initialized, [](){
+    auto rc = LIBCURL_INIT;
+    if (rc != 0) {
+      throw common::Status_Error(
+          "Cannot initialize libcurl global state: got non-zero return code "
+            + std::to_string(rc));
+    }
+  });
 }
 
-}  // namespace global_state
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::global_state

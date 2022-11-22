@@ -79,17 +79,14 @@ Status GlobalState::init(const Config& config) {
       RETURN_NOT_OK(SignalHandlers::GetSignalHandlers().initialize());
     }
     RETURN_NOT_OK(Watchdog::GetWatchdog().initialize());
-    RETURN_NOT_OK(init_libcurl());
 
-#ifdef __linux__
-    // We attempt to find the linux ca cert bundle
-    // This only needs to happen one time, and then we will use the file found
-    // for each s3/rest call as appropriate
-    Posix posix;
-    ThreadPool tp{1};
-    throw_if_not_ok(posix.init(config_, &tp));
-    cert_file_ = utils::https::find_ca_certs_linux(posix);
-#endif
+    // Construct an instance of LibCurlInitializer out of an abundance
+    // of caution. All of the classes that use libcurl also have
+    // initializer instance members, but I'm keeping this here just
+    // in case I've missed an instance where libcurl is used (which
+    // includes linked dependencies where it would be hidden from
+    // grep).
+    LibCurlInitializer();
 
     initialized_ = true;
   }
@@ -110,10 +107,6 @@ void GlobalState::unregister_storage_manager(StorageManager* sm) {
 std::set<StorageManager*> GlobalState::storage_managers() {
   std::unique_lock<std::mutex> lck(storage_managers_mtx_);
   return storage_managers_;
-}
-
-const std::string& GlobalState::cert_file() {
-  return cert_file_;
 }
 
 }  // namespace global_state
