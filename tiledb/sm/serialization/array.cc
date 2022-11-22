@@ -152,8 +152,7 @@ Status array_to_capnp(
   // Serialize array directory (load if not loaded already)
   const auto array_directory = array->load_array_directory();
   auto array_directory_builder = array_builder->initArrayDirectory();
-  array_directory_to_capnp(
-      array_directory, array_schema_latest, &array_directory_builder);
+  array_directory_to_capnp(array_directory, &array_directory_builder);
 
   // Serialize fragment metadata iff loaded (if the array is open for READs)
   if (array->get_query_type() == QueryType::READ) {
