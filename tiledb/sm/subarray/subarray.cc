@@ -1069,8 +1069,10 @@ bool Subarray::is_unary(uint64_t range_idx) const {
 void Subarray::set_is_default(uint32_t dim_index, bool is_default) {
   if (is_default) {
     auto dim{array_->array_schema_latest().dimension_ptr(dim_index)};
-    range_subset_.at(dim_index) = RangeSetAndSuperset(
-        dim->type(), dim->domain(), is_default, coalesce_ranges_);
+    if (range_subset_.at(dim_index).is_implicitly_initialized()) {
+      range_subset_.at(dim_index) = RangeSetAndSuperset(
+          dim->type(), dim->domain(), is_default, coalesce_ranges_);
+    }
   }
   is_default_[dim_index] = is_default;
 }
