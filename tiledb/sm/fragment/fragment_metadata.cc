@@ -664,15 +664,15 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
   return Status::Ok();
 }
 
-Status FragmentMetadata::fragment_size(uint64_t* size) const {
+uint64_t FragmentMetadata::fragment_size() const {
   // Add file sizes
-  *size = 0;
+  uint64_t size = 0;
   for (const auto& file_size : file_sizes_)
-    *size += file_size;
+    size += file_size;
   for (const auto& file_var_size : file_var_sizes_)
-    *size += file_var_size;
+    size += file_var_size;
   for (const auto& file_validity_size : file_validity_sizes_)
-    *size += file_validity_size;
+    size += file_validity_size;
 
   // The fragment metadata file size can be empty when we've loaded consolidated
   // metadata
@@ -680,7 +680,7 @@ Status FragmentMetadata::fragment_size(uint64_t* size) const {
   if (meta_file_size == 0) {
     auto meta_uri = fragment_uri_.join_path(
         std::string(constants::fragment_metadata_filename));
-    RETURN_NOT_OK(
+    throw_if_not_ok(
         storage_manager_->vfs()->file_size(meta_uri, &meta_file_size));
   }
   // Validate that the meta_file_size is not zero, either preloaded or fetched
@@ -688,9 +688,9 @@ Status FragmentMetadata::fragment_size(uint64_t* size) const {
   assert(meta_file_size != 0);
 
   // Add fragment metadata file size
-  *size += meta_file_size;
+  size += meta_file_size;
 
-  return Status::Ok();
+  return size;
 }
 
 Status FragmentMetadata::get_tile_overlap(

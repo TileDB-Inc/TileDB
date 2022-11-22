@@ -194,9 +194,11 @@ TEST_CASE_METHOD(
 
   tiledb_consolidation_plan_t* consolidation_plan;
   CHECK(
-      TILEDB_OK ==
-      tiledb_consolidation_plan_alloc(
-          ctx_.ptr().get(), array.ptr().get(), &consolidation_plan));
+      TILEDB_OK == tiledb_consolidation_plan_create_with_mbr(
+                       ctx_.ptr().get(),
+                       array.ptr().get(),
+                       1024 * 1024,
+                       &consolidation_plan));
 
   uint64_t num_nodes = 11;
   CHECK(
@@ -235,9 +237,11 @@ TEST_CASE_METHOD(
 
   tiledb_consolidation_plan_t* consolidation_plan;
   CHECK(
-      TILEDB_OK ==
-      tiledb_consolidation_plan_alloc(
-          ctx_.ptr().get(), array.ptr().get(), &consolidation_plan));
+      TILEDB_OK == tiledb_consolidation_plan_create_with_mbr(
+                       ctx_.ptr().get(),
+                       array.ptr().get(),
+                       1024 * 1024,
+                       &consolidation_plan));
 
   // Check dump
   std::string dump_str = "Not implemented\n";

@@ -189,7 +189,7 @@ TEST_CASE_METHOD(
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
   Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
-  ConsolidationPlan consolidation_plan(ctx_, array);
+  ConsolidationPlan consolidation_plan(ctx_, array, 1024 * 1024);
 
   uint64_t num_nodes = consolidation_plan.num_nodes();
   CHECK(num_nodes == 0);
@@ -211,7 +211,7 @@ TEST_CASE_METHOD(
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
   Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
-  ConsolidationPlan consolidation_plan(ctx_, array);
+  ConsolidationPlan consolidation_plan(ctx_, array, 1024 * 1024);
 
   // Check dump
   std::string dump_str = "Not implemented\n";

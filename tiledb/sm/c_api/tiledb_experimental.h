@@ -1241,18 +1241,21 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_total_cell_num(
  *
  * @code{.c}
  * tiledb_consolidation_plan_t* consolidation_plan;
- * tiledb_consolidation_plan_alloc(ctx, array, &consolidation_plan);
+ * tiledb_consolidation_plan_create_with_mbr(ctx, array, 1024*1024*1024,
+ * &consolidation_plan);
  * @endcode
  *
  * @param ctx TileDB context.
  * @param array The array to create the plan for.
+ * @param fragment_size The desired fragment size.
  * @param consolidation_plan The consolidation plan object to be created and
  * populated.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_consolidation_plan_alloc(
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_create_with_mbr(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
+    uint64_t fragment_size,
     tiledb_consolidation_plan_t** consolidation_plan) TILEDB_NOEXCEPT;
 
 /**

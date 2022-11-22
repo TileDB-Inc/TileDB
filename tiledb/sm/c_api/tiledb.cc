@@ -6221,9 +6221,10 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t tiledb_consolidation_plan_alloc(
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_create_with_mbr(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
+    uint64_t fragment_size,
     tiledb_consolidation_plan_t** consolidation_plan) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -6246,7 +6247,7 @@ TILEDB_EXPORT int32_t tiledb_consolidation_plan_alloc(
   try {
     (*consolidation_plan)->consolidation_plan_ =
         make_shared<tiledb::sm::ConsolidationPlan>(
-            HERE(), ctx->storage_manager(), array->array_);
+            HERE(), array->array_, fragment_size);
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB consolidation plan object; Memory allocation "
@@ -9298,12 +9299,13 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
       ctx, query, status);
 }
 
-int32_t tiledb_consolidation_plan_alloc(
+int32_t tiledb_consolidation_plan_create_with_mbr(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
+    uint64_t fragment_size,
     tiledb_consolidation_plan_t** consolidation_plan) noexcept {
-  return api_entry<tiledb::api::tiledb_consolidation_plan_alloc>(
-      ctx, array, consolidation_plan);
+  return api_entry<tiledb::api::tiledb_consolidation_plan_create_with_mbr>(
+      ctx, array, fragment_size, consolidation_plan);
 }
 
 void tiledb_consolidation_plan_free(

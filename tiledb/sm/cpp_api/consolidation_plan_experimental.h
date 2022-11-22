@@ -53,14 +53,16 @@ class ConsolidationPlan {
    *
    * @param ctx TileDB context.
    * @param array The array.
+   * @param fragment_size The desired fragment size.
    */
-  ConsolidationPlan(const Context& ctx, const Array& array)
+  ConsolidationPlan(
+      const Context& ctx, const Array& array, uint64_t fragment_size)
       : ctx_(ctx) {
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
     tiledb_array_t* c_array = array.ptr().get();
     tiledb_consolidation_plan_t* consolidation_plan;
-    ctx.handle_error(
-        tiledb_consolidation_plan_alloc(c_ctx, c_array, &consolidation_plan));
+    ctx.handle_error(tiledb_consolidation_plan_create_with_mbr(
+        c_ctx, c_array, fragment_size, &consolidation_plan));
     consolidation_plan_ = std::shared_ptr<tiledb_consolidation_plan_t>(
         consolidation_plan, deleter_);
   }
