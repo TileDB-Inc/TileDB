@@ -108,6 +108,12 @@ struct DenseArrayFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
+  // server side buffers
+  std::vector<uint8_t> attr_or_dim_data;
+  std::vector<uint64_t> attr_or_dim_off;
+  std::vector<uint8_t> attr_or_dim;
+  std::vector<uint8_t> attr_or_dim_nullable;
+
   // Functions
   DenseArrayFx();
   ~DenseArrayFx();
@@ -3170,19 +3176,10 @@ int DenseArrayFx::submit_query_wrapper(
 
   // Serialize the new query and "send it over the network" (server-side)
   // 3. Server -> Client : Send query response
-  tiledb_query_t* client_deser_query;
   std::vector<uint8_t> serialized2;
   rc = tiledb_query_v2_serialize(
-      ctx_,
-      array_uri.c_str(),
-      serialized2,
-      true,
-      server_deser_query,
-      &client_deser_query);
+      ctx_, array_uri.c_str(), serialized, true, server_deser_query, query);
   REQUIRE_SAFE(rc == TILEDB_OK);
-
-  // Update the query with the latest state
-  *query = client_deser_query;
 
   // Clean up.
   tiledb_query_free(&server_deser_query);
@@ -3201,33 +3198,37 @@ void DenseArrayFx::allocate_query_buffers_server_side(tiledb_query_t* query) {
     auto nullable = schema.is_nullable(name);
     if (var_size && buff.buffer_var_ == nullptr) {
       // Variable-sized buffer
-      uint8_t attr_or_dim_data[*buff.buffer_var_size_];
-      uint64_t attr_or_dim_off
-          [(*buff.buffer_size_) / sizeof(constants::cell_var_offset_size)];
+      attr_or_dim_data.resize(*buff.buffer_var_size_);
+      attr_or_dim_off.resize(
+          (*buff.buffer_size_) / sizeof(constants::cell_var_offset_size));
       rc = tiledb_query_set_data_buffer(
-          ctx_, query, name.c_str(), attr_or_dim_data, buff.buffer_var_size_);
+          ctx_,
+          query,
+          name.c_str(),
+          attr_or_dim_data.data(),
+          buff.buffer_var_size_);
       REQUIRE_SAFE(rc == TILEDB_OK);
       rc = tiledb_query_set_offsets_buffer(
-          ctx_, query, name.c_str(), attr_or_dim_off, buff.buffer_size_);
+          ctx_, query, name.c_str(), attr_or_dim_off.data(), buff.buffer_size_);
       REQUIRE_SAFE(rc == TILEDB_OK);
     }
 
     if (!var_size && buff.buffer_ == nullptr) {
       // Fixed-length buffer
-      uint8_t attr_or_dim[*buff.buffer_size_];
+      attr_or_dim.resize(*buff.buffer_size_);
       rc = tiledb_query_set_data_buffer(
-          ctx_, query, name.c_str(), attr_or_dim, buff.buffer_size_);
+          ctx_, query, name.c_str(), attr_or_dim.data(), buff.buffer_size_);
       REQUIRE_SAFE(rc == TILEDB_OK);
     }
 
     if (nullable) {
       // nullable
-      uint8_t attr_or_dim_nullable[*buff.validity_vector_.buffer_size()];
+      attr_or_dim_nullable.resize(*buff.validity_vector_.buffer_size());
       rc = tiledb_query_set_validity_buffer(
           ctx_,
           query,
           name.c_str(),
-          attr_or_dim_nullable,
+          attr_or_dim_nullable.data(),
           buff.validity_vector_.buffer_size());
     }
   }
