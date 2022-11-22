@@ -1,5 +1,11 @@
 # TileDB v2.13.0 Release Notes
 
+# Announcements
+
+- We have created a [deprecation and removal policy for the C and C++ API.](doc/policy/api_changes.md#deprecations). Deprecated functions will be in place for at least two releases, with a removal notification one version prior to the removal.
+
+- All functions deprecated through TileDB 2.12 will be removed in TileDB 2.15. See [list of deprecated functions here](doc/policy/api_changes.md#Deprecation-version-history).
+
 ## Disk Format
 
 ### Documentation
