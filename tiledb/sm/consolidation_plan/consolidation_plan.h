@@ -200,9 +200,6 @@ class ConsolidationPlan {
   /** Fragment uris, per node. */
   std::vector<std::vector<std::string>> fragment_uris_;
 
-  /** Desired fragment size. */
-  storage_size_t desired_fragment_size_;
-
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */

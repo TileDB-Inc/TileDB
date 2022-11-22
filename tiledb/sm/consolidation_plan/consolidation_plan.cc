@@ -41,9 +41,7 @@ using namespace tiledb::common;
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ConsolidationPlan::ConsolidationPlan(
-    shared_ptr<Array> array, uint64_t fragment_size)
-    : desired_fragment_size_(fragment_size) {
+ConsolidationPlan::ConsolidationPlan(shared_ptr<Array> array, uint64_t) {
   generate(array);
 }
 
@@ -67,60 +65,5 @@ void ConsolidationPlan::dump(FILE* out) const {
 /*          PRIVATE METHODS          */
 /* ********************************* */
 
-void ConsolidationPlan::generate(shared_ptr<Array> array) {
-  // Start with the plan being a single fragment per node.
-  std::list<PlanNode> plan;
-  for (uint64_t idx = 0; idx < array->fragment_metadata().size(); idx++) {
-    plan.emplace_back(array, idx);
-  }
-
-  // Process until we don't find any overlapping fragments.
-  bool overlap_found = true;
-  while (overlap_found) {
-    overlap_found = false;
-
-    // Go through all nodes.
-    auto current = plan.begin();
-    while (current != plan.end()) {
-      // Compare to other nodes.
-      auto other = current;
-      other++;
-      while (other != plan.end()) {
-        // If there is overlap, combine the nodes.
-        if (current->overlap(*other)) {
-          overlap_found = true;
-          current->combine(*other);
-          auto to_delete = other;
-          other++;
-          plan.erase(to_delete);
-        } else {
-          other++;
-        }
-      }
-
-      current++;
-    }
-  }
-
-  // Move the combined nodes to the beginning of the list.
-  auto start = std::partition(
-      plan.begin(), plan.end(), [&](const auto& el) { return el.combined(); });
-
-  // Move single nodes that we can split to the beginning of the list.
-  start = std::partition(start, plan.end(), [&](const auto& el) {
-    return el.size() > 2 * desired_fragment_size_;
-  });
-
-  // Try to combine smaller fragments.
-  // TODO.
-
-  plan.erase(start, plan.end());
-
-  // Fill in the data for the plan.
-  num_nodes_ = plan.size();
-  fragment_uris_.reserve(num_nodes_);
-
-  for (auto& node : plan) {
-    fragment_uris_.emplace_back(node.uris());
-  }
+void ConsolidationPlan::generate(shared_ptr<Array>) {
 }
