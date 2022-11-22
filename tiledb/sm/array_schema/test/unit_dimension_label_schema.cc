@@ -48,8 +48,8 @@ TEST_CASE(
       ArrayType::DENSE, indexed_array_dims, indexed_array_attrs);
   REQUIRE(indexed_array_schema->check().ok());
   // Create dimension label schema
-  REQUIRE_NOTHROW(DimensionLabelSchema(
-      LabelOrder::INCREASING_LABELS, indexed_array_schema));
+  REQUIRE_NOTHROW(
+      DimensionLabelSchema(DataOrder::INCREASING_DATA, indexed_array_schema));
 }
 
 TEST_CASE(
@@ -67,8 +67,8 @@ TEST_CASE(
         ArrayType::DENSE, indexed_array_dims, indexed_array_attrs);
     REQUIRE(indexed_array_schema->check().ok());
     // Create dimension label schema
-    REQUIRE_THROWS(DimensionLabelSchema(
-        LabelOrder::INCREASING_LABELS, indexed_array_schema));
+    REQUIRE_THROWS(
+        DimensionLabelSchema(DataOrder::INCREASING_DATA, indexed_array_schema));
   }
 
   SECTION("Too many label attributes") {
@@ -83,8 +83,8 @@ TEST_CASE(
         ArrayType::DENSE, indexed_array_dims, indexed_array_attrs);
     REQUIRE(indexed_array_schema->check().ok());
     // Create dimension label schema
-    REQUIRE_THROWS(DimensionLabelSchema(
-        LabelOrder::INCREASING_LABELS, indexed_array_schema));
+    REQUIRE_THROWS(
+        DimensionLabelSchema(DataOrder::INCREASING_DATA, indexed_array_schema));
   }
 }
 
@@ -96,7 +96,7 @@ TEST_CASE(
   uint64_t index_tile_extent = 8;
   auto dimension_label_schema = make_shared<DimensionLabelSchema>(
       HERE(),
-      LabelOrder::INCREASING_LABELS,
+      DataOrder::INCREASING_DATA,
       Datatype::FLOAT64,
       Datatype::UINT64,
       index_domain,

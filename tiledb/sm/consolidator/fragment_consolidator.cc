@@ -47,8 +47,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*          CONSTRUCTOR           */
@@ -243,7 +242,6 @@ Status FragmentConsolidator::consolidate_fragments(
       count++;
       domain.expand_ndrange(
           frag_info.non_empty_domain(), &union_non_empty_domains);
-      domain.expand_to_tiles(&union_non_empty_domains);
       to_consolidate.emplace_back(frag_info.uri(), frag_info.timestamp_range());
     }
   }
@@ -284,10 +282,11 @@ Status FragmentConsolidator::consolidate_fragments(
   return Status::Ok();
 }
 
-Status FragmentConsolidator::vacuum(const char* array_name) {
-  if (array_name == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum fragments; Array name cannot be null"));
+void FragmentConsolidator::vacuum(const char* array_name) {
+  if (array_name == nullptr) {
+    throw Status_StorageManagerError(
+        "Cannot vacuum fragments; Array name cannot be null");
+  }
 
   // Get the fragment URIs and vacuum file URIs to be vacuumed
   auto vfs = storage_manager_->vfs();
@@ -303,45 +302,26 @@ Status FragmentConsolidator::vacuum(const char* array_name) {
   auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
   const auto& fragment_uris_to_vacuum =
       filtered_fragment_uris.fragment_uris_to_vacuum();
-  const auto& commit_uris_to_vacuum =
-      filtered_fragment_uris.commit_uris_to_vacuum();
   const auto& commit_uris_to_ignore =
       filtered_fragment_uris.commit_uris_to_ignore();
-  const auto& vac_uris_to_vacuum =
-      filtered_fragment_uris.fragment_vac_uris_to_vacuum();
 
   if (commit_uris_to_ignore.size() > 0) {
-    RETURN_NOT_OK(storage_manager_->write_commit_ignore_file(
+    throw_if_not_ok(storage_manager_->write_commit_ignore_file(
         array_dir, commit_uris_to_ignore));
   }
 
-  // Delete the commit files
-  auto status =
-      parallel_for(compute_tp, 0, commit_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs->remove_file(commit_uris_to_vacuum[i]));
-
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
+  // Delete the commit and vacuum files
+  vfs->remove_files(compute_tp, filtered_fragment_uris.commit_uris_to_vacuum());
+  vfs->remove_files(
+      compute_tp, filtered_fragment_uris.fragment_vac_uris_to_vacuum());
 
   // Delete fragment directories
-  status = parallel_for(
+  throw_if_not_ok(parallel_for(
       compute_tp, 0, fragment_uris_to_vacuum.size(), [&](size_t i) {
         RETURN_NOT_OK(vfs->remove_dir(fragment_uris_to_vacuum[i]));
 
         return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  // Delete vacuum files
-  status =
-      parallel_for(compute_tp, 0, vac_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs->remove_file(vac_uris_to_vacuum[i]));
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
 /* ****************************** */
@@ -590,9 +570,12 @@ Status FragmentConsolidator::create_queries(
   *query_r = tdb_new(Query, storage_manager_, array_for_reads);
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
 
-  // Refactored reader optimizes for no subarray.
-  if (!config_.use_refactored_reader_ || dense) {
-    RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
+  // Dense consolidation will do a tile aligned read.
+  if (dense) {
+    NDRange read_subarray = subarray;
+    auto& domain{array_for_reads->array_schema_latest().domain()};
+    domain.expand_to_tiles(&read_subarray);
+    RETURN_NOT_OK((*query_r)->set_subarray_unsafe(read_subarray));
   }
 
   // Enable consolidation with timestamps on the reader, if applicable.
@@ -701,7 +684,6 @@ Status FragmentConsolidator::compute_next_to_consolidate(
           m_union[i][j] = m_union[i - 1][j];
           domain.expand_ndrange(
               fragments[i + j].non_empty_domain(), &m_union[i][j]);
-          domain.expand_to_tiles(&m_union[i][j]);
           if (!sparse && !are_consolidatable(
                              domain, fragment_info, j, j + i, m_union[i][j])) {
             // Mark this entry as invalid
@@ -932,5 +914,4 @@ Status FragmentConsolidator::write_vacuum_file(
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

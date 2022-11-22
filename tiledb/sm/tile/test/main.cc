@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_struct_def.h
+ * @file tiledb/sm/tile/test/main.cc
  *
  * @section LICENSE
  *
@@ -27,17 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file contains the TileDB C API struct object definitions for
- * experimental structs.
+ * This file defines a test `main()`
  */
 
-#ifndef TILEDB_C_API_STRUCT_DEF_EXPERIMENTAL_H
-#define TILEDB_C_API_STRUCT_DEF_EXPERIMENTAL_H
-
-#include "tiledb/sm/array_schema/dimension_label_schema.h"
-
-struct tiledb_dimension_label_schema_t {
-  shared_ptr<tiledb::sm::DimensionLabelSchema> dim_label_schema_;
-};
-
-#endif
+#define CATCH_CONFIG_MAIN
+#include <test/support/tdb_catch.h>

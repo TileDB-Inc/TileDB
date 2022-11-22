@@ -60,7 +60,7 @@ class Domain;
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
 enum class Datatype : uint8_t;
-enum class LabelOrder : uint8_t;
+enum class DataOrder : uint8_t;
 enum class Layout : uint8_t;
 
 /** Specifies the array schema. */
@@ -334,18 +334,17 @@ class ArraySchema {
    *
    * @param dim_id The index of the dimension the label applied to.
    * @param name The name of the dimension label.
-   * @param dimension_label_schema The schema of the dimension label.
+   * @param label_order The order of the label data.
+   * @param label_type The datda type of the label data.
    * @param check_name If ``true``, check the name does not conflict with other
-   * labels, attributes, or dimensions.
-   * @param check_is_compatible If ``true``, check the schema of the dimension
-   * label is compatible with the defintion of the dimension.
+   *     labels, attributes, or dimensions.
    **/
-  Status add_dimension_label(
+  void add_dimension_label(
       dimension_size_type dim_id,
       const std::string& name,
-      shared_ptr<const DimensionLabelSchema> dimension_label_schema,
-      bool check_name = true,
-      bool check_is_compatible = true);
+      DataOrder label_order,
+      Datatype label_type,
+      bool check_name = true);
 
   /**
    * Drops an attribute.
@@ -400,6 +399,27 @@ class ArraySchema {
 
   /** Sets the cell order. */
   Status set_cell_order(Layout cell_order);
+
+  /**
+   * Sets a filter on a dimension label filter in an array schema.
+   *
+   * @param label_name The dimension label name.
+   * @param filter_list The filter_list to be set.
+   */
+  void set_dimension_label_filter_pipeline(
+      const std::string& label_name, const FilterPipeline& pipeline);
+
+  /**
+   * Sets the tile extent on a dimension label in an array schema.
+   *
+   * @param label_name The dimension label name.
+   * @param tile_extent The tile extent for the dimension of the dimension
+   * label.
+   */
+  void set_dimension_label_tile_extent(
+      const std::string& label_name,
+      const Datatype type,
+      const void* tile_extent);
 
   /**
    * Sets the domain. The function returns an error if the array has been

@@ -25,35 +25,31 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
-# `filter` object library
+# `crypto` object library
 #
-add_library(crypto OBJECT crypto.cc crypto_openssl.cc crypto_win32.cc encryption_key.cc)
-target_link_libraries(crypto PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-if(WIN32)
-    if(MSVC)
-        find_library(BCRYPT_LIBRARY bcrypt)
-        message(STATUS "Found Win32 lib bcrypt: ${BCRYPT_LIBRARY}")
-        target_link_libraries(crypto PUBLIC ${BCRYPT_LIBRARY})
+commence(object_library crypto)
+    this_target_sources(crypto.cc crypto_openssl.cc crypto_win32.cc encryption_key.cc)
+    this_target_object_libraries(buffer)
+    if(WIN32)
+        if(MSVC)
+            find_library(BCRYPT_LIBRARY bcrypt)
+            message(STATUS "Found Win32 lib bcrypt: ${BCRYPT_LIBRARY}")
+            this_target_link_libraries(${BCRYPT_LIBRARY})
+        else()
+            message(STATUS "Linking to Win32 lib bcrypt")
+            this_target_link_libraries(-lbcrypt)
+        endif()
     else()
-        message(STATUS "Linking to Win32 lib bcrypt")
-        target_link_libraries(crypto PUBLIC -lbcrypt)
+        find_package(OpenSSL_EP REQUIRED)
+        this_target_link_libraries(OpenSSL::Crypto)
     endif()
-else()
-    find_package(OpenSSL_EP REQUIRED)
-    target_link_libraries(crypto PUBLIC OpenSSL::Crypto)
-endif()
-# OpenSSL-3 deprecates MD5
-if(MSVC)
-    set_source_files_properties(crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "/wd4996")
-else()
-    set_source_files_properties(crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
-endif()
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_crypto EXCLUDE_FROM_ALL)
-add_dependencies(all_link_complete compile_crypto)
-target_link_libraries(compile_crypto PRIVATE crypto)
-target_sources(compile_crypto PRIVATE test/compile_crypto_main.cc)
+    # OpenSSL-3 deprecates MD5
+    if(MSVC)
+        set_source_files_properties(crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "/wd4996")
+    else()
+        set_source_files_properties(crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
+    endif()
+conclude(object_library)

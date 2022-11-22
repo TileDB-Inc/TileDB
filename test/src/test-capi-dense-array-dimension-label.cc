@@ -31,16 +31,13 @@
  * labels.
  */
 
-#include "test/src/experimental_helpers.h"
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
-#include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/encryption_type.h"
 
 #include <test/support/tdb_catch.h>
@@ -60,7 +57,7 @@ using namespace tiledb::test;
  *  * Attributes:
  *    - a: (type=FLOAT64)
  *  * Dimension labels:
- *    - x: (label_order=label_order_t, dim_idx=0, type=FLOAT64)
+ *    - x: (data_order=data_order, dim_idx=0, type=FLOAT64)
  */
 class DenseArrayExample1 : public TemporaryDirectoryFixture {
  public:
@@ -75,7 +72,7 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
    *
    * @param label_order Label order for the dimension label.
    */
-  void create_example(tiledb_label_order_t label_order) {
+  void create_example(tiledb_data_order_t label_order) {
     // Create an array schema
     uint64_t x_tile_extent{4};
     auto array_schema = create_array_schema(
@@ -95,8 +92,8 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
         false);
 
     // Add dimension label.
-    add_dimension_label(
-        ctx, array_schema, "x", 0, label_order, TILEDB_FLOAT64, &x_tile_extent);
+    tiledb_array_schema_add_dimension_label(
+        ctx, array_schema, 0, "x", label_order, TILEDB_FLOAT64);
 
     // Create array
     array_name = create_temporary_array("array_with_label_1", array_schema);
@@ -106,15 +103,19 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
   /**
    * Write data to the array and dimension label.
    *
+   * @param index_start Starting index value
+   * @param index_end Ending index value
    * @param input_attr_data Data to write to the array attribute. If empty, the
    *     attribute data is not added to the query.
    * @param input_label_data Data to write to the dimension label. If empty, the
    *     dimension label data is not added to the query.
    * @param error_on_write If true, require the query returns a failed status.
    */
-  void write_array_with_label(
-      std::vector<double>& input_attr_data,
-      std::vector<double>& input_label_data,
+  void write_by_index(
+      uint64_t index_start,
+      uint64_t index_end,
+      std::vector<double> input_attr_data,
+      std::vector<double> input_label_data,
       bool error_on_write = false) {
     // Open array for writing.
     tiledb_array_t* array;
@@ -129,7 +130,69 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
     tiledb_subarray_t* subarray;
     require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
     require_tiledb_ok(tiledb_subarray_add_range(
-        ctx, subarray, 0, &index_domain_[0], &index_domain_[1], nullptr));
+        ctx, subarray, 0, &index_start, &index_end, nullptr));
+
+    // Create write query.
+    tiledb_query_t* query;
+    require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query));
+    require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR));
+    require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
+    if (attr_data_size != 0) {
+      require_tiledb_ok(tiledb_query_set_data_buffer(
+          ctx, query, "a", input_attr_data.data(), &attr_data_size));
+    }
+    if (label_data_size != 0) {
+      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+          ctx, query, "x", input_label_data.data(), &label_data_size));
+    }
+
+    // Submit write query.
+    if (error_on_write) {
+      auto rc = tiledb_query_submit(ctx, query);
+      REQUIRE(rc != TILEDB_OK);
+    } else {
+      require_tiledb_ok(tiledb_query_submit(ctx, query));
+      tiledb_query_status_t query_status;
+      require_tiledb_ok(tiledb_query_get_status(ctx, query, &query_status));
+      REQUIRE(query_status == TILEDB_COMPLETED);
+    }
+
+    // Clean-up.
+    tiledb_query_free(&query);
+    tiledb_array_free(&array);
+  }
+
+  /**
+   * Write data to the array and dimension label by label.
+   *
+   * @param label_start Starting label value
+   * @param label_end Ending label value
+   * @param input_attr_data Data to write to the array attribute. If empty, the
+   *     attribute data is not added to the query.
+   * @param input_label_data Data to write to the dimension label. If empty, the
+   *     dimension label data is not added to the query.
+   * @param error_on_write If true, require the query returns a failed status.
+   */
+  void write_by_label(
+      double label_start,
+      double label_end,
+      std::vector<double> input_attr_data,
+      std::vector<double> input_label_data,
+      bool error_on_write = false) {
+    // Open array for writing.
+    tiledb_array_t* array;
+    require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
+    require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_WRITE));
+
+    // Define sizes for setting buffers.
+    uint64_t attr_data_size{input_attr_data.size() * sizeof(double)};
+    uint64_t label_data_size{input_label_data.size() * sizeof(double)};
+
+    // Create subarray.
+    tiledb_subarray_t* subarray;
+    require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
+    require_tiledb_ok(tiledb_subarray_add_label_range(
+        ctx, subarray, "x", &label_start, &label_end, nullptr));
 
     // Create write query.
     tiledb_query_t* query;
@@ -310,11 +373,11 @@ TEST_CASE_METHOD(
   std::vector<double> input_attr_data{};
 
   // Dimension label parameters.
-  tiledb_label_order_t label_order;
+  tiledb_data_order_t label_order;
 
   SECTION("Write increasing labels", "[IncreasingLabels]") {
     // Set the label order.
-    label_order = TILEDB_INCREASING_LABELS;
+    label_order = TILEDB_INCREASING_DATA;
 
     // Set the data values.
     input_label_data = {-1.0, 0.0, 0.5, 1.0};
@@ -330,7 +393,7 @@ TEST_CASE_METHOD(
 
   SECTION("Write decreasing labels", "[DecreasingLabels]") {
     // Set the label order.
-    label_order = TILEDB_DECREASING_LABELS;
+    label_order = TILEDB_DECREASING_DATA;
 
     // Set the data values.
     input_label_data = {1.0, 0.0, -0.5, -1.0};
@@ -346,7 +409,7 @@ TEST_CASE_METHOD(
 
   SECTION("Write unordered labels and array", "[UnorderedLabels]") {
     // Set the label order.
-    label_order = TILEDB_UNORDERED_LABELS;
+    label_order = TILEDB_UNORDERED_DATA;
 
     // Set the data values.
     input_label_data = {-0.5, 1.0, 0.0, -1.0};
@@ -362,11 +425,11 @@ TEST_CASE_METHOD(
 
   INFO(
       "Testing array with label order " +
-      label_order_str(static_cast<LabelOrder>(label_order)) + ".");
+      data_order_str(static_cast<DataOrder>(label_order)) + ".");
 
   // Create and write the array.
   create_example(label_order);
-  write_array_with_label(input_attr_data, input_label_data);
+  write_by_index(0, 3, input_attr_data, input_label_data);
 
   // Check data reader.
   {
@@ -375,7 +438,7 @@ TEST_CASE_METHOD(
   }
 
   // Check range reader.
-  if (label_order != TILEDB_UNORDERED_LABELS) {
+  if (label_order != TILEDB_UNORDERED_DATA) {
     INFO("Reading data by label range.");
 
     // Check query on full range.
@@ -412,33 +475,57 @@ TEST_CASE_METHOD(
   std::vector<double> input_attr_data{};
 
   // Dimension label parameters.
-  tiledb_label_order_t label_order;
+  tiledb_data_order_t label_order;
 
   SECTION("Increasing labels with bad order", "[IncreasingLabels]") {
-    label_order = TILEDB_INCREASING_LABELS;
+    label_order = TILEDB_INCREASING_DATA;
     input_label_data = {1.0, 0.0, -0.5, -1.0};
     input_attr_data = {0.5, 1.0, 1.5, 2.0};
   }
 
   SECTION("Increasing labels with duplicate values", "[IncreasingLabels]") {
-    label_order = TILEDB_INCREASING_LABELS;
+    label_order = TILEDB_INCREASING_DATA;
     input_label_data = {-1.0, 0.0, 0.0, 1.0};
     input_attr_data = {0.5, 1.0, 1.5, 2.0};
   }
 
   SECTION("Decreasing labels with bad order", "[IncreasingLabels]") {
-    label_order = TILEDB_DECREASING_LABELS;
+    label_order = TILEDB_DECREASING_DATA;
     input_label_data = {-1.0, -0.5, 0.0, 1.0};
     input_attr_data = {0.5, 1.0, 1.5, 2.0};
   }
 
   SECTION("Decreasing labels with duplicate values", "[IncreasingLabels]") {
-    label_order = TILEDB_DECREASING_LABELS;
+    label_order = TILEDB_DECREASING_DATA;
     input_label_data = {1.0, 0.0, 0.0, -1.0};
     input_attr_data = {0.5, 1.0, 1.5, 2.0};
   }
 
   // Create the array.
   create_example(label_order);
-  write_array_with_label(input_attr_data, input_label_data, true);
+  write_by_index(0, 3, input_attr_data, input_label_data, true);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayExample1,
+    "Test write array by label",
+    "[capi][query][DimensionLabel]") {
+  // Vectors for input data.
+  std::vector<double> input_label_data{-1.0, 0.0, 0.5, 1.0};
+  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
+
+  // Set the label order.
+  tiledb_data_order_t label_order{TILEDB_INCREASING_DATA};
+
+  // Create the array
+  create_example(label_order);
+
+  // Write only dimension label data and check.
+  write_by_index(0, 3, {}, input_label_data);
+
+  // Write array data using label.
+  write_by_label(-1.0, 1.0, input_attr_data, {});
+
+  // Check results.
+  check_values_from_data_reader(input_label_data, input_attr_data);
 }

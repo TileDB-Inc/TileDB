@@ -1,4 +1,4 @@
-/**
+/*
  * @file   tiledb_experimental.h
  *
  * @section LICENSE
@@ -97,9 +97,9 @@ TILEDB_EXPORT void tiledb_array_schema_evolution_free(
  * attr);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param array_schema_evolution The schema evolution.
- * @param attr The attribute to be added.
+ * @param[in] ctx The TileDB context.
+ * @param[in] array_schema_evolution The schema evolution.
+ * @param[in] attribute The attribute to be added.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_evolution_add_attribute(
@@ -172,7 +172,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param array_schema_evolution The schema evolution.
+ * @param array_schema The array schema object.
  * @param lo The lower bound of timestamp range.
  * @param hi The upper bound of timestamp range.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
@@ -186,6 +186,24 @@ TILEDB_EXPORT int32_t tiledb_array_schema_timestamp_range(
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */
+
+/**
+ * Deletes all written array data.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_delete_array(
+ *   ctx, array, "hdfs:///temp/my_array");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to delete the data from.
+ * @param uri The Array's URI.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_delete_array(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) TILEDB_NOEXCEPT;
 
 /**
  * Evolve array schema of an array.
@@ -330,7 +348,8 @@ typedef enum {
 
 /** This should move to c_api/tiledb_struct_defs.h when stabilized */
 typedef struct tiledb_experimental_query_status_details_t {
-  tiledb_query_status_details_reason_t incomplete_reason;
+  tiledb_query_status_details_reason_t
+      incomplete_reason;  ///< Reason enum for the incomplete query.
 } tiledb_query_status_details_t;
 
 /**
@@ -356,7 +375,7 @@ typedef struct tiledb_experimental_query_status_details_t {
 TILEDB_EXPORT int32_t tiledb_query_get_status_details(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_query_status_details_t* status) TILEDB_NOEXCEPT;
+    tiledb_query_status_details_t* status_details) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*              CONTEXT              */
@@ -420,11 +439,13 @@ TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
  * tiledb_array_consolidate(ctx, "my_array", uris, 2);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param array_uri The name of the TileDB array whose metadata will
+ * @param[in] ctx The TileDB context.
+ * @param[in] array_uri The name of the TileDB array whose metadata will
  *     be consolidated.
- * @param fragment_uris URIs of the fragments to consolidate.
- * @param num_fragments Number of URIs to consolidate.
+ * @param[in] fragment_uris URIs of the fragments to consolidate.
+ * @param[in] num_fragments Number of URIs to consolidate.
+ * @param[in] config Config object to apply to this operation (overrides Context
+ config).
  *
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
@@ -605,7 +626,25 @@ TILEDB_EXPORT int32_t tiledb_group_put_metadata(
     const void* value) TILEDB_NOEXCEPT;
 
 /**
- * It deletes a metadata key-value item from an open group. The group must
+ * Deletes written data from an open group. The group must
+ * be opened in MODIFY_EXCLSUIVE mode, otherwise the function will error out.
+ *
+ * @param ctx The TileDB context.
+ * @param group An group opened in MODIFY_EXCLUSIVE mode.
+ * @param uri The address of the group item to be deleted.
+ * @param recursive True if all data inside the group is to be deleted.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note if recursive == false, data added to the group will be left as-is.
+ */
+TILEDB_EXPORT int32_t tiledb_group_delete_group(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* uri,
+    const uint8_t recursive) TILEDB_NOEXCEPT;
+
+/**
+ * Deletes a metadata key-value item from an open group. The group must
  * be opened in WRITE mode, otherwise the function will error out.
  *
  * @param ctx The TileDB context.
@@ -879,10 +918,10 @@ TILEDB_EXPORT int32_t tiledb_group_get_member_by_name(
  *
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param group An group opened in READ mode.
- * @param name name of member to fetch
- * @param is_relative to receive relative characteristic of named member
+ * @param[in]  ctx The TileDB context.
+ * @param[in]  group An group opened in READ mode.
+ * @param[in]  name name of member to fetch
+ * @param[out] is_relative to receive relative characteristic of named member
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 /* clang-format on */
@@ -890,7 +929,7 @@ TILEDB_EXPORT int32_t tiledb_group_get_is_relative_uri_by_name(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* name,
-    uint8_t* relative) TILEDB_NOEXCEPT;
+    uint8_t* is_relative) TILEDB_NOEXCEPT;
 
 /**
  * Checks if the group is open.
@@ -1058,14 +1097,14 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param uri The file URI.
- * @param uri The array URI.
+ * @param file_uri The file URI.
+ * @param filestore_array_uri The array URI.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
     tiledb_ctx_t* ctx,
     const char* file_uri,
-    const char* filstore_array_uri) TILEDB_NOEXCEPT;
+    const char* filestore_array_uri) TILEDB_NOEXCEPT;
 
 /**
  * Writes size bytes starting at address buf into filestore array
@@ -1080,7 +1119,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param uri The array URI.
+ * @param filestore_array_uri The array URI.
  * @param buf The input buffer
  * @param size Number of bytes to be imported
  * @param mime_type The mime type of the data
@@ -1129,9 +1168,9 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
  * free(buf);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param uri The array URI.
- * @param size The returned uncompressed size of the filestore array
+ * @param[in] ctx The TileDB context.
+ * @param[in] filestore_array_uri The array URI.
+ * @param[in] size The returned uncompressed size of the filestore array
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_filestore_size(
@@ -1185,9 +1224,9 @@ TILEDB_EXPORT int32_t tiledb_mime_type_from_str(
  * tiledb_fragment_info_get_total_cell_num(ctx, fragment_info, &cell_num);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param cell_num The number of cells to be retrieved.
+ * @param[in]  ctx The TileDB context
+ * @param[in]  fragment_info The fragment info object.
+ * @param[out] count The number of cells to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_fragment_info_get_total_cell_num(

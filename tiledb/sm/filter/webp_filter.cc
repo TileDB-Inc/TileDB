@@ -30,16 +30,8 @@
  * This file implements class WebpFilter.
  */
 
-#ifdef TILEDB_WEBP
-
 #include "tiledb/sm/filter/webp_filter.h"
-#include "tiledb/common/status.h"
 #include "tiledb/sm/tile/tile.h"
-
-#include "webp/decode.h"
-#include "webp/encode.h"
-
-using namespace tiledb::common;
 
 namespace tiledb::sm {
 void WebpFilter::dump(FILE* out) const {
@@ -47,6 +39,62 @@ void WebpFilter::dump(FILE* out) const {
     out = stdout;
   fprintf(out, "WebpFilter");
 }
+}  // namespace tiledb::sm
+
+#ifndef TILEDB_WEBP
+namespace tiledb::sm {
+/*
+ * Stub implementations of externally-visible WebpFilter functions ensure that
+ * any defect in calling these function when they shouldn't does not result in
+ * a program crash.
+ */
+
+Status WebpFilter::run_forward(
+    const Tile&,
+    void* const,
+    FilterBuffer*,
+    FilterBuffer*,
+    FilterBuffer*,
+    FilterBuffer*) const {
+  throw tiledb::sm::WebpNotPresentError();
+}
+
+Status WebpFilter::run_reverse(
+    const Tile&,
+    void* const,
+    FilterBuffer*,
+    FilterBuffer*,
+    FilterBuffer*,
+    FilterBuffer*,
+    const Config&) const {
+  throw tiledb::sm::WebpNotPresentError();
+}
+
+Status WebpFilter::set_option_impl(FilterOption, const void*) {
+  throw tiledb::sm::WebpNotPresentError();
+}
+
+Status WebpFilter::get_option_impl(FilterOption, void*) const {
+  throw tiledb::sm::WebpNotPresentError();
+}
+
+void WebpFilter::serialize_impl(Serializer&) const {
+  throw tiledb::sm::WebpNotPresentError();
+}
+
+WebpFilter* WebpFilter::clone_impl() const {
+  throw tiledb::sm::WebpNotPresentError();
+}
+
+}  // namespace tiledb::sm
+
+#else
+#include "webp/decode.h"
+#include "webp/encode.h"
+
+using namespace tiledb::common;
+
+namespace tiledb::sm {
 
 Status WebpFilter::run_forward(
     const Tile&,

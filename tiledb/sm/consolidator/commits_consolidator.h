@@ -43,8 +43,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Handles commits consolidation. */
 class CommitsConsolidator : public Consolidator {
@@ -90,12 +89,10 @@ class CommitsConsolidator : public Consolidator {
    * Performs the vacuuming operation.
    *
    * @param array_name URI of array to consolidate.
-   * @return Status
    */
-  Status vacuum(const char* array_name);
+  void vacuum(const char* array_name);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_COMMITS_CONSOLIDATOR_H

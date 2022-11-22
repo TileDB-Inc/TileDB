@@ -412,6 +412,13 @@ class ResultTile {
    */
   uint64_t timestamp(uint64_t pos);
 
+  /**
+   * Returns the dimension label value for the `label_name` attribute at
+   * position `pos`.
+   */
+  template <typename LabelType>
+  LabelType attribute_value(const std::string& label_name, const uint64_t pos);
+
   /** Returns the fragment id that this result tile belongs to. */
   unsigned frag_idx() const;
 
