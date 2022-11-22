@@ -41,20 +41,45 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/sm/misc/comparators.h"
+#include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_macros.h"
+#include "tiledb/sm/query/readers/attribute_order_validator.h"
 #include "tiledb/sm/query/strategy_base.h"
+#include "tiledb/sm/query/writers/domain_buffer.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 namespace tiledb {
 namespace sm {
 
+using dimension_size_type = uint32_t;
+
 class ReaderBaseStatusException : public StatusException {
  public:
   explicit ReaderBaseStatusException(const std::string& message)
       : StatusException("ReaderBase", message) {
+  }
+};
+
+template <
+    typename CmpObject,
+    typename std::enable_if_t<
+        std::is_same_v<CmpObject, HilbertCmpQB> ||
+        std::is_same_v<CmpObject, GlobalCmpQB>>*>
+struct ReaderBase::BitSortFilterMetadataStorage {
+  std::vector<Tile*> dim_tiles_;
+  std::vector<QueryBuffer> query_buffers_;
+  std::vector<uint64_t> hilbert_values_;
+  std::optional<DomainBuffersView> db_;
+  std::optional<CmpObject> cmp_obj_;
+  std::function<bool(const uint64_t&, const uint64_t&)> comparator_;
+
+  BitSortFilterMetadataType get_bitsort_filter_metadata_type() {
+    return BitSortFilterMetadataType(&dim_tiles_, &comparator_);
   }
 };
 
@@ -90,6 +115,12 @@ ReaderBase::ReaderBase(
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
   timestamps_needed_for_deletes_and_updates_.resize(fragment_metadata_.size());
+
+  if (layout_ == Layout::GLOBAL_ORDER && subarray.range_num() > 1) {
+    throw ReaderBaseStatusException(
+        "Cannot initialize reader; Multi-range reads are not supported on a "
+        "global order query.");
+  }
 
   bool found = false;
   if (!config_.get<bool>("vfs.disable_batching", &disable_batching_, &found)
@@ -421,8 +452,8 @@ Status ReaderBase::load_tile_offsets(
             continue;
           }
 
-          // Not a member of array schema, this field was added in array schema
-          // evolution, ignore for this fragment's tile offsets
+          // Not a member of array schema, this field was added in array
+          // schema evolution, ignore for this fragment's tile offsets
           if (!schema->is_field(name)) {
             continue;
           }
@@ -471,8 +502,8 @@ Status ReaderBase::load_tile_var_sizes(
 
         const auto& schema = fragment->array_schema();
         for (const auto& name : names) {
-          // Not a member of array schema, this field was added in array schema
-          // evolution, ignore for this fragment's tile var sizes.
+          // Not a member of array schema, this field was added in array
+          // schema evolution, ignore for this fragment's tile var sizes.
           if (!schema->is_field(name))
             continue;
 
@@ -899,10 +930,37 @@ Status ReaderBase::unfilter_tile_chunk_range(
     // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
     // 't_var' for var-sized tiles.
     if (!var_size) {
-      if (!nullable)
-        RETURN_NOT_OK(unfilter_tile_chunk_range(
-            num_range_threads, range_thread_idx, name, t, tile_chunk_data));
-      else {
+      if (!nullable) {
+        if (array_schema_.bitsort_filter_attr().has_value()) {
+          BitSortFilterMetadataType bitsort_metadata;
+          if (array_schema_.cell_order() == Layout::HILBERT) {
+            BitSortFilterMetadataStorage<HilbertCmpQB> bitsort_storage;
+            bitsort_metadata = construct_bitsort_filter_argument<HilbertCmpQB>(
+                tile, bitsort_storage);
+            RETURN_NOT_OK(unfilter_tile_chunk_range(
+                num_range_threads,
+                range_thread_idx,
+                name,
+                t,
+                tile_chunk_data,
+                &bitsort_metadata));
+          } else {
+            BitSortFilterMetadataStorage<GlobalCmpQB> bitsort_storage;
+            bitsort_metadata = construct_bitsort_filter_argument<GlobalCmpQB>(
+                tile, bitsort_storage);
+            RETURN_NOT_OK(unfilter_tile_chunk_range(
+                num_range_threads,
+                range_thread_idx,
+                name,
+                t,
+                tile_chunk_data,
+                &bitsort_metadata));
+          }
+        } else {
+          RETURN_NOT_OK(unfilter_tile_chunk_range(
+              num_range_threads, range_thread_idx, name, t, tile_chunk_data));
+        }
+      } else {
         RETURN_NOT_OK(unfilter_tile_chunk_range_nullable(
             num_range_threads,
             range_thread_idx,
@@ -1106,7 +1164,8 @@ Status ReaderBase::unfilter_tile_chunk_range(
     const uint64_t thread_idx,
     const std::string& name,
     Tile* tile,
-    const ChunkData& tile_chunk_data) const {
+    const ChunkData& tile_chunk_data,
+    void* support_data) const {
   assert(tile);
   // Prevent processing past the end of chunks in case there are more
   // threads than chunks.
@@ -1128,6 +1187,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
   RETURN_NOT_OK(filters.run_reverse_chunk_range(
       stats_,
       tile,
+      support_data,
       tile_chunk_data,
       t_min,
       t_max,
@@ -1166,6 +1226,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
   RETURN_NOT_OK(offset_filters.run_reverse_chunk_range(
       stats_,
       tile,
+      nullptr,
       tile_chunk_data,
       t_min,
       t_max,
@@ -1181,6 +1242,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
     RETURN_NOT_OK(filters.run_reverse_chunk_range(
         stats_,
         tile_var,
+        nullptr,
         tile_var_chunk_data,
         tvar_min,
         tvar_max,
@@ -1223,6 +1285,7 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(filters.run_reverse_chunk_range(
         stats_,
         tile,
+        nullptr,
         tile_chunk_data,
         t_min,
         t_max,
@@ -1243,6 +1306,7 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(validity_filters.run_reverse_chunk_range(
         stats_,
         tile_validity,
+        nullptr,
         tile_validity_chunk_data,
         tval_min,
         tval_max,
@@ -1291,6 +1355,7 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(offset_filters.run_reverse_chunk_range(
         stats_,
         tile,
+        nullptr,
         tile_chunk_data,
         t_min,
         t_max,
@@ -1311,6 +1376,7 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(filters.run_reverse_chunk_range(
         stats_,
         tile_var,
+        nullptr,
         tile_var_chunk_data,
         tvar_min,
         tvar_max,
@@ -1331,6 +1397,7 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(validity_filters.run_reverse_chunk_range(
         stats_,
         tile_validity,
+        nullptr,
         tile_validity_chunk_data,
         tval_min,
         tval_max,
@@ -1350,6 +1417,13 @@ Status ReaderBase::unfilter_tiles(
   auto var_size = array_schema_.var_size(name);
   auto nullable = array_schema_.is_nullable(name);
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
+
+  if (array_schema_.is_dim(name) &&
+      array_schema_.bitsort_filter_attr().has_value()) {
+    // We omit running unfilter_tiles when there is a dimension, since we
+    // process the dimension tiles in the bitsort filter.
+    return Status::Ok();
+  }
 
   auto chunking = true;
   if (var_size) {
@@ -1453,13 +1527,32 @@ Status ReaderBase::unfilter_tiles(
             }
           }
 
-          // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
-          // 't_var' for var-sized tiles.
+          // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't'
+          // and 't_var' for var-sized tiles.
           if (!var_size) {
-            if (!nullable)
-              RETURN_NOT_OK(unfilter_tile(name, t));
-            else
+            if (!nullable) {
+              if (array_schema_.bitsort_filter_attr().has_value()) {
+                BitSortFilterMetadataType bitsort_metadata;
+                if (array_schema_.cell_order() == Layout::HILBERT) {
+                  BitSortFilterMetadataStorage<HilbertCmpQB> bitsort_storage;
+                  bitsort_metadata =
+                      construct_bitsort_filter_argument<HilbertCmpQB>(
+                          tile, bitsort_storage);
+                  RETURN_NOT_OK(unfilter_tile(name, t, &bitsort_metadata));
+                } else {
+                  BitSortFilterMetadataStorage<GlobalCmpQB> bitsort_storage;
+                  bitsort_metadata =
+                      construct_bitsort_filter_argument<GlobalCmpQB>(
+                          tile, bitsort_storage);
+                  RETURN_NOT_OK(unfilter_tile(name, t, &bitsort_metadata));
+                }
+              } else {
+                RETURN_NOT_OK(unfilter_tile(name, t));
+              }
+
+            } else {
               RETURN_NOT_OK(unfilter_tile_nullable(name, t, t_validity));
+            }
           } else {
             if (!nullable)
               RETURN_NOT_OK(unfilter_tile(name, t, t_var));
@@ -1476,7 +1569,8 @@ Status ReaderBase::unfilter_tiles(
   return Status::Ok();
 }
 
-Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile) const {
+Status ReaderBase::unfilter_tile(
+    const std::string& name, Tile* tile, void* support_data) const {
   FilterPipeline filters = array_schema_.filters(name);
 
   // Append an encryption unfilter when necessary.
@@ -1489,7 +1583,8 @@ Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile) const {
       tile,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config()));
+      storage_manager_->config(),
+      support_data));
 
   return Status::Ok();
 }
@@ -1511,12 +1606,22 @@ Status ReaderBase::unfilter_tile(
   if (filters.skip_offsets_filtering(
           tile_var->type(), array_schema_.version())) {
     RETURN_NOT_OK(filters.run_reverse(
-        stats_, tile_var, tile, storage_manager_->compute_tp(), config_));
+        stats_, tile_var, tile, storage_manager_->compute_tp(), config_, tile));
   } else {
     RETURN_NOT_OK(offset_filters.run_reverse(
-        stats_, tile, nullptr, storage_manager_->compute_tp(), config_));
+        stats_,
+        tile,
+        nullptr,
+        storage_manager_->compute_tp(),
+        config_,
+        nullptr));
     RETURN_NOT_OK(filters.run_reverse(
-        stats_, tile_var, nullptr, storage_manager_->compute_tp(), config_));
+        stats_,
+        tile_var,
+        nullptr,
+        storage_manager_->compute_tp(),
+        config_,
+        nullptr));
   }
 
   return Status::Ok();
@@ -1539,14 +1644,16 @@ Status ReaderBase::unfilter_tile_nullable(
       tile,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config()));
+      storage_manager_->config(),
+      nullptr));
   // Reverse the validity tile filters.
   RETURN_NOT_OK(validity_filters.run_reverse(
       stats_,
       tile_validity,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config()));
+      storage_manager_->config(),
+      nullptr));
 
   return Status::Ok();
 }
@@ -1577,20 +1684,23 @@ Status ReaderBase::unfilter_tile_nullable(
         tile_var,
         tile,
         storage_manager_->compute_tp(),
-        storage_manager_->config()));
+        storage_manager_->config(),
+        tile));
   } else {
     RETURN_NOT_OK(offset_filters.run_reverse(
         stats_,
         tile,
         nullptr,
         storage_manager_->compute_tp(),
-        storage_manager_->config()));
+        storage_manager_->config(),
+        nullptr));
     RETURN_NOT_OK(filters.run_reverse(
         stats_,
         tile_var,
         nullptr,
         storage_manager_->compute_tp(),
-        storage_manager_->config()));
+        storage_manager_->config(),
+        nullptr));
   }
 
   // Reverse the validity tile filters.
@@ -1599,7 +1709,8 @@ Status ReaderBase::unfilter_tile_nullable(
       tile_validity,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config()));
+      storage_manager_->config(),
+      nullptr));
 
   return Status::Ok();
 }
@@ -1692,6 +1803,329 @@ bool ReaderBase::has_coords() const {
   return false;
 }
 
+template <typename IndexType>
+tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data() {
+  // Cache the non empty domains and tile index for the first tile of each
+  // fragment.
+  auto index_dim{array_schema_.domain().dimension_ptr(0)};
+  const IndexType* dim_dom = index_dim->domain().typed_data<IndexType>();
+  auto tile_extent{index_dim->tile_extent().rvalue_as<IndexType>()};
+  std::vector<const void*> non_empty_domains(fragment_metadata_.size());
+  std::vector<uint64_t> frag_first_array_tile_idx(fragment_metadata_.size());
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      fragment_metadata_.size(),
+      [&](unsigned f) {
+        non_empty_domains[f] =
+            fragment_metadata_[f]->non_empty_domain()[0].data();
+        auto ned = static_cast<const IndexType*>(non_empty_domains[f]);
+        frag_first_array_tile_idx[f] =
+            index_dim->tile_idx<IndexType>(ned[0], dim_dom[0], tile_extent);
+
+        return Status::Ok();
+      }));
+
+  // Compute the array non empty domain.
+  IndexType min = std::numeric_limits<IndexType>::max();
+  IndexType max = std::numeric_limits<IndexType>::min();
+  for (uint64_t f = 0; f < fragment_metadata_.size(); f++) {
+    auto ned = static_cast<const IndexType*>(non_empty_domains[f]);
+    min = std::min(min, ned[0]);
+    max = std::max(max, ned[1]);
+  }
+
+  return {Range(&min, &max, sizeof(IndexType)),
+          std::move(non_empty_domains),
+          std::move(frag_first_array_tile_idx)};
+}
+
+template <typename IndexType, typename AttributeType>
+void ReaderBase::validate_attribute_order(
+    std::string& attribute_name,
+    bool increasing_data,
+    Range& array_non_empty_domain,
+    std::vector<const void*>& non_empty_domains,
+    std::vector<uint64_t>& frag_first_array_tile_idx) {
+  // For only one fragment, no work to do.
+  if (fragment_metadata_.size() == 1) {
+    return;
+  }
+
+  // For easy reference.
+  auto array_min_idx = array_non_empty_domain.typed_data<IndexType>()[0];
+  auto array_max_idx = array_non_empty_domain.typed_data<IndexType>()[1];
+  auto index_dim{array_schema_.domain().dimension_ptr(0)};
+  auto index_name = index_dim->name();
+
+  // See if some values will already be processed by previous fragments.
+  AttributeOrderValidator validator(attribute_name, fragment_metadata_.size());
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      fragment_metadata_.size(),
+      [&](uint64_t f) {
+        validator.find_fragments_to_check(
+            array_min_idx, array_max_idx, f, non_empty_domains);
+
+        return Status::Ok();
+      }));
+
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      fragment_metadata_.size(),
+      [&](int64_t f) {
+        validator.validate_without_loading_tiles<IndexType, AttributeType>(
+            array_schema_,
+            index_dim,
+            increasing_data,
+            f,
+            non_empty_domains,
+            fragment_metadata_,
+            frag_first_array_tile_idx);
+        return Status::Ok();
+      }));
+
+  // If we need tiles to finish order validation, load them, then finish the
+  // validation.
+  if (validator.need_to_load_tiles()) {
+    auto tiles_to_load = validator.tiles_to_load();
+    throw_if_not_ok(read_attribute_tiles({attribute_name}, tiles_to_load));
+    throw_if_not_ok(unfilter_tiles(attribute_name, tiles_to_load));
+
+    // Validate bounds not validated using tile data.
+    throw_if_not_ok(parallel_for(
+        storage_manager_->compute_tp(),
+        0,
+        fragment_metadata_.size(),
+        [&](unsigned f) {
+          validator.validate_with_loaded_tiles<IndexType, AttributeType>(
+              index_dim,
+              increasing_data,
+              f,
+              non_empty_domains,
+              fragment_metadata_,
+              frag_first_array_tile_idx);
+          return Status::Ok();
+        }));
+  }
+}
+
+template <typename IndexType>
+void ReaderBase::validate_attribute_order(
+    Datatype attribute_type,
+    std::string& attribute_name,
+    bool increasing_data,
+    Range& array_non_empty_domain,
+    std::vector<const void*>& non_empty_domains,
+    std::vector<uint64_t>& frag_first_array_tile_idx) {
+  auto timer_se = stats_->start_timer("validate_attribute_order");
+
+  switch (attribute_type) {
+    case Datatype::INT8:
+      validate_attribute_order<IndexType, int8_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::UINT8:
+      validate_attribute_order<IndexType, uint8_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::INT16:
+      validate_attribute_order<IndexType, int16_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::UINT16:
+      validate_attribute_order<IndexType, uint16_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::INT32:
+      validate_attribute_order<IndexType, int32_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::UINT32:
+      validate_attribute_order<IndexType, uint32_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::INT64:
+      validate_attribute_order<IndexType, int64_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::UINT64:
+      validate_attribute_order<IndexType, uint64_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::FLOAT32:
+      validate_attribute_order<IndexType, float>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::FLOAT64:
+      validate_attribute_order<IndexType, double>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+      validate_attribute_order<IndexType, int64_t>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    case Datatype::STRING_ASCII:
+      validate_attribute_order<IndexType, std::string_view>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+      break;
+    default:
+      throw ReaderBaseStatusException("Invalid attribute type");
+  }
+}
+
+void ReaderBase::calculate_hilbert_values(
+    const DomainBuffersView& domain_buffers,
+    std::vector<uint64_t>& hilbert_values) const {
+  auto dim_num = array_schema_.dim_num();
+  Hilbert h(dim_num);
+  auto bits = h.bits();
+  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
+
+  // Calculate Hilbert values in parallel
+  uint64_t cell_num = hilbert_values.size();
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(), 0, cell_num, [&](uint64_t c) {
+        std::vector<uint64_t> coords(dim_num);
+        for (uint32_t d = 0; d < dim_num; ++d) {
+          auto dim{array_schema_.dimension_ptr(d)};
+          coords[d] = hilbert_order::map_to_uint64(
+              *dim, domain_buffers[d], c, bits, max_bucket_val);
+        }
+        hilbert_values[c] = h.coords_to_hilbert(&coords[0]);
+
+        return Status::Ok();
+      }));
+}
+
+template <
+    typename CmpObject,
+    typename std::enable_if_t<
+        std::is_same_v<CmpObject, HilbertCmpQB> ||
+        std::is_same_v<CmpObject, GlobalCmpQB>>*>
+BitSortFilterMetadataType ReaderBase::construct_bitsort_filter_argument(
+    ResultTile* const tile,
+    BitSortFilterMetadataStorage<CmpObject>& bitsort_storage) const {
+  // Collect the storage vectors.
+  std::vector<Tile*>& dim_tiles = bitsort_storage.dim_tiles_;
+  std::vector<QueryBuffer>& query_buffers = bitsort_storage.query_buffers_;
+  dimension_size_type num_dims = array_schema_.dim_num();
+  std::vector<uint64_t> dim_data_sizes;
+
+  dim_tiles.reserve(num_dims);
+  query_buffers.reserve(num_dims);
+  dim_data_sizes.reserve(num_dims);
+
+  // Loop over the dimensions, adding the dimension tiles and constructed
+  // QueryBuffer objects that represent the dimension tile data.
+  for (dimension_size_type i = 0; i < num_dims; ++i) {
+    const Dimension* dimension = array_schema_.domain().dimension_ptr(i);
+    auto dim_tile_tuple = tile->tile_tuple(dimension->name());
+    dim_tiles.emplace_back(&dim_tile_tuple->fixed_tile());
+
+    auto& filtered_buffer = dim_tiles[i]->filtered_buffer();
+    dim_data_sizes.emplace_back(filtered_buffer.size());
+    query_buffers.emplace_back(
+        filtered_buffer.data(), nullptr, &dim_data_sizes[i], nullptr);
+  }
+
+  bitsort_storage.db_.emplace(
+      DomainBuffersView(array_schema_.domain(), query_buffers));
+  if constexpr (std::is_same<CmpObject, HilbertCmpQB>::value) {
+    std::vector<uint64_t>& hilbert_values = bitsort_storage.hilbert_values_;
+    assert(dim_tiles.size() > 0);
+    uint64_t cell_num = dim_tiles[0]->cell_num();
+    hilbert_values.resize(cell_num);
+    calculate_hilbert_values(bitsort_storage.db_.value(), hilbert_values);
+    bitsort_storage.cmp_obj_.emplace(HilbertCmpQB(
+        array_schema_.domain(), bitsort_storage.db_.value(), hilbert_values));
+  } else if constexpr (std::is_same<CmpObject, GlobalCmpQB>::value) {
+    bitsort_storage.cmp_obj_.emplace(
+        GlobalCmpQB(array_schema_.domain(), bitsort_storage.db_.value()));
+  }
+
+  std::function<bool(const uint64_t&, const uint64_t&)>& comparator =
+      bitsort_storage.comparator_;
+  CmpObject& cmp_obj = bitsort_storage.cmp_obj_.value();
+  comparator = [&cmp_obj](const uint64_t& left_idx, const uint64_t& right_idx) {
+    return cmp_obj(left_idx, right_idx);
+  };
+
+  return bitsort_storage.get_bitsort_filter_metadata_type();
+}
+
 // Explicit template instantiations
 template void ReaderBase::compute_result_space_tiles<int8_t>(
     const Subarray&,
@@ -1725,6 +2159,78 @@ template void ReaderBase::compute_result_space_tiles<uint64_t>(
     const Subarray&,
     const Subarray&,
     std::map<const uint64_t*, ResultSpaceTile<uint64_t>>&) const;
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<int8_t>();
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<uint8_t>();
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<int16_t>();
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<uint16_t>();
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<int32_t>();
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<uint32_t>();
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<int64_t>();
+template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+ReaderBase::cache_dimension_label_data<uint64_t>();
+template void ReaderBase::validate_attribute_order<int8_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
+template void ReaderBase::validate_attribute_order<uint8_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
+template void ReaderBase::validate_attribute_order<int16_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
+template void ReaderBase::validate_attribute_order<uint16_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
+template void ReaderBase::validate_attribute_order<int32_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
+template void ReaderBase::validate_attribute_order<uint32_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
+template void ReaderBase::validate_attribute_order<int64_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
+template void ReaderBase::validate_attribute_order<uint64_t>(
+    Datatype,
+    std::string&,
+    bool,
+    Range&,
+    std::vector<const void*>&,
+    std::vector<uint64_t>&);
 
 }  // namespace sm
 }  // namespace tiledb

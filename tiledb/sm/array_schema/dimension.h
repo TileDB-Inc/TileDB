@@ -1002,9 +1002,6 @@ class Dimension {
   Status check_tile_extent_upper_floor_internal(
       const T_EXTENT* domain, T_EXTENT tile_extent) const;
 
-  /** Returns the domain in string format. */
-  std::string domain_str() const;
-
   /** Throws error if the input type is not a supported Dimension Datatype. */
   void ensure_datatype_is_supported(Datatype type) const;
 

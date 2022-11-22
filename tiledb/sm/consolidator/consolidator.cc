@@ -41,8 +41,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ********************************* */
 /*          FACTORY METHODS          */
@@ -121,9 +120,8 @@ Status Consolidator::consolidate(
       Status_ConsolidatorError("Cannot consolidate; Invalid object"));
 }
 
-Status Consolidator::vacuum([[maybe_unused]] const char* array_name) {
-  return logger_->status(
-      Status_ConsolidatorError("Cannot vacuum; Invalid object"));
+void Consolidator::vacuum([[maybe_unused]] const char* array_name) {
+  throw Status_ConsolidatorError("Cannot vacuum; Invalid object");
 }
 
 void Consolidator::check_array_uri(const char* array_name) {
@@ -132,5 +130,4 @@ void Consolidator::check_array_uri(const char* array_name) {
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

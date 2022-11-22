@@ -79,6 +79,12 @@ class BufferBase {
   /** Returns pointer to data at the current offset. */
   const void* cur_data() const;
 
+  /** Returns the data pointer as a specific type. */
+  template <typename T>
+  inline T* data_as() const {
+    return static_cast<T*>(data_);
+  }
+
   /**
    * Reads from the local data into the input buffer.
    *
@@ -209,6 +215,11 @@ class Buffer : public BufferBase {
 
   /** Returns the buffer data pointer at the current offset. */
   void* cur_data() const;
+
+  template <typename T>
+  inline T* cur_data_as() const {
+    return static_cast<T*>(nonconst_unread_data());
+  }
 
   /** Returns the buffer data pointer at the input offset. */
   void* data(uint64_t offset) const;

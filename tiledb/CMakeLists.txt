@@ -79,7 +79,6 @@ endif()
 if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_PUBLIC_HEADERS
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/experimental/tiledb_dimension_label.h
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/experimental/tiledb_enum_experimental.h
   )
 endif()
 
@@ -190,6 +189,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/win.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/bit_width_reduction_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/bitshuffle_filter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/bitsort_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/byteshuffle_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/checksum_md5_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/checksum_sha256_filter.cc
@@ -202,6 +202,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_storage.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/float_scaling_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/xor_filter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/webp_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/noop_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/positive_delta_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_info.cc
@@ -642,6 +643,7 @@ if(TILEDB_WEBP)
     INTERFACE
     WebP::webp
   )
+  add_definitions(-DTILEDB_WEBP)
 endif()
 
 if(TILEDB_ABSEIL)

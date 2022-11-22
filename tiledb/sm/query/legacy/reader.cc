@@ -339,8 +339,14 @@ Status Reader::apply_query_condition(
   // To evaluate the query condition, we need to read tiles for the
   // attributes used in the query condition. Build a map of attribute
   // names to read.
+  const auto bitsort_attr = array_schema_.bitsort_filter_attr();
   std::unordered_map<std::string, ProcessTileFlags> names;
   for (const auto& condition_name : qc_loaded_attr_names_set_) {
+    // Skip loading tiles for bitsort attribute.
+    if (bitsort_attr.has_value() && condition_name == bitsort_attr.value()) {
+      continue;
+    }
+
     names[condition_name] = ProcessTileFlag::READ;
   }
 
@@ -830,6 +836,7 @@ Status Reader::copy_attribute_values(
 
   // Build a set of attribute names to process.
   std::unordered_map<std::string, ProcessTileFlags> names;
+  const auto bitsort_attr = array_schema_.bitsort_filter_attr();
   for (const auto& it : buffers_) {
     const auto& name = it.first;
 
@@ -841,11 +848,16 @@ Status Reader::copy_attribute_values(
       continue;
     }
 
-    // If the query condition has a clause for `name`, we will only
-    // flag it to copy because we have already preloaded the offsets
-    // and read the tiles in `apply_query_condition`.
+    // See if this is the bitsort attribute.
+    const auto is_bitsort_attr =
+        bitsort_attr.has_value() && bitsort_attr.value() == name;
+
+    // If the query condition has a clause for `name`, we will only flag it to
+    // copy because we have already preloaded the offsets and read the tiles in
+    // `apply_query_condition`. We do the same for the bitsort attribute as it
+    // was already read/unfiltered to process coordinates.
     ProcessTileFlags flags = ProcessTileFlag::COPY;
-    if (qc_loaded_attr_names_set_.count(name) == 0) {
+    if (qc_loaded_attr_names_set_.count(name) == 0 && !is_bitsort_attr) {
       flags |= ProcessTileFlag::READ;
     }
 
@@ -1655,6 +1667,19 @@ Status Reader::compute_result_coords(
   RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names, tmp_result_tiles));
   for (const auto& dim_name : dim_names) {
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles));
+  }
+
+  // If we have an attribute with bitsort filter, we need to run the filter on
+  // the attribute before we can use the coordinates.
+  const auto bitsort_attr = array_schema_.bitsort_filter_attr();
+  if (bitsort_attr.has_value()) {
+    std::vector<std::string> bitsort_attr_name = {bitsort_attr.value()};
+    RETURN_CANCEL_OR_ERROR(load_tile_offsets(
+        read_state_.partitioner_.subarray(), bitsort_attr_name));
+    RETURN_CANCEL_OR_ERROR(
+        read_attribute_tiles(bitsort_attr_name, tmp_result_tiles));
+    RETURN_CANCEL_OR_ERROR(
+        unfilter_tiles(bitsort_attr.value(), tmp_result_tiles));
   }
 
   // Read and unfilter timestamps, if required.

@@ -95,11 +95,7 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     , label_var_size_(array_schema_.attributes()[0]->var_size())
     , increasing_labels_(increasing_labels)
     , index_dim_(array_schema_.domain().dimension_ptr(0))
-    , non_empty_domains_(fragment_metadata_.size())
-    , tile_idx_min_(std::numeric_limits<uint64_t>::max())
-    , tile_idx_max_(std::numeric_limits<uint64_t>::min())
-    , result_tiles_(fragment_metadata_.size())
-    , frag_first_array_tile_idx_(fragment_metadata_.size()) {
+    , result_tiles_(fragment_metadata_.size()) {
   // Sanity checks.
   if (storage_manager_ == nullptr) {
     throw OrderedDimLabelReaderStatusException(
@@ -261,8 +257,21 @@ void OrderedDimLabelReader::label_read() {
   assert(std::is_integral<IndexType>::value);
 
   // Precompute data.
-  compute_non_empty_domain<IndexType>();
+  auto&& [non_empty_domain, non_empty_domains, frag_first_array_tile_idx] =
+      cache_dimension_label_data<IndexType>();
+  non_empty_domain_ = std::move(non_empty_domain);
+  non_empty_domains_ = std::move(non_empty_domains);
+  frag_first_array_tile_idx_ = std::move(frag_first_array_tile_idx);
   compute_array_tile_indexes_for_ranges<IndexType>();
+
+  // Validate order of the label data.
+  validate_attribute_order<IndexType>(
+      label_type_,
+      label_name_,
+      increasing_labels_,
+      non_empty_domain_,
+      non_empty_domains_,
+      frag_first_array_tile_idx_);
 
   // Save the offsets into the user buffer if we make more than one iteration
   // because of memory budgetting.
@@ -305,51 +314,18 @@ void OrderedDimLabelReader::label_read() {
 }
 
 template <typename IndexType>
-void OrderedDimLabelReader::compute_non_empty_domain() {
-  auto timer_se = stats_->start_timer("compute_non_empty_domain");
-
-  IndexType min = std::numeric_limits<IndexType>::max();
-  IndexType max = std::numeric_limits<IndexType>::min();
-
-  for (unsigned f = 0; f < fragment_metadata_.size(); f++) {
-    non_empty_domains_[f] = fragment_metadata_[f]->non_empty_domain()[0].data();
-    auto frag_non_empty_domain =
-        static_cast<const IndexType*>(non_empty_domains_[f]);
-    min = std::min(min, frag_non_empty_domain[0]);
-    max = std::max(max, frag_non_empty_domain[1]);
-  }
-
-  non_empty_domain_ = Range(&min, &max, sizeof(IndexType));
+void OrderedDimLabelReader::compute_array_tile_indexes_for_ranges() {
+  auto timer_se = stats_->start_timer("compute_array_tile_indexes_for_ranges");
 
   // Save the minimum/maximum tile indexes (in the full domain) to be used
   // later.
   auto tile_extent = index_dim_->tile_extent().rvalue_as<IndexType>();
-  const IndexType* dim_dom =
-      static_cast<const IndexType*>(index_dim_->domain().data());
-  tile_idx_min_ = index_dim_->tile_idx(min, dim_dom[0], tile_extent);
-  tile_idx_max_ = index_dim_->tile_idx(max, dim_dom[0], tile_extent);
-}
-
-template <typename IndexType>
-void OrderedDimLabelReader::compute_array_tile_indexes_for_ranges() {
-  auto timer_se = stats_->start_timer("compute_array_tile_indexes_for_ranges");
-
-  // Compute the tile index (inside of the full domain) of the first tile for
-  // each fragments.
-  auto tile_extent = index_dim_->tile_extent().rvalue_as<IndexType>();
-  const IndexType* dim_dom =
-      static_cast<const IndexType*>(index_dim_->domain().data());
-  throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      fragment_metadata_.size(),
-      [&](uint64_t f) {
-        const IndexType* non_empty_domain =
-            static_cast<const IndexType*>(non_empty_domains_[f]);
-        frag_first_array_tile_idx_[f] = index_dim_->tile_idx<IndexType>(
-            non_empty_domain[0], dim_dom[0], tile_extent);
-        return Status::Ok();
-      }));
+  const IndexType* dim_dom = index_dim_->domain().typed_data<IndexType>();
+  auto array_non_empty_domain = non_empty_domain_.typed_data<IndexType>();
+  auto tile_idx_min =
+      index_dim_->tile_idx(array_non_empty_domain[0], dim_dom[0], tile_extent);
+  auto tile_idx_max =
+      index_dim_->tile_idx(array_non_empty_domain[1], dim_dom[0], tile_extent);
 
   // Compute the tile (by index) where the label values include each range
   // start and end. This is stored in the following value, by fragment/range.
@@ -376,7 +352,7 @@ void OrderedDimLabelReader::compute_array_tile_indexes_for_ranges() {
   throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(), 0, ranges_.size(), [&](uint64_t r) {
         per_range_array_tile_indexes_[r] = RangeTileIndexes(
-            tile_idx_min_, tile_idx_max_, per_range_array_tile_indexes[r]);
+            tile_idx_min, tile_idx_max, per_range_array_tile_indexes[r]);
         return Status::Ok();
       }));
 }
@@ -594,8 +570,7 @@ uint64_t OrderedDimLabelReader::create_result_tiles() {
 
   uint64_t max_range = 0;
   uint64_t total_mem_used = 0;
-  const IndexType* dim_dom =
-      static_cast<const IndexType*>(index_dim_->domain().data());
+  const IndexType* dim_dom = index_dim_->domain().typed_data<IndexType>();
   auto tile_extent = index_dim_->tile_extent().rvalue_as<IndexType>();
 
   // Set of covered tiles, per fragment. The unordered set is for tile
@@ -652,24 +627,7 @@ template <typename LabelType>
 LabelType OrderedDimLabelReader::get_label_value(
     const unsigned f, const uint64_t tile_idx, const uint64_t cell_idx) {
   auto& rt = result_tiles_[f].at(tile_idx);
-  const auto label_data =
-      rt.tile_tuple(label_name_)->fixed_tile().template data_as<LabelType>();
-  return label_data[cell_idx];
-}
-
-template <>
-std::string_view OrderedDimLabelReader::get_label_value<std::string_view>(
-    const unsigned f, const uint64_t tile_idx, const uint64_t cell_idx) {
-  auto& rt = result_tiles_[f][tile_idx];
-  auto tile_tuple = rt.tile_tuple(label_name_);
-  auto offsets_data = tile_tuple->fixed_tile().template data_as<uint64_t>();
-  auto& var_tile = tile_tuple->var_tile();
-  auto offset = offsets_data[cell_idx];
-
-  auto size = static_cast<size_t>(cell_idx) == rt.cell_num() - 1 ?
-                  var_tile.size() - offset :
-                  offsets_data[cell_idx + 1] - offset;
-  return std::string_view(&var_tile.template data_as<char>()[offset], size);
+  return rt.attribute_value<LabelType>(label_name_, cell_idx);
 }
 
 template <typename IndexType, typename LabelType>
@@ -727,8 +685,7 @@ IndexType OrderedDimLabelReader::search_for_range(
   LabelType value = get_range_as<LabelType>(r, range_index);
 
   // Minimum index to look into.
-  auto non_empty_domain =
-      static_cast<const IndexType*>(non_empty_domain_.data());
+  auto non_empty_domain = non_empty_domain_.typed_data<IndexType>();
   auto t_min = per_range_array_tile_indexes_[r].min(range_index);
   auto left_index = std::max(
       index_dim_->tile_coord_low(t_min, domain_low, tile_extent),
@@ -776,10 +733,8 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
     IndexType* dest, uint64_t r) {
   // For easy reference.
   auto tile_extent = index_dim_->tile_extent().rvalue_as<IndexType>();
-  const IndexType* dim_dom =
-      static_cast<const IndexType*>(index_dim_->domain().data());
-  auto non_empty_domain =
-      static_cast<const IndexType*>(non_empty_domain_.data());
+  const IndexType* dim_dom = index_dim_->domain().typed_data<IndexType>();
+  auto non_empty_domain = non_empty_domain_.typed_data<IndexType>();
 
   // Set the results.
   if (increasing_labels_) {

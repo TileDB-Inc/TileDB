@@ -36,6 +36,7 @@
 
 #include "../bit_width_reduction_filter.h"
 #include "../bitshuffle_filter.h"
+#include "../bitsort_filter.h"
 #include "../byteshuffle_filter.h"
 #include "../checksum_md5_filter.h"
 #include "../checksum_sha256_filter.h"
@@ -51,6 +52,7 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/sm/filter/webp_filter.h"
 
 using namespace tiledb::sm;
 
@@ -407,4 +409,72 @@ TEST_CASE("Filter: Test XOR filter deserialization", "[filter][xor]") {
 
   // Check type
   CHECK(filter1->type() == filtertype0);
+}
+
+TEST_CASE(
+    "Filter: Test Bit sort filter deserialization", "[filter][bit-sort]") {
+  Buffer buffer;
+  FilterType filtertype0 = FilterType::FILTER_BITSORT;
+  char serialized_buffer[5];
+  char* p = &serialized_buffer[0];
+  buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filtertype0);
+  buffer_offset<uint32_t, 1>(p) = 0;  // metadata_length
+
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
+  auto filter1{
+      FilterCreate::deserialize(deserializer, constants::format_version)};
+
+  // Check type
+  CHECK(filter1->type() == filtertype0);
+}
+
+TEST_CASE("Filter: Test WEBP filter deserialization", "[filter][webp]") {
+  if constexpr (webp_filter_exists) {
+    Buffer buffer;
+    FilterType filterType = FilterType::FILTER_WEBP;
+    char serialized_buffer[17];
+    char* p = &serialized_buffer[0];
+    // Metadata layout has total size 5.
+    // |          metadata         |
+    // |      1      |       4     |
+    // | filter_type | meta_length |
+    buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filterType);
+    buffer_offset<uint32_t, 1>(p) = sizeof(WebpFilter::FilterConfig);
+
+    // WebpFilter::FilterConfig struct has size of 12 with 2 bytes padding.
+    // |                   WebpFilter::FilterConfig                  |
+    // |    4    |   1    |     1    |    2     |    2     |    2    |
+    // | quality | format | lossless | y_extent | x_extent | padding |
+    float quality0 = 50.5f;
+    WebpInputFormat fmt0 = WebpInputFormat::WEBP_RGBA;
+    uint8_t lossless0 = 1;
+    uint16_t y0 = 20, x0 = 40;
+    buffer_offset<float, 5>(p) = quality0;
+    buffer_offset<uint8_t, 9>(p) = static_cast<uint8_t>(fmt0);
+    buffer_offset<uint8_t, 10>(p) = lossless0;
+    buffer_offset<uint16_t, 11>(p) = y0;
+    buffer_offset<uint16_t, 13>(p) = x0;
+
+    Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
+    auto filter{
+        FilterCreate::deserialize(deserializer, constants::format_version)};
+
+    CHECK(filter->type() == filterType);
+
+    float quality1;
+    REQUIRE(filter->get_option(FilterOption::WEBP_QUALITY, &quality1).ok());
+    CHECK(quality0 == quality1);
+
+    WebpInputFormat fmt1;
+    REQUIRE(filter->get_option(FilterOption::WEBP_INPUT_FORMAT, &fmt1).ok());
+    CHECK(fmt0 == fmt1);
+
+    uint8_t lossless1;
+    REQUIRE(filter->get_option(FilterOption::WEBP_LOSSLESS, &lossless1).ok());
+    CHECK(lossless0 == lossless1);
+
+    auto extents = dynamic_cast<WebpFilter*>(filter.get())->get_extents();
+    CHECK(y0 == extents.first);
+    CHECK(x0 == extents.second);
+  }
 }

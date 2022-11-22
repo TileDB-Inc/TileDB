@@ -78,7 +78,7 @@ class BaseMover<Mover, three_stage, Block> {
    * Record keeping of how many moves are made.  Used for diagnostics and
    * debugging.
    */
-  std::array<size_t, 3> moves_;
+  std::array<size_t, 3> moves_{0, 0, 0};
 
  public:
   using PortState = three_stage;
@@ -115,7 +115,7 @@ class BaseMover<Mover, three_stage, Block> {
             "Attempting to deregister source, edge, or sink items that were "
             "not registered.");
       }
-      j.reset();
+      j->reset();
     }
   }
 
@@ -129,7 +129,7 @@ class BaseMover<Mover, three_stage, Block> {
     //    auto state = this->state();
     auto state = static_cast<Mover*>(this)->state();
     bool debug = static_cast<Mover*>(this)->debug_enabled();
-    CHECK(is_ready_to_move(state) == "");
+    // CHECK(is_ready_to_move(state) == "");
 
     moves_[0]++;
 
@@ -171,13 +171,13 @@ class BaseMover<Mover, three_stage, Block> {
     switch (state) {
       case PortState::st_101:
       case PortState::xt_101:
-        CHECK(*(items_[0]) != EMPTY_SINK);
+        //        CHECK(*(items_[0]) != EMPTY_SINK);
         std::swap(*items_[0], *items_[1]);
         break;
 
       case PortState::st_010:
       case PortState::xt_010:
-        CHECK(*(items_[1]) != EMPTY_SINK);
+        // CHECK(*(items_[1]) != EMPTY_SINK);
         std::swap(*items_[1], *items_[2]);
         break;
 
@@ -189,9 +189,9 @@ class BaseMover<Mover, three_stage, Block> {
 
       case PortState::st_110:
       case PortState::xt_110:
-        CHECK(*(items_[1]) != EMPTY_SINK);
+        //        CHECK(*(items_[1]) != EMPTY_SINK);
         std::swap(*items_[1], *items_[2]);
-        CHECK(*(items_[0]) != EMPTY_SINK);
+        //        CHECK(*(items_[0]) != EMPTY_SINK);
         std::swap(*items_[0], *items_[1]);
         break;
 
@@ -234,6 +234,7 @@ class BaseMover<Mover, three_stage, Block> {
     return false;
   }
 
+#if 0
   size_t source_swaps() const {
     return moves_[0];
   }
@@ -241,6 +242,7 @@ class BaseMover<Mover, three_stage, Block> {
   size_t sink_swaps() const {
     return moves_[2];
   }
+#endif
 
   auto& source_item() {
     return *items_[0];
@@ -248,6 +250,15 @@ class BaseMover<Mover, three_stage, Block> {
 
   auto& sink_item() {
     return *items_[2];
+  }
+
+  bool is_stopping() {
+    auto st = static_cast<Mover*>(this)->state();
+    auto nst = static_cast<Mover*>(this)->next_state();
+    return (
+        (st >= three_stage::xt_000 && st <= three_stage::xt_111) ||
+        (nst >= three_stage::xt_000 && nst <= three_stage::xt_111) ||
+        st == three_stage::done);
   }
 
   bool is_done() {
@@ -331,7 +342,6 @@ class BaseMover<Mover, two_stage, Block> {
   inline void on_move(std::atomic<int>& event) {
     auto state = static_cast<Mover*>(this)->state();
     bool debug = static_cast<Mover*>(this)->debug_enabled();
-    CHECK(is_ready_to_move(state) == "");
 
     /**
      * Increment the move count.
@@ -388,6 +398,8 @@ class BaseMover<Mover, two_stage, Block> {
     return true;
   }
 
+#if 0
+
   /**
    * Diagnostic functions for counting numbers of swaps (moves).
    */
@@ -399,12 +411,23 @@ class BaseMover<Mover, two_stage, Block> {
     return moves_[1];
   }
 
+#endif
+
   auto& source_item() {
     return *items_[0];
   }
 
   auto& sink_item() {
     return *items_[1];
+  }
+
+  bool is_stopping() {
+    auto st = static_cast<Mover*>(this)->state();
+    auto nst = static_cast<Mover*>(this)->next_state();
+    return (
+        (st >= two_stage::xt_00 && st <= two_stage::xt_11) ||
+        (nst >= two_stage::xt_00 && nst <= two_stage::xt_11) ||
+        st == two_stage::done);
   }
 
   bool is_done() {
@@ -432,9 +455,9 @@ class BaseMover<Mover, two_stage, Block> {
  * `ItemMover` inherits from `Policy`, which takes `ItemMover` as a template
  * parameter (CRTP). `ItemMover` also inherits from `BaseMover`, which
  * implements all of the actual data movement. Clients of the `ItemMover`
- * activate its actions by calling the member functions `do_fill`,
- * `do_push`, `do_drain`, and `do_pull`, which correspond to actions in the
- * `PortFiniteStateMachine`.  `on_move` is handled by the base class.
+ * activate its actions by calling the member functions `port_fill`,
+ * `port_push`, `port_drain`, and `port_pull`, which correspond to actions in
+ * the `PortFiniteStateMachine`.  `on_move` is handled by the base class.
  */
 template <template <class, class> class Policy, class PortState, class Block>
 class ItemMover
@@ -449,10 +472,11 @@ class ItemMover
   using block_type = Block;
   constexpr inline static bool edgeful = Base::edgeful;
 
+#ifndef FXM
   /**
    * Invoke `source_fill` event
    */
-  void do_fill(const std::string& msg = "") {
+  void port_fill(const std::string& msg = "") {
     debug_msg("    -- filling");
 
     this->event(PortEvent::source_fill, msg);
@@ -461,7 +485,7 @@ class ItemMover
   /**
    * Invoke `source_push` event
    */
-  void do_push(const std::string& msg = "") {
+  void port_push(const std::string& msg = "") {
     debug_msg("  -- pushing");
 
     this->event(PortEvent::source_push, msg);
@@ -470,7 +494,7 @@ class ItemMover
   /**
    * Invoke `sink_drain` event
    */
-  void do_drain(const std::string& msg = "") {
+  void port_drain(const std::string& msg = "") {
     debug_msg("  -- draining");
 
     this->event(PortEvent::sink_drain, msg);
@@ -479,17 +503,31 @@ class ItemMover
   /**
    * Invoke `sink_pull` event
    */
-  void do_pull(const std::string& msg = "") {
+  void port_pull(const std::string& msg = "") {
     debug_msg("  -- pulling");
 
     this->event(PortEvent::sink_pull, msg);
   }
+#else
 
+  void do_inject(const std::string& msg = "") {
+    debug_msg("  -- injecting");
+
+    this->event(PortEvent::source_inject, msg);
+  }
+
+  void do_extract(const std::string& msg = "") {
+    debug_msg("  -- extracting");
+
+    this->event(PortEvent::sink_extract, msg);
+  }
+
+#endif
   /**
-   * Invoke `stop` event
+   * Invoke `port_exhausted` event
    */
-  void do_stop(const std::string& msg = "") {
-    this->event(PortEvent::stop, msg);
+  void port_exhausted(const std::string& msg = "") {
+    this->event(PortEvent::exhausted, msg);
   }
 
  private:

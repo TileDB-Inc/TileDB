@@ -31,6 +31,5 @@
 
 #ifndef TILEDB_UNIT_NODES_CONCURRENCY_H
 #define TILEDB_UNIT_NODES_CONCURRENCY_H
-#define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
 #endif  // TILEDB_UNIT_NODES_CONCURRENCY_H

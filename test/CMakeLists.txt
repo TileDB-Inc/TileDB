@@ -161,7 +161,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-ctx.cc
   src/unit-DenseTiler.cc
   src/unit-dimension.cc
-  src/unit-domain.cc
   src/unit-duplicates.cc
   src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc
@@ -187,8 +186,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
   src/unit-SubarrayPartitioner-sparse.cc
-  src/unit-Tile.cc
-  src/unit-uuid.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   )
@@ -196,6 +193,7 @@ set(TILEDB_UNIT_TEST_SOURCES
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-cppapi-array.cc
+    src/unit-cppapi-bitsort-filter.cc
     src/unit-cppapi-checksum.cc
     src/unit-cppapi-config.cc
     src/unit-cppapi-consolidation-sparse.cc
@@ -208,7 +206,6 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-float-scaling-filter.cc
-    src/unit-cppapi-xor-filter.cc
     src/unit-cppapi-fragment_info.cc
     src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
@@ -226,6 +223,8 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-util.cc
     src/unit-cppapi-var-offsets.cc
     src/unit-cppapi-vfs.cc
+    src/unit-cppapi-webp-filter.cc
+    src/unit-cppapi-xor-filter.cc
   )
 endif()
 
@@ -253,7 +252,6 @@ endif()
 
 if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
-    src/experimental_helpers.cc
     src/test-capi-array-many-dimension-labels.cc
     src/test-capi-dimension_labels.cc
     src/test-capi-dense-array-dimension-label.cc
@@ -339,6 +337,19 @@ if (TILEDB_ARROW_TESTS)
 
   # install the python helper next to the executable for import
   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/unit_arrow.py" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
+endif()
+
+if (TILEDB_WEBP)
+  target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_WEBP)
+  find_package(PNG)
+  if (PNG_FOUND)
+    target_compile_definitions(tiledb_unit PRIVATE -DPNG_FOUND)
+    # If libpng is available, the test can write output images for visual checking.
+    # If libpng is not available, the test runs on pixel data alone with no output images.
+    target_link_libraries(tiledb_unit PRIVATE "${PNG_LIBRARIES}")
+    target_include_directories(tiledb_unit PRIVATE "${PNG_INCLUDE_DIRS}")
+    target_compile_definitions(tiledb_unit PRIVATE "${PNG_DEFINITIONS}")
+  endif()
 endif()
 
 # This is necessary only because we are linking directly to the core objects.

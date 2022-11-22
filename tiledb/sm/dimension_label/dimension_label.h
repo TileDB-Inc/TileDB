@@ -36,7 +36,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension_label_schema.h"
-#include "tiledb/sm/enums/label_order.h"
+#include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
@@ -95,7 +95,7 @@ class DimensionLabel {
   const Attribute* label_attribute() const;
 
   /** Returns the order of the dimension label. */
-  LabelOrder label_order() const;
+  DataOrder label_order() const;
 
   /**
    * Opens the dimension label for reading at a timestamp retrieved from the

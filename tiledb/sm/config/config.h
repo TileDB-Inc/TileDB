@@ -260,6 +260,9 @@ class Config {
   /** The buffer size for each attribute used in consolidation. */
   static const std::string SM_CONSOLIDATION_BUFFER_SIZE;
 
+  /** The maximum fragment size used in consolidation. */
+  static const std::string SM_CONSOLIDATION_MAX_FRAGMENT_SIZE;
+
   /** Purge deleted cells or not. */
   static const std::string SM_CONSOLIDATION_PURGE_DELETED_CELLS;
 

@@ -41,16 +41,15 @@ using namespace tiledb::type;
 namespace tiledb::sm {
 
 DimensionLabelSchema::DimensionLabelSchema(
-    LabelOrder label_order,
+    DataOrder label_order,
     Datatype label_type,
     Datatype index_type,
     const void* index_domain,
     const void* index_tile_extent)
-    : label_order_(label_order)
-    , indexed_array_schema_(make_shared<ArraySchema>(
+    : indexed_array_schema_(make_shared<ArraySchema>(
           HERE(),
-          label_order == LabelOrder::UNORDERED_LABELS ? ArrayType::SPARSE :
-                                                        ArrayType::DENSE))
+          label_order == DataOrder::UNORDERED_DATA ? ArrayType::SPARSE :
+                                                     ArrayType::DENSE))
     , label_domain_{} {
   // Check the index data type is valid.
   if (!(datatype_is_integer(index_type) || datatype_is_datetime(index_type) ||
@@ -70,27 +69,28 @@ DimensionLabelSchema::DimensionLabelSchema(
         " is not a valid dimension datatype."));
   }
 
-  // Create indexed array.
-  if (label_order == LabelOrder::UNORDERED_LABELS) {
-    throw_if_not_ok(indexed_array_schema_->set_allows_dups(true));
-  }
+  // Create and set dimension label domain.
   std::vector<shared_ptr<Dimension>> index_dims{
       make_shared<Dimension>(HERE(), "index", index_type)};
   throw_if_not_ok(index_dims.back()->set_domain(index_domain));
   throw_if_not_ok(index_dims.back()->set_tile_extent(index_tile_extent));
   throw_if_not_ok(indexed_array_schema_->set_domain(make_shared<Domain>(
       HERE(), Layout::ROW_MAJOR, index_dims, Layout::ROW_MAJOR)));
-  auto label_attr = make_shared<Attribute>(HERE(), "label", label_type);
-  if (label_type == Datatype::STRING_ASCII)
-    throw_if_not_ok(label_attr->set_cell_val_num(constants::var_num));
+
+  // Create and set dimension label attribute.
+  uint32_t label_cell_val_num =
+      label_type == Datatype::STRING_ASCII ? constants::var_num : 1;
+  auto label_attr = make_shared<Attribute>(
+      HERE(), "label", label_type, label_cell_val_num, label_order);
   throw_if_not_ok(indexed_array_schema_->add_attribute(label_attr));
+
+  // Check the array schema is valid.
   throw_if_not_ok(indexed_array_schema_->check());
 }
 
 DimensionLabelSchema::DimensionLabelSchema(
-    LabelOrder label_order, shared_ptr<ArraySchema> indexed_array_schema)
-    : label_order_(label_order)
-    , indexed_array_schema_(indexed_array_schema)
+    DataOrder, shared_ptr<ArraySchema> indexed_array_schema)
+    : indexed_array_schema_(indexed_array_schema)
     , label_domain_{} {
   // Check arrays have one dimension and one attribute
   if (indexed_array_schema->dim_num() != 1)
@@ -113,7 +113,6 @@ DimensionLabelSchema::DimensionLabelSchema(
 
 DimensionLabelSchema::DimensionLabelSchema(
     const DimensionLabelSchema* dim_label) {
-  label_order_ = dim_label->label_order_;
   indexed_array_schema_ =
       make_shared<ArraySchema>(HERE(), *dim_label->indexed_array_schema_);
   label_domain_ = dim_label->label_domain_;
@@ -123,17 +122,14 @@ const Dimension* DimensionLabelSchema::index_dimension() const {
   return indexed_array_schema_->dimension_ptr(0);
 }
 
-/** Returns the number of values per cell for the index. */
 uint32_t DimensionLabelSchema::index_cell_val_num() const {
   return index_dimension()->cell_val_num();
 }
 
-/** Returns a reference to the index domain. */
 const Range& DimensionLabelSchema::index_domain() const {
   return index_dimension()->domain();
 }
 
-/** Returns the index datatype. */
 Datatype DimensionLabelSchema::index_type() const {
   return index_dimension()->type();
 }
@@ -149,17 +145,18 @@ const Attribute* DimensionLabelSchema::label_attribute() const {
   return indexed_array_schema_->attribute(0);
 }
 
-/** Returns the number of values per cell for the index. */
 uint32_t DimensionLabelSchema::label_cell_val_num() const {
   return label_attribute()->cell_val_num();
 }
 
-/** Returns a reference to the index domain. */
 const Range& DimensionLabelSchema::label_domain() const {
   return label_domain_;
 }
 
-/** Returns the index datatype. */
+DataOrder DimensionLabelSchema::label_order() const {
+  return label_attribute()->order();
+}
+
 Datatype DimensionLabelSchema::label_type() const {
   return label_attribute()->type();
 }

@@ -98,6 +98,8 @@ Enumerations
     :project: TileDB-C
 .. doxygenenum:: tiledb_vfs_mode_t
     :project: TileDB-C
+.. doxygenenum:: tiledb_mime_type_t
+    :project: TileDB-C
 .. doxygenenum:: tiledb_encryption_type_t
     :project: TileDB-C
 

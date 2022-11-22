@@ -93,8 +93,8 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_ratio_array_data_(0.1)
     , buffers_full_(false)
     , deletes_consolidation_no_purge_(
-          buffers_.count(constants::delete_timestamps) != 0) {
-  read_state_.done_adding_result_tiles_ = false;
+          buffers_.count(constants::delete_timestamps) != 0)
+    , bitsort_attribute_(array_schema_.bitsort_filter_attr()) {
   disable_cache_ = true;
 }
 
@@ -185,11 +185,11 @@ uint64_t SparseIndexReaderBase::cells_copied(
 
 template <class BitmapType>
 std::pair<uint64_t, uint64_t> SparseIndexReaderBase::get_coord_tiles_size(
-    bool include_coords, unsigned dim_num, unsigned f, uint64_t t) {
+    unsigned dim_num, unsigned f, uint64_t t) {
   uint64_t tiles_size = 0;
 
   // Add the coordinate tiles size.
-  if (include_coords) {
+  if (include_coords_) {
     for (unsigned d = 0; d < dim_num; d++) {
       tiles_size += fragment_metadata_[f]->tile_size(dim_names_[d], t);
 
@@ -209,6 +209,12 @@ std::pair<uint64_t, uint64_t> SparseIndexReaderBase::get_coord_tiles_size(
         fragment_metadata_[f]->cell_num(t) * constants::timestamp_size;
   }
 
+  // Compute bitsort attribute tile size.
+  if (bitsort_attribute_.has_value()) {
+    // Calculate memory consumption for this tile.
+    tiles_size += get_attribute_tile_size(bitsort_attribute_.value(), f, t);
+  }
+
   // Compute query condition tile sizes.
   uint64_t tiles_size_qc = 0;
   if (!qc_loaded_attr_names_.empty()) {
@@ -221,7 +227,7 @@ std::pair<uint64_t, uint64_t> SparseIndexReaderBase::get_coord_tiles_size(
   return std::make_pair(tiles_size, tiles_size_qc);
 }
 
-Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
+Status SparseIndexReaderBase::load_initial_data() {
   if (initial_data_loaded_) {
     return Status::Ok();
   }
@@ -248,14 +254,14 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
   // Make a list of dim/attr that will be loaded for query condition.
   if (!condition_.empty()) {
     for (auto& name : condition_.field_names()) {
-      if (!array_schema_.is_dim(name) || !include_coords) {
+      if (!array_schema_.is_dim(name) || !include_coords_) {
         qc_loaded_attr_names_set_.insert(name);
       }
     }
   }
   for (auto delete_and_update_condition : delete_and_update_conditions_) {
     for (auto& name : delete_and_update_condition.field_names()) {
-      if (!array_schema_.is_dim(name) || !include_coords) {
+      if (!array_schema_.is_dim(name) || !include_coords_) {
         qc_loaded_attr_names_set_.insert(name);
       }
     }
@@ -385,10 +391,10 @@ Status SparseIndexReaderBase::load_initial_data(bool include_coords) {
 }
 
 Status SparseIndexReaderBase::read_and_unfilter_coords(
-    bool include_coords, const std::vector<ResultTile*>& result_tiles) {
+    const std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("read_and_unfilter_coords");
 
-  if (subarray_.is_set() || include_coords) {
+  if (include_coords_) {
     // Read and unfilter zipped coordinate tiles. Note that
     // this will ignore fragments with a version >= 5.
     std::vector<std::string> zipped_coords_names = {constants::coords};
@@ -408,7 +414,10 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
   std::vector<std::string> attr_to_load;
   attr_to_load.reserve(
       1 + deletes_consolidation_no_purge_ + use_timestamps_ +
-      qc_loaded_attr_names_.size());
+      qc_loaded_attr_names_.size() + bitsort_attribute_.has_value());
+  if (bitsort_attribute_.has_value()) {
+    attr_to_load.emplace_back(bitsort_attribute_.value());
+  }
   if (use_timestamps_) {
     attr_to_load.emplace_back(constants::timestamps);
   }
@@ -851,10 +860,10 @@ void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
 // Explicit template instantiations
 template std::pair<uint64_t, uint64_t>
 SparseIndexReaderBase::get_coord_tiles_size<uint64_t>(
-    bool, unsigned, unsigned, uint64_t);
+    unsigned, unsigned, uint64_t);
 template std::pair<uint64_t, uint64_t>
 SparseIndexReaderBase::get_coord_tiles_size<uint8_t>(
-    bool, unsigned, unsigned, uint64_t);
+    unsigned, unsigned, uint64_t);
 template Status SparseIndexReaderBase::apply_query_condition<
     UnorderedWithDupsResultTile<uint64_t>,
     uint64_t>(std::vector<ResultTile*>&);

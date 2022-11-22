@@ -665,8 +665,19 @@ Status GlobalOrderWriter::finalize_global_write_state() {
 
   // Check if the total number of cells written is equal to the subarray size
   if (!coords_info_.has_coords_) {  // This implies a dense array
-    auto expected_cell_num =
-        array_schema_.domain().cell_num(subarray_.ndrange(0));
+    auto& domain{array_schema_.domain()};
+    auto expected_cell_num = domain.cell_num(subarray_.ndrange(0));
+
+    // When running the writer for consolidation, we use the expanded domain
+    // to read and write full tiles, but the subarray here will only contain
+    // the non-empty domain that doesn't include the extra cells with fill
+    // values.
+    if (disable_checks_consolidation_) {
+      auto expanded_subarray = subarray_.ndrange(0);
+      domain.expand_to_tiles(&expanded_subarray);
+      expected_cell_num = domain.cell_num(expanded_subarray);
+    }
+
     if (cell_num != expected_cell_num) {
       std::stringstream ss;
       ss << "Failed to finalize global write state; Number "

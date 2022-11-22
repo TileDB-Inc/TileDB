@@ -34,7 +34,7 @@
 #define TILEDB_DIMENSION_LABEL_SCHEMA_H
 
 #include "tiledb/common/common.h"
-#include "tiledb/sm/enums/label_order.h"
+#include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/type/range/range.h"
@@ -81,7 +81,7 @@ class DimensionLabelSchema {
    *     the dimension label.
    */
   DimensionLabelSchema(
-      LabelOrder label_order,
+      DataOrder label_order,
       Datatype label_type,
       Datatype index_type,
       const void* index_domain,
@@ -96,7 +96,7 @@ class DimensionLabelSchema {
    * on the dimension.
    */
   DimensionLabelSchema(
-      LabelOrder label_order, shared_ptr<ArraySchema> indexed_array_schema);
+      DataOrder label_order, shared_ptr<ArraySchema> indexed_array_schema);
 
   /**
    * Constructor.
@@ -146,14 +146,9 @@ class DimensionLabelSchema {
   Datatype label_type() const;
 
   /** Returns the label order type of this dimension label. */
-  inline LabelOrder label_order() const {
-    return label_order_;
-  }
+  DataOrder label_order() const;
 
  private:
-  /** Order of the labels relative to the indices. */
-  LabelOrder label_order_;
-
   /** Schema for the array with indices defined on the dimension. */
   shared_ptr<ArraySchema> indexed_array_schema_;
 

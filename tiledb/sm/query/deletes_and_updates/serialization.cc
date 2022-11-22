@@ -93,15 +93,14 @@ storage_size_t get_serialized_condition_size(
   return size_computation_serializer.size();
 }
 
-std::vector<uint8_t> serialize_condition(
-    const QueryCondition& query_condition) {
-  std::vector<uint8_t> ret(
-      get_serialized_condition_size(query_condition.ast()));
+Tile serialize_condition(const QueryCondition& query_condition) {
+  Tile tile{
+      Tile::from_generic(get_serialized_condition_size(query_condition.ast()))};
 
-  Serializer serializer(ret.data(), ret.size());
+  Serializer serializer(tile.data(), tile.size());
   serialize_condition_impl(query_condition.ast(), serializer);
 
-  return ret;
+  return tile;
 }
 
 tdb_unique_ptr<ASTNode> deserialize_condition_impl(Deserializer& deserializer) {
@@ -179,17 +178,17 @@ storage_size_t get_serialized_update_condition_and_values_size(
   return size_computation_serializer.size();
 }
 
-std::vector<uint8_t> serialize_update_condition_and_values(
+Tile serialize_update_condition_and_values(
     const QueryCondition& query_condition,
     const std::vector<UpdateValue>& update_values) {
-  std::vector<uint8_t> ret(get_serialized_update_condition_and_values_size(
-      query_condition.ast(), update_values));
+  Tile tile{Tile::from_generic(get_serialized_update_condition_and_values_size(
+      query_condition.ast(), update_values))};
 
-  Serializer serializer(ret.data(), ret.size());
+  Serializer serializer(tile.data(), tile.size());
   serialize_condition_impl(query_condition.ast(), serializer);
   serialize_update_values_impl(update_values, serializer);
 
-  return ret;
+  return tile;
 }
 std::vector<UpdateValue> deserialize_update_values_impl(
     Deserializer& deserializer) {

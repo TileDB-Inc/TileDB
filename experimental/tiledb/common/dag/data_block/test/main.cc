@@ -31,4 +31,4 @@
  */
 
 #define CATCH_CONFIG_MAIN
-#include "unit_pool_allocator.h"
+#include <test/support/tdb_catch.h>

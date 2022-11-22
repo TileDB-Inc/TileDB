@@ -30,6 +30,5 @@
 
 #ifndef TILEDB_UNIT_UTIL_FUNCTIONS_H
 #define TILEDB_UNIT_UTIL_FUNCTIONS_H
-#define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
 #endif  // TILEDB_UNIT_UTIL_FUNCTIONS_H

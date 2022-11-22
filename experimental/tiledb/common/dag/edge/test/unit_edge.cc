@@ -106,59 +106,59 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
 
   SECTION("test one item transfer") {
     CHECK(source.inject(123UL) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
     auto b = sink.extract();
     CHECK(b.has_value() == true);
     CHECK(*b == 123UL);
     CHECK(str(state_machine->state()) == "st_001");
-    state_machine->do_drain();
+    state_machine->port_drain();
     CHECK(str(state_machine->state()) == "st_000");
   }
 
   SECTION("test two item transfer") {
     CHECK(source.inject(456UL) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
     auto b = sink.extract();
     CHECK(b.has_value() == true);
     CHECK(*b == 456UL);
     CHECK(str(state_machine->state()) == "st_001");
-    state_machine->do_drain();
+    state_machine->port_drain();
     CHECK(str(state_machine->state()) == "st_000");
     CHECK(sink.extract().has_value() == false);
 
     CHECK(source.inject(789UL) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
 
     auto c = sink.extract();
     CHECK(c.has_value() == true);
     CHECK(*c == 789UL);
     CHECK(str(state_machine->state()) == "st_001");
-    state_machine->do_drain();
+    state_machine->port_drain();
     CHECK(str(state_machine->state()) == "st_000");
     CHECK(sink.extract().has_value() == false);
   }
 
   SECTION("test buffered two item transfer") {
     CHECK(source.inject(456UL) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
 
     CHECK(str(state_machine->state()) == "st_001");
     CHECK(source.inject(789UL) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
 
     CHECK(str(state_machine->state()) == "st_011");
 
     auto b = sink.extract();
     CHECK(b.has_value() == true);
     CHECK(*b == 456UL);
-    state_machine->do_drain();
+    state_machine->port_drain();
 
-    state_machine->do_pull();
+    state_machine->port_pull();
 
     CHECK(str(state_machine->state()) == "st_001");
 
@@ -166,47 +166,47 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
     CHECK(c.has_value() == true);
     CHECK(*c == 789UL);
     CHECK(str(state_machine->state()) == "st_001");
-    state_machine->do_drain();
+    state_machine->port_drain();
     CHECK(str(state_machine->state()) == "st_000");
     CHECK(sink.extract().has_value() == false);
   }
 
   SECTION("test buffered three item transfer") {
     CHECK(source.inject(456UL) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
     CHECK(str(state_machine->state()) == "st_001");
 
     CHECK(source.inject(789UL) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
     CHECK(str(state_machine->state()) == "st_011");
 
     CHECK(source.inject(123UL) == true);
-    state_machine->do_fill();
+    state_machine->port_fill();
     CHECK(str(state_machine->state()) == "st_111");
 
     // This will deadlock
-    // state_machine->do_push();
+    // state_machine->port_push();
 
-    state_machine->do_drain();
+    state_machine->port_drain();
     CHECK(str(state_machine->state()) == "st_110");
 
     auto b = sink.extract();
     CHECK(b.has_value() == true);
     CHECK(*b == 456UL);
-    state_machine->do_pull();
+    state_machine->port_pull();
     CHECK(str(state_machine->state()) == "st_011");
 
-    state_machine->do_drain();
+    state_machine->port_drain();
     CHECK(str(state_machine->state()) == "st_010");
     auto c = sink.extract();
     CHECK(c.has_value() == true);
     CHECK(*c == 789UL);
-    state_machine->do_pull();
+    state_machine->port_pull();
     CHECK(str(state_machine->state()) == "st_001");
 
-    state_machine->do_drain();
+    state_machine->port_drain();
     CHECK(str(state_machine->state()) == "st_000");
     auto d = sink.extract();
     CHECK(c.has_value() == true);
@@ -262,13 +262,13 @@ TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
 
   auto source_node = [&]() {
     CHECK(source.inject(8675309UL) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
   };
   auto sink_node = [&]() {
-    state_machine->do_pull();
+    state_machine->port_pull();
     b = sink.extract();
-    state_machine->do_drain();
+    state_machine->port_drain();
   };
 
   SECTION("test source launch, sink launch, source get, sink get") {
@@ -362,11 +362,11 @@ TEST_CASE("Edge: Async pass n integers, random delays", "[edge]") {
 
       CHECK(is_source_empty(state_machine->state()) == "");
 
-      state_machine->do_fill(debug ? "async source node" : "");
+      state_machine->port_fill(debug ? "async source node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      state_machine->do_push(debug ? "async source node" : "");
+      state_machine->port_push(debug ? "async source node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -390,7 +390,7 @@ TEST_CASE("Edge: Async pass n integers, random delays", "[edge]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      state_machine->do_pull(debug ? "async sink node" : "");
+      state_machine->port_pull(debug ? "async sink node" : "");
 
       CHECK(is_sink_full(state_machine->state()) == "");
 
@@ -406,7 +406,7 @@ TEST_CASE("Edge: Async pass n integers, random delays", "[edge]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      state_machine->do_drain(debug ? "async sink node" : "");
+      state_machine->port_drain(debug ? "async sink node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
     }
@@ -511,8 +511,8 @@ TEST_CASE("Edge: Async pass n integers", "[edge]") {
       CHECK(is_source_empty(state_machine->state()) == "");
       source.inject(*i++);
       CHECK(is_source_empty(state_machine->state()) == "");
-      state_machine->do_fill(debug ? "async source node" : "");
-      state_machine->do_push(debug ? "async source node" : "");
+      state_machine->port_fill(debug ? "async source node" : "");
+      state_machine->port_push(debug ? "async source node" : "");
     }
   };
 
@@ -522,12 +522,12 @@ TEST_CASE("Edge: Async pass n integers", "[edge]") {
       if (debug) {
         std::cout << "source node iteration " << n << std::endl;
       }
-      state_machine->do_pull(debug ? "async sink node" : "");
+      state_machine->port_pull(debug ? "async sink node" : "");
       CHECK(is_sink_full(state_machine->state()) == "");
       *j++ = *(sink.extract());
 
       CHECK(is_sink_full(state_machine->state()) == "");
-      state_machine->do_drain(debug ? "async sink node" : "");
+      state_machine->port_drain(debug ? "async sink node" : "");
     }
   };
   SECTION("test source launch, sink launch, source get, sink get") {
