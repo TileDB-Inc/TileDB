@@ -1,3 +1,14 @@
+# TileDB v2.12.3 Release Notes
+
+## Improvements
+
+* Dense consolidation: set correct non-empty domain. [#3635](https://github.com/TileDB-Inc/TileDB/pull/3635)
+
+## Bug fixes
+
+* Dense array: Tile var size metadata not loaded on read [#3645](https://github.com/TileDB-Inc/TileDB/pull/3645)
+* Sparse global order reader: fix tile cleanup when ending an iteration. [#3674](https://github.com/TileDB-Inc/TileDB/pull/3674)
+
 # TileDB v2.12.2 Release Notes
 
 ## Bug fixes
