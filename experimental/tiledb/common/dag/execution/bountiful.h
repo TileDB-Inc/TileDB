@@ -32,19 +32,20 @@
  * saved.  When the scheduler destructor is called, all tasks are waited on
  * (using future::get until they complete).
  *
- * Notes: 
+ * Notes:
  *
- *   - The bountiful scheduler does not wrap nodes up as tasks and does not manage their
- *      state of execution.  Rather, nodes are wrapped up in a lambda that invokes the
- *     `run` method of the node.
+ *   - The bountiful scheduler does not wrap nodes up as tasks and does not
+ * manage their state of execution.  Rather, nodes are wrapped up in a lambda
+ * that invokes the `run` method of the node.
  *
- *   - The bountiful scheduler runs nodes lazily.  They are not launched until `sync_wait_all` is invoked.
+ *   - The bountiful scheduler runs nodes lazily.  They are not launched until
+ * `sync_wait_all` is invoked.
  *
  *   - The bountiful scheduler is assumed to be used in conjunction with an
  *     AsyncPolicy (a policy that does its own synchronization).
  *
- * More complete documentation about the generic interaction between schedulers and item movers can
- * can be found in the docs subdirectory.
+ * More complete documentation about the generic interaction between schedulers
+ * and item movers can can be found in the docs subdirectory.
  *
  * @todo Refactor policies in policies.h to be specific to bountiful scheduler.
  * @todo Implement with Task wrapper ?
@@ -89,8 +90,10 @@ struct SchedulerTraits<BountifulSchedulerPolicy<T>> {
 };
 
 /**
- * @brief A scheduler that launches every task on its own thread and uses standard library mechanisms for synchronization (i.e., std::condition_variable)
- * The corresponding functionality is provided in policies.h
+ * @brief A scheduler that launches every task on its own thread and uses
+ * standard library mechanisms for synchronization (i.e.,
+ * std::condition_variable) The corresponding functionality is provided in
+ * policies.h
  *
  * @tparam Node The type of node being scheduled.
  */
@@ -104,7 +107,6 @@ class BountifulScheduler {
   /* ********************************* */
 
  public:
-
   /**
    * @brief Constructor.
    *
@@ -147,8 +149,8 @@ class BountifulScheduler {
   }
 
   /**
-   * @brief Wait for all running tasks to complete.  Since the bountiful scheduler
-   * lazily launches its task, they are launched here.
+   * @brief Wait for all running tasks to complete.  Since the bountiful
+   * scheduler lazily launches its task, they are launched here.
    */
   void sync_wait_all() {
     if (debug_enabled()) {
@@ -182,6 +184,7 @@ class BountifulScheduler {
       f.get();
     }
   }
+
  private:
   /* Container for all nodes of the submitted task graph. */
   std::vector<Node> nodes_;

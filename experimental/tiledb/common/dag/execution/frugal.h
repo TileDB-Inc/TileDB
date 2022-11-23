@@ -366,7 +366,6 @@ class FrugalScheduler {
    * @brief Finish running all tasks and shutdown the scheduler
    */
   void shutdown() {
-
     task_queue_.drain();
 
     this->make_ready_to_run();

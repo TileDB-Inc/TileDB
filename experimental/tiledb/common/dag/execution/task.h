@@ -89,7 +89,7 @@ class TaskImpl : Node {
     (*this)->resume();
   }
 
-/** Decrement program counter of underlying node */
+  /** Decrement program counter of underlying node */
   void decrement_program_counter() {
     (*this)->decrement_program_counter();
   }

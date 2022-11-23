@@ -336,9 +336,9 @@ TEMPLATE_TEST_CASE(
         FrugalScheduler<node>>)) {
   bool debug{false};
 
-  //auto num_threads = GENERATE(1, 2, 3, 4, 5, 8, 17);
+  // auto num_threads = GENERATE(1, 2, 3, 4, 5, 8, 17);
   auto num_threads = GENERATE(1, 2, 3, 4, 5);
-  //auto num_threads = 5;
+  // auto num_threads = 5;
 
   if ((!std::is_same_v<
            typename std::tuple_element<0, TestType>::type,
@@ -781,7 +781,6 @@ TEMPLATE_TEST_CASE(
 
       if (debug) {
         sched.enable_debug();
-
       }
 
       auto p = P([&sched, &i, &input](std::stop_source& stop_source) {
@@ -826,7 +825,7 @@ TEMPLATE_TEST_CASE(
       Edge(*p, *f);
       Edge(*f, *c);
 
-      if(debug) {
+      if (debug) {
         f->enable_debug();
       }
 

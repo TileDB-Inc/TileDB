@@ -52,17 +52,19 @@
  *
  * When a task has completed execution, it is moved to the finished queue.
  *
- * The throw_catch scheduler introduces some challenges for the port state machine in particular.
- * Since calls to notify and wait don't return, we can't invoke the two together in
- * response to the same event.  Thus, we need to decrement the program counter for
- * a waiting task rather than letting the event handler do the retry.
+ * The throw_catch scheduler introduces some challenges for the port state
+ * machine in particular. Since calls to notify and wait don't return, we can't
+ * invoke the two together in response to the same event.  Thus, we need to
+ * decrement the program counter for a waiting task rather than letting the
+ * event handler do the retry.
  *
- * Some very basic thread-safe data structures were required for this scheduler and implemented
- * in utils subdirectory.  These are not intended to be general purpose, but rather to provide
- * just enough functionality to support the scheduler.
+ * Some very basic thread-safe data structures were required for this scheduler
+ * and implemented in utils subdirectory.  These are not intended to be general
+ * purpose, but rather to provide just enough functionality to support the
+ * scheduler.
  *
- * More complete documentation about the generic interaction between schedulers and item movers can
- * can be found in the docs subdirectory.
+ * More complete documentation about the generic interaction between schedulers
+ * and item movers can can be found in the docs subdirectory.
  *
  * @todo Factor scheduler, task, and policy so they are more orthogonal and
  * can be mixed and matched.

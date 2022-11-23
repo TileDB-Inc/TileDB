@@ -97,19 +97,18 @@ constexpr unsigned short num_states = to_index(NodeState::last) + 1;
  * A vector of strings corresponding to the states.  Useful for diagnostics,
  * testing, and debugging.
  */
-std::vector<std::string> node_state_strings{
-    "init",
-    "input",
-    "compute",
-    "output",
-    "waiting",
-    "runnable",
-    "running",
-    "done",
-    "exit",
-    "error",
-    "abort",
-    "last"};
+std::vector<std::string> node_state_strings{"init",
+                                            "input",
+                                            "compute",
+                                            "output",
+                                            "waiting",
+                                            "runnable",
+                                            "running",
+                                            "done",
+                                            "exit",
+                                            "error",
+                                            "abort",
+                                            "last"};
 }  // namespace
 
 /**

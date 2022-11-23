@@ -528,12 +528,11 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
   }
 
  public:
-
   size_t consumed_items() {
     return consumed_items_.load();
   }
 
-   /** Main constructor. Takes a consumer function as argument. */
+  /** Main constructor. Takes a consumer function as argument. */
   template <class Function>
   explicit consumer_node_impl(
       Function&& f,

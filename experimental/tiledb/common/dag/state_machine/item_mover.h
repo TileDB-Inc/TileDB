@@ -265,7 +265,6 @@ class BaseMover<Mover, three_stage, Block> {
     return static_cast<Mover*>(this)->state() == three_stage::done;
   }
 
-
 #if 0
  private:
   void debug_msg(const std::string& msg) {
@@ -436,7 +435,6 @@ class BaseMover<Mover, two_stage, Block> {
   bool is_done() {
     return static_cast<Mover*>(this)->state() == two_stage::done;
   }
-
 };
 
 /**

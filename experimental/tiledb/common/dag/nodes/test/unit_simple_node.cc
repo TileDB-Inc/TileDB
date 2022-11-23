@@ -397,13 +397,13 @@ TEMPLATE_TEST_CASE(
   }
 }
 
-  /**
-   * Test of producer and consumer functions.  The producer generates an
-   * increasing sequence of numbers starting from 0 and incrementing by 1 on
-   * each invocation.  The consumer appends its input to a specified output
-   * iterator -- in this case, a back inserter to an `std::vector`.
-   *
-   */
+/**
+ * Test of producer and consumer functions.  The producer generates an
+ * increasing sequence of numbers starting from 0 and incrementing by 1 on
+ * each invocation.  The consumer appends its input to a specified output
+ * iterator -- in this case, a back inserter to an `std::vector`.
+ *
+ */
 TEMPLATE_TEST_CASE(
     "SimpleNodes: Producer and consumer functions and nodes",
     "[simple_nodes]",
@@ -451,9 +451,9 @@ TEMPLATE_TEST_CASE(
   }
 }
 
-  /**
-   * Test that we can attach a producer and consumer node to each other.
-   */
+/**
+ * Test that we can attach a producer and consumer node to each other.
+ */
 TEMPLATE_TEST_CASE(
     "SimpleNodes: Attach producer and consumer nodes",
     "[simple_nodes]",
@@ -509,10 +509,10 @@ TEMPLATE_TEST_CASE(
   }
 }
 
-  /**
-   * Test that we can synchronously send data from a producer to an attached
-   * consumer.
-   */
+/**
+ * Test that we can synchronously send data from a producer to an attached
+ * consumer.
+ */
 TEMPLATE_TEST_CASE(
     "SimpleNodes: Pass some data, two attachment orders",
     "[simple_nodes]",
@@ -564,10 +564,10 @@ TEMPLATE_TEST_CASE(
   CHECK(v[2] == 2);
 }
 
-  /**
-   * Test that we can asynchronously send data from a producer to an attached
-   * consumer.
-   */
+/**
+ * Test that we can asynchronously send data from a producer to an attached
+ * consumer.
+ */
 TEMPLATE_TEST_CASE(
     "SimpleNodes: Asynchronously pass some data",
     "[simple_nodes]",
@@ -645,10 +645,10 @@ TEMPLATE_TEST_CASE(
   }
 }
 
-  /**
-   * Repeat previous test, adding a random delay to each function body to
-   * emulate a computation being done by the node body.
-   */
+/**
+ * Repeat previous test, adding a random delay to each function body to
+ * emulate a computation being done by the node body.
+ */
 TEMPLATE_TEST_CASE(
     "SimpleNodes: Asynchronously pass some data, random delays",
     "[simple_nodes]",
@@ -730,10 +730,10 @@ TEMPLATE_TEST_CASE(
   }
 }
 
-  /**
-   * Test that we can connect source node and a sink node to a
-   * function node.
-   */
+/**
+ * Test that we can connect source node and a sink node to a
+ * function node.
+ */
 TEMPLATE_TEST_CASE(
     "SimpleNodes: Attach to function node",
     "[simple_nodes]",
@@ -757,10 +757,10 @@ TEMPLATE_TEST_CASE(
   attach(r, s);
 }
 
-  /**
-   * Test that we can synchronously send data from a producer to an attached
-   * function node and then to consumer.
-   */
+/**
+ * Test that we can synchronously send data from a producer to an attached
+ * function node and then to consumer.
+ */
 TEMPLATE_TEST_CASE(
     "SimpleNodes: Manualay pass some data in a chain with function node",
     "[simple_nodes]",
@@ -1096,10 +1096,10 @@ TEMPLATE_TEST_CASE(
   }
 }
 
-  /**
-   * Test that we can correctly pass a sequence of integers from producer node
-   * to consumer node.  Uses `consumer` object to fill output vector.
-   */
+/**
+ * Test that we can correctly pass a sequence of integers from producer node
+ * to consumer node.  Uses `consumer` object to fill output vector.
+ */
 TEMPLATE_TEST_CASE(
     "SimpleNodes: Async pass n integers, two nodes",
     "[simple_nodes]",
@@ -1552,4 +1552,3 @@ TEMPLATE_TEST_CASE(
   CHECK(std::distance(output.begin(), j) == static_cast<long>(rounds));
   CHECK(std::equal(input.begin(), i, output.begin()));
 }
-

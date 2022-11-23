@@ -333,9 +333,10 @@ class PortFiniteStateMachine {
   void event(PortEvent event, const std::string& msg = "") {
     std::unique_lock lock(mutex_);
 
-    //assert(state_ != PortState::error);
+    // assert(state_ != PortState::error);
     if (state_ == PortState::error) {
-      throw std::logic_error("PortFiniteStateMachine::event: state_ == PortState::error");
+      throw std::logic_error(
+          "PortFiniteStateMachine::event: state_ == PortState::error");
     }
 
   retry:
@@ -347,7 +348,8 @@ class PortFiniteStateMachine {
         transition_table<port_state>[to_index(state_)][to_index(event)];
 
     if (next_state_ == PortState::error) {
-      throw std::logic_error("PortFiniteStateMachine::event: next_state_ == PortState::error");
+      throw std::logic_error(
+          "PortFiniteStateMachine::event: next_state_ == PortState::error");
     }
     //    assert(next_state_ != PortState::error);
 
