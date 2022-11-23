@@ -55,7 +55,7 @@ class ConsolidationPlanStatusException : public StatusException {
   }
 };
 
-/** Stores ba consolidation plan. */
+/** Stores a consolidation plan. */
 class ConsolidationPlan {
  public:
   /* ********************************* */
@@ -72,10 +72,17 @@ class ConsolidationPlan {
   /*                API                */
   /* ********************************* */
 
+  /** @return the number of nodes for the plan. */
   inline uint64_t get_num_nodes() const {
     return num_nodes_;
   }
 
+  /**
+   * Get the number of fragments for a node.
+   *
+   * @param node_idx Index of the node.
+   * @return Number of fragment for the node.
+   */
   inline uint64_t get_num_fragments(uint64_t node_idx) const {
     if (node_idx == std::numeric_limits<uint64_t>::max() ||
         node_idx + 1 > num_nodes_) {
@@ -86,6 +93,13 @@ class ConsolidationPlan {
     return fragment_uris_[node_idx].size();
   }
 
+  /**
+   * Get the fragment URI for a node/fragment index.
+   *
+   * @param node_idx Index of the node.
+   * @param node_idx Index of the fragment.
+   * @return The null terminated string for the fragment URI.
+   */
   inline const char* get_fragment_uri(
       uint64_t node_idx, uint64_t fragment_idx) const {
     if (node_idx == std::numeric_limits<uint64_t>::max() ||
@@ -103,7 +117,8 @@ class ConsolidationPlan {
     return fragment_uris_[node_idx][fragment_idx].c_str();
   }
 
-  void dump(FILE* out) const;
+  /** @return the consolidation plan in JSON format. */
+  std::string dump() const;
 
  private:
   /* ********************************* */
@@ -144,23 +159,23 @@ class ConsolidationPlan {
       fragment_size_ += other.fragment_size_;
     }
 
-    /** Returns true if the two plan nodes have overlapping domains. */
+    /** @return `true` if the two plan nodes have overlapping domains. */
     bool overlap(PlanNode& other) const {
       return array_->array_schema_latest().domain().overlap(
           combined_non_empty_domain_, other.combined_non_empty_domain_);
     }
 
-    /** Returns if a fragment is node is combined or not. */
+    /** @return `true` if a fragment is node is combined, `false` if not. */
     bool combined() const {
       return fragment_indexes_.size() > 1;
     }
 
-    /** Returns the approximate fragment size. */
+    /** @return Approximate fragment size. */
     uint64_t size() const {
       return fragment_size_;
     }
 
-    /** Returns the uris for this node. */
+    /** @return Uris for this node. */
     std::vector<std::string> uris() {
       std::vector<std::string> ret;
       ret.reserve(fragment_indexes_.size());
@@ -204,7 +219,11 @@ class ConsolidationPlan {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  /** Generate the consolidation plan. */
+  /**
+   * Generate the consolidation plan.
+   *
+   * @param array Opened array to generate the plan for.
+   */
   void generate(shared_ptr<Array> array);
 };
 

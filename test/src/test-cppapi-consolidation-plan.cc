@@ -214,19 +214,5 @@ TEST_CASE_METHOD(
   ConsolidationPlan consolidation_plan(ctx_, array, 1024 * 1024);
 
   // Check dump
-  std::string dump_str = "Not implemented\n";
-  FILE* gold_fout = fopen("gold_fout.txt", "w");
-  const char* dump = dump_str.c_str();
-  fwrite(dump, sizeof(char), strlen(dump), gold_fout);
-  fclose(gold_fout);
-  FILE* fout = fopen("fout.txt", "w");
-  consolidation_plan.dump(fout);
-  fclose(fout);
-#ifdef _WIN32
-  CHECK(!system("FC gold_fout.txt fout.txt > nul"));
-#else
-  CHECK(!system("diff gold_fout.txt fout.txt"));
-#endif
-  CHECK_NOTHROW(vfs_.remove_file("gold_fout.txt"));
-  CHECK_NOTHROW(vfs_.remove_file("fout.txt"));
+  CHECK(consolidation_plan.dump() == "Not implemented\n");
 }

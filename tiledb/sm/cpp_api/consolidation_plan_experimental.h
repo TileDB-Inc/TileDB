@@ -115,13 +115,19 @@ class ConsolidationPlan {
   /**
    * Dumps the consolidation plan in a JSON representation to an output.
    *
-   * @param out (Optional) File to dump output to. Defaults to `nullptr`
-   * which will lead to selection of `stdout`.
+   * @return the JSON string for the plan.
    */
-  void dump(FILE* out = nullptr) const {
+  std::string dump() const {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_consolidation_plan_dump(
-        ctx.ptr().get(), consolidation_plan_.get(), out));
+
+    char* str = nullptr;
+    ctx.handle_error(tiledb_consolidation_plan_dump_json_str(
+        ctx.ptr().get(), consolidation_plan_.get(), &str));
+
+    std::string ret(str);
+    tiledb_consolidation_plan_free_json_str(&str);
+
+    return ret;
   }
 
  private:

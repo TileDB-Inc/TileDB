@@ -6330,14 +6330,40 @@ int32_t tiledb_consolidation_plan_get_fragment_uri(
   return TILEDB_OK;
 }
 
-int32_t tiledb_consolidation_plan_dump(
+int32_t tiledb_consolidation_plan_dump_json_str(
     tiledb_ctx_t* ctx,
     const tiledb_consolidation_plan_t* consolidation_plan,
-    FILE* out) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, consolidation_plan) == TILEDB_ERR)
+    char** out) {
+  if (out == nullptr) {
     return TILEDB_ERR;
-  consolidation_plan->consolidation_plan_->dump(out);
+  }
+
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  consolidation_plan->consolidation_plan_->dump();
+
+  std::string str = consolidation_plan->consolidation_plan_->dump();
+  ;
+
+  *out = static_cast<char*>(std::malloc(str.size() + 1));
+  if (*out == nullptr) {
+    return TILEDB_ERR;
+  }
+
+  std::memcpy(*out, str.data(), str.size());
+  (*out)[str.size()] = '\0';
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_consolidation_plan_free_json_str(char** out) {
+  if (out != nullptr) {
+    std::free(*out);
+    *out = nullptr;
+  }
   return TILEDB_OK;
 }
 
@@ -9341,10 +9367,15 @@ int32_t tiledb_consolidation_plan_get_fragment_uri(
       ctx, consolidation_plan, node_index, fragment_index, uri);
 }
 
-int32_t tiledb_consolidation_plan_dump(
+int32_t tiledb_consolidation_plan_dump_json_str(
     tiledb_ctx_t* ctx,
     const tiledb_consolidation_plan_t* consolidation_plan,
-    FILE* out) noexcept {
-  return api_entry<tiledb::api::tiledb_consolidation_plan_dump>(
+    char** out) noexcept {
+  return api_entry<tiledb::api::tiledb_consolidation_plan_dump_json_str>(
       ctx, consolidation_plan, out);
+}
+
+int32_t tiledb_consolidation_plan_free_json_str(char** out) noexcept {
+  return api_entry_plain<tiledb::api::tiledb_consolidation_plan_free_json_str>(
+      out);
 }

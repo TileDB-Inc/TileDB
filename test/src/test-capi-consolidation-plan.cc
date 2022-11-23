@@ -244,21 +244,13 @@ TEST_CASE_METHOD(
                        &consolidation_plan));
 
   // Check dump
-  std::string dump_str = "Not implemented\n";
-  FILE* gold_fout = fopen("gold_fout.txt", "w");
-  const char* dump = dump_str.c_str();
-  fwrite(dump, sizeof(char), strlen(dump), gold_fout);
-  fclose(gold_fout);
-  FILE* fout = fopen("fout.txt", "w");
-  tiledb_consolidation_plan_dump(ctx_.ptr().get(), consolidation_plan, fout);
-  fclose(fout);
-#ifdef _WIN32
-  CHECK(!system("FC gold_fout.txt fout.txt > nul"));
-#else
-  CHECK(!system("diff gold_fout.txt fout.txt"));
-#endif
-  CHECK_NOTHROW(vfs_.remove_file("gold_fout.txt"));
-  CHECK_NOTHROW(vfs_.remove_file("fout.txt"));
+  char* str = nullptr;
+  tiledb_consolidation_plan_dump_json_str(
+      ctx_.ptr().get(), consolidation_plan, &str);
 
+  std::string plan(str);
+  CHECK(plan == "Not implemented\n");
+
+  tiledb_consolidation_plan_free_json_str(&str);
   tiledb_consolidation_plan_free(&consolidation_plan);
 }

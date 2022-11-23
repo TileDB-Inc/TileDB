@@ -1343,25 +1343,43 @@ TILEDB_EXPORT int32_t tiledb_consolidation_plan_get_fragment_uri(
     const char** uri) TILEDB_NOEXCEPT;
 
 /**
- * Dumps the consolidation plan in JSON format in the selected output.
+ * Dumps the consolidation plan in JSON format to a null terminated string. The
+ * string needs to be freed with tiledb_consolidation_plan_free_json_str.
  *
  * **Example:**
  *
- * The following prints the consolidation plan dump in standard output.
- *
  * @code{.c}
- * tiledb_consolidation_plan_dump(ctx, consolidation_plan, stdout);
+ * char* str;
+ * tiledb_consolidation_plan_dump_json_str(ctx, consolidation_plan, str);
+ * tiledb_consolidation_plan_free_json_str(str);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param consolidation_plan The consolidation plan.
- * @param out The output.
+ * @param str The output string.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_consolidation_plan_dump(
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_dump_json_str(
     tiledb_ctx_t* ctx,
     const tiledb_consolidation_plan_t* consolidation_plan,
-    FILE* out) TILEDB_NOEXCEPT;
+    char** str) TILEDB_NOEXCEPT;
+
+/**
+ * Frees a string created by tiledb_consolidation_plan_dump_json_str.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * char* str;
+ * tiledb_consolidation_plan_dump_json_str(ctx, consolidation_plan, str);
+ * tiledb_consolidation_plan_free_json_str(str);
+ * @endcode
+ *
+ * @param str The string to be freed.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_free_json_str(char** str)
+    TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }
