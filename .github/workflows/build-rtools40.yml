@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Prepare git
         run: git config --global core.autocrlf false
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 1
       - name: Building TileDB with Rtools40
@@ -29,7 +29,7 @@ jobs:
           MINGW_INSTALLS: ${{ matrix.msystem }}
         shell: c:\rtools40\usr\bin\bash.exe --login {0}
       - name: "Upload binaries"
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: mingw-w64-${{ matrix.msystem }}-tiledb
           path: .github/workflows/mingw-w64-tiledb/*.pkg.tar.*
