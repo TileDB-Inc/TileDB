@@ -331,7 +331,7 @@ class Logger {
    * @param args optional additional positional arguments to format.
    */
   template <typename Arg1, typename... Args>
-  void critical(const char* fmt, const Arg1& arg1, const Args&... args) {
+  void critical(std::string_view fmt, const Arg1& arg1, const Args&... args) {
     logger_->critical(fmt::runtime(fmt), arg1, args...);
   }
 
