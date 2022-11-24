@@ -142,6 +142,10 @@ bool URI::is_file(const std::string& path) {
 #endif
 }
 
+bool URI::contains(const std::string_view& str) const {
+  return uri_.find(str, 0) != std::string::npos;
+}
+
 bool URI::is_file() const {
 #ifdef _WIN32
   return is_file(uri_);
@@ -263,6 +267,10 @@ URI URI::join_path(const URI& uri) const {
 
 std::string URI::last_path_part() const {
   return uri_.substr(uri_.find_last_of('/') + 1);
+}
+
+std::string URI::last_two_path_parts() const {
+  return uri_.substr(uri_.rfind('/', uri_.rfind('/') - 1) + 1);
 }
 
 std::string URI::to_path(const std::string& uri) {
