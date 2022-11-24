@@ -866,14 +866,10 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
-  SECTION("no serialization") {
-    serialized_writes_ = false;
-  }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
-  }
+  serialized_writes_ = GENERATE(true, false);
 #endif
+
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
@@ -961,14 +957,10 @@ TEST_CASE_METHOD(
   // No duplicates.
   create_sparse_array();
 
-  SECTION("no serialization") {
-    serialized_writes_ = false;
-  }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
-  }
+  serialized_writes_ = GENERATE(true, false);
 #endif
+
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
@@ -1039,14 +1031,10 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
-  SECTION("no serialization") {
-    serialized_writes_ = false;
-  }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
-  }
+  serialized_writes_ = GENERATE(true, false);
 #endif
+
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   // Write second fragment.
@@ -1193,14 +1181,10 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
-  SECTION("no serialization") {
-    serialized_writes_ = false;
-  }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
-  }
+  serialized_writes_ = GENERATE(true, false);
 #endif
+
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   // Write second fragment.
@@ -1309,14 +1293,10 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
-  SECTION("no serialization") {
-    serialized_writes_ = false;
-  }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
-  }
+  serialized_writes_ = GENERATE(true, false);
 #endif
+
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   // Write second fragment.
@@ -1519,14 +1499,10 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
-  SECTION("no serialization") {
-    serialized_writes_ = false;
-  }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
-  }
+  serialized_writes_ = GENERATE(true, false);
 #endif
+
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   // Write second fragment.
@@ -1630,14 +1606,6 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
-  SECTION("no serialization") {
-    serialized_writes_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
-  }
-#endif
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   // Write second fragment.
