@@ -593,6 +593,7 @@ void ArraySchema::dump(FILE* out) const {
     out = stdout;
 
   std::stringstream ss;
+  ss << "- Version: " << version_ << "\n";
   ss << "- Array type: " << array_type_str(array_type_) << "\n";
   ss << "- Cell order: " << layout_str(cell_order_) << "\n";
   ss << "- Tile order: " << layout_str(tile_order_) << "\n";
