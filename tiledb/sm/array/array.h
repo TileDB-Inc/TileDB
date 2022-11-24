@@ -320,6 +320,9 @@ class Array {
   /** Directly set the timestamp end value. */
   Status set_timestamp_end(uint64_t timestamp_end);
 
+  /** Directly set the timestamp end opened at value. */
+  Status set_timestamp_end_opened_at(const uint64_t timestamp_end_opened_at);
+
   /** Directly set the array config. */
   Status set_config(Config config);
 

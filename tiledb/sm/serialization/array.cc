@@ -41,6 +41,7 @@
 
 #include <string>
 
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -208,6 +209,25 @@ Status array_from_capnp(
     if (!array->is_open()) {
       array->set_serialized_array_open(query_type);
     }
+
+    // TODO: check if that's correct or we should just serilaize
+    // timestamp_end_opened_at as well
+    RETURN_NOT_OK(
+        array->set_timestamp_end_opened_at(array_reader.getEndTimestamp()));
+    if (array->timestamp_end_opened_at() == UINT64_MAX) {
+      if (query_type == QueryType::READ) {
+        RETURN_NOT_OK(array->set_timestamp_end_opened_at(
+            tiledb::sm::utils::time::timestamp_now_ms()));
+      } else if (
+          query_type == QueryType::WRITE ||
+          query_type == QueryType::MODIFY_EXCLUSIVE ||
+          query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
+        RETURN_NOT_OK(array->set_timestamp_end_opened_at(0));
+      } else {
+        // TODO: fix type of error
+        throw Status_ArrayError("Cannot open array; Unsupported query type.");
+      }
+    }
   }
 
   if (array_reader.hasArraySchemasAll()) {
@@ -252,6 +272,7 @@ Status array_from_capnp(
       auto meta = make_shared<FragmentMetadata>(HERE());
       RETURN_NOT_OK(fragment_metadata_from_capnp(
           array->array_schema_latest_ptr(), frag_meta_reader, meta));
+      meta->set_rtree_loaded();
       array->fragment_metadata().emplace_back(meta);
     }
   }

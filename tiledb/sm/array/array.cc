@@ -797,6 +797,12 @@ Status Array::set_timestamp_end(const uint64_t timestamp_end) {
   return Status::Ok();
 }
 
+Status Array::set_timestamp_end_opened_at(
+    const uint64_t timestamp_end_opened_at) {
+  timestamp_end_opened_at_ = timestamp_end_opened_at;
+  return Status::Ok();
+}
+
 uint64_t Array::timestamp_end() const {
   return timestamp_end_;
 }

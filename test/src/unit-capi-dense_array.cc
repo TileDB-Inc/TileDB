@@ -565,12 +565,6 @@ int* DenseArrayFx::read_dense_array_2D(
   CHECK(rc == TILEDB_OK);
   CHECK(has_results);
 
-  rc = tiledb_query_finalize(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_finalize(ctx_, query);  // Second time must create no problem
-  REQUIRE(rc == TILEDB_OK);
-
   // Close array
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -3090,6 +3084,12 @@ int DenseArrayFx::array_open_wrapper(
   // already knows the array URI so it's not a problem in the real life scenario
   deserialized_array_server->array_->set_array_uri(
       (*open_array)->array_->array_uri());
+  // TODO: check if those are needed for array_open_at, this is done on Cloud
+  // server rc = tiledb_array_set_open_timestamp_start(ctx_,
+  // deserialized_array_server, (*open_array)->array_->timestamp_start());
+  // REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_array_set_open_timestamp_end(ctx_, deserialized_array_server,
+  // (*open_array)->array_->timestamp_end()); REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, deserialized_array_server, query_type);
   REQUIRE(rc == TILEDB_OK);
 
@@ -3104,6 +3104,7 @@ int DenseArrayFx::array_open_wrapper(
       1,
       &buff);
   REQUIRE(rc == TILEDB_OK);
+
   auto st = tiledb::sm::serialization::array_deserialize(
       (*open_array)->array_.get(),
       tiledb::sm::SerializationType::CAPNP,
@@ -3136,8 +3137,10 @@ int DenseArrayFx::submit_query_wrapper(
     if (rc != TILEDB_OK) {
       return rc;
     }
+
     // Finalize query
-    return tiledb_query_finalize(ctx_, *query);
+    rc = tiledb_query_finalize(ctx_, *query);
+    return rc;
   }
 
   // submit_query_wrapper() is being called via
@@ -3174,12 +3177,24 @@ int DenseArrayFx::submit_query_wrapper(
     return rc;
   }
 
+  // TODO: remove when tests pass
+  void* a;
+  uint64_t* a_size;
+  tiledb_query_get_buffer(ctx_, server_deser_query, "a", &a, &a_size);
+  auto res0 = ((int*)a)[0];
+  (void)res0;
+
   // Serialize the new query and "send it over the network" (server-side)
   // 3. Server -> Client : Send query response
   std::vector<uint8_t> serialized2;
   rc = tiledb_query_v2_serialize(
-      ctx_, array_uri.c_str(), serialized, true, server_deser_query, query);
+      ctx_, array_uri.c_str(), serialized, false, server_deser_query, query);
   REQUIRE_SAFE(rc == TILEDB_OK);
+
+  // TODO: remove when tests pass
+  tiledb_query_get_buffer(ctx_, *query, "a", &a, &a_size);
+  auto res02 = ((int*)a)[0];
+  (void)res02;
 
   // Clean up.
   tiledb_query_free(&server_deser_query);
