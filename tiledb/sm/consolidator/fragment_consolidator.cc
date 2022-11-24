@@ -520,7 +520,10 @@ Status FragmentConsolidator::copy_array(
     // READ
     RETURN_NOT_OK(query_r->submit());
 
-    // If Consolidation cannot make any progress, throw.
+    // If Consolidation cannot make any progress, throw. The first buffer will
+    // always contain fixed size data, wether it is tile offsets for var size
+    // attribute/dimension or the actual fixed size data so we can use its size
+    // to know if any cells were written or not.
     if (buffer_sizes->at(0) == 0) {
       throw FragmentConsolidatorStatusException(
           "Consolidation read 0 cells, no progress can be made");
@@ -777,6 +780,10 @@ Status FragmentConsolidator::set_query_buffers(
   auto dense = array_schema.dense();
   auto attributes = array_schema.attributes();
   unsigned bid = 0;
+
+  // Here the first buffer should always be the fixed buffer (either offsets or
+  // fixed data) as we use the first buffer size to determine if any cells were
+  // written or not.
   for (const auto& attr : attributes) {
     if (!attr->var_size()) {
       if (!attr->nullable()) {
