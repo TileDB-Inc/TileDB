@@ -501,10 +501,10 @@ TILEDB_EXPORT capi_return_t tiledb_group_get_member_by_name(
  *
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param group An group opened in READ mode.
- * @param name name of member to fetch
- * @param is_relative to receive relative characteristic of named member
+ * @param[in] ctx The TileDB context.
+ * @param[in] group An group opened in READ mode.
+ * @param[in] name name of member to fetch
+ * @param[out] is_relative to receive relative characteristic of named member
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 /* clang-format on */

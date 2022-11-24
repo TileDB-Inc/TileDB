@@ -1,4 +1,4 @@
-/**
+/*
  * @file   tiledb.h
  *
  * @section LICENSE
@@ -3557,7 +3557,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param array An open array object.
+ * @param query An open Query object.
  * @param subarray The retrieved subarray object if available.
  * @return `TILEDB_OK` for success or `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
@@ -3679,12 +3679,11 @@ TILEDB_EXPORT int32_t tiledb_query_condition_init(
  * tiledb_query_condition_free(&query_condition_3);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param attribute_name The attribute name.
- * @param condition_value The value to compare against an attribute value.
- * @param condition_value_size The byte size of `condition_value`.
- * @param op The comparison operator.
- * @param cond The allocated query condition object.
+ * @param[in]  ctx The TileDB context.
+ * @param[in]  left_cond The first input condition.
+ * @param[in]  right_cond The second input condition.
+ * @param[in]  combination_op The combination operation.
+ * @param[out] combined_cond The output condition holder.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_condition_combine(
@@ -3807,7 +3806,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_set_coalesce_ranges(
 TILEDB_EXPORT
 int32_t tiledb_subarray_set_subarray(
     tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray_s,
+    tiledb_subarray_t* subarray,
     const void* subarray_v) TILEDB_NOEXCEPT;
 
 /**
@@ -3825,7 +3824,7 @@ int32_t tiledb_subarray_set_subarray(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param query The subarray to add the range to.
+ * @param subarray The subarray to add the range to.
  * @param dim_idx The index of the dimension to add the range to.
  * @param start The range start.
  * @param end The range end.
@@ -6633,7 +6632,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_var_from_name(
  * @param ctx The TileDB context
  * @param fragment_info The fragment info object.
  * @param fid The index of the fragment of interest.
- * @param mbrs_num The number of MBRs to be retrieved.
+ * @param mbr_num The number of MBRs to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_num(
@@ -7007,9 +7006,10 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_array_schema(
  * tiledb_fragment_info_schema_name(ctx, fragment_info, &schema_name);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
- * @param name The schema name.
+ * @param[in]  ctx The TileDB context.
+ * @param[in]  fragment_info The fragment info object.
+ * @param[in]  fid The fragment info index.
+ * @param[out] schema_name The schema name.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_fragment_info_get_array_schema_name(

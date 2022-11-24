@@ -118,6 +118,14 @@ const std::vector<TimestampedURI>& ArrayDirectory::array_meta_uris() const {
   return array_meta_uris_;
 }
 
+const uint64_t& ArrayDirectory::timestamp_start() const {
+  return timestamp_start_;
+}
+
+const uint64_t& ArrayDirectory::timestamp_end() const {
+  return timestamp_end_;
+}
+
 Status ArrayDirectory::load() {
   assert(!loaded_);
 
