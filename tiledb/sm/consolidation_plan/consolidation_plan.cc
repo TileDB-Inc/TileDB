@@ -41,7 +41,8 @@ using namespace tiledb::common;
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ConsolidationPlan::ConsolidationPlan(shared_ptr<Array> array, uint64_t) {
+ConsolidationPlan::ConsolidationPlan(shared_ptr<Array> array, uint64_t)
+    : num_nodes_(0) {
   generate(array);
 }
 
