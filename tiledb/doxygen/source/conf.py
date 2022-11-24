@@ -122,9 +122,9 @@ todo_include_todos = False
 
 # -- Options for HTML output ----------------------------------------------
 
-html_static_path = ['_static']
-html_logo = '_static/tiledb-logo_color_no_margin_@4x.png'
-html_favicon = '_static/favicon.ico'
+html_static_path = ['../../../doc/source/_static']
+html_logo = os.path.join(html_static_path[0], 'tiledb-logo_color_no_margin_@4x.png')
+html_favicon = os.path.join(html_static_path[0], 'favicon.ico')
 
 if readthedocs:
     html_theme = 'default'
