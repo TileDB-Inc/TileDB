@@ -110,7 +110,9 @@ set(TILEDB_UNIT_TEST_SOURCES
   support/src/ast_helpers.h
   support/src/helpers.h
   support/src/helpers-dimension.h
+  src/test-capi-consolidation-plan.cc
   src/test-capi-query-error-handling.cc
+  src/test-cppapi-consolidation-plan.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc

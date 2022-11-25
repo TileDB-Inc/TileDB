@@ -1223,12 +1223,29 @@ TEST_CASE(
     "write/read it",
     "[backwards-compat][upgrade-version][write-read-new-version]") {
   bool serialized_writes = false;
+  bool serialized_load = false;
   SECTION("no serialization") {
     serialized_writes = false;
+
+    SECTION("no serialization") {
+      serialized_load = false;
+    }
+#ifdef TILEDB_SERIALIZATION
+    SECTION("serialization enabled fragment info load") {
+      serialized_load = true;
+    }
+#endif
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
     serialized_writes = true;
+
+    SECTION("no serialization") {
+      serialized_load = false;
+    }
+    SECTION("serialization enabled fragment info load") {
+      serialized_load = true;
+    }
   }
 #endif
 
@@ -1289,16 +1306,6 @@ TEST_CASE(
 
   FragmentInfo fragment_info(ctx, array_name);
   fragment_info.load();
-
-  bool serialized_load = false;
-  SECTION("no serialization") {
-    serialized_load = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled fragment info load") {
-    serialized_load = true;
-  }
-#endif
 
   if (serialized_load) {
     FragmentInfo deserialized_fragment_info(ctx, array_name);

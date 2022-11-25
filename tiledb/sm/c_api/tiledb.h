@@ -359,6 +359,9 @@ typedef struct tiledb_vfs_fh_t tiledb_vfs_fh_t;
 /** A fragment info object. */
 typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
+/** A consolidation plan object. */
+typedef struct tiledb_consolidation_plan_t tiledb_consolidation_plan_t;
+
 /* ********************************* */
 /*            BUFFER LIST            */
 /* ********************************* */

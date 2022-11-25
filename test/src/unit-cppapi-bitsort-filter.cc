@@ -872,7 +872,7 @@ void bitsort_filter_api_test(
 
 TEMPLATE_TEST_CASE(
     "C++ API: Bitsort Filter Read on Array",
-    "[cppapi][filter][bitsort]",
+    "[cppapi][filter][bitsort][longtest]",
     int16_t,
     int64_t,
     uint8_t,
