@@ -48,7 +48,7 @@ namespace sm {
 /** Defines a datatype. */
 enum class Datatype : uint8_t {
 #define TILEDB_DATATYPE_ENUM(id) id
-#include "tiledb/sm/c_api/tiledb_enum.h"
+#include "tiledb/api/c_api/datatype/datatype_api_enum.h"
 #undef TILEDB_DATATYPE_ENUM
 };
 

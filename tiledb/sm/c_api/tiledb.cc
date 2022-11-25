@@ -36,6 +36,7 @@
 #include "tiledb_serialization.h"
 #include "tiledb_struct_def.h"
 
+#include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
@@ -123,71 +124,6 @@ namespace tiledb::api {
 /*       ENUMS TO/FROM STR        */
 /* ****************************** */
 
-int32_t tiledb_query_type_to_str(
-    tiledb_query_type_t query_type, const char** str) {
-  const auto& strval =
-      tiledb::sm::query_type_str((tiledb::sm::QueryType)query_type);
-  *str = strval.c_str();
-  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
-}
-
-int32_t tiledb_query_type_from_str(
-    const char* str, tiledb_query_type_t* query_type) {
-  tiledb::sm::QueryType val = tiledb::sm::QueryType::READ;
-  if (!tiledb::sm::query_type_enum(str, &val).ok())
-    return TILEDB_ERR;
-  *query_type = (tiledb_query_type_t)val;
-  return TILEDB_OK;
-}
-
-int32_t tiledb_object_type_to_str(
-    tiledb_object_t object_type, const char** str) {
-  const auto& strval =
-      tiledb::sm::object_type_str((tiledb::sm::ObjectType)object_type);
-  *str = strval.c_str();
-  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
-}
-
-int32_t tiledb_object_type_from_str(
-    const char* str, tiledb_object_t* object_type) {
-  tiledb::sm::ObjectType val = tiledb::sm::ObjectType::INVALID;
-  if (!tiledb::sm::object_type_enum(str, &val).ok())
-    return TILEDB_ERR;
-  *object_type = (tiledb_object_t)val;
-  return TILEDB_OK;
-}
-
-int32_t tiledb_filesystem_to_str(
-    tiledb_filesystem_t filesystem, const char** str) {
-  const auto& strval =
-      tiledb::sm::filesystem_str((tiledb::sm::Filesystem)filesystem);
-  *str = strval.c_str();
-  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
-}
-
-int32_t tiledb_filesystem_from_str(
-    const char* str, tiledb_filesystem_t* filesystem) {
-  tiledb::sm::Filesystem val = tiledb::sm::Filesystem::S3;
-  if (!tiledb::sm::filesystem_enum(str, &val).ok())
-    return TILEDB_ERR;
-  *filesystem = (tiledb_filesystem_t)val;
-  return TILEDB_OK;
-}
-
-int32_t tiledb_datatype_to_str(tiledb_datatype_t datatype, const char** str) {
-  const auto& strval = tiledb::sm::datatype_str((tiledb::sm::Datatype)datatype);
-  *str = strval.c_str();
-  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
-}
-
-int32_t tiledb_datatype_from_str(const char* str, tiledb_datatype_t* datatype) {
-  tiledb::sm::Datatype val = tiledb::sm::Datatype::UINT8;
-  if (!tiledb::sm::datatype_enum(str, &val).ok())
-    return TILEDB_ERR;
-  *datatype = (tiledb_datatype_t)val;
-  return TILEDB_OK;
-}
-
 int32_t tiledb_array_type_to_str(
     tiledb_array_type_t array_type, const char** str) {
   const auto& strval =
@@ -271,23 +207,6 @@ int32_t tiledb_serialization_type_from_str(
   return TILEDB_OK;
 }
 
-int32_t tiledb_walk_order_to_str(
-    tiledb_walk_order_t walk_order, const char** str) {
-  const auto& strval =
-      tiledb::sm::walkorder_str((tiledb::sm::WalkOrder)walk_order);
-  *str = strval.c_str();
-  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
-}
-
-int32_t tiledb_walk_order_from_str(
-    const char* str, tiledb_walk_order_t* walk_order) {
-  tiledb::sm::WalkOrder val = tiledb::sm::WalkOrder::PREORDER;
-  if (!tiledb::sm::walkorder_enum(str, &val).ok())
-    return TILEDB_ERR;
-  *walk_order = (tiledb_walk_order_t)val;
-  return TILEDB_OK;
-}
-
 int32_t tiledb_vfs_mode_to_str(tiledb_vfs_mode_t vfs_mode, const char** str) {
   const auto& strval = tiledb::sm::vfsmode_str((tiledb::sm::VFSMode)vfs_mode);
   *str = strval.c_str();
@@ -299,111 +218,6 @@ int32_t tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode) {
   if (!tiledb::sm::vfsmode_enum(str, &val).ok())
     return TILEDB_ERR;
   *vfs_mode = (tiledb_vfs_mode_t)val;
-  return TILEDB_OK;
-}
-
-/* ****************************** */
-/*            CONSTANTS           */
-/* ****************************** */
-
-uint64_t tiledb_datatype_size(tiledb_datatype_t type) {
-  return tiledb::sm::datatype_size(static_cast<tiledb::sm::Datatype>(type));
-}
-
-/* ********************************* */
-/*              BUFFER               */
-/* ********************************* */
-
-int32_t tiledb_buffer_alloc(tiledb_ctx_t* ctx, tiledb_buffer_t** buffer) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Create a buffer struct
-  *buffer = new (std::nothrow) tiledb_buffer_t;
-  if (*buffer == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB buffer object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Create a new buffer object
-  (*buffer)->buffer_ = new (std::nothrow) tiledb::sm::Buffer();
-  if ((*buffer)->buffer_ == nullptr) {
-    delete *buffer;
-    *buffer = nullptr;
-    auto st = Status_Error("Failed to allocate TileDB buffer object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Success
-  return TILEDB_OK;
-}
-
-void tiledb_buffer_free(tiledb_buffer_t** buffer) {
-  if (buffer != nullptr && *buffer != nullptr) {
-    delete (*buffer)->buffer_;
-    delete (*buffer);
-    *buffer = nullptr;
-  }
-}
-
-int32_t tiledb_buffer_set_type(
-    tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, tiledb_datatype_t datatype) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  buffer->datatype_ = static_cast<tiledb::sm::Datatype>(datatype);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_buffer_get_type(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_t* buffer,
-    tiledb_datatype_t* datatype) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *datatype = static_cast<tiledb_datatype_t>(buffer->datatype_);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_buffer_get_data(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_t* buffer,
-    void** data,
-    uint64_t* num_bytes) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *data = buffer->buffer_->data();
-  *num_bytes = buffer->buffer_->size();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_buffer_set_data(
-    tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, void* data, uint64_t size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Create a temporary Buffer object as a wrapper.
-  tiledb::sm::Buffer tmp_buffer(data, size);
-
-  // Swap with the given buffer.
-  buffer->buffer_->swap(tmp_buffer);
-
-  // 'tmp_buffer' now destructs, freeing the old allocation (if any) of the
-  // given buffer.
-
   return TILEDB_OK;
 }
 
@@ -476,26 +290,8 @@ int32_t tiledb_buffer_list_get_buffer(
   tiledb::sm::Buffer* b;
   throw_if_not_ok(buffer_list->buffer_list_->get_buffer(buffer_idx, &b));
 
-  // Create a buffer struct
-  *buffer = new (std::nothrow) tiledb_buffer_t;
-  if (*buffer == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB buffer object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Set the buffer pointer to a non-owning wrapper of the underlying buffer
-  (*buffer)->buffer_ =
-      new (std::nothrow) tiledb::sm::Buffer(b->data(), b->size());
-  if ((*buffer)->buffer_ == nullptr) {
-    delete *buffer;
-    *buffer = nullptr;
-    auto st = Status_Error("Failed to allocate TileDB buffer object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
+  // Create a non-owning wrapper of the underlying buffer
+  *buffer = tiledb_buffer_handle_t::make_handle(b->data(), b->size());
 
   return TILEDB_OK;
 }
@@ -524,21 +320,28 @@ int32_t tiledb_buffer_list_flatten(
     return TILEDB_ERR;
 
   // Create a buffer instance
-  if (api::tiledb_buffer_alloc(ctx, buffer) == TILEDB_ERR ||
-      sanity_check(ctx, *buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
+  auto buf = tiledb_buffer_handle_t::make_handle();
 
   // Resize the dest buffer
   const auto nbytes = buffer_list->buffer_list_->total_size();
-  throw_if_not_ok((*buffer)->buffer_->realloc(nbytes));
+  auto st = buf->buffer().realloc(nbytes);
+  if(!st.ok()) {
+    tiledb_buffer_handle_t::break_handle(buf);
+    throw StatusException(st);
+  }
 
   // Read all into the dest buffer
   buffer_list->buffer_list_->reset_offset();
-  throw_if_not_ok(
-      buffer_list->buffer_list_->read((*buffer)->buffer_->data(), nbytes));
+  st = buffer_list->buffer_list_->read(buf->buffer().data(), nbytes);
+  if(!st.ok()) {
+    tiledb_buffer_handle_t::break_handle(buf);
+    throw StatusException(st);
+  }
 
   // Set the result size
-  (*buffer)->buffer_->set_size(nbytes);
+  buf->buffer().set_size(nbytes);
+
+  *buffer = buf;
 
   return TILEDB_OK;
 }
@@ -4764,21 +4567,20 @@ int32_t tiledb_serialize_array(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Create buffer
-  if (api::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
-      sanity_check(ctx, *buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
+  auto buf = tiledb_buffer_handle_t::make_handle();
 
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_serialize(
               array->array_.get(),
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_,
+              &(buf->buffer()),
               client_side))) {
-    api::tiledb_buffer_free(buffer);
+    tiledb_buffer_handle_t::break_handle(buf);
     return TILEDB_ERR;
   }
+
+  *buffer = buf;
 
   return TILEDB_OK;
 }
@@ -4793,9 +4595,10 @@ int32_t tiledb_deserialize_array(
   (void)client_side;
 
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
+
+  api::ensure_buffer_is_valid(buffer);
 
   // Create array struct
   *array = new (std::nothrow) tiledb_array_t;
@@ -4835,7 +4638,7 @@ int32_t tiledb_deserialize_array(
           tiledb::sm::serialization::array_deserialize(
               (*array)->array_.get(),
               (tiledb::sm::SerializationType)serialize_type,
-              *buffer->buffer_))) {
+              buffer->buffer()))) {
     delete *array;
     *array = nullptr;
     return TILEDB_ERR;
@@ -4856,20 +4659,20 @@ int32_t tiledb_serialize_array_schema(
     return TILEDB_ERR;
 
   // Create buffer
-  if (api::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
-      sanity_check(ctx, *buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
+  auto buf = tiledb_buffer_handle_t::make_handle();
 
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_schema_serialize(
               *(array_schema->array_schema_.get()),
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_,
+              &(buf->buffer()),
               client_side))) {
-    api::tiledb_buffer_free(buffer);
+    tiledb_buffer_handle_t::break_handle(buf);
     return TILEDB_ERR;
   }
+
+  *buffer = buf;
 
   return TILEDB_OK;
 }
@@ -4884,9 +4687,10 @@ int32_t tiledb_deserialize_array_schema(
   (void)client_side;
 
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
+
+  api::ensure_buffer_is_valid(buffer);
 
   // Create array schema struct
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
@@ -4901,7 +4705,7 @@ int32_t tiledb_deserialize_array_schema(
     (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
         HERE(),
         tiledb::sm::serialization::array_schema_deserialize(
-            (tiledb::sm::SerializationType)serialize_type, *buffer->buffer_));
+            (tiledb::sm::SerializationType)serialize_type, buffer->buffer()));
   } catch (...) {
     delete *array_schema;
     *array_schema = nullptr;
@@ -4926,21 +4730,19 @@ int32_t tiledb_serialize_array_open(
     return TILEDB_ERR;
   }
 
-  // Allocate a buffer list
-  if (api::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
-      sanity_check(ctx, *buffer) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
+  auto buf = tiledb_buffer_handle_t::make_handle();
 
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_open_serialize(
               *(array->array_.get()),
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_))) {
-    api::tiledb_buffer_free(buffer);
+              &(buf->buffer())))) {
+    tiledb_buffer_handle_t::break_handle(buf);
     return TILEDB_ERR;
   }
+
+  *buffer = buf;
 
   return TILEDB_OK;
 }
@@ -4956,10 +4758,11 @@ int32_t tiledb_deserialize_array_open(
   (void)client_side;
 
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR) {
+  if (sanity_check(ctx) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
+
+  api::ensure_buffer_is_valid(buffer);
 
   // Create array struct
   *array = new (std::nothrow) tiledb_array_t;
@@ -5001,7 +4804,7 @@ int32_t tiledb_deserialize_array_open(
           tiledb::sm::serialization::array_open_deserialize(
               (*array)->array_.get(),
               (tiledb::sm::SerializationType)serialize_type,
-              *buffer->buffer_))) {
+              buffer->buffer()))) {
     delete *array;
     *array = nullptr;
     return TILEDB_ERR;
@@ -5021,21 +4824,20 @@ int32_t tiledb_serialize_array_schema_evolution(
       sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Create buffer
-  if (api::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
-      sanity_check(ctx, *buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
+  auto buf = tiledb_buffer_handle_t::make_handle();
 
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_schema_evolution_serialize(
               array_schema_evolution->array_schema_evolution_,
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_,
+              &(buf->buffer()),
               client_side))) {
-    api::tiledb_buffer_free(buffer);
+    tiledb_buffer_handle_t::break_handle(buf);
     return TILEDB_ERR;
   }
+
+  *buffer = buf;
 
   return TILEDB_OK;
 }
@@ -5050,9 +4852,10 @@ int32_t tiledb_deserialize_array_schema_evolution(
   (void)client_side;
 
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
+
+  api::ensure_buffer_is_valid(buffer);
 
   // Create array schema struct
   *array_schema_evolution = new (std::nothrow) tiledb_array_schema_evolution_t;
@@ -5069,7 +4872,7 @@ int32_t tiledb_deserialize_array_schema_evolution(
           tiledb::sm::serialization::array_schema_evolution_deserialize(
               &((*array_schema_evolution)->array_schema_evolution_),
               (tiledb::sm::SerializationType)serialize_type,
-              *buffer->buffer_))) {
+              buffer->buffer()))) {
     delete *array_schema_evolution;
     *array_schema_evolution = nullptr;
     return TILEDB_ERR;
@@ -5115,12 +4918,13 @@ int32_t tiledb_deserialize_query(
     tiledb_query_t* query) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, query) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
+      sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  api::ensure_buffer_is_valid(buffer);
+
   throw_if_not_ok(tiledb::sm::serialization::query_deserialize(
-      *buffer->buffer_,
+      buffer->buffer(),
       (tiledb::sm::SerializationType)serialize_type,
       client_side == 1,
       nullptr,
@@ -5145,10 +4949,7 @@ int32_t tiledb_serialize_array_nonempty_domain(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Create buffer
-  if (api::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
-      sanity_check(ctx, *buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
+  auto buf = tiledb_buffer_handle_t::make_handle();
 
   if (SAVE_ERROR_CATCH(
           ctx,
@@ -5157,10 +4958,12 @@ int32_t tiledb_serialize_array_nonempty_domain(
               nonempty_domain,
               is_empty,
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_))) {
-    api::tiledb_buffer_free(buffer);
+              &(buf->buffer())))) {
+    tiledb_buffer_handle_t::break_handle(buf);
     return TILEDB_ERR;
   }
+
+  *buffer = buf;
 
   return TILEDB_OK;
 }
@@ -5178,14 +4981,15 @@ int32_t tiledb_deserialize_array_nonempty_domain(
 
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
+      sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
+
+  api::ensure_buffer_is_valid(buffer);
 
   bool is_empty_bool;
   throw_if_not_ok(tiledb::sm::serialization::nonempty_domain_deserialize(
       array->array_.get(),
-      *buffer->buffer_,
+      buffer->buffer(),
       (tiledb::sm::SerializationType)serialize_type,
       nonempty_domain,
       &is_empty_bool));
@@ -5208,20 +5012,19 @@ int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Create buffer
-  if (api::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
-      sanity_check(ctx, *buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
+  auto buf = tiledb_buffer_handle_t::make_handle();
 
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::nonempty_domain_serialize(
               array->array_.get(),
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_))) {
-    api::tiledb_buffer_free(buffer);
+              &(buf->buffer())))) {
+    tiledb_buffer_handle_t::break_handle(buf);
     return TILEDB_ERR;
   }
+
+  *buffer = buf;
 
   return TILEDB_OK;
 }
@@ -5237,13 +5040,14 @@ int32_t tiledb_deserialize_array_non_empty_domain_all_dimensions(
 
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
+      sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
+
+  api::ensure_buffer_is_valid(buffer);
 
   throw_if_not_ok(tiledb::sm::serialization::nonempty_domain_deserialize(
       array->array_.get(),
-      *buffer->buffer_,
+      buffer->buffer(),
       (tiledb::sm::SerializationType)serialize_type));
 
   return TILEDB_OK;
@@ -5259,10 +5063,7 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Allocate buffer
-  if (api::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
-      sanity_check(ctx, *buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
+  auto buf = tiledb_buffer_handle_t::make_handle();
 
   // Serialize
   if (SAVE_ERROR_CATCH(
@@ -5271,10 +5072,12 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
               array->array_.get(),
               subarray,
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_))) {
-    api::tiledb_buffer_free(buffer);
+              &(buf->buffer())))) {
+    tiledb_buffer_handle_t::break_handle(buf);
     return TILEDB_ERR;
   }
+
+  *buffer = buf;
 
   return TILEDB_OK;
 }
@@ -5288,15 +5091,12 @@ int32_t tiledb_serialize_array_metadata(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Allocate buffer
-  if (api::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
-      sanity_check(ctx, *buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
+  auto buf = tiledb_buffer_handle_t::make_handle();
 
   // Get metadata to serialize, this will load it if it does not exist
   tiledb::sm::Metadata* metadata;
   if (SAVE_ERROR_CATCH(ctx, array->array_->metadata(&metadata))) {
-    api::tiledb_buffer_free(buffer);
+    tiledb_buffer_handle_t::break_handle(buf);
     return TILEDB_ERR;
   }
 
@@ -5306,10 +5106,12 @@ int32_t tiledb_serialize_array_metadata(
           tiledb::sm::serialization::metadata_serialize(
               metadata,
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_))) {
-    api::tiledb_buffer_free(buffer);
+              &(buf->buffer())))) {
+    tiledb_buffer_handle_t::break_handle(buf);
     return TILEDB_ERR;
   }
+
+  *buffer = buf;
 
   return TILEDB_OK;
 }
@@ -5321,15 +5123,16 @@ int32_t tiledb_deserialize_array_metadata(
     const tiledb_buffer_t* buffer) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
+      sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
+
+  api::ensure_buffer_is_valid(buffer);
 
   // Deserialize
   throw_if_not_ok(tiledb::sm::serialization::metadata_deserialize(
       array->array_->unsafe_metadata(),
       (tiledb::sm::SerializationType)serialize_type,
-      *(buffer->buffer_)));
+      buffer->buffer()));
 
   return TILEDB_OK;
 }
@@ -5344,10 +5147,7 @@ int32_t tiledb_serialize_query_est_result_sizes(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Allocate buffer
-  if (api::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
-      sanity_check(ctx, *buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
+  auto buf = tiledb_buffer_handle_t::make_handle();
 
   if (SAVE_ERROR_CATCH(
           ctx,
@@ -5355,10 +5155,12 @@ int32_t tiledb_serialize_query_est_result_sizes(
               query->query_,
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
-              (*buffer)->buffer_))) {
-    api::tiledb_buffer_free(buffer);
+              &(buf->buffer())))) {
+    tiledb_buffer_handle_t::break_handle(buf);
     return TILEDB_ERR;
   }
+
+  *buffer = buf;
 
   return TILEDB_OK;
 }
@@ -5371,15 +5173,16 @@ int32_t tiledb_deserialize_query_est_result_sizes(
     const tiledb_buffer_t* buffer) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, query) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
+      sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
+
+  api::ensure_buffer_is_valid(buffer);
 
   throw_if_not_ok(tiledb::sm::serialization::query_est_result_size_deserialize(
       query->query_,
       (tiledb::sm::SerializationType)serialize_type,
       client_side == 1,
-      *buffer->buffer_));
+      buffer->buffer()));
 
   return TILEDB_OK;
 }
@@ -5395,34 +5198,30 @@ int32_t tiledb_serialize_config(
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
 
-  // Create buffer
-  if (api::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
-      sanity_check(ctx, *buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
+  auto buf = tiledb_buffer_handle_t::make_handle();
 
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::config_serialize(
               config->config(),
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_,
+              &(buf->buffer()),
               client_side))) {
-    api::tiledb_buffer_free(buffer);
+    tiledb_buffer_handle_t::break_handle(buf);
     return TILEDB_ERR;
   }
+
+  *buffer = buf;
 
   return TILEDB_OK;
 }
 
 int32_t tiledb_deserialize_config(
-    tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t,
     tiledb_config_t** config) {
-  // Sanity check
-  if (sanity_check(ctx, buffer) == TILEDB_ERR)
-    return TILEDB_ERR;
+  api::ensure_buffer_is_valid(buffer);
   api::ensure_output_pointer_is_valid(config);
 
   /*
@@ -5435,7 +5234,7 @@ int32_t tiledb_deserialize_config(
   throw_if_not_ok(tiledb::sm::serialization::config_deserialize(
       &new_config,
       (tiledb::sm::SerializationType)serialize_type,
-      *buffer->buffer_));
+      buffer->buffer()));
   if (!new_config) {
     throw std::logic_error("Unexpected nullptr with OK status");
   }
@@ -5461,21 +5260,19 @@ int32_t tiledb_serialize_fragment_info_request(
     return TILEDB_ERR;
   }
 
-  // Allocate a buffer list
-  if (api::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
-      sanity_check(ctx, *buffer) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
+  auto buf = tiledb_buffer_handle_t::make_handle();
 
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::fragment_info_request_serialize(
               *fragment_info->fragment_info_,
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_))) {
-    api::tiledb_buffer_free(buffer);
+              &(buf->buffer())))) {
+    tiledb_buffer_handle_t::break_handle(buf);
     return TILEDB_ERR;
   }
+
+  *buffer = buf;
 
   return TILEDB_OK;
 }
@@ -5492,17 +5289,18 @@ int32_t tiledb_deserialize_fragment_info_request(
 
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR) {
+      sanity_check(ctx, fragment_info) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
+
+  api::ensure_buffer_is_valid(buffer);
 
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::fragment_info_request_deserialize(
               fragment_info->fragment_info_,
               (tiledb::sm::SerializationType)serialize_type,
-              *buffer->buffer_))) {
+              buffer->buffer()))) {
     return TILEDB_ERR;
   }
 
@@ -5521,11 +5319,7 @@ int32_t tiledb_serialize_fragment_info(
     return TILEDB_ERR;
   }
 
-  // Allocate buffer
-  if (api::tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
-      sanity_check(ctx, *buffer) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
+  auto buf = tiledb_buffer_handle_t::make_handle();
 
   // Serialize
   if (SAVE_ERROR_CATCH(
@@ -5533,11 +5327,13 @@ int32_t tiledb_serialize_fragment_info(
           tiledb::sm::serialization::fragment_info_serialize(
               *fragment_info->fragment_info_,
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_,
+              &(buf->buffer()),
               client_side))) {
-    api::tiledb_buffer_free(buffer);
+    tiledb_buffer_handle_t::break_handle(buf);
     return TILEDB_ERR;
   }
+
+  *buffer = buf;
 
   return TILEDB_OK;
 }
@@ -5555,10 +5351,11 @@ int32_t tiledb_deserialize_fragment_info(
 
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR) {
+      sanity_check(ctx, fragment_info) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
+
+  api::ensure_buffer_is_valid(buffer);
 
   // Check array uri
   tiledb::sm::URI uri(array_uri);
@@ -5576,7 +5373,7 @@ int32_t tiledb_deserialize_fragment_info(
               fragment_info->fragment_info_,
               (tiledb::sm::SerializationType)serialize_type,
               uri,
-              *buffer->buffer_))) {
+              buffer->buffer()))) {
     return TILEDB_ERR;
   }
 
@@ -6382,6 +6179,7 @@ int32_t tiledb_consolidation_plan_free_json_str(char** out) {
  * function change with `std::forward`.
  */
 
+using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_plain;
 using tiledb::api::api_entry_void;
 template <auto f>
@@ -6390,52 +6188,6 @@ constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
 /* ****************************** */
-int32_t tiledb_query_type_to_str(
-    tiledb_query_type_t query_type, const char** str) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_query_type_to_str>(
-      query_type, str);
-}
-
-int32_t tiledb_query_type_from_str(
-    const char* str, tiledb_query_type_t* query_type) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_query_type_from_str>(
-      str, query_type);
-}
-
-int32_t tiledb_object_type_to_str(
-    tiledb_object_t object_type, const char** str) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_object_type_to_str>(
-      object_type, str);
-}
-
-int32_t tiledb_object_type_from_str(
-    const char* str, tiledb_object_t* object_type) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_object_type_from_str>(
-      str, object_type);
-}
-
-int32_t tiledb_filesystem_to_str(
-    tiledb_filesystem_t filesystem, const char** str) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_filesystem_to_str>(
-      filesystem, str);
-}
-
-int32_t tiledb_filesystem_from_str(
-    const char* str, tiledb_filesystem_t* filesystem) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_filesystem_from_str>(
-      str, filesystem);
-}
-
-int32_t tiledb_datatype_to_str(
-    tiledb_datatype_t datatype, const char** str) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_datatype_to_str>(datatype, str);
-}
-
-int32_t tiledb_datatype_from_str(
-    const char* str, tiledb_datatype_t* datatype) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_datatype_from_str>(str, datatype);
-}
-
 int32_t tiledb_array_type_to_str(
     tiledb_array_type_t array_type, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_array_type_to_str>(
@@ -6494,18 +6246,6 @@ int32_t tiledb_serialization_type_from_str(
       str, serialization_type);
 }
 
-int32_t tiledb_walk_order_to_str(
-    tiledb_walk_order_t walk_order, const char** str) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_walk_order_to_str>(
-      walk_order, str);
-}
-
-int32_t tiledb_walk_order_from_str(
-    const char* str, tiledb_walk_order_t* walk_order) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_walk_order_from_str>(
-      str, walk_order);
-}
-
 int32_t tiledb_vfs_mode_to_str(
     tiledb_vfs_mode_t vfs_mode, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_vfs_mode_to_str>(vfs_mode, str);
@@ -6536,10 +6276,6 @@ uint64_t tiledb_offset_size() noexcept {
   return tiledb::sm::constants::cell_var_offset_size;
 }
 
-uint64_t tiledb_datatype_size(tiledb_datatype_t type) noexcept {
-  return tiledb::sm::datatype_size(static_cast<tiledb::sm::Datatype>(type));
-}
-
 uint64_t tiledb_timestamp_now_ms() noexcept {
   /*
    * The existing implementation function is not marked `nothrow`. The
@@ -6566,48 +6302,6 @@ void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev) noexcept {
   *major = tiledb::sm::constants::library_version[0];
   *minor = tiledb::sm::constants::library_version[1];
   *rev = tiledb::sm::constants::library_version[2];
-}
-
-/* ********************************* */
-/*              BUFFER               */
-/* ********************************* */
-
-int32_t tiledb_buffer_alloc(
-    tiledb_ctx_t* ctx, tiledb_buffer_t** buffer) noexcept {
-  return api_entry<tiledb::api::tiledb_buffer_alloc>(ctx, buffer);
-}
-
-void tiledb_buffer_free(tiledb_buffer_t** buffer) noexcept {
-  return api_entry_void<tiledb::api::tiledb_buffer_free>(buffer);
-}
-
-int32_t tiledb_buffer_set_type(
-    tiledb_ctx_t* ctx,
-    tiledb_buffer_t* buffer,
-    tiledb_datatype_t datatype) noexcept {
-  return api_entry<tiledb::api::tiledb_buffer_set_type>(ctx, buffer, datatype);
-}
-
-int32_t tiledb_buffer_get_type(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_t* buffer,
-    tiledb_datatype_t* datatype) noexcept {
-  return api_entry<tiledb::api::tiledb_buffer_get_type>(ctx, buffer, datatype);
-}
-
-int32_t tiledb_buffer_get_data(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_t* buffer,
-    void** data,
-    uint64_t* size) noexcept {
-  return api_entry<tiledb::api::tiledb_buffer_get_data>(
-      ctx, buffer, data, size);
-}
-
-int32_t tiledb_buffer_set_data(
-    tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, void* data, uint64_t size) {
-  return api_entry<tiledb::api::tiledb_buffer_set_data>(
-      ctx, buffer, data, size);
 }
 
 /* ********************************* */
@@ -8905,7 +8599,7 @@ int32_t tiledb_deserialize_config(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_config_t** config) noexcept {
-  return api_entry<tiledb::api::tiledb_deserialize_config>(
+  return api_entry_context<tiledb::api::tiledb_deserialize_config>(
       ctx, buffer, serialize_type, client_side, config);
 }
 

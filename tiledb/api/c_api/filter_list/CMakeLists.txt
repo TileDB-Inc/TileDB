@@ -44,5 +44,6 @@ target_link_libraries(capi_filter_list_stub PUBLIC capi_filter_stub $<TARGET_OBJ
 add_executable(compile_capi_filter_list_stub EXCLUDE_FROM_ALL)
 target_link_libraries(compile_capi_filter_list_stub PRIVATE capi_filter_list_stub)
 target_sources(compile_capi_filter_list_stub PRIVATE test/compile_capi_filter_list_main.cc)
+add_dependencies(all_link_complete compile_capi_filter_list_stub)
 
 add_test_subdirectory()
