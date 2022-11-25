@@ -106,6 +106,45 @@ class FragmentMetadata {
   FragmentMetadata& operator=(const FragmentMetadata& other);
 
   /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  /** Keeps track of which metadata is loaded. */
+  struct LoadedMetadata {
+    bool footer_ = false;
+    bool rtree_ = false;
+    std::vector<bool> tile_offsets_;
+    std::vector<bool> tile_var_offsets_;
+    std::vector<bool> tile_var_sizes_;
+    std::vector<bool> tile_validity_offsets_;
+    std::vector<bool> tile_min_;
+    std::vector<bool> tile_max_;
+    std::vector<bool> tile_sum_;
+    std::vector<bool> tile_null_count_;
+    bool fragment_min_max_sum_null_count_ = false;
+    bool processed_conditions_ = false;
+  };
+
+  /**
+   * Stores the start offsets of the generic tiles stored in the
+   * metadata file, each separately storing the various metadata
+   * (e.g., R-Tree, tile offsets, etc).
+   */
+  struct GenericTileOffsets {
+    uint64_t rtree_ = 0;
+    std::vector<uint64_t> tile_offsets_;
+    std::vector<uint64_t> tile_var_offsets_;
+    std::vector<uint64_t> tile_var_sizes_;
+    std::vector<uint64_t> tile_validity_offsets_;
+    std::vector<uint64_t> tile_min_offsets_;
+    std::vector<uint64_t> tile_max_offsets_;
+    std::vector<uint64_t> tile_sum_offsets_;
+    std::vector<uint64_t> tile_null_count_offsets_;
+    uint64_t fragment_min_max_sum_null_count_offset_;
+    uint64_t processed_conditions_offsets_;
+  };
+
+  /* ********************************* */
   /*                API                */
   /* ********************************* */
 
@@ -369,6 +408,11 @@ class FragmentMetadata {
   /** Returns an RTree for the MBRs. */
   inline const RTree& rtree() const {
     return rtree_;
+  }
+
+  /** Returns the generic tile offsets. */
+  inline const GenericTileOffsets& generic_tile_offsets() const {
+    return gt_offsets_;
   }
 
   /**
@@ -1126,6 +1170,11 @@ class FragmentMetadata {
     return rtree_;
   }
 
+  /** gt_offsets_ accessor */
+  inline GenericTileOffsets& generic_tile_offsets() {
+    return gt_offsets_;
+  }
+
   /** set the SM pointer during deserialization*/
   void set_storage_manager(StorageManager* sm) {
     storage_manager_ = sm;
@@ -1136,46 +1185,12 @@ class FragmentMetadata {
     loaded_metadata_.rtree_ = true;
   }
 
+  /** loaded_metadata_ accessor */
+  inline void set_loaded_metadata(const LoadedMetadata& loaded_metadata) {
+    loaded_metadata_ = loaded_metadata;
+  }
+
  private:
-  /* ********************************* */
-  /*          TYPE DEFINITIONS         */
-  /* ********************************* */
-
-  /**
-   * Stores the start offsets of the generic tiles stored in the
-   * metadata file, each separately storing the various metadata
-   * (e.g., R-Tree, tile offsets, etc).
-   */
-  struct GenericTileOffsets {
-    uint64_t rtree_ = 0;
-    std::vector<uint64_t> tile_offsets_;
-    std::vector<uint64_t> tile_var_offsets_;
-    std::vector<uint64_t> tile_var_sizes_;
-    std::vector<uint64_t> tile_validity_offsets_;
-    std::vector<uint64_t> tile_min_offsets_;
-    std::vector<uint64_t> tile_max_offsets_;
-    std::vector<uint64_t> tile_sum_offsets_;
-    std::vector<uint64_t> tile_null_count_offsets_;
-    uint64_t fragment_min_max_sum_null_count_offset_;
-    uint64_t processed_conditions_offsets_;
-  };
-
-  /** Keeps track of which metadata is loaded. */
-  struct LoadedMetadata {
-    bool footer_ = false;
-    bool rtree_ = false;
-    std::vector<bool> tile_offsets_;
-    std::vector<bool> tile_var_offsets_;
-    std::vector<bool> tile_var_sizes_;
-    std::vector<bool> tile_validity_offsets_;
-    std::vector<bool> tile_min_;
-    std::vector<bool> tile_max_;
-    std::vector<bool> tile_sum_;
-    std::vector<bool> tile_null_count_;
-    bool fragment_min_max_sum_null_count_ = false;
-    bool processed_conditions_ = false;
-  };
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

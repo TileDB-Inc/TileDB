@@ -891,6 +891,21 @@ struct SingleCoord {
 }
 
 struct FragmentMetadata {
+# TODO documentation
+  struct GenericTileOffsets {
+      rtree @0 :UInt64;
+      tileOffsets @1 :List(UInt64);
+      tileVarOffsets @2 :List(UInt64);
+      tileVarSizes @3 :List(UInt64);
+      tileValidityOffsets @4 :List(UInt64);
+      tileMinOffsets @5 :List(UInt64);
+      tileMaxOffsets @6 :List(UInt64);
+      tileSumOffsets @7 :List(UInt64);
+      tileNullCountOffsets @8 :List(UInt64);
+      fragmentMinMaxSumNullCountOffset @9 :UInt64;
+      processedConditionsOffsets @10 :UInt64;
+  }
+
   fileSizes @0 :List(UInt64);
   # The size of each attribute file
 
@@ -974,6 +989,9 @@ struct FragmentMetadata {
 
   hasConsolidatedFooter @27 :Bool;
   # if the fragment metadata footer appears in a consolidated file
+
+  gtOffsets @28 :GenericTileOffsets;
+  # TODO
 }
 
 struct MultiPartUploadState {
