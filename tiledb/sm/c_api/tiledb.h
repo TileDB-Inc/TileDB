@@ -524,6 +524,9 @@ typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 /** A group object. */
 typedef struct tiledb_group_t tiledb_group_t;
 
+/** A consolidation plan object. */
+typedef struct tiledb_consolidation_plan_t tiledb_consolidation_plan_t;
+
 /* ********************************* */
 /*              BUFFER               */
 /* ********************************* */

@@ -244,6 +244,7 @@ void DeletesFx::write_sparse(
   // Close array.
   array->close();
 }
+
 void DeletesFx::write_sparse_v11(uint64_t timestamp) {
   // Prepare cell buffers.
   std::vector<int> buffer_a1{0, 1, 2, 3};
