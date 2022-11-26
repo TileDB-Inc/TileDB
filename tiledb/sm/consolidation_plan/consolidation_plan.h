@@ -137,7 +137,7 @@ class ConsolidationPlan {
     /** Constructs a plan object using a single fragment index. */
     PlanNode(shared_ptr<Array> array, unsigned frag_idx)
         : array_(array)
-        , fragment_indexes_(frag_idx)
+        , fragment_indexes_({frag_idx})
         , combined_non_empty_domain_(
               array->fragment_metadata()[frag_idx]->non_empty_domain())
         , fragment_size_(
@@ -147,6 +147,14 @@ class ConsolidationPlan {
     /* ********************************* */
     /*               API                 */
     /* ********************************* */
+
+    /** @return Combined NEDs. */
+    NDRange get_combined_ned(PlanNode& other) {
+      auto combined_ned = combined_non_empty_domain_;
+      array_->array_schema_latest().domain().expand_ndrange(
+          other.combined_non_empty_domain_, &combined_ned);
+      return combined_ned;
+    }
 
     /** Combined two plan nodes. */
     void combine(PlanNode& other) {
@@ -163,6 +171,12 @@ class ConsolidationPlan {
     bool overlap(PlanNode& other) const {
       return array_->array_schema_latest().domain().overlap(
           combined_non_empty_domain_, other.combined_non_empty_domain_);
+    }
+
+    /** @return `true` node has overlapping domains with the other NDRange. */
+    bool overlap(NDRange& other) const {
+      return array_->array_schema_latest().domain().overlap(
+          combined_non_empty_domain_, other);
     }
 
     /** @return `true` if a fragment is node is combined, `false` if not. */
@@ -214,6 +228,9 @@ class ConsolidationPlan {
 
   /** Fragment uris, per node. */
   std::vector<std::vector<std::string>> fragment_uris_;
+
+  /** Desired fragment size. */
+  storage_size_t desired_fragment_size_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

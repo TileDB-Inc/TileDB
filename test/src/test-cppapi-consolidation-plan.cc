@@ -56,7 +56,7 @@ struct CppConsolidationPlanFx {
 
   // Functions.
   void create_sparse_array(bool allows_dups = false, bool encrypt = false);
-  void write_sparse(
+  std::string write_sparse(
       std::vector<int> a1,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
@@ -85,8 +85,8 @@ CppConsolidationPlanFx::~CppConsolidationPlanFx() {
 void CppConsolidationPlanFx::create_sparse_array(
     bool allows_dups, bool encrypt) {
   // Create dimensions.
-  auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 4}}, 2);
-  auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 4}}, 2);
+  auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 999}}, 2);
+  auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 999}}, 2);
 
   // Create domain.
   Domain domain(ctx_);
@@ -119,7 +119,7 @@ void CppConsolidationPlanFx::create_sparse_array(
   }
 }
 
-void CppConsolidationPlanFx::write_sparse(
+std::string CppConsolidationPlanFx::write_sparse(
     std::vector<int> a1,
     std::vector<uint64_t> dim1,
     std::vector<uint64_t> dim2,
@@ -153,6 +153,8 @@ void CppConsolidationPlanFx::write_sparse(
 
   // Close array.
   array->close();
+
+  return query.fragment_uri(0);
 }
 
 void CppConsolidationPlanFx::remove_array(const std::string& array_name) {
@@ -213,6 +215,225 @@ TEST_CASE_METHOD(
   Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
   ConsolidationPlan consolidation_plan(ctx_, array, 1024 * 1024);
 
-  // Check dump
-  CHECK(consolidation_plan.dump() == "Not implemented\n");
+  // Check dump.
+  CHECK(consolidation_plan.dump() == "{\n  \"nodes\": [\n  ]\n}\n");
+}
+
+TEST_CASE_METHOD(
+    CppConsolidationPlanFx,
+    "C++ API: Consolidation plan, de-interleave 1",
+    "[cppapi][consolidation_plan][de-interleave-1]") {
+  create_sparse_array();
+
+  // Write one fragment with NED [1, 4][1, 4] and one with NED [2, 6][2, 6].
+  // Since they intersect, they should be batched together.
+  auto uri1 = write_sparse({0, 1}, {1, 4}, {1, 4}, 1);
+  auto uri2 = write_sparse({2, 3}, {2, 6}, {2, 6}, 2);
+
+  // Create a consolidation plan with max fragment size of 1. That way, the
+  // two fragments above don't risk getting batched together when combining
+  // small fragments.
+  Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
+  ConsolidationPlan consolidation_plan(ctx_, array, 1);
+
+  // Validate the plan.
+  CHECK(consolidation_plan.num_nodes() == 1);
+  CHECK(consolidation_plan.num_fragments(0) == 2);
+  CHECK(consolidation_plan.fragment_uri(0, 0) == uri1);
+  CHECK(consolidation_plan.fragment_uri(0, 1) == uri2);
+}
+
+TEST_CASE_METHOD(
+    CppConsolidationPlanFx,
+    "C++ API: Consolidation plan, de-interleave 2",
+    "[cppapi][consolidation_plan][de-interleave-2]") {
+  create_sparse_array();
+
+  // Write one fragment with NED [1, 4][1, 4] and one with NED [2, 6][2, 6].
+  // Since they intersect, they should be batched together.
+  auto uri1 = write_sparse({0, 1}, {1, 4}, {1, 4}, 1);
+  auto uri2 = write_sparse({2, 3}, {2, 6}, {2, 6}, 2);
+
+  // Write one fragment with NED [10, 14][10, 14] and one with NED [12, 16][12,
+  // 16]. Since they intersect, they should be batched together.
+  auto uri3 = write_sparse({4, 5}, {10, 14}, {10, 14}, 3);
+  auto uri4 = write_sparse({6, 7}, {12, 16}, {12, 16}, 4);
+
+  // Create a consolidation plan with max fragment size of 1. That way, the
+  // two fragments above don't risk getting batched together when combining
+  // small fragments.
+  Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
+  ConsolidationPlan consolidation_plan(ctx_, array, 1);
+
+  // Validate the plan.
+  CHECK(consolidation_plan.num_nodes() == 2);
+  CHECK(consolidation_plan.num_fragments(0) == 2);
+  CHECK(consolidation_plan.fragment_uri(0, 0) == uri1);
+  CHECK(consolidation_plan.fragment_uri(0, 1) == uri2);
+  CHECK(consolidation_plan.fragment_uri(1, 0) == uri3);
+  CHECK(consolidation_plan.fragment_uri(1, 1) == uri4);
+}
+
+TEST_CASE_METHOD(
+    CppConsolidationPlanFx,
+    "C++ API: Consolidation plan, de-interleave 3",
+    "[cppapi][consolidation_plan][de-interleave-3]") {
+  create_sparse_array();
+
+  // Write one fragment with NED [1, 4][1, 4] and one with NED [4, 6][4, 6].
+  // Since they intersect, they should be batched together.
+  auto uri1 = write_sparse({0, 1}, {1, 4}, {1, 4}, 1);
+  auto uri2 = write_sparse({2, 3}, {4, 6}, {4, 6}, 2);
+
+  // Write one fragment with NED [1, 1][6, 6]. It doesn't intersect any of the
+  // original fragments but intersects the combination, so they should all get
+  // batched together.
+  auto uri3 = write_sparse({4, 5}, {4, 6}, {4, 6}, 3);
+
+  // Create a consolidation plan with max fragment size of 1. That way, the
+  // two fragments above don't risk getting batched together when combining
+  // small fragments.
+  Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
+  ConsolidationPlan consolidation_plan(ctx_, array, 1);
+
+  // Validate the plan.
+  CHECK(consolidation_plan.num_nodes() == 1);
+  CHECK(consolidation_plan.num_fragments(0) == 3);
+  CHECK(consolidation_plan.fragment_uri(0, 0) == uri1);
+  CHECK(consolidation_plan.fragment_uri(0, 1) == uri2);
+  CHECK(consolidation_plan.fragment_uri(0, 2) == uri3);
+}
+
+TEST_CASE_METHOD(
+    CppConsolidationPlanFx,
+    "C++ API: Consolidation plan, split 1",
+    "[cppapi][consolidation_plan][split-1]") {
+  create_sparse_array(true);
+
+  // Write one large frarment of ~200k and one small of roughly 4k.
+  std::vector<int> a1(10 * 1024);
+  std::vector<uint64_t> d(10 * 1024);
+  std::fill(a1.begin(), a1.end(), 1);
+  std::fill(d.begin(), d.end(), 1);
+  auto uri1 = write_sparse(a1, d, d, 1);
+  auto uri2 = write_sparse({0, 1}, {2, 4}, {2, 4}, 2);
+
+  // Create a consolidation plan with max fragment size of 10k. That way, only
+  // the first fragment needs to be split.
+  Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
+  ConsolidationPlan consolidation_plan(ctx_, array, 10 * 1024);
+
+  // Validate the plan.
+  CHECK(consolidation_plan.num_nodes() == 1);
+  CHECK(consolidation_plan.num_fragments(0) == 1);
+  CHECK(consolidation_plan.fragment_uri(0, 0) == uri1);
+}
+
+TEST_CASE_METHOD(
+    CppConsolidationPlanFx,
+    "C++ API: Consolidation plan, combine small 1",
+    "[cppapi][consolidation_plan][combine-small-1]") {
+  create_sparse_array(true);
+
+  // Write one fragment with NED [1, 2][1, 2] and one with NED [3, 4][3, 4].
+  auto uri1 = write_sparse({0, 1}, {1, 2}, {1, 2}, 1);
+  auto uri2 = write_sparse({2, 3}, {3, 4}, {3, 4}, 2);
+
+  // Create a consolidation plan with max fragment size of 100k. That way, the
+  // smaller fragments are considered for combining.
+  Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
+  ConsolidationPlan consolidation_plan(ctx_, array, 100 * 1024);
+
+  // Validate the plan.
+  CHECK(consolidation_plan.num_nodes() == 1);
+  CHECK(consolidation_plan.num_fragments(0) == 2);
+  CHECK(consolidation_plan.fragment_uri(0, 0) == uri1);
+  CHECK(consolidation_plan.fragment_uri(0, 1) == uri2);
+}
+
+TEST_CASE_METHOD(
+    CppConsolidationPlanFx,
+    "C++ API: Consolidation plan, combine small 2",
+    "[cppapi][consolidation_plan][combine-small-2]") {
+  create_sparse_array(true);
+
+  // Write one fragment with NED [1, 2][1, 2] and one with NED [5, 6][5, 6]. In
+  // the middle at [3, 3], we add a large fragment which will prevent
+  // consolidation.
+  auto uri1 = write_sparse({0, 1}, {1, 2}, {1, 2}, 1);
+
+  std::vector<int> a1(10 * 1024);
+  std::vector<uint64_t> d(10 * 1024);
+  std::fill(a1.begin(), a1.end(), 2);
+  std::fill(d.begin(), d.end(), 3);
+  auto uri2 = write_sparse(a1, d, d, 2);
+
+  auto uri3 = write_sparse({3, 4}, {5, 6}, {5, 6}, 3);
+
+  // Create a consolidation plan with max fragment size of 100k. That way, the
+  // smaller fragments are considered for combining.
+  Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
+  ConsolidationPlan consolidation_plan(ctx_, array, 100 * 1024);
+
+  // Validate the plan.
+  CHECK(consolidation_plan.num_nodes() == 1);
+  CHECK(consolidation_plan.num_fragments(0) == 1);
+  CHECK(consolidation_plan.fragment_uri(0, 0) == uri2);
+}
+
+TEST_CASE_METHOD(
+    CppConsolidationPlanFx,
+    "C++ API: Consolidation plan, complex 1",
+    "[cppapi][consolidation_plan][complex 1]") {
+  create_sparse_array(true);
+
+  // Write one fragment with NED [11, 14][11, 14] and one with NED [14, 16][14,
+  // 16]. Since they intersect, they should be batched together.
+  auto uri1 = write_sparse({0, 1}, {11, 14}, {11, 14}, 1);
+  auto uri2 = write_sparse({2, 3}, {14, 16}, {14, 16}, 2);
+
+  // Write one fragment with NED [11, 11][16, 16]. It doesn't intersect any of
+  // the original fragments but intersects the combination, so they should all
+  // get batched together. Make this fragment big so the first three fragments
+  // together won't be considered a small fragment later.
+  std::vector<int> a1(10 * 1024);
+  std::vector<uint64_t> d1(10 * 1024);
+  std::vector<uint64_t> d2(10 * 1024);
+  std::fill(a1.begin(), a1.end(), 4);
+  std::fill(d1.begin(), d1.end(), 11);
+  std::fill(d2.begin(), d2.end(), 16);
+  auto uri3 = write_sparse(a1, d1, d2, 3);
+
+  // Write one small fragment with NED [1, 1][1, 1] It will not be batched with
+  // any others as it would intersect others.
+  auto uri4 = write_sparse({5, 6}, {1, 1}, {1, 1}, 4);
+
+  // Write one large fragment with NED [2, 2][2, 2]. It should get split by
+  // itself.
+  std::fill(a1.begin(), a1.end(), 7);
+  std::fill(d1.begin(), d1.end(), 2);
+  std::fill(d2.begin(), d2.end(), 2);
+  auto uri5 = write_sparse(a1, d1, d2, 5);
+
+  // Write two small fragment with NED [20, 20][20, 20] and [30, 30][30, 30].
+  // They should get batched together.
+  auto uri6 = write_sparse({8, 9}, {20, 20}, {20, 20}, 6);
+  auto uri7 = write_sparse({10, 11}, {30, 30}, {30, 30}, 7);
+
+  // Create a consolidation plan with max fragment size of 100k. That way, the
+  // smaller fragments are considered for combining.
+  Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
+  ConsolidationPlan consolidation_plan(ctx_, array, 100 * 1024);
+
+  // Validate the plan.
+  CHECK(consolidation_plan.num_nodes() == 3);
+  CHECK(consolidation_plan.num_fragments(0) == 3);
+  CHECK(consolidation_plan.num_fragments(1) == 2);
+  CHECK(consolidation_plan.num_fragments(2) == 1);
+  CHECK(consolidation_plan.fragment_uri(0, 0) == uri1);
+  CHECK(consolidation_plan.fragment_uri(0, 1) == uri2);
+  CHECK(consolidation_plan.fragment_uri(0, 2) == uri3);
+  CHECK(consolidation_plan.fragment_uri(1, 0) == uri6);
+  CHECK(consolidation_plan.fragment_uri(1, 1) == uri7);
+  CHECK(consolidation_plan.fragment_uri(2, 0) == uri5);
 }

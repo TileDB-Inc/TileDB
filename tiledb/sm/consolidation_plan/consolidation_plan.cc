@@ -41,8 +41,9 @@ using namespace tiledb::common;
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ConsolidationPlan::ConsolidationPlan(shared_ptr<Array> array, uint64_t)
-    : num_nodes_(0) {
+ConsolidationPlan::ConsolidationPlan(
+    shared_ptr<Array> array, uint64_t fragment_size)
+    : desired_fragment_size_(fragment_size) {
   generate(array);
 }
 
@@ -53,12 +54,144 @@ ConsolidationPlan::~ConsolidationPlan() = default;
 /* ********************************* */
 
 std::string ConsolidationPlan::dump() const {
-  return std::string("Not implemented\n");
+  std::string ret = "{\n  \"nodes\": [\n";
+  for (uint64_t n = 0; n < fragment_uris_.size(); n++) {
+    auto node = fragment_uris_[n];
+    ret += "    {\n      \"uris\" : [\n";
+    for (uint64_t u = 0; u < node.size(); u++) {
+      auto uri = node[u];
+      ret += "        {\n";
+      ret += "           \"uri\" : " + uri + "\n";
+      if (u != node.size() - 1) {
+        ret += "        },\n";
+      } else {
+        ret += "        }\n";
+      }
+    }
+
+    if (n != fragment_uris_.size() - 1) {
+      ret += "      ]\n    },\n";
+    } else {
+      ret += "      ]\n    }\n";
+    }
+  }
+
+  ret += "  ]\n}\n";
+  return ret;
 }
 
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
 
-void ConsolidationPlan::generate(shared_ptr<Array>) {
+void ConsolidationPlan::generate(shared_ptr<Array> array) {
+  // Start with the plan being a single fragment per node.
+  std::list<PlanNode> plan;
+  for (uint64_t idx = 0; idx < array->fragment_metadata().size(); idx++) {
+    plan.emplace_back(array, idx);
+  }
+
+  // First we combine all fragments that have overlap so they get disantangled.
+  // Process until we don't find any overlapping fragments.
+  bool overlap_found = true;
+  while (overlap_found) {
+    overlap_found = false;
+
+    // Go through all nodes.
+    auto current = plan.begin();
+    while (current != plan.end()) {
+      // Compare to other nodes.
+      auto other = current;
+      other++;
+      while (other != plan.end()) {
+        // If there is overlap, combine the nodes.
+        if (current->overlap(*other)) {
+          overlap_found = true;
+          current->combine(*other);
+          auto to_delete = other;
+          other++;
+          plan.erase(to_delete);
+        } else {
+          other++;
+        }
+      }
+
+      current++;
+    }
+  }
+
+  // Second, we try to combine smaller fragments. The result should not
+  // intersect any other fragments. Process until we don't find any small nodes
+  // to combine.
+  bool combination_found = true;
+  uint64_t small_size = desired_fragment_size_ / 10;
+  while (combination_found) {
+    combination_found = false;
+
+    // Go through all small nodes.
+    auto current = plan.begin();
+    while (current != plan.end()) {
+      if (current->size() <= small_size) {
+        // Compare to all other small nodes.
+        auto other = current;
+        other++;
+        while (other != plan.end()) {
+          if (other->size() <= small_size) {
+            // Get the combined NED.
+            auto combined_ned = current->get_combined_ned(*other);
+
+            // See if there is any overlap with any other nodes.
+            bool overlap_found = false;
+            auto to_check_overlap = plan.begin();
+            while (to_check_overlap != plan.end()) {
+              if (to_check_overlap != current && to_check_overlap != other) {
+                if (to_check_overlap->overlap(combined_ned)) {
+                  overlap_found = true;
+                  break;
+                }
+              }
+
+              to_check_overlap++;
+            }
+
+            // If there is no overlap with any other fragments, combine the
+            // nodes.
+            if (!overlap_found) {
+              combination_found = true;
+              current->combine(*other);
+              auto to_delete = other;
+              other++;
+              plan.erase(to_delete);
+            } else {
+              other++;
+            }
+          } else {
+            other++;
+          }
+        }
+      }
+
+      current++;
+    }
+  }
+
+  // Move the combined nodes to the beginning of the list.
+  auto start = std::partition(
+      plan.begin(), plan.end(), [&](const auto& el) { return el.combined(); });
+
+  // Move single nodes that we can split to the beginning of the list.
+  start = std::partition(start, plan.end(), [&](const auto& el) {
+    return el.size() > 2 * desired_fragment_size_;
+  });
+
+  // Erase the nodes that are not included in the plan.
+  plan.erase(start, plan.end());
+
+  // Fill in the data for the plan.
+  num_nodes_ = plan.size();
+  fragment_uris_.reserve(num_nodes_);
+
+  for (auto& node : plan) {
+    fragment_uris_.emplace_back(node.uris());
+  }
 }

@@ -249,7 +249,7 @@ TEST_CASE_METHOD(
       ctx_.ptr().get(), consolidation_plan, &str);
 
   std::string plan(str);
-  CHECK(plan == "Not implemented\n");
+  CHECK(plan == "{\n  \"nodes\": [\n  ]\n}\n");
 
   tiledb_consolidation_plan_free_json_str(&str);
   tiledb_consolidation_plan_free(&consolidation_plan);
