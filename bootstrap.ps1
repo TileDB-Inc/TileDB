@@ -20,6 +20,9 @@ Semicolon separated list to binary dependencies.
 Optionally specify the CMake generator string, e.g. "Visual Studio 15
 2017". Check 'cmake --help' for a list of supported generators.
 
+.PARAMETER CMakeGenerator
+Optionally specify extra arguments to pass to the CMake command line.
+
 .PARAMETER EnableDebug
 Enable Debug build.
 
@@ -91,6 +94,7 @@ Param(
     [string]$Prefix,
     [string]$Dependency,
     [string]$CMakeGenerator,
+    [switch]$CMakeExtraArgs,
     [switch]$EnableAssert,
     [switch]$EnableDebug,
     [switch]$EnableReleaseSymbols,
@@ -246,6 +250,12 @@ if ($PSBoundParameters.ContainsKey("CMakeGenerator")) {
     $GeneratorFlag = "-G""$CMakeGenerator"""
 }
 
+# Set CMake generator type.
+$ExtraArgsFlag = ""
+if ($PSBoundParameters.ContainsKey("CMakeExtraArgs")) {
+    $ExtraArgsFlag = "$CMakeExtraArgs"
+}
+
 # Enforce out-of-source build
 if ($SourceDirectory -eq $BinaryDirectory) {
     Throw "Cannot build the project in the source directory! Out-of-source build is enforced!"
@@ -261,7 +271,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_ABSEIL=$BuildAbseil -DTILEDB_CRC32=$BuildCrc32 $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_ABSEIL=$BuildAbseil -DTILEDB_CRC32=$BuildCrc32 $GeneratorFlag $ExtraArgsFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"
