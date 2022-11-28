@@ -53,6 +53,7 @@
 #else
 #include "tiledb/sm/filesystem/posix.h"
 #endif
+#include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -2529,7 +2530,7 @@ TEST_CASE_METHOD(
   auto st = tiledb::sm::serialization::array_deserialize(
       array->array_.get(),
       tiledb::sm::SerializationType::CAPNP,
-      *buff->buffer_);
+      buff->buffer());
   REQUIRE(st.ok());
 
   // 6. Server: Close array and clean up

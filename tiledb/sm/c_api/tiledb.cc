@@ -4304,10 +4304,11 @@ int32_t tiledb_deserialize_query_and_array(
     const char* array_uri,
     tiledb_query_t** query) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR) {
+  if (sanity_check(ctx) == TILEDB_ERR || query == nullptr) {
     return TILEDB_ERR;
   }
+
+  api::ensure_buffer_is_valid(buffer);
 
   // Create array struct
   auto array = new (std::nothrow) tiledb_array_t;
@@ -4345,15 +4346,11 @@ int32_t tiledb_deserialize_query_and_array(
   }
 
   // First deserialize the array included in the query
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          tiledb::sm::serialization::array_from_query_deserialize(
-              *buffer->buffer_,
-              (tiledb::sm::SerializationType)serialize_type,
-              *array->array_,
-              ctx->storage_manager()))) {
-    return TILEDB_ERR;
-  }
+  throw_if_not_ok(tiledb::sm::serialization::array_from_query_deserialize(
+      buffer->buffer(),
+      (tiledb::sm::SerializationType)serialize_type,
+      *array->array_,
+      ctx->storage_manager()));
 
   // Create query struct
   *query = new (std::nothrow) tiledb_query_t;
@@ -4378,16 +4375,13 @@ int32_t tiledb_deserialize_query_and_array(
     return TILEDB_OOM;
   }
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          tiledb::sm::serialization::query_deserialize(
-              *buffer->buffer_,
-              (tiledb::sm::SerializationType)serialize_type,
-              client_side == 1,
-              nullptr,
-              (*query)->query_,
-              ctx->storage_manager()->compute_tp())))
-    return TILEDB_ERR;
+  throw_if_not_ok(tiledb::sm::serialization::query_deserialize(
+      buffer->buffer(),
+      (tiledb::sm::SerializationType)serialize_type,
+      client_side == 1,
+      nullptr,
+      (*query)->query_,
+      ctx->storage_manager()->compute_tp()));
 
   return TILEDB_OK;
 }
