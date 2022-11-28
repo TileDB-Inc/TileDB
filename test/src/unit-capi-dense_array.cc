@@ -162,8 +162,10 @@ struct DenseArrayFx {
    * step, if query serialization is enabled. The added serialization steps
    * are designed to closely mimic the behavior of the REST server.
    */
-  int submit_and_finalize_query_wrapper(
-      const std::string& array_uri, tiledb_query_t** query);
+  int submit_query_wrapper(
+      const std::string& array_uri,
+      tiledb_query_t** query,
+      bool finalize = true);
 
   // TODO: add docstring
   void allocate_query_buffers_server_side(tiledb_query_t* query);
@@ -557,7 +559,7 @@ int* DenseArrayFx::read_dense_array_2D(
   CHECK(!has_results);
 
   // Read from array
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   REQUIRE(rc == TILEDB_OK);
 
   // Now the query must have results
@@ -636,7 +638,7 @@ void DenseArrayFx::write_dense_vector_mixed(const std::string& array_name) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query_1);
+  rc = submit_query_wrapper(array_name, &query_1);
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query_1);
 
@@ -651,7 +653,7 @@ void DenseArrayFx::write_dense_vector_mixed(const std::string& array_name) {
   rc = tiledb_query_set_data_buffer(
       ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query_2);
+  rc = submit_query_wrapper(array_name, &query_2);
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query_2);
 
@@ -666,7 +668,7 @@ void DenseArrayFx::write_dense_vector_mixed(const std::string& array_name) {
   rc = tiledb_query_set_data_buffer(
       ctx_, query_3, "d", coords_3, &coords_3_size);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query_3);
+  rc = submit_query_wrapper(array_name, &query_3);
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query_3);
 
@@ -682,7 +684,7 @@ void DenseArrayFx::write_dense_vector_mixed(const std::string& array_name) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query_4);
+  rc = submit_query_wrapper(array_name, &query_4);
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query_4);
 
@@ -830,7 +832,7 @@ void DenseArrayFx::write_dense_subarray_2D(
   REQUIRE_SAFE(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   REQUIRE_SAFE(rc == TILEDB_OK);
 
   // Close array
@@ -1237,7 +1239,7 @@ void DenseArrayFx::check_invalid_cell_num_in_dense_writes(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   REQUIRE(rc == TILEDB_ERR);
   tiledb_query_free(&query);
 
@@ -1730,7 +1732,7 @@ void DenseArrayFx::write_dense_array(const std::string& array_name) {
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -1804,7 +1806,7 @@ void DenseArrayFx::write_dense_array_missing_attributes(
   // Observe we omit setting buffer for one of the attributes (a3)
 
   // Submit query - this should fail
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_ERR);
 
   // Close array
@@ -1865,7 +1867,7 @@ void DenseArrayFx::write_partial_dense_array(const std::string& array_name) {
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -1923,7 +1925,7 @@ void DenseArrayFx::write_large_dense_array(const std::string& array_name) {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -1989,7 +1991,7 @@ void DenseArrayFx::read_dense_vector_mixed(const std::string& array_name) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2099,7 +2101,7 @@ void DenseArrayFx::read_dense_array_with_coords_full_global(
   }
 
   // Submit query
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2241,7 +2243,7 @@ void DenseArrayFx::read_dense_array_with_coords_full_row(
   }
 
   // Submit query
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2381,7 +2383,7 @@ void DenseArrayFx::read_dense_array_with_coords_full_col(
   }
 
   // Submit query
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2523,7 +2525,7 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_global(
   }
 
   // Submit query
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2663,7 +2665,7 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_row(
   }
 
   // Submit query
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2803,7 +2805,7 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
   }
 
   // Submit query
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2886,7 +2888,7 @@ void DenseArrayFx::read_large_dense_array(
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -3051,16 +3053,21 @@ int DenseArrayFx::array_open_wrapper(
   return rc;
 }
 
-int DenseArrayFx::submit_and_finalize_query_wrapper(
-    const std::string& array_uri, tiledb_query_t** query) {
+int DenseArrayFx::submit_query_wrapper(
+    const std::string& array_uri, tiledb_query_t** query, bool finalize) {
   int rc = 0;
 #ifndef TILEDB_SERIALIZATION
   rc = tiledb_query_submit(ctx_, *query);
   if (rc != TILEDB_OK) {
     return rc;
   }
-  // Finalize query
-  return tiledb_query_finalize(ctx_, *query);
+
+  if (finalize) {
+    // Finalize query
+    rc = tiledb_query_finalize(ctx_, *query);
+  }
+
+  return rc;
 #endif
 
   if (!serialize_query_) {
@@ -3068,12 +3075,16 @@ int DenseArrayFx::submit_and_finalize_query_wrapper(
     if (rc != TILEDB_OK) {
       return rc;
     }
-    // Finalize query
-    rc = tiledb_query_finalize(ctx_, *query);
+
+    if (finalize) {
+      // Finalize query
+      rc = tiledb_query_finalize(ctx_, *query);
+    }
+
     return rc;
   }
 
-  // submit_and_finalize_query_wrapper() is being called via
+  // submit_query_wrapper() is being called via
   // check_simultaneous_writes() which means these catch framework tests need
   // thread protection as 'simultaneous' involves multiple threads.
 
@@ -3090,8 +3101,8 @@ int DenseArrayFx::submit_and_finalize_query_wrapper(
   REQUIRE_SAFE(rc == TILEDB_OK);
 
   // This is a feature of the server, not a bug, quoting from query_from_capnp:
-  // On reads, just set null pointers with accurate size so that the
-  // server can introspect and allocate properly sized buffers separately.
+  // "On reads, just set null pointers with accurate size so that the
+  // server can introspect and allocate properly sized buffers separately."
   // Empty buffers will naturally break query_submit so to go on in test we
   // need to allocate here as if we were the server.
   allocate_query_buffers_server_side(server_deser_query);
@@ -3102,17 +3113,30 @@ int DenseArrayFx::submit_and_finalize_query_wrapper(
   if (rc != TILEDB_OK) {
     return rc;
   }
-  rc = tiledb_query_finalize(ctx_, server_deser_query);
-  if (rc != TILEDB_OK) {
-    return rc;
-  }
 
   // TODO: remove when tests pass
-  void* a;
-  uint64_t* a_size;
-  tiledb_query_get_buffer(ctx_, server_deser_query, "a", &a, &a_size);
-  auto res0 = ((int*)a)[0];
-  (void)res0;
+  // void* a1;
+  // uint64_t* a1_size;
+  // tiledb_query_get_buffer(ctx_, server_deser_query, "a3", &a1, &a1_size);
+  // auto res0 = ((int*)a1)[0];
+  // auto res1 = ((int*)a1)[1];
+  // auto res2 = ((int*)a1)[14];
+  // auto res3 = ((int*)a1)[15];
+  // (void)res0;
+  // (void)res1;
+  // (void)res2;
+  // (void)res3;
+
+  if (finalize) {
+    tiledb_query_status_t status;
+    rc = tiledb_query_get_status(ctx_, server_deser_query, &status);
+    CHECK(status == TILEDB_COMPLETED);
+
+    rc = tiledb_query_finalize(ctx_, server_deser_query);
+    if (rc != TILEDB_OK) {
+      return rc;
+    }
+  }
 
   // Serialize the new query and "send it over the network" (server-side)
   // 3. Server -> Client : Send query response
@@ -3120,6 +3144,16 @@ int DenseArrayFx::submit_and_finalize_query_wrapper(
   rc = tiledb_query_v2_serialize(
       ctx_, array_uri.c_str(), serialized, false, server_deser_query, query);
   REQUIRE_SAFE(rc == TILEDB_OK);
+
+  // tiledb_query_get_buffer(ctx_, *query, "a3", &a1, &a1_size);
+  // res0 = ((int*)a1)[0];
+  // res1 = ((int*)a1)[1];
+  // res2 = ((int*)a1)[14];
+  // res3 = ((int*)a1)[15];
+  // (void)res0;
+  // (void)res1;
+  // (void)res2;
+  // (void)res3;
 
   // Clean up.
   tiledb_query_free(&server_deser_query);
@@ -3428,13 +3462,14 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_ERR);
 
   // Check no buffers set
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_ERR);
 
   // Issue an incomplete query
   rc = tiledb_query_set_data_buffer(ctx_, query, "a1", a1, &a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  // This is an incomplete query, do not finalize
+  rc = submit_query_wrapper(array_name, &query, false);
   CHECK(rc == TILEDB_OK);
 
   // Check that setting a new attribute for an incomplete query fails
@@ -3524,7 +3559,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_ERR);
 
   // Close array
@@ -3532,7 +3567,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Submitting the query after closing an array should fail
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_ERR);
 
   // Clean up
@@ -3592,7 +3627,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_1, &subarray[0]);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query_1);
+  rc = submit_query_wrapper(array_name, &query_1);
   CHECK(rc == TILEDB_OK);
 
   // The read query should not see the second fragment
@@ -3614,7 +3649,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query_2, &subarray[0]);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query_2);
+  rc = submit_query_wrapper(array_name, &query_2);
   CHECK(rc == TILEDB_OK);
 
   // The new query see the updated array
@@ -3730,7 +3765,7 @@ TEST_CASE_METHOD(
   uint64_t subarray[] = {2, 3, 1, 2};
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -3770,7 +3805,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], read_a1, &read_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -3821,7 +3856,7 @@ TEST_CASE_METHOD(
   uint64_t subarray[] = {2, 3, 2, 3};
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -3861,7 +3896,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], read_a1, &read_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -3910,7 +3945,7 @@ TEST_CASE_METHOD(
   uint64_t subarray_1[] = {1, 2, 1, 4};
   rc = tiledb_query_set_subarray(ctx_, query, subarray_1);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -3934,7 +3969,7 @@ TEST_CASE_METHOD(
   uint64_t subarray_2[] = {2, 3, 2, 3};
   rc = tiledb_query_set_subarray(ctx_, query, subarray_2);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -3973,7 +4008,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a1", read_a, &read_a_size);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -4109,7 +4144,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_layout(ctx_, wq1, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
   if (!serialize_query_) {
-    rc = submit_and_finalize_query_wrapper(array_name, &wq1);
+    rc = submit_query_wrapper(array_name, &wq1);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_finalize(ctx_, wq1);
     REQUIRE(rc == TILEDB_OK);
@@ -4141,7 +4176,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, wq2, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &wq2);
+  rc = submit_query_wrapper(array_name, &wq2);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, wq2);
   REQUIRE(rc == TILEDB_OK);
@@ -4170,7 +4205,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, wq3, TILEDB_COL_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &wq3);
+  rc = submit_query_wrapper(array_name, &wq3);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, wq3);
   REQUIRE(rc == TILEDB_OK);
@@ -4200,7 +4235,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
@@ -4259,9 +4294,9 @@ TEST_CASE_METHOD(
 
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
-
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+
+  rc = array_open_wrapper(TILEDB_READ, &array);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_t* query;
@@ -4286,7 +4321,7 @@ TEST_CASE_METHOD(
   tiledb_query_status_t status;
   int c_a1[] = {0, 1, 4, 5, 2, 3, 6, 7, 8, 9, 12, 13, 10, 11, 14, 15};
   for (uint64_t i = 0; i < 16; i++) {
-    rc = submit_and_finalize_query_wrapper(array_name, &query);
+    rc = submit_query_wrapper(array_name, &query, false);
     CHECK(rc == TILEDB_OK);
 
     rc = tiledb_query_get_status(ctx_, query, &status);
@@ -4347,7 +4382,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a1", a1, &a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -4415,7 +4450,7 @@ TEST_CASE_METHOD(
   uint64_t subarray[] = {1, 3, 3, 4};
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query);
 
@@ -4442,7 +4477,7 @@ TEST_CASE_METHOD(
   uint64_t subarray_2[] = {4, 5, 1, 4};
   rc = tiledb_query_set_subarray(ctx_, query, subarray_2);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -4478,7 +4513,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[1], read_a2, &read_a2_size);
   CHECK(rc == TILEDB_OK);
-  rc = submit_and_finalize_query_wrapper(array_name, &query);
+  rc = submit_query_wrapper(array_name, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
