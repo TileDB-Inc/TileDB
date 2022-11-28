@@ -443,11 +443,13 @@ class Array {
   /** Returns the memory tracker. */
   MemoryTracker* memory_tracker();
 
-  /** Checks the config to see if non empty domain should be serialized on array
+  /**
+   * Checks the config to see if non empty domain should be serialized on array
    * open. */
   bool serialize_non_empty_domain() const;
 
-  /** Checks the config to see if metadata should be serialized on array open.
+  /**
+   * Checks the config to see if metadata should be serialized on array open.
    */
   bool serialize_metadata() const;
 
@@ -458,6 +460,12 @@ class Array {
   inline void set_query_type(QueryType query_type) {
     query_type_ = query_type;
   }
+
+  /**
+   * Returns a map of the computed average cell size for var size
+   * dimensions/attributes.
+   */
+  std::unordered_map<std::string, uint64_t> get_average_var_cell_sizes();
 
  private:
   /* ********************************* */
