@@ -2319,8 +2319,8 @@ Status Query::set_subarray_unsafe(const Subarray& subarray) {
 }
 
 void Query::set_subarray(const tiledb::sm::Subarray& subarray) {
-  // As implemented, this silently fails for queries that are initilized but not
-  // completed. It is unclear if the comment in the `if` statement below is
+  // As implemented, this silently fails for queries that are initialized but
+  // not completed. It is unclear if the comment in the `if` statement below is
   // correct or relevent anymore.
   if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED &&
       status_ != tiledb::sm::QueryStatus::COMPLETED) {
