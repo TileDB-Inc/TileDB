@@ -133,6 +133,78 @@ struct FixedOrderedAttributeArrayFixture {
   }
 
   /**
+   * Write multiple fragments in global order
+   *
+   * @param min_index Lower bound for range to write data to.
+   * @param max_index Upper bound for range to write data to.
+   * @param data Data to write to the attribute.
+   * @param nvalues Number of values to write for each submission.
+   * @param valid If ``true`` the data is valid. If ``false``, the final
+   *     submission should fail.
+   */
+  void global_order_write(
+      uint32_t min_index,
+      uint32_t max_index,
+      std::vector<T>& data,
+      const std::vector<uint32_t>& nvalues_per_submit,
+      bool valid = true) {
+    tiledb_array_t* array;
+    require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
+    require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_WRITE));
+
+    // Create subarray.
+    tiledb_subarray_t* subarray;
+    require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
+    require_tiledb_ok(tiledb_subarray_add_range(
+        ctx, subarray, 0, &min_index, &max_index, nullptr));
+
+    // Create write query.
+    tiledb_query_t* query;
+    require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query));
+    require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER));
+    require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
+
+    // Submit query.
+    uint32_t offset{0};
+    auto N = nvalues_per_submit.size();
+    for (uint32_t index = 0; index < N; ++index) {
+      // Define sizes for setting buffers.
+      uint64_t attr_data_size{nvalues_per_submit[index] * sizeof(T)};
+      require_tiledb_ok(tiledb_query_set_data_buffer(
+          ctx, query, "a", &data[offset], &attr_data_size));
+
+      if (valid || index < N - 1) {
+        // Submit write query and verify it is successful.
+        check_tiledb_ok(tiledb_query_submit(ctx, query));
+        offset += nvalues_per_submit[index];
+      } else {
+        // Submit write query and verify if fails.
+        require_tiledb_error_with(
+            tiledb_query_submit(ctx, query),
+            "WriterBase: The data for attribute 'a' is not in the expected "
+            "order.");
+
+        // Clean-up query and return;
+        tiledb_subarray_free(&subarray);
+        tiledb_query_free(&query);
+        tiledb_array_free(&array);
+        return;
+      }
+    }
+
+    // Finalize query.
+    check_tiledb_ok(tiledb_query_finalize(ctx, query));
+    tiledb_query_status_t query_status;
+    check_tiledb_ok(tiledb_query_get_status(ctx, query, &query_status));
+    CHECK(query_status == TILEDB_COMPLETED);
+
+    // Clean-up.
+    tiledb_subarray_free(&subarray);
+    tiledb_query_free(&query);
+    tiledb_array_free(&array);
+  }
+
+  /**
    * Write data to the ordered attribute.
    *
    * @param min_index Lower bound for range to write data to.
@@ -264,6 +336,53 @@ TEMPLATE_TEST_CASE_SIG(
 }
 
 TEMPLATE_TEST_CASE_SIG(
+    "Global write to increasing attributes with fixed length: valid",
+    "[ordered-writer][fixed][ordered-data]",
+    ((typename T, sm::Datatype datatype), T, datatype),
+    (uint8_t, Datatype::UINT8),
+    (int8_t, Datatype::INT8),
+    (uint16_t, Datatype::UINT16),
+    (int16_t, Datatype::INT16),
+    (uint32_t, Datatype::UINT32),
+    (int32_t, Datatype::INT32),
+    (uint64_t, Datatype::UINT64),
+    (int64_t, Datatype::INT64),
+    (int64_t, Datatype::DATETIME_YEAR),
+    (int64_t, Datatype::DATETIME_MONTH),
+    (int64_t, Datatype::DATETIME_WEEK),
+    (int64_t, Datatype::DATETIME_DAY),
+    (int64_t, Datatype::DATETIME_HR),
+    (int64_t, Datatype::DATETIME_MIN),
+    (int64_t, Datatype::DATETIME_SEC),
+    (int64_t, Datatype::DATETIME_MS),
+    (int64_t, Datatype::DATETIME_US),
+    (int64_t, Datatype::DATETIME_NS),
+    (int64_t, Datatype::DATETIME_PS),
+    (int64_t, Datatype::DATETIME_FS),
+    (int64_t, Datatype::DATETIME_AS),
+    (int64_t, Datatype::TIME_HR),
+    (int64_t, Datatype::TIME_MIN),
+    (int64_t, Datatype::TIME_SEC),
+    (int64_t, Datatype::TIME_MS),
+    (int64_t, Datatype::TIME_US),
+    (int64_t, Datatype::TIME_NS),
+    (int64_t, Datatype::TIME_PS),
+    (int64_t, Datatype::TIME_FS),
+    (int64_t, Datatype::TIME_AS),
+    (float, Datatype::FLOAT32),
+    (double, Datatype::FLOAT64)) {
+  auto fixture = FixedOrderedAttributeArrayFixture<
+      T,
+      datatype,
+      sm::DataOrder::INCREASING_DATA>{};
+  std::vector<T> data(16);
+  std::iota(data.begin(), data.end(), 3);
+  std::vector<uint32_t> nvalues{4, 8, 4};
+  fixture.global_order_write(4, 19, data, nvalues);
+  fixture.check_array_data(4, 19, data);
+}
+
+TEMPLATE_TEST_CASE_SIG(
     "Write to decreasing attributes with fixed length: valid",
     "[ordered-writer][fixed][ordered-data]",
     ((typename T, sm::Datatype datatype), T, datatype),
@@ -306,6 +425,54 @@ TEMPLATE_TEST_CASE_SIG(
   std::vector<T> data{8, 7, 6, 5, 4, 3};
   fixture.write_fragment(2, 7, data);
   fixture.check_array_data(2, 7, data);
+}
+
+TEMPLATE_TEST_CASE_SIG(
+    "Global write to decreasing attributes with fixed length: valid",
+    "[ordered-writer][fixed][ordered-data]",
+    ((typename T, sm::Datatype datatype), T, datatype),
+    (uint8_t, Datatype::UINT8),
+    (int8_t, Datatype::INT8),
+    (uint16_t, Datatype::UINT16),
+    (int16_t, Datatype::INT16),
+    (uint32_t, Datatype::UINT32),
+    (int32_t, Datatype::INT32),
+    (uint64_t, Datatype::UINT64),
+    (int64_t, Datatype::INT64),
+    (int64_t, Datatype::DATETIME_YEAR),
+    (int64_t, Datatype::DATETIME_MONTH),
+    (int64_t, Datatype::DATETIME_WEEK),
+    (int64_t, Datatype::DATETIME_DAY),
+    (int64_t, Datatype::DATETIME_HR),
+    (int64_t, Datatype::DATETIME_MIN),
+    (int64_t, Datatype::DATETIME_SEC),
+    (int64_t, Datatype::DATETIME_MS),
+    (int64_t, Datatype::DATETIME_US),
+    (int64_t, Datatype::DATETIME_NS),
+    (int64_t, Datatype::DATETIME_PS),
+    (int64_t, Datatype::DATETIME_FS),
+    (int64_t, Datatype::DATETIME_AS),
+    (int64_t, Datatype::TIME_HR),
+    (int64_t, Datatype::TIME_MIN),
+    (int64_t, Datatype::TIME_SEC),
+    (int64_t, Datatype::TIME_MS),
+    (int64_t, Datatype::TIME_US),
+    (int64_t, Datatype::TIME_NS),
+    (int64_t, Datatype::TIME_PS),
+    (int64_t, Datatype::TIME_FS),
+    (int64_t, Datatype::TIME_AS),
+    (float, Datatype::FLOAT32),
+    (double, Datatype::FLOAT64)) {
+  auto fixture = FixedOrderedAttributeArrayFixture<
+      T,
+      datatype,
+      sm::DataOrder::DECREASING_DATA>{};
+  std::vector<T> data(16);
+  std::iota(data.begin(), data.end(), 3);
+  std::reverse(data.begin(), data.end());
+  std::vector<uint32_t> nvalues{4, 8, 4};
+  fixture.global_order_write(4, 19, data, nvalues);
+  fixture.check_array_data(4, 19, data);
 }
 
 TEMPLATE_TEST_CASE_SIG(
@@ -410,4 +577,114 @@ TEMPLATE_TEST_CASE_SIG(
 
   // Verify array data is unchanged for bad write.
   fixture.check_array_data(4, 7, valid_data);
+}
+
+TEMPLATE_TEST_CASE_SIG(
+    "Global write to increasing attributes with fixed length: invalid order",
+    "[ordered-writer][fixed][ordered-data][HERE]",
+    ((typename T, sm::Datatype datatype), T, datatype),
+    /* (uint8_t, Datatype::UINT8),
+     (int8_t, Datatype::INT8),
+     (uint16_t, Datatype::UINT16),
+     (int16_t, Datatype::INT16),
+     (uint32_t, Datatype::UINT32),
+     (int32_t, Datatype::INT32),
+     (uint64_t, Datatype::UINT64),
+     (int64_t, Datatype::INT64),
+     (int64_t, Datatype::DATETIME_YEAR),
+     (int64_t, Datatype::DATETIME_MONTH),
+     (int64_t, Datatype::DATETIME_WEEK),
+     (int64_t, Datatype::DATETIME_DAY),
+     (int64_t, Datatype::DATETIME_HR),
+     (int64_t, Datatype::DATETIME_MIN),
+     (int64_t, Datatype::DATETIME_SEC),
+     (int64_t, Datatype::DATETIME_MS),
+     (int64_t, Datatype::DATETIME_US),
+     (int64_t, Datatype::DATETIME_NS),
+     (int64_t, Datatype::DATETIME_PS),
+     (int64_t, Datatype::DATETIME_FS),
+     (int64_t, Datatype::DATETIME_AS),
+     (int64_t, Datatype::TIME_HR),
+     (int64_t, Datatype::TIME_MIN),
+     (int64_t, Datatype::TIME_SEC),
+     (int64_t, Datatype::TIME_MS),
+     (int64_t, Datatype::TIME_US),
+     (int64_t, Datatype::TIME_NS),
+     (int64_t, Datatype::TIME_PS),
+     (int64_t, Datatype::TIME_FS),
+     (int64_t, Datatype::TIME_AS),
+     (float, Datatype::FLOAT32), */
+    (double, Datatype::FLOAT64)) {
+  auto fixture = FixedOrderedAttributeArrayFixture<
+      T,
+      datatype,
+      sm::DataOrder::INCREASING_DATA>{};
+  // Write initial data.
+  std::vector<T> valid_data(12);
+  std::iota(valid_data.begin(), valid_data.end(), 0);
+  std::reverse(valid_data.begin(), valid_data.end());
+  fixture.write_fragment(4, 15, valid_data);
+
+  // Try writing invalid data.
+  std::vector<T> invalid_data{1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10, 11};
+  std::vector<uint32_t> nvalues{4, 4, 4};
+  fixture.global_order_write(4, 15, invalid_data, nvalues);
+
+  // Verify array data is unchanged after bad write.
+  fixture.check_array_data(4, 15, valid_data);
+}
+
+TEMPLATE_TEST_CASE_SIG(
+    "Global write to decreasing attributes with fixed length: invalid order",
+    "[ordered-writer][fixed][ordered-data][HERE]",
+    ((typename T, sm::Datatype datatype), T, datatype),
+    /* (uint8_t, Datatype::UINT8),
+     (int8_t, Datatype::INT8),
+     (uint16_t, Datatype::UINT16),
+     (int16_t, Datatype::INT16),
+     (uint32_t, Datatype::UINT32),
+     (int32_t, Datatype::INT32),
+     (uint64_t, Datatype::UINT64),
+     (int64_t, Datatype::INT64),
+     (int64_t, Datatype::DATETIME_YEAR),
+     (int64_t, Datatype::DATETIME_MONTH),
+     (int64_t, Datatype::DATETIME_WEEK),
+     (int64_t, Datatype::DATETIME_DAY),
+     (int64_t, Datatype::DATETIME_HR),
+     (int64_t, Datatype::DATETIME_MIN),
+     (int64_t, Datatype::DATETIME_SEC),
+     (int64_t, Datatype::DATETIME_MS),
+     (int64_t, Datatype::DATETIME_US),
+     (int64_t, Datatype::DATETIME_NS),
+     (int64_t, Datatype::DATETIME_PS),
+     (int64_t, Datatype::DATETIME_FS),
+     (int64_t, Datatype::DATETIME_AS),
+     (int64_t, Datatype::TIME_HR),
+     (int64_t, Datatype::TIME_MIN),
+     (int64_t, Datatype::TIME_SEC),
+     (int64_t, Datatype::TIME_MS),
+     (int64_t, Datatype::TIME_US),
+     (int64_t, Datatype::TIME_NS),
+     (int64_t, Datatype::TIME_PS),
+     (int64_t, Datatype::TIME_FS),
+     (int64_t, Datatype::TIME_AS),
+     (float, Datatype::FLOAT32), */
+    (double, Datatype::FLOAT64)) {
+  auto fixture = FixedOrderedAttributeArrayFixture<
+      T,
+      datatype,
+      sm::DataOrder::DECREASING_DATA>{};
+  // Write initial data.
+  std::vector<T> valid_data(12);
+  std::iota(valid_data.begin(), valid_data.end(), 0);
+  std::reverse(valid_data.begin(), valid_data.end());
+  fixture.write_fragment(4, 15, valid_data);
+
+  // Try writing invalid data.
+  std::vector<T> invalid_data{11, 10, 9, 8, 7, 6, 5, 4, 4, 3, 2, 1};
+  std::vector<uint32_t> nvalues{4, 4, 4};
+  fixture.global_order_write(4, 15, invalid_data, nvalues);
+
+  // Verify array data is unchanged after bad write.
+  fixture.check_array_data(4, 15, valid_data);
 }

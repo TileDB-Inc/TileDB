@@ -134,6 +134,8 @@ Status GlobalOrderWriter::dowork() {
 
   auto timer_se = stats_->start_timer("dowork");
 
+  check_attr_order();
+
   // In case the user has provided a coordinates buffer
   RETURN_NOT_OK(split_coords_buffer());
 
