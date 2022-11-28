@@ -38,6 +38,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 #ifdef TILEDB_SERIALIZATION
 #include "tiledb/sm/serialization/tiledb-rest.h"

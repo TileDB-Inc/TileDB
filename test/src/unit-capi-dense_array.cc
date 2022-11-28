@@ -33,7 +33,6 @@
 
 #ifdef TILEDB_SERIALIZATION
 #include <capnp/message.h>
-#include "tiledb/sm/serialization/array.h"
 #endif
 
 #include <test/support/tdb_catch.h>
@@ -55,6 +54,7 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/query.h"
 
 #include <array>
