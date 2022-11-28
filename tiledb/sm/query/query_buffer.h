@@ -254,6 +254,50 @@ class QueryBuffer {
     return buffer_ ? static_cast<uint64_t*>(buffer_) : nullptr;
   }
 
+  /** Checks if fixed length buffer is sorted. */
+  template <
+      typename T,
+      typename Op,
+      typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+  bool is_sorted() const {
+    auto data = data_buffer_as<T>();
+    uint64_t num_values = *buffer_size_ / sizeof(T);
+    Op compare;
+    for (uint64_t index{0}; index < num_values - 1; ++index) {
+      if (compare(data[index + 1], data[index])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Checks if the input buffer is sorted for variable length string data.
+   */
+  template <typename Op>
+  bool is_sorted_str() const {
+    // Set typed buffers and compute number of elements in them.
+    auto offsets = offsets_buffer();
+    auto data = data_buffer_as<char>();
+    uint64_t num_offset_values = *buffer_size_ / sizeof(uint64_t);
+    uint64_t num_data_values = *buffer_var_size_ / sizeof(char);
+
+    // Check the sort.
+    Op compare;
+    for (uint64_t index{0}; index < num_offset_values - 1; ++index) {
+      uint64_t i0 = offsets[index];
+      uint64_t i1 = offsets[index + 1];
+      uint64_t i2 =
+          index + 1 < num_offset_values ? offsets[index + 2] : num_data_values;
+      if (compare(
+              std::string_view(&data[i1], i2 - i1),
+              std::string_view(&data[i0], i1 - i0))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /**
    * Treat this buffer as containing an array of data of fixed size `datum_size`
    * and retrieve the datum at array position `index`.
