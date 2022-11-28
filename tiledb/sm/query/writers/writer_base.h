@@ -223,6 +223,9 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   void check_var_attr_offsets() const;
 
+  /** Throws an error if data is not sorted on an ordered attribute. */
+  void check_attr_order() const;
+
   /**
    * Cleans up the coordinate buffers. Applicable only if the coordinate
    * buffers were allocated by TileDB (not the user)

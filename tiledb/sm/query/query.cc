@@ -990,7 +990,6 @@ Status Query::init() {
       dim_label_queries_ = tdb_unique_ptr<ArrayDimensionLabelQueries>(tdb_new(
           ArrayDimensionLabelQueries,
           storage_manager_,
-          stats_->create_child("ArrayDimensionLabelQueries"),
           array_,
           subarray_,
           label_buffers_,

@@ -51,7 +51,6 @@ namespace tiledb::sm {
 
 DimensionLabelQuery::DimensionLabelQuery(
     StorageManager* storage_manager,
-    stats::Stats* stats,
     shared_ptr<Array> dim_label,
     const DimensionLabelReference& dim_label_ref,
     const Subarray& parent_subarray,
@@ -75,7 +74,6 @@ DimensionLabelQuery::DimensionLabelQuery(
         case (DataOrder::INCREASING_DATA):
         case (DataOrder::DECREASING_DATA):
           initialize_ordered_write_query(
-              stats,
               parent_subarray,
               dim_label_ref.label_attr_name(),
               label_buffer,
@@ -178,99 +176,7 @@ void DimensionLabelQuery::initialize_read_labels_query(
   set_dimension_label_buffer(label_attr_name, label_buffer);
 }
 
-/**
- * Checks if the input buffer is sorted.
- *
- * @param buffer Buffer to check for sort.
- * @param type Datatype of the input buffer.
- * @param increasing If ``true`` check if the data is strictly increasing. If
- *     ``false``, check if the data is strictly decreasing.
- */
-bool is_sorted_buffer(
-    stats::Stats* stats,
-    const QueryBuffer& buffer,
-    const Datatype type,
-    bool increasing) {
-  auto timer_se = stats->start_timer("check_data_sort");
-  switch (type) {
-    case Datatype::INT8:
-      return increasing ?
-                 buffer.is_sorted<int8_t, std::less_equal<int8_t>>() :
-                 buffer.is_sorted<int8_t, std::greater_equal<int8_t>>();
-    case Datatype::UINT8:
-      return increasing ?
-                 buffer.is_sorted<uint8_t, std::less_equal<uint8_t>>() :
-                 buffer.is_sorted<uint8_t, std::greater_equal<uint8_t>>();
-    case Datatype::INT16:
-      return increasing ?
-                 buffer.is_sorted<int16_t, std::less_equal<int16_t>>() :
-                 buffer.is_sorted<int16_t, std::greater_equal<int16_t>>();
-    case Datatype::UINT16:
-      return increasing ?
-                 buffer.is_sorted<uint16_t, std::less_equal<uint16_t>>() :
-                 buffer.is_sorted<uint16_t, std::greater_equal<uint16_t>>();
-    case Datatype::INT32:
-      return increasing ?
-                 buffer.is_sorted<int32_t, std::less_equal<int32_t>>() :
-                 buffer.is_sorted<int32_t, std::greater_equal<int32_t>>();
-    case Datatype::UINT32:
-      return increasing ?
-                 buffer.is_sorted<uint32_t, std::less_equal<uint32_t>>() :
-                 buffer.is_sorted<uint32_t, std::greater_equal<uint32_t>>();
-    case Datatype::INT64:
-      return increasing ?
-                 buffer.is_sorted<int64_t, std::less_equal<int64_t>>() :
-                 buffer.is_sorted<int64_t, std::greater_equal<int64_t>>();
-    case Datatype::UINT64:
-      return increasing ?
-                 buffer.is_sorted<uint64_t, std::less_equal<uint64_t>>() :
-                 buffer.is_sorted<uint64_t, std::greater_equal<uint64_t>>();
-    case Datatype::FLOAT32:
-      return increasing ? buffer.is_sorted<float, std::less_equal<float>>() :
-                          buffer.is_sorted<float, std::greater_equal<float>>();
-    case Datatype::FLOAT64:
-      return increasing ?
-                 buffer.is_sorted<double, std::less_equal<double>>() :
-                 buffer.is_sorted<double, std::greater_equal<double>>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return increasing ?
-                 buffer.is_sorted<int64_t, std::less_equal<int64_t>>() :
-                 buffer.is_sorted<int64_t, std::greater_equal<int64_t>>();
-    case Datatype::STRING_ASCII:
-      return increasing ?
-                 buffer.is_sorted_str<std::less_equal<std::string_view>>() :
-                 buffer.is_sorted_str<std::greater_equal<std::string_view>>();
-    default:
-      throw DimensionLabelQueryStatusException(
-          "Unexpected label datatype " + datatype_str(type));
-  }
-
-  return true;
-}
-
 void DimensionLabelQuery::initialize_ordered_write_query(
-    stats::Stats* stats,
     const Subarray& parent_subarray,
     const std::string& label_attr_name,
     const QueryBuffer& label_buffer,
@@ -279,16 +185,7 @@ void DimensionLabelQuery::initialize_ordered_write_query(
   // Set query layout.
   throw_if_not_ok(set_layout(Layout::ROW_MAJOR));
 
-  // Verify the label data is sorted in the correct order and set label buffer.
-  const auto* label_attribute = array_schema().attribute(label_attr_name);
-  if (!is_sorted_buffer(
-          stats,
-          label_buffer,
-          label_attribute->type(),
-          label_attribute->order() == DataOrder::INCREASING_DATA)) {
-    throw DimensionLabelQueryStatusException(
-        "The label data is not in the expected order.");
-  }
+  // Set the label data buffer.
   set_dimension_label_buffer(label_attr_name, label_buffer);
 
   // Set the subarray.
@@ -300,8 +197,7 @@ void DimensionLabelQuery::initialize_ordered_write_query(
           0, parent_subarray.ranges_for_dim(dim_idx)));
       if (subarray.range_num() > 1) {
         throw DimensionLabelQueryStatusException(
-            "The dimension data must contain consecutive points when writing "
-            "to a dimension label.");
+            "Dimension label writes can only be set for a single range.");
       }
       throw_if_not_ok(set_subarray(subarray));
     }
@@ -317,7 +213,8 @@ void DimensionLabelQuery::initialize_ordered_write_query(
     throw_if_not_ok(subarray.add_point_ranges(0, index_buffer.buffer_, count));
     if (subarray.range_num() > 1) {
       throw DimensionLabelQueryStatusException(
-          "The dimension data must be for consecutive values.");
+          "The dimension data must contain consecutive points when writing to "
+          "a dimension label.");
     }
     throw_if_not_ok(set_subarray(subarray));
   }
