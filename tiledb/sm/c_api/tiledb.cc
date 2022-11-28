@@ -4350,7 +4350,8 @@ int32_t tiledb_deserialize_query_and_array(
           tiledb::sm::serialization::array_from_query_deserialize(
               *buffer->buffer_,
               (tiledb::sm::SerializationType)serialize_type,
-              *array->array_))) {
+              *array->array_,
+              ctx->storage_manager()))) {
     return TILEDB_ERR;
   }
 

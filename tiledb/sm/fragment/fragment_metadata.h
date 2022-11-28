@@ -1080,9 +1080,19 @@ class FragmentMetadata {
     return tile_offsets_;
   }
 
+  /** tile_offsets_mtx accessor */
+  std::deque<std::mutex>& tile_offsets_mtx() {
+    return tile_offsets_mtx_;
+  }
+
   /** tile_var_offsets accessor */
   std::vector<std::vector<uint64_t>>& tile_var_offsets() {
     return tile_var_offsets_;
+  }
+
+  /** tile_var_offsets_mtx accessor */
+  std::deque<std::mutex>& tile_var_offsets_mtx() {
+    return tile_var_offsets_mtx_;
   }
 
   /** tile_var_sizes  accessor */
@@ -1178,6 +1188,11 @@ class FragmentMetadata {
   /** set the SM pointer during deserialization*/
   void set_storage_manager(StorageManager* sm) {
     storage_manager_ = sm;
+  }
+
+  /** set the SM pointer during deserialization*/
+  void set_memory_tracker(MemoryTracker* memory_tracker) {
+    memory_tracker_ = memory_tracker;
   }
 
   /** loaded_metadata_.rtree_ accessor */

@@ -1408,8 +1408,10 @@ Status query_from_capnp(
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; array pointer is null."));
   }
-  // Deserialize array instance.
-  RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
+  // Deserialize array instance if it was not already deserialized.
+  if (!array->deserialized()) {
+    RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
+  }
 
   // Deserialize query type (sanity check).
   auto type = query->type();
@@ -2016,7 +2018,8 @@ Status query_from_capnp(
 Status array_from_query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
-    Array& array) {
+    Array& array,
+    StorageManager* storage_manager) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -2030,7 +2033,8 @@ Status array_from_query_deserialize(
             query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         // Deserialize array instance.
-        RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), &array));
+        RETURN_NOT_OK(
+            array_from_capnp(query_reader.getArray(), &array, storage_manager));
         break;
       }
       case SerializationType::CAPNP: {
@@ -2052,7 +2056,8 @@ Status array_from_query_deserialize(
 
         capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
         // Deserialize array instance.
-        RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), &array));
+        RETURN_NOT_OK(
+            array_from_capnp(query_reader.getArray(), &array, storage_manager));
         break;
       }
       default:

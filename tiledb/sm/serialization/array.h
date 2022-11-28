@@ -73,7 +73,10 @@ Status array_to_capnp(
  * @param array Array to deserialize into
  * @return Status
  */
-Status array_from_capnp(const capnp::Array::Reader& array_reader, Array* array);
+Status array_from_capnp(
+    const capnp::Array::Reader& array_reader,
+    Array* array,
+    StorageManager* storage_manager = nullptr);
 
 /**
  * Convert info for opening and array to Cap'n Proto message

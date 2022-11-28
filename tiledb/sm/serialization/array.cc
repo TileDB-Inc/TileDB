@@ -190,7 +190,9 @@ Status array_to_capnp(
 }
 
 Status array_from_capnp(
-    const capnp::Array::Reader& array_reader, Array* array) {
+    const capnp::Array::Reader& array_reader,
+    Array* array,
+    StorageManager* storage_manager) {
   // The serialized URI is set if it exists
   // this is used for backwards compatibility with pre TileDB 2.5 clients that
   // want to serialized a query object TileDB >= 2.5 no longer needs to receive
@@ -270,6 +272,10 @@ Status array_from_capnp(
         array_reader.getFragmentMetadataAll().size());
     for (auto frag_meta_reader : array_reader.getFragmentMetadataAll()) {
       auto meta = make_shared<FragmentMetadata>(HERE());
+      // TODO: consider a new constructor for fragment meta or using the
+      // existing one
+      meta->set_storage_manager(storage_manager);
+      meta->set_memory_tracker(array->memory_tracker());
       RETURN_NOT_OK(fragment_metadata_from_capnp(
           array->array_schema_latest_ptr(), frag_meta_reader, meta));
       meta->set_rtree_loaded();
@@ -291,6 +297,7 @@ Status array_from_capnp(
         metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
     array->set_metadata_loaded(true);
   }
+  array->set_deserialized(true);
 
   return Status::Ok();
 }
