@@ -488,8 +488,7 @@ Status RestClient::get_array_maximum_tile_size_from_rest(
 
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
-//  return serialization::metadata_deserialize(
-  //      array->unsafe_metadata(), serialization_type_, returned_data);
+
   return serialization::maximum_tile_size_deserialize(
       maximum_tile_size, serialization_type_, returned_data);
 }

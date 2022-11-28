@@ -176,11 +176,10 @@ class RestClient {
       Array* array);
 
   /**
-   * Gets the array's maximum in memory tile size from the
-   * REST server.
+   * Gets the array's maximum in memory tile size from the REST server.
    *
    * @param uri Array URI
-   * @param max_tile_size receives the maximum in memory tile size found
+   * @param max_tile_size Receives the maximum in memory tile size found
    *   in fragments of the array
    * @return Status
    */

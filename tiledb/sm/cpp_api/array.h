@@ -1533,7 +1533,7 @@ class Array {
    * Encrypted arrays will be supported via config options.
    *
    * @param max_in_memory_tile_size The receiver for the max in memory tile
-   * size..
+   * size.
    */
   void get_max_in_memory_tile_size(uint64_t* max_in_memory_tile_size) {
     tiledb_array_maximum_tile_size(

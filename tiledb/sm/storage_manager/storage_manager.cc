@@ -2630,15 +2630,15 @@ void StorageManager::array_get_fragment_tile_max_size(
           enc_key);
   throw_if_not_ok(st);
   
-  tiledb_fragment_max_tile_sizes_t& mins_maxs = *max_tile_sizes;
-  memset(&mins_maxs, 0, sizeof(mins_maxs));
+  tiledb_fragment_max_tile_sizes_t& maxs = *max_tile_sizes;
+  memset(&maxs, 0, sizeof(maxs));
 
   auto process_attr = [&](FragmentMetadata& f,
                           const std::string& name,
                           bool var_size,
                           bool is_nullable) -> void {
-    uint64_t max_frag_persisted_basic_tile_size = 0,
-             max_frag_in_memory_basic_tile_size = 0;
+    uint64_t max_frag_persisted_fixed_tile_size = 0,
+             max_frag_in_memory_fixed_tile_size = 0;
 
     uint64_t max_frag_persisted_tile_size_var = 0,
              max_frag_in_memory_tile_size_var = 0;
@@ -2656,11 +2656,11 @@ void StorageManager::array_get_fragment_tile_max_size(
       // for dense, all tiles to be reported as same size
       // for var, all tiles except last one reported as same size, with last one possibly smaller.
       auto in_mem_tile_size = f.tile_size(name, tile_idx);
-      max_frag_persisted_basic_tile_size =
-          std::max(max_frag_persisted_basic_tile_size, persisted_tile_size);
+      max_frag_persisted_fixed_tile_size =
+          std::max(max_frag_persisted_fixed_tile_size, persisted_tile_size);
 
-      max_frag_in_memory_basic_tile_size =
-          std::max(max_frag_in_memory_basic_tile_size, in_mem_tile_size);
+      max_frag_in_memory_fixed_tile_size =
+          std::max(max_frag_in_memory_fixed_tile_size, in_mem_tile_size);
 
       if (var_size) {
         auto tile_size_var_persisted = f.persisted_tile_var_size(name, tile_idx);
@@ -2681,24 +2681,24 @@ void StorageManager::array_get_fragment_tile_max_size(
         max_frag_in_memory_tile_size_validity =
             std::max(max_frag_in_memory_tile_size_validity, tile_size_validity_in_mem);
       }
-      mins_maxs.max_persisted_basic_tile_size = std::max(
-          mins_maxs.max_persisted_basic_tile_size, max_frag_persisted_basic_tile_size),
-      mins_maxs.max_in_memory_basic_tile_size = std::max(
-          mins_maxs.max_in_memory_basic_tile_size,
-          max_frag_in_memory_basic_tile_size);
+      maxs.max_persisted_fixed_tile_size = std::max(
+          maxs.max_persisted_fixed_tile_size, max_frag_persisted_fixed_tile_size),
+      maxs.max_in_memory_fixed_tile_size = std::max(
+          maxs.max_in_memory_fixed_tile_size,
+          max_frag_in_memory_fixed_tile_size);
 
-      mins_maxs.max_persisted_tile_size_var = std::max(
-          mins_maxs.max_persisted_tile_size_var,
+      maxs.max_persisted_tile_size_var = std::max(
+          maxs.max_persisted_tile_size_var,
           max_frag_persisted_tile_size_var);
-      mins_maxs.max_in_memory_tile_size_var = std::max(
-          mins_maxs.max_in_memory_tile_size_var,
+      maxs.max_in_memory_tile_size_var = std::max(
+          maxs.max_in_memory_tile_size_var,
           max_frag_in_memory_tile_size_var);
 
-      mins_maxs.max_persisted_tile_size_validity = std::max(
-          mins_maxs.max_persisted_tile_size_validity,
+      maxs.max_persisted_tile_size_validity = std::max(
+          maxs.max_persisted_tile_size_validity,
           max_frag_persisted_tile_size_validity);
-      mins_maxs.max_in_memory_tile_size_validity = std::max(
-          mins_maxs.max_in_memory_tile_size_validity,
+      maxs.max_in_memory_tile_size_validity = std::max(
+          maxs.max_in_memory_tile_size_validity,
           max_frag_in_memory_tile_size_validity);
     }
   };
@@ -2717,12 +2717,12 @@ void StorageManager::array_get_fragment_tile_max_size(
       process_attr(*frag, dim_name, frags_schema->var_size(dim_name), frags_schema->is_nullable(dim_name));
     }
   }
-  mins_maxs.max_in_memory_tile_size = std::max(
-      mins_maxs.max_in_memory_basic_tile_size,
-      mins_maxs.max_in_memory_tile_size_var);
-  mins_maxs.max_persisted_tile_size = std::max(
-      mins_maxs.max_persisted_basic_tile_size,
-      mins_maxs.max_persisted_tile_size_var);
+  maxs.max_in_memory_tile_size = std::max(
+      maxs.max_in_memory_fixed_tile_size,
+      maxs.max_in_memory_tile_size_var);
+  maxs.max_persisted_tile_size = std::max(
+      maxs.max_persisted_fixed_tile_size,
+      maxs.max_persisted_tile_size_var);
 }
 
 }  // namespace sm

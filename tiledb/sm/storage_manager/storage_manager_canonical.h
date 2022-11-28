@@ -45,7 +45,7 @@
 #include <string>
 #include <thread>
 
-#include "tiledb/api/c_api/tiledb_tile_sizes.h"
+#include "tiledb/api/c_api/tiledb_max_tile_sizes.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger_public.h"
@@ -1320,7 +1320,8 @@ class StorageManagerCanonical {
       Status,
       optional<Tile>,
       optional<std::vector<std::pair<std::string, uint64_t>>>>
-  load_consolidated_fragment_meta(const URI& uri, const EncryptionKey& enc_key);
+  load_consolidated_fragment_meta(
+      const URI& consolidated_metadata_uri, const EncryptionKey& enc_key);
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();

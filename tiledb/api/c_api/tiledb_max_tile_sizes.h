@@ -1,7 +1,5 @@
-// TBD: probably better name needed?
-
 /**
- * @file   tiledb_tile_sizes.h
+ * @file   tiledb_max_tile_sizes.h
  *
  * @section LICENSE
  *
@@ -29,13 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file contains the definitions for array tile size operations.
+ * This file contains data definitions for obtaining array max tile sizes.
  */
 
-#ifndef TILEDB_C_TILE_SIZES_H
-#define TILEDB_C_TILE_SIZES_H
-
-#include <stdint.h>
+#ifndef TILEDB_C_MAX_TILE_SIZES_H
+#define TILEDB_C_MAX_TILE_SIZES_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,8 +41,8 @@ typedef struct tiledb_fragment_max_tile_sizes_t {
   uint64_t max_in_memory_tile_size;
   uint64_t max_persisted_tile_size;
 
-  uint64_t max_persisted_basic_tile_size;
-  uint64_t max_in_memory_basic_tile_size;
+  uint64_t max_persisted_fixed_tile_size;
+  uint64_t max_in_memory_fixed_tile_size;
   uint64_t max_persisted_tile_size_var;
   uint64_t max_in_memory_tile_size_var;
   uint64_t max_persisted_tile_size_validity;
@@ -58,4 +54,4 @@ typedef struct tiledb_fragment_max_tile_sizes_t {
 }
 #endif
 
-#endif
+#endif // TILEDB_C_MAX_TILE_SIZES_H

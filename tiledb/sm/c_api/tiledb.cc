@@ -48,7 +48,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/api_argument_validator.h"
-#include "tiledb/api/c_api/tiledb_tile_sizes.h"
+#include "tiledb/api/c_api/tiledb_max_tile_sizes.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
@@ -6242,6 +6242,7 @@ TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
       save_error(ctx, st);
       return TILEDB_ERR;
     }
+    
     if (uri.is_tiledb()) {
       // Check REST client
       auto rest_client = ctx->storage_manager()->rest_client();
@@ -6252,6 +6253,7 @@ TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
         save_error(ctx, st);
         return TILEDB_ERR;
       }
+      
       auto st = rest_client->get_array_maximum_tile_size_from_rest(
           uri, max_in_memory_tile_size);
       if (!st.ok()) {
@@ -6272,6 +6274,7 @@ TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
     std::throw_with_nested(api::CAPIStatusException(
         "Failed to obtain max tile size "));
   }
+  
   return TILEDB_OK;
 }
 

@@ -1227,13 +1227,11 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_total_cell_num(
  *
  * @param ctx The TileDB context
  * @param array_uri Identifies the array for which to retrieve maximum tile size
- * @param max_in_memory_tile_size The receiver for the max in memory tile size..
+ * @param max_in_memory_tile_size The receiver for the max in memory tile size.
  * @param config The Config object to be used for poss encryption and any other
  * operation modifiers.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
  */
-
 TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
     tiledb_ctx_t* ctx,
     const char* array_uri,
