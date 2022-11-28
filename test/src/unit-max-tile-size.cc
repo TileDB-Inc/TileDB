@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests the C/CPP API for maximum tile size across all fragments of an array.
+ * Tests the C/CPP API for obtaining maximum tile size across all fragments of an array.
  */
 
 #include <test/support/tdb_catch.h>
@@ -44,9 +44,9 @@
 #include <numeric>
 
 struct MaxTileSizeFx {
-  const std::string main_array_name = "max_tile_size";
+  const std::string main_array_name_ = "max_tile_size";
 
-  bool showing_data = false;
+  bool showing_data_ = false;
 
   MaxTileSizeFx()
     : vfs_(ctx_) {
@@ -58,10 +58,34 @@ struct MaxTileSizeFx {
     }
   };
 
+  /*
+   * Array creation, Write, routine naming scheme as follows:
+   * 
+   * [(as useful) template <dim/attr types for most expected reuseability flexibility>]
+   * create_[sparse|dense]_[dimensionality]_[series-of-dim-descriptions]_[series-of-attribute-descriptions]
+   * 
+   * The word 'array' was specifically left out as it is reasonably implied from dense/sparse, and 
+   * would seem to simply add additional verbiage to be parsed without providing any additional
+   * enlightenment.
+   * 
+   * [dimesionality] could be omitted, but did seem to provide likely value that otherwise would
+   * require the (mental) parsing of the series-of-dim-descriptions to determine the dimensionality.
+   * 
+   * The series-of-dim-descriptions and series-of-attr-descriptions currently use dN and aN to
+   * (i) identifiy which dimension/attribute is being described and its order of creation
+   * as well as (ii) identifying the specific names of the dimension/attribute being created.  
+   * Those names could be substituted with something else ("row"/"col", "volume") but would 
+   * lose some of the at-a-glance numbered ordering of the dimension/attribute creation.
+   * 
+   * The write routines will be similarly named with at least one 'write' match for each of 
+   * the 'create' routines.
+   */
+
   template <typename a1_type>
   void create_sparse_1d_d1_var_a1_fix(
       std::string array_name
       ) {
+    // Set up the Domain/Dimension items for the array being created.
     tiledb::Domain domain(ctx_);
     domain.add_dimension(tiledb::Dimension::create(
         ctx_, "d1", TILEDB_STRING_ASCII, nullptr, nullptr));
@@ -79,22 +103,20 @@ struct MaxTileSizeFx {
 
   template <typename a1_type>
   void write_sparse_d1_var_a1_fix_fabricate(std::string array_name, uint64_t num_rows) {
+    // Prepare the data to be written.
     std::vector<a1_type> a_buff(num_rows);
     auto start_val = 0;
     std::iota(a_buff.begin(), a_buff.end(), start_val);
 
     // For the string dimension, convert the increasing value from int to
-    // string.
-
-    std::vector<int> d1_buff(num_rows);
-    std::iota(d1_buff.begin(), d1_buff.end(), start_val + 1);
-
+    // string, and prepare the cumulative value buffer and corresponding
+    // offsets buffer.
     std::vector<uint64_t> d1_offsets;
     d1_offsets.reserve(num_rows);
     std::string d1_var;
     uint64_t offset = 0;
     for (uint64_t i = start_val; i < start_val + num_rows; i++) {
-      auto val = std::to_string(d1_buff[i]);
+      auto val = std::to_string(i + 1);
       d1_offsets.emplace_back(offset);
       offset += val.size();
       d1_var += val;
@@ -116,24 +138,29 @@ struct MaxTileSizeFx {
   template <typename dim1_type, typename a1_type>
   void create_dense_1d_d1_fix_a1_var(
       std::string array_name,
-      std::array<dim1_type,2>&& d1_domain,
+      std::array<dim1_type, 2> d1_domain,
       int d1_extents,
       bool a1_is_nullable,
       tiledb_layout_t tile_order,
       tiledb_layout_t cell_order
   ) {
+    // Set up the Domain/Dimension items for the array being created.
     tiledb::Domain domain(ctx_);
     domain.add_dimension(tiledb::Dimension::create<dim1_type>(
         ctx_, "d1", d1_domain, d1_extents));
+
+    // The array will be dense with the indicated order(s).
     tiledb::ArraySchema schema(ctx_, TILEDB_DENSE);
     schema.set_domain(domain).set_tile_order(tile_order);
     schema.set_domain(domain).set_cell_order(cell_order);
+    // Specify attribute, nullable or not as indicated.
     auto a1_attr = tiledb::Attribute::create<a1_type>(ctx_, "a1");
     if (a1_is_nullable) {
       a1_attr.set_nullable(true);
     }
     schema.add_attribute(a1_attr);
 
+    // Create the array.
     tiledb::Array::create(array_name, schema);
   }
 
@@ -143,11 +170,13 @@ struct MaxTileSizeFx {
       std::vector<uint64_t> && attr_offsets,
       std::vector<uint8_t> && attr_validity,
       std::vector<int> && subrange) {
+    // Define needed objects.
     tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
     tiledb::Query query(ctx_, array);
     tiledb::Subarray subarray(ctx_, array);
-    subarray.add_range(0, subrange[0], subrange[1]);
 
+    // Initialize the objects, preparing the query.
+    subarray.add_range(0, subrange[0], subrange[1]);
     query.set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a1", attr_data)
         .set_offsets_buffer("a1", attr_offsets)
@@ -164,11 +193,13 @@ struct MaxTileSizeFx {
       std::string&& attr_data,
       std::vector<uint64_t>&& attr_offsets,
       std::vector<int>&& subrange) {
+    // Define needed objects.
     tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
     tiledb::Query query(ctx_, array);
     tiledb::Subarray subarray(ctx_, array);
+ 
+    // Initialize the objects, preparing the query.
     subarray.add_range(0, subrange[0], subrange[1]);
-
     query.set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a1", attr_data)
         .set_offsets_buffer("a1", attr_offsets)
@@ -182,12 +213,13 @@ struct MaxTileSizeFx {
   template <typename dim1_type, typename dim2_type, typename a1_type>
   void create_dense_2d_d1_fix_d2_fix_a1_fix(
       std::string array_name,
-      std::array<dim1_type, 2>&& d1_domain,
+      std::array<dim1_type, 2> d1_domain,
       int d1_extents,
-      std::array<dim2_type, 2>&& d2_domain,
+      std::array<dim2_type, 2> d2_domain,
       int d2_extents,
       tiledb_layout_t tile_order,
       tiledb_layout_t cell_order) {
+    // Set up the Domain/Dimension items for the array being created.
     tiledb::Domain domain(ctx_);
     domain
         .add_dimension(tiledb::Dimension::create<dim1_type>(
@@ -211,7 +243,7 @@ struct MaxTileSizeFx {
   template <typename d1_type, typename a1_type>
   void create_dense_1d_d1_var_a1_fix(
     const std::string& array_name,
-      std::array<d1_type, 2>&& d1_domain,
+      std::array<d1_type, 2> d1_domain,
       int d1_extents,
       const std::string&& attr_name) {
     remove_temp_dir(array_name.c_str());
@@ -227,7 +259,7 @@ struct MaxTileSizeFx {
     schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
     // Add one attribute "a1", so each (i) cell can store
-    // a nchars characters on "attr_name" (std::array<char,nchars> now via a1_type)
+    // a nchars characters on "attr_name" (std::array<char,nchars> now via a1_type).
     schema.add_attribute(
         tiledb::Attribute::create<a1_type>(ctx_, attr_name));
 
@@ -235,10 +267,46 @@ struct MaxTileSizeFx {
     tiledb::Array::create(array_name, schema);
   };
 
+  void array_schema_evolve_A(const std::string& array_name) {
+    // Targeted against schema created in
+    // create_dense_1d_d1_var_a1_fix.
+    tiledb::ArraySchemaEvolution schemaEvolution =
+        tiledb::ArraySchemaEvolution(ctx_);
+
+    // Add attribute b.
+    tiledb::Attribute b =
+        tiledb::Attribute::create<std::array<char, 257>>(ctx_, "b257");
+    schemaEvolution.add_attribute(b);
+
+    schemaEvolution.drop_attribute(std::string("a2"));
+
+    // Evolve array.
+    schemaEvolution.array_evolve(array_name);
+  };
+
+  void array_schema_evolve_B(const std::string& array_name) {
+    // Targeted against schema created in
+    // create_dense_1d_d1_var_a1_fix.
+
+    tiledb::ArraySchemaEvolution schemaEvolution =
+        tiledb::ArraySchemaEvolution(ctx_);
+
+    // Add attribute c.
+    tiledb::Attribute c =
+        tiledb::Attribute::create<std::array<char, 42>>(ctx_, "c42");
+    schemaEvolution.add_attribute(c);
+
+    schemaEvolution.drop_attribute(std::string("b257"));
+
+    // Evolve array.
+    schemaEvolution.array_evolve(array_name);
+  }
+
   template <typename a1_type>
   void create_sparse_1d_d1_var_a1_var(
       std::string array_name,
       bool is_nullable) {
+    // Set up the Domain/Dimension items for the array being created.
     tiledb::Domain domain(ctx_);
     domain.add_dimension(tiledb::Dimension::create(
         ctx_, "d1", TILEDB_STRING_ASCII, nullptr, nullptr));
@@ -248,7 +316,7 @@ struct MaxTileSizeFx {
     schema.set_domain(domain);
 
     // Add one attribute "a1", so each (i) cell can store
-    // a character on "a1".  (std::array<char,nchars> now via a1_type)
+    // a character on "a1".
     auto attr = tiledb::Attribute::create<a1_type>(ctx_, "a1");
     if (is_nullable) {
       attr.set_nullable(true);
@@ -261,7 +329,7 @@ struct MaxTileSizeFx {
 
   template <const int nchars = 1>
   void write_array_attr(const std::string& array_name, const std::string&& attr_name) {
-    // Prepare some data for the array
+    // Prepare some data for the array.
     std::vector<std::array<char, nchars>> a;
     for (auto i = 0; i < 4; ++i) {
       std::array<char, nchars> buf;
@@ -281,36 +349,43 @@ struct MaxTileSizeFx {
 
   void write_sparse_1d_d1_var_a1_var(
       std::string array_name,
-      std::string& dim_data,  // expecting single-char values, one for each row
+      std::string& dim_data,  // Expecting single-char values, one for each row.
       std::vector<uint64_t>&& dim_offsets,
-      std::string&& attr_data,  // expecting single-char values, one for each
-                                // row, may be empty.. dim_data.size()-1
-      std::vector<uint8_t>& genned_validity) {
-    // need buffer to be non-null (x.data()) even if there is not data
-    // to avoid internal API failure even tho there will be no actual data,
-    // when all validity values are zero.
-    // expecting dim_data to be non-empty!
+      std::string&& attr_data // Expecting single-char values, one for each
+                              // row, may be empty... dim_data.size()-1.
+      ) {
+    // attr_data needs its buffer retrieved with .data() to be non-null to
+    // avoid internal API failure, even if there is no data, which can occur
+    // when all validity values are zero. dim_data should always contain data.
     attr_data.reserve(dim_data.size());
 
+    // Prepare offsets to attr items...
     std::vector<uint64_t> attr_offsets(dim_data.size(), 0);
+    // ...offsets for those for which actually have data;
     for (decltype(attr_data.size()) i = 0; i < attr_data.size(); i++) {
       attr_offsets[i] = i;
     }
+    // ...pad out offsets for those which do not have data.
     for (decltype(attr_data.size()) i = attr_data.size(); i < dim_data.size();
          ++i) {
       attr_offsets[i] = attr_data.size();
     }
+
+    // Prepare the validity values for the data
     std::vector<uint8_t> attr_val(dim_data.size());
-    // same need, non-null buffer address even when no data
+    // attr_val also needs a non empty buffer and ...
     attr_val.reserve(dim_data.size());
+    // ... init those for which there is data
     for (decltype(attr_data.size()) i = 0; i < attr_data.size(); ++i) {
       attr_val[i] = 1;
     }
+    // ... init those trailing which are empty and have no data
     for (decltype(attr_data.size()) i = attr_data.size(); i < dim_data.size();
          ++i) {
       attr_val[i] = 0;
     }
 
+    // Open the array for writing and create the query.
     tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
     tiledb::Query query(ctx_, array);
     query.set_layout(TILEDB_UNORDERED)
@@ -323,7 +398,6 @@ struct MaxTileSizeFx {
     // Perform the write and close the array.
     query.submit();
     array.close();
-    genned_validity = attr_val;
   }
 
   template <typename dimtype, typename a1_type>
@@ -332,7 +406,6 @@ struct MaxTileSizeFx {
       std::vector<a1_type> data,
       std::array<dimtype, 2> dim1_range,
       std::array<dimtype, 2> dim2_range) {
-    // Prepare some data for the array
     // Open the array for writing and create the query.
     tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
     tiledb::Subarray subarray(ctx_, array);
@@ -358,7 +431,7 @@ struct MaxTileSizeFx {
             &max_in_memory_tile_size, 
             nullptr) == TILEDB_OK);
 
-    if (showing_data) {
+    if (showing_data_) {
       std::cout << "maximum in memory tile size "
                 << max_in_memory_tile_size
                 << std::endl;
@@ -371,7 +444,7 @@ struct MaxTileSizeFx {
     uint64_t max_in_memory_tile_size = 0;
     array.get_max_in_memory_tile_size(&max_in_memory_tile_size);
 
-    if (showing_data) {
+    if (showing_data_) {
       std::cout << "maximum in memory tile size " << max_in_memory_tile_size
                 << std::endl;
     }
@@ -387,41 +460,50 @@ TEST_CASE_METHOD(
     "C++ API: Max tile size, dense, fixed, with consolidation",
     "[capi][cppapi][max-tile-size][dense][consolidate]") {
   // Name of array.
-  auto& array_name = main_array_name;
+  auto& array_name = main_array_name_;
   remove_temp_dir(array_name.c_str());
 
   uint64_t capi_max = 0; // init to avoid msvc warning as error miss inside CHECK()
   uint64_t cppapi_max;
-  // Create and write array
+
+  // Create array
   create_dense_2d_d1_fix_d2_fix_a1_fix<int, int, int32_t>(
       array_name, {1, 4}, 2, {1, 4}, 2, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
       capi_max = c_get_fragments_max_in_memory_tile_size(array_name);
   cppapi_max=cpp_get_fragments_max_in_memory_tile_size(array_name);
   CHECK(capi_max == 0 * sizeof(int32_t));
   CHECK(cppapi_max == capi_max);
+
+  // Write first fragment and validate sizes.
   write_array_2_dims<int, int32_t>(array_name, {1, 2, 3, 4, 5, 6, 6, 8}, {1, 2}, {1, 4});
   capi_max = c_get_fragments_max_in_memory_tile_size(array_name);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(array_name);
   CHECK(capi_max == 4 * sizeof(int32_t));
   CHECK(cppapi_max == capi_max);
+
+  // Write second fragment and validate sizes.
   write_array_2_dims<int, int32_t>(
       array_name, {101, 102, 103, 104}, {2, 3}, {2, 3});
   capi_max = c_get_fragments_max_in_memory_tile_size(array_name);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(array_name);
   CHECK(capi_max == 4 * sizeof(int32_t));
   CHECK(cppapi_max == capi_max);
+
+  // Write third fragment and validate sizes.
   write_array_2_dims<int, int32_t>(array_name, {201}, {1, 1}, {1, 1});
   capi_max = c_get_fragments_max_in_memory_tile_size(array_name);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(array_name);
   CHECK(capi_max == 4 * sizeof(int32_t));
   CHECK(cppapi_max == capi_max);
+
+  // Write fourth fragment and validate sizes.
   write_array_2_dims<int, int32_t>(array_name, {202}, {3, 3}, {4, 4});
   capi_max = c_get_fragments_max_in_memory_tile_size(array_name);
   cppapi_max=cpp_get_fragments_max_in_memory_tile_size(array_name);
   CHECK(capi_max == 4 * sizeof(int32_t));
   CHECK(cppapi_max == capi_max);
 
-  // consolidate
+  // Consolidate and validate sizes.
   tiledb::Array::consolidate(ctx_, array_name);
 
   capi_max = c_get_fragments_max_in_memory_tile_size(array_name);
@@ -429,7 +511,7 @@ TEST_CASE_METHOD(
   CHECK(capi_max == 4 * sizeof(int32_t));
   CHECK(cppapi_max == capi_max);
 
-  // consolidate
+  // Vacuum.
   tiledb::Array::vacuum(ctx_, array_name);
 
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 4 * sizeof(int32_t));
@@ -439,11 +521,11 @@ TEST_CASE_METHOD(
     MaxTileSizeFx,
     "C++ API: Max fragment size, sparse, variable string dimension, fix attr",
     "[capi][max-tile-size][sparse][var-dimension]") {
-  auto& array_name = main_array_name;
+  auto& array_name = main_array_name_;
 
-  remove_temp_dir(main_array_name);
+  remove_temp_dir(main_array_name_);
 
-  // init to avoid msvc warning as error miss inside CHECK()
+  // Init to avoid msvc warning as error miss inside CHECK().
   uint64_t capi_max = 0;  
   uint64_t cppapi_max;
   create_sparse_1d_d1_var_a1_fix<int32_t>(array_name);
@@ -454,17 +536,19 @@ TEST_CASE_METHOD(
   CHECK(capi_max == 8);
   CHECK(cppapi_max == capi_max);
   write_sparse_d1_var_a1_fix_fabricate<int32_t>(array_name, 2);
-  //size of data and the single offset to start of extent same
+
+  // Size of data and the single offset to start of extent same.
   capi_max = c_get_fragments_max_in_memory_tile_size(array_name);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(array_name);
   CHECK(capi_max == 16);
   CHECK(cppapi_max == capi_max);
 
-  // consolidate
+  // Consolidate.
   tiledb::Array::consolidate(ctx_, array_name);
   capi_max = c_get_fragments_max_in_memory_tile_size(array_name);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(array_name);
-  // now '24' after consolidate(), data tiles pick up extra
+
+  // Now '24' after consolidate(), data tiles pick up extra
   // overhead to support time traveling.
   CHECK(capi_max == 24);
   CHECK(cppapi_max == capi_max);
@@ -480,40 +564,42 @@ TEST_CASE_METHOD(
   CHECK(capi_max == 24);
   CHECK(cppapi_max == capi_max);
 
-  // consolidate
+  // Consolidate.
   tiledb::Array::consolidate(ctx_, array_name);
   capi_max = c_get_fragments_max_in_memory_tile_size(array_name);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(array_name);
-  // changed, data tiles pick up extra
-  // overhead to support time traveling.
+
+  // Changed, data tiles pick up extra overhead to support time traveling.
   CHECK(capi_max == 56);
   CHECK(cppapi_max == capi_max);
 
-  // (sparse/dense vacuum/consolidate semantics differ, sparse retains 
-  //  any old data and time travel overhead)
-
-  // vacuum
+  // Sparse/dense vacuum/consolidate semantics differ, sparse retains 
+  //  any old data and time travel overhead.
+  // Vacuum.
   tiledb::Array::vacuum(ctx_, array_name);
   capi_max = c_get_fragments_max_in_memory_tile_size(array_name);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(array_name);
-  // no change, vacuuming sparse does not remove the earlier data.
+
+  // No change, vacuuming sparse does not remove the earlier data.
   CHECK(capi_max == 56);
   CHECK(cppapi_max == capi_max);
 
-  // secondary attempt still retains the overhead.
+  // Secondary attempt still retains the overhead.
   tiledb::Array::consolidate(ctx_, array_name);
   capi_max = c_get_fragments_max_in_memory_tile_size(array_name);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(array_name);
-  // no change after consolidate(), extra
+
+  // No change after consolidate(), extra
   // overhead retained across multiple consolidate()s.
   CHECK(capi_max == 56);
   CHECK(cppapi_max == capi_max);
 
-  // vacuum
+  // Vacuum.
   tiledb::Array::vacuum(ctx_, array_name);
   capi_max = c_get_fragments_max_in_memory_tile_size(array_name);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(array_name);
-  // no change, vacuuming sparse does not remove the earlier data, even after a
+
+  // No change, vacuuming sparse does not remove the earlier data, even after a
   // secondary consolidate against previously vacuumed data.
   CHECK(capi_max == 56);
   CHECK(cppapi_max == capi_max);
@@ -523,37 +609,7 @@ TEST_CASE_METHOD(
     MaxTileSizeFx,
     "C++ API: Max fragment size, dense create/evolve, fixed dim/attr",
     "[capi][max-tile-size][dense][evolve]") {
-  auto& array_name = main_array_name;
-
-  auto array_schema_evolve_A = [&](/* const Context& ctx*/) -> void {
-    tiledb::ArraySchemaEvolution schemaEvolution =
-        tiledb::ArraySchemaEvolution(ctx_);
-
-    // Add attribute b
-    tiledb::Attribute b =
-        tiledb::Attribute::create<std::array<char, 257>>(ctx_, "b257");
-    schemaEvolution.add_attribute(b);
-
-    schemaEvolution.drop_attribute(std::string("a2"));
-
-    // evolve array
-    schemaEvolution.array_evolve(array_name);
-  };
-
-  auto array_schema_evolve_B = [&](/* const Context& ctx*/) -> void {
-    tiledb::ArraySchemaEvolution schemaEvolution =
-        tiledb::ArraySchemaEvolution(ctx_);
-
-    // Add attribute c
-    tiledb::Attribute c =
-        tiledb::Attribute::create<std::array<char, 42>>(ctx_, "c42");
-    schemaEvolution.add_attribute(c);
-
-    schemaEvolution.drop_attribute(std::string("b257"));
-
-    // evolve array
-    schemaEvolution.array_evolve(array_name);
-  };
+  auto& array_name = main_array_name_;
 
   remove_temp_dir(array_name);
 
@@ -585,26 +641,26 @@ TEST_CASE_METHOD(
     write_array_attr<2>(array_name, "a2");
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 4);
 
-    array_schema_evolve_A();
+    array_schema_evolve_A(array_name);
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 4);
     write_array_attr<257>(array_name, "b257");
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 257);
 
-    array_schema_evolve_B();
+    array_schema_evolve_B(array_name);
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 257);
     write_array_attr<42>(array_name, "c42");
-    // earlier fragment should still have value of 257
+    // Earlier fragment should still have value of 257.
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 257);
 
-    // now want to consolidate, but not vacuum, max
-    // should still be 257
+    // Now want to consolidate, but not vacuum, max
+    // should still be 257.
     tiledb::Array::consolidate(ctx_, array_name);
-    // After consolidation, old fragment should still be there with 257
+    // After consolidation, old fragment should still be there with 257.
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 257);
 
-    // (sparse/dense vacuum/consolidate semantics differ, 
-    //  vacuum dense eliminates old data)
-    // then vacuum, now max should become 42 ...
+    // Sparse/dense vacuum/consolidate semantics differ, 
+    //  vacuum dense eliminates old data
+    // Vacuum, now max should become 42.
     tiledb::Array::vacuum(ctx_, array_name);
     CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 42);
   }
@@ -624,41 +680,37 @@ TEST_CASE_METHOD(
   );
 
   std::string basic_key_data{"abcdefghijklmnopqrstuvwxyz"};
-  std::vector<uint8_t> genned_validity;
+
   write_sparse_1d_d1_var_a1_var(
       array_name,
-      basic_key_data,  // dim_data - expecting single-char values, one for each row
+      basic_key_data,  // dim_data - expecting single-char values, one for each
+                       // row.
       {0},             // std::vector<uint64_t> && dim_offsets,
       // attr_data - expecting single-char values, one for each
-      // d1 element, may be empty.. dim_data.size()-1
-      "",              // std::string && attr_data,  
-      genned_validity  //std::vector<uint8_t> & genned_validity
+      // d1 element, may be empty.. size to be dim_data.size()-1.
+      ""               // std::string && attr_data,
   );
 
 
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 26);
 
-  // writing 26 empty items
+  // Writing 26 empty items.
   write_sparse_1d_d1_var_a1_var(
       array_name,
       basic_key_data,
       {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
        13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      "",
-      genned_validity
-  );
+      "");
   // 208 / 16 == 8 (bytes per offset, offsets dominate over data size)
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 208);
 
-  // writing 24 empty items, 2 occupied items
+  // Writing 24 empty items, 2 occupied items.
   write_sparse_1d_d1_var_a1_var(
       array_name,
       basic_key_data,
       {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
        13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-      "AB",
-      genned_validity
-  );
+      "AB");
 
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 208);
 
@@ -675,7 +727,7 @@ TEST_CASE_METHOD(
 
   create_dense_1d_d1_fix_a1_var<int, std::string>(
       array_name,        // std::string array_name,
-      {1, 27},           // std::array<dim1_type,2>&& d1_domain,
+      {1, 27},           // std::array<dim1_type,2> d1_domain,
       1,                 // int d1_extents,
       false,             // bool a1_is_nullable,
       TILEDB_ROW_MAJOR,  // tiledb_layout_t tile_order,
@@ -683,121 +735,121 @@ TEST_CASE_METHOD(
   );
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 0);
 
-  // zero-len data written
-  // at index 1
+  // Zero-len data written
+  // at index 1.
   write_dense_array_1d_fix_a1_var(
       array_name,
       "",     // std::string && attr_data,
       {0},    // std::vector<uint64_t> && attr_offsets,
       {1, 1}  // std::vector<int> && subrange
   );
-  // size of single offset (sizeof(uint64_t)) dominates
+  // Size of single offset (sizeof(uint64_t)) dominates.
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 8);
 
-  // attribute is variable non-nullable, 
+  // Attribute is variable non-nullable, 
   // So the single offset (uint64_t) of 8 bytes will be max with strings <= 8 bytes
-  // writing len 1 data at idx 1
+  // writing len 1 data at idx 1.
   write_dense_array_1d_fix_a1_var(
       array_name, "l", {0}, {1, 1});
-  // size of single offset dominates
+  // Size of single offset dominates.
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 8);
 
-  // writing len 2 data at idx1
+  // Writing len 2 data at idx1.
   write_dense_array_1d_fix_a1_var(
       array_name, "lm", {0}, {1, 1});
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 8);
-  // writing len 3 data at idx 1
+  // Writing len 3 data at idx 1.
   write_dense_array_1d_fix_a1_var(
       array_name, "lmn", {0}, {1, 1});
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 8);
-  // writing len 4 data at idx 1
+  // Writing len 4 data at idx 1.
   write_dense_array_1d_fix_a1_var(
       array_name, "lmno", {0}, {1, 1});
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 8);
-  // writing len 5 data at idx 1
+  // Writing len 5 data at idx 1.
   write_dense_array_1d_fix_a1_var(
       array_name, "lmnop", {0}, {1, 1});
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 8);
-  // writing len 6 data at idx 1
+  // Writing len 6 data at idx 1.
   write_dense_array_1d_fix_a1_var(
       array_name, "lmnopq", {0}, {1, 1});
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 8);
-  // writing len 7 data at idx 1
+  // Writing len 7 data at idx 1.
   write_dense_array_1d_fix_a1_var(
       array_name, "lmnopqr", {0}, {1, 1});
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 8);
-  // writing len 8 data at idx 1
+  // Writing len 8 data at idx 1.
   write_dense_array_1d_fix_a1_var(
       array_name, "lmnopqrs", {0}, {1, 1});
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 8);
 
-  // still writing 1 item, but now length of variable 
-  // data greater than the 1 offset
-  // writing len 9 data at idx 1
+  // Still writing 1 item, but now length of variable 
+  // data greater than the 1 offset,
+  // writing len 9 data at idx 1.
   write_dense_array_1d_fix_a1_var(
       array_name, "lmnopqrst", {0}, {1, 1});
-  //length of data dominates
+  // >ength of data dominates.
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 9);
-  // writing len 10 data at idx 1
+  // Writing len 10 data at idx 1.
   write_dense_array_1d_fix_a1_var(
       array_name, "lmnopqrstu", {0}, {1, 1});
-  // length of data dominates
+  // Length of data dominates.
   CHECK( c_get_fragments_max_in_memory_tile_size(array_name) == 10);
-  // writing len 11 data at idx 1
+  // Writing len 11 data at idx 1.
   write_dense_array_1d_fix_a1_var(
       array_name, "lmnopqrstuv", {0}, {1, 1});
-  // length of data dominates
+  // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 11);
-  // writing len 12 data at idx 1
+  // Writing len 12 data at idx 1.
   write_dense_array_1d_fix_a1_var(
       array_name, "lmnopqrstuvw", {0}, {1, 1});
-  // length of data dominates
+  // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 12);
-  // writing len 13 data at idx 1
+  // Writing len 13 data at idx 1.
   write_dense_array_1d_fix_a1_var(
       array_name, "lmnopqrstuvwx", {0}, {1, 1});
-  // length of data dominates
+  // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 13);
-  // writing len 14 data at idx 1
+  // Writing len 14 data at idx 1.
   write_dense_array_1d_fix_a1_var(
       array_name, "lmnopqrstuvwxy", {0}, {1, 1});
-  // length of data dominates
+  // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 14);
 
   // 4 items, 
-  // idx 1 "a", idx 2 "", idx 3 "", idx 4 ""
+  // idx 1 "a", idx 2 "", idx 3 "", idx 4 "".
   write_dense_array_1d_fix_a1_var(
       array_name,
       "a",
       {0, 0, 0, 0},
       {1, 4});
-  // earlier item len 14 idx 1 still dominates
+  // Earlier item len 14 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 14);
 
   // 4 items, 
-  // idx 1 "A", idx 2 "B", idx 3 "", idx 4 ""
+  // idx 1 "A", idx 2 "B", idx 3 "", idx 4 "".
   write_dense_array_1d_fix_a1_var(
       array_name,
       "AB",
       {0, 1, 1, 1},
       {1, 4});
 
-  // earlier item len 14 idx 1 still dominates
+  // Earlier item len 14 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 14);
 
   //4 items, 
-  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijkl, idx 6 "nopqr"
+  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijkl, idx 6 "nopqr".
   write_dense_array_1d_fix_a1_var(
       array_name,
       "AbcDefgHijklmNopqr",
       {0, 3, 7, 13},
       {3,6});
 
-  // earlier item len 14 idx 1 still dominates
+  // Earlier item len 14 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 14);
 
   // 5 items, max of any individual item is 26 bytes
-  // 26 @ idx 3, 26 @idx 4, 10 @ idx 5, 26 @ idx 6, 26 @ id x7
+  // 26 @ idx 3, 26 @idx 4, 10 @ idx 5, 26 @ idx 6, 26 @ id x7.
   write_dense_array_1d_fix_a1_var(
       array_name,
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
@@ -808,79 +860,79 @@ TEST_CASE_METHOD(
 
   write_dense_array_1d_fix_a1_var(
       array_name,
-      // 1 item, 114 bytes @ idx 1
+      // 1 item, 114 bytes @ idx 1.
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
-      {0}, //offsets
+      {0}, // offsets
       {1,1});
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 114);
 
   // 5 items, max of any individual item is 26 bytes
-  // 26 @ idx 3, 26 @idx 4, 10 @ idx 5, 26 @ idx 6, 26 @ id x7
+  // 26 @ idx 3, 26 @idx 4, 10 @ idx 5, 26 @ idx 6, 26 @ id x7.
   write_dense_array_1d_fix_a1_var(
       array_name,
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
       {0, 26, 52, 62, 88},
       {3, 7});
-  // earlier item len 114 idx 1 still dominates
+  // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 114);
 
   // 4 items, various lengths
-  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "Nopqr"
+  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "Nopqr".
   write_dense_array_1d_fix_a1_var(
       array_name,
       "AbcDefgHijklmNopqr",
       {0, 3, 7, 13},
       {3, 6});
-  // earlier item len 114 idx 1 still dominates
+  // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 114);
 
-  // consolidate
+  // Consolidate.
   tiledb::Array::consolidate(ctx_, array_name);
-  // earlier item len 114 idx 1 still dominates
+  // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 114);
 
   tiledb::Array::vacuum(ctx_, array_name);
-  // earlier item len 114 idx 1 still dominates (even after vacuum, still present)
+  // Earlier item len 114 idx 1 still dominates (even after vacuum, still present).
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 114);
 
   // 4 items, various lengths
-  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "Nopqr"
+  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "Nopqr".
   write_dense_array_1d_fix_a1_var(
       array_name,
       "AbcDefgHijklmNopqr",
       {0, 3, 7, 13},
       {1, 4});
-  // earlier item len 114 idx 1 still dominates
+  // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 114);
 
-  // consolidate
+  // Consolidate.
   tiledb::Array::consolidate(ctx_, array_name);
-  // earlier item len 114 idx 1 still dominates
+  // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 114);
 
   tiledb::Array::vacuum(ctx_, array_name);
-  // some earlier item(s) len 26 from idx 3..7 now dominates
+  // Some earlier item(s) len 26 from idx 3..7 now dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 26);
 
   // 4 items, various lengths
-  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "N", idx 7 "Opqr"
+  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "N", idx 7 "Opqr".
   write_dense_array_1d_fix_a1_var(
       array_name,
       "AbcDefgHijklmNOpqr",
       {0, 3, 7, 13, 14},
       {3, 7});
-  // earlier item(s) len 26 idx 3..7 dominates
+  // Earlier item(s) len 26 idx 3..7 dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 26);
 
-  // consolidate
+  // Consolidate.
   tiledb::Array::consolidate(ctx_, array_name);
-  // earlier item(s) len 26 idx 3..7 dominates
+  // Earlier item(s) len 26 idx 3..7 dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 26);
 
   tiledb::Array::vacuum(ctx_, array_name);
-  // after vacuum, now down to lesser items, offset sizeof(uint64_t) again dominant
+  // After vacuum, now down to lesser items, offset sizeof(uint64_t) again dominant.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 8);
 }
 
@@ -895,7 +947,7 @@ TEST_CASE_METHOD(
 
   create_dense_1d_d1_fix_a1_var<int, std::string>(
       array_name,        // std::string array_name,
-      {1, 27},           // std::array<dim1_type,2>&& d1_domain,
+      {1, 27},           // std::array<dim1_type,2> d1_domain,
       1,                 // int d1_extents,
       true,              // bool a1_is_nullable,
       TILEDB_ROW_MAJOR,  // tiledb_layout_t tile_order,
@@ -903,8 +955,7 @@ TEST_CASE_METHOD(
   );
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 0);
 
-  // zero-len data written
-  // at index 1
+  // Zero-len data written at index 1.
   write_dense_1d_fix_a1_var_null(
       array_name,
       "",     // std::string && attr_data,
@@ -912,12 +963,12 @@ TEST_CASE_METHOD(
       {1},    // std::vector<uint8_t> && attr_val,
       {1, 1}  // std::vector<int> && subrange
   );
-  // size of single offset (sizeof(uint64_t)) dominates
+  // Size of single offset (sizeof(uint64_t)) dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 8);
 
-  // attribute is variable non-nullable,
+  // Attribute is variable non-nullable,
   // So the single offset (uint64_t) of 8 bytes will be max with strings <= 8
-  // bytes writing len 1 data at idx 1
+  // bytes writing len 1 data at idx 1.
   write_dense_1d_fix_a1_var_null(
       array_name,
       "l",    // std::string && attr_data,
@@ -925,101 +976,100 @@ TEST_CASE_METHOD(
       {1},    // std::vector<uint8_t> && attr_val,
       {1, 1}  // std::vector<int> && subrange
   );
-  // size of single offset dominates
+  // Size of single offset dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 8);
 
-  // writing len 2 data at idx1
+  // Writing len 2 data at idx1.
   write_dense_1d_fix_a1_var_null(
       array_name, "lm", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 8);
-  // writing len 3 data at idx 1
+  // Writing len 3 data at idx 1.
   write_dense_1d_fix_a1_var_null(
       array_name, "lmn", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 8);
-  // writing len 4 data at idx 1
+  // Writing len 4 data at idx 1.
   write_dense_1d_fix_a1_var_null(
       array_name, "lmno", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 8);
-  // writing len 5 data at idx 1
+  // Writing len 5 data at idx 1.
   write_dense_1d_fix_a1_var_null(
       array_name, "lmnop", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 8);
-  // writing len 6 data at idx 1
+  // Writing len 6 data at idx 1.
   write_dense_1d_fix_a1_var_null(
       array_name, "lmnopq", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 8);
-  // writing len 7 data at idx 1
+  // Writing len 7 data at idx 1.
   write_dense_1d_fix_a1_var_null(
       array_name, "lmnopqr", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 8);
-  // writing len 8 data at idx 1
+  // Writing len 8 data at idx 1.
   write_dense_1d_fix_a1_var_null(
       array_name, "lmnopqrs", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 8);
 
-  // still writing 1 item, but now length of variable
+  // Still writing 1 item, but now length of variable
   // data greater than the 1 offset
-  // writing len 9 data at idx 1
+  // writing len 9 data at idx 1.
   write_dense_1d_fix_a1_var_null(
       array_name, "lmnopqrst", {0}, {1}, {1, 1});
-  // length of data dominates
+  // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 9);
-  // writing len 10 data at idx 1
+  // Writing len 10 data at idx 1.
   write_dense_1d_fix_a1_var_null(
       array_name, "lmnopqrstu", {0}, {1}, {1, 1});
-  // length of data dominates
+  // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 10);
-  // writing len 11 data at idx 1
+  // Writing len 11 data at idx 1.
   write_dense_1d_fix_a1_var_null(
       array_name, "lmnopqrstuv", {0}, {1}, {1, 1});
-  // length of data dominates
+  // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 11);
-  // writing len 12 data at idx 1
+  // Writing len 12 data at idx 1.
   write_dense_1d_fix_a1_var_null(
       array_name, "lmnopqrstuvw", {0}, {1}, {1, 1});
-  // length of data dominates
+  // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 12);
-  // writing len 13 data at idx 1
+  // Writing len 13 data at idx 1.
   write_dense_1d_fix_a1_var_null(
       array_name, "lmnopqrstuvwx", {0}, {1}, {1, 1});
-  // length of data dominates
+  // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 13);
-  // writing len 14 data at idx 1
+  // Writing len 14 data at idx 1.
   write_dense_1d_fix_a1_var_null(
       array_name, "lmnopqrstuvwxy", {0}, {1}, {1, 1});
-  // length of data dominates
+  // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 14);
 
   // 4 items,
-  // idx 1 "a", idx 2 "", idx 3 "", idx 4 ""
+  // idx 1 "a", idx 2 "", idx 3 "", idx 4 "".
   write_dense_1d_fix_a1_var_null(
       array_name, "a", {0, 0, 0, 0}, {1, 1, 1, 1}, {1, 4});
-  // earlier item len 14 idx 1 still dominates
+  // Earlier item len 14 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 14);
 
   // 4 items,
-  // idx 1 "A", idx 2 "B", idx 3 "", idx 4 ""
+  // idx 1 "A", idx 2 "B", idx 3 "", idx 4 "".
   write_dense_1d_fix_a1_var_null(
       array_name, "AB", {0, 1, 1, 1}, {1, 1, 1, 1}, {1, 4});
 
-  // earlier item len 14 idx 1 still dominates
+  // Earlier item len 14 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 14);
 
   // 4 items,
-  //  idx 3 "Abc, idx 4 "Defg", idx 5 "Hijkl, idx 6 "nopqr"
+  //  idx 3 "Abc, idx 4 "Defg", idx 5 "Hijkl, idx 6 "nopqr".
   write_dense_1d_fix_a1_var_null(
       array_name, "AbcDefgHijklmNopqr", {0, 3, 7, 13}, {1, 1, 1, 1}, {3, 6});
 
-  // earlier item len 14 idx 1 still dominates
+  // Earlier item len 14 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 14);
 
   // 5 items, max of any individual item is 26 bytes
-  // 26 @ idx 3, 26 @idx 4, 10 @ idx 5, 26 @ idx 6, 26 @ id x7
+  // 26 @ idx 3, 26 @idx 4, 10 @ idx 5, 26 @ idx 6, 26 @ id x7.
   write_dense_1d_fix_a1_var_null(
       array_name,
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
-      //{0, 26, 52, 62, 88, 114},
       {0, 26, 52, 62, 88},
       {1, 1, 1, 1, 1},
       {3, 7});
@@ -1027,18 +1077,16 @@ TEST_CASE_METHOD(
 
   write_dense_1d_fix_a1_var_null(
       array_name,
-      // 1 item, 114 bytes @ idx 1
+      // 1 item, 114 bytes @ idx 1.
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
-      //{0, 26, 52, 62, 88, 114},
-      //{0, 26, 52, 62, 88},
       {0},  // offsets
       {1},
       {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 114);
 
-  // 5 items, max of any individual item is 26 bytes
-  // 26 @ idx 3, 26 @idx 4, 10 @ idx 5, 26 @ idx 6, 26 @ id x7
+  // 5 items, max of any individual item is 26 bytes,
+  // 26 @ idx 3, 26 @idx 4, 10 @ idx 5, 26 @ idx 6, 26 @ id x7.
   write_dense_1d_fix_a1_var_null(
       array_name,
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
@@ -1047,61 +1095,61 @@ TEST_CASE_METHOD(
       {0, 26, 52, 62, 88},
       {1, 1, 1, 1, 1},
       {3, 7});
-  // earlier item len 114 idx 1 still dominates
+  // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 114);
 
-  // 4 items, various lengths
-  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "Nopqr"
+  // 4 items, various lengths,
+  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "Nopqr".
   write_dense_1d_fix_a1_var_null(
       array_name, "AbcDefgHijklmNopqr", {0, 3, 7, 13}, {1, 1, 1, 1}, {3, 6});
-  // earlier item len 114 idx 1 still dominates
+  // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 114);
 
-  // consolidate
+  // Consolidate.
   tiledb::Array::consolidate(ctx_, array_name);
-  // earlier item len 114 idx 1 still dominates
+  // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 114);
 
   tiledb::Array::vacuum(ctx_, array_name);
-  // earlier item len 114 idx 1 still dominates (even after vacuum, still
-  // present)
+  // Earlier item len 114 idx 1 still dominates (even after vacuum, still
+  // present).
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 114);
 
-  // 4 items, various lengths
-  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "Nopqr"
+  // 4 items, various lengths,
+  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "Nopqr".
   write_dense_1d_fix_a1_var_null(
       array_name, "AbcDefgHijklmNopqr", {0, 3, 7, 13}, {1, 1, 1, 1}, {1, 4});
-  // earlier item len 114 idx 1 still dominates
+  // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 114);
 
-  // consolidate
+  // Consolidate.
   tiledb::Array::consolidate(ctx_, array_name);
-  // earlier item len 114 idx 1 still dominates
+  // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 114);
 
   tiledb::Array::vacuum(ctx_, array_name);
-  // some earlier item(s) len 26 from idx 3..7 now dominates
+  // Some earlier item(s) len 26 from idx 3..7 now dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 26);
 
-  // 4 items, various lengths
-  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "N", idx 7 "Opqr"
+  // 4 items, various lengths,
+  // idx 3 "Abc, idx 4 "Defg", idx 5 "Hijklm, idx 6 "N", idx 7 "Opqr".
   write_dense_1d_fix_a1_var_null(
       array_name,
       "AbcDefgHijklmNOpqr",
       {0, 3, 7, 13, 14},
       {1, 1, 1, 1, 1},
       {3, 7});
-  // earlier item(s) len 26 idx 3..7 dominates
+  // Earlier item(s) len 26 idx 3..7 dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 26);
 
-  // consolidate
+  // Consolidate.
   tiledb::Array::consolidate(ctx_, array_name);
-  // earlier item(s) len 26 idx 3..7 dominates
+  // Earlier item(s) len 26 idx 3..7 dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(array_name) == 26);
 
   tiledb::Array::vacuum(ctx_, array_name);
-  // after vacuum, now down to lesser items, offset sizeof(uint64_t) again
-  // dominant
+  // After vacuum, now down to lesser items, offset sizeof(uint64_t) again
+  // dominant.
   CHECK(cpp_get_fragments_max_in_memory_tile_size(array_name) == 8);
 }
 
@@ -1110,7 +1158,6 @@ TEST_CASE_METHOD(
     MaxTileSizeFx,
     "C++ API: Max tile size, serialization",
     "[max-tile-size][serialization]") {
-  std::string array_name("tile_size_array");
   tiledb::sm::Buffer buff;
   std::vector<uint64_t> values_to_try{
       0,
@@ -1120,6 +1167,8 @@ TEST_CASE_METHOD(
       64 * 1024 * 1024,
       64 * 1024 * 1024 + 1,
       std::numeric_limits<uint64_t>::max()};
+  // Loop through values_to_try serializing/deserializing and comparing
+  // to original value.
   for (auto v : values_to_try) {
     CHECK(tiledb::sm::serialization::maximum_tile_size_serialize(
         &v,
