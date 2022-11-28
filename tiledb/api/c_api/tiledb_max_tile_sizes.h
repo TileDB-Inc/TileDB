@@ -54,4 +54,4 @@ typedef struct tiledb_fragment_max_tile_sizes_t {
 }
 #endif
 
-#endif // TILEDB_C_MAX_TILE_SIZES_H
+#endif  // TILEDB_C_MAX_TILE_SIZES_H

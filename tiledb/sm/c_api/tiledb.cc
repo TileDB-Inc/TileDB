@@ -6165,7 +6165,6 @@ int32_t tiledb_consolidation_plan_free_json_str(char** out) {
   return TILEDB_OK;
 }
 
-}  // namespace tiledb::api
 TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
     tiledb_ctx_t* ctx,
     const char* array_uri,
@@ -6181,7 +6180,7 @@ TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
       save_error(ctx, st);
       return TILEDB_ERR;
     }
-    
+
     if (uri.is_tiledb()) {
       // Check REST client
       auto rest_client = ctx->storage_manager()->rest_client();
@@ -6192,7 +6191,7 @@ TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
         save_error(ctx, st);
         return TILEDB_ERR;
       }
-      
+
       auto st = rest_client->get_array_maximum_tile_size_from_rest(
           uri, max_in_memory_tile_size);
       if (!st.ok()) {
@@ -6203,22 +6202,21 @@ TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
     } else {
       tiledb_fragment_max_tile_sizes_t max_tile_sizes;
       ctx->storage_manager()->array_get_fragment_tile_max_size(
-          uri,
-          &max_tile_sizes, config ? &config->config() : nullptr);
+          uri, &max_tile_sizes, config ? &config->config() : nullptr);
       *max_in_memory_tile_size = max_tile_sizes.max_in_memory_tile_size;
     }
   }
-  // TBD: What's the (Is this an) appropriate catch and (re-)throw series for this API?
+  // TBD: What's the (Is this an) appropriate catch and (re-)throw series for
+  // this API?
   catch (...) {
-    std::throw_with_nested(api::CAPIStatusException(
-        "Failed to obtain max tile size "));
+    std::throw_with_nested(
+        api::CAPIStatusException("Failed to obtain max tile size "));
   }
-  
+
   return TILEDB_OK;
 }
 
-}  // namespace tiledb::common::detail
-
+}  // namespace tiledb::api
 /* ****************************** */
 /*  C API Interface Functions     */
 /* ****************************** */
