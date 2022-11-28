@@ -183,6 +183,12 @@ ArraySchema::ArraySchema(
               "on an array with variable sized dimensions."));
         }
 
+        // The bitsort filter should be first in its respective pipeline.
+        if (attr->filters().get_filter(0)->type() != FilterType::FILTER_BITSORT) {
+          throw StatusException(Status_ArraySchemaError(
+              "Array schema creation failed. Bitsort filter must be first in the attribute pipeline."));
+        }
+
         bitsort_filter_attr_ = attr->name();
       }
     }

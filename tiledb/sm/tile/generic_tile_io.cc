@@ -102,6 +102,8 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
       nullopt);
 
   // Unfilter
+
+  // is this also always false?
   assert(tile.filtered());
   RETURN_NOT_OK_TUPLE(
       header.filters.run_reverse(
@@ -110,6 +112,7 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
           nullptr,
           storage_manager_->compute_tp(),
           config,
+          false,
           nullptr),
       nullopt);
   assert(!tile.filtered());
@@ -171,12 +174,15 @@ Status GenericTileIO::write_generic(
   RETURN_NOT_OK(init_generic_tile_header(tile, &header, encryption_key));
 
   // Filter tile
+
+  // TODO hmm is this always false?
   assert(!tile->filtered());
   RETURN_NOT_OK(header.filters.run_forward(
       storage_manager_->stats(),
       tile,
       nullptr,
-      storage_manager_->compute_tp()));
+      storage_manager_->compute_tp(),
+      false));
   header.persisted_size = tile->filtered_buffer().size();
   assert(tile->filtered());
 

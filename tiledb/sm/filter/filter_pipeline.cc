@@ -156,7 +156,8 @@ Status FilterPipeline::filter_chunks_forward(
     uint32_t chunk_size,
     std::vector<uint64_t>& chunk_offsets,
     FilteredBuffer& output,
-    ThreadPool* const compute_tp) const {
+    ThreadPool* const compute_tp,
+    bool is_dim) const {
   bool var_sizes = chunk_offsets.size() > 0;
   uint64_t last_buffer_size = chunk_size;
   uint64_t nchunks = 1;
@@ -199,6 +200,10 @@ Status FilterPipeline::filter_chunks_forward(
     // Apply the filters sequentially.
     for (auto it = filters_.begin(), ite = filters_.end(); it != ite; ++it) {
       auto& f = *it;
+
+      if (f->type() == FilterType::FILTER_BITSORT && is_dim) {
+        continue;
+      }
 
       // Clear and reset I/O buffers
       input_data.reset_offset();
@@ -318,7 +323,8 @@ Status FilterPipeline::filter_chunks_reverse(
     void* support_data,
     const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
     ThreadPool* const compute_tp,
-    const Config& config) const {
+    const Config& config,
+    bool is_dim) const {
   if (input.empty()) {
     return Status::Ok();
   }
@@ -368,6 +374,10 @@ Status FilterPipeline::filter_chunks_reverse(
     for (int64_t filter_idx = (int64_t)filters_.size() - 1; filter_idx >= 0;
          filter_idx--) {
       auto& f = filters_[filter_idx];
+
+      if (f->type() == FilterType::FILTER_BITSORT && is_dim) {
+        continue;
+      }
 
       // Clear and reset I/O buffers
       input_data.reset_offset();
@@ -431,6 +441,7 @@ Status FilterPipeline::run_forward(
     Tile* const tile,
     Tile* const offsets_tile,
     ThreadPool* const compute_tp,
+    bool is_dim,
     void* support_data,
     bool use_chunking) const {
   RETURN_NOT_OK(
@@ -463,7 +474,8 @@ Status FilterPipeline::run_forward(
           chunk_size,
           *chunk_offsets,
           tile->filtered_buffer(),
-          compute_tp),
+          compute_tp,
+          is_dim),
       tile->filtered_buffer().clear());
 
   // The contents of 'buffer' have been filtered and stored
@@ -481,7 +493,8 @@ Status FilterPipeline::run_reverse_chunk_range(
     const uint64_t min_chunk_index,
     const uint64_t max_chunk_index,
     uint64_t concurrency_level,
-    const Config& config) const {
+    const Config& config,
+    bool is_dim) const {
   // Run each chunk through the entire pipeline.
   for (size_t i = min_chunk_index; i < max_chunk_index; i++) {
     auto& chunk = chunk_data.filtered_chunks_[i];
@@ -507,6 +520,10 @@ Status FilterPipeline::run_reverse_chunk_range(
     for (int64_t filter_idx = (int64_t)filters_.size() - 1; filter_idx >= 0;
          filter_idx--) {
       auto& f = filters_[filter_idx];
+
+      if (f->type() == FilterType::FILTER_BITSORT && is_dim) {
+        continue;
+      }
 
       // Clear and reset I/O buffers
       input_data.reset_offset();
@@ -559,11 +576,12 @@ Status FilterPipeline::run_reverse(
     Tile* const offsets_tile,
     ThreadPool* const compute_tp,
     const Config& config,
+    bool is_dim,
     void* support_data) const {
   assert(tile->filtered());
 
   return run_reverse_internal(
-      reader_stats, tile, offsets_tile, compute_tp, config, support_data);
+      reader_stats, tile, offsets_tile, compute_tp, config, support_data, is_dim);
 }
 
 Status FilterPipeline::run_reverse_internal(
@@ -572,7 +590,8 @@ Status FilterPipeline::run_reverse_internal(
     Tile* const offsets_tile,
     ThreadPool* const compute_tp,
     const Config& config,
-    void* support_data) const {
+    void* support_data,
+    bool is_dim) const {
   auto filtered_buffer_data = tile->filtered_buffer().data();
 
   // First make a pass over the tile to get the chunk information.
@@ -604,7 +623,7 @@ Status FilterPipeline::run_reverse_internal(
   reader_stats->add_counter("read_unfiltered_byte_num", total_orig_size);
 
   const Status st = filter_chunks_reverse(
-      *tile, support_data, filtered_chunks, compute_tp, config);
+      *tile, support_data, filtered_chunks, compute_tp, config, is_dim);
   if (!st.ok()) {
     tile->clear_data();
 

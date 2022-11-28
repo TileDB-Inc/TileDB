@@ -1192,7 +1192,8 @@ Status ReaderBase::unfilter_tile_chunk_range(
       t_min,
       t_max,
       storage_manager_->compute_tp()->concurrency_level(),
-      storage_manager_->config()));
+      storage_manager_->config(),
+      array_schema_.is_dim(name)));
 
   return Status::Ok();
 }
@@ -1231,7 +1232,8 @@ Status ReaderBase::unfilter_tile_chunk_range(
       t_min,
       t_max,
       concurrency_level,
-      storage_manager_->config()));
+      storage_manager_->config(),
+      false));
 
   if (tile_var_chunk_data.chunk_offsets_.size() > 0) {
     auto&& [tvar_min, tvar_max] = compute_chunk_min_max(
@@ -1239,6 +1241,8 @@ Status ReaderBase::unfilter_tile_chunk_range(
         num_range_threads,
         thread_idx);
     // Reverse the filters of tile var data
+
+    // TODO: is this right?
     RETURN_NOT_OK(filters.run_reverse_chunk_range(
         stats_,
         tile_var,
@@ -1247,7 +1251,8 @@ Status ReaderBase::unfilter_tile_chunk_range(
         tvar_min,
         tvar_max,
         concurrency_level,
-        storage_manager_->config()));
+        storage_manager_->config(),
+        array_schema_.is_dim(name)));
   }
 
   return Status::Ok();
@@ -1290,7 +1295,8 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
         t_min,
         t_max,
         concurrency_level,
-        storage_manager_->config()));
+        storage_manager_->config(),
+        array_schema_.is_dim(name)));
   }
 
   // Prevent processing past the end of chunks in case there are more
@@ -1311,7 +1317,8 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
         tval_min,
         tval_max,
         concurrency_level,
-        storage_manager_->config()));
+        storage_manager_->config(),
+        false));
   }
 
   return Status::Ok();
@@ -1360,7 +1367,8 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
         t_min,
         t_max,
         concurrency_level,
-        storage_manager_->config()));
+        storage_manager_->config(),
+        false));
   }
 
   // Prevent processing past the end of chunks in case there are more
@@ -1381,7 +1389,8 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
         tvar_min,
         tvar_max,
         concurrency_level,
-        storage_manager_->config()));
+        storage_manager_->config(),
+        array_schema_.is_dim(name)));
   }
 
   // Prevent processing past the end of chunks in case there are more
@@ -1402,7 +1411,8 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
         tval_min,
         tval_max,
         concurrency_level,
-        storage_manager_->config()));
+        storage_manager_->config(),
+        false));
   }
 
   return Status::Ok();
@@ -1584,6 +1594,7 @@ Status ReaderBase::unfilter_tile(
       nullptr,
       storage_manager_->compute_tp(),
       storage_manager_->config(),
+      array_schema_.is_dim(name),
       support_data));
 
   return Status::Ok();
@@ -1606,7 +1617,7 @@ Status ReaderBase::unfilter_tile(
   if (filters.skip_offsets_filtering(
           tile_var->type(), array_schema_.version())) {
     RETURN_NOT_OK(filters.run_reverse(
-        stats_, tile_var, tile, storage_manager_->compute_tp(), config_, tile));
+        stats_, tile_var, tile, storage_manager_->compute_tp(), config_, array_schema_.is_dim(name), tile));
   } else {
     RETURN_NOT_OK(offset_filters.run_reverse(
         stats_,
@@ -1614,6 +1625,7 @@ Status ReaderBase::unfilter_tile(
         nullptr,
         storage_manager_->compute_tp(),
         config_,
+        false,
         nullptr));
     RETURN_NOT_OK(filters.run_reverse(
         stats_,
@@ -1621,6 +1633,7 @@ Status ReaderBase::unfilter_tile(
         nullptr,
         storage_manager_->compute_tp(),
         config_,
+        array_schema_.is_dim(name),
         nullptr));
   }
 
@@ -1645,6 +1658,7 @@ Status ReaderBase::unfilter_tile_nullable(
       nullptr,
       storage_manager_->compute_tp(),
       storage_manager_->config(),
+      array_schema_.is_dim(name),
       nullptr));
   // Reverse the validity tile filters.
   RETURN_NOT_OK(validity_filters.run_reverse(
@@ -1653,6 +1667,7 @@ Status ReaderBase::unfilter_tile_nullable(
       nullptr,
       storage_manager_->compute_tp(),
       storage_manager_->config(),
+      false,
       nullptr));
 
   return Status::Ok();
@@ -1685,6 +1700,7 @@ Status ReaderBase::unfilter_tile_nullable(
         tile,
         storage_manager_->compute_tp(),
         storage_manager_->config(),
+        array_schema_.is_dim(name),
         tile));
   } else {
     RETURN_NOT_OK(offset_filters.run_reverse(
@@ -1693,6 +1709,7 @@ Status ReaderBase::unfilter_tile_nullable(
         nullptr,
         storage_manager_->compute_tp(),
         storage_manager_->config(),
+        false,
         nullptr));
     RETURN_NOT_OK(filters.run_reverse(
         stats_,
@@ -1700,6 +1717,7 @@ Status ReaderBase::unfilter_tile_nullable(
         nullptr,
         storage_manager_->compute_tp(),
         storage_manager_->config(),
+        array_schema_.is_dim(name),
         nullptr));
   }
 
@@ -1710,6 +1728,7 @@ Status ReaderBase::unfilter_tile_nullable(
       nullptr,
       storage_manager_->compute_tp(),
       storage_manager_->config(),
+      false,
       nullptr));
 
   return Status::Ok();

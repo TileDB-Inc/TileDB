@@ -304,7 +304,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @param tile The tiles to be filtered.
    * @return Status
    */
-  Status filter_tiles(const std::string& name, WriterTileVector* tiles);
+  Status filter_tiles(const std::string& name, WriterTileVector* tiles, bool is_dim);
 
   /**
    * Runs the input tiles for the input attribute through the filter pipeline
@@ -339,7 +339,8 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       Tile* offsets_tile,
       bool offsets,
       bool nullable,
-      void* support_data);
+      void* support_data,
+      bool is_dim);
 
   /**
    * Determines if an attribute has min max metadata.

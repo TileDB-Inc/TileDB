@@ -205,6 +205,7 @@ class FilterPipeline {
       Tile* tile,
       Tile* offsets_tile,
       ThreadPool* compute_tp,
+      bool is_dim = false,
       void* support_data = nullptr,
       bool chunking = true) const;
 
@@ -255,6 +256,7 @@ class FilterPipeline {
       Tile* const offsets_tile,
       ThreadPool* compute_tp,
       const Config& config,
+      bool is_dim = false,
       void* support_data = nullptr) const;
 
   /**
@@ -279,7 +281,8 @@ class FilterPipeline {
       const uint64_t min_chunk_index,
       const uint64_t max_chunk_index,
       uint64_t concurrency_level,
-      const Config& config) const;
+      const Config& config,
+      bool is_dim) const;
 
   /**
    * Serializes the pipeline metadata into a binary buffer.
@@ -382,7 +385,8 @@ class FilterPipeline {
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,
       FilteredBuffer& output,
-      ThreadPool* const compute_tp) const;
+      ThreadPool* const compute_tp,
+      bool is_dim) const;
 
   /**
    * Run the given list of chunks in reverse through the pipeline.
@@ -401,7 +405,8 @@ class FilterPipeline {
       void* support_data,
       const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
       ThreadPool* const compute_tp,
-      const Config& config) const;
+      const Config& config,
+      bool is_dim) const;
 
   /**
    * The internal work routine for `run_reverse`.
@@ -419,7 +424,8 @@ class FilterPipeline {
       Tile* const offsets_tile,
       ThreadPool* compute_tp,
       const Config& config,
-      void* support_data) const;
+      void* support_data,
+      bool is_dim) const;
 };
 
 }  // namespace sm
