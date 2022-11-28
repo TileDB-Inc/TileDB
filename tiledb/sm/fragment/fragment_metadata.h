@@ -215,7 +215,7 @@ class FragmentMetadata {
       const T* subarray) const;
 
   /** Retrieves the fragment size. */
-  Status fragment_size(uint64_t* size) const;
+  uint64_t fragment_size() const;
 
   /**
    * Returns true if the corresponding fragment is dense, and false if it

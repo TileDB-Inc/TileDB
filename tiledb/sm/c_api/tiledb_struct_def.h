@@ -39,6 +39,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/buffer/buffer_list.h"
+#include "tiledb/sm/consolidation_plan/consolidation_plan.h"
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/fragment/fragment_info.h"
@@ -57,11 +58,6 @@ struct tiledb_array_t {
 struct tiledb_subarray_t {
   tiledb::sm::Subarray* subarray_ = nullptr;
   bool is_allocated_ = false;
-};
-
-struct tiledb_buffer_t {
-  tiledb::sm::Datatype datatype_ = tiledb::sm::Datatype::UINT8;
-  tiledb::sm::Buffer* buffer_ = nullptr;
 };
 
 struct tiledb_buffer_list_t {
@@ -108,8 +104,8 @@ struct tiledb_fragment_info_t {
   tiledb::sm::FragmentInfo* fragment_info_ = nullptr;
 };
 
-struct tiledb_group_t {
-  tdb_unique_ptr<tiledb::sm::Group> group_ = nullptr;
+struct tiledb_consolidation_plan_t {
+  shared_ptr<tiledb::sm::ConsolidationPlan> consolidation_plan_ = nullptr;
 };
 
 #endif

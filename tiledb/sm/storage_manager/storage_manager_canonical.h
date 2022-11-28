@@ -152,38 +152,6 @@ class StorageManagerCanonical {
   /* ********************************* */
 
   /**
-   * Closes an array opened for reads.
-   *
-   * @param array The array to be closed.
-   * @return Status
-   */
-  Status array_close_for_reads(Array* array);
-
-  /**
-   * Closes an array opened for writes.
-   *
-   * @param array The array to be closed.
-   * @return Status
-   */
-  Status array_close_for_writes(Array* array);
-
-  /**
-   * Closes an array opened for deletes.
-   *
-   * @param array The array to be closed.
-   * @return Status
-   */
-  Status array_close_for_deletes(Array* array);
-
-  /**
-   * Closes an array opened for updates.
-   *
-   * @param array The array to be closed.
-   * @return Status
-   */
-  Status array_close_for_updates(Array* array);
-
-  /**
    * Closes an group opened for reads.
    *
    * @param group The group to be closed.
@@ -502,15 +470,21 @@ class StorageManagerCanonical {
       const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /**
+   * Cleans up the group data.
+   *
+   * @param group_name The name of the group whose data is to be deleted.
+   */
+  void delete_group(const char* group_name);
+
+  /**
    * Cleans up the array, such as its consolidated fragments and array
    * metadata. Note that this will coarsen the granularity of time traveling
    * (see docs for more information).
    *
    * @param array_name The name of the array to be vacuumed.
    * @param config Configuration parameters for vacuuming.
-   * @return Status
    */
-  Status array_vacuum(const char* array_name, const Config& config);
+  void array_vacuum(const char* array_name, const Config& config);
 
   /**
    * Consolidates the metadata of an array into a single file.
@@ -1125,9 +1099,8 @@ class StorageManagerCanonical {
    * @param config Configuration parameters for vacuuming
    *     (`nullptr` means default, which will use the config associated with
    *      this instance).
-   * @return Status
    */
-  Status group_metadata_vacuum(const char* group_name, const Config& config);
+  void group_metadata_vacuum(const char* group_name, const Config& config);
 
   /**
    * Populates an encryption key from either the option config param or the

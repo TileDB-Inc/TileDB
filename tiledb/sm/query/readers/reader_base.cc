@@ -116,6 +116,12 @@ ReaderBase::ReaderBase(
     fragment_metadata_ = array->fragment_metadata();
   timestamps_needed_for_deletes_and_updates_.resize(fragment_metadata_.size());
 
+  if (layout_ == Layout::GLOBAL_ORDER && subarray.range_num() > 1) {
+    throw ReaderBaseStatusException(
+        "Cannot initialize reader; Multi-range reads are not supported on a "
+        "global order query.");
+  }
+
   bool found = false;
   if (!config_.get<bool>("vfs.disable_batching", &disable_batching_, &found)
            .ok()) {

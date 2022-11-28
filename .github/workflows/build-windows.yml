@@ -103,7 +103,7 @@ jobs:
           fi
       - name: Prepare git
         run: git config --global core.autocrlf false
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: core tiledb windows build
         run: |
           $ErrorView = "NormalView"
@@ -406,7 +406,7 @@ jobs:
 
       - name: 'upload dumpfile artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ always() == true && startsWith(matrix.os, 'windows-') == true }} # only run this job if the build step failed
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           retention-days: 10
           name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{matrix.environ}}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"

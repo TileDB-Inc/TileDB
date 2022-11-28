@@ -502,6 +502,22 @@ Status VFS::remove_file(const URI& uri) const {
       Status_VFSError("Unsupported URI scheme: " + uri.to_string()));
 }
 
+void VFS::remove_files(
+    ThreadPool* compute_tp, const std::vector<URI>& uris) const {
+  throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
+    RETURN_NOT_OK(remove_file(uris[i]));
+    return Status::Ok();
+  }));
+}
+
+void VFS::remove_files(
+    ThreadPool* compute_tp, const std::vector<TimestampedURI>& uris) const {
+  throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
+    RETURN_NOT_OK(remove_file(uris[i].uri_));
+    return Status::Ok();
+  }));
+}
+
 Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
   bool found;
   *ops = 0;
@@ -1687,13 +1703,14 @@ VFS::multipart_upload_state(const URI& uri) {
     }
     return {Status::Ok(), state};
 #else
-    return {LOG_STATUS(Status_VFSError("TileDB was built without S3 support")),
-            nullopt};
+    return {
+        LOG_STATUS(Status_VFSError("TileDB was built without S3 support")),
+        nullopt};
 #endif
   } else if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return {LOG_STATUS(Status_VFSError("Not yet supported for Azure")),
-            nullopt};
+    return {
+        LOG_STATUS(Status_VFSError("Not yet supported for Azure")), nullopt};
 #else
     return {
         LOG_STATUS(Status_VFSError("TileDB was built without Azure support")),
@@ -1703,14 +1720,16 @@ VFS::multipart_upload_state(const URI& uri) {
 #ifdef HAVE_GCS
     return {LOG_STATUS(Status_VFSError("Not yet supported for GCS")), nullopt};
 #else
-    return {LOG_STATUS(Status_VFSError("TileDB was built without GCS support")),
-            nullopt};
+    return {
+        LOG_STATUS(Status_VFSError("TileDB was built without GCS support")),
+        nullopt};
 #endif
   }
 
-  return {LOG_STATUS(
-              Status_VFSError("Unsupported URI schemes: " + uri.to_string())),
-          nullopt};
+  return {
+      LOG_STATUS(
+          Status_VFSError("Unsupported URI schemes: " + uri.to_string())),
+      nullopt};
 }
 
 Status VFS::set_multipart_upload_state(

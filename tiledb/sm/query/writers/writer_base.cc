@@ -185,8 +185,19 @@ WriterBase::WriterBase(
         "configuration");
   }
 
-  // Set a default subarray
-  if (!subarray_.is_set()) {
+  // Check subarray is valid for strategy is set or set it to default if unset.
+  if (subarray_.is_set()) {
+    if (!array_schema_.dense()) {
+      throw WriterBaseStatusException(
+          "Cannot initialize write; Non-default subarray are not supported in "
+          "sparse writes");
+    }
+    if (subarray_.range_num() > 1) {
+      throw WriterBaseStatusException(
+          "Cannot initialize writer; Multi-range dense writes are not "
+          "supported");
+    }
+  } else {
     subarray_ = Subarray(array_, layout_, stats_, logger_);
   }
 

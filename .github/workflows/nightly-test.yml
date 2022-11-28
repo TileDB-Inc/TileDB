@@ -24,7 +24,7 @@ jobs:
         run: printenv
 
       - name: Checkout TileDB `dev`
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Configure TileDB CMake
         run: |
@@ -44,7 +44,7 @@ jobs:
     if: failure() || cancelled()
     steps:
       - name: Checkout TileDB `dev`
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Create Issue if Build Fails
         uses: JasonEtco/create-an-issue@v2
         env:

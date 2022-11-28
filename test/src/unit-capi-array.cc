@@ -1896,11 +1896,20 @@ TEST_CASE_METHOD(
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   uint64_t range_num;
+
+  // Note: deprecated function.
   rc = tiledb_query_get_range_num(ctx_, query, 0, &range_num);
-  CHECK(rc == TILEDB_ERR);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 1);
+
+  // Note: deprecated function.
   const void *start, *end, *stride;
   rc = tiledb_query_get_range(ctx_, query, 0, 0, &start, &end, &stride);
-  CHECK(rc == TILEDB_ERR);
+  CHECK(rc == TILEDB_OK);
+  CHECK(*static_cast<const int64_t*>(start) == -1);
+  CHECK(*static_cast<const int64_t*>(end) == 2);
+  CHECK(stride == nullptr);
+
   int64_t s = 10;
   int64_t e = 20;
   rc = tiledb_query_add_range(ctx_, query, 0, &s, &e, nullptr);
@@ -1965,11 +1974,10 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_add_range(ctx_, query, 0, &s, &e, nullptr);
-  CHECK(rc == TILEDB_ERR);
-
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_query_get_range_num(ctx_, query, 0, &range_num);
   CHECK(rc == TILEDB_OK);
-  CHECK(range_num == 1);
+  CHECK(range_num == 2);
   rc = tiledb_query_get_range(ctx_, query, 0, 0, &start, &end, &stride);
   CHECK(rc == TILEDB_OK);
   CHECK(*(const uint64_t*)start == 2);

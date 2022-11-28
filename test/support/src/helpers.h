@@ -760,6 +760,71 @@ std::string get_fragment_dir(std::string array_dir);
 std::string get_commit_dir(std::string array_dir);
 
 /**
+ * This class checks for and maintains a count of
+ * each expected file extension on the given path.
+ */
+class FileCount {
+ public:
+  FileCount(
+      VFS vfs, std::string path, std::vector<std::string> expected_extensions);
+  ~FileCount() = default;
+
+  /* ********************************* */
+  /*               API                 */
+  /* ********************************* */
+
+  /**
+   * Retrieve the file counts of all extensions.
+   *
+   * @return std::map<std::string, uint64_t> file counts of all extensions
+   */
+  const std::map<std::string, uint64_t>& file_count() const;
+
+  /**
+   * Retrieve the file count of the given file extension
+   *
+   * @param name
+   * @return uint64_t file count of the given extension
+   */
+  uint64_t file_count(std::string extension);
+
+  /**
+   * Retrieve the size of the path
+   *
+   * @return uint64_t path size
+   */
+  uint64_t dir_size();
+
+ private:
+  /* ********************************* */
+  /*           ATTRIBUTES              */
+  /* ********************************* */
+
+  /** The file extension name and its count on the path. */
+  std::map<std::string, uint64_t> file_count_;
+
+  /** The full size of the path. */
+  uint64_t dir_size_;
+};
+
+/** This class checks for and maintains a count of the expected file extensions
+ * in the commits directory the given array path. */
+class CommitsDirectory : public FileCount {
+ public:
+  CommitsDirectory(VFS vfs, std::string array_name)
+      : FileCount(
+            vfs,
+            array_name + "/" + tiledb::sm::constants::array_commits_dir_name,
+            {tiledb::sm::constants::vacuum_file_suffix,
+             tiledb::sm::constants::write_file_suffix,
+             tiledb::sm::constants::delete_file_suffix,
+             tiledb::sm::constants::update_file_suffix,
+             tiledb::sm::constants::con_commits_file_suffix,
+             tiledb::sm::constants::ignore_file_suffix}){};
+  ~CommitsDirectory() = default;
+};
+
+/**
  * Check count of values against a vector of expected counts for an array.
  */
 template <class T>

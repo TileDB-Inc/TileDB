@@ -95,6 +95,16 @@ class Group {
   Status clear();
 
   /**
+   * Deletes data from and closes a group opened in MODIFY_EXCLUSIVE mode.
+   *
+   * Note: if recursive == false, data added to the group will be left as-is.
+   *
+   * @param uri The address of the group to be deleted.
+   * @param recursive True if all data inside the group is to be deleted.
+   */
+  void delete_group(const URI& uri, bool recursive = false);
+
+  /**
    * Deletes metadata from an group opened in WRITE mode.
    *
    * @param key The key of the metadata item to be deleted.
@@ -331,36 +341,28 @@ class Group {
   /**
    * Get count of members
    *
-   * @return tuple of Status and optional member count
+   * @return member count
    */
-  tuple<Status, optional<uint64_t>> member_count() const;
+  uint64_t member_count() const;
 
   /**
    * Get a member by index
    *
    * @param index of member
-   * @return Tuple of Status, URI string, ObjectType, optional name
+   * @return Tuple of URI string, ObjectType, optional GroupMember name
    */
-  tuple<
-      Status,
-      optional<std::string>,
-      optional<ObjectType>,
-      optional<std::string>>
-  member_by_index(uint64_t index);
+  tuple<std::string, ObjectType, optional<std::string>> member_by_index(
+      uint64_t index);
 
   /**
    * Get a member by name
    *
    * @param name of member
-   * @return Tuple of Status, URI string, ObjectType, optional name
+   * @return Tuple of URI string, ObjectType, optional GroupMember name,
+   * bool which is true if the URI is relative to the group.
    */
-  tuple<
-      Status,
-      optional<std::string>,
-      optional<ObjectType>,
-      optional<std::string>,
-      optional<bool>>
-  member_by_name(const std::string& name);
+  tuple<std::string, ObjectType, optional<std::string>, bool> member_by_name(
+      const std::string& name);
 
   /** Returns `true` if the group is open. */
   bool is_open() const;

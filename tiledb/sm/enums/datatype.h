@@ -48,7 +48,7 @@ namespace sm {
 /** Defines a datatype. */
 enum class Datatype : uint8_t {
 #define TILEDB_DATATYPE_ENUM(id) id
-#include "tiledb/sm/c_api/tiledb_enum.h"
+#include "tiledb/api/c_api/datatype/datatype_api_enum.h"
 #undef TILEDB_DATATYPE_ENUM
 };
 
@@ -392,6 +392,7 @@ inline void ensure_datatype_is_valid(const std::string& datatype_str) {
   ensure_datatype_is_valid(datatype_type);
 }
 
+/** Throws an error if the input type is not supported for dimensions. */
 inline void ensure_dimension_datatype_is_valid(Datatype type) {
   switch (type) {
     case Datatype::INT32:
@@ -432,6 +433,53 @@ inline void ensure_dimension_datatype_is_valid(Datatype type) {
       throw std::runtime_error(
           "Datatype '" + datatype_str(type) +
           "' is not a valid dimension datatype.");
+  }
+}
+
+/**
+ * Throws and error if the input type is not supported on attributes with
+ * increasing or decreasing order.
+ */
+inline void ensure_ordered_attribute_datatype_is_valid(Datatype type) {
+  switch (type) {
+    case Datatype::INT32:
+    case Datatype::INT64:
+    case Datatype::FLOAT32:
+    case Datatype::FLOAT64:
+    case Datatype::INT8:
+    case Datatype::UINT8:
+    case Datatype::INT16:
+    case Datatype::UINT16:
+    case Datatype::UINT32:
+    case Datatype::UINT64:
+    case Datatype::STRING_ASCII:
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+      return;
+    default:
+      throw std::runtime_error(
+          "Datatype '" + datatype_str(type) +
+          "' is not a valid datatype for an ordered attribute.");
   }
 }
 

@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 120
     name: Build tiledb_unit
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: 'Print env'
         run: ./scripts/ci/posix/print-env.sh
@@ -61,7 +61,7 @@ jobs:
     timeout-minutes: 30
     name: ${{ matrix.tiledb_version }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Download a single artifact
         uses: actions/download-artifact@v3

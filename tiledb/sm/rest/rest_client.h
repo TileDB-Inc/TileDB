@@ -295,6 +295,14 @@ class RestClient {
   Status patch_group_to_rest(const URI& uri, Group* group);
 
   /**
+   * Deletes all written data from group at the given URI from the REST server.
+   *
+   * #TODO Implement API endpoint on TileDBCloud.
+   * @param uri Group URI to delete
+   */
+  void delete_group_from_rest(const URI& uri);
+
+  /**
    * Post group create to the REST server.
    *
    * @param uri Group UI

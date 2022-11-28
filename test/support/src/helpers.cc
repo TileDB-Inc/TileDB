@@ -34,6 +34,7 @@
 #include <test/support/tdb_catch.h>
 #include "serialization_wrappers.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -1257,10 +1258,9 @@ int32_t num_commits(const std::string& array_name) {
   Context ctx;
   VFS vfs(ctx);
 
-  // Get all URIs in the array directory
-  auto uris =
-      vfs.ls(array_name + "/" + tiledb::sm::constants::array_commits_dir_name);
-  return static_cast<uint32_t>(uris.size());
+  // Get the number of write files in the commit directory
+  CommitsDirectory commits_dir(vfs, array_name);
+  return commits_dir.file_count(sm::constants::write_file_suffix);
 }
 
 int32_t num_fragments(const std::string& array_name) {
@@ -1294,6 +1294,36 @@ std::string get_fragment_dir(std::string array_dir) {
 
 std::string get_commit_dir(std::string array_dir) {
   return array_dir + "/" + tiledb::sm::constants::array_commits_dir_name;
+}
+
+FileCount::FileCount(
+    VFS vfs, std::string path, std::vector<std::string> expected_extensions) {
+  auto files = vfs.ls(path);
+  dir_size_ = files.size();
+
+  for (auto file : files) {
+    auto file_ext = file.substr(file.find_last_of("."));
+    if (std::find(
+            expected_extensions.begin(), expected_extensions.end(), file_ext) ==
+        expected_extensions.end()) {
+      throw std::logic_error(
+          "[FileCount::FileCount] Expected extension " + file_ext +
+          " is not in the given path.");
+    }
+    file_count_[file_ext]++;
+  }
+}
+
+const std::map<std::string, uint64_t>& FileCount::file_count() const {
+  return file_count_;
+}
+
+uint64_t FileCount::file_count(std::string extension) {
+  return file_count_[extension];
+}
+
+uint64_t FileCount::dir_size() {
+  return dir_size_;
 }
 
 template <class T>

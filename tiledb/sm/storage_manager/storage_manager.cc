@@ -157,25 +157,6 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 /*               API              */
 /* ****************************** */
 
-Status StorageManagerCanonical::array_close_for_reads(Array*) {
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::array_close_for_writes(Array* array) {
-  // Flush the array metadata
-  RETURN_NOT_OK(store_metadata(
-      array->array_uri(), *array->encryption_key(), array->unsafe_metadata()));
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::array_close_for_deletes(Array*) {
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::array_close_for_updates(Array*) {
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::group_close_for_reads(Group* group) {
   assert(open_groups_.find(group) != open_groups_.end());
 
@@ -384,10 +365,11 @@ tuple<
 StorageManagerCanonical::array_open_for_writes(Array* array) {
   // Checks
   if (!vfs_->supports_uri_scheme(array->array_uri()))
-    return {logger_->status(Status_StorageManagerError(
-                "Cannot open array; URI scheme unsupported.")),
-            nullopt,
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            "Cannot open array; URI scheme unsupported.")),
+        nullopt,
+        nullopt};
 
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
@@ -406,9 +388,10 @@ StorageManagerCanonical::array_open_for_writes(Array* array) {
       err << version;
       err << ") is not the library format version (";
       err << constants::format_version << ")";
-      return {logger_->status(Status_StorageManagerError(err.str())),
-              nullopt,
-              nullopt};
+      return {
+          logger_->status(Status_StorageManagerError(err.str())),
+          nullopt,
+          nullopt};
     }
   } else {
     if (version > constants::format_version) {
@@ -417,9 +400,10 @@ StorageManagerCanonical::array_open_for_writes(Array* array) {
       err << version;
       err << ") is newer than library format version (";
       err << constants::format_version << ")";
-      return {logger_->status(Status_StorageManagerError(err.str())),
-              nullopt,
-              nullopt};
+      return {
+          logger_->status(Status_StorageManagerError(err.str())),
+          nullopt,
+          nullopt};
     }
   }
 
@@ -683,35 +667,11 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
       0,
       std::numeric_limits<uint64_t>::max());
 
-  // Get the metadata and schema uris to be deleted
-  /* Note: metadata files may not be present, try to delete anyway */
-  const auto& array_meta_uris = array_dir.array_meta_uris();
-  const auto& fragment_meta_uris = array_dir.fragment_meta_uris();
-  const auto& array_schema_uris = array_dir.array_schema_uris();
-
-  // Delete array metadata files
-  auto status =
-      parallel_for(compute_tp_, 0, array_meta_uris.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(array_meta_uris[i].uri_));
-        return Status::Ok();
-      });
-  throw_if_not_ok(status);
-
-  // Delete fragment metadata files
-  status =
-      parallel_for(compute_tp_, 0, fragment_meta_uris.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(fragment_meta_uris[i]));
-        return Status::Ok();
-      });
-  throw_if_not_ok(status);
-
-  // Delete array schema files
-  status =
-      parallel_for(compute_tp_, 0, array_schema_uris.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(array_schema_uris[i]));
-        return Status::Ok();
-      });
-  throw_if_not_ok(status);
+  // Delete array metadata, fragment metadata and array schema files
+  // Note: metadata files may not be present, try to delete anyway
+  vfs_->remove_files(compute_tp_, array_dir.array_meta_uris());
+  vfs_->remove_files(compute_tp_, array_dir.fragment_meta_uris());
+  vfs_->remove_files(compute_tp_, array_dir.array_schema_uris());
 }
 
 Status StorageManagerCanonical::delete_fragments(
@@ -761,13 +721,32 @@ Status StorageManagerCanonical::delete_fragments(
   return Status::Ok();
 }
 
-Status StorageManagerCanonical::array_vacuum(
+void StorageManagerCanonical::delete_group(const char* group_name) {
+  if (group_name == nullptr) {
+    throw Status_StorageManagerError(
+        "[delete_group] Group name cannot be null");
+  }
+
+  auto group_dir = GroupDirectory(
+      vfs_,
+      compute_tp_,
+      URI(group_name),
+      0,
+      std::numeric_limits<uint64_t>::max());
+
+  // Delete the group detail, group metadata and group files
+  vfs_->remove_files(compute_tp_, group_dir.group_detail_uris());
+  vfs_->remove_files(compute_tp_, group_dir.group_meta_uris());
+  vfs_->remove_files(compute_tp_, group_dir.group_meta_uris_to_vacuum());
+  vfs_->remove_files(compute_tp_, group_dir.group_meta_vac_uris_to_vacuum());
+  vfs_->remove_files(compute_tp_, group_dir.group_file_uris());
+}
+
+void StorageManagerCanonical::array_vacuum(
     const char* array_name, const Config& config) {
   auto mode = Consolidator::mode_from_config(config, true);
   auto consolidator = Consolidator::create(mode, config, this);
-  return consolidator->vacuum(array_name);
-
-  return Status::Ok();
+  consolidator->vacuum(array_name);
 }
 
 Status StorageManagerCanonical::array_metadata_consolidate(
@@ -1627,9 +1606,10 @@ StorageManagerCanonical::load_array_schema_from_uri(
   Deserializer deserializer(tile.data(), tile.size());
 
   try {
-    return {Status::Ok(),
-            make_shared<ArraySchema>(
-                HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
+    return {
+        Status::Ok(),
+        make_shared<ArraySchema>(
+            HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
   } catch (const StatusException& e) {
     return {Status_StorageManagerError(e.what()), nullopt};
   }
@@ -1642,9 +1622,10 @@ StorageManagerCanonical::load_array_schema_latest(
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
-    return {logger_->status(Status_StorageManagerError(
-                "Cannot load array schema; Invalid array URI")),
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            "Cannot load array schema; Invalid array URI")),
+        nullopt};
 
   // Load schema from URI
   const URI& schema_uri = array_dir.latest_array_schema_uri();
@@ -1686,15 +1667,17 @@ StorageManagerCanonical::load_all_array_schemas(
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
-    return {logger_->status(Status_StorageManagerError(
-                "Cannot load all array schemas; Invalid array URI")),
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            "Cannot load all array schemas; Invalid array URI")),
+        nullopt};
 
   const std::vector<URI>& schema_uris = array_dir.array_schema_uris();
   if (schema_uris.empty()) {
-    return {logger_->status(Status_StorageManagerError(
-                "Cannot get the array schema vector; No array schemas found.")),
-            nullopt};
+    return {
+        logger_->status(Status_StorageManagerError(
+            "Cannot get the array schema vector; No array schemas found.")),
+        nullopt};
   }
 
   std::vector<shared_ptr<ArraySchema>> schema_vector;
@@ -1742,7 +1725,7 @@ void StorageManagerCanonical::load_array_metadata(
 
   auto metadata_num = array_metadata_to_load.size();
   std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
-  auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
+  throw_if_not_ok(parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = array_metadata_to_load[m].uri_;
 
     auto&& [st, tile] = load_data_from_generic_tile(uri, 0, encryption_key);
@@ -1751,8 +1734,7 @@ void StorageManagerCanonical::load_array_metadata(
     metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(*tile));
 
     return Status::Ok();
-  });
-  throw_if_not_ok(status);
+  }));
 
   // Compute array metadata size for the statistics
   uint64_t meta_size = 0;
@@ -2333,7 +2315,7 @@ void StorageManagerCanonical::load_group_metadata(
   auto metadata_num = group_metadata_to_load.size();
   // TBD: Might use DynamicArray when it is more capable.
   std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
-  auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
+  throw_if_not_ok(parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = group_metadata_to_load[m].uri_;
 
     auto&& [st, tile] = load_data_from_generic_tile(uri, 0, encryption_key);
@@ -2342,8 +2324,7 @@ void StorageManagerCanonical::load_group_metadata(
     metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(*tile));
 
     return Status::Ok();
-  });
-  throw_if_not_ok(status);
+  }));
 
   // Compute array metadata size for the statistics
   uint64_t meta_size = 0;
@@ -2571,27 +2552,27 @@ Status StorageManagerCanonical::group_metadata_consolidate(
       group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
 }
 
-Status StorageManagerCanonical::group_metadata_vacuum(
+void StorageManagerCanonical::group_metadata_vacuum(
     const char* group_name, const Config& config) {
   // Check group URI
   URI group_uri(group_name);
   if (group_uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum group metadata; Invalid URI"));
+    throw Status_StorageManagerError(
+        "Cannot vacuum group metadata; Invalid URI");
   }
 
   // Check if group exists
   ObjectType obj_type;
-  RETURN_NOT_OK(object_type(group_uri, &obj_type));
+  throw_if_not_ok(object_type(group_uri, &obj_type));
 
   if (obj_type != ObjectType::GROUP) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum group metadata; Group does not exist"));
+    throw Status_StorageManagerError(
+        "Cannot vacuum group metadata; Group does not exist");
   }
 
   auto consolidator =
       Consolidator::create(ConsolidationMode::GROUP_META, config, this);
-  return consolidator->vacuum(group_name);
+  consolidator->vacuum(group_name);
 }
 
 void StorageManager::array_get_fragment_tile_max_size(

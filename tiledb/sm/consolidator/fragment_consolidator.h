@@ -46,8 +46,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class ArraySchema;
 class Config;
@@ -123,9 +122,8 @@ class FragmentConsolidator : public Consolidator {
    * Performs the vacuuming operation.
    *
    * @param array_name URI of array to vacuum.
-   * @return Status
    */
-  Status vacuum(const char* array_name);
+  void vacuum(const char* array_name);
 
  private:
   /* ********************************* */
@@ -333,7 +331,6 @@ class FragmentConsolidator : public Consolidator {
   ConsolidationConfig config_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_FRAGMENT_CONSOLIDATOR_H

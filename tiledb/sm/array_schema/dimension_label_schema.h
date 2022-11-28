@@ -146,14 +146,9 @@ class DimensionLabelSchema {
   Datatype label_type() const;
 
   /** Returns the label order type of this dimension label. */
-  inline DataOrder label_order() const {
-    return label_order_;
-  }
+  DataOrder label_order() const;
 
  private:
-  /** Order of the labels relative to the indices. */
-  DataOrder label_order_;
-
   /** Schema for the array with indices defined on the dimension. */
   shared_ptr<ArraySchema> indexed_array_schema_;
 
