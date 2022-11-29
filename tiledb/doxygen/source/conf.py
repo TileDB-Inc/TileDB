@@ -12,7 +12,10 @@ import subprocess
 import sys
 from os.path import abspath, join, dirname
 
-sys.path.insert(0, abspath(join(dirname(__file__))))
+SCRIPT_PATH = abspath(join(dirname(__file__)))
+sys.path.insert(0, SCRIPT_PATH)
+TILEDB_SRC_PATH = abspath(join(SCRIPT_PATH, "../../../"))
+TILEDB_BUILD_DIR = join(TILEDB_SRC_PATH, "build")
 
 # -- ReadTheDocs configuration ---------------------------------------------
 
@@ -26,11 +29,13 @@ rtd_version = rtd_version if rtd_version in ['stable', 'latest'] else 'stable'
 if readthedocs:
     # Build docs
     subprocess.check_call('''
-        mkdir ../../build;
-        cd ../../build;
+        mkdir build;
+        cd build;
         ../bootstrap;
         make doc;
-    ''', shell=True)
+    ''',
+    shell=True,
+    cwd=TILEDB_SRC_PATH)
 
 
 # -- General configuration ------------------------------------------------
@@ -76,13 +81,14 @@ version = '2.13'
 release = '2.13.0'
 
 # Breathe extension configuration.
-tiledb_dir = '../../'
-doxygen_xml_dir = tiledb_dir + 'build/xml/'
+doxygen_xml_dir = os.path.join(TILEDB_BUILD_DIR, 'xml/')
+c_api_src_path = os.path.join(TILEDB_SRC_PATH, 'tiledb/sm/c_api/')
+cpp_api_src_path = os.path.join(TILEDB_SRC_PATH, 'tiledb/sm/cpp_api/')
 breathe_projects = {'TileDB-C': doxygen_xml_dir, 'TileDB-C++': doxygen_xml_dir}
 breathe_default_project = 'TileDB-C'
 breathe_projects_source = {
-    'TileDB-C': (tiledb_dir + 'tiledb/sm/c_api/', ['tiledb.h', 'tiledb_experimental.h']),
-    'TileDB-C++': (tiledb_dir + 'tiledb/sm/cpp_api/', ['tiledb', 'tiledb_experimental'])
+    'TileDB-C': (c_api_src_path, ['tiledb.h', 'tiledb_experimental.h']),
+    'TileDB-C++': (cpp_api_src_path, ['tiledb', 'tiledb_experimental'])
 }
 breathe_domain_by_file_pattern = {
     '*/c_api/tiledb.h': 'c',
@@ -116,9 +122,9 @@ todo_include_todos = False
 
 # -- Options for HTML output ----------------------------------------------
 
-html_static_path = ['_static']
-html_logo = '_static/tiledb-logo_color_no_margin_@4x.png'
-html_favicon = '_static/favicon.ico'
+html_static_path = ['../../../doc/source/_static']
+html_logo = os.path.join(html_static_path[0], 'tiledb-logo_color_no_margin_@4x.png')
+html_favicon = os.path.join(html_static_path[0], 'favicon.ico')
 
 if readthedocs:
     html_theme = 'default'
@@ -208,12 +214,12 @@ text_replacements = {
 # -- Custom setup -----------------------------------------------------------
 
 def add_custom_js(app):
-    app.add_javascript('custom.js')
+    app.add_js_file('custom.js')
 
 def setup(app):
     app.add_config_value('text_replacements', {}, True)
     app.connect('source-read', replaceText)
-    app.add_stylesheet('custom.css')
+    app.add_css_file('custom.css')
 
     # Use this event so that our custom JS gets included *after* the ContentUI
     # extension adds its JS, otherwise we can't override its behavior.
