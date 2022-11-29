@@ -343,6 +343,7 @@ endif()
 
 if (TILEDB_WEBP)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_WEBP)
+  find_package(Zlib_EP) # We need PNG to use our Zlib so that static link works correctly if applicable
   find_package(PNG)
   if (PNG_FOUND)
     target_compile_definitions(tiledb_unit PRIVATE -DPNG_FOUND)

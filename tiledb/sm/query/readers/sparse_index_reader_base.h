@@ -315,6 +315,13 @@ class SparseIndexReaderBase : public ReaderBase {
   /* ********************************* */
 
   /**
+   * Computes the required size for loading tile offsets, per fragments.
+   *
+   * @return Required memory for loading tile offsets, per fragments.
+   */
+  std::vector<uint64_t> tile_offset_sizes();
+
+  /**
    * Returns if there is any condition to be applied post deduplication. This
    * will return true if we have:
    *   A query condition.

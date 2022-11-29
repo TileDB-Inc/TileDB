@@ -76,8 +76,15 @@ void write_image(
   if (!info)
     abort();
 
+  #if defined(_MSC_VER)
+  #pragma warning ( push )
+  #pragma warning ( disable : 4611 ) // "interaction between '_setjmp' and C++ object destruction is non-portable"
+  #endif
   if (setjmp(png_jmpbuf(png)))
     abort();
+  #if defined (_MSC_VER)
+  #pragma warning ( pop )
+  #endif
 
   png_init_io(png, fp);
 

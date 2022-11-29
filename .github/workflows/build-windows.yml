@@ -180,6 +180,9 @@ jobs:
             $bootstrapOptions = $bootstrapOptions + " -EnableWebP"
           }
 
+          # Use toolchain hack to ignore strawberry perl path in GHA images
+          $env:CMAKE_TOOLCHAIN_FILE = "$env:BUILD_SOURCESDIRECTORY/.github/misc/github_windows_toolchain.cmake"
+
           $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
           Write-Host "bootstrapExpression: $bootstrapExpression"
           Invoke-Expression $bootstrapExpression

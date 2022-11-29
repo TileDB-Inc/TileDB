@@ -217,15 +217,6 @@ TEST_CASE(
       test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
   auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
   auto status = schema->check();
-  uint64_t index_domain[2]{0, 15};
-  uint64_t index_tile_extent{16};
-  auto dim_label_schema = make_shared<DimensionLabelSchema>(
-      HERE(),
-      DataOrder::INCREASING_DATA,
-      Datatype::UINT64,
-      Datatype::UINT64,
-      index_domain,
-      &index_tile_extent);
   schema->add_dimension_label(
       0, "x", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true);
   schema->add_dimension_label(
