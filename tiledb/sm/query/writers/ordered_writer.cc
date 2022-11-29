@@ -377,8 +377,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
                 nullptr,
                 false,
                 false,
-                nullptr,
-                array_schema_.is_dim(name)));
+                nullptr));
           } else {
             auto offset_tile = &writer_tile.offset_tile();
             RETURN_NOT_OK(filter_tile(
@@ -387,10 +386,9 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
                 offset_tile,
                 false,
                 false,
-                offset_tile,
-                array_schema_.is_dim(name)));
+                offset_tile));
             RETURN_NOT_OK(
-                filter_tile(name, offset_tile, nullptr, true, false, nullptr, false));
+                filter_tile(name, offset_tile, nullptr, true, false, nullptr));
           }
           if (nullable) {
             RETURN_NOT_OK(filter_tile(
@@ -399,8 +397,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
                 nullptr,
                 false,
                 true,
-                nullptr,
-                false));
+                nullptr));
           }
           return Status::Ok();
         });

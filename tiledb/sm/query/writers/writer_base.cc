@@ -718,7 +718,12 @@ Status WriterBase::create_fragment(
 Status WriterBase::filter_tiles(
     std::unordered_map<std::string, WriterTileVector>* tiles) {
   auto timer_se = stats_->start_timer("filter_tiles");
+  // Always process the bitsort filter first. It will shuffle the dimension data
+  // which will later be filtered with the dimension filters.
   const auto bitsort_attr = array_schema_.bitsort_filter_attr();
+  if (bitsort_attr.has_value()) {
+    RETURN_CANCEL_OR_ERROR(filter_tiles_bitsort(bitsort_attr.value(), tiles));
+  }
 
   auto num = buffers_.size();
   auto status =
@@ -727,15 +732,12 @@ Status WriterBase::filter_tiles(
         std::advance(buff_it, i);
         const auto& name = buff_it->first;
 
-        // Run a special function for the bitsort filter.
         if (bitsort_attr.has_value() && name == bitsort_attr.value()) {
-          RETURN_CANCEL_OR_ERROR(filter_tiles_bitsort(name, tiles));
-        } else if (bitsort_attr.has_value() && array_schema_.is_dim(name)) {
-          // TODO comment
-          RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name]), true));
+          // Already done above for the bitsort filter.
         } else {
-          RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name]), false));
+          RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
         }
+
         return Status::Ok();
       });
 
@@ -744,7 +746,7 @@ Status WriterBase::filter_tiles(
 }
 
 Status WriterBase::filter_tiles(
-    const std::string& name, WriterTileVector* tiles, bool is_dim) {
+    const std::string& name, WriterTileVector* tiles) {
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
 
@@ -777,8 +779,7 @@ Status WriterBase::filter_tiles(
             offset_tile,
             contains_offsets,
             is_nullable,
-            offset_tile,
-            is_dim));
+            offset_tile));
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
@@ -788,9 +789,8 @@ Status WriterBase::filter_tiles(
     auto status = parallel_for(
         storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
           auto& tile = (*tiles)[i];
-          // offsets can't be dimensions?
           RETURN_NOT_OK(filter_tile(
-              name, &tile.offset_tile(), nullptr, true, false, nullptr, false));
+              name, &tile.offset_tile(), nullptr, true, false, nullptr));
           return Status::Ok();
         });
     RETURN_NOT_OK(status);
@@ -816,15 +816,12 @@ Status WriterBase::filter_tiles_bitsort(
   args.reserve(tile_num);
   for (uint64_t i = 0; i < attr_tiles.size(); i++) {
     auto& tile = attr_tiles[i];
-    auto cell_num = tile.cell_num();
-
     // Collect the dim tiles argument.
     std::vector<Tile*> dim_tiles_temp;
     dim_tiles_temp.reserve(dim_tiles.size());
     for (const auto& elem : dim_tiles) {
       Tile* dim_tile = &((*elem)[i].fixed_tile());
       dim_tiles_temp.emplace_back(dim_tile);
-      dim_tile->filtered_buffer().expand(cell_num * dim_tile->cell_size());
     }
 
     args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp, false, false);
@@ -840,8 +837,7 @@ Status WriterBase::filter_tiles_bitsort(
             nullptr,
             contains_offsets,
             is_nullable,
-            &support_tiles,
-            false));
+            &support_tiles));
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
@@ -855,8 +851,7 @@ Status WriterBase::filter_tile(
     Tile* const offsets_tile,
     const bool offsets,
     const bool nullable,
-    void* support_data,
-    bool is_dim) {
+    void* support_data) {
   auto timer_se = stats_->start_timer("filter_tile");
 
   // Get a copy of the appropriate filter pipeline.
@@ -896,7 +891,6 @@ Status WriterBase::filter_tile(
       tile,
       offsets_tile,
       storage_manager_->compute_tp(),
-      is_dim,
       support_data,
       use_chunking));
   assert(tile->filtered());
