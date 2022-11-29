@@ -111,10 +111,10 @@ struct DenseArrayFx {
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
   // server side buffers
-  std::vector<uint8_t> attr_or_dim_data;
-  std::vector<uint64_t> attr_or_dim_off;
-  std::vector<uint8_t> attr_or_dim;
-  std::vector<uint8_t> attr_or_dim_nullable;
+  std::vector<std::vector<uint8_t>> attr_or_dim_data;
+  std::vector<std::vector<uint64_t>> attr_or_dim_off;
+  std::vector<std::vector<uint8_t>> attr_or_dim;
+  std::vector<std::vector<uint8_t>> attr_or_dim_nullable;
 
   // Functions
   DenseArrayFx();
@@ -3116,19 +3116,6 @@ int DenseArrayFx::submit_query_wrapper(
     return rc;
   }
 
-  // TODO: remove when tests pass
-  // void* a1;
-  // uint64_t* a1_size;
-  // tiledb_query_get_buffer(ctx_, server_deser_query, "a3", &a1, &a1_size);
-  // auto res0 = ((int*)a1)[0];
-  // auto res1 = ((int*)a1)[1];
-  // auto res2 = ((int*)a1)[14];
-  // auto res3 = ((int*)a1)[15];
-  // (void)res0;
-  // (void)res1;
-  // (void)res2;
-  // (void)res3;
-
   if (finalize) {
     tiledb_query_status_t status;
     rc = tiledb_query_get_status(ctx_, server_deser_query, &status);
@@ -3147,16 +3134,6 @@ int DenseArrayFx::submit_query_wrapper(
       ctx_, array_uri.c_str(), serialized, false, server_deser_query, query);
   REQUIRE_SAFE(rc == TILEDB_OK);
 
-  // tiledb_query_get_buffer(ctx_, *query, "a3", &a1, &a1_size);
-  // res0 = ((int*)a1)[0];
-  // res1 = ((int*)a1)[1];
-  // res2 = ((int*)a1)[14];
-  // res3 = ((int*)a1)[15];
-  // (void)res0;
-  // (void)res1;
-  // (void)res2;
-  // (void)res3;
-
   // Clean up.
   tiledb_query_free(&server_deser_query);
 
@@ -3174,37 +3151,50 @@ void DenseArrayFx::allocate_query_buffers_server_side(tiledb_query_t* query) {
     auto nullable = schema.is_nullable(name);
     if (var_size && buff.buffer_var_ == nullptr) {
       // Variable-sized buffer
-      attr_or_dim_data.resize(*buff.buffer_var_size_);
-      attr_or_dim_off.resize(
+      // We need to store the allocated vectors in the test fixture so that they
+      // live through the test and don't get freed when we exit this function
+      attr_or_dim_data.emplace_back(*buff.buffer_var_size_);
+      attr_or_dim_off.emplace_back(
           (*buff.buffer_size_) / sizeof(constants::cell_var_offset_size));
       rc = tiledb_query_set_data_buffer(
           ctx_,
           query,
           name.c_str(),
-          attr_or_dim_data.data(),
+          attr_or_dim_data.back().data(),
           buff.buffer_var_size_);
       REQUIRE_SAFE(rc == TILEDB_OK);
       rc = tiledb_query_set_offsets_buffer(
-          ctx_, query, name.c_str(), attr_or_dim_off.data(), buff.buffer_size_);
+          ctx_,
+          query,
+          name.c_str(),
+          attr_or_dim_off.back().data(),
+          buff.buffer_size_);
       REQUIRE_SAFE(rc == TILEDB_OK);
     }
 
     if (!var_size && buff.buffer_ == nullptr) {
       // Fixed-length buffer
-      attr_or_dim.resize(*buff.buffer_size_);
+      // We need to store the allocated vector in the test fixture so that it
+      // lives through the test and don't get freed when we exit this function
+      attr_or_dim.emplace_back(*buff.buffer_size_);
       rc = tiledb_query_set_data_buffer(
-          ctx_, query, name.c_str(), attr_or_dim.data(), buff.buffer_size_);
+          ctx_,
+          query,
+          name.c_str(),
+          attr_or_dim.back().data(),
+          buff.buffer_size_);
       REQUIRE_SAFE(rc == TILEDB_OK);
     }
 
     if (nullable) {
       // nullable
-      attr_or_dim_nullable.resize(*buff.validity_vector_.buffer_size());
+      // std::vector<uint8_t> val_data(*buff.validity_vector_.buffer_size());
+      attr_or_dim_nullable.emplace_back(*buff.validity_vector_.buffer_size());
       rc = tiledb_query_set_validity_buffer(
           ctx_,
           query,
           name.c_str(),
-          attr_or_dim_nullable.data(),
+          attr_or_dim_nullable.back().data(),
           buff.validity_vector_.buffer_size());
     }
   }
