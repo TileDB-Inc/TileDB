@@ -186,7 +186,7 @@ void ConsolidationPlanFx::check_last_error(std::string expected) {
 TEST_CASE_METHOD(
     ConsolidationPlanFx,
     "CAPI: Consolidation plan",
-    "[capi][consolidation_plan]") {
+    "[capi][consolidation-plan]") {
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
@@ -229,7 +229,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationPlanFx,
     "CAPI: Consolidation plan dump",
-    "[capi][consolidation_plan][dump]") {
+    "[capi][consolidation-plan][dump]") {
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 

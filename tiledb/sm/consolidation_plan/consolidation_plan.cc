@@ -55,8 +55,8 @@ ConsolidationPlan::~ConsolidationPlan() = default;
 
 std::string ConsolidationPlan::dump() const {
   std::string ret = "{\n  \"nodes\": [\n";
-  for (uint64_t n = 0; n < fragment_uris_.size(); n++) {
-    auto node = fragment_uris_[n];
+  for (uint64_t n = 0; n < fragment_uris_per_node_.size(); n++) {
+    auto node = fragment_uris_per_node_[n];
     ret += "    {\n      \"uris\" : [\n";
     for (uint64_t u = 0; u < node.size(); u++) {
       auto uri = node[u];
@@ -69,7 +69,7 @@ std::string ConsolidationPlan::dump() const {
       }
     }
 
-    if (n != fragment_uris_.size() - 1) {
+    if (n != fragment_uris_per_node_.size() - 1) {
       ret += "      ]\n    },\n";
     } else {
       ret += "      ]\n    }\n";
@@ -87,8 +87,8 @@ std::string ConsolidationPlan::dump() const {
 void ConsolidationPlan::generate(shared_ptr<Array> array) {
   // Start with the plan being a single fragment per node.
   std::list<PlanNode> plan;
-  for (uint64_t idx = 0; idx < array->fragment_metadata().size(); idx++) {
-    plan.emplace_back(array, idx);
+  for (size_t f = 0; f < array->fragment_metadata().size(); f++) {
+    plan.emplace_back(array, f);
   }
 
   // First we combine all fragments that have overlap so they get disantangled.
@@ -124,7 +124,7 @@ void ConsolidationPlan::generate(shared_ptr<Array> array) {
   // intersect any other fragments. Process until we don't find any small nodes
   // to combine.
   bool combination_found = true;
-  uint64_t small_size = desired_fragment_size_ / 10;
+  uint64_t small_size = desired_fragment_size_ / 2;
   while (combination_found) {
     combination_found = false;
 
@@ -179,9 +179,9 @@ void ConsolidationPlan::generate(shared_ptr<Array> array) {
   auto start = std::partition(
       plan.begin(), plan.end(), [&](const auto& el) { return el.combined(); });
 
-  // Move single nodes that we can split to the beginning of the list.
+  // Move single nodes that we can split right after the combined nodes.
   start = std::partition(start, plan.end(), [&](const auto& el) {
-    return el.size() > 2 * desired_fragment_size_;
+    return el.size() >= 1.5 * desired_fragment_size_;
   });
 
   // Erase the nodes that are not included in the plan.
@@ -189,9 +189,9 @@ void ConsolidationPlan::generate(shared_ptr<Array> array) {
 
   // Fill in the data for the plan.
   num_nodes_ = plan.size();
-  fragment_uris_.reserve(num_nodes_);
+  fragment_uris_per_node_.reserve(num_nodes_);
 
   for (auto& node : plan) {
-    fragment_uris_.emplace_back(node.uris());
+    fragment_uris_per_node_.emplace_back(node.uris());
   }
 }

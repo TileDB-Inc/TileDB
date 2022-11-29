@@ -66,6 +66,9 @@ struct CppConsolidationPlanFx {
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
   void check_last_error(std::string expected);
+  void validate_plan(
+      ConsolidationPlan& plan,
+      std::vector<std::vector<std::string>> expected_plan);
 };
 
 CppConsolidationPlanFx::CppConsolidationPlanFx()
@@ -183,10 +186,54 @@ void CppConsolidationPlanFx::check_last_error(std::string expected) {
   CHECK(msg == expected);
 }
 
+void CppConsolidationPlanFx::validate_plan(
+    ConsolidationPlan& plan,
+    std::vector<std::vector<std::string>> expected_plan) {
+  // Take all the nodes in the plan, make a string out of them, the string will
+  // be the sorted fragment URIs.
+  std::vector<std::string> string_plan(plan.num_nodes());
+  for (size_t n = 0; n < plan.num_nodes(); n++) {
+    std::vector<std::string> node_uris;
+    node_uris.reserve(plan.num_fragments(n));
+    for (size_t f = 0; f < plan.num_fragments(n); f++) {
+      node_uris.emplace_back(plan.fragment_uri(n, f));
+    }
+
+    std::sort(node_uris.begin(), node_uris.end());
+    for (size_t f = 0; f < plan.num_fragments(n); f++) {
+      string_plan[n] += node_uris[f];
+    }
+  }
+
+  // Sort the node strings.
+  std::sort(string_plan.begin(), string_plan.end());
+
+  // Now generate the same for the expected plan.
+  std::vector<std::string> expected_string_plan(expected_plan.size());
+  for (size_t n = 0; n < expected_plan.size(); n++) {
+    std::vector<std::string> node_uris;
+    node_uris.reserve(expected_plan[n].size());
+    for (size_t f = 0; f < expected_plan[n].size(); f++) {
+      node_uris.emplace_back(expected_plan[n][f]);
+    }
+
+    std::sort(node_uris.begin(), node_uris.end());
+    for (size_t f = 0; f < plan.num_fragments(n); f++) {
+      expected_string_plan[n] += node_uris[f];
+    }
+  }
+
+  // Sort the node strings.
+  std::sort(expected_string_plan.begin(), expected_string_plan.end());
+
+  // Now the two plans should be exactly the same.
+  CHECK(string_plan == expected_string_plan);
+}
+
 TEST_CASE_METHOD(
     CppConsolidationPlanFx,
     "C++ API: Consolidation plan",
-    "[cppapi][consolidation_plan]") {
+    "[cppapi][consolidation-plan]") {
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
@@ -208,7 +255,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CppConsolidationPlanFx,
     "C++ API: Consolidation plan dump",
-    "[cppapi][consolidation_plan][dump]") {
+    "[cppapi][consolidation-plan][dump]") {
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
@@ -222,7 +269,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CppConsolidationPlanFx,
     "C++ API: Consolidation plan, de-interleave 1",
-    "[cppapi][consolidation_plan][de-interleave-1]") {
+    "[cppapi][consolidation-plan][de-interleave-1]") {
   create_sparse_array();
 
   // Write one fragment with NED [1, 4][1, 4] and one with NED [2, 6][2, 6].
@@ -237,16 +284,13 @@ TEST_CASE_METHOD(
   ConsolidationPlan consolidation_plan(ctx_, array, 1);
 
   // Validate the plan.
-  CHECK(consolidation_plan.num_nodes() == 1);
-  CHECK(consolidation_plan.num_fragments(0) == 2);
-  CHECK(consolidation_plan.fragment_uri(0, 0) == uri1);
-  CHECK(consolidation_plan.fragment_uri(0, 1) == uri2);
+  validate_plan(consolidation_plan, {{uri1, uri2}});
 }
 
 TEST_CASE_METHOD(
     CppConsolidationPlanFx,
     "C++ API: Consolidation plan, de-interleave 2",
-    "[cppapi][consolidation_plan][de-interleave-2]") {
+    "[cppapi][consolidation-plan][de-interleave-2]") {
   create_sparse_array();
 
   // Write one fragment with NED [1, 4][1, 4] and one with NED [2, 6][2, 6].
@@ -266,18 +310,13 @@ TEST_CASE_METHOD(
   ConsolidationPlan consolidation_plan(ctx_, array, 1);
 
   // Validate the plan.
-  CHECK(consolidation_plan.num_nodes() == 2);
-  CHECK(consolidation_plan.num_fragments(0) == 2);
-  CHECK(consolidation_plan.fragment_uri(0, 0) == uri1);
-  CHECK(consolidation_plan.fragment_uri(0, 1) == uri2);
-  CHECK(consolidation_plan.fragment_uri(1, 0) == uri3);
-  CHECK(consolidation_plan.fragment_uri(1, 1) == uri4);
+  validate_plan(consolidation_plan, {{uri1, uri2}, {uri3, uri4}});
 }
 
 TEST_CASE_METHOD(
     CppConsolidationPlanFx,
     "C++ API: Consolidation plan, de-interleave 3",
-    "[cppapi][consolidation_plan][de-interleave-3]") {
+    "[cppapi][consolidation-plan][de-interleave-3]") {
   create_sparse_array();
 
   // Write one fragment with NED [1, 4][1, 4] and one with NED [4, 6][4, 6].
@@ -297,17 +336,13 @@ TEST_CASE_METHOD(
   ConsolidationPlan consolidation_plan(ctx_, array, 1);
 
   // Validate the plan.
-  CHECK(consolidation_plan.num_nodes() == 1);
-  CHECK(consolidation_plan.num_fragments(0) == 3);
-  CHECK(consolidation_plan.fragment_uri(0, 0) == uri1);
-  CHECK(consolidation_plan.fragment_uri(0, 1) == uri2);
-  CHECK(consolidation_plan.fragment_uri(0, 2) == uri3);
+  validate_plan(consolidation_plan, {{uri1, uri2, uri3}});
 }
 
 TEST_CASE_METHOD(
     CppConsolidationPlanFx,
     "C++ API: Consolidation plan, split 1",
-    "[cppapi][consolidation_plan][split-1]") {
+    "[cppapi][consolidation-plan][split-1]") {
   create_sparse_array(true);
 
   // Write one large frarment of ~200k and one small of roughly 4k.
@@ -324,15 +359,13 @@ TEST_CASE_METHOD(
   ConsolidationPlan consolidation_plan(ctx_, array, 10 * 1024);
 
   // Validate the plan.
-  CHECK(consolidation_plan.num_nodes() == 1);
-  CHECK(consolidation_plan.num_fragments(0) == 1);
-  CHECK(consolidation_plan.fragment_uri(0, 0) == uri1);
+  validate_plan(consolidation_plan, {{uri1}});
 }
 
 TEST_CASE_METHOD(
     CppConsolidationPlanFx,
     "C++ API: Consolidation plan, combine small 1",
-    "[cppapi][consolidation_plan][combine-small-1]") {
+    "[cppapi][consolidation-plan][combine-small-1]") {
   create_sparse_array(true);
 
   // Write one fragment with NED [1, 2][1, 2] and one with NED [3, 4][3, 4].
@@ -345,16 +378,13 @@ TEST_CASE_METHOD(
   ConsolidationPlan consolidation_plan(ctx_, array, 100 * 1024);
 
   // Validate the plan.
-  CHECK(consolidation_plan.num_nodes() == 1);
-  CHECK(consolidation_plan.num_fragments(0) == 2);
-  CHECK(consolidation_plan.fragment_uri(0, 0) == uri1);
-  CHECK(consolidation_plan.fragment_uri(0, 1) == uri2);
+  validate_plan(consolidation_plan, {{uri1, uri2}});
 }
 
 TEST_CASE_METHOD(
     CppConsolidationPlanFx,
     "C++ API: Consolidation plan, combine small 2",
-    "[cppapi][consolidation_plan][combine-small-2]") {
+    "[cppapi][consolidation-plan][combine-small-2]") {
   create_sparse_array(true);
 
   // Write one fragment with NED [1, 2][1, 2] and one with NED [5, 6][5, 6]. In
@@ -375,16 +405,44 @@ TEST_CASE_METHOD(
   Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
   ConsolidationPlan consolidation_plan(ctx_, array, 100 * 1024);
 
-  // Validate the plan.
-  CHECK(consolidation_plan.num_nodes() == 1);
-  CHECK(consolidation_plan.num_fragments(0) == 1);
-  CHECK(consolidation_plan.fragment_uri(0, 0) == uri2);
+  // Validate the plan, we should only have a node for the large fragment to be
+  // split.
+  validate_plan(consolidation_plan, {{uri2}});
+}
+
+TEST_CASE_METHOD(
+    CppConsolidationPlanFx,
+    "C++ API: Consolidation plan, combine small 3",
+    "[cppapi][consolidation-plan][combine-small-3]") {
+  create_sparse_array(true);
+
+  // Write one fragment with NED [1, 2][1, 2] and one with NED [5, 6][5, 6]. In
+  // the middle at [8, 8], we add a large fragment. This time it will not
+  // prevent consolidation.
+  auto uri1 = write_sparse({0, 1}, {1, 2}, {1, 2}, 1);
+
+  std::vector<int> a1(10 * 1024);
+  std::vector<uint64_t> d(10 * 1024);
+  std::fill(a1.begin(), a1.end(), 2);
+  std::fill(d.begin(), d.end(), 8);
+  auto uri2 = write_sparse(a1, d, d, 2);
+
+  auto uri3 = write_sparse({3, 4}, {5, 6}, {5, 6}, 3);
+
+  // Create a consolidation plan with max fragment size of 100k. That way, the
+  // smaller fragments are considered for combining.
+  Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
+  ConsolidationPlan consolidation_plan(ctx_, array, 100 * 1024);
+
+  // Validate the plan, we should only have a node for the large fragment to be
+  // split.
+  validate_plan(consolidation_plan, {{uri1, uri3}, {uri2}});
 }
 
 TEST_CASE_METHOD(
     CppConsolidationPlanFx,
     "C++ API: Consolidation plan, complex 1",
-    "[cppapi][consolidation_plan][complex 1]") {
+    "[cppapi][consolidation-plan][complex 1]") {
   create_sparse_array(true);
 
   // Write one fragment with NED [11, 14][11, 14] and one with NED [14, 16][14,
@@ -426,14 +484,5 @@ TEST_CASE_METHOD(
   ConsolidationPlan consolidation_plan(ctx_, array, 100 * 1024);
 
   // Validate the plan.
-  CHECK(consolidation_plan.num_nodes() == 3);
-  CHECK(consolidation_plan.num_fragments(0) == 3);
-  CHECK(consolidation_plan.num_fragments(1) == 2);
-  CHECK(consolidation_plan.num_fragments(2) == 1);
-  CHECK(consolidation_plan.fragment_uri(0, 0) == uri1);
-  CHECK(consolidation_plan.fragment_uri(0, 1) == uri2);
-  CHECK(consolidation_plan.fragment_uri(0, 2) == uri3);
-  CHECK(consolidation_plan.fragment_uri(1, 0) == uri6);
-  CHECK(consolidation_plan.fragment_uri(1, 1) == uri7);
-  CHECK(consolidation_plan.fragment_uri(2, 0) == uri5);
+  validate_plan(consolidation_plan, {{uri1, uri2, uri3}, {uri6, uri7}, {uri5}});
 }

@@ -90,7 +90,7 @@ class ConsolidationPlan {
           "Trying to access a node that doesn't exists");
     }
 
-    return fragment_uris_[node_idx].size();
+    return fragment_uris_per_node_[node_idx].size();
   }
 
   /**
@@ -109,12 +109,12 @@ class ConsolidationPlan {
     }
 
     if (fragment_idx == std::numeric_limits<uint64_t>::max() ||
-        fragment_idx + 1 > fragment_uris_[node_idx].size()) {
+        fragment_idx + 1 > fragment_uris_per_node_[node_idx].size()) {
       throw ConsolidationPlanStatusException(
           "Trying to access a fragment that doesn't exists");
     }
 
-    return fragment_uris_[node_idx][fragment_idx].c_str();
+    return fragment_uris_per_node_[node_idx][fragment_idx].c_str();
   }
 
   /** @return the consolidation plan in JSON format. */
@@ -227,9 +227,9 @@ class ConsolidationPlan {
   uint64_t num_nodes_;
 
   /** Fragment uris, per node. */
-  std::vector<std::vector<std::string>> fragment_uris_;
+  std::vector<std::vector<std::string>> fragment_uris_per_node_;
 
-  /** Desired fragment size. */
+  /** Desired fragment size, in bytes. */
   storage_size_t desired_fragment_size_;
 
   /* ********************************* */
