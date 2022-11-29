@@ -87,7 +87,9 @@ std::string ConsolidationPlan::dump() const {
 void ConsolidationPlan::generate(shared_ptr<Array> array) {
   // Start with the plan being a single fragment per node.
   std::list<PlanNode> plan;
-  for (size_t f = 0; f < array->fragment_metadata().size(); f++) {
+  for (unsigned f = 0;
+       f < static_cast<unsigned>(array->fragment_metadata().size());
+       f++) {
     plan.emplace_back(array, f);
   }
 
