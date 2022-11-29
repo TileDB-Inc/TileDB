@@ -34,7 +34,6 @@
 #define TILEDB_ARRAY_DIMENSION_LABEL_QUERIES_H
 
 #include "tiledb/common/common.h"
-#include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/query/dimension_label/dimension_label_query.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -138,8 +137,7 @@ class ArrayDimensionLabelQueries {
   stats::Stats* stats_;
 
   /** Map from label name to dimension label opened by this query. */
-  std::unordered_map<std::string, tdb_unique_ptr<DimensionLabel>>
-      dimension_labels_;
+  std::unordered_map<std::string, shared_ptr<Array>> dimension_labels_;
 
   /** Dimension label range queries */
   std::vector<tdb_unique_ptr<DimensionLabelQuery>> range_queries_;
@@ -213,11 +211,14 @@ class ArrayDimensionLabelQueries {
    * Opens a dimension label.
    *
    * @param array Array the dimension label is defined on.
+   * @param dim_label_uri URI the dimension label is stored at.
+   * @param dim_label_name Name of the dimension label.
    * @param query_type Query type to open the dimension label as.
    */
-  DimensionLabel* open_dimension_label(
+  shared_ptr<Array> open_dimension_label(
       Array* array,
-      const DimensionLabelReference& dim_label_ref,
+      const URI& dim_label_uri,
+      const std::string& dim_label_name,
       const QueryType& query_type);
 };
 

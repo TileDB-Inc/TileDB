@@ -36,7 +36,6 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/array_schema/dimension_label_schema.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/data_order.h"

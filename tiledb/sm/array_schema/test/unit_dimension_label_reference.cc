@@ -74,7 +74,7 @@ TEST_CASE(
 
   Deserializer deserializer(data.data(), data.size());
   auto label2 = DimensionLabelReference::deserialize(deserializer, version);
-  CHECK(dim_id == label2->dimension_id());
+  CHECK(dim_id == label2->dimension_index());
   CHECK(name == label2->name());
   CHECK(label2->label_type() == Datatype::FLOAT64);
   CHECK(label2->label_cell_val_num() == 1);
