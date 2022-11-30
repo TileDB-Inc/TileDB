@@ -53,8 +53,9 @@ jobs:
         if: contains(matrix.os, 'windows')
         env:
           CXXFLAGS: ${{ matrix.cxxflags }}
+          CMAKE_TOOLCHAIN_FILE: ${{ github.workspace }}/TileDB/.github/misc/github_windows_toolchain.cmake
         run: |
-          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=.github/misc/github_windows_toolchain.cmake
+          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=Release
 
       - name: Build TileDB
         run: |
