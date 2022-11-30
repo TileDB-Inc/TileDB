@@ -109,7 +109,7 @@ struct MaxTileSizeFx {
     schema.add_attribute(tiledb::Attribute::create<a1_type>(ctx_, "a1"));
 
     // Create the (empty) array on disk.
-    tiledb::Array::create(main_array_name_, schema);
+    tiledb::Array::create(array_name, schema);
   }
 
   void create_sparse_array_var_dim_int32_attr() {
