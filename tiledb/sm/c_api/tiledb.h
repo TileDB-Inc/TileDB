@@ -127,7 +127,6 @@ typedef enum {
 #undef TILEDB_ENCRYPTION_TYPE_ENUM
 } tiledb_encryption_type_t;
 
-
 /** MIME Type. */
 typedef enum {
 /** Helper macro for defining MimeType enums. */
@@ -229,8 +228,6 @@ TILEDB_EXPORT int32_t tiledb_query_status_to_str(
  */
 TILEDB_EXPORT int32_t tiledb_query_status_from_str(
     const char* str, tiledb_query_status_t* query_status) TILEDB_NOEXCEPT;
-
-/**
 
 /* ****************************** */
 /*            CONSTANTS           */

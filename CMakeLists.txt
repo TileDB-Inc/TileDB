@@ -544,6 +544,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_capi_object_type)
   add_dependencies(tests unit_capi_object_walk_order)
   add_dependencies(tests unit_capi_query_type)
+  add_dependencies(tests unit_capi_vfs)
   # C API array schema
   add_dependencies(tests unit_capi_filter unit_capi_filter_list)
 

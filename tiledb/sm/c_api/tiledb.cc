@@ -203,7 +203,6 @@ int32_t tiledb_serialization_type_from_str(
   return TILEDB_OK;
 }
 
-
 /* ********************************* */
 /*            BUFFER LIST            */
 /* ********************************* */
@@ -5573,7 +5572,6 @@ int32_t tiledb_serialization_type_from_str(
   return api_entry_plain<tiledb::api::tiledb_serialization_type_from_str>(
       str, serialization_type);
 }
-
 
 /* ****************************** */
 /*            CONSTANTS           */
