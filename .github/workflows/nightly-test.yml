@@ -53,7 +53,7 @@ jobs:
         if: contains(matrix.os, 'windows')
         env:
           CXXFLAGS: ${{ matrix.cxxflags }}
-          CMAKE_TOOLCHAIN_FILE: ${{ github.workspace }}/TileDB/.github/misc/github_windows_toolchain.cmake
+          CMAKE_TOOLCHAIN_FILE: ${{ github.workspace }}/.github/misc/github_windows_toolchain.cmake
         run: |
           cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=Release
 
