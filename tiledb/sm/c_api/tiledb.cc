@@ -203,7 +203,6 @@ int32_t tiledb_serialization_type_from_str(
   return TILEDB_OK;
 }
 
-
 /* ********************************* */
 /*            BUFFER LIST            */
 /* ********************************* */
@@ -308,7 +307,7 @@ int32_t tiledb_buffer_list_flatten(
   // Resize the dest buffer
   const auto nbytes = buffer_list->buffer_list_->total_size();
   auto st = buf->buffer().realloc(nbytes);
-  if(!st.ok()) {
+  if (!st.ok()) {
     tiledb_buffer_handle_t::break_handle(buf);
     throw StatusException(st);
   }
@@ -316,7 +315,7 @@ int32_t tiledb_buffer_list_flatten(
   // Read all into the dest buffer
   buffer_list->buffer_list_->reset_offset();
   st = buffer_list->buffer_list_->read(buf->buffer().data(), nbytes);
-  if(!st.ok()) {
+  if (!st.ok()) {
     tiledb_buffer_handle_t::break_handle(buf);
     throw StatusException(st);
   }
@@ -4495,8 +4494,7 @@ int32_t tiledb_deserialize_query(
     int32_t client_side,
     tiledb_query_t* query) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   api::ensure_buffer_is_valid(buffer);
@@ -4558,8 +4556,7 @@ int32_t tiledb_deserialize_array_nonempty_domain(
   (void)client_side;
 
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   api::ensure_buffer_is_valid(buffer);
@@ -4617,8 +4614,7 @@ int32_t tiledb_deserialize_array_non_empty_domain_all_dimensions(
   (void)client_side;
 
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   api::ensure_buffer_is_valid(buffer);
@@ -4700,8 +4696,7 @@ int32_t tiledb_deserialize_array_metadata(
     tiledb_serialization_type_t serialize_type,
     const tiledb_buffer_t* buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   api::ensure_buffer_is_valid(buffer);
@@ -4750,8 +4745,7 @@ int32_t tiledb_deserialize_query_est_result_sizes(
     int32_t client_side,
     const tiledb_buffer_t* buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   api::ensure_buffer_is_valid(buffer);
@@ -5823,7 +5817,6 @@ int32_t tiledb_serialization_type_from_str(
   return api_entry_plain<tiledb::api::tiledb_serialization_type_from_str>(
       str, serialization_type);
 }
-
 
 /* ****************************** */
 /*            CONSTANTS           */
