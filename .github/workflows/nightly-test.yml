@@ -65,16 +65,16 @@ jobs:
         run: |
           cmake --build build --target check --config Release
 
-#  create_issue_on_fail:
-#    runs-on: ubuntu-latest
-#    needs: test
-#    if: failure() || cancelled()
-#    steps:
-#      - name: Checkout TileDB `dev`
-#        uses: actions/checkout@v3
-#      - name: Create Issue if Build Fails
-#        uses: JasonEtco/create-an-issue@v2
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          filename: .github/workflows/nightly-failure-issue-template.md
+  create_issue_on_fail:
+    runs-on: ubuntu-latest
+    needs: test
+    if: failure() || cancelled()
+    steps:
+      - name: Checkout TileDB `dev`
+        uses: actions/checkout@v3
+      - name: Create Issue if Build Fails
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          filename: .github/workflows/nightly-failure-issue-template.md
