@@ -457,6 +457,26 @@ void get_supported_fs(
     bool* gcs_supported);
 
 /**
+ * Helper function to get if azure is supported.
+ */
+bool is_s3_supported();
+
+/**
+ * Helper function to get if azure is supported.
+ */
+bool is_hdfs_supported();
+
+/**
+ * Helper function to get if azure is supported.
+ */
+bool is_azure_supported();
+
+/**
+ * Helper function to get if azure is supported.
+ */
+bool is_gcs_supported();
+
+/**
  * Opens an array.
  *
  * @param ctx The TileDB context.

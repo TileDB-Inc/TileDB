@@ -62,6 +62,10 @@ struct S3Fx {
 };
 
 S3Fx::S3Fx() {
+  if(!tiledb::test::is_s3_supported()) {
+    return;
+  }
+
   // Connect
   Config config;
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
@@ -89,6 +93,10 @@ S3Fx::S3Fx() {
 }
 
 S3Fx::~S3Fx() {
+  if(!tiledb::test::is_s3_supported()) {
+    return;
+  }
+
   // Empty bucket
   bool is_empty;
   CHECK(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
@@ -111,6 +119,10 @@ std::string S3Fx::random_name(const std::string& prefix) {
 }
 
 TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
+  if(!tiledb::test::is_s3_supported()) {
+    return;
+  }
+
   /* Create the following file hierarchy:
    *
    * TEST_DIR/dir/subdir/file1
@@ -238,6 +250,10 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
 }
 
 TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file I/O", "[s3]") {
+  if(!tiledb::test::is_s3_supported()) {
+    return;
+  }
+
   // Prepare buffers
   uint64_t buffer_size = 5 * 1024 * 1024;
   auto write_buffer = new char[buffer_size];
@@ -307,6 +323,10 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file I/O", "[s3]") {
 }
 
 TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
+  if(!tiledb::test::is_s3_supported()) {
+    return;
+  }
+
   // Prepare a large buffer
   uint64_t buffer_size = 100 * 1024 * 1024;
   auto write_buffer = new char[buffer_size];
@@ -338,6 +358,10 @@ TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
 
 TEST_CASE_METHOD(
     S3Fx, "Test S3 setting bucket/object canned acls", "[s3][config]") {
+  if(!tiledb::test::is_s3_supported()) {
+    return;
+  }
+
   Config config;
   REQUIRE(config.set("vfs.s3.bucket_canned_acl", "private_").ok());
   REQUIRE(config.set("vfs.s3.bucket_canned_acl", "public_read").ok());
@@ -357,6 +381,10 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(S3Fx, "Test S3 use BucketCannedACL", "[s3]") {
+  if(!tiledb::test::is_s3_supported()) {
+    return;
+  }
+
   Config config;
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
   REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());
@@ -398,6 +426,10 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use BucketCannedACL", "[s3]") {
 }
 
 TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
+  if(!tiledb::test::is_s3_supported()) {
+    return;
+  }
+
   Config config;
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
   REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());

@@ -33,6 +33,7 @@
 #ifdef HAVE_AZURE
 
 #include <test/support/tdb_catch.h>
+#include <test/support/src/helpers.h>
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
@@ -80,6 +81,10 @@ struct AzureFx {
 };
 
 AzureFx::~AzureFx() {
+  if(!tiledb::test::is_azure_supported()) {
+    return;
+  }
+
   // Empty container
   bool is_empty;
   REQUIRE(azure_.is_empty_container(AZURE_CONTAINER, &is_empty).ok());
@@ -132,6 +137,10 @@ std::string AzureFx::random_container_name(const std::string& prefix) {
 }
 
 TEST_CASE_METHOD(AzureFx, "Test Azure filesystem, file management", "[azure]") {
+  if(!tiledb::test::is_azure_supported()) {
+    return;
+  }
+
   Config config;
   REQUIRE(config.set("vfs.azure.use_block_list_upload", "true").ok());
 
@@ -267,6 +276,10 @@ TEST_CASE_METHOD(AzureFx, "Test Azure filesystem, file management", "[azure]") {
 
 TEST_CASE_METHOD(
     AzureFx, "Test Azure filesystem, file I/O", "[azure][multipart]") {
+  if(!tiledb::test::is_azure_supported()) {
+    return;
+  }
+
   Config config;
   const uint64_t max_parallel_ops = 2;
   const uint64_t block_list_block_size = 4 * 1024 * 1024;
@@ -362,6 +375,10 @@ TEST_CASE_METHOD(
     AzureFx,
     "Test Azure filesystem, file I/O, no multipart",
     "[azure][no_multipart]") {
+  if(!tiledb::test::is_azure_supported()) {
+    return;
+  }
+
   Config config;
   const uint64_t max_parallel_ops = 2;
   const uint64_t block_list_block_size = 4 * 1024 * 1024;

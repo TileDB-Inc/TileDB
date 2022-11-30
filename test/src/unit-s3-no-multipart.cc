@@ -62,6 +62,10 @@ struct S3DirectFx {
 };
 
 S3DirectFx::S3DirectFx() {
+  if(!tiledb::test::is_s3_supported()) {
+    return;
+  }
+
   // Connect
   Config config;
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
@@ -93,6 +97,10 @@ S3DirectFx::S3DirectFx() {
 }
 
 S3DirectFx::~S3DirectFx() {
+  if(!tiledb::test::is_s3_supported()) {
+    return;
+  }
+
   // Empty bucket
   bool is_empty;
   CHECK(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
@@ -111,6 +119,10 @@ TEST_CASE_METHOD(
     S3DirectFx,
     "Test S3 filesystem, file I/O with multipart API disabled",
     "[s3]") {
+  if(!tiledb::test::is_s3_supported()) {
+    return;
+  }
+
   // Prepare buffers
   uint64_t buffer_size = 5 * 1024 * 1024;
   auto write_buffer = new char[buffer_size];

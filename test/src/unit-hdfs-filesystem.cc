@@ -33,6 +33,7 @@
 #ifdef HAVE_HDFS
 
 #include <test/support/tdb_catch.h>
+#include <test/support/src/helpers.h>
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
@@ -46,6 +47,10 @@ using namespace tiledb::sm;
 using namespace tiledb::sm::hdfs;
 
 TEST_CASE("Test HDFS filesystem", "[hdfs]") {
+  if(!tiledb::test::is_hdfs_supported()) {
+    return;
+  }
+
   Config config;
   HDFS hdfs;
 

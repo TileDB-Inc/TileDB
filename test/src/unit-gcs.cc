@@ -33,6 +33,7 @@
 #ifdef HAVE_GCS
 
 #include <test/support/tdb_catch.h>
+#include <test/support/src/helpers.h>
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
@@ -65,6 +66,9 @@ struct GCSFx {
 };
 
 GCSFx::~GCSFx() {
+  if(!tiledb::test::is_gcs_supported()) {
+    return;
+  }
   // Empty bucket
   bool is_empty;
   REQUIRE(gcs_.is_empty_bucket(GCS_BUCKET, &is_empty).ok());
@@ -107,6 +111,10 @@ std::string GCSFx::random_bucket_name(const std::string& prefix) {
 }
 
 TEST_CASE_METHOD(GCSFx, "Test GCS init", "[gcs]") {
+  if(!tiledb::test::is_gcs_supported()) {
+    return;
+  }
+
   try {
     Config config;
     REQUIRE(config.set("vfs.gcs.use_multi_part_upload", "true").ok());
@@ -121,6 +129,10 @@ TEST_CASE_METHOD(GCSFx, "Test GCS init", "[gcs]") {
 }
 
 TEST_CASE_METHOD(GCSFx, "Test GCS filesystem, file management", "[gcs]") {
+  if(!tiledb::test::is_gcs_supported()) {
+    return;
+  }
+
   Config config;
   REQUIRE(config.set("vfs.gcs.use_multi_part_upload", "true").ok());
   init_gcs(std::move(config));
@@ -255,6 +267,10 @@ TEST_CASE_METHOD(
     GCSFx,
     "Test GCS filesystem I/O, multipart, serial",
     "[gcs][multipart][serial]") {
+  if(!tiledb::test::is_gcs_supported()) {
+    return;
+  }
+
   Config config;
   const uint64_t max_parallel_ops = 1;
   const uint64_t multi_part_size = 4 * 1024 * 1024;
@@ -343,6 +359,10 @@ TEST_CASE_METHOD(
     GCSFx,
     "Test GCS filesystem I/O, non-multipart, serial",
     "[gcs][non-multipart][serial]") {
+  if(!tiledb::test::is_gcs_supported()) {
+    return;
+  }
+
   Config config;
   const uint64_t max_parallel_ops = 1;
   const uint64_t multi_part_size = 4 * 1024 * 1024;
@@ -424,6 +444,10 @@ TEST_CASE_METHOD(
     GCSFx,
     "Test GCS filesystem I/O, multipart, concurrent",
     "[gcs][multipart][concurrent]") {
+  if(!tiledb::test::is_gcs_supported()) {
+    return;
+  }
+
   Config config;
   const uint64_t max_parallel_ops = 4;
   const uint64_t multi_part_size = 4 * 1024 * 1024;
@@ -512,6 +536,10 @@ TEST_CASE_METHOD(
     GCSFx,
     "Test GCS filesystem I/O, non-multipart, concurrent",
     "[gcs][non-multipart][concurrent]") {
+  if(!tiledb::test::is_gcs_supported()) {
+    return;
+  }
+
   Config config;
   const uint64_t max_parallel_ops = 4;
   const uint64_t multi_part_size = 4 * 1024 * 1024;
@@ -593,6 +621,10 @@ TEST_CASE_METHOD(
     GCSFx,
     "Test GCS filesystem I/O, multipart, composition",
     "[gcs][multipart][composition]") {
+  if(!tiledb::test::is_gcs_supported()) {
+    return;
+  }
+
   Config config;
   const uint64_t max_parallel_ops = 4;
   const uint64_t multi_part_size = 4 * 1024;

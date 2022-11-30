@@ -880,6 +880,28 @@ void get_supported_fs(
   tiledb_ctx_free(&ctx);
 }
 
+bool is_fs_supported(int idx) {
+  bool fs[4];
+  get_supported_fs(&fs[0], &fs[1], &fs[2], &fs[3]);
+  return fs[idx];
+}
+
+bool is_s3_supported() {
+  return is_fs_supported(0);
+}
+
+bool is_hdfs_supported() {
+  return is_fs_supported(1);
+}
+
+bool is_azure_supported() {
+  return is_fs_supported(2);
+}
+
+bool is_gcs_supported() {
+  return is_fs_supported(3);
+}
+
 void open_array(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
   int rc = tiledb_array_open(ctx, array, query_type);
