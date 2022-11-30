@@ -85,8 +85,8 @@ if(APPLE)
   set(CMAKE_FIND_FRAMEWORK NEVER)
 endif()
 
-# Set C++17 as required standard for all C++ targets.
-set(CMAKE_CXX_STANDARD 17)
+# Set C++17 as default required standard for all C++ targets.
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ Standard")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(CMAKE_SYSTEM_NAME MATCHES "CYGWIN")
   # Use GNU extensions under Cygwin

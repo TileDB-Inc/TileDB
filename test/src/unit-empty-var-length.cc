@@ -42,7 +42,13 @@ using namespace tiledb::test;
 
 float buffer_a1[4] = {0.0f, 0.1f, 0.2f, 0.3f};
 int32_t buffer_a4[4] = {1, 2, 3, 4};
+// Since C++20 u8"literals" use char8_t type
+// https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1423r3.html
+#if defined(__cpp_char8_t)
+const char8_t UTF8_STRINGS_VAR_FOR_EMPTY[] = u8"aαbββcγγγdδδδδ";
+#else
 const char UTF8_STRINGS_VAR_FOR_EMPTY[] = u8"aαbββcγγγdδδδδ";
+#endif
 uint64_t UTF8_NULL_SIZE_FOR_EMPTY = sizeof(u8"");
 uint64_t UTF8_OFFSET_0_FOR_EMPTY = 0;
 uint64_t UTF8_OFFSET_1_FOR_EMPTY = sizeof(u8"aα") - UTF8_NULL_SIZE_FOR_EMPTY;
