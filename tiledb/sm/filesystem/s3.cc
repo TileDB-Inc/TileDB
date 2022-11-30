@@ -210,7 +210,7 @@ S3::~S3() {
   if (!st.ok()) {
     LOG_STATUS_NO_RETURN_VALUE(st);
   } else {
-    assert(state_ == State::DISCONNECTED);
+    assert(state_ == State::DISCONNECTED || state_ == State::UNINITIALIZED);
     for (auto& buff : file_buffers_)
       tdb_delete(buff.second);
   }
