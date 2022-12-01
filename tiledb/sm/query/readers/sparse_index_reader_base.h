@@ -246,7 +246,7 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Read state. */
   ReadState read_state_;
 
-  /** Have we loaded all thiles for this fragment. */
+  /** Have we loaded all tiles for this fragment. */
   std::vector<uint8_t> all_tiles_loaded_;
 
   /** Include coordinates when loading tiles. */
