@@ -38,7 +38,6 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/encryption_type.h"
 
 #ifdef _WIN32
@@ -200,24 +199,6 @@ TEST_CASE_METHOD(
   auto loaded_dim_label_num =
       loaded_array_schema->array_schema_->dim_label_num();
   CHECK(loaded_dim_label_num == 1);
-  const auto& dim_label_ref =
-      loaded_array_schema->array_schema_->dimension_label_reference(0);
-  auto x_label_uri = dim_label_ref.uri().c_str();
-
-  // Check the dimension label schema.
-  auto label_datatype = static_cast<Datatype>(label_type);
-  URI label_uri{array_name + "/" + x_label_uri};
-  DimensionLabel dim_label(label_uri, ctx->storage_manager());
-  dim_label.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0);
-  CHECK(dim_label.schema().index_type() == Datatype::UINT64);
-  CHECK(dim_label.schema().label_type() == label_datatype);
-  const auto& indexed_array_schema =
-      dim_label.indexed_array()->array_schema_latest();
-  CHECK(indexed_array_schema.domain().dim_num() == 1);
-  CHECK(indexed_array_schema.attribute_num() == 1);
-  CHECK(indexed_array_schema.dimension_ptr(0)->type() == Datatype::UINT64);
-  CHECK(indexed_array_schema.attribute(0)->type() == label_datatype);
-  dim_label.close();
 
   // Free remaining resources
   tiledb_array_schema_free(&loaded_array_schema);

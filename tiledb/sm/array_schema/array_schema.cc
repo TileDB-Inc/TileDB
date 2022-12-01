@@ -38,7 +38,6 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
-#include "tiledb/sm/array_schema/dimension_label_schema.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -121,7 +120,7 @@ ArraySchema::ArraySchema(
     Layout tile_order,
     uint64_t capacity,
     std::vector<shared_ptr<const Attribute>> attributes,
-    std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels,
+    std::vector<shared_ptr<const DimensionLabelReference>> dim_label_refs,
     FilterPipeline cell_var_offsets_filters,
     FilterPipeline cell_validity_filters,
     FilterPipeline coords_filters)
@@ -136,7 +135,7 @@ ArraySchema::ArraySchema(
     , tile_order_(tile_order)
     , capacity_(capacity)
     , attributes_(attributes)
-    , dimension_labels_(dimension_labels)
+    , dimension_label_references_(dim_label_refs)
     , cell_var_offsets_filters_(cell_var_offsets_filters)
     , cell_validity_filters_(cell_validity_filters)
     , coords_filters_(coords_filters) {
@@ -195,8 +194,8 @@ ArraySchema::ArraySchema(
   }
 
   // Create dimension label map
-  for (const auto& label : dimension_labels_) {
-    dimension_label_map_[label->name()] = label.get();
+  for (const auto& label : dimension_label_references_) {
+    dimension_label_reference_map_[label->name()] = label.get();
   }
 
   // Check array schema is valid.
@@ -240,9 +239,9 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema) {
     throw_if_not_ok(add_attribute(attr, false));
 
   // Create dimension label map
-  for (const auto& label : array_schema.dimension_labels_) {
-    dimension_labels_.emplace_back(label);
-    dimension_label_map_[label->name()] = label.get();
+  for (const auto& label : array_schema.dimension_label_references_) {
+    dimension_label_references_.emplace_back(label);
+    dimension_label_reference_map_[label->name()] = label.get();
   }
 
   name_ = array_schema.name_;
@@ -483,19 +482,15 @@ Status ArraySchema::check() const {
   //
   // Note: external dimension labels do not need a schema since they are not
   // created when the array is created.
-  for (auto label : dimension_labels_) {
+  for (auto label : dimension_label_references_) {
     if (!label->is_external()) {
-      if (!label->has_schema())
+      if (!label->has_schema()) {
         return LOG_STATUS(Status_ArraySchemaError(
             "Array schema check failed; Missing dimension label schema for "
             "dimension label '" +
             label->name() + "'."));
-      if (!label->schema().is_compatible_label(
-              domain_->dimension_ptr(label->dimension_id())))
-        return LOG_STATUS(Status_ArraySchemaError(
-            "Array schema check failed; Dimension label schema for dimension "
-            "label '" +
-            label->name() + "' is not compatible with the array schema."));
+      }
+      check_dimension_label_schema(label->name(), *label->schema());
     }
   }
 
@@ -514,6 +509,74 @@ Status ArraySchema::check_attributes(
   }
 
   return Status::Ok();
+}
+
+void ArraySchema::check_dimension_label_schema(
+    const std::string& name, const ArraySchema& schema) const {
+  // Check there is a dimension label with the requested name and get the
+  // dimension label reference for it.
+  auto dim_iter = dimension_label_reference_map_.find(name);
+  if (dim_iter == dimension_label_reference_map_.end()) {
+    throw ArraySchemaStatusException(
+        "No dimension label with the name '" + name + "'.");
+  }
+  const auto* dim_label_ref = dim_iter->second;
+
+  // Check there is only one dimension in the provided schema.
+  if (schema.dim_num() != 1) {
+    throw ArraySchemaStatusException(
+        "Invalid schema for label '" + name + "'; Schema has " +
+        std::to_string(schema.dim_num()) + " dimensions.");
+  }
+
+  // Check the dimension in the schema matches the local dimension.
+  const auto* dim_internal = dimension_ptr(dim_label_ref->dimension_index());
+  const auto* dim_provided = schema.dimension_ptr(0);
+  if (dim_provided->type() != dim_internal->type()) {
+    throw ArraySchemaStatusException(
+        "The dimension datatype of the dimension label is '" +
+        datatype_str(dim_provided->type()) + "', but expected datatype was '" +
+        datatype_str(dim_internal->type()) + "'");
+  }
+  if (dim_provided->cell_val_num() != dim_internal->cell_val_num()) {
+    throw ArraySchemaStatusException(
+        "The cell value number of the dimension in the dimension label is " +
+        std::to_string(dim_provided->cell_val_num()) +
+        ", but the expected datatype was " +
+        std::to_string(dim_internal->cell_val_num()) + ".");
+  }
+
+  // Check there is an attribute the schema with the label attribute name.
+  const auto& label_attr_name = dim_label_ref->label_attr_name();
+  if (!schema.is_attr(label_attr_name)) {
+    throw ArraySchemaStatusException(
+        "The dimension label is missing an attribute with name '" +
+        label_attr_name + "'.");
+  }
+
+  // Check the label attribute matches the expected attribute.
+  const auto* label_attr = schema.attribute(label_attr_name);
+  if (label_attr->order() != dim_label_ref->label_order()) {
+    throw ArraySchemaStatusException(
+        "The label order of the dimension label is " +
+        data_order_str(label_attr->order()) +
+        ", but the expected label order was " +
+        data_order_str(dim_label_ref->label_order()) + ".");
+  }
+  if (label_attr->type() != dim_label_ref->label_type()) {
+    throw ArraySchemaStatusException(
+        "The datatype of the dimension label is " +
+        datatype_str(label_attr->type()) +
+        ", but the expected label datatype was " +
+        datatype_str(dim_label_ref->label_type()) + ".");
+  }
+  if (label_attr->cell_val_num() != dim_label_ref->label_cell_val_num()) {
+    throw ArraySchemaStatusException(
+        "The cell value number of the label attribute in the dimension label " +
+        std::to_string(label_attr->cell_val_num()) +
+        ", but the expected cell value number was " +
+        std::to_string(dim_label_ref->label_cell_val_num()) + ".");
+  }
 }
 
 const FilterPipeline& ArraySchema::filters(const std::string& name) const {
@@ -544,13 +607,13 @@ bool ArraySchema::dense() const {
 
 const DimensionLabelReference& ArraySchema::dimension_label_reference(
     const dimension_label_size_type i) const {
-  return *dimension_labels_[i];
+  return *dimension_label_references_[i];
 }
 
 const DimensionLabelReference& ArraySchema::dimension_label_reference(
     const std::string& name) const {
-  auto iter = dimension_label_map_.find(name);
-  if (iter == dimension_label_map_.end())
+  auto iter = dimension_label_reference_map_.find(name);
+  if (iter == dimension_label_reference_map_.end())
     throw ArraySchemaStatusException(
         "Unable to get dimension label reference; No dimension label named '" +
         name + "'.");
@@ -587,7 +650,8 @@ std::vector<Datatype> ArraySchema::dim_types() const {
 }
 
 ArraySchema::dimension_label_size_type ArraySchema::dim_label_num() const {
-  return static_cast<dimension_label_size_type>(dimension_labels_.size());
+  return static_cast<dimension_label_size_type>(
+      dimension_label_references_.size());
 }
 
 ArraySchema::dimension_size_type ArraySchema::dim_num() const {
@@ -626,7 +690,7 @@ void ArraySchema::dump(FILE* out) const {
     attr->dump(out);
   }
 
-  for (auto& label : dimension_labels_) {
+  for (auto& label : dimension_label_references_) {
     fprintf(out, "\n");
     label->dump(out);
   }
@@ -655,8 +719,8 @@ bool ArraySchema::is_dim(const std::string& name) const {
 }
 
 bool ArraySchema::is_dim_label(const std::string& name) const {
-  auto it = dimension_label_map_.find(name);
-  return it != dimension_label_map_.end();
+  auto it = dimension_label_reference_map_.find(name);
+  return it != dimension_label_reference_map_.end();
 }
 
 bool ArraySchema::is_field(const std::string& name) const {
@@ -733,13 +797,13 @@ void ArraySchema::serialize(Serializer& serializer) const {
 
   // Write dimension labels
   if constexpr (is_experimental_build) {
-    auto label_num = static_cast<uint32_t>(dimension_labels_.size());
-    if (label_num != dimension_labels_.size()) {
+    auto label_num = static_cast<uint32_t>(dimension_label_references_.size());
+    if (label_num != dimension_label_references_.size()) {
       throw ArraySchemaStatusException(
           "Overflow when attempting to serialize label number.");
     }
     serializer.write<uint32_t>(label_num);
-    for (auto& label : dimension_labels_) {
+    for (auto& label : dimension_label_references_) {
       label->serialize(serializer, version);
     }
   }
@@ -868,8 +932,8 @@ void ArraySchema::add_dimension_label(
     }
 
     // Check no other dimension label with this name.
-    auto found = dimension_label_map_.find(name);
-    if (found != dimension_label_map_.end()) {
+    auto found = dimension_label_reference_map_.find(name);
+    if (found != dimension_label_reference_map_.end()) {
       throw ArraySchemaStatusException(
           "Cannot add a dimension label with name '" + std::string(name) +
           "'. A different label with that name already exists.");
@@ -878,35 +942,16 @@ void ArraySchema::add_dimension_label(
 
   // Add dimension label
   try {
-    // Create dimension label schema.
-    // - Note: This is a placeholder until dimension label schema is replace
-    // directly with an array schema.
-    auto dimension_label_schema = make_shared<DimensionLabelSchema>(
-        HERE(),
-        label_order,
-        label_type,
-        dim->type(),
-        dim->domain().data(),
-        dim->tile_extent().data());
-
     // Create relative URI in dimension label directory
     URI uri{constants::array_dimension_labels_dir_name + "/l" +
                 std::to_string(nlabel_internal_),
             false};
 
     // Create the dimension label reference.
-    auto dim_label = make_shared<DimensionLabelReference>(
-        HERE(),
-        dim_id,
-        name,
-        uri,
-        dimension_label_schema->label_attribute()->name(),
-        dimension_label_schema->label_order(),
-        dimension_label_schema->label_type(),
-        dimension_label_schema->label_cell_val_num(),
-        dimension_label_schema);
-    dimension_labels_.emplace_back(dim_label);
-    dimension_label_map_[name] = dim_label.get();
+    auto dim_label_ref = make_shared<DimensionLabelReference>(
+        HERE(), dim_id, name, uri, dim, label_order, label_type);
+    dimension_label_references_.emplace_back(dim_label_ref);
+    dimension_label_reference_map_[name] = dim_label_ref.get();
   } catch (...) {
     std::throw_with_nested(ArraySchemaStatusException(
         "Failed to add dimension label '" + name + "'."));
@@ -1144,11 +1189,10 @@ void ArraySchema::set_dimension_label_filter_pipeline(
   if (!dim_label_ref.has_schema()) {
     throw ArraySchemaStatusException(
         "Cannot set filter pipeline for dimension label '" + label_name +
-        "'; That dimension label does not have a stored schema.");
+        "'; No dimension label schema is set.");
   }
-  throw_if_not_ok(const_cast<Attribute*>(
-                      dim_label_ref.schema().indexed_array_schema()->attribute(
-                          dim_label_ref.label_attr_name()))
+  throw_if_not_ok(const_cast<Attribute*>(dim_label_ref.schema()->attribute(
+                                             dim_label_ref.label_attr_name()))
                       ->set_filter_pipeline(pipeline));
 }
 
@@ -1160,9 +1204,9 @@ void ArraySchema::set_dimension_label_tile_extent(
   if (!dim_label_ref.has_schema()) {
     throw ArraySchemaStatusException(
         "Cannot set tile extent for dimension label '" + label_name +
-        "'; That dimension label does not have a stored schema.");
+        "'; No dimension label schema is set.");
   }
-  auto dim = dim_label_ref.schema().indexed_array_schema()->dimension_ptr(0);
+  auto dim = dim_label_ref.schema()->dimension_ptr(0);
   if (type != dim->type()) {
     throw ArraySchemaStatusException(
         "Cannot set tile extent for dimension label '" + label_name +
@@ -1282,11 +1326,11 @@ void ArraySchema::check_attribute_dimension_label_names() const {
   }
   // Check dimension label names are unique except at most 1 label / dimension
   // that has the same name as the dimension it is on.
-  expected_unique_names += dimension_labels_.size();
+  expected_unique_names += dimension_label_references_.size();
   std::vector<bool> label_with_dim_name(dim_num, false);
-  for (const auto& label : dimension_labels_) {
+  for (const auto& label : dimension_label_references_) {
     const auto& label_name = label->name();
-    const auto dim_id = label->dimension_id();
+    const auto dim_id = label->dimension_index();
     // Check if the dimension label has the same name as the dimension
     if (label_name == domain_->dimension_ptr(dim_id)->name()) {
       // Check if there is already a dimension label with that name.

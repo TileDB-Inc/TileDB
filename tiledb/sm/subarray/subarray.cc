@@ -169,7 +169,7 @@ void Subarray::add_label_range(
     const DimensionLabelReference& dim_label_ref,
     Range&& range,
     const bool read_range_oob_error) {
-  const auto dim_idx = dim_label_ref.dimension_id();
+  const auto dim_idx = dim_label_ref.dimension_index();
   if (label_range_subset_[dim_idx].has_value()) {
     // A label range has already been set on this dimension. Do the following:
     //  * Check this label is the same label that rangers were already set.
@@ -186,7 +186,7 @@ void Subarray::add_label_range(
     //  * Clear implicitly set range from the dimension ranges.
     //  * Update is_default (tracks if the range on the dimension is the default
     //    value of the entire domain).
-    if (range_subset_[dim_label_ref.dimension_id()]
+    if (range_subset_[dim_label_ref.dimension_index()]
             .is_explicitly_initialized()) {
       throw StatusException(Status_SubarrayError(
           "Cannot add label range; Dimension '" + std::to_string(dim_idx) +
@@ -194,7 +194,7 @@ void Subarray::add_label_range(
     }
     label_range_subset_[dim_idx] =
         LabelRangeSubset(dim_label_ref, coalesce_ranges_);
-    range_subset_[dim_label_ref.dimension_id()].clear();
+    range_subset_[dim_label_ref.dimension_index()].clear();
     is_default_[dim_idx] = false;  // Only need to clear default once.
   }
 
@@ -568,7 +568,7 @@ void Subarray::get_label_range(
     const void** stride) const {
   auto dim_idx = array_->array_schema_latest()
                      .dimension_label_reference(label_name)
-                     .dimension_id();
+                     .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
       label_range_subset_[dim_idx].value().name != label_name) {
     throw StatusException(Status_SubarrayError(
@@ -585,7 +585,7 @@ void Subarray::get_label_range_num(
     const std::string& label_name, uint64_t* range_num) const {
   auto dim_idx = array_->array_schema_latest()
                      .dimension_label_reference(label_name)
-                     .dimension_id();
+                     .dimension_index();
   *range_num = (label_range_subset_[dim_idx].has_value() &&
                 label_range_subset_[dim_idx].value().name == label_name) ?
                    label_range_subset_[dim_idx].value().ranges.num_ranges() :
@@ -599,7 +599,7 @@ void Subarray::get_label_range_var(
     void* end) const {
   auto dim_idx = array_->array_schema_latest()
                      .dimension_label_reference(label_name)
-                     .dimension_id();
+                     .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
       label_range_subset_[dim_idx].value().name != label_name) {
     throw StatusException(Status_SubarrayError(
@@ -618,7 +618,7 @@ void Subarray::get_label_range_var_size(
     uint64_t* end_size) const {
   auto dim_idx = array_->array_schema_latest()
                      .dimension_label_reference(label_name)
-                     .dimension_id();
+                     .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
       label_range_subset_[dim_idx].value().name != label_name) {
     throw StatusException(Status_SubarrayError(
@@ -1765,7 +1765,7 @@ const std::vector<Range>& Subarray::ranges_for_label(
     const std::string& label_name) const {
   auto dim_idx = array_->array_schema_latest()
                      .dimension_label_reference(label_name)
-                     .dimension_id();
+                     .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
       label_range_subset_[dim_idx].value().name != label_name) {
     throw StatusException(Status_SubarrayError(

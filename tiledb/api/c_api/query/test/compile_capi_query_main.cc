@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/array_schema/test/compile_dimension_label_main.cc
+ * @file tiledb/api/c_api/query/test/compile_capi_query_main.cc
  *
  * @section LICENSE
  *
@@ -26,9 +26,9 @@
  * THE SOFTWARE.
  */
 
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#include "../query_api_external.h"
 
 int main() {
-  (void)sizeof(tiledb::sm::DimensionLabelReference);
+  tiledb_query_type_to_str(TILEDB_READ, nullptr);
   return 0;
 }

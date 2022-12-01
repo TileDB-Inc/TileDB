@@ -34,16 +34,16 @@ gather_sources(${SOURCES})
 #
 # Object library uses `StorageManagerStub` to support API wrappers
 #
-add_library(capi_error_stub OBJECT ${SOURCES})
-target_link_libraries(capi_error_stub PUBLIC export)
-target_link_libraries(capi_error_stub PUBLIC storage_manager_stub)
-target_link_libraries(capi_error_stub PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+add_library(capi_error OBJECT ${SOURCES})
+target_link_libraries(capi_error PUBLIC export)
+target_link_libraries(capi_error PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness
 #
-add_executable(compile_capi_error_stub EXCLUDE_FROM_ALL)
-target_link_libraries(compile_capi_error_stub PRIVATE capi_error_stub)
-target_sources(compile_capi_error_stub PRIVATE test/compile_capi_error_main.cc)
+add_executable(compile_capi_error EXCLUDE_FROM_ALL)
+target_link_libraries(compile_capi_error PRIVATE capi_error)
+target_sources(compile_capi_error PRIVATE test/compile_capi_error_main.cc)
+add_dependencies(all_link_complete compile_capi_error)
 
 add_test_subdirectory()

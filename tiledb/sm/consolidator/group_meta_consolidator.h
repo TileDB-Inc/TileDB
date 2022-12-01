@@ -41,8 +41,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Handles group metadata consolidation. */
 class GroupMetaConsolidator : public Consolidator {
@@ -90,9 +89,8 @@ class GroupMetaConsolidator : public Consolidator {
    * Performs the vacuuming operation.
    *
    * @param group_name URI of group to consolidate.
-   * @return Status
    */
-  Status vacuum(const char* group_name);
+  void vacuum(const char* group_name);
 
  private:
   /* ********************************* */
@@ -110,7 +108,6 @@ class GroupMetaConsolidator : public Consolidator {
   Consolidator::ConsolidationConfigBase config_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_GROUP_META_CONSOLIDATOR

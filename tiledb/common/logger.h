@@ -126,8 +126,8 @@ class Logger {
    * @param args optional additional positional arguments to format.
    */
   template <typename Arg1, typename... Args>
-  void trace(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->trace(fmt, arg1, args...);
+  void trace(std::string_view fmt, const Arg1& arg1, const Args&... args) {
+    logger_->trace(fmt::runtime(fmt), arg1, args...);
   }
 
   /**
@@ -160,8 +160,8 @@ class Logger {
    * @param args optional additional positional arguments to format.
    */
   template <typename Arg1, typename... Args>
-  void debug(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->debug(fmt, arg1, args...);
+  void debug(std::string_view fmt, const Arg1& arg1, const Args&... args) {
+    logger_->debug(fmt::runtime(fmt), arg1, args...);
   }
 
   /**
@@ -194,8 +194,8 @@ class Logger {
    * @param args optional additional positional arguments to format.
    */
   template <typename Arg1, typename... Args>
-  void info(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->info(fmt, arg1, args...);
+  void info(std::string_view fmt, const Arg1& arg1, const Args&... args) {
+    logger_->info(fmt::runtime(fmt), arg1, args...);
   }
 
   /**
@@ -228,8 +228,8 @@ class Logger {
    * @param args optional additional positional arguments to format.
    */
   template <typename Arg1, typename... Args>
-  void warn(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->warn(fmt, arg1, args...);
+  void warn(std::string_view fmt, const Arg1& arg1, const Args&... args) {
+    logger_->warn(fmt::runtime(fmt), arg1, args...);
   }
 
   /**
@@ -261,8 +261,8 @@ class Logger {
    * @param args optional additional positional arguments to format.
    */
   template <typename Arg1, typename... Args>
-  void error(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->error(fmt, arg1, args...);
+  void error(std::string_view fmt, const Arg1& arg1, const Args&... args) {
+    logger_->error(fmt::runtime(fmt), arg1, args...);
   }
 
   /**
@@ -331,8 +331,8 @@ class Logger {
    * @param args optional additional positional arguments to format.
    */
   template <typename Arg1, typename... Args>
-  void critical(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->critical(fmt, arg1, args...);
+  void critical(std::string_view fmt, const Arg1& arg1, const Args&... args) {
+    logger_->critical(fmt::runtime(fmt), arg1, args...);
   }
 
   /**

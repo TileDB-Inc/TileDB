@@ -22,9 +22,16 @@
  * THE SOFTWARE.
  */
 
+/**
+ * NOTE: The values of these enums are serialized to the array schema and/or
+ * fragment metadata. Therefore, the values below should never change,
+ * otherwise backwards compatibility breaks.
+ */
+
+// clang-format off
 #ifdef TILEDB_FILESYSTEM_ENUM
-/** HDFS filesystem */
-TILEDB_FILESYSTEM_ENUM(HDFS) = 0,
+    /** HDFS filesystem */
+    TILEDB_FILESYSTEM_ENUM(HDFS) = 0,
     /** S3 filesystem */
     TILEDB_FILESYSTEM_ENUM(S3) = 1,
     /** Azure filesystem */

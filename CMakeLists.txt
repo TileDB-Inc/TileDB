@@ -85,8 +85,8 @@ if(APPLE)
   set(CMAKE_FIND_FRAMEWORK NEVER)
 endif()
 
-# Set C++17 as required standard for all C++ targets.
-set(CMAKE_CXX_STANDARD 17)
+# Set C++17 as default required standard for all C++ targets.
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ Standard")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(CMAKE_SYSTEM_NAME MATCHES "CYGWIN")
   # Use GNU extensions under Cygwin
@@ -331,14 +331,23 @@ list(APPEND TILEDB_C_API_FILENAME_HEADERS
 )
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer/buffer_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/context/context_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/datatype/datatype_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/datatype/datatype_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"
-    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter_list/filter_list_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/group/group_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/group/group_api_external_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_external.h"
 )
 set(TILEDB_C_API_RELATIVE_HEADER_BASE "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -455,6 +464,7 @@ if (TILEDB_TESTS)
   # Add cmake target for "tests" to build all unit tests executables
   add_custom_target(tests)
   add_dependencies(tests tiledb_unit)
+  add_dependencies(tests tiledb_regression)
   add_dependencies(tests test_assert)
 
   add_dependencies(tests unit_buffer unit_datum unit_dynamic_memory)
@@ -473,6 +483,12 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
   # C API basics
   add_dependencies(tests unit_capi_error unit_capi_config unit_capi_context)
+  add_dependencies(tests unit_capi_buffer)
+  add_dependencies(tests unit_capi_datatype)
+  add_dependencies(tests unit_capi_filesystem)
+  add_dependencies(tests unit_capi_object_type)
+  add_dependencies(tests unit_capi_object_walk_order)
+  add_dependencies(tests unit_capi_query_type)
   # C API array schema
   add_dependencies(tests unit_capi_filter unit_capi_filter_list)
 

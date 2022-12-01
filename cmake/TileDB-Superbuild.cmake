@@ -25,6 +25,7 @@ set(INHERITED_CMAKE_ARGS
   -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
   -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
   -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+  -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
   -DCOMPILER_SUPPORTS_AVX2=${COMPILER_SUPPORTS_AVX2}
   -DTILEDB_VERBOSE=${TILEDB_VERBOSE}
   -DTILEDB_ASSERTIONS=${TILEDB_ASSERTIONS}
@@ -207,7 +208,7 @@ endif()
 
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
-  file(GLOB_RECURSE TILEDB_C_API_HEADERS "*_api_external.h")
+  file(GLOB_RECURSE TILEDB_C_API_HEADERS "${CMAKE_SOURCE_DIR}/tiledb/*_api_external.h")
   list(APPEND TILEDB_C_API_HEADERS
       "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
       "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h"
@@ -218,12 +219,12 @@ if(DOXYGEN_FOUND)
   set(TILEDB_API_HEADERS ${TILEDB_C_API_HEADERS} ${TILEDB_CPP_API_HEADERS})
   add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
     COMMAND mkdir -p doxygen
-    COMMAND echo INPUT = ${CMAKE_CURRENT_SOURCE_DIR}/doc/mainpage.dox
+    COMMAND echo INPUT = ${CMAKE_CURRENT_SOURCE_DIR}/tiledb/doxygen/mainpage.dox
       ${TILEDB_API_HEADERS} > ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
     COMMENT "Preparing for Doxygen documentation" VERBATIM
   )
   add_custom_target(doc
-    ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/doc/Doxyfile.mk >
+    ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tiledb/doxygen/Doxyfile.mk >
       ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.log 2>&1
     COMMENT "Generating API documentation with Doxygen" VERBATIM
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
