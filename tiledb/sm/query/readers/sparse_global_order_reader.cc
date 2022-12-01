@@ -760,6 +760,8 @@ bool SparseGlobalOrderReader<BitmapType>::add_all_dups_to_queue(
         if (rc.same_coords(rc2)) {
           // Remove the current tile if not used.
           if (!rc.tile_->used()) {
+            ignored_tiles_.emplace(
+                frag_idx, result_tiles_it[frag_idx]->tile_idx());
             throw_if_not_ok(
                 remove_result_tile(frag_idx, result_tiles_it[frag_idx]));
           }
@@ -798,6 +800,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
 
     // Remove the tile from result tiles if it wasn't used at all.
     if (!rc.tile_->used()) {
+      ignored_tiles_.emplace(frag_idx, to_delete->tile_idx());
       throw_if_not_ok(remove_result_tile(frag_idx, to_delete));
     }
 
