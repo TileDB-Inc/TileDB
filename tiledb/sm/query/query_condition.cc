@@ -1899,8 +1899,10 @@ void QueryCondition::apply_ast_node_sparse(
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
   std::string node_field_name = node->get_field_name();
-  if (!array_schema.is_field(node_field_name))
+  if (!array_schema.is_field(node_field_name)) {
+    std::fill(result_bitmap.begin(), result_bitmap.end(), 0);
     return;
+  }
 
   const auto nullable = array_schema.is_nullable(node_field_name);
   const auto var_size = array_schema.var_size(node_field_name);

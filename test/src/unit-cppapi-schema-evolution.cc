@@ -640,6 +640,10 @@ TEST_CASE(
       TILEDB_GLOBAL_ORDER);
   bool duplicates = GENERATE(true, false);
 
+  const char* out_str = nullptr;
+  tiledb_layout_to_str(layout, &out_str);
+  std::cout << "DUP: " << duplicates << " layout " << std::string(out_str);
+
   std::string array_uri = "test_schema_evolution_query_condition";
 
   {
@@ -768,8 +772,10 @@ TEST_CASE(
     d2_data.resize(result_num);
     CHECK_THAT(a_data,
                Catch::Matchers::Equals(std::vector<int>{4}));
+    CHECK_THAT(b_data,
+               Catch::Matchers::Equals(std::vector<uint32_t>{4}));
     CHECK_THAT(d1_data,
-               Catch::Matchers::Equals(std::vector<int>{3}));
+               Catch::Matchers::Equals(std::vector<int>{4}));
     CHECK_THAT(d2_data,
                Catch::Matchers::Equals(std::vector<int>{1}));
   }
