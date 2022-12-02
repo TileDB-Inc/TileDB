@@ -38,6 +38,7 @@ Configuration:
                                     ['"${default_dependency}"']
     --force-build-all-deps          force building of all dependencies, even those
                                     already installed at system-level
+    --enable-wdocumetnation         enables use of -Wdocumentation during build
     --disable-werror                disables use of -Werror during build
     --disable-cpp-api               disables building of the TileDB C++ API
     --disable-tests                 disables building the TileDB tests
@@ -92,6 +93,7 @@ tiledb_s3="OFF"
 tiledb_azure="OFF"
 tiledb_gcs="OFF"
 tiledb_werror="ON"
+tiledb_wdocumentation="OFF"
 tiledb_tests="ON"
 tiledb_cpp_api="ON"
 tiledb_force_all_deps="OFF"
@@ -115,6 +117,7 @@ while test $# != 0; do
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
     --force-build-all-deps) tiledb_force_all_deps="ON";;
+    --enable-wdocumentation) tiledb_wdocumentation="ON";;
     --disable-werror) tiledb_werror="OFF";;
     --disable-tests) tiledb_tests="OFF";;
     --disable-cpp-api) tiledb_cpp_api="OFF";;
@@ -217,6 +220,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_GCS=${tiledb_gcs} \
     -DTILEDB_SERIALIZATION=${tiledb_serialization} \
     -DTILEDB_TOOLS=${tiledb_tools} \
+    -DTILEDB_WDOCUMENTATION=${tiledb_wdocumentation} \
     -DTILEDB_WERROR=${tiledb_werror} \
     -DTILEDB_CPP_API=${tiledb_cpp_api} \
     -DTILEDB_STATS=${tiledb_stats} \
