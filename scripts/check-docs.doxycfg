@@ -1,0 +1,12 @@
+INPUT                  = "tiledb"
+EXCLUDE_PATTERNS       = "*.capnp.h" "*.capnp.c++"
+RECURSIVE              = YES
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = YES
+WARN_AS_ERROR          = NO
+WARN_LOGFILE           = doxygen.warnings
+QUIET                  = YES

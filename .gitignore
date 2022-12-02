@@ -16,6 +16,8 @@ test/obj/*
 test/tiledb_test/*
 Doxyfile.log
 doxyfile.inc
+doxygen.warnings
+doxygen.warnings.rel
 doxygen/html/
 doxygen/latex/
 examples/bin/*
