@@ -41,7 +41,7 @@
 using namespace tiledb;
 using namespace tiledb::test;
 
-/** Tests for C API consolidation with timestamps. */
+/** Tests for CPP API consolidation with timestamps. */
 struct ConsolidationWithTimestampsFx {
   // Constants.
   const char* SPARSE_ARRAY_NAME = "test_consolidate_sparse_array";

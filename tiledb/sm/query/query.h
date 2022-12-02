@@ -651,6 +651,11 @@ class Query {
     fragment_size_ = fragment_size;
   }
 
+  /** Allow partial attribute writes. */
+  void allow_partial_attribute_write() {
+    allow_partial_attribute_write_ = true;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -812,6 +817,12 @@ class Query {
    * Note: This is only used for global order writes.
    */
   uint64_t fragment_size_;
+
+  /**
+   * ``true`` if this is a query enabling partial attribute writes. ``false``
+   * otherwise.
+   */
+  bool allow_partial_attribute_write_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

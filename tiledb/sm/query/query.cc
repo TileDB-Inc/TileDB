@@ -108,7 +108,8 @@ Query::Query(
     , remote_query_(false)
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
-    , fragment_size_(std::numeric_limits<uint64_t>::max()) {
+    , fragment_size_(std::numeric_limits<uint64_t>::max())
+    , allow_partial_attribute_write_(false) {
   assert(array->is_open());
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
@@ -961,7 +962,7 @@ Status Query::check_buffer_names() {
 
     // All attributes/dimensions must be provided unless this query is only for
     // dimension labels.
-    if (!only_dim_label_query()) {
+    if (!only_dim_label_query() && !allow_partial_attribute_write_) {
       auto expected_num = array_schema_->attribute_num();
       expected_num += static_cast<decltype(expected_num)>(
           buffers_.count(constants::timestamps));
@@ -977,6 +978,17 @@ Status Query::check_buffer_names() {
         return logger_->status(Status_QueryError(
             "Writes expect all attributes (and coordinates in "
             "the sparse/unordered case) to be set"));
+      }
+    }
+
+    // All dimension buffers should be set for partial attribute writes.
+    if (allow_partial_attribute_write_) {
+      for (unsigned d = 0; d < array_schema_->dim_num(); d++) {
+        auto dim = array_schema_->dimension_ptr(d);
+        if (buffers_.count(dim->name()) == 0) {
+          throw QueryStatusException(
+              "Dimension buffer " + dim->name() + " is not set");
+        }
       }
     }
   }
@@ -1322,7 +1334,8 @@ Status Query::set_data_buffer(
 
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists) {
+  if (status_ != QueryStatus::UNINITIALIZED && !exists &&
+      !allow_partial_attribute_write_) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
@@ -1375,14 +1388,16 @@ Status Query::set_offsets_buffer(
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   // Check buffer
-  if (check_null_buffers && buffer_offsets == nullptr)
+  if (check_null_buffers && buffer_offsets == nullptr) {
     return logger_->status(
         Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
+  }
 
   // Check buffer size
-  if (check_null_buffers && buffer_offsets_size == nullptr)
+  if (check_null_buffers && buffer_offsets_size == nullptr) {
     return logger_->status(Status_QueryError(
         "Cannot set buffer; " + name + " buffer size is null"));
+  }
 
   // If this is for a dimension label, set the dimension label offsets buffer
   // and return.
@@ -1425,17 +1440,20 @@ Status Query::set_offsets_buffer(
   }
 
   // Error if it is fixed-sized
-  if (!array_schema_->var_size(name))
+  if (!array_schema_->var_size(name)) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is fixed-sized"));
+  }
 
   // Error if setting a new attribute/dimension after initialization
   bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
+  if (status_ != QueryStatus::UNINITIALIZED && !exists &&
+      !allow_partial_attribute_write_) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
+  }
 
   if (is_dim &&
       (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)) {
@@ -1778,11 +1796,18 @@ Status Query::submit() {
     return Status::Ok();
   }
 
+  // Partial attribute write is only available for unordered queries.
+  if (allow_partial_attribute_write_ &&
+      (type_ != QueryType::WRITE || layout_ != Layout::UNORDERED)) {
+    throw QueryStatusException(
+        "Partial attribute write is only supported for unordered writes.");
+  }
+
   // Make sure fragment size is only set for global order.
   if (fragment_size_ != std::numeric_limits<uint64_t>::max() &&
       (layout_ != Layout::GLOBAL_ORDER || type_ != QueryType::WRITE)) {
-    throw StatusException(Status_QueryError(
-        "Fragment size is only supported for global order writes."));
+    throw QueryStatusException(
+        "Fragment size is only supported for global order writes.");
   }
 
   // Check attribute/dimensions buffers completeness before query submits
