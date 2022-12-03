@@ -34,7 +34,6 @@
 #define TILEDB_DAG_GENERATOR_H
 
 #include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
-#include "experimental/tiledb/common/dag/nodes/base.h"
 
 namespace tiledb::common {
 
@@ -44,24 +43,24 @@ namespace tiledb::common {
  * `operator()`.
  */
 template <class Integral = size_t>
-class generator {
+class generators {
   std::atomic<Integral> min_{0}, max_{0};
   std::atomic<Integral> i_{0};
 
  public:
-  generator(Integral min, Integral max)
+  generators(Integral min, Integral max)
       : min_{min}
       , max_{max}
       , i_{min_.load()} {
   }
 
-  explicit generator(Integral min = 0)
+  explicit generators(Integral min = 0)
       : min_{min}
       , max_{std::numeric_limits<Integral>::max()}
       , i_{min_.load()} {
   }
 
-  generator(const generator& rhs)
+  generators(const generators& rhs)
       : min_(rhs.min_.load())
       , max_(rhs.max_.load())
       , i_(rhs.i_.load()) {

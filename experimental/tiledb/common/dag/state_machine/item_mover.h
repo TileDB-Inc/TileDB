@@ -46,7 +46,7 @@
 #include <string>
 #include <tuple>
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
-#include "experimental/tiledb/common/dag/utils/traits.h"
+#include "experimental/tiledb/common/dag/utility/traits.h"
 
 namespace tiledb::common {
 

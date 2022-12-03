@@ -47,11 +47,11 @@
 #include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 
-#include "experimental/tiledb/common/dag/nodes/consumer.h"
+#include "experimental/tiledb/common/dag/nodes/terminals.h"
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
 
-#include "experimental/tiledb/common/dag/utils/print_types.h"
+#include "experimental/tiledb/common/dag/utility/print_types.h"
 
 using namespace tiledb::common;
 

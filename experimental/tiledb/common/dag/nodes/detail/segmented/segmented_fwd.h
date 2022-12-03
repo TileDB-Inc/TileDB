@@ -1,5 +1,5 @@
 /**
- * @file   general.cc
+ * @file   experimental/tiledb/common/dag/nodes/detail/segmented_fwd.h
  *
  * @section LICENSE
  *
@@ -26,7 +26,44 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * This file declares the DataBlock class for dag.
  */
-#include "general_node.h"
+
+#ifndef TILEDB_DAG_NODES_DETAIL_SEGMENTED_FWD_H
+#define TILEDB_DAG_NODES_DETAIL_SEGMENTED_FWD_H
+
+#include "segmented_base.h"
+
+namespace tiledb::common {
+
+template <template <class> class Mover, class T>
+struct producer_node_impl;
+
+template <template <class> class Mover, class T>
+struct producer_node;
+
+template <template <class> class Mover, class T>
+class consumer_node_impl;
+
+template <template <class> class Mover, class T>
+struct consumer_node;
+
+template <
+    template <class>
+    class SinkMover,
+    class BlockIn,
+    template <class>
+    class SourceMover,
+    class BlockOut>
+class function_node_impl;
+
+template <
+    template <class>
+    class SinkMover,
+    class BlockIn,
+    template <class>
+    class SourceMover,
+    class BlockOut>
+struct function_node;
+
+}  // namespace tiledb::common
+#endif  // TILEDB_DAG_NODES_DETAIL_SEGMENTED_FWD_H

@@ -1,5 +1,5 @@
 /**
- * @file   experimental/tiledb/common/dag/nodes/detail/base.h
+ * @file experimental/tiledb/common/dag/nodes/detail/segmented/segmented_base.h
  *
  * @section LICENSE
  *
@@ -30,6 +30,16 @@
 
 #ifndef TILEDB_DAG_NODES_DETAIL_BASE_H
 #define TILEDB_DAG_NODES_DETAIL_BASE_H
+
+#include <atomic>
+#include <iostream>
+#include <memory>
+#include <string>
+
+#include "experimental/tiledb/common/dag/execution/task_state_machine.h"
+
+#include "experimental/tiledb/common/dag/nodes/node_traits.h"
+
 namespace tiledb::common {
 
 /**
@@ -43,8 +53,6 @@ std::atomic<size_t> id_counter{0};
  * testing and debugging purposes, the node also maintains a name and an id.
  */
 class node_base {
-  using node_handle_type = std::shared_ptr<node_base>;
-
  protected:
   using scheduler_event_type = SchedulerAction;
 
@@ -52,6 +60,10 @@ class node_base {
 
   size_t id_{0UL};
   size_t program_counter_{0};
+
+ public:
+  using node_type = node_base;
+  using node_handle_type = std::shared_ptr<node_base>;
 
  private:
   node_handle_type sink_correspondent_{nullptr};
@@ -186,7 +198,7 @@ class node_base {
    *
    * @return Name of the node
    */
-  virtual std::string name() {
+  virtual std::string name() const {
     return {"abstract base"};
   }
 

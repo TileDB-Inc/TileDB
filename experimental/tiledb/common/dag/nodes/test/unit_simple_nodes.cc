@@ -30,15 +30,15 @@
  * Tests the nodes classes, `SourceNode`, `SinkNode`, and `FunctionNode`.
  */
 
-#include "unit_simple_node.h"
+#include "unit_simple_nodes.h"
 #include <future>
 #include <type_traits>
 #include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/nodes/consumer.h"
-#include "experimental/tiledb/common/dag/nodes/generator.h"
-#include "experimental/tiledb/common/dag/nodes/simple_node.h"
+#include "experimental/tiledb/common/dag/nodes/generators.h"
+#include "experimental/tiledb/common/dag/nodes/simple_nodes.h"
+#include "experimental/tiledb/common/dag/nodes/terminals.h"
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
-#include "experimental/tiledb/common/dag/utils/print_types.h"
+#include "experimental/tiledb/common/dag/utility/print_types.h"
 
 using namespace tiledb::common;
 
@@ -422,11 +422,11 @@ TEMPLATE_TEST_CASE(
   size_t N = 37;
   std::stop_source stop_source;
 
-  generator g{0UL, N};
+  generators g{0UL, N};
 
   std::vector<size_t> v;
   auto w = std::back_inserter(v);
-  consumer c{w};
+  terminal c{w};
 
   SECTION("Test generator function") {
     for (size_t i = 0; i < N; ++i) {
@@ -491,11 +491,11 @@ TEMPLATE_TEST_CASE(
   }
 
   SECTION("Attach generator and consumer") {
-    generator g{N};
+    generators g{N};
 
     std::vector<size_t> v;
     std::back_insert_iterator<std::vector<size_t>> w(v);
-    consumer<std::back_insert_iterator<std::vector<size_t>>> c(w);
+    terminal<std::back_insert_iterator<std::vector<size_t>>> c(w);
 
     Consumer r(c);
     Producer p(g);
@@ -528,11 +528,11 @@ TEMPLATE_TEST_CASE(
   //  using Function = typename std::tuple_element<1, TestType>::type;
   using Producer = typename std::tuple_element<2, TestType>::type;
 
-  generator g;
+  generators g;
 
   std::vector<size_t> v;
   std::back_insert_iterator<std::vector<size_t>> w(v);
-  consumer<std::back_insert_iterator<std::vector<size_t>>> c(w);
+  terminal<std::back_insert_iterator<std::vector<size_t>>> c(w);
 
   Consumer r(c);
   Producer p(g);
@@ -585,11 +585,11 @@ TEMPLATE_TEST_CASE(
 
   size_t rounds = 423;
 
-  generator g;
+  generators g;
 
   std::vector<size_t> v;
   std::back_insert_iterator<std::vector<size_t>> w(v);
-  consumer<std::back_insert_iterator<std::vector<size_t>>> c(w);
+  terminal<std::back_insert_iterator<std::vector<size_t>>> c(w);
 
   Consumer r(c);
   Producer p(g);
@@ -1136,7 +1136,7 @@ TEMPLATE_TEST_CASE(
   }
 
   Producer source_node([&i]() { return (*i++); });
-  Consumer sink_node(consumer{j});
+  Consumer sink_node(terminal{j});
 
   auto a = Edge(source_node, sink_node);
   auto source = [&]() { source_node.run_for(rounds); };
@@ -1240,9 +1240,9 @@ TEMPLATE_TEST_CASE(
   std::iota(input.begin(), input.end(), 19);
   auto i = input.begin();
   auto w = std::back_inserter(output);
-  consumer c{w};
+  terminal c{w};
 
-  Producer source_node(generator{19});
+  Producer source_node(generators{19});
   Function mid_node([](size_t k) { return k; });
   Consumer sink_node{c};
 

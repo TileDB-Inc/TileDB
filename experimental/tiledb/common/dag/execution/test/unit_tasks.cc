@@ -36,14 +36,14 @@
 #include <iostream>
 #include <map>
 #include <type_traits>
-#include "unit_throw_catch_tasks.h"
+#include "unit_tasks.h"
 
 #include "../throw_catch.h"
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
-#include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 #include "experimental/tiledb/common/dag/execution/task.h"
-#include "experimental/tiledb/common/dag/nodes/consumer.h"
+#include "experimental/tiledb/common/dag/execution/task_state_machine.h"
+#include "experimental/tiledb/common/dag/nodes/terminals.h"
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
 
@@ -55,7 +55,7 @@ using namespace tiledb::common;
 template <template <class> class T, class N>
 struct hm {
   T<N> operator()(const N& n) {
-    return {n};
+    return T<N>{n};
   }
 };
 
@@ -88,16 +88,8 @@ T& task_handle(T& task) {
 
 auto hm_ = hm<Task, node>{};
 
-bool two_nodes(node_base&, node_base&) {
-  return true;
-}
-
-bool two_nodes(const node&, const node&) {
-  return true;
-}
-
 TEMPLATE_TEST_CASE(
-    "Tasks: Extensive tests of nodes",
+    "Tasks: Extensive tests of tasks with nodes",
     "[tasks]",
     (std::tuple<
         consumer_node<ThrowCatchMover2, size_t>,
@@ -124,30 +116,6 @@ TEMPLATE_TEST_CASE(
   auto pro_node = P([](std::stop_source&) { return 0; });
   auto fun_node = F([](const size_t& i) { return i; });
   auto con_node = C([](const size_t&) {});
-
-  SECTION("Check specified and deduced are same types") {
-  }
-
-  SECTION("Check polymorphism to node&") {
-    CHECK(two_nodes(pro_node_impl, con_node_impl));
-    CHECK(two_nodes(pro_node_impl, fun_node_impl));
-    CHECK(two_nodes(fun_node_impl, con_node_impl));
-
-    // No conversion from producer_node to node
-    CHECK(two_nodes(pro_node, con_node));
-    CHECK(two_nodes(pro_node, fun_node));
-    CHECK(two_nodes(fun_node, con_node));
-  }
-
-  SECTION("Checks with Task and node (godbolt)") {
-    auto shared_pro = node{pro_node};
-    auto shared_fun = node{fun_node};
-    auto shared_con = node{con_node};
-
-    auto shared_nil = node{};
-    shared_nil = shared_pro;
-    CHECK(shared_nil == shared_pro);
-  }
 
   SECTION("I think this works (godbolt)", "[tasks]") {
     auto task_pro = Task<node>{pro_node};

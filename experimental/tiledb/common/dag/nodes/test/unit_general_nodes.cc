@@ -30,14 +30,14 @@
  * Tests the nodes classes, `SourceNode`, `SinkNode`, and `FunctionNode`.
  */
 
-#include "unit_general_node.h"
+#include "unit_general_nodes.h"
 #include <future>
 
 #include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/nodes/consumer.h"
-#include "experimental/tiledb/common/dag/nodes/general_node.h"
-#include "experimental/tiledb/common/dag/nodes/generator.h"
-#include "experimental/tiledb/common/dag/nodes/simple_node.h"
+#include "experimental/tiledb/common/dag/nodes/general_nodes.h"
+#include "experimental/tiledb/common/dag/nodes/generators.h"
+#include "experimental/tiledb/common/dag/nodes/simple_nodes.h"
+#include "experimental/tiledb/common/dag/nodes/terminals.h"
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
 
 using namespace tiledb::common;
@@ -794,8 +794,8 @@ TEST_CASE(
     CHECK(std::equal(input2.begin(), input2.end(), output2.begin()) == false);
   }
 
-  ProducerNode<AsyncMover3, size_t> source_node1(generator{19});
-  ProducerNode<AsyncMover3, double> source_node2(generator{337});
+  ProducerNode<AsyncMover3, size_t> source_node1(generators{19});
+  ProducerNode<AsyncMover3, double> source_node2(generators{337});
 
   GeneralFunctionNode<
       AsyncMover3,
@@ -809,9 +809,9 @@ TEST_CASE(
       });
 
   ConsumerNode<AsyncMover3, double> sink_node1(
-      consumer<decltype(j1), double>{j1});
+      terminal<decltype(j1), double>{j1});
   ConsumerNode<AsyncMover3, size_t> sink_node2(
-      consumer<decltype(j2), size_t>{j2});
+      terminal<decltype(j2), size_t>{j2});
 
   Edge(source_node1, std::get<0>(mid_node.inputs_));
   Edge(source_node2, std::get<1>(mid_node.inputs_));

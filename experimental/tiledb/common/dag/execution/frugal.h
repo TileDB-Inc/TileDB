@@ -101,7 +101,7 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
    * Function for handling `sink_move` action.
    */
   inline scheduler_event_type on_sink_move(
-      lock_type&, std::atomic<int>& event) {
+      [[maybe_unused]] lock_type& lock, std::atomic<int>& event) {
     assert(lock.owns_lock());
     moves_[1]++;
     static_cast<Mover*>(this)->on_move(event);
@@ -121,7 +121,8 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
   /**
    * Function for handling `notify_source` action.
    */
-  inline scheduler_event_type on_notify_source(lock_type&, std::atomic<int>&) {
+  inline scheduler_event_type on_notify_source(
+      [[maybe_unused]] lock_type& lock, std::atomic<int>&) {
     assert(lock.owns_lock());
     source_cv_.notify_one();
     return scheduler_event_type::notify_source;
@@ -130,7 +131,8 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
   /**
    * Function for handling `notify_sink` action.
    */
-  inline scheduler_event_type on_notify_sink(lock_type&, std::atomic<int>&) {
+  inline scheduler_event_type on_notify_sink(
+      [[maybe_unused]] lock_type& lock, std::atomic<int>&) {
     assert(lock.owns_lock());
 
     // This assertion will fail when state machine is stopping, so check
@@ -196,7 +198,8 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
    * throw_catch scheduler. Since exit is an infrequent event, this should have
    * no impact on performance.
    */
-  inline scheduler_event_type on_term_sink(lock_type&, std::atomic<int>&) {
+  inline scheduler_event_type on_term_sink(
+      [[maybe_unused]] lock_type& lock, std::atomic<int>&) {
     assert(lock.owns_lock());
     // throw throw_catch_sink_exit;
     return scheduler_event_type::noop;

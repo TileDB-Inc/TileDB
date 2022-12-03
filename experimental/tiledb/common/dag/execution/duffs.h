@@ -89,11 +89,11 @@
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/item_mover.h"
-#include "experimental/tiledb/common/dag/utils/bounded_buffer.h"
-#include "experimental/tiledb/common/dag/utils/concurrent_map.h"
-#include "experimental/tiledb/common/dag/utils/concurrent_set.h"
-#include "experimental/tiledb/common/dag/utils/print_types.h"
-#include "experimental/tiledb/common/dag/utils/spinlock.h"
+#include "experimental/tiledb/common/dag/utility/bounded_buffer.h"
+#include "experimental/tiledb/common/dag/utility/concurrent_map.h"
+#include "experimental/tiledb/common/dag/utility/concurrent_set.h"
+#include "experimental/tiledb/common/dag/utility/print_types.h"
+#include "experimental/tiledb/common/dag/utility/spinlock.h"
 
 using namespace std::placeholders;
 
@@ -266,10 +266,9 @@ class DuffsSchedulerPolicy
   using scheduler_type = Scheduler;
 
  public:
-  using task_handle_type = Task;
-  using task_type = typename task_handle_type::element_type;
+  using task_type = task_t<Task>;
+  using task_handle_type = task_handle_t<Task>;
 
-  using node_handle_type = typename task_type::node_handle_type;
 
  private:
   class thread_pool {
@@ -699,8 +698,10 @@ template <class Task, template <class, class> class Base>
 class DuffsSchedulerImpl : public Base<Task, DuffsSchedulerImpl<Task, Base>> {
   using Scheduler = DuffsSchedulerImpl<Task, Base>;
   using Policy = Base<Task, DuffsSchedulerImpl<Task, Base>>;
-  using task_type = Task;
-  using task_handle_type = typename task_type::task_handle_type;
+
+  using task_type = task_t<Task>;
+  using task_handle_type = task_handle_t<Task>;
+
   using node_handle_type = typename task_type::node_handle_type;
   using node_type =
       typename node_handle_type::element_type;  // @todo abstraction violation?

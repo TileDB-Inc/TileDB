@@ -1,5 +1,5 @@
 /**
- * @file   nodes.h
+ * @file   experimental/tiledb/common/dag/nodes/simple_nodes.h
  *
  * @section LICENSE
  *
@@ -27,14 +27,19 @@
  *
  * @section DESCRIPTION
  *
- * This file is a header that includes headers for base node class, simple node
- * classes, and general node classes.
+ * This file declares "simple" nodes for dag task graph library. Simple nodes
+ * are nodes whose enclosed functions are assumed to have no state and whose
+ * enclosed function takes one input and produces one output (though the input
+ * and output could be tuples).  Furthermore, the enclosed function produces one
+ * output for every input. Simple nodes have no capability of maintaining,
+ * saving, nor restoring state for the enclosed functions.
  */
 
-#ifndef TILEDB_DAG_NODE_H
-#define TILEDB_DAG_NODE_H
+#ifndef TILEDB_DAG_SIMPLE_NODES_H
+#define TILEDB_DAG_SIMPLE_NODES_H
 
-// #include "experimental/tiledb/common/dag/nodes/general.h"
-#include "experimental/tiledb/common/dag/nodes/simple_nodes.h"
+#include "experimental/tiledb/common/dag/nodes/detail/simple/consumer.h"
+#include "experimental/tiledb/common/dag/nodes/detail/simple/function.h"
+#include "experimental/tiledb/common/dag/nodes/detail/simple/producer.h"
 
-#endif  // TILEDB_DAG_NODE_H
+#endif  // TILEDB_DAG_SIMPLE_NODES_H

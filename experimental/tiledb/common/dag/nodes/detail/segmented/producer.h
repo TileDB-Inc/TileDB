@@ -1,5 +1,5 @@
 /**
- * @file   experimental/tiledb/common/dag/nodes/detail/consumer.h
+ * @file   experimental/tiledb/common/dag/nodes/detail/producer.h
  *
  * @section LICENSE
  *
@@ -28,50 +28,85 @@
  * @section DESCRIPTION
  */
 
+#ifndef TILEDB_DAG_NODES_DETAIL_PRODUCER_H
+#define TILEDB_DAG_NODES_DETAIL_PRODUCER_H
 
-#ifndef TILEDB_DAG_NODES_DETAIL_CONSUMER_H
-#define TILEDB_DAG_NODES_DETAIL_CONSUMER_H
-#include "base.h"
+#include <atomic>
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <type_traits>
+#include <utility>
+#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
+
+#include "experimental/tiledb/common/dag/ports/ports.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
+
+#include "experimental/tiledb/common/dag/nodes/node_traits.h"
+#include "segmented_base.h"
 #include "segmented_fwd.h"
 
 namespace tiledb::common {
 
 /**
- * @brief Implementation of a segmented consumer node.
- * @tparam Mover The item mover type.
- * @tparam T The item type.
+ * @brief Implementation of a segmented producer node.
+ * @tparam Mover The type of the data item mover.
+ * @tparam T The type of the data item.
+ *
+ * @todo Simplify API by removing the need for the user to specify the mover.
  */
 template <template <class> class Mover, class T>
-class consumer_node_impl : public node_base, public Sink<Mover, T> {
-  using SinkBase = Sink<Mover, T>;
-  using mover_type = Mover<T>;
+struct producer_node_impl : public node_base, public Source<Mover, T> {
+  using SourceBase = Source<Mover, T>;
+
   using node_base_type = node_base;
-  using scheduler_event_type = typename mover_type::scheduler_event_type;
 
-  std::function<void(const T&)> f_;
+  using mover_type = Mover<T>;
+  using node_type = node_t<node_base>;
+  using node_handle_type = node_handle_t<node_base>;
 
-  std::atomic<size_t> consumed_items_{0};
+  std::function<T(std::stop_source&)> f_;
 
+  /**
+   * Counter to keep track of how many times the producer has been resumed.
+   */
+  std::atomic<size_t> produced_items_{0};
+
+  /**
+   * @brief Return the number of items produced by this node.
+   * @return The number of items produced by this node.
+   */
+  size_t produced_items() {
+    return produced_items_.load();
+  }
+
+  /**
+   * @brief Set the item mover for this node.
+   * @param mover The item mover.
+   */
   void set_item_mover(std::shared_ptr<mover_type> mover) {
     this->item_mover_ = mover;
   }
 
- public:
-  size_t consumed_items() {
-    return consumed_items_.load();
-  }
-
-  /** Main constructor. Takes a consumer function as argument. */
+  /**
+   * @brief Constructor, takes a function that produces items.
+   * @tparam Function type
+   * @param f The function that produces items.
+   *
+   */
   template <class Function>
-  explicit consumer_node_impl(
+  explicit producer_node_impl(
       Function&& f,
       std::enable_if_t<
-          std::is_invocable_r_v<void, Function, const T&>,
+          std::is_invocable_r_v<T, Function, std::stop_source&>,
           void**> = nullptr)
       : node_base_type(id_counter++)
       , f_{std::forward<Function>(f)}
-      , consumed_items_{0} {
+      , produced_items_{0} {
   }
+
+  producer_node_impl(producer_node_impl&& rhs) noexcept = default;
 
   /** Utility functions for indicating what kind of node and state of the ports
    * being used.
@@ -79,7 +114,7 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
    * @todo Are these used anywhere?  This is an abstraction violation, so we
    * should try not to use them.
    * */
-  bool is_consumer_node() const override {
+  bool is_producer_node() const override {
     return true;
   }
 
@@ -143,8 +178,9 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
     return done(mover->state());
   }
 
-  std::string name() override {
-    return {"consumer"};
+  /** Return name of node. */
+  std::string name() const override {
+    return {"producer"};
   }
 
   void enable_debug() override {
@@ -153,7 +189,7 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
       this->item_mover_->enable_debug();
   }
 
-  auto get_sink_mover() const {
+  auto get_source_mover() const {
     return this->get_mover();
   }
 
@@ -163,125 +199,79 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
               << std::endl;
   }
 
-  T thing{};
-
   /**
-   * Resume the node.  This will call the function that consumes items.
-   * Main entry point of the node.
+   * Resume the node.  This will call the function that produces items.
+   * The function is passed a stop_source that can be used to terminate the
+   * node. Main entry point of the node.
    *
-   * Resume makes one pass through the "consumer node cycle" and returns /
-   * yields. That is, it pulls a data item, extracts it from the port, invokes
-   * `drain` and then calls the enclosed function on the item.
+   * Resume makes one pass through the "producer node cycle" and returns /
+   * yields. That is, it creates a data item, puts it into the port, invokes
+   * `fill` and then invokes `push`.
    *
    * Implements a Duff's device emulation of a coroutine.  The current state of
    * function execution is stored in the program counter.  A switch statement is
    * used to jump to the current program counter location.
    */
   scheduler_event_type resume() override {
-    auto mover = SinkBase::get_mover();
+    auto mover = this->get_mover();
+
+    std::stop_source st;
+    decltype(f_(st)) thing{};
+
+    std::stop_source stop_source_;
+    assert(!stop_source_.stop_requested());
 
     switch (this->program_counter_) {
-      /*
-       * case 0 is executed only on the very first call to resume.
-       */
       case 0: {
         ++this->program_counter_;
 
-        auto pre_state = mover->state();
+        thing = f_(stop_source_);
 
-        auto tmp_state = mover->port_pull();
-
-        auto post_state = mover->state();
-
-        if constexpr (std::is_same_v<decltype(post_state), two_stage>) {
-          if (pre_state == two_stage::st_00 && post_state == two_stage::xt_00) {
-            throw std::runtime_error("consumer got stuck in xt_00 state");
-          }
-
-        } else {
-          if (pre_state == three_stage::st_000 &&
-              post_state == three_stage::xt_000) {
-            throw std::runtime_error("consumer got stuck in xt_000 state");
-          }
-        }
-
-        if (mover->is_done()) {
-          if constexpr (std::is_same_v<decltype(post_state), two_stage>) {
-            if (post_state == two_stage::xt_01) {
-              throw std::runtime_error("consumer got stuck in xt_01 state");
-            }
-          } else {
-            if (post_state == three_stage::xt_001) {
-              throw std::runtime_error("consumer got stuck in xt_001 state");
-            }
-          }
-
+        if (stop_source_.stop_requested()) {
+          this->program_counter_ = 999;
           return mover->port_exhausted();
           break;
-        } else {
-          return tmp_state;
         }
+        ++produced_items_;
       }
 
         [[fallthrough]];
 
-        /*
-         * To make the flow here similar to producer, we start with pull() the
-         * first time we are called but thereafter the loop goes from 1 to 5;
-         */
       case 1: {
         ++this->program_counter_;
 
-        thing = *(SinkBase::extract());
+        SourceBase::inject(thing);
       }
         [[fallthrough]];
 
       case 2: {
-        ++this->program_counter_;
-
-        return mover->port_drain();
+        this->program_counter_ = 3;
+        return mover->port_fill();
       }
         [[fallthrough]];
 
       case 3: {
-        ++this->program_counter_;
-
-        assert(this->source_correspondent() != nullptr);
+        this->program_counter_ = 4;
       }
         [[fallthrough]];
 
       case 4: {
-        ++this->program_counter_;
-
-        f_(thing);
-        ++consumed_items_;
+        this->program_counter_ = 5;
+        return mover->port_push();
       }
-
-        // @todo Should skip yield if pull waited;
-      case 5: {
-        ++this->program_counter_;
-
-        auto tmp_state = mover->port_pull();
-
-        if (mover->is_done()) {
-          return mover->port_exhausted();
-          break;
-        } else {
-          return tmp_state;
-        }
-      }
-
         [[fallthrough]];
 
-      // @todo Where is the best place to yield?
-      case 6: {
-        this->program_counter_ = 1;
-        // this->task_yield(*this); ??
+        // @todo Should skip yield if push waited;
+      case 5: {
+        this->program_counter_ = 0;
+        // this->task_yield(*this);
         return scheduler_event_type::yield;
       }
-      default: {
-        break;
+      case 999: {
+        return scheduler_event_type::error;
       }
+      default:
+        break;
     }
     return scheduler_event_type::error;
   }
@@ -290,28 +280,31 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
   void run() override {
     auto mover = this->get_mover();
 
-    while (!mover->is_done()) {
+    while (!mover->is_stopping()) {
       resume();
     }
   }
 };
 
-/** A consumer node is a shared pointer to the implementation class */
+/** A producer node is a shared pointer to the implementation class */
 template <template <class> class Mover, class T>
-struct consumer_node : public std::shared_ptr<consumer_node_impl<Mover, T>> {
-  using Base = std::shared_ptr<consumer_node_impl<Mover, T>>;
+struct producer_node : public std::shared_ptr<producer_node_impl<Mover, T>> {
+  using Base = std::shared_ptr<producer_node_impl<Mover, T>>;
   using Base::Base;
 
+  using node_type = node_t<producer_node_impl<Mover, T>>;
+  using node_handle_type = node_handle_t<producer_node_impl<Mover, T>>;
+
   template <class Function>
-  explicit consumer_node(Function&& f)
-      : Base{std::make_shared<consumer_node_impl<Mover, T>>(
+  explicit producer_node(Function&& f)
+      : Base{std::make_shared<producer_node_impl<Mover, T>>(
             std::forward<Function>(f))} {
   }
 
-  explicit consumer_node(consumer_node_impl<Mover, T>& impl)
-      : Base{std::make_shared<consumer_node_impl<Mover, T>>(std::move(impl))} {
+  explicit producer_node(producer_node_impl<Mover, T>& impl)
+      : Base{std::make_shared<producer_node_impl<Mover, T>>(std::move(impl))} {
   }
 };
 
 }  // namespace tiledb::common
-#endif  // TILEDB_DAG_NODES_DETAIL_CONSUMER_H
+#endif  // TILEDB_DAG_NODES_DETAIL_PRODUCER_H

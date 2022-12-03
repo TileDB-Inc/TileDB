@@ -1,11 +1,11 @@
 /**
- * @file   simple.cc
+ * @file unit_segmented_node.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,9 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * This file declares the DataBlock class for dag.
  */
-#include "simple_node.h"
+
+#ifndef TILEDB_UNIT_SEGMENTED_NODES_H
+#define TILEDB_UNIT_SEGMENTED_NODES_H
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_UNIT_SEGMENTED_NODES_H

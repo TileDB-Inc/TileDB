@@ -37,8 +37,8 @@
 #include "external/include/span/span.hpp"
 
 #include <test/support/tdb_catch.h>
-#include "experimental/tiledb/common/dag/utils/range_join.h"
-#include "experimental/tiledb/common/dag/utils/traits.h"
+#include "experimental/tiledb/common/dag/utility/range_join.h"
+#include "experimental/tiledb/common/dag/utility/traits.h"
 
 #include "../print_types.h"
 
