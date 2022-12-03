@@ -35,7 +35,7 @@
 #include <map>
 #include <mutex>
 
-#include "experimental/tiledb/common/dag/utils/print_types.h"
+#include "experimental/tiledb/common/dag/utility/print_types.h"
 
 namespace tiledb::common {
 

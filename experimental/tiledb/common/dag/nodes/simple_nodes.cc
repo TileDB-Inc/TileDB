@@ -1,5 +1,5 @@
 /**
- * @file   consumer.h
+ * @file   simple.cc
  *
  * @section LICENSE
  *
@@ -27,45 +27,6 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the consumers classes for dag.
+ * This file declares the DataBlock class for dag.
  */
-
-#ifndef TILEDB_DAG_CONSUMER_H
-#define TILEDB_DAG_CONSUMER_H
-
-#include <iterator>
-
-namespace tiledb::common {
-
-/**
- * Simple consumer function object class.  Takes items and puts them on an
- * output iterator and increments the iterator.
- *
- * @tparam OutputIterator The type of the OutputIterator to use.
- * @tparam Block The datatype of objects being sent to the OutputIterator. Must
- * be convertible to the type expected by the OutputIterator.  (Note the
- * `value_type` of an OutputIterator defaults to `void`).
- */
-template <class OutputIterator, class Block = size_t>
-class consumer {
-  OutputIterator iter_;
-
-  /**
-   * Constructor.  Saves the designated OutputIterator.
-   */
- public:
-  explicit consumer(OutputIterator iter)
-      : iter_(iter) {
-  }
-
-  /**
-   * Function operator.  Puts its argument onto the saved output iterator.
-   *
-   * @param item The data item to be put on the output iterator.
-   */
-  void operator()(const Block& item) {
-    *iter_++ = item;
-  }
-};
-}  // namespace tiledb::common
-#endif  // TILEDB_DAG_CONSUMER_H
+#include "simple_nodes.h"

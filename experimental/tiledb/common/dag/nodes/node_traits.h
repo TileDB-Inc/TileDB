@@ -1,5 +1,5 @@
 /**
- * @file   nodes.h
+ * @file  experimental/tiledb/common/dag/nodes/node_traits.h
  *
  * @section LICENSE
  *
@@ -26,15 +26,42 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * This file is a header that includes headers for base node class, simple node
- * classes, and general node classes.
  */
 
-#ifndef TILEDB_DAG_NODE_H
-#define TILEDB_DAG_NODE_H
+#ifndef TILEDB_DAG_NODES_NODE_TRAITS_H
+#define TILEDB_DAG_NODES_NODE_TRAITS_H
 
-// #include "experimental/tiledb/common/dag/nodes/general.h"
-#include "experimental/tiledb/common/dag/nodes/simple_nodes.h"
+#include <memory>
 
-#endif  // TILEDB_DAG_NODE_H
+namespace tiledb::common {
+
+template <class N>
+struct node_traits;
+
+template <class N>
+struct node_traits {
+  using node_type = typename N::node_type;
+  using node_handle_type = typename N::node_handle_type;
+};
+
+template <class N>
+struct node_traits<std::shared_ptr<N>> {
+  using node_type = typename node_traits<N>::node_type;
+  using node_handle_type = typename node_traits<N>::node_handle_type;
+};
+
+template <class N>
+struct node_traits<N*> {
+  using node_type = N;
+  using node_handle_type = N*;
+};
+
+template <class N>
+using node_t = typename node_traits<N>::node_type;
+
+template <class N>
+using node_handle_t = typename node_traits<N>::node_handle_type;
+
+}  // namespace tiledb::common
+
+#endif  // TILEDB_DAG_NODES_NODE_TRAITS_H

@@ -37,6 +37,10 @@
 #define TILEDB_DAG_TASK_H
 
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
+#include "experimental/tiledb/common/dag/execution/task_traits.h"
+#include "experimental/tiledb/common/dag/nodes/node_traits.h"
+
+#include "experimental/tiledb/common/dag/utility/print_types.h"
 
 namespace tiledb::common {
 
@@ -47,22 +51,32 @@ namespace tiledb::common {
  */
 template <class Node>
 class TaskImpl : Node {
-  TaskState state_{TaskState::created};
-
-  /** @todo Is there a way to derive from Node to be able to use statements like
-   * `using Node::resume` even though it is a `shared_ptr`? */
-  //  Node node_;
-  using node_ = Node;
-
+  using NodeBase = Node;
   using scheduler_event_type = SchedulerAction;
 
- public:
-  using node_handle_type = Node;  // @todo abstraction violation?
-  using node_type =
-      typename Node::element_type;  // @todo abstraction violation?
+  TaskState state_{TaskState::created};
 
-  explicit TaskImpl(const Node& n)
-      : node_{n} {
+ public:
+  using node_type = node_t<Node>;
+  using node_handle_type = node_handle_t<Node>;
+  using task_type = TaskImpl<Node>;
+  using task_handle_type = std::shared_ptr<TaskImpl<Node>>;
+
+  explicit TaskImpl(const node_type& n)
+      : NodeBase{
+            std::make_shared<node_type>(n)} {  // @todo abstraction violation
+  }
+
+  explicit TaskImpl(node_type&& n)
+      : NodeBase{n} {
+  }
+
+  explicit TaskImpl(const node_handle_type& n)
+      : NodeBase{n} {
+  }
+
+  explicit TaskImpl(node_handle_type&& n)
+      : NodeBase{n} {
   }
 
   /** Default constructor. */
@@ -87,7 +101,7 @@ class TaskImpl : Node {
 
   /** Get the underlying node */
   auto node() {
-    return dynamic_cast<node_*>(this);
+    return dynamic_cast<NodeBase*>(this);
   }
 
   /** Resume the underlying node computation. */
@@ -104,7 +118,7 @@ class TaskImpl : Node {
    * Get correspondent of underlying node, a `Sink`.
    * @return The corresponding node.
    */
-  Node& sink_correspondent() const {
+  node_handle_type& sink_correspondent() {
     return (*this)->sink_correspondent();
   }
 
@@ -112,12 +126,12 @@ class TaskImpl : Node {
    * Get correspondent of underlying node, a `Source`.
    * @return The corresponding node.
    */
-  Node& source_correspondent() const {
+  node_handle_type& source_correspondent() {
     return (*this)->source_correspondent();
   }
 
   /** Get name of underlying node.  Useful for testing and debugging. */
-  [[nodiscard]] std::string name() const {
+  [[nodiscard]] std::string virtual name() const {
     return (*this)->name() + " task";
   }
 
@@ -127,7 +141,7 @@ class TaskImpl : Node {
   }
 
   // @todo virtual ??
-  ~TaskImpl() = default;
+  virtual ~TaskImpl() = default;
 
   /** Dump some debugging information about the task. */
   void dump_task_state(const std::string& msg = "") {
@@ -145,30 +159,33 @@ class Task : public std::shared_ptr<TaskImpl<Node>> {
   using Base = std::shared_ptr<TaskImpl<Node>>;
 
  public:
-  using node_type = typename Base::element_type::node_type;
-  using node_handle_type = typename Base::element_type::node_handle_type;
+  using node_type = node_t<Node>;
+  using node_handle_type = node_handle_t<Node>;
+  using task_type = TaskImpl<node_handle_type>;
   using task_handle_type = Task<Node>;
-
-  explicit Task(node_handle_type&& n)
-      : Base{std::make_shared<TaskImpl<node_handle_type>>(n)} {
-    // print_types(n);
-  }
-
-  explicit Task(node_type&& n)
-      : Base{std::make_shared<TaskImpl<node_handle_type>>(
-            std::make_shared<node_type>(n))} {
-    // print_types(n);
-  }
 
   explicit Task(const node_handle_type& n)
       : Base{std::make_shared<TaskImpl<node_handle_type>>(n)} {
-    // print_types(n);
   }
 
-  explicit Task(const node_type& n)
-      : Base{std::make_shared<TaskImpl<node_handle_type>>(
-            std::make_shared<node_type>(n))} {
-    // print_types(n);
+  template <class U = Node>
+  explicit Task(
+      const node_type& n,
+      std::enable_if_t<!std::is_same_v<node_t<U>, node_handle_t<U>>, void**> =
+          nullptr)
+      : Base{std::make_shared<TaskImpl<node_handle_type>>(n)} {
+  }
+
+  explicit Task(node_handle_type&& n)
+      : Base{std::make_shared<TaskImpl<node_handle_type>>(n)} {
+  }
+
+  template <class U = Node>
+  explicit Task(
+      node_type&& n,
+      std::enable_if_t<!std::is_same_v<node_t<U>, node_handle_t<U>>, void**> =
+          nullptr)
+      : Base{std::make_shared<TaskImpl<node_handle_type>>(n)} {
   }
 
   Task() = default;

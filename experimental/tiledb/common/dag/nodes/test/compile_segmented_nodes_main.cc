@@ -28,7 +28,7 @@
  *
  */
 
-#include "../simple_node.h"
+#include "../segmented_nodes.h"
 
 int main() {
 }

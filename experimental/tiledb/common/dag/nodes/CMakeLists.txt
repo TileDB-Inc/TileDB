@@ -34,5 +34,6 @@ if (TILEDB_TESTS)
     add_subdirectory(test)
 endif()
 
-dag_add_header_only_object_library(simple_node)
-dag_add_header_only_object_library(general_node)
+dag_add_header_only_object_library(simple_nodes)
+dag_add_header_only_object_library(segmented_nodes)
+dag_add_header_only_object_library(general_nodes)

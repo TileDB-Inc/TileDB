@@ -89,10 +89,10 @@
 #include "experimental/tiledb/common/dag/execution/throw_catch_types.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/item_mover.h"
-#include "experimental/tiledb/common/dag/utils/bounded_buffer.h"
-#include "experimental/tiledb/common/dag/utils/concurrent_map.h"
-#include "experimental/tiledb/common/dag/utils/concurrent_set.h"
-#include "experimental/tiledb/common/dag/utils/print_types.h"
+#include "experimental/tiledb/common/dag/utility/bounded_buffer.h"
+#include "experimental/tiledb/common/dag/utility/concurrent_map.h"
+#include "experimental/tiledb/common/dag/utility/concurrent_set.h"
+#include "experimental/tiledb/common/dag/utility/print_types.h"
 
 namespace tiledb::common {
 

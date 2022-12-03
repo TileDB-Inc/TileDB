@@ -30,7 +30,21 @@
 
 #ifndef TILEDB_DAG_NODES_DETAIL_FUNCTION_H
 #define TILEDB_DAG_NODES_DETAIL_FUNCTION_H
-#include "base.h"
+
+#include <atomic>
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
+#include <utility>
+
+#include "experimental/tiledb/common/dag/ports/ports.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
+
+#include "experimental/tiledb/common/dag/nodes/node_traits.h"
+#include "segmented_base.h"
 #include "segmented_fwd.h"
 
 namespace tiledb::common {
@@ -158,7 +172,7 @@ class function_node_impl : public node_base,
    *
    * @return The name of the node.
    */
-  std::string name() override {
+  std::string name() const override {
     return {"function"};
   }
 

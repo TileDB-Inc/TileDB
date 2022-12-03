@@ -35,9 +35,9 @@
 #include <future>
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
-#include "experimental/tiledb/common/dag/nodes/consumer.h"
-#include "experimental/tiledb/common/dag/nodes/generator.h"
+#include "experimental/tiledb/common/dag/nodes/generators.h"
 #include "experimental/tiledb/common/dag/nodes/nodes.h"
+#include "experimental/tiledb/common/dag/nodes/terminals.h"
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
 
 using namespace tiledb::common;
@@ -141,7 +141,7 @@ TEST_CASE(
   auto i = input.begin();
   auto j = output.begin();
 
-  generator g{19UL, 19 + rounds};
+  generators g{19UL, 19 + rounds};
 
   if (rounds + offset != 0) {
     CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
@@ -150,7 +150,7 @@ TEST_CASE(
   ProducerNode<AsyncMover3, size_t> source_node(g);
   FunctionNode<AsyncMover3, size_t> mid_node1([](size_t k) { return k + 1; });
   FunctionNode<AsyncMover3, size_t> mid_node2([](size_t k) { return k - 1; });
-  ConsumerNode<AsyncMover3, size_t> sink_node(consumer<decltype(j), size_t>{j});
+  ConsumerNode<AsyncMover3, size_t> sink_node(terminal<decltype(j), size_t>{j});
 
   auto a = Edge(source_node, mid_node1);
   auto b = Edge(mid_node1, mid_node2);

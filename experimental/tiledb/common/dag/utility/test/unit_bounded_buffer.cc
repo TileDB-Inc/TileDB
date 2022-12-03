@@ -30,11 +30,11 @@
  * This file defines some pseudo_node classes for testing ports
  */
 
-#include "experimental/tiledb/common/dag/utils/test/unit_bounded_buffer.h"
+#include "experimental/tiledb/common/dag/utility/test/unit_bounded_buffer.h"
 #include <future>
 #include <type_traits>
 #include <vector>
-#include "experimental/tiledb/common/dag/utils/bounded_buffer.h"
+#include "experimental/tiledb/common/dag/utility/bounded_buffer.h"
 
 using namespace tiledb::common;
 

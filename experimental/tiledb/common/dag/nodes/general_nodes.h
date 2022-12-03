@@ -42,20 +42,22 @@
  *
  * @todo Specialize for void input/output types (rather than tuple<>) as well as
  * for void mover types.
+ *
+ * @todo This should be deprecated.
  */
 
-#ifndef TILEDB_DAG_GENERAL_H
-#define TILEDB_DAG_GENERAL_H
+#ifndef TILEDB_DAG_NODES_GENERAL_NODES_H
+#define TILEDB_DAG_NODES_GENERAL_NODES_H
 
 #include <functional>
 #include <type_traits>
+
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
 
 #include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 
-#include "experimental/tiledb/common/dag/nodes/base.h"
-#include "experimental/tiledb/common/dag/utils/print_types.h"
+#include "experimental/tiledb/common/dag/nodes/detail/simple/simple_base.h"
 
 namespace tiledb::common {
 
@@ -645,4 +647,4 @@ class GeneralFunctionNode<
 };
 
 }  // namespace tiledb::common
-#endif  // TILEDB_DAG_GENERAL_H
+#endif  // TILEDB_DAG_NODES_GENERAL_NODES_H

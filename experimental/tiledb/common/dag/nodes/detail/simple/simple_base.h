@@ -1,5 +1,5 @@
 /**
- * @file   base.h
+ * @file   experimental/tiledb/common/dag/nodes/detail/simple/simple_base.h
  *
  * @section LICENSE
  *
@@ -31,8 +31,8 @@
  * by both simple and general graph nodes.
  */
 
-#ifndef TILEDB_DAG_NODE_BASE_H
-#define TILEDB_DAG_NODE_BASE_H
+#ifndef TILEDB_DAG_NODE_DETAIL_SIMPLE_SIMPLE_BASE_H
+#define TILEDB_DAG_NODE_DETAIL_SIMPLE_SIMPLE_BASE_H
 
 #include <functional>
 #include <type_traits>
@@ -72,4 +72,5 @@ class GeneralGraphNode<void> : GeneralGraphNode<std::monostate> {};
 
 using GraphNode = GeneralGraphNode<void>;
 }  // namespace tiledb::common
-#endif  // TILEDB_DAG_NODE_BASE_H
+
+#endif  // TILEDB_DAG_NODE_DETAIL_SIMPLE_SIMPLE_BASE_H

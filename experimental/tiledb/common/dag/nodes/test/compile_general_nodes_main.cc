@@ -28,7 +28,7 @@
  *
  */
 
-#include "../general_node.h"
+#include "../general_nodes.h"
 
 int main() {
 }

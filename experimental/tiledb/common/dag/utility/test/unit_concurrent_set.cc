@@ -30,7 +30,7 @@
  * This file defines some pseudo_node classes for testing ports
  */
 
-#include "experimental/tiledb/common/dag/utils/test/unit_concurrent_set.h"
+#include "experimental/tiledb/common/dag/utility/test/unit_concurrent_set.h"
 #include <algorithm>
 #include <functional>
 #include <future>
@@ -38,7 +38,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include "experimental/tiledb/common/dag/utils/concurrent_set.h"
+#include "experimental/tiledb/common/dag/utility/concurrent_set.h"
 
 namespace tiledb::common {}
 using namespace tiledb::common;

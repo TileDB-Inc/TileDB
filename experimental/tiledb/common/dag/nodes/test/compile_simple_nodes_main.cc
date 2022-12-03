@@ -1,5 +1,5 @@
 /**
- * @file   nodes.h
+ * @file compile_simple_main.cc
  *
  * @section LICENSE
  *
@@ -25,16 +25,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @section DESCRIPTION
  *
- * This file is a header that includes headers for base node class, simple node
- * classes, and general node classes.
  */
 
-#ifndef TILEDB_DAG_NODE_H
-#define TILEDB_DAG_NODE_H
+#include "../simple_nodes.h"
 
-// #include "experimental/tiledb/common/dag/nodes/general.h"
-#include "experimental/tiledb/common/dag/nodes/simple_nodes.h"
-
-#endif  // TILEDB_DAG_NODE_H
+int main() {
+}
