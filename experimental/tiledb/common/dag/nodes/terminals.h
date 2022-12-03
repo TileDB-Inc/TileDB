@@ -33,7 +33,6 @@
 #ifndef TILEDB_DAG_NODES_TERMINAL_H
 #define TILEDB_DAG_NODES_TERMINAL_H
 
-
 namespace tiledb::common {
 
 /**
