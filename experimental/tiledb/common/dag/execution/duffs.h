@@ -269,7 +269,6 @@ class DuffsSchedulerPolicy
   using task_type = task_t<Task>;
   using task_handle_type = task_handle_t<Task>;
 
-
  private:
   class thread_pool {
     scheduler_type* scheduler_;
