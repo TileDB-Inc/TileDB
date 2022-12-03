@@ -98,7 +98,7 @@ bool two_nodes(const node&, const node&) {
 
 TEMPLATE_TEST_CASE(
     "Tasks: Extensive tests of nodes",
-    "[throw_catch_tasks]",
+    "[tasks]",
     (std::tuple<
         consumer_node<ThrowCatchMover2, size_t>,
         function_node<ThrowCatchMover2, size_t>,
@@ -149,18 +149,18 @@ TEMPLATE_TEST_CASE(
     CHECK(shared_nil == shared_pro);
   }
 
-  SECTION("I think this works (godbolt)", "[throw_catch_tasks]") {
-    auto throw_catch_pro = Task<node>{pro_node};
-    auto throw_catch_fun = Task<node>{fun_node};
-    auto throw_catch_con = Task<node>{con_node};
+  SECTION("I think this works (godbolt)", "[tasks]") {
+    auto task_pro = Task<node>{pro_node};
+    auto task_fun = Task<node>{fun_node};
+    auto task_con = Task<node>{con_node};
 
-    auto throw_catch_from_pro = task_from_node(pro_node);
-    auto throw_catch_from_fun = task_from_node(fun_node);
-    auto throw_catch_from_con = task_from_node(con_node);
+    auto task_from_pro = task_from_node(pro_node);
+    auto task_from_fun = task_from_node(fun_node);
+    auto task_from_con = task_from_node(con_node);
 
-    auto throw_catch_hm_pro = hm_(pro_node);
-    auto throw_catch_hm_fun = hm_(fun_node);
-    auto throw_catch_hm_con = hm_(con_node);
+    auto task_hm_pro = hm_(pro_node);
+    auto task_hm_fun = hm_(fun_node);
+    auto task_hm_con = hm_(con_node);
 
     /**
      * @todo Unify producer and consumer cases via TEMPLATE_TEST_CASE
@@ -175,182 +175,182 @@ TEMPLATE_TEST_CASE(
      * Though maybe we should not allow this?
      */
 
-    auto throw_catch_pro_1 = Task<node>{pro_node};
-    auto throw_catch_pro_2 = Task<node>{pro_node};
-    auto throw_catch_pro_3 = task_from_node(pro_node);
-    auto throw_catch_pro_4 = hm_(pro_node);
-    auto throw_catch_pro_5 = throw_catch_pro_1;
-    auto throw_catch_pro_6 = throw_catch_pro_3;
+    auto task_pro_1 = Task<node>{pro_node};
+    auto task_pro_2 = Task<node>{pro_node};
+    auto task_pro_3 = task_from_node(pro_node);
+    auto task_pro_4 = hm_(pro_node);
+    auto task_pro_5 = task_pro_1;
+    auto task_pro_6 = task_pro_3;
 
-    CHECK(throw_catch_pro_1 != throw_catch_pro_2);
-    CHECK(throw_catch_pro_2 != throw_catch_pro_3);
-    CHECK(throw_catch_pro_3 != throw_catch_pro_4);
-    CHECK(throw_catch_pro_4 != throw_catch_pro_5);
-    CHECK(throw_catch_pro_5 != throw_catch_pro_6);
+    CHECK(task_pro_1 != task_pro_2);
+    CHECK(task_pro_2 != task_pro_3);
+    CHECK(task_pro_3 != task_pro_4);
+    CHECK(task_pro_4 != task_pro_5);
+    CHECK(task_pro_5 != task_pro_6);
 
-    Task<node> throw_catch_pro_7{throw_catch_pro_2};
-    Task throw_catch_pro_8{throw_catch_pro_2};
+    Task<node> task_pro_7{task_pro_2};
+    Task task_pro_8{task_pro_2};
 
-    CHECK(throw_catch_pro_6 != throw_catch_pro_7);
-    CHECK(throw_catch_pro_7 == throw_catch_pro_2);
-    CHECK(throw_catch_pro_7 == throw_catch_pro_8);
-    CHECK(throw_catch_pro_8 != throw_catch_pro_1);
+    CHECK(task_pro_6 != task_pro_7);
+    CHECK(task_pro_7 == task_pro_2);
+    CHECK(task_pro_7 == task_pro_8);
+    CHECK(task_pro_8 != task_pro_1);
 
-    auto throw_catch_pro_1_x = throw_catch_pro_1;
-    CHECK(throw_catch_pro_1 == throw_catch_pro_1);
-    CHECK(throw_catch_pro_1_x == throw_catch_pro_1);
-    CHECK(throw_catch_pro_1 == throw_catch_pro_1_x);
+    auto task_pro_1_x = task_pro_1;
+    CHECK(task_pro_1 == task_pro_1);
+    CHECK(task_pro_1_x == task_pro_1);
+    CHECK(task_pro_1 == task_pro_1_x);
 
-    auto throw_catch_pro_5_x = throw_catch_pro_5;
-    CHECK(throw_catch_pro_5_x == throw_catch_pro_5);
+    auto task_pro_5_x = task_pro_5;
+    CHECK(task_pro_5_x == task_pro_5);
 
-    // Warning danger -- don't use throw_catch_pro_5 after the move
-    Task<node> throw_catch_pro_5_moved{std::move(throw_catch_pro_5)};
-    CHECK(throw_catch_pro_5_moved == throw_catch_pro_5_x);
+    // Warning danger -- don't use task_pro_5 after the move
+    Task<node> task_pro_5_moved{std::move(task_pro_5)};
+    CHECK(task_pro_5_moved == task_pro_5_x);
 
     /*
      * Function Case
      */
 
-    auto throw_catch_fun_1 = Task<node>{fun_node};
-    auto throw_catch_fun_2 = Task<node>{fun_node};
-    auto throw_catch_fun_3 = task_from_node(fun_node);
-    auto throw_catch_fun_4 = hm_(fun_node);
-    auto throw_catch_fun_5 = throw_catch_fun_1;
-    auto throw_catch_fun_6 = throw_catch_fun_3;
+    auto task_fun_1 = Task<node>{fun_node};
+    auto task_fun_2 = Task<node>{fun_node};
+    auto task_fun_3 = task_from_node(fun_node);
+    auto task_fun_4 = hm_(fun_node);
+    auto task_fun_5 = task_fun_1;
+    auto task_fun_6 = task_fun_3;
 
-    CHECK(throw_catch_fun_1 != throw_catch_fun_2);
-    CHECK(throw_catch_fun_2 != throw_catch_fun_3);
-    CHECK(throw_catch_fun_3 != throw_catch_fun_4);
-    CHECK(throw_catch_fun_4 != throw_catch_fun_5);
-    CHECK(throw_catch_fun_5 != throw_catch_fun_6);
+    CHECK(task_fun_1 != task_fun_2);
+    CHECK(task_fun_2 != task_fun_3);
+    CHECK(task_fun_3 != task_fun_4);
+    CHECK(task_fun_4 != task_fun_5);
+    CHECK(task_fun_5 != task_fun_6);
 
-    Task<node> throw_catch_fun_7{throw_catch_fun_2};
-    Task throw_catch_fun_8{throw_catch_fun_2};
+    Task<node> task_fun_7{task_fun_2};
+    Task task_fun_8{task_fun_2};
 
-    CHECK(throw_catch_fun_6 != throw_catch_fun_7);
-    CHECK(throw_catch_fun_7 == throw_catch_fun_2);
-    CHECK(throw_catch_fun_7 == throw_catch_fun_8);
-    CHECK(throw_catch_fun_8 != throw_catch_fun_1);
+    CHECK(task_fun_6 != task_fun_7);
+    CHECK(task_fun_7 == task_fun_2);
+    CHECK(task_fun_7 == task_fun_8);
+    CHECK(task_fun_8 != task_fun_1);
 
-    auto throw_catch_fun_1_x = throw_catch_fun_1;
-    CHECK(throw_catch_fun_1 == throw_catch_fun_1);
-    CHECK(throw_catch_fun_1_x == throw_catch_fun_1);
-    CHECK(throw_catch_fun_1 == throw_catch_fun_1_x);
+    auto task_fun_1_x = task_fun_1;
+    CHECK(task_fun_1 == task_fun_1);
+    CHECK(task_fun_1_x == task_fun_1);
+    CHECK(task_fun_1 == task_fun_1_x);
 
-    auto throw_catch_fun_5_x = throw_catch_fun_5;
-    CHECK(throw_catch_fun_5_x == throw_catch_fun_5);
+    auto task_fun_5_x = task_fun_5;
+    CHECK(task_fun_5_x == task_fun_5);
 
-    // Warning danger -- don't use throw_catch_fun_5 after the move
-    Task<node> throw_catch_fun_5_moved{std::move(throw_catch_fun_5)};
-    CHECK(throw_catch_fun_5_moved == throw_catch_fun_5_x);
+    // Warning danger -- don't use task_fun_5 after the move
+    Task<node> task_fun_5_moved{std::move(task_fun_5)};
+    CHECK(task_fun_5_moved == task_fun_5_x);
 
     /*
      * Consumer case
      */
-    auto throw_catch_con_1 = Task<node>{con_node};
-    auto throw_catch_con_2 = Task<node>{con_node};
-    auto throw_catch_con_3 = task_from_node(con_node);
-    auto throw_catch_con_4 = hm_(con_node);
-    auto throw_catch_con_5 = throw_catch_con_1;
-    auto throw_catch_con_6 = throw_catch_con_3;
+    auto task_con_1 = Task<node>{con_node};
+    auto task_con_2 = Task<node>{con_node};
+    auto task_con_3 = task_from_node(con_node);
+    auto task_con_4 = hm_(con_node);
+    auto task_con_5 = task_con_1;
+    auto task_con_6 = task_con_3;
 
-    CHECK(throw_catch_con_1 != throw_catch_con_2);
-    CHECK(throw_catch_con_2 != throw_catch_con_3);
-    CHECK(throw_catch_con_3 != throw_catch_con_4);
-    CHECK(throw_catch_con_4 != throw_catch_con_5);
-    CHECK(throw_catch_con_5 != throw_catch_con_6);
+    CHECK(task_con_1 != task_con_2);
+    CHECK(task_con_2 != task_con_3);
+    CHECK(task_con_3 != task_con_4);
+    CHECK(task_con_4 != task_con_5);
+    CHECK(task_con_5 != task_con_6);
 
-    Task<node> throw_catch_con_7{throw_catch_con_2};
-    Task throw_catch_con_8{throw_catch_con_2};
+    Task<node> task_con_7{task_con_2};
+    Task task_con_8{task_con_2};
 
-    CHECK(throw_catch_con_6 != throw_catch_con_7);
-    CHECK(throw_catch_con_7 == throw_catch_con_2);
-    CHECK(throw_catch_con_7 == throw_catch_con_8);
-    CHECK(throw_catch_con_8 != throw_catch_con_1);
+    CHECK(task_con_6 != task_con_7);
+    CHECK(task_con_7 == task_con_2);
+    CHECK(task_con_7 == task_con_8);
+    CHECK(task_con_8 != task_con_1);
 
-    auto throw_catch_con_1_x = throw_catch_con_1;
-    CHECK(throw_catch_con_1 == throw_catch_con_1);
-    CHECK(throw_catch_con_1_x == throw_catch_con_1);
-    CHECK(throw_catch_con_1 == throw_catch_con_1_x);
+    auto task_con_1_x = task_con_1;
+    CHECK(task_con_1 == task_con_1);
+    CHECK(task_con_1_x == task_con_1);
+    CHECK(task_con_1 == task_con_1_x);
 
-    auto throw_catch_con_5_x = throw_catch_con_5;
-    CHECK(throw_catch_con_5_x == throw_catch_con_5);
+    auto task_con_5_x = task_con_5;
+    CHECK(task_con_5_x == task_con_5);
 
-    // Warning danger -- don't use throw_catch_con_5 after the move
-    Task<node> throw_catch_con_5_moved{std::move(throw_catch_con_5)};
-    CHECK(throw_catch_con_5_moved == throw_catch_con_5_x);
+    // Warning danger -- don't use task_con_5 after the move
+    Task<node> task_con_5_moved{std::move(task_con_5)};
+    CHECK(task_con_5_moved == task_con_5_x);
   }
 
   SECTION("Check states") {
-    auto throw_catch_pro = Task<node>{pro_node};
-    auto throw_catch_fun = Task<node>{fun_node};
-    auto throw_catch_con = Task<node>{con_node};
+    auto task_pro = Task<node>{pro_node};
+    auto task_fun = Task<node>{fun_node};
+    auto task_con = Task<node>{con_node};
 
-    auto throw_catch_from_pro = task_from_node(pro_node);
-    auto throw_catch_from_fun = task_from_node(fun_node);
-    auto throw_catch_from_con = task_from_node(con_node);
+    auto task_from_pro = task_from_node(pro_node);
+    auto task_from_fun = task_from_node(fun_node);
+    auto task_from_con = task_from_node(con_node);
 
-    auto throw_catch_hm_pro = hm_(pro_node);
-    auto throw_catch_hm_fun = hm_(fun_node);
-    auto throw_catch_hm_con = hm_(con_node);
+    auto task_hm_pro = hm_(pro_node);
+    auto task_hm_fun = hm_(fun_node);
+    auto task_hm_con = hm_(con_node);
 
-    CHECK(str(task_state(throw_catch_pro)) == "created");
-    CHECK(str(task_state(throw_catch_from_pro)) == "created");
-    CHECK(str(task_state(throw_catch_hm_pro)) == "created");
+    CHECK(str(task_state(task_pro)) == "created");
+    CHECK(str(task_state(task_from_pro)) == "created");
+    CHECK(str(task_state(task_hm_pro)) == "created");
 
-    CHECK(str(task_state(throw_catch_fun)) == "created");
-    CHECK(str(task_state(throw_catch_from_fun)) == "created");
-    CHECK(str(task_state(throw_catch_hm_fun)) == "created");
+    CHECK(str(task_state(task_fun)) == "created");
+    CHECK(str(task_state(task_from_fun)) == "created");
+    CHECK(str(task_state(task_hm_fun)) == "created");
 
-    CHECK(str(task_state(throw_catch_con)) == "created");
-    CHECK(str(task_state(throw_catch_from_con)) == "created");
-    CHECK(str(task_state(throw_catch_hm_con)) == "created");
+    CHECK(str(task_state(task_con)) == "created");
+    CHECK(str(task_state(task_from_con)) == "created");
+    CHECK(str(task_state(task_hm_con)) == "created");
 
     /*
      * No aliasing of tasks
      */
-    task_state(throw_catch_pro) = TaskState::running;
-    CHECK(str(task_state(throw_catch_pro)) == "running");
+    task_state(task_pro) = TaskState::running;
+    CHECK(str(task_state(task_pro)) == "running");
 
-    CHECK(str(task_state(throw_catch_from_pro)) == "created");
-    CHECK(str(task_state(throw_catch_hm_pro)) == "created");
+    CHECK(str(task_state(task_from_pro)) == "created");
+    CHECK(str(task_state(task_hm_pro)) == "created");
 
-    CHECK(str(task_state(throw_catch_fun)) == "created");
-    CHECK(str(task_state(throw_catch_from_fun)) == "created");
-    CHECK(str(task_state(throw_catch_hm_fun)) == "created");
+    CHECK(str(task_state(task_fun)) == "created");
+    CHECK(str(task_state(task_from_fun)) == "created");
+    CHECK(str(task_state(task_hm_fun)) == "created");
 
-    CHECK(str(task_state(throw_catch_con)) == "created");
-    CHECK(str(task_state(throw_catch_from_con)) == "created");
-    CHECK(str(task_state(throw_catch_hm_con)) == "created");
+    CHECK(str(task_state(task_con)) == "created");
+    CHECK(str(task_state(task_from_con)) == "created");
+    CHECK(str(task_state(task_hm_con)) == "created");
 
-    task_state(throw_catch_pro) = TaskState::created;
-    CHECK(str(task_state(throw_catch_pro)) == "created");
+    task_state(task_pro) = TaskState::created;
+    CHECK(str(task_state(task_pro)) == "created");
 
-    CHECK(str(task_state(throw_catch_from_pro)) == "created");
-    CHECK(str(task_state(throw_catch_hm_pro)) == "created");
+    CHECK(str(task_state(task_from_pro)) == "created");
+    CHECK(str(task_state(task_hm_pro)) == "created");
 
-    CHECK(str(task_state(throw_catch_fun)) == "created");
-    CHECK(str(task_state(throw_catch_from_fun)) == "created");
-    CHECK(str(task_state(throw_catch_hm_fun)) == "created");
+    CHECK(str(task_state(task_fun)) == "created");
+    CHECK(str(task_state(task_from_fun)) == "created");
+    CHECK(str(task_state(task_hm_fun)) == "created");
 
-    CHECK(str(task_state(throw_catch_con)) == "created");
-    CHECK(str(task_state(throw_catch_from_con)) == "created");
-    CHECK(str(task_state(throw_catch_hm_con)) == "created");
+    CHECK(str(task_state(task_con)) == "created");
+    CHECK(str(task_state(task_from_con)) == "created");
+    CHECK(str(task_state(task_hm_con)) == "created");
 
-    task_state(throw_catch_con) = TaskState::running;
-    CHECK(str(task_state(throw_catch_con)) == "running");
+    task_state(task_con) = TaskState::running;
+    CHECK(str(task_state(task_con)) == "running");
 
-    CHECK(str(task_state(throw_catch_pro)) == "created");
-    CHECK(str(task_state(throw_catch_from_pro)) == "created");
-    CHECK(str(task_state(throw_catch_hm_pro)) == "created");
+    CHECK(str(task_state(task_pro)) == "created");
+    CHECK(str(task_state(task_from_pro)) == "created");
+    CHECK(str(task_state(task_hm_pro)) == "created");
 
-    CHECK(str(task_state(throw_catch_fun)) == "created");
-    CHECK(str(task_state(throw_catch_from_fun)) == "created");
-    CHECK(str(task_state(throw_catch_hm_fun)) == "created");
+    CHECK(str(task_state(task_fun)) == "created");
+    CHECK(str(task_state(task_from_fun)) == "created");
+    CHECK(str(task_state(task_hm_fun)) == "created");
 
-    CHECK(str(task_state(throw_catch_from_con)) == "created");
-    CHECK(str(task_state(throw_catch_hm_con)) == "created");
+    CHECK(str(task_state(task_from_con)) == "created");
+    CHECK(str(task_state(task_hm_con)) == "created");
   }
 }
 
@@ -384,7 +384,7 @@ Task(function_node<M1, T1>)->Task<node>;
 
 TEMPLATE_TEST_CASE(
     "Tasks: Test Task",
-    "[throw_catch_tasks]",
+    "[tasks]",
     (std::tuple<
         consumer_node<ThrowCatchMover2, size_t>,
         function_node<ThrowCatchMover2, size_t>,
