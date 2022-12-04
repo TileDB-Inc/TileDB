@@ -94,7 +94,8 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , buffers_full_(false)
     , deletes_consolidation_no_purge_(
           buffers_.count(constants::delete_timestamps) != 0)
-    , bitsort_attribute_(array_schema_.bitsort_filter_attr()) {
+    , bitsort_attribute_(array_schema_.bitsort_filter_attr())
+    , partial_tile_offsets_loading_(false) {
   disable_cache_ = true;
 }
 
@@ -181,7 +182,7 @@ std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
       all_frag ? fragment_metadata_.size() : relevant_fragments->size(),
       [&](uint64_t i) {
         // For easy reference.
-        auto frag_idx = all_frag ? i : relevant_fragments->at(i);
+        auto frag_idx = all_frag ? i : relevant_fragments.value()[i];
         auto& fragment = fragment_metadata_[frag_idx];
         const auto& schema = fragment->array_schema();
         const auto tile_num = fragment->tile_num();
@@ -386,12 +387,11 @@ Status SparseIndexReaderBase::load_initial_data() {
   }
 
   qc_loaded_attr_names_.reserve(qc_loaded_attr_names_set_.size());
-  std::vector<std::string> var_size_to_load;
   for (auto& name : qc_loaded_attr_names_set_) {
     qc_loaded_attr_names_.emplace_back(name);
-
+    attr_tile_offsets_to_load_.emplace_back(name);
     if (array_schema_.var_size(name)) {
-      var_size_to_load.emplace_back(name);
+      var_size_to_load_.emplace_back(name);
     }
   }
 
@@ -435,7 +435,6 @@ Status SparseIndexReaderBase::load_initial_data() {
   }
 
   // Compute tile offsets to load and var size to load for attributes.
-  std::vector<std::string> attr_tile_offsets_to_load(qc_loaded_attr_names_);
   for (auto& it : buffers_) {
     const auto& name = it.first;
     if (array_schema_.is_dim(name) ||
@@ -443,10 +442,10 @@ Status SparseIndexReaderBase::load_initial_data() {
       continue;
     }
 
-    attr_tile_offsets_to_load.emplace_back(name);
+    attr_tile_offsets_to_load_.emplace_back(name);
 
     if (array_schema_.var_size(name)) {
-      var_size_to_load.emplace_back(name);
+      var_size_to_load_.emplace_back(name);
     }
 
     if (name == constants::timestamps) {
@@ -455,7 +454,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   }
 
   const bool partial_consol_fragment_overlap =
-      partial_consolidated_fragment_overlap();
+      partial_consolidated_fragment_overlap(subarray_);
   use_timestamps_ = partial_consol_fragment_overlap ||
                     !array_schema_.allows_dups() ||
                     user_requested_timestamps_ || make_timestamped_conditions;
@@ -468,39 +467,20 @@ Status SparseIndexReaderBase::load_initial_data() {
   // Add delete timestamps condition.
   RETURN_CANCEL_OR_ERROR(add_delete_timestamps_condition());
 
-  uint64_t array_data_budget = memory_budget_ * memory_budget_ratio_array_data_;
-  auto per_frag_tile_offsets_usage = tile_offset_sizes();
-  uint64_t total_tile_offset_usage = std::accumulate(
-      per_frag_tile_offsets_usage.begin(),
-      per_frag_tile_offsets_usage.end(),
-      0);
-
-  if (total_tile_offset_usage > array_data_budget) {
-    throw SparseIndexReaderBaseStatusException(
-        "Cannot load tile offsets, computed size (" +
-        std::to_string(total_tile_offset_usage) +
-        ") is larger than memory budget "
-        "for array data (" +
-        std::to_string(array_data_budget) + ").");
-  }
+  // Load per fragment tile offsets memory usage.
+  per_frag_tile_offsets_usage_ = tile_offset_sizes();
 
   // Set a limit to the array memory.
-  if (!array_memory_tracker_->set_budget(array_data_budget)) {
+  if (!array_memory_tracker_->set_budget(
+          memory_budget_ * memory_budget_ratio_array_data_)) {
     throw SparseIndexReaderBaseStatusException(
         "Cannot set array memory budget, already over limit.");
   }
 
-  // Preload zipped coordinate tile offsets. Note that this will
-  // ignore fragments with a version >= 5.
-  std::vector<std::string> zipped_coords_names = {constants::coords};
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(subarray_, zipped_coords_names));
-
-  // Preload unzipped coordinate tile offsets. Note that this will
-  // ignore fragments with a version < 5.
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(subarray_, dim_names_));
+  // Add var size dimensions to the list of tile var size to load vector.
   for (unsigned d = 0; d < dim_num; ++d) {
     if (is_dim_var_size_[d]) {
-      var_size_to_load.emplace_back(dim_names_[d]);
+      var_size_to_load_.emplace_back(dim_names_[d]);
     }
   }
 
@@ -508,25 +488,54 @@ Status SparseIndexReaderBase::load_initial_data() {
   // user has requested timestamps the special attribute will already be in
   // the list, so don't include it again
   if (use_timestamps_ && !user_requested_timestamps_) {
-    attr_tile_offsets_to_load.emplace_back(constants::timestamps);
+    attr_tile_offsets_to_load_.emplace_back(constants::timestamps);
   }
 
   // Load delete timestamps, always.
-  attr_tile_offsets_to_load.emplace_back(constants::delete_timestamps);
+  attr_tile_offsets_to_load_.emplace_back(constants::delete_timestamps);
 
   // Load delete condition marker hashes for delete consolidation.
   if (deletes_consolidation_no_purge_) {
-    attr_tile_offsets_to_load.emplace_back(constants::delete_condition_index);
+    attr_tile_offsets_to_load_.emplace_back(constants::delete_condition_index);
   }
-
-  // Load tile offsets and var sizes for attributes.
-  RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(subarray_, var_size_to_load));
-  RETURN_CANCEL_OR_ERROR(
-      load_tile_offsets(subarray_, attr_tile_offsets_to_load));
 
   logger_->debug("Initial data loaded");
   initial_data_loaded_ = true;
   return Status::Ok();
+}
+
+uint64_t SparseIndexReaderBase::tile_offsets_size(
+    const optional<std::vector<unsigned>>& relevant_fragments) {
+  uint64_t total_tile_offset_usage = 0;
+  if (!relevant_fragments.has_value()) {
+    total_tile_offset_usage = std::accumulate(
+        per_frag_tile_offsets_usage_.begin(),
+        per_frag_tile_offsets_usage_.end(),
+        0);
+  } else {
+    for (auto f : relevant_fragments.value()) {
+      total_tile_offset_usage += per_frag_tile_offsets_usage_[f];
+    }
+  }
+
+  return total_tile_offset_usage;
+}
+
+void SparseIndexReaderBase::load_tile_offsets_for_fragments(
+    const optional<std::vector<unsigned>>& relevant_fragments) {
+  // Preload zipped coordinate tile offsets. Note that this will
+  // ignore fragments with a version >= 5.
+  std::vector<std::string> zipped_coords_names = {constants::coords};
+  throw_if_not_ok(load_tile_offsets(relevant_fragments, zipped_coords_names));
+
+  // Preload unzipped coordinate tile offsets. Note that this will
+  // ignore fragments with a version < 5.
+  throw_if_not_ok(load_tile_offsets(relevant_fragments, dim_names_));
+
+  // Load tile offsets and var sizes for attributes.
+  throw_if_not_ok(load_tile_var_sizes(relevant_fragments, var_size_to_load_));
+  throw_if_not_ok(
+      load_tile_offsets(relevant_fragments, attr_tile_offsets_to_load_));
 }
 
 Status SparseIndexReaderBase::read_and_unfilter_coords(

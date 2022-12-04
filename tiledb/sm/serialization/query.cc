@@ -175,7 +175,8 @@ Status subarray_to_capnp(
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
   }
 
-  if (subarray->relevant_fragments()->size() > 0) {
+  if (subarray->relevant_fragments().has_value() &&
+      subarray->relevant_fragments()->size() > 0) {
     auto relevant_fragments_builder =
         builder->initRelevantFragments(subarray->relevant_fragments()->size());
     for (size_t i = 0; i < subarray->relevant_fragments()->size(); ++i) {
@@ -239,6 +240,7 @@ Status subarray_from_capnp(
   if (reader.hasRelevantFragments()) {
     auto relevant_fragments = reader.getRelevantFragments();
     size_t count = relevant_fragments.size();
+    subarray->relevant_fragments() = std::vector<unsigned>();
     subarray->relevant_fragments()->reserve(count);
     for (size_t i = 0; i < count; i++) {
       subarray->relevant_fragments()->emplace_back(relevant_fragments[i]);

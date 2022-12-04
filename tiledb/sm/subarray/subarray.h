@@ -1129,12 +1129,12 @@ class Subarray {
   /**
    * Return relevant fragments as computed
    */
-  const std::vector<unsigned>* relevant_fragments() const;
+  const optional<std::vector<unsigned>>& relevant_fragments() const;
 
   /**
    * Return relevant fragments as computed
    */
-  std::vector<unsigned>* relevant_fragments();
+  optional<std::vector<unsigned>>& relevant_fragments();
 
   /**
    * For flattened ("total order") start/end range indexes,
@@ -1334,7 +1334,7 @@ class Subarray {
    * The array fragment ids whose non-empty domain intersects at
    * least one subarray range.
    */
-  std::vector<unsigned> relevant_fragments_;
+  optional<std::vector<unsigned>> relevant_fragments_;
 
   /**
    * The precomputed tile overlap state. Is not guaranteed to be

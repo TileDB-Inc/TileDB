@@ -337,14 +337,16 @@ void ReaderBase::check_validity_buffer_sizes() const {
   }
 }
 
-bool ReaderBase::partial_consolidated_fragment_overlap() const {
+bool ReaderBase::partial_consolidated_fragment_overlap(
+    Subarray& subarray) const {
   // Fetch relevant fragments so we check only intersecting fragments
-  const auto relevant_fragments = subarray_.relevant_fragments();
-  bool all_frag = !subarray_.is_set();
+  const auto relevant_fragments = subarray.relevant_fragments();
   for (size_t i = 0;
-       i < (all_frag ? fragment_metadata_.size() : relevant_fragments->size());
+       i < (relevant_fragments.has_value() ? relevant_fragments.value().size() :
+                                             fragment_metadata_.size());
        i++) {
-    auto frag_idx = all_frag ? i : relevant_fragments->at(i);
+    auto frag_idx =
+        relevant_fragments.has_value() ? relevant_fragments.value()[i] : i;
     auto& fragment = fragment_metadata_[frag_idx];
     if (fragment->has_timestamps() &&
         fragment->partial_time_overlap(
@@ -417,22 +419,19 @@ bool ReaderBase::include_timestamps(const unsigned f) const {
 }
 
 Status ReaderBase::load_tile_offsets(
-    Subarray& subarray, const std::vector<std::string>& names) {
+    const optional<std::vector<unsigned>>& relevant_fragments,
+    const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_offsets");
   const auto encryption_key = array_->encryption_key();
-
-  // Fetch relevant fragments so we load tile offsets only from intersecting
-  // fragments
-  const auto relevant_fragments = subarray.relevant_fragments();
-
-  bool all_frag = !subarray.is_set();
 
   const auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
-      all_frag ? fragment_metadata_.size() : relevant_fragments->size(),
+      relevant_fragments.has_value() ? relevant_fragments->size() :
+                                       fragment_metadata_.size(),
       [&](const uint64_t i) {
-        auto frag_idx = all_frag ? i : relevant_fragments->at(i);
+        auto frag_idx =
+            relevant_fragments.has_value() ? relevant_fragments.value()[i] : i;
         auto& fragment = fragment_metadata_[frag_idx];
         const auto format_version = fragment->format_version();
 
@@ -482,22 +481,19 @@ Status ReaderBase::load_tile_offsets(
 }
 
 Status ReaderBase::load_tile_var_sizes(
-    Subarray& subarray, const std::vector<std::string>& names) {
+    const optional<std::vector<unsigned>>& relevant_fragments,
+    const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_var_sizes");
   const auto encryption_key = array_->encryption_key();
-
-  // Fetch relevant fragments so we load tile var sizes only from intersecting
-  // fragments
-  const auto relevant_fragments = subarray.relevant_fragments();
-
-  bool all_frag = !subarray.is_set();
 
   const auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
-      all_frag ? fragment_metadata_.size() : relevant_fragments->size(),
+      relevant_fragments.has_value() ? relevant_fragments->size() :
+                                       fragment_metadata_.size(),
       [&](const uint64_t i) {
-        auto frag_idx = all_frag ? i : relevant_fragments->at(i);
+        auto frag_idx =
+            relevant_fragments.has_value() ? relevant_fragments.value()[i] : i;
         auto& fragment = fragment_metadata_[frag_idx];
 
         const auto& schema = fragment->array_schema();
@@ -1751,9 +1747,8 @@ void ReaderBase::compute_result_space_tiles(
   std::vector<TileDomain<T>> frag_tile_domains;
 
   if (partitioner_subarray.is_set()) {
-    auto relevant_frags = partitioner_subarray.relevant_fragments();
-    for (auto it = relevant_frags->rbegin(); it != relevant_frags->rend();
-         it++) {
+    auto relevant_frags = partitioner_subarray.relevant_fragments().value();
+    for (auto it = relevant_frags.rbegin(); it != relevant_frags.rend(); it++) {
       if (fragment_metadata_[*it]->dense()) {
         frag_tile_domains.emplace_back(
             *it,
