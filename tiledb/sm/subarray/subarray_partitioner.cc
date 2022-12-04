@@ -1221,12 +1221,21 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
       }
     }
 
+    // If we try to split a unary range because of memory budgets, throw an
+    // error. This can happen when the memory budget cannot fit even one tile.
+    // It will cause the reader to process the query cell by cell, which will
+    // make it very slow.
     if (!skip_unary_partitioning_budget_check_ &&
         (mem_size_fixed > memory_budget_ || mem_size_var > memory_budget_var_ ||
          mem_size_validity > memory_budget_validity_)) {
       if (partition->is_unary()) {
         throw SubarrayPartitionerStatusException(
-            "Trying to partition a unary range because of memory budget");
+            "Trying to partition a unary range because of memory budget, this "
+            "will cause the query to run very slow. Increase "
+            "`sm.memory_budget` and `sm.memory_budget_var` through the "
+            "configuration settings to avoid this issue. To override and run "
+            "the query with the same budget, set "
+            "`sm.skip_unary_partitioning_budget_check` to `true`.");
       }
     }
 

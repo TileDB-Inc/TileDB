@@ -317,7 +317,7 @@ void SubarrayPartitionerDenseFx::read_array_default_1d_array(
     std::string memory_budget,
     std::string skip_unary_partitioning_budget_check,
     bool expect_failure) {
-  // Create TileDB context
+  // Create TileDB context, set sm.skip_unary_partitioning_budget_check to true.
   tiledb_config_t* config;
   tiledb_error_t* error = nullptr;
   int rc = tiledb_config_alloc(&config, &error);
@@ -375,10 +375,15 @@ void SubarrayPartitionerDenseFx::read_array_default_1d_array(
     tiledb_error_message(err, &msg);
     std::string message(msg);
 
+    // Make sure we get the right message on failure
     CHECK(
         message ==
         "SubarrayPertitioner: Trying to partition a unary range because of "
-        "memory budget");
+        "memory budget, this will cause the query to run very slow. Increase "
+        "`sm.memory_budget` and `sm.memory_budget_var` through the "
+        "configuration settings to avoid this issue. To override and run the "
+        "query with the same budget, set "
+        "`sm.skip_unary_partitioning_budget_check` to `true`.");
   } else {
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_finalize(ctx, query);
