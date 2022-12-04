@@ -41,5 +41,6 @@
 #include "experimental/tiledb/common/dag/nodes/detail/simple/consumer.h"
 #include "experimental/tiledb/common/dag/nodes/detail/simple/function.h"
 #include "experimental/tiledb/common/dag/nodes/detail/simple/producer.h"
+#include "experimental/tiledb/common/dag/nodes/detail/simple/mimo.h"
 
 #endif  // TILEDB_DAG_SIMPLE_NODES_H

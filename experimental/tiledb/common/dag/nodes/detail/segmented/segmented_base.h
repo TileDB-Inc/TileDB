@@ -43,16 +43,16 @@
 namespace tiledb::common {
 
 /**
- * An atomic counter used to assign unique ids to nodes.
- */
-std::atomic<size_t> id_counter{0};
-
-/**
  * Base class for all segmented nodes.  Maintains a program counter (for the
  * Duff's device) and a link to other nodes with which it communicates.  For
  * testing and debugging purposes, the node also maintains a name and an id.
  */
 class node_base {
+  /**
+   * An atomic counter used to assign unique ids to nodes.
+   */
+  inline static std::atomic<size_t> id_counter{0};
+
  protected:
   using scheduler_event_type = SchedulerAction;
 
@@ -82,7 +82,7 @@ class node_base {
     return source_correspondent_;
   }
 
-  /** Default constructor */
+  /** Move constructor */
   node_base(node_base&&) = default;
 
   /** Nonsensical constructor, provided so that node_base will meet movable
@@ -106,9 +106,9 @@ class node_base {
     return id_;
   }
 
-  /** Constructor taking an id */
-  explicit node_base(size_t id)
-      : id_{id} {
+  /** Default constructor */
+  explicit node_base()
+      : id_{id_counter++} {
   }
 
   /** Utility functions for indicating what kind of node and state of the ports

@@ -1,5 +1,5 @@
 /**
- * @file   general.h
+ * @file   mimo.h
  *
  * @section LICENSE
  *

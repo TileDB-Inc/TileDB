@@ -1,5 +1,5 @@
 /**
- * @file   general.cc
+ * @file unit_segmented_mimo_nodes.h
  *
  * @section LICENSE
  *
@@ -26,7 +26,9 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * This file declares the DataBlock class for dag.
  */
-#include "general_nodes.h"
+
+#ifndef TILEDB_UNIT_SEGMENTED_MIMO_NODES_H
+#define TILEDB_UNIT_SEGMENTED_MIMO_NODES_H
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_UNIT_SEGMENTED_MIMO_NODES_H

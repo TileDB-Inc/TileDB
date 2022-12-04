@@ -101,7 +101,7 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
       std::enable_if_t<
           std::is_invocable_r_v<T, Function, std::stop_source&>,
           void**> = nullptr)
-      : node_base_type(id_counter++)
+      : node_base_type()
       , f_{std::forward<Function>(f)}
       , produced_items_{0} {
   }
@@ -216,7 +216,7 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
     auto mover = this->get_mover();
 
     std::stop_source st;
-    decltype(f_(st)) thing{};
+    decltype(f_(st)) thing{};  // @todo We should use the port item_
 
     std::stop_source stop_source_;
     assert(!stop_source_.stop_requested());

@@ -81,7 +81,7 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
       std::enable_if_t<
           std::is_invocable_r_v<void, Function, const T&>,
           void**> = nullptr)
-      : node_base_type(id_counter++)
+      : node_base_type()
       , f_{std::forward<Function>(f)}
       , consumed_items_{0} {
   }
@@ -176,7 +176,7 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
               << std::endl;
   }
 
-  T thing{};
+  T thing{};  // @todo We should use the port item_
 
   /**
    * Resume the node.  This will call the function that consumes items.

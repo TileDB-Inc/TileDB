@@ -94,7 +94,7 @@ class function_node_impl : public node_base,
       std::enable_if_t<
           std::is_invocable_r_v<BlockOut, Function, const BlockIn&>,
           void**> = nullptr)
-      : node_base_type(id_counter++)
+      : node_base_type()
       , f_{std::forward<Function>(f)}
       , processed_items_{0} {
   }
@@ -203,7 +203,7 @@ class function_node_impl : public node_base,
               << " -> " << str(source_mover->state()) << std::endl;
   }
 
-  BlockIn in_thing{};
+  BlockIn in_thing{};  // @todo We should use the port item_
   BlockOut out_thing{};
 
  public:

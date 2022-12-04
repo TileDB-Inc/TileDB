@@ -1,5 +1,5 @@
 /**
- * @file unit_general.cc
+ * @file unit_segmented_mimo_nodes.cc
  *
  * @section LICENSE
  *
@@ -27,41 +27,41 @@
  *
  * @section DESCRIPTION
  *
- * Tests the nodes classes, `SourceNode`, `SinkNode`, and `FunctionNode`.
+ * Tests the segmented mimo node class
  */
 
-#include "unit_general_nodes.h"
-#include <future>
+#include "unit_segmented_mimo_nodes.h"
 
-#include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/nodes/detail/simple/mimo.h"
 #include "experimental/tiledb/common/dag/nodes/generators.h"
-#include "experimental/tiledb/common/dag/nodes/simple_nodes.h"
 #include "experimental/tiledb/common/dag/nodes/terminals.h"
+
+#include "experimental/tiledb/common/dag/state_machine/policies.h"
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
+
+#include "experimental/tiledb/common/dag/nodes/detail/segmented/mimo.h"
 
 using namespace tiledb::common;
 
-TEST_CASE("GeneralNode: Verify various API approaches", "[general]") {
-  [[maybe_unused]] GeneralFunctionNode<
+TEST_CASE("mimo_node: Verify various API approaches", "[segmented_mimo]") {
+  [[maybe_unused]] mimo_node<
       AsyncMover2,
       std::tuple<size_t, int>,
       AsyncMover3,
       std::tuple<size_t, double>>
       x{};
-  [[maybe_unused]] GeneralFunctionNode<
+  [[maybe_unused]] mimo_node<
       AsyncMover2,
       std::tuple<int>,
       AsyncMover3,
       std::tuple<size_t, double>>
       y{};
-  [[maybe_unused]] GeneralFunctionNode<
+  [[maybe_unused]] mimo_node<
       AsyncMover2,
       std::tuple<char*>,
       AsyncMover3,
       std::tuple<size_t, std::tuple<int, float>>>
       z{};
-  [[maybe_unused]] GeneralFunctionNode<
+  [[maybe_unused]] mimo_node<
       AsyncMover2,
       std::tuple<int, char, double, double, double>,
       AsyncMover3,
@@ -69,18 +69,9 @@ TEST_CASE("GeneralNode: Verify various API approaches", "[general]") {
       a{};
 }
 
-TEST_CASE("GeneralNode: Verify simple resume", "[general]") {
-  [[maybe_unused]] GeneralFunctionNode<
-      AsyncMover2,
-      std::tuple<size_t, int>,
-      AsyncMover3,
-      std::tuple<size_t, double>>
-      x{};
-}
-
 TEST_CASE(
-    "GeneralNode: Verify construction with simple function", "[general]") {
-  [[maybe_unused]] GeneralFunctionNode<
+    "mimo_node: Verify construction with simple function", "[segmented_mimo]") {
+  [[maybe_unused]] mimo_node<
       AsyncMover2,
       std::tuple<size_t>,
       AsyncMover3,
@@ -88,9 +79,13 @@ TEST_CASE(
       x{[](std::tuple<size_t>, std::tuple<size_t>) {}};
 }
 
+#if 0
+
+
+
 TEST_CASE(
-    "GeneralNode: Verify construction with compound function", "[general]") {
-  [[maybe_unused]] GeneralFunctionNode<
+    "mimo_node: Verify construction with compound function", "[segmented_mimo]") {
+  [[maybe_unused]] mimo_node<
       AsyncMover2,
       std::tuple<size_t, int>,
       AsyncMover3,
@@ -108,7 +103,7 @@ struct foo {
  * @note Cannot use void for SinkMover_T nor SourceMover_T, because that must be
  * a template template.  Use dummy class `foo` instead.
  *
- * The GeneralFunctionNode includes some special casing to support these.  There
+ * The mimo_node includes some special casing to support these.  There
  * may be a more elegant way, given that the tuple being used (and hence the
  * corresponding variadic) is empty.
  *
@@ -116,14 +111,14 @@ struct foo {
  */
 template <template <class> class SourceMover_T, class... BlocksOut>
 using GeneralProducerNode =
-    GeneralFunctionNode<foo, std::tuple<>, SourceMover_T, BlocksOut...>;
+    mimo_node<foo, std::tuple<>, SourceMover_T, BlocksOut...>;
 
 template <template <class> class SinkMover_T, class... BlocksIn>
 using GeneralConsumerNode =
-    GeneralFunctionNode<SinkMover_T, BlocksIn..., foo, std::tuple<>>;
+    mimo_node<SinkMover_T, BlocksIn..., foo, std::tuple<>>;
 
 TEST_CASE(
-    "GeneralNode: Verify use of (void) template arguments for "
+    "mimo_node: Verify use of (void) template arguments for "
     "producer/consumer [general]") {
   GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
       [](std::tuple<size_t, double>) {}};
@@ -131,7 +126,7 @@ TEST_CASE(
       [](std::tuple<size_t, double>) {}};
 }
 
-TEST_CASE("GeneralNode: Connect void-created Producer and Consumer [general]") {
+TEST_CASE("mimo_node: Connect void-created Producer and Consumer [segmented_mimo]") {
   GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
       [](std::tuple<size_t, double>) {}};
   GeneralConsumerNode<AsyncMover3, std::tuple<double, size_t>> y{
@@ -142,8 +137,8 @@ TEST_CASE("GeneralNode: Connect void-created Producer and Consumer [general]") {
 }
 
 TEST_CASE(
-    "GeneralNode: Pass values with void-created Producer and Consumer "
-    "[general]") {
+    "mimo_node: Pass values with void-created Producer and Consumer "
+    "[segmented_mimo]") {
   double ext1{0.0};
   size_t ext2{0};
 
@@ -215,11 +210,11 @@ void dummy_bind_function(
 void dummy_bind_sink(size_t, float, const int&) {
 }
 
-TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
+TEST_CASE("mimo_node: Verify simple connections", "[segmented_mimo]") {
   SECTION("function") {
     ProducerNode<AsyncMover3, size_t> a{dummy_source};
 
-    GeneralFunctionNode<
+    mimo_node<
         AsyncMover3,
         std::tuple<size_t>,
         AsyncMover3,
@@ -228,7 +223,7 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
     ConsumerNode<AsyncMover3, size_t> c{dummy_sink};
 
     ProducerNode<AsyncMover2, size_t> d{dummy_source};
-    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e{dummy_function};
+    mimo_node<AsyncMover2, std::tuple<size_t>> e{dummy_function};
     ConsumerNode<AsyncMover2, size_t> f{dummy_sink};
 
     Edge g{a, std::get<0>(b.inputs_)};
@@ -245,12 +240,12 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
     auto dummy_sink_lambda = [](size_t) {};
 
     ProducerNode<AsyncMover3, size_t> a{dummy_source_lambda};
-    GeneralFunctionNode<AsyncMover3, std::tuple<size_t>> b{
+    mimo_node<AsyncMover3, std::tuple<size_t>> b{
         dummy_function_lambda};
     ConsumerNode<AsyncMover3, size_t> c{dummy_sink_lambda};
 
     ProducerNode<AsyncMover2, size_t> d{dummy_source_lambda};
-    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e{
+    mimo_node<AsyncMover2, std::tuple<size_t>> e{
         dummy_function_lambda};
     ConsumerNode<AsyncMover2, size_t> f{dummy_sink_lambda};
 
@@ -263,14 +258,14 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
 
   SECTION("inline lambda") {
     ProducerNode<AsyncMover3, size_t> a([]() { return 0UL; });
-    GeneralFunctionNode<AsyncMover3, std::tuple<size_t>> b(
+    mimo_node<AsyncMover3, std::tuple<size_t>> b(
         [](const std::tuple<size_t>& in, std::tuple<size_t>& out) {
           out = in;
         });
     ConsumerNode<AsyncMover3, size_t> c([](size_t) {});
 
     ProducerNode<AsyncMover2, size_t> d([]() { return 0UL; });
-    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e(
+    mimo_node<AsyncMover2, std::tuple<size_t>> e(
         [](const std::tuple<size_t>& in, std::tuple<size_t>& out) {
           out = in;
         });
@@ -289,11 +284,11 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
     dummy_sink_class dc{};
 
     ProducerNode<AsyncMover3, size_t> a{ac};
-    GeneralFunctionNode<AsyncMover3, std::tuple<size_t>> b{fc};
+    mimo_node<AsyncMover3, std::tuple<size_t>> b{fc};
     ConsumerNode<AsyncMover3, size_t> c{dc};
 
     ProducerNode<AsyncMover2, size_t> d{ac};
-    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e{fc};
+    mimo_node<AsyncMover2, std::tuple<size_t>> e{fc};
     ConsumerNode<AsyncMover2, size_t> f{dc};
 
     Edge g{a, std::get<0>(b.inputs_)};
@@ -305,12 +300,12 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
 
   SECTION("inline function object") {
     ProducerNode<AsyncMover3, size_t> a{dummy_source_class{}};
-    GeneralFunctionNode<AsyncMover3, std::tuple<size_t>> b{
+    mimo_node<AsyncMover3, std::tuple<size_t>> b{
         dummy_function_class{}};
     ConsumerNode<AsyncMover3, size_t> c{dummy_sink_class{}};
 
     ProducerNode<AsyncMover2, size_t> d{dummy_source_class{}};
-    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e{
+    mimo_node<AsyncMover2, std::tuple<size_t>> e{
         dummy_function_class{}};
     ConsumerNode<AsyncMover2, size_t> f{dummy_sink_class{}};
 
@@ -336,11 +331,11 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
         std::placeholders::_2);
 
     ProducerNode<AsyncMover3, size_t> a{ac};
-    GeneralFunctionNode<AsyncMover3, std::tuple<size_t>> b{fc};
+    mimo_node<AsyncMover3, std::tuple<size_t>> b{fc};
     ConsumerNode<AsyncMover3, size_t> c{dc};
 
     ProducerNode<AsyncMover2, size_t> d{ac};
-    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e{fc};
+    mimo_node<AsyncMover2, std::tuple<size_t>> e{fc};
     ConsumerNode<AsyncMover2, size_t> f{dc};
 
     Edge g{a, std::get<0>(b.inputs_)};
@@ -356,7 +351,7 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
     int z = 8675309;
 
     ProducerNode<AsyncMover3, size_t> a{std::bind(dummy_bind_source, x)};
-    GeneralFunctionNode<AsyncMover3, std::tuple<size_t>> b{std::bind(
+    mimo_node<AsyncMover3, std::tuple<size_t>> b{std::bind(
         dummy_bind_function,
         x,
         y,
@@ -366,7 +361,7 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
         std::bind(dummy_bind_sink, y, std::placeholders::_1, z)};
 
     ProducerNode<AsyncMover2, size_t> d{std::bind(dummy_bind_source, x)};
-    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e{std::bind(
+    mimo_node<AsyncMover2, std::tuple<size_t>> e{std::bind(
         dummy_bind_function,
         x,
         y,
@@ -398,11 +393,11 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
         std::placeholders::_2);
 
     ProducerNode<AsyncMover3, size_t> a{std::move(ac)};
-    GeneralFunctionNode<AsyncMover3, std::tuple<size_t>> b{std::move(fc)};
+    mimo_node<AsyncMover3, std::tuple<size_t>> b{std::move(fc)};
     ConsumerNode<AsyncMover3, size_t> c{std::move(dc)};
 
     ProducerNode<AsyncMover2, size_t> d{std::move(ac)};
-    GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> e{std::move(fc)};
+    mimo_node<AsyncMover2, std::tuple<size_t>> e{std::move(fc)};
     ConsumerNode<AsyncMover2, size_t> f{std::move(dc)};
 
     Edge g{a, std::get<0>(b.inputs_)};
@@ -413,11 +408,11 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
   }
 }
 
-TEST_CASE("GeneralNode: Verify compound connections", "[general]") {
+TEST_CASE("mimo_node: Verify compound connections", "[segmented_mimo]") {
   SECTION("inline lambda") {
     ProducerNode<AsyncMover3, size_t> a1([]() { return 0UL; });
     ProducerNode<AsyncMover3, double> a2([]() { return 0.0; });
-    GeneralFunctionNode<AsyncMover3, std::tuple<size_t, double>> b(
+    mimo_node<AsyncMover3, std::tuple<size_t, double>> b(
         [](const std::tuple<size_t, double>& in,
            std::tuple<size_t, double>& out) { out = in; });
     ConsumerNode<AsyncMover3, size_t> c1([](size_t) {});
@@ -425,7 +420,7 @@ TEST_CASE("GeneralNode: Verify compound connections", "[general]") {
 
     ProducerNode<AsyncMover2, size_t> d1([]() { return 0UL; });
     ProducerNode<AsyncMover2, double> d2([]() { return 0.0; });
-    GeneralFunctionNode<AsyncMover2, std::tuple<size_t, double>> e(
+    mimo_node<AsyncMover2, std::tuple<size_t, double>> e(
         [](const std::tuple<size_t, double>& in,
            std::tuple<size_t, double>& out) { out = in; });
     ConsumerNode<AsyncMover2, size_t> f1([](size_t) {});
@@ -449,11 +444,11 @@ TEST_CASE("GeneralNode: Verify compound connections", "[general]") {
  */
 TEST_CASE(
     "Nodes: Manually pass some data in a chain with a one component general "
-    "function node [general]") {
+    "function node [segmented_mimo]") {
   size_t i{0UL};
   ProducerNode<AsyncMover2, size_t> q([&]() { return i++; });
 
-  GeneralFunctionNode<AsyncMover2, std::tuple<size_t>> r(
+  mimo_node<AsyncMover2, std::tuple<size_t>> r(
       [&](const std::tuple<std::size_t>& in, std::tuple<std::size_t>& out) {
         std::get<0>(out) = 2 * std::get<0>(in);
       });
@@ -494,14 +489,14 @@ TEST_CASE(
  * compound general function node and then to consumer.
  */
 TEST_CASE(
-    "Nodes: Manually pass some data in a chain with a multi component general "
-    "function node [general]") {
+    "Nodes: Manually pass some data in a chain with a multi component segmented_mimo "
+    "function node [segmented_mimo]") {
   size_t i{0UL};
   double j{0.0};
   ProducerNode<AsyncMover2, size_t> q1([&]() { return i++; });
   ProducerNode<AsyncMover2, double> q2([&]() { return j++; });
 
-  GeneralFunctionNode<
+  mimo_node<
       AsyncMover2,
       std::tuple<size_t, double>,
       AsyncMover2,
@@ -597,7 +592,7 @@ void asynchronous_with_function_node(
     return j++;
   });
 
-  GeneralFunctionNode<
+  mimo_node<
       AsyncMover2,
       std::tuple<size_t, double>,
       AsyncMover2,
@@ -797,7 +792,7 @@ TEST_CASE(
   ProducerNode<AsyncMover3, size_t> source_node1(generators{19});
   ProducerNode<AsyncMover3, double> source_node2(generators{337});
 
-  GeneralFunctionNode<
+  mimo_node<
       AsyncMover3,
       std::tuple<size_t, double>,
       AsyncMover3,
@@ -953,3 +948,4 @@ TEST_CASE(
   CHECK(std::equal(input1.begin(), i1, output2.begin()));
   CHECK(std::equal(input2.begin(), i2, output1.begin()));
 }
+#endif
