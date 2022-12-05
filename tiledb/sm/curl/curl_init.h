@@ -1,5 +1,5 @@
 /**
- * @file   libcurl_state.cc
+ * @file curl_init.h
  *
  * @section LICENSE
  *
@@ -27,34 +27,28 @@
  *
  * @section DESCRIPTION
  *
- This file initializes the libcurl state, if libcurl is present.
+ * This file initializes the libcurl state, if libcurl is present.
  */
 
-#include "tiledb/sm/global_state/libcurl_state.h"
-#include "tiledb/common/logger.h"
+#ifndef TILEDB_CURL_INIT_H
+#define TILEDB_CURL_INIT_H
 
-#ifdef TILEDB_SERIALIZATION
-#include <curl/curl.h>
+namespace tiledb::sm::curl {
+
+/**
+ * A sentry class for ensuring that libcurl has
+ * been initialized for any classes that use it.
+ */
+class LibCurlInitializer {
+ public:
+  /**
+   * Construct an instance of LibCurlInitializer which
+   * has the side effect of ensuring that libcurl has
+   * been initialized for use.
+   */
+  LibCurlInitializer();
+};
+
+}  // namespace tiledb::sm::curl
+
 #endif
-
-using namespace tiledb::common;
-
-namespace tiledb {
-namespace sm {
-namespace global_state {
-
-Status init_libcurl() {
-#ifdef TILEDB_SERIALIZATION
-  auto rc = curl_global_init(CURL_GLOBAL_DEFAULT);
-  if (rc != 0)
-    return LOG_STATUS(Status_Error(
-        "Cannot initialize libcurl global state: got non-zero return code " +
-        std::to_string(rc)));
-#endif
-
-  return Status::Ok();
-}
-
-}  // namespace global_state
-}  // namespace sm
-}  // namespace tiledb
