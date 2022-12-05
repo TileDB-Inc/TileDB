@@ -560,7 +560,7 @@ class mimo_node_impl<
   }
   void dump_node_state() override {
   }
-  };
+};
 
 /** A mimo node is a shared pointer to the implementation class */
 template <

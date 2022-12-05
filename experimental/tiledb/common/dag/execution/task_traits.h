@@ -1,5 +1,5 @@
 /**
- * @file   experimental/tiledb/common/dag/nodes/simple_nodes.h
+ * @file  experimental/tiledb/common/dag/execution/task_traits.h
  *
  * @section LICENSE
  *
@@ -26,21 +26,42 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * This file declares "simple" nodes for dag task graph library. Simple nodes
- * are nodes whose enclosed functions are assumed to have no state and whose
- * enclosed function takes one input and produces one output (though the input
- * and output could be tuples).  Furthermore, the enclosed function produces one
- * output for every input. Simple nodes have no capability of maintaining,
- * saving, nor restoring state for the enclosed functions.
  */
 
-#ifndef TILEDB_DAG_SIMPLE_NODES_H
-#define TILEDB_DAG_SIMPLE_NODES_H
+#ifndef TILEDB_DAG_EXECUTION_TASK_TRAITS_H
+#define TILEDB_DAG_EXECUTION_TASK_TRAITS_H
 
-#include "experimental/tiledb/common/dag/nodes/detail/simple/consumer.h"
-#include "experimental/tiledb/common/dag/nodes/detail/simple/function.h"
-#include "experimental/tiledb/common/dag/nodes/detail/simple/mimo.h"
-#include "experimental/tiledb/common/dag/nodes/detail/simple/producer.h"
+#include <memory>
 
-#endif  // TILEDB_DAG_SIMPLE_NODES_H
+namespace tiledb::common {
+
+template <class N>
+struct task_traits;
+
+template <class N>
+struct task_traits {
+  using task_type = typename N::task_type;
+  using task_handle_type = typename N::task_handle_type;
+};
+
+template <class N>
+struct task_traits<std::shared_ptr<N>> {
+  using task_type = typename N::task_type;
+  using task_handle_type = N;
+};
+
+template <class N>
+struct task_traits<N*> {
+  using task_type = N;
+  using task_handle_type = N*;
+};
+
+template <class N>
+using task_t = typename task_traits<N>::task_type;
+
+template <class N>
+using task_handle_t = typename task_traits<N>::task_handle_type;
+
+}  // namespace tiledb::common
+
+#endif  // TILEDB_DAG_EXECUTION_TASK_TRAITS_H

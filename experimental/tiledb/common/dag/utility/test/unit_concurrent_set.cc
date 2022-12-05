@@ -31,13 +31,9 @@
  */
 
 #include "experimental/tiledb/common/dag/utility/test/unit_concurrent_set.h"
-#include <algorithm>
 #include <functional>
 #include <future>
-#include <iostream>
 #include <type_traits>
-#include <utility>
-#include <vector>
 #include "experimental/tiledb/common/dag/utility/concurrent_set.h"
 
 namespace tiledb::common {}
@@ -64,7 +60,7 @@ TEST_CASE("ConcurrentSet: Test clear", "[concurrent_set") {
   ConcurrentSet<int> numbers{1, 2, 3};
   CHECK(numbers.size() == 3);
   numbers.clear();
-  CHECK(numbers.size() == 0);
+  CHECK(numbers.empty());
 }
 
 TEST_CASE("ConcurrentSet: Test insert", "[concurrent_set") {
@@ -104,7 +100,7 @@ class Dew {
 
 const int nof_operations = 17;
 
-int set_emplace() {
+size_t set_emplace() {
   ConcurrentSet<Dew> set;
   for (int i = 0; i < nof_operations; ++i)
     for (int j = 0; j < nof_operations; ++j)
@@ -163,9 +159,9 @@ TEST_CASE("ConcurrentSet: Test swap", "[concurrent_set") {
     CHECK(ref1 == 1);
     CHECK(ref2 == 4);
 
-    struct Cmp : std::less<int> {
+    struct Cmp : std::less<> {
       int id{};
-      Cmp(int i)
+      explicit Cmp(int i)
           : id{i} {
       }
     };
