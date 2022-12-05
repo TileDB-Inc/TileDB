@@ -318,8 +318,7 @@ class AsyncPolicy
   /**
    * Function for handling `notify_source` action.
    */
-  inline scheduler_event_type on_notify_source(
-      lock_type&, std::atomic<int>&) {
+  inline scheduler_event_type on_notify_source(lock_type&, std::atomic<int>&) {
     assert(is_sink_empty(this->state()) == "");
 
     source_cv_.notify_one();
@@ -329,8 +328,7 @@ class AsyncPolicy
   /**
    * Function for handling `notify_sink` action.
    */
-  inline scheduler_event_type on_notify_sink(
-      lock_type&, std::atomic<int>&) {
+  inline scheduler_event_type on_notify_sink(lock_type&, std::atomic<int>&) {
     // This CHECK will fail when state machine is stopping, so check
     if (!static_cast<Mover*>(this)->is_stopping()) {
       assert(is_source_full(this->state()) == "");
@@ -344,7 +342,7 @@ class AsyncPolicy
    * Function for handling `source_available` action.
    */
   inline scheduler_event_type on_source_wait(
-      lock_type& lock, std::atomic<int>& ) {
+      lock_type& lock, std::atomic<int>&) {
     if constexpr (std::is_same_v<PortState, two_stage>) {
       assert(str(this->state()) == "st_11");
     } else if constexpr (std::is_same_v<PortState, three_stage>) {
@@ -360,8 +358,7 @@ class AsyncPolicy
   /**
    * Function for handling `sink_available` action.
    */
-  inline scheduler_event_type on_sink_wait(
-      lock_type& lock, std::atomic<int>& ) {
+  inline scheduler_event_type on_sink_wait(lock_type& lock, std::atomic<int>&) {
     sink_cv_.wait(lock);
 
     assert(is_sink_post_move(this->state()) == "");
@@ -383,8 +380,7 @@ class AsyncPolicy
   /**
    * Function for handling `term_sink` action.
    */
-  inline scheduler_event_type on_term_sink(
-      lock_type&, std::atomic<int>&) {
+  inline scheduler_event_type on_term_sink(lock_type&, std::atomic<int>&) {
     return scheduler_event_type::noop;
   }
 
@@ -503,7 +499,8 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
   /**
    * Function for handling `term_source` action.
    */
-  inline scheduler_event_type on_term_source(lock_type& lock, std::atomic<int>& event) {
+  inline scheduler_event_type on_term_source(
+      lock_type& lock, std::atomic<int>& event) {
     assert(lock.owns_lock());
 
     // @note This is not optimal.  Have to notify sink when source is ending b/c
@@ -516,7 +513,8 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
    * Function for handling `sink_available` action.  It simply calls the source
    * wait action.
    */
-  inline scheduler_event_type on_term_sink(lock_type& lock, std::atomic<int>& event) {
+  inline scheduler_event_type on_term_sink(
+      lock_type& lock, std::atomic<int>& event) {
     on_term_source(lock, event);
     return scheduler_event_type::sink_exit;
   }
@@ -536,7 +534,6 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
 template <class Mover, class PortState = typename Mover::PortState>
 class DebugPolicy
     : public PortFiniteStateMachine<DebugPolicy<Mover, PortState>, PortState> {
-
   void debug_msg(const std::string& msg) {
     if (static_cast<Mover*>(this)->debug_enabled()) {
       std::cout << msg << std::endl;
@@ -603,7 +600,6 @@ class DebugPolicy
 template <class Mover, class PortState = typename Mover::PortState>
 class DebugPolicyWithLock
     : public PortFiniteStateMachine<DebugPolicy<Mover, PortState>, PortState> {
-
   void debug_msg(const std::string& msg) {
     if (static_cast<Mover*>(this)->debug_enabled()) {
       std::cout << msg << std::endl;
@@ -664,7 +660,6 @@ class DebugPolicyWithLock
     return scheduler_event_type::sink_exit;
   }
 };
-
 
 }  // namespace tiledb::common
 #endif  // TILEDB_DAG_POLICIES_H

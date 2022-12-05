@@ -189,7 +189,7 @@ class BountifulScheduler {
      *
      */
     for (auto&& f : futures_) {
-      try{
+      try {
         f.get();
       } catch (const std::exception& e) {
         std::cout << "Exception caught in sync_wait_all: " << e.what()

@@ -44,8 +44,8 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include "experimental/tiledb/common/dag/state_machine/fsm_types.h"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm_types.h"
 
 namespace tiledb::common {
 namespace {
@@ -432,7 +432,8 @@ class PortFiniteStateMachine {
           static_cast<Policy*>(this)->on_source_wait(lock, event_counter);
           goto retry;
         } else {
-          return static_cast<Policy*>(this)->on_source_wait(lock, event_counter);
+          return static_cast<Policy*>(this)->on_source_wait(
+              lock, event_counter);
         }
         break;
 

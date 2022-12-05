@@ -117,8 +117,7 @@ class ThrowCatchPortPolicy : public PortFiniteStateMachine<
   using scheduler_event_type = SchedulerAction;
 
  public:
-
-  constexpr static bool wait_returns_ {false};
+  constexpr static bool wait_returns_{false};
 
   /**
    * @brief Constructs a port policy.  Initializes the port state to empty.
@@ -143,7 +142,8 @@ class ThrowCatchPortPolicy : public PortFiniteStateMachine<
   /**
    * Policy action called on the port `on_source_move` action.
    */
-  inline scheduler_event_type on_source_move(lock_type&, std::atomic<int>& event) {
+  inline scheduler_event_type on_source_move(
+      lock_type&, std::atomic<int>& event) {
     static_cast<Mover*>(this)->on_move(event);
     return scheduler_event_type::noop;
   }
@@ -151,7 +151,8 @@ class ThrowCatchPortPolicy : public PortFiniteStateMachine<
   /**
    * Policy action called on the port `on_sink_move` action.
    */
-  inline scheduler_event_type on_sink_move(lock_type&, std::atomic<int>& event) {
+  inline scheduler_event_type on_sink_move(
+      lock_type&, std::atomic<int>& event) {
     static_cast<Mover*>(this)->on_move(event);
     return scheduler_event_type::noop;
   }
@@ -866,7 +867,6 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<Task<Node>> {
    * @brief Terminate threads in the thread pool
    */
   void shutdown() {
-
     /*
      * Clear out any submitted tasks that haven't been put into the scheduler
      */

@@ -95,7 +95,6 @@
 #include "experimental/tiledb/common/dag/utils/print_types.h"
 #include "experimental/tiledb/common/dag/utils/spinlock.h"
 
-
 using namespace std::placeholders;
 
 namespace tiledb::common {
@@ -674,7 +673,7 @@ private:
  */
 // @todo make private
 protected:
- BoundedBufferQ<Task, std::queue<Task>, false> global_runnable_queue_;
+BoundedBufferQ<Task, std::queue<Task>, false> global_runnable_queue_;
 
 /**
  * @brief Local queues for each worker thread.
@@ -954,10 +953,11 @@ class DuffsSchedulerImpl : public Base<Task, DuffsSchedulerImpl<Task, Base>> {
     }    // end while(true);
 
     /*
-     * Shutdown the queues, which will release any threads waiting on the runnable queue.
+     * Shutdown the queues, which will release any threads waiting on the
+     * runnable queue.
      */
     this->finish_queues(std::to_string(my_id));
-  }      // worker()
+  }  // worker()
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

@@ -58,7 +58,8 @@ class TaskImpl : Node {
 
  public:
   using node_handle_type = Node;  // @todo abstraction violation?
-  using node_type = typename Node::element_type;  // @todo abstraction violation?
+  using node_type =
+      typename Node::element_type;  // @todo abstraction violation?
 
   explicit TaskImpl(const Node& n)
       : node_{n} {
@@ -154,7 +155,8 @@ class Task : public std::shared_ptr<TaskImpl<Node>> {
   }
 
   explicit Task(node_type&& n)
-      : Base{std::make_shared<TaskImpl<node_handle_type>>(std::make_shared<node_type>(n))} {
+      : Base{std::make_shared<TaskImpl<node_handle_type>>(
+            std::make_shared<node_type>(n))} {
     // print_types(n);
   }
 
@@ -164,7 +166,8 @@ class Task : public std::shared_ptr<TaskImpl<Node>> {
   }
 
   explicit Task(const node_type& n)
-      : Base{std::make_shared<TaskImpl<node_handle_type>>(std::make_shared<node_type>(n))} {
+      : Base{std::make_shared<TaskImpl<node_handle_type>>(
+            std::make_shared<node_type>(n))} {
     // print_types(n);
   }
 

@@ -73,7 +73,7 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
       PortFiniteStateMachine<FrugalPortPolicy<Mover, PortState>, PortState>;
   using lock_type = typename state_machine_type::lock_type;
 
-  constexpr static bool wait_returns_ {true};
+  constexpr static bool wait_returns_{true};
 
   FrugalPortPolicy() = default;
   FrugalPortPolicy(const FrugalPortPolicy&) {
@@ -144,7 +144,8 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
   /**
    * Function for handling `source_wait` action.  Waits on cv.
    */
-  inline scheduler_event_type on_source_wait(lock_type& lock, std::atomic<int>&) {
+  inline scheduler_event_type on_source_wait(
+      lock_type& lock, std::atomic<int>&) {
     assert(lock.owns_lock());
     if constexpr (std::is_same_v<PortState, two_stage>) {
       // CHECK(str(this->state()) == "st_11");
@@ -181,7 +182,8 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
    * throw_catch scheduler. Since exit is an infrequent event, this should have
    * no impact on performance.
    */
-  inline scheduler_event_type on_term_source(lock_type& lock, std::atomic<int>& event) {
+  inline scheduler_event_type on_term_source(
+      lock_type& lock, std::atomic<int>& event) {
     assert(lock.owns_lock());
 
     on_notify_sink(lock, event);
