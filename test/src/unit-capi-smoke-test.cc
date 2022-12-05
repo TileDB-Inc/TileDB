@@ -1403,8 +1403,8 @@ TEST_CASE_METHOD(
   for (auto attr_iter = attrs.begin(); attr_iter != attrs.end(); ++attr_iter) {
     vector<test_attr_t> test_attrs(attrs.begin(), attr_iter + 1);
     for (const auto& query_conditions : query_conditions_vec) {
-      if (query_conditions_vec.size() > 15) // encountered query_conditions_vec = { size=768608472548472790 }, somen bad happened...
-        __debugbreak();
+ //     if (query_conditions_vec.size() > 15) // encountered query_conditions_vec = { size=768608472548472790 }, somen bad happened...
+ //       __debugbreak();
       for (const tiledb_array_type_t array_type :
            {TILEDB_DENSE, TILEDB_SPARSE}) {
         for (const tiledb_layout_t cell_order :
