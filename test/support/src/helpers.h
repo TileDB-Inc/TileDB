@@ -157,6 +157,16 @@ struct QueryBuffer {
 /** Map attribute/dimension name -> QueryBuffer */
 typedef std::map<std::string, QueryBuffer> QueryBuffers;
 
+// server side buffers
+using ServerDataBuffers = std::vector<std::vector<uint8_t>>;
+using ServerOffsetsBuffers = std::vector<std::vector<uint64_t>>;
+struct ServerQueryBuffers {
+  ServerDataBuffers attr_or_dim_data;
+  ServerOffsetsBuffers attr_or_dim_off;
+  ServerDataBuffers attr_or_dim;
+  ServerDataBuffers attr_or_dim_nullable;
+};
+
 /**
  * Get the config for using the refactored dense reader.
  *
@@ -911,12 +921,43 @@ void submit_and_finalize_serialized_query(
     tiledb_ctx_t* ctx, tiledb_query_t* query);
 
 void submit_and_finalize_serialized_query(const Context& ctx, Query& query);
+
 /**
  * Helper function that allocates buffers on a query object that has been
  * deserialized on the "server" side.
  */
 std::vector<void*> allocate_query_buffers(
     const Context& ctx, const Array& array, Query* query);
+
+/**
+ * Helper method that wraps tiledb_array_open() and inserts a serialization
+ * step, if serialization is enabled. The added serialization steps are
+ * designed to closely mimic the behavior of the REST server.
+ */
+int array_open_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_query_type_t query_type,
+    bool serialize_query,
+    tiledb_array_t** open_array);
+
+/**
+ * Helper method that wraps tiledb_query_submit() and inserts a serialization
+ * step, if query serialization is enabled. The added serialization steps
+ * are designed to closely mimic the behavior of the REST server.
+ */
+int submit_query_wrapper(
+    tiledb_ctx_t* ctx,
+    const std::string& array_uri,
+    tiledb_query_t** query,
+    ServerQueryBuffers& buffers,
+    bool serialize_query,
+    bool finalize = true);
+
+// TODO: add docstring
+void allocate_query_buffers_server_side(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    ServerQueryBuffers& query_buffers);
 
 }  // End of namespace test
 

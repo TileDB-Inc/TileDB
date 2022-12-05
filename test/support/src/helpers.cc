@@ -33,6 +33,7 @@
 #include "helpers.h"
 #include <test/support/tdb_catch.h>
 #include "serialization_wrappers.h"
+#include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -42,6 +43,8 @@
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tile_overlap.h"
+#include "tiledb/sm/serialization/array.h"
+#include "tiledb/sm/serialization/query.h"
 
 std::mutex catch2_macro_mutex;
 
@@ -1674,6 +1677,225 @@ void submit_and_finalize_serialized_query(
 
 void submit_and_finalize_serialized_query(const Context& ctx, Query& query) {
   submit_and_finalize_serialized_query(ctx.ptr().get(), query.ptr().get());
+}
+
+int array_open_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_query_type_t query_type,
+    bool serialize_query,
+    tiledb_array_t** open_array) {
+  // Open array
+#ifndef TILEDB_SERIALIZATION
+  return tiledb_array_open(ctx, *open_array, query_type);
+#endif
+
+  if (!serialize_query) {
+    return tiledb_array_open(ctx, *open_array, query_type);
+  }
+
+  // 1. Client: Simulate serializing array_open request to Server and
+  // deserializing on server side. First set the query_type that will be
+  // serialized
+  auto type = static_cast<sm::QueryType>(query_type);
+  (*open_array)->array_->set_query_type(type);
+  tiledb_array_t* deserialized_array_server = nullptr;
+  // 2. Server : Receive and deserialize array_open_request
+  auto rc = tiledb_array_open_serialize(
+      ctx,
+      *open_array,
+      &deserialized_array_server,
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check that the original and de-serialized array have the same query type
+  REQUIRE(deserialized_array_server->array_->get_query_type() == type);
+
+  // 3. Server: Open the array the request was received for in the requested
+  // mode
+  // This is needed in test, as the deserialized array has a dummy array_uri of
+  // "deserialized_array" set instead of the original one. The Cloud side
+  // already knows the array URI so it's not a problem in the real life scenario
+  deserialized_array_server->array_->set_array_uri(
+      (*open_array)->array_->array_uri());
+  // TODO: check if those are needed for array_open_at, this is done on Cloud
+  // server rc = tiledb_array_set_open_timestamp_start(ctx,
+  // deserialized_array_server, (*open_array)->array_->timestamp_start());
+  // REQUIRE(rc == TILEDB_OK);
+  // rc = tiledb_array_set_open_timestamp_end(ctx, deserialized_array_server,
+  // (*open_array)->array_->timestamp_end()); REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx, deserialized_array_server, query_type);
+  REQUIRE(rc == TILEDB_OK);
+
+  // 4. Server -> Client: Send opened Array (serialize)
+  // 5. Client: Receive and deserialize Array (into deserialized_array_client),
+  // in the same way that rest_client does.
+  tiledb_buffer_t* buff;
+  rc = tiledb_serialize_array(
+      ctx,
+      deserialized_array_server,
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+      1,
+      &buff);
+  REQUIRE(rc == TILEDB_OK);
+
+  auto st = tiledb::sm::serialization::array_deserialize(
+      (*open_array)->array_.get(),
+      tiledb::sm::SerializationType::CAPNP,
+      buff->buffer());
+  REQUIRE(st.ok());
+
+  // 6. Server: Close array and clean up
+  rc = tiledb_array_close(ctx, deserialized_array_server);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&deserialized_array_server);
+  tiledb_buffer_free(&buff);
+
+  return rc;
+}
+
+int submit_query_wrapper(
+    tiledb_ctx_t* ctx,
+    const std::string& array_uri,
+    tiledb_query_t** query,
+    ServerQueryBuffers& buffers,
+    bool serialize_query,
+    bool finalize) {
+  int rc = 0;
+#ifndef TILEDB_SERIALIZATION
+  rc = tiledb_query_submit(ctx, *query);
+  if (rc != TILEDB_OK) {
+    return rc;
+  }
+
+  if (finalize) {
+    // Finalize query
+    rc = tiledb_query_finalize(ctx, *query);
+  }
+
+  return rc;
+#endif
+
+  if (!serialize_query) {
+    rc = tiledb_query_submit(ctx, *query);
+    if (rc != TILEDB_OK) {
+      return rc;
+    }
+
+    if (finalize) {
+      // Finalize query
+      rc = tiledb_query_finalize(ctx, *query);
+    }
+
+    return rc;
+  }
+
+  // Get the query type and layout
+  tiledb_query_type_t query_type;
+  REQUIRE_SAFE(tiledb_query_get_type(ctx, *query, &query_type) == TILEDB_OK);
+
+  // 1. Client -> Server : Send query request
+  tiledb_query_t* server_deser_query;
+  std::vector<uint8_t> serialized;
+
+  rc = tiledb_query_v2_serialize(
+      ctx, array_uri.c_str(), serialized, true, *query, &server_deser_query);
+  REQUIRE_SAFE(rc == TILEDB_OK);
+
+  // This is a feature of the server, not a bug, quoting from query_from_capnp:
+  // "On reads, just set null pointers with accurate size so that the
+  // server can introspect and allocate properly sized buffers separately."
+  // Empty buffers will naturally break query_submit so to go on in test we
+  // need to allocate here as if we were the server.
+  allocate_query_buffers_server_side(ctx, server_deser_query, buffers);
+
+  // 2. Server: Submit query WITHOUT re-opening the array, using under the hood
+  // the array found in the deserialized query
+  rc = tiledb_query_submit(ctx, server_deser_query);
+  if (rc != TILEDB_OK) {
+    return rc;
+  }
+
+  if (finalize) {
+    tiledb_query_status_t status;
+    rc = tiledb_query_get_status(ctx, server_deser_query, &status);
+    CHECK(status == TILEDB_COMPLETED);
+
+    rc = tiledb_query_finalize(ctx, server_deser_query);
+    if (rc != TILEDB_OK) {
+      return rc;
+    }
+  }
+
+  // Serialize the new query and "send it over the network" (server-side)
+  // 3. Server -> Client : Send query response
+  std::vector<uint8_t> serialized2;
+  rc = tiledb_query_v2_serialize(
+      ctx, array_uri.c_str(), serialized, false, server_deser_query, query);
+  REQUIRE_SAFE(rc == TILEDB_OK);
+
+  // Clean up.
+  tiledb_query_free(&server_deser_query);
+
+  return rc;
+}
+
+void allocate_query_buffers_server_side(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    ServerQueryBuffers& query_buffers) {
+  int rc = 0;
+  const auto buffer_names = query->query_->buffer_names();
+  for (uint64_t i = 0; i < buffer_names.size(); i++) {
+    const auto& name = buffer_names[i];
+    const auto& buff = query->query_->buffer(name);
+    const auto& schema = query->query_->array_schema();
+    auto var_size = schema.var_size(name);
+    auto nullable = schema.is_nullable(name);
+    if (var_size && buff.buffer_var_ == nullptr) {
+      // Variable-sized buffer
+      query_buffers.attr_or_dim_data.emplace_back(*buff.buffer_var_size_);
+      query_buffers.attr_or_dim_off.emplace_back(
+          (*buff.buffer_size_) / sizeof(sm::constants::cell_var_offset_size));
+      rc = tiledb_query_set_data_buffer(
+          ctx,
+          query,
+          name.c_str(),
+          query_buffers.attr_or_dim_data.back().data(),
+          buff.buffer_var_size_);
+      REQUIRE_SAFE(rc == TILEDB_OK);
+      rc = tiledb_query_set_offsets_buffer(
+          ctx,
+          query,
+          name.c_str(),
+          query_buffers.attr_or_dim_off.back().data(),
+          buff.buffer_size_);
+      REQUIRE_SAFE(rc == TILEDB_OK);
+    }
+
+    if (name == TILEDB_COORDS || (!var_size && buff.buffer_ == nullptr)) {
+      // Fixed-length buffer or Coords
+      query_buffers.attr_or_dim.emplace_back(*buff.buffer_size_);
+      rc = tiledb_query_set_data_buffer(
+          ctx,
+          query,
+          name.c_str(),
+          query_buffers.attr_or_dim.back().data(),
+          buff.buffer_size_);
+      REQUIRE_SAFE(rc == TILEDB_OK);
+    }
+
+    if (nullable) {
+      // nullable
+      query_buffers.attr_or_dim_nullable.emplace_back(
+          *buff.validity_vector_.buffer_size());
+      rc = tiledb_query_set_validity_buffer(
+          ctx,
+          query,
+          name.c_str(),
+          query_buffers.attr_or_dim_nullable.back().data(),
+          buff.validity_vector_.buffer_size());
+    }
+  }
 }
 
 template void check_subarray<int8_t>(
