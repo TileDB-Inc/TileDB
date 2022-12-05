@@ -47,7 +47,7 @@
 
 #include "tiledb/common/logger.h"
 #include "tiledb/common/unique_rwlock.h"
-#include "tiledb/sm/global_state/global_state.h"
+#include "tiledb/platform/cert_file.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
@@ -1208,17 +1208,16 @@ Status S3::init_client() const {
       connect_max_tries,
       connect_scale_factor);
 
-#ifdef __linux__
-  // If the user has not set a s3 ca file or ca path then let's attempt to set
-  // the cert file if we've autodetected it
-  if (ca_file.empty() && ca_path.empty()) {
-    const std::string cert_file =
-        global_state::GlobalState::GetGlobalState().cert_file();
-    if (!cert_file.empty()) {
-      client_config.caFile = cert_file.c_str();
+  if constexpr (tiledb::platform::PlatformCertFile::enabled) {
+    // If the user has not set a s3 ca file or ca path then let's attempt to set
+    // the cert file if we've autodetected it
+    if (ca_file.empty() && ca_path.empty()) {
+      const std::string cert_file = tiledb::platform::PlatformCertFile::get();
+      if (!cert_file.empty()) {
+        client_config.caFile = cert_file.c_str();
+      }
     }
   }
-#endif
 
   switch ((!aws_access_key_id.empty() ? 1 : 0) +
           (!aws_secret_access_key.empty() ? 2 : 0) +
