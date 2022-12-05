@@ -58,44 +58,7 @@ struct MaxTileSizeFx {
     }
   };
 
-  /*
-   * Array creation, Write, routine naming scheme as follows:
-   * 
-   * [(as useful) template <dim/attr types for most expected reuseability flexibility>]
-   * create_[sparse|dense]_[dimensionality]_[series-of-dim-descriptions]_[series-of-attribute-descriptions]
-   * 
-   * The word 'array' was specifically left out as it is reasonably implied from dense/sparse, and 
-   * would seem to simply add additional verbiage to be parsed without providing any additional
-   * enlightenment.
-   * 
-   * [dimesionality] could be omitted, but did seem to provide likely value that otherwise would
-   * require the (mental) parsing of the series-of-dim-descriptions to determine the dimensionality.
-   * 
-   * The series-of-dim-descriptions and series-of-attr-descriptions currently use dN and aN to
-   * (i) identifiy which dimension/attribute is being described and its order of creation
-   * as well as (ii) identifying the specific names of the dimension/attribute being created.  
-   * Those names could be substituted with something else ("row"/"col", "volume") but would 
-   * lose some of the at-a-glance numbered ordering of the dimension/attribute creation.
-   * 
-   * The write routines will be similarly named with at least one 'write' match for each of 
-   * the 'create' routines.
-   * 
-   ***********************************************
-   * 
-   * An different naming scheme has been requested that loses some of the flexibility in the one above.
-   * To meet this request but retain the flexibility, it is possible to define the requested API forms
-   * as wrappers calling the originally implemented APIs as named, and this approach has been taken rather
-   * than renaming and losing possibly useful functionality.
-   * 
-   * The example suggested alternate API (for one of the routines) was
-   * create_sparse_array_var_dim_int32_attr(), general pattern for all to be inferred from this example.
-   * 
-   */
-
-  template <typename a1_type>
-  void internal_create_sparse_1d_d1_var_a1_fix(
-      const std::string array_name
-      ) {
+  void create_sparse_array_var_dim_int32_attr() {
     // Set up the Domain/Dimension items for the array being created.
     tiledb::Domain domain(ctx_);
     domain.add_dimension(tiledb::Dimension::create(
@@ -106,21 +69,15 @@ struct MaxTileSizeFx {
     schema.set_domain(domain);
 
     // Add a single attribute "a1" so each (i,j) cell can store an integer.
-    schema.add_attribute(tiledb::Attribute::create<a1_type>(ctx_, "a1"));
+    schema.add_attribute(tiledb::Attribute::create<int32_t>(ctx_, "a1"));
 
     // Create the (empty) array on disk.
-    tiledb::Array::create(array_name, schema);
+    tiledb::Array::create(main_array_name_, schema);
   }
 
-  void create_sparse_array_var_dim_int32_attr() {
-    internal_create_sparse_1d_d1_var_a1_fix<int32_t>(main_array_name_);
-  }
-
-  template <typename a1_type>
-  void internal_write_sparse_d1_var_a1_fix(
-      const std::string array_name, uint64_t num_rows) {
-    // Prepare the data to be written.
-    std::vector<a1_type> a_buff(num_rows);
+  void write_sparse_array_var_dim_int32_attr(uint64_t num_rows) {
+    //  Prepare the data to be written.
+    std::vector<int32_t> a_buff(num_rows);
     auto start_val = 0;
     std::iota(a_buff.begin(), a_buff.end(), start_val);
 
@@ -139,7 +96,7 @@ struct MaxTileSizeFx {
     }
 
     // Open the array for writing and create the query.
-    tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
+    tiledb::Array array(ctx_, main_array_name_, TILEDB_WRITE);
     tiledb::Query query(ctx_, array, TILEDB_WRITE);
     query.set_layout(TILEDB_UNORDERED)
         .set_data_buffer("a1", a_buff)
@@ -151,22 +108,15 @@ struct MaxTileSizeFx {
     array.close();
   }
 
-  void write_sparse_array_var_dim_int32_attr(uint64_t num_rows) {
-    internal_write_sparse_d1_var_a1_fix<int32_t>(main_array_name_, num_rows);
-  }
-
-  template <typename dim1_type, typename a1_type>
-  void internal_create_dense_1d_d1_fix_a1_var(
-      const std::string array_name,
-      std::array<dim1_type, 2> d1_domain,
+  void create_dense_array_d1_int_a1_string(
+      std::array<int, 2> d1_domain,
       int d1_extents,
       bool a1_is_nullable,
       tiledb_layout_t tile_order,
-      tiledb_layout_t cell_order
-  ) {
+      tiledb_layout_t cell_order) {
     // Set up the Domain/Dimension items for the array being created.
     tiledb::Domain domain(ctx_);
-    domain.add_dimension(tiledb::Dimension::create<dim1_type>(
+    domain.add_dimension(tiledb::Dimension::create<int>(
         ctx_, "d1", d1_domain, d1_extents));
 
     // The array will be dense with the indicated order(s).
@@ -174,39 +124,23 @@ struct MaxTileSizeFx {
     schema.set_domain(domain).set_tile_order(tile_order);
     schema.set_domain(domain).set_cell_order(cell_order);
     // Specify attribute, nullable or not as indicated.
-    auto a1_attr = tiledb::Attribute::create<a1_type>(ctx_, "a1");
+    auto a1_attr = tiledb::Attribute::create<std::string>(ctx_, "a1");
     if (a1_is_nullable) {
       a1_attr.set_nullable(true);
     }
     schema.add_attribute(a1_attr);
 
     // Create the array.
-    tiledb::Array::create(array_name, schema);
+    tiledb::Array::create(main_array_name_, schema);
   }
 
-  void create_dense_array_d1_int_a1_string(
-      std::array<int, 2> d1_domain,
-      int d1_extents,
-      bool a1_is_nullable,
-      tiledb_layout_t tile_order,
-      tiledb_layout_t cell_order) {
-    internal_create_dense_1d_d1_fix_a1_var<int, std::string>(
-        main_array_name_,
-        d1_domain,
-        d1_extents,
-        a1_is_nullable,
-        tile_order,
-        cell_order);
-  }
-
-  void internal_write_dense_1d_fix_a1_var_null(
-      const std::string& array_name,
-      std::string& a1_data,
-      std::vector<uint64_t>& a1_offsets,
-      std::vector<uint8_t>& a1_validity,
-      std::vector<int>& subrange) {
+  void write_dense_array_d1_int_a1_string_null(
+      std::string a1_data,
+      std::vector<uint64_t>&& a1_offsets,
+      std::vector<uint8_t>&& a1_validity,
+      std::vector<int>&& subrange) {
     // Define needed objects.
-    tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
+    tiledb::Array array(ctx_, main_array_name_, TILEDB_WRITE);
     tiledb::Query query(ctx_, array);
     tiledb::Subarray subarray(ctx_, array);
 
@@ -223,73 +157,25 @@ struct MaxTileSizeFx {
     array.close();
   }
 
-  void write_dense_array_d1_int_a1_string_null(
+  void write_dense_array_d1_int_a1_string(
       std::string a1_data,
       std::vector<uint64_t>&& a1_offsets,
-      std::vector<uint8_t>&& a1_validity,
       std::vector<int>&& subrange) {
-    internal_write_dense_1d_fix_a1_var_null(
-        main_array_name_, a1_data, a1_offsets, a1_validity, subrange);
-  }
-
-  void internal_write_dense_array_1d_fix_a1_var(
-      const std::string array_name,
-      std::string& attr_data,
-      std::vector<uint64_t>& attr_offsets,
-      std::vector<int>& subrange) {
     // Define needed objects.
-    tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
+    tiledb::Array array(ctx_, main_array_name_, TILEDB_WRITE);
     tiledb::Query query(ctx_, array);
     tiledb::Subarray subarray(ctx_, array);
- 
+
     // Initialize the objects, preparing the query.
     subarray.add_range(0, subrange[0], subrange[1]);
     query.set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a1", attr_data)
-        .set_offsets_buffer("a1", attr_offsets)
+        .set_data_buffer("a1", a1_data)
+        .set_offsets_buffer("a1", a1_offsets)
         .set_subarray(subarray);
 
     // Perform the write and close the array.
     query.submit();
     array.close();
-  }
-
-  void write_dense_array_d1_int_a1_string(
-      std::string a1_data,
-      std::vector<uint64_t>&& a1_offsets,
-      std::vector<int>&& subrange) {
-    internal_write_dense_array_1d_fix_a1_var(
-        main_array_name_, a1_data, a1_offsets, subrange);
-  }
-
-  template <typename dim1_type, typename dim2_type, typename a1_type>
-  void internal_create_dense_2d_d1_fix_d2_fix_a1_fix(
-      std::string array_name,
-      std::array<dim1_type, 2> d1_domain,
-      int d1_extents,
-      std::array<dim2_type, 2> d2_domain,
-      int d2_extents,
-      tiledb_layout_t tile_order,
-      tiledb_layout_t cell_order) {
-    // Set up the Domain/Dimension items for the array being created.
-    tiledb::Domain domain(ctx_);
-    domain
-        .add_dimension(tiledb::Dimension::create<dim1_type>(
-            ctx_, "d1", d1_domain, d1_extents))
-        .add_dimension(tiledb::Dimension::create<dim2_type>(
-            ctx_, "d2", d2_domain, d2_extents));
-
-    // The array will be dense.
-    tiledb::ArraySchema schema(ctx_, TILEDB_DENSE);
-    schema.set_domain(domain)
-        .set_tile_order(tile_order)
-        .set_cell_order(cell_order);
-
-    // Add a single attribute "a1" so each (i,j) cell can store an integer.
-    schema.add_attribute(tiledb::Attribute::create<a1_type>(ctx_, "a1"));
-
-    // Create the (empty) array on disk.
-    tiledb::Array::create(array_name, schema);
   }
 
   void create_dense_array_d1_int_d2_int_a1_int32(
@@ -299,30 +185,39 @@ struct MaxTileSizeFx {
       int d2_extents,
       tiledb_layout_t tile_order,
       tiledb_layout_t cell_order) {
-    internal_create_dense_2d_d1_fix_d2_fix_a1_fix<int, int, int32_t>(
-        main_array_name_,
-        d1_domain,
-        d1_extents,
-        d2_domain,
-        d2_extents,
-        tile_order,
-        cell_order);
+    // Set up the Domain/Dimension items for the array being created.
+    tiledb::Domain domain(ctx_);
+    domain
+        .add_dimension(tiledb::Dimension::create<int>(
+            ctx_, "d1", d1_domain, d1_extents))
+        .add_dimension(tiledb::Dimension::create<int>(
+            ctx_, "d2", d2_domain, d2_extents));
+
+    // The array will be dense.
+    tiledb::ArraySchema schema(ctx_, TILEDB_DENSE);
+    schema.set_domain(domain)
+        .set_tile_order(tile_order)
+        .set_cell_order(cell_order);
+
+    // Add a single attribute "a1" so each (i,j) cell can store an integer.
+    schema.add_attribute(tiledb::Attribute::create<int32_t>(ctx_, "a1"));
+
+    // Create the (empty) array on disk.
+    tiledb::Array::create(main_array_name_, schema);
   }
 
-  template <typename dimtype1, typename dimtype2, typename a1_type>
-  void internal_write_dense_d1_fix_d2_fix_a1_fix(
-      const std::string array_name,
-      std::vector<a1_type> data,
-      std::array<dimtype1, 2> dim1_range,
-      std::array<dimtype2, 2> dim2_range) {
+  void write_dense_d1_int_d2_int_a1_int32(
+      std::vector<int32_t> a1_data,
+      std::array<int, 2> dim1_range,
+      std::array<int, 2> dim2_range) {
     // Open the array for writing and create the query.
-    tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
+    tiledb::Array array(ctx_, main_array_name_, TILEDB_WRITE);
     tiledb::Subarray subarray(ctx_, array);
     subarray.add_range(0, dim1_range[0], dim1_range[1])
         .add_range(1, dim2_range[0], dim2_range[1]);
     tiledb::Query query(ctx_, array);
     query.set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a1", data)
+        .set_data_buffer("a1", a1_data)
         .set_subarray(subarray);
 
     // Perform the write and close the array.
@@ -330,59 +225,38 @@ struct MaxTileSizeFx {
     array.close();
   }
 
-  void write_dense_d1_int_d2_int_a1_int32(
-      std::vector<int32_t> attr_data,
-      std::array<int, 2> dim1_range,
-      std::array<int, 2> dim2_range) {
-    internal_write_dense_d1_fix_d2_fix_a1_fix(
-        main_array_name_,
-        attr_data,
-        dim1_range,
-        dim2_range);
-  }
-
-  template <typename d1_type, typename a1_type>
-  void internal_create_dense_1d_d1_fix_a1_fix(
-      const std::string& array_name,
-      std::array<d1_type, 2> d1_domain,
+  template <int nchar>
+  void create_dense_array_d1_int_a1_nchar(
+      std::array<int, 2> d1_domain,
       int d1_extents,
-      const std::string& attr_name) {
-    remove_temp_dir(array_name.c_str());
+      const std::string&& attr_name) {
+    remove_temp_dir(main_array_name_.c_str());
 
     // The array will be 1d with dimension "d1", with domain, extents
     // as passed.
     tiledb::Domain domain(ctx_);
     domain.add_dimension(
-        tiledb::Dimension::create<d1_type>(ctx_, "d1", d1_domain, d1_extents));
+        tiledb::Dimension::create<int>(ctx_, "d1", d1_domain, d1_extents));
 
     // The array will be dense.
     tiledb::ArraySchema schema(ctx_, TILEDB_DENSE);
     schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
     // Add one attribute "a1", so each (i) cell can store
-    // a nchars characters on "attr_name" (std::array<char,nchars> now via a1_type).
-    schema.add_attribute(
-        tiledb::Attribute::create<a1_type>(ctx_, attr_name));
+    // a nchars characters on "attr_name" (std::array<char,nchars> now via
+    // a1_type).
+    schema.add_attribute(tiledb::Attribute::create<std::array<char,nchar>>(ctx_, attr_name));
 
     // Create the (empty) array on disk.
-    tiledb::Array::create(array_name, schema);
-  };
-
-  template <int nchar>
-  void create_dense_array_d1_int_a1_nchar(
-      std::array<int, 2> d1_domain,
-      int d1_extents,
-      const std::string&& attr_name) {
-    internal_create_dense_1d_d1_fix_a1_fix<int, std::array<char, nchar>>(
-        main_array_name_, d1_domain, d1_extents, attr_name);
+    tiledb::Array::create(main_array_name_, schema);
   }
 
   template <const int nchars = 1>
-  void write_dense_array_attr_nchar_nx(
-      const std::string& array_name, const std::string&& attr_name, int nX = 4) {
+  void write_dense_array_attr_nchar_ntimes(
+      const std::string& array_name, const std::string&& attr_name, int ntimes = 4) {
     // Prepare some data to write to the array.
     std::vector<std::array<char, nchars>> a;
-    for (auto i = 0; i < nX; ++i) {
+    for (auto i = 0; i < ntimes; ++i) {
       std::array<char, nchars> buf;
       memset(&buf[0], 'a' + i, nchars);
       a.emplace_back(buf);
@@ -433,9 +307,7 @@ struct MaxTileSizeFx {
     schemaEvolution.array_evolve(array_name);
   }
 
-  template <typename a1_type>
-  void internal_create_sparse_1d_d1_var_a1_var(
-      std::string array_name,
+  void create_sparse_array_d1_var_a1_string(
       bool is_nullable) {
     // Set up the Domain/Dimension items for the array being created.
     tiledb::Domain domain(ctx_);
@@ -448,28 +320,22 @@ struct MaxTileSizeFx {
 
     // Add one attribute "a1", so each (i) cell can store
     // a character on "a1".
-    auto attr = tiledb::Attribute::create<a1_type>(ctx_, "a1");
+    auto attr = tiledb::Attribute::create<std::string>(ctx_, "a1");
     if (is_nullable) {
       attr.set_nullable(true);
     }
     schema.add_attribute(attr);
 
     // Create the (empty) array on disk.
-    tiledb::Array::create(array_name, schema);
+    tiledb::Array::create(main_array_name_, schema);
   }
 
-  void create_sparse_array_d1_var_a1_string(
-      bool is_nullable) {
-    internal_create_sparse_1d_d1_var_a1_var<std::string>(main_array_name_, is_nullable);
-  }
-
-  void internal_write_sparse_1d_d1_var_a1_var(
-      const std::string array_name,
-      std::string& dim_data,  // Expecting single-char values, one for each row.
-      std::vector<uint64_t>& dim_offsets,
-      std::string& attr_data  // Expecting single-char values, one for each
-                              // row, may be empty... dim_data.size()-1.
-      ) {
+    void write_sparse_array_d1_var_a1_string(
+      std::string& dim_data,   // Expecting single-char values, one for each row.
+      std::vector<uint64_t>&& dim_offsets,
+      std::string&& attr_data  // Expecting single-char values, one for each
+                               // row, may be empty... dim_data.size()-1.
+  ) {
     // attr_data needs its buffer retrieved with .data() to be non-null to
     // avoid internal API failure, even if there is no data, which can occur
     // when all validity values are zero. dim_data should always contain data.
@@ -502,7 +368,7 @@ struct MaxTileSizeFx {
     }
 
     // Open the array for writing and create the query.
-    tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
+    tiledb::Array array(ctx_, main_array_name_, TILEDB_WRITE);
     tiledb::Query query(ctx_, array);
     query.set_layout(TILEDB_UNORDERED)
         .set_data_buffer("a1", attr_data)
@@ -514,16 +380,6 @@ struct MaxTileSizeFx {
     // Perform the write and close the array.
     query.submit();
     array.close();
-  }
-
-  void write_sparse_array_d1_var_a1_string(
-      std::string& dim_data,   // Expecting single-char values, one for each row.
-      std::vector<uint64_t>&& dim_offsets,
-      std::string&& attr_data  // Expecting single-char values, one for each
-                               // row, may be empty... dim_data.size()-1.
-  ) {
-    internal_write_sparse_1d_d1_var_a1_var(
-        main_array_name_, dim_data, dim_offsets, attr_data);
   }
 
   uint64_t c_get_fragments_max_in_memory_tile_size(
@@ -719,39 +575,39 @@ TEST_CASE_METHOD(
     create_dense_array_d1_int_a1_nchar<2>(
         { 1, 4 }, 1, "a2");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 0);
-    write_dense_array_attr_nchar_nx<2>(main_array_name_, "a2");
+    write_dense_array_attr_nchar_ntimes<2>(main_array_name_, "a2");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 4);
 
     remove_temp_dir(main_array_name_);
     create_dense_array_d1_int_a1_nchar<257>(
         {1, 2}, 1, "b257");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 0);
-    write_dense_array_attr_nchar_nx<257>(main_array_name_, "b257", 2);
+    write_dense_array_attr_nchar_ntimes<257>(main_array_name_, "b257", 2);
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 257);
 
     remove_temp_dir(main_array_name_);
     create_dense_array_d1_int_a1_nchar<42>(
         {1, 20}, 1, "c42");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 0);
-    write_dense_array_attr_nchar_nx<42>(main_array_name_, "c42", 20);
+    write_dense_array_attr_nchar_ntimes<42>(main_array_name_, "c42", 20);
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 42);
   }
   SECTION(" - Evolve") {
     create_dense_array_d1_int_a1_nchar<2>(
         {1, 4}, 1, "a2");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 0);
-    write_dense_array_attr_nchar_nx<2>(main_array_name_, "a2");
+    write_dense_array_attr_nchar_ntimes<2>(main_array_name_, "a2");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 4);
 
     array_schema_evolve_A(main_array_name_);
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 4);
-    write_dense_array_attr_nchar_nx<257>(main_array_name_, "b257");
+    write_dense_array_attr_nchar_ntimes<257>(main_array_name_, "b257");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 257);
 
     array_schema_evolve_B(main_array_name_);
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 257);
-    write_dense_array_attr_nchar_nx<42>(main_array_name_, "c42");
-    // Earlier fragment should still have value of 257.
+    write_dense_array_attr_nchar_ntimes<42>(main_array_name_, "c42");
+    // Earlier fragment should still have dominant value of 257.
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 257);
 
     // Now want to consolidate, but not vacuum, max

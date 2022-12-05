@@ -69,6 +69,7 @@ EncryptionKey::EncryptionKey(const Config& config)
         "StorageManager encryption_key_from_config cannot populate encryption "
         "key, missing encryption type!");
   }
+
   auto [st, et] = encryption_type_enum(enc_type_str);
   throw_if_not_ok(st);
   auto enc_type = et.value();

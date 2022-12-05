@@ -57,12 +57,12 @@ class EncryptionKey {
   /** Destructor. This zeroes the underlying key buffer. */
   ~EncryptionKey();
 
-  /** Constructor init'ing object utilizing any provided configuration avoiding
+  /** 
+   * Constructor init'ing object utilizing any provided configuration avoiding
    * any need for set_key() usage on the init'd object.
    *
    * @param config containing sm.encryption_key and sm.encryption_type for
    *        initializing the object.
-   *
    */
   EncryptionKey(const Config& config);
 
