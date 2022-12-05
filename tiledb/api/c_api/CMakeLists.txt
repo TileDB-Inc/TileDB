@@ -52,6 +52,9 @@ target_include_directories(export INTERFACE ${TILEDB_SOURCE_ROOT}/tiledb/sm/c_ap
 # `buffer`: no dependencies
 add_subdirectory(buffer)
 
+# `buffer_list`: depends on 'buffer'
+add_subdirectory(buffer_list)
+
 # `error`: no dependencies
 add_subdirectory(error)
 

@@ -60,9 +60,9 @@ struct tiledb_subarray_t {
   bool is_allocated_ = false;
 };
 
-struct tiledb_buffer_list_t {
-  tiledb::sm::BufferList* buffer_list_ = nullptr;
-};
+//struct tiledb_buffer_list_t {
+//  tiledb::sm::BufferList* buffer_list_ = nullptr;
+//};
 
 struct tiledb_attribute_t {
   tiledb::sm::Attribute* attr_ = nullptr;

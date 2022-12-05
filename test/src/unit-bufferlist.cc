@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/buffer/buffer_list.h"
+#include "tiledb/api/c_api/buffer_list/buffer_list_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 
@@ -59,7 +60,7 @@ TEST_CASE("BufferList: Test append", "[buffer][bufferlist]") {
   REQUIRE(buff1.data() == nullptr);
   REQUIRE(buff2.data() == nullptr);
 
-  Buffer *b1 = nullptr, *b2 = nullptr;
+  const Buffer *b1 = nullptr, *b2 = nullptr;
   REQUIRE(buffer_list.get_buffer(0, &b1).ok());
   REQUIRE(buffer_list.get_buffer(1, &b2).ok());
   REQUIRE(!buffer_list.get_buffer(2, nullptr).ok());
@@ -166,8 +167,9 @@ TEST_CASE("C API: Test BufferList get buffers", "[capi][buffer][bufferlist]") {
   tiledb_buffer_list_t* c_buffer_list = nullptr;
   REQUIRE(tiledb_buffer_list_alloc(ctx, &c_buffer_list) == TILEDB_OK);
   // For testing only: set the underlying buffer list ptr to the one we created
-  delete c_buffer_list->buffer_list_;
-  c_buffer_list->buffer_list_ = &buffer_list;
+  //delete c_buffer_list->buffer_list_;
+  //c_buffer_list->buffer_list_ = &buffer_list;
+  c_buffer_list->set_buffer_list(buffer_list);
 
   // Check num buffers and size
   uint64_t num_buffers = 123;
@@ -215,7 +217,7 @@ TEST_CASE("C API: Test BufferList get buffers", "[capi][buffer][bufferlist]") {
       tiledb_buffer_list_get_buffer(ctx, c_buffer_list, 2, &b) == TILEDB_ERR);
 
   // Clean up
-  c_buffer_list->buffer_list_ = nullptr;
+  // c_buffer_list->buffer_list_ = nullptr;
   tiledb_buffer_list_free(&c_buffer_list);
   tiledb_ctx_free(&ctx);
 }

@@ -37,6 +37,7 @@
 #include "tiledb_struct_def.h"
 
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
+#include "tiledb/api/c_api/buffer_list/buffer_list_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
@@ -220,130 +221,132 @@ int32_t tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode) {
   return TILEDB_OK;
 }
 
-/* ********************************* */
-/*            BUFFER LIST            */
-/* ********************************* */
+#if 0
+//~ /* ********************************* */
+//~ /*            BUFFER LIST            */
+//~ /* ********************************* */
 
-int32_t tiledb_buffer_list_alloc(
-    tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
+//~ int32_t tiledb_buffer_list_alloc(
+    //~ tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) {
+  //~ if (sanity_check(ctx) == TILEDB_ERR)
+    //~ return TILEDB_ERR;
 
-  // Create a buffer list struct
-  *buffer_list = new (std::nothrow) tiledb_buffer_list_t;
-  if (*buffer_list == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB buffer list object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
+  //~ // Create a buffer list struct
+  //~ *buffer_list = new (std::nothrow) tiledb_buffer_list_t;
+  //~ if (*buffer_list == nullptr) {
+    //~ auto st = Status_Error("Failed to allocate TileDB buffer list object");
+    //~ LOG_STATUS_NO_RETURN_VALUE(st);
+    //~ save_error(ctx, st);
+    //~ return TILEDB_OOM;
+  //~ }
 
-  // Create a new buffer_list object
-  (*buffer_list)->buffer_list_ = new (std::nothrow) tiledb::sm::BufferList;
-  if ((*buffer_list)->buffer_list_ == nullptr) {
-    delete *buffer_list;
-    *buffer_list = nullptr;
-    auto st = Status_Error("Failed to allocate TileDB buffer list object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
+  //~ // Create a new buffer_list object
+  //~ (*buffer_list)->buffer_list_ = new (std::nothrow) tiledb::sm::BufferList;
+  //~ if ((*buffer_list)->buffer_list_ == nullptr) {
+    //~ delete *buffer_list;
+    //~ *buffer_list = nullptr;
+    //~ auto st = Status_Error("Failed to allocate TileDB buffer list object");
+    //~ LOG_STATUS_NO_RETURN_VALUE(st);
+    //~ save_error(ctx, st);
+    //~ return TILEDB_OOM;
+  //~ }
 
-  // Success
-  return TILEDB_OK;
-}
+  //~ // Success
+  //~ return TILEDB_OK;
+//~ }
 
-void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list) {
-  if (buffer_list != nullptr && *buffer_list != nullptr) {
-    delete (*buffer_list)->buffer_list_;
-    delete (*buffer_list);
-    *buffer_list = nullptr;
-  }
-}
+//~ void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list) {
+  //~ if (buffer_list != nullptr && *buffer_list != nullptr) {
+    //~ delete (*buffer_list)->buffer_list_;
+    //~ delete (*buffer_list);
+    //~ *buffer_list = nullptr;
+  //~ }
+//~ }
 
-int32_t tiledb_buffer_list_get_num_buffers(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t* num_buffers) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer_list) == TILEDB_ERR)
-    return TILEDB_ERR;
+//~ int32_t tiledb_buffer_list_get_num_buffers(
+    //~ tiledb_ctx_t* ctx,
+    //~ const tiledb_buffer_list_t* buffer_list,
+    //~ uint64_t* num_buffers) {
+  //~ // Sanity check
+  //~ if (sanity_check(ctx) == TILEDB_ERR ||
+      //~ sanity_check(ctx, buffer_list) == TILEDB_ERR)
+    //~ return TILEDB_ERR;
 
-  *num_buffers = buffer_list->buffer_list_->num_buffers();
+  //~ *num_buffers = buffer_list->buffer_list_->num_buffers();
 
-  return TILEDB_OK;
-}
+  //~ return TILEDB_OK;
+//~ }
 
-int32_t tiledb_buffer_list_get_buffer(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t buffer_idx,
-    tiledb_buffer_t** buffer) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer_list) == TILEDB_ERR)
-    return TILEDB_ERR;
+//~ int32_t tiledb_buffer_list_get_buffer(
+    //~ tiledb_ctx_t* ctx,
+    //~ const tiledb_buffer_list_t* buffer_list,
+    //~ uint64_t buffer_idx,
+    //~ tiledb_buffer_t** buffer) {
+  //~ // Sanity check
+  //~ if (sanity_check(ctx) == TILEDB_ERR ||
+      //~ sanity_check(ctx, buffer_list) == TILEDB_ERR)
+    //~ return TILEDB_ERR;
 
-  // Get the underlying buffer
-  tiledb::sm::Buffer* b;
-  throw_if_not_ok(buffer_list->buffer_list_->get_buffer(buffer_idx, &b));
+  //~ // Get the underlying buffer
+  //~ tiledb::sm::Buffer* b;
+  //~ throw_if_not_ok(buffer_list->buffer_list_->get_buffer(buffer_idx, &b));
 
-  // Create a non-owning wrapper of the underlying buffer
-  *buffer = tiledb_buffer_handle_t::make_handle(b->data(), b->size());
+  //~ // Create a non-owning wrapper of the underlying buffer
+  //~ *buffer = tiledb_buffer_handle_t::make_handle(b->data(), b->size());
 
-  return TILEDB_OK;
-}
+  //~ return TILEDB_OK;
+//~ }
 
-int32_t tiledb_buffer_list_get_total_size(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t* total_size) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer_list) == TILEDB_ERR)
-    return TILEDB_ERR;
+//~ int32_t tiledb_buffer_list_get_total_size(
+    //~ tiledb_ctx_t* ctx,
+    //~ const tiledb_buffer_list_t* buffer_list,
+    //~ uint64_t* total_size) {
+  //~ // Sanity check
+  //~ if (sanity_check(ctx) == TILEDB_ERR ||
+      //~ sanity_check(ctx, buffer_list) == TILEDB_ERR)
+    //~ return TILEDB_ERR;
 
-  *total_size = buffer_list->buffer_list_->total_size();
+  //~ *total_size = buffer_list->buffer_list_->total_size();
 
-  return TILEDB_OK;
-}
+  //~ return TILEDB_OK;
+//~ }
 
-int32_t tiledb_buffer_list_flatten(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    tiledb_buffer_t** buffer) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer_list) == TILEDB_ERR)
-    return TILEDB_ERR;
+//~ int32_t tiledb_buffer_list_flatten(
+    //~ tiledb_ctx_t* ctx,
+    //~ const tiledb_buffer_list_t* buffer_list,
+    //~ tiledb_buffer_t** buffer) {
+  //~ // Sanity check
+  //~ if (sanity_check(ctx) == TILEDB_ERR ||
+      //~ sanity_check(ctx, buffer_list) == TILEDB_ERR)
+    //~ return TILEDB_ERR;
 
-  // Create a buffer instance
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  //~ // Create a buffer instance
+  //~ auto buf = tiledb_buffer_handle_t::make_handle();
 
-  // Resize the dest buffer
-  const auto nbytes = buffer_list->buffer_list_->total_size();
-  auto st = buf->buffer().realloc(nbytes);
-  if(!st.ok()) {
-    tiledb_buffer_handle_t::break_handle(buf);
-    throw StatusException(st);
-  }
+  //~ // Resize the dest buffer
+  //~ const auto nbytes = buffer_list->buffer_list_->total_size();
+  //~ auto st = buf->buffer().realloc(nbytes);
+  //~ if(!st.ok()) {
+    //~ tiledb_buffer_handle_t::break_handle(buf);
+    //~ throw StatusException(st);
+  //~ }
 
-  // Read all into the dest buffer
-  buffer_list->buffer_list_->reset_offset();
-  st = buffer_list->buffer_list_->read(buf->buffer().data(), nbytes);
-  if(!st.ok()) {
-    tiledb_buffer_handle_t::break_handle(buf);
-    throw StatusException(st);
-  }
+  //~ // Read all into the dest buffer
+  //~ buffer_list->buffer_list_->reset_offset();
+  //~ st = buffer_list->buffer_list_->read(buf->buffer().data(), nbytes);
+  //~ if(!st.ok()) {
+    //~ tiledb_buffer_handle_t::break_handle(buf);
+    //~ throw StatusException(st);
+  //~ }
 
-  // Set the result size
-  buf->buffer().set_size(nbytes);
+  //~ // Set the result size
+  //~ buf->buffer().set_size(nbytes);
 
-  *buffer = buf;
+  //~ *buffer = buf;
 
-  return TILEDB_OK;
-}
+  //~ return TILEDB_OK;
+//~ }
+#endif
 
 /* ********************************* */
 /*            ATTRIBUTE              */
@@ -4898,8 +4901,7 @@ int32_t tiledb_serialize_query(
     return TILEDB_ERR;
 
   // Allocate a buffer list
-  if (api::tiledb_buffer_list_alloc(ctx, buffer_list) != TILEDB_OK ||
-      sanity_check(ctx, *buffer_list) == TILEDB_ERR)
+  if (tiledb_buffer_list_alloc(ctx, buffer_list) != TILEDB_OK)
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
@@ -4908,8 +4910,8 @@ int32_t tiledb_serialize_query(
               query->query_,
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
-              (*buffer_list)->buffer_list_))) {
-    api::tiledb_buffer_list_free(buffer_list);
+              &(*buffer_list)->buffer_list()))) {
+    tiledb_buffer_list_free(buffer_list);
     return TILEDB_ERR;
   }
 
@@ -6310,51 +6312,53 @@ void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev) noexcept {
   *rev = tiledb::sm::constants::library_version[2];
 }
 
-/* ********************************* */
-/*            BUFFER LIST            */
-/* ********************************* */
+#if 0
+//~ /* ********************************* */
+//~ /*            BUFFER LIST            */
+//~ /* ********************************* */
 
-int32_t tiledb_buffer_list_alloc(
-    tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) noexcept {
-  return api_entry<tiledb::api::tiledb_buffer_list_alloc>(ctx, buffer_list);
-}
+//~ int32_t tiledb_buffer_list_alloc(
+    //~ tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) noexcept {
+  //~ return api_entry<tiledb::api::tiledb_buffer_list_alloc>(ctx, buffer_list);
+//~ }
 
-void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list) noexcept {
-  return api_entry_void<tiledb::api::tiledb_buffer_list_free>(buffer_list);
-}
+//~ void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list) noexcept {
+  //~ return api_entry_void<tiledb::api::tiledb_buffer_list_free>(buffer_list);
+//~ }
 
-int32_t tiledb_buffer_list_get_num_buffers(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t* num_buffers) noexcept {
-  return api_entry<tiledb::api::tiledb_buffer_list_get_num_buffers>(
-      ctx, buffer_list, num_buffers);
-}
+//~ int32_t tiledb_buffer_list_get_num_buffers(
+    //~ tiledb_ctx_t* ctx,
+    //~ const tiledb_buffer_list_t* buffer_list,
+    //~ uint64_t* num_buffers) noexcept {
+  //~ return api_entry<tiledb::api::tiledb_buffer_list_get_num_buffers>(
+      //~ ctx, buffer_list, num_buffers);
+//~ }
 
-int32_t tiledb_buffer_list_get_buffer(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t buffer_idx,
-    tiledb_buffer_t** buffer) noexcept {
-  return api_entry<tiledb::api::tiledb_buffer_list_get_buffer>(
-      ctx, buffer_list, buffer_idx, buffer);
-}
+//~ int32_t tiledb_buffer_list_get_buffer(
+    //~ tiledb_ctx_t* ctx,
+    //~ const tiledb_buffer_list_t* buffer_list,
+    //~ uint64_t buffer_idx,
+    //~ tiledb_buffer_t** buffer) noexcept {
+  //~ return api_entry<tiledb::api::tiledb_buffer_list_get_buffer>(
+      //~ ctx, buffer_list, buffer_idx, buffer);
+//~ }
 
-int32_t tiledb_buffer_list_get_total_size(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t* total_size) noexcept {
-  return api_entry<tiledb::api::tiledb_buffer_list_get_total_size>(
-      ctx, buffer_list, total_size);
-}
+//~ int32_t tiledb_buffer_list_get_total_size(
+    //~ tiledb_ctx_t* ctx,
+    //~ const tiledb_buffer_list_t* buffer_list,
+    //~ uint64_t* total_size) noexcept {
+  //~ return api_entry<tiledb::api::tiledb_buffer_list_get_total_size>(
+      //~ ctx, buffer_list, total_size);
+//~ }
 
-int32_t tiledb_buffer_list_flatten(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    tiledb_buffer_t** buffer) noexcept {
-  return api_entry<tiledb::api::tiledb_buffer_list_flatten>(
-      ctx, buffer_list, buffer);
-}
+//~ int32_t tiledb_buffer_list_flatten(
+    //~ tiledb_ctx_t* ctx,
+    //~ const tiledb_buffer_list_t* buffer_list,
+    //~ tiledb_buffer_t** buffer) noexcept {
+  //~ return api_entry<tiledb::api::tiledb_buffer_list_flatten>(
+      //~ ctx, buffer_list, buffer);
+//~ }
+#endif
 
 /* ********************************* */
 /*            ATTRIBUTE              */

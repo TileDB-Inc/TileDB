@@ -56,6 +56,7 @@
  * API sections
  */
 #include "tiledb/api/c_api/buffer/buffer_api_external.h"
+#include "tiledb/api/c_api/buffer_list/buffer_list_api_external.h"
 #include "tiledb/api/c_api/config/config_api_external.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/api/c_api/datatype/datatype_api_external.h"
@@ -329,8 +330,8 @@ typedef struct tiledb_array_t tiledb_array_t;
 /** A subarray object. */
 typedef struct tiledb_subarray_t tiledb_subarray_t;
 
-/** A generic buffer list object. */
-typedef struct tiledb_buffer_list_t tiledb_buffer_list_t;
+// /** A generic buffer list object. */
+// typedef struct tiledb_buffer_list_t tiledb_buffer_list_t;
 
 /** A TileDB attribute. */
 typedef struct tiledb_attribute_t tiledb_attribute_t;
@@ -362,150 +363,152 @@ typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 /** A consolidation plan object. */
 typedef struct tiledb_consolidation_plan_t tiledb_consolidation_plan_t;
 
-/* ********************************* */
-/*            BUFFER LIST            */
-/* ********************************* */
+#if 0
+//~ /* ********************************* */
+//~ /*            BUFFER LIST            */
+//~ /* ********************************* */
 
-/**
- * Creates an empty buffer list object.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_list_t* buffer_list;
- * tiledb_buffer_list_alloc(ctx, &buffer_list);
- * @endcode
- *
- * @param ctx TileDB context
- * @param buffer_list The buffer list to be created
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_list_alloc(
-    tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) TILEDB_NOEXCEPT;
+//~ /**
+ //~ * Creates an empty buffer list object.
+ //~ *
+ //~ * **Example:**
+ //~ *
+ //~ * @code{.c}
+ //~ * tiledb_buffer_list_t* buffer_list;
+ //~ * tiledb_buffer_list_alloc(ctx, &buffer_list);
+ //~ * @endcode
+ //~ *
+ //~ * @param ctx TileDB context
+ //~ * @param buffer_list The buffer list to be created
+ //~ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ //~ */
+//~ TILEDB_EXPORT int32_t tiledb_buffer_list_alloc(
+    //~ tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) TILEDB_NOEXCEPT;
 
-/**
- * Destroys a TileDB buffer list, freeing associated memory.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_t* buffer_list;
- * tiledb_buffer_list_alloc(ctx, &buffer_list);
- * tiledb_buffer_list_free(&buffer_list);
- * @endcode
- *
- * @param buffer_list The buffer list to be destroyed.
- */
-TILEDB_EXPORT void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list)
-    TILEDB_NOEXCEPT;
+//~ /**
+ //~ * Destroys a TileDB buffer list, freeing associated memory.
+ //~ *
+ //~ * **Example:**
+ //~ *
+ //~ * @code{.c}
+ //~ * tiledb_buffer_t* buffer_list;
+ //~ * tiledb_buffer_list_alloc(ctx, &buffer_list);
+ //~ * tiledb_buffer_list_free(&buffer_list);
+ //~ * @endcode
+ //~ *
+ //~ * @param buffer_list The buffer list to be destroyed.
+ //~ */
+//~ TILEDB_EXPORT void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list)
+    //~ TILEDB_NOEXCEPT;
 
-/**
- * Gets the number of buffers in the buffer list.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_list_t* buffer_list;
- * tiledb_buffer_list_alloc(ctx, &buffer_list);
- * uint64_t num_buffers;
- * tiledb_buffer_list_get_num_buffers(ctx, buffer_list, &num_buffers);
- * // num_buffers == 0 because the list is empty.
- * @endcode
- *
- * @param ctx TileDB context.
- * @param buffer_list The buffer list.
- * @param num_buffers Set to the number of buffers in the buffer list.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_list_get_num_buffers(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t* num_buffers) TILEDB_NOEXCEPT;
+//~ /**
+ //~ * Gets the number of buffers in the buffer list.
+ //~ *
+ //~ * **Example:**
+ //~ *
+ //~ * @code{.c}
+ //~ * tiledb_buffer_list_t* buffer_list;
+ //~ * tiledb_buffer_list_alloc(ctx, &buffer_list);
+ //~ * uint64_t num_buffers;
+ //~ * tiledb_buffer_list_get_num_buffers(ctx, buffer_list, &num_buffers);
+ //~ * // num_buffers == 0 because the list is empty.
+ //~ * @endcode
+ //~ *
+ //~ * @param ctx TileDB context.
+ //~ * @param buffer_list The buffer list.
+ //~ * @param num_buffers Set to the number of buffers in the buffer list.
+ //~ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ //~ */
+//~ TILEDB_EXPORT int32_t tiledb_buffer_list_get_num_buffers(
+    //~ tiledb_ctx_t* ctx,
+    //~ const tiledb_buffer_list_t* buffer_list,
+    //~ uint64_t* num_buffers) TILEDB_NOEXCEPT;
 
-/**
- * Gets the buffer at the given index in the buffer list. The returned buffer
- * object is simply a pointer to memory managed by the underlying buffer
- * list, meaning this function does not perform a copy.
- *
- * It is the caller's responsibility to free the returned buffer with
- * `tiledb_buffer_free`. Since the returned buffer object does not "own" the
- * underlying allocation, the underlying allocation is not freed when freeing it
- * with `tiledb_buffer_free`.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_list_t* buffer_list;
- * // Create and populate the buffer_list
- *
- * // Get the buffer at index 0.
- * tiledb_buffer_t *buff0;
- * tiledb_buffer_list_get_buffer(ctx, buffer_list, 0, &buff0);
- *
- * // Always free the returned buffer object
- * tiledb_buffer_free(&buff0);
- * tiledb_buffer_list_free(&buffer_list);
- * @endcode
- *
- * @param ctx TileDB context.
- * @param buffer_list The buffer list.
- * @param buffer_idx Index of buffer to get from the buffer list.
- * @param buffer Set to a newly allocated buffer object pointing to the
- *    underlying allocation in the buffer list corresponding to the buffer.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_list_get_buffer(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t buffer_idx,
-    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
+//~ /**
+ //~ * Gets the buffer at the given index in the buffer list. The returned buffer
+ //~ * object is simply a pointer to memory managed by the underlying buffer
+ //~ * list, meaning this function does not perform a copy.
+ //~ *
+ //~ * It is the caller's responsibility to free the returned buffer with
+ //~ * `tiledb_buffer_free`. Since the returned buffer object does not "own" the
+ //~ * underlying allocation, the underlying allocation is not freed when freeing it
+ //~ * with `tiledb_buffer_free`.
+ //~ *
+ //~ * **Example:**
+ //~ *
+ //~ * @code{.c}
+ //~ * tiledb_buffer_list_t* buffer_list;
+ //~ * // Create and populate the buffer_list
+ //~ *
+ //~ * // Get the buffer at index 0.
+ //~ * tiledb_buffer_t *buff0;
+ //~ * tiledb_buffer_list_get_buffer(ctx, buffer_list, 0, &buff0);
+ //~ *
+ //~ * // Always free the returned buffer object
+ //~ * tiledb_buffer_free(&buff0);
+ //~ * tiledb_buffer_list_free(&buffer_list);
+ //~ * @endcode
+ //~ *
+ //~ * @param ctx TileDB context.
+ //~ * @param buffer_list The buffer list.
+ //~ * @param buffer_idx Index of buffer to get from the buffer list.
+ //~ * @param buffer Set to a newly allocated buffer object pointing to the
+ //~ *    underlying allocation in the buffer list corresponding to the buffer.
+ //~ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ //~ */
+//~ TILEDB_EXPORT int32_t tiledb_buffer_list_get_buffer(
+    //~ tiledb_ctx_t* ctx,
+    //~ const tiledb_buffer_list_t* buffer_list,
+    //~ uint64_t buffer_idx,
+    //~ tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
-/**
- * Gets the total number of bytes in the buffers in the buffer list.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_list_t* buffer_list;
- * tiledb_buffer_list_alloc(ctx, &buffer_list);
- * uint64_t total_size;
- * tiledb_buffer_list_get_total_size(ctx, buffer_list, &total_size);
- * // total_size == 0 because the list is empty.
- * @endcode
- *
- * @param ctx TileDB context.
- * @param buffer_list The buffer list.
- * @param total_size Set to the total number of bytes in the buffers in the
- *    buffer list.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_list_get_total_size(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t* total_size) TILEDB_NOEXCEPT;
+//~ /**
+ //~ * Gets the total number of bytes in the buffers in the buffer list.
+ //~ *
+ //~ * **Example:**
+ //~ *
+ //~ * @code{.c}
+ //~ * tiledb_buffer_list_t* buffer_list;
+ //~ * tiledb_buffer_list_alloc(ctx, &buffer_list);
+ //~ * uint64_t total_size;
+ //~ * tiledb_buffer_list_get_total_size(ctx, buffer_list, &total_size);
+ //~ * // total_size == 0 because the list is empty.
+ //~ * @endcode
+ //~ *
+ //~ * @param ctx TileDB context.
+ //~ * @param buffer_list The buffer list.
+ //~ * @param total_size Set to the total number of bytes in the buffers in the
+ //~ *    buffer list.
+ //~ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ //~ */
+//~ TILEDB_EXPORT int32_t tiledb_buffer_list_get_total_size(
+    //~ tiledb_ctx_t* ctx,
+    //~ const tiledb_buffer_list_t* buffer_list,
+    //~ uint64_t* total_size) TILEDB_NOEXCEPT;
 
-/**
- * Copies and concatenates all the data in the buffer list into a new buffer.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_t* buff;
- * tiledb_buffer_list_flatten(ctx, buffer_list, &buff);
- * // ...
- * tiledb_buffer_free(&buff);
- * @endcode
- *
- * @param ctx TileDB context.
- * @param buffer_list The buffer list.
- * @param buffer Will be set to a newly allocated buffer holding a copy of the
- *    concatenated data from the buffer list.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_list_flatten(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
+//~ /**
+ //~ * Copies and concatenates all the data in the buffer list into a new buffer.
+ //~ *
+ //~ * **Example:**
+ //~ *
+ //~ * @code{.c}
+ //~ * tiledb_buffer_t* buff;
+ //~ * tiledb_buffer_list_flatten(ctx, buffer_list, &buff);
+ //~ * // ...
+ //~ * tiledb_buffer_free(&buff);
+ //~ * @endcode
+ //~ *
+ //~ * @param ctx TileDB context.
+ //~ * @param buffer_list The buffer list.
+ //~ * @param buffer Will be set to a newly allocated buffer holding a copy of the
+ //~ *    concatenated data from the buffer list.
+ //~ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ //~ */
+//~ TILEDB_EXPORT int32_t tiledb_buffer_list_flatten(
+    //~ tiledb_ctx_t* ctx,
+    //~ const tiledb_buffer_list_t* buffer_list,
+    //~ tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
+#endif
 
 /* ********************************* */
 /*            ATTRIBUTE              */

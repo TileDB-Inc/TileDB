@@ -52,7 +52,7 @@ Status BufferList::add_buffer(Buffer&& buffer) {
   return Status::Ok();
 }
 
-Status BufferList::get_buffer(uint64_t index, Buffer** buffer) {
+Status BufferList::get_buffer(uint64_t index, const Buffer** buffer) const {
   if (index >= buffers_.size())
     return LOG_STATUS(Status_BufferError(
         "Cannot get buffer " + std::to_string(index) +
