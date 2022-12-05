@@ -39,6 +39,7 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/curl/curl_init.h"
 #include "tiledb/sm/misc/constants.h"
 #include "uri.h"
 
@@ -450,6 +451,13 @@ class Azure {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /**
+   * A libcurl initializer instance. This should remain
+   * the first member variable to ensure that libcurl is
+   * initialized before any calls that may require it.
+   */
+  tiledb::sm::curl::LibCurlInitializer curl_inited_;
 
   /** The VFS thread pool. */
   ThreadPool* thread_pool_;
