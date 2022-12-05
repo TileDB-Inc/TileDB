@@ -3275,6 +3275,12 @@ void DenseArrayFx::set_small_memory_budget() {
       tiledb_config_set(config, "sm.memory_budget", "10", &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
+  REQUIRE(
+      tiledb_config_set(
+          config, "sm.skip_unary_partitioning_budget_check", "true", &error) ==
+      TILEDB_OK);
+  REQUIRE(error == nullptr);
+
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
