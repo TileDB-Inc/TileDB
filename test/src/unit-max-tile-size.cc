@@ -422,7 +422,7 @@ TEST_CASE_METHOD(
     "[capi][cppapi][max-tile-size][dense][consolidate]") {
   remove_temp_dir(main_array_name_.c_str());
 
-  uint64_t capi_max = 0; // init to avoid msvc warning as error miss inside CHECK()
+  uint64_t capi_max;
   uint64_t cppapi_max;
 
   // Create array
@@ -476,7 +476,9 @@ TEST_CASE_METHOD(
   // Vacuum.
   tiledb::Array::vacuum(ctx_, main_array_name_);
 
-  CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 4 * sizeof(int32_t));
+  CHECK(
+      c_get_fragments_max_in_memory_tile_size(main_array_name_) ==
+      4 * sizeof(int32_t));
 }
 
 TEST_CASE_METHOD(
@@ -485,8 +487,7 @@ TEST_CASE_METHOD(
     "[capi][max-tile-size][sparse][var-dimension]") {
   remove_temp_dir(main_array_name_);
 
-  // Init to avoid msvc warning as error miss inside CHECK().
-  uint64_t capi_max = 0;  
+  uint64_t capi_max;  
   uint64_t cppapi_max;
   create_sparse_array_var_dim_int32_attr();
   write_sparse_array_var_dim_int32_attr(1);
@@ -508,8 +509,8 @@ TEST_CASE_METHOD(
   capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(main_array_name_);
 
-  // Now '24' after consolidate(), data tiles pick up extra
-  // overhead to support time traveling.
+  // Now '24' after consolidate(), data tiles pick up extra overhead to support 
+  // time traveling.
   CHECK(capi_max == 24);
   CHECK(cppapi_max == capi_max);
 
@@ -533,8 +534,8 @@ TEST_CASE_METHOD(
   CHECK(capi_max == 56);
   CHECK(cppapi_max == capi_max);
 
-  // Sparse/dense vacuum/consolidate semantics differ, sparse retains 
-  //  any old data and time travel overhead.
+  // Sparse/dense vacuum/consolidate semantics differ, 
+  // sparse retains any old data and time travel overhead.
   // Vacuum.
   tiledb::Array::vacuum(ctx_, main_array_name_);
   capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
@@ -610,15 +611,13 @@ TEST_CASE_METHOD(
     // Earlier fragment should still have dominant value of 257.
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 257);
 
-    // Now want to consolidate, but not vacuum, max
-    // should still be 257.
+    // Now want to consolidate, but not vacuum, max should still be 257.
     tiledb::Array::consolidate(ctx_, main_array_name_);
     // After consolidation, old fragment should still be there with 257.
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 257);
 
-    // Sparse/dense vacuum/consolidate semantics differ, 
-    //  vacuum dense eliminates old data
-    // Vacuum, now max should become 42.
+    // Sparse/dense vacuum/consolidate semantics differ, vacuum dense eliminates
+    // old data.  After Vacuum, max should now be 42.
     tiledb::Array::vacuum(ctx_, main_array_name_);
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 42);
   }
@@ -630,20 +629,11 @@ TEST_CASE_METHOD(
     "[capi][max-tile-size][sparse][evolve]") {
   remove_temp_dir(main_array_name_);
 
-  create_sparse_array_d1_var_a1_string(
-      true     // bool is_nullable
-  );
+  create_sparse_array_d1_var_a1_string(true);
 
   std::string basic_key_data{"abcdefghijklmnopqrstuvwxyz"};
 
-  write_sparse_array_d1_var_a1_string(
-      basic_key_data,  // dim_data - expecting single-char values, one for each
-                       // row.
-      {0},             // std::vector<uint64_t> && dim_offsets,
-      // attr_data - expecting single-char values, one for each
-      // d1 element, may be empty... size to be dim_data.size()-1.
-      ""               // std::string && attr_data,
-  );
+  write_sparse_array_d1_var_a1_string(basic_key_data, {0}, "");
 
 
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
@@ -676,20 +666,11 @@ TEST_CASE_METHOD(
   remove_temp_dir(main_array_name_);
 
   create_dense_array_d1_int_a1_string(
-      {1, 27},           // std::array<dim1_type,2> d1_domain,
-      1,                 // int d1_extents,
-      false,             // bool a1_is_nullable,
-      TILEDB_ROW_MAJOR,  // tiledb_layout_t tile_order,
-      TILEDB_ROW_MAJOR   // tiledb_layout_t cell_order
-  );
+      {1, 27}, 1, false, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 0);
 
   // Zero-len data written at index 1.
-  write_dense_array_d1_int_a1_string(
-      "",     // std::string && attr_data,
-      {0},    // std::vector<uint64_t> && attr_offsets,
-      {1, 1}  // std::vector<int> && subrange
-  );
+  write_dense_array_d1_int_a1_string("", {0}, {1, 1});
 
   // Size of single offset (sizeof(uint64_t)) dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
@@ -737,9 +718,8 @@ TEST_CASE_METHOD(
       "lmnopqrs", {0}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
-  // Still writing 1 item, but now length of variable 
-  // data greater than the 1 offset,
-  // writing len 9 data at idx 1.
+  // Still writing 1 item, but now length of variable data greater than the 1 
+  // offset, writing len 9 data at idx 1.
   write_dense_array_d1_int_a1_string(
       "lmnopqrst", {0}, {1, 1});
 
@@ -782,28 +762,20 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 14);
 
   // 4 items starting @ 1: { "a", "", "", ""}.
-  write_dense_array_d1_int_a1_string(
-      "a",
-      {0, 0, 0, 0},
-      {1, 4});
+  write_dense_array_d1_int_a1_string("a", {0, 0, 0, 0}, {1, 4});
 
   // Earlier item len 14 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 14);
 
   // 4 items starting @ 1: {"A", "B", "", ""}.
-  write_dense_array_d1_int_a1_string(
-      "AB",
-      {0, 1, 1, 1},
-      {1, 4});
+  write_dense_array_d1_int_a1_string("AB", {0, 1, 1, 1}, {1, 4});
 
   // Earlier item len 14 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 14);
 
   //4 items starting @ 3: {"Abc", "Defg", "Hijkl", "nopqr"}.
   write_dense_array_d1_int_a1_string(
-      "AbcDefgHijklmNopqr",
-      {0, 3, 7, 13},
-      {3,6});
+      "AbcDefgHijklmNopqr", {0, 3, 7, 13}, {3, 6});
 
   // Earlier item len 14 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 14);
@@ -818,8 +790,8 @@ TEST_CASE_METHOD(
       {3, 7});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
 
+  // 1 item, 114 bytes @ idx 1.
   write_dense_array_d1_int_a1_string(
-      // 1 item, 114 bytes @ idx 1.
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
       {0}, // offsets
@@ -839,9 +811,7 @@ TEST_CASE_METHOD(
 
   // 4 items, various lengths starting @ 3: {"Abc, "Defg", "Hijklm, "Nopqr"}.
   write_dense_array_d1_int_a1_string(
-      "AbcDefgHijklmNopqr",
-      {0, 3, 7, 13},
-      {3, 6});
+      "AbcDefgHijklmNopqr", {0, 3, 7, 13}, {3, 6});
   // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
 
@@ -859,9 +829,7 @@ TEST_CASE_METHOD(
 
   // 4 items, various lengths starting @ 3: {"Abc, "Defg", "Hijklm, "Nopqr"}.
   write_dense_array_d1_int_a1_string(
-      "AbcDefgHijklmNopqr",
-      {0, 3, 7, 13},
-      {1, 4});
+      "AbcDefgHijklmNopqr", {0, 3, 7, 13}, {1, 4});
 
   // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
@@ -875,14 +843,12 @@ TEST_CASE_METHOD(
   // Vacuum and validate size.
   tiledb::Array::vacuum(ctx_, main_array_name_);
 
-  // Some earlier item(s) len 26 from idx 3..7 now dominates.
+  // Some earlier item(s) len 26 from idx 3..7 now dominate.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
 
   // 5 items, various lengths starting @ 3: {"Abc, "Defg", "Hijklm, "N", "Opqr"}.
   write_dense_array_d1_int_a1_string(
-      "AbcDefgHijklmNOpqr",
-      {0, 3, 7, 13, 14},
-      {3, 7});
+      "AbcDefgHijklmNOpqr", {0, 3, 7, 13, 14}, {3, 7});
 
   // Earlier item(s) len 26 idx 3..7 dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
@@ -907,34 +873,19 @@ TEST_CASE_METHOD(
   remove_temp_dir(main_array_name_);
 
   create_dense_array_d1_int_a1_string(
-      {1, 27},           // std::array<dim1_type,2> d1_domain,
-      1,                 // int d1_extents,
-      true,              // bool a1_is_nullable,
-      TILEDB_ROW_MAJOR,  // tiledb_layout_t tile_order,
-      TILEDB_ROW_MAJOR   // tiledb_layout_t cell_order
-  );
+      {1, 27}, 1, true, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 0);
 
   // Zero-len data written at index 1.
-  write_dense_array_d1_int_a1_string_null(
-      "",     // std::string && attr_data,
-      {0},    // std::vector<uint64_t> && attr_offsets,
-      {1},    // std::vector<uint8_t> && attr_val,
-      {1, 1}  // std::vector<int> && subrange
-  );
+  write_dense_array_d1_int_a1_string_null("", {0}, {1}, {1, 1});
 
   // Size of single offset (sizeof(uint64_t)) dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Attribute is variable non-nullable,
   // So the single offset (uint64_t) of 8 bytes will be max with strings <= 8
-  // bytes writing len 1 data at idx 1.
-  write_dense_array_d1_int_a1_string_null(
-      "l",    // std::string && attr_data,
-      {0},    // std::vector<uint64_t> && attr_offsets,
-      {1},    // std::vector<uint8_t> && attr_val,
-      {1, 1}  // std::vector<int> && subrange
-  );
+  // bytes, writing len 1 data at idx 1.
+  write_dense_array_d1_int_a1_string_null("l", {0}, {1}, {1, 1});
 
   // Size of single offset dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
@@ -974,9 +925,8 @@ TEST_CASE_METHOD(
       "lmnopqrs", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
-  // Still writing 1 item, but now length of variable
-  // data greater than the 1 offset
-  // writing len 9 data at idx 1.
+  // Still writing 1 item, but now length of variable data greater than the 1 
+  // offset, writing len 9 data at idx 1.
   write_dense_array_d1_int_a1_string_null(
       "lmnopqrst", {0}, {1}, {1, 1});
 
@@ -1018,8 +968,7 @@ TEST_CASE_METHOD(
   // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 14);
 
-  // 4 items,
-  // idx 1 "a", idx 2 "", idx 3 "", idx 4 "".
+  // 4 items, starting @ idx 1 {"a", "", "", ""}.
   write_dense_array_d1_int_a1_string_null(
       "a", {0, 0, 0, 0}, {1, 1, 1, 1}, {1, 4});
 
@@ -1053,11 +1002,11 @@ TEST_CASE_METHOD(
       {3, 7});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
 
+  // 1 item, 114 bytes @ idx 1.
   write_dense_array_d1_int_a1_string_null(
-      // 1 item, 114 bytes @ idx 1.
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
-      {0},  // offsets
+      {0},
       {1},
       {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
@@ -1113,12 +1062,9 @@ TEST_CASE_METHOD(
   // Some earlier item(s) len 26 from idx 3..7 now dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
 
-  // 5 items, various lengths, starting @ 3: {"Abc", "Defg", "Hijklm", "N", "Opqr".
+  // 5 items, various lengths, starting @ 3: {"Abc", "Defg", "Hijklm", "N", "Opqr"}.
   write_dense_array_d1_int_a1_string_null(
-      "AbcDefgHijklmNOpqr",
-      {0, 3, 7, 13, 14},
-      {1, 1, 1, 1, 1},
-      {3, 7});
+      "AbcDefgHijklmNOpqr", {0, 3, 7, 13, 14}, {1, 1, 1, 1, 1}, {3, 7});
 
   // Earlier item(s) len 26 idx 3..7 dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
