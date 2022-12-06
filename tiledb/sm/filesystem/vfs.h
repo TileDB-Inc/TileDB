@@ -51,6 +51,9 @@
 #include "tiledb/sm/stats/stats.h"
 #include "uri.h"
 
+// DELETE ME
+#include "tiledb/sm/array/consistency.h"
+
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -81,6 +84,15 @@ class Tile;
 
 enum class Filesystem : uint8_t;
 enum class VFSMode : uint8_t;
+
+struct ThisIsDumb {
+  ThisIsDumb(const char* tag, ConsistencyController* controller) {
+    if(controller != nullptr) {
+      std::cerr << "THIS IS DUMB: " << tag << std::endl;
+      controller->can_lock();
+    }
+  }
+};
 
 /** The VFS configuration parameters. */
 struct VFSParameters {
@@ -157,7 +169,8 @@ class VFS {
   VFS(stats::Stats* parent_stats,
       ThreadPool* compute_tp,
       ThreadPool* io_tp,
-      const Config& config);
+      const Config& config,
+      ConsistencyController* controller = nullptr);
 
   /** Destructor. */
   ~VFS() = default;
@@ -334,7 +347,7 @@ class VFS {
    * @param uris The URIs that are contained in the parent.
    * @return Status
    */
-  Status ls(const URI& parent, std::vector<URI>* uris) const;
+  std::vector<URI> ls(const URI& parent) const;
 
   /**
    * Retrieves all the entries contained in the parent.
@@ -704,17 +717,25 @@ class VFS {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  ThisIsDumb thing1_;
+
 #ifdef HAVE_AZURE
   Azure azure_;
 #endif
+
+  ThisIsDumb thing2_;
 
 #ifdef HAVE_GCS
   GCS gcs_;
 #endif
 
+  ThisIsDumb thing3_;
+
 #ifdef HAVE_S3
   S3 s3_;
 #endif
+
+  ThisIsDumb thing4_;
 
 #ifdef _WIN32
   Win win_;
@@ -722,15 +743,59 @@ class VFS {
   Posix posix_;
 #endif
 
+  ThisIsDumb thing5_;
+
 #ifdef HAVE_HDFS
   tdb_unique_ptr<hdfs::HDFS> hdfs_;
 #endif
 
+  ThisIsDumb thing6_;
+
   /** The class stats. */
   stats::Stats* stats_;
 
+  ThisIsDumb thing7_;
+
   /** The in-memory filesystem which is always supported */
   MemFilesystem memfs_;
+
+  ThisIsDumb thing8_;
+
+  /** The set with the supported filesystems. */
+  std::set<uint32_t> supported_fs_;
+
+  ThisIsDumb thing9_;
+
+  int something_that_takes_space_;
+
+  ThisIsDumb thing9point5_;
+
+  ThisIsDumb thing10_;
+
+  /** Thread pool for compute-bound tasks. */
+  ThreadPool* compute_tp_;
+
+  ThisIsDumb thing11_;
+
+  /** Thread pool for io-bound tasks. */
+  ThreadPool* io_tp_;
+
+  ThisIsDumb thing12_;
+
+  /** Wrapper for tracking and canceling certain tasks on 'thread_pool' */
+  CancelableTasks cancelable_tasks_;
+
+  ThisIsDumb thing13_;
+
+  /** The read-ahead cache. */
+  tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
+
+  ThisIsDumb thing14_;
+
+  /* The VFS configuration parameters. */
+  VFSParameters vfs_params_;
+
+  ThisIsDumb thing15_;
 
   /**
    * Config.
@@ -741,23 +806,6 @@ class VFS {
    **/
   Config config_;
 
-  /** The set with the supported filesystems. */
-  std::set<Filesystem> supported_fs_;
-
-  /** Thread pool for compute-bound tasks. */
-  ThreadPool* compute_tp_;
-
-  /** Thread pool for io-bound tasks. */
-  ThreadPool* io_tp_;
-
-  /** Wrapper for tracking and canceling certain tasks on 'thread_pool' */
-  CancelableTasks cancelable_tasks_;
-
-  /** The read-ahead cache. */
-  tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
-
-  /* The VFS configuration parameters. */
-  VFSParameters vfs_params_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

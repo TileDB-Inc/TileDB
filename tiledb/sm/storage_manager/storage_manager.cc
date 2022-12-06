@@ -1764,8 +1764,7 @@ Status StorageManagerCanonical::object_iter_begin(
   }
 
   // Get all contents of path
-  std::vector<URI> uris;
-  RETURN_NOT_OK(vfs()->ls(path_uri, &uris));
+  auto uris = vfs()->ls(path_uri);
 
   // Create a new object iterator
   *obj_iter = tdb_new(ObjectIter);
@@ -1796,8 +1795,7 @@ Status StorageManagerCanonical::object_iter_begin(
   }
 
   // Get all contents of path
-  std::vector<URI> uris;
-  RETURN_NOT_OK(vfs()->ls(path_uri, &uris));
+  auto uris = vfs()->ls(path_uri);
 
   // Create a new object iterator
   *obj_iter = tdb_new(ObjectIter);
@@ -1848,8 +1846,7 @@ Status StorageManagerCanonical::object_iter_next_postorder(
     uint64_t obj_num;
     do {
       obj_num = obj_iter->objs_.size();
-      std::vector<URI> uris;
-      RETURN_NOT_OK(vfs()->ls(obj_iter->objs_.front(), &uris));
+      auto uris = vfs()->ls(obj_iter->objs_.front());
       obj_iter->expanded_.front() = true;
 
       // Push the new TileDB objects in the front of the iterator's list
@@ -1895,8 +1892,7 @@ Status StorageManagerCanonical::object_iter_next_preorder(
     return Status::Ok();
 
   // Get all contents of the next URI
-  std::vector<URI> uris;
-  RETURN_NOT_OK(vfs()->ls(front_uri, &uris));
+  auto uris = vfs()->ls(front_uri);
 
   // Push the new TileDB objects in the front of the iterator's list
   ObjectType obj_type;

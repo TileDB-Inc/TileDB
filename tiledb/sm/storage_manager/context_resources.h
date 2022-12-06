@@ -39,6 +39,10 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/stats/global_stats.h"
 
+
+// DELETE ME
+#include "tiledb/sm/array/consistency.h"
+
 using namespace tiledb::common;
 
 namespace tiledb::sm {
@@ -63,7 +67,9 @@ class ContextResources {
       const Config& config,
       size_t compute_thread_count,
       size_t io_thread_count,
-      std::string stats_name);
+      std::string stats_name,
+
+      ConsistencyController* controller = nullptr);
 
   DISABLE_COPY_AND_COPY_ASSIGN(ContextResources);
   DISABLE_MOVE_AND_MOVE_ASSIGN(ContextResources);

@@ -61,12 +61,40 @@ VFS::VFS(
     stats::Stats* const parent_stats,
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
-    const Config& config)
-    : stats_(parent_stats->create_child("VFS"))
-    , config_(config)
+    const Config& config,
+    ConsistencyController* controller)
+    : thing1_("1", controller)
+    , thing2_("2", controller)
+    , thing3_("3", controller)
+    , thing4_("4", controller)
+    , thing5_("5", controller)
+    , thing6_("6", controller)
+    , stats_(parent_stats->create_child("VFS"))
+    , thing7_("7", controller)
+    , thing8_("8", controller)
+    , thing9_("9", controller)
+    , something_that_takes_space_(0)
+    , thing9point5_("9.5", controller)
+    , thing10_("10", controller)
     , compute_tp_(compute_tp)
+    , thing11_("11", controller)
     , io_tp_(io_tp)
-    , vfs_params_(VFSParameters(config)) {
+    , thing12_("12", controller)
+    , thing13_("13", controller)
+    , thing14_("14", controller)
+    , vfs_params_(VFSParameters(config))
+    , thing15_("15", controller)
+    , config_(config) {
+
+  if(controller != nullptr) {
+    std::cerr << "VFS constructor start" << std::endl;
+    controller->can_lock();
+  }
+
+  std::cerr << "VFS::config_ " << &config_ << std::endl;
+
+  something_that_takes_space_ *= 2;
+
   Status st;
   assert(compute_tp);
   assert(io_tp);
@@ -76,7 +104,7 @@ VFS::VFS(
       tdb_new(ReadAheadCache, vfs_params_.read_ahead_cache_size_));
 
 #ifdef HAVE_HDFS
-  supported_fs_.insert(Filesystem::HDFS);
+  //supported_fs_.insert(static_cast<uint8_t>(Filesystem::HDFS);
   hdfs_ = tdb_unique_ptr<hdfs::HDFS>(tdb_new(hdfs::HDFS));
   st = hdfs_->init(config_);
   if (!st.ok()) {
@@ -85,7 +113,7 @@ VFS::VFS(
 #endif
 
 #ifdef HAVE_S3
-  supported_fs_.insert(Filesystem::S3);
+  //supported_fs_.insert(static_cast<uint8_t>(Filesystem::S3);
   st = s3_.init(stats_, config_, io_tp_);
   if (!st.ok()) {
     throw std::runtime_error("[VFS::VFS] Failed to initialize S3 backend.");
@@ -93,7 +121,7 @@ VFS::VFS(
 #endif
 
 #ifdef HAVE_AZURE
-  supported_fs_.insert(Filesystem::AZURE);
+  //supported_fs_.insert(static_cast<uint8_t>(Filesystem::AZURE));
   st = azure_.init(config_, io_tp_);
   if (!st.ok()) {
     throw std::runtime_error("[VFS::VFS] Failed to initialize Azure backend.");
@@ -101,7 +129,7 @@ VFS::VFS(
 #endif
 
 #ifdef HAVE_GCS
-  supported_fs_.insert(Filesystem::GCS);
+  //supported_fs_.insert(static_cast<uint8_t>(Filesystem::GCS);
   st = gcs_.init(config_, io_tp_);
   if (!st.ok()) {
     // We should print some warning here, LOG_STATUS only prints in
@@ -120,7 +148,7 @@ VFS::VFS(
   throw_if_not_ok(posix_.init(config_, io_tp_));
 #endif
 
-  supported_fs_.insert(Filesystem::MEMFS);
+  //supported_fs_.insert(static_cast<uint8_t>(Filesystem::MEMFS));
 }
 
 /* ********************************* */
@@ -729,16 +757,20 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
       Status_VFSError("Unsupported URI scheme: " + uri.to_string()));
 }
 
-Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
+std::vector<URI> VFS::ls(const URI& parent) const {
   stats_->add_counter("ls_num", 1);
   auto&& [st, entries] = ls_with_sizes(parent);
-  RETURN_NOT_OK(st);
+  throw_if_not_ok(st);
+
+  std::vector<URI> ret;
 
   for (auto& fs : *entries) {
-    uris->emplace_back(fs.path().native());
+    auto tmp = std::string(fs.path().native().c_str());
+    auto tmp_uri = URI(tmp);
+    ret.push_back(tmp_uri);
   }
 
-  return Status::Ok();
+  return ret;
 }
 
 tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
@@ -1476,8 +1508,9 @@ Status VFS::compute_read_batches(
   return Status::Ok();
 }
 
-bool VFS::supports_fs(Filesystem fs) const {
-  return (supported_fs_.find(fs) != supported_fs_.end());
+bool VFS::supports_fs(Filesystem) const {
+  //return (supported_fs_.find(static_cast<uint8_t>(fs)) != supported_fs_.end());
+  return true;
 }
 
 bool VFS::supports_uri_scheme(const URI& uri) const {

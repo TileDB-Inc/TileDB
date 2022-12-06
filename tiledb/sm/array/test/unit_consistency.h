@@ -67,6 +67,7 @@ class WhiteboxConsistencyController : public ConsistencyController {
 
   entry_type register_array(
       const URI uri, Array& array, const QueryType query_type) {
+    std::cerr << "WHITEBOX REGISTER ARRAY" << std::endl;
     return ConsistencyController::register_array(uri, array, query_type);
   }
 
@@ -111,20 +112,36 @@ class WhiteboxConsistencyController : public ConsistencyController {
     EncryptionKey key;
     throw_if_not_ok(key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
+    std::cerr << "This: " << this << std::endl;
+
+    bool tmp_is_dir = false;
+    Status tmp_st = sm->is_dir(uri, &tmp_is_dir);
+    if (!tmp_st.ok()) {
+      LOG_STATUS_NO_RETURN_VALUE(tmp_st);
+    } else {
+      std::cerr << "Is dir? " << tmp_is_dir << std::endl;
+    }
+
     // Create the (empty) array on disk.
     Status st = sm->array_create(uri, schema, key);
     if (!st.ok()) {
+      LOG_STATUS_NO_RETURN_VALUE(st);
       throw std::runtime_error(
           "[WhiteboxConsistencyController] Could not create array.");
     }
+    std::cerr << "ARRAY CREATED, returning new array thing? " << std::endl;
     tdb_unique_ptr<Array> array(new Array{uri, sm, *this});
-
+    std::cerr << "MADE FOR A RETURN! " << array.get() << std::endl;
     return array;
   }
 
   tdb_unique_ptr<Array> open_array(const URI uri, StorageManager* sm) {
     // Create array
     tdb_unique_ptr<Array> array{create_array(uri, sm)};
+
+    std::cerr << "opening array thinger again? " << array.get() << std::endl;
+
+    ConsistencyController::can_lock();
 
     // Open the array
     Status st =

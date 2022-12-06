@@ -264,8 +264,10 @@ Status Array::open(
   /* Note: the open status MUST be exception safe. If anything interrupts the
    * opening process, it will throw and the array will be set as closed. */
   try {
+    std::cerr << HERE() << "set_array_open" << std::endl;
     set_array_open(query_type);
 
+    std::cerr << HERE() << "checking allow updates experimental" << std::endl;
     if (query_type == QueryType::UPDATE) {
       bool found = false;
       bool allow_updates = false;
@@ -292,6 +294,7 @@ Status Array::open(
       assert(found);
     }
 
+    std::cerr << HERE() << "encryption stuff" << std::endl;
     if (!encryption_key_from_cfg.empty()) {
       encryption_key = encryption_key_from_cfg.c_str();
       std::string encryption_type_from_cfg;
@@ -319,6 +322,7 @@ Status Array::open(
       }
     }
 
+    std::cerr << HERE() << "remote encryption" << std::endl;
     if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION) {
       throw Status_ArrayError(
           "Cannot open array; encrypted remote arrays are not supported.");
@@ -343,6 +347,7 @@ Status Array::open(
       }
     }
 
+    std::cerr << HERE() << "remote open" << std::endl;
     if (remote_) {
       auto rest_client = storage_manager_->rest_client();
       if (rest_client == nullptr) {
@@ -441,9 +446,13 @@ Status Array::open(
     } else {
       throw Status_ArrayError("Cannot open array; Unsupported query type.");
     }
+
+    std::cerr << HERE() << "done" << std::endl;
   } catch (std::exception& e) {
-    set_array_closed();
-    return LOG_STATUS(Status_ArrayError(e.what()));
+    LOG_STATUS_NO_RETURN_VALUE(Status_ArrayError(e.what()));
+    throw;
+    // set_array_closed();
+    // return LOG_STATUS(Status_ArrayError(e.what()));
   }
 
   is_opening_or_closing_ = false;
@@ -1391,21 +1400,27 @@ Status Array::compute_non_empty_domain() {
 }
 
 void Array::set_array_open(const QueryType& query_type) {
+  std::cerr << HERE() << " in set_array_open" << std::endl;
   std::lock_guard<std::mutex> lock(mtx_);
+  std::cerr << HERE() << " lock acquired" << std::endl;
   if (is_opening_or_closing_) {
+    std::cerr << HERE() << " already in open or close" << std::endl;
     is_opening_or_closing_ = false;
     throw std::runtime_error(
         "[Array::set_array_open] "
         "May not perform simultaneous open or close operations.");
   }
+  std::cerr << HERE() << " is_opening_or_closing_ = true" << std::endl;
   is_opening_or_closing_ = true;
   /**
    * Note: there is no danger in passing *this here;
    * only the pointer value is used and nothing is called on the Array objects.
    */
+  std::cerr << HERE() << " emplacing the power!" << std::endl;
   consistency_sentry_.emplace(
       consistency_controller_.make_sentry(array_uri_, *this, query_type));
   is_open_ = true;
+  std::cerr << HERE() << " done setting array open" << std::endl;
 }
 
 void Array::set_array_closed() {

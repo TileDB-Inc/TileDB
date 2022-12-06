@@ -202,17 +202,14 @@ bool GroupDirectory::loaded() const {
 
 tuple<Status, optional<std::vector<URI>>> GroupDirectory::list_root_dir_uris() {
   // List the group directory URIs
-  std::vector<URI> group_dir_uris;
-  RETURN_NOT_OK_TUPLE(vfs_->ls(uri_, &group_dir_uris), nullopt);
-
+  auto group_dir_uris = vfs_->ls(uri_);
   return {Status::Ok(), group_dir_uris};
 }
 
 Status GroupDirectory::load_group_meta_uris() {
   // Load the URIs in the group metadata directory
-  std::vector<URI> group_meta_dir_uris;
   auto group_meta_uri = uri_.join_path(constants::group_metadata_dir_name);
-  RETURN_NOT_OK(vfs_->ls(group_meta_uri, &group_meta_dir_uris));
+  auto group_meta_dir_uris = vfs_->ls(group_meta_uri);
 
   // Compute and group metadata URIs and the vacuum file URIs to vacuum.
   auto&& [st1, group_meta_uris_to_vacuum, group_meta_vac_uris_to_vacuum] =
@@ -234,9 +231,8 @@ Status GroupDirectory::load_group_meta_uris() {
 
 Status GroupDirectory::load_group_detail_uris() {
   // Load the URIs in the group details directory
-  std::vector<URI> group_detail_dir_uris;
   auto group_detail_uri = uri_.join_path(constants::group_detail_dir_name);
-  RETURN_NOT_OK(vfs_->ls(group_detail_uri, &group_detail_dir_uris));
+  auto group_detail_dir_uris = vfs_->ls(group_detail_uri);
 
   // Compute and group details URIs and the vacuum file URIs to vacuum.
   auto&& [st1, group_detail_uris_to_vacuum, group_detail_vac_uris_to_vacuum] =

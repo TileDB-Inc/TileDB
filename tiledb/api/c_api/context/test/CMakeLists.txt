@@ -24,20 +24,20 @@
 # THE SOFTWARE.
 #
 
-add_executable(unit_capi_context EXCLUDE_FROM_ALL)
-find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_capi_context PUBLIC Catch2::Catch2WithMain)
-
-# Sources for code under test
-target_link_libraries(unit_capi_context PUBLIC capi_context_stub)
-
-# Sources for tests
-target_sources(unit_capi_context PUBLIC
-    unit_capi_context.cc
-    )
-
-add_test(
-    NAME "unit_capi_context"
-    COMMAND $<TARGET_FILE:unit_capi_context>
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+# add_executable(unit_capi_context EXCLUDE_FROM_ALL)
+# find_package(Catch_EP REQUIRED)
+# target_link_libraries(unit_capi_context PUBLIC Catch2::Catch2WithMain)
+#
+# # Sources for code under test
+# target_link_libraries(unit_capi_context PUBLIC capi_context_stub)
+#
+# # Sources for tests
+# target_sources(unit_capi_context PUBLIC
+#     unit_capi_context.cc
+#     )
+#
+# add_test(
+#     NAME "unit_capi_context"
+#     COMMAND $<TARGET_FILE:unit_capi_context>
+#     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+# )

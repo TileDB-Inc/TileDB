@@ -4400,13 +4400,7 @@ int32_t tiledb_vfs_ls(
   }
 
   // Get children
-  std::vector<tiledb::sm::URI> children;
-  auto st = vfs->vfs_->ls(tiledb::sm::URI(path), &children);
-
-  if (!st.ok()) {
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
+  auto children = vfs->vfs_->ls(tiledb::sm::URI(path));
 
   // Apply the callback to every child
   int rc = 1;

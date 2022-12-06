@@ -419,8 +419,7 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
     URI file5(root.to_string() + "file5/");
     REQUIRE(!vfs.touch(file5).ok());
 
-    std::vector<URI> uris;
-    REQUIRE(vfs.ls(root, &uris).ok());
+    auto uris = vfs.ls(root);
 
     std::vector<std::string> expected_uri_names = {"file1", "file2", "dir1"};
 

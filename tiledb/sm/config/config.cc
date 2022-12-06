@@ -232,6 +232,7 @@ const std::set<std::string> Config::unserialized_params_ = {
 /* ****************************** */
 
 Config::Config() {
+  std::cerr << "Config() " << this << std::endl;
   // Set config values
   param_values_["rest.server_address"] = REST_SERVER_DEFAULT_ADDRESS;
   param_values_["rest.server_serialization_format"] =
@@ -397,7 +398,9 @@ Config::Config() {
   param_values_["filestore.buffer_size"] = FILESTORE_BUFFER_SIZE;
 }
 
-Config::~Config() = default;
+Config::~Config() {
+  std::cerr << "~Config " << this << std::endl;
+}
 
 /* ****************************** */
 /*                API             */

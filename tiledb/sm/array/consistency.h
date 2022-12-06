@@ -86,7 +86,9 @@ class ConsistencyController {
    * no registered arrays.
    * Note: nothing can be registered in the singleton until an array is opened.
    */
-  ConsistencyController() = default;
+  ConsistencyController() {
+    std::cerr << "ConsistencyController Constructing: " << this << std::endl;
+  };
 
   /** Copy Constructor is deleted. */
   ConsistencyController(const ConsistencyController&) = delete;
@@ -101,7 +103,11 @@ class ConsistencyController {
   ConsistencyController& operator=(ConsistencyController&&) = delete;
 
   /** Destructor. */
-  ~ConsistencyController() = default;
+  ~ConsistencyController() {
+    std::cerr << "ConsistencyController Destructing: " << this << std::endl;
+  };
+
+  void can_lock();
 
   /**
    * Register the given Array as open.

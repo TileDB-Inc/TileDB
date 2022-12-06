@@ -43,6 +43,7 @@ ConsistencySentry::ConsistencySentry(
     ConsistencyController& registry, ConsistencyController::entry_type entry)
     : parent_(registry)
     , entry_(entry) {
+    std::cerr << "SENTRY CONSTRUCTOR" << std::endl;
 }
 
 ConsistencySentry::ConsistencySentry(ConsistencySentry&& x)
@@ -59,7 +60,17 @@ ConsistencySentry::~ConsistencySentry() {
 
 ConsistencySentry ConsistencyController::make_sentry(
     const URI uri, Array& array, const QueryType query_type) {
+  std::cerr << "MAKING SENTRY!" << std::endl;
   return ConsistencySentry{*this, register_array(uri, array, query_type)};
+}
+
+void ConsistencyController::can_lock() {
+  if(mtx_.try_lock()) {
+    std::cerr << "can lock" << std::endl;
+    mtx_.unlock();
+  } else {
+    std::cerr << "nope can't lock" << std::endl;
+  }
 }
 
 ConsistencyController::entry_type ConsistencyController::register_array(
@@ -69,7 +80,18 @@ ConsistencyController::entry_type ConsistencyController::register_array(
         "[ConsistencyController::register_array] URI cannot be empty.");
   }
 
+  std::cerr << ">>>>>> REGISTER ARRAY" << std::endl;
+
+  if(mtx_.try_lock()) {
+    std::cerr << "locked mutex test" << std::endl;
+    mtx_.unlock();
+  } else {
+    std::cerr << "Unable to lock mutext" << std::endl;
+  }
+
+  std::cerr << "LOCKING FOR ARRAY REGISTRATION: " << this << std::endl;
   std::lock_guard<std::mutex> lock(mtx_);
+  std::cerr << "LOCK ACQUIRED" << std::endl;
   auto iter = array_registry_.find(uri);
   if (iter != array_registry_.end()) {
     if (query_type == QueryType::MODIFY_EXCLUSIVE) {
@@ -86,11 +108,16 @@ ConsistencyController::entry_type ConsistencyController::register_array(
     }
   }
 
-  return array_registry_.insert({uri, array_entry(array, query_type)});
+  auto ret = array_registry_.insert({uri, array_entry(array, query_type)});
+  std::cerr << "<<<<<<<< REGISTER ALMOST DONE" << std::endl;
+  return ret;
+
+  //return array_registry_.insert({uri, array_entry(array, query_type)});
 }
 
 void ConsistencyController::deregister_array(
     ConsistencyController::entry_type entry) {
+  std::cerr << "locking to deregister" << std::endl;
   std::lock_guard<std::mutex> lock(mtx_);
   array_registry_.erase(entry);
 }

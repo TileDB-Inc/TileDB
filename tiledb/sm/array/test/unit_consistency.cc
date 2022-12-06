@@ -161,16 +161,37 @@ TEST_CASE(
   REQUIRE(x.is_open(uri) == true);
 }
 
+int
+pjd_break() {
+  int i = 0;
+  return i*2;
+}
+
 TEST_CASE(
     "WhiteboxConsistencyController: Single array",
     "[ConsistencyController][array][single]") {
+  std::cerr << "TEST FIRST" << std::endl;
   WhiteboxConsistencyController x;
+  x.can_lock();
+
   const URI uri = URI("whitebox_single_array");
 
   // Create a StorageManager
   Config config;
-  ContextResources resources(config, 1, 1, "");
+
+  std::cerr << "MADE URI AND CONFIG" << std::endl;
+  x.can_lock();
+
+  pjd_break();
+
+  ContextResources resources(config, 1, 1, "", &x);
+  std::cerr << "MADE RESOURCES" << std::endl;
+  x.can_lock();
+
   StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
+
+  std::cerr << "MAD SM TRY LOCK AGAIN" << std::endl;
+  x.can_lock();
 
   // Register array
   tdb_unique_ptr<Array> array = x.open_array(uri, &sm);

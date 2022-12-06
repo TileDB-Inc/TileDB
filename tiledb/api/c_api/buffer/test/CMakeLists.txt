@@ -26,13 +26,13 @@
 
 find_package(Catch_EP REQUIRED)
 
-add_executable(unit_capi_buffer EXCLUDE_FROM_ALL)
-target_sources(unit_capi_buffer PUBLIC unit_capi_buffer.cc)
-target_link_libraries(unit_capi_buffer PUBLIC capi_buffer_stub)
-target_link_libraries(unit_capi_buffer PUBLIC Catch2::Catch2WithMain)
-
-add_test(
-  NAME "unit_capi_buffer"
-  COMMAND $<TARGET_FILE:unit_capi_buffer>
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+# add_executable(unit_capi_buffer EXCLUDE_FROM_ALL)
+# target_sources(unit_capi_buffer PUBLIC unit_capi_buffer.cc)
+# target_link_libraries(unit_capi_buffer PUBLIC capi_buffer_stub)
+# target_link_libraries(unit_capi_buffer PUBLIC Catch2::Catch2WithMain)
+#
+# add_test(
+#   NAME "unit_capi_buffer"
+#   COMMAND $<TARGET_FILE:unit_capi_buffer>
+#   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+# )
