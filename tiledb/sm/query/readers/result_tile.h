@@ -606,7 +606,7 @@ class ResultTile {
       const Layout& cell_order,
       const uint64_t min_cell,
       const uint64_t max_cell) const;
-  
+
   /** Allocate space for the hilbert values vector. */
   inline void allocate_hilbert_vector() {
     hilbert_values_.resize(ResultTile::cell_num());
@@ -622,9 +622,13 @@ class ResultTile {
     hilbert_values_[i] = v;
   }
 
-  inline size_t hilbert_values_size() { return hilbert_values_.size(); }
+  inline size_t hilbert_values_size() {
+    return hilbert_values_.size();
+  }
 
-  std::vector<uint64_t>& hilbert_values() { return hilbert_values_; }
+  const std::vector<uint64_t>& hilbert_values() {
+    return hilbert_values_;
+  }
 
  private:
   /* ********************************* */

@@ -1039,11 +1039,9 @@ void ReaderBase::compute_hilbert_values(const std::vector<ResultTile*>& result_t
       }
       auto rc = ResultCoordsType(tile, 0);
         std::vector<uint64_t> coords(dim_num);
-        std::cout << "hilbert vector size: " << result_tiles[t]->hilbert_values_size() << std::endl;
         result_tiles[t]->allocate_hilbert_vector();
         for (rc.pos_ = 0; rc.pos_ < cell_num; rc.pos_++) {
           // Process only values in bitmap.
-          // TODO: how to do this cleanly without using boost?
            if constexpr (!std::is_same<ResultCoords, ResultCoordsType>::value) {
             if (!tile->has_bmp() || tile->bitmap()[rc.pos_]) {
             // Compute Hilbert number for all dimensions first.
@@ -1488,16 +1486,16 @@ Status ReaderBase::unfilter_tiles(
         var_size, array_schema_.version(), array_schema_.type(name));
   }
 
+  // Compute hilbert values for bitsort filter attribute.
+  if (array_schema_.bitsort_filter_attr().has_value() && array_schema_.bitsort_filter_attr().value() == name && array_schema_.cell_order() == Layout::HILBERT) {
+    compute_hilbert_values<ResultTile, ResultCoords>(result_tiles);
+  }
+
   // The per tile cache is only used in readers where unfiltering
   // was done in parallel on tiles. The new readers parallelize both on
   // tiles and chunk ranges and don't benefit from using a tile cache.
   if (disable_cache_ == true && chunking) {
     return unfilter_tiles_chunk_range(name, result_tiles);
-  }
-
-  // Compute hilbert values for bitsort filter attribute.
-  if (array_schema_.bitsort_filter_attr().has_value() && array_schema_.bitsort_filter_attr().value() == name && array_schema_.cell_order() == Layout::HILBERT) {
-    compute_hilbert_values<ResultTile, ResultCoords>(result_tiles);
   }
 
   auto status = parallel_for(

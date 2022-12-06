@@ -748,10 +748,11 @@ class ReaderBase : public StrategyBase {
    *
    * @return Status.
    */
-  template<typename ResultTileType, typename ResultCoordsType>
-  void compute_hilbert_values(const std::vector<ResultTile*>& result_tiles) const;
-    
-/**
+  template <typename ResultTileType, typename ResultCoordsType>
+  void compute_hilbert_values(
+      const std::vector<ResultTile*>& result_tiles) const;
+
+  /**
    * Cache data to be used by dimension label code.
    *
    * @tparam Index type.

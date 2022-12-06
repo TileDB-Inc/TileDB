@@ -230,8 +230,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
       RETURN_NOT_OK(dedup_tiles_with_timestamps(tmp_result_tiles));
 
       // Compute hilbert values.
-      if (array_schema_.cell_order() == Layout::HILBERT) {
-        std::cout << "compute hilbert values: sparse global order reader\n";
+      if (array_schema_.cell_order() == Layout::HILBERT && !array_schema_.bitsort_filter_attr().has_value()) {
         compute_hilbert_values<GlobalOrderResultTile<BitmapType>, GlobalOrderResultCoords<BitmapType>>(tmp_result_tiles);
       }
 
