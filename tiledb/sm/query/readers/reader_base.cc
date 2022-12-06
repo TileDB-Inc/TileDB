@@ -1495,6 +1495,11 @@ Status ReaderBase::unfilter_tiles(
     return unfilter_tiles_chunk_range(name, result_tiles);
   }
 
+  // Compute hilbert values for bitsort filter attribute.
+  if (array_schema_.bitsort_filter_attr().has_value() && array_schema_.bitsort_filter_attr().value() == name && array_schema_.cell_order() == Layout::HILBERT) {
+    compute_hilbert_values<ResultTile, ResultCoords>(result_tiles);
+  }
+
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, num_tiles, [&, this](uint64_t i) {
         ResultTile* const tile = result_tiles[i];
@@ -2103,30 +2108,6 @@ void ReaderBase::validate_attribute_order(
   }
 }
 
-void ReaderBase::old_calculate_hilbert_values(
-    const DomainBuffersView& domain_buffers,
-    std::vector<uint64_t>& hilbert_values) const {
-  auto dim_num = array_schema_.dim_num();
-  Hilbert h(dim_num);
-  auto bits = h.bits();
-  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
-
-  // Calculate Hilbert values in parallel
-  uint64_t cell_num = hilbert_values.size();
-  throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(), 0, cell_num, [&](uint64_t c) {
-        std::vector<uint64_t> coords(dim_num);
-        for (uint32_t d = 0; d < dim_num; ++d) {
-          auto dim{array_schema_.dimension_ptr(d)};
-          coords[d] = hilbert_order::map_to_uint64(
-              *dim, domain_buffers[d], c, bits, max_bucket_val);
-        }
-        hilbert_values[c] = h.coords_to_hilbert(&coords[0]);
-
-        return Status::Ok();
-      }));
-}
-
 template <
     typename CmpObject,
     typename std::enable_if_t<
@@ -2159,21 +2140,10 @@ BitSortFilterMetadataType ReaderBase::construct_bitsort_filter_argument(
 
   bitsort_storage.db_.emplace(
       DomainBuffersView(array_schema_.domain(), query_buffers));
+  std::function<bool(const uint64_t&, const uint64_t&)>& comparator =
+      bitsort_storage.comparator_;
   if constexpr (std::is_same<CmpObject, HilbertCmpQB>::value) {
-    // std::vector<uint64_t>& hilbert_values = tile->hilbert_values();
-    std::vector<uint64_t> &hilbert_values = bitsort_storage.old_hilbert_values_;
-    hilbert_values.resize(dim_tiles[0]->cell_num());
-    old_calculate_hilbert_values(bitsort_storage.db_.value(), hilbert_values);
-
-    std::cout << "printing old hilbert values.\n";
-    for (uint64_t j = 0; j < dim_tiles[0]->cell_num(); ++j) {
-      std::cout << tile->hilbert_values()[j] << ", " << hilbert_values[j] << std::endl;
-      if (tile->hilbert_values()[j] != hilbert_values[j]) {
-        std::cout << "NOT EQUAL\n";
-      }
-    }
-    std::cout << "\n";
-
+    const std::vector<uint64_t>& hilbert_values = tile->hilbert_values();
     bitsort_storage.cmp_obj_.emplace(HilbertCmpQB(
         array_schema_.domain(), bitsort_storage.db_.value(), hilbert_values));
   } else if constexpr (std::is_same<CmpObject, GlobalCmpQB>::value) {
@@ -2181,12 +2151,10 @@ BitSortFilterMetadataType ReaderBase::construct_bitsort_filter_argument(
         GlobalCmpQB(array_schema_.domain(), bitsort_storage.db_.value()));
   }
 
-  std::function<bool(const uint64_t&, const uint64_t&)>& comparator =
-      bitsort_storage.comparator_;
   CmpObject& cmp_obj = bitsort_storage.cmp_obj_.value();
-  comparator = [&cmp_obj](const uint64_t& left_idx, const uint64_t& right_idx) {
-    return cmp_obj(left_idx, right_idx);
-  };
+    comparator = [&cmp_obj](const uint64_t& left_idx, const uint64_t& right_idx) {
+      return cmp_obj(left_idx, right_idx);
+    };
 
   return bitsort_storage.get_bitsort_filter_metadata_type();
 }
