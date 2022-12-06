@@ -1,9 +1,9 @@
 #
-# tiledb/sm/query/CMakeLists.txt
+# tiledb/sm/filter/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021-2022 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,14 +24,14 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
-add_subdirectory(ast)
-add_subdirectory(deletes_and_updates)
+include(unit_test)
 
-#
-# Note that this `query` directory does not define any object libraries at
-# present. When the code is better structured so that query objects don't
-# require linking the whole library, we'll have object libraries here.
-#
+commence(unit_test filter_create)
+    this_target_object_libraries(all_filters)
+    this_target_sources(main.cc unit_filter_create.cc)
+conclude(unit_test)
 
-add_test_subdirectory()
+commence(unit_test filter_pipeline)
+    this_target_object_libraries(filter_pipeline)
+    this_target_sources(main.cc unit_filter_pipeline.cc)
+conclude(unit_test)

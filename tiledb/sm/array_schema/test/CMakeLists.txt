@@ -1,5 +1,5 @@
 #
-# tiledb/sm/query/CMakeLists.txt
+# tiledb/sm/array_schema/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,14 +24,18 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
-add_subdirectory(ast)
-add_subdirectory(deletes_and_updates)
+include(unit_test)
 
-#
-# Note that this `query` directory does not define any object libraries at
-# present. When the code is better structured so that query objects don't
-# require linking the whole library, we'll have object libraries here.
-#
-
-add_test_subdirectory()
+commence(unit_test array_schema)
+    this_target_object_libraries(array_schema)
+    # should be `this_target_include_directories`, when available
+    target_include_directories(unit_array_schema PUBLIC ${TILEDB_SOURCE_ROOT}/test/support)
+    this_target_sources(
+        main.cc
+        unit_array_schema.cc
+        unit_dimension.cc
+        unit_dimension_label_reference.cc
+        unit_domain_data.cc
+        unit_tile_domain.cc
+    )
+conclude(unit_test)

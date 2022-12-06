@@ -1,5 +1,5 @@
 #
-# tiledb/sm/query/CMakeLists.txt
+# tiledb/common/thread_pool/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,14 +24,13 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
-add_subdirectory(ast)
-add_subdirectory(deletes_and_updates)
+include(unit_test)
 
-#
-# Note that this `query` directory does not define any object libraries at
-# present. When the code is better structured so that query objects don't
-# require linking the whole library, we'll have object libraries here.
-#
-
-add_test_subdirectory()
+commence(unit_test thread_pool)
+    # For legacy reasons, the thread pool unit tests also test the cancelable
+    # task class, whose object library depends upon `thread_pool`. At some point
+    # either the unit test should be split apart or cancelable tasks be made
+    # a part of the thread pool.
+    this_target_object_libraries(cancelable_tasks)
+    this_target_sources(main.cc unit_thread_pool.cc)
+conclude(unit_test)

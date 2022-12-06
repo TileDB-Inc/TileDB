@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021-2022 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,14 +24,17 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
-add_subdirectory(ast)
-add_subdirectory(deletes_and_updates)
+include(unit_test)
 
-#
-# Note that this `query` directory does not define any object libraries at
-# present. When the code is better structured so that query objects don't
-# require linking the whole library, we'll have object libraries here.
-#
+commence(unit_test query)
+    this_target_sources(main.cc unit_validity_vector.cc unit_query_condition.cc)
+    # Not actually testing a unit yet, but some things that ought to be units
+    this_target_link_libraries(TILEDB_CORE_OBJECTS TILEDB_CORE_OBJECTS_ILIB)
+    this_target_link_libraries(ast_test_support_lib)
 
-add_test_subdirectory()
+    # We want tests to continue as normal even as the API is changing,
+    # so don't warn for deprecations, since they'll be escalated to errors.
+    if (NOT MSVC)
+      target_compile_options(unit_query PRIVATE -Wno-deprecated-declarations)
+    endif()
+conclude(unit_test)

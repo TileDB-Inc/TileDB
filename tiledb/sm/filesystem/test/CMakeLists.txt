@@ -1,5 +1,5 @@
 #
-# tiledb/sm/query/CMakeLists.txt
+# tiledb/sm/vfs/CMakeLists.txt
 #
 # The MIT License
 #
@@ -23,15 +23,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+include(unit_test)
 
-include(common NO_POLICY_SCOPE)
-add_subdirectory(ast)
-add_subdirectory(deletes_and_updates)
-
-#
-# Note that this `query` directory does not define any object libraries at
-# present. When the code is better structured so that query objects don't
-# require linking the whole library, we'll have object libraries here.
-#
-
-add_test_subdirectory()
+commence(unit_test vfs)
+    this_target_object_libraries(vfs)
+    this_target_sources(main.cc unit_uri.cc)
+conclude(unit_test)

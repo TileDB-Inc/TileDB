@@ -177,7 +177,7 @@ std::vector<uint8_t> create_image(
 
 // These templates will not be used if built with TILEDB_WEBP=OFF
 template <typename T>
-[[maybe_unused]] static Domain create_domain(
+[[maybe_unused]] Domain create_domain(
     const Context& ctx, uint8_t format) {
   T height = GENERATE(131, 217, 1003);
   T width = GENERATE(103, 277, 1001);

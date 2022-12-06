@@ -235,11 +235,13 @@ if (MSVC)
   # Add /MPn flag from CMake invocation (if defined).
   add_compile_options(${MSVC_MP_FLAG})
   # Build-specific flags
-  add_compile_options(
-                      "$<$<CONFIG:Debug>:/DDEBUG /Od /Zi /bigobj>"
-                      "$<$<CONFIG:Release>:/DNDEBUG /Ox>"
-                      "$<$<CONFIG:RelWithDebInfo>:/DNDEBUG /Ox /Zi>"
-                      )
+  if (CMAKE_BUILD_TYPE MATCHES "Debug")
+    add_compile_options(/DDEBUG /Od /Zi /bigobj)
+  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
+    add_compile_options(/DNDEBUG /Ox)
+  elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+    add_compile_options(/DNDEBUG /Ox /Zi)
+  endif()
 else()
   add_compile_options(-Wall -Wextra)
   if (TILEDB_WERROR)
@@ -428,10 +430,11 @@ enable_testing()
 # Accumulators for object libraries and unit tests
 # -------------------------------------------------------
 #
-# Aggregate all link-completeness targets from object libraries.
+# All link-completeness targets from object libraries are aggregated onto a
+# single target.
 #
 # 1. Before any subdirectories are added:
-#    a) Declare a target for all link-completess checks. It's a phantom target
+#    a) Declare a target for all link-completeness checks. It's a phantom target
 #       having only dependencies and with no build actions of its own.
 #    b) Declare an accumulator for link-completeness targets.
 # 2. For each object library within the various subdirectories, add a
@@ -443,9 +446,19 @@ enable_testing()
 #    a) The list of all targets from the accumulator is added as a dependency
 #       of `all_link_complete`.
 #
-add_custom_target(all_link_complete)
+# All unit tests are similarly aggregated onto the target `all_unit_tests`.
+#
 include(accumulator)
+
+add_custom_target(all_link_complete)
 define_accumulator(object_library_compile_targets)
+
+define_accumulator(unit_test_targets)
+add_custom_target(all_unit_tests)
+
+# -------------------------------------------------------
+# Subdirectories
+# -------------------------------------------------------
 
 # Build the TileDB library experimental features
 add_subdirectory(experimental)
@@ -456,28 +469,35 @@ add_subdirectory(tiledb)
 # Build examples
 add_subdirectory(examples)
 
-# Build unit tests
+# Build tools
+if (TILEDB_TOOLS)
+  add_subdirectory(tools)
+endif()
+
+# -------------------------------------------------------
+# Tests
+# -------------------------------------------------------
 if (TILEDB_TESTS)
   add_subdirectory(test/support)
   add_subdirectory(test)
 
-  # Add cmake target for "tests" to build all unit tests executables
+  # ----------------------------------
+  # All unit test executables from `unit_test` environments are dependencies of
+  # the `unit_tests` phantom target.
+  #
+  retrieve_from(Unit_Tests ACCUMULATOR unit_test_targets)
+  add_dependencies(all_unit_tests ${Unit_Tests})
+
+  # ----------------------------------
+  # Target `tests` build and runs all test executables
   add_custom_target(tests)
+  add_dependencies(tests all_unit_tests)
+
+  # ----------------------------------
+  # Test targets added explicitly
   add_dependencies(tests tiledb_unit)
   add_dependencies(tests tiledb_regression)
   add_dependencies(tests test_assert)
-
-  add_dependencies(tests unit_buffer unit_datum unit_dynamic_memory)
-  add_dependencies(tests unit_exception unit_interval unit_thread_pool unit_experimental)
-  add_dependencies(tests unit_array_schema unit_filter_create unit_filter_pipeline unit_metadata)
-  add_dependencies(tests unit_compressors unit_query unit_misc unit_vfs unit_array)
-  add_dependencies(tests unit_config)
-  add_dependencies(tests unit_range_subset)
-  add_dependencies(tests unit_add_ranges_list)
-  add_dependencies(tests unit_consistency)
-  add_dependencies(tests unit_range)
-  add_dependencies(tests unit_rtree)
-  add_dependencies(tests unit_tile)
 
   # C API support
   add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
@@ -491,10 +511,6 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_capi_query_type)
   # C API array schema
   add_dependencies(tests unit_capi_filter unit_capi_filter_list)
-
-  add_dependencies(tests unit_delete_update_condition)
-  add_dependencies(tests unit_ast)
-  add_dependencies(tests unit_serializers)
 
   if (TILEDB_CRC32)
     add_dependencies(tests unit_link_crc32)
@@ -515,15 +531,10 @@ if (TILEDB_TESTS)
   add_subdirectory(test/regression)
 endif()
 
-# Build tools
-if (TILEDB_TOOLS)
-  add_subdirectory(tools)
-endif()
-
 # -------------------------------------------------------
 #
-# Add all the compile-targets from object library definitions as
-# dependencies of the `all_link_complete` phantom target.
+# All the compile-targets from object library definitions are dependencies of
+# the `all_link_complete` phantom target.
 #
 retrieve_from(Compile_Targets ACCUMULATOR object_library_compile_targets)
 add_dependencies(all_link_complete ${Compile_Targets})
