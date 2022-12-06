@@ -74,6 +74,12 @@ class ContextResources {
   DISABLE_COPY_AND_COPY_ASSIGN(ContextResources);
   DISABLE_MOVE_AND_MOVE_ASSIGN(ContextResources);
 
+  ~ContextResources() {
+    if(vfs_ != nullptr) {
+      tdb_delete(vfs_);
+    }
+  }
+
   /* ********************************* */
   /*                API                */
   /* ********************************* */
@@ -94,7 +100,7 @@ class ContextResources {
   }
 
   [[nodiscard]] inline VFS& vfs() const {
-    return vfs_;
+    return *vfs_;
   }
 
  private:
@@ -115,7 +121,7 @@ class ContextResources {
    * Virtual filesystem handler. It directs queries to the appropriate
    * filesystem backend. Note that this is stateful.
    */
-  mutable VFS vfs_;
+  mutable VFS* vfs_;
 };
 
 }  // namespace tiledb::sm

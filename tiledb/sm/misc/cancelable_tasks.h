@@ -89,14 +89,14 @@ class CancelableTasks {
       const std::function<Status()>& fn,
       const std::function<void()>& on_cancel);
 
-  /** The number of outstanding tasks */
-  uint32_t outstanding_tasks_;
-
   /** Protects `outstanding_tasks_` */
   std::mutex outstanding_tasks_mutex_;
 
   /** For signal-and-waiting on `outstanding_tasks_` */
   std::condition_variable outstanding_tasks_cv_;
+
+  /** The number of outstanding tasks */
+  uint32_t outstanding_tasks_;
 
   /** True when all outstanding tasks should be cancelled */
   bool should_cancel_;

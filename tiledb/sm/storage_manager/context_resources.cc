@@ -52,10 +52,10 @@ ContextResources::ContextResources(
     : compute_tp_(compute_thread_count)
     , io_tp_(io_thread_count)
     , stats_(make_shared<stats::Stats>(HERE(), stats_name))
-    //, vfs_(nullptr) {
-    , vfs_(stats_.get(), &compute_tp_, &io_tp_, config, controller) {
+    , vfs_(nullptr) {
+    //, vfs_(stats_.get(), &compute_tp_, &io_tp_, config, controller) {
 
-  //vfs_ = new VFS(stats_.get(), &compute_tp_, &io_tp_, config);
+  vfs_ = new VFS(stats_.get(), &compute_tp_, &io_tp_, config, controller);
 
   std::cerr << "Config: " << &config << std::endl;
   std::cerr << "comput_tp_: " << &compute_tp_ << std::endl;
