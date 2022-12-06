@@ -329,6 +329,11 @@ list(APPEND TILEDB_C_API_FILENAME_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_experimental.h"
 )
+if (TILEDB_SERIALIZATION)
+  list(APPEND TILEDB_C_API_FILENAME_HEADERS
+      "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_serialization.h"
+  )
+endif()
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer/buffer_api_external.h"
