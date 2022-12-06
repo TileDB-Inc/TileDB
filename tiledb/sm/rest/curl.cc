@@ -761,7 +761,7 @@ Status Curl::post_data_common(
   } else {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
   }
-  logger_->debug("posting {} bytes to", data->total_size());
+  logger_->debug("posting {} bytes", data->total_size());
 
   // Set auth and content-type for request
   *headers = nullptr;

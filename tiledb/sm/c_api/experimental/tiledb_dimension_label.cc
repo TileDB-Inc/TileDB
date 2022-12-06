@@ -27,13 +27,12 @@
  */
 
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
+#include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
-#include "tiledb/sm/c_api/experimental/api_exception_safety.h"
-#include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
+#include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
-#include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/group/group_v1.h"
 #include "tiledb/sm/rest/rest_client.h"
 
@@ -46,24 +45,16 @@ int32_t tiledb_array_schema_add_dimension_label(
     tiledb_array_schema_t* array_schema,
     const uint32_t dim_id,
     const char* name,
-    tiledb_dimension_label_schema_t* dim_label_schema) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array_schema) ||
-      sanity_check(ctx, dim_label_schema)) {
+    tiledb_data_order_t label_order,
+    tiledb_datatype_t label_type) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array_schema)) {
     return TILEDB_ERR;
   }
-  /** Note: The call to make_shared creates a copy of the array schemas and
-   * the user-visible handles no longer refere to the same objects in the
-   *array schema.
-   **/
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          array_schema->array_schema_->add_dimension_label(
-              dim_id,
-              name,
-              make_shared<tiledb::sm::DimensionLabelSchema>(
-                  HERE(), dim_label_schema->dim_label_schema_.get())))) {
-    return TILEDB_ERR;
-  }
+  array_schema->array_schema_->add_dimension_label(
+      dim_id,
+      name,
+      static_cast<tiledb::sm::DataOrder>(label_order),
+      static_cast<tiledb::sm::Datatype>(label_type));
   return TILEDB_OK;
 }
 
@@ -76,57 +67,32 @@ int32_t tiledb_array_schema_has_dimension_label(
   return TILEDB_OK;
 }
 
-int32_t tiledb_dimension_label_schema_alloc(
+int32_t tiledb_array_schema_set_dimension_label_filter_list(
     tiledb_ctx_t* ctx,
-    tiledb_label_order_t label_order,
-    tiledb_datatype_t label_type,
-    tiledb_datatype_t index_type,
-    const void* index_domain,
-    const void* index_tile_extent,
-    tiledb_dimension_label_schema_t** dim_label_schema) {
-  if (sanity_check(ctx) == TILEDB_ERR) {
+    tiledb_array_schema_t* array_schema,
+    const char* label_name,
+    tiledb_filter_list_t* filter_list) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array_schema)) {
     return TILEDB_ERR;
   }
-
-  // Create a dimension label schema struct
-  *dim_label_schema = new (std::nothrow) tiledb_dimension_label_schema_t;
-  if (*dim_label_schema == nullptr) {
-    auto st =
-        Status_Error("Failed to allocate TileDB dimension label schema object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Create a new DimensionLabelSchema object
-  (*dim_label_schema)->dim_label_schema_ =
-      make_shared<tiledb::sm::DimensionLabelSchema>(
-          HERE(),
-          static_cast<tiledb::sm::LabelOrder>(label_order),
-          static_cast<tiledb::sm::Datatype>(label_type),
-          static_cast<tiledb::sm::Datatype>(index_type),
-          index_domain,
-          index_tile_extent);
-  if ((*dim_label_schema)->dim_label_schema_ == nullptr) {
-    delete *dim_label_schema;
-    *dim_label_schema = nullptr;
-    auto st =
-        Status_Error("Failed to allocate TileDB dimension label schema object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Success
+  api::ensure_filter_list_is_valid(filter_list);
+  array_schema->array_schema_->set_dimension_label_filter_pipeline(
+      label_name, filter_list->pipeline());
   return TILEDB_OK;
 }
 
-void tiledb_dimension_label_schema_free(
-    tiledb_dimension_label_schema_t** dim_label_schema) {
-  if (dim_label_schema != nullptr && *dim_label_schema != nullptr) {
-    delete *dim_label_schema;
-    *dim_label_schema = nullptr;
+int32_t tiledb_array_schema_set_dimension_label_tile_extent(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* label_name,
+    tiledb_datatype_t type,
+    const void* tile_extent) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array_schema)) {
+    return TILEDB_ERR;
   }
+  array_schema->array_schema_->set_dimension_label_tile_extent(
+      label_name, static_cast<tiledb::sm::Datatype>(type), tile_extent);
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_set_label_data_buffer(
@@ -240,10 +206,10 @@ int32_t tiledb_array_schema_add_dimension_label(
     tiledb_array_schema_t* array_schema,
     const uint32_t dim_id,
     const char* name,
-    tiledb_dimension_label_schema_t* dim_label_schema) noexcept {
-  return api_entry_with_context<
-      detail::tiledb_array_schema_add_dimension_label>(
-      ctx, array_schema, dim_id, name, dim_label_schema);
+    tiledb_data_order_t label_order,
+    tiledb_datatype_t label_type) noexcept {
+  return api_entry<detail::tiledb_array_schema_add_dimension_label>(
+      ctx, array_schema, dim_id, name, label_order, label_type);
 }
 
 int32_t tiledb_array_schema_has_dimension_label(
@@ -255,28 +221,23 @@ int32_t tiledb_array_schema_has_dimension_label(
       ctx, array_schema, name, has_dim_label);
 }
 
-int32_t tiledb_dimension_label_schema_alloc(
+int32_t tiledb_array_schema_set_dimension_label_filter_list(
     tiledb_ctx_t* ctx,
-    tiledb_label_order_t label_order,
-    tiledb_datatype_t label_type,
-    tiledb_datatype_t index_type,
-    const void* index_domain,
-    const void* index_tile_extent,
-    tiledb_dimension_label_schema_t** dim_label_schema) noexcept {
-  return api_entry_with_context<detail::tiledb_dimension_label_schema_alloc>(
-      ctx,
-      label_order,
-      label_type,
-      index_type,
-      index_domain,
-      index_tile_extent,
-      dim_label_schema);
+    tiledb_array_schema_t* array_schema,
+    const char* label_name,
+    tiledb_filter_list_t* filter_list) noexcept {
+  return api_entry<detail::tiledb_array_schema_set_dimension_label_filter_list>(
+      ctx, array_schema, label_name, filter_list);
 }
 
-void tiledb_dimension_label_schema_free(
-    tiledb_dimension_label_schema_t** dim_label_schema) noexcept {
-  return tiledb::api::api_entry_void<
-      detail::tiledb_dimension_label_schema_free>(dim_label_schema);
+int32_t tiledb_array_schema_set_dimension_label_tile_extent(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* label_name,
+    tiledb_datatype_t type,
+    const void* tile_extent) noexcept {
+  return api_entry<detail::tiledb_array_schema_set_dimension_label_tile_extent>(
+      ctx, array_schema, label_name, type, tile_extent);
 }
 
 int32_t tiledb_query_set_label_data_buffer(

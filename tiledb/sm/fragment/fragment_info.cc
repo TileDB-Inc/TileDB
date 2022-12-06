@@ -890,9 +890,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
         auto meta = fragment_metadata_value[i];
         if (meta->timestamp_range().first >= timestamp_start_ &&
             meta->timestamp_range().second <= timestamp_end_) {
-          uint64_t size;
-          RETURN_NOT_OK(meta->fragment_size(&size));
-          sizes[i] = size;
+          sizes[i] = meta->fragment_size();
         }
 
         if (preload_rtrees & !meta->dense()) {
@@ -1051,8 +1049,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   sparse = !meta->dense();
 
   // Get fragment size
-  uint64_t size;
-  RETURN_NOT_OK_TUPLE(meta->fragment_size(&size), nullopt);
+  uint64_t size = meta->fragment_size();
 
   // Compute expanded non-empty domain only for dense fragments
   // Get non-empty domain, and compute expanded non-empty domain

@@ -29,6 +29,6 @@
 #include "tiledb/sm/filter/webp_filter.h"
 
 int main() {
-  (void)sizeof(tiledb::sm::WebpFilter);
+  tiledb::sm::WebpFilter();
   return 0;
 }

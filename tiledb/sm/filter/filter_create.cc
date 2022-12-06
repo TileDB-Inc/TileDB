@@ -89,9 +89,7 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
       if constexpr (webp_filter_exists) {
         return tdb_new(tiledb::sm::WebpFilter);
       } else {
-        throw StatusException(
-            "FilterCreate",
-            "Can't create WebP filter; built with TILEDB_WEBP=OFF");
+        throw WebpNotPresentError();
       }
     }
     default:
@@ -180,9 +178,7 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
             filter_config.y_extent,
             filter_config.x_extent);
       } else {
-        throw StatusException(
-            "FilterCreate",
-            "Deserialization error; built with TILEDB_WEBP=OFF");
+        throw WebpNotPresentError();
       }
     }
     default:

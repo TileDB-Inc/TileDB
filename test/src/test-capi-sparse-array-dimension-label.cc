@@ -31,16 +31,14 @@
  * labels.
  */
 
-#include "test/src/experimental_helpers.h"
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
-#include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/encryption_type.h"
 
 #include <test/support/tdb_catch.h>
@@ -60,7 +58,7 @@ using namespace tiledb::test;
  *  * Attributes:
  *    - a: (type=FLOAT64)
  *  * Dimension labels:
- *    - x: (label_order=label_order_t, dim_idx=0, type=FLOAT64)
+ *    - x: (label_order=label_order, dim_idx=0, type=FLOAT64)
  */
 class SparseArrayExample1 : public TemporaryDirectoryFixture {
  public:
@@ -75,7 +73,7 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
    *
    * @param label_order Label order for the dimension label.
    */
-  void create_example(tiledb_label_order_t label_order) {
+  void create_example(tiledb_data_order_t label_order) {
     // Create an array schema
     uint64_t x_tile_extent{4};
     auto array_schema = create_array_schema(
@@ -95,8 +93,8 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
         false);
 
     // Add dimension label.
-    add_dimension_label(
-        ctx, array_schema, "x", 0, label_order, TILEDB_FLOAT64, &x_tile_extent);
+    tiledb_array_schema_add_dimension_label(
+        ctx, array_schema, 0, "x", label_order, TILEDB_FLOAT64);
     // Create array
     array_name = create_temporary_array("array_with_label_1", array_schema);
     tiledb_array_schema_free(&array_schema);
@@ -315,11 +313,11 @@ TEST_CASE_METHOD(
   std::vector<uint64_t> index_data_sorted_by_label{};
 
   // Dimension label parameters.
-  tiledb_label_order_t label_order;
+  tiledb_data_order_t label_order;
 
   SECTION("Write increasing labels", "[IncreasingLabels]") {
     // Set the label order.
-    label_order = TILEDB_INCREASING_LABELS;
+    label_order = TILEDB_INCREASING_DATA;
 
     // Set input values.
     input_index_data = {0, 1, 2, 3};
@@ -342,7 +340,7 @@ TEST_CASE_METHOD(
 
   SECTION("Write decreasing labels and array", "[DecreasingLabels]") {
     // Set the label order.
-    label_order = TILEDB_DECREASING_LABELS;
+    label_order = TILEDB_DECREASING_DATA;
 
     // Set the data values.
     input_index_data = {0, 1, 2, 3};
@@ -363,7 +361,7 @@ TEST_CASE_METHOD(
 
   SECTION("Write unordered labels and array", "[UnorderedLabels]") {
     // Set the label order.
-    label_order = TILEDB_UNORDERED_LABELS;
+    label_order = TILEDB_UNORDERED_DATA;
 
     // Set the data values.
     input_index_data = {0, 3, 2, 1};
@@ -386,7 +384,7 @@ TEST_CASE_METHOD(
 
   INFO(
       "Testing array with label order " +
-      label_order_str(static_cast<LabelOrder>(label_order)) + ".");
+      data_order_str(static_cast<DataOrder>(label_order)) + ".");
 
   // Create and Write the array and label.
   create_example(label_order);
@@ -400,7 +398,7 @@ TEST_CASE_METHOD(
   }
 
   // Check values when reading by label ranges.
-  if (label_order != TILEDB_UNORDERED_LABELS) {
+  if (label_order != TILEDB_UNORDERED_DATA) {
     INFO("Reading data by label range.");
 
     // Check query on full range.
@@ -438,45 +436,45 @@ TEST_CASE_METHOD(
   std::vector<double> input_attr_data{};
 
   // Dimension label parameters.
-  tiledb_label_order_t label_order;
+  tiledb_data_order_t label_order;
 
   SECTION("Increasing labels with bad order", "[IncreasingLabels]") {
-    label_order = TILEDB_INCREASING_LABELS;
+    label_order = TILEDB_INCREASING_DATA;
     input_index_data = {0, 1, 2, 3};
     input_label_data = {1.0, 0.0, -0.5, -1.0};
     input_attr_data = {0.5, 1.0, 1.5, 2.0};
   }
 
   SECTION("Increasing labels with duplicate values", "[IncreasingLabels]") {
-    label_order = TILEDB_INCREASING_LABELS;
+    label_order = TILEDB_INCREASING_DATA;
     input_index_data = {0, 1, 2, 3};
     input_label_data = {-1.0, 0.0, 0.0, 1.0};
     input_attr_data = {0.5, 1.0, 1.5, 2.0};
   }
 
   SECTION("Increasing labels with unordered index", "[IncreasingLabels]") {
-    label_order = TILEDB_INCREASING_LABELS;
+    label_order = TILEDB_INCREASING_DATA;
     input_index_data = {2, 0, 1, 3};
     input_label_data = {-1.0, 0.0, 0.5, 1.0};
     input_attr_data = {0.5, 1.0, 1.5, 2.0};
   }
 
   SECTION("Decreasing labels with bad order", "[IncreasingLabels]") {
-    label_order = TILEDB_DECREASING_LABELS;
+    label_order = TILEDB_DECREASING_DATA;
     input_index_data = {0, 1, 2, 3};
     input_label_data = {-1.0, -0.5, 0.0, 1.0};
     input_attr_data = {0.5, 1.0, 1.5, 2.0};
   }
 
   SECTION("Increasing labels with duplicate values", "[IncreasingLabels]") {
-    label_order = TILEDB_DECREASING_LABELS;
+    label_order = TILEDB_DECREASING_DATA;
     input_index_data = {0, 1, 2, 3};
     input_label_data = {1.0, 0.0, 0.0, -1.0};
     input_attr_data = {0.5, 1.0, 1.5, 2.0};
   }
 
   SECTION("Increasing labels with unordered index", "[IncreasingLabels]") {
-    label_order = TILEDB_DECREASING_LABELS;
+    label_order = TILEDB_DECREASING_DATA;
     input_index_data = {2, 1, 0, 3};
     input_label_data = {1.0, 0.0, -0.5, -1.0};
     input_attr_data = {0.5, 1.0, 1.5, 2.0};

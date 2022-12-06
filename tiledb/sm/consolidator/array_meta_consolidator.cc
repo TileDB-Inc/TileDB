@@ -40,8 +40,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*          CONSTRUCTOR           */
@@ -146,10 +145,11 @@ Status ArrayMetaConsolidator::consolidate(
   return Status::Ok();
 }
 
-Status ArrayMetaConsolidator::vacuum(const char* array_name) {
-  if (array_name == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot vacuum array metadata; Array name cannot be null"));
+void ArrayMetaConsolidator::vacuum(const char* array_name) {
+  if (array_name == nullptr) {
+    throw Status_StorageManagerError(
+        "Cannot vacuum array metadata; Array name cannot be null");
+  }
 
   // Get the array metadata URIs and vacuum file URIs to be vacuum
   auto vfs = storage_manager_->vfs();
@@ -162,27 +162,9 @@ Status ArrayMetaConsolidator::vacuum(const char* array_name) {
       0,
       std::numeric_limits<uint64_t>::max());
 
-  const auto& array_meta_uris_to_vacuum = array_dir.array_meta_uris_to_vacuum();
-  const auto& vac_uris_to_vacuum = array_dir.array_meta_vac_uris_to_vacuum();
-
-  // Delete the array metadata files
-  auto status = parallel_for(
-      compute_tp, 0, array_meta_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs->remove_file(array_meta_uris_to_vacuum[i]));
-
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  // Delete vacuum files
-  status =
-      parallel_for(compute_tp, 0, vac_uris_to_vacuum.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs->remove_file(vac_uris_to_vacuum[i]));
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+  // Delete the array metadata and vacuum files
+  vfs->remove_files(compute_tp, array_dir.array_meta_uris_to_vacuum());
+  vfs->remove_files(compute_tp, array_dir.array_meta_vac_uris_to_vacuum());
 }
 
 /* ****************************** */
@@ -204,5 +186,4 @@ Status ArrayMetaConsolidator::set_config(const Config& config) {
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

@@ -32,21 +32,18 @@
  * labels.
  */
 
-#include "test/src/experimental_helpers.h"
-#include "test/support/src/helpers.h"
-#include "tiledb/api/c_api/context/context_api_internal.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
-#include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
-#include "tiledb/sm/c_api/experimental/tiledb_struct_def.h"
-#include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_experimental.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/dimension_label/dimension_label.h"
-#include "tiledb/sm/enums/encryption_type.h"
-
 #include <test/support/tdb_catch.h>
 #include <iostream>
 #include <string>
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
+#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
+#include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/c_api/tiledb_experimental.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/enums/encryption_type.h"
 
 using namespace tiledb::sm;
 using namespace tiledb::test;
@@ -61,7 +58,7 @@ using namespace tiledb::test;
  *  * Attributes:
  *    - a: (type=FLOAT64)
  *  * Dimension labels:
- *    - x: (label_order=UNORDERED_LABELS, dim_idx=0, type=STRING_ASCII)
+ *    - x: (label_order=label_order, dim_idx=0, type=STRING_ASCII)
  */
 class ArrayExample : public TemporaryDirectoryFixture {
  public:
@@ -74,7 +71,7 @@ class ArrayExample : public TemporaryDirectoryFixture {
    *
    * @param label_order Label order for the dimension label.
    */
-  void create_example(tiledb_label_order_t label_order, void* index_domain) {
+  void create_example(tiledb_data_order_t label_order, void* index_domain) {
     // Create an array schema
     uint64_t x_tile_extent{4};
     auto array_schema = create_array_schema(
@@ -94,14 +91,8 @@ class ArrayExample : public TemporaryDirectoryFixture {
         false);
 
     // Add dimension label.
-    add_dimension_label(
-        ctx,
-        array_schema,
-        "x",
-        0,
-        label_order,
-        TILEDB_STRING_ASCII,
-        &x_tile_extent);
+    tiledb_array_schema_add_dimension_label(
+        ctx, array_schema, 0, "x", label_order, TILEDB_STRING_ASCII);
     // Create array
     array_name = create_temporary_array("array_with_label_1", array_schema);
     tiledb_array_schema_free(&array_schema);
@@ -333,7 +324,7 @@ TEST_CASE_METHOD(
     "[capi][query][DimensionLabel][var]") {
   // Array parameters.
   std::vector<uint64_t> index_domain{0, 3};
-  tiledb_label_order_t label_order;
+  tiledb_data_order_t label_order;
 
   // Vectors for input data.
   std::vector<uint64_t> input_label_data_raw{};
@@ -341,7 +332,7 @@ TEST_CASE_METHOD(
 
   SECTION("Write increasing labels", "[IncreasingLabels]") {
     // Set the label order.
-    label_order = TILEDB_INCREASING_LABELS;
+    label_order = TILEDB_INCREASING_DATA;
 
     // Set the data values.
     input_label_data_raw = {10, 15, 20, 30};
@@ -357,7 +348,7 @@ TEST_CASE_METHOD(
 
   SECTION("Write decreasing labels", "[DecreasingLabels]") {
     // Set the label order.
-    label_order = TILEDB_DECREASING_LABELS;
+    label_order = TILEDB_DECREASING_DATA;
 
     // Set the data values.
     input_label_data_raw = {30, 20, 15, 11};
@@ -373,7 +364,7 @@ TEST_CASE_METHOD(
 
   SECTION("Write unordered labels", "[UnorderedLabels]") {
     // Set the label order.
-    label_order = TILEDB_UNORDERED_LABELS;
+    label_order = TILEDB_UNORDERED_DATA;
 
     // Set the data values.
     input_label_data_raw = {15, 30, 20, 10};
@@ -397,7 +388,7 @@ TEST_CASE_METHOD(
 
   INFO(
       "Testing array with label order " +
-      label_order_str(static_cast<LabelOrder>(label_order)) + ".");
+      data_order_str(static_cast<DataOrder>(label_order)) + ".");
 
   // Create and write the array.
   create_example(label_order, index_domain.data());
@@ -420,7 +411,7 @@ TEST_CASE_METHOD(
   }
 
   // Check range reader.
-  if (label_order != TILEDB_UNORDERED_LABELS) {
+  if (label_order != TILEDB_UNORDERED_DATA) {
     INFO("Reading data by label range.");
 
     // Check full range

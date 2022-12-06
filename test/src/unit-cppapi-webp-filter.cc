@@ -76,8 +76,15 @@ void write_image(
   if (!info)
     abort();
 
+  #if defined(_MSC_VER)
+  #pragma warning ( push )
+  #pragma warning ( disable : 4611 ) // "interaction between '_setjmp' and C++ object destruction is non-portable"
+  #endif
   if (setjmp(png_jmpbuf(png)))
     abort();
+  #if defined (_MSC_VER)
+  #pragma warning ( pop )
+  #endif
 
   png_init_io(png, fp);
 
@@ -441,7 +448,7 @@ TEMPLATE_LIST_TEST_CASE(
 }
 
 TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
-  if (webp_filter_exists) {
+  if constexpr (webp_filter_exists) {
     tiledb_ctx_t* ctx;
     tiledb_ctx_alloc(nullptr, &ctx);
     tiledb_vfs_t* vfs;

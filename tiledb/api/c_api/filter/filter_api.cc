@@ -38,8 +38,21 @@
 namespace tiledb::api {
 
 capi_return_t tiledb_filter_alloc(
-    tiledb_ctx_t*, tiledb_filter_type_t type, tiledb_filter_t** filter) {
+    tiledb_ctx_t* ctx, tiledb_filter_type_t type, tiledb_filter_t** filter) {
   ensure_output_pointer_is_valid(filter);
+
+  // Bitsort filter must be enabled via config pending SC-23502
+  auto bitsort_enabled = ctx->context()
+                             .storage_manager()
+                             ->config()
+                             .get<bool>("tiledb.sm.bitsort_filter_enabled")
+                             .value_or(false);
+  if (type == TILEDB_FILTER_BITSORT && !bitsort_enabled) {
+    throw std::runtime_error(
+        "TILEDB_FILTER_BITSORT must be explicitly enabled via "
+        "`tiledb.sm.bitsort_filter_enabled` config option");
+  }
+
   *filter = tiledb_filter_t::make_handle(tiledb::sm::FilterCreate::make(
       static_cast<tiledb::sm::FilterType>(type)));
   return TILEDB_OK;

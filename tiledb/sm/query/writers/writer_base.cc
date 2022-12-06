@@ -185,8 +185,19 @@ WriterBase::WriterBase(
         "configuration");
   }
 
-  // Set a default subarray
-  if (!subarray_.is_set()) {
+  // Check subarray is valid for strategy is set or set it to default if unset.
+  if (subarray_.is_set()) {
+    if (!array_schema_.dense()) {
+      throw WriterBaseStatusException(
+          "Cannot initialize write; Non-default subarray are not supported in "
+          "sparse writes");
+    }
+    if (subarray_.range_num() > 1) {
+      throw WriterBaseStatusException(
+          "Cannot initialize writer; Multi-range dense writes are not "
+          "supported");
+    }
+  } else {
     subarray_ = Subarray(array_, layout_, stats_, logger_);
   }
 
@@ -195,7 +206,10 @@ WriterBase::WriterBase(
   }
 
   if (!skip_checks_serialization) {
-    check_subarray();
+    // Consolidation might set a subarray that is not tile aligned.
+    if (!disable_checks_consolidation) {
+      check_subarray();
+    }
     check_buffer_sizes();
   }
 
@@ -704,7 +718,12 @@ Status WriterBase::create_fragment(
 Status WriterBase::filter_tiles(
     std::unordered_map<std::string, WriterTileVector>* tiles) {
   auto timer_se = stats_->start_timer("filter_tiles");
+  // Always process the bitsort filter first. It will shuffle the dimension data
+  // which will later be filtered with the dimension filters.
   const auto bitsort_attr = array_schema_.bitsort_filter_attr();
+  if (bitsort_attr.has_value()) {
+    RETURN_CANCEL_OR_ERROR(filter_tiles_bitsort(bitsort_attr.value(), tiles));
+  }
 
   auto num = buffers_.size();
   auto status =
@@ -713,15 +732,12 @@ Status WriterBase::filter_tiles(
         std::advance(buff_it, i);
         const auto& name = buff_it->first;
 
-        // Run a special function for the bitsort filter.
         if (bitsort_attr.has_value() && name == bitsort_attr.value()) {
-          RETURN_CANCEL_OR_ERROR(filter_tiles_bitsort(name, tiles));
-        } else if (bitsort_attr.has_value() && array_schema_.is_dim(name)) {
-          // When there is a bitsort filter, dimensions will be filtered at the
-          // same time as the attribute.
+          // Already done above for the bitsort filter.
         } else {
           RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
         }
+
         return Status::Ok();
       });
 
@@ -800,15 +816,12 @@ Status WriterBase::filter_tiles_bitsort(
   args.reserve(tile_num);
   for (uint64_t i = 0; i < attr_tiles.size(); i++) {
     auto& tile = attr_tiles[i];
-    auto cell_num = tile.cell_num();
-
     // Collect the dim tiles argument.
     std::vector<Tile*> dim_tiles_temp;
     dim_tiles_temp.reserve(dim_tiles.size());
     for (const auto& elem : dim_tiles) {
       Tile* dim_tile = &((*elem)[i].fixed_tile());
       dim_tiles_temp.emplace_back(dim_tile);
-      dim_tile->filtered_buffer().expand(cell_num * dim_tile->cell_size());
     }
 
     args.emplace_back(&(tile.fixed_tile()), dim_tiles_temp, false, false);

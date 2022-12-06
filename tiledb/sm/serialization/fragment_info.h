@@ -57,6 +57,7 @@ namespace serialization {
  * Convert Cap'n Proto message to Fragment Info.
  *
  * @param fragment_info_reader cap'n proto class.
+ * @param uri array uri that the fragment belongs to
  * @param fragment_info fragment info object to deserialize into.
  * @return Status
  */

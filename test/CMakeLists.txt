@@ -110,7 +110,9 @@ set(TILEDB_UNIT_TEST_SOURCES
   support/src/ast_helpers.h
   support/src/helpers.h
   support/src/helpers-dimension.h
+  src/test-capi-consolidation-plan.cc
   src/test-capi-query-error-handling.cc
+  src/test-cppapi-consolidation-plan.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
@@ -119,7 +121,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-array_schema.cc
   src/unit-capi-async.cc
   src/unit-capi-attributes.cc
-  src/unit-capi-buffer.cc
   src/unit-capi-config.cc
   src/unit-capi-context.cc
   src/unit-capi-consolidation.cc
@@ -161,7 +162,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-ctx.cc
   src/unit-DenseTiler.cc
   src/unit-dimension.cc
-  src/unit-domain.cc
   src/unit-duplicates.cc
   src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc
@@ -187,8 +187,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
   src/unit-SubarrayPartitioner-sparse.cc
-  src/unit-Tile.cc
-  src/unit-uuid.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   )
@@ -255,7 +253,6 @@ endif()
 
 if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
-    src/experimental_helpers.cc
     src/test-capi-array-many-dimension-labels.cc
     src/test-capi-dimension_labels.cc
     src/test-capi-dense-array-dimension-label.cc
@@ -345,6 +342,7 @@ endif()
 
 if (TILEDB_WEBP)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_WEBP)
+  find_package(Zlib_EP) # We need PNG to use our Zlib so that static link works correctly if applicable
   find_package(PNG)
   if (PNG_FOUND)
     target_compile_definitions(tiledb_unit PRIVATE -DPNG_FOUND)

@@ -36,7 +36,11 @@
 
 #include <random>
 #include <thread>
+#ifdef FXM
+#include "experimental/tiledb/common/dag/state_machine/fxm.h"
+#else
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#endif
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
 
 namespace tiledb::common {
@@ -73,80 +77,6 @@ const int EMPTY_SINK = 7654321;
  * otherwise, the string that is passed in is returned and
  * the CHECK will print its value in the diagnostic message.
  */
-
-[[maybe_unused]] static bool null_s(three_stage st) {
-  return (st == three_stage::st_000);
-}
-
-[[maybe_unused]] static bool null_x(three_stage st) {
-  return (st == three_stage::xt_000);
-}
-
-[[maybe_unused]] static bool null(three_stage st) {
-  return null_s(st) || null_x(st);
-}
-
-[[maybe_unused]] static bool empty_s_source(three_stage st) {
-  return (
-      st == three_stage::st_000 || st == three_stage::st_001 ||
-      st == three_stage::st_010 || st == three_stage::st_011);
-}
-
-[[maybe_unused]] static bool empty_x_source(three_stage st) {
-  return (
-      st == three_stage::xt_000 || st == three_stage::xt_001 ||
-      st == three_stage::xt_010 || st == three_stage::xt_011);
-}
-
-[[maybe_unused]] static bool empty_source(three_stage st) {
-  return (empty_s_source(st) || empty_x_source(st));
-}
-[[maybe_unused]] static bool full_s_source(three_stage st) {
-  return (
-      st == three_stage::st_100 || st == three_stage::st_101 ||
-      st == three_stage::st_110 || st == three_stage::st_111);
-}
-
-[[maybe_unused]] static bool full_x_source(three_stage st) {
-  return (
-      st == three_stage::xt_100 || st == three_stage::xt_101 ||
-      st == three_stage::xt_110 || st == three_stage::xt_111);
-}
-
-[[maybe_unused]] static bool full_source(three_stage st) {
-  return (full_s_source(st) || full_x_source(st));
-}
-
-[[maybe_unused]] static bool empty_s_sink(three_stage st) {
-  return (
-      st == three_stage::st_000 || st == three_stage::st_010 ||
-      st == three_stage::st_100 || st == three_stage::st_110);
-}
-
-[[maybe_unused]] static bool empty_x_sink(three_stage st) {
-  return (
-      st == three_stage::xt_000 || st == three_stage::xt_010 ||
-      st == three_stage::xt_100 || st == three_stage::xt_110);
-}
-
-[[maybe_unused]] static bool empty_sink(three_stage st) {
-  return (empty_s_sink(st) || empty_x_sink(st));
-}
-[[maybe_unused]] static bool full_s_sink(three_stage st) {
-  return (
-      st == three_stage::st_001 || st == three_stage::st_011 ||
-      st == three_stage::st_101 || st == three_stage::st_111);
-}
-
-[[maybe_unused]] static bool full_x_sink(three_stage st) {
-  return (
-      st == three_stage::xt_001 || st == three_stage::xt_011 ||
-      st == three_stage::xt_101 || st == three_stage::xt_111);
-}
-
-[[maybe_unused]] static bool full_sink(three_stage st) {
-  return (full_s_sink(st) || full_x_sink(st));
-}
 
 [[maybe_unused]] static std::string is_null(three_stage st) {
   if (null(st)) {
@@ -251,91 +181,6 @@ const int EMPTY_SINK = 7654321;
     return {};
   }
   return state;
-}
-
-/**
- *
- */
-
-[[maybe_unused]] static bool null_s(two_stage st) {
-  return (st == two_stage::st_00);
-}
-
-[[maybe_unused]] static bool null_x(two_stage st) {
-  return (st == two_stage::xt_00);
-}
-
-[[maybe_unused]] static bool null(two_stage st) {
-  return null_s(st) || null_x(st);
-}
-
-[[maybe_unused]] static bool empty_s_source(two_stage st) {
-  return (st == two_stage::st_00 || st == two_stage::st_01);
-}
-
-[[maybe_unused]] static bool empty_x_source(two_stage st) {
-  return (st == two_stage::xt_00 || st == two_stage::xt_01);
-}
-
-[[maybe_unused]] static bool empty_source(two_stage st) {
-  return (empty_s_source(st) || empty_x_source(st));
-}
-[[maybe_unused]] static bool full_s_source(two_stage st) {
-  return (st == two_stage::st_10 || st == two_stage::st_11);
-}
-
-[[maybe_unused]] static bool full_x_source(two_stage st) {
-  return (st == two_stage::xt_10 || st == two_stage::xt_11);
-}
-
-[[maybe_unused]] static bool full_source(two_stage st) {
-  return (full_s_source(st) || full_x_source(st));
-}
-
-[[maybe_unused]] static bool empty_s_sink(two_stage st) {
-  return (st == two_stage::st_00 || st == two_stage::st_10);
-}
-
-[[maybe_unused]] static bool empty_x_sink(two_stage st) {
-  return (st == two_stage::xt_00 || st == two_stage::xt_10);
-}
-
-[[maybe_unused]] static bool empty_sink(two_stage st) {
-  return (empty_s_sink(st) || empty_x_sink(st));
-}
-[[maybe_unused]] static bool full_s_sink(two_stage st) {
-  return (st == two_stage::st_01 || st == two_stage::st_11);
-}
-
-[[maybe_unused]] static bool full_x_sink(two_stage st) {
-  return (st == two_stage::xt_01 || st == two_stage::xt_11);
-}
-
-[[maybe_unused]] static bool full_sink(two_stage st) {
-  return (full_s_sink(st) || full_x_sink(st));
-}
-
-[[maybe_unused]] static bool empty_s_state(two_stage st) {
-  return (st == two_stage::st_00 || st == two_stage::st_01);
-}
-
-[[maybe_unused]] static bool empty_x_state(two_stage st) {
-  return (st == two_stage::xt_00 || st == two_stage::xt_01);
-}
-
-[[maybe_unused]] static bool empty_state(two_stage st) {
-  return (empty_s_state(st) || empty_x_state(st));
-}
-[[maybe_unused]] static bool full_s_state(two_stage st) {
-  return (st == two_stage::st_10 || st == two_stage::st_11);
-}
-
-[[maybe_unused]] static bool full_x_state(two_stage st) {
-  return (st == two_stage::xt_10 || st == two_stage::xt_11);
-}
-
-[[maybe_unused]] static bool full_state(two_stage st) {
-  return (full_s_state(st) || full_x_state(st));
 }
 
 [[maybe_unused]] static std::string is_null(two_stage st) {

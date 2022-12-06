@@ -192,13 +192,13 @@ void BitSortFilter::run_forward_dim_tile(
   uint64_t cell_num = cell_pos.size();
   DimType* tile_data = dim_tile->data_as<DimType>();
 
-  // Obtain the pointer to the filtered data buffer.
-  FilteredBuffer& filtered_buffer = dim_tile->filtered_buffer();
-  DimType* filtered_buffer_data = filtered_buffer.data_as<DimType>();
+  // We need to copy the data here so we can shuffle it.
+  std::vector<DimType> dim_copy(cell_num);
+  memcpy(dim_copy.data(), tile_data, cell_num * sizeof(DimType));
 
   // Keep track of the data we should write to the tile.
   for (uint64_t i = 0; i < cell_num; ++i) {
-    filtered_buffer_data[i] = tile_data[cell_pos[i]];
+    tile_data[i] = dim_copy[cell_pos[i]];
   }
 }
 
@@ -365,17 +365,16 @@ void BitSortFilter::run_reverse_dim_tile(
     Tile* dim_tile, std::vector<uint64_t>& cell_pos) const {
   // Obtain the pointer to the data the code modifies.
   uint64_t cell_num = cell_pos.size();
-  FilteredBuffer& filtered_buffer = dim_tile->filtered_buffer();
-  DimType* filtered_tile_data = filtered_buffer.data_as<DimType>();
   DimType* unfiltered_tile_data = dim_tile->data_as<DimType>();
+
+  // We need to copy the data here so we can shuffle it.
+  std::vector<DimType> dim_copy(cell_num);
+  memcpy(dim_copy.data(), unfiltered_tile_data, cell_num * sizeof(DimType));
 
   // Write to the unfiltered tile.
   for (uint64_t i = 0; i < cell_num; ++i) {
-    unfiltered_tile_data[i] = filtered_tile_data[cell_pos[i]];
+    unfiltered_tile_data[i] = dim_copy[cell_pos[i]];
   }
-
-  // Clear out the filtered buffer.
-  filtered_buffer.clear();
 }
 
 BitSortFilter* BitSortFilter::clone_impl() const {

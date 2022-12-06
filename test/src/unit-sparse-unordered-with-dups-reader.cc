@@ -728,7 +728,11 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   std::string error_str(msg);
-  CHECK(error_str.find("Cannot load tile offsets") != std::string::npos);
+  CHECK(
+      error_str.find(
+          "SparseIndexReaderBase: Cannot load tile offsets, computed size (48) "
+          "is larger than memory budget for array data (10).") !=
+      std::string::npos);
 }
 
 TEST_CASE_METHOD(

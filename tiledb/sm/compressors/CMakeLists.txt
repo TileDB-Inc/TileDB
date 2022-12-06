@@ -25,28 +25,23 @@
 # THE SOFTWARE.
 #
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # `compressors` object library
 #
-add_library(compressors OBJECT bzip_compressor.cc dd_compressor.cc dict_compressor.cc gzip_compressor.cc lz4_compressor.cc rle_compressor.cc zstd_compressor.cc util/gzip_wrappers.cc)
-target_link_libraries(compressors PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(compressors PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-find_package(Bzip2_EP REQUIRED)
-find_package(LZ4_EP REQUIRED)
-find_package(Zlib_EP REQUIRED)
-find_package(Zstd_EP REQUIRED)
-target_link_libraries(compressors PUBLIC Bzip2::Bzip2 LZ4::LZ4 Zlib::Zlib Zstd::Zstd)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_compressors EXCLUDE_FROM_ALL)
-add_dependencies(all_link_complete compile_compressors)
-target_link_libraries(compile_compressors PRIVATE compressors)
-target_sources(compile_compressors PRIVATE
-        test/compile_compressors_main.cc
-)
+commence(object_library compressors)
+    this_target_sources(
+        bzip_compressor.cc dd_compressor.cc dict_compressor.cc
+        gzip_compressor.cc lz4_compressor.cc rle_compressor.cc
+        zstd_compressor.cc util/gzip_wrappers.cc)
+    this_target_object_libraries(baseline buffer)
+    find_package(Bzip2_EP REQUIRED)
+    find_package(LZ4_EP REQUIRED)
+    find_package(Zlib_EP REQUIRED)
+    find_package(Zstd_EP REQUIRED)
+    this_target_link_libraries(Bzip2::Bzip2 LZ4::LZ4 Zlib::Zlib Zstd::Zstd)
+conclude(object_library)
 
 #
 # tiledb crude gzip archiver initially for embedding magic.mgc

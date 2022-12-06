@@ -1933,6 +1933,7 @@ void QueryCondition::apply_ast_node_sparse(
       apply_ast_node_sparse<int8_t, BitmapType, CombinationOp>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
+    case Datatype::BOOL:
     case Datatype::UINT8: {
       apply_ast_node_sparse<uint8_t, BitmapType, CombinationOp>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);

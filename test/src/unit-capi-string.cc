@@ -40,8 +40,15 @@
 
 using namespace tiledb::test;
 
+// Since C++20 u8"literals" use char8_t type
+// https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1423r3.html
+#if defined(__cpp_char8_t)
+const char8_t UTF8_STRINGS[] = u8"aabbccdd";
+const char8_t UTF8_STRINGS_VAR[] = u8"aαbββcγγγdδδδδ";
+#else
 const char UTF8_STRINGS[] = u8"aabbccdd";
 const char UTF8_STRINGS_VAR[] = u8"aαbββcγγγdδδδδ";
+#endif
 uint64_t UTF8_NULL_SIZE = sizeof(u8"");
 uint64_t UTF8_OFFSET_0 = 0;
 uint64_t UTF8_OFFSET_1 = sizeof(u8"aα") - UTF8_NULL_SIZE;

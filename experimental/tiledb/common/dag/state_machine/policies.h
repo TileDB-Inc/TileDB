@@ -40,11 +40,16 @@
 
 #include <array>
 #include <cassert>
+#include <condition_variable>
 #include <optional>
 #include <string>
 #include <tuple>
 
+#ifdef FXM
+#include "experimental/tiledb/common/dag/state_machine/fxm.h"
+#else
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#endif
 
 namespace tiledb::common {
 
@@ -102,9 +107,9 @@ namespace tiledb::common {
  *   sink_move: on_sink_move()
  *   notify_source: on_notify_source()
  *   notify_sink: on_notify_sink()
- *   source_wait: on_source_wait()
- *   sink_wait: on_sink_wait()
- *   done: on_source_done(), on_sink_done()
+ *   source_available: on_source_available()
+ *   sink_available: on_sink_available()
+ *   done: on_term_source(), on_term_sink()
  *
  * NB: With our current approach, we seem to really only need single functions for 
  * wait, notify, and move, so we may be able to condense this in the future.
@@ -121,10 +126,10 @@ namespace tiledb::common {
  *   on_sink_move(): invoke move function associated with data mover
  *   on_notify_source(): notify sink
  *   on_notify_sink(): notify source
- *   on_source_wait(): put source into waiting state
- *   on_sink_wait(): put sink into waiting state
- *   on_source_done(): put source into waiting state
- *   on_sink_done(): put sink into waiting state
+ *   on_source_available(): put source into waiting
+ *   on_sink_available(): put sink into waiting state
+ *   on_term_source(): put source into waiting state
+ *   on_term_sink(): put sink into waiting state
  *
  * The implementations of `AsyncStateMachine` and `UnifiedAsyncStateMachine` 
  * currently use locks and condition variable for effecting the wait (and notify) functions.
@@ -167,13 +172,24 @@ class NullPolicy
   }
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
   }
-  inline void on_source_wait(lock_type&, std::atomic<int>&) {
+#ifndef FXM
+  inline bool on_source_wait(lock_type&, std::atomic<int>&) {
+    return true;
   }
-  inline void on_sink_wait(lock_type&, std::atomic<int>&) {
+  inline bool on_sink_wait(lock_type&, std::atomic<int>&) {
+    return true;
   }
-  inline void on_source_done(lock_type&, std::atomic<int>&) {
+#else
+  inline bool on_source_available(lock_type&, std::atomic<int>&) {
+    return true;
   }
-  inline void on_sink_done(lock_type&, std::atomic<int>&) {
+  inline bool on_sink_available(lock_type&, std::atomic<int>&) {
+    return true;
+  }
+#endif
+  inline void on_term_source(lock_type&, std::atomic<int>&) {
+  }
+  inline void on_term_sink(lock_type&, std::atomic<int>&) {
   }
 };
 
@@ -215,16 +231,29 @@ class ManualPolicy
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
     debug_msg("Action notify source");
   }
-  inline void on_source_wait(lock_type&, std::atomic<int>&) {
+#ifndef FXM
+  inline bool on_source_wait(lock_type&, std::atomic<int>&) {
     debug_msg("Action source wait");
+    return true;
   }
-  inline void on_sink_wait(lock_type&, std::atomic<int>&) {
+  inline bool on_sink_wait(lock_type&, std::atomic<int>&) {
     debug_msg("Action sink wait");
+    return true;
   }
-  inline void on_source_done(lock_type&, std::atomic<int>&) {
+#else
+  inline bool on_source_available(lock_type&, std::atomic<int>&) {
+    debug_msg("Action source wait");
+    return true;
+  }
+  inline bool on_sink_available(lock_type&, std::atomic<int>&) {
+    debug_msg("Action sink wait");
+    return true;
+  }
+#endif
+  inline void on_term_source(lock_type&, std::atomic<int>&) {
     debug_msg("Action source done");
   }
-  inline void on_sink_done(lock_type&, std::atomic<int>&) {
+  inline void on_term_sink(lock_type&, std::atomic<int>&) {
     debug_msg("Action sink done");
   }
 
@@ -267,11 +296,13 @@ class AsyncPolicy
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;
 
+  std::array<size_t, 2> moves_{0, 0};
+
  public:
   AsyncPolicy() = default;
   AsyncPolicy(const AsyncPolicy&) {
   }
-  AsyncPolicy(AsyncPolicy&&) = default;
+  AsyncPolicy(AsyncPolicy&&) noexcept = default;
 
   /**
    * Function for handling `ac_return` action.
@@ -290,6 +321,7 @@ class AsyncPolicy
         std::to_string(event++) + "    source moving (on_source_move) with " +
         str(this->state()) + " and " + str(this->next_state()));
 
+    moves_[0]++;
     static_cast<Mover*>(this)->on_move(event);
   }
 
@@ -303,7 +335,16 @@ class AsyncPolicy
         std::to_string(event++) + "    sink moving (on_sink_move) with " +
         str(this->state()) + " and " + str(this->next_state()));
 
+    moves_[1]++;
     static_cast<Mover*>(this)->on_move(event);
+  }
+
+  [[nodiscard]] size_t source_swaps() const {
+    return moves_[0];
+  }
+
+  [[nodiscard]] size_t sink_swaps() const {
+    return moves_[1];
   }
 
   /**
@@ -317,7 +358,10 @@ class AsyncPolicy
         "    sink notifying source (on_signal_source) with " +
         str(this->state()) + " and " + str(this->next_state()));
 
+#ifndef FXM
     CHECK(is_sink_empty(this->state()) == "");
+#endif
+
     source_cv_.notify_one();
   }
 
@@ -333,30 +377,41 @@ class AsyncPolicy
         "    source notifying sink(on_signal_sink) with " + str(this->state()) +
         " and " + str(this->next_state()));
 
-    //    CHECK(is_source_full(this->state()) == "");
+    // This CHECK will fail when state machine is stopping, so check
+    if (!static_cast<Mover*>(this)->is_stopping()) {
+      CHECK(is_source_full(this->state()) == "");
+    }
+
     sink_cv_.notify_one();
   }
 
   /**
-   * Function for handling `source_wait` action.
+   * Function for handling `source_available` action.
    */
-  inline void on_source_wait(lock_type& lock, std::atomic<int>& event) {
+#ifndef FXM
+  inline bool on_source_wait(lock_type& lock, std::atomic<int>& event) {
+#else
+  inline bool on_source_available(lock_type& lock, std::atomic<int>& event) {
+#endif
     assert(lock.owns_lock());
-
+#ifndef FXM
     if constexpr (std::is_same_v<PortState, two_stage>) {
       CHECK(str(this->state()) == "st_11");
     } else if constexpr (std::is_same_v<PortState, three_stage>) {
       CHECK(str(this->state()) == "st_111");
     }
+#endif
 
     debug_msg(
         std::to_string(event++) +
-        "    source going to sleep on_source_move with " + str(this->state()) +
-        " and " + str(this->next_state()));
+        "    source going to sleep on_source_available with " +
+        str(this->state()) + " and " + str(this->next_state()));
 
+#ifndef FXM
     source_cv_.wait(lock);
-
-    //    print_types(this->state());
+#else
+    source_cv_.wait(lock, [this]() { return empty_source(this->state()); });
+#endif
 
     CHECK(is_source_post_move(this->state()) == "");
 
@@ -367,62 +422,76 @@ class AsyncPolicy
     debug_msg(
         std::to_string(event++) + "    source leaving on_source_move with " +
         str(this->state()) + " and " + str(this->next_state()));
+    return true;
   }
 
   /**
-   * Function for handling `sink_wait` action.
+   * Function for handling `sink_available` action.
    */
-  inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
-    assert(lock.owns_lock());
+#ifndef FXM
+  inline bool on_sink_wait(lock_type& lock, std::atomic<int>& event){
+#else
+  inline bool on_sink_available(lock_type& lock, std::atomic<int>& event) {
+#endif
+      assert(lock.owns_lock());
 
-    CHECK(is_null(this->state()) == "");
+  debug_msg(
+      std::to_string(event++) + "    sink going to sleep on_sink_move with " +
+      str(this->state()));
 
-    debug_msg(
-        std::to_string(event++) + "    sink going to sleep on_sink_move with " +
-        str(this->state()));
-    sink_cv_.wait(lock);
+#ifndef FXM
+  sink_cv_.wait(lock);
+#else
+    sink_cv_.wait(lock, [this]() { return full_sink(this->state()); });
+#endif
 
-    CHECK(is_sink_post_move(this->state()) == "");
+  CHECK(is_sink_post_move(this->state()) == "");
 
-    debug_msg(
-        std::to_string(event++) + "    sink waking up on_sink_move with " +
-        str(this->state()) + " and " + str(this->next_state()));
+  debug_msg(
+      std::to_string(event++) + "    sink waking up on_sink_move with " +
+      str(this->state()) + " and " + str(this->next_state()));
 
-    debug_msg(
-        std::to_string(event++) + "    sink leaving on_sink_move with " +
-        str(this->state()) + " and " + str(this->next_state()));
+  debug_msg(
+      std::to_string(event++) + "    sink leaving on_sink_move with " +
+      str(this->state()) + " and " + str(this->next_state()));
+
+  return true;
+}
+
+/**
+ * Function for handling `term_source` action.
+ */
+inline void
+on_term_source(lock_type& lock, std::atomic<int>& event) {
+  assert(lock.owns_lock());
+
+  debug_msg(
+      std::to_string(event++) + "    source done with " + str(this->state()) +
+      " and " + str(this->next_state()));
+
+  // @note This is not optimal.  Have to notify sink when source is ending b/c
+  // can't do it with throw_catch in fsm.h
+  on_notify_sink(lock, event);
+}
+
+/**
+ * Function for handling `term_sink` action.
+ */
+inline void on_term_sink(lock_type& _unused(lock), std::atomic<int>& event) {
+  assert(lock.owns_lock());
+
+  debug_msg(
+      std::to_string(event++) + "    sink done with " + str(this->state()) +
+      " and " + str(this->next_state()));
+}
+
+private:
+void debug_msg(const std::string& msg) {
+  if (static_cast<Mover*>(this)->debug_enabled()) {
+    std::cout << msg << std::endl;
   }
-
-  /**
-   * Function for handling `source_done` action.
-   */
-  inline void on_source_done(
-      lock_type& _unused(lock), std::atomic<int>& event) {
-    assert(lock.owns_lock());
-
-    debug_msg(
-        std::to_string(event++) + "    source done with " + str(this->state()) +
-        " and " + str(this->next_state()));
-  }
-
-  /**
-   * Function for handling `sink_done` action.
-   */
-  inline void on_sink_done(lock_type& _unused(lock), std::atomic<int>& event) {
-    assert(lock.owns_lock());
-
-    debug_msg(
-        std::to_string(event++) + "    sink done with " + str(this->state()) +
-        " and " + str(this->next_state()));
-  }
-
- private:
-  void debug_msg(const std::string& msg) {
-    if (static_cast<Mover*>(this)->debug_enabled()) {
-      std::cout << msg << std::endl;
-    }
-  }
-};
+}
+};  // namespace tiledb::common
 
 /**
  * An asynchronous policy class.  Implements on_sink_move and
@@ -477,56 +546,81 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
   /**
    * Single  notify function for source and sink.
    */
-  inline void do_notify(lock_type&, std::atomic<int>&) {
+  inline void task_notify(lock_type&, std::atomic<int>&) {
     cv_.notify_one();
   }
 
   /**
-   * Function for handling `notify_source` action, invoking a `do_notify`
+   * Function for handling `notify_source` action, invoking a `task_notify`
    * function.
    */
   inline void on_notify_source(lock_type& lock, std::atomic<int>& event) {
     debug_msg(std::to_string(event++) + "    sink notifying source");
-    do_notify(lock, event);
+    task_notify(lock, event);
   }
 
   /**
-   * Function for handling `notify_sink` action, invoking a `do_notify`
+   * Function for handling `notify_sink` action, invoking a `task_notify`
    * function.
    */
   inline void on_notify_sink(lock_type& lock, std::atomic<int>& event) {
     debug_msg(std::to_string(event++) + "    source notifying sink");
-    do_notify(lock, event);
+    task_notify(lock, event);
   }
 
+#ifndef FXM
   /**
    * Function for handling `source_move` action.
    */
-  inline void on_source_wait(lock_type& lock, std::atomic<int>&) {
+  inline bool on_source_wait(lock_type& lock, std::atomic<int>&) {
     cv_.wait(lock);
+    return true;
   }
 
   /**
-   * Function for handling `sink_wait` action.  It simply calls the source
+   * Function for handling `sink_available` action.  It simply calls the source
    * wait action.
    */
-  inline void on_sink_wait(lock_type& lock, std::atomic<int>& event) {
-    on_source_wait(lock, event);
+  inline bool on_sink_wait(lock_type& lock, std::atomic<int>&) {
+    cv_.wait(lock);
+    return true;
+  }
+#else
+  /**
+   * Function for handling `source_move` action.
+   */
+  inline bool on_source_available(lock_type& lock, std::atomic<int>&) {
+    cv_.wait(lock, [this]() { return empty_source(this->state()); });
+    return true;
   }
 
   /**
-   * Function for handling `source_done` action.
+   * Function for handling `sink_available` action.  It simply calls the source
+   * wait action.
    */
-  inline void on_source_done(lock_type& _unused(lock), std::atomic<int>&) {
+  inline bool on_sink_available(lock_type& lock, std::atomic<int>&) {
+    cv_.wait(lock, [this]() { return full_sink(this->state()); });
+    return true;
+  }
+#endif
+
+  /**
+   * Function for handling `term_source` action.
+   */
+  inline void on_term_source(lock_type& lock, std::atomic<int>& event) {
     assert(lock.owns_lock());
+
+    // @note This is not optimal.  Have to notify sink when source is ending b/c
+    // can't do it with throw_catch in fsm.h
+    on_notify_sink(lock, event);
   }
 
   /**
-   * Function for handling `sink_wait` action.  It simply calls the source
+   * Function for handling `sink_available` action.  It simply calls the source
    * wait action.
    */
-  inline void on_sink_done(lock_type& lock, std::atomic<int>& event) {
-    on_source_done(lock, event);
+  inline void on_term_sink(lock_type& lock, std::atomic<int>& event) {
+    on_term_source(lock, event);
   }
 
  private:
@@ -571,20 +665,35 @@ class DebugPolicy
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
     debug_msg("    Action notify sink");
   }
+#ifndef FXM
   template <class lock_type>
-  inline void on_source_wait(lock_type&, std::atomic<int>&) {
+  inline bool on_source_wait(lock_type&, std::atomic<int>&) {
     debug_msg("    Action source wait");
+    return true;
   }
   template <class lock_type>
-  inline void on_sink_wait(lock_type&, std::atomic<int>&) {
+  inline bool on_sink_wait(lock_type&, std::atomic<int>&) {
     debug_msg("    Action sink wait");
+    return true;
+  }
+#else
+  template <class lock_type>
+  inline bool on_source_available(lock_type&, std::atomic<int>&) {
+    debug_msg("    Action source wait");
+    return true;
   }
   template <class lock_type>
-  inline void on_source_done(lock_type&, std::atomic<int>&) {
+  inline bool on_sink_available(lock_type&, std::atomic<int>&) {
+    debug_msg("    Action sink wait");
+    return true;
+  }
+#endif
+  template <class lock_type>
+  inline void on_term_source(lock_type&, std::atomic<int>&) {
     debug_msg("    Action source wait");
   }
   template <class lock_type>
-  inline void on_sink_done(lock_type&, std::atomic<int>&) {
+  inline void on_term_sink(lock_type&, std::atomic<int>&) {
     debug_msg("    Action sink wait");
   }
 };
@@ -619,16 +728,29 @@ class DebugPolicyWithLock : public Mover {
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
     debug_msg("    Action notify sink");
   }
-  inline void on_source_wait(lock_type&, std::atomic<int>&) {
+#ifndef FXM
+  inline bool on_source_wait(lock_type&, std::atomic<int>&) {
     debug_msg("    Action wait source");
+    return true;
   }
-  inline void on_sink_wait(lock_type&, std::atomic<int>&) {
+  inline bool on_sink_wait(lock_type&, std::atomic<int>&) {
     debug_msg("    Action wait sink");
+    return true;
   }
-  inline void on_source_done(lock_type&, std::atomic<int>&) {
+#else
+  inline bool on_source_available(lock_type&, std::atomic<int>&) {
+    debug_msg("    Action wait source");
+    return true;
+  }
+  inline bool on_sink_available(lock_type&, std::atomic<int>&) {
+    debug_msg("    Action wait sink");
+    return true;
+  }
+#endif
+  inline void on_term_source(lock_type&, std::atomic<int>&) {
     debug_msg("    Action done source");
   }
-  inline void on_sink_done(lock_type&, std::atomic<int>&) {
+  inline void on_term_sink(lock_type&, std::atomic<int>&) {
     debug_msg("    Action done sink");
   }
 

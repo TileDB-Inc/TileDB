@@ -1,5 +1,5 @@
 /**
- * @file   group.h
+ * @file   group_experimental.h
  *
  * @author Ravi Gaddipati
  *
@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,7 +42,7 @@ namespace tiledb {
 class Group {
  public:
   /**
-   * @brief Constructor. This opens the group for the given query type. The
+   * @brief Constructor. Opens the group for the given query type. The
    * destructor calls the `close()` method.
    *
    * **Example:**
@@ -82,7 +82,7 @@ class Group {
   }
 
   /**
-   * @brief Opens the group. The group is opened using a query type as input.
+   * @brief Opens the group using a query type as input.
    *
    * This is to indicate that queries created for this `Group`
    * object will inherit the query type. In other words, `Group`
@@ -187,7 +187,7 @@ class Group {
   }
 
   /**
-   * It puts a metadata key-value item to an open group. The group must
+   * Puts a metadata key-value item to an open group. The group must
    * be opened in WRITE mode, otherwise the function will error out.
    *
    * @param key The key of the metadata item to be added. UTF-8 encodings
@@ -212,7 +212,23 @@ class Group {
   }
 
   /**
-   * It deletes a metadata key-value item from an open group. The group must
+   * Deletes written data from an open group. The group must
+   * be opened in MODIFY_EXCLUSIVE mode, otherwise the function will error out.
+   *
+   * @param uri The address of the group item to be deleted.
+   * @param recursive True if all data inside the group is to be deleted.
+   *
+   * @note if recursive == false, data added to the group will be left as-is.
+   */
+  void delete_group(const std::string& uri, bool recursive = false) {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(
+        tiledb_group_delete_group(c_ctx, group_.get(), uri.c_str(), recursive));
+  }
+
+  /**
+   * Deletes a metadata key-value item from an open group. The group must
    * be opened in WRITE mode, otherwise the function will error out.
    *
    * @param key The key of the metadata item to be deleted.
@@ -230,7 +246,7 @@ class Group {
   }
 
   /**
-   * It gets a metadata key-value item from an open group. The group must
+   * Gets a metadata key-value item from an open group. The group must
    * be opened in READ mode, otherwise the function will error out.
    *
    * @param key The key of the metadata item to be retrieved. UTF-8 encodings
@@ -288,7 +304,7 @@ class Group {
   }
 
   /**
-   * It gets a metadata item from an open group using an index.
+   * Gets a metadata item from an open group using an index.
    * The group must be opened in READ mode, otherwise the function will
    * error out.
    *
@@ -421,6 +437,46 @@ class Group {
     std::string ret(str);
     free(str);
     return ret;
+  }
+
+  /**
+   * Consolidates the group metadata into a single group metadata file.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Group::consolidate_metadata(ctx, "s3://bucket-name/group-name");
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param uri The URI of the TileDB group to be consolidated.
+   * @param config Configuration parameters for the consolidation.
+   */
+  static void consolidate_metadata(
+      const Context& ctx,
+      const std::string& uri,
+      Config* const config = nullptr) {
+    ctx.handle_error(tiledb_group_consolidate_metadata(
+        ctx.ptr().get(), uri.c_str(), config ? config->ptr().get() : nullptr));
+  }
+
+  /**
+   * Cleans up the group metadata.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Group::vacuum_metadata(ctx, "s3://bucket-name/group-name");
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param uri The URI of the TileDB group to vacuum.
+   * @param config Configuration parameters for the vacuuming.
+   */
+  static void vacuum_metadata(
+      const Context& ctx,
+      const std::string& uri,
+      Config* const config = nullptr) {
+    ctx.handle_error(tiledb_group_vacuum_metadata(
+        ctx.ptr().get(), uri.c_str(), config ? config->ptr().get() : nullptr));
   }
 
  private:

@@ -669,6 +669,67 @@ struct ArrayMetadata {
   # list of metadata values
 }
 
+struct ArrayDirectory {
+  # object representing an array directory
+
+  struct TimestampedURI {
+    uri @0 :Text;
+    timestampStart @1 :UInt64;
+    timestampEnd @2 :UInt64;
+  }
+
+  struct DeleteAndUpdateTileLocation {
+    uri @0 :Text;
+    conditionMarker @1 :Text;
+    offset @2 :UInt64;
+  }
+
+  unfilteredFragmentUris @0 :List(Text); 
+  # fragment URIs
+
+  consolidatedCommitUris @1 :List(Text);
+  # consolidated commit URI set
+
+  arraySchemaUris @2 :List(Text);
+  # URIs of all the array schema files
+
+  latestArraySchemaUri @3 :Text;
+  # latest array schema URI. 
+
+  arrayMetaUrisToVacuum @4 :List(Text);
+  # the array metadata files to vacuum
+
+  arrayMetaVacUrisToVacuum @5 :List(Text);
+  # the array metadata vac files to vacuum
+
+  commitUrisToConsolidate @6 :List(Text);
+  # the commit files to consolidate
+
+  commitUrisToVacuum @7 :List(Text);
+  # the commit files to vacuum
+
+  consolidatedCommitUrisToVacuum @8 :List(Text);
+  # the consolidated commit files to vacuum
+
+  arrayMetaUris @9 :List(TimestampedURI);
+  # the timestamped filtered array metadata URIs, after removing
+  # the ones that need to be vacuumed and those that do not fall within
+  # [timestamp_start, timestamp_end]
+
+  fragmentMetaUris @10 :List(Text);
+  # the URIs of the consolidated fragment metadata files
+
+  deleteAndUpdateTileLocation @11 :List(DeleteAndUpdateTileLocation);
+  # the location of delete tiles
+
+  timestampStart @12 :UInt64;
+   # Only the files created after timestamp_start are listed 
+
+  timestampEnd @13 :UInt64;
+  # Only the files created before timestamp_end are listed 
+}
+
+
 struct EstimatedResultSize {
   # object representing estimated
   struct ResultSize {
