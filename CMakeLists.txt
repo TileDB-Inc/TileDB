@@ -483,7 +483,7 @@ if (TILEDB_TESTS)
 
   # ----------------------------------
   # All unit test executables from `unit_test` environments are dependencies of
-  # the `unit_tests` phantom target.
+  # the `all_unit_tests` phantom target.
   #
   retrieve_from(Unit_Tests ACCUMULATOR unit_test_targets)
   add_dependencies(all_unit_tests ${Unit_Tests})

@@ -308,11 +308,10 @@ tuple<
 StorageManagerCanonical::array_open_for_writes(Array* array) {
   // Checks
   if (!vfs_->supports_uri_scheme(array->array_uri()))
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot open array; URI scheme unsupported.")),
-        nullopt,
-        nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot open array; URI scheme unsupported.")),
+            nullopt,
+            nullopt};
 
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
@@ -331,10 +330,9 @@ StorageManagerCanonical::array_open_for_writes(Array* array) {
       err << version;
       err << ") is not the library format version (";
       err << constants::format_version << ")";
-      return {
-          logger_->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
+      return {logger_->status(Status_StorageManagerError(err.str())),
+              nullopt,
+              nullopt};
     }
   } else {
     if (version > constants::format_version) {
@@ -343,10 +341,9 @@ StorageManagerCanonical::array_open_for_writes(Array* array) {
       err << version;
       err << ") is newer than library format version (";
       err << constants::format_version << ")";
-      return {
-          logger_->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
+      return {logger_->status(Status_StorageManagerError(err.str())),
+              nullopt,
+              nullopt};
     }
   }
 
@@ -1549,10 +1546,9 @@ StorageManagerCanonical::load_array_schema_from_uri(
   Deserializer deserializer(tile.data(), tile.size());
 
   try {
-    return {
-        Status::Ok(),
-        make_shared<ArraySchema>(
-            HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
+    return {Status::Ok(),
+            make_shared<ArraySchema>(
+                HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
   } catch (const StatusException& e) {
     return {Status_StorageManagerError(e.what()), nullopt};
   }
@@ -1565,10 +1561,9 @@ StorageManagerCanonical::load_array_schema_latest(
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot load array schema; Invalid array URI")),
-        nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot load array schema; Invalid array URI")),
+            nullopt};
 
   // Load schema from URI
   const URI& schema_uri = array_dir.latest_array_schema_uri();
@@ -1610,17 +1605,15 @@ StorageManagerCanonical::load_all_array_schemas(
 
   const URI& array_uri = array_dir.uri();
   if (array_uri.is_invalid())
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot load all array schemas; Invalid array URI")),
-        nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot load all array schemas; Invalid array URI")),
+            nullopt};
 
   const std::vector<URI>& schema_uris = array_dir.array_schema_uris();
   if (schema_uris.empty()) {
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot get the array schema vector; No array schemas found.")),
-        nullopt};
+    return {logger_->status(Status_StorageManagerError(
+                "Cannot get the array schema vector; No array schemas found.")),
+            nullopt};
   }
 
   std::vector<shared_ptr<ArraySchema>> schema_vector;
