@@ -89,8 +89,12 @@ void GlobalStats::set_enabled(bool enabled) {
 
 void GlobalStats::reset() {
   std::unique_lock<std::mutex> ul(mtx_);
-  for (auto& register_stat : registered_stats_) {
-    register_stat->reset();
+  for (auto register_stat = registered_stats_.begin(); register_stat != registered_stats_.end();) {
+    if (register_stat->use_count() <= 1) {
+      register_stat = registered_stats_.erase(register_stat);
+    } else {
+      ++register_stat;
+    }
   }
 }
 
