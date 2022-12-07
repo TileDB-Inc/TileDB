@@ -33,12 +33,14 @@ stages:
             imageName: 'macos-11'
             TILEDB_AZURE: ON
             TILEDB_SERIALIZATION: ON
+            TILEDB_WEBP: ON
             CXX: clang++
             ARTIFACT_OS: macOS_azure
           linux_asan:
             imageName: 'ubuntu-20.04'
             TILEDB_CI_ASAN: ON
             TILEDB_SERIALIZATION: ON
+            TILEDB_WEBP: ON
             CXX: g++
             CC: gcc
       pool:
@@ -52,6 +54,7 @@ stages:
       variables:
         imageName: 'ubuntu-20.04'
         TILEDB_SERIALIZATION: ON
+        TILEDB_WEBP: ON
         CXX: g++
         CC: gcc
         CXXFLAGS: "-lrt"
