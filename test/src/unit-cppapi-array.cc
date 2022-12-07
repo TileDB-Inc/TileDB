@@ -1791,7 +1791,8 @@ TEST_CASE(
   REQUIRE_THROWS_WITH(
       Array(ctx, old_array_name, TILEDB_WRITE),
       Catch::Matchers::ContainsSubstring("Array format version") &&
-          Catch::Matchers::ContainsSubstring("is not the library format version"));
+          Catch::Matchers::ContainsSubstring(
+              "is not the library format version"));
 
   // Read from an older-versioned array
   Array array(ctx, old_array_name, TILEDB_READ);

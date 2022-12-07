@@ -60,27 +60,4 @@ commence(object_library array_schema)
         attribute domain time uri_format uuid vfs)
 conclude(object_library)
 
-if (TILEDB_TESTS)
-    add_executable(unit_array_schema EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_array_schema PRIVATE array_schema)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_array_schema PUBLIC Catch2::Catch2WithMain)
-    target_include_directories(unit_array_schema PUBLIC ${TILEDB_SOURCE_ROOT}/test/support)
-
-    # Sources for tests
-    target_sources(unit_array_schema
-      PUBLIC
-        test/main.cc
-        test/unit_array_schema.cc
-        test/unit_dimension.cc
-        test/unit_dimension_label_reference.cc
-        test/unit_domain_data.cc
-        test/unit_tile_domain.cc
-    )
-
-    add_test(
-        NAME "unit_array_schema"
-        COMMAND $<TARGET_FILE:unit_array_schema>
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-endif()
+add_test_subdirectory()

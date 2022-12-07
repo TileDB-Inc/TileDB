@@ -1,9 +1,9 @@
 #
-# tiledb/sm/query/CMakeLists.txt
+# tiledb/storage_format/delete_condition/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021-2022 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,16 +22,13 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#
 
-include(common NO_POLICY_SCOPE)
-add_subdirectory(ast)
-add_subdirectory(deletes_and_updates)
+include(unit_test)
 
-#
-# Note that this `query` directory does not define any object libraries at
-# present. When the code is better structured so that query objects don't
-# require linking the whole library, we'll have object libraries here.
-#
-
-add_test_subdirectory()
+commence(unit_test delete_update_condition)
+    this_target_link_libraries(ast_test_support_lib)
+    this_target_sources(main.cc unit_delete_condition.cc unit_update_condition.cc)
+    # The dependencies can't yet be factored into separate object libraries
+    target_link_libraries(unit_delete_update_condition PUBLIC TILEDB_CORE_OBJECTS)
+    target_link_libraries(unit_delete_update_condition PUBLIC TILEDB_CORE_OBJECTS_ILIB)
+conclude(unit_test)

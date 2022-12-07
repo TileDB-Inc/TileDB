@@ -1,9 +1,9 @@
 #
-# tiledb/sm/query/CMakeLists.txt
+# tiledb/sm/compressors/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021-2022 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,15 +23,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+include(unit_test)
 
-include(common NO_POLICY_SCOPE)
-add_subdirectory(ast)
-add_subdirectory(deletes_and_updates)
-
-#
-# Note that this `query` directory does not define any object libraries at
-# present. When the code is better structured so that query objects don't
-# require linking the whole library, we'll have object libraries here.
-#
-
-add_test_subdirectory()
+commence(unit_test compressors)
+    this_target_object_libraries(compressors)
+    this_target_sources(main.cc unit_dict_compressor.cc)
+conclude(unit_test)

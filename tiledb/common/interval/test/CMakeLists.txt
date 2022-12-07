@@ -1,9 +1,10 @@
 #
-# tiledb/sm/query/CMakeLists.txt
+# tiledb/common/interval/CMakeLists.txt
+#
 #
 # The MIT License
 #
-# Copyright (c) 2021-2022 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,14 +25,10 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
-add_subdirectory(ast)
-add_subdirectory(deletes_and_updates)
+include(unit_test)
 
-#
-# Note that this `query` directory does not define any object libraries at
-# present. When the code is better structured so that query objects don't
-# require linking the whole library, we'll have object libraries here.
-#
-
-add_test_subdirectory()
+commence(unit_test interval)
+this_target_sources(main.cc unit_interval_bound.cc
+    unit_interval_constructors.cc unit_interval_operations.cc
+    unit_interval_predicates.cc unit_interval_types.cc)
+conclude(unit_test)

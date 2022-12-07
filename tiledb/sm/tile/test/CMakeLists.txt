@@ -24,18 +24,9 @@
 # THE SOFTWARE.
 #
 
-find_package(Catch_EP REQUIRED)
+include(unit_test)
 
-add_executable(unit_tile EXCLUDE_FROM_ALL)
-target_link_libraries(unit_tile
-    PRIVATE tile
-    PUBLIC Catch2::Catch2WithMain
-)
-target_link_libraries(unit_tile)
-target_sources(unit_tile PUBLIC main.cc unit_tile.cc)
-
-add_test(
-    NAME "unit_tile"
-    COMMAND $<TARGET_FILE:unit_tile>
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+commence(unit_test tile)
+    this_target_object_libraries(tile)
+    this_target_sources(main.cc unit_tile.cc)
+conclude(unit_test)

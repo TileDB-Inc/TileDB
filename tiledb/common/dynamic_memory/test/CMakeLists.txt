@@ -1,5 +1,5 @@
 #
-# tiledb/sm/query/CMakeLists.txt
+# tiledb/common/dynamic_memory/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,14 +24,15 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
-add_subdirectory(ast)
-add_subdirectory(deletes_and_updates)
+include(unit_test)
 
-#
-# Note that this `query` directory does not define any object libraries at
-# present. When the code is better structured so that query objects don't
-# require linking the whole library, we'll have object libraries here.
-#
-
-add_test_subdirectory()
+commence(unit_test dynamic_memory)
+    this_target_object_libraries(baseline)
+    this_target_sources(main.cc unit_dynamic_memory.cc)
+    # Link to Threads::Threads if library or flag needed to enable threading.
+    # The heap_profiler dependency requires threads. The dependency should be
+    # moved to heap_profiler if/when it is added to its own object library.
+    if (CMAKE_THREAD_LIBS_INIT)
+        target_link_libraries(unit_dynamic_memory PUBLIC Threads::Threads)
+    endif()
+conclude(unit_test)

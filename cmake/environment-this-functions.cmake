@@ -1,9 +1,9 @@
 #
-# tiledb/sm/query/CMakeLists.txt
+# cmake/environment-this-functions.cmake
 #
 # The MIT License
 #
-# Copyright (c) 2021-2022 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,16 +22,33 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#
 
-include(common NO_POLICY_SCOPE)
-add_subdirectory(ast)
-add_subdirectory(deletes_and_updates)
-
+# -------------------------------------------------------
+# Usage
+# -------------------------------------------------------
 #
-# Note that this `query` directory does not define any object libraries at
-# present. When the code is better structured so that query objects don't
-# require linking the whole library, we'll have object libraries here.
-#
+# ```
+# include(environment-this-functions)
+# ```
 
-add_test_subdirectory()
+include_guard()
+
+# -------------------------------------------------------
+# `This` functions
+# -------------------------------------------------------
+
+macro(this_target_sources)
+    append_this_property(sources ${ARGV})
+endmacro()
+
+macro(this_target_object_libraries)
+    append_this_property(object_library_dependencies ${ARGV})
+endmacro()
+
+macro(this_target_link_libraries)
+    append_this_property(link_library_dependencies ${ARGV})
+endmacro()
+
+macro(this_target_compile_definitions)
+    append_this_property(compile_definitions ${ARGV})
+endmacro()

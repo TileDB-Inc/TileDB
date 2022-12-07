@@ -92,6 +92,14 @@ commence(object_library uuid)
     endif()
 conclude(object_library)
 
+add_test_subdirectory()
+
+#
+# `mgc_dict.*` tests are declared in this directory for the moment.
+#
+# See also `/tiledb/CMakeLists.txt` for related targets `gen_mgc_unarch` and
+# `update-embedded-magic-data`
+#
 if (TILEDB_TESTS)
   # simple unit test of magic.mgc embedded data vs external data
   find_package(Magic_EP REQUIRED)
@@ -114,24 +122,5 @@ if (TILEDB_TESTS)
     PRIVATE
       ${CMAKE_CURRENT_BINARY_DIR}
      "${libmagic_INCLUDE_DIR}"
-  )
-
-  add_executable(unit_misc EXCLUDE_FROM_ALL)
-  target_link_libraries(unit_misc PRIVATE math)
-  find_package(Catch_EP REQUIRED)
-  target_link_libraries(unit_misc PUBLIC Catch2::Catch2WithMain)
-  target_link_libraries(unit_misc PUBLIC tiledb_test_support_lib uuid)
-  target_include_directories(unit_misc
-    PRIVATE
-    "${CMAKE_SOURCE_DIR}"
-  )
-
-  # Sources for tests
-  target_sources(unit_misc PUBLIC test/unit_bytevecvalue.cc test/main.cc test/unit_math.cc test/unit_hilbert.cc test/unit_uuid.cc)
-
-  add_test(
-      NAME "unit_misc"
-      COMMAND $<TARGET_FILE:unit_misc>
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
 endif()
