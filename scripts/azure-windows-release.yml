@@ -28,9 +28,6 @@ steps:
     if ($env:TILEDB_S3 -eq "ON") {
       $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
     }
-    if ($env:TILEDB_WEBP -eq "ON") {
-      $bootstrapOptions = "-EnableWebP " + $bootstrapOptions
-    }
     if ($env:TILEDB_AZURE -eq "ON") {
       $bootstrapOptions = "-EnableAzure " + $bootstrapOptions
     }
