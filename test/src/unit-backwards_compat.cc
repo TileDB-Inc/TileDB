@@ -1295,12 +1295,9 @@ TEST_CASE(
   query_write.set_data_buffer("d1", d1_write);
   query_write.set_data_buffer("d2", d2_write);
 
-  if (!serialized_writes) {
-    query_write.submit();
-    query_write.finalize();
-  } else {
-    submit_and_finalize_serialized_query(ctx, query_write);
-  }
+  ServerQueryBuffers server_buffers;
+  submit_query_wrapper(
+      ctx, array_name, &query_write, server_buffers, serialized_writes);
 
   array_write.close();
 

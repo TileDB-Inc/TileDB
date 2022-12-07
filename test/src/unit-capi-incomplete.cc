@@ -319,6 +319,7 @@ void IncompleteFx::write_dense_full(const bool serialized_writes) {
 
   rc = submit_query_wrapper(
       ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, serialized_writes);
+  CHECK(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -401,6 +402,7 @@ void IncompleteFx::write_sparse_full(const bool serialized_writes) {
 
   rc = submit_query_wrapper(
       ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialized_writes);
+  CHECK(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -524,6 +526,7 @@ void IncompleteFx::check_dense_incomplete_serialized() {
 
   rc = submit_query_wrapper(
       ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, true, false);
+  CHECK(rc == TILEDB_OK);
 
   // Check status
   tiledb_query_status_t status;

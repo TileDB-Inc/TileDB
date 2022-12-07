@@ -192,7 +192,8 @@ Status array_to_capnp(
 Status array_from_capnp(
     const capnp::Array::Reader& array_reader,
     Array* array,
-    StorageManager* storage_manager) {
+    StorageManager* storage_manager,
+    const bool client_side) {
   // The serialized URI is set if it exists
   // this is used for backwards compatibility with pre TileDB 2.5 clients that
   // want to serialized a query object TileDB >= 2.5 no longer needs to receive
@@ -278,7 +279,9 @@ Status array_from_capnp(
       meta->set_memory_tracker(array->memory_tracker());
       RETURN_NOT_OK(fragment_metadata_from_capnp(
           array->array_schema_latest_ptr(), frag_meta_reader, meta));
-      meta->set_rtree_loaded();
+      if (client_side) {
+        meta->set_rtree_loaded();
+      }
       array->fragment_metadata().emplace_back(meta);
     }
   }

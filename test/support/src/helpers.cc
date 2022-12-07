@@ -1754,6 +1754,18 @@ int array_open_wrapper(
 }
 
 int submit_query_wrapper(
+    const Context& ctx,
+    const std::string& array_uri,
+    Query* query,
+    ServerQueryBuffers& buffers,
+    bool serialize_query,
+    bool finalize) {
+  auto query_c = query->ptr().get();
+  return submit_query_wrapper(
+      ctx.ptr().get(), array_uri, &query_c, buffers, serialize_query, finalize);
+}
+
+int submit_query_wrapper(
     tiledb_ctx_t* ctx,
     const std::string& array_uri,
     tiledb_query_t** query,
@@ -1824,6 +1836,59 @@ int submit_query_wrapper(
     if (rc != TILEDB_OK) {
       return rc;
     }
+  }
+
+  // Serialize the new query and "send it over the network" (server-side)
+  // 3. Server -> Client : Send query response
+  std::vector<uint8_t> serialized2;
+  rc = tiledb_query_v2_serialize(
+      ctx, array_uri.c_str(), serialized, false, server_deser_query, query);
+
+  // Clean up.
+  tiledb_query_free(&server_deser_query);
+
+  return rc;
+}
+
+int finalize_query_wrapper(
+    const Context& ctx,
+    const std::string& array_uri,
+    Query* query,
+    bool serialize_query) {
+  auto query_c = query->ptr().get();
+  return finalize_query_wrapper(
+      ctx.ptr().get(), array_uri, &query_c, serialize_query);
+}
+
+int finalize_query_wrapper(
+    tiledb_ctx_t* ctx,
+    const std::string& array_uri,
+    tiledb_query_t** query,
+    bool serialize_query) {
+#ifndef TILEDB_SERIALIZATION
+  return tiledb_query_finalize(ctx, *query);
+#endif
+
+  if (!serialize_query) {
+    return tiledb_query_finalize(ctx, *query);
+  }
+
+  // Get the query type and layout
+  tiledb_query_type_t query_type;
+  REQUIRE_SAFE(tiledb_query_get_type(ctx, *query, &query_type) == TILEDB_OK);
+
+  // 1. Client -> Server : Send query request
+  tiledb_query_t* server_deser_query;
+  std::vector<uint8_t> serialized;
+
+  int rc = tiledb_query_v2_serialize(
+      ctx, array_uri.c_str(), serialized, true, *query, &server_deser_query);
+  REQUIRE_SAFE(rc == TILEDB_OK);
+
+  // 2. Server: Finalize query
+  rc = tiledb_query_finalize(ctx, server_deser_query);
+  if (rc != TILEDB_OK) {
+    return rc;
   }
 
   // Serialize the new query and "send it over the network" (server-side)

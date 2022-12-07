@@ -68,7 +68,7 @@ Status array_to_capnp(
     Array* array, capnp::Array::Builder* array_builder, const bool client_side);
 
 /**
- * DeSerialize an Array from Cap'n proto
+ * Deserialize an Array from Cap'n proto
  * @param array_reader cap'n proto class
  * @param array Array to deserialize into
  * @return Status
@@ -76,7 +76,8 @@ Status array_to_capnp(
 Status array_from_capnp(
     const capnp::Array::Reader& array_reader,
     Array* array,
-    StorageManager* storage_manager = nullptr);
+    StorageManager* storage_manager = nullptr,
+    const bool client_side = true);
 
 /**
  * Convert info for opening and array to Cap'n Proto message

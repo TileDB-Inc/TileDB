@@ -941,6 +941,7 @@ int array_open_wrapper(
     tiledb_array_t** open_array);
 
 /**
+ * C API
  * Helper method that wraps tiledb_query_submit() and inserts a serialization
  * step, if query serialization is enabled. The added serialization steps
  * are designed to closely mimic the behavior of the REST server.
@@ -952,6 +953,29 @@ int submit_query_wrapper(
     ServerQueryBuffers& buffers,
     bool serialize_query,
     bool finalize = true);
+
+/** C++ API of submit_query_wrapper */
+int submit_query_wrapper(
+    const Context& ctx,
+    const std::string& array_uri,
+    Query* query,
+    ServerQueryBuffers& buffers,
+    bool serialize_query,
+    bool finalize = true);
+
+// TODO: add docstring
+int finalize_query_wrapper(
+    const Context& ctx,
+    const std::string& array_uri,
+    Query* query,
+    bool serialize_query);
+
+// TODO: add docstring
+int finalize_query_wrapper(
+    tiledb_ctx_t* ctx,
+    const std::string& array_uri,
+    tiledb_query_t** query,
+    bool serialize_query);
 
 // TODO: add docstring
 void allocate_query_buffers_server_side(
