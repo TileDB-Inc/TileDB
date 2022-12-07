@@ -48,7 +48,7 @@
 class SubarrayPartitionerStatusException : public StatusException {
  public:
   explicit SubarrayPartitionerStatusException(const std::string& message)
-      : StatusException("SubarrayPertitioner", message) {
+      : StatusException("SubarrayPartitioner", message) {
   }
 };
 
