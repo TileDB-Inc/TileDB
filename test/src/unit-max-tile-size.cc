@@ -272,7 +272,7 @@ struct MaxTileSizeFx {
     array.close();
   };
 
-  void array_schema_evolve_A(const std::string& array_name) {
+  void array_schema_evolve_A() {
     // Targeted against schema created in
     // internal_create_dense_1d_d1_fix_a1_fix.
     tiledb::ArraySchemaEvolution schemaEvolution =
@@ -286,10 +286,10 @@ struct MaxTileSizeFx {
     schemaEvolution.drop_attribute(std::string("a2"));
 
     // Evolve array.
-    schemaEvolution.array_evolve(array_name);
+    schemaEvolution.array_evolve(main_array_name_);
   };
 
-  void array_schema_evolve_B(const std::string& array_name) {
+  void array_schema_evolve_B() {
     // Targeted against schema created in
     // create_dense_1d_d1_fix_a1_fix.
 
@@ -304,7 +304,7 @@ struct MaxTileSizeFx {
     schemaEvolution.drop_attribute(std::string("b257"));
 
     // Evolve array.
-    schemaEvolution.array_evolve(array_name);
+    schemaEvolution.array_evolve(main_array_name_);
   }
 
   void create_sparse_array_d1_var_a1_string(
@@ -330,7 +330,7 @@ struct MaxTileSizeFx {
     tiledb::Array::create(main_array_name_, schema);
   }
 
-    void write_sparse_array_d1_var_a1_string(
+  void write_sparse_array_d1_var_a1_string(
       std::string& dim_data,   // Expecting single-char values, one for each row.
       std::vector<uint64_t>&& dim_offsets,
       std::string&& attr_data  // Expecting single-char values, one for each
@@ -600,12 +600,12 @@ TEST_CASE_METHOD(
     write_dense_array_attr_nchar_ntimes<2>(main_array_name_, "a2");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 4);
 
-    array_schema_evolve_A(main_array_name_);
+    array_schema_evolve_A();
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 4);
     write_dense_array_attr_nchar_ntimes<257>(main_array_name_, "b257");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 257);
 
-    array_schema_evolve_B(main_array_name_);
+    array_schema_evolve_B();
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 257);
     write_dense_array_attr_nchar_ntimes<42>(main_array_name_, "c42");
     // Earlier fragment should still have dominant value of 257.
