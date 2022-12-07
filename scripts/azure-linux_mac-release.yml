@@ -50,6 +50,9 @@ steps:
     if [[ "$TILEDB_STATIC" == "ON" ]]; then
       cmake_args="${cmake_args} -DTILEDB_STATIC=ON";
     fi
+    if [[ "$TILEDB_WEBP" == "ON" ]]; then
+      cmake_args="${cmake_args} -DTILEDB_WEBP=ON";
+    fi;
     if [[ "$TILEDB_HDFS" == "ON" ]]; then
       cmake_args="${cmake_args} -DTILEDB_HDFS=ON";
     fi;

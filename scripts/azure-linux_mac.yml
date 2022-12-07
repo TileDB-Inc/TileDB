@@ -104,6 +104,9 @@ steps:
     if [[ "$TILEDB_STATIC" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-static-tiledb";
     fi
+    if [[ "$TILEDB_WEBP" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-webp";
+    fi;
     if [[ "$TILEDB_HDFS" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-hdfs";
     fi;
