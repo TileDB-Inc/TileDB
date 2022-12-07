@@ -11,7 +11,6 @@ env:
   TILEDB_SERIALIZATION: OFF
   TILEDB_STATIC: OFF
   TILEDB_TOOLS: ON
-  TILEDB_WEBP: ON
   TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose -EnableStaticTileDB -EnableBuildDeps'
 
 jobs:
@@ -42,7 +41,6 @@ jobs:
             TILEDB_AZURE: OFF
             TILEDB_ARROW_TESTS: OFF
             TILEDB_SERIALIZATION: ON
-            TILEDB_WEBP: ON
     env:
       TILEDB_HOME: ${{ github.workspace }}
       TILEDB_GA_IMAGE_NAME: ${{ matrix.os }}
@@ -176,8 +174,8 @@ jobs:
           if ($env:TILEDB_WERROR -eq "OFF") {
             $bootstrapOptions = $bootstrapOptions + " -DisableWerror"
           }
-          if ($env:TILEDB_WEBP -eq "ON") {
-            $bootstrapOptions = $bootstrapOptions + " -EnableWebP"
+          if ($env:TILEDB_WEBP -eq "OFF") {
+            $bootstrapOptions = $bootstrapOptions + " -DisableWebP"
           }
 
           # Use toolchain hack to ignore strawberry perl path in GHA images
