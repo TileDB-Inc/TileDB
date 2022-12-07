@@ -416,7 +416,12 @@ Status DenseReader::dense_read() {
 
   // Process attributes.
   std::vector<std::string> to_read(1);
-  for (auto& name : names) {
+  for (auto& buff : buffers_) {
+    auto& name = buff.first;
+    if (name == constants::coords || array_schema_.is_dim(name)) {
+      continue;
+    }
+
     if (condition_.field_names().count(name) == 0) {
       // Read and unfilter tiles.
       to_read[0] = name;
