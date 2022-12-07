@@ -32,8 +32,8 @@
 
 #include "tiledb/sm/rest/curl.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/platform/cert_file.h"
 #include "tiledb/sm/filesystem/uri.h"
-#include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -313,17 +313,16 @@ Status Curl::init(
     curl_easy_setopt(curl_.get(), CURLOPT_SSL_VERIFYPEER, 0);
   }
 
-#ifdef __linux__
-  // Get CA Cert bundle file from global state. This is initialized and cached
-  // if detected. We have only had issues with finding the certificate path on
-  // Linux.
-  const std::string cert_file =
-      global_state::GlobalState::GetGlobalState().cert_file();
-  // If we have detected a ca cert bundle let's set the curl option for CAINFO
-  if (!cert_file.empty()) {
-    curl_easy_setopt(curl_.get(), CURLOPT_CAINFO, cert_file.c_str());
+  if constexpr (tiledb::platform::PlatformCertFile::enabled) {
+    // Get CA Cert bundle file from global state. This is initialized and cached
+    // if detected. We have only had issues with finding the certificate path on
+    // Linux.
+    const std::string cert_file = tiledb::platform::PlatformCertFile::get();
+    // If we have detected a ca cert bundle let's set the curl option for CAINFO
+    if (!cert_file.empty()) {
+      curl_easy_setopt(curl_.get(), CURLOPT_CAINFO, cert_file.c_str());
+    }
   }
-#endif
 
   RETURN_NOT_OK(
       config_->get<uint64_t>("rest.retry_count", &retry_count_, &found));

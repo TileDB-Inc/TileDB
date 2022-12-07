@@ -81,16 +81,6 @@ Status GlobalState::init(const Config& config) {
     RETURN_NOT_OK(Watchdog::GetWatchdog().initialize());
     RETURN_NOT_OK(init_libcurl());
 
-#ifdef __linux__
-    // We attempt to find the linux ca cert bundle
-    // This only needs to happen one time, and then we will use the file found
-    // for each s3/rest call as appropriate
-    Posix posix;
-    ThreadPool tp{1};
-    throw_if_not_ok(posix.init(config_, &tp));
-    cert_file_ = utils::https::find_ca_certs_linux(posix);
-#endif
-
     initialized_ = true;
   }
 
@@ -110,10 +100,6 @@ void GlobalState::unregister_storage_manager(StorageManager* sm) {
 std::set<StorageManager*> GlobalState::storage_managers() {
   std::unique_lock<std::mutex> lck(storage_managers_mtx_);
   return storage_managers_;
-}
-
-const std::string& GlobalState::cert_file() {
-  return cert_file_;
 }
 
 }  // namespace global_state
