@@ -84,6 +84,17 @@ class ContextResources {
   /*                API                */
   /* ********************************* */
 
+  void show_vars() {
+    std::cerr << "ContextResources: " << this << std::endl;
+    std::cerr << "    comput_tp_: " << &compute_tp_ << std::endl;
+    std::cerr << "    io_tp_: " << &io_tp_ << std::endl;
+    std::cerr << "    stats_: " << stats_.get() << std::endl;
+    std::cerr << "    vfs_: " << vfs_ << std::endl;
+    if (vfs_ != nullptr) {
+      vfs_->show_vars();
+    }
+  }
+
   /** Returns the thread pool for compute-bound tasks. */
   [[nodiscard]] inline ThreadPool& compute_tp() const {
     return compute_tp_;

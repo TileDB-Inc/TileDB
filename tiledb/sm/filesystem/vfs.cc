@@ -62,29 +62,46 @@ VFS::VFS(
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
     const Config& config,
-    ConsistencyController* controller)
-    : thing1_("1", controller)
-    , thing2_("2", controller)
-    , thing3_("3", controller)
-    , thing4_("4", controller)
-    , thing5_("5", controller)
-    , thing6_("6", controller)
-    , stats_(parent_stats->create_child("VFS"))
-    , thing7_("7", controller)
-    , thing8_("8", controller)
-    , thing9_("9", controller)
-    , something_that_takes_space_(0)
-    , thing9point5_("9.5", controller)
-    , thing10_("10", controller)
-    , compute_tp_(compute_tp)
-    , thing11_("11", controller)
-    , io_tp_(io_tp)
-    , thing12_("12", controller)
-    , thing13_("13", controller)
-    , thing14_("14", controller)
-    , vfs_params_(VFSParameters(config))
-    , thing15_("15", controller)
-    , config_(config) {
+    ConsistencyController* controller) {
+    // : thing1_("1", controller)
+    // , thing2_("2", controller)
+    // , thing3_("3", controller)
+    // , thing4_("4", controller)
+    // , thing5_("5", controller)
+    // , thing6_("6", controller)
+    // , stats_(nullptr)
+    // , thing7_("7", controller)
+    // , thing8_("8", controller)
+    // , thing9_("9", controller)
+    // , something_that_takes_space_(0)
+    // , thing9point5_("9.5", controller)
+    // , thing10_("10", controller)
+    // , compute_tp_(compute_tp)
+    // , thing11_("11", controller)
+    // , io_tp_(io_tp)
+    // , thing12_("12", controller)
+    // , thing13_("13", controller)
+    // , thing14_("14", controller)
+    // , vfs_params_(VFSParameters(config))
+    // , thing15_("15", controller)
+    // , config_(config) {
+
+  stats_ = parent_stats->create_child("VFS");
+  compute_tp_ = compute_tp;
+  io_tp_ = io_tp;
+  vfs_params_ = VFSParams(config);
+  config_ = config;
+
+  std::cerr << "parent_stats: " << parent_stats << std::endl;
+  std::cerr << "compute_tp: " << compute_tp << std::endl;
+  std::cerr << "io_tp: " << io_tp << std::endl;
+  std::cerr << "Config: " << &config << std::endl;
+  std::cerr << "Controller: " << controller << std::endl;
+
+  assert(compute_tp_ == compute_tp);
+  assert(io_tp_ == io_tp);
+
+  show_vars();
 
   if(controller != nullptr) {
     std::cerr << "VFS constructor start" << std::endl;
@@ -100,8 +117,19 @@ VFS::VFS(
   assert(io_tp);
 
   // Construct the read-ahead cache.
-  read_ahead_cache_ = tdb_unique_ptr<ReadAheadCache>(
-      tdb_new(ReadAheadCache, vfs_params_.read_ahead_cache_size_));
+  //auto tmp_rac = tdb_new(ReadAheadCache, vfs_params_.read_ahead_cache_size_);
+  std::cerr << "RAC SIZE: " << vfs_params_.read_ahead_cache_size_ << std::endl;
+  auto tmp_rac = new ReadAheadCache(vfs_params_.read_ahead_cache_size_);
+  std::cerr << "TMP_RAC: " << tmp_rac << std::endl;
+
+  show_vars();
+
+  read_ahead_cache_ = std::unique_ptr<ReadAheadCache>(tmp_rac);
+  std::cerr << "RAC: " << read_ahead_cache_.get() << std::endl;
+
+  show_vars();
+
+  std::cerr << "RAC WTF: " << read_ahead_cache_.get() << std::endl;
 
 #ifdef HAVE_HDFS
   //supported_fs_.insert(static_cast<uint8_t>(Filesystem::HDFS);
@@ -147,6 +175,8 @@ VFS::VFS(
 #else
   throw_if_not_ok(posix_.init(config_, io_tp_));
 #endif
+
+  show_vars();
 
   //supported_fs_.insert(static_cast<uint8_t>(Filesystem::MEMFS));
 }

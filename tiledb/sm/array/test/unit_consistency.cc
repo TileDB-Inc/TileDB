@@ -172,6 +172,7 @@ TEST_CASE(
     "[ConsistencyController][array][single]") {
   std::cerr << "TEST FIRST" << std::endl;
   WhiteboxConsistencyController x;
+  std::cerr << "X: " << &x << std::endl;
   x.can_lock();
 
   const URI uri = URI("whitebox_single_array");
@@ -185,6 +186,7 @@ TEST_CASE(
   pjd_break();
 
   ContextResources resources(config, 1, 1, "", &x);
+  resources.show_vars();
   std::cerr << "MADE RESOURCES" << std::endl;
   x.can_lock();
 

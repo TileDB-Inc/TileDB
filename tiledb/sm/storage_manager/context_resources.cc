@@ -55,13 +55,12 @@ ContextResources::ContextResources(
     , vfs_(nullptr) {
     //, vfs_(stats_.get(), &compute_tp_, &io_tp_, config, controller) {
 
+  std::cerr << "ContextResources() " << this << std::endl;
+  show_vars();
+
   vfs_ = new VFS(stats_.get(), &compute_tp_, &io_tp_, config, controller);
 
-  std::cerr << "Config: " << &config << std::endl;
-  std::cerr << "comput_tp_: " << &compute_tp_ << std::endl;
-  std::cerr << "io_tp_: " << &io_tp_ << std::endl;
-  std::cerr << "stats_: " << stats_.get() << std::endl;
-  std::cerr << "vfs_: " << &vfs_ << std::endl;
+  show_vars();
   /*
    * Explicitly register our `stats` object with the global.
    */

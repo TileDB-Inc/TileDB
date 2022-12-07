@@ -173,7 +173,9 @@ class VFS {
       ConsistencyController* controller = nullptr);
 
   /** Destructor. */
-  ~VFS() = default;
+  ~VFS() {
+    std::cerr << "~RAC: " << read_ahead_cache_.get() << std::endl;
+  }
 
   DISABLE_COPY_AND_COPY_ASSIGN(VFS);
   DISABLE_MOVE_AND_MOVE_ASSIGN(VFS);
@@ -181,6 +183,17 @@ class VFS {
   /* ********************************* */
   /*               API                 */
   /* ********************************* */
+
+  void show_vars() {
+    std::cerr << "VFS: " << this << std::endl;
+    std::cerr << "    Stats: " << stats_ << std::endl;
+    std::cerr << "    memfs_: " << &memfs_ << std::endl;
+    std::cerr << "    compute_tp_: " << compute_tp_ << std::endl;
+    std::cerr << "    io_tp_: " << io_tp_ << std::endl;
+    std::cerr << "    read_ahead_cache_: " << read_ahead_cache_.get() << std::endl;
+    std::cerr << "    vfs_params_: " << &vfs_params_ << std::endl;
+    std::cerr << "    Config: " << &config_ << std::endl;
+  }
 
   /**
    * Returns the absolute path of the input string (mainly useful for
@@ -788,7 +801,8 @@ class VFS {
   ThisIsDumb thing13_;
 
   /** The read-ahead cache. */
-  tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
+  //tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
+  std::unique_ptr<ReadAheadCache> read_ahead_cache_;
 
   ThisIsDumb thing14_;
 

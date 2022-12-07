@@ -149,6 +149,15 @@ class StorageManagerCanonical {
   /*                API                */
   /* ********************************* */
 
+  void show_vars() {
+    std::cerr << "StorageManager: " << this << std::endl;
+    std::cerr << "    resources_: " << &resources_ << std::endl;
+    std::cerr << "    config_: " << &config_ << std::endl;
+    std::cerr << "    tile_cache_: " << tile_cache_.get() << std::endl;
+    std::cerr << "    rest_client_: " << rest_client_.get() << std::endl;
+    resources_.show_vars();
+  }
+
   /**
    * Closes an group opened for reads.
    *
