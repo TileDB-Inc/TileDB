@@ -558,17 +558,26 @@ Status Curl::make_curl_request_common(
     CURLcode tmp_curl_code = curl_easy_perform_instrumented(url, i);
 
     bool retry;
-    RETURN_NOT_OK(should_retry(&retry));
+    RETURN_NOT_OK(should_retry_based_on_http_status(&retry));
+
     /* If Curl call was successful (not http status, but no socket error, etc)
      * break */
     if (tmp_curl_code == CURLE_OK && !retry) {
       break;
     }
 
-    /* Only store the first non-OK curl code, because it will likely be more
-     * useful than the curl codes from the retries. */
-    if (*curl_code == CURLE_OK) {
-      *curl_code = tmp_curl_code;
+    /* If there is a write error we should not attempt a retry but instead
+     * return an error */
+    if (tmp_curl_code != CURLE_OK) {
+      /* Only store the first non-OK curl code, because it will likely be more
+       * useful than the curl codes from the retries. */
+      if (*curl_code == CURLE_OK) {
+        *curl_code = tmp_curl_code;
+      }
+
+      return Status_RestError(
+          "Curl error reading response from server: " +
+          get_curl_errstr(tmp_curl_code) + ".");
     }
 
     /* Retry on curl errors, unless the write callback has elected
@@ -605,7 +614,7 @@ Status Curl::make_curl_request_common(
   return Status::Ok();
 }
 
-Status Curl::should_retry(bool* retry) const {
+Status Curl::should_retry_based_on_http_status(bool* retry) const {
   // Set retry to false in case we get any errors from curl api calls
   *retry = false;
 
