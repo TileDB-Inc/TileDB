@@ -90,6 +90,8 @@ void GlobalStats::set_enabled(bool enabled) {
 void GlobalStats::reset() {
   std::unique_lock<std::mutex> ul(mtx_);
   for (auto register_stat = registered_stats_.begin(); register_stat != registered_stats_.end();) {
+    // Reset the stats, -not- the shared_ptr!
+    (*register_stat)->reset();
     if (register_stat->use_count() <= 1) {
       register_stat = registered_stats_.erase(register_stat);
     } else {
