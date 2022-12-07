@@ -125,7 +125,7 @@ option(TILEDB_SERIALIZATION "If true, enables building with support for query se
 option(TILEDB_CCACHE "If true, enables use of 'ccache' (if present)" OFF)
 option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit tests" OFF)
 option(TILEDB_CRC32 "If true, enables building crc32 and a simple linkage test" OFF)
-option(TILEDB_WEBP "If true, enables building webp and a simple linkage test" OFF)
+option(TILEDB_WEBP "If true, enables building webp and a simple linkage test" ON)
 option(TILEDB_ABSEIL "If true, enables building abseil and a simple linkage test" OFF)
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
