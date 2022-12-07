@@ -1,0 +1,3 @@
+# Exclude the capnp generated files to reduce reported size of diffs on GitHub
+posix/**   linguist-generated=true
+win32/**   linguist-generated=true

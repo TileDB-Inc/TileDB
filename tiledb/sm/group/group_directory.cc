@@ -77,6 +77,10 @@ const URI& GroupDirectory::uri() const {
   return uri_;
 }
 
+const std::vector<URI>& GroupDirectory::group_file_uris() const {
+  return group_file_uris_;
+}
+
 /** Returns the latest array schema URI. */
 const URI& GroupDirectory::latest_group_details_uri() const {
   return latest_group_details_uri_;
@@ -144,8 +148,12 @@ Status GroupDirectory::load() {
   // Error check
   bool is_group = false;
   for (const auto& uri : root_dir_uris) {
-    if (uri.last_path_part() == constants::group_filename ||
-        uri.last_path_part() == constants::group_detail_dir_name) {
+    if (uri.last_path_part() == constants::group_filename) {
+      is_group = true;
+      group_file_uris_.insert(group_file_uris_.begin(), uri);
+    }
+
+    if (uri.last_path_part() == constants::group_detail_dir_name) {
       is_group = true;
     }
   }
@@ -162,7 +170,7 @@ Status GroupDirectory::load() {
 }
 
 tuple<Status, optional<std::string>> GroupDirectory::compute_new_fragment_name(
-    const URI& first, const URI& last, uint32_t format_version) const {
+    const URI& first, const URI& last, format_version_t format_version) const {
   // Get uuid
   std::string uuid;
   RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), nullopt);

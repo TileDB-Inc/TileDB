@@ -25,6 +25,7 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
     thread_pool.cc
@@ -32,25 +33,18 @@ list(APPEND SOURCES
 gather_sources(${SOURCES})
 
 #
-# Object library for other units to depend upon
+# `thread_pool` object library
 #
-add_library(thread_pool OBJECT ${SOURCES})
-target_link_libraries(thread_pool PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_thread_pool EXCLUDE_FROM_ALL)
-add_dependencies(all_link_complete compile_thread_pool)
-target_link_libraries(compile_thread_pool PRIVATE thread_pool)
-target_sources(compile_thread_pool PRIVATE test/compile_thread_pool_main.cc)
-
+commence(object_library thread_pool)
+    this_target_sources(${SOURCES})
+    this_target_object_libraries(baseline)
+conclude(object_library)
 
 if (TILEDB_TESTS)
     add_executable(unit_thread_pool EXCLUDE_FROM_ALL)
     target_link_libraries(unit_thread_pool PUBLIC thread_pool)
     find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_thread_pool PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_thread_pool PUBLIC Catch2::Catch2WithMain)
     target_link_libraries(unit_thread_pool PUBLIC $<TARGET_OBJECTS:cancelable_tasks>)
 
     # Sources for code elsewhere required for tests

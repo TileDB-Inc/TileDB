@@ -103,7 +103,7 @@ jobs:
           fi
       - name: Prepare git
         run: git config --global core.autocrlf false
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: core tiledb windows build
         run: |
           $ErrorView = "NormalView"
@@ -179,6 +179,9 @@ jobs:
           if ($env:TILEDB_WEBP -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableWebP"
           }
+
+          # Use toolchain hack to ignore strawberry perl path in GHA images
+          $env:CMAKE_TOOLCHAIN_FILE = "$env:BUILD_SOURCESDIRECTORY/.github/misc/github_windows_toolchain.cmake"
 
           $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
           Write-Host "bootstrapExpression: $bootstrapExpression"
@@ -259,18 +262,22 @@ jobs:
           }
 
           # Actually run tests
-          #~ $cmds = "cmake --build $env:BUILD_BUILDDIRECTORY\tiledb --target check --config $CMakeBuildType -- /verbosity:minimal"
-          #~ Write-Host "cmds: '$cmds'"
-          #~ Invoke-Expression $cmds
-          #$cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\$CMakeBuildType\tiledb_unit.exe -d=yes | c:\msys64\usr\bin\awk '/1: ::set-output/{sub(/.*1: /, `"`"); print; next} 1'"
+
           $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\$CMakeBuildType\tiledb_unit.exe -d=yes"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
-
           if ($LastExitCode -ne 0) {
-             Write-Host "Tests failed. CMake exit status: " $LastExitCocde
+             Write-Host "Tests failed. tiledb_unit exit status: " $LastExitCocde
              $host.SetShouldExit($LastExitCode)
           }
+
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\ci\$CMakeBuildType\test_assert.exe -d=yes"
+          Invoke-Expression $cmds
+          if ($LastExitCode -ne 0) {
+             Write-Host "Tests failed. test_assert exit status: " $LastExitCocde
+             $host.SetShouldExit($LastExitCode)
+          }
+
 
           if ($env:TILEDB_WEBP -eq "ON") {
             $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\tiledb\sm\compressors\$CMakeBuildType\unit_link_webp.exe"
@@ -402,7 +409,7 @@ jobs:
 
       - name: 'upload dumpfile artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ always() == true && startsWith(matrix.os, 'windows-') == true }} # only run this job if the build step failed
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           retention-days: 10
           name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{matrix.environ}}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"

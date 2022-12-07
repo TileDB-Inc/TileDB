@@ -42,37 +42,35 @@ GroupV1::GroupV1(const URI& group_uri, StorageManager* storage_manager)
     : Group(group_uri, storage_manager, GroupV1::format_version_){};
 
 // ===== FORMAT =====
-// format_version (uint32_t)
+// format_version (format_version_t)
 // group_member_num (uint64_t)
 //   group_member #1
 //   group_member #2
 //   ...
-Status GroupV1::serialize(Buffer* buff) {
-  RETURN_NOT_OK(buff->write(&GroupV1::format_version_, sizeof(uint32_t)));
+void GroupV1::serialize(Serializer& serializer) {
+  serializer.write<format_version_t>(GroupV1::format_version_);
   uint64_t group_member_num = members_.size();
-  RETURN_NOT_OK(buff->write(&group_member_num, sizeof(uint64_t)));
+  serializer.write<uint64_t>(group_member_num);
   for (auto& it : members_) {
-    RETURN_NOT_OK(it.second->serialize(buff));
+    it.second->serialize(serializer);
   }
-  return Status::Ok();
 }
 
-std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> GroupV1::deserialize(
-    ConstBuffer* buff, const URI& group_uri, StorageManager* storage_manager) {
+tdb_shared_ptr<Group> GroupV1::deserialize(
+    Deserializer& deserializer,
+    const URI& group_uri,
+    StorageManager* storage_manager) {
   tdb_shared_ptr<GroupV1> group =
       tdb::make_shared<GroupV1>(HERE(), group_uri, storage_manager);
 
   uint64_t member_count = 0;
-  RETURN_NOT_OK_TUPLE(
-      buff->read(&member_count, sizeof(uint64_t)), std::nullopt);
-
+  member_count = deserializer.read<uint64_t>();
   for (uint64_t i = 0; i < member_count; i++) {
-    auto&& [st, member] = GroupMember::deserialize(buff);
-    RETURN_NOT_OK_TUPLE(st, std::nullopt);
-    RETURN_NOT_OK_TUPLE(group->add_member(member.value()), std::nullopt);
+    auto&& member = GroupMember::deserialize(deserializer);
+    group->add_member(member);
   }
 
-  return {Status::Ok(), group};
+  return group;
 }
 }  // namespace sm
 }  // namespace tiledb

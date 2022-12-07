@@ -334,7 +334,7 @@ Status Win32CNG::hash_bytes(
 
   // allocate the hash object on the heap
   tdb_unique_ptr<Buffer> hash_obj = tdb_unique_ptr<Buffer>(tdb_new(Buffer));
-  hash_obj->realloc(hash_size);
+  throw_if_not_ok(hash_obj->realloc(hash_size));
 
   // create a hash
   BCRYPT_HASH_HANDLE hash = NULL;

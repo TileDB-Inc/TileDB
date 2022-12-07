@@ -32,13 +32,18 @@ list(APPEND SOURCES
 gather_sources(${SOURCES})
 
 #
-# Object library for other units to depend upon
+# Object library uses `StorageManagerStub` to support API wrappers
 #
 add_library(capi_error OBJECT ${SOURCES})
 target_link_libraries(capi_error PUBLIC export)
+target_link_libraries(capi_error PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
-# UNFINISHED
+# Test-compile of object library ensures link-completeness
 #
-# This will support a future `capi_config` library.
-#
+add_executable(compile_capi_error EXCLUDE_FROM_ALL)
+target_link_libraries(compile_capi_error PRIVATE capi_error)
+target_sources(compile_capi_error PRIVATE test/compile_capi_error_main.cc)
+add_dependencies(all_link_complete compile_capi_error)
+
+add_test_subdirectory()

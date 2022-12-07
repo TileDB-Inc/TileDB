@@ -60,7 +60,7 @@ namespace serialization {
  * @return Status
  */
 Status config_to_capnp(
-    const Config* config, capnp::Config::Builder* config_builder);
+    const Config& config, capnp::Config::Builder* config_builder);
 
 /**
  * Create a config object from a cap'n proto class
@@ -88,6 +88,52 @@ Status attribute_to_capnp(
  */
 tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
     const capnp::Attribute::Reader& attribute_reader);
+
+/**
+ * Serialize a URI of array directory into a relative path with regards to
+ * the array uri. This is needed since for security reasons we don't want to
+ * send full paths over the wire. The absolute -> relative truncation happens
+ * based on the format version that the path was written in. For an old-format
+ * uri - prior to version 12- (e.g. array_name/fragment423423423423), we just
+ * keep and serialize the last part (fragment423423423423). For a newer format
+ * uri (e.g. array_name/__fragments/fragment423423423423 ) we keep and
+ * serialize the last 2 parts (__fragments/fragment423423423423). Then upon
+ * deserialization we don’t need to rembember/know the version each of each
+ * fragment, we can just append that to the root (array_name/) and we are done.
+ * To detect the version, we look into the uri for the presence of the folder
+ * names introduced after v12.
+ *
+ * @param uri URI to serialize as relative path
+ */
+inline std::string serialize_array_dir_uri_to_relative(const URI& uri) {
+  static std::array<std::string_view, 5> dir_names = {
+      constants::array_fragments_dir_name,
+      constants::array_commits_dir_name,
+      constants::array_schema_dir_name,
+      constants::array_metadata_dir_name,
+      constants::array_fragment_meta_dir_name};
+  auto dir_in_uri = std::any_of(
+      dir_names.begin(), dir_names.end(), [uri](const std::string_view& dir) {
+        return uri.contains(dir);
+      });
+  if (!dir_in_uri) {
+    return uri.remove_trailing_slash().last_path_part();
+  } else {
+    return uri.remove_trailing_slash().last_two_path_parts();
+  }
+}
+
+/**
+ * Reconstruct a relative URI to an absolute one by appending the serialized
+ * URI to the root path of the array.
+ *
+ * @param uri URI to deserialize as absolute path
+ * @param array_uri URI of the array the path belongs to
+ */
+inline URI deserialize_array_dir_uri_to_absolute(
+    const std::string& uri, const URI& array_uri) {
+  return array_uri.join_path(uri);
+}
 
 };  // namespace serialization
 };  // namespace sm
@@ -390,6 +436,36 @@ Status copy_capnp_list(
   return Status::Ok();
 }
 
+template <typename CapnpT>
+Status serialize_non_empty_domain_rv(
+    CapnpT& builder, const NDRange& nonEmptyDomain, uint32_t dim_num) {
+  if (!nonEmptyDomain.empty()) {
+    auto nonEmptyDomainListBuilder = builder.initNonEmptyDomains(dim_num);
+
+    for (uint64_t dimIdx = 0; dimIdx < nonEmptyDomain.size(); ++dimIdx) {
+      const auto& dimNonEmptyDomain = nonEmptyDomain[dimIdx];
+
+      auto dim_builder = nonEmptyDomainListBuilder[dimIdx];
+      dim_builder.setIsEmpty(dimNonEmptyDomain.empty());
+      auto range_start_sizes = dim_builder.initSizes(1);
+
+      if (!dimNonEmptyDomain.empty()) {
+        auto subarray_builder = dim_builder.initNonEmptyDomain();
+        RETURN_NOT_OK(utils::set_capnp_array_ptr(
+            subarray_builder,
+            tiledb::sm::Datatype::UINT8,
+            dimNonEmptyDomain.data(),
+            dimNonEmptyDomain.size()));
+
+        if (dimNonEmptyDomain.start_size() != 0) {
+          range_start_sizes.set(0, dimNonEmptyDomain.start_size());
+        }
+      }
+    }
+  }
+  return Status::Ok();
+}
+
 /** Serializes the given array's nonEmptyDomain into the given Capnp builder.
  *
  * @tparam CapnpT Capnp builder type
@@ -400,49 +476,20 @@ Status copy_capnp_list(
 template <typename CapnpT>
 Status serialize_non_empty_domain(CapnpT& builder, tiledb::sm::Array* array) {
   auto&& [st, nonEmptyDomain_opt] = array->non_empty_domain();
-
   RETURN_NOT_OK(st);
-
   if (nonEmptyDomain_opt.has_value()) {
-    const auto& nonEmptyDomain = nonEmptyDomain_opt.value();
-    if (!nonEmptyDomain.empty()) {
-      auto nonEmptyDomainListBuilder =
-          builder.initNonEmptyDomains(array->array_schema_latest().dim_num());
-
-      for (uint64_t dimIdx = 0; dimIdx < nonEmptyDomain.size(); ++dimIdx) {
-        const auto& dimNonEmptyDomain = nonEmptyDomain[dimIdx];
-
-        auto dim_builder = nonEmptyDomainListBuilder[dimIdx];
-        dim_builder.setIsEmpty(dimNonEmptyDomain.empty());
-        auto range_start_sizes = dim_builder.initSizes(1);
-
-        if (!dimNonEmptyDomain.empty()) {
-          auto subarray_builder = dim_builder.initNonEmptyDomain();
-          RETURN_NOT_OK(utils::set_capnp_array_ptr(
-              subarray_builder,
-              tiledb::sm::Datatype::UINT8,
-              dimNonEmptyDomain.data(),
-              dimNonEmptyDomain.size()));
-
-          if (dimNonEmptyDomain.start_size() != 0) {
-            range_start_sizes.set(0, dimNonEmptyDomain.start_size());
-          }
-        }
-      }
-    }
+    return serialize_non_empty_domain_rv(
+        builder,
+        nonEmptyDomain_opt.value(),
+        array->array_schema_latest().dim_num());
   }
+
   return Status::Ok();
 }
 
-/** Deserializes the given from Capnp build to array's nonEmptyDomain
- *
- * @tparam CapnpT Capnp builder type
- * @param builder Builder to get nonEmptyDomain from
- * @param array Array to set the nonEmptyDomain on
- * @return Status
- */
 template <typename CapnpT>
-Status deserialize_non_empty_domain(CapnpT& reader, tiledb::sm::Array* array) {
+std::pair<Status, std::optional<NDRange>> deserialize_non_empty_domain_rv(
+    CapnpT& reader) {
   capnp::NonEmptyDomainList::Reader r =
       (capnp::NonEmptyDomainList::Reader)reader;
 
@@ -451,7 +498,6 @@ Status deserialize_non_empty_domain(CapnpT& reader, tiledb::sm::Array* array) {
     auto nonEmptyDomains = r.getNonEmptyDomains();
 
     for (uint32_t i = 0; i < nonEmptyDomains.size(); i++) {
-      Range range;
       auto nonEmptyDomainObj = nonEmptyDomains[i];
       // We always store nonEmptyDomain as uint8 lists for the heterogeneous/var
       // length version
@@ -463,17 +509,28 @@ Status deserialize_non_empty_domain(CapnpT& reader, tiledb::sm::Array* array) {
 
       if (nonEmptyDomainObj.hasSizes()) {
         auto sizes = nonEmptyDomainObj.getSizes();
-        range.set_range(vec.data(), vec.size(), sizes[0]);
+        ndRange.emplace_back(vec.data(), vec.size(), sizes[0]);
       } else {
-        range.set_range(vec.data(), vec.size());
+        ndRange.emplace_back(vec.data(), vec.size());
       }
-
-      ndRange.emplace_back(range);
     }
   }
 
-  array->set_non_empty_domain(ndRange);
+  return {Status::Ok(), ndRange};
+}
 
+/** Deserializes the given from Capnp build to array's nonEmptyDomain
+ *
+ * @tparam CapnpT Capnp builder type
+ * @param builder Builder to get nonEmptyDomain from
+ * @param array Array to set the nonEmptyDomain on
+ * @return Status
+ */
+template <typename CapnpT>
+Status deserialize_non_empty_domain(CapnpT& reader, tiledb::sm::Array* array) {
+  auto&& [status, ndrange] = deserialize_non_empty_domain_rv(reader);
+  RETURN_NOT_OK(status);
+  array->set_non_empty_domain(*ndrange);
   return Status::Ok();
 }
 

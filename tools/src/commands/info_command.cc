@@ -118,8 +118,7 @@ void InfoCommand::run() {
 void InfoCommand::print_tile_sizes() const {
   stats::Stats stats("");
   StorageManager sm(
-      &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""));
-  THROW_NOT_OK(sm.init(Config()));
+      &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""), Config());
 
   // Open the array
   URI uri(array_uri_);
@@ -145,19 +144,12 @@ void InfoCommand::print_tile_sizes() const {
       THROW_NOT_OK(f->load_tile_offsets(enc_key, std::move(names)));
       THROW_NOT_OK(f->load_tile_var_sizes(enc_key, name));
       for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
-        auto&& [st, tile_size] = f->persisted_tile_size(name, tile_idx);
-        THROW_NOT_OK(st);
-        persisted_tile_size += *tile_size;
+        persisted_tile_size += f->persisted_tile_size(name, tile_idx);
         in_memory_tile_size += f->tile_size(name, tile_idx);
         num_tiles++;
         if (var_size) {
-          auto&& [st_var_persisted, tile_size_var_persisted] =
-              f->persisted_tile_var_size(name, tile_idx);
-          THROW_NOT_OK(st_var_persisted);
-          persisted_tile_size += *tile_size_var_persisted;
-          auto&& [st_var, tile_size_var] = f->tile_var_size(name, tile_idx);
-          THROW_NOT_OK(st_var);
-          in_memory_tile_size += *tile_size_var;
+          persisted_tile_size += f->persisted_tile_var_size(name, tile_idx);
+          in_memory_tile_size += f->tile_var_size(name, tile_idx);
           num_tiles++;
         }
       }
@@ -196,8 +188,7 @@ void InfoCommand::print_tile_sizes() const {
 void InfoCommand::print_schema_info() const {
   stats::Stats stats("");
   StorageManager sm(
-      &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""));
-  THROW_NOT_OK(sm.init(Config()));
+      &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""), Config());
 
   // Open the array
   URI uri(array_uri_);
@@ -214,8 +205,7 @@ void InfoCommand::print_schema_info() const {
 void InfoCommand::write_svg_mbrs() const {
   stats::Stats stats("");
   StorageManager sm(
-      &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""));
-  THROW_NOT_OK(sm.init(Config()));
+      &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""), Config());
 
   // Open the array
   URI uri(array_uri_);
@@ -290,8 +280,7 @@ void InfoCommand::write_svg_mbrs() const {
 void InfoCommand::write_text_mbrs() const {
   stats::Stats stats("");
   StorageManager sm(
-      &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""));
-  THROW_NOT_OK(sm.init(Config()));
+      &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""), Config());
 
   // Open the array
   URI uri(array_uri_);
@@ -305,7 +294,7 @@ void InfoCommand::write_text_mbrs() const {
   auto fragment_metadata = array.fragment_metadata();
   std::stringstream text;
   for (const auto& f : fragment_metadata) {
-    f->load_rtree(*encryption_key);
+    THROW_NOT_OK(f->load_rtree(*encryption_key));
     const auto& mbrs = f->mbrs();
     for (const auto& mbr : mbrs) {
       auto str_mbr = mbr_to_string(mbr, schema.domain());

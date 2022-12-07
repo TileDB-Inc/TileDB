@@ -199,9 +199,21 @@ S3::S3()
 }
 
 S3::~S3() {
-  assert(state_ == State::DISCONNECTED);
-  for (auto& buff : file_buffers_)
-    tdb_delete(buff.second);
+  /**
+   * Note: if s3 fails to disconnect, the Status must be logged.
+   * Right now, there aren't means to adjust s3 issues that may cause
+   * disconnection failure.
+   * In the future, the Governor class may be invoked here as a means of
+   * handling s3 connection issues.
+   */
+  Status st = disconnect();
+  if (!st.ok()) {
+    LOG_STATUS_NO_RETURN_VALUE(st);
+  } else {
+    assert(state_ == State::DISCONNECTED);
+    for (auto& buff : file_buffers_)
+      tdb_delete(buff.second);
+  }
 }
 
 /* ********************************* */
@@ -517,7 +529,7 @@ Status S3::flush_object(const URI& uri) {
     // It is safe to unlock the state here
     state_lck.unlock();
 
-    wait_for_object_to_propagate(move(bucket), move(key));
+    throw_if_not_ok(wait_for_object_to_propagate(move(bucket), move(key)));
 
     return finish_flush_object(std::move(outcome), uri, buff);
   } else {
@@ -617,7 +629,7 @@ Status S3::is_empty_bucket(const URI& bucket, bool* is_empty) const {
 }
 
 Status S3::is_bucket(const URI& uri, bool* const exists) const {
-  init_client();
+  throw_if_not_ok(init_client());
 
   if (!uri.is_s3()) {
     return LOG_STATUS(Status_S3Error(
@@ -634,7 +646,7 @@ Status S3::is_bucket(const URI& uri, bool* const exists) const {
 }
 
 Status S3::is_object(const URI& uri, bool* const exists) const {
-  init_client();
+  throw_if_not_ok(init_client());
 
   if (!uri.is_s3()) {
     return LOG_STATUS(Status_S3Error(
@@ -650,7 +662,7 @@ Status S3::is_object(
     const Aws::String& bucket_name,
     const Aws::String& object_key,
     bool* const exists) const {
-  init_client();
+  throw_if_not_ok(init_client());
 
   Aws::S3::Model::HeadObjectRequest head_object_request;
   head_object_request.SetBucket(bucket_name);
@@ -929,8 +941,8 @@ Status S3::remove_object(const URI& uri) const {
         outcome_error_message(delete_object_outcome)));
   }
 
-  wait_for_object_to_be_deleted(
-      delete_object_request.GetBucket(), delete_object_request.GetKey());
+  throw_if_not_ok(wait_for_object_to_be_deleted(
+      delete_object_request.GetBucket(), delete_object_request.GetKey()));
   return Status::Ok();
 }
 
@@ -992,8 +1004,8 @@ Status S3::touch(const URI& uri) const {
         outcome_error_message(put_object_outcome)));
   }
 
-  wait_for_object_to_propagate(
-      put_object_request.GetBucket(), put_object_request.GetKey());
+  throw_if_not_ok(wait_for_object_to_propagate(
+      put_object_request.GetBucket(), put_object_request.GetKey()));
 
   return Status::Ok();
 }
@@ -1313,8 +1325,8 @@ Status S3::copy_object(const URI& old_uri, const URI& new_uri) {
         new_uri.c_str() + outcome_error_message(copy_object_outcome)));
   }
 
-  wait_for_object_to_propagate(
-      copy_object_request.GetBucket(), copy_object_request.GetKey());
+  throw_if_not_ok(wait_for_object_to_propagate(
+      copy_object_request.GetBucket(), copy_object_request.GetKey()));
 
   return Status::Ok();
 }
@@ -1433,7 +1445,7 @@ std::string S3::join_authority_and_path(
 
 Status S3::wait_for_object_to_propagate(
     const Aws::String& bucket_name, const Aws::String& object_key) const {
-  init_client();
+  throw_if_not_ok(init_client());
 
   unsigned attempts_cnt = 0;
   while (attempts_cnt++ < constants::s3_max_attempts) {
@@ -1454,7 +1466,7 @@ Status S3::wait_for_object_to_propagate(
 
 Status S3::wait_for_object_to_be_deleted(
     const Aws::String& bucket_name, const Aws::String& object_key) const {
-  init_client();
+  throw_if_not_ok(init_client());
 
   unsigned attempts_cnt = 0;
   while (attempts_cnt++ < constants::s3_max_attempts) {
@@ -1474,7 +1486,7 @@ Status S3::wait_for_object_to_be_deleted(
 }
 
 Status S3::wait_for_bucket_to_be_created(const URI& bucket_uri) const {
-  init_client();
+  throw_if_not_ok(init_client());
 
   unsigned attempts_cnt = 0;
   while (attempts_cnt++ < constants::s3_max_attempts) {
@@ -1547,8 +1559,8 @@ Status S3::flush_direct(const URI& uri) {
                        "match result from server!' "));
   }
 
-  wait_for_object_to_propagate(
-      put_object_request.GetBucket(), put_object_request.GetKey());
+  throw_if_not_ok(wait_for_object_to_propagate(
+      put_object_request.GetBucket(), put_object_request.GetKey()));
 
   return Status::Ok();
 }
@@ -1674,7 +1686,7 @@ Status S3::write_multipart(
     if (!aggregate_st.ok()) {
       std::stringstream errmsg;
       errmsg << "S3 parallel write multipart error; " << aggregate_st.message();
-      LOG_STATUS(Status_S3Error(errmsg.str()));
+      LOG_STATUS_NO_RETURN_VALUE(Status_S3Error(errmsg.str()));
     }
     return aggregate_st;
   }
@@ -1747,6 +1759,43 @@ Status S3::get_make_upload_part_req(
   state->completed_parts.emplace(
       ctx.upload_part_num, std::move(completed_part));
   state_lck.unlock();
+
+  return Status::Ok();
+}
+
+std::optional<S3::MultiPartUploadState> S3::multipart_upload_state(
+    const URI& uri) {
+  const Aws::Http::URI aws_uri(uri.c_str());
+  const std::string uri_path(aws_uri.GetPath().c_str());
+
+  // Lock the multipart states map for reads
+  UniqueReadLock unique_rl(&multipart_upload_rwlock_);
+  auto state_iter = multipart_upload_states_.find(uri_path);
+  if (state_iter == multipart_upload_states_.end()) {
+    return nullopt;
+  }
+
+  // Delete the multipart state from the internal map to avoid
+  // the upload being completed by S3::disconnect during Context
+  // destruction when cloud executors die. The multipart request should be
+  // completed only during query finalize for remote global order writes.
+  std::unique_lock<std::mutex> state_lck(state_iter->second.mtx);
+  MultiPartUploadState rv_state = std::move(state_iter->second);
+  multipart_upload_states_.erase(state_iter);
+
+  return rv_state;
+}
+
+Status S3::set_multipart_upload_state(
+    const std::string& uri, MultiPartUploadState& state) {
+  Aws::Http::URI aws_uri(uri.c_str());
+  std::string uri_path(aws_uri.GetPath().c_str());
+
+  state.bucket = aws_uri.GetAuthority();
+  state.key = aws_uri.GetPath();
+
+  UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
+  multipart_upload_states_[uri_path] = state;
 
   return Status::Ok();
 }

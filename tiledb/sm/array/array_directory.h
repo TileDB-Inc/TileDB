@@ -153,9 +153,10 @@ class ArrayDirectory {
 
  public:
   /**
-   * Class to return a location of a delete tile, which is file URI/offset.
+   * Class to return a location of a delete or update tile, which is file
+   * URI/offset.
    */
-  class DeleteTileLocation {
+  class DeleteAndUpdateTileLocation {
    public:
     /* ********************************* */
     /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -164,7 +165,7 @@ class ArrayDirectory {
     /**
      * Constructor.
      */
-    DeleteTileLocation(
+    DeleteAndUpdateTileLocation(
         const URI& uri,
         const std::string condition_marker,
         const storage_size_t offset)
@@ -181,10 +182,17 @@ class ArrayDirectory {
     }
 
     /** Destructor. */
-    ~DeleteTileLocation() = default;
+    ~DeleteAndUpdateTileLocation() = default;
 
-    bool operator<(const DeleteTileLocation& rhs) const {
+    bool operator<(const DeleteAndUpdateTileLocation& rhs) const {
       return (timestamp_ < rhs.timestamp_);
+    }
+
+    bool operator==(const DeleteAndUpdateTileLocation& other) const {
+      return (
+          uri() == other.uri() &&
+          condition_marker() == other.condition_marker() &&
+          offset() == other.offset() && timestamp() == other.timestamp());
     }
 
     /* ********************************* */
@@ -271,6 +279,9 @@ class ArrayDirectory {
   /** Returns the latest array schema URI. */
   const URI& latest_array_schema_uri() const;
 
+  /** Returns the unfiltered fragment uris. */
+  const std::vector<URI>& unfiltered_fragment_uris() const;
+
   /** Returns the URIs of the array metadata files to vacuum. */
   const std::vector<URI>& array_meta_uris_to_vacuum() const;
 
@@ -283,6 +294,9 @@ class ArrayDirectory {
   /** Returns the URIs of the commit files to vacuum. */
   const std::vector<URI>& commit_uris_to_vacuum() const;
 
+  /** Returns the consolidated commit URI set. */
+  const std::unordered_set<std::string>& consolidated_commit_uris_set() const;
+
   /** Returns the URIs of the consolidated commit files to vacuum. */
   const std::vector<URI>& consolidated_commits_uris_to_vacuum() const;
 
@@ -293,7 +307,11 @@ class ArrayDirectory {
   const std::vector<URI>& fragment_meta_uris() const;
 
   /** Returns the location of delete tiles. */
-  const std::vector<DeleteTileLocation>& delete_tiles_location() const;
+  const std::vector<DeleteAndUpdateTileLocation>&
+  delete_and_update_tiles_location() const;
+
+  /** Returns the fragment absolute path given an array URI and a version */
+  static URI generate_fragment_dir_uri(uint32_t write_version, URI array_uri);
 
   /** Returns the URI to store fragments. */
   URI get_fragments_dir(uint32_t write_version) const;
@@ -305,23 +323,113 @@ class ArrayDirectory {
   URI get_commits_dir(uint32_t write_version) const;
 
   /** Returns the URI for either an ok file or wrt file. */
-  tuple<Status, optional<URI>> get_commit_uri(const URI& fragment_uri) const;
+  URI get_commit_uri(const URI& fragment_uri) const;
 
   /** Returns the URI for a vacuum file. */
-  tuple<Status, optional<URI>> get_vacuum_uri(const URI& fragment_uri) const;
+  URI get_vacuum_uri(const URI& fragment_uri) const;
 
   /**
    * The new fragment name is computed
    * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
    */
   tuple<Status, optional<std::string>> compute_new_fragment_name(
-      const URI& first, const URI& last, uint32_t format_version) const;
+      const URI& first, const URI& last, format_version_t format_version) const;
 
   /** Returns `true` if `load` has been run. */
   bool loaded() const;
 
+  /** Returns the filtered fragment URIs struct. */
   const FilteredFragmentUris filtered_fragment_uris(
       const bool full_overlap_only) const;
+
+  /** Returns the start timestamp of the files to be considered */
+  const uint64_t& timestamp_start() const;
+
+  /** Returns the end timestamp of the files to be considered */
+  const uint64_t& timestamp_end() const;
+
+  /* ACCESSORS */
+
+  /** Accessor to array uri_ */
+  inline URI& uri() {
+    return uri_;
+  }
+
+  /** Accessor to array_schema_uris_ */
+  inline std::vector<URI>& array_schema_uris() {
+    return array_schema_uris_;
+  }
+
+  /** Accessor to latest_array_schema_uri_ */
+  inline URI& latest_array_schema_uri() {
+    return latest_array_schema_uri_;
+  }
+
+  /** Accessor to unfiltered_fragment_uris_ */
+  inline std::vector<URI>& unfiltered_fragment_uris() {
+    return unfiltered_fragment_uris_;
+  }
+
+  /** Accessor to consolidated_commit_uris_set_ */
+  inline std::unordered_set<std::string>& consolidated_commit_uris_set() {
+    return consolidated_commit_uris_set_;
+  }
+
+  /** Accessor to array_meta_uris_to_vacuum_ */
+  inline std::vector<URI>& array_meta_uris_to_vacuum() {
+    return array_meta_uris_to_vacuum_;
+  }
+
+  /** Accessor to array_meta_vac_uris_to_vacuum_ */
+  inline std::vector<URI>& array_meta_vac_uris_to_vacuum() {
+    return array_meta_vac_uris_to_vacuum_;
+  }
+
+  /** Accessor to commit_uris_to_consolidate_ */
+  inline std::vector<URI>& commit_uris_to_consolidate() {
+    return commit_uris_to_consolidate_;
+  }
+
+  /** Accessor to commit_uris_to_vacuum_ */
+  inline std::vector<URI>& commit_uris_to_vacuum() {
+    return commit_uris_to_vacuum_;
+  }
+
+  /** Accessor to consolidated_commits_uris_to_vacuum_ */
+  inline std::vector<URI>& consolidated_commits_uris_to_vacuum() {
+    return consolidated_commits_uris_to_vacuum_;
+  }
+
+  /** Accessor to array_meta_uris_ */
+  inline std::vector<TimestampedURI>& array_meta_uris() {
+    return array_meta_uris_;
+  }
+
+  /** Accessor to timestamp_start_ */
+  inline uint64_t& timestamp_start() {
+    return timestamp_start_;
+  }
+
+  /** Accessor to timestamp_end_ */
+  inline uint64_t& timestamp_end() {
+    return timestamp_end_;
+  }
+
+  /** Accessor to fragment_meta_uris_ */
+  inline std::vector<URI>& fragment_meta_uris() {
+    return fragment_meta_uris_;
+  }
+
+  /** Accessor to delete_and_update_tiles_location_ */
+  inline std::vector<DeleteAndUpdateTileLocation>&
+  delete_and_update_tiles_location() {
+    return delete_and_update_tiles_location_;
+  }
+
+  /** Accessor to loaded_ */
+  inline bool& loaded() {
+    return loaded_;
+  }
 
  private:
   /* ********************************* */
@@ -374,8 +482,8 @@ class ArrayDirectory {
   /** The URIs of the consolidated fragment metadata files. */
   std::vector<URI> fragment_meta_uris_;
 
-  /** The location of delete tiles. */
-  std::vector<DeleteTileLocation> delete_tiles_location_;
+  /** The location of delete and update tiles. */
+  std::vector<DeleteAndUpdateTileLocation> delete_and_update_tiles_location_;
 
   /**
    * Only array fragments, metadata, etc. that

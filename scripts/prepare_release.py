@@ -11,6 +11,7 @@ from github import Github
 
 from parse_pr import parse_pr_body, type_mapping
 
+sphinx_conf_file = "tiledb/doxygen/source/conf.py"
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Prepare next TileDB release")
@@ -148,7 +149,7 @@ def update_version(version: str) -> None:
 
     # 3. replace version and release in doc/source/conf.py
     replace_in_file(
-        "doc/source/conf.py",
+        sphinx_conf_file,
         dict(
             pattern=r"version = '\d+\.\d+'\n",
             repl=f"version = '{major}.{minor}'\n",

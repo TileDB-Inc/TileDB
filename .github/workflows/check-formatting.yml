@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 90
     name: Check Clang Format
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: 'Print env'
         run: |
           echo "'uname -s' is:"

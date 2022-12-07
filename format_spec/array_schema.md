@@ -11,7 +11,7 @@ my_array                            # array folder
    |  ...
    |_ __schema                      # array schema folder
          |_ <timestamped_name>      # array schema file
-         |_ ...  
+         |_ ...
 ```
 
 `<timestamped_name>` has format `__timestamp_timestamp_uuid`, where:
@@ -97,3 +97,4 @@ The attribute has internal format:
 | Fill value | `uint8_t[]` | The fill value |
 | Nullable | `bool` | Whether or not the attribute can be null |
 | Fill value validity | `uint8_t` | The validity fill value |
+| Order | `uint8_t` | Order of the data stored in the attribute. This may be unordered, increasing or decreasing |

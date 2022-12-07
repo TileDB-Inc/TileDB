@@ -167,36 +167,49 @@ void ResultTile::erase_tile(const std::string& name) {
 }
 
 void ResultTile::init_attr_tile(
-    const std::string& name, bool var_size, bool nullable) {
-  // Nothing to do for the special zipped coordinates tile
+    const format_version_t format_version,
+    const ArraySchema& array_schema,
+    const std::string& name,
+    const TileSizes tile_sizes) {
+  auto tuple = TileTuple(format_version, array_schema, name, tile_sizes);
+
   if (name == constants::coords) {
-    coords_tile_ = TileTuple(false, false);
+    coords_tile_ = std::move(tuple);
     return;
   }
 
   if (name == constants::timestamps) {
-    timestamps_tile_ = TileTuple(false, false);
+    timestamps_tile_ = std::move(tuple);
     return;
   }
 
   if (name == constants::delete_timestamps) {
-    delete_timestamps_tile_ = TileTuple(false, false);
+    delete_timestamps_tile_ = std::move(tuple);
+    return;
+  }
+
+  if (name == constants::delete_condition_index) {
+    delete_condition_index_tile_ = std::move(tuple);
     return;
   }
 
   // Handle attributes
   for (auto& at : attr_tiles_) {
     if (at.first == name && at.second == nullopt) {
-      at.second = TileTuple(var_size, nullable);
+      at.second = std::move(tuple);
       return;
     }
   }
 }
 
 void ResultTile::init_coord_tile(
-    const std::string& name, bool var_size, unsigned dim_idx) {
-  coord_tiles_[dim_idx] =
-      std::pair<std::string, TileTuple>(name, TileTuple(var_size, false));
+    const format_version_t format_version,
+    const ArraySchema& array_schema,
+    const std::string& name,
+    const TileSizes tile_sizes,
+    unsigned dim_idx) {
+  coord_tiles_[dim_idx] = std::pair<std::string, TileTuple>(
+      name, TileTuple(format_version, array_schema, name, tile_sizes));
 
   // When at least one unzipped coordinate has been initialized, we will
   // use the unzipped `coord()` implementation.
@@ -218,6 +231,11 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   if (delete_timestamps_tile_.has_value() &&
       name == constants::delete_timestamps) {
     return &delete_timestamps_tile_.value();
+  }
+
+  if (delete_condition_index_tile_.has_value() &&
+      name == constants::delete_condition_index) {
+    return &delete_condition_index_tile_.value();
   }
 
   // Handle attribute tile
@@ -315,6 +333,28 @@ bool ResultTile::same_coords(uint64_t pos_a, uint64_t pos_b) const {
 uint64_t ResultTile::timestamp(uint64_t pos) {
   const auto& tile = this->tile_tuple(constants::timestamps)->fixed_tile();
   return tile.data_as<uint64_t>()[pos];
+}
+
+template <typename LabelType>
+LabelType ResultTile::attribute_value(
+    const std::string& label_name, const uint64_t pos) {
+  const auto label_data =
+      tile_tuple(label_name)->fixed_tile().data_as<LabelType>();
+  return label_data[pos];
+}
+
+template <>
+std::string_view ResultTile::attribute_value<std::string_view>(
+    const std::string& label_name, const uint64_t pos) {
+  auto tuple = tile_tuple(label_name);
+  auto offsets_data = tuple->fixed_tile().data_as<uint64_t>();
+  auto& var_tile = tuple->var_tile();
+  auto offset = offsets_data[pos];
+
+  auto size = static_cast<size_t>(pos) == cell_num() - 1 ?
+                  var_tile.size() - offset :
+                  offsets_data[pos + 1] - offset;
+  return std::string_view(&var_tile.data_as<char>()[offset], size);
 }
 
 unsigned ResultTile::frag_idx() const {
@@ -790,7 +830,7 @@ void ResultTile::compute_results_count_sparse_string_range(
     uint64_t c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
                                              buff_str_size - c_offset;
 
-    std::string_view str(buff_str + c_offset, c_size);
+    const std::string_view str(buff_str + c_offset, c_size);
 
     // Binary search to find the first range containing the cell.
     auto it = std::lower_bound(
@@ -830,9 +870,8 @@ void ResultTile::compute_results_count_sparse_string_range(
     // dim.
     uint64_t count = 0;
     for (uint64_t j = start_range_idx; j < end_range_idx; ++j) {
-      auto& range = cached_ranges[j];
-      count += str_coord_intersects(
-          c_offset, c_size, buff_str, range.first, range.second);
+      const auto& range = cached_ranges[j];
+      count += str >= range.first && str <= range.second;
     }
 
     // Multiply the past count by this dimension's count.
@@ -1331,6 +1370,28 @@ void ResultTile::set_compute_results_func() {
     }
   }
 }
+
+// Explicit template instantiations
+template int8_t ResultTile::attribute_value<int8_t>(
+    const std::string&, const uint64_t);
+template uint8_t ResultTile::attribute_value<uint8_t>(
+    const std::string&, const uint64_t);
+template int16_t ResultTile::attribute_value<int16_t>(
+    const std::string&, const uint64_t);
+template uint16_t ResultTile::attribute_value<uint16_t>(
+    const std::string&, const uint64_t);
+template int32_t ResultTile::attribute_value<int32_t>(
+    const std::string&, const uint64_t);
+template uint32_t ResultTile::attribute_value<uint32_t>(
+    const std::string&, const uint64_t);
+template int64_t ResultTile::attribute_value<int64_t>(
+    const std::string&, const uint64_t);
+template uint64_t ResultTile::attribute_value<uint64_t>(
+    const std::string&, const uint64_t);
+template float ResultTile::attribute_value<float>(
+    const std::string&, const uint64_t);
+template double ResultTile::attribute_value<double>(
+    const std::string&, const uint64_t);
 
 }  // namespace sm
 }  // namespace tiledb

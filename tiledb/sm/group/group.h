@@ -42,14 +42,13 @@
 #include "tiledb/sm/group/group_directory.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
 
-class StorageManager;
 class Group {
  public:
   Group(
@@ -94,6 +93,16 @@ class Group {
    * @return
    */
   Status clear();
+
+  /**
+   * Deletes data from and closes a group opened in MODIFY_EXCLUSIVE mode.
+   *
+   * Note: if recursive == false, data added to the group will be left as-is.
+   *
+   * @param uri The address of the group to be deleted.
+   * @param recursive True if all data inside the group is to be deleted.
+   */
+  void delete_group(const URI& uri, bool recursive = false);
 
   /**
    * Deletes metadata from an group opened in WRITE mode.
@@ -205,7 +214,7 @@ class Group {
    * Return config
    * @return Config
    */
-  const Config* config() const;
+  const Config& config() const;
 
   /**
    * Set the config on the group
@@ -270,7 +279,7 @@ class Group {
    * @param group_member to add
    * @return Status
    */
-  Status add_member(const tdb_shared_ptr<GroupMember>& group_member);
+  void add_member(const tdb_shared_ptr<GroupMember>& group_member);
 
   /**
    * Serializes the object members into a binary buffer.
@@ -279,7 +288,7 @@ class Group {
    * @param version The format spec version.
    * @return Status
    */
-  virtual Status serialize(Buffer* buff);
+  virtual void serialize(Serializer& serializer);
 
   /**
    * Applies and pending changes and then calls serialize
@@ -288,7 +297,7 @@ class Group {
    * @param version The format spec version.
    * @return Status
    */
-  Status apply_and_serialize(Buffer* buff);
+  void apply_and_serialize(Serializer& serializer);
 
   /**
    * Returns a Group object from the data in the input binary buffer.
@@ -297,8 +306,10 @@ class Group {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> deserialize(
-      ConstBuffer* buff, const URI& group_uri, StorageManager* storage_manager);
+  static std::optional<tdb_shared_ptr<Group>> deserialize(
+      Deserializer& deserializer,
+      const URI& group_uri,
+      StorageManager* storage_manager);
 
   /** Returns the group URI. */
   const URI& group_uri() const;
@@ -330,35 +341,28 @@ class Group {
   /**
    * Get count of members
    *
-   * @return tuple of Status and optional member count
+   * @return member count
    */
-  tuple<Status, optional<uint64_t>> member_count() const;
+  uint64_t member_count() const;
 
   /**
    * Get a member by index
    *
    * @param index of member
-   * @return Tuple of Status, URI string, ObjectType, optional name
+   * @return Tuple of URI string, ObjectType, optional GroupMember name
    */
-  tuple<
-      Status,
-      optional<std::string>,
-      optional<ObjectType>,
-      optional<std::string>>
-  member_by_index(uint64_t index);
+  tuple<std::string, ObjectType, optional<std::string>> member_by_index(
+      uint64_t index);
 
   /**
    * Get a member by name
    *
    * @param name of member
-   * @return Tuple of Status, URI string, ObjectType, optional name
+   * @return Tuple of URI string, ObjectType, optional GroupMember name,
+   * bool which is true if the URI is relative to the group.
    */
-  tuple<
-      Status,
-      optional<std::string>,
-      optional<ObjectType>,
-      optional<std::string>>
-  member_by_name(const std::string& name);
+  tuple<std::string, ObjectType, optional<std::string>, bool> member_by_name(
+      const std::string& name);
 
   /** Returns `true` if the group is open. */
   bool is_open() const;

@@ -30,8 +30,8 @@
  * Tests the `Subarray` class.
  */
 
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
@@ -125,7 +125,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{5, 7, 6, 15, 33, 43}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Prepare correct tile coordinates
   std::vector<std::vector<uint8_t>> c_tile_coords;
@@ -248,7 +248,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{2, 2, 6, 10}, {2, 6, 5, 10}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   auto tile_coords = subarray.tile_coords();
   CHECK(tile_coords == c_tile_coords);
@@ -924,4 +924,46 @@ TEST_CASE_METHOD(
       &subarray, 37, 57, 32, 63, {2, 0, 0}, {3, 3, 3});
 
   close_array(ctx_, array_);
+}
+
+TEST_CASE_METHOD(
+    SubarrayFx, "Subarray: round-trip attribute ranges", "[Subarray]") {
+  // Create array
+  uint64_t domain[2]{0, 3};
+  uint64_t tile_extent{4};
+  create_array(
+      ctx_,
+      array_name_,
+      TILEDB_DENSE,
+      {"x"},
+      {TILEDB_UINT64},
+      {domain},
+      {&tile_extent},
+      {"a", "b"},
+      {TILEDB_INT64, TILEDB_FLOAT64},
+      {1, 1},
+      {tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      4);
+  open_array(ctx_, array_, TILEDB_READ);
+
+  // Create subarray
+  tiledb_subarray_t* subarray;
+  tiledb_subarray_alloc(ctx_, array_, &subarray);
+
+  // Set attribute ranges
+  int64_t range_data[6]{-10, -8, -5, 0, -2, 7};
+  std::vector<Range> input_ranges{
+      Range(&range_data[0], &range_data[1], sizeof(int64_t)),
+      Range(&range_data[2], &range_data[3], sizeof(int64_t)),
+      Range(&range_data[4], &range_data[5], sizeof(int64_t))};
+  subarray->subarray_->set_attribute_ranges("b", input_ranges);
+
+  // Get attribute ranges and verify results
+  const auto& output_ranges = subarray->subarray_->get_attribute_ranges("b");
+  for (uint32_t ii = 0; ii < 3; ++ii) {
+    CHECK(input_ranges[ii] == output_ranges[ii]);
+  }
 }

@@ -239,6 +239,21 @@ class QueryBuffer {
     return Status::Ok();
   }
 
+  /** Returns a const pointer to the data buffer as the requested type. */
+  template <typename T>
+  inline const T* data_buffer_as() const {
+    if (buffer_var_) {
+      return static_cast<T*>(buffer_var_);
+    } else {
+      return buffer_ ? static_cast<T*>(buffer_) : nullptr;
+    }
+  }
+
+  /** Returns a const pointer to the offset buffer. */
+  inline const uint64_t* offsets_buffer() const {
+    return buffer_ ? static_cast<uint64_t*>(buffer_) : nullptr;
+  }
+
   /**
    * Treat this buffer as containing an array of data of fixed size `datum_size`
    * and retrieve the datum at array position `index`.

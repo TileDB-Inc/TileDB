@@ -33,10 +33,12 @@ The filter has internal format:
 TileDB supports the following filters:
 * [Float Scaling Filter](./filters/float_scale.md)
 * [XOR Filter](./filters/xor.md)
+* [Dictionary Encoding Filter](./filters/dictionary_encoding.md)
+* [WEBP Filter](./filters/webp.md)
 
 ## Filter Options
 
-The filter options are configuration parameters for the filters that do not change once the array schema has been created. 
+The filter options are configuration parameters for the filters that do not change once the array schema has been created.
 
 ### Main Compressor Options
 
@@ -75,4 +77,4 @@ The filter options for `TILEDB_FILTER_POSITIVE_DELTA` has internal format:
 
 ### Other Filter Options
 
-The remaining filters \(`TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256, XOR}` do not serialize any options.
+The remaining filters \(`TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256,XOR,DICTIONARY}`\) do not serialize any options.

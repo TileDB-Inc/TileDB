@@ -34,6 +34,7 @@
 #ifndef TILEDB_WALK_ORDER_H
 #define TILEDB_WALK_ORDER_H
 
+#include "tiledb/common/exception/status.h"
 #include "tiledb/sm/misc/constants.h"
 
 namespace tiledb {
@@ -41,7 +42,7 @@ namespace sm {
 
 enum class WalkOrder : uint8_t {
 #define TILEDB_WALK_ORDER_ENUM(id) id
-#include "tiledb/sm/c_api/tiledb_enum.h"
+#include "tiledb/api/c_api/object/object_api_enum.h"
 #undef TILEDB_WALK_ORDER_ENUM
 };
 
@@ -65,7 +66,7 @@ inline Status walkorder_enum(
   else if (walkorder_str == constants::walkorder_postorder_str)
     *walkorder = WalkOrder::POSTORDER;
   else
-    return Status_Error("Invalid WalkOrder " + walkorder_str);
+    return common::Status_Error("Invalid WalkOrder " + walkorder_str);
 
   return Status::Ok();
 }

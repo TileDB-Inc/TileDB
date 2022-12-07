@@ -85,10 +85,9 @@ FilterPipeline& FilterPipeline::operator=(FilterPipeline&& other) {
   return *this;
 }
 
-Status FilterPipeline::add_filter(const Filter& filter) {
+void FilterPipeline::add_filter(const Filter& filter) {
   shared_ptr<Filter> copy(filter.clone());
   filters_.push_back(std::move(copy));
-  return Status::Ok();
 }
 
 void FilterPipeline::clear() {
@@ -153,7 +152,7 @@ FilterPipeline::get_var_chunk_sizes(
 
 Status FilterPipeline::filter_chunks_forward(
     const Tile& tile,
-    Tile* const offsets_tile,
+    void* support_data,
     uint32_t chunk_size,
     std::vector<uint64_t>& chunk_offsets,
     FilteredBuffer& output,
@@ -207,23 +206,23 @@ Status FilterPipeline::filter_chunks_forward(
       input_metadata.reset_offset();
       input_metadata.set_read_only(true);
 
-      output_data.clear();
-      output_metadata.clear();
+      throw_if_not_ok(output_data.clear());
+      throw_if_not_ok(output_metadata.clear());
 
       f->init_compression_resource_pool(compute_tp->concurrency_level());
 
       RETURN_NOT_OK(f->run_forward(
           tile,
-          offsets_tile,
+          support_data,
           &input_metadata,
           &input_data,
           &output_metadata,
           &output_data));
 
       input_data.set_read_only(false);
-      input_data.swap(output_data);
+      throw_if_not_ok(input_data.swap(output_data));
       input_metadata.set_read_only(false);
-      input_metadata.swap(output_metadata);
+      throw_if_not_ok(input_metadata.swap(output_metadata));
       // Next input (input_buffers) now stores this output (output_buffers).
     }
 
@@ -236,10 +235,10 @@ Status FilterPipeline::filter_chunks_forward(
     auto& io = final_stage_io[i];
     auto& io_input = io.first;
     auto& io_output = io.second;
-    io_input.first.swap(input_metadata);
-    io_input.second.swap(input_data);
-    io_output.first.swap(output_metadata);
-    io_output.second.swap(output_data);
+    throw_if_not_ok(io_input.first.swap(input_metadata));
+    throw_if_not_ok(io_input.second.swap(input_data));
+    throw_if_not_ok(io_output.first.swap(output_metadata));
+    throw_if_not_ok(io_output.second.swap(output_data));
     return Status::Ok();
   });
 
@@ -316,7 +315,7 @@ Status FilterPipeline::filter_chunks_forward(
 
 Status FilterPipeline::filter_chunks_reverse(
     Tile& tile,
-    Tile* const offsets_tile,
+    void* support_data,
     const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
     ThreadPool* const compute_tp,
     const Config& config) const {
@@ -376,8 +375,8 @@ Status FilterPipeline::filter_chunks_reverse(
       input_metadata.reset_offset();
       input_metadata.set_read_only(true);
 
-      output_data.clear();
-      output_metadata.clear();
+      throw_if_not_ok(output_data.clear());
+      throw_if_not_ok(output_metadata.clear());
 
       // Final filter: output directly into the shared output buffer.
       bool last_filter = filter_idx == 0;
@@ -392,7 +391,7 @@ Status FilterPipeline::filter_chunks_reverse(
 
       RETURN_NOT_OK(f->run_reverse(
           tile,
-          offsets_tile,
+          support_data,
           &input_metadata,
           &input_data,
           &output_metadata,
@@ -403,8 +402,8 @@ Status FilterPipeline::filter_chunks_reverse(
       input_metadata.set_read_only(false);
 
       if (!last_filter) {
-        input_data.swap(output_data);
-        input_metadata.swap(output_metadata);
+        throw_if_not_ok(input_data.swap(output_data));
+        throw_if_not_ok(input_metadata.swap(output_metadata));
         // Next input (input_buffers) now stores this output (output_buffers).
       }
     }
@@ -432,6 +431,7 @@ Status FilterPipeline::run_forward(
     Tile* const tile,
     Tile* const offsets_tile,
     ThreadPool* const compute_tp,
+    void* support_data,
     bool use_chunking) const {
   RETURN_NOT_OK(
       tile ? Status::Ok() : Status_Error("invalid argument: null Tile*"));
@@ -459,7 +459,7 @@ Status FilterPipeline::run_forward(
   RETURN_NOT_OK_ELSE(
       filter_chunks_forward(
           *tile,
-          offsets_tile,
+          support_data,
           chunk_size,
           *chunk_offsets,
           tile->filtered_buffer(),
@@ -476,6 +476,7 @@ Status FilterPipeline::run_forward(
 Status FilterPipeline::run_reverse_chunk_range(
     stats::Stats* const reader_stats,
     Tile* const tile,
+    void* support_data,
     const ChunkData& chunk_data,
     const uint64_t min_chunk_index,
     const uint64_t max_chunk_index,
@@ -513,8 +514,8 @@ Status FilterPipeline::run_reverse_chunk_range(
       input_metadata.reset_offset();
       input_metadata.set_read_only(true);
 
-      output_data.clear();
-      output_metadata.clear();
+      throw_if_not_ok(output_data.clear());
+      throw_if_not_ok(output_metadata.clear());
 
       // Final filter: output directly into the shared output buffer.
       bool last_filter = filter_idx == 0;
@@ -531,7 +532,7 @@ Status FilterPipeline::run_reverse_chunk_range(
 
       RETURN_NOT_OK(f->run_reverse(
           *tile,
-          nullptr,
+          support_data,
           &input_metadata,
           &input_data,
           &output_metadata,
@@ -542,8 +543,8 @@ Status FilterPipeline::run_reverse_chunk_range(
       input_metadata.set_read_only(false);
 
       if (!last_filter) {
-        input_data.swap(output_data);
-        input_metadata.swap(output_metadata);
+        throw_if_not_ok(input_data.swap(output_data));
+        throw_if_not_ok(input_metadata.swap(output_metadata));
         // Next input (input_buffers) now stores this output (output_buffers).
       }
     }
@@ -557,11 +558,12 @@ Status FilterPipeline::run_reverse(
     Tile* const tile,
     Tile* const offsets_tile,
     ThreadPool* const compute_tp,
-    const Config& config) const {
+    const Config& config,
+    void* support_data) const {
   assert(tile->filtered());
 
   return run_reverse_internal(
-      reader_stats, tile, offsets_tile, compute_tp, config);
+      reader_stats, tile, offsets_tile, compute_tp, config, support_data);
 }
 
 Status FilterPipeline::run_reverse_internal(
@@ -569,7 +571,8 @@ Status FilterPipeline::run_reverse_internal(
     Tile* const tile,
     Tile* const offsets_tile,
     ThreadPool* const compute_tp,
-    const Config& config) const {
+    const Config& config,
+    void* support_data) const {
   auto filtered_buffer_data = tile->filtered_buffer().data();
 
   // First make a pass over the tile to get the chunk information.
@@ -601,9 +604,10 @@ Status FilterPipeline::run_reverse_internal(
   reader_stats->add_counter("read_unfiltered_byte_num", total_orig_size);
 
   const Status st = filter_chunks_reverse(
-      *tile, offsets_tile, filtered_chunks, compute_tp, config);
+      *tile, support_data, filtered_chunks, compute_tp, config);
   if (!st.ok()) {
     tile->clear_data();
+
     if (offsets_tile) {
       offsets_tile->clear_data();
     }
@@ -712,7 +716,8 @@ Status FilterPipeline::append_encryption_filter(
     case EncryptionType::NO_ENCRYPTION:
       return Status::Ok();
     case EncryptionType::AES_256_GCM:
-      return pipeline->add_filter(EncryptionAES256GCMFilter(encryption_key));
+      pipeline->add_filter(EncryptionAES256GCMFilter(encryption_key));
+      return Status::Ok();
     default:
       return LOG_STATUS(Status_FilterError(
           "Error appending encryption filter; unknown type."));

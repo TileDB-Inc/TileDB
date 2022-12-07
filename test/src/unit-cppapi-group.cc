@@ -31,9 +31,9 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
-#include "test/src/serialization_wrappers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/serialization_wrappers.h"
+#include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
 #include "tiledb/sm/filesystem/win.h"
@@ -616,6 +616,140 @@ TEST_CASE_METHOD(
   std::vector<tiledb::Object> group2_received = read_group(group2);
   REQUIRE_THAT(
       group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
+
+  // Close group
+  group1.close();
+  group2.close();
+
+  // Remove assets from group
+  set_group_timestamp(&group1, 2);
+  group1.open(TILEDB_WRITE);
+  set_group_timestamp(&group2, 2);
+  group2.open(TILEDB_WRITE);
+
+  group1.remove_member(group2_uri.to_string());
+  // Group is the latest element
+  group1_expected.resize(group1_expected.size() - 1);
+
+  group2.remove_member(array3_relative_uri);
+  // There should be nothing left in group2
+  group2_expected.clear();
+
+  // Close group
+  group1.close();
+  group2.close();
+
+  // Check read again
+  set_group_timestamp(&group1, 2);
+  group1.open(TILEDB_READ);
+  set_group_timestamp(&group2, 2);
+  group2.open(TILEDB_READ);
+
+  group1_received = read_group(group1);
+  REQUIRE_THAT(
+      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
+
+  group2_received = read_group(group2);
+  REQUIRE_THAT(
+      group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
+
+  // Close group
+  group1.close();
+  group2.close();
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    GroupCPPFx,
+    "C++ API: Group, write/read, relative named",
+    "[cppapi][group][read]") {
+  // Create and open group in write mode
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  tiledb::sm::URI group1_uri(temp_dir + "group1");
+  tiledb::Group::create(ctx_, group1_uri.to_string());
+
+  tiledb::sm::URI group2_uri(temp_dir + "group2");
+  tiledb::Group::create(ctx_, group2_uri.to_string());
+
+  REQUIRE(
+      tiledb_vfs_create_dir(
+          ctx_.ptr().get(), vfs_, (temp_dir + "group1/arrays").c_str()) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_vfs_create_dir(
+          ctx_.ptr().get(), vfs_, (temp_dir + "group2/arrays").c_str()) ==
+      TILEDB_OK);
+
+  const std::string array1_relative_uri("arrays/array1");
+  const tiledb::sm::URI array1_uri(temp_dir + "group1/arrays/array1");
+  const std::string array2_relative_uri("arrays/array2");
+  const tiledb::sm::URI array2_uri(temp_dir + "group1/arrays/array2");
+  const std::string array3_relative_uri("arrays/array3");
+  const tiledb::sm::URI array3_uri(temp_dir + "group2/arrays/array3");
+  create_array(array1_uri.to_string());
+  create_array(array2_uri.to_string());
+  create_array(array3_uri.to_string());
+
+  // Set expected
+  std::vector<tiledb::Object> group1_expected = {
+      tiledb::Object(
+          tiledb::Object::Type::Array, array1_uri.to_string(), "one"),
+      tiledb::Object(
+          tiledb::Object::Type::Array, array2_uri.to_string(), "two"),
+      tiledb::Object(
+          tiledb::Object::Type::Group, group2_uri.to_string(), "three"),
+  };
+  std::vector<tiledb::Object> group2_expected = {
+      tiledb::Object(
+          tiledb::Object::Type::Array, array3_uri.to_string(), "four"),
+  };
+
+  tiledb::Group group1(ctx_, group1_uri.to_string(), TILEDB_WRITE);
+  group1.close();
+  set_group_timestamp(&group1, 1);
+  group1.open(TILEDB_WRITE);
+
+  tiledb::Group group2(ctx_, group2_uri.to_string(), TILEDB_WRITE);
+  group2.close();
+  set_group_timestamp(&group2, 1);
+  group2.open(TILEDB_WRITE);
+
+  group1.add_member(array1_relative_uri, true, "one");
+  group1.add_member(array2_relative_uri, true, "two");
+  group1.add_member(group2_uri.to_string(), false, "three");
+
+  group2.add_member(array3_relative_uri, true, "four");
+
+  // Close group from write mode
+  group1.close();
+  group2.close();
+
+  // Reopen in read mode
+  group1.open(TILEDB_READ);
+  group2.open(TILEDB_READ);
+
+  std::vector<tiledb::Object> group1_received = read_group(group1);
+  REQUIRE_THAT(
+      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
+
+  std::vector<tiledb::Object> group2_received = read_group(group2);
+  REQUIRE_THAT(
+      group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
+
+  bool is_relative;
+  is_relative = group1.is_relative("one");
+  REQUIRE(is_relative == true);
+  is_relative = group1.is_relative("two");
+  REQUIRE(is_relative == true);
+  is_relative = group1.is_relative("three");
+  REQUIRE(is_relative == false);
+  is_relative = group2.is_relative("four");
+  REQUIRE(is_relative == true);
+
+  REQUIRE_THROWS(group2.is_relative("nonexistent"));
 
   // Close group
   group1.close();

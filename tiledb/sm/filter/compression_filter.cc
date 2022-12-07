@@ -210,11 +210,12 @@ Status CompressionFilter::get_option_impl(
 
 Status CompressionFilter::run_forward(
     const Tile& tile,
-    Tile* const offsets_tile,
+    void* const support_data,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
+  Tile* const offsets_tile = static_cast<Tile*>(support_data);
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {
     RETURN_NOT_OK(output->append_view(input));
@@ -269,13 +270,14 @@ Status CompressionFilter::run_forward(
 
 Status CompressionFilter::run_reverse(
     const Tile& tile,
-    Tile* const offsets_tile,
+    void* support_data,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
     const Config& config) const {
   (void)config;
+  Tile* offsets_tile = static_cast<Tile*>(support_data);
 
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {
@@ -458,10 +460,6 @@ CompressionFilter::create_input_view(
 }
 
 uint8_t CompressionFilter::compute_bytesize(uint64_t param_length) {
-  if (param_length == 0) {
-    throw std::logic_error("Cannot compute bytesize for zero length");
-  }
-
   if (param_length <= std::numeric_limits<uint8_t>::max()) {
     return 1;
   } else if (param_length <= std::numeric_limits<uint16_t>::max()) {
@@ -593,12 +591,12 @@ Status CompressionFilter::decompress_var_string_coords(
     uint8_t rle_len_bytesize, string_len_bytesize;
     RETURN_NOT_OK(input_metadata.read(&rle_len_bytesize, sizeof(uint8_t)));
     RETURN_NOT_OK(input_metadata.read(&string_len_bytesize, sizeof(uint8_t)));
-    RLE::decompress(
+    throw_if_not_ok(RLE::decompress(
         input_view,
         rle_len_bytesize,
         string_len_bytesize,
         output_view,
-        offsets_view);
+        offsets_view));
   } else if (compressor_ == Compressor::DICTIONARY_ENCODING) {
     uint8_t ids_bytesize = 0, string_len_bytesize = 0;
     uint32_t dict_size = 0;

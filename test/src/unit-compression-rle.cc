@@ -32,7 +32,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/compressors/rle_compressor.h"
 

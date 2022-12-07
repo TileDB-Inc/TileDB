@@ -246,7 +246,7 @@ void Dimension::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
   // Retrieve domain and tile extent strings
-  std::string domain_s = domain_str();
+  std::string domain_s = type::range_str(domain_, type_);
   std::string tile_extent_s = tile_extent_str();
 
   // Dump
@@ -321,8 +321,7 @@ bool Dimension::coincides_with_tiles(const Range& r) const {
 }
 
 template <class T>
-Status Dimension::compute_mbr(const Tile& tile, Range* mbr) {
-  assert(mbr != nullptr);
+Range Dimension::compute_mbr(const Tile& tile) {
   auto cell_num = tile.cell_num();
   assert(cell_num > 0);
 
@@ -332,24 +331,23 @@ Status Dimension::compute_mbr(const Tile& tile, Range* mbr) {
   // Initialize MBR with the first tile values
   const T* const data = static_cast<T*>(tile_buffer);
   T res[] = {data[0], data[0]};
-  mbr->set_range(res, sizeof(res));
+  Range mbr{res, sizeof(res)};
 
   // Expand the MBR with the rest tile values
   for (uint64_t c = 1; c < cell_num; ++c)
-    expand_range_v<T>(&data[c], mbr);
+    expand_range_v<T>(&data[c], &mbr);
 
-  return Status::Ok();
+  return mbr;
 }
 
-Status Dimension::compute_mbr(const Tile& tile, Range* mbr) const {
+Range Dimension::compute_mbr(const Tile& tile) const {
   assert(compute_mbr_func_ != nullptr);
-  return compute_mbr_func_(tile, mbr);
+  return compute_mbr_func_(tile);
 }
 
 template <>
-Status Dimension::compute_mbr_var<char>(
-    const Tile& tile_off, const Tile& tile_val, Range* mbr) {
-  assert(mbr != nullptr);
+Range Dimension::compute_mbr_var<char>(
+    const Tile& tile_off, const Tile& tile_val) {
   auto d_val_size = tile_val.size();
   auto cell_num = tile_off.cell_num();
   assert(cell_num > 0);
@@ -365,22 +363,22 @@ Status Dimension::compute_mbr_var<char>(
 
   // Initialize MBR with the first tile values
   auto size_0 = (cell_num == 1) ? d_val_size : d_off[1];
-  mbr->set_range_var(d_val, size_0, d_val, size_0);
+  Range mbr{d_val, size_0, d_val, size_0};
 
   // Expand the MBR with the rest tile values
   for (uint64_t c = 1; c < cell_num; ++c) {
     auto size =
         (c == cell_num - 1) ? d_val_size - d_off[c] : d_off[c + 1] - d_off[c];
-    expand_range_var_v(&d_val[d_off[c]], size, mbr);
+    expand_range_var_v(&d_val[d_off[c]], size, &mbr);
   }
 
-  return Status::Ok();
+  return mbr;
 }
 
-Status Dimension::compute_mbr_var(
-    const Tile& tile_off, const Tile& tile_val, Range* mbr) const {
+Range Dimension::compute_mbr_var(
+    const Tile& tile_off, const Tile& tile_val) const {
   assert(compute_mbr_var_func_ != nullptr);
-  return compute_mbr_var_func_(tile_off, tile_val, mbr);
+  return compute_mbr_var_func_(tile_off, tile_val);
 }
 
 template <class T>
@@ -1368,33 +1366,31 @@ Status Dimension::set_domain_unsafe(const void* domain) {
   return Status::Ok();
 }
 
-Status Dimension::set_filter_pipeline(const FilterPipeline* pipeline) {
-  if (pipeline == nullptr)
-    return LOG_STATUS(Status_DimensionError(
-        "Cannot set filter pipeline to dimension; Pipeline cannot be null"));
-
-  for (unsigned i = 0; i < pipeline->size(); ++i) {
+Status Dimension::set_filter_pipeline(const FilterPipeline& pipeline) {
+  for (unsigned i = 0; i < pipeline.size(); ++i) {
     if (datatype_is_real(type_) &&
-        pipeline->get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
+        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
       return LOG_STATUS(
           Status_DimensionError("Cannot set DOUBLE DELTA filter to a "
                                 "dimension with a real datatype"));
   }
 
-  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline->size() > 1) {
-    if (pipeline->has_filter(FilterType::FILTER_RLE)) {
-      return LOG_STATUS(Status_DimensionError(
-          "RLE filter cannot be combined with other filters when applied to "
-          "variable length string dimensions"));
-    } else if (pipeline->has_filter(FilterType::FILTER_DICTIONARY)) {
-      return LOG_STATUS(Status_AttributeError(
-          "Dictionary-encoding filter cannot be combined with other filters "
-          "when applied to variable length string dimensions"));
+  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline.size() > 1) {
+    if (pipeline.has_filter(FilterType::FILTER_RLE) &&
+        pipeline.get_filter(0)->type() != FilterType::FILTER_RLE) {
+      return LOG_STATUS(Status_ArraySchemaError(
+          "RLE filter must be the first filter to apply when used on a "
+          "variable length string dimension"));
+    }
+    if (pipeline.has_filter(FilterType::FILTER_DICTIONARY) &&
+        pipeline.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
+      return LOG_STATUS(Status_ArraySchemaError(
+          "Dictionary filter must be the first filter to apply when used on a "
+          "variable length string dimension"));
     }
   }
 
-  filters_ = *pipeline;
-
+  filters_ = pipeline;
   return Status::Ok();
 }
 
@@ -1716,109 +1712,6 @@ Status Dimension::check_tile_extent_upper_floor_internal(
   }
 
   return Status::Ok();
-}
-
-std::string Dimension::domain_str() const {
-  std::stringstream ss;
-
-  if (domain_.empty())
-    return constants::null_str;
-
-  const int* domain_int32;
-  const int64_t* domain_int64;
-  const float* domain_float32;
-  const double* domain_float64;
-  const int8_t* domain_int8;
-  const uint8_t* domain_uint8;
-  const int16_t* domain_int16;
-  const uint16_t* domain_uint16;
-  const uint32_t* domain_uint32;
-  const uint64_t* domain_uint64;
-
-  switch (type_) {
-    case Datatype::INT32:
-      domain_int32 = (const int32_t*)domain_.data();
-      ss << "[" << domain_int32[0] << "," << domain_int32[1] << "]";
-      return ss.str();
-    case Datatype::INT64:
-      domain_int64 = (const int64_t*)domain_.data();
-      ss << "[" << domain_int64[0] << "," << domain_int64[1] << "]";
-      return ss.str();
-    case Datatype::FLOAT32:
-      domain_float32 = (const float*)domain_.data();
-      ss << "[" << domain_float32[0] << "," << domain_float32[1] << "]";
-      return ss.str();
-    case Datatype::FLOAT64:
-      domain_float64 = (const double*)domain_.data();
-      ss << "[" << domain_float64[0] << "," << domain_float64[1] << "]";
-      return ss.str();
-    case Datatype::INT8:
-      domain_int8 = (const int8_t*)domain_.data();
-      ss << "[" << int(domain_int8[0]) << "," << int(domain_int8[1]) << "]";
-      return ss.str();
-    case Datatype::UINT8:
-      domain_uint8 = (const uint8_t*)domain_.data();
-      ss << "[" << int(domain_uint8[0]) << "," << int(domain_uint8[1]) << "]";
-      return ss.str();
-    case Datatype::INT16:
-      domain_int16 = (const int16_t*)domain_.data();
-      ss << "[" << domain_int16[0] << "," << domain_int16[1] << "]";
-      return ss.str();
-    case Datatype::UINT16:
-      domain_uint16 = (const uint16_t*)domain_.data();
-      ss << "[" << domain_uint16[0] << "," << domain_uint16[1] << "]";
-      return ss.str();
-    case Datatype::UINT32:
-      domain_uint32 = (const uint32_t*)domain_.data();
-      ss << "[" << domain_uint32[0] << "," << domain_uint32[1] << "]";
-      return ss.str();
-    case Datatype::UINT64:
-      domain_uint64 = (const uint64_t*)domain_.data();
-      ss << "[" << domain_uint64[0] << "," << domain_uint64[1] << "]";
-      return ss.str();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      domain_int64 = (const int64_t*)domain_.data();
-      ss << "[" << domain_int64[0] << "," << domain_int64[1] << "]";
-      return ss.str();
-
-    case Datatype::BLOB:
-    case Datatype::CHAR:
-    case Datatype::BOOL:
-    case Datatype::STRING_ASCII:
-    case Datatype::STRING_UTF8:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    case Datatype::ANY:
-      // Not supported domain type
-      assert(false);
-      return "";
-  }
-
-  assert(false);
-  return "";
 }
 
 void Dimension::ensure_datatype_is_supported(Datatype type) const {

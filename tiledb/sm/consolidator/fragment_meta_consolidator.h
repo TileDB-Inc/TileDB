@@ -39,13 +39,11 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/consolidator/consolidator.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-
-class StorageManager;
+namespace tiledb::sm {
 
 /** Handles fragment metadata consolidation. */
 class FragmentMetaConsolidator : public Consolidator {
@@ -91,12 +89,10 @@ class FragmentMetaConsolidator : public Consolidator {
    * Performs the vacuuming operation.
    *
    * @param array_name URI of array to consolidate.
-   * @return Status
    */
-  Status vacuum(const char* array_name);
+  void vacuum(const char* array_name);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_FRAGMENT_META_CONSOLIDATOR_H

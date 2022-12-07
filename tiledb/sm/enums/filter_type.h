@@ -92,6 +92,10 @@ inline const std::string& filter_type_str(FilterType filter_type) {
       return constants::filter_scale_float_str;
     case FilterType::FILTER_XOR:
       return constants::filter_xor_str;
+    case FilterType::FILTER_BITSORT:
+      return constants::filter_bitsort_str;
+    case FilterType::FILTER_WEBP:
+      return constants::filter_webp_str;
     default:
       return constants::empty_str;
   }
@@ -132,21 +136,25 @@ inline Status filter_type_enum(
     *filter_type = FilterType::FILTER_SCALE_FLOAT;
   else if (filter_type_str == constants::filter_xor_str)
     *filter_type = FilterType::FILTER_XOR;
+  else if (filter_type_str == constants::filter_bitsort_str)
+    *filter_type = FilterType::FILTER_BITSORT;
+  else if (filter_type_str == constants::filter_webp_str)
+    *filter_type = FilterType::FILTER_WEBP;
   else {
     return Status_Error("Invalid FilterType " + filter_type_str);
   }
   return Status::Ok();
 }
 
-/** Throws error if the input Filtertype enum is not between 0 and 15. */
+/** Throws error if the input Filtertype enum is not between 0 and 16. */
 inline void ensure_filtertype_is_valid(uint8_t type) {
-  if (type > 16) {
+  if (type > 18) {
     throw std::runtime_error(
         "Invalid FilterType (" + std::to_string(type) + ")");
   }
 }
 
-/** Throws error if the input Filtertype's enum is not between 0 and 14. */
+/** Throws error if the input Filtertype's enum is not between 0 and 16. */
 inline void ensure_filtertype_is_valid(FilterType type) {
   ensure_filtertype_is_valid(::stdx::to_underlying(type));
 }

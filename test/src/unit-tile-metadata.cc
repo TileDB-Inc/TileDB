@@ -32,7 +32,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
@@ -64,9 +64,8 @@ struct CPPFixedTileMetadataFx {
     tiledb_ctx_t* ctx;
     tiledb_ctx_alloc(NULL, &ctx);
 
-    // The array will be 4x4 with dimensions "rows" and "cols", with domain
-    // [1,4].
-    uint32_t dim_domain[] = {0, 999};
+    // The array will be one dimension "d", with domain [0,999].
+    uint32_t dim_domain[]{0, 999};
     tiledb_dimension_t* d;
     tiledb_dimension_alloc(
         ctx, "d", TILEDB_UINT32, &dim_domain[0], &tile_extent_, &d);
@@ -109,6 +108,7 @@ struct CPPFixedTileMetadataFx {
   }
 
   void write_fragment(
+      const bool serialized_writes,
       uint64_t f,
       tiledb_layout_t layout,
       bool nullable,
@@ -255,8 +255,12 @@ struct CPPFixedTileMetadataFx {
       query.set_validity_buffer("a", a_val);
     }
 
-    query.submit();
-    query.finalize();
+    if (!serialized_writes) {
+      query.submit();
+      query.finalize();
+    } else {
+      test::submit_and_finalize_serialized_query(ctx_, query);
+    }
     array.close();
   }
 
@@ -311,21 +315,20 @@ struct CPPFixedTileMetadataFx {
               (num_tiles_ * tile_extent_) * (num_tiles_ * tile_extent_ - 1) / 2;
 
           // Validate no min.
-          auto&& [st_min, min] = frag_meta[f]->get_min("d");
-          CHECK(!st_min.ok());
-          CHECK(!min.has_value());
+          CHECK_THROWS_WITH(
+              frag_meta[f]->get_min("d"),
+              "FragmentMetadata: Trying to access fragment min metadata that's "
+              "not present");
 
           // Validate no max.
-          auto&& [st_max, max] = frag_meta[f]->get_max("d");
-          CHECK(!st_max.ok());
-          CHECK(!max.has_value());
+          CHECK_THROWS_WITH(
+              frag_meta[f]->get_max("d"),
+              "FragmentMetadata: Trying to access fragment max metadata that's "
+              "not present");
 
           // Validate sum.
-          auto&& [st_sum, sum] = frag_meta[f]->get_sum("d");
-          CHECK(st_sum.ok());
-          if (st_sum.ok()) {
-            CHECK(*(int64_t*)*sum == correct_sum);
-          }
+          auto sum = frag_meta[f]->get_sum("d");
+          CHECK(*(int64_t*)sum == correct_sum);
         }
 
         for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
@@ -335,25 +338,20 @@ struct CPPFixedTileMetadataFx {
               (tile_extent_) * (correct_min + correct_max) / 2;
 
           // Validate no min.
-          auto&& [st_min, min, min_size] =
-              frag_meta[f]->get_tile_min("d", tile_idx);
-          CHECK(!st_min.ok());
-          CHECK(!min.has_value());
-          CHECK(!min_size.has_value());
+          CHECK_THROWS_WITH(
+              frag_meta[f]->get_tile_min_as<TestType>("d", tile_idx),
+              "FragmentMetadata: Trying to access tile min metadata that's not "
+              "present");
 
           // Validate no max.
-          auto&& [st_max, max, max_size] =
-              frag_meta[f]->get_tile_max("d", tile_idx);
-          CHECK(!st_max.ok());
-          CHECK(!max.has_value());
-          CHECK(!max_size.has_value());
+          CHECK_THROWS_WITH(
+              frag_meta[f]->get_tile_max_as<TestType>("d", tile_idx),
+              "FragmentMetadata: Trying to access tile max metadata that's not "
+              "present");
 
           // Validate sum.
-          auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("d", tile_idx);
-          CHECK(st_sum.ok());
-          if (st_sum.ok()) {
-            CHECK(*(int64_t*)*sum == correct_sum);
-          }
+          auto sum = frag_meta[f]->get_tile_sum("d", tile_idx);
+          CHECK(*(int64_t*)sum == correct_sum);
         }
       }
     }
@@ -363,86 +361,77 @@ struct CPPFixedTileMetadataFx {
       // Min/max/sum for byte don't exist.
       if constexpr (std::is_same<TestType, std::byte>::value) {
         // Validate no min.
-        auto&& [st_min, min] = frag_meta[f]->get_min("a");
-        CHECK(!st_min.ok());
+        CHECK_THROWS_WITH(
+            frag_meta[f]->get_min("a"),
+            "FragmentMetadata: Trying to access fragment min metadata that's "
+            "not present");
 
         // Validate no max.
-        auto&& [st_max, max] = frag_meta[f]->get_max("a");
-        CHECK(!st_max.ok());
+        CHECK_THROWS_WITH(
+            frag_meta[f]->get_max("a"),
+            "FragmentMetadata: Trying to access fragment max metadata that's "
+            "not present");
 
         // Validate no sum.
-        auto&& [st_sum, sum] = frag_meta[f]->get_sum("a");
-        CHECK(!st_sum.ok());
+        CHECK_THROWS_WITH(
+            frag_meta[f]->get_sum("a"),
+            "FragmentMetadata: Trying to access fragment sum metadata that's "
+            "not present");
       } else {
         // Min/max/sum for all null tile are invalid.
         if (!all_null) {
           if constexpr (std::is_same<TestType, char>::value) {
             // Validate min.
-            auto&& [st_min, min] = frag_meta[f]->get_min("a");
-            CHECK(st_min.ok());
-            if (st_min.ok()) {
-              CHECK((*min).size() == cell_val_num);
+            auto& min = frag_meta[f]->get_min("a");
+            CHECK(min.size() == cell_val_num);
 
-              // For strings, the index is stored in a signed value, switch to
-              // the index to unsigned.
-              int64_t idx = (int64_t)correct_mins_[f] -
-                            (int64_t)std::numeric_limits<char>::min();
-              CHECK(
-                  0 == strncmp(
-                           (const char*)(*min).data(),
-                           string_ascii_[idx].c_str(),
-                           cell_val_num));
-            }
+            // For strings, the index is stored in a signed value, switch to
+            // the index to unsigned.
+            int64_t idx = (int64_t)correct_mins_[f] -
+                          (int64_t)std::numeric_limits<char>::min();
+            CHECK(
+                0 == strncmp(
+                         (const char*)min.data(),
+                         string_ascii_[idx].c_str(),
+                         cell_val_num));
 
             // Validate max.
-            auto&& [st_max, max] = frag_meta[f]->get_max("a");
-            CHECK(st_max.ok());
-            if (st_max.ok()) {
-              CHECK((*max).size() == cell_val_num);
+            auto& max = frag_meta[f]->get_max("a");
+            CHECK(max.size() == cell_val_num);
 
-              // For strings, the index is stored in a signed value, switch to
-              // the index to unsigned.
-              int64_t idx = (int64_t)correct_maxs_[f] -
-                            (int64_t)std::numeric_limits<char>::min();
-              CHECK(
-                  0 == strncmp(
-                           (const char*)(*max).data(),
-                           string_ascii_[idx].c_str(),
-                           cell_val_num));
-            }
+            // For strings, the index is stored in a signed value, switch to
+            // the index to unsigned.
+            idx = (int64_t)correct_maxs_[f] -
+                  (int64_t)std::numeric_limits<char>::min();
+            CHECK(
+                0 == strncmp(
+                         (const char*)max.data(),
+                         string_ascii_[idx].c_str(),
+                         cell_val_num));
 
             // Validate no sum.
-            auto&& [st_sum, sum] = frag_meta[f]->get_sum("a");
-            CHECK(!st_sum.ok());
+            CHECK_THROWS_WITH(
+                frag_meta[f]->get_sum("a"),
+                "FragmentMetadata: Trying to access fragment sum metadata "
+                "that's not present");
           } else {
             // Validate min.
-            auto&& [st_min, min] = frag_meta[f]->get_min("a");
-            CHECK(st_min.ok());
-            if (st_min.ok()) {
-              CHECK((*min).size() == sizeof(TestType));
-              CHECK(
-                  0 == memcmp((*min).data(), &correct_mins_[f], (*min).size()));
-            }
+            auto& min = frag_meta[f]->get_min("a");
+            CHECK(min.size() == sizeof(TestType));
+            CHECK(0 == memcmp(min.data(), &correct_mins_[f], min.size()));
 
             // Validate max.
-            auto&& [st_max, max] = frag_meta[f]->get_max("a");
-            CHECK(st_max.ok());
-            if (st_max.ok()) {
-              CHECK((*max).size() == sizeof(TestType));
-              CHECK(
-                  0 == memcmp((*max).data(), &correct_maxs_[f], (*max).size()));
-            }
+            auto& max = frag_meta[f]->get_max("a");
+            CHECK(max.size() == sizeof(TestType));
+            CHECK(0 == memcmp(max.data(), &correct_maxs_[f], max.size()));
 
             if constexpr (!std::is_same<TestType, unsigned char>::value) {
               // Validate sum.
-              auto&& [st_sum, sum] = frag_meta[f]->get_sum("a");
-              CHECK(st_sum.ok());
-              if (st_sum.ok()) {
-                if constexpr (std::is_integral_v<TestType>) {
-                  CHECK(*(int64_t*)*sum == correct_sums_int_[f]);
-                } else {
-                  CHECK(*(double*)*sum - correct_sums_double_[f] < 0.0001);
-                }
+              auto sum = frag_meta[f]->get_sum("a");
+              if constexpr (std::is_integral_v<TestType>) {
+                CHECK(*(int64_t*)sum == correct_sums_int_[f]);
+              } else {
+                CHECK(*(double*)sum - correct_sums_double_[f] < 0.0001);
               }
             }
           }
@@ -450,10 +439,14 @@ struct CPPFixedTileMetadataFx {
       }
 
       // Check null count.
-      auto&& [st_nc, nc] = frag_meta[f]->get_null_count("a");
-      CHECK(st_nc.ok() == nullable);
-      if (st_nc.ok()) {
-        CHECK(*nc == correct_null_counts_[f]);
+      if (nullable) {
+        auto nc = frag_meta[f]->get_null_count("a");
+        CHECK(nc == correct_null_counts_[f]);
+      } else {
+        CHECK_THROWS_WITH(
+            frag_meta[f]->get_null_count("a"),
+            "FragmentMetadata: Trying to access fragment null count metadata "
+            "that's not present");
       }
     }
 
@@ -479,96 +472,85 @@ struct CPPFixedTileMetadataFx {
     // Min/max/sum for all null tile are invalid.
     if constexpr (std::is_same<TestType, std::byte>::value) {
       // Validate no min.
-      auto&& [st_min, min, min_size] = frag_meta[f]->get_tile_min("a", 0);
-      CHECK(!st_min.ok());
+      CHECK_THROWS_WITH(
+          frag_meta[f]->get_tile_min_as<TestType>("a", 0),
+          "FragmentMetadata: Trying to access tile min metadata that's not "
+          "present");
 
       // Validate no max.
-      auto&& [st_max, max, max_size] = frag_meta[f]->get_tile_max("a", 0);
-      CHECK(!st_max.ok());
+      CHECK_THROWS_WITH(
+          frag_meta[f]->get_tile_max_as<TestType>("a", 0),
+          "FragmentMetadata: Trying to access tile max metadata that's not "
+          "present");
 
       // Validate no sum.
-      auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("a", 0);
-      CHECK(!st_sum.ok());
+      CHECK_THROWS_WITH(
+          frag_meta[f]->get_tile_sum("a", 0),
+          "FragmentMetadata: Trying to access tile sum metadata that's not "
+          "present");
     } else {
       if (!all_null) {
         if constexpr (std::is_same<TestType, char>::value) {
           for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
             // Validate min.
-            auto&& [st_min, min, min_size] =
-                frag_meta[f]->get_tile_min("a", tile_idx);
-            CHECK(st_min.ok());
-            if (st_min.ok()) {
-              CHECK(*min_size == cell_val_num);
+            const auto min =
+                frag_meta[f]->get_tile_min_as<std::string_view>("a", tile_idx);
+            CHECK(min.size() == cell_val_num);
 
-              // For strings, the index is stored in a signed value, switch to
-              // the index to unsigned.
-              int64_t idx = (int64_t)correct_tile_mins_[f][tile_idx] -
-                            (int64_t)std::numeric_limits<char>::min();
-              CHECK(
-                  0 == strncmp(
-                           (const char*)*min,
-                           string_ascii_[idx].c_str(),
-                           cell_val_num));
-            }
+            // For strings, the index is stored in a signed value, switch to
+            // the index to unsigned.
+            int64_t idx = (int64_t)correct_tile_mins_[f][tile_idx] -
+                          (int64_t)std::numeric_limits<char>::min();
+            CHECK(
+                0 ==
+                strncmp(min.data(), string_ascii_[idx].c_str(), cell_val_num));
 
             // Validate max.
-            auto&& [st_max, max, max_size] =
-                frag_meta[f]->get_tile_max("a", tile_idx);
-            CHECK(st_max.ok());
-            if (st_max.ok()) {
-              CHECK(*max_size == cell_val_num);
+            const auto max =
+                frag_meta[f]->get_tile_max_as<std::string_view>("a", tile_idx);
+            CHECK(max.size() == cell_val_num);
 
-              // For strings, the index is stored in a signed value, switch to
-              // the index to unsigned.
-              int64_t idx = (int64_t)correct_tile_maxs_[f][tile_idx] -
-                            (int64_t)std::numeric_limits<char>::min();
-              CHECK(
-                  0 == strncmp(
-                           (const char*)*max,
-                           string_ascii_[idx].c_str(),
-                           cell_val_num));
-            }
+            // For strings, the index is stored in a signed value, switch to
+            // the index to unsigned.
+            idx = (int64_t)correct_tile_maxs_[f][tile_idx] -
+                  (int64_t)std::numeric_limits<char>::min();
+            CHECK(
+                0 ==
+                strncmp(max.data(), string_ascii_[idx].c_str(), cell_val_num));
 
             // Validate no sum.
-            auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("a", tile_idx);
-            CHECK(!st_sum.ok());
+            CHECK_THROWS_WITH(
+                frag_meta[f]->get_tile_sum("a", tile_idx),
+                "FragmentMetadata: Trying to access tile sum metadata that's "
+                "not "
+                "present");
           }
         } else {
           (void)cell_val_num;
           for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
             // Validate min.
-            auto&& [st_min, min, min_size] =
-                frag_meta[f]->get_tile_min("a", tile_idx);
-            CHECK(st_min.ok());
-            if (st_min.ok()) {
-              CHECK(*min_size == sizeof(TestType));
-              CHECK(
-                  0 ==
-                  memcmp(*min, &correct_tile_mins_[f][tile_idx], *min_size));
-            }
+            const auto min =
+                frag_meta[f]->get_tile_min_as<TestType>("a", tile_idx);
+            CHECK(
+                0 ==
+                memcmp(
+                    &min, &correct_tile_mins_[f][tile_idx], sizeof(TestType)));
 
             // Validate max.
-            auto&& [st_max, max, max_size] =
-                frag_meta[f]->get_tile_max("a", tile_idx);
-            CHECK(st_max.ok());
-            if (st_max.ok()) {
-              CHECK(*max_size == sizeof(TestType));
-              CHECK(
-                  0 ==
-                  memcmp(*max, &correct_tile_maxs_[f][tile_idx], *max_size));
-            }
+            const auto max =
+                frag_meta[f]->get_tile_max_as<TestType>("a", tile_idx);
+            CHECK(
+                0 ==
+                memcmp(
+                    &max, &correct_tile_maxs_[f][tile_idx], sizeof(TestType)));
 
             if constexpr (!std::is_same<TestType, unsigned char>::value) {
               // Validate sum.
-              auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("a", tile_idx);
-              CHECK(st_sum.ok());
-              if (st_sum.ok()) {
-                if constexpr (std::is_integral_v<TestType>) {
-                  CHECK(*(int64_t*)*sum == correct_tile_sums_int_[f][tile_idx]);
-                } else {
-                  CHECK(
-                      *(double*)*sum == correct_tile_sums_double_[f][tile_idx]);
-                }
+              auto sum = frag_meta[f]->get_tile_sum("a", tile_idx);
+              if constexpr (std::is_integral_v<TestType>) {
+                CHECK(*(int64_t*)sum == correct_tile_sums_int_[f][tile_idx]);
+              } else {
+                CHECK(*(double*)sum == correct_tile_sums_double_[f][tile_idx]);
               }
             }
           }
@@ -578,11 +560,14 @@ struct CPPFixedTileMetadataFx {
 
     // Check null count.
     for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
-      // Null count.
-      auto&& [st_nc, nc] = frag_meta[f]->get_tile_null_count("a", tile_idx);
-      CHECK(st_nc.ok() == nullable);
-      if (st_nc.ok()) {
-        CHECK(*nc == correct_tile_null_counts_[f][tile_idx]);
+      if (nullable) {
+        auto nc = frag_meta[f]->get_tile_null_count("a", tile_idx);
+        CHECK(nc == correct_tile_null_counts_[f][tile_idx]);
+      } else {
+        CHECK_THROWS_WITH(
+            frag_meta[f]->get_tile_null_count("a", tile_idx),
+            "FragmentMetadata: Trying to access tile null count metadata "
+            "that's not present");
       }
     }
 
@@ -638,6 +623,16 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   typedef TestType T;
   std::string test = GENERATE("nullable", "all null", "non nullable");
 
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   tiledb_layout_t layout =
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER, TILEDB_ROW_MAJOR);
 
@@ -654,7 +649,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   for (uint64_t f = 0; f < num_frag; f++) {
     // Write a fragment.
     CPPFixedTileMetadataFx<T>::write_fragment(
-        f, layout, nullable, all_null, cell_val_num);
+        serialized_writes, f, layout, nullable, all_null, cell_val_num);
   }
 
   for (uint64_t f = 0; f < num_frag; f++) {
@@ -699,7 +694,11 @@ struct CPPVarTileMetadataFx {
   }
 
   void write_fragment(
-      uint64_t f, tiledb_layout_t layout, bool nullable, bool all_null) {
+      const bool serialized_writes,
+      uint64_t f,
+      tiledb_layout_t layout,
+      bool nullable,
+      bool all_null) {
     std::default_random_engine random_engine;
 
     uint64_t max_string_size = 100;
@@ -793,8 +792,12 @@ struct CPPVarTileMetadataFx {
       query.set_validity_buffer("a", a_val);
     }
 
-    query.submit();
-    query.finalize();
+    if (!serialized_writes) {
+      query.submit();
+      query.finalize();
+    } else {
+      test::submit_and_finalize_serialized_query(ctx_, query);
+    }
     array.close();
   }
 
@@ -845,21 +848,20 @@ struct CPPVarTileMetadataFx {
               (num_tiles_ * tile_extent_) * (num_tiles_ * tile_extent_ - 1) / 2;
 
           // Validate no min.
-          auto&& [st_min, min] = frag_meta[f]->get_min("d");
-          CHECK(!st_min.ok());
-          CHECK(!min.has_value());
+          CHECK_THROWS_WITH(
+              frag_meta[f]->get_min("d"),
+              "FragmentMetadata: Trying to access fragment min metadata that's "
+              "not present");
 
           // Validate no max.
-          auto&& [st_max, max] = frag_meta[f]->get_max("d");
-          CHECK(!st_max.ok());
-          CHECK(!max.has_value());
+          CHECK_THROWS_WITH(
+              frag_meta[f]->get_max("d"),
+              "FragmentMetadata: Trying to access fragment max metadata that's "
+              "not present");
 
           // Validate sum.
-          auto&& [st_sum, sum] = frag_meta[f]->get_sum("d");
-          CHECK(st_sum.ok());
-          if (st_sum.ok()) {
-            CHECK(*(int64_t*)*sum == correct_sum);
-          }
+          auto sum = frag_meta[f]->get_sum("d");
+          CHECK(*(int64_t*)sum == correct_sum);
         }
 
         for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
@@ -869,25 +871,20 @@ struct CPPVarTileMetadataFx {
               (tile_extent_) * (correct_min + correct_max) / 2;
 
           // Validate no min.
-          auto&& [st_min, min, min_size] =
-              frag_meta[f]->get_tile_min("d", tile_idx);
-          CHECK(!st_min.ok());
-          CHECK(!min.has_value());
-          CHECK(!min_size.has_value());
+          CHECK_THROWS_WITH(
+              frag_meta[f]->get_tile_min_as<uint32_t>("d", tile_idx),
+              "FragmentMetadata: Trying to access tile min metadata that's not "
+              "present");
 
           // Validate no max.
-          auto&& [st_max, max, max_size] =
-              frag_meta[f]->get_tile_max("d", tile_idx);
-          CHECK(!st_max.ok());
-          CHECK(!max.has_value());
-          CHECK(!max_size.has_value());
+          CHECK_THROWS_WITH(
+              frag_meta[f]->get_tile_max_as<uint32_t>("d", tile_idx),
+              "FragmentMetadata: Trying to access tile max metadata that's not "
+              "present");
 
           // Validate sum.
-          auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("d", tile_idx);
-          CHECK(st_sum.ok());
-          if (st_sum.ok()) {
-            CHECK(*(int64_t*)*sum == correct_sum);
-          }
+          auto sum = frag_meta[f]->get_tile_sum("d", tile_idx);
+          CHECK(*(int64_t*)sum == correct_sum);
         }
       }
     }
@@ -897,39 +894,39 @@ struct CPPVarTileMetadataFx {
       // Min/max/sum for all null tile are invalid.
       if (!all_null) {
         // Validate min.
-        auto&& [st_min, min] = frag_meta[f]->get_min("a");
-        CHECK(st_min.ok());
-        if (st_min.ok()) {
-          CHECK((*min).size() == strings_[correct_mins_[f]].size());
-          CHECK(
-              0 == strncmp(
-                       (const char*)(*min).data(),
-                       strings_[correct_mins_[f]].c_str(),
-                       strings_[correct_mins_[f]].size()));
-        }
+        auto& min = frag_meta[f]->get_min("a");
+        CHECK(min.size() == strings_[correct_mins_[f]].size());
+        CHECK(
+            0 == strncmp(
+                     (const char*)min.data(),
+                     strings_[correct_mins_[f]].c_str(),
+                     strings_[correct_mins_[f]].size()));
 
         // Validate max.
-        auto&& [st_max, max] = frag_meta[f]->get_max("a");
-        CHECK(st_max.ok());
-        if (st_max.ok()) {
-          CHECK((*max).size() == strings_[correct_maxs_[f]].size());
-          CHECK(
-              0 == strncmp(
-                       (const char*)(*max).data(),
-                       strings_[correct_maxs_[f]].c_str(),
-                       strings_[correct_maxs_[f]].size()));
-        }
+        auto& max = frag_meta[f]->get_max("a");
+        CHECK(max.size() == strings_[correct_maxs_[f]].size());
+        CHECK(
+            0 == strncmp(
+                     (const char*)max.data(),
+                     strings_[correct_maxs_[f]].c_str(),
+                     strings_[correct_maxs_[f]].size()));
 
         // Validate no sum.
-        auto&& [st_sum, sum] = frag_meta[f]->get_sum("a");
-        CHECK(!st_sum.ok());
+        CHECK_THROWS_WITH(
+            frag_meta[f]->get_sum("a"),
+            "FragmentMetadata: Trying to access fragment sum metadata that's "
+            "not present");
       }
 
       // Check null count.
-      auto&& [st_nc, nc] = frag_meta[f]->get_null_count("a");
-      CHECK(st_nc.ok() == nullable);
-      if (st_nc.ok()) {
-        CHECK(*nc == correct_null_counts_[f]);
+      if (nullable) {
+        auto nc = frag_meta[f]->get_null_count("a");
+        CHECK(nc == correct_null_counts_[f]);
+      } else {
+        CHECK_THROWS_WITH(
+            frag_meta[f]->get_null_count("a"),
+            "FragmentMetadata: Trying to access fragment null count metadata "
+            "that's not present");
       }
     }
 
@@ -956,46 +953,41 @@ struct CPPVarTileMetadataFx {
     if (!all_null) {
       for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
         // Validate min.
-        auto&& [st_min, min, min_size] =
-            frag_meta[f]->get_tile_min("a", tile_idx);
-        CHECK(st_min.ok());
-        if (st_min.ok()) {
-          int idx = correct_tile_mins_[f][tile_idx];
-          CHECK(*min_size == strings_[idx].size());
-          CHECK(
-              0 == strncmp(
-                       (const char*)*min,
-                       strings_[idx].c_str(),
-                       strings_[idx].size()));
-        }
+        const auto min =
+            frag_meta[f]->get_tile_min_as<std::string_view>("a", tile_idx);
+        int idx = correct_tile_mins_[f][tile_idx];
+        CHECK(min.size() == strings_[idx].size());
+        CHECK(
+            0 ==
+            strncmp(min.data(), strings_[idx].c_str(), strings_[idx].size()));
 
         // Validate max.
-        auto&& [st_max, max, max_size] =
-            frag_meta[f]->get_tile_max("a", tile_idx);
-        CHECK(st_max.ok());
-        if (st_max.ok()) {
-          int idx = correct_tile_maxs_[f][tile_idx];
-          CHECK(*max_size == strings_[idx].size());
-          CHECK(
-              0 == strncmp(
-                       (const char*)*max,
-                       strings_[idx].c_str(),
-                       strings_[idx].size()));
-        }
+        const auto max =
+            frag_meta[f]->get_tile_max_as<std::string_view>("a", tile_idx);
+        idx = correct_tile_maxs_[f][tile_idx];
+        CHECK(max.size() == strings_[idx].size());
+        CHECK(
+            0 ==
+            strncmp(max.data(), strings_[idx].c_str(), strings_[idx].size()));
 
         // Validate no sum.
-        auto&& [st_sum, sum] = frag_meta[f]->get_tile_sum("a", tile_idx);
-        CHECK(!st_sum.ok());
+        CHECK_THROWS_WITH(
+            frag_meta[f]->get_tile_sum("a", tile_idx),
+            "FragmentMetadata: Trying to access tile sum metadata that's not "
+            "present");
       }
     }
 
     // Check null count.
     for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
-      // Null count.
-      auto&& [st_nc, nc] = frag_meta[f]->get_tile_null_count("a", tile_idx);
-      CHECK(st_nc.ok() == nullable);
-      if (st_nc.ok()) {
-        CHECK(*nc == correct_tile_null_counts_[f][tile_idx]);
+      if (nullable) {
+        auto nc = frag_meta[f]->get_tile_null_count("a", tile_idx);
+        CHECK(nc == correct_tile_null_counts_[f][tile_idx]);
+      } else {
+        CHECK_THROWS_WITH(
+            frag_meta[f]->get_tile_null_count("a", tile_idx),
+            "FragmentMetadata: Trying to access tile null count metadata "
+            "that's not present");
       }
     }
 
@@ -1030,6 +1022,16 @@ TEST_CASE_METHOD(
     "[tile-metadata][var-data]") {
   std::string test = GENERATE("nullable", "all null", "non nullable");
 
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   tiledb_layout_t layout =
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER, TILEDB_ROW_MAJOR);
 
@@ -1043,11 +1045,382 @@ TEST_CASE_METHOD(
 
   for (uint64_t f = 0; f < num_frag; f++) {
     // Write a fragment.
-    CPPVarTileMetadataFx::write_fragment(f, layout, nullable, all_null);
+    CPPVarTileMetadataFx::write_fragment(
+        serialized_writes, f, layout, nullable, all_null);
   }
 
   for (uint64_t f = 0; f < num_frag; f++) {
     // Check metadata.
     CPPVarTileMetadataFx::check_metadata(f, layout, nullable, all_null);
   }
+}
+
+struct CPPFixedTileMetadataPartialFx {
+  CPPFixedTileMetadataPartialFx()
+      : vfs_(ctx_) {
+    if (vfs_.is_dir(ARRAY_NAME))
+      vfs_.remove_dir(ARRAY_NAME);
+  }
+
+  ~CPPFixedTileMetadataPartialFx() {
+    if (vfs_.is_dir(ARRAY_NAME))
+      vfs_.remove_dir(ARRAY_NAME);
+  }
+
+  void create_array() {
+    // Create TileDB context
+    tiledb_ctx_t* ctx;
+    tiledb_ctx_alloc(NULL, &ctx);
+
+    // The array will be two dimension "d1" and "d2", with domain [1,8].
+    uint32_t dim_domain[]{1, 8};
+    tiledb_dimension_t* d1;
+    tiledb_dimension_alloc(
+        ctx, "d1", TILEDB_UINT32, &dim_domain[0], &tile_extent_, &d1);
+    tiledb_dimension_t* d2;
+    tiledb_dimension_alloc(
+        ctx, "d2", TILEDB_UINT32, &dim_domain[0], &tile_extent_, &d2);
+
+    // Create domain
+    tiledb_domain_t* domain;
+    tiledb_domain_alloc(ctx, &domain);
+    tiledb_domain_add_dimension(ctx, domain, d1);
+    tiledb_domain_add_dimension(ctx, domain, d2);
+
+    // Create a single attribute "a" so each (i,j) cell can store a double.
+    tiledb_attribute_t* a;
+    tiledb_attribute_alloc(ctx, "a", TILEDB_FLOAT64, &a);
+
+    // Create array schema
+    tiledb_array_schema_t* array_schema;
+    tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
+    tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+    tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+    tiledb_array_schema_set_domain(ctx, array_schema, domain);
+    tiledb_array_schema_add_attribute(ctx, array_schema, a);
+
+    // Create array
+    tiledb_array_create(ctx, ARRAY_NAME, array_schema);
+
+    // Clean up
+    tiledb_attribute_free(&a);
+    tiledb_dimension_free(&d1);
+    tiledb_dimension_free(&d2);
+    tiledb_domain_free(&domain);
+    tiledb_array_schema_free(&array_schema);
+    tiledb_ctx_free(&ctx);
+  }
+
+  void write_fragment() {
+    // Write to the array.
+    auto array = tiledb::Array(ctx_, ARRAY_NAME, TILEDB_WRITE);
+    auto query = tiledb::Query(ctx_, array, TILEDB_WRITE);
+
+    // Write a 4x4 square intersecting the 4 tiles of the array. Writting a 2x2
+    // square to each tile.
+    Subarray subarray(ctx_, array);
+    uint32_t r[2]{3, 6};
+    subarray.add_range(0, r[0], r[1]);
+    subarray.add_range(1, r[0], r[1]);
+    query.set_subarray(subarray);
+
+    std::vector<double> a{1.7,
+                          1.1,
+                          2.2,
+                          2.5,
+                          1.5,
+                          1.3,
+                          2.1,
+                          2.6,
+                          3.4,
+                          3.8,
+                          4.1,
+                          4.2,
+                          3.5,
+                          3.2,
+                          4.9,
+                          4.6};
+    query.set_layout(TILEDB_ROW_MAJOR);
+    query.set_data_buffer("a", a);
+
+    query.submit();
+    query.finalize();
+    array.close();
+  }
+
+  void check_metadata() {
+    // Open array.
+    tiledb_ctx_t* ctx;
+    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_array_t* array;
+    int rc = tiledb_array_alloc(ctx, ARRAY_NAME, &array);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx, array, TILEDB_READ);
+    CHECK(rc == TILEDB_OK);
+
+    // Load fragment metadata.
+    auto frag_meta = array->array_->fragment_metadata();
+    auto& enc_key = array->array_->get_encryption_key();
+    auto st = frag_meta[0]->load_fragment_min_max_sum_null_count(enc_key);
+    CHECK(st.ok());
+
+    // Do fragment metadata first for attribute.
+    {
+      // Validate min.
+      auto& min = frag_meta[0]->get_min("a");
+      CHECK(min.size() == sizeof(double));
+
+      double correct_min = 1.1;
+      CHECK(0 == memcmp(min.data(), &correct_min, min.size()));
+
+      // Validate max.
+      auto& max = frag_meta[0]->get_max("a");
+      CHECK(max.size() == sizeof(double));
+
+      double correct_max = 4.9;
+      CHECK(0 == memcmp(max.data(), &correct_max, max.size()));
+
+      // Validate sum.
+      auto sum = frag_meta[0]->get_sum("a");
+      double correct_sum = 46.7;
+      CHECK(*(double*)sum - correct_sum < 0.0001);
+    }
+
+    // Load attribute metadata.
+    std::vector<std::string> names_min{"a"};
+    st = frag_meta[0]->load_tile_min_values(enc_key, std::move(names_min));
+    CHECK(st.ok());
+
+    std::vector<std::string> names_max{"a"};
+    st = frag_meta[0]->load_tile_max_values(enc_key, std::move(names_max));
+    CHECK(st.ok());
+
+    std::vector<std::string> names_sum{"a"};
+    st = frag_meta[0]->load_tile_sum_values(enc_key, std::move(names_sum));
+    CHECK(st.ok());
+
+    std::vector<std::string> names_null_count{"a"};
+    st = frag_meta[0]->load_tile_null_count_values(
+        enc_key, std::move(names_null_count));
+    CHECK(st.ok());
+
+    std::vector<double> correct_tile_mins{1.1, 2.1, 3.2, 4.1};
+    std::vector<double> correct_tile_maxs{1.7, 2.6, 3.8, 4.9};
+    std::vector<double> correct_tile_sums{5.6, 9.4, 13.9, 17.8};
+
+    // Validate attribute metadta.
+    for (uint64_t tile_idx = 0; tile_idx < 4; tile_idx++) {
+      // Validate min.
+      const auto min = frag_meta[0]->get_tile_min_as<double>("a", tile_idx);
+      CHECK(0 == memcmp(&min, &correct_tile_mins[tile_idx], sizeof(double)));
+
+      // Validate max.
+      const auto max = frag_meta[0]->get_tile_max_as<double>("a", tile_idx);
+      CHECK(0 == memcmp(&max, &correct_tile_maxs[tile_idx], sizeof(double)));
+
+      // Validate sum.
+      auto sum = frag_meta[0]->get_tile_sum("a", tile_idx);
+      CHECK(*(double*)sum - correct_tile_sums[tile_idx] < 0.0001);
+    }
+
+    // Close array.
+    rc = tiledb_array_close(ctx, array);
+    CHECK(rc == TILEDB_OK);
+
+    // Clean up.
+    tiledb_array_free(&array);
+    tiledb_ctx_free(&ctx);
+  }
+
+  const char* ARRAY_NAME = "tile_metadata_unit_array";
+  const uint64_t tile_extent_ = 4;
+  tiledb::Context ctx_;
+  tiledb::VFS vfs_;
+};
+
+TEST_CASE_METHOD(
+    CPPFixedTileMetadataPartialFx,
+    "TileMetadata: partial tile fixed",
+    "[tile-metadata][fixed][partial]") {
+  // Create the array.
+  create_array();
+  write_fragment();
+  check_metadata();
+}
+
+struct CPPVarTileMetadataPartialFx {
+  CPPVarTileMetadataPartialFx()
+      : vfs_(ctx_) {
+    if (vfs_.is_dir(ARRAY_NAME))
+      vfs_.remove_dir(ARRAY_NAME);
+  }
+
+  ~CPPVarTileMetadataPartialFx() {
+    if (vfs_.is_dir(ARRAY_NAME))
+      vfs_.remove_dir(ARRAY_NAME);
+  }
+
+  void create_array() {
+    // Create TileDB context
+    tiledb_ctx_t* ctx;
+    tiledb_ctx_alloc(NULL, &ctx);
+
+    // The array will be two dimension "d1" and "d2", with domain [1,8].
+    uint32_t dim_domain[]{1, 8};
+    tiledb_dimension_t* d1;
+    tiledb_dimension_alloc(
+        ctx, "d1", TILEDB_UINT32, &dim_domain[0], &tile_extent_, &d1);
+    tiledb_dimension_t* d2;
+    tiledb_dimension_alloc(
+        ctx, "d2", TILEDB_UINT32, &dim_domain[0], &tile_extent_, &d2);
+
+    // Create domain
+    tiledb_domain_t* domain;
+    tiledb_domain_alloc(ctx, &domain);
+    tiledb_domain_add_dimension(ctx, domain, d1);
+    tiledb_domain_add_dimension(ctx, domain, d2);
+
+    // Create a single attribute "a" so each (i,j) cell can store an integer
+    tiledb_attribute_t* a;
+    tiledb_attribute_alloc(ctx, "a", TILEDB_STRING_ASCII, &a);
+    tiledb_attribute_set_cell_val_num(ctx, a, TILEDB_VAR_NUM);
+
+    // Create array schema
+    tiledb_array_schema_t* array_schema;
+    tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
+    tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+    tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+    tiledb_array_schema_set_domain(ctx, array_schema, domain);
+    tiledb_array_schema_add_attribute(ctx, array_schema, a);
+
+    // Create array
+    tiledb_array_create(ctx, ARRAY_NAME, array_schema);
+
+    // Clean up
+    tiledb_attribute_free(&a);
+    tiledb_dimension_free(&d1);
+    tiledb_dimension_free(&d2);
+    tiledb_domain_free(&domain);
+    tiledb_array_schema_free(&array_schema);
+    tiledb_ctx_free(&ctx);
+  }
+
+  void write_fragment() {
+    // Write to the array.
+    auto array = tiledb::Array(ctx_, ARRAY_NAME, TILEDB_WRITE);
+    auto query = tiledb::Query(ctx_, array, TILEDB_WRITE);
+
+    // Write a 4x4 square intersecting the 4 tiles of the array. Writting a 2x2
+    // square to each tile.
+    Subarray subarray(ctx_, array);
+    uint32_t r[2]{3, 6};
+    subarray.add_range(0, r[0], r[1]);
+    subarray.add_range(1, r[0], r[1]);
+    query.set_subarray(subarray);
+
+    std::string a = "1.71.12.22.51.51.32.12.63.43.84.14.23.53.24.94.6";
+    std::vector<uint64_t> offsets{
+        0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45};
+    query.set_layout(TILEDB_ROW_MAJOR);
+    query.set_data_buffer("a", a).set_offsets_buffer("a", offsets);
+
+    query.submit();
+    query.finalize();
+    array.close();
+  }
+
+  void check_metadata() {
+    // Open array.
+    tiledb_ctx_t* ctx;
+    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_array_t* array;
+    int rc = tiledb_array_alloc(ctx, ARRAY_NAME, &array);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx, array, TILEDB_READ);
+    CHECK(rc == TILEDB_OK);
+
+    // Load fragment metadata.
+    auto frag_meta = array->array_->fragment_metadata();
+    auto& enc_key = array->array_->get_encryption_key();
+    auto st = frag_meta[0]->load_fragment_min_max_sum_null_count(enc_key);
+    CHECK(st.ok());
+
+    // Do fragment metadata first for attribute.
+    {
+      // Validate min.
+      auto& min = frag_meta[0]->get_min("a");
+      std::string correct_min = "1.1";
+      CHECK(min.size() == correct_min.size());
+      CHECK(0 == memcmp(min.data(), correct_min.data(), min.size()));
+
+      // Validate max.
+      auto& max = frag_meta[0]->get_max("a");
+      std::string correct_max = "4.9";
+      CHECK(max.size() == correct_max.size());
+      CHECK(0 == memcmp(max.data(), correct_max.data(), max.size()));
+    }
+
+    // Load attribute metadata.
+    std::vector<std::string> names_min{"a"};
+    st = frag_meta[0]->load_tile_min_values(enc_key, std::move(names_min));
+    CHECK(st.ok());
+
+    std::vector<std::string> names_max{"a"};
+    st = frag_meta[0]->load_tile_max_values(enc_key, std::move(names_max));
+    CHECK(st.ok());
+
+    std::vector<std::string> names_sum{"a"};
+    st = frag_meta[0]->load_tile_sum_values(enc_key, std::move(names_sum));
+    CHECK(st.ok());
+
+    std::vector<std::string> names_null_count{"a"};
+    st = frag_meta[0]->load_tile_null_count_values(
+        enc_key, std::move(names_null_count));
+    CHECK(st.ok());
+
+    std::vector<std::string> correct_tile_mins{"1.1", "2.1", "3.2", "4.1"};
+    std::vector<std::string> correct_tile_maxs{"1.7", "2.6", "3.8", "4.9"};
+
+    // Validate attribute metadta.
+    for (uint64_t tile_idx = 0; tile_idx < 4; tile_idx++) {
+      // Validate min.
+      const auto min =
+          frag_meta[0]->get_tile_min_as<std::string_view>("a", tile_idx);
+      CHECK(min.size() == correct_tile_mins[tile_idx].size());
+      CHECK(
+          0 ==
+          memcmp(min.data(), correct_tile_mins[tile_idx].data(), min.size()));
+
+      // Validate max.
+      const auto max =
+          frag_meta[0]->get_tile_max_as<std::string_view>("a", tile_idx);
+      CHECK(max.size() == correct_tile_maxs[tile_idx].size());
+      CHECK(
+          0 ==
+          memcmp(max.data(), correct_tile_maxs[tile_idx].data(), max.size()));
+    }
+
+    // Close array.
+    rc = tiledb_array_close(ctx, array);
+    CHECK(rc == TILEDB_OK);
+
+    // Clean up.
+    tiledb_array_free(&array);
+    tiledb_ctx_free(&ctx);
+  }
+
+  const char* ARRAY_NAME = "tile_metadata_unit_array";
+  const uint64_t tile_extent_ = 4;
+  tiledb::Context ctx_;
+  tiledb::VFS vfs_;
+};
+
+TEST_CASE_METHOD(
+    CPPVarTileMetadataPartialFx,
+    "TileMetadata: partial tile var",
+    "[tile-metadata][var][partial]") {
+  // Create the array.
+  create_array();
+  write_fragment();
+  check_metadata();
 }

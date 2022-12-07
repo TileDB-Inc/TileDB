@@ -20,6 +20,11 @@ on:
         default: ''
         required: true
         type: string
+      timeout:
+        default: 90
+        description: 'Job timeout (minutes)'
+        required: false
+        type: number
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
@@ -37,10 +42,10 @@ jobs:
     runs-on: ${{matrix.os}}
 
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
-    timeout-minutes: 90
+    timeout-minutes: ${{ inputs.timeout || 90 }}
     name: ${{matrix.os}} - ${{ inputs.ci_backend }}${{ inputs.ci_option }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: 'Ubuntu Prelim'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }}
@@ -83,8 +88,9 @@ jobs:
           # Run tests
 
           # Bypass Catch2 Framework stdout interception with awk on test output
+          ./tiledb/test/regression/tiledb_regression -d yes
+          ./tiledb/test/ci/test_assert -d yes
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
-          ./tiledb/test/regression/tiledb_regression -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
           ###################################################
           # Stop helper processes, if applicable
@@ -107,7 +113,7 @@ jobs:
 
       - name: 'Upload failure artifacts (Linux)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           retention-days: 10
           name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"

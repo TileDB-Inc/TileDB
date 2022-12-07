@@ -1770,3 +1770,118 @@ TEST_CASE(
     vfs.remove_dir(array_name);
   }
 }
+
+TEST_CASE(
+    "Testing read query with basic QC, with no range, query condition "
+    "attribute not in buffers",
+    "[query][query-condition][attr-not-in-buffers]") {
+  // Initial setup.
+  std::srand(static_cast<uint32_t>(time(0)));
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Define query condition (b < 4.0).
+  QueryCondition qc(ctx);
+  float val = 4.0f;
+  qc.init("b", &val, sizeof(float), TILEDB_LT);
+
+  // Create buffers with size of the results of the two queries.
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
+
+  // These buffers store the results of the second query made with the query
+  // condition specified above.
+  std::vector<int> a_data_read_2(num_rows * num_rows);
+
+  // Generate test parameters.
+  TestParams params = GENERATE(
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
+
+  // Setup by creating buffers to store all elements of the original array.
+  create_array(
+      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+
+  // Create the query, which reads over the entire array with query condition
+  // (b < 4.0).
+  Config config;
+  if (params.legacy_) {
+    config.set("sm.query.sparse_global_order.reader", "legacy");
+    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
+  }
+  Context ctx2 = Context(config);
+  Array array(ctx2, array_name, TILEDB_READ);
+  Query query(ctx2, array);
+
+  // Set a subarray for dense.
+  if (params.array_type_ == TILEDB_DENSE) {
+    int range[] = {1, num_rows};
+    query.add_range("rows", range[0], range[1])
+        .add_range("cols", range[0], range[1]);
+  }
+
+  // Perform query and validate.
+  query.set_layout(params.layout_)
+      .set_data_buffer("a", a_data_read_2)
+      .set_condition(qc);
+  query.submit();
+
+  if (params.array_type_ == TILEDB_SPARSE) {
+    // Check the query for accuracy. The query results should contain 200
+    // elements. Each of these elements should have the cell value 1 on
+    // attribute a and should match the original value in the array that reads
+    // all elements.
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 1);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 200);
+
+    // The unordered query should return the results in global order. Therefore,
+    // we iterate over each tile to collect our results.
+    int i = 0;
+    for (int tile_r = 1; tile_r <= num_rows; tile_r += 4) {
+      for (int tile_c = 1; tile_c <= num_rows; tile_c += 4) {
+        // Iterating over each tile.
+        for (int r = tile_r; r < tile_r + 4; ++r) {
+          for (int c = tile_c; c < tile_c + 4; c += 2) {
+            int original_arr_i = index_from_row_col(r, c);
+            REQUIRE(a_data_read_2[i] == 1);
+            REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
+            i += 1;
+          }
+        }
+      }
+    }
+  } else {
+    // Check the query for accuracy. The query results should contain 400
+    // elements. Elements that meet the query condition should have the cell
+    // value 1 on attribute a and should match the original value in the array
+    // on attribute b. Elements that do not should have the fill value for both
+    // attributes.
+    size_t total_num_elements = static_cast<size_t>(num_rows * num_rows);
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 1);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == total_num_elements);
+    for (int i = 0; i < num_rows * num_rows; ++i) {
+      if (i % 2 == 0) {
+        REQUIRE(a_data_read_2[i] == 1);
+        REQUIRE(a_data_read_2[i] == a_data_read[i]);
+      } else {
+        REQUIRE(a_data_read_2[i] == a_fill_value);
+      }
+    }
+  }
+
+  query.finalize();
+  array.close();
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}

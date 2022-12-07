@@ -36,11 +36,10 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/array_schema/dimension_label_schema.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/array_type.h"
+#include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/enums/label_order.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 
@@ -90,7 +89,7 @@ inline shared_ptr<ArraySchema> make_array_schema(
       make_shared<Domain>(cell_layout, dims, tile_layout));
   CHECK(status.ok());
   for (const auto& attr : attrs) {
-    array_schema->add_attribute(attr);
+    CHECK(array_schema->add_attribute(attr).ok());
   }
   return array_schema;
 }

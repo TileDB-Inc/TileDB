@@ -31,7 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/utils.h"
 #ifdef _WIN32
@@ -713,7 +713,7 @@ void VFSFx::check_write(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_read(ctx_, fh, 0, &to_read[0], file_size);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(to_read, Catch::Equals(to_write));
+  CHECK_THAT(to_read, Catch::Matchers::Equals(to_write));
   rc = tiledb_vfs_close(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_fh_free(&fh);
@@ -791,7 +791,7 @@ void VFSFx::check_append(const std::string& path) {
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_vfs_read(ctx_, fh, 0, &to_read[0], total_size);
     REQUIRE(rc == TILEDB_OK);
-    CHECK_THAT(to_read, Catch::Equals(to_write + to_write_2));
+    CHECK_THAT(to_read, Catch::Matchers::Equals(to_write + to_write_2));
     rc = tiledb_vfs_close(ctx_, fh);
     REQUIRE(rc == TILEDB_OK);
     tiledb_vfs_fh_free(&fh);
@@ -825,7 +825,7 @@ void VFSFx::check_read(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_read(ctx_, fh, offset, &to_read[0], to_check.size());
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(to_read, Catch::Equals(to_check));
+  CHECK_THAT(to_read, Catch::Matchers::Equals(to_check));
   rc = tiledb_vfs_close(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_fh_free(&fh);

@@ -99,6 +99,9 @@ class GroupDirectory {
   /** Returns the group URI. */
   const URI& uri() const;
 
+  /** Returns the URIs of all group files. */
+  const std::vector<URI>& group_file_uris() const;
+
   /** Returns the URIs of the group metadata files to vacuum. */
   const std::vector<URI>& group_meta_uris_to_vacuum() const;
 
@@ -125,7 +128,7 @@ class GroupDirectory {
    * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
    */
   tuple<Status, optional<std::string>> compute_new_fragment_name(
-      const URI& first, const URI& last, uint32_t format_version) const;
+      const URI& first, const URI& last, format_version_t format_version) const;
 
   /** Returns `true` if `load` has been run. */
   bool loaded() const;
@@ -143,6 +146,9 @@ class GroupDirectory {
 
   /** A thread pool used for parallelism. */
   ThreadPool* tp_;
+
+  /** The URIs of all group files. */
+  std::vector<URI> group_file_uris_;
 
   /** Latest group details URI. */
   URI latest_group_details_uri_;

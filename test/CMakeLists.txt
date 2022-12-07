@@ -97,18 +97,23 @@ list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_
 
 # Gather the test source files
 set(TILEDB_TEST_SUPPORT_SOURCES
-  src/ast_helpers.h
-  src/ast_helpers.cc
-  src/helpers.h
-  src/helpers.cc
-  src/helpers-dimension.h
-  src/vfs_helpers.cc
-  src/serialization_wrappers.cc
+  support/src/ast_helpers.h
+  support/src/ast_helpers.cc
+  support/src/helpers.h
+  support/src/helpers.cc
+  support/src/helpers-dimension.h
+  support/src/vfs_helpers.cc
+  support/src/serialization_wrappers.cc
   )
 
 set(TILEDB_UNIT_TEST_SOURCES
-  src/helpers.h
-  src/helpers-dimension.h
+  support/src/ast_helpers.h
+  support/src/helpers.h
+  support/src/helpers-dimension.h
+  src/test-capi-consolidation-plan.cc
+  src/test-capi-query-error-handling.cc
+  src/test-cppapi-consolidation-plan.cc
+  src/unit-average-cell-size.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
@@ -117,7 +122,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-array_schema.cc
   src/unit-capi-async.cc
   src/unit-capi-attributes.cc
-  src/unit-capi-buffer.cc
   src/unit-capi-config.cc
   src/unit-capi-context.cc
   src/unit-capi-consolidation.cc
@@ -148,6 +152,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
   src/unit-capi-string_dims.cc
+  src/unit-capi-update-queries.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
@@ -158,7 +163,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-ctx.cc
   src/unit-DenseTiler.cc
   src/unit-dimension.cc
-  src/unit-domain.cc
   src/unit-duplicates.cc
   src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc
@@ -168,27 +172,22 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
   src/unit-lru_cache.cc
+  src/unit-ordered-dim-label-reader.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
-  src/unit-bytevecvalue.cc
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
   src/unit-resource-pool.cc
   src/unit-result-coords.cc
   src/unit-result-tile.cc
-  src/unit-rtree.cc
   src/unit-s3-no-multipart.cc
   src/unit-s3.cc
   src/unit-sparse-global-order-reader.cc
   src/unit-sparse-unordered-with-dups-reader.cc
-  src/unit-status.cc
   src/unit-Subarray.cc
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
   src/unit-SubarrayPartitioner-sparse.cc
-  src/unit-Tile.cc
-  src/unit-TileDomain.cc
-  src/unit-uuid.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   )
@@ -196,6 +195,7 @@ set(TILEDB_UNIT_TEST_SOURCES
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-cppapi-array.cc
+    src/unit-cppapi-bitsort-filter.cc
     src/unit-cppapi-checksum.cc
     src/unit-cppapi-config.cc
     src/unit-cppapi-consolidation-sparse.cc
@@ -203,14 +203,15 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-consolidation-with-timestamps.cc
     src/unit-cppapi-datetimes.cc
     src/unit-cppapi-deletes.cc
+    src/unit-cppapi-dense-qc-coords-mode.cc
     src/unit-cppapi-time.cc
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-float-scaling-filter.cc
-    src/unit-cppapi-xor-filter.cc
     src/unit-cppapi-fragment_info.cc
     src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
+    src/unit-cppapi-max-fragment-size.cc
     src/unit-cppapi-metadata.cc
     src/unit-cppapi-nullable.cc
     src/unit-cppapi-query.cc
@@ -219,10 +220,13 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-string-dims.cc
     src/unit-cppapi-subarray.cc
     src/unit-cppapi-type.cc
+    src/unit-cppapi-update-queries.cc
     src/unit-cppapi-updates.cc
     src/unit-cppapi-util.cc
     src/unit-cppapi-var-offsets.cc
     src/unit-cppapi-vfs.cc
+    src/unit-cppapi-webp-filter.cc
+    src/unit-cppapi-xor-filter.cc
   )
 endif()
 
@@ -231,7 +235,6 @@ if (TILEDB_SERIALIZATION)
     src/unit-capi-serialized_queries.cc
     src/unit-capi-serialized_queries_using_subarray.cc
     src/unit-QueryCondition-serialization.cc
-    src/unit-filter-serialization.cc
     src/unit-curl.cc
   )
 endif()
@@ -251,9 +254,11 @@ endif()
 
 if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/test-capi-array-many-dimension-labels.cc
     src/test-capi-dimension_labels.cc
-    src/test-dimension_labels-read-consistency.cc
-    src/unit_intersect_fragments.cc
+    src/test-capi-dense-array-dimension-label.cc
+    src/test-capi-dense-array-dimension-label-var.cc
+    src/test-capi-sparse-array-dimension-label.cc
   )
 endif()
 
@@ -261,15 +266,6 @@ if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
 endif()
 
-add_library(tiledb_test_support_lib EXCLUDE_FROM_ALL
-  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
-  ${TILEDB_TEST_SUPPORT_SOURCES}
-)
-
-target_include_directories(tiledb_test_support_lib
-  PRIVATE
-    $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
-)
 
 # unit test executable
 add_executable(
@@ -285,16 +281,10 @@ add_dependencies(tiledb_unit tiledb_test_support_lib)
 # so don't warn for deprecations, since they'll be escalated to errors.
 if (NOT MSVC)
   target_compile_options(tiledb_unit PRIVATE -Wno-deprecated-declarations)
-  target_compile_options(tiledb_test_support_lib PRIVATE -Wno-deprecated-declarations)
 endif()
 
 target_include_directories(
   tiledb_unit BEFORE PRIVATE
-    ${TILEDB_CORE_INCLUDE_DIR}
-    ${TILEDB_EXPORT_HEADER_DIR}
-)
-target_include_directories(
-  tiledb_test_support_lib BEFORE PRIVATE
     ${TILEDB_CORE_INCLUDE_DIR}
     ${TILEDB_EXPORT_HEADER_DIR}
 )
@@ -307,14 +297,6 @@ target_link_libraries(tiledb_unit
 )
 
 target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)
-
-target_link_libraries(tiledb_test_support_lib
-  PUBLIC
-    TILEDB_CORE_OBJECTS_ILIB
-    Catch2::Catch2
-)
-
-target_link_libraries(tiledb_test_support_lib PRIVATE $<BUILD_INTERFACE:common>)
 
 # need to properly link the signal chaining library for catch to work with the jni hdfs interface
 # see: https://docs.oracle.com/javase/9/vm/signal-chaining.htm
@@ -329,36 +311,27 @@ if (TILEDB_HDFS)
   target_include_directories(tiledb_unit PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
     )
-  target_compile_definitions(tiledb_test_support_lib PRIVATE -DHAVE_HDFS)
-  target_include_directories(tiledb_test_support_lib PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
-    )
 endif()
 
 if (TILEDB_S3)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_S3)
-  target_compile_definitions(tiledb_test_support_lib PRIVATE -DHAVE_S3)
 endif()
 
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
-  target_compile_definitions(tiledb_test_support_lib PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
 endif()
 
 if (TILEDB_AZURE)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_AZURE)
-  target_compile_definitions(tiledb_test_support_lib PRIVATE -DHAVE_AZURE)
 endif()
 
 if (TILEDB_GCS)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_GCS)
-  target_compile_definitions(tiledb_test_support_lib PRIVATE -DHAVE_GCS)
 endif()
 
 if (TILEDB_SERIALIZATION)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_SERIALIZATION)
-  target_compile_definitions(tiledb_test_support_lib PRIVATE -DTILEDB_SERIALIZATION)
 endif()
 
 if (TILEDB_ARROW_TESTS)
@@ -368,16 +341,25 @@ if (TILEDB_ARROW_TESTS)
   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/unit_arrow.py" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
 endif()
 
+if (TILEDB_WEBP)
+  target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_WEBP)
+  find_package(Zlib_EP) # We need PNG to use our Zlib so that static link works correctly if applicable
+  find_package(PNG)
+  if (PNG_FOUND)
+    target_compile_definitions(tiledb_unit PRIVATE -DPNG_FOUND)
+    # If libpng is available, the test can write output images for visual checking.
+    # If libpng is not available, the test runs on pixel data alone with no output images.
+    target_link_libraries(tiledb_unit PRIVATE "${PNG_LIBRARIES}")
+    target_include_directories(tiledb_unit PRIVATE "${PNG_INCLUDE_DIRS}")
+    target_compile_definitions(tiledb_unit PRIVATE "${PNG_DEFINITIONS}")
+  endif()
+endif()
+
 # This is necessary only because we are linking directly to the core objects.
 # Other users (e.g. the examples) do not need this flag.
 target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
-target_compile_definitions(tiledb_test_support_lib PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
 
 target_compile_definitions(tiledb_unit PRIVATE
-  -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/inputs"
-)
-
-target_compile_definitions(tiledb_test_support_lib PRIVATE
   -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/inputs"
 )
 

@@ -36,7 +36,7 @@ if (TILEDB_TESTS)
     find_package(Catch_EP REQUIRED)
 
     add_executable(unit_exception EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_exception PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_exception PUBLIC Catch2::Catch2WithMain)
     target_link_libraries(unit_exception PUBLIC baseline)
 
     # Sources for code under test
@@ -50,6 +50,7 @@ if (TILEDB_TESTS)
     target_sources(unit_exception PUBLIC
       test/main.cc
       test/unit_exception.cc
+      test/unit_status.cc
     )
 
     add_test(

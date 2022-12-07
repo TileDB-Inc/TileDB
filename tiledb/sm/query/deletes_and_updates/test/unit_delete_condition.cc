@@ -27,10 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * Tests the `ArrayDirectory` class.
+ * Tests the delete condition serialization.
  */
 
-#include "test/src/ast_helpers.h"
+#include "test/support/src/ast_helpers.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/storage_manager/context.h"
 

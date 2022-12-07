@@ -31,7 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -52,6 +52,7 @@ struct ConsolidationWithTimestampsFx {
   Context ctx_;
   VFS vfs_;
   sm::StorageManager* sm_;
+  bool serialized_writes_ = false;
 
   // Constructors/destructors.
   ConsolidationWithTimestampsFx();
@@ -176,9 +177,12 @@ void ConsolidationWithTimestampsFx::write_sparse(
   query.set_data_buffer("d1", dim1);
   query.set_data_buffer("d2", dim2);
 
-  // Submit/finalize the query.
-  query.submit();
-  query.finalize();
+  if (!serialized_writes_) {
+    query.submit();
+    query.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array.
   array.close();
@@ -206,10 +210,12 @@ void ConsolidationWithTimestampsFx::write_sparse_v11(uint64_t timestamp) {
   query.set_data_buffer("a3", buffer_a3);
   query.set_data_buffer("d1", buffer_coords_dim1);
   query.set_data_buffer("d2", buffer_coords_dim2);
-
-  // Submit/finalize the query.
-  query.submit();
-  query.finalize();
+  if (!serialized_writes_) {
+    query.submit();
+    query.finalize();
+  } else {
+    test::submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array.
   array.close();
@@ -374,6 +380,14 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   create_sparse_array();
 
+  SECTION("no serialization") {
+    serialized_writes_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes_ = true;
+  }
+#endif
   // Write first fragment.
   write_sparse(
       {0, 1, 2, 3, 4, 5, 6, 7},
@@ -401,6 +415,14 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   create_sparse_array(true);
 
+  SECTION("no serialization") {
+    serialized_writes_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes_ = true;
+  }
+#endif
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
@@ -476,6 +498,14 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   create_sparse_array();
 
+  SECTION("no serialization") {
+    serialized_writes_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes_ = true;
+  }
+#endif
   // Write first fragment.
   write_sparse(
       {0, 1, 2, 3, 4, 5, 6, 7},
@@ -513,6 +543,7 @@ TEST_CASE_METHOD(
   remove_sparse_array();
 }
 
+// TODO: remove once tiledb_vfs_copy_dir is implemented for windows.
 #ifndef _WIN32
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
@@ -522,6 +553,15 @@ TEST_CASE_METHOD(
   if constexpr (is_experimental_build) {
     return;
   }
+
+  SECTION("no serialization") {
+    serialized_writes_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes_ = true;
+  }
+#endif
 
   remove_sparse_array();
   create_sparse_array_v11();
@@ -603,6 +643,15 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   create_sparse_array();
 
+  SECTION("no serialization") {
+    serialized_writes_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes_ = true;
+  }
+#endif
+
   // Write fragments.
   for (uint64_t i = 0; i < 50; i++) {
     std::vector<int> a(1);
@@ -640,7 +689,17 @@ TEST_CASE_METHOD(
     "across tiles",
     "[cppapi][consolidation-with-timestamps][global-read][across-tiles]") {
   remove_sparse_array();
-  create_sparse_array();
+  bool allow_dups = GENERATE(true, false);
+  create_sparse_array(allow_dups);
+
+  SECTION("no serialization") {
+    serialized_writes_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes_ = true;
+  }
+#endif
 
   // Write fragments.
   // We write 8 cells per fragments for 6 fragments. Then it gets consolidated
@@ -660,7 +719,7 @@ TEST_CASE_METHOD(
 
   // Test read for both refactored and legacy.
   bool legacy = GENERATE(true, false);
-  uint64_t buffer_size = 8;
+  uint64_t buffer_size = allow_dups ? 48 : 8;
   if (legacy) {
     set_legacy();
     buffer_size = 100;
@@ -675,9 +734,15 @@ TEST_CASE_METHOD(
   std::vector<int> c_a1 = {1, 2, 3, 4, 5, 6, 7, 8};
   std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2};
   std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4};
-  CHECK(!memcmp(c_a1.data(), a1.data(), c_a1.size() * sizeof(int)));
-  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
-  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+  for (uint64_t i = 0; i < 8; i++) {
+    uint64_t max_j = allow_dups ? 6 : 1;
+    for (uint64_t j = 0; j < max_j; j++) {
+      uint64_t idx = i * max_j + j;
+      CHECK(a1[idx] == c_a1[i]);
+      CHECK(dim1[idx] == c_dim1[i]);
+      CHECK(dim2[idx] == c_dim2[i]);
+    }
+  }
 
   remove_sparse_array();
 }
@@ -691,6 +756,14 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   create_sparse_array();
 
+  SECTION("no serialization") {
+    serialized_writes_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes_ = true;
+  }
+#endif
   // Write fragments.
   for (uint64_t i = 0; i < 50; i++) {
     std::vector<int> a(1);
@@ -734,6 +807,14 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   create_sparse_array();
 
+  SECTION("no serialization") {
+    serialized_writes_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes_ = true;
+  }
+#endif
   // Write fragments.
   // We write 8 cells per fragment for 6 fragments. Then it gets consolidated
   // into one. So we'll get in order 6xcell1, 6xcell2... total 48 cells. Tile
@@ -784,6 +865,10 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
+
+#ifdef TILEDB_SERIALIZATION
+  serialized_writes_ = GENERATE(true, false);
+#endif
 
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -872,6 +957,10 @@ TEST_CASE_METHOD(
   // No duplicates.
   create_sparse_array();
 
+#ifdef TILEDB_SERIALIZATION
+  serialized_writes_ = GENERATE(true, false);
+#endif
+
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
@@ -941,6 +1030,10 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
+
+#ifdef TILEDB_SERIALIZATION
+  serialized_writes_ = GENERATE(true, false);
+#endif
 
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -1088,6 +1181,10 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
+#ifdef TILEDB_SERIALIZATION
+  serialized_writes_ = GENERATE(true, false);
+#endif
+
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   // Write second fragment.
@@ -1196,6 +1293,10 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
+#ifdef TILEDB_SERIALIZATION
+  serialized_writes_ = GENERATE(true, false);
+#endif
+
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   // Write second fragment.
@@ -1289,6 +1390,14 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
+  SECTION("no serialization") {
+    serialized_writes_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes_ = true;
+  }
+#endif
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   // Write second fragment.
@@ -1389,6 +1498,10 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
+
+#ifdef TILEDB_SERIALIZATION
+  serialized_writes_ = GENERATE(true, false);
+#endif
 
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -1574,6 +1687,14 @@ TEST_CASE_METHOD(
     remove_sparse_array();
     create_sparse_array(false);
 
+    SECTION("no serialization") {
+      serialized_writes_ = false;
+    }
+#ifdef TILEDB_SERIALIZATION
+    SECTION("serialization enabled global order write") {
+      serialized_writes_ = true;
+    }
+#endif
     // Write first fragment.
     write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
     // Write second fragment.
@@ -1593,6 +1714,14 @@ TEST_CASE_METHOD(
     remove_sparse_array();
     create_sparse_array(false);
 
+    SECTION("no serialization") {
+      serialized_writes_ = false;
+    }
+#ifdef TILEDB_SERIALIZATION
+    SECTION("serialization enabled global order write") {
+      serialized_writes_ = true;
+    }
+#endif
     // Write first fragment.
     write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
     // Write second fragment.
@@ -1631,6 +1760,14 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(dups);
 
+  SECTION("no serialization") {
+    serialized_writes_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes_ = true;
+  }
+#endif
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   // Write second fragment.
@@ -1669,7 +1806,7 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> c_dim2 = {
         1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 3, 4, 4};
     std::vector<uint64_t> c_ts = {
-        1, 1, 5, 3, 5, 1, 1, 3, 5, 3, 5, 7, 3, 7, 7, 7};
+        1, 1, 5, 3, 5, 1, 1, 3, 5, 3, 5, 7, 7, 3, 7, 7};
     CHECK(
         (!memcmp(c_a_1.data(), a.data(), c_a_1.size() * sizeof(int)) ||
          !memcmp(c_a_2.data(), a.data(), c_a_2.size() * sizeof(int))));
@@ -1707,6 +1844,14 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
+  SECTION("no serialization") {
+    serialized_writes_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes_ = true;
+  }
+#endif
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   // Write second fragment.

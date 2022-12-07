@@ -146,8 +146,8 @@ Status array_open_serialize(
  * Deserialize an open array request via Cap'n Proto
  *
  * @param Array array object to set the open array details into
- * @param serialize_type format to serialize into Cap'n Proto or JSON
- * @param serialized_buffer buffer to store serialized bytes in
+ * @param serialize_type format the data is serialized in: Cap'n Proto of JSON
+ * @param serialized_buffer buffer to read serialized bytes from
  * @return Status
  */
 Status array_open_deserialize(

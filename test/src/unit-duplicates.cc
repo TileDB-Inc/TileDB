@@ -30,7 +30,7 @@
  * Tests enabling coordinate duplicates for sparse arrays.
  */
 
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 
 #ifdef _WIN32

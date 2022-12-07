@@ -121,6 +121,9 @@ class Config {
   /** The default format for logging. */
   static const std::string CONFIG_LOGGING_DEFAULT_FORMAT;
 
+  /** Allow updates or not. */
+  static const std::string SM_ALLOW_UPDATES_EXPERIMENTAL;
+
   /**
    * The key for encrypted arrays.
    *  */
@@ -165,6 +168,9 @@ class Config {
   /** If `true`, bypass partitioning on estimated result sizes. */
   static const std::string SM_SKIP_EST_SIZE_PARTITIONING;
 
+  /** If `true`, bypass partitioning budget check for unary ranges. */
+  static const std::string SM_SKIP_UNARY_PARTITIONING_BUDGET_CHECK;
+
   /**
    * The maximum memory budget for producing the result (in bytes)
    * for a fixed-sized attribute or the offsets of a var-sized attribute.
@@ -176,6 +182,9 @@ class Config {
    * for a var-sized attribute.
    */
   static const std::string SM_MEMORY_BUDGET_VAR;
+
+  /** Set the dense reader in qc coords mode. */
+  static const std::string SM_QUERY_DENSE_QC_COORDS_MODE;
 
   /** Which reader to use for dense queries. */
   static const std::string SM_QUERY_DENSE_READER;
@@ -253,6 +262,9 @@ class Config {
 
   /** The buffer size for each attribute used in consolidation. */
   static const std::string SM_CONSOLIDATION_BUFFER_SIZE;
+
+  /** The maximum fragment size used in consolidation. */
+  static const std::string SM_CONSOLIDATION_MAX_FRAGMENT_SIZE;
 
   /** Purge deleted cells or not. */
   static const std::string SM_CONSOLIDATION_PURGE_DELETED_CELLS;
@@ -345,6 +357,13 @@ class Config {
    * An group will open between timestamp_start and this value.
    */
   static const std::string SM_GROUP_TIMESTAMP_END;
+
+  /**
+   * If `true` MBRs will be loaded at the same time as the rest of fragment
+   * info, otherwise they will be loaded lazily when some info related to MBRs
+   * is requested by the user
+   */
+  static const std::string SM_FRAGMENT_INFO_PRELOAD_MBRS;
 
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;
@@ -535,6 +554,10 @@ class Config {
   /*        OTHER CONSTANTS         */
   /* ****************************** */
 
+  /** Marker class to enforce value is found with Config::get overload */
+  class MustFindMarker {};
+  static constexpr MustFindMarker must_find{};
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -559,14 +582,6 @@ class Config {
   Status set(const std::string& param, const std::string& value);
 
   /**
-   * Retrieve the string value of a configuration parameter.
-   *
-   * @param key The name of the configuration parameter
-   * @return If a configuration item is present, its value. If not, `nullopt`.
-   */
-  [[nodiscard]] optional<std::string> get(const std::string& key) const;
-
-  /**
    * Retrieve the string value of a configuration parameter and convert it to
    * a designated type.
    *
@@ -574,7 +589,21 @@ class Config {
    * @return If a configuration item is present, its value. If not, `nullopt`.
    */
   template <class T>
-  [[nodiscard]] optional<T> get(const std::string& key) const;
+  [[nodiscard]] inline optional<T> get(const std::string& key) const {
+    return get_internal<T, false>(key);
+  }
+
+  /**
+   * Retrieves the value of the given parameter in the templated type.
+   * Throws StatusException if config value could not be found
+   *
+   * @param key The name of the configuration parameter
+   * @return The value of the configuration parameter
+   */
+  template <class T>
+  inline T get(const std::string& key, const MustFindMarker&) const {
+    return get_internal<T, true>(key).value();
+  }
 
   /**
    * Returns the string representation of a config parameter value.
@@ -690,18 +719,35 @@ class Config {
    */
   const char* get_from_config_or_env(
       const std::string& param, bool* found) const;
+
+  template <class T, bool must_find_>
+  optional<T> get_internal(const std::string& key) const;
+
+  template <bool must_find_>
+  optional<std::string> get_internal_string(const std::string& key) const;
 };
 
 /**
  * An explicit specialization for `std::string`. It does not call a conversion
- * function and it is thus the same as the non-template `get`.
+ * function and it is thus the same as `get_internal_string<false>`.
  */
 template <>
 [[nodiscard]] inline optional<std::string> Config::get<std::string>(
     const std::string& key) const {
-  return get(key);
+  return get_internal_string<false>(key);
 }
 
+/**
+ * An explicit specialization for `std::string`. It does not call a conversion
+ * function and it is thus the same as `get_internal_string<true>`
+ *
+ * Will throw if value is not found for provided config key
+ */
+template <>
+inline std::string Config::get<std::string>(
+    const std::string& key, const Config::MustFindMarker&) const {
+  return get_internal_string<true>(key).value();
+}
 }  // namespace tiledb::sm
 
 #ifdef TILEDB_DEPRECATE_CONFIG

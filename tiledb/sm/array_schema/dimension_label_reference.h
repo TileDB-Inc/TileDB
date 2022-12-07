@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 #include "tiledb/type/range/range.h"
 
@@ -43,11 +44,12 @@ using namespace tiledb::type;
 
 namespace tiledb::sm {
 
+class ArraySchema;
 class Buffer;
 class ConstBuffer;
-class DimensionLabelSchema;
+class Dimension;
 enum class Datatype : uint8_t;
-enum class LabelOrder : uint8_t;
+enum class DataOrder : uint8_t;
 
 /**
  * Class containing dimension label information required for usage
@@ -77,25 +79,28 @@ class DimensionLabelReference {
    * Constructor for accessing an existing dimension label.
    *
    * @param dim_id The index of the dimension the label is attached to.
-   * @param name The name of the dimension label.
+   * @param dim_label_name The name of the dimension label.
    * @param uri The URI of an external dimension label.
+   * @param label_attr_name The name of the attribute in the array that stores
+   *     the label data.
    * @param label_order The order of the dimension label.
    * @param label_type The datatype of the label data.
-   * @param cell_val_num The number of values stored in dimension label cell.
-   * @param domain The domain the dimension label is defined on.
+   * @param label_cell_val_num The number of values stored in dimension label
+   *     cell.
+   * @param schema The schema of the dimension label.
    * @param is_external If ``true``, the dimension label exits outside of the
    * array.
    * @param relative_uri If ``true``, the URI is relative.
    */
   DimensionLabelReference(
       dimension_size_type dim_id,
-      const std::string& name,
+      const std::string& dim_label_name,
       const URI& uri,
-      LabelOrder label_order,
+      const std::string& label_attr_name,
+      DataOrder label_order,
       Datatype label_type,
       uint32_t label_cell_val_num,
-      const Range& label_domain,
-      shared_ptr<const DimensionLabelSchema> schema,
+      shared_ptr<ArraySchema> schema,
       bool is_external,
       bool relative_uri);
 
@@ -103,23 +108,19 @@ class DimensionLabelReference {
    * Constructor for an internally generated dimension label.
    *
    * @param dim_id The index of the dimension the label is attached to.
-   * @param name The name of the dimension label.
+   * @param dim_label_name The name of the dimension label.
    * @param uri The URI of an external dimension label.
+   * @param dim The dimension the label is being added to.
    * @param label_order The order of the dimension label.
    * @param label_type The datatype of the label data.
-   * @param label_cell_val_num The number of values stored in dimension cell.
-   * @param label_domain The domain the dimension label is defined on.
-   * @param schema The array schema
    */
   DimensionLabelReference(
       dimension_size_type dim_id,
-      const std::string& name,
+      const std::string& dim_label_name,
       const URI& uri,
-      LabelOrder label_order,
-      Datatype label_type,
-      uint32_t label_cell_val_num,
-      const Range& label_domain,
-      shared_ptr<const DimensionLabelSchema> schema);
+      const Dimension* dim,
+      DataOrder label_order,
+      Datatype label_type);
 
   /**
    * Populates the object members from the data in the input binary buffer.
@@ -132,7 +133,7 @@ class DimensionLabelReference {
       Deserializer& deserializer, uint32_t version);
 
   /** Index of the dimension the label is attached to. */
-  inline dimension_size_type dimension_id() const {
+  inline dimension_size_type dimension_index() const {
     return dim_id_;
   }
 
@@ -149,6 +150,13 @@ class DimensionLabelReference {
   }
 
   /**
+   * Returns ``true`` if the label cells are variable length.
+   */
+  inline bool is_var() const {
+    return label_cell_val_num_ == constants::var_num;
+  }
+
+  /**
    * Returns ``true`` if the dimension label schema if set and ``false``
    * otherwise.
    */
@@ -156,18 +164,18 @@ class DimensionLabelReference {
     return schema_ != nullptr;
   }
 
+  /** The name of the label attribute in the dimension label schema. */
+  inline const std::string& label_attr_name() const {
+    return label_attr_name_;
+  }
+
   /** The number of values per label cell. */
   inline uint32_t label_cell_val_num() const {
     return label_cell_val_num_;
   }
 
-  /** The interval label data is valid on. */
-  inline const Range& label_domain() const {
-    return label_domain_;
-  }
-
   /** The label order of the dimension label. */
-  inline LabelOrder label_order() const {
+  inline DataOrder label_order() const {
     return label_order_;
   }
 
@@ -178,17 +186,10 @@ class DimensionLabelReference {
 
   /** The name of the dimension label. */
   inline const std::string& name() const {
-    return name_;
+    return dim_label_name_;
   }
 
-  /** The schema of the dimension label. */
-  inline const DimensionLabelSchema& schema() const {
-    if (!schema_)
-      throw StatusException(
-          "DimensionLabelReference",
-          "Cannot return dimension label schema; No schema is set.");
-    return *schema_;
-  }
+  const shared_ptr<ArraySchema> schema() const;
 
   /**
    * Serializes the dimension label object into a buffer.
@@ -203,18 +204,40 @@ class DimensionLabelReference {
     return uri_;
   }
 
+  /**
+   * Returns a copy of the dimension label URI.
+   *
+   * If the dimension label is relative to the array URI, it will append the
+   * dimension label URI to the array URI.
+   *
+   * @param array_uri URI of the parent array for this dimension label
+   *     reference.
+   * @returns URI of the dimension label.
+   */
+  inline URI uri(const URI& array_uri) const {
+    return relative_uri_ ? array_uri.join_path(uri_) : uri_;
+  }
+
+  /** Returns ``true`` if the URI is relative to the array URI. */
+  inline bool uri_is_relative() const {
+    return relative_uri_;
+  }
+
  private:
   /** The index of the dimension the labels are attached to. */
   dimension_size_type dim_id_;
 
   /** The name of the dimension label. */
-  std::string name_;
+  std::string dim_label_name_;
 
   /** The URI of the existing dimension label. */
   URI uri_;
 
+  /** The name of the attribute that stores the label data. */
+  std::string label_attr_name_;
+
   /** The label order of the dimension label. */
-  LabelOrder label_order_;
+  DataOrder label_order_;
 
   /** The datatype of the label data. */
   Datatype label_type_;
@@ -222,11 +245,13 @@ class DimensionLabelReference {
   /** The number of cells per label value. */
   uint32_t label_cell_val_num_;
 
-  /** The interval the labels are defined on. */
-  Range label_domain_;
-
-  /** The dimension label schema */
-  shared_ptr<const DimensionLabelSchema> schema_;
+  /**
+   * The dimension label schema.
+   *
+   * The schema is used for creating the dimension label and is not included in
+   * the dimension label schema serialization and deserialization from disk.
+   */
+  shared_ptr<ArraySchema> schema_;
 
   /**
    * If ``true`` the dimension label exists outside the array, otherwise

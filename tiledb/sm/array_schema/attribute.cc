@@ -33,6 +33,7 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/compressor.h"
+#include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
@@ -49,6 +50,14 @@ using namespace tiledb::type;
 namespace tiledb {
 namespace sm {
 
+/** Class for locally generated status exceptions. */
+class AttributeStatusException : public StatusException {
+ public:
+  explicit AttributeStatusException(const std::string& msg)
+      : StatusException("Attribute", msg) {
+  }
+};
+
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -58,12 +67,44 @@ Attribute::Attribute()
 }
 
 Attribute::Attribute(
-    const std::string& name, const Datatype type, const bool nullable) {
-  name_ = name;
-  type_ = type;
-  nullable_ = nullable;
-  cell_val_num_ = (type == Datatype::ANY) ? constants::var_num : 1;
+    const std::string& name, const Datatype type, const bool nullable)
+    : cell_val_num_(type == Datatype::ANY ? constants::var_num : 1)
+    , nullable_(nullable)
+    , name_(name)
+    , type_(type)
+    , order_(DataOrder::UNORDERED_DATA) {
   set_default_fill_value();
+}
+
+Attribute::Attribute(
+    const std::string& name,
+    Datatype type,
+    uint32_t cell_val_num,
+    DataOrder order)
+    : cell_val_num_(cell_val_num)
+    , nullable_(false)
+    , name_(name)
+    , type_(type)
+    , order_(order) {
+  set_default_fill_value();
+
+  // If ordered, check the number of values of cells is supported.
+  if (order_ != DataOrder::UNORDERED_DATA) {
+    ensure_ordered_attribute_datatype_is_valid(type_);
+    if (type == Datatype::STRING_ASCII) {
+      if (cell_val_num_ != constants::var_num) {
+        throw std::invalid_argument(
+            "Ordered attributes with datatype '" + datatype_str(type_) +
+            "' must have cell_val_num=1.");
+      }
+    } else {
+      if (cell_val_num_ != 1) {
+        throw std::invalid_argument(
+            "Ordered attributes with datatype '" + datatype_str(type_) +
+            "' must have cell_val_num=1.");
+      }
+    }
+  }
 }
 
 Attribute::Attribute(
@@ -73,14 +114,16 @@ Attribute::Attribute(
     uint32_t cell_val_num,
     const FilterPipeline& filter_pipeline,
     const ByteVecValue& fill_value,
-    uint8_t fill_value_validity)
+    uint8_t fill_value_validity,
+    DataOrder order)
     : cell_val_num_(cell_val_num)
     , nullable_(nullable)
     , filters_(filter_pipeline)
     , name_(name)
     , type_(type)
     , fill_value_(fill_value)
-    , fill_value_validity_(fill_value_validity) {
+    , fill_value_validity_(fill_value_validity)
+    , order_(order) {
 }
 
 Attribute::Attribute(const Attribute* attr) {
@@ -92,6 +135,7 @@ Attribute::Attribute(const Attribute* attr) {
   filters_ = attr->filters_;
   fill_value_ = attr->fill_value_;
   fill_value_validity_ = attr->fill_value_validity_;
+  order_ = attr->order_;
 }
 
 Attribute::~Attribute() = default;
@@ -154,6 +198,12 @@ Attribute Attribute::deserialize(
     fill_value_validity = deserializer.read<uint8_t>();
   }
 
+  // Load order
+  DataOrder order{DataOrder::UNORDERED_DATA};
+  if (version >= 17) {
+    order = data_order_from_int(deserializer.read<uint8_t>());
+  }
+
   return Attribute(
       name,
       datatype,
@@ -161,8 +211,10 @@ Attribute Attribute::deserialize(
       cell_val_num,
       filterpipeline,
       fill_value,
-      fill_value_validity);
+      fill_value_validity,
+      order);
 }
+
 void Attribute::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
@@ -182,6 +234,10 @@ void Attribute::dump(FILE* out) const {
   if (nullable_) {
     fprintf(out, "\n");
     fprintf(out, "- Fill value validity: %u", fill_value_validity_);
+  }
+  if (order_ != DataOrder::UNORDERED_DATA) {
+    fprintf(out, "\n");
+    fprintf(out, "- Data ordering: %s", data_order_str(order_).c_str());
   }
   fprintf(out, "\n");
 }
@@ -204,16 +260,16 @@ const std::string& Attribute::name() const {
 // fill_value (uint8_t[])
 // nullable (bool)
 // fill_value_validity (uint8_t)
+// order (uint8_t)
 void Attribute::serialize(
     Serializer& serializer, const uint32_t version) const {
   // Write attribute name
-  auto attribute_name_size = (uint32_t)name_.size();
+  auto attribute_name_size = static_cast<uint32_t>(name_.size());
   serializer.write<uint32_t>(attribute_name_size);
   serializer.write(name_.data(), attribute_name_size);
 
   // Write type
-  auto type = (uint8_t)type_;
-  serializer.write<uint8_t>(type);
+  serializer.write<uint8_t>(static_cast<uint8_t>(type_));
 
   // Write cell_val_num_
   serializer.write<uint32_t>(cell_val_num_);
@@ -223,7 +279,7 @@ void Attribute::serialize(
 
   // Write fill value
   if (version >= 6) {
-    auto fill_value_size = (uint64_t)fill_value_.size();
+    auto fill_value_size = static_cast<uint64_t>(fill_value_.size());
     assert(fill_value_size != 0);
     serializer.write<uint64_t>(fill_value_size);
     serializer.write(fill_value_.data(), fill_value_.size());
@@ -238,13 +294,27 @@ void Attribute::serialize(
   if (version >= 7) {
     serializer.write<uint8_t>(fill_value_validity_);
   }
+
+  // Write order
+  if (version >= 17) {
+    serializer.write<uint8_t>(static_cast<uint8_t>(order_));
+  }
 }
 
 Status Attribute::set_cell_val_num(unsigned int cell_val_num) {
-  if (type_ == Datatype::ANY)
+  if (type_ == Datatype::ANY) {
     return LOG_STATUS(Status_AttributeError(
         "Cannot set number of values per cell; Attribute datatype `ANY` is "
         "always variable-sized"));
+  }
+
+  if (order_ != DataOrder::UNORDERED_DATA && type_ != Datatype::STRING_ASCII &&
+      cell_val_num != 1) {
+    throw AttributeStatusException(
+        "Cannot set number of values per cell; An ordered attribute with "
+        "datatype '" +
+        datatype_str(type_) + "' can only have cell_val_num=1.");
+  }
 
   cell_val_num_ = cell_val_num;
   set_default_fill_value();
@@ -253,6 +323,10 @@ Status Attribute::set_cell_val_num(unsigned int cell_val_num) {
 }
 
 Status Attribute::set_nullable(const bool nullable) {
+  if (nullable && order_ != DataOrder::UNORDERED_DATA) {
+    throw AttributeStatusException(
+        "Cannot set to nullable; An ordered attribute cannot be nullable.");
+  }
   nullable_ = nullable;
   return Status::Ok();
 }
@@ -262,33 +336,31 @@ Status Attribute::get_nullable(bool* const nullable) {
   return Status::Ok();
 }
 
-Status Attribute::set_filter_pipeline(const FilterPipeline* pipeline) {
-  if (pipeline == nullptr)
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot set filter pipeline to attribute; Pipeline cannot be null"));
-
-  for (unsigned i = 0; i < pipeline->size(); ++i) {
+Status Attribute::set_filter_pipeline(const FilterPipeline& pipeline) {
+  for (unsigned i = 0; i < pipeline.size(); ++i) {
     if (datatype_is_real(type_) &&
-        pipeline->get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
+        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
       return LOG_STATUS(
           Status_AttributeError("Cannot set DOUBLE DELTA filter to an "
                                 "attribute with a real datatype"));
   }
 
-  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline->size() > 1) {
-    if (pipeline->has_filter(FilterType::FILTER_RLE)) {
-      return LOG_STATUS(Status_AttributeError(
-          "RLE filter cannot be combined with other filters when applied to "
-          "variable length string attributes"));
-    } else if (pipeline->has_filter(FilterType::FILTER_DICTIONARY)) {
-      return LOG_STATUS(Status_AttributeError(
-          "Dictionary-encoding filter cannot be combined with other filters "
-          "when applied to variable length string attributes"));
+  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline.size() > 1) {
+    if (pipeline.has_filter(FilterType::FILTER_RLE) &&
+        pipeline.get_filter(0)->type() != FilterType::FILTER_RLE) {
+      return LOG_STATUS(Status_ArraySchemaError(
+          "RLE filter must be the first filter to apply when used on a "
+          "variable length string attribute"));
+    }
+    if (pipeline.has_filter(FilterType::FILTER_DICTIONARY) &&
+        pipeline.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
+      return LOG_STATUS(Status_ArraySchemaError(
+          "Dictionary filter must be the first filter to apply when used on a "
+          "variable length string attribute"));
     }
   }
 
-  filters_ = *pipeline;
-
+  filters_ = pipeline;
   return Status::Ok();
 }
 
@@ -418,6 +490,10 @@ bool Attribute::var_size() const {
 
 bool Attribute::nullable() const {
   return nullable_;
+}
+
+DataOrder Attribute::order() const {
+  return order_;
 }
 
 /* ********************************* */

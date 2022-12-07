@@ -31,19 +31,27 @@
  * Tests of C API for sparse array operations.
  */
 
+#ifdef TILEDB_SERIALIZATION
+#include <capnp/message.h>
+#include "tiledb/sm/serialization/array_directory.h"
+#include "tiledb/sm/serialization/capnp_utils.h"
+#endif
+
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
 #endif
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/utils.h"
 
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 
 #include <cassert>
 #include <cstring>
@@ -2337,7 +2345,7 @@ void SparseArrayFx::write_sparse_array_missing_attributes(
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, sorted reads",
-    "[capi][sparse][sorted-reads]") {
+    "[capi][sparse][sorted-reads][longtest]") {
   std::string array_name;
 
   SECTION("- no compression, row/row-major") {
@@ -2522,7 +2530,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SparseArrayFx,
-    "C API: Test sparse array, set subarray should error",
+    "C API: Test sparse array, error setting subarray on sparse write",
     "[capi][sparse][set-subarray]") {
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -2550,6 +2558,10 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit
+  rc = tiledb_query_submit(ctx, query);
   REQUIRE(rc == TILEDB_ERR);
 
   // Close array
@@ -5835,6 +5847,16 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, global order with 0-sized buffers",
     "[capi][sparse][global-check][zero-buffers]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
                            "sparse_write_global_check";
@@ -5881,8 +5903,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(ctx, query, "d2", coords_dim2, &zero_size);
   CHECK(rc == TILEDB_OK);
 
-  // Submit query
-  CHECK(tiledb_query_submit(ctx, query) == TILEDB_OK);
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_serialized_query(ctx, query);
+  }
 
   // Close array
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
@@ -6092,6 +6118,16 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers, global write",
     "[capi][sparse][split-coords][global]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
                            "sparse_split_coords_global";
@@ -6161,13 +6197,14 @@ TEST_CASE_METHOD(
       ctx_, query, "d2", buffer_d2, &buffer_d2_size);
   CHECK(rc == TILEDB_OK);
 
-  // Submit query
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-
-  // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -6855,6 +6892,16 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "Sparse array: 2D, multi write global order",
     "[capi][sparse][2D][multi-write]") {
+  bool serialized_writes = false;
+  SECTION("no serialization") {
+    serialized_writes = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized_writes = true;
+  }
+#endif
+
   // Create and write array
   SupportedFsLocal local_fs;
   std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
@@ -6925,9 +6972,12 @@ TEST_CASE_METHOD(
     }
   }
 
-  // Submit query
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_serialized_query(ctx_, query);
+  }
 
   // Create new buffers of smaller size to test being able to write multiple
   // buffer sizes
@@ -6982,12 +7032,14 @@ TEST_CASE_METHOD(
   }
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-
-  // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  if (!serialized_writes) {
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    submit_and_finalize_serialized_query(ctx_, query);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -6996,4 +7048,166 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+}
+
+TEST_CASE_METHOD(
+    TemporaryDirectoryFixture,
+    "Write sparse array without setting layout",
+    "[capi][query]") {
+  // Create the array.
+  uint64_t domain[2]{0, 3};
+  uint64_t x_tile_extent{4};
+  auto array_schema = create_array_schema(
+      ctx,
+      TILEDB_SPARSE,
+      {"x"},
+      {TILEDB_UINT64},
+      {&domain[0]},
+      {&x_tile_extent},
+      {"a"},
+      {TILEDB_FLOAT64},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      4096,
+      false);
+  auto array_name = create_temporary_array("sparse_array1", array_schema);
+  tiledb_array_schema_free(&array_schema);
+
+  // Open array for writing.
+  tiledb_array_t* array;
+  require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
+  require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_WRITE));
+
+  // Define input data and write.
+  std::vector<uint64_t> input_dim_data{0, 1, 2, 3};
+  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
+  uint64_t dim_data_size{input_dim_data.size() * sizeof(uint64_t)};
+  uint64_t attr_data_size{input_attr_data.size() * sizeof(double)};
+
+  // Create write query.
+  tiledb_query_t* query;
+  require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query));
+  require_tiledb_ok(tiledb_query_set_data_buffer(
+      ctx, query, "x", input_dim_data.data(), &dim_data_size));
+  require_tiledb_ok(tiledb_query_set_data_buffer(
+      ctx, query, "a", input_attr_data.data(), &attr_data_size));
+
+  // Submit write query.
+  require_tiledb_ok(tiledb_query_submit(ctx, query));
+
+  // Clean-up.
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayFx,
+    "Test array directory serialization",
+    "[capi][sparse][array-directory][serialization]") {
+#ifdef TILEDB_SERIALIZATION
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "serialize_array_directory";
+  remove_array(array_name);
+  create_sparse_array(array_name);
+
+  // Write twice (2 fragments)
+  write_sparse_array(array_name);
+  write_sparse_array(array_name);
+
+  // Consolidate fragments
+  tiledb_error_t* error = nullptr;
+  tiledb_config_t* cfg = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  int rc = tiledb_array_consolidate(ctx_, array_name.c_str(), cfg);
+  CHECK(rc == TILEDB_OK);
+
+  // Consolidate array metadata
+  rc = tiledb_config_set(cfg, "sm.consolidation.mode", "array_meta", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_array_consolidate(ctx_, array_name.c_str(), cfg);
+  CHECK(rc == TILEDB_OK);
+
+  // Consolidate fragment metadata
+  rc = tiledb_config_set(cfg, "sm.consolidation.mode", "fragment_meta", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_array_consolidate(ctx_, array_name.c_str(), cfg);
+  CHECK(rc == TILEDB_OK);
+
+  // Consolidate commits
+  rc = tiledb_config_set(cfg, "sm.consolidation.mode", "commits", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_array_consolidate(ctx_, array_name.c_str(), cfg);
+  CHECK(rc == TILEDB_OK);
+
+  // Get the array directory
+  tiledb::Context ctx;
+  auto vfs = tiledb::VFS(ctx);
+  auto sm = ctx.ptr().get()->storage_manager();
+  tiledb::sm::URI array_uri(array_name);
+  ThreadPool tp(2);
+  tiledb::sm::ArrayDirectory array_dir =
+      tiledb::sm::ArrayDirectory(sm->vfs(), &tp, array_uri, 0, 5);
+
+  // Serialize and deserialize it
+  ::capnp::MallocMessageBuilder message;
+  tiledb::sm::serialization::capnp::ArrayDirectory::Builder array_dir_builder =
+      message.initRoot<tiledb::sm::serialization::capnp::ArrayDirectory>();
+  tiledb::sm::serialization::array_directory_to_capnp(
+      array_dir, &array_dir_builder);
+  auto deserialized_array_dir =
+      tiledb::sm::serialization::array_directory_from_capnp(
+          array_dir_builder, array_uri);
+
+  // Compare original array_directory to the deserialized one
+  REQUIRE(
+      deserialized_array_dir->uri().to_string() == array_dir.uri().to_string());
+  REQUIRE(
+      deserialized_array_dir->unfiltered_fragment_uris() ==
+      array_dir.unfiltered_fragment_uris());
+  REQUIRE(
+      deserialized_array_dir->consolidated_commit_uris_set() ==
+      array_dir.consolidated_commit_uris_set());
+  REQUIRE(
+      deserialized_array_dir->array_schema_uris() ==
+      array_dir.array_schema_uris());
+  REQUIRE(
+      deserialized_array_dir->latest_array_schema_uri() ==
+      array_dir.latest_array_schema_uri());
+  REQUIRE(
+      deserialized_array_dir->array_meta_uris_to_vacuum() ==
+      array_dir.array_meta_uris_to_vacuum());
+  REQUIRE(
+      deserialized_array_dir->array_meta_vac_uris_to_vacuum() ==
+      array_dir.array_meta_vac_uris_to_vacuum());
+  REQUIRE(
+      deserialized_array_dir->commit_uris_to_consolidate() ==
+      array_dir.commit_uris_to_consolidate());
+  REQUIRE(
+      deserialized_array_dir->commit_uris_to_vacuum() ==
+      array_dir.commit_uris_to_vacuum());
+  REQUIRE(
+      deserialized_array_dir->consolidated_commits_uris_to_vacuum() ==
+      array_dir.consolidated_commits_uris_to_vacuum());
+  REQUIRE(
+      deserialized_array_dir->array_meta_uris() == array_dir.array_meta_uris());
+  REQUIRE(
+      deserialized_array_dir->fragment_meta_uris() ==
+      array_dir.fragment_meta_uris());
+  REQUIRE(
+      deserialized_array_dir->delete_and_update_tiles_location() ==
+      array_dir.delete_and_update_tiles_location());
+  REQUIRE(
+      deserialized_array_dir->timestamp_start() == array_dir.timestamp_start());
+  REQUIRE(deserialized_array_dir->timestamp_end() == array_dir.timestamp_end());
+
+  vfs.remove_dir(array_name);
+#endif
 }

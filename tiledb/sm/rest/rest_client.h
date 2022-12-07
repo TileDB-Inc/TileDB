@@ -117,6 +117,14 @@ class RestClient {
       const URI& uri, const ArraySchema& array_schema);
 
   /**
+   * Deletes all written data from array at the given URI from the REST server.
+   *
+   * #TODO Implement API endpoint on TileDBCloud.
+   * @param uri Array URI to delete
+   */
+  void delete_array_from_rest(const URI& uri);
+
+  /**
    * Deregisters an array at the given URI from the REST server.
    *
    * @param uri Array URI to deregister
@@ -201,6 +209,16 @@ class RestClient {
   Status finalize_query_to_rest(const URI& uri, Query* query);
 
   /**
+   * Submit and finalize a query to rest server. Used in global order
+   * writes to submit the last tile-unaligned chunk and finalize the query.
+   *
+   * @param uri of array being queried
+   * @param query to send to server and store results in
+   * @return Status Ok() on success Error() on failures
+   */
+  Status submit_and_finalize_query_to_rest(const URI& uri, Query* query);
+
+  /**
    * Get array's non_empty domain from rest server
    *
    * @param array Array model to fetch and set non empty domain on
@@ -217,6 +235,16 @@ class RestClient {
    */
   Status post_array_schema_evolution_to_rest(
       const URI& uri, ArraySchemaEvolution* array_schema_evolution);
+
+  /**
+   * Get array's fragment info from rest server
+   *
+   * @param uri Array uri to query for
+   * @param fragment_info Fragment info object to store the incoming info
+   * @return Status Ok() on success Error() on failures
+   */
+  Status post_fragment_info_from_rest(
+      const URI& uri, FragmentInfo* fragment_info);
 
   /**
    * Gets the group's metadata from the REST server (and updates the in-memory
@@ -254,6 +282,14 @@ class RestClient {
    * @return Status
    */
   Status patch_group_to_rest(const URI& uri, Group* group);
+
+  /**
+   * Deletes all written data from group at the given URI from the REST server.
+   *
+   * #TODO Implement API endpoint on TileDBCloud.
+   * @param uri Group URI to delete
+   */
+  void delete_group_from_rest(const URI& uri);
 
   /**
    * Post group create to the REST server.

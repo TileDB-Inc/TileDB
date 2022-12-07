@@ -454,29 +454,27 @@ class Dimension {
    * Computes the minimum bounding range of the values stored in
    * `tile`. Applicable only to fixed-size dimensions.
    */
-  Status compute_mbr(const Tile& tile, Range* mbr) const;
+  Range compute_mbr(const Tile& tile) const;
 
   /**
    * Computed the minimum bounding range of the values stored in
    * `tile`.
    */
   template <class T>
-  static Status compute_mbr(const Tile& tile, Range* mbr);
+  static Range compute_mbr(const Tile& tile);
 
   /**
    * Computes the minimum bounding range of the values stored in
    * `tile_val`. Applicable only to var-sized dimensions.
    */
-  Status compute_mbr_var(
-      const Tile& tile_off, const Tile& tile_val, Range* mbr) const;
+  Range compute_mbr_var(const Tile& tile_off, const Tile& tile_val) const;
 
   /**
    * Computes the minimum bounding range of the values stored in
    * `tile_val`. Applicable only to var-sized dimensions.
    */
   template <class T>
-  static Status compute_mbr_var(
-      const Tile& tile_off, const Tile& tile_val, Range* mbr);
+  static Range compute_mbr_var(const Tile& tile_off, const Tile& tile_val);
 
   /**
    * Crops the input 1D range such that it does not exceed the
@@ -709,7 +707,7 @@ class Dimension {
   Status set_domain_unsafe(const void* domain);
 
   /** Sets the filter pipeline for this dimension. */
-  Status set_filter_pipeline(const FilterPipeline* pipeline);
+  Status set_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the tile extent. */
   Status set_tile_extent(const void* tile_extent);
@@ -799,13 +797,13 @@ class Dimension {
    * Stores the appropriate templated compute_mbr() function based on the
    * dimension datatype.
    */
-  std::function<Status(const Tile&, Range*)> compute_mbr_func_;
+  std::function<Range(const Tile&)> compute_mbr_func_;
 
   /**
    * Stores the appropriate templated compute_mbr_var() function based on the
    * dimension datatype.
    */
-  std::function<Status(const Tile&, const Tile&, Range*)> compute_mbr_var_func_;
+  std::function<Range(const Tile&, const Tile&)> compute_mbr_var_func_;
 
   /**
    * Stores the appropriate templated crop_range() function based on the
@@ -1003,9 +1001,6 @@ class Dimension {
   template <typename T_EXTENT, typename T_FLOOR>
   Status check_tile_extent_upper_floor_internal(
       const T_EXTENT* domain, T_EXTENT tile_extent) const;
-
-  /** Returns the domain in string format. */
-  std::string domain_str() const;
 
   /** Throws error if the input type is not a supported Dimension Datatype. */
   void ensure_datatype_is_supported(Datatype type) const;

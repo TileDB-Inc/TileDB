@@ -33,17 +33,19 @@
 #ifndef TILEDB_READER_BASE_H
 #define TILEDB_READER_BASE_H
 
-#include <queue>
 #include "../strategy_base.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
+#include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_space_tile.h"
+#include "tiledb/sm/query/writers/domain_buffer.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 namespace tiledb {
@@ -51,7 +53,6 @@ namespace sm {
 
 class Array;
 class ArraySchema;
-class StorageManager;
 class Subarray;
 
 /** Processes read queries. */
@@ -161,16 +162,24 @@ class ReaderBase : public StrategyBase {
   /** The query condition. */
   QueryCondition& condition_;
 
-  /** The delete conditions. */
-  std::vector<QueryCondition> delete_conditions_;
+  /**
+   * The delete and update conditions.
+   *
+   * Note: These will be ordered by timestamps.
+   */
+  std::vector<QueryCondition> delete_and_update_conditions_;
 
   /**
-   * Timestamped delete conditions. This the same as delete_conditions_ but
-   * adds a conditional in the condition with the timestamp of the condition.
-   * It will be used to process fragments with timestamps when a delete
-   * condition timestamp falls within the fragment timestamps.
+   * Timestamped delete and update conditions. This the same as
+   * delete_and_update_conditions_ but adds a conditional in the condition with
+   * the timestamp of the condition. It will be used to process fragments with
+   * timestamps when a delete or update condition timestamp falls within the
+   * fragment timestamps.
+   *
+   * Note: These should have the same order as in the
+   * `delete_and_update_conditions_` vector.
    */
-  std::vector<QueryCondition> timestamped_delete_conditions_;
+  std::vector<QueryCondition> timestamped_delete_and_update_conditions_;
 
   /** The fragment metadata that the reader will focus on. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
@@ -206,7 +215,7 @@ class ReaderBase : public StrategyBase {
    * Boolean, per fragment, to specify that we need to load timestamps for
    * deletes. This matches the fragments in 'fragment_metadata_'
    */
-  std::vector<bool> timestamps_needed_for_deletes_;
+  std::vector<bool> timestamps_needed_for_deletes_and_updates_;
 
   /** Names of dim/attr loaded for query condition. */
   std::unordered_set<std::string> qc_loaded_attr_names_set_;
@@ -360,64 +369,6 @@ class ReaderBase : public StrategyBase {
   Status load_processed_conditions();
 
   /**
-   * Initializes a fixed-sized tile.
-   *
-   * @param format_version The format version of the tile.
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The tile to be initialized.
-   * @return Status
-   */
-  Status init_tile(
-      uint32_t format_version, const std::string& name, Tile* tile) const;
-
-  /**
-   * Initializes a var-sized tile.
-   *
-   * @param format_version The format version of the tile.
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The offsets tile to be initialized.
-   * @param tile_var The var-sized data tile to be initialized.
-   * @return Status
-   */
-  Status init_tile(
-      uint32_t format_version,
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_var) const;
-
-  /**
-   * Initializes a fixed-sized tile.
-   *
-   * @param format_version The format version of the tile.
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The tile to be initialized.
-   * @param tile_validity The validity tile to be initialized.
-   * @return Status
-   */
-  Status init_tile_nullable(
-      uint32_t format_version,
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_validity) const;
-
-  /**
-   * Initializes a var-sized tile.
-   *
-   * @param format_version The format version of the tile.
-   * @param name The attribute/dimension the tile belongs to.
-   * @param tile The offsets tile to be initialized.
-   * @param tile_var The var-sized data tile to be initialized.
-   * @param tile_validity The validity tile to be initialized.
-   * @return Status
-   */
-  Status init_tile_nullable(
-      uint32_t format_version,
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_var,
-      Tile* tile_validity) const;
-
-  /**
    * Concurrently executes across each name in `names` and each result tile
    * in 'result_tiles'.
    *
@@ -489,6 +440,7 @@ class ReaderBase : public StrategyBase {
    * @param name Attribute/dimension the tile belong to.
    * @param tile Tile to be unfiltered.
    * @param tile_chunk_data Tile chunk info, buffers and offsets
+   * @param support_data Support data for the filter
    * @return Status
    */
   Status unfilter_tile_chunk_range(
@@ -496,7 +448,8 @@ class ReaderBase : public StrategyBase {
       uint64_t thread_idx,
       const std::string& name,
       Tile* tile,
-      const ChunkData& tile_chunk_data) const;
+      const ChunkData& tile_chunk_data,
+      void* support_data = nullptr) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -593,9 +546,11 @@ class ReaderBase : public StrategyBase {
    *
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be unfiltered.
+   * @param support_data Support data for the filter.
    * @return Status
    */
-  Status unfilter_tile(const std::string& name, Tile* tile) const;
+  Status unfilter_tile(
+      const std::string& name, Tile* tile, void* support_data = nullptr) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -651,9 +606,9 @@ class ReaderBase : public StrategyBase {
    * @param name The attribute name.
    * @param f The fragment idx.
    * @param t The tile idx.
-   * @return Status, tile size.
+   * @return Tile size.
    */
-  tuple<Status, optional<uint64_t>> get_attribute_tile_size(
+  uint64_t get_attribute_tile_size(
       const std::string& name, unsigned f, uint64_t t);
 
   /**
@@ -672,125 +627,6 @@ class ReaderBase : public StrategyBase {
 
   /** Returns `true` if the coordinates are included in the attributes. */
   bool has_coords() const;
-
-  /**
-   * Fills the coordinate buffer with coordinates. Applicable only to dense
-   * arrays when the user explicitly requests the coordinates to be
-   * materialized.
-   *
-   * @tparam T The domain type.
-   * @param subarray The input subarray.
-   * @param overflowed Returns true if the method overflowed.
-   * @return Status, overflowed
-   */
-  template <class T>
-  tuple<Status, optional<bool>> fill_dense_coords(const Subarray& subarray);
-
-  /**
-   * Fills the coordinate buffers with coordinates. Applicable only to dense
-   * arrays when the user explicitly requests the coordinates to be
-   * materialized. Also applicable only to global order.
-   *
-   * @tparam T The domain type.
-   * @param subarray The input subarray.
-   * @param dim_idx The dimension indices of the corresponding `buffers`.
-   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
-   *     contain a single element and `dim_idx` contains `dim_num` as
-   *     the dimension index.
-   * @param buffers The buffers to copy from. It could be the special
-   *     zipped coordinates or separate coordinate buffers.
-   * @param offsets The offsets that will be used eventually to update
-   *     the buffer sizes, determining the useful results written in
-   *     the buffers.
-   * @return Status, overflowed.
-   */
-  template <class T>
-  tuple<Status, optional<bool>> fill_dense_coords_global(
-      const Subarray& subarray,
-      const std::vector<unsigned>& dim_idx,
-      const std::vector<QueryBuffer*>& buffers,
-      std::vector<uint64_t>& offsets);
-
-  /**
-   * Fills the coordinate buffers with coordinates. Applicable only to dense
-   * arrays when the user explicitly requests the coordinates to be
-   * materialized. Also applicable only to row-/col-major order.
-   *
-   * @tparam T The domain type.
-   * @param subarray The input subarray.
-   * @param dim_idx The dimension indices of the corresponding `buffers`.
-   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
-   *     contain a single element and `dim_idx` contains `dim_num` as
-   *     the dimension index.
-   * @param buffers The buffers to copy from. It could be the special
-   *     zipped coordinates or separate coordinate buffers.
-   * @param offsets The offsets that will be used eventually to update
-   *     the buffer sizes, determining the useful results written in
-   *     the buffers.
-   * @return Status, overflowed.
-   */
-  template <class T>
-  tuple<Status, optional<bool>> fill_dense_coords_row_col(
-      const Subarray& subarray,
-      const std::vector<unsigned>& dim_idx,
-      const std::vector<QueryBuffer*>& buffers,
-      std::vector<uint64_t>& offsets);
-
-  /**
-   * Fills coordinates in the input buffers for a particular cell slab,
-   * following a row-major layout. For instance, if the starting coordinate are
-   * [3, 1] and the number of coords to be written is 3, this function will
-   * write to the input buffer (starting at the input offset) coordinates
-   * [3, 1], [3, 2], and [3, 3].
-   *
-   * @tparam T The domain type.
-   * @param start The starting coordinates in the slab.
-   * @param num The number of coords to be written.
-   * @param dim_idx The dimension indices of the corresponding `buffers`.
-   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
-   *     contain a single element and `dim_idx` contains `dim_num` as
-   *     the dimension index.
-   * @param buffers The buffers to copy from. It could be the special
-   *     zipped coordinates or separate coordinate buffers.
-   * @param offsets The offsets that will be used eventually to update
-   *     the buffer sizes, determining the useful results written in
-   *     the buffers.
-   */
-  template <class T>
-  void fill_dense_coords_row_slab(
-      const T* start,
-      uint64_t num,
-      const std::vector<unsigned>& dim_idx,
-      const std::vector<QueryBuffer*>& buffers,
-      std::vector<uint64_t>& offsets) const;
-
-  /**
-   * Fills coordinates in the input buffers for a particular cell slab,
-   * following a col-major layout. For instance, if the starting coordinate are
-   * [3, 1] and the number of coords to be written is 3, this function will
-   * write to the input buffer (starting at the input offset) coordinates
-   * [4, 1], [5, 1], and [6, 1].
-   *
-   * @tparam T The domain type.
-   * @param start The starting coordinates in the slab.
-   * @param num The number of coords to be written.
-   * @param dim_idx The dimension indices of the corresponding `buffers`.
-   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
-   *     contain a single element and `dim_idx` contains `dim_num` as
-   *     the dimension index.
-   * @param buffers The buffers to copy from. It could be the special
-   *     zipped coordinates or separate coordinate buffers.
-   * @param offsets The offsets that will be used eventually to update
-   *     the buffer sizes, determining the useful results written in
-   *     the buffers.
-   */
-  template <class T>
-  void fill_dense_coords_col_slab(
-      const T* start,
-      uint64_t num,
-      const std::vector<unsigned>& dim_idx,
-      const std::vector<QueryBuffer*>& buffers,
-      std::vector<uint64_t>& offsets) const;
 
   /**
    * If the tile stores coordinates, zip them. Note that format version < 2 only
@@ -904,6 +740,111 @@ class ReaderBase : public StrategyBase {
       ResultTile* const tile,
       const bool var_size,
       const bool nullable) const;
+
+  /**
+   * Cache data to be used by dimension label code.
+   *
+   * @tparam Index type.
+   * @return non empty domain, non empty domains, fragment first array tile
+   * indexes.
+   */
+  template <typename IndexType>
+  tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+  cache_dimension_label_data();
+
+  /**
+   * Validates the attribute order for all loaded fragments.
+   *
+   * Throws an error if the there is a gap between fragments or the attribute
+   * order between fragments is not maintained.
+   *
+   * @tparam Index type
+   * @tparam Attribute type
+   * @param attribute_name Name of the attribute to validate.
+   * @param increasing_data Is the order of the data increasing?
+   * @param array_non_empty_domain Range storing the array non empty domain.
+   * @param non_empty_domains Pointer, per fragment, to the non empty domains.
+   * @param frag_first_array_tile_idx First tile index (in full domain), per
+   * fragment.
+   */
+  template <typename IndexType, typename AttributeType>
+  void validate_attribute_order(
+      std::string& attribute_name,
+      bool increasing_data,
+      Range& array_non_empty_domain,
+      std::vector<const void*>& non_empty_domains,
+      std::vector<uint64_t>& frag_first_array_tile_idx);
+
+  /**
+   * Validates the attribute order for all loaded fragments.
+   *
+   * Throws an error if the there is a gap between fragments or the attribute
+   * order between fragments is not maintained.
+   *
+   * @tparam Index type
+   * @param attribute_type Type of the attribute to validate.
+   * @param attribute_name Name of the attribute to validate.
+   * @param increasing_data Is the order of the data increasing?
+   * @param array_non_empty_domain Range storing the array non empty domain.
+   * @param non_empty_domains Pointer, per fragment, to the non empty domains.
+   * @param frag_first_array_tile_idx First tile index (in full domain), per
+   * fragment.
+   */
+  template <typename IndexType>
+  void validate_attribute_order(
+      Datatype attribute_type,
+      std::string& attribute_name,
+      bool increasing_data,
+      Range& array_non_empty_domain,
+      std::vector<const void*>& non_empty_domains,
+      std::vector<uint64_t>& frag_first_array_tile_idx);
+
+ private:
+  /**
+   * @brief Class that stores all the storage needed to keep bitsort
+   * metadata.
+   * @tparam CmpObject The comparator object being stored.
+   */
+  template <
+      typename CmpObject,
+      typename std::enable_if_t<
+          std::is_same_v<CmpObject, HilbertCmpQB> ||
+          std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
+  struct BitSortFilterMetadataStorage;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  /**
+   * Calculate Hilbert values. Used to pass in a Hilbert
+   * comparator to the read-reverse path.
+   *
+   * @param domain_buffers
+   * @param hilbert_values
+   */
+  void calculate_hilbert_values(
+      const DomainBuffersView& domain_buffers,
+      std::vector<uint64_t>& hilbert_values) const;
+
+  /**
+   * Constructs the bitsort metadata object.
+   *
+   * @tparam CmpObject The comparator object being constructed.
+   * @param tile Fixed tile that is being unfiltered.
+   * @param bitsort_storage Storage for all the vectors needed to construct
+   * the bitsort filter.
+   * @return BitSortFilterMetadataType the constructed argument.
+   */
+
+  template <
+      typename CmpObject,
+      typename std::enable_if_t<
+          std::is_same_v<CmpObject, HilbertCmpQB> ||
+          std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
+  BitSortFilterMetadataType construct_bitsort_filter_argument(
+      ResultTile* const tile,
+      BitSortFilterMetadataStorage<CmpObject>& bitsort_storage) const;
 };
 
 }  // namespace sm

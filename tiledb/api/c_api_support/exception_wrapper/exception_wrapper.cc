@@ -1,0 +1,1 @@
+// Empty source file to allow exception_wrapper to be an OBJECT library

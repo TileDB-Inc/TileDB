@@ -32,14 +32,26 @@ list(APPEND SOURCES
 gather_sources(${SOURCES})
 
 #
-# Object library for other units to depend upon
+# Object library designated as `_stub` version because it depends on the stub
+# context library.
 #
-add_library(capi_config OBJECT ${SOURCES})
-target_link_libraries(capi_config PUBLIC export)
-target_link_libraries(capi_config PUBLIC config)
+add_library(capi_config_stub OBJECT ${SOURCES})
+target_link_libraries(capi_config_stub PUBLIC export)
+target_link_libraries(capi_config_stub PUBLIC config $<TARGET_OBJECTS:config>)
+target_link_libraries(capi_config_stub PUBLIC capi_error $<TARGET_OBJECTS:capi_error>)
+#
+# We need to build this as a stub-based library because the API wrappers make
+# reference to `context`, even though the functions in the config section of the
+# API do not use a context for error handling.
+#
+target_link_libraries(capi_config_stub PUBLIC storage_manager_stub)
 
 #
-# UNFINISHED
+# Test-compile of object library ensures link-completeness
 #
-# This will support a future `capi_context` library.
-#
+add_executable(compile_capi_config_stub EXCLUDE_FROM_ALL)
+target_link_libraries(compile_capi_config_stub PRIVATE capi_config_stub)
+target_sources(compile_capi_config_stub PRIVATE test/compile_capi_config_main.cc)
+add_dependencies(all_link_complete compile_capi_config_stub)
+
+add_test_subdirectory()

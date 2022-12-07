@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/types.h"
 
@@ -80,11 +81,26 @@ class Attribute {
    *
    * @param name The name of the attribute.
    * @param type The type of the attribute.
+   * @param cell_val_num The cell number of the attribute.
+   * @param order The ordering of the attribute.
+   */
+  Attribute(
+      const std::string& name,
+      Datatype type,
+      uint32_t cell_val_num,
+      DataOrder order);
+
+  /**
+   * Constructor.
+   *
+   * @param name The name of the attribute.
+   * @param type The type of the attribute.
    * @param nullable The nullable of the attribute.
    * @param cell_val_num The cell number of the attribute.
    * @param filter_pipeline The filters of the attribute.
    * @param fill_value The fill value of the attribute.
    * @param fill_value_validity The validity of fill_value.
+   * @param order The order of the data stored in the attribute.
    */
   Attribute(
       const std::string& name,
@@ -93,7 +109,8 @@ class Attribute {
       uint32_t cell_val_num,
       const FilterPipeline& filter_pipeline,
       const ByteVecValue& fill_value,
-      uint8_t fill_value_validity);
+      uint8_t fill_value_validity,
+      DataOrder order = DataOrder::UNORDERED_DATA);
 
   /**
    * Constructor. It clones the input attribute.
@@ -183,7 +200,7 @@ class Attribute {
   Status get_nullable(bool* nullable);
 
   /** Sets the filter pipeline for this attribute. */
-  Status set_filter_pipeline(const FilterPipeline* pipeline);
+  Status set_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the attribute name. */
   void set_name(const std::string& name);
@@ -234,6 +251,9 @@ class Attribute {
    */
   bool nullable() const;
 
+  /** Returns the order of the data stored in this attribute. */
+  DataOrder order() const;
+
   /** The default fill value. */
   static ByteVecValue default_fill_value(
       Datatype datatype, uint32_t cell_val_num);
@@ -263,6 +283,9 @@ class Attribute {
 
   /** The fill value validity, applicable only to nullable attributes. */
   uint8_t fill_value_validity_;
+
+  /** The required order of the data stored in the attribute. */
+  DataOrder order_;
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

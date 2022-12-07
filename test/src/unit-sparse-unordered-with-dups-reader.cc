@@ -30,7 +30,7 @@
  * Tests for the sparse unordered with duplicates reader.
  */
 
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -728,7 +728,11 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   std::string error_str(msg);
-  CHECK(error_str.find("Cannot load tile offsets") != std::string::npos);
+  CHECK(
+      error_str.find(
+          "SparseIndexReaderBase: Cannot load tile offsets, computed size (48) "
+          "is larger than memory budget for array data (10).") !=
+      std::string::npos);
 }
 
 TEST_CASE_METHOD(
@@ -770,9 +774,9 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
-  // Two result tile (2 * ~888) will be bigger than the budget (1000).
+  // Two result tile (2 * ~1208) will be bigger than the budget (1500).
   total_budget_ = "10000";
-  ratio_coords_ = "0.1";
+  ratio_coords_ = "0.15";
   update_config();
 
   tiledb_array_t* array = nullptr;

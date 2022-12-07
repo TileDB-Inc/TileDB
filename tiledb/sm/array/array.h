@@ -46,6 +46,7 @@
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/metadata/metadata.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
@@ -55,7 +56,6 @@ namespace sm {
 class ArraySchema;
 class SchemaEvolution;
 class FragmentMetadata;
-class StorageManager;
 enum class QueryType : uint8_t;
 
 /**
@@ -179,19 +179,6 @@ class Array {
   Status load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
 
   /**
-   * Deletes the fragments from the Array with given URI.
-   *
-   * @param uri The uri of the Array whose fragments are to be deleted.
-   * @param timestamp_start The start timestamp at which to delete fragments.
-   * @param timestamp_end The end timestamp at which to delete fragments.
-   * @return Status
-   *
-   * @pre The Array must be open for exclusive writes
-   */
-  Status delete_fragments(
-      const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
-
-  /**
    * Opens the array for reading.
    *
    * @param query_type The query type. This should always be READ. It
@@ -216,6 +203,28 @@ class Array {
 
   /** Closes the array and frees all memory. */
   Status close();
+
+  /**
+   * Deletes the Array data with given URI.
+   *
+   * @param uri The uri of the Array whose data is to be deleted.
+   *
+   * @pre The Array must be open for exclusive writes
+   */
+  void delete_array(const URI& uri);
+
+  /**
+   * Deletes the fragments from the Array with given URI.
+   *
+   * @param uri The uri of the Array whose fragments are to be deleted.
+   * @param timestamp_start The start timestamp at which to delete fragments.
+   * @param timestamp_end The end timestamp at which to delete fragments.
+   * @return Status
+   *
+   * @pre The Array must be open for exclusive writes
+   */
+  Status delete_fragments(
+      const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
@@ -401,11 +410,27 @@ class Array {
     metadata_loaded_ = is_loaded;
   }
 
+  /** Check if array metadata is loaded already for this array or not */
+  inline bool& metadata_loaded() {
+    return metadata_loaded_;
+  }
+
+  /** Check if non emtpy domain is loaded already for this array or not */
+  inline bool& non_empty_domain_computed() {
+    return non_empty_domain_computed_;
+  }
+
   /** Returns the non-empty domain of the opened array.
    *  If the non_empty_domain has not been computed or loaded
    *  it will be loaded first
    * */
   tuple<Status, optional<const NDRange>> non_empty_domain();
+
+  /**
+   * Retrieves the array metadata object that is already loadad.
+   * If it's not yet loaded it will be empty.
+   */
+  NDRange* loaded_non_empty_domain();
 
   /** Returns the non-empty domain of the opened array. */
   void set_non_empty_domain(const NDRange& non_empty_domain);
@@ -418,13 +443,29 @@ class Array {
   /** Returns the memory tracker. */
   MemoryTracker* memory_tracker();
 
-  /** Checks the config to see if non empty domain should be serialized on array
+  /**
+   * Checks the config to see if non empty domain should be serialized on array
    * open. */
   bool serialize_non_empty_domain() const;
 
-  /** Checks the config to see if metadata should be serialized on array open.
+  /**
+   * Checks the config to see if metadata should be serialized on array open.
    */
   bool serialize_metadata() const;
+
+  /** Checks the config to see if refactored array open should be used. */
+  bool use_refactored_array_open() const;
+
+  /** Set the query type to open the array for. */
+  inline void set_query_type(QueryType query_type) {
+    query_type_ = query_type;
+  }
+
+  /**
+   * Returns a map of the computed average cell size for var size
+   * dimensions/attributes.
+   */
+  std::unordered_map<std::string, uint64_t> get_average_var_cell_sizes();
 
  private:
   /* ********************************* */
@@ -471,8 +512,8 @@ class Array {
   /** `True` if the array is currently in the process of opening or closing. */
   std::atomic<bool> is_opening_or_closing_;
 
-  /** The query type the array was opened for. */
-  QueryType query_type_;
+  /** The query type the array was opened for. Default: READ */
+  QueryType query_type_ = QueryType::READ;
 
   /**
    * The starting timestamp between to open `open_array_` at.
@@ -603,9 +644,6 @@ class Array {
    * Note: the Sentry object will also be released upon Array destruction.
    **/
   void set_array_closed();
-
-  /** Checks the config to see if refactored array open should be used. */
-  bool use_refactored_array_open() const;
 };
 
 }  // namespace sm

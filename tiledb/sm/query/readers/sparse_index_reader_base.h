@@ -40,6 +40,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 namespace tiledb {
 namespace sm {
@@ -47,7 +48,6 @@ namespace sm {
 class Array;
 class ArraySchema;
 class MemoryTracker;
-class StorageManager;
 class Subarray;
 
 class FragIdx {
@@ -246,8 +246,11 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Read state. */
   ReadState read_state_;
 
-  /** Have we loaded all thiles for this fragment. */
+  /** Have we loaded all tiles for this fragment. */
   std::vector<uint8_t> all_tiles_loaded_;
+
+  /** Include coordinates when loading tiles. */
+  bool include_coords_;
 
   /** Dimension names. */
   std::vector<std::string> dim_names_;
@@ -255,8 +258,10 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Are dimensions var sized. */
   std::vector<bool> is_dim_var_size_;
 
-  /** Reverse sorted vector, per fragments, of tiles ranges in the subarray, if
-   * set. */
+  /**
+   * Reverse sorted vector, per fragments, of tiles ranges in the subarray, if
+   * set.
+   */
   std::vector<std::vector<std::pair<uint64_t, uint64_t>>> result_tile_ranges_;
 
   /** Total memory budget. */
@@ -301,12 +306,22 @@ class SparseIndexReaderBase : public ReaderBase {
   /** List of tiles to ignore. */
   std::unordered_set<IgnoredTile, ignored_tile_hash> ignored_tiles_;
 
-  /** Are we doing deletes consolidation. */
-  bool deletes_consolidation_;
+  /** Are we doing deletes consolidation (without purge option). */
+  bool deletes_consolidation_no_purge_;
+
+  /** Optional string for a bitsort attribute. */
+  std::optional<std::string> bitsort_attribute_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
+
+  /**
+   * Computes the required size for loading tile offsets, per fragments.
+   *
+   * @return Required memory for loading tile offsets, per fragments.
+   */
+  std::vector<uint64_t> tile_offset_sizes();
 
   /**
    * Returns if there is any condition to be applied post deduplication. This
@@ -332,35 +347,31 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Get the coordinate tiles size for a dimension.
    *
-   * @param include_coords Include coordinates or not in the calculation.
    * @param dim_num Number of dimensions.
    * @param f Fragment index.
    * @param t Tile index.
    *
-   * @return Status, tiles_size, tiles_size_qc.
+   * @return Tiles_size, tiles_size_qc.
    */
   template <class BitmapType>
-  tuple<Status, optional<std::pair<uint64_t, uint64_t>>> get_coord_tiles_size(
-      bool include_coords, unsigned dim_num, unsigned f, uint64_t t);
+  std::pair<uint64_t, uint64_t> get_coord_tiles_size(
+      unsigned dim_num, unsigned f, uint64_t t);
 
   /**
    * Load tile offsets and result tile ranges.
    *
-   * @param include_coords Are coords included.
    * @return Status.
    */
-  Status load_initial_data(bool include_coords);
+  Status load_initial_data();
 
   /**
    * Read and unfilter coord tiles.
    *
-   * @param include_coords Include coordinates or not.
    * @param result_tiles The result tiles to process.
    *
    * @return Status.
    */
-  Status read_and_unfilter_coords(
-      bool include_coords, const std::vector<ResultTile*>& result_tiles);
+  Status read_and_unfilter_coords(const std::vector<ResultTile*>& result_tiles);
 
   /**
    * Compute tile bitmaps.

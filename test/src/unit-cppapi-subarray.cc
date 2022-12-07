@@ -31,7 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"
@@ -1093,7 +1093,8 @@ TEST_CASE(
 
   query.set_layout(test_pair.second);
   query.add_range(0, 0, 0);
-  CHECK_THROWS(query.add_range(0, 1, 1));
+  query.add_range(0, 1, 1);
+  CHECK_THROWS(query.submit());
 
   // Close array.
   array.close();
