@@ -76,7 +76,7 @@ class ContextResources {
 
   ~ContextResources() {
     if(vfs_ != nullptr) {
-      tdb_delete(vfs_);
+      delete vfs_;
     }
   }
 

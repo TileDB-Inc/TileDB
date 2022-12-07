@@ -62,7 +62,7 @@ VFS::VFS(
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
     const Config& config,
-    ConsistencyController* controller) {
+    ConsistencyController* controller) : vfs_params_(config), config_(config) {
     // : thing1_("1", controller)
     // , thing2_("2", controller)
     // , thing3_("3", controller)
@@ -86,11 +86,42 @@ VFS::VFS(
     // , thing15_("15", controller)
     // , config_(config) {
 
+  std::cerr << "VFS() " << this << std::endl;
+
+  fprintf(stderr, "1: %p %p %p %p %p %p %p\n",
+    this->stats_,
+    &this->memfs_,
+    this->compute_tp_,
+    this->io_tp_,
+    this->read_ahead_cache_.get(),
+    &this->vfs_params_,
+    &this->config_);
+
+  this->show_vars();
+
   stats_ = parent_stats->create_child("VFS");
   compute_tp_ = compute_tp;
   io_tp_ = io_tp;
-  vfs_params_ = VFSParams(config);
-  config_ = config;
+  //config_ = config;
+
+  fprintf(stderr, "2: %p %p %p %p %p %p %p\n",
+    this->stats_,
+    &this->memfs_,
+    this->compute_tp_,
+    this->io_tp_,
+    this->read_ahead_cache_.get(),
+    &this->vfs_params_,
+    &this->config_);
+
+  show_vars();
+
+  if(io_tp_ != io_tp) {
+    std::cerr << "io_tp_: " << io_tp_ << " != io_tp: " << io_tp << std::endl;
+  } else {
+    std::cerr << "io_tp_: " << io_tp_ << " == io_tp: " << io_tp << std::endl;
+  }
+
+  show_vars();
 
   std::cerr << "parent_stats: " << parent_stats << std::endl;
   std::cerr << "compute_tp: " << compute_tp << std::endl;
@@ -181,6 +212,25 @@ VFS::VFS(
   //supported_fs_.insert(static_cast<uint8_t>(Filesystem::MEMFS));
 }
 
+void VFS::show_vars() {
+  std::cerr << "VFS: " << this << std::endl;
+  std::cerr << "    Stats: " << this->stats_ << std::endl;
+  std::cerr << "    memfs_: " << &this->memfs_ << std::endl;
+  std::cerr << "    compute_tp_: " << this->compute_tp_ << std::endl;
+  std::cerr << "    io_tp_: " << this->io_tp_ << std::endl;
+  std::cerr << "    read_ahead_cache_: " << this->read_ahead_cache_.get() << std::endl;
+  std::cerr << "    vfs_params_: " << &this->vfs_params_ << std::endl;
+  std::cerr << "    Config: " << &this->config_ << std::endl;
+  fprintf(stderr, "3: %p %p %p %p %p %p %p\n",
+    this->stats_,
+    &this->memfs_,
+    this->compute_tp_,
+    this->io_tp_,
+    this->read_ahead_cache_.get(),
+    &this->vfs_params_,
+    &this->config_);
+}
+
 /* ********************************* */
 /*                API                */
 /* ********************************* */
@@ -215,7 +265,7 @@ std::string VFS::abs_path(const std::string& path) {
   return path_copy;
 }
 
-Config VFS::config() const {
+const Config& VFS::config() const {
   return config_;
 }
 
@@ -349,7 +399,7 @@ Status VFS::touch(const URI& uri) const {
 }
 
 Status VFS::cancel_all_tasks() {
-  cancelable_tasks_.cancel_all_tasks();
+  //cancelable_tasks_.cancel_all_tasks();
   return Status::Ok();
 }
 
@@ -1239,31 +1289,33 @@ Status VFS::read(
       uint64_t thread_nbytes = end - begin + 1;
       uint64_t thread_offset = offset + begin;
       auto thread_buffer = reinterpret_cast<char*>(buffer) + begin;
-      auto task = cancelable_tasks_.execute(
-          io_tp_,
-          [this,
-           uri,
-           thread_offset,
-           thread_buffer,
-           thread_nbytes,
-           use_read_ahead]() {
-            return read_impl(
-                uri,
-                thread_offset,
-                thread_buffer,
-                thread_nbytes,
-                use_read_ahead);
-          });
-      results.push_back(std::move(task));
+    //   auto task = cancelable_tasks_.execute(
+    //       io_tp_,
+    //       [this,
+    //        uri,
+    //        thread_offset,
+    //        thread_buffer,
+    //        thread_nbytes,
+    //        use_read_ahead]() {
+    //         return read_impl(
+    //             uri,
+    //             thread_offset,
+    //             thread_buffer,
+    //             thread_nbytes,
+    //             use_read_ahead);
+    //       });
+    //   results.push_back(std::move(task));
+    // }
+    // Status st = io_tp_->wait_all(results);
+      auto st = read_impl(uri, thread_offset, thread_buffer, thread_nbytes, use_read_ahead);
+      if (!st.ok()) {
+        std::stringstream errmsg;
+        errmsg << "VFS parallel read error '" << uri.to_string() << "'; "
+               << st.message();
+          return LOG_STATUS(Status_VFSError(errmsg.str()));
+      }
     }
-    Status st = io_tp_->wait_all(results);
-    if (!st.ok()) {
-      std::stringstream errmsg;
-      errmsg << "VFS parallel read error '" << uri.to_string() << "'; "
-             << st.message();
-      return LOG_STATUS(Status_VFSError(errmsg.str()));
-    }
-    return st;
+    return Status::Ok();
   }
 }
 

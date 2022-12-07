@@ -180,6 +180,8 @@ TEST_CASE(
   // Create a StorageManager
   Config config;
 
+  std::cerr << "CONFIG: " << &config << std::endl;
+
   std::cerr << "MADE URI AND CONFIG" << std::endl;
   x.can_lock();
 
@@ -187,7 +189,7 @@ TEST_CASE(
 
   ContextResources resources(config, 1, 1, "", &x);
   resources.show_vars();
-  std::cerr << "MADE RESOURCES" << std::endl;
+  std::cerr << "MADE RESOURCES: " << &resources << std::endl;
   x.can_lock();
 
   StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);

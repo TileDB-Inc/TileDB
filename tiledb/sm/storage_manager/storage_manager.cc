@@ -128,6 +128,7 @@ Status StorageManagerCanonical::init() {
 }
 
 StorageManagerCanonical::~StorageManagerCanonical() {
+  resources_.show_vars();
   global_state::GlobalState::GetGlobalState().unregister_storage_manager(this);
 
   throw_if_not_ok(cancel_all_tasks());

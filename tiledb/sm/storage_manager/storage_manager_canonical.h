@@ -1156,7 +1156,7 @@ class StorageManagerCanonical {
   std::mutex object_create_mtx_;
 
   /** Stores the TileDB configuration parameters. */
-  Config config_;
+  const Config& config_;
 
   /** Keeps track of which groups are open. */
   std::set<Group*> open_groups_;

@@ -39,6 +39,8 @@
 #include <string>
 #include <vector>
 
+#include <stdio.h>
+
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
@@ -85,14 +87,14 @@ class Tile;
 enum class Filesystem : uint8_t;
 enum class VFSMode : uint8_t;
 
-struct ThisIsDumb {
-  ThisIsDumb(const char* tag, ConsistencyController* controller) {
-    if(controller != nullptr) {
-      std::cerr << "THIS IS DUMB: " << tag << std::endl;
-      controller->can_lock();
-    }
-  }
-};
+// struct ThisIsDumb {
+//   ThisIsDumb(const char* tag, ConsistencyController* controller) {
+//     if(controller != nullptr) {
+//       std::cerr << "THIS IS DUMB: " << tag << std::endl;
+//       controller->can_lock();
+//     }
+//   }
+// };
 
 /** The VFS configuration parameters. */
 struct VFSParameters {
@@ -184,16 +186,7 @@ class VFS {
   /*               API                 */
   /* ********************************* */
 
-  void show_vars() {
-    std::cerr << "VFS: " << this << std::endl;
-    std::cerr << "    Stats: " << stats_ << std::endl;
-    std::cerr << "    memfs_: " << &memfs_ << std::endl;
-    std::cerr << "    compute_tp_: " << compute_tp_ << std::endl;
-    std::cerr << "    io_tp_: " << io_tp_ << std::endl;
-    std::cerr << "    read_ahead_cache_: " << read_ahead_cache_.get() << std::endl;
-    std::cerr << "    vfs_params_: " << &vfs_params_ << std::endl;
-    std::cerr << "    Config: " << &config_ << std::endl;
-  }
+  void show_vars();
 
   /**
    * Returns the absolute path of the input string (mainly useful for
@@ -208,7 +201,7 @@ class VFS {
    * Return a config object containing the VFS parameters. All other non-VFS
    * parameters will are set to default values.
    */
-  Config config() const;
+  const Config& config() const;
 
   /**
    * Creates a directory.
@@ -730,25 +723,17 @@ class VFS {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  ThisIsDumb thing1_;
-
 #ifdef HAVE_AZURE
   Azure azure_;
 #endif
-
-  ThisIsDumb thing2_;
 
 #ifdef HAVE_GCS
   GCS gcs_;
 #endif
 
-  ThisIsDumb thing3_;
-
 #ifdef HAVE_S3
   S3 s3_;
 #endif
-
-  ThisIsDumb thing4_;
 
 #ifdef _WIN32
   Win win_;
@@ -756,60 +741,36 @@ class VFS {
   Posix posix_;
 #endif
 
-  ThisIsDumb thing5_;
-
 #ifdef HAVE_HDFS
   tdb_unique_ptr<hdfs::HDFS> hdfs_;
 #endif
 
-  ThisIsDumb thing6_;
-
   /** The class stats. */
   stats::Stats* stats_;
-
-  ThisIsDumb thing7_;
 
   /** The in-memory filesystem which is always supported */
   MemFilesystem memfs_;
 
-  ThisIsDumb thing8_;
-
   /** The set with the supported filesystems. */
   std::set<uint32_t> supported_fs_;
 
-  ThisIsDumb thing9_;
-
   int something_that_takes_space_;
-
-  ThisIsDumb thing9point5_;
-
-  ThisIsDumb thing10_;
 
   /** Thread pool for compute-bound tasks. */
   ThreadPool* compute_tp_;
 
-  ThisIsDumb thing11_;
-
   /** Thread pool for io-bound tasks. */
   ThreadPool* io_tp_;
 
-  ThisIsDumb thing12_;
-
   /** Wrapper for tracking and canceling certain tasks on 'thread_pool' */
-  CancelableTasks cancelable_tasks_;
-
-  ThisIsDumb thing13_;
+  //CancelableTasks cancelable_tasks_;
 
   /** The read-ahead cache. */
   //tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
   std::unique_ptr<ReadAheadCache> read_ahead_cache_;
 
-  ThisIsDumb thing14_;
-
   /* The VFS configuration parameters. */
   VFSParameters vfs_params_;
-
-  ThisIsDumb thing15_;
 
   /**
    * Config.
@@ -818,7 +779,7 @@ class VFS {
    * use of API 'tiledb_vfs_get_config'.
    * pass-by-reference initialization of filesystems' config_ member variables.
    **/
-  Config config_;
+  const Config& config_;
 
 
   /* ********************************* */
