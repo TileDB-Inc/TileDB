@@ -62,6 +62,13 @@ ConsistencySentry ConsistencyController::make_sentry(
   return ConsistencySentry{*this, register_array(uri, array, query_type)};
 }
 
+ConsistencyController::ConsistencyController()
+  : ml1("ConsistencyController FIRST MEMBER")
+  , ml2("ConsistencyController before mtx_")
+  , ml3("ConsistencyController LAST MEMBER") {
+  std::cerr << this << " - ConsistencyController location" << std::endl;
+}
+
 ConsistencyController::entry_type ConsistencyController::register_array(
     const URI uri, Array& array, const QueryType query_type) {
   if (uri.empty()) {

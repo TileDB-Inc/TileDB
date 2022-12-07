@@ -86,7 +86,7 @@ class ConsistencyController {
    * no registered arrays.
    * Note: nothing can be registered in the singleton until an array is opened.
    */
-  ConsistencyController() = default;
+  ConsistencyController();
 
   /** Copy Constructor is deleted. */
   ConsistencyController(const ConsistencyController&) = delete;
@@ -101,7 +101,7 @@ class ConsistencyController {
   ConsistencyController& operator=(ConsistencyController&&) = delete;
 
   /** Destructor. */
-  ~ConsistencyController() = default;
+  virtual ~ConsistencyController() = default;
 
   /**
    * Register the given Array as open.
@@ -140,6 +140,8 @@ class ConsistencyController {
    */
   void deregister_array(entry_type entry);
 
+  MEM_LOC ml1;
+
   /**
    * The open array registry.
    *
@@ -149,11 +151,15 @@ class ConsistencyController {
    **/
   std::multimap<const URI, array_entry> array_registry_;
 
+  MEM_LOC ml2;
+
   /**
    * Mutex that protects atomicity between the existence of a
    * ConsistencySentry object and the multimap's registration.
    */
   std::mutex mtx_;
+
+  MEM_LOC ml3;
 };
 
 /**

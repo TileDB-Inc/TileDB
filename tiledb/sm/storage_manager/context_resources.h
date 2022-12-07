@@ -96,20 +96,30 @@ class ContextResources {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  MEM_LOC ml1;
+
   /** The thread pool for compute-bound tasks. */
   mutable ThreadPool compute_tp_;
+
+  MEM_LOC ml2;
 
   /** The thread pool for io-bound tasks. */
   mutable ThreadPool io_tp_;
 
+  MEM_LOC ml3;
+
   /** The class stats. */
   shared_ptr<stats::Stats> stats_;
+
+  MEM_LOC ml4;
 
   /**
    * Virtual filesystem handler. It directs queries to the appropriate
    * filesystem backend. Note that this is stateful.
    */
   mutable VFS vfs_;
+
+  MEM_LOC ml5;
 };
 
 }  // namespace tiledb::sm

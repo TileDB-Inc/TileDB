@@ -164,13 +164,27 @@ TEST_CASE(
 TEST_CASE(
     "WhiteboxConsistencyController: Single array",
     "[ConsistencyController][array][single]") {
+
+  {
+    MEM_LOC ml0("PROVING DESTRUCTORS WORK");
+  }
+
+  MEM_LOC ml1("TEST START");
   WhiteboxConsistencyController x;
+  MEM_LOC ml2("WhiteBoxConsistency controller created");
+
   const URI uri = URI("whitebox_single_array");
+  MEM_LOC ml3("URI Created");
 
   // Create a StorageManager
   Config config;
+  MEM_LOC ml4("Config created");
+
   ContextResources resources(config, 1, 1, "");
+  MEM_LOC ml5("ContextResources created");
+
   StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
+  MEM_LOC ml6("StorageManager created");
 
   // Register array
   tdb_unique_ptr<Array> array = x.open_array(uri, &sm);

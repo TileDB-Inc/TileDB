@@ -77,6 +77,12 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+struct MEM_LOC {
+  MEM_LOC(const char* tag);
+  ~MEM_LOC();
+  const char* tag_;
+};
+
 class Tile;
 
 enum class Filesystem : uint8_t;
@@ -704,6 +710,8 @@ class VFS {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  MEM_LOC ml1;
+
 #ifdef HAVE_AZURE
   Azure azure_;
 #endif
@@ -726,11 +734,17 @@ class VFS {
   tdb_unique_ptr<hdfs::HDFS> hdfs_;
 #endif
 
+  MEM_LOC ml2;
+
   /** The class stats. */
   stats::Stats* stats_;
 
+  MEM_LOC ml3;
+
   /** The in-memory filesystem which is always supported */
   MemFilesystem memfs_;
+
+  MEM_LOC ml4;
 
   /**
    * Config.
@@ -741,8 +755,12 @@ class VFS {
    **/
   Config config_;
 
+  MEM_LOC ml5;
+
   /** The set with the supported filesystems. */
   std::set<Filesystem> supported_fs_;
+
+  MEM_LOC ml6;
 
   /** Thread pool for compute-bound tasks. */
   ThreadPool* compute_tp_;
@@ -750,11 +768,17 @@ class VFS {
   /** Thread pool for io-bound tasks. */
   ThreadPool* io_tp_;
 
+  MEM_LOC ml7;
+
   /** Wrapper for tracking and canceling certain tasks on 'thread_pool' */
   CancelableTasks cancelable_tasks_;
 
+  MEM_LOC ml8;
+
   /** The read-ahead cache. */
   tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
+
+  MEM_LOC ml9;
 
   /* The VFS configuration parameters. */
   VFSParameters vfs_params_;
@@ -762,6 +786,8 @@ class VFS {
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
+
+  MEM_LOC ml10;
 
   /**
    * Groups the given vector of regions to be read into a possibly smaller

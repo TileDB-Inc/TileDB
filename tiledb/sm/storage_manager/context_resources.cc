@@ -48,10 +48,15 @@ ContextResources::ContextResources(
       size_t compute_thread_count,
       size_t io_thread_count,
       std::string stats_name)
-    : compute_tp_(compute_thread_count)
+    : ml1("ContextResources FIRST MEMBER")
+    , compute_tp_(compute_thread_count)
+    , ml2("ContextResources before io_tp_")
     , io_tp_(io_thread_count)
+    , ml3("ContextResources before stats_")
     , stats_(make_shared<stats::Stats>(HERE(), stats_name))
-    , vfs_(stats_.get(), &compute_tp_, &io_tp_, config) {
+    , ml4("ContextResources before vfs_")
+    , vfs_(stats_.get(), &compute_tp_, &io_tp_, config)
+    , ml5("ContextResources LAST MEMBER") {
 
   /*
    * Explicitly register our `stats` object with the global.

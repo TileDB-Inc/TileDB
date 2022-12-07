@@ -62,7 +62,9 @@ using entry_type = std::multimap<const URI, array_entry>::const_iterator;
 
 class WhiteboxConsistencyController : public ConsistencyController {
  public:
-  WhiteboxConsistencyController() = default;
+  WhiteboxConsistencyController() {
+    std::cerr << this << " - WhiteBoxConsistencyController" << std::endl;
+  };
   ~WhiteboxConsistencyController() = default;
 
   entry_type register_array(

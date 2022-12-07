@@ -57,16 +57,34 @@ namespace tiledb::sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
+MEM_LOC::MEM_LOC(const char* tag) : tag_(tag) {
+  std::cerr << this << " - " << tag_ << std::endl;
+}
+
+MEM_LOC::~MEM_LOC() {
+  std::cerr << this << " - DESTRUCTING - " << tag_ << std::endl;
+}
+
 VFS::VFS(
     stats::Stats* const parent_stats,
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
     const Config& config)
-    : stats_(parent_stats->create_child("VFS"))
+    : ml1("VFS FIRST MEMBER")
+    , ml2("VFS before stats_")
+    , stats_(parent_stats->create_child("VFS"))
+    , ml3("VFS before memfs_")
+    , ml4("VFS before config_")
     , config_(config)
+    , ml5("VFS before supported_fs_")
+    , ml6("VFS before compute_tp_")
     , compute_tp_(compute_tp)
     , io_tp_(io_tp)
-    , vfs_params_(VFSParameters(config)) {
+    , ml7("VFS before cancelable_tasks_")
+    , ml8("VFS before read_ahead_cache_")
+    , ml9("VFS before vfs_params_")
+    , vfs_params_(VFSParameters(config))
+    , ml10("VFS LAST MEMBER") {
   Status st;
   assert(compute_tp);
   assert(io_tp);

@@ -207,8 +207,9 @@ Status Array::open_without_fragments(
       array_schemas_all_ = array_schemas.value();
     }
   } catch (std::exception& e) {
-    set_array_closed();
-    throw Status_ArrayError(e.what());
+    throw;
+    //set_array_closed();
+    //throw Status_ArrayError(e.what());
   }
 
   is_opening_or_closing_ = false;
@@ -442,8 +443,9 @@ Status Array::open(
       throw Status_ArrayError("Cannot open array; Unsupported query type.");
     }
   } catch (std::exception& e) {
-    set_array_closed();
-    return LOG_STATUS(Status_ArrayError(e.what()));
+    throw;
+    //set_array_closed();
+    //return LOG_STATUS(Status_ArrayError(e.what()));
   }
 
   is_opening_or_closing_ = false;
