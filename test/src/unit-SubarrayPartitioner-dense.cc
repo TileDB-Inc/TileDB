@@ -378,7 +378,7 @@ void SubarrayPartitionerDenseFx::read_array_default_1d_array(
     // Make sure we get the right message on failure
     CHECK(
         message ==
-        "SubarrayPertitioner: Trying to partition a unary range because of "
+        "SubarrayPartitioner: Trying to partition a unary range because of "
         "memory budget, this will cause the query to run very slow. Increase "
         "`sm.memory_budget` and `sm.memory_budget_var` through the "
         "configuration settings to avoid this issue. To override and run the "
