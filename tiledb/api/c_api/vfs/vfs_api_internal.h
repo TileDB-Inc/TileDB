@@ -150,6 +150,11 @@ struct tiledb_vfs_handle_t
 /** Handle `struct` for API VFS file handle objects. */
 struct tiledb_vfs_fh_handle_t
     : public tiledb::api::CAPIHandle<tiledb_vfs_fh_handle_t> {
+  /**
+   * Type name
+   */
+  static constexpr std::string_view object_type_name{"vfs file handle"};
+
  private:
   using vfs_fh_type = tiledb::sm::VFSFileHandle;
   vfs_fh_type vfs_fh_;
@@ -194,11 +199,7 @@ namespace tiledb::api {
  * @param vfs Possibly-valid pointer to a virtual filesystem
  */
 inline void ensure_vfs_is_valid(const tiledb_vfs_t* vfs) {
-  if (vfs == nullptr) {
-    throw CAPIStatusException(std::string("Invalid TileDB object: ") + "vfs");
-    // action_invalid_object("vfs");
-  }
-  // ensure_handle_is_valid(vfs);
+  ensure_handle_is_valid(vfs);
 }
 
 /**
@@ -207,12 +208,7 @@ inline void ensure_vfs_is_valid(const tiledb_vfs_t* vfs) {
  * @param vfs_fh Possibly-valid pointer to a virtual filesystem file handle
  */
 inline void ensure_vfs_fh_is_valid(const tiledb_vfs_fh_t* vfs_fh) {
-  if (vfs_fh == nullptr) {
-    // action_invalid_object("vfs_fh");
-    throw CAPIStatusException(
-        std::string("Invalid TileDB object: ") + "vfs_fh");
-  }
-  // ensure_handle_is_valid(vfs_fh);
+  ensure_handle_is_valid(vfs_fh);
 }
 
 }  // namespace tiledb::api

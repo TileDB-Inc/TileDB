@@ -22,7 +22,6 @@
  * THE SOFTWARE.
  */
 
-/** TileDB VFS mode */
 #ifdef TILEDB_VFS_MODE_ENUM
 /** Read mode */
 TILEDB_VFS_MODE_ENUM(VFS_READ) = 0,

@@ -26,10 +26,10 @@
  * THE SOFTWARE.
  */
 
-#include "../vfs_api_internal.h"
+#include "../vfs_api_external.h"
 
 int main() {
-  (void)sizeof(tiledb_vfs_handle_t);
-  (void)sizeof(tiledb_vfs_fh_handle_t);
+  tiledb_vfs_alloc(nullptr, nullptr, nullptr);
+  tiledb_vfs_fh_free(nullptr);
   return 0;
 }

@@ -31,7 +31,6 @@
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
 #include "../vfs_api_internal.h"
-//#include "../vfs_api_external.h"
 
 TEST_CASE("CAPI VFS: null") {
 }
