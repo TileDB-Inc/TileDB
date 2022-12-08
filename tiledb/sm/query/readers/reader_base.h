@@ -744,6 +744,8 @@ class ReaderBase : public StrategyBase {
   /**
    * Computes a tile's Hilbert values for a tile.
    *
+   * @tparam ResultTileType The result tile type.
+   * @tparam ResultCoordsType The result coordinate type.
    * @param result_tiles Result tiles to process.
    *
    * @return Status.

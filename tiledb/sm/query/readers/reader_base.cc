@@ -1026,12 +1026,8 @@ void ReaderBase::compute_hilbert_values(const std::vector<ResultTile*>& result_t
   // Parallelize on tiles.
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
-        /*
-        if constexpr (std::is_same<ResultCoords, ResultCoordsType>::value) {
-          result_tiles[t]->set_zipped();
-        } */
-       auto tile =
-            static_cast<ResultTileType*>(result_tiles[t]);
+      auto tile =
+          static_cast<ResultTileType*>(result_tiles[t]);
   
       size_t cell_num = result_tiles[t]->cell_num();
       if constexpr (!std::is_same<ResultCoords, ResultCoordsType>::value) {
@@ -1042,8 +1038,12 @@ void ReaderBase::compute_hilbert_values(const std::vector<ResultTile*>& result_t
         result_tiles[t]->allocate_hilbert_vector();
         for (rc.pos_ = 0; rc.pos_ < cell_num; rc.pos_++) {
           // Process only values in bitmap.
-           if constexpr (!std::is_same<ResultCoords, ResultCoordsType>::value) {
-            if (!tile->has_bmp() || tile->bitmap()[rc.pos_]) {
+          bool compute_cond = !tile->has_bmp();
+          if constexpr (!std::is_same<ResultCoords, ResultCoordsType>::value) {
+            compute_cond = compute_cond || tile->bitmap()[rc.pos_];
+          }
+          
+          if (compute_cond) {
             // Compute Hilbert number for all dimensions first.
             for (uint32_t d = 0; d < dim_num; ++d) {
               auto dim{array_schema_.dimension_ptr(d)};
@@ -1054,16 +1054,6 @@ void ReaderBase::compute_hilbert_values(const std::vector<ResultTile*>& result_t
             // Now we are ready to get the final number.
             result_tiles[t]->set_hilbert_value(rc.pos_, h.coords_to_hilbert(&coords[0]));
           }
-           } else {
-            for (uint32_t d = 0; d < dim_num; ++d) {
-              auto dim{array_schema_.dimension_ptr(d)};
-              coords[d] = hilbert_order::map_to_uint64(
-                  *dim, rc, d, bits, max_bucket_val);
-            }
-
-            // Now we are ready to get the final number.
-            result_tiles[t]->set_hilbert_value(rc.pos_, h.coords_to_hilbert(&coords[0]));
-           }
         }
 
         return Status::Ok();

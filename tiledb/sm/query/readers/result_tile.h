@@ -350,6 +350,11 @@ class ResultTile {
     return domain_;
   }
 
+  /** Returns false, as default ResultTiles don't have bitmaps. */
+  inline bool has_bmp() const {
+    return false;
+  }
+
   /** Erases the tile for the input attribute/dimension. */
   void erase_tile(const std::string& name);
 
@@ -902,7 +907,7 @@ class ResultTileWithBitmap : public ResultTile {
   }
 
   /** Does this tile have a bitmap. */
-  inline bool has_bmp() {
+  inline bool has_bmp() const {
     return bitmap_.size() > 0;
   }
 
