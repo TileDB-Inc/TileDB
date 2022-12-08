@@ -119,7 +119,7 @@ OrderedWriter::~OrderedWriter() {
 Status OrderedWriter::dowork() {
   get_dim_attr_stats();
 
-  auto timer_se = stats_->start_timer("write");
+  auto timer_se = stats_->start_timer("dowork");
 
   check_attr_order();
 
@@ -219,7 +219,7 @@ Status OrderedWriter::ordered_write() {
 
 template <class T>
 Status OrderedWriter::ordered_write() {
-  auto timer_se = stats_->start_timer("filter_tile");
+  auto timer_se = stats_->start_timer("ordered_write");
 
   // Create new fragment
   auto frag_meta = make_shared<FragmentMetadata>(HERE());
@@ -357,6 +357,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   uint64_t frag_tile_id = 0;
   bool close_files = false;
   tile_batches.resize(batch_num);
+  std::optional<ThreadPool::Task> write_task = nullopt;
   for (uint64_t b = 0; b < batch_num; ++b) {
     auto batch_size = (b == batch_num - 1) ? last_batch_size : thread_num;
     assert(batch_size > 0);
@@ -365,58 +366,75 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
       tile_batches[b].emplace_back(WriterTile(
           array_schema_, cell_num_per_tile, var, nullable, cell_size, type));
     }
-    auto st = parallel_for(
-        storage_manager_->compute_tp(), 0, batch_size, [&](uint64_t i) {
-          // Prepare and filter tiles
-          auto& writer_tile = tile_batches[b][i];
-          RETURN_NOT_OK(
-              dense_tiler->get_tile(frag_tile_id + i, name, writer_tile));
 
-          if (!var) {
-            RETURN_NOT_OK(filter_tile(
-                name,
-                &writer_tile.fixed_tile(),
-                nullptr,
-                false,
-                false,
-                nullptr));
-          } else {
-            auto offset_tile = &writer_tile.offset_tile();
-            RETURN_NOT_OK(filter_tile(
-                name,
-                &writer_tile.var_tile(),
-                offset_tile,
-                false,
-                false,
-                offset_tile));
+    {
+      auto timer_se = stats_->start_timer("prepare_and_filter_tiles");
+      auto st = parallel_for(
+          storage_manager_->compute_tp(), 0, batch_size, [&](uint64_t i) {
+            // Prepare and filter tiles
+            auto& writer_tile = tile_batches[b][i];
             RETURN_NOT_OK(
-                filter_tile(name, offset_tile, nullptr, true, false, nullptr));
-          }
-          if (nullable) {
-            RETURN_NOT_OK(filter_tile(
-                name,
-                &writer_tile.validity_tile(),
-                nullptr,
-                false,
-                true,
-                nullptr));
-          }
-          return Status::Ok();
-        });
-    RETURN_NOT_OK(st);
+                dense_tiler->get_tile(frag_tile_id + i, name, writer_tile));
 
-    // Write tiles
-    close_files = (b == batch_num - 1);
-    RETURN_NOT_OK(write_tiles(
-        0,
-        tile_batches[b].size(),
-        name,
-        frag_meta,
-        frag_tile_id,
-        &tile_batches[b],
-        close_files));
+            if (!var) {
+              RETURN_NOT_OK(filter_tile(
+                  name,
+                  &writer_tile.fixed_tile(),
+                  nullptr,
+                  false,
+                  false,
+                  nullptr));
+            } else {
+              auto offset_tile = &writer_tile.offset_tile();
+              RETURN_NOT_OK(filter_tile(
+                  name,
+                  &writer_tile.var_tile(),
+                  offset_tile,
+                  false,
+                  false,
+                  offset_tile));
+              RETURN_NOT_OK(filter_tile(
+                  name, offset_tile, nullptr, true, false, nullptr));
+            }
+            if (nullable) {
+              RETURN_NOT_OK(filter_tile(
+                  name,
+                  &writer_tile.validity_tile(),
+                  nullptr,
+                  false,
+                  true,
+                  nullptr));
+            }
+            return Status::Ok();
+          });
+      RETURN_NOT_OK(st);
+    }
+
+    if (write_task.has_value()) {
+      write_task->wait();
+      RETURN_NOT_OK(write_task->get());
+    }
+
+    write_task = storage_manager_->io_tp()->execute([&, b, frag_tile_id]() {
+      close_files = (b == batch_num - 1);
+      RETURN_NOT_OK(write_tiles(
+          0,
+          tile_batches[b].size(),
+          name,
+          frag_meta,
+          frag_tile_id,
+          &tile_batches[b],
+          close_files));
+
+      return Status::Ok();
+    });
 
     frag_tile_id += batch_size;
+  }
+
+  if (write_task.has_value()) {
+    write_task->wait();
+    RETURN_NOT_OK(write_task->get());
   }
 
   return Status::Ok();
