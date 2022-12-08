@@ -38,6 +38,7 @@
 #include "tiledb/sm/filter/float_scaling_filter.h"
 
 #include <cassert>
+#include <cmath>
 
 using namespace tiledb::common;
 
@@ -260,13 +261,34 @@ Status FloatScalingFilter::set_option_impl(
 
   switch (option) {
     case FilterOption::SCALE_FLOAT_BYTEWIDTH: {
-      byte_width_ = *(uint64_t*)value;
+      // The byte width parameter should be one of the sizes of the possible integer types. 
+      auto val = *(uint64_t*)value;
+      if (val != sizeof(int8_t) && val != sizeof(int16_t) 
+       && val != sizeof(int32_t) && val != sizeof(int64_t)) {
+        return LOG_STATUS(
+          Status_FilterError("Float scaling filter error; invalid byte width value."));
+      }
+      byte_width_ = val;
     } break;
     case FilterOption::SCALE_FLOAT_FACTOR: {
-      scale_ = *(double*)value;
+      // The scaling parameter should be not a NaN, infinity, or zero.
+      auto val = *(double*)value;
+      auto classify = std::fpclassify(val);
+      if (classify == FP_INFINITE || classify == FP_NAN || classify == FP_ZERO) {
+        return LOG_STATUS(
+          Status_FilterError("Float scaling filter error; invalid scale value."));
+      }
+      scale_ = val;
     } break;
     case FilterOption::SCALE_FLOAT_OFFSET: {
-      offset_ = *(double*)value;
+      // The offset parameter should not be a NaN or infinity.
+      auto val = *(double*)value;
+      auto classify = std::fpclassify(val);
+      if (classify == FP_INFINITE || classify == FP_NAN) {
+        return LOG_STATUS(
+          Status_FilterError("Float scaling filter error; invalid scale value."));
+      }
+      offset_ = val;
     } break;
     default:
       return LOG_STATUS(
