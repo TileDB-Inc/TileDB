@@ -28,8 +28,8 @@ include(common NO_POLICY_SCOPE)
 
 add_executable(unit_capi_vfs EXCLUDE_FROM_ALL)
 find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_capi_vfs PUBLIC Catch2::Catch2)
-target_link_libraries(unit_capi_vfs PUBLIC capi_vfs_stub)
+target_link_libraries(unit_capi_vfs PUBLIC Catch2::Catch2WithMain)
+target_link_libraries(unit_capi_vfs PUBLIC capi_vfs)
 
 # Sources for tests
 target_sources(unit_capi_vfs PUBLIC
