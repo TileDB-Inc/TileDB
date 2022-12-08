@@ -501,7 +501,7 @@ class Curl {
    * @param retry true if the http code matches the retry list
    * @return Status
    */
-  Status should_retry(bool* retry) const;
+  Status should_retry_based_on_http_status(bool* retry) const;
 };
 
 }  // namespace sm
