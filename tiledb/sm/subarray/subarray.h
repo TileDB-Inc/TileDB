@@ -251,6 +251,13 @@ class Subarray {
   Status set_subarray(const void* subarray);
 
   /**
+   * Equivalent to older Query::set_subarray(const void *subarray).
+   *
+   * Used for deserializing dense write queries.
+   */
+  void set_subarray_unsafe(const void* subarray);
+
+  /**
    * Adds dimension ranges computed from label ranges on the dimension label.
    *
    * @param dim_idx The dimension to add ranges to.

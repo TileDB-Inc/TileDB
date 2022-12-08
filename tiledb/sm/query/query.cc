@@ -2296,17 +2296,14 @@ void Query::set_subarray(const void* subarray) {
   }
 
   // Check this isn't an already initialized query using dimension labels.
-  if (status_ != QueryStatus::UNINITIALIZED && uses_dimension_labels()) {
+  if (status_ != QueryStatus::UNINITIALIZED) {
     throw QueryStatusException(
         "Cannot set subarray; Setting a subarray on an already initialized  "
-        "query that uses dimension labels is not supported.");
+        "query is not supported.");
   }
 
   // Set the subarray.
   throw_if_not_ok(subarray_.set_subarray(subarray));
-
-  // Reset the query.
-  status_ = QueryStatus::UNINITIALIZED;
 }
 
 const Subarray* Query::subarray() const {
@@ -2319,33 +2316,39 @@ Status Query::set_subarray_unsafe(const Subarray& subarray) {
 }
 
 void Query::set_subarray(const tiledb::sm::Subarray& subarray) {
-  // As implemented, this silently fails for queries that are initialized but
-  // not completed. It is unclear if the comment in the `if` statement below is
-  // correct or relevent anymore.
-  if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED &&
-      status_ != tiledb::sm::QueryStatus::COMPLETED) {
-    // Can be in this initialized state when query has been de-serialized
-    // server-side and are trying to perform local submit.
-    // Don't change anything and return indication of success.
-    return;
+  // Perform checks related to the query type.
+  switch (type_) {
+    case QueryType::READ:
+      break;
+
+    case QueryType::WRITE:
+    case QueryType::MODIFY_EXCLUSIVE:
+      if (!array_schema_->dense()) {
+        throw QueryStatusException(
+            "Cannot set subarray; Setting a subarray is not supported on "
+            "sparse writes.");
+      }
+      break;
+
+    default:
+
+      throw QueryStatusException(
+          "Cannot set subarray; Setting a subarray is not supported for query "
+          "type '" +
+          query_type_str(type_) + "'.");
   }
 
-  // If the query is initialized, check that it doesn't use dimension labels and
-  // the subarray doesn't use dimension labels.
-  if (status_ != QueryStatus::UNINITIALIZED &&
-      (uses_dimension_labels() || subarray.has_label_ranges())) {
+  // Check the query has not been initialized.
+  if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
     throw QueryStatusException(
         "Cannot set subarray; Setting a subarray on an already initialized "
-        "query that uses dimension labels is not supported.");
+        "query is not supported.");
   }
 
   // Set the subarray.
   auto prev_layout = subarray_.layout();
   subarray_ = subarray;
   subarray_.set_layout(prev_layout);
-
-  // Reset the query.
-  status_ = QueryStatus::UNINITIALIZED;
 }
 
 Status Query::set_subarray_unsafe(const NDRange& subarray) {
@@ -2360,9 +2363,11 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
   assert(layout_ == sub.layout());
   subarray_ = sub;
 
-  status_ = QueryStatus::UNINITIALIZED;
-
   return Status::Ok();
+}
+
+void Query::set_subarray_unsafe(const void* subarray) {
+  subarray_.set_subarray_unsafe(subarray);
 }
 
 Status Query::check_buffers_correctness() {

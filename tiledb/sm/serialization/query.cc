@@ -1954,7 +1954,7 @@ Status query_from_capnp(
         RETURN_NOT_OK(
             utils::deserialize_subarray(subarray_reader, schema, &subarray));
         try {
-          query->set_subarray(subarray);
+          query->set_subarray_unsafe(subarray);
         } catch (...) {
           tdb_free(subarray);
           throw;
