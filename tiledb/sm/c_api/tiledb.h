@@ -4779,7 +4779,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_create_with_key(
  * @param array_uri The name of the TileDB array whose metadata will
  *     be consolidated.
  * @param config Configuration parameters for the consolidation
- *     (`nullptr` means default, which will use the config from `ctx`).
+ *     (`nullptr` means default, which will use the config from \p ctx).
  *     The `sm.consolidation.mode` parameter determines which type of
  *     consolidation to perform.
  *
@@ -4838,7 +4838,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_with_key(
  * @param ctx The TileDB context.
  * @param array_uri The name of the TileDB array to vacuum.
  * @param config Configuration parameters for the vacuuming
- *     (`nullptr` means default, which will use the config from `ctx`).
+ *     (`nullptr` means default, which will use the config from \p ctx).
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
 TILEDB_EXPORT int32_t tiledb_array_vacuum(
