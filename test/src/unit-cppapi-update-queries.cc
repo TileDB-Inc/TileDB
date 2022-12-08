@@ -104,7 +104,7 @@ void UpdatesFx::create_sparse_array(bool allows_dups, bool encrypt) {
   auto a1 = Attribute::create<int32_t>(ctx_, "a1");
   auto a2 = Attribute::create<int32_t>(ctx_, "a2");
 
-  // Create array schmea.
+  // Create array schema.
   ArraySchema schema(ctx_, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.set_capacity(20);

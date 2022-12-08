@@ -103,7 +103,7 @@ void CppPartialAttrWriteFx::create_sparse_array(bool allows_dups) {
   auto a1 = Attribute::create<int32_t>(ctx_, "a1");
   auto a2 = Attribute::create<int64_t>(ctx_, "a2");
 
-  // Create array schmea.
+  // Create array schema.
   ArraySchema schema(ctx_, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.set_capacity(2);
@@ -137,7 +137,7 @@ void CppPartialAttrWriteFx::create_dense_array() {
   auto a1 = Attribute::create<int32_t>(ctx_, "a1");
   auto a2 = Attribute::create<int64_t>(ctx_, "a2");
 
-  // Create array schmea.
+  // Create array schema.
   ArraySchema schema(ctx_, TILEDB_DENSE);
   schema.set_domain(domain);
   schema.set_capacity(20);

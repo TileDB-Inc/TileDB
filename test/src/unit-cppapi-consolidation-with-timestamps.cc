@@ -132,7 +132,7 @@ void ConsolidationWithTimestampsFx::create_sparse_array(bool allows_dups) {
   // Create attributes.
   auto a1 = Attribute::create<int32_t>(ctx_, "a1");
 
-  // Create array schmea.
+  // Create array schema.
   ArraySchema schema(ctx_, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.set_capacity(20);

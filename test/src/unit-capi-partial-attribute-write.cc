@@ -109,7 +109,7 @@ void PartialAttrWriteFx::create_sparse_array() {
   tiledb_attribute_t* a1;
   CHECK(tiledb_attribute_alloc(ctx_, "a1", TILEDB_INT32, &a1) == TILEDB_OK);
 
-  // Create array schmea
+  // Create array schema
   tiledb_array_schema_t* array_schema;
   CHECK(
       tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema) ==
@@ -161,7 +161,7 @@ void PartialAttrWriteFx::create_dense_array() {
   tiledb_attribute_t* a1;
   CHECK(tiledb_attribute_alloc(ctx_, "a1", TILEDB_INT32, &a1) == TILEDB_OK);
 
-  // Create array schmea
+  // Create array schema
   tiledb_array_schema_t* array_schema;
   CHECK(
       tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema) ==
