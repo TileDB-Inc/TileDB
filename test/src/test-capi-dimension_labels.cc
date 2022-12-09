@@ -206,6 +206,78 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DimensionLabelTestFixture,
+    "Write and read back TileDB array schema with dimension label with "
+    "non-default tile",
+    "[capi][ArraySchema][DimensionLabel]") {
+  // Create and add dimension label schema (both fixed and variable length
+  // examples).
+  auto label_type = GENERATE(TILEDB_FLOAT64, TILEDB_STRING_ASCII);
+  // Create an array schema
+  uint64_t x_domain[2]{0, 63};
+  uint64_t x_tile_extent{64};
+  uint64_t y_domain[2]{0, 63};
+  uint64_t y_tile_extent{64};
+  auto array_schema = create_array_schema(
+      ctx,
+      TILEDB_DENSE,
+      {"x", "y"},
+      {TILEDB_UINT64, TILEDB_UINT64},
+      {&x_domain[0], &y_domain[0]},
+      {&x_tile_extent, &y_tile_extent},
+      {"a"},
+      {TILEDB_FLOAT64},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      4096,
+      false);
+
+  // Add dimension label.
+  REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
+      ctx, array_schema, 0, "x", TILEDB_INCREASING_DATA, label_type));
+
+  // Set tile.
+  uint64_t tile_extent{8};
+  REQUIRE_TILEDB_OK(tiledb_array_schema_set_dimension_label_tile_extent(
+      ctx, array_schema, "x", TILEDB_UINT64, &tile_extent));
+
+  // Check array schema and number of dimension labels.
+  REQUIRE_TILEDB_OK(tiledb_array_schema_check(ctx, array_schema));
+  auto dim_label_num = array_schema->array_schema_->dim_label_num();
+  REQUIRE(dim_label_num == 1);
+
+  // Create array
+  auto array_name =
+      create_temporary_array("array_with_label_modified_tile", array_schema);
+  URI array_uri{array_name};
+  tiledb_array_schema_free(&array_schema);
+
+  // Get the URI for the dimension label array schema.
+  tiledb_array_schema_t* loaded_array_schema{nullptr};
+  REQUIRE_TILEDB_OK(
+      tiledb_array_schema_load(ctx, array_uri.c_str(), &loaded_array_schema));
+  auto dim_label_ref =
+      loaded_array_schema->array_schema_->dimension_label_reference("x");
+  auto dim_label_uri = dim_label_ref.uri(array_uri);
+
+  // Open the dimension label array schema and check the tile extent.
+  tiledb_array_schema_t* loaded_dim_label_array_schema{nullptr};
+  REQUIRE_TILEDB_OK(tiledb_array_schema_load(
+      ctx, dim_label_uri.c_str(), &loaded_dim_label_array_schema));
+  uint64_t loaded_tile_extent{
+      loaded_dim_label_array_schema->array_schema_->dimension_ptr(0)
+          ->tile_extent()
+          .rvalue_as<uint64_t>()};
+  REQUIRE(tile_extent == loaded_tile_extent);
+
+  // Free remaining resources
+  tiledb_array_schema_free(&loaded_array_schema);
+  tiledb_array_schema_free(&loaded_dim_label_array_schema);
+}
+
+TEST_CASE_METHOD(
+    DimensionLabelTestFixture,
     "Subarray with a fixed-length dimension label range",
     "[capi][subarray][DimensionLabel]") {
   auto array_name = create_multi_label_array("array1");

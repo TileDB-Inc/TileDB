@@ -126,7 +126,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_dimension_label_filter_list(
  *     TILEDB_INCREASING_LABELS,
  *     TILEDB_FLOAT64);
  * tiledb_array_schema_set_dimension_label_tile_extent(
- *     ctx, "label", TILEDB_INT64, &tile_extent);
+ *     ctx, array_schema, "label", TILEDB_INT64, &tile_extent);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -137,6 +137,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_dimension_label_filter_list(
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_set_dimension_label_tile_extent(
     tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
     const char* label_name,
     tiledb_datatype_t type,
     const void* tile_extent) TILEDB_NOEXCEPT;
