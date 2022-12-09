@@ -779,4 +779,9 @@ TEST_CASE(
     CHECK_THAT(d2_data,
                Catch::Matchers::Equals(std::vector<int>{1}));
   }
+
+  // Cleanup.
+  if (vfs.is_dir(array_uri)) {
+    vfs.remove_dir(array_uri);
+  }
 }
