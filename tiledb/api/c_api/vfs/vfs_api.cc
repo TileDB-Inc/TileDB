@@ -134,6 +134,7 @@ capi_return_t tiledb_vfs_create_dir(tiledb_vfs_t* vfs, const char* uri) {
 capi_return_t tiledb_vfs_is_dir(
     tiledb_vfs_t* vfs, const char* uri, int32_t* is_dir) {
   ensure_vfs_is_valid(vfs);
+  ensure_output_pointer_is_valid(is_dir);
 
   bool exists;
   throw_if_not_ok(vfs->is_dir(tiledb::sm::URI(uri), &exists));
