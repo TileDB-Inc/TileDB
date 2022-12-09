@@ -642,8 +642,6 @@ TEST_CASE(
 
   const char* out_str = nullptr;
   tiledb_layout_to_str(layout, &out_str);
-  std::cout << "DUP: " << duplicates << " layout " << std::string(out_str);
-
   std::string array_uri = "test_schema_evolution_query_condition";
 
   {
@@ -768,6 +766,8 @@ TEST_CASE(
     auto result_num = (int)query.result_buffer_elements()["a"].second;
     CHECK(result_num == 1);
     a_data.resize(result_num);
+    // should this be here?
+    b_data.resize(result_num);
     d1_data.resize(result_num);
     d2_data.resize(result_num);
     CHECK_THAT(a_data,
