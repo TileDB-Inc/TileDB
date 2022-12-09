@@ -30,6 +30,8 @@
  * Tests for AZURE API filesystem functions.
  */
 
+#include "tiledb/sm/filesystem/vfs_config.h"
+
 #ifdef HAVE_AZURE
 
 #include <test/support/tdb_catch.h>

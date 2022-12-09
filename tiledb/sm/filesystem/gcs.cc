@@ -30,6 +30,8 @@
  * This file implements the GCS class.
  */
 
+#include "tiledb/sm/filesystem/vfs_config.h"
+
 #ifdef HAVE_GCS
 
 #include <google/cloud/status.h>

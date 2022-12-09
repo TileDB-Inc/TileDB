@@ -38,6 +38,8 @@
  * This file includes implementations of HDFS filesystem functions.
  */
 
+#include "tiledb/sm/filesystem/vfs_config.h"
+
 #ifdef HAVE_HDFS
 
 #include "hdfs_filesystem.h"

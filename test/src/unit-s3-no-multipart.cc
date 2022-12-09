@@ -30,6 +30,8 @@
  * Tests for S3 API filesystem functions.
  */
 
+#include "tiledb/sm/filesystem/vfs_config.h"
+
 #ifdef HAVE_S3
 
 #include <test/support/tdb_catch.h>

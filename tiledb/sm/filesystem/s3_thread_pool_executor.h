@@ -33,6 +33,8 @@
 #ifndef TILEDB_S3_THREAD_POOL_EXECUTOR_H
 #define TILEDB_S3_THREAD_POOL_EXECUTOR_H
 
+#include "tiledb/sm/filesystem/vfs_config.h"
+
 #ifdef HAVE_S3
 
 #include <aws/core/utils/threading/Executor.h>

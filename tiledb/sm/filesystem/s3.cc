@@ -30,6 +30,8 @@
  * This file implements the S3 class.
  */
 
+#include "tiledb/sm/filesystem/vfs_config.h"
+
 #ifdef HAVE_S3
 
 #include "tiledb/common/common.h"

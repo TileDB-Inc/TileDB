@@ -33,6 +33,8 @@
 #ifndef TILEDB_S3_H
 #define TILEDB_S3_H
 
+#include "tiledb/sm/filesystem/vfs_config.h"
+
 #ifdef HAVE_S3
 #include "tiledb/common/common.h"
 #include "tiledb/common/rwlock.h"

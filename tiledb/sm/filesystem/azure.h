@@ -33,6 +33,8 @@
 #ifndef TILEDB_AZURE_H
 #define TILEDB_AZURE_H
 
+#include "tiledb/sm/filesystem/vfs_config.h"
+
 #ifdef HAVE_AZURE
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"

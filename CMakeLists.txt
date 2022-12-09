@@ -371,6 +371,37 @@ set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER_DIR}/${TILEDB_EXPORT_HEADER_NAM
 set(TILEDB_EXPORT_HEADER_LOCALINSTALL_PATH "tiledb/api/c_api/${TILEDB_EXPORT_HEADER_NAME}")
 
 ##################################
+# VFS Config Header
+##################################
+# The VFS configuration header selects which block stores are available
+# as compile time options. This prevents the need for having to ensure
+# that compile options are set correctly for every compilation that needs
+# them.
+
+if (TILEDB_AZURE)
+  set(HAVE_AZURE ON)
+endif()
+
+if (TILEDB_GCS)
+  set(HAVE_GCS ON)
+endif()
+
+if (TILEDB_HDFS)
+  set(HAVE_HDFS ON)
+endif()
+
+if (TILEDB_S3)
+  set(HAVE_S3 ON)
+endif()
+
+configure_file (
+  "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/filesystem/vfs_config.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/tiledb/sm/filesystem/vfs_config.h"
+)
+
+include_directories("${CMAKE_CURRENT_BINARY_DIR}")
+
+##################################
 # Local install
 ##################################
 #

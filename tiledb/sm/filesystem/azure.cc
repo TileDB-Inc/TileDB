@@ -30,6 +30,8 @@
  * This file implements the Azure class.
  */
 
+#include "tiledb/sm/filesystem/vfs_config.h"
+
 #ifdef HAVE_AZURE
 
 #if !defined(NOMINMAX)

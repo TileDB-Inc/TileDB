@@ -30,6 +30,8 @@
  * Tests for GCS API filesystem functions.
  */
 
+#include "tiledb/sm/filesystem/vfs_config.h"
+
 #ifdef HAVE_GCS
 
 #include <test/support/tdb_catch.h>

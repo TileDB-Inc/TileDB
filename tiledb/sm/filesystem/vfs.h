@@ -47,6 +47,7 @@
 #include "tiledb/sm/cache/lru_cache.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/mem_filesystem.h"
+#include "tiledb/sm/filesystem/vfs_config.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/stats/stats.h"
 #include "uri.h"

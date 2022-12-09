@@ -33,6 +33,8 @@
 #ifndef TILEDB_HDFS_FILESYSTEM_H
 #define TILEDB_HDFS_FILESYSTEM_H
 
+#include "tiledb/sm/filesystem/vfs_config.h"
+
 #ifdef HAVE_HDFS
 
 #include <sys/types.h>

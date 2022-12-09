@@ -30,6 +30,8 @@
  * This file defines the S3ThreadPoolExecutor class.
  */
 
+#include "tiledb/sm/filesystem/vfs_config.h"
+
 #ifdef HAVE_S3
 
 #include <cassert>

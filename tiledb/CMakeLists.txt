@@ -520,7 +520,6 @@ if (TILEDB_S3)
       AWSSDK::aws-c-common
       AWSSDK::aws-cpp-sdk-identity-management
       AWSSDK::aws-cpp-sdk-sts)
-  add_definitions(-DHAVE_S3)
 endif()
 
 # Azure dependencies
@@ -531,7 +530,6 @@ if (TILEDB_AZURE)
     INTERFACE
       AzureSDK::AzureSDK
   )
-  add_definitions(-DHAVE_AZURE)
 
   if(MSVC)
     if (TILEDB_CURL_EP_BUILT)
@@ -550,7 +548,6 @@ if (TILEDB_GCS)
     INTERFACE
        storage_client
   )
-  add_definitions(-DHAVE_GCS)
 
   # work around for GCS finding the shared version of zlib: we will see the Zlib::Zlib
   # transitive linkage later, and we can use the correct version there.
@@ -588,7 +585,6 @@ if (TILEDB_HDFS)
     message(FATAL_ERROR "TileDB HDFS backend is not supported for Windows builds currently")
   else()
     message(STATUS "The TileDB library is compiled with HDFS support.")
-    add_definitions(-DHAVE_HDFS)
   endif()
 endif()
 

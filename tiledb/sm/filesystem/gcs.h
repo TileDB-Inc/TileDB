@@ -33,6 +33,8 @@
 #ifndef TILEDB_GCS_H
 #define TILEDB_GCS_H
 
+#include "tiledb/sm/filesystem/vfs_config.h"
+
 #ifdef HAVE_GCS
 
 #include <google/cloud/storage/client.h>
