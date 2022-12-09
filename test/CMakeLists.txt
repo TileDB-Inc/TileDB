@@ -310,27 +310,14 @@ if (TILEDB_HDFS)
       LibJVM::libjvm
       LibJVM::libjsig
   )
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_HDFS)
   target_include_directories(tiledb_unit PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
     )
 endif()
 
-if (TILEDB_S3)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_S3)
-endif()
-
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
-endif()
-
-if (TILEDB_AZURE)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_AZURE)
-endif()
-
-if (TILEDB_GCS)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_GCS)
 endif()
 
 if (TILEDB_SERIALIZATION)
