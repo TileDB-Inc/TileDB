@@ -76,15 +76,16 @@ void write_image(
   if (!info)
     abort();
 
-  #if defined(_MSC_VER)
-  #pragma warning ( push )
-  #pragma warning ( disable : 4611 ) // "interaction between '_setjmp' and C++ object destruction is non-portable"
-  #endif
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4611)  // "interaction between '_setjmp' and C++
+                                 // object destruction is non-portable"
+#endif
   if (setjmp(png_jmpbuf(png)))
     abort();
-  #if defined (_MSC_VER)
-  #pragma warning ( pop )
-  #endif
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
   png_init_io(png, fp);
 
@@ -177,8 +178,7 @@ std::vector<uint8_t> create_image(
 
 // These templates will not be used if built with TILEDB_WEBP=OFF
 template <typename T>
-[[maybe_unused]] static Domain create_domain(
-    const Context& ctx, uint8_t format) {
+[[maybe_unused]] Domain create_domain(const Context& ctx, uint8_t format) {
   T height = GENERATE(131, 217, 1003);
   T width = GENERATE(103, 277, 1001);
   uint8_t pixel_depth = format < TILEDB_WEBP_RGBA ? 3 : 4;

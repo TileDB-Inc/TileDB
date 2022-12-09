@@ -258,8 +258,10 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Are dimensions var sized. */
   std::vector<bool> is_dim_var_size_;
 
-  /** Reverse sorted vector, per fragments, of tiles ranges in the subarray, if
-   * set. */
+  /**
+   * Reverse sorted vector, per fragments, of tiles ranges in the subarray, if
+   * set.
+   */
   std::vector<std::vector<std::pair<uint64_t, uint64_t>>> result_tile_ranges_;
 
   /** Total memory budget. */

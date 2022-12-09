@@ -87,9 +87,13 @@ class WhiteboxConsistencyController : public ConsistencyController {
     return ConsistencyController::array_registry_.size();
   }
 
+  /*
+   * Warning: This does not clean up leftovers from previous failed runs.
+   * Manual intervention may be required in the build tree.
+   */
   tdb_unique_ptr<Array> create_array(const URI uri, StorageManager* sm) {
     // Create Domain
-    std::vector<uint64_t> dim_dom = {0, 1};
+    uint64_t dim_dom[2]{0, 1};
     uint64_t tile_extent = 1;
     shared_ptr<Dimension> dim =
         make_shared<Dimension>(HERE(), std::string("dim"), Datatype::UINT64);

@@ -386,8 +386,13 @@ Status SparseIndexReaderBase::load_initial_data() {
   }
 
   qc_loaded_attr_names_.reserve(qc_loaded_attr_names_set_.size());
+  std::vector<std::string> var_size_to_load;
   for (auto& name : qc_loaded_attr_names_set_) {
     qc_loaded_attr_names_.emplace_back(name);
+
+    if (array_schema_.var_size(name)) {
+      var_size_to_load.emplace_back(name);
+    }
   }
 
   // Make sure there is enough space for tiles data.
@@ -430,12 +435,13 @@ Status SparseIndexReaderBase::load_initial_data() {
   }
 
   // Compute tile offsets to load and var size to load for attributes.
-  std::vector<std::string> var_size_to_load;
-  std::vector<std::string> attr_tile_offsets_to_load;
+  std::vector<std::string> attr_tile_offsets_to_load(qc_loaded_attr_names_);
   for (auto& it : buffers_) {
     const auto& name = it.first;
-    if (array_schema_.is_dim(name))
+    if (array_schema_.is_dim(name) ||
+        qc_loaded_attr_names_set_.count(name) != 0) {
       continue;
+    }
 
     attr_tile_offsets_to_load.emplace_back(name);
 

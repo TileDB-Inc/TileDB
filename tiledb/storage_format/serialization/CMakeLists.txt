@@ -24,19 +24,4 @@
 # THE SOFTWARE.
 
 include(common NO_POLICY_SCOPE)
-
-if (TILEDB_TESTS)
-    add_executable(unit_serializers EXCLUDE_FROM_ALL)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_serializers PUBLIC Catch2::Catch2WithMain)
-    target_include_directories(unit_serializers PUBLIC ${TILEDB_SOURCE_ROOT}/test/support)
-
-    # Sources for tests
-    target_sources(unit_serializers PUBLIC test/main.cc test/unit_serializers.cc)
-
-    add_test(
-        NAME "unit_serializers"
-        COMMAND $<TARGET_FILE:unit_serializers>
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-endif()
+add_test_subdirectory()

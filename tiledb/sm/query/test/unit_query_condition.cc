@@ -1182,8 +1182,8 @@ void test_apply_cells<char*>(
   }
 
   // Fetch the fill value.
-  const void* fill_value;
-  uint64_t fill_value_size;
+  const void* fill_value{nullptr};
+  uint64_t fill_value_size{0};
   REQUIRE(array_schema.attribute(field_name)
               ->get_fill_value(&fill_value, &fill_value_size)
               .ok());
@@ -1323,8 +1323,8 @@ void test_apply_cells(
   }
 
   // Fetch the fill value.
-  const void* fill_value;
-  uint64_t fill_value_size;
+  const void* fill_value{nullptr};
+  uint64_t fill_value_size{0};
   REQUIRE(array_schema.attribute(field_name)
               ->get_fill_value(&fill_value, &fill_value_size)
               .ok());
@@ -4211,7 +4211,7 @@ TEST_CASE(
 
   // Populate the data tile.
   std::vector<float> values = {
-      3.4, 1.3, 2.2, 4.5, 2.8, 2.1, 1.7, 3.3, 1.9, 4.2};
+      3.4f, 1.3f, 2.2f, 4.5f, 2.8f, 2.1f, 1.7f, 3.3f, 1.9f, 4.2f};
   REQUIRE(tile->write(values.data(), 0, cells * sizeof(float)).ok());
 
   Tile* const tile_validity = &tile_tuple->validity_tile();

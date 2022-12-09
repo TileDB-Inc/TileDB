@@ -168,6 +168,9 @@ class Config {
   /** If `true`, bypass partitioning on estimated result sizes. */
   static const std::string SM_SKIP_EST_SIZE_PARTITIONING;
 
+  /** If `true`, bypass partitioning budget check for unary ranges. */
+  static const std::string SM_SKIP_UNARY_PARTITIONING_BUDGET_CHECK;
+
   /**
    * The maximum memory budget for producing the result (in bytes)
    * for a fixed-sized attribute or the offsets of a var-sized attribute.
