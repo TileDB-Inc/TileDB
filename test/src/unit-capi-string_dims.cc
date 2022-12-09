@@ -380,7 +380,7 @@ void StringDimsFx::write_array_1d(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_, false);
+      ctx_, array_name, &query, server_buffers_, serialize_);
   CHECK(rc == TILEDB_OK);
 
   // Close array
