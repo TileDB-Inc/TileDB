@@ -264,12 +264,12 @@ TEST_CASE(
     "[api_v3]") {
 
   auto dims = v3::Dimensions<int, int>()
-    .set<0>("rows", {1, 20}, 4)
-    .set<1>("cols", {1, 20}, 4);
+    .set<0, int>("rows", {1, 20}, 4)
+    .set<1, int>("cols", {1, 20}, 4);
 
-  // auto attrs = v3::Attributes<int, float>()
-  //   .set<0>("a", -1)
-  //   .set<1>("b", -1.0);
+  auto attrs = v3::Attributes<int, float>()
+    .set<0, int>("a", -1)
+    .set<1, float>("b", -1.0);
 
 //   auto array = v3::SparseArray(dims, attrs)
 //     .set_order(TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR)
@@ -281,7 +281,7 @@ TEST_CASE(
 //       return {a, b};
 //     });
 
-  std::cerr << "Array Type: " << array.array_type() << std::endl;
+  //std::cerr << "Array Type: " << array.array_type() << std::endl;
 }
 
 TEST_CASE(

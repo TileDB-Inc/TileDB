@@ -33,6 +33,7 @@
 #ifndef TILEDB_TEST_ARRAY_API_H
 #define TILEDB_TEST_ARRAY_API_H
 
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -66,122 +67,159 @@ schema.add_attribute(attr_b);
 Array::create(array_name, schema);
 */
 
-class BaseDimension {
+template<typename T>
+class Dimension {
   public:
-    virtual ~BaseDimension() = default;
-    virtual void add_dimension(tiledb::Context& ctx) = 0;
+    Dimension() {
+    }
+
+  std::optional<std::string> name;
+  std::optional<std::array<T, 2>> range;
+  std::optional<T> extent;
+};
+
+template<typename... Ts>
+class Dimensions {
+  public:
+    Dimensions() {
+    }
+
+    template<size_t I, typename T>
+    Dimensions set(
+        std::string name,
+        std::initializer_list<T> range,
+        std::optional<T> extent = std::nullopt) {
+      if(range.size() != 2) {
+        throw std::logic_error(
+            "range size must be 2, not " + std::to_string(range.size()));
+      }
+      std::array<T, 2> tmp;
+      tmp[0] = *range.begin();
+      tmp[1] = *(range.begin() + 1);
+      return set<I, T>(name, tmp, extent);
+    }
+
+    template<size_t I, typename T>
+    Dimensions set(
+        std::string name,
+        std::optional<std::array<T, 2>> range = std::nullopt,
+        std::optional<T> extent = std::nullopt) {
+
+      std::get<I>(elems_).name = name;
+      std::get<I>(elems_).range = range;
+      std::get<I>(elems_).extent = extent;
+      num_elems_ = std::max(num_elems_, I);
+      return *this;
+    }
+
+  private:
+    size_t num_elems_;
+    std::tuple<Dimension<Ts>...> elems_;
 };
 
 template<typename T>
-class Dimension : public BaseDimension {
+class Attribute {
   public:
-    Dimension(std::string name, std::pair<T, T> range, T extent)
-      : name_(name)
-      , range_(range)
-      , extent_(extent) {
+    Attribute() {
     }
 
-    void add_dimension(tiledb::Context&) {}
-
-  private:
-    std::string name_;
-    std::pair<T, T> range_;
-    T extent_;
+  std::optional<std::string> name;
+  std::optional<T> fill_value;
+  std::optional<bool> nullable;
 };
 
-class BaseAttribute {
+template<typename... Ts>
+class Attributes {
   public:
-    virtual ~BaseAttribute() = default;
-    virtual void add_attribute(tiledb::Context& ctx) = 0;
-};
-
-template<typename T>
-class Attribute : public BaseAttribute {
-  public:
-    Attribute(std::string name)
-      : name_(name) {
+    Attributes() {
     }
 
-    Attribute(std::string name, T fill_val)
-      : name_(name)
-      , fill_val_(fill_val) {
-    }
+    template<size_t I, typename T>
+    Attributes set(
+        std::string name,
+        std::optional<T> fill_value = std::nullopt,
+        std::optional<bool> nullable = std::nullopt) {
 
-    void add_attribute(Context&) {}
-
-  private:
-    std::string name_;
-    std::optional<T> fill_val_;
-};
-
-template<class SubClass>
-class Array {
-  public:
-    virtual ~Array() = default;
-
-    void set_allow_dups(bool allow_dups) {
-      allow_dups_ = allow_dups;
-    }
-
-    template<typename T>
-    SubClass dim(const std::string name, std::pair<T, T> range, T extent) {
-      dims_.push_back(std::make_shared<Dimension<T>>(name, range, extent));
-      return static_cast<SubClass&>(*this);
-    }
-
-    template<typename T>
-    SubClass attr(const std::string name) {
-      attrs_.push_back(std::make_shared<Attribute<T>>(name));
-      return static_cast<SubClass&>(*this);;
-    }
-
-    template<typename T>
-    SubClass attr(const std::string name, T fill_val) {
-      attrs_.push_back(std::make_shared<Attribute<T>>(name, fill_val));
-      return static_cast<SubClass&>(*this);
-    }
-
-  protected:
-    Array() = default;
-
-  private:
-    bool allow_dups_ = false;
-
-    std::vector<std::shared_ptr<BaseDimension>> dims_;
-    std::vector<std::shared_ptr<BaseAttribute>> attrs_;
-};
-
-
-class DenseArray : public Array<DenseArray> {
-  public:
-    DenseArray() : Array() {}
-
-    tiledb_array_type_t array_type() {
-      return TILEDB_DENSE;
+      std::get<I>(elems_).name = name;
+      std::get<I>(elems_).fill_value = fill_value;
+      std::get<I>(elems_).nullable = nullable;
+      num_elems_ = std::max(num_elems_, I);
+      return *this;
     }
 
   private:
-
+    size_t num_elems_;
+    std::tuple<Attribute<Ts>...> elems_;
 };
 
-class SparseArray : public Array<SparseArray> {
-  public:
-    SparseArray()
-      : Array()
-      , capacity_(1024) {
-    }
-
-    void set_capacity(uint64_t capacity) {
-      capacity_ = capacity;
-    }
-
-    tiledb_array_type_t array_type() {
-      return TILEDB_SPARSE;
-    }
-
-  private:
-    uint64_t capacity_;
-};
+// template<class SubClass>
+// class Array {
+//   public:
+//     virtual ~Array() = default;
+//
+//     void set_allow_dups(bool allow_dups) {
+//       allow_dups_ = allow_dups;
+//     }
+//
+//     template<typename T>
+//     SubClass dim(const std::string name, std::pair<T, T> range, T extent) {
+//       dims_.push_back(std::make_shared<Dimension<T>>(name, range, extent));
+//       return static_cast<SubClass&>(*this);
+//     }
+//
+//     template<typename T>
+//     SubClass attr(const std::string name) {
+//       attrs_.push_back(std::make_shared<Attribute<T>>(name));
+//       return static_cast<SubClass&>(*this);;
+//     }
+//
+//     template<typename T>
+//     SubClass attr(const std::string name, T fill_val) {
+//       attrs_.push_back(std::make_shared<Attribute<T>>(name, fill_val));
+//       return static_cast<SubClass&>(*this);
+//     }
+//
+//   protected:
+//     Array() = default;
+//
+//   private:
+//     bool allow_dups_ = false;
+//
+//     std::vector<std::shared_ptr<BaseDimension>> dims_;
+//     std::vector<std::shared_ptr<BaseAttribute>> attrs_;
+// };
+//
+//
+// class DenseArray : public Array<DenseArray> {
+//   public:
+//     DenseArray() : Array() {}
+//
+//     tiledb_array_type_t array_type() {
+//       return TILEDB_DENSE;
+//     }
+//
+//   private:
+//
+// };
+//
+// class SparseArray : public Array<SparseArray> {
+//   public:
+//     SparseArray()
+//       : Array()
+//       , capacity_(1024) {
+//     }
+//
+//     void set_capacity(uint64_t capacity) {
+//       capacity_ = capacity;
+//     }
+//
+//     tiledb_array_type_t array_type() {
+//       return TILEDB_SPARSE;
+//     }
+//
+//   private:
+//     uint64_t capacity_;
+// };
 
 
 }  // namespace tiledb::test
