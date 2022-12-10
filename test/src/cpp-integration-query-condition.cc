@@ -37,10 +37,12 @@
 #include <vector>
 
 #include <test/support/tdb_catch.h>
+#include <test/support/src/api_v3.h>
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb;
+using namespace tiledb::test::api;
 
 int num_rows = 20;
 int a_fill_value = -1;
@@ -49,6 +51,11 @@ const std::string array_name = "cpp_integration_query_condition_array";
 
 inline int index_from_row_col(int r, int c) {
   return ((r - 1) * num_rows) + (c - 1);
+}
+
+float
+rand_float() {
+  return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 }
 
 /**
@@ -251,6 +258,31 @@ struct TestParams {
   bool set_dups_;
   bool legacy_;
 };
+
+TEST_CASE(
+    "Testing the array_api interface",
+    "[api_v3]") {
+
+  auto dims = v3::Dimensions<int, int>()
+    .set<0>("rows", {1, 20}, 4)
+    .set<1>("cols", {1, 20}, 4);
+
+  // auto attrs = v3::Attributes<int, float>()
+  //   .set<0>("a", -1)
+  //   .set<1>("b", -1.0);
+
+//   auto array = v3::SparseArray(dims, attrs)
+//     .set_order(TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR)
+//     .set_allow_dups(true)
+//     .set_capacity(16)
+//     .create(ctx, [](std::tuple<int, int>) -> std::tuple<int, float> {
+//       int a = rand_float() * 10;
+//       float b = rand_float() * 100.0;
+//       return {a, b};
+//     });
+
+  std::cerr << "Array Type: " << array.array_type() << std::endl;
+}
 
 TEST_CASE(
     "Testing read query with basic QC, with no range.",
