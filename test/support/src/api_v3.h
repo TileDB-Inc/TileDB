@@ -35,6 +35,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <tuple>
@@ -81,7 +82,9 @@ class Dimension {
 template<typename... Ts>
 class Dimensions {
   public:
-    Dimensions() {
+    typedef std::tuple<Ts...> coords_type;
+
+    Dimensions() : size_(0) {
     }
 
     template<size_t I, typename T>
@@ -93,9 +96,10 @@ class Dimensions {
         throw std::logic_error(
             "range size must be 2, not " + std::to_string(range.size()));
       }
+      std::vector<T> v(range);
       std::array<T, 2> tmp;
-      tmp[0] = *range.begin();
-      tmp[1] = *(range.begin() + 1);
+      tmp[0] = v[0];
+      tmp[1] = v[1];
       return set<I, T>(name, tmp, extent);
     }
 
@@ -108,12 +112,26 @@ class Dimensions {
       std::get<I>(elems_).name = name;
       std::get<I>(elems_).range = range;
       std::get<I>(elems_).extent = extent;
-      num_elems_ = std::max(num_elems_, I);
+      size_ = std::max(size_, I);
       return *this;
     }
 
+    // template <size_t I = 0, typename... Ts>
+    // contexpr void generate(std::tuple<Ts...> elems) {
+    //   if constexpr (I == sizeof...(Ts)) {
+    //     return;
+    //   } else {
+    //     // Going for next element.
+    //     generate<I + 1>(elems);
+    //   }
+    // }
+
+    size_t size() {
+      return size_ + 1;
+    }
+
   private:
-    size_t num_elems_;
+    size_t size_;
     std::tuple<Dimension<Ts>...> elems_;
 };
 
@@ -131,7 +149,9 @@ class Attribute {
 template<typename... Ts>
 class Attributes {
   public:
-    Attributes() {
+    typedef std::tuple<Ts...> cell_type;
+
+    Attributes() : size_(0) {
     }
 
     template<size_t I, typename T>
@@ -143,53 +163,48 @@ class Attributes {
       std::get<I>(elems_).name = name;
       std::get<I>(elems_).fill_value = fill_value;
       std::get<I>(elems_).nullable = nullable;
-      num_elems_ = std::max(num_elems_, I);
+      size_ = std::max(size_, I);
       return *this;
     }
 
+    size_t size() {
+      return size_ + 1;
+    }
+
   private:
-    size_t num_elems_;
+    size_t size_;
     std::tuple<Attribute<Ts>...> elems_;
 };
 
-// template<class SubClass>
-// class Array {
-//   public:
-//     virtual ~Array() = default;
-//
-//     void set_allow_dups(bool allow_dups) {
-//       allow_dups_ = allow_dups;
-//     }
-//
-//     template<typename T>
-//     SubClass dim(const std::string name, std::pair<T, T> range, T extent) {
-//       dims_.push_back(std::make_shared<Dimension<T>>(name, range, extent));
-//       return static_cast<SubClass&>(*this);
-//     }
-//
-//     template<typename T>
-//     SubClass attr(const std::string name) {
-//       attrs_.push_back(std::make_shared<Attribute<T>>(name));
-//       return static_cast<SubClass&>(*this);;
-//     }
-//
-//     template<typename T>
-//     SubClass attr(const std::string name, T fill_val) {
-//       attrs_.push_back(std::make_shared<Attribute<T>>(name, fill_val));
-//       return static_cast<SubClass&>(*this);
-//     }
-//
-//   protected:
-//     Array() = default;
-//
-//   private:
-//     bool allow_dups_ = false;
-//
-//     std::vector<std::shared_ptr<BaseDimension>> dims_;
-//     std::vector<std::shared_ptr<BaseAttribute>> attrs_;
-// };
-//
-//
+template<class SubClass>
+class Array {
+  public:
+    virtual ~Array() = default;
+
+    SubClass set_allow_dups(bool allow_dups) {
+      allow_dups_ = allow_dups;
+      return *static_cast<SubClass*>(this);
+    }
+
+    SubClass set_order(int tiles, std::optional<int> cells = std::nullopt) {
+      order_[0] = tiles;
+      if (cells.has_value()) {
+        order_[1] = *cells;
+      }
+      return *static_cast<SubClass*>(this);
+    }
+
+  protected:
+    Array()
+      : allow_dups_(false)
+      , order_({TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}) {
+    }
+
+  private:
+    bool allow_dups_ = false;
+    std::array<int, 2> order_ = {TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR};
+};
+
 // class DenseArray : public Array<DenseArray> {
 //   public:
 //     DenseArray() : Array() {}
@@ -201,25 +216,40 @@ class Attributes {
 //   private:
 //
 // };
-//
-// class SparseArray : public Array<SparseArray> {
-//   public:
-//     SparseArray()
-//       : Array()
-//       , capacity_(1024) {
-//     }
-//
-//     void set_capacity(uint64_t capacity) {
-//       capacity_ = capacity;
-//     }
-//
-//     tiledb_array_type_t array_type() {
-//       return TILEDB_SPARSE;
-//     }
-//
-//   private:
-//     uint64_t capacity_;
-// };
+
+template<class DimClass, class AttrClass>
+class SparseArray : public Array<SparseArray<DimClass, AttrClass>> {
+  public:
+    typedef typename DimClass::coords_type coords_type;
+    typedef typename AttrClass::cell_type cell_type;
+    typedef SparseArray<DimClass, AttrClass> ArrayClass;
+
+    explicit SparseArray<DimClass, AttrClass>(DimClass dims, AttrClass attrs)
+      : Array<SparseArray<DimClass, AttrClass>>()
+      , dims_(dims)
+      , attrs_(attrs)
+      , capacity_(1024) {
+    }
+
+    ArrayClass set_capacity(uint64_t capacity) {
+      capacity_ = capacity;
+      return *this;
+    }
+
+    DimClass dims() {
+      return dims_;
+    }
+
+    AttrClass attrs() {
+      return attrs_;
+    }
+
+  private:
+    DimClass dims_;
+    AttrClass attrs_;
+
+    uint64_t capacity_;
+};
 
 
 }  // namespace tiledb::test

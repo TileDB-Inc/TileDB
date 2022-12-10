@@ -271,15 +271,19 @@ TEST_CASE(
     .set<0, int>("a", -1)
     .set<1, float>("b", -1.0);
 
-//   auto array = v3::SparseArray(dims, attrs)
-//     .set_order(TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR)
-//     .set_allow_dups(true)
-//     .set_capacity(16)
-//     .create(ctx, [](std::tuple<int, int>) -> std::tuple<int, float> {
-//       int a = rand_float() * 10;
-//       float b = rand_float() * 100.0;
-//       return {a, b};
-//     });
+  auto array = v3::SparseArray(dims, attrs)
+    .set_order(TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR)
+    .set_allow_dups(true)
+    .set_capacity(16);
+    // .create(ctx, [](std::tuple<int, int>) -> std::tuple<int, float> {
+    //   int a = rand_float() * 10;
+    //   float b = rand_float() * 100.0;
+    //   return {a, b};
+    // });
+
+  v3::generate(array, [](decltype(array)::coords_type) -> decltype(array)::cell_type {
+    return std::tuple(5, 1.5);
+  });
 
   //std::cerr << "Array Type: " << array.array_type() << std::endl;
 }
