@@ -43,6 +43,7 @@ Configuration:
     --disable-tests                 disables building the TileDB tests
     --disable-stats                 disables internal TileDB statistics
     --disable-avx2                  disables use of AVX2 instructions
+    --disable-webp                  disables building of webp library and linkage test
     --enable-static-tiledb          enables building TileDB as a static library
     --enable-sanitizer=SAN          enable sanitizer (clang only)
                                     (address|memory|leak|thread|undefined)
@@ -60,7 +61,6 @@ Configuration:
     --enable-ccache                 enables use of ccache (if present)
     --enable-arrow-tests            enables the compilation of the arrow adapter unit tests
     --enable-_crc32                  enables building of crc32 library and linkage test
-    --enable-webp                   enables building of webp library and linkage test
     --enable-abseil                 enables building of abseil library and linkage test
     --enable-experimental-features  enables experimental TileDB features
     --enable=arg1,arg2...           same as "--enable-arg1 --enable-arg2 ..."
@@ -105,7 +105,7 @@ tiledb_ccache="OFF"
 tiledb_arrow_tests="OFF"
 tiledb_experimental_features="OFF"
 tiledb_build_crc32="OFF"
-tiledb_build_webp="OFF"
+tiledb_build_webp="ON"
 tiledb_build_abseil="OFF"
 enable_multiple=""
 while test $# != 0; do
@@ -120,6 +120,7 @@ while test $# != 0; do
     --disable-cpp-api) tiledb_cpp_api="OFF";;
     --disable-stats) tiledb_stats="OFF";;
     --disable-avx2) tiledb_disable_avx2="-DCOMPILER_SUPPORTS_AVX2=FALSE";;
+    --disable-webp) tiledb_build_webp="OFF";;
     --enable-assertions) tiledb_assertions="ON";;
     --enable-debug) build_type="Debug";;
     --enable-release-symbols) build_type="RelWithDebInfo";;
@@ -137,7 +138,6 @@ while test $# != 0; do
     --enable-ccache) tiledb_ccache="ON";;
     --enable-arrow-tests) tiledb_arrow_tests="ON";;
     --enable-_crc32) tiledb_build_crc32="ON";;
-    --enable-webp) tiledb_build_webp="ON";;
     --enable-abseil) tiledb_build_abseil="ON";;
     --enable-experimental-features) tiledb_experimental_features="ON";;
     --enable=*) s=`arg "$1"`
@@ -165,7 +165,6 @@ for en in "${enables[@]}"; do
     ccache) tiledb_ccache="ON";;
     arrow-tests) tiledb_arrow_tests="ON";;
     _crc32) tiledb_build_crc32="ON";;
-    webp) tiledb_build_webp="ON";;
     abseil) tiledb_build_abseil="ON";;
     hdfs) tiledb_hdfs="ON";;
     static-tiledb) tiledb_static="ON";;

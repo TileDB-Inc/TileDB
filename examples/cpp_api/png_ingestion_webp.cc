@@ -361,7 +361,7 @@ int main(int argc, char** argv) {
               << "Ingests `input.png` into a new array `my_array_name` and "
                  "produces a new output image `output.png`."
               << std::endl
-              << "`quality_factor` should be a float in the range [0.0, 200.0] "
+              << "`quality_factor` should be a float in the range [0.0, 100.0] "
                  "and is used to adjust quality of lossy compression. If no "
                  "`quality_factor` is given lossless compression will be used.";
     return 1;
