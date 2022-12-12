@@ -57,11 +57,11 @@ Enables building TileDB CLI tools (experimental)
 .PARAMETER EnableExperimentalFeatures
 Enables building TileDB Experimental features
 
-.PARAMETER EnableWebP
-Enables building of WebP and simple linkage test
-
 .PARAMETER EnableAbseil
 Enables building of Abseil and simple linkage test
+
+.PARAMETER DisableWebP
+Disables building of WebP and simple linkage test
 
 .Parameter DisableWerror
 Disable use of warnings-as-errors (/WX) during build.
@@ -102,10 +102,10 @@ Param(
     [switch]$EnableStaticTileDB,
     [switch]$EnableTools,
     [switch]$EnableExperimentalFeatures,
-    [switch]$EnableWebP,
     [switch]$EnableAbseil,
     [switch]$EnableBuildDeps,
     [switch]$_EnableCrc32,
+    [switch]$DisableWebP,
     [switch]$DisableWerror,
     [switch]$DisableCppApi,
     [switch]$DisableTests,
@@ -193,6 +193,11 @@ if ($DisableStats.IsPresent) {
     $Stats = "OFF"
 }
 
+$BuildWebP="ON"
+if ($DisableWebP.IsPresent) {
+  $BuildWebP="OFF"
+}
+
 $TileDBStatic = "OFF";
 if ($EnableStaticTileDB.IsPresent) {
     $TileDBStatic = "ON"
@@ -206,11 +211,6 @@ if ($EnableTools.IsPresent) {
 $TileDBExperimentalFeatures = "OFF"
 if ($EnableExperimentalFeatures.IsPresent) {
     $TileDBExperimentalFeatures = "ON"
-}
-
-$BuildWebP="OFF"
-if ($EnableWebP.IsPresent) {
-  $BuildWebP="ON"
 }
 
 $BuildAbseil="OFF"
