@@ -274,7 +274,7 @@ Status FloatScalingFilter::set_option_impl(
       // The scaling parameter should be not a NaN, infinity, or zero.
       auto val = *(double*)value;
       auto classify = std::fpclassify(val);
-      if (classify == FP_INFINITE || classify == FP_NAN || classify == FP_ZERO) {
+      if (classify != FP_NORMAL) {
         return LOG_STATUS(
           Status_FilterError("Float scaling filter error; invalid scale value."));
       }
