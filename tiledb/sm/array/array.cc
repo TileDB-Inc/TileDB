@@ -489,8 +489,7 @@ Status Array::close() {
       array_schema_latest_.reset();
     } else {
       array_schema_latest_.reset();
-      if (
-          query_type_ == QueryType::WRITE ||
+      if (query_type_ == QueryType::WRITE ||
           query_type_ == QueryType::MODIFY_EXCLUSIVE) {
         st = storage_manager_->store_metadata(
             array_uri_, *encryption_key_.get(), &metadata_);
@@ -498,8 +497,7 @@ Status Array::close() {
           throw StatusException(st);
         }
       } else if (
-          query_type_ != QueryType::READ &&
-          query_type_ != QueryType::DELETE &&
+          query_type_ != QueryType::READ && query_type_ != QueryType::DELETE &&
           query_type_ != QueryType::UPDATE) {
         throw std::logic_error("Error closing array; Unsupported query type.");
       }

@@ -67,8 +67,8 @@ class BoundedBufferQ {
   /**
    * Copy Constructor
    */
-  BoundedBufferQ(BoundedBufferQ&& rhs)
- noexcept       : max_size_(rhs.max_size_)
+  BoundedBufferQ(BoundedBufferQ&& rhs) noexcept
+      : max_size_(rhs.max_size_)
       , queue_(std::move(rhs.queue_))
       , draining_{rhs.draining_.load()}
       , shutdown_{rhs.shutdown_.load()} {

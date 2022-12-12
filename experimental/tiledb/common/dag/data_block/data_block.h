@@ -143,7 +143,7 @@ class DataBlockImpl {
    * NOTE: Copies are shallow.
    */
   DataBlockImpl(const DataBlockImpl&) = default;
-  DataBlockImpl(DataBlockImpl&&)  noexcept = default;
+  DataBlockImpl(DataBlockImpl&&) noexcept = default;
   //  DataBlockImpl(DataBlockImpl&& rhs) {
   //    if (storage_.use_count() == 0) {
   //      rhs.size_ = 0;
@@ -152,7 +152,7 @@ class DataBlockImpl {
   //    }
   //  }
   DataBlockImpl& operator=(const DataBlockImpl&) = default;
-  DataBlockImpl& operator=(DataBlockImpl&&)  noexcept = default;
+  DataBlockImpl& operator=(DataBlockImpl&&) noexcept = default;
 
   /**
    * Various type aliases expected for a random-access range.

@@ -195,9 +195,9 @@ class join {
 
   // Default copy constructor and assignment operators are fine.
   join(const join&) = default;
-  join(join&&)  noexcept = default;
+  join(join&&) noexcept = default;
   join& operator=(const join&) = default;
-  join& operator=(join&&)  noexcept = default;
+  join& operator=(join&&) noexcept = default;
 
   /**
    * Iterator class for the joined data structure.  Currently it is a (legacy)
@@ -278,7 +278,7 @@ class join {
 
     join_iterator() = default;
     join_iterator(const join_iterator&) = default;
-    join_iterator(join_iterator&&)  noexcept = default;
+    join_iterator(join_iterator&&) noexcept = default;
 
     template <bool is_const_ = is_const, class = std::enable_if<is_const_>>
     explicit join_iterator(const join_iterator<false>& rhs)
@@ -289,7 +289,7 @@ class join {
     }
 
     join_iterator& operator=(const join_iterator&) = default;
-    join_iterator& operator=(join_iterator&&)  noexcept = default;
+    join_iterator& operator=(join_iterator&&) noexcept = default;
 
     template <bool is_const_ = is_const, class = std::enable_if<is_const_>>
     join_iterator& operator=(
