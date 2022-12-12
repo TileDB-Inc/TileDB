@@ -1076,20 +1076,6 @@ bool Array::serialize_metadata() const {
   return serialize_metadata_array_open;
 }
 
-bool Array::use_refactored_array_open() const {
-  auto found = false;
-  auto refactored_array_open = false;
-  auto status = config_.get<bool>(
-      "rest.use_refactored_array_open", &refactored_array_open, &found);
-  if (!status.ok() || !found) {
-    throw std::runtime_error(
-        "Cannot get use_refactored_array_open configuration option from "
-        "config");
-  }
-
-  return refactored_array_open;
-}
-
 std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
     const {
   std::unordered_map<std::string, uint64_t> ret;
@@ -1480,38 +1466,6 @@ void ensure_supported_schema_version_for_read(format_version_t version) {
 
 void Array::set_serialized_array_open(const QueryType& query_type) {
   set_array_open(query_type);
-}
-
-bool Array::serialize_non_empty_domain() const {
-  auto found = false;
-  auto serialize_ned_array_open = false;
-  auto status = config_.get<bool>(
-      "rest.load_non_empty_domain_on_array_open",
-      &serialize_ned_array_open,
-      &found);
-  if (!status.ok() || !found) {
-    throw std::runtime_error(
-        "Cannot get rest.load_non_empty_domain_on_array_open configuration "
-        "option from config");
-  }
-
-  return serialize_ned_array_open;
-}
-
-bool Array::serialize_metadata() const {
-  auto found = false;
-  auto serialize_metadata_array_open = false;
-  auto status = config_.get<bool>(
-      "rest.load_metadata_on_array_open",
-      &serialize_metadata_array_open,
-      &found);
-  if (!status.ok() || !found) {
-    throw std::runtime_error(
-        "Cannot get rest.load_metadata_on_array_open configuration option from "
-        "config");
-  }
-
-  return serialize_metadata_array_open;
 }
 
 }  // namespace sm
