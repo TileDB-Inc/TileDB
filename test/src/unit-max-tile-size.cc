@@ -58,7 +58,9 @@ struct MaxTileSizeFx {
     }
   };
 
-  void create_sparse_array_var_dim_int32_attr() {
+  void create_sparse_array_string_dim_int32_attr() {
+    remove_temp_dir(main_array_name_.c_str());
+
     // Set up the Domain/Dimension items for the array being created.
     tiledb::Domain domain(ctx_);
     domain.add_dimension(tiledb::Dimension::create(
@@ -75,7 +77,7 @@ struct MaxTileSizeFx {
     tiledb::Array::create(main_array_name_, schema);
   }
 
-  void write_sparse_array_var_dim_int32_attr(uint64_t num_rows) {
+  void write_sparse_array_string_dim_int32_attr(uint64_t num_rows) {
     //  Prepare the data to be written.
     std::vector<int32_t> a_buff(num_rows);
     auto start_val = 0;
@@ -108,12 +110,14 @@ struct MaxTileSizeFx {
     array.close();
   }
 
-  void create_dense_array_d1_int_a1_string(
+  void create_dense_array_int_dim_string_attr(
       std::array<int, 2> d1_domain,
       int d1_extents,
       bool a1_is_nullable,
       tiledb_layout_t tile_order,
       tiledb_layout_t cell_order) {
+    remove_temp_dir(main_array_name_.c_str());
+
     // Set up the Domain/Dimension items for the array being created.
     tiledb::Domain domain(ctx_);
     domain.add_dimension(tiledb::Dimension::create<int>(
@@ -121,8 +125,8 @@ struct MaxTileSizeFx {
 
     // The array will be dense with the indicated order(s).
     tiledb::ArraySchema schema(ctx_, TILEDB_DENSE);
-    schema.set_domain(domain).set_tile_order(tile_order);
-    schema.set_domain(domain).set_cell_order(cell_order);
+    schema.set_domain(domain).set_tile_order(tile_order)
+                             .set_cell_order(cell_order);
     // Specify attribute, nullable or not as indicated.
     auto a1_attr = tiledb::Attribute::create<std::string>(ctx_, "a1");
     if (a1_is_nullable) {
@@ -134,7 +138,7 @@ struct MaxTileSizeFx {
     tiledb::Array::create(main_array_name_, schema);
   }
 
-  void write_dense_array_d1_int_a1_string_null(
+  void write_dense_array_int_dim_string_attr_null(
       std::string a1_data,
       std::vector<uint64_t>&& a1_offsets,
       std::vector<uint8_t>&& a1_validity,
@@ -157,7 +161,7 @@ struct MaxTileSizeFx {
     array.close();
   }
 
-  void write_dense_array_d1_int_a1_string(
+  void write_dense_array_int_dim_string_attr(
       std::string a1_data,
       std::vector<uint64_t>&& a1_offsets,
       std::vector<int>&& subrange) {
@@ -178,13 +182,15 @@ struct MaxTileSizeFx {
     array.close();
   }
 
-  void create_dense_array_d1_int_d2_int_a1_int32(
+  void create_dense_array_int_dim_int_dim_int32_attr(
       std::array<int, 2> d1_domain,
       int d1_extents,
       std::array<int, 2> d2_domain,
       int d2_extents,
       tiledb_layout_t tile_order,
       tiledb_layout_t cell_order) {
+    remove_temp_dir(main_array_name_.c_str());
+
     // Set up the Domain/Dimension items for the array being created.
     tiledb::Domain domain(ctx_);
     domain
@@ -206,7 +212,7 @@ struct MaxTileSizeFx {
     tiledb::Array::create(main_array_name_, schema);
   }
 
-  void write_dense_d1_int_d2_int_a1_int32(
+  void write_dense_int_dim_int_dim_int32_attr(
       std::vector<int32_t> a1_data,
       std::array<int, 2> dim1_range,
       std::array<int, 2> dim2_range) {
@@ -226,7 +232,7 @@ struct MaxTileSizeFx {
   }
 
   template <int nchar>
-  void create_dense_array_d1_int_a1_nchar(
+  void create_dense_array_int_dim_nchar_attr(
       std::array<int, 2> d1_domain,
       int d1_extents,
       const std::string&& attr_name) {
@@ -242,10 +248,10 @@ struct MaxTileSizeFx {
     tiledb::ArraySchema schema(ctx_, TILEDB_DENSE);
     schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
-    // Add one attribute "a1", so each (i) cell can store
-    // a nchars characters on "attr_name" (std::array<char,nchars> now via
-    // a1_type).
-    schema.add_attribute(tiledb::Attribute::create<std::array<char,nchar>>(ctx_, attr_name));
+    // Add one attribute attr_name, for storing in each (ith) cell 
+    // nchar characters of 'a'+i.
+    schema.add_attribute(
+        tiledb::Attribute::create<std::array<char, nchar>>(ctx_, attr_name));
 
     // Create the (empty) array on disk.
     tiledb::Array::create(main_array_name_, schema);
@@ -272,9 +278,9 @@ struct MaxTileSizeFx {
     array.close();
   };
 
-  void array_schema_evolve_A() {
+  void array_schema_evolve_char_attr_257() {
     // Targeted against schema created in
-    // internal_create_dense_1d_d1_fix_a1_fix.
+    // create_dense_array_int_dim_nchar_attr.
     tiledb::ArraySchemaEvolution schemaEvolution =
         tiledb::ArraySchemaEvolution(ctx_);
 
@@ -289,10 +295,9 @@ struct MaxTileSizeFx {
     schemaEvolution.array_evolve(main_array_name_);
   };
 
-  void array_schema_evolve_B() {
+  void array_schema_evolve_char_attr_42() {
     // Targeted against schema created in
-    // create_dense_1d_d1_fix_a1_fix.
-
+    // create_dense_array_int_dim_nchar_attr.
     tiledb::ArraySchemaEvolution schemaEvolution =
         tiledb::ArraySchemaEvolution(ctx_);
 
@@ -307,19 +312,20 @@ struct MaxTileSizeFx {
     schemaEvolution.array_evolve(main_array_name_);
   }
 
-  void create_sparse_array_d1_var_a1_string(
+  void create_sparse_array_string_dim_string_attr(
       bool is_nullable) {
+    remove_temp_dir(main_array_name_.c_str());
+
     // Set up the Domain/Dimension items for the array being created.
     tiledb::Domain domain(ctx_);
     domain.add_dimension(tiledb::Dimension::create(
         ctx_, "d1", TILEDB_STRING_ASCII, nullptr, nullptr));
 
-    // The array will be dense.
+    // The array will be sparse.
     tiledb::ArraySchema schema(ctx_, TILEDB_SPARSE);
     schema.set_domain(domain);
 
-    // Add one attribute "a1", so each (i) cell can store
-    // a character on "a1".
+    // Add attribute "a1".
     auto attr = tiledb::Attribute::create<std::string>(ctx_, "a1");
     if (is_nullable) {
       attr.set_nullable(true);
@@ -330,7 +336,7 @@ struct MaxTileSizeFx {
     tiledb::Array::create(main_array_name_, schema);
   }
 
-  void write_sparse_array_d1_var_a1_string(
+  void write_sparse_array_string_dim_string_attr(
       std::string& dim_data,   // Expecting single-char values, one for each row.
       std::vector<uint64_t>&& dim_offsets,
       std::string&& attr_data  // Expecting single-char values, one for each
@@ -403,7 +409,7 @@ struct MaxTileSizeFx {
   uint64_t cpp_get_fragments_max_in_memory_tile_size(const std::string& array_uri) {
     tiledb::Array array(ctx_, array_uri, TILEDB_READ);
     uint64_t max_in_memory_tile_size = 0;
-    array.get_max_in_memory_tile_size(&max_in_memory_tile_size);
+    max_in_memory_tile_size = array.get_max_in_memory_tile_size();
 
     if (showing_data_) {
       std::cout << "maximum in memory tile size " << max_in_memory_tile_size
@@ -419,22 +425,30 @@ struct MaxTileSizeFx {
 TEST_CASE_METHOD(
     MaxTileSizeFx,
     "C++ API: Max tile size, dense, fixed, with consolidation",
-    "[capi][cppapi][max-tile-size][dense][consolidate]") {
-  remove_temp_dir(main_array_name_.c_str());
-
+    "[capi][cppapi][max-tile-size][dense][consolidate][vacuum]") {
+  tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
+  tiledb_layout_t cell_order = TILEDB_COL_MAJOR;
+  SECTION(" - tile/cell row major") {
+    tile_order = TILEDB_ROW_MAJOR;
+    cell_order = TILEDB_ROW_MAJOR;
+  }
+  SECTION(" - tile/cell col major") {
+    tile_order = TILEDB_COL_MAJOR;
+    cell_order = TILEDB_COL_MAJOR;
+  }
   uint64_t capi_max;
   uint64_t cppapi_max;
 
   // Create array
-  create_dense_array_d1_int_d2_int_a1_int32(
-      {1, 4}, 2, {1, 4}, 2, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+  create_dense_array_int_dim_int_dim_int32_attr(
+      {1, 4}, 2, {1, 4}, 2, tile_order, cell_order);
       capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
   cppapi_max=cpp_get_fragments_max_in_memory_tile_size(main_array_name_);
   CHECK(capi_max == 0 * sizeof(int32_t));
   CHECK(cppapi_max == capi_max);
 
   // Write first fragment and validate sizes.
-  write_dense_d1_int_d2_int_a1_int32(
+  write_dense_int_dim_int_dim_int32_attr(
       {1, 2, 3, 4, 5, 6, 6, 8}, {1, 2}, {1, 4});
   capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(main_array_name_);
@@ -442,7 +456,7 @@ TEST_CASE_METHOD(
   CHECK(cppapi_max == capi_max);
 
   // Write second fragment and validate sizes.
-  write_dense_d1_int_d2_int_a1_int32(
+  write_dense_int_dim_int_dim_int32_attr(
       {101, 102, 103, 104}, {2, 3}, {2, 3});
   capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(main_array_name_);
@@ -450,7 +464,7 @@ TEST_CASE_METHOD(
   CHECK(cppapi_max == capi_max);
 
   // Write third fragment and validate sizes.
-  write_dense_d1_int_d2_int_a1_int32(
+  write_dense_int_dim_int_dim_int32_attr(
       {201}, {1, 1}, {1, 1});
   capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(main_array_name_);
@@ -458,7 +472,7 @@ TEST_CASE_METHOD(
   CHECK(cppapi_max == capi_max);
 
   // Write fourth fragment and validate sizes.
-  write_dense_d1_int_d2_int_a1_int32(
+  write_dense_int_dim_int_dim_int32_attr(
       {202}, {3, 3}, {4, 4});
   capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
   cppapi_max=cpp_get_fragments_max_in_memory_tile_size(main_array_name_);
@@ -484,19 +498,17 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     MaxTileSizeFx,
     "C++ API: Max fragment size, sparse, variable string dimension, fix attr",
-    "[capi][max-tile-size][sparse][var-dimension]") {
-  remove_temp_dir(main_array_name_);
-
+    "[capi][max-tile-size][sparse][var-dimension][consolidate][vacuum]") {
   uint64_t capi_max;  
   uint64_t cppapi_max;
-  create_sparse_array_var_dim_int32_attr();
-  write_sparse_array_var_dim_int32_attr(1);
+  create_sparse_array_string_dim_int32_attr();
+  write_sparse_array_string_dim_int32_attr(1);
 
   capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(main_array_name_);
   CHECK(capi_max == 8);
   CHECK(cppapi_max == capi_max);
-  write_sparse_array_var_dim_int32_attr(2);
+  write_sparse_array_string_dim_int32_attr(2);
 
   // Size of data and the single offset to start of extent same.
   capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
@@ -514,12 +526,12 @@ TEST_CASE_METHOD(
   CHECK(capi_max == 24);
   CHECK(cppapi_max == capi_max);
 
-  write_sparse_array_var_dim_int32_attr(3);
+  write_sparse_array_string_dim_int32_attr(3);
   capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(main_array_name_);
   CHECK(capi_max == 24);
   CHECK(cppapi_max == capi_max);
-  write_sparse_array_var_dim_int32_attr(1);
+  write_sparse_array_string_dim_int32_attr(1);
   capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(main_array_name_);
   CHECK(capi_max == 24);
@@ -569,43 +581,40 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     MaxTileSizeFx,
     "C++ API: Max fragment size, dense create/evolve, fixed dim/attr",
-    "[capi][max-tile-size][dense][evolve]") {
-  remove_temp_dir(main_array_name_);
+    "[capi][max-tile-size][dense][evolve][consolidate]") {
 
   SECTION(" - Create") {
-    create_dense_array_d1_int_a1_nchar<2>(
+    create_dense_array_int_dim_nchar_attr<2>(
         { 1, 4 }, 1, "a2");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 0);
     write_dense_array_attr_nchar_ntimes<2>(main_array_name_, "a2");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 4);
 
-    remove_temp_dir(main_array_name_);
-    create_dense_array_d1_int_a1_nchar<257>(
+    create_dense_array_int_dim_nchar_attr<257>(
         {1, 2}, 1, "b257");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 0);
     write_dense_array_attr_nchar_ntimes<257>(main_array_name_, "b257", 2);
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 257);
 
-    remove_temp_dir(main_array_name_);
-    create_dense_array_d1_int_a1_nchar<42>(
+    create_dense_array_int_dim_nchar_attr<42>(
         {1, 20}, 1, "c42");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 0);
     write_dense_array_attr_nchar_ntimes<42>(main_array_name_, "c42", 20);
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 42);
   }
   SECTION(" - Evolve") {
-    create_dense_array_d1_int_a1_nchar<2>(
+    create_dense_array_int_dim_nchar_attr<2>(
         {1, 4}, 1, "a2");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 0);
     write_dense_array_attr_nchar_ntimes<2>(main_array_name_, "a2");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 4);
 
-    array_schema_evolve_A();
+    array_schema_evolve_char_attr_257();
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 4);
     write_dense_array_attr_nchar_ntimes<257>(main_array_name_, "b257");
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 257);
 
-    array_schema_evolve_B();
+    array_schema_evolve_char_attr_42();
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 257);
     write_dense_array_attr_nchar_ntimes<42>(main_array_name_, "c42");
     // Earlier fragment should still have dominant value of 257.
@@ -627,19 +636,14 @@ TEST_CASE_METHOD(
     MaxTileSizeFx,
     "C++ API: Max fragment size, sparse, variable string dimension, variable string attribute",
     "[capi][max-tile-size][sparse][evolve]") {
-  remove_temp_dir(main_array_name_);
-
-  create_sparse_array_d1_var_a1_string(true);
+  create_sparse_array_string_dim_string_attr(true);
 
   std::string basic_key_data{"abcdefghijklmnopqrstuvwxyz"};
-
-  write_sparse_array_d1_var_a1_string(basic_key_data, {0}, "");
-
-
+  write_sparse_array_string_dim_string_attr(basic_key_data, {0}, "");
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
 
   // Writing 26 empty items.
-  write_sparse_array_d1_var_a1_string(
+  write_sparse_array_string_dim_string_attr(
       basic_key_data,
       {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
        13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
@@ -648,133 +652,140 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 208);
 
   // Writing 24 empty items, 2 occupied items.
-  write_sparse_array_d1_var_a1_string(
+  write_sparse_array_string_dim_string_attr(
       basic_key_data,
       {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
        13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
       "AB");
-
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 208);
-
 }
 
 TEST_CASE_METHOD(
     MaxTileSizeFx,
     "C++ API: Max fragment size, sparse, fix dimension, variable "
     "string attribute",
-    "[capi][max-tile-size][dense][evolve]") {
-  remove_temp_dir(main_array_name_);
-
-  create_dense_array_d1_int_a1_string(
-      {1, 27}, 1, false, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+    "[capi][max-tile-size][dense][evolve][consolidate][vacuum]") {
+  // The init's are to quiet MSVC complaining about possibile use of uninit'd variables.
+  tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
+  tiledb_layout_t tile_order = TILEDB_COL_MAJOR;
+  SECTION(" - tile/cell row_major") {
+    tile_order = TILEDB_ROW_MAJOR;
+    cell_order = TILEDB_ROW_MAJOR;
+  }
+  SECTION(" - tile/cell col_major") {
+    tile_order = TILEDB_COL_MAJOR;
+    cell_order = TILEDB_COL_MAJOR;
+  }
+  create_dense_array_int_dim_string_attr(
+      {1, 27}, 1, false, tile_order, cell_order);
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 0);
 
   // Zero-len data written at index 1.
-  write_dense_array_d1_int_a1_string("", {0}, {1, 1});
+  write_dense_array_int_dim_string_attr("", {0}, {1, 1});
 
   // Size of single offset (sizeof(uint64_t)) dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Attribute is variable non-nullable, so the single offset (uint64_t) of 
   // 8 bytes will be max with strings <= 8 bytes writing len 1 data at idx 1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "l", {0}, {1, 1});
 
   // Size of single offset dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Writing len 2 data at idx1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "lm", {0}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Writing len 3 data at idx 1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "lmn", {0}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Writing len 4 data at idx 1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "lmno", {0}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Writing len 5 data at idx 1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "lmnop", {0}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Writing len 6 data at idx 1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "lmnopq", {0}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Writing len 7 data at idx 1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "lmnopqr", {0}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Writing len 8 data at idx 1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "lmnopqrs", {0}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Still writing 1 item, but now length of variable data greater than the 1 
   // offset, writing len 9 data at idx 1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "lmnopqrst", {0}, {1, 1});
 
   // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 9);
 
   // Writing len 10 data at idx 1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "lmnopqrstu", {0}, {1, 1});
 
   // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 10);
 
   // Writing len 11 data at idx 1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "lmnopqrstuv", {0}, {1, 1});
 
   // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 11);
 
   // Writing len 12 data at idx 1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "lmnopqrstuvw", {0}, {1, 1});
 
   // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 12);
 
   // Writing len 13 data at idx 1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "lmnopqrstuvwx", {0}, {1, 1});
 
   // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 13);
 
   // Writing len 14 data at idx 1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "lmnopqrstuvwxy", {0}, {1, 1});
 
   // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 14);
 
   // 4 items starting @ 1: { "a", "", "", ""}.
-  write_dense_array_d1_int_a1_string("a", {0, 0, 0, 0}, {1, 4});
+  write_dense_array_int_dim_string_attr("a", {0, 0, 0, 0}, {1, 4});
 
   // Earlier item len 14 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 14);
 
   // 4 items starting @ 1: {"A", "B", "", ""}.
-  write_dense_array_d1_int_a1_string("AB", {0, 1, 1, 1}, {1, 4});
+  write_dense_array_int_dim_string_attr("AB", {0, 1, 1, 1}, {1, 4});
 
   // Earlier item len 14 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 14);
 
   //4 items starting @ 3: {"Abc", "Defg", "Hijkl", "nopqr"}.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "AbcDefgHijklmNopqr", {0, 3, 7, 13}, {3, 6});
 
   // Earlier item len 14 idx 1 still dominates.
@@ -783,7 +794,7 @@ TEST_CASE_METHOD(
   // 5 items, max of any individual item is 26 bytes starting @ 1
   // {"ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz", "0123456789",
   //  "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"}.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
       {0, 26, 52, 62, 88},
@@ -791,7 +802,7 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
 
   // 1 item, 114 bytes @ idx 1.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
       {0}, // offsets
@@ -801,7 +812,7 @@ TEST_CASE_METHOD(
   // 5 items, max of any individual item is 26 bytes starting @ 3
   // {"ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz", "0123456789",
   //  "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"}.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
       {0, 26, 52, 62, 88},
@@ -810,7 +821,7 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
 
   // 4 items, various lengths starting @ 3: {"Abc, "Defg", "Hijklm, "Nopqr"}.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "AbcDefgHijklmNopqr", {0, 3, 7, 13}, {3, 6});
   // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
@@ -828,7 +839,7 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
 
   // 4 items, various lengths starting @ 3: {"Abc, "Defg", "Hijklm, "Nopqr"}.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "AbcDefgHijklmNopqr", {0, 3, 7, 13}, {1, 4});
 
   // Earlier item len 114 idx 1 still dominates.
@@ -847,7 +858,7 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
 
   // 5 items, various lengths starting @ 3: {"Abc, "Defg", "Hijklm, "N", "Opqr"}.
-  write_dense_array_d1_int_a1_string(
+  write_dense_array_int_dim_string_attr(
       "AbcDefgHijklmNOpqr", {0, 3, 7, 13, 14}, {3, 7});
 
   // Earlier item(s) len 26 idx 3..7 dominates.
@@ -869,15 +880,13 @@ TEST_CASE_METHOD(
     MaxTileSizeFx,
     "C++ API: Max fragment size, sparse, fix dimension, nullable variable "
     "string attribute",
-    "[capi][max-tile-size][dense][evolve]") {
-  remove_temp_dir(main_array_name_);
-
-  create_dense_array_d1_int_a1_string(
+    "[capi][max-tile-size][dense][evolve][consolidate][vacuum]") {
+  create_dense_array_int_dim_string_attr(
       {1, 27}, 1, true, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 0);
 
   // Zero-len data written at index 1.
-  write_dense_array_d1_int_a1_string_null("", {0}, {1}, {1, 1});
+  write_dense_array_int_dim_string_attr_null("", {0}, {1}, {1, 1});
 
   // Size of single offset (sizeof(uint64_t)) dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
@@ -885,91 +894,91 @@ TEST_CASE_METHOD(
   // Attribute is variable non-nullable,
   // So the single offset (uint64_t) of 8 bytes will be max with strings <= 8
   // bytes, writing len 1 data at idx 1.
-  write_dense_array_d1_int_a1_string_null("l", {0}, {1}, {1, 1});
+  write_dense_array_int_dim_string_attr_null("l", {0}, {1}, {1, 1});
 
   // Size of single offset dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Writing len 2 data at idx1.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "lm", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Writing len 3 data at idx 1.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "lmn", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Writing len 4 data at idx 1.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "lmno", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Writing len 5 data at idx 1.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "lmnop", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Writing len 6 data at idx 1.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "lmnopq", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Writing len 7 data at idx 1.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "lmnopqr", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Writing len 8 data at idx 1.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "lmnopqrs", {0}, {1}, {1, 1});
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 8);
 
   // Still writing 1 item, but now length of variable data greater than the 1 
   // offset, writing len 9 data at idx 1.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "lmnopqrst", {0}, {1}, {1, 1});
 
   // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 9);
 
   // Writing len 10 data at idx 1.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "lmnopqrstu", {0}, {1}, {1, 1});
 
   // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 10);
 
   // Writing len 11 data at idx 1.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "lmnopqrstuv", {0}, {1}, {1, 1});
 
   // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 11);
 
   // Writing len 12 data at idx 1.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "lmnopqrstuvw", {0}, {1}, {1, 1});
 
   // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 12);
 
   // Writing len 13 data at idx 1.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "lmnopqrstuvwx", {0}, {1}, {1, 1});
 
   // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 13);
 
   // Writing len 14 data at idx 1.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "lmnopqrstuvwxy", {0}, {1}, {1, 1});
 
   // Length of data dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 14);
 
   // 4 items, starting @ idx 1 {"a", "", "", ""}.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "a", {0, 0, 0, 0}, {1, 1, 1, 1}, {1, 4});
 
   // Earlier item len 14 idx 1 still dominates.
@@ -977,7 +986,7 @@ TEST_CASE_METHOD(
 
   // 4 items,
   // idx 1 "A", idx 2 "B", idx 3 "", idx 4 "".
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "AB", {0, 1, 1, 1}, {1, 1, 1, 1}, {1, 4});
 
   // Earlier item len 14 idx 1 still dominates.
@@ -985,7 +994,7 @@ TEST_CASE_METHOD(
 
   // 4 items,
   //  idx 3 "Abc, idx 4 "Defg", idx 5 "Hijkl, idx 6 "nopqr".
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "AbcDefgHijklmNopqr", {0, 3, 7, 13}, {1, 1, 1, 1}, {3, 6});
 
   // Earlier item len 14 idx 1 still dominates.
@@ -994,7 +1003,7 @@ TEST_CASE_METHOD(
   // 5 items, max of any individual item is 26 bytes starting @ 3:
   // {"ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz", "0123456789",
   //  "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"}.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
       {0, 26, 52, 62, 88},
@@ -1003,7 +1012,7 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
 
   // 1 item, 114 bytes @ idx 1.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
       {0},
@@ -1014,7 +1023,7 @@ TEST_CASE_METHOD(
   // 5 items, max of any individual item is 26 bytes, starting @ 3:
   // {"ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz", "0123456789",
   //  "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"}.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
       "KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
       {0, 26, 52, 62, 88},
@@ -1024,7 +1033,7 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
 
   // 4 items, various lengths @ 3: {"Abc", "Defg", "Hijklm", "Nopqr"}.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "AbcDefgHijklmNopqr", {0, 3, 7, 13}, {1, 1, 1, 1}, {3, 6});
 
   // Earlier item len 114 idx 1 still dominates.
@@ -1044,7 +1053,7 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
 
   // 4 items, various lengths, starting @ 3: {"Abc", "Defg", "Hijklm", "Nopqr"}.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "AbcDefgHijklmNopqr", {0, 3, 7, 13}, {1, 1, 1, 1}, {1, 4});
 
   // Earlier item len 114 idx 1 still dominates.
@@ -1063,7 +1072,7 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
 
   // 5 items, various lengths, starting @ 3: {"Abc", "Defg", "Hijklm", "N", "Opqr"}.
-  write_dense_array_d1_int_a1_string_null(
+  write_dense_array_int_dim_string_attr_null(
       "AbcDefgHijklmNOpqr", {0, 3, 7, 13, 14}, {1, 1, 1, 1, 1}, {3, 7});
 
   // Earlier item(s) len 26 idx 3..7 dominates.

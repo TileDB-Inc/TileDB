@@ -1532,15 +1532,17 @@ class Array {
    * Retrieve the maximum in memory tile sizes across all fragments in an array.
    * Encrypted arrays will be supported via config options.
    *
-   * @param max_in_memory_tile_size The receiver for the max in memory tile
+   * @return max_in_memory_tile_size The receiver for the max in memory tile
    * size.
    */
-  void get_max_in_memory_tile_size(uint64_t* max_in_memory_tile_size) {
+  uint64_t get_max_in_memory_tile_size() {
+    uint64_t max_in_memory_tile_size;
     tiledb_array_maximum_tile_size(
         ctx_.get().ptr().get(),
         uri().c_str(),
-        max_in_memory_tile_size,
+        &max_in_memory_tile_size,
         nullptr);
+    return max_in_memory_tile_size;
   }
 
  private:
