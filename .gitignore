@@ -14,14 +14,21 @@ test/bin/*
 test/inputs/arrays/read_compatibility_test*
 test/obj/*
 test/tiledb_test/*
-
+Doxyfile.log
+doxyfile.inc
+doxygen/html/
+doxygen/latex/
 examples/bin/*
 examples/obj/*
 scripts/deps-staging/*
 .idea
 *temp*
 *.DS_Store
-
+doc/venv
+doc/source/__pycache__
+doc/source/_build
+doc/source/_sidebar.rst.inc
+doc/source/gensidebar.pyc
 examples/cmake_project/build
 CMakeUserPresets.json
 .vs/
@@ -29,16 +36,5 @@ CMakeUserPresets.json
 # Quarto dev-cache
 /.quarto/
 docs/.quarto
-
 # Let CI build this
 /docs
-tiledb/doxygen/venv/
-tiledb/doxygen/source/_build/
-tiledb/doxygen/source/__pycache__
-tiledb/doxygen/source/_build
-tiledb/doxygen/source/_sidebar.rst.inc
-tiledb/doxygen/source/gensidebar.pyc
-Doxyfile.log
-doxyfile.inc
-doxygen/html/
-doxygen/latex/

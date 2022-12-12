@@ -1723,8 +1723,9 @@ uint64_t ReaderBase::offsets_bytesize() const {
 uint64_t ReaderBase::get_attribute_tile_size(
     const std::string& name, unsigned f, uint64_t t) {
   uint64_t tile_size = 0;
-  if (!fragment_metadata_[f]->array_schema()->is_field(name))
+  if (!fragment_metadata_[f]->array_schema()->is_field(name)) {
     return tile_size;
+  }
 
   tile_size += fragment_metadata_[f]->tile_size(name, t);
 
