@@ -2331,7 +2331,6 @@ void Query::set_subarray(const tiledb::sm::Subarray& subarray) {
       break;
 
     default:
-
       throw QueryStatusException(
           "Cannot set subarray; Setting a subarray is not supported for query "
           "type '" +

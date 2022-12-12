@@ -829,7 +829,7 @@ class Query {
   Status set_subarray_unsafe(const NDRange& subarray);
 
   /**
-   * Sets the query subarray without performaing any checks.
+   * Sets the query subarray without performing any checks.
    *
    * Used for deserialize dense writes.
    *
