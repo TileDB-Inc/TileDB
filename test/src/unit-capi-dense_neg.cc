@@ -55,6 +55,9 @@ struct DenseNegFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
+  // Buffers to allocate on query size for serialized queries
+  ServerQueryBuffers server_buffers_;
+
   // Functions
   DenseNegFx();
   ~DenseNegFx();
@@ -273,14 +276,10 @@ void DenseNegFx::write_dense_array_global(
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
 
-  if (!serialized_writes) {
-    rc = tiledb_query_submit(ctx_, query);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx_, query);
-    REQUIRE(rc == TILEDB_OK);
-  } else {
-    submit_and_finalize_serialized_query(ctx_, query);
-  }
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx_, path, &query, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

@@ -110,6 +110,7 @@ struct DenseArrayFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
+  // Buffers to allocate on query size for serialized queries
   ServerQueryBuffers server_buffers_;
 
   // Functions
@@ -3926,15 +3927,11 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, wq1, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-  if (!serialize_query_) {
-    rc = submit_query_wrapper(
-        ctx_, array_name, &wq1, server_buffers_, serialize_query_);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx_, wq1);
-    REQUIRE(rc == TILEDB_OK);
-  } else {
-    submit_and_finalize_serialized_query(ctx_, wq1);
-  }
+
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx_, array_name, &wq1, server_buffers_, serialize_query_);
+  REQUIRE(rc == TILEDB_OK);
 
   // Clean up
   rc = tiledb_array_close(ctx_, array);

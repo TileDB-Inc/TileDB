@@ -1818,7 +1818,9 @@ int submit_query_wrapper(
   // server can introspect and allocate properly sized buffers separately."
   // Empty buffers will naturally break query_submit so to go on in test we
   // need to allocate here as if we were the server.
-  allocate_query_buffers_server_side(ctx, server_deser_query, buffers);
+  if (query_type == TILEDB_READ) {
+    allocate_query_buffers_server_side(ctx, server_deser_query, buffers);
+  }
 
   // 2. Server: Submit query WITHOUT re-opening the array, using under the hood
   // the array found in the deserialized query

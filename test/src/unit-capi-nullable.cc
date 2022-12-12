@@ -58,7 +58,9 @@ class NullableArrayFx {
   const string FILE_TEMP_DIR =
       tiledb::sm::Posix::current_dir() + "/tiledb_test/";
 #endif
-  bool serialized_writes;
+  bool serialized_;
+  // Buffers to allocate on query size for serialized queries
+  ServerQueryBuffers server_buffers_;
 
   struct test_dim_t {
     test_dim_t(
@@ -225,7 +227,7 @@ NullableArrayFx::NullableArrayFx() {
 
   tiledb_config_free(&config);
 
-  serialized_writes = false;
+  serialized_ = false;
 }
 
 NullableArrayFx::~NullableArrayFx() {
@@ -432,15 +434,10 @@ void NullableArrayFx::write(
     }
   }
 
-  if (!serialized_writes) {
-    rc = tiledb_query_submit(ctx_, query);
-    REQUIRE(rc == TILEDB_OK);
-
-    rc = tiledb_query_finalize(ctx_, query);
-    REQUIRE(rc == TILEDB_OK);
-  } else {
-    submit_and_finalize_serialized_query(ctx_, query);
-  }
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx_, FILE_TEMP_DIR + array_name, &query, server_buffers_, serialized_);
+  REQUIRE(rc == TILEDB_OK);
 
   // Clean up
   rc = tiledb_array_close(ctx_, array);
@@ -540,12 +537,9 @@ void NullableArrayFx::read(
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
 
-  // Submit the query.
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Finalize the query, a no-op for non-global writes.
-  rc = tiledb_query_finalize(ctx_, query);
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx_, FILE_TEMP_DIR + array_name, &query, server_buffers_, serialized_);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -879,12 +873,12 @@ TEST_CASE_METHOD(
   attrs.emplace_back("a2", TILEDB_INT32, 1, true);
   attrs.emplace_back("a3", TILEDB_INT32, TILEDB_VAR_NUM, true);
 
-  SECTION("no serialization") {
-    serialized_writes = false;
-  }
-  SECTION("serialization enabled global order write") {
+  // SECTION("no serialization") {
+  //   serialized_ = false;
+  // }
+  SECTION("serialization enabled") {
 #ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
+    serialized_ = true;
 #endif
   }
 

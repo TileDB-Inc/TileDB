@@ -52,6 +52,9 @@ struct IncompleteFx2 {
   // TileDB context
   tiledb_ctx_t* ctx_;
 
+  // Buffers to allocate on query size for serialized queries
+  ServerQueryBuffers server_buffers_;
+
   // Constructors/destructors
   IncompleteFx2();
   ~IncompleteFx2();
@@ -311,14 +314,10 @@ void IncompleteFx2::write_dense_full(const bool serialized_writes) {
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
-  if (!serialized_writes) {
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-  } else {
-    submit_and_finalize_serialized_query(ctx_, query);
-  }
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -399,14 +398,10 @@ void IncompleteFx2::write_sparse_full(const bool serialized_writes) {
       ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
-  if (!serialized_writes) {
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-  } else {
-    submit_and_finalize_serialized_query(ctx_, query);
-  }
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
