@@ -35,6 +35,7 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/type/range/range.h"
 
 #include <bitset>
@@ -1367,12 +1368,36 @@ Status Dimension::set_domain_unsafe(const void* domain) {
 }
 
 Status Dimension::set_filter_pipeline(const FilterPipeline& pipeline) {
+  Datatype output_type = type_;
   for (unsigned i = 0; i < pipeline.size(); ++i) {
-    if (datatype_is_real(type_) &&
-        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
+    if (datatype_is_real(output_type) &&
+        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA) {
       return LOG_STATUS(
           Status_DimensionError("Cannot set DOUBLE DELTA filter to a "
                                 "dimension with a real datatype"));
+    } else if (pipeline.get_filter(i)->type() == FilterType::FILTER_SCALE_FLOAT) {
+      // Change the output type.
+      uint64_t byte_width = 0;
+      throw_if_not_ok(pipeline.get_filter(i)->get_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width));
+      switch (byte_width)
+      {
+        case 1: {
+          output_type = Datatype::INT8;
+        } break;
+        case 2: {
+          output_type = Datatype::INT16;
+        } break;
+        case 4: {
+          output_type = Datatype::INT32;
+        } break;
+        case 8: {
+          output_type = Datatype::INT64;
+        } break;
+        default: {
+          return LOG_STATUS(Status_DimensionError("Float scale filter byte width is invalid."));
+        }
+      }
+    }
   }
 
   if (type_ == Datatype::STRING_ASCII && var_size() && pipeline.size() > 1) {
