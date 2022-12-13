@@ -46,6 +46,7 @@
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/range_subset.h"
+#include "tiledb/sm/subarray/relevant_fragments.h"
 #include "tiledb/sm/subarray/subarray_tile_overlap.h"
 
 #include <cmath>
@@ -1129,12 +1130,12 @@ class Subarray {
   /**
    * Return relevant fragments as computed
    */
-  const optional<std::vector<unsigned>>& relevant_fragments() const;
+  const RelevantFragments& relevant_fragments() const;
 
   /**
    * Return relevant fragments as computed
    */
-  optional<std::vector<unsigned>>& relevant_fragments();
+  RelevantFragments& relevant_fragments();
 
   /**
    * For flattened ("total order") start/end range indexes,
@@ -1334,7 +1335,7 @@ class Subarray {
    * The array fragment ids whose non-empty domain intersects at
    * least one subarray range.
    */
-  optional<std::vector<unsigned>> relevant_fragments_;
+  RelevantFragments relevant_fragments_;
 
   /**
    * The precomputed tile overlap state. Is not guaranteed to be
