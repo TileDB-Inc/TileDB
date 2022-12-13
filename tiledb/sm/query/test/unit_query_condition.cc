@@ -1858,6 +1858,21 @@ TEST_CASE(
       ++expected_iter;
     }
   }
+
+  // Check null comparisons with apply_sparse
+  std::vector<uint8_t> bitmap(cells, 1);
+  REQUIRE(query_condition.apply_sparse(*array_schema, result_tile, bitmap).ok());
+
+  expected_iter = expected_cell_idx_vec.begin();
+  for(uint64_t cell_idx = 0; cell_idx < bitmap.size(); cell_idx++) {
+    if (expected_iter != expected_cell_idx_vec.end()
+        && cell_idx == *expected_iter) {
+      REQUIRE(bitmap[cell_idx] > 0);
+      ++expected_iter;
+    } else {
+      REQUIRE(bitmap[cell_idx] == 0);
+    }
+  }
 }
 
 /**

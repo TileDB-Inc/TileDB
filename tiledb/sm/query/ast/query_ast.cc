@@ -81,17 +81,22 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 
     // Ensure that an attribute that is marked as nullable
     // corresponds to a type that is nullable.
-    if ((!nullable) &&
-        (type != Datatype::STRING_ASCII && type != Datatype::CHAR)) {
+    if ((!nullable) && (
+        type != Datatype::CHAR
+        && type != Datatype::STRING_ASCII
+        && type != Datatype::STRING_UTF8)) {
       return Status_QueryConditionError(
           "Null value can only be used with nullable attributes");
     }
   }
 
   // Ensure that non-empty attributes are only var-sized for
-  // ASCII strings.
-  if (var_size && type != Datatype::STRING_ASCII && type != Datatype::CHAR &&
-      condition_value_view_.content() != nullptr) {
+  // ASCII and UTF-8 strings.
+  if (var_size
+      && type != Datatype::CHAR
+      && type != Datatype::STRING_ASCII
+      && type != Datatype::STRING_UTF8
+      && condition_value_view_.content() != nullptr) {
     return Status_QueryConditionError(
         "Value node non-empty attribute may only be var-sized for ASCII "
         "strings: " +
@@ -99,8 +104,11 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   }
 
   // Ensure that non string fixed size attributes store only one value per cell.
-  if (cell_val_num != 1 && type != Datatype::STRING_ASCII &&
-      type != Datatype::CHAR && (!var_size)) {
+  if (cell_val_num != 1
+      && type != Datatype::CHAR
+      && type != Datatype::STRING_ASCII
+      && type != Datatype::STRING_UTF8
+      && (!var_size)) {
     return Status_QueryConditionError(
         "Value node attribute must have one value per cell for non-string "
         "fixed size attributes: " +
@@ -109,9 +117,13 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 
   // Ensure that the condition value size matches the attribute's
   // value size.
-  if (cell_size != constants::var_size && cell_size != condition_value_size &&
-      !(nullable && condition_value_view_.content() == nullptr) &&
-      type != Datatype::STRING_ASCII && type != Datatype::CHAR && (!var_size)) {
+  if (cell_size != constants::var_size
+      && cell_size != condition_value_size
+      && !(nullable && condition_value_view_.content() == nullptr)
+      && type != Datatype::CHAR
+      && type != Datatype::STRING_ASCII
+      && type != Datatype::STRING_UTF8
+      && (!var_size)) {
     return Status_QueryConditionError(
         "Value node condition value size mismatch: " +
         std::to_string(cell_size) +
@@ -123,13 +135,12 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
     case Datatype::ANY:
       return Status_QueryConditionError(
           "Value node attribute type may not be of type 'ANY': " + field_name_);
-    case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
       return Status_QueryConditionError(
-          "Value node attribute type may not be a UTF/UCS string: " +
+          "Only ASCII and UTF-8 string types are currently supported." +
           field_name_);
     default:
       break;
