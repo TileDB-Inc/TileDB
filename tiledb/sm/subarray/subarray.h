@@ -263,7 +263,7 @@ class Subarray {
    * per dimension without performing validity checks.
    *
    * This is only valid for arrays with homogenous dimension data types. This
-   * function is used for deserializng dense write queries.
+   * function should only be used for deserializing dense write queries.
    *
    * @param subarray A pointer to the range data to use.
    */
