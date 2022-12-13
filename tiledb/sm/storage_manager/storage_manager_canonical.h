@@ -1114,20 +1114,7 @@ class StorageManagerCanonical {
   void encryption_key_from_configs(
       EncryptionKey& enc_key, const Config* config);
 
-  /**
-   * Finds the max tile size(s) across all fragments in the array uri.
-   *
-   * @param uri The URI of the array to examine.
-   * @param tile_sizes The receiver for the obtained sizes.
-   * @param config The Config object to be used for poss encryption and any
-   *     other operation modifiers.
-   */
-  void array_get_fragment_tile_max_size(
-      const URI& array_uri,
-      tiledb_fragment_max_tile_sizes_t* max_tile_sizes,
-      const Config* config);
-
- private:
+  private:
   /* ********************************* */
   /*        PRIVATE DATATYPES          */
   /* ********************************* */

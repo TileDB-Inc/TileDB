@@ -459,6 +459,10 @@ class Array {
     query_type_ = query_type;
   }
 
+  /** Return the max tile size across ALL fragments of the array. */
+  void array_get_fragments_tile_max_size(
+      tiledb_fragment_max_tile_sizes_t* max_tile_sizes);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

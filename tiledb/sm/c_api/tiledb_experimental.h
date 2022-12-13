@@ -804,7 +804,6 @@ TILEDB_EXPORT int32_t tiledb_consolidation_plan_free_json_str(char** str)
 
 /*
  * Retrieve the maximum in memory tile size across all fragments in an array.
- * Encrypted arrays will be supported via config options.
  *
  * **Example:**
  *
@@ -815,17 +814,13 @@ TILEDB_EXPORT int32_t tiledb_consolidation_plan_free_json_str(char** str)
  * @endcode
  *
  * @param ctx The TileDB context
- * @param array_uri Identifies the array for which to retrieve maximum tile size
+ * @param array An open array to retrieve the max tile size across fragments
  * @param max_in_memory_tile_size The receiver for the max in memory tile size.
- * @param config The Config object to be used for poss encryption and any other
- * operation modifiers.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    uint64_t* max_in_memory_tile_size,
-    tiledb_config_t* config);
+    tiledb_array_t *array,
+    uint64_t* max_in_memory_tile_size);
 
 #ifdef __cplusplus
 }

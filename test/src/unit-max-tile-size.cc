@@ -390,13 +390,12 @@ struct MaxTileSizeFx {
 
   uint64_t c_get_fragments_max_in_memory_tile_size(
       const std::string& array_uri) {
+    tiledb::Array array(ctx_, array_uri, TILEDB_READ);
     uint64_t max_in_memory_tile_size = 0;
     CHECK(
         tiledb_array_maximum_tile_size(
-            &*ctx_.ptr(),
-            array_uri.c_str(),
-            &max_in_memory_tile_size, 
-            nullptr) == TILEDB_OK);
+            &*array.ptr(),
+            &max_in_memory_tile_size) == TILEDB_OK);
 
     if (showing_data_) {
       std::cout << "maximum in memory tile size "

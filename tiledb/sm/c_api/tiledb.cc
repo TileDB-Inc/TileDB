@@ -6172,48 +6172,15 @@ int32_t tiledb_consolidation_plan_free_json_str(char** out) {
 }
 
 TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    uint64_t* max_in_memory_tile_size,
-    tiledb_config_t* config) {
+    tiledb_array_t * array,
+    uint64_t* max_in_memory_tile_size) {
+  api::ensure_array_is_valid(array);
   api::ensure_output_pointer_is_valid(max_in_memory_tile_size);
   try {
-    tiledb::sm::URI uri(array_uri);
-    if (uri.is_invalid()) {
-      auto st =
-          Status_Error("Failed to obtain fragment sizes; Invalid array URI");
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    if (uri.is_tiledb()) {
-      // Check REST client
-      auto rest_client = ctx->storage_manager()->rest_client();
-      if (rest_client == nullptr) {
-        auto st = Status_Error(
-            "Failed to maximum tile size; remote array with no REST client.");
-        LOG_STATUS_NO_RETURN_VALUE(st);
-        save_error(ctx, st);
-        return TILEDB_ERR;
-      }
-
-      auto st = rest_client->get_array_maximum_tile_size_from_rest(
-          uri, max_in_memory_tile_size);
-      if (!st.ok()) {
-        LOG_STATUS_NO_RETURN_VALUE(st);
-        save_error(ctx, st);
-        return TILEDB_ERR;
-      }
-    } else {
-      tiledb_fragment_max_tile_sizes_t max_tile_sizes;
-      ctx->storage_manager()->array_get_fragment_tile_max_size(
-          uri, &max_tile_sizes, config ? &config->config() : nullptr);
-      *max_in_memory_tile_size = max_tile_sizes.max_in_memory_tile_size;
-    }
+    tiledb_fragment_max_tile_sizes_t max_tile_sizes;
+    array->array_->array_get_fragments_tile_max_size(&max_tile_sizes);
+    *max_in_memory_tile_size = max_tile_sizes.max_in_memory_tile_size;
   }
-  // TBD: What's the (Is this an) appropriate catch and (re-)throw series for
-  // this API?
   catch (...) {
     std::throw_with_nested(
         api::CAPIStatusException("Failed to obtain max tile size "));
@@ -9131,10 +9098,8 @@ int32_t tiledb_consolidation_plan_free_json_str(char** out) noexcept {
       out);
 }
 TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    uint64_t* max_in_memory_tile_size,
-    tiledb_config_t* config) {
-  return api_entry<tiledb::api::tiledb_array_maximum_tile_size>(
-      ctx, array_uri, max_in_memory_tile_size, config);
+    tiledb_array_t* array,
+    uint64_t* max_in_memory_tile_size) {
+  return api_entry_plain<tiledb::api::tiledb_array_maximum_tile_size>(
+      array, max_in_memory_tile_size);
 }
