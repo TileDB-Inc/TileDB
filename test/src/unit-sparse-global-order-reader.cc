@@ -966,12 +966,11 @@ TEST_CASE(
   query.set_data_buffer("a", a1_data);
   query.set_offsets_buffer("a", a1_offsets);
 
-  if (!serialized_writes) {
-    CHECK_NOTHROW(query.submit());
-    query.finalize();
-  } else {
-    submit_and_finalize_serialized_query(ctx, query);
-  }
+  // Submit query
+  ServerQueryBuffers server_buffers_;
+  auto rc = submit_query_wrapper(
+      ctx, array_name, &query, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
 
   // Read using a buffer that can't fit a single result
   Array array2(ctx, array_name, TILEDB_READ);
@@ -994,7 +993,7 @@ TEST_CASE(
   CHECK(st == Query::Status::INCOMPLETE);
 
   tiledb_query_status_details_t details;
-  int rc = tiledb_query_get_status_details(
+  rc = tiledb_query_get_status_details(
       ctx.ptr().get(), query2.ptr().get(), &details);
   CHECK(rc == TILEDB_OK);
   CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);

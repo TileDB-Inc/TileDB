@@ -157,7 +157,7 @@ struct Array {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(a45730f57e0460b4, 2, 8)
+    CAPNP_DECLARE_STRUCT_HEADER(a45730f57e0460b4, 3, 8)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1965,6 +1965,8 @@ class Array::Reader {
       ::capnp::Kind::STRUCT>::Reader
   getFragmentMetadataAll() const;
 
+  inline ::uint64_t getOpenedAtEndTimestamp() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -2118,6 +2120,9 @@ class Array::Builder {
       ::tiledb::sm::serialization::capnp::FragmentMetadata,
       ::capnp::Kind::STRUCT>>
   disownFragmentMetadataAll();
+
+  inline ::uint64_t getOpenedAtEndTimestamp();
+  inline void setOpenedAtEndTimestamp(::uint64_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -13730,6 +13735,20 @@ Array::Builder::disownFragmentMetadataAll() {
                                           .getPointerField(
                                               ::capnp::bounded<7>() *
                                               ::capnp::POINTERS));
+}
+
+inline ::uint64_t Array::Reader::getOpenedAtEndTimestamp() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t Array::Builder::getOpenedAtEndTimestamp() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void Array::Builder::setOpenedAtEndTimestamp(::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool ArrayOpen::Reader::hasConfig() const {

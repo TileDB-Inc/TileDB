@@ -59,6 +59,9 @@ uint64_t UTF8_OFFSET_4_FOR_EMPTY =
     sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY;
 
 struct StringEmptyFx {
+  // Buffers to allocate on query size for serialized queries
+  ServerQueryBuffers server_buffers_;
+
   void create_array(const std::string& array_name);
   void delete_array(const std::string& array_name);
   void read_array(const std::string& array_name);
@@ -257,14 +260,10 @@ void StringEmptyFx::write_array(
       ctx, query, "a4", buffer_a4_offsets, &buffer_a4_offsets_size);
   REQUIRE(rc == TILEDB_OK);
 
-  if (!serialized_writes) {
-    rc = tiledb_query_submit(ctx, query);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx, query);
-    CHECK(rc == TILEDB_OK);
-  } else {
-    submit_and_finalize_serialized_query(ctx, query);
-  }
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx, array_name, &query, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx, array);

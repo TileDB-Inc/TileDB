@@ -62,6 +62,9 @@ uint64_t UTF16_OFFSET_2 = sizeof(u"aαbβ") - UTF16_NULL_SIZE;
 uint64_t UTF16_OFFSET_3 = sizeof(u"aαbβcγ") - UTF16_NULL_SIZE;
 
 struct StringFx {
+  // Buffers to allocate on query size for serialized queries
+  ServerQueryBuffers server_buffers_;
+
   void create_array(const std::string& array_name);
   void delete_array(const std::string& array_name);
   void read_array(const std::string& array_name);
@@ -210,14 +213,10 @@ void StringFx::write_array(
       ctx, query, attributes[2], (uint64_t*)buffers[3], &buffer_sizes[3]);
   REQUIRE(rc == TILEDB_OK);
 
-  if (!serialized_writes) {
-    rc = tiledb_query_submit(ctx, query);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx, query);
-    CHECK(rc == TILEDB_OK);
-  } else {
-    submit_and_finalize_serialized_query(ctx, query);
-  }
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx, array_name, &query, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx, array);

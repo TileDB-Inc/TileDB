@@ -129,6 +129,7 @@ Status array_to_capnp(
   }
   array_builder->setStartTimestamp(array->timestamp_start());
   array_builder->setEndTimestamp(array->timestamp_end());
+  array_builder->setOpenedAtEndTimestamp(array->timestamp_end_opened_at());
 
   array_builder->setQueryType(query_type_str(array->get_query_type()));
 
@@ -213,10 +214,8 @@ Status array_from_capnp(
       array->set_serialized_array_open(query_type);
     }
 
-    // TODO: check if that's correct or we should just serilaize
-    // timestamp_end_opened_at as well
-    RETURN_NOT_OK(
-        array->set_timestamp_end_opened_at(array_reader.getEndTimestamp()));
+    RETURN_NOT_OK(array->set_timestamp_end_opened_at(
+        array_reader.getOpenedAtEndTimestamp()));
     if (array->timestamp_end_opened_at() == UINT64_MAX) {
       if (query_type == QueryType::READ) {
         RETURN_NOT_OK(array->set_timestamp_end_opened_at(

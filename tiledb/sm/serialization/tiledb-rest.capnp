@@ -63,6 +63,9 @@ struct Array {
 
   fragmentMetadataAll @9 :List(FragmentMetadata);
   # array metadata
+
+  openedAtEndTimestamp @10 :UInt64;
+  # The ending timestamp that the array was last opened at
 }
 
 struct ArrayOpen {

@@ -51,6 +51,9 @@ struct CPPArrayFx {
   static const unsigned d1_tile = 10;
   static const unsigned d2_tile = 5;
 
+  // Buffers to allocate on query size for serialized queries
+  test::ServerQueryBuffers server_buffers_;
+
   CPPArrayFx()
       : vfs(ctx) {
     using namespace tiledb;
@@ -358,12 +361,11 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
       serialized_writes = true;
 #endif
     }
-    if (!serialized_writes) {
-      CHECK(query.submit() == tiledb::Query::Status::COMPLETE);
-      REQUIRE_NOTHROW(query.finalize());
-    } else {
-      test::submit_and_finalize_serialized_query(ctx, query);
-    }
+
+    // Submit query
+    auto rc = submit_query_wrapper(
+        ctx, "cpp_unit_array", &query, server_buffers_, serialized_writes);
+    REQUIRE(rc == TILEDB_OK);
 
     // Check non-empty domain while array open in write mode
     CHECK_THROWS(array.non_empty_domain<int>(1));
@@ -503,12 +505,12 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
     q.set_data_buffer("a", a);
     q.set_offsets_buffer("a", a_offset);
     q.set_data_buffer("b", b);
-    if (!serialized_writes || write_layout != TILEDB_GLOBAL_ORDER) {
-      q.submit();
-      q.finalize();
-    } else {
-      test::submit_and_finalize_serialized_query(ctx, q);
-    }
+
+    // Submit query
+    test::ServerQueryBuffers server_buffers_;
+    auto rc = submit_query_wrapper(
+        ctx, array_name_1d, &q, server_buffers_, serialized_writes);
+    REQUIRE(rc == TILEDB_OK);
 
     array.close();
   }
@@ -1139,12 +1141,13 @@ TEST_CASE(
     serialized_writes = true;
 #endif
   }
-  if (!serialized_writes) {
-    query_w.submit();
-    query_w.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query_w);
-  }
+
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx, array_name, &query_w, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
+
   array_w.close();
 
   // Read
@@ -1524,12 +1527,13 @@ TEST_CASE(
     serialized_writes = true;
 #endif
   }
-  if (!serialized_writes) {
-    query_w.submit();
-    query_w.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query_w);
-  }
+
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx, array_name, &query_w, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
+
   array_w.close();
 
   // Read
@@ -1586,12 +1590,14 @@ TEST_CASE(
     serialized_writes = true;
 #endif
   }
-  if (!serialized_writes) {
-    query_w.submit();
-    query_w.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query_w);
-  }
+
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx, array_name, &query_w, server_buffers_, serialized_writes);
+
+  REQUIRE(rc == TILEDB_OK);
+
   array_w.close();
 
   // Read

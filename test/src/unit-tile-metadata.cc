@@ -41,6 +41,9 @@ using namespace tiledb;
 
 template <typename TestType>
 struct CPPFixedTileMetadataFx {
+  // Buffers to allocate on query size for serialized queries
+  test::ServerQueryBuffers server_buffers_;
+
   CPPFixedTileMetadataFx()
       : vfs_(ctx_) {
     if (vfs_.is_dir(ARRAY_NAME))
@@ -255,12 +258,11 @@ struct CPPFixedTileMetadataFx {
       query.set_validity_buffer("a", a_val);
     }
 
-    if (!serialized_writes) {
-      query.submit();
-      query.finalize();
-    } else {
-      test::submit_and_finalize_serialized_query(ctx_, query);
-    }
+    // Submit query
+    auto rc = test::submit_query_wrapper(
+        ctx_, ARRAY_NAME, &query, server_buffers_, serialized_writes);
+    REQUIRE(rc == TILEDB_OK);
+
     array.close();
   }
 
@@ -660,6 +662,9 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 }
 
 struct CPPVarTileMetadataFx {
+  // Buffers to allocate on query size for serialized queries
+  test::ServerQueryBuffers server_buffers_;
+
   CPPVarTileMetadataFx()
       : vfs_(ctx_) {
     if (vfs_.is_dir(ARRAY_NAME))
@@ -792,12 +797,10 @@ struct CPPVarTileMetadataFx {
       query.set_validity_buffer("a", a_val);
     }
 
-    if (!serialized_writes) {
-      query.submit();
-      query.finalize();
-    } else {
-      test::submit_and_finalize_serialized_query(ctx_, query);
-    }
+    // Submit query
+    auto rc = test::submit_query_wrapper(
+        ctx_, ARRAY_NAME, &query, server_buffers_, serialized_writes);
+    REQUIRE(rc == TILEDB_OK);
     array.close();
   }
 

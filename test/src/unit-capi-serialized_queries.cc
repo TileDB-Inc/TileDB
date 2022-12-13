@@ -108,6 +108,9 @@ struct SerializationFx {
   Context ctx;
   VFS vfs;
 
+  // Buffers to allocate on query size for serialized queries
+  tiledb::test::ServerQueryBuffers server_buffers_;
+
   SerializationFx()
       : vfs(ctx) {
     if (vfs.is_dir(tmpdir))
@@ -1248,20 +1251,15 @@ TEST_CASE_METHOD(
 
     // Simulate REST submit()
     if (begin < end) {
-      if (!serialized_writes) {
-        query.submit();
-      } else {
-        test::submit_serialized_query(ctx, query);
-      }
+      test::submit_query_wrapper(
+          ctx, array_uri, &query, server_buffers_, serialized_writes, false);
     }
   }
 
-  if (!serialized_writes) {
-    query.submit();
-    query.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query);
-  }
+  // Submit query
+  auto rc = tiledb::test::submit_query_wrapper(
+      ctx, array_uri, &query, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
 
   REQUIRE(query.query_status() == Query::Status::COMPLETE);
 

@@ -553,13 +553,10 @@ TEST_CASE(
   buff_d1 = {1, 1, 5, 4};
   buff_d2 = {3, 1, 4, 2};
 
-  if (!serialized_writes) {
-    CHECK_NOTHROW(query_w.submit());
-    query_w.finalize();
-  } else {
-    submit_and_finalize_serialized_query(ctx, query_w);
-  }
-  array_w.close();
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx, array_name, &query_w, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
 
   // Remove array
   if (vfs.is_dir(array_name))

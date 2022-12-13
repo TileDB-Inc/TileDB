@@ -1459,12 +1459,11 @@ void write_sparse_array_string_dim(
   query.set_data_buffer("dim1", (char*)data.data(), data.size());
   query.set_offsets_buffer("dim1", data_offsets.data(), data_offsets.size());
 
-  if (!serialized_writes) {
-    CHECK_NOTHROW(query.submit());
-    query.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query);
-  }
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx, array_name, &query, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
 
   array.close();
 }

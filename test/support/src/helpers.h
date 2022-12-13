@@ -909,19 +909,6 @@ int deserialize_array_and_query(
     const char* array_uri,
     bool clientside);
 
-void submit_serialized_query(tiledb_ctx_t* ctx, tiledb_query_t* query);
-
-void submit_serialized_query(const Context& ctx, Query& query);
-
-void finalize_serialized_query(tiledb_ctx_t* ctx, tiledb_query_t* query);
-
-void finalize_serialized_query(const Context& ctx, Query& query);
-
-void submit_and_finalize_serialized_query(
-    tiledb_ctx_t* ctx, tiledb_query_t* query);
-
-void submit_and_finalize_serialized_query(const Context& ctx, Query& query);
-
 /**
  * Helper function that allocates buffers on a query object that has been
  * deserialized on the "server" side.

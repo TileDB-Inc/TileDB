@@ -155,12 +155,12 @@ TEST_CASE(
   query_w1.set_layout(layout).set_data_buffer("d", data).set_offsets_buffer(
       "d", offsets);
 
-  if (!serialized_writes) {
-    query_w1.submit();
-    query_w1.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query_w1);
-  }
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx, array_name, &query_w1, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
+
   array_w1.close();
 
   // Second write
@@ -170,12 +170,11 @@ TEST_CASE(
   query_w2.set_layout(layout).set_data_buffer("d", data).set_offsets_buffer(
       "d", offsets);
 
-  if (!serialized_writes) {
-    query_w2.submit();
-    query_w2.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query_w2);
-  }
+  // Submit query
+  rc = test::submit_query_wrapper(
+      ctx, array_name, &query_w2, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
+
   array_w2.close();
 
   if (vfs.is_dir(array_name))

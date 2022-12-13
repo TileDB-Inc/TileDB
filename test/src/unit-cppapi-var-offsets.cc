@@ -79,12 +79,11 @@ void write_sparse_array(
   query.set_data_buffer("attr", data);
   query.set_offsets_buffer("attr", data_offsets);
 
-  if (!serialized_writes) {
-    CHECK_NOTHROW(query.submit());
-    query.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query);
-  }
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx, array_name, &query, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
 
   array.close();
 }
@@ -110,12 +109,11 @@ void write_sparse_array(
       reinterpret_cast<uint64_t*>(data_offsets.data()),
       data_offsets.size());
   /* TODO: enable this when sc21681 is fixed
-  if (!serialized_writes) {
-    CHECK_NOTHROW(query.submit());
-    query.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query);
-  }
+    // Submit query
+    test::ServerQueryBuffers server_buffers_;
+    auto rc = test::submit_query_wrapper(
+        ctx, array_name, &query, server_buffers_, serialized_writes);
+    REQUIRE(rc == TILEDB_OK);
   */
   CHECK_NOTHROW(query.submit());
   query.finalize();
@@ -304,12 +302,11 @@ void write_dense_array(
     query.set_subarray<int64_t>({1, 2, 1, 2});
   }
 
-  if (!serialized_writes) {
-    CHECK_NOTHROW(query.submit());
-    query.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query);
-  }
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx, array_name, &query, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
 
   array.close();
 }
@@ -354,13 +351,11 @@ void write_dense_array(
   }
 
   // TODO: remove this when sc21681 is fixed
-  serialized_writes = false;
-  if (!serialized_writes) {
-    CHECK_NOTHROW(query.submit());
-    query.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query);
-  }
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx, array_name, &query, server_buffers_, serialized_writes);
+  REQUIRE(rc == TILEDB_OK);
 
   array.close();
 }

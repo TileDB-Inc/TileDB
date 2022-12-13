@@ -53,6 +53,7 @@ struct ConsolidationWithTimestampsFx {
   VFS vfs_;
   sm::StorageManager* sm_;
   bool serialized_writes_ = false;
+  ServerQueryBuffers server_buffers_;
 
   // Constructors/destructors.
   ConsolidationWithTimestampsFx();
@@ -177,12 +178,10 @@ void ConsolidationWithTimestampsFx::write_sparse(
   query.set_data_buffer("d1", dim1);
   query.set_data_buffer("d2", dim2);
 
-  if (!serialized_writes_) {
-    query.submit();
-    query.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx_, query);
-  }
+  // Submit query
+  auto rc = test::submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialized_writes_);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array.
   array.close();
@@ -210,12 +209,11 @@ void ConsolidationWithTimestampsFx::write_sparse_v11(uint64_t timestamp) {
   query.set_data_buffer("a3", buffer_a3);
   query.set_data_buffer("d1", buffer_coords_dim1);
   query.set_data_buffer("d2", buffer_coords_dim2);
-  if (!serialized_writes_) {
-    query.submit();
-    query.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx_, query);
-  }
+
+  // Submit query
+  auto rc = test::submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialized_writes_);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array.
   array.close();
