@@ -136,7 +136,7 @@ class GlobalStats {
   mutable std::mutex mtx_;
 
   /** The aggregated stats. */
-  std::list<shared_ptr<stats::Stats>> registered_stats_;
+  std::list<std::weak_ptr<stats::Stats>> registered_stats_;
 
   /* ****************************** */
   /*       PRIVATE FUNCTIONS        */
