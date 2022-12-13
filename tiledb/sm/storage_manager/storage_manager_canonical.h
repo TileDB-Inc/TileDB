@@ -1114,7 +1114,7 @@ class StorageManagerCanonical {
   void encryption_key_from_configs(
       EncryptionKey& enc_key, const Config* config);
 
-  private:
+ private:
   /* ********************************* */
   /*        PRIVATE DATATYPES          */
   /* ********************************* */

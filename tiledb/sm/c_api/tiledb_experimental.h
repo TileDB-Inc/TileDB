@@ -819,8 +819,7 @@ TILEDB_EXPORT int32_t tiledb_consolidation_plan_free_json_str(char** str)
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
-    tiledb_array_t *array,
-    uint64_t* max_in_memory_tile_size);
+    tiledb_array_t* array, uint64_t* max_in_memory_tile_size);
 
 #ifdef __cplusplus
 }

@@ -1537,9 +1537,7 @@ class Array {
    */
   uint64_t get_max_in_memory_tile_size() {
     uint64_t max_in_memory_tile_size;
-    tiledb_array_maximum_tile_size(
-        array_.get(),
-        &max_in_memory_tile_size);
+    tiledb_array_maximum_tile_size(array_.get(), &max_in_memory_tile_size);
     return max_in_memory_tile_size;
   }
 
