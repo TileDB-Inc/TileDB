@@ -37,7 +37,7 @@
 #include <vector>
 
 #include <test/support/tdb_catch.h>
-#include <test/support/src/api_v3.h>
+#include <test/support/api/v3.h>
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"
 
@@ -263,27 +263,46 @@ TEST_CASE(
     "Testing the array_api interface",
     "[api_v3]") {
 
-  auto dims = v3::Dimensions<int, int>()
-    .set<0, int>("rows", {1, 20}, 4)
-    .set<1, int>("cols", {1, 20}, 4);
-
-  auto attrs = v3::Attributes<int, float>()
-    .set<0, int>("a", -1)
-    .set<1, float>("b", -1.0);
-
-  auto array = v3::SparseArray(dims, attrs)
+  auto array = v3::SparseArray("my_test_array")
+    .set_dimensions({
+      v3::Dimension::create<int>("rows", {1, 20}, 4),
+      v3::Dimension::create<int>("cols", {1, 20}, 4)
+    })
+    .set_attributes({
+      v3::Attribute::create<int>("a", -1),
+      v3::Attribute::create<float>("b", -1.0)
+    })
     .set_order(TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR)
-    .set_allow_dups(true)
-    .set_capacity(16);
-    // .create(ctx, [](std::tuple<int, int>) -> std::tuple<int, float> {
-    //   int a = rand_float() * 10;
-    //   float b = rand_float() * 100.0;
-    //   return {a, b};
-    // });
+    .set_capacity(4)
+    .create();
 
-  v3::generate(array, [](decltype(array)::coords_type) -> decltype(array)::cell_type {
-    return std::tuple(5, 1.5);
-  });
+  auto writer = v3::SparserWriter(array);
+  for(int r = 0; r <= 20; r++) {
+    for(int c = 0; c <= 20; c++) {
+      writer[r][c]["a"] = rand_float() * 10;
+      writer[r][c]["b"] = rand_float() * 100.0f;
+    }
+  }
+  writer.write();
+
+//   auto attrs = v3::attributes<int, float>({
+//     {"a", -1},
+//     {"b", -1.0}
+//   });
+//
+//   auto array = v3::SparseArray(dims, attrs)
+//     .set_order(TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR)
+//     .set_allow_dups(true)
+//     .set_capacity(16);
+//     // .create(ctx, [](std::tuple<int, int>) -> std::tuple<int, float> {
+//     //   int a = rand_float() * 10;
+//     //   float b = rand_float() * 100.0;
+//     //   return {a, b};
+//     // });
+//
+//   v3::generate(array, [](decltype(array)::coords_type) -> decltype(array)::cell_type {
+//     return std::tuple(5, 1.5);
+//   });
 
   //std::cerr << "Array Type: " << array.array_type() << std::endl;
 }
