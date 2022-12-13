@@ -26,10 +26,10 @@
  * THE SOFTWARE.
  */
 
-#include "../throwcatch.h"
+#include "../throw_catch.h"
 
 using namespace tiledb::common;
 
 int main() {
-  (void)sizeof(ThrowcatchScheduler<size_t>(1));
+  (void)sizeof(ThrowCatchScheduler<size_t>(1));
 }
