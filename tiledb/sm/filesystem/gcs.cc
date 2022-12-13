@@ -44,8 +44,8 @@
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/unique_rwlock.h"
+#include "tiledb/platform/cert_file.h"
 #include "tiledb/sm/filesystem/gcs.h"
-#include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
@@ -121,13 +121,12 @@ Status GCS::init_client() const {
 
   google::cloud::storage::ChannelOptions channel_options;
 
-#ifdef __linux__
-  const std::string cert_file =
-      global_state::GlobalState::GetGlobalState().cert_file();
-  if (!cert_file.empty()) {
-    channel_options.set_ssl_root_path(cert_file);
+  if constexpr (tiledb::platform::PlatformCertFile::enabled) {
+    const std::string cert_file = tiledb::platform::PlatformCertFile::get();
+    if (!cert_file.empty()) {
+      channel_options.set_ssl_root_path(cert_file);
+    }
   }
-#endif
 
   // Note that the order here is *extremely important*
   // We must call ::GoogleDefaultCredentials *with* a channel_options

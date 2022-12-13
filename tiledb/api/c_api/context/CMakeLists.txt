@@ -57,5 +57,6 @@ target_link_libraries(capi_context_stub PUBLIC thread_pool $<TARGET_OBJECTS:thre
 add_executable(compile_capi_context_stub EXCLUDE_FROM_ALL)
 target_link_libraries(compile_capi_context_stub PRIVATE capi_context_stub)
 target_sources(compile_capi_context_stub PRIVATE test/compile_capi_context_main.cc)
+add_dependencies(all_link_complete compile_capi_context_stub)
 
 add_test_subdirectory()

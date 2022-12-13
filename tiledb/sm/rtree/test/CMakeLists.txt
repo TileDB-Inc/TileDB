@@ -24,18 +24,9 @@
 # THE SOFTWARE.
 #
 
-find_package(Catch_EP REQUIRED)
+include(unit_test)
 
-add_executable(unit_rtree EXCLUDE_FROM_ALL)
-target_link_libraries(unit_rtree
-    PRIVATE rtree
-    PUBLIC Catch2::Catch2WithMain
-)
-target_link_libraries(unit_rtree)
-target_sources(unit_rtree PUBLIC main.cc unit_rtree.cc)
-
-add_test(
-    NAME "unit_rtree"
-    COMMAND $<TARGET_FILE:unit_rtree>
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+commence(unit_test rtree)
+    this_target_sources(main.cc unit_rtree.cc)
+    this_target_object_libraries(rtree)
+conclude(unit_test)

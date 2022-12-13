@@ -97,18 +97,4 @@ if (NOT WIN32)
   target_link_libraries(tdb_gzip_embedded_data PRIVATE dl)
 endif()
 
-if (TILEDB_TESTS)
-    add_executable(unit_compressors EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_compressors PRIVATE compressors)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_compressors PUBLIC Catch2::Catch2WithMain)
-
-    # Sources for tests
-    target_sources(unit_compressors PUBLIC test/main.cc test/unit_dict_compressor.cc)
-
-    add_test(
-        NAME "unit_compressors"
-        COMMAND $<TARGET_FILE:unit_compressors>
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-endif()
+add_test_subdirectory()

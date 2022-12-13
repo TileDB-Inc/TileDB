@@ -110,7 +110,10 @@ set(TILEDB_UNIT_TEST_SOURCES
   support/src/ast_helpers.h
   support/src/helpers.h
   support/src/helpers-dimension.h
+  src/test-capi-consolidation-plan.cc
   src/test-capi-query-error-handling.cc
+  src/test-cppapi-consolidation-plan.cc
+  src/unit-average-cell-size.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
@@ -119,7 +122,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-array_schema.cc
   src/unit-capi-async.cc
   src/unit-capi-attributes.cc
-  src/unit-capi-buffer.cc
   src/unit-capi-config.cc
   src/unit-capi-context.cc
   src/unit-capi-consolidation.cc
@@ -341,6 +343,7 @@ endif()
 
 if (TILEDB_WEBP)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_WEBP)
+  find_package(Zlib_EP) # We need PNG to use our Zlib so that static link works correctly if applicable
   find_package(PNG)
   if (PNG_FOUND)
     target_compile_definitions(tiledb_unit PRIVATE -DPNG_FOUND)

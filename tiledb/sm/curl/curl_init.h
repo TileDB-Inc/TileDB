@@ -1,11 +1,11 @@
 /**
- * @file tiledb/sm/array_schema/test/compile_dimension_label_main.cc
+ * @file curl_init.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,11 +24,31 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file initializes the libcurl state, if libcurl is present.
  */
 
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#ifndef TILEDB_CURL_INIT_H
+#define TILEDB_CURL_INIT_H
 
-int main() {
-  (void)sizeof(tiledb::sm::DimensionLabelReference);
-  return 0;
-}
+namespace tiledb::sm::curl {
+
+/**
+ * A sentry class for ensuring that libcurl has
+ * been initialized for any classes that use it.
+ */
+class LibCurlInitializer {
+ public:
+  /**
+   * Construct an instance of LibCurlInitializer which
+   * has the side effect of ensuring that libcurl has
+   * been initialized for use.
+   */
+  LibCurlInitializer();
+};
+
+}  // namespace tiledb::sm::curl
+
+#endif

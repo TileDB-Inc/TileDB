@@ -33,7 +33,6 @@
 #include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
-#include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/group/group_v1.h"
 #include "tiledb/sm/rest/rest_client.h"
 

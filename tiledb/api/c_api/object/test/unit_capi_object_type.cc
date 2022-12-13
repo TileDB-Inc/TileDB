@@ -1,11 +1,11 @@
 /**
- * @file   libcurl_state.cc
+ * @file tiledeb/api/c_api/object/test/unit_capi_object_type.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,34 +27,46 @@
  *
  * @section DESCRIPTION
  *
- This file initializes the libcurl state, if libcurl is present.
+ * Tests the object C API.
  */
 
-#include "tiledb/sm/global_state/libcurl_state.h"
-#include "tiledb/common/logger.h"
+#include <test/support/tdb_catch.h>
+#include "tiledb/api/c_api/object/object_api_external.h"
 
-#ifdef TILEDB_SERIALIZATION
-#include <curl/curl.h>
-#endif
+#include <string>
 
-using namespace tiledb::common;
+struct TestCase {
+  TestCase(tiledb_object_t obj_type, const char* name, int defined_as)
+      : obj_type_(obj_type)
+      , name_(name)
+      , defined_as_(defined_as) {}
 
-namespace tiledb {
-namespace sm {
-namespace global_state {
+  tiledb_object_t obj_type_;
+  const char* name_;
+  int defined_as_;
 
-Status init_libcurl() {
-#ifdef TILEDB_SERIALIZATION
-  auto rc = curl_global_init(CURL_GLOBAL_DEFAULT);
-  if (rc != 0)
-    return LOG_STATUS(Status_Error(
-        "Cannot initialize libcurl global state: got non-zero return code " +
-        std::to_string(rc)));
-#endif
+  void run() {
+    const char* c_str = nullptr;
+    tiledb_object_t from_str;
 
-  return Status::Ok();
+    REQUIRE(obj_type_ == defined_as_);
+
+    REQUIRE(tiledb_object_type_to_str(obj_type_, &c_str) == TILEDB_OK);
+    REQUIRE(std::string(c_str) == name_);
+
+    REQUIRE(tiledb_object_type_from_str(name_, &from_str) == TILEDB_OK);
+    REQUIRE(from_str == obj_type_);
+  }
+};
+
+TEST_CASE("C API: Test object enum", "[capi][enums][object]") {
+  // clang-format off
+  TestCase test = GENERATE(
+    TestCase(TILEDB_INVALID, "INVALID", 0),
+    TestCase(TILEDB_GROUP, "GROUP", 1),
+    TestCase(TILEDB_ARRAY, "ARRAY", 2));
+
+  DYNAMIC_SECTION("[" << test.name_ << "]") {
+    test.run();
+  }
 }
-
-}  // namespace global_state
-}  // namespace sm
-}  // namespace tiledb

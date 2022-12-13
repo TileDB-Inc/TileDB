@@ -11,7 +11,6 @@ env:
   TILEDB_SERIALIZATION: OFF
   TILEDB_STATIC: ON
   TILEDB_TOOLS: ON
-  TILEDB_WEBP: ON
 
 jobs:
   build:
@@ -22,7 +21,7 @@ jobs:
       fail-fast: false
     name: Build - ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: 'Print env'
         run: |
           echo "'uname -s' is:"
@@ -46,7 +45,6 @@ jobs:
             -DTILEDB_GCS=${TILEDB_GCS} \
             -DTILEDB_S3=${TILEDB_S3} \
             -DTILEDB_SERIALIZATION=${TILEDB_SERIALIZATION} \
-            -DTILEDB_WEBP=${TILEDB_WEBP} \
             -DTILEDB_ASSERTIONS=${TILEDB_ASSERTIONS} \
             -DTILEDB_STATIC=${TILEDB_STATIC}
           make -j4

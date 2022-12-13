@@ -55,12 +55,17 @@
 /*
  * API sections
  */
+#include "tiledb/api/c_api/buffer/buffer_api_external.h"
 #include "tiledb/api/c_api/config/config_api_external.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
+#include "tiledb/api/c_api/datatype/datatype_api_external.h"
 #include "tiledb/api/c_api/error/error_api_external.h"
 #include "tiledb/api/c_api/filesystem/filesystem_api_external.h"
 #include "tiledb/api/c_api/filter/filter_api_external.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_external.h"
+#include "tiledb/api/c_api/group/group_api_external.h"
+#include "tiledb/api/c_api/object/object_api_external.h"
+#include "tiledb/api/c_api/query/query_api_external.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -72,22 +77,6 @@ extern "C" {
 /* ****************************** */
 /*          TILEDB ENUMS          */
 /* ****************************** */
-
-/** TileDB object type. */
-typedef enum {
-/** Helper macro for defining object type enums. */
-#define TILEDB_OBJECT_TYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_OBJECT_TYPE_ENUM
-} tiledb_object_t;
-
-/** TileDB query type. */
-typedef enum {
-/** Helper macro for defining query type enums. */
-#define TILEDB_QUERY_TYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_QUERY_TYPE_ENUM
-} tiledb_query_type_t;
 
 /** Query status. */
 typedef enum {
@@ -113,38 +102,6 @@ typedef enum {
 #undef TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM
 } tiledb_query_condition_combination_op_t;
 
-/** TileDB datatype. */
-typedef enum {
-/** Helper macro for defining datatype enums. */
-#define TILEDB_DATATYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_DATATYPE_ENUM
-#ifdef TILEDB_CHAR
-#def TILEDB_CHAR_VAL TILEDB_CHAR
-#undef TILEDB_CHAR
-#define TILEDB_CHAR TILEDB_DEPRECATED TILEDB_CHAR_VAL
-#undef TILEDB_CHAR_VAL
-#endif
-#ifdef TILEDB_STRING_UCS2
-#def TILEDB_STRING_UCS2_VAL TILEDB_STRING_UCS2
-#undef TILEDB_STRING_UCS2
-#define TILEDB_STRING_UCS2 TILEDB_DEPRECATED TILEDB_STRING_UCS2_VAL
-#undef TILEDB_STRING_UCS2_VAL
-#endif
-#ifdef TILEDB_STRING_UCS4
-#def TILEDB_STRING_UCS4_VAL TILEDB_STRING_UCS4
-#undef TILEDB_STRING_UCS4
-#define TILEDB_STRING_UCS4 TILEDB_DEPRECATED TILEDB_STRING_UCS4_VAL
-#undef TILEDB_STRING_UCS4_VAL
-#endif
-#ifdef TILEDB_ANY
-#def TILEDB_ANY_VAL TILEDB_ANY
-#undef TILEDB_ANY
-#define TILEDB_ANY TILEDB_DEPRECATED TILEDB_ANY_VAL
-#undef TILEDB_ANY_VAL
-#endif
-} tiledb_datatype_t;
-
 /** Array type. */
 typedef enum {
 /** Helper macro for defining array type enums. */
@@ -168,14 +125,6 @@ typedef enum {
 #include "tiledb_enum.h"
 #undef TILEDB_ENCRYPTION_TYPE_ENUM
 } tiledb_encryption_type_t;
-
-/** Walk traversal order. */
-typedef enum {
-/** Helper macro for defining walk order enums. */
-#define TILEDB_WALK_ORDER_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_WALK_ORDER_ENUM
-} tiledb_walk_order_t;
 
 /** VFS mode. */
 typedef enum {
@@ -204,87 +153,6 @@ typedef enum {
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
 /* ****************************** */
-
-/**
- * Returns a string representation of the given query type.
- *
- * @param query_type Query type
- * @param str Set to point to a constant string representation of the query type
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_query_type_to_str(
-    tiledb_query_type_t query_type, const char** str) TILEDB_NOEXCEPT;
-
-/**
- * Parses a query type from the given string.
- *
- * @param str String representation to parse
- * @param query_type Set to the parsed query type
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_query_type_from_str(
-    const char* str, tiledb_query_type_t* query_type) TILEDB_NOEXCEPT;
-
-/**
- * Returns a string representation of the given object type.
- *
- * @param object_type Object type
- * @param str Set to point to a constant string representation of the object
- * type
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_object_type_to_str(
-    tiledb_object_t object_type, const char** str) TILEDB_NOEXCEPT;
-
-/**
- * Parses a object type from the given string.
- *
- * @param str String representation to parse
- * @param object_type Set to the parsed object type
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_object_type_from_str(
-    const char* str, tiledb_object_t* object_type) TILEDB_NOEXCEPT;
-
-/**
- * Returns a string representation of the given filesystem.
- *
- * @param filesystem Filesystem
- * @param str Set to point to a constant string representation of the filesystem
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_filesystem_to_str(
-    tiledb_filesystem_t filesystem, const char** str) TILEDB_NOEXCEPT;
-
-/**
- * Parses a filesystem from the given string.
- *
- * @param str String representation to parse
- * @param filesystem Set to the parsed filesystem
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_filesystem_from_str(
-    const char* str, tiledb_filesystem_t* filesystem) TILEDB_NOEXCEPT;
-
-/**
- * Returns a string representation of the given datatype.
- *
- * @param datatype Datatype
- * @param str Set to point to a constant string representation of the datatype
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_datatype_to_str(
-    tiledb_datatype_t datatype, const char** str) TILEDB_NOEXCEPT;
-
-/**
- * Parses a datatype from the given string.
- *
- * @param str String representation to parse
- * @param datatype Set to the parsed datatype
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_datatype_from_str(
-    const char* str, tiledb_datatype_t* datatype) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given array type.
@@ -369,26 +237,6 @@ TILEDB_EXPORT int32_t tiledb_query_status_from_str(
     const char* str, tiledb_query_status_t* query_status) TILEDB_NOEXCEPT;
 
 /**
- * Returns a string representation of the given walk order.
- *
- * @param walk_order Walk order
- * @param str Set to point to a constant string representation of the walk order
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_walk_order_to_str(
-    tiledb_walk_order_t walk_order, const char** str) TILEDB_NOEXCEPT;
-
-/**
- * Parses a walk order from the given string.
- *
- * @param str String representation to parse
- * @param walk_order Set to the parsed walk order
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_walk_order_from_str(
-    const char* str, tiledb_walk_order_t* walk_order) TILEDB_NOEXCEPT;
-
-/**
  * Returns a string representation of the given VFS mode.
  *
  * @param vfs_mode VFS mode
@@ -432,13 +280,6 @@ TILEDB_EXPORT uint32_t tiledb_max_path(void) TILEDB_NOEXCEPT;
  * attributes).
  */
 TILEDB_EXPORT uint64_t tiledb_offset_size(void) TILEDB_NOEXCEPT;
-
-/**
- * Returns the input datatype size for a given type. Returns zero if the type is
- * not valid.
- */
-TILEDB_EXPORT uint64_t tiledb_datatype_size(tiledb_datatype_t type)
-    TILEDB_NOEXCEPT;
 
 /** Returns the current time in milliseconds. */
 TILEDB_EXPORT uint64_t tiledb_timestamp_now_ms(void) TILEDB_NOEXCEPT;
@@ -488,9 +329,6 @@ typedef struct tiledb_array_t tiledb_array_t;
 /** A subarray object. */
 typedef struct tiledb_subarray_t tiledb_subarray_t;
 
-/** A generic buffer object. */
-typedef struct tiledb_buffer_t tiledb_buffer_t;
-
 /** A generic buffer list object. */
 typedef struct tiledb_buffer_list_t tiledb_buffer_list_t;
 
@@ -521,152 +359,8 @@ typedef struct tiledb_vfs_fh_t tiledb_vfs_fh_t;
 /** A fragment info object. */
 typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
-/** A group object. */
-typedef struct tiledb_group_t tiledb_group_t;
-
-/* ********************************* */
-/*              BUFFER               */
-/* ********************************* */
-
-/**
- * Creates an empty buffer object.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_t* buffer;
- * tiledb_buffer_alloc(ctx, &buffer);
- * @endcode
- *
- * @param ctx TileDB context
- * @param buffer The buffer to be created
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_alloc(
-    tiledb_ctx_t* ctx, tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
-
-/**
- * Destroys a TileDB buffer, freeing associated memory.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_t* buffer;
- * tiledb_buffer_alloc(ctx, &buffer);
- * tiledb_buffer_free(&buffer);
- * @endcode
- *
- * @param buffer The buffer to be destroyed.
- */
-TILEDB_EXPORT void tiledb_buffer_free(tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
-
-/**
- * Sets a datatype for the given buffer. The default datatype is `TILEDB_UINT8`.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_t* buffer;
- * tiledb_buffer_alloc(ctx, &buffer);
- * tiledb_buffer_set_type(ctx, buffer, TILEDB_INT32);
- * @endcode
- *
- * @param ctx TileDB context
- * @param buffer TileDB buffer instance
- * @param datatype The datatype to set on the buffer.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_set_type(
-    tiledb_ctx_t* ctx,
-    tiledb_buffer_t* buffer,
-    tiledb_datatype_t datatype) TILEDB_NOEXCEPT;
-
-/**
- * Gets the datatype from the given buffer.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_datatype_t type;
- * tiledb_buffer_get_type(ctx, buffer, &type);
- * @endcode
- *
- * @param ctx TileDB context
- * @param buffer TileDB buffer instance
- * @param datatype Set to the datatype of the buffer.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_get_type(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_t* buffer,
-    tiledb_datatype_t* datatype) TILEDB_NOEXCEPT;
-
-/**
- * Gets a pointer to the current allocation and the current number of bytes in
- * the specified buffer object.
- *
- * @note For string buffers allocated by TileDB, the number of bytes includes
- * the terminating NULL byte.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_t* buffer;
- * tiledb_buffer_alloc(ctx, &buffer);
- * void* data;
- * uint64_t num_bytes;
- * tiledb_buffer_get_data(ctx, buffer, &data, num_bytes);
- * // data == NULL and num_bytes == 0 because the buffer is currently empty.
- * tiledb_buffer_free(&buffer);
- * @endcode
- *
- * @param ctx TileDB context
- * @param buffer TileDB buffer instance
- * @param data The pointer to the data to be retrieved.
- * @param num_bytes Set to the number of bytes in the buffer.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_get_data(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_t* buffer,
-    void** data,
-    uint64_t* num_bytes) TILEDB_NOEXCEPT;
-
-/**
- * Sets (wraps) a pre-allocated region of memory with the given buffer object.
- * This does not perform a copy.
- *
- * @note The TileDB buffer object does not take ownership of the allocation
- * set with this function. That means the call to `tiledb_buffer_free` will not
- * free a user allocation set via `tiledb_buffer_set_buffer`.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_t* buffer;
- * tiledb_buffer_alloc(ctx, &buffer);
- *
- * void* my_data = malloc(100);
- * tiledb_buffer_set_data(ctx, buffer, my_data, 100);
- *
- * void* data;
- * uint64_t num_bytes;
- * tiledb_buffer_get_data(ctx, buffer, &data, num_bytes);
- * assert(data == my_data);
- * assert(num_bytes == 100);
- *
- * tiledb_buffer_free(&buffer);
- * free(my_data);
- * @endcode
- *
- * @param ctx TileDB context
- * @param buffer TileDB buffer instance
- * @param data Pre-allocated region of memory to wrap with this buffer.
- * @param size Size (in bytes) of the region pointed to by data.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_set_data(
-    tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, void* data, uint64_t size);
+/** A consolidation plan object. */
+typedef struct tiledb_consolidation_plan_t tiledb_consolidation_plan_t;
 
 /* ********************************* */
 /*            BUFFER LIST            */
@@ -812,26 +506,6 @@ TILEDB_EXPORT int32_t tiledb_buffer_list_flatten(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_list_t* buffer_list,
     tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
-
-/* ********************************* */
-/*                GROUP              */
-/* ********************************* */
-
-/**
- * Creates a new TileDB group.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_create(ctx, "my_group");
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group_uri The group URI.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t
-tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*            ATTRIBUTE              */
@@ -5105,7 +4779,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_create_with_key(
  * @param array_uri The name of the TileDB array whose metadata will
  *     be consolidated.
  * @param config Configuration parameters for the consolidation
- *     (`nullptr` means default, which will use the config from `ctx`).
+ *     (`nullptr` means default, which will use the config from \p ctx).
  *     The `sm.consolidation.mode` parameter determines which type of
  *     consolidation to perform.
  *
@@ -5164,7 +4838,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_with_key(
  * @param ctx The TileDB context.
  * @param array_uri The name of the TileDB array to vacuum.
  * @param config Configuration parameters for the vacuuming
- *     (`nullptr` means default, which will use the config from `ctx`).
+ *     (`nullptr` means default, which will use the config from \p ctx).
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
 TILEDB_EXPORT int32_t tiledb_array_vacuum(

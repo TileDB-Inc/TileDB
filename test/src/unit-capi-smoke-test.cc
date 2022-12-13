@@ -1348,7 +1348,9 @@ void SmokeTestFx::smoke_test(
 }
 
 TEST_CASE_METHOD(
-    SmokeTestFx, "C API: Test a dynamic range of arrays", "[capi][smoke]") {
+    SmokeTestFx,
+    "C API: Test a dynamic range of arrays",
+    "[capi][smoke][longtest]") {
   // Build a vector of attributes.
   vector<test_attr_t> attrs;
   attrs.emplace_back("a", TILEDB_INT32, 1, true);

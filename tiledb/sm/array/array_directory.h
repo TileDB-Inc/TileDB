@@ -188,6 +188,13 @@ class ArrayDirectory {
       return (timestamp_ < rhs.timestamp_);
     }
 
+    bool operator==(const DeleteAndUpdateTileLocation& other) const {
+      return (
+          uri() == other.uri() &&
+          condition_marker() == other.condition_marker() &&
+          offset() == other.offset() && timestamp() == other.timestamp());
+    }
+
     /* ********************************* */
     /*                API                */
     /* ********************************* */
@@ -334,6 +341,95 @@ class ArrayDirectory {
   /** Returns the filtered fragment URIs struct. */
   const FilteredFragmentUris filtered_fragment_uris(
       const bool full_overlap_only) const;
+
+  /** Returns the start timestamp of the files to be considered */
+  const uint64_t& timestamp_start() const;
+
+  /** Returns the end timestamp of the files to be considered */
+  const uint64_t& timestamp_end() const;
+
+  /* ACCESSORS */
+
+  /** Accessor to array uri_ */
+  inline URI& uri() {
+    return uri_;
+  }
+
+  /** Accessor to array_schema_uris_ */
+  inline std::vector<URI>& array_schema_uris() {
+    return array_schema_uris_;
+  }
+
+  /** Accessor to latest_array_schema_uri_ */
+  inline URI& latest_array_schema_uri() {
+    return latest_array_schema_uri_;
+  }
+
+  /** Accessor to unfiltered_fragment_uris_ */
+  inline std::vector<URI>& unfiltered_fragment_uris() {
+    return unfiltered_fragment_uris_;
+  }
+
+  /** Accessor to consolidated_commit_uris_set_ */
+  inline std::unordered_set<std::string>& consolidated_commit_uris_set() {
+    return consolidated_commit_uris_set_;
+  }
+
+  /** Accessor to array_meta_uris_to_vacuum_ */
+  inline std::vector<URI>& array_meta_uris_to_vacuum() {
+    return array_meta_uris_to_vacuum_;
+  }
+
+  /** Accessor to array_meta_vac_uris_to_vacuum_ */
+  inline std::vector<URI>& array_meta_vac_uris_to_vacuum() {
+    return array_meta_vac_uris_to_vacuum_;
+  }
+
+  /** Accessor to commit_uris_to_consolidate_ */
+  inline std::vector<URI>& commit_uris_to_consolidate() {
+    return commit_uris_to_consolidate_;
+  }
+
+  /** Accessor to commit_uris_to_vacuum_ */
+  inline std::vector<URI>& commit_uris_to_vacuum() {
+    return commit_uris_to_vacuum_;
+  }
+
+  /** Accessor to consolidated_commits_uris_to_vacuum_ */
+  inline std::vector<URI>& consolidated_commits_uris_to_vacuum() {
+    return consolidated_commits_uris_to_vacuum_;
+  }
+
+  /** Accessor to array_meta_uris_ */
+  inline std::vector<TimestampedURI>& array_meta_uris() {
+    return array_meta_uris_;
+  }
+
+  /** Accessor to timestamp_start_ */
+  inline uint64_t& timestamp_start() {
+    return timestamp_start_;
+  }
+
+  /** Accessor to timestamp_end_ */
+  inline uint64_t& timestamp_end() {
+    return timestamp_end_;
+  }
+
+  /** Accessor to fragment_meta_uris_ */
+  inline std::vector<URI>& fragment_meta_uris() {
+    return fragment_meta_uris_;
+  }
+
+  /** Accessor to delete_and_update_tiles_location_ */
+  inline std::vector<DeleteAndUpdateTileLocation>&
+  delete_and_update_tiles_location() {
+    return delete_and_update_tiles_location_;
+  }
+
+  /** Accessor to loaded_ */
+  inline bool& loaded() {
+    return loaded_;
+  }
 
  private:
   /* ********************************* */
