@@ -76,6 +76,7 @@ Subarray::Subarray()
     , layout_(Layout::UNORDERED)
     , cell_order_(Layout::ROW_MAJOR)
     , est_result_size_computed_(false)
+    , relevant_fragments_(nullopt)
     , coalesce_ranges_(true)
     , ranges_sorted_(false) {
 }
@@ -112,6 +113,7 @@ Subarray::Subarray(
     , layout_(layout)
     , cell_order_(array_->array_schema_latest().cell_order())
     , est_result_size_computed_(false)
+    , relevant_fragments_(nullopt)
     , coalesce_ranges_(coalesce_ranges)
     , ranges_sorted_(false) {
   if (!parent_stats && !storage_manager) {
@@ -2285,9 +2287,9 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
       range_idx - tile_overlap_.range_idx_start();
 
   // Compute estimated result
-  auto fragment_num = (unsigned)relevant_fragments_.size();
+  auto fragment_num = (unsigned)relevant_fragments_->size();
   for (unsigned i = 0; i < fragment_num; ++i) {
-    auto f = relevant_fragments_[i];
+    auto f = relevant_fragments_->at(i);
     const TileOverlap* const overlap =
         tile_overlap_.at(f, translated_range_idx);
     auto meta = fragment_meta[f];
@@ -2611,7 +2613,7 @@ Status Subarray::precompute_tile_overlap(
   stats_->add_counter("precompute_tile_overlap.fragment_num", fragment_num);
   stats_->add_counter(
       "precompute_tile_overlap.relevant_fragment_num",
-      relevant_fragments_.size());
+      relevant_fragments_->size());
   stats_->add_counter(
       "precompute_tile_overlap.tile_overlap_byte_size",
       tile_overlap_.byte_size());
@@ -2654,8 +2656,8 @@ Status Subarray::precompute_all_ranges_tile_overlap(
 
   // Run all fragments in parallel.
   auto status =
-      parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t i) {
-        const auto f = relevant_fragments_[i];
+      parallel_for(compute_tp, 0, relevant_fragments_->size(), [&](uint64_t i) {
+        const auto f = relevant_fragments_->at(i);
         auto tile_bitmaps_resource_guard =
             ResourceGuard(all_threads_tile_bitmaps);
         auto tile_bitmaps = tile_bitmaps_resource_guard.get();
@@ -2966,8 +2968,13 @@ Status Subarray::compute_relevant_fragments(
   }));
 
   // Recalculate relevant fragments.
-  relevant_fragments_.clear();
-  relevant_fragments_.reserve(fragment_num);
+  if (!relevant_fragments_.has_value()) {
+    relevant_fragments_ = std::vector<unsigned>();
+  } else {
+    relevant_fragments_->clear();
+  }
+
+  relevant_fragments_->reserve(fragment_num);
   for (unsigned f = 0; f < fragment_num; ++f) {
     bool relevant = true;
     for (uint32_t d = 0; d < dim_num; ++d) {
@@ -2978,7 +2985,7 @@ Status Subarray::compute_relevant_fragments(
     }
 
     if (relevant) {
-      relevant_fragments_.emplace_back(f);
+      relevant_fragments_->emplace_back(f);
     }
   }
 
@@ -3100,8 +3107,8 @@ Status Subarray::load_relevant_fragment_rtrees(
   auto encryption_key = array_->encryption_key();
 
   auto status =
-      parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t f) {
-        return meta[relevant_fragments_[f]]->load_rtree(*encryption_key);
+      parallel_for(compute_tp, 0, relevant_fragments_->size(), [&](uint64_t f) {
+        return meta[relevant_fragments_->at(f)]->load_rtree(*encryption_key);
       });
   RETURN_NOT_OK(status);
 
@@ -3121,8 +3128,8 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
   const auto& meta = array_->fragment_metadata();
 
   auto status =
-      parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t i) {
-        const auto f = relevant_fragments_[i];
+      parallel_for(compute_tp, 0, relevant_fragments_->size(), [&](uint64_t i) {
+        const auto f = relevant_fragments_->at(i);
         const auto dense = meta[f]->dense();
         return compute_relevant_fragment_tile_overlap(
             meta[f], f, dense, compute_tp, tile_overlap, fn_ctx);
@@ -3187,8 +3194,8 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
   // Load all metadata for tile var sizes among fragments.
   for (const auto& var_name : var_names) {
     const auto status = parallel_for(
-        compute_tp, 0, relevant_fragments_.size(), [&](const size_t i) {
-          auto f = relevant_fragments_[i];
+        compute_tp, 0, relevant_fragments_->size(), [&](const size_t i) {
+          auto f = relevant_fragments_->at(i);
           // Gracefully skip loading tile sizes for attributes added in schema
           // evolution that do not exists in this fragment
           const auto& schema = meta[f]->array_schema();
@@ -3204,12 +3211,12 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
   return Status::Ok();
 }
 
-const std::vector<unsigned>* Subarray::relevant_fragments() const {
-  return &relevant_fragments_;
+const optional<std::vector<unsigned>>& Subarray::relevant_fragments() const {
+  return relevant_fragments_;
 }
 
-std::vector<unsigned>* Subarray::relevant_fragments() {
-  return &relevant_fragments_;
+optional<std::vector<unsigned>>& Subarray::relevant_fragments() {
+  return relevant_fragments_;
 }
 
 stats::Stats* Subarray::stats() const {

@@ -177,7 +177,7 @@ void CSparseGlobalOrderFx::update_config() {
 }
 
 void CSparseGlobalOrderFx::create_default_array_1d(bool allow_dups) {
-  int domain[] = {1, 20};
+  int domain[] = {1, 200};
   int tile_extent = 2;
   create_array(
       ctx_,
@@ -353,16 +353,20 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Write a fragment.
-  int coords[] = {1, 2, 3, 4, 5};
-  uint64_t coords_size = sizeof(coords);
-  int data[] = {1, 2, 3, 4, 5};
-  uint64_t data_size = sizeof(data);
-  write_1d_fragment(coords, &coords_size, data, &data_size);
+  std::vector<int> coords(200);
+  std::iota(coords.begin(), coords.end(), 1);
+  uint64_t coords_size = coords.size() * sizeof(int);
 
-  // We should have 3 tiles (tile offset size 24) which will be bigger than
-  // budget (10).
-  total_budget_ = "1000";
-  ratio_array_data_ = "0.01";
+  std::vector<int> data(200);
+  std::iota(data.begin(), data.end(), 1);
+  uint64_t data_size = data.size() * sizeof(int);
+
+  write_1d_fragment(coords.data(), &coords_size, data.data(), &data_size);
+
+  // We should have 100 tiles (tile offset size 800) which will be bigger than
+  // leftover budget.
+  total_budget_ = "3000";
+  ratio_array_data_ = "0.5";
   update_config();
 
   // Try to read.
@@ -385,8 +389,7 @@ TEST_CASE_METHOD(
   std::string error_str(msg);
   CHECK(
       error_str.find(
-          "SparseIndexReaderBase: Cannot load tile offsets, computed size (48) "
-          "is larger than memory budget for array data (10).") !=
+          "SparseGlobalOrderReader: Cannot load tile offsets, computed size") !=
       std::string::npos);
 }
 

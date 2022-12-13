@@ -278,6 +278,7 @@ void check_save_to_file() {
   ss << "sm.mem.total_budget 10737418240\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
+  ss << "sm.partial_tile_offsets_loading false\n";
   ss << "sm.query.dense.qc_coords_mode false\n";
   ss << "sm.query.dense.reader refactored\n";
   ss << "sm.query.sparse_global_order.reader refactored\n";
@@ -595,6 +596,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.encryption_key"] = "";
   all_param_values["sm.encryption_type"] = "NO_ENCRYPTION";
   all_param_values["sm.dedup_coords"] = "false";
+  all_param_values["sm.partial_tile_offsets_loading"] = "false";
   all_param_values["sm.check_coord_dups"] = "true";
   all_param_values["sm.check_coord_oob"] = "true";
   all_param_values["sm.check_global_order"] = "true";
@@ -653,6 +655,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.var_offsets.mode"] = "elements";
   all_param_values["sm.max_tile_overlap_size"] = "314572800";
   all_param_values["sm.fragment_info.preload_mbrs"] = "true";
+  all_param_values["sm.partial_tile_offsets_loading"] = "false";
 
   all_param_values["vfs.disable_batching"] = "false";
   all_param_values["vfs.max_batch_size"] = std::to_string(UINT64_MAX);

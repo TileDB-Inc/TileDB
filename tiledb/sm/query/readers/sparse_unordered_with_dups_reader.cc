@@ -86,7 +86,9 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           buffers,
           subarray,
           layout,
-          condition) {
+          condition)
+    , tile_offsets_min_frag_idx_(std::numeric_limits<unsigned>::max())
+    , tile_offsets_max_frag_idx_(0) {
   include_coords_ = subarray_.is_set() || bitsort_attribute_.has_value();
   SparseIndexReaderBase::init(skip_checks_serialization);
 
@@ -95,6 +97,19 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
     throw SparseUnorderedWithDupsReaderStatusException(
         "Cannot initialize memory budget");
   }
+
+  // Get the setting that allows to partially load tile offsets. This is done
+  // for this reader only for now.
+  bool found = false;
+  if (!config_
+           .get<bool>(
+               "sm.partial_tile_offsets_loading",
+               &partial_tile_offsets_loading_,
+               &found)
+           .ok()) {
+    throw SparseUnorderedWithDupsReaderStatusException("Cannot get setting");
+  }
+  assert(found);
 }
 
 /* ****************************** */
@@ -200,6 +215,9 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   do {
     stats_->add_counter("loop_num", 1);
 
+    // Load as much tile offsets data in memory as possible.
+    load_tile_offsets_data();
+
     // Create the result tiles we are going to process.
     create_result_tiles();
 
@@ -297,6 +315,107 @@ void SparseUnorderedWithDupsReader<BitmapType>::reset() {
 }
 
 template <class BitmapType>
+void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
+  // For easy reference.
+  bool initial_load =
+      tile_offsets_min_frag_idx_ == std::numeric_limits<unsigned>::max() &&
+      tile_offsets_max_frag_idx_ == 0;
+  uint64_t available_memory = array_memory_tracker_->get_memory_available() -
+                              array_memory_tracker_->get_memory_usage(
+                                  MemoryTracker::MemoryType::TILE_OFFSETS);
+  auto& relevant_fragments = subarray_.relevant_fragments();
+
+  if (!partial_tile_offsets_loading_) {
+    // When partial loading is not allowed, we load everything in memory on the
+    // first pass.
+    if (initial_load) {
+      // Load all tile offsets in memory. Make sure we have enough space for
+      // tile offsets data.
+      uint64_t total_tile_offset_usage = tile_offsets_size(relevant_fragments);
+      if (total_tile_offset_usage > available_memory) {
+        throw SparseUnorderedWithDupsReaderStatusException(
+            "Cannot load tile offsets, computed size (" +
+            std::to_string(total_tile_offset_usage) +
+            ") is larger than available memory (" +
+            std::to_string(available_memory) +
+            "). Total budget for array data (" +
+            std::to_string(array_memory_tracker_->get_memory_budget()) + ").");
+      }
+
+      // Load the tile offsets.
+      load_tile_offsets_for_fragments(relevant_fragments);
+      tile_offsets_min_frag_idx_ = 0;
+      tile_offsets_max_frag_idx_ =
+          static_cast<unsigned>(fragment_metadata_.size());
+    }
+  } else {
+    if (initial_load ||
+        (all_tiles_loaded_[tile_offsets_max_frag_idx_ - 1] &&
+         tile_offsets_max_frag_idx_ != fragment_metadata_.size())) {
+      // For the initial load the min index is 0. Otherwise, it is max + 1.
+      if (initial_load) {
+        tile_offsets_min_frag_idx_ = 0;
+      } else {
+        // Clear tile offsets data from loaded fragments.
+        for (unsigned f = tile_offsets_min_frag_idx_;
+             f < tile_offsets_max_frag_idx_;
+             f++) {
+          fragment_metadata_[f]->free_tile_offsets();
+        }
+
+        tile_offsets_min_frag_idx_ = tile_offsets_max_frag_idx_;
+      }
+
+      // Load as much data in memory as possible.
+      for (tile_offsets_max_frag_idx_ = tile_offsets_min_frag_idx_;
+           tile_offsets_max_frag_idx_ < fragment_metadata_.size();
+           tile_offsets_max_frag_idx_++) {
+        // If we don't have enough memory for the current fragment, stop.
+        if (per_frag_tile_offsets_usage_[tile_offsets_max_frag_idx_] >
+            available_memory) {
+          break;
+        }
+
+        // Adjust available memory.
+        available_memory -=
+            per_frag_tile_offsets_usage_[tile_offsets_max_frag_idx_];
+      }
+
+      // Make sure plan to load tile offsets for at least one fragment.
+      if (tile_offsets_min_frag_idx_ == tile_offsets_max_frag_idx_) {
+        throw SparseUnorderedWithDupsReaderStatusException(
+            "Cannot load tile offsets for only one fragment. Offsets size for "
+            "the fragment (" +
+            std::to_string(
+                per_frag_tile_offsets_usage_[tile_offsets_max_frag_idx_]) +
+            ") is larger than available memory (" +
+            std::to_string(available_memory) +
+            "). Total budget for array data (" +
+            std::to_string(array_memory_tracker_->get_memory_budget()) + ").");
+      }
+
+      // Make the vector of fragments to load.
+      std::vector<unsigned> to_load;
+      if (relevant_fragments.has_value()) {
+        to_load.reserve(relevant_fragments->size());
+        for (auto f : relevant_fragments.value()) {
+          if (f >= tile_offsets_min_frag_idx_ &&
+              f < tile_offsets_max_frag_idx_) {
+            to_load.emplace_back(f);
+          }
+        }
+      } else {
+        to_load.resize(tile_offsets_max_frag_idx_ - tile_offsets_min_frag_idx_);
+        std::iota(to_load.begin(), to_load.end(), tile_offsets_min_frag_idx_);
+      }
+
+      // Load the tile offsets.
+      load_tile_offsets_for_fragments(std::move(to_load));
+    }
+  }
+}
+
+template <class BitmapType>
 std::pair<uint64_t, uint64_t>
 SparseUnorderedWithDupsReader<BitmapType>::get_coord_tiles_size(
     unsigned dim_num, unsigned f, uint64_t t) {
@@ -346,8 +465,9 @@ bool SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
   result_tiles_.emplace_back(f, t, frag_md);
 
   // Are all tiles loaded for this fragment.
-  if (t == last_t)
+  if (t == last_t) {
     all_tiles_loaded_[f] = true;
+  }
 
   return false;
 }
@@ -370,7 +490,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
     // Load as many tiles as the memory budget allows.
     bool budget_exceeded = false;
     unsigned int f = 0;
-    while (f < fragment_num && !budget_exceeded) {
+    while (f < tile_offsets_max_frag_idx_ && !budget_exceeded) {
       if (!all_tiles_loaded_[f]) {
         all_tiles_loaded_[f] = result_tile_ranges_[f].empty();
         while (!result_tile_ranges_[f].empty()) {
@@ -391,7 +511,8 @@ void SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
             // Make sure we can add at least one tile.
             if (budget_exceeded) {
               logger_->debug(
-                  "Budget exceeded adding result tiles, fragment {0}, tile {1}",
+                  "Budget exceeded adding result tiles, fragment {0}, tile "
+                  "{1}",
                   f,
                   t);
               if (result_tiles_.empty())
@@ -415,7 +536,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
     // Load as many tiles as the memory budget allows.
     bool budget_exceeded = false;
     unsigned int f = 0;
-    while (f < fragment_num && !budget_exceeded) {
+    while (f < tile_offsets_max_frag_idx_ && !budget_exceeded) {
       if (!all_tiles_loaded_[f]) {
         auto tile_num = fragment_metadata_[f]->tile_num();
 
@@ -1311,8 +1432,8 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
 
   // First try to limit the maximum number of cells we copy using the size
   // of the output buffers for fixed sized attributes. Later we will validate
-  // the memory budget. This is the first line of defence used to try to prevent
-  // overflows when copying data.
+  // the memory budget. This is the first line of defence used to try to
+  // prevent overflows when copying data.
   auto max_num_cells = std::numeric_limits<uint64_t>::max();
   for (const auto& it : buffers_) {
     const auto& name = it.first;
