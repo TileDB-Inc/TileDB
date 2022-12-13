@@ -192,16 +192,122 @@ TEST_CASE_METHOD(
   tiledb_array_schema_t* loaded_array_schema{nullptr};
   REQUIRE_TILEDB_OK(
       tiledb_array_schema_load(ctx, array_name.c_str(), &loaded_array_schema));
+
+  // Check the array schema has the expected dimension label.
+  int32_t has_label;
+  CHECK_TILEDB_OK(tiledb_array_schema_has_dimension_label(
+      ctx, loaded_array_schema, "x", &has_label));
+  CHECK(has_label == 1);
+
+  // Check the expected number of attributes, dimenions and labels.
   auto nattr = loaded_array_schema->array_schema_->attribute_num();
-  REQUIRE(nattr == 1);
+  CHECK(nattr == 1);
   auto ndim = loaded_array_schema->array_schema_->domain().dim_num();
-  REQUIRE(ndim == 2);
+  CHECK(ndim == 2);
   auto loaded_dim_label_num =
       loaded_array_schema->array_schema_->dim_label_num();
   CHECK(loaded_dim_label_num == 1);
 
   // Free remaining resources
   tiledb_array_schema_free(&loaded_array_schema);
+}
+
+TEST_CASE_METHOD(
+    DimensionLabelTestFixture,
+    "Write and read back TileDB array schema with dimension label with "
+    "non-default filters",
+    "[capi][ArraySchema][DimensionLabel]") {
+  // Create and add dimension label schema (both fixed and variable length
+  // examples).
+  auto label_type = GENERATE(TILEDB_FLOAT64, TILEDB_STRING_ASCII);
+  // Create an array schema
+  uint64_t x_domain[2]{0, 63};
+  uint64_t x_tile_extent{64};
+  uint64_t y_domain[2]{0, 63};
+  uint64_t y_tile_extent{64};
+  auto array_schema = create_array_schema(
+      ctx,
+      TILEDB_DENSE,
+      {"x", "y"},
+      {TILEDB_UINT64, TILEDB_UINT64},
+      {&x_domain[0], &y_domain[0]},
+      {&x_tile_extent, &y_tile_extent},
+      {"a"},
+      {TILEDB_FLOAT64},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      4096,
+      false);
+
+  // Add dimension label.
+  REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
+      ctx, array_schema, 0, "x", TILEDB_INCREASING_DATA, label_type));
+
+  // Set filter.
+  tiledb_filter_list_t* filter_list;
+  REQUIRE_TILEDB_OK(tiledb_filter_list_alloc(ctx, &filter_list));
+  tiledb_filter_t* filter;
+  int32_t level = 6;
+  REQUIRE_TILEDB_OK(tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter));
+  REQUIRE_TILEDB_OK(
+      tiledb_filter_set_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, &level));
+  REQUIRE_TILEDB_OK(tiledb_filter_list_add_filter(ctx, filter_list, filter));
+  REQUIRE_TILEDB_OK(tiledb_array_schema_set_dimension_label_filter_list(
+      ctx, array_schema, "x", filter_list));
+  tiledb_filter_free(&filter);
+  tiledb_filter_list_free(&filter_list);
+
+  // Check array schema and number of dimension labels.
+  REQUIRE_TILEDB_OK(tiledb_array_schema_check(ctx, array_schema));
+  auto dim_label_num = array_schema->array_schema_->dim_label_num();
+  REQUIRE(dim_label_num == 1);
+
+  // Create array
+  auto array_name =
+      create_temporary_array("array_with_label_modified_tile", array_schema);
+  URI array_uri{array_name};
+  tiledb_array_schema_free(&array_schema);
+
+  // Get the schema for array containing the dimension label.
+  tiledb_array_schema_t* loaded_array_schema{nullptr};
+  REQUIRE_TILEDB_OK(
+      tiledb_array_schema_load(ctx, array_uri.c_str(), &loaded_array_schema));
+  auto dim_label_ref =
+      loaded_array_schema->array_schema_->dimension_label_reference("x");
+  auto dim_label_uri = dim_label_ref.uri(array_uri);
+  tiledb_array_schema_t* loaded_dim_label_array_schema{nullptr};
+  REQUIRE_TILEDB_OK(tiledb_array_schema_load(
+      ctx, dim_label_uri.c_str(), &loaded_dim_label_array_schema));
+  tiledb_array_schema_free(&loaded_array_schema);
+
+  // Check the filter on the label attribute.
+  tiledb_attribute_t* label_attr;
+  REQUIRE_TILEDB_OK(tiledb_array_schema_get_attribute_from_index(
+      ctx, loaded_dim_label_array_schema, 0, &label_attr));
+  tiledb_filter_list_t* loaded_filter_list;
+  REQUIRE_TILEDB_OK(
+      tiledb_attribute_get_filter_list(ctx, label_attr, &loaded_filter_list));
+  uint32_t nfilters;
+  REQUIRE_TILEDB_OK(
+      tiledb_filter_list_get_nfilters(ctx, loaded_filter_list, &nfilters));
+  CHECK(nfilters == 1);
+  tiledb_filter_t* loaded_filter;
+  REQUIRE_TILEDB_OK(tiledb_filter_list_get_filter_from_index(
+      ctx, loaded_filter_list, 0, &loaded_filter));
+  REQUIRE(loaded_filter != nullptr);
+  tiledb_filter_type_t loaded_filter_type{};
+  REQUIRE_TILEDB_OK(
+      tiledb_filter_get_type(ctx, loaded_filter, &loaded_filter_type));
+  CHECK(loaded_filter_type == TILEDB_FILTER_BZIP2);
+  int32_t loaded_level{};
+  REQUIRE_TILEDB_OK(tiledb_filter_get_option(
+      ctx, loaded_filter, TILEDB_COMPRESSION_LEVEL, &loaded_level));
+  CHECK(loaded_level == level);
+
+  // Free remaining resources
+  tiledb_array_schema_free(&loaded_dim_label_array_schema);
 }
 
 TEST_CASE_METHOD(
