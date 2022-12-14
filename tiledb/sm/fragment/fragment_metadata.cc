@@ -3634,7 +3634,7 @@ Status FragmentMetadata::load_v1_v2(
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
   // Read metadata
-  GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
+  GenericTileIO tile_io(storage_manager_->resources(), fragment_metadata_uri);
   auto&& [st, tile_opt] =
       tile_io.read_generic(0, encryption_key, storage_manager_->config());
   RETURN_NOT_OK(st);
@@ -3985,7 +3985,7 @@ tuple<Status, optional<Tile>> FragmentMetadata::read_generic_tile_from_file(
       std::string(constants::fragment_metadata_filename));
 
   // Read metadata
-  GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
+  GenericTileIO tile_io(storage_manager_->resources(), fragment_metadata_uri);
   auto&& [st, tile_opt] =
       tile_io.read_generic(offset, encryption_key, storage_manager_->config());
   RETURN_NOT_OK_TUPLE(st, nullopt);
@@ -4031,7 +4031,7 @@ Status FragmentMetadata::write_generic_tile_to_file(
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
-  GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
+  GenericTileIO tile_io(storage_manager_->resources(), fragment_metadata_uri);
   RETURN_NOT_OK(tile_io.write_generic(&tile, encryption_key, nbytes));
 
   return Status::Ok();
