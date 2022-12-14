@@ -42,6 +42,8 @@ extern "C" {
 /**
  * Adds a dimension label to a array schema.
  *
+ * **Example:**
+ *
  * @code{.c}
  * tiledb_array_schema_add_dimension_label(
  *     ctx,
@@ -52,11 +54,18 @@ extern "C" {
  *     TILEDB_FLOAT64);
  * @endcode
  *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param dim_index The index of the dimension the labels are applied to.
+ * @param name The name of the dimension label.
+ * @param label_order The ordering/sort of the label data.
+ * @param label_type The datatype of the label data.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    const uint32_t dim_id,
+    const uint32_t dim_index,
     const char* name,
     tiledb_data_order_t label_order,
     tiledb_datatype_t label_type) TILEDB_NOEXCEPT;
@@ -88,6 +97,8 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_dimension_label(
 /**
  * Sets a filter on a dimension label filter in an array schema.
  *
+ * **Example:**
+ *
  * @code{.c}
  * tiledb_filter_list_t* filter_list;
  * tiledb_filter_list_alloc(ctx, &filter_list);
@@ -103,6 +114,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_dimension_label(
  * @param array_schema The array schema.
  * @param label_name The dimension label name.
  * @param filter_list The filter_list to be set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_set_dimension_label_filter_list(
     tiledb_ctx_t* ctx,
@@ -113,8 +125,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_dimension_label_filter_list(
 /**
  * Sets the tile extent on a dimension label in an array schema.
  *
- * Note: The dimension label tile extent must be the same datatype as the
- * dimension it is set on, not as the label.
+ * **Example:**
  *
  * @code{.c}
  * int64_t tile_extent = 16;
@@ -126,7 +137,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_dimension_label_filter_list(
  *     TILEDB_INCREASING_LABELS,
  *     TILEDB_FLOAT64);
  * tiledb_array_schema_set_dimension_label_tile_extent(
- *     ctx, "label", TILEDB_INT64, &tile_extent);
+ *     ctx, array_schema, "label", TILEDB_INT64, &tile_extent);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -134,9 +145,14 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_dimension_label_filter_list(
  * @param label_name The dimension label name.
  * @param type The type of the dimension the tile extent is being set on.
  * @param tile_extent The tile extent for the dimension of the dimension label.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The dimension label tile extent must be the same datatype as the
+ *     dimension it is set on, not as the label.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_set_dimension_label_tile_extent(
     tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
     const char* label_name,
     tiledb_datatype_t type,
     const void* tile_extent) TILEDB_NOEXCEPT;
@@ -174,7 +190,8 @@ TILEDB_EXPORT int32_t tiledb_query_set_label_data_buffer(
     uint64_t* buffer_size) TILEDB_NOEXCEPT;
 
 /**
- * Sets the starting offsets of each cell value in the data buffer.
+ * Sets the starting offsets of each cell value in the data buffer for a
+ * dimension label.
  *
  * **Example:**
  *
@@ -233,7 +250,8 @@ TILEDB_EXPORT int32_t tiledb_query_get_label_data_buffer(
     uint64_t** buffer_size) TILEDB_NOEXCEPT;
 
 /**
- * Gets the starting offsets of each cell value in the data buffer.
+ * Gets the starting offsets of each cell value in the data buffer for a
+ * dimension label.
  *
  * **Example:**
  *
@@ -276,7 +294,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_label_offsets_buffer(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param query The subarray to add the range to.
+ * @param subarray The subarray to add the range to.
  * @param label_name The name of the dimension label to add the range to.
  * @param start The range start.
  * @param end The range end.
@@ -338,7 +356,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_label_range_var(
  * const void* end;
  * const void* stride;
  * tiledb_subarray_get_label_range(
- *     ctx, query, label_name, range_idx, &start, &end, &stride);
+ *     ctx, subarray, label_name, range_idx, &start, &end, &stride);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -374,7 +392,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_label_range(
  * @param ctx The TileDB context
  * @param subarray The subarray.
  * @param label_name The name of the dimension label whose range number to
- * retrieve.
+ *     retrieve.
  * @param range_num Receives the retrieved number of ranges.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
