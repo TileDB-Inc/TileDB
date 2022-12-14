@@ -89,20 +89,7 @@ void GlobalStats::set_enabled(bool enabled) {
 
 void GlobalStats::reset() {
   std::unique_lock<std::mutex> ul(mtx_);
-#if 0
-  for (auto& register_stat : registered_stats_) {
-    //register_stat->reset();
-    std::shared_ptr<Stats> stat(register_stat.lock());
-    if (stat.use_count()) {
-      stat->reset();
-    }
-    // Reset the stats, -not- the shared_ptr!
-    //(*register_stat).reset();
-   }
-#else
   for (auto register_stat = registered_stats_.begin(); register_stat != registered_stats_.end();) {
-    // Reset the stats, -not- the shared_ptr!
-    //(*register_stat)->reset();
     if (std::shared_ptr<Stats> stat(register_stat->lock()); stat.use_count()) {
       stat->reset();
       ++register_stat;
@@ -110,7 +97,6 @@ void GlobalStats::reset() {
       register_stat = registered_stats_.erase(register_stat);
     }
   }
-#endif
 }
 
 void GlobalStats::register_stats(const shared_ptr<Stats>& stats) {
