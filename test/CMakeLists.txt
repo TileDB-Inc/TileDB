@@ -113,6 +113,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/test-capi-consolidation-plan.cc
   src/test-capi-query-error-handling.cc
   src/test-cppapi-consolidation-plan.cc
+  src/test-stats.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
