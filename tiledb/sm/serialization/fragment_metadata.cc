@@ -82,11 +82,8 @@ Status fragment_metadata_from_capnp(
   }
   if (frag_meta_reader.hasFragmentUri()) {
     // Reconstruct the fragment uri out of the received fragment name
-    auto write_version = array_schema->write_version();
-    auto frag_dir_uri = ArrayDirectory::generate_fragment_dir_uri(
-        write_version, array_schema->array_uri().add_trailing_slash());
-    auto fragment_name = std::string(frag_meta_reader.getFragmentUri().cStr());
-    frag_meta->fragment_uri() = frag_dir_uri.join_path(fragment_name);
+    frag_meta->fragment_uri() = deserialize_array_uri_to_absolute(
+        frag_meta_reader.getFragmentUri().cStr(), array_schema->array_uri());
   }
   frag_meta->has_timestamps() = frag_meta_reader.getHasTimestamps();
   frag_meta->has_delete_meta() = frag_meta_reader.getHasDeleteMeta();
@@ -94,8 +91,11 @@ Status fragment_metadata_from_capnp(
       frag_meta_reader.getHasConsolidatedFooter();
   frag_meta->sparse_tile_num() = frag_meta_reader.getSparseTileNum();
   frag_meta->tile_index_base() = frag_meta_reader.getTileIndexBase();
+  frag_meta->version() = frag_meta_reader.getVersion();
 
   FragmentMetadata::LoadedMetadata loaded_metadata;
+  // There is a difference in the metadata loaded for versions >= 2
+  auto loaded = frag_meta->version() <= 2 ? true : false;
   if (frag_meta_reader.hasTileOffsets()) {
     for (const auto& t : frag_meta_reader.getTileOffsets()) {
       auto& last = frag_meta->tile_offsets().emplace_back();
@@ -107,7 +107,7 @@ Status fragment_metadata_from_capnp(
     frag_meta->tile_offsets_mtx().resize(
         frag_meta_reader.getTileOffsets().size());
     loaded_metadata.tile_offsets_.resize(
-        frag_meta_reader.getTileOffsets().size(), false);
+        frag_meta_reader.getTileOffsets().size(), loaded);
   }
   if (frag_meta_reader.hasTileVarOffsets()) {
     for (const auto& t : frag_meta_reader.getTileVarOffsets()) {
@@ -120,7 +120,7 @@ Status fragment_metadata_from_capnp(
     frag_meta->tile_var_offsets_mtx().resize(
         frag_meta_reader.getTileVarOffsets().size());
     loaded_metadata.tile_var_offsets_.resize(
-        frag_meta_reader.getTileVarOffsets().size(), false);
+        frag_meta_reader.getTileVarOffsets().size(), loaded);
   }
   if (frag_meta_reader.hasTileVarSizes()) {
     for (const auto& t : frag_meta_reader.getTileVarSizes()) {
@@ -131,7 +131,7 @@ Status fragment_metadata_from_capnp(
       }
     }
     loaded_metadata.tile_var_sizes_.resize(
-        frag_meta_reader.getTileVarSizes().size(), false);
+        frag_meta_reader.getTileVarSizes().size(), loaded);
   }
   if (frag_meta_reader.hasTileValidityOffsets()) {
     for (const auto& t : frag_meta_reader.getTileValidityOffsets()) {
@@ -239,7 +239,6 @@ Status fragment_metadata_from_capnp(
       frag_meta->fragment_null_counts().emplace_back(fragment_null_count);
     }
   }
-  frag_meta->version() = frag_meta_reader.getVersion();
   if (frag_meta_reader.hasTimestampRange()) {
     frag_meta->timestamp_range() = std::make_pair(
         frag_meta_reader.getTimestampRange()[0],
@@ -253,7 +252,8 @@ Status fragment_metadata_from_capnp(
     // If there are no levels, we still need domain_ properly initialized
     frag_meta->rtree() = RTree(&domain, constants::rtree_fanout);
     Deserializer deserializer(data.begin(), data.size());
-    frag_meta->rtree().deserialize(deserializer, &domain, frag_meta->version());
+    frag_meta->rtree().deserialize(
+        deserializer, &domain, constants::format_version);
   }
 
   // Set the array schema and most importantly retrigger the build
@@ -379,8 +379,9 @@ Status fragment_metadata_to_capnp(
     }
   }
 
-  frag_meta_builder->setFragmentUri(
-      frag_meta.fragment_uri().remove_trailing_slash().last_path_part());
+  const auto& relative_fragment_uri =
+      serialize_array_uri_to_relative(frag_meta.fragment_uri());
+  frag_meta_builder->setFragmentUri(relative_fragment_uri);
   frag_meta_builder->setHasTimestamps(frag_meta.has_timestamps());
   frag_meta_builder->setHasDeleteMeta(frag_meta.has_delete_meta());
   frag_meta_builder->setHasConsolidatedFooter(
