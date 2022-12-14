@@ -3817,45 +3817,6 @@ int32_t tiledb_array_has_metadata_key(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_consolidate_metadata(
-    tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
-  // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(ctx->storage_manager()->array_metadata_consolidate(
-      array_uri,
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-      nullptr,
-      0,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_consolidate_metadata_with_key(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    tiledb_config_t* config) {
-  // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(ctx->storage_manager()->array_metadata_consolidate(
-      array_uri,
-      static_cast<tiledb::sm::EncryptionType>(encryption_type),
-      encryption_key,
-      key_length,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
-
-  return TILEDB_OK;
-}
-
 int32_t tiledb_array_evolve(
     tiledb_ctx_t* ctx,
     const char* array_uri,
@@ -8047,25 +8008,6 @@ int32_t tiledb_array_has_metadata_key(
     int32_t* has_key) noexcept {
   return api_entry<tiledb::api::tiledb_array_has_metadata_key>(
       ctx, array, key, value_type, has_key);
-}
-
-int32_t tiledb_array_consolidate_metadata(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_config_t* config) noexcept {
-  return api_entry<tiledb::api::tiledb_array_consolidate_metadata>(
-      ctx, array_uri, config);
-}
-
-int32_t tiledb_array_consolidate_metadata_with_key(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    tiledb_config_t* config) noexcept {
-  return api_entry<tiledb::api::tiledb_array_consolidate_metadata_with_key>(
-      ctx, array_uri, encryption_type, encryption_key, key_length, config);
 }
 
 int32_t tiledb_array_evolve(

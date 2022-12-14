@@ -265,10 +265,6 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_delete_metadata
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_consolidate_metadata
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_consolidate_metadata_with_key
-    :project: TileDB-C
 
 Array Schema
 ------------
