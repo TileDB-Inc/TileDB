@@ -51,8 +51,6 @@ Return Codes
 
 Constants
 ---------
-.. doxygendefine:: TILEDB_COORDS
-    :project: TileDB-C
 .. doxygendefine:: TILEDB_VAR_NUM
     :project: TileDB-C
 .. doxygendefine:: TILEDB_MAX_PATH
@@ -60,8 +58,6 @@ Constants
 .. doxygendefine:: TILEDB_OFFSET_SIZE
     :project: TileDB-C
 .. doxygendefine:: TILEDB_TIMESTAMPS
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_coords
     :project: TileDB-C
 .. doxygenfunction:: tiledb_var_num
     :project: TileDB-C

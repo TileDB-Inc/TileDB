@@ -6263,10 +6263,6 @@ int32_t tiledb_vfs_mode_from_str(
 /*            CONSTANTS           */
 /* ****************************** */
 
-const char* tiledb_coords() noexcept {
-  return tiledb::sm::constants::coords.c_str();
-}
-
 uint32_t tiledb_var_num() noexcept {
   return tiledb::sm::constants::var_num;
 }

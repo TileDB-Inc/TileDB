@@ -34,6 +34,7 @@
 #define TILEDB_TEST_HELPERS_H
 
 #include <tiledb/common/logger_public.h>
+#include "test/support/src/coords_workaround.h"
 #include "tiledb.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array/array.h"

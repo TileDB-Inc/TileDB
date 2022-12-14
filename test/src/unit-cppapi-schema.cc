@@ -30,6 +30,7 @@
  * Tests the C++ API for schema related functions.
  */
 
+#include "test/support/src/coords_workaround.h"
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
@@ -253,7 +254,7 @@ TEST_CASE(
   Query query(ctx, array, TILEDB_READ);
   CHECK_THROWS(query.set_subarray(subarray));
   std::vector<int32_t> buff = {1, 2, 4};
-  CHECK_THROWS(query.set_data_buffer(TILEDB_COORDS, buff));
+  CHECK_THROWS(query.set_data_buffer(tiledb::test::TILEDB_COORDS, buff));
 
   // Close array
   array.close();
