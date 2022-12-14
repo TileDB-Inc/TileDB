@@ -100,7 +100,7 @@ class RelevantFragments {
    * Constructs a relevant fragment object for an array with `frag_num`
    * fragments.
    */
-  RelevantFragments(unsigned frag_num)
+  RelevantFragments(size_t frag_num)
       : frag_num_(frag_num)
       , relevant_fragments_computed_(false) {
   }
@@ -130,7 +130,8 @@ class RelevantFragments {
 
   /** Returns the relevant fragment at index `i`. */
   inline unsigned operator[](size_t i) const {
-    return relevant_fragments_computed_ ? computed_relevant_fragments_[i] : i;
+    return relevant_fragments_computed_ ? computed_relevant_fragments_[i] :
+                                          static_cast<unsigned>(i);
   }
 
   /** Clears the computed relevant fragments. */
@@ -152,7 +153,7 @@ class RelevantFragments {
 
  private:
   /** Number of fragments for the array. */
-  unsigned frag_num_;
+  size_t frag_num_;
 
   /** Are the relevant fragments computed. */
   bool relevant_fragments_computed_;

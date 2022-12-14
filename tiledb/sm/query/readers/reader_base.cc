@@ -1741,33 +1741,16 @@ void ReaderBase::compute_result_space_tiles(
 
   // Compute fragment tile domains
   std::vector<TileDomain<T>> frag_tile_domains;
-
-  if (partitioner_subarray.is_set()) {
-    auto relevant_frags = partitioner_subarray.relevant_fragments();
-    for (ssize_t i = relevant_frags.size() - 1; i >= 0; i--) {
-      auto f = relevant_frags[i];
-      if (fragment_metadata_[f]->dense()) {
-        frag_tile_domains.emplace_back(
-            f,
-            domain,
-            fragment_metadata_[f]->non_empty_domain(),
-            tile_extents,
-            tile_order);
-      }
-    }
-  } else {
-    auto fragment_num = (int)fragment_metadata_.size();
-    if (fragment_num > 0) {
-      for (int i = fragment_num - 1; i >= 0; --i) {
-        if (fragment_metadata_[i]->dense()) {
-          frag_tile_domains.emplace_back(
-              i,
-              domain,
-              fragment_metadata_[i]->non_empty_domain(),
-              tile_extents,
-              tile_order);
-        }
-      }
+  auto relevant_frags = partitioner_subarray.relevant_fragments();
+  for (size_t i = relevant_frags.size(); i > 0; --i) {
+    auto f = relevant_frags[i - 1];
+    if (fragment_metadata_[f]->dense()) {
+      frag_tile_domains.emplace_back(
+          f,
+          domain,
+          fragment_metadata_[f]->non_empty_domain(),
+          tile_extents,
+          tile_order);
     }
   }
 
