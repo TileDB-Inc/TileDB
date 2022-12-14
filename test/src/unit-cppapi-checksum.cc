@@ -30,9 +30,9 @@
  * Tests the C++ API for checksum validation.
  */
 
-#include "test/support/src/coords_workaround.h"
 #include <test/support/tdb_catch.h>
 #include <fstream>
+#include "test/support/src/coords_workaround.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 static void check_filters(

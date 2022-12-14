@@ -30,8 +30,8 @@
  * Tests the C++ API for schema related functions.
  */
 
-#include "test/support/src/coords_workaround.h"
 #include <test/support/tdb_catch.h>
+#include "test/support/src/coords_workaround.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/misc/constants.h"

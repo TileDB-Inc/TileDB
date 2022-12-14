@@ -35,22 +35,22 @@
 #define TILEDB_TEST_COORDS_WORKAROUND_H
 
 namespace tiledb::test {
-  /**
-   * This symbol TILEDB_COORDS used to be defined as a preprocessor definition
-   * that called a now-removed C API function that returned a constant string.
-   * At the time the API function was removed there remained a large number of
-   * internal uses of the symbol for testing. This symbol was used for a
-   * particular buffer layout for query results ("zipped coordinates") that was
-   * long ago deprecated. The tests were never updated.
-   *
-   * This symbol is defined here to allow tests to continue to compile for the
-   * interim until the tests have been rewritten to eliminate its appearance
-   * entirely. New code must not use this symbol.
-   *
-   * This definition duplicates that in `tiledb::sm::constants::coords`. This is
-   * intentional, since it simplifies linking by avoiding an object file.
-   */
-  constexpr auto TILEDB_COORDS = "__coords";
+/**
+ * This symbol TILEDB_COORDS used to be defined as a preprocessor definition
+ * that called a now-removed C API function that returned a constant string.
+ * At the time the API function was removed there remained a large number of
+ * internal uses of the symbol for testing. This symbol was used for a
+ * particular buffer layout for query results ("zipped coordinates") that was
+ * long ago deprecated. The tests were never updated.
+ *
+ * This symbol is defined here to allow tests to continue to compile for the
+ * interim until the tests have been rewritten to eliminate its appearance
+ * entirely. New code must not use this symbol.
+ *
+ * This definition duplicates that in `tiledb::sm::constants::coords`. This is
+ * intentional, since it simplifies linking by avoiding an object file.
+ */
+constexpr auto TILEDB_COORDS = "__coords";
 }  // End of namespace tiledb::test
 
 #endif
