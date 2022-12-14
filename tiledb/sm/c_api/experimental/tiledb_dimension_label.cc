@@ -33,7 +33,6 @@
 #include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
-#include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/group/group_v1.h"
 #include "tiledb/sm/rest/rest_client.h"
 
@@ -44,7 +43,7 @@ namespace tiledb::common::detail {
 int32_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    const uint32_t dim_id,
+    const uint32_t dim_index,
     const char* name,
     tiledb_data_order_t label_order,
     tiledb_datatype_t label_type) {
@@ -52,7 +51,7 @@ int32_t tiledb_array_schema_add_dimension_label(
     return TILEDB_ERR;
   }
   array_schema->array_schema_->add_dimension_label(
-      dim_id,
+      dim_index,
       name,
       static_cast<tiledb::sm::DataOrder>(label_order),
       static_cast<tiledb::sm::Datatype>(label_type));
@@ -205,12 +204,12 @@ constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
 int32_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    const uint32_t dim_id,
+    const uint32_t dim_index,
     const char* name,
     tiledb_data_order_t label_order,
     tiledb_datatype_t label_type) noexcept {
   return api_entry<detail::tiledb_array_schema_add_dimension_label>(
-      ctx, array_schema, dim_id, name, label_order, label_type);
+      ctx, array_schema, dim_index, name, label_order, label_type);
 }
 
 int32_t tiledb_array_schema_has_dimension_label(

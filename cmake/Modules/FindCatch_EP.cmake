@@ -27,7 +27,7 @@
 # Finds the Catch library, installing with an ExternalProject as necessary.
 # This module defines:
 #   - CATCH_INCLUDE_DIR, directory containing headers
-#   - CATCH2_FOUND, whether Catch has been found
+#   - Catch2_FOUND, whether Catch has been found
 #   - TILEDB_CATCH2_SOURCES_DIR directory containing headers, lib source
 #   - The Catch2::Catch2 imported target
 
@@ -63,10 +63,10 @@ message(VERBOSE "CATCH_INCLUDE_DIR is \"${CATCH_INCLUDE_DIR}\", CATCH_LIBRARIES 
 if(Catch2_FOUND)
   message(VERBOSE "Catch2_FOUND is ${Catch2_FOUND}, CATCH_INCLUDE_DIR is \"${CATCH_INCLUDE_DIR}\", CATCH_LIBRARIES is \"${CATCH_LIBRARIES}\"")
 else()
-  message(VERBOSE "TILEDB_SUPERBUILD is ${TILEDB_SUPERBUILD}, Catch2_FOUND is ${Catch2_FOUND}, CATCH2_FOUND is ${CATCH2_FOUND}")
+  message(VERBOSE "TILEDB_SUPERBUILD is ${TILEDB_SUPERBUILD}, Catch2_FOUND is ${Catch2_FOUND}")
 endif()
 
-if (NOT CATCH2_FOUND AND TILEDB_SUPERBUILD)
+if (NOT Catch2_FOUND AND TILEDB_SUPERBUILD)
   message(STATUS "Adding Catch as an external project")
   ExternalProject_Add(ep_catch
     PREFIX "externals"

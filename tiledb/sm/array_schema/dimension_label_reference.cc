@@ -28,9 +28,14 @@
 
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/common/common.h"
+#include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/type/range/range.h"
 
@@ -55,7 +60,7 @@ DimensionLabelReference::DimensionLabelReference(
     DataOrder label_order,
     Datatype label_type,
     uint32_t label_cell_val_num,
-    shared_ptr<const DimensionLabelSchema> schema,
+    shared_ptr<ArraySchema> schema,
     bool is_external,
     bool relative_uri)
     : dim_id_(dim_id)
@@ -114,22 +119,57 @@ DimensionLabelReference::DimensionLabelReference(
     dimension_size_type dim_id,
     const std::string& dim_label_name,
     const URI& uri,
-    const std::string& label_attr_name,
+    const Dimension* dim,
     DataOrder label_order,
-    Datatype label_type,
-    uint32_t label_cell_val_num,
-    shared_ptr<const DimensionLabelSchema> schema)
-    : DimensionLabelReference(
-          dim_id,
-          dim_label_name,
-          uri,
-          label_attr_name,
-          label_order,
-          label_type,
-          label_cell_val_num,
-          schema,
-          false,
-          true) {
+    Datatype label_type)
+    : dim_id_(dim_id)
+    , dim_label_name_(dim_label_name)
+    , uri_(uri)
+    , label_attr_name_("label")
+    , label_order_(label_order)
+    , label_type_(label_type)
+    , label_cell_val_num_(
+          label_type == Datatype::STRING_ASCII ? constants::var_num : 1)
+    , schema_(make_shared<ArraySchema>(
+          HERE(),
+          label_order == DataOrder::UNORDERED_DATA ? ArrayType::SPARSE :
+                                                     ArrayType::DENSE))
+    , is_external_(false)
+    , relative_uri_(true) {
+  auto index_type{dim->type()};
+  if (!(datatype_is_integer(index_type) || datatype_is_datetime(index_type) ||
+        datatype_is_time(index_type))) {
+    throw std::invalid_argument(
+        "Failed to create dimension label schema; Currently labels are not "
+        "support on dimensions with datatype Datatype::" +
+        datatype_str(index_type));
+  }
+
+  // Check the label data type is valid.
+  try {
+    ensure_dimension_datatype_is_valid(label_type);
+  } catch (...) {
+    std::throw_with_nested(std::invalid_argument(
+        "Datatype Datatype::" + datatype_str(label_type) +
+        " is not a valid dimension datatype."));
+  }
+
+  // Create and set dimension label domain.
+  std::vector<shared_ptr<Dimension>> index_dims{
+      make_shared<Dimension>(HERE(), "index", index_type)};
+  throw_if_not_ok(index_dims.back()->set_domain(dim->domain().data()));
+  throw_if_not_ok(
+      index_dims.back()->set_tile_extent(dim->tile_extent().data()));
+  throw_if_not_ok(schema_->set_domain(make_shared<Domain>(
+      HERE(), Layout::ROW_MAJOR, index_dims, Layout::ROW_MAJOR)));
+
+  // Create and set dimension label attribute.
+  auto label_attr = make_shared<Attribute>(
+      HERE(), "label", label_type, label_cell_val_num_, label_order);
+  throw_if_not_ok(schema_->add_attribute(label_attr));
+
+  // Check the array schema is valid.
+  throw_if_not_ok(schema_->check());
 }
 
 // FORMAT:
@@ -212,6 +252,15 @@ void DimensionLabelReference::dump(FILE* out) const {
       fprintf(out, "- Label cell val num: var\n") :
       fprintf(out, "- Label cell val num: %u\n", label_cell_val_num_);
   fprintf(out, "\n");
+}
+
+const shared_ptr<ArraySchema> DimensionLabelReference::schema() const {
+  if (!schema_) {
+    throw StatusException(
+        "DimensionLabelReference",
+        "Cannot return dimension label schema; No schema is set.");
+  }
+  return schema_;
 }
 
 // FORMAT:

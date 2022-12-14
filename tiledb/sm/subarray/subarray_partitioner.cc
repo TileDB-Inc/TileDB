@@ -45,6 +45,13 @@
 
 #include <iomanip>
 
+class SubarrayPartitionerStatusException : public StatusException {
+ public:
+  explicit SubarrayPartitionerStatusException(const std::string& message)
+      : StatusException("SubarrayPartitioner", message) {
+  }
+};
+
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
@@ -88,6 +95,12 @@ SubarrayPartitioner::SubarrayPartitioner(
   bool found = false;
   throw_if_not_ok(config_->get<bool>(
       "sm.skip_est_size_partitioning", &skip_split_on_est_size_, &found));
+  assert(found);
+
+  throw_if_not_ok(config_->get<bool>(
+      "sm.skip_unary_partitioning_budget_check",
+      &skip_unary_partitioning_budget_check_,
+      &found));
   (void)found;
   assert(found);
 }
@@ -767,6 +780,8 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
   clone.memory_budget_var_ = memory_budget_var_;
   clone.memory_budget_validity_ = memory_budget_validity_;
   clone.skip_split_on_est_size_ = skip_split_on_est_size_;
+  clone.skip_unary_partitioning_budget_check_ =
+      skip_unary_partitioning_budget_check_;
   clone.compute_tp_ = compute_tp_;
 
   return clone;
@@ -1206,6 +1221,24 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
       }
     }
 
+    // If we try to split a unary range because of memory budgets, throw an
+    // error. This can happen when the memory budget cannot fit even one tile.
+    // It will cause the reader to process the query cell by cell, which will
+    // make it very slow.
+    if (!skip_unary_partitioning_budget_check_ &&
+        (mem_size_fixed > memory_budget_ || mem_size_var > memory_budget_var_ ||
+         mem_size_validity > memory_budget_validity_)) {
+      if (partition->is_unary()) {
+        throw SubarrayPartitionerStatusException(
+            "Trying to partition a unary range because of memory budget, this "
+            "will cause the query to run very slow. Increase "
+            "`sm.memory_budget` and `sm.memory_budget_var` through the "
+            "configuration settings to avoid this issue. To override and run "
+            "the query with the same budget, set "
+            "`sm.skip_unary_partitioning_budget_check` to `true`.");
+      }
+    }
+
     // Check for budget overflow
     if ((!skip_split_on_est_size_ &&
          (size_fixed > b.second.size_fixed_ || size_var > b.second.size_var_ ||
@@ -1371,6 +1404,9 @@ void SubarrayPartitioner::swap(SubarrayPartitioner& partitioner) {
   std::swap(memory_budget_var_, partitioner.memory_budget_var_);
   std::swap(memory_budget_validity_, partitioner.memory_budget_validity_);
   std::swap(skip_split_on_est_size_, partitioner.skip_split_on_est_size_);
+  std::swap(
+      skip_unary_partitioning_budget_check_,
+      partitioner.skip_unary_partitioning_budget_check_);
   std::swap(compute_tp_, partitioner.compute_tp_);
 }
 

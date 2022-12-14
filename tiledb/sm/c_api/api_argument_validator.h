@@ -81,16 +81,6 @@ inline int32_t sanity_check(
   return TILEDB_OK;
 }
 
-inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_buffer_t* buffer) {
-  if (buffer == nullptr || buffer->buffer_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB buffer object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
 inline int32_t sanity_check(
     tiledb_ctx_t* ctx, const tiledb_buffer_list_t* buffer_list) {
   if (buffer_list == nullptr || buffer_list->buffer_list_ == nullptr) {
@@ -209,16 +199,6 @@ inline int32_t sanity_check(
     tiledb_ctx_t* ctx, const tiledb_fragment_info_t* fragment_info) {
   if (fragment_info == nullptr || fragment_info->fragment_info_ == nullptr) {
     auto st = Status_Error("Invalid TileDB fragment info object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
-inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_group_t* group) {
-  if (group == nullptr || group->group_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB group object");
     LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;

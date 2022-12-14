@@ -31,8 +31,8 @@
  * through serialization.
  */
 
-#include <string>
 #include <test/support/tdb_catch.h>
+#include <string>
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 

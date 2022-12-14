@@ -877,6 +877,9 @@ class FragmentMetadata {
   /** Frees the memory associated with the rtree. */
   void free_rtree();
 
+  /** Frees the memory associated with tile_offsets. */
+  void free_tile_offsets();
+
   /**
    * Loads the variable tile sizes for the input attribute or dimension idx
    * from storage.

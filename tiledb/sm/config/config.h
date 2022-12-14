@@ -168,6 +168,9 @@ class Config {
   /** If `true`, bypass partitioning on estimated result sizes. */
   static const std::string SM_SKIP_EST_SIZE_PARTITIONING;
 
+  /** If `true`, bypass partitioning budget check for unary ranges. */
+  static const std::string SM_SKIP_UNARY_PARTITIONING_BUDGET_CHECK;
+
   /**
    * The maximum memory budget for producing the result (in bytes)
    * for a fixed-sized attribute or the offsets of a var-sized attribute.
@@ -361,6 +364,9 @@ class Config {
    * is requested by the user
    */
   static const std::string SM_FRAGMENT_INFO_PRELOAD_MBRS;
+
+  /** If `true` the readers might partially load/unload tile offsets. */
+  static const std::string SM_PARTIAL_TILE_OFFSETS_LOADING;
 
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;

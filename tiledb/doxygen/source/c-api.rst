@@ -243,6 +243,8 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_consolidate_with_key
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_vacuum
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_get_schema
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_get_query_type

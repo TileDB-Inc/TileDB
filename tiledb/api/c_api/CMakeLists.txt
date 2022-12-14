@@ -49,6 +49,9 @@ target_include_directories(export INTERFACE ${TILEDB_SOURCE_ROOT}/tiledb/sm/c_ap
 # depends on `context`, as context handles are often the first argument.
 #
 
+# `buffer`: no dependencies
+add_subdirectory(buffer)
+
 # `error`: no dependencies
 add_subdirectory(error)
 
@@ -58,8 +61,26 @@ add_subdirectory(config)
 # `context`: depends on `config`
 add_subdirectory(context)
 
+# `datatype`: no dependencies
+add_subdirectory(datatype)
+
+# `filesystem`: no dependencies
+add_subdirectory(filesystem)
+
 # `filter`: depends on `context`
 add_subdirectory(filter)
 
 # `filter_list`: depends on `context`, `filter`
 add_subdirectory(filter_list)
+
+# `group`: depends on `config`, `context`
+add_subdirectory(group)
+
+# `object`: no dependencies
+add_subdirectory(object)
+
+# NOTE: Only the tiledb_query_type_t enum has been migrated
+# to the new C API layout.
+#
+# `query`: no dependencies yet but will have some
+add_subdirectory(query)

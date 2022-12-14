@@ -114,6 +114,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/test-capi-query-error-handling.cc
   src/test-cppapi-consolidation-plan.cc
   src/test-stats.cc
+  src/unit-average-cell-size.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
@@ -122,7 +123,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-array_schema.cc
   src/unit-capi-async.cc
   src/unit-capi-attributes.cc
-  src/unit-capi-buffer.cc
   src/unit-capi-config.cc
   src/unit-capi-context.cc
   src/unit-capi-consolidation.cc
@@ -218,6 +218,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-query.cc
     src/cpp-integration-query-condition.cc
     src/unit-cppapi-schema.cc
+    src/unit-cppapi-schema-evolution.cc
     src/unit-cppapi-string-dims.cc
     src/unit-cppapi-subarray.cc
     src/unit-cppapi-type.cc
@@ -344,6 +345,7 @@ endif()
 
 if (TILEDB_WEBP)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_WEBP)
+  find_package(Zlib_EP) # We need PNG to use our Zlib so that static link works correctly if applicable
   find_package(PNG)
   if (PNG_FOUND)
     target_compile_definitions(tiledb_unit PRIVATE -DPNG_FOUND)

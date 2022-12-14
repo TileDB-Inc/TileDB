@@ -61,6 +61,9 @@ steps:
     # if ($env:TILEDB_FORCE_BUILD_DEPS" -eq "ON") {
     #   $bootstrapOptions = $bootstrapOptions + " -EnableBuildDeps"
     # }
+    if ($env:TILEDB_WEBP -eq "OFF") {
+      $bootstrapOptions = $bootstrapOptions + " -DisableWebP"
+    }
     if ($env:TILEDB_WERROR -eq "OFF") {
       $bootstrapOptions = $bootstrapOptions + " -DisableWerror"
     }

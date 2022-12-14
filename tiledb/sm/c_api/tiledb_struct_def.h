@@ -60,11 +60,6 @@ struct tiledb_subarray_t {
   bool is_allocated_ = false;
 };
 
-struct tiledb_buffer_t {
-  tiledb::sm::Datatype datatype_ = tiledb::sm::Datatype::UINT8;
-  tiledb::sm::Buffer* buffer_ = nullptr;
-};
-
 struct tiledb_buffer_list_t {
   tiledb::sm::BufferList* buffer_list_ = nullptr;
 };
@@ -107,10 +102,6 @@ struct tiledb_vfs_fh_t {
 
 struct tiledb_fragment_info_t {
   tiledb::sm::FragmentInfo* fragment_info_ = nullptr;
-};
-
-struct tiledb_group_t {
-  tdb_unique_ptr<tiledb::sm::Group> group_ = nullptr;
 };
 
 struct tiledb_consolidation_plan_t {

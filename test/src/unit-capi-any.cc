@@ -31,9 +31,9 @@
  * Tests for TileDB's ANY datatype at the C API level.
  */
 
+#include <test/support/src/helpers.h>
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
-#include <test/support/src/helpers.h>
 
 #include <cstring>
 #include <iostream>

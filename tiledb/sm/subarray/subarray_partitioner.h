@@ -382,6 +382,12 @@ class SubarrayPartitioner {
    */
   bool skip_split_on_est_size_;
 
+  /**
+   * If true, do not consider a memory budget overflow an error when the
+   * partition is a unary range.
+   */
+  bool skip_unary_partitioning_budget_check_;
+
   /** The thread pool for compute-bound tasks. */
   ThreadPool* compute_tp_;
 

@@ -186,13 +186,13 @@ void ConsolidationPlanFx::check_last_error(std::string expected) {
 TEST_CASE_METHOD(
     ConsolidationPlanFx,
     "CAPI: Consolidation plan",
-    "[capi][consolidation_plan]") {
+    "[capi][consolidation-plan]") {
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
   Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
 
-  tiledb_consolidation_plan_t* consolidation_plan;
+  tiledb_consolidation_plan_t* consolidation_plan{};
   CHECK(
       TILEDB_OK == tiledb_consolidation_plan_create_with_mbr(
                        ctx_.ptr().get(),
@@ -229,13 +229,13 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationPlanFx,
     "CAPI: Consolidation plan dump",
-    "[capi][consolidation_plan][dump]") {
+    "[capi][consolidation-plan][dump]") {
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
   Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
 
-  tiledb_consolidation_plan_t* consolidation_plan;
+  tiledb_consolidation_plan_t* consolidation_plan{};
   CHECK(
       TILEDB_OK == tiledb_consolidation_plan_create_with_mbr(
                        ctx_.ptr().get(),
@@ -249,7 +249,7 @@ TEST_CASE_METHOD(
       ctx_.ptr().get(), consolidation_plan, &str);
 
   std::string plan(str);
-  CHECK(plan == "Not implemented\n");
+  CHECK(plan == "{\n  \"nodes\": [\n  ]\n}\n");
 
   tiledb_consolidation_plan_free_json_str(&str);
   tiledb_consolidation_plan_free(&consolidation_plan);

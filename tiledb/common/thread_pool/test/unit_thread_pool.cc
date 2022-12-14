@@ -60,7 +60,7 @@ void set_generator_seed() {
   std::call_once(once_flag, []() {
     static std::random_device rd;
     static std::mt19937 gen(rd());
-    static std::uniform_int_distribution<> dis(
+    static std::uniform_int_distribution<size_t> dis(
         0, generator_seed_arr.size() - 1);
     generator_seed = generator_seed_arr[dis(gen)];
     std::string gen_seed_str =

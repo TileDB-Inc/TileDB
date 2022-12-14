@@ -322,20 +322,22 @@ class ReaderBase : public StrategyBase {
    * Loads tile offsets for each attribute/dimension name into
    * their associated element in `fragment_metadata_`.
    *
-   * @param subarray The subarray to load tiles for.
+   * @param relevant_fragments Optional list of relevant fragments.
    * @param names The attribute/dimension names.
    * @return Status
    */
   Status load_tile_offsets(
-      Subarray& subarray, const std::vector<std::string>& names);
+      const optional<std::vector<unsigned>>& relevant_fragments,
+      const std::vector<std::string>& names);
 
   /**
    * Checks if at least one fragment overlaps partially with the
    * time at which the read is taking place.
    *
+   * @param subarray Subarray to use.
    * @return True if at least one fragment partially overlaps.
    */
-  bool partial_consolidated_fragment_overlap() const;
+  bool partial_consolidated_fragment_overlap(Subarray& subarray) const;
 
   /**
    * Add a condition for partial time overlap based on array open and
@@ -353,12 +355,13 @@ class ReaderBase : public StrategyBase {
    * Loads tile var sizes for each attribute/dimension name into
    * their associated element in `fragment_metadata_`.
    *
-   * @param subarray The subarray to load tiles for.
+   * @param relevant_fragments Optional list of relevant fragments.
    * @param names The attribute/dimension names.
    * @return Status
    */
   Status load_tile_var_sizes(
-      Subarray& subarray, const std::vector<std::string>& names);
+      const optional<std::vector<unsigned>>& relevant_fragments,
+      const std::vector<std::string>& names);
 
   /**
    * Loads processed conditions from fragment metadata.
