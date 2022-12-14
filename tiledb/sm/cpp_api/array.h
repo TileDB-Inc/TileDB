@@ -395,6 +395,14 @@ class Array {
   /**
    * Deletes the data written to the array with the input uri.
    */
+  static void delete_array(const Context& ctx, const std::string& uri) {
+    ctx.handle_error(tiledb_array_delete(ctx.ptr().get(), uri.c_str()));
+  }
+
+  /**
+   * Deletes the data written to the array with the input uri.
+   */
+  TILEDB_DEPRECATED
   void delete_array(const std::string& uri) const {
     auto& ctx = ctx_.get();
     ctx.handle_error(
