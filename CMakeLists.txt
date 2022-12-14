@@ -256,7 +256,12 @@ else()
   elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
     add_compile_options(-DNDEBUG -O3 -g3 -ggdb3 -gdwarf-3)
   elseif (CMAKE_BUILD_TYPE MATCHES "Coverage")
-    add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
+    if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+      add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
+    else()
+      add_compile_options(-DDEBUG -fprofile-instr-generate -fcoverage-mapping)
+      add_link_options(-fprofile-instr-generate)
+    endif()
   endif()
 
   # Use -Wno-literal-suffix on Linux with C++ sources.
