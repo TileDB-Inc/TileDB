@@ -46,6 +46,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rest/rest_client.h"
@@ -489,8 +490,7 @@ Status Array::close() {
       array_schema_latest_.reset();
     } else {
       array_schema_latest_.reset();
-      if (
-          query_type_ == QueryType::WRITE ||
+      if (query_type_ == QueryType::WRITE ||
           query_type_ == QueryType::MODIFY_EXCLUSIVE) {
         st = storage_manager_->store_metadata(
             array_uri_, *encryption_key_.get(), &metadata_);
@@ -498,8 +498,7 @@ Status Array::close() {
           throw StatusException(st);
         }
       } else if (
-          query_type_ != QueryType::READ &&
-          query_type_ != QueryType::DELETE &&
+          query_type_ != QueryType::READ && query_type_ != QueryType::DELETE &&
           query_type_ != QueryType::UPDATE) {
         throw std::logic_error("Error closing array; Unsupported query type.");
       }
@@ -1066,6 +1065,129 @@ MemoryTracker* Array::memory_tracker() {
   return &memory_tracker_;
 }
 
+bool Array::serialize_non_empty_domain() const {
+  auto found = false;
+  auto serialize_ned_array_open = false;
+  auto status = config_.get<bool>(
+      "rest.load_non_empty_domain_on_array_open",
+      &serialize_ned_array_open,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get rest.load_non_empty_domain_on_array_open configuration "
+        "option from config");
+  }
+
+  return serialize_ned_array_open;
+}
+
+bool Array::serialize_metadata() const {
+  auto found = false;
+  auto serialize_metadata_array_open = false;
+  auto status = config_.get<bool>(
+      "rest.load_metadata_on_array_open",
+      &serialize_metadata_array_open,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get rest.load_metadata_on_array_open configuration option from "
+        "config");
+  }
+
+  return serialize_metadata_array_open;
+}
+
+bool Array::use_refactored_array_open() const {
+  auto found = false;
+  auto refactored_array_open = false;
+  auto status = config_.get<bool>(
+      "rest.use_refactored_array_open", &refactored_array_open, &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get use_refactored_array_open configuration option from "
+        "config");
+  }
+
+  return refactored_array_open;
+}
+
+std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes() {
+  std::unordered_map<std::string, uint64_t> ret;
+
+  // Find the names of the var-sized dimensions or attributes.
+  std::vector<std::string> var_names;
+
+  // Start with dimensions.
+  for (unsigned d = 0; d < array_schema_latest_->dim_num(); d++) {
+    auto dim = array_schema_latest_->dimension_ptr(d);
+    if (dim->var_size()) {
+      var_names.emplace_back(dim->name());
+      ret.emplace(dim->name(), 0);
+    }
+  }
+
+  // Now attributes.
+  for (auto& attr : array_schema_latest_->attributes()) {
+    if (attr->var_size()) {
+      var_names.emplace_back(attr->name());
+      ret.emplace(attr->name(), 0);
+    }
+  }
+
+  // Load all metadata for tile var sizes among fragments.
+  for (const auto& var_name : var_names) {
+    throw_if_not_ok(parallel_for(
+        storage_manager_->compute_tp(),
+        0,
+        fragment_metadata_.size(),
+        [&](const unsigned f) {
+          // Gracefully skip loading tile sizes for attributes added in schema
+          // evolution that do not exists in this fragment.
+          const auto& schema = fragment_metadata_[f]->array_schema();
+          if (!schema->is_field(var_name)) {
+            return Status::Ok();
+          }
+
+          return fragment_metadata_[f]->load_tile_var_sizes(
+              *encryption_key_, var_name);
+        }));
+  }
+
+  // Now compute for each var size names, the average cell size.
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      var_names.size(),
+      [&](const uint64_t n) {
+        uint64_t total_size = 0;
+        uint64_t cell_num = 0;
+        auto& var_name = var_names[n];
+
+        // Sum the total tile size and cell num for each fragments.
+        for (unsigned f = 0; f < fragment_metadata_.size(); f++) {
+          // Skip computation for fields that don't exist for a particular
+          // fragment.
+          const auto& schema = fragment_metadata_[f]->array_schema();
+          if (!schema->is_field(var_name)) {
+            continue;
+          }
+
+          // Go through all tiles.
+          for (uint64_t t = 0; t < fragment_metadata_[f]->tile_num(); t++) {
+            total_size += fragment_metadata_[f]->tile_var_size(var_name, t);
+            cell_num += fragment_metadata_[f]->cell_num(t);
+          }
+        }
+
+        uint64_t average_cell_size = total_size / cell_num;
+        ret[var_name] = std::max<uint64_t>(average_cell_size, 1);
+
+        return Status::Ok();
+      }));
+
+  return ret;
+}
+
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
@@ -1306,51 +1428,6 @@ void Array::set_array_closed() {
   is_open_ = false;
 }
 
-bool Array::use_refactored_array_open() const {
-  auto found = false;
-  auto refactored_array_open = false;
-  auto status = config_.get<bool>(
-      "rest.use_refactored_array_open", &refactored_array_open, &found);
-  if (!status.ok() || !found) {
-    throw std::runtime_error(
-        "Cannot get use_refactored_array_open configuration option from "
-        "config");
-  }
-
-  return refactored_array_open;
-}
-
-bool Array::serialize_non_empty_domain() const {
-  auto found = false;
-  auto serialize_ned_array_open = false;
-  auto status = config_.get<bool>(
-      "rest.load_non_empty_domain_on_array_open",
-      &serialize_ned_array_open,
-      &found);
-  if (!status.ok() || !found) {
-    throw std::runtime_error(
-        "Cannot get rest.load_non_empty_domain_on_array_open configuration "
-        "option from config");
-  }
-
-  return serialize_ned_array_open;
-}
-
-bool Array::serialize_metadata() const {
-  auto found = false;
-  auto serialize_metadata_array_open = false;
-  auto status = config_.get<bool>(
-      "rest.load_metadata_on_array_open",
-      &serialize_metadata_array_open,
-      &found);
-  if (!status.ok() || !found) {
-    throw std::runtime_error(
-        "Cannot get rest.load_metadata_on_array_open configuration option from "
-        "config");
-  }
-
-  return serialize_metadata_array_open;
-}
 
 void Array::array_get_fragments_tile_max_size(
     tiledb_fragment_max_tile_sizes_t* max_tile_sizes

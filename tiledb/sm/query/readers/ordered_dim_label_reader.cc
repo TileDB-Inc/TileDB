@@ -183,8 +183,8 @@ Status OrderedDimLabelReader::dowork() {
   // `tile_var_offsets_`, `tile_validity_offsets_` and `tile_var_sizes_` in
   // `fragment_metadata_`.
   std::vector<std::string> names = {label_name_};
-  RETURN_NOT_OK(load_tile_offsets(subarray_, names));
-  RETURN_NOT_OK(load_tile_var_sizes(subarray_, names));
+  RETURN_NOT_OK(load_tile_offsets(subarray_.relevant_fragments(), names));
+  RETURN_NOT_OK(load_tile_var_sizes(subarray_.relevant_fragments(), names));
 
   // Load the dimension labels min/max values.
   load_label_min_max_values();

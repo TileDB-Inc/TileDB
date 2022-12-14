@@ -30,8 +30,8 @@
  * Tests the C++ API for dense arrays and qc coords mode.
  */
 
-#include <test/support/tdb_catch.h>
 #include <test/support/src/helpers.h>
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"

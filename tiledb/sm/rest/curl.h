@@ -52,6 +52,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/curl/curl_init.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/stats/stats.h"
 
@@ -335,6 +336,13 @@ class Curl {
   tuple<Status, optional<long>> last_http_status_code();
 
  private:
+  /**
+   * A libcurl initializer instance. This should remain
+   * the first member variable to ensure that libcurl is
+   * initialized before any calls that may require it.
+   */
+  tiledb::sm::curl::LibCurlInitializer curl_inited_;
+
   /** TileDB config parameters. */
   const Config* config_;
 
@@ -501,7 +509,7 @@ class Curl {
    * @param retry true if the http code matches the retry list
    * @return Status
    */
-  Status should_retry(bool* retry) const;
+  Status should_retry_based_on_http_status(bool* retry) const;
 };
 
 }  // namespace sm

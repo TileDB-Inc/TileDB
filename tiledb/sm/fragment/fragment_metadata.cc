@@ -2027,9 +2027,67 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
 
 void FragmentMetadata::free_rtree() {
   auto freed = rtree_.free_memory();
-  if (memory_tracker_ != nullptr)
+  if (memory_tracker_ != nullptr) {
     memory_tracker_->release_memory(freed, MemoryTracker::MemoryType::RTREE);
+  }
   loaded_metadata_.rtree_ = false;
+}
+
+void FragmentMetadata::free_tile_offsets() {
+  for (uint64_t i = 0; i < tile_offsets_.size(); i++) {
+    std::lock_guard<std::mutex> lock(tile_offsets_mtx_[i]);
+    if (memory_tracker_ != nullptr) {
+      memory_tracker_->release_memory(
+          tile_offsets_[i].size() * sizeof(uint64_t),
+          MemoryTracker::MemoryType::TILE_OFFSETS);
+    }
+    tile_offsets_[i].clear();
+    loaded_metadata_.tile_offsets_[i] = false;
+  }
+
+  for (uint64_t i = 0; i < tile_var_offsets_.size(); i++) {
+    std::lock_guard<std::mutex> lock(tile_var_offsets_mtx_[i]);
+    if (memory_tracker_ != nullptr) {
+      memory_tracker_->release_memory(
+          tile_var_offsets_[i].size() * sizeof(uint64_t),
+          MemoryTracker::MemoryType::TILE_OFFSETS);
+    }
+    tile_var_offsets_[i].clear();
+    loaded_metadata_.tile_var_offsets_[i] = false;
+  }
+
+  for (uint64_t i = 0; i < tile_offsets_.size(); i++) {
+    std::lock_guard<std::mutex> lock(tile_offsets_mtx_[i]);
+    if (memory_tracker_ != nullptr) {
+      memory_tracker_->release_memory(
+          tile_offsets_[i].size() * sizeof(uint64_t),
+          MemoryTracker::MemoryType::TILE_OFFSETS);
+    }
+    tile_offsets_[i].clear();
+    loaded_metadata_.tile_offsets_[i] = false;
+  }
+
+  for (uint64_t i = 0; i < tile_validity_offsets_.size(); i++) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    if (memory_tracker_ != nullptr) {
+      memory_tracker_->release_memory(
+          tile_validity_offsets_[i].size() * sizeof(uint64_t),
+          MemoryTracker::MemoryType::TILE_OFFSETS);
+    }
+    tile_validity_offsets_[i].clear();
+    loaded_metadata_.tile_validity_offsets_[i] = false;
+  }
+
+  for (uint64_t i = 0; i < tile_var_sizes_.size(); i++) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    if (memory_tracker_ != nullptr) {
+      memory_tracker_->release_memory(
+          tile_var_sizes_[i].size() * sizeof(uint64_t),
+          MemoryTracker::MemoryType::TILE_OFFSETS);
+    }
+    tile_var_sizes_[i].clear();
+    loaded_metadata_.tile_var_sizes_[i] = false;
+  }
 }
 
 Status FragmentMetadata::load_tile_var_sizes(
@@ -2797,7 +2855,8 @@ void FragmentMetadata::load_non_empty_domain_v3_v4(Deserializer& deserializer) {
   // Get non-empty domain
   if (!null_non_empty_domain) {
     auto dim_num = array_schema_->dim_num();
-    // Note: These versions supports only dimensions domains with the same type
+    // Note: These versions supports only dimensions domains with the same
+    // type
     auto coord_size_0{array_schema_->domain().dimension_ptr(0)->coord_size()};
     auto domain_size = 2 * dim_num * coord_size_0;
     std::vector<uint8_t> temp(domain_size);
@@ -2822,7 +2881,8 @@ void FragmentMetadata::load_non_empty_domain_v3_v4(Deserializer& deserializer) {
 // ===== FORMAT =====
 // null_non_empty_domain
 // fix-sized: range(void*)
-// var-sized: range_size(uint64_t) | start_range_size(uint64_t) | range(void*)
+// var-sized: range_size(uint64_t) | start_range_size(uint64_t) |
+// range(void*)
 void FragmentMetadata::load_non_empty_domain_v5_or_higher(
     Deserializer& deserializer) {
   // Get null non-empty domain
@@ -2923,7 +2983,8 @@ void FragmentMetadata::load_tile_offsets(
 
 // ===== FORMAT =====
 // tile_var_offsets_attr#0_num (uint64_t)
-// tile_var_offsets_attr#0_#1 (uint64_t) tile_var_offsets_attr#0_#2 (uint64_t)
+// tile_var_offsets_attr#0_#1 (uint64_t) tile_var_offsets_attr#0_#2
+// (uint64_t)
 // ...
 // ...
 // tile_var_offsets_attr#<attribute_num-1>_num(uint64_t)
@@ -2951,7 +3012,8 @@ void FragmentMetadata::load_tile_var_offsets(Deserializer& deserializer) {
         !memory_tracker_->take_memory(
             size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
-          "Cannot load tile var offsets; Insufficient memory budget; Needed " +
+          "Cannot load tile var offsets; Insufficient memory budget; "
+          "Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
@@ -2981,7 +3043,8 @@ void FragmentMetadata::load_tile_var_offsets(
         !memory_tracker_->take_memory(
             size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
-          "Cannot load tile var offsets; Insufficient memory budget; Needed " +
+          "Cannot load tile var offsets; Insufficient memory budget; "
+          "Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
@@ -3021,7 +3084,8 @@ void FragmentMetadata::load_tile_var_sizes(Deserializer& deserializer) {
         !memory_tracker_->take_memory(
             size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
-          "Cannot load tile var sizes; Insufficient memory budget; Needed " +
+          "Cannot load tile var sizes; Insufficient memory budget; "
+          "Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
@@ -3050,7 +3114,8 @@ void FragmentMetadata::load_tile_var_sizes(
         !memory_tracker_->take_memory(
             size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
-          "Cannot load tile var sizes; Insufficient memory budget; Needed " +
+          "Cannot load tile var sizes; Insufficient memory budget; "
+          "Needed " +
           std::to_string(size) + " but only had " +
           std::to_string(memory_tracker_->get_memory_available()) +
           " from budget " +
@@ -3198,7 +3263,8 @@ void FragmentMetadata::load_tile_max_values(
 
 // ===== FORMAT =====
 // tile_sum_values_attr#0_num (uint64_t)
-// tile_sum_value_attr#0_#1 (uint64_t) tile_sum_value_attr#0_#2 (uint64_t) ...
+// tile_sum_value_attr#0_#1 (uint64_t) tile_sum_value_attr#0_#2 (uint64_t)
+// ...
 // ...
 // tile_sum_values_attr#<attribute_num-1>_num (uint64_t)
 // tile_sum_value_attr#<attribute_num-1>_#1 (uint64_t)
@@ -3730,8 +3796,8 @@ Status FragmentMetadata::load_footer(
 
   loaded_metadata_.footer_ = true;
 
-  // If the footer_size is not set lets calculate from how much of the buffer we
-  // read
+  // If the footer_size is not set lets calculate from how much of the
+  // buffer we read
   if (footer_size_ == 0) {
     footer_size_ = starting_deserializer_size - deserializer.size();
   }
@@ -3882,7 +3948,8 @@ Tile FragmentMetadata::write_rtree() {
 // ===== FORMAT =====
 // null_non_empty_domain(char)
 // fix-sized: range(void*)
-// var-sized: range_size(uint64_t) | start_range_size(uint64_t) | range(void*)
+// var-sized: range_size(uint64_t) | start_range_size(uint64_t) |
+// range(void*)
 // ...
 void FragmentMetadata::write_non_empty_domain(Serializer& serializer) const {
   // Write null_non_empty_domain

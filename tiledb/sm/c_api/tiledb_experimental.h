@@ -441,7 +441,7 @@ TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
 
  * const char* uris[2]={"__0_0_0807b1428b6c4ff48b3cdb3283ca7903_10",
  *                      "__1_1_d9d965753d224194965575c1e9cdeeda_10"};
- * tiledb_array_consolidate(ctx, "my_array", uris, 2);
+ * tiledb_array_consolidate_fragments(ctx, "my_array", uris, 2, nullptr);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -449,8 +449,8 @@ TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
  *     be consolidated.
  * @param[in] fragment_uris URIs of the fragments to consolidate.
  * @param[in] num_fragments Number of URIs to consolidate.
- * @param[in] config Config object to apply to this operation (overrides Context
- config).
+ * @param config Configuration parameters for the consolidation
+ *     (`nullptr` means default, which will use the config from \p ctx).
  *
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
