@@ -603,7 +603,7 @@ Status Posix::write_at(
         constants::max_write_bytes);
     if (bytes_written != constants::max_write_bytes) {
       return LOG_STATUS(Status_IOError(
-          std::string("Cannot write to file; File writing error")));
+          std::string("Cannot write to file; File writing error. This is likely because the computer has ran out of memory.")));
     }
     buffer_bytes_written += bytes_written;
     buffer_size -= bytes_written;
@@ -615,7 +615,7 @@ Status Posix::write_at(
       buffer_size);
   if (bytes_written != buffer_size) {
     return LOG_STATUS(Status_IOError(
-        std::string("Cannot write to file; File writing error")));
+        std::string("Cannot write to file; File writing error. This is likely because the computer has ran out of memory.")));
   }
   return Status::Ok();
 }
