@@ -910,13 +910,6 @@ int deserialize_array_and_query(
     bool clientside);
 
 /**
- * Helper function that allocates buffers on a query object that has been
- * deserialized on the "server" side.
- */
-std::vector<void*> allocate_query_buffers(
-    const Context& ctx, const Array& array, Query* query);
-
-/**
  * Helper method that wraps tiledb_array_open() and inserts a serialization
  * step, if serialization is enabled. The added serialization steps are
  * designed to closely mimic the behavior of the REST server.
@@ -964,7 +957,10 @@ int finalize_query_wrapper(
     tiledb_query_t** query,
     bool serialize_query);
 
-// TODO: add docstring
+/**
+ * Helper function that allocates buffers on a query object that has been
+ * deserialized on the "server" side.
+ */
 void allocate_query_buffers_server_side(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,

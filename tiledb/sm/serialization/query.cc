@@ -2688,6 +2688,12 @@ Status query_deserialize(
       "Cannot deserialize; serialization not enabled."));
 }
 
+Status array_from_query_deserialize(
+    const Buffer&, SerializationType, Array&, StorageManager*) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot deserialize; serialization not enabled."));
+}
+
 Status query_est_result_size_serialize(
     Query*, SerializationType, bool, Buffer*) {
   return LOG_STATUS(Status_SerializationError(
