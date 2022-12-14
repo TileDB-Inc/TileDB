@@ -485,74 +485,93 @@ Status Query::submit_and_finalize() {
   return Status::Ok();
 }
 
-Status Query::check_tile_alignment() const {
+bool Query::check_trim_and_buffer_tile_alignment() {
   // Only applicable for remote global order writes
   if (!array_->is_remote() || type_ != QueryType::WRITE ||
       layout_ != Layout::GLOBAL_ORDER) {
-    return Status::Ok();
+    // Other query types are not restricted to 5MB.
+    return true;
   }
-
-  // It is enough to check for the first attr/dim only as we have
-  // previously checked in check_buffer_sizes that all the buffers
-  // have the same size
-  auto& first_buffer_name = buffers_.begin()->first;
-  auto& first_buffer = buffers_.begin()->second;
-  const bool is_var_size = array_schema_->var_size(first_buffer_name);
 
   uint64_t cell_num_per_tile = array_schema_->dense() ?
                                    array_schema_->domain().cell_num_per_tile() :
                                    array_schema_->capacity();
-  bool buffers_tile_aligned = true;
-  if (is_var_size) {
-    auto offsets_buf_size = *first_buffer.buffer_size_;
-    if ((offsets_buf_size / constants::cell_var_offset_size) %
-        cell_num_per_tile) {
-      buffers_tile_aligned = false;
-    }
-  } else {
-    uint64_t cell_size = array_schema_->cell_size(first_buffer_name);
-    if ((*first_buffer.buffer_size_ / cell_size) % cell_num_per_tile) {
-      buffers_tile_aligned = false;
+
+  // If any buffer is < 5 MB we can't submit to REST.
+  bool submit = true;
+  for (auto&& buff : buffers_) {
+    [[maybe_unused]] const bool is_nullable =
+        array_schema_->is_nullable(buff.first);
+    const bool is_cached = query_remote_buffer_storage_.count(buff.first);
+    if (array_schema_->var_size(buff.first)) {
+      auto offsets_buf_size = *buff.second.buffer_size_;
+      const uint64_t to_trim =
+          (offsets_buf_size / constants::cell_var_offset_size) %
+          cell_num_per_tile;
+      if (to_trim) {
+        QueryRemoteBufferStorage storage;
+        throw_if_not_ok(storage.buffer.write(
+            static_cast<char*>(buff.second.buffer_) + offsets_buf_size -
+                to_trim - 1,
+            to_trim));
+
+        query_remote_buffer_storage_.emplace(buff.first, storage);
+        *buff.second.buffer_size_ -= to_trim;
+      }
+    } else {
+      // Fixed size attribute or dimension.
+      const uint64_t cell_size = array_schema_->cell_size(buff.first);
+      const uint64_t fixed_buf_size = *buff.second.buffer_size_;
+      const uint64_t buff_cells = fixed_buf_size / cell_size;
+
+      // If tile_trim is > 0 the buffer is not tile aligned.
+      const uint64_t tile_trim =
+          buff_cells > cell_num_per_tile ? buff_cells % cell_num_per_tile : 0;
+
+      const uint64_t s3_limit = 5242880;
+      if (tile_trim || fixed_buf_size < s3_limit) {
+        // If no bytes to trim, write is tile-aligned but less than s3_limit.
+        const uint64_t trim_bytes =
+            tile_trim == 0 ? fixed_buf_size : tile_trim * cell_size;
+
+        if (is_cached) {
+          // If the buffer already has a cache update it.
+          auto& cache = query_remote_buffer_storage_[buff.first];
+          throw_if_not_ok(cache.buffer.realloc(
+              cache.buffer.size() + trim_bytes));
+          throw_if_not_ok(cache.buffer.write(
+              buff.second.buffer_, cache.buffer.offset(), trim_bytes));
+          cache.buffer.set_offset(cache.buffer.size());
+
+          // Check if we can submit the updated cache for a multipart upload.
+          if (cache.buffer.size() < s3_limit) {
+            submit = false;
+          }
+        } else {
+          // Create a cache for this buffer.
+          QueryRemoteBufferStorage storage;
+          throw_if_not_ok(storage.buffer.write(
+              buff.second.buffer_, 0, trim_bytes));
+          auto ins = query_remote_buffer_storage_.emplace(buff.first, storage);
+          if (!ins.second) {
+            throw StatusException(Status_QueryError(
+                "Unable to cache buffers for remote global order write."));
+          }
+
+          ins.first->second.buffer.set_offset(trim_bytes);
+          if (trim_bytes < s3_limit) {
+            submit = false;
+          }
+        }
+
+        *buff.second.buffer_size_ -= trim_bytes;
+      }
+      // If fixed buffers meet S3 upload requirements we will include cached
+      // buffers during `query_serialize`.
     }
   }
 
-  if (!buffers_tile_aligned) {
-    return Status_WriterError(
-        "Tile alignment check failed; Input buffers need to be tile-aligned "
-        "for remote global order writes.");
-  }
-
-  return Status::Ok();
-}
-
-Status Query::check_buffer_multipart_size() const {
-  // Only applicable for remote global order writes
-  if (!array_->is_remote() || type_ != QueryType::WRITE ||
-      layout_ != Layout::GLOBAL_ORDER) {
-    return Status::Ok();
-  }
-
-  const uint64_t s3_multipart_min_limit = 5242880;  // 5MB
-  for (const auto& it : buffers_) {
-    const auto& buf_name = it.first;
-    const bool is_var = array_schema_->var_size(buf_name);
-    const uint64_t buffer_size =
-        is_var ? *it.second.buffer_var_size_ : *it.second.buffer_size_;
-
-    uint64_t buffer_validity_size = s3_multipart_min_limit;
-    if (array_schema_->is_nullable(buf_name)) {
-      buffer_validity_size = *it.second.validity_vector_.buffer_size();
-    }
-
-    if (buffer_size < s3_multipart_min_limit ||
-        buffer_validity_size < s3_multipart_min_limit) {
-      return logger_->status(Status_WriterError(
-          "Remote global order writes require buffers to be of"
-          "minimum 5MB in size."));
-    }
-  }
-
-  return Status::Ok();
+  return submit;
 }
 
 Status Query::get_buffer(
@@ -2360,15 +2379,18 @@ Status Query::submit() {
       RETURN_NOT_OK(create_strategy());
     }
 
-    // Check that input buffers are tile-aligned for remote global order
-    // writes
-    RETURN_NOT_OK(check_tile_alignment());
-
-    // Check that input buffers >5mb for remote global order writes
-    RETURN_NOT_OK(check_buffer_multipart_size());
+    // Align buffers to tile extents.
+    bool submit = check_trim_and_buffer_tile_alignment();
+    // Only continue to submit if all buffers are > 5MB.
+    if (!submit) {
+      return Status::Ok();
+    }
 
     RETURN_NOT_OK(rest_client->submit_query_to_rest(array_->array_uri(), this));
-
+    // Clear buffers we have already submitted to REST
+    if (layout_ == Layout::GLOBAL_ORDER) {
+      query_remote_buffer_storage_.clear();
+    }
     reset_coords_markers();
     return Status::Ok();
   }
@@ -2518,7 +2540,7 @@ tuple<Status, optional<bool>> Query::non_overlapping_ranges() {
 }
 
 bool Query::is_dense() const {
-  return !coords_info_.has_coords_;
+  return array_schema_->dense();
 }
 
 std::vector<WrittenFragmentInfo>& Query::get_written_fragment_info() {

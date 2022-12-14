@@ -1278,13 +1278,15 @@ Status query_to_capnp(
   uint64_t total_fixed_len_bytes = 0;
   uint64_t total_var_len_bytes = 0;
   uint64_t total_validity_len_bytes = 0;
+  auto& remote_buffer_cache = query.get_remote_buffer_storage();
+
   for (uint64_t i = 0; i < buffer_names.size(); i++) {
     auto attr_buffer_builder = attr_buffers_builder[i];
     const auto& name = buffer_names[i];
     const auto& buff = query.buffer(name);
     attr_buffer_builder.setName(name);
     if (buff.buffer_var_ != nullptr && buff.buffer_var_size_ != nullptr) {
-      // Variable-sized buffer
+      // Variable-sized buffer TODO
       total_var_len_bytes += *buff.buffer_var_size_;
       attr_buffer_builder.setVarLenBufferSizeInBytes(*buff.buffer_var_size_);
       total_fixed_len_bytes += *buff.buffer_size_;
@@ -1297,8 +1299,11 @@ Status query_to_capnp(
           buff.original_buffer_size_);
     } else if (buff.buffer_ != nullptr && buff.buffer_size_ != nullptr) {
       // Fixed-length buffer
-      total_fixed_len_bytes += *buff.buffer_size_;
-      attr_buffer_builder.setFixedLenBufferSizeInBytes(*buff.buffer_size_);
+      uint64_t buff_size =
+          *buff.buffer_size_ + remote_buffer_cache[name].buffer.size();
+      total_fixed_len_bytes += buff_size;
+
+      attr_buffer_builder.setFixedLenBufferSizeInBytes(buff_size);
       attr_buffer_builder.setVarLenBufferSizeInBytes(0);
 
       // Set original user requested sizes
@@ -1588,41 +1593,41 @@ Status query_from_capnp(
     }
 
     if (context == SerializationContext::CLIENT) {
-      // For queries on the client side, we require that buffers have been
-      // set by the user, and that they are large enough for all the serialized
-      // data.
-      const uint64_t curr_data_size =
-          attr_copy_state == nullptr ? 0 : attr_copy_state->data_size;
-      const uint64_t data_size_left = existing_buffer_size - curr_data_size;
-      const uint64_t curr_offset_size =
-          attr_copy_state == nullptr ? 0 : attr_copy_state->offset_size;
-      const uint64_t offset_size_left =
-          existing_offset_buffer_size == 0 ?
-              0 :
-              existing_offset_buffer_size - curr_offset_size;
-      const uint64_t curr_validity_size =
-          attr_copy_state == nullptr ? 0 : attr_copy_state->validity_size;
-      const uint64_t validity_size_left =
-          existing_validity_buffer_size == 0 ?
-              0 :
-              existing_validity_buffer_size - curr_validity_size;
-
-      const bool has_mem_for_data =
-          (var_size && data_size_left >= varlen_size) ||
-          (!var_size && data_size_left >= fixedlen_size);
-      const bool has_mem_for_offset =
-          (var_size && offset_size_left >= fixedlen_size) || !var_size;
-      const bool has_mem_for_validity = validity_size_left >= validitylen_size;
-      if (!has_mem_for_data || !has_mem_for_offset || !has_mem_for_validity) {
-        return LOG_STATUS(Status_SerializationError(
-            "Error deserializing read query; buffer too small for buffer "
-            "'" +
-            name + "'."));
-      }
-
       // For reads, copy the response data into user buffers. For writes,
       // nothing to do.
       if (type == QueryType::READ) {
+        // For read queries on the client side, we require buffers have been set
+        // by the user, and that they are large enough for all serialized data.
+        const uint64_t curr_data_size =
+            attr_copy_state == nullptr ? 0 : attr_copy_state->data_size;
+        const uint64_t data_size_left = existing_buffer_size - curr_data_size;
+        const uint64_t curr_offset_size =
+            attr_copy_state == nullptr ? 0 : attr_copy_state->offset_size;
+        const uint64_t offset_size_left =
+            existing_offset_buffer_size == 0 ?
+                0 :
+                existing_offset_buffer_size - curr_offset_size;
+        const uint64_t curr_validity_size =
+            attr_copy_state == nullptr ? 0 : attr_copy_state->validity_size;
+        const uint64_t validity_size_left =
+            existing_validity_buffer_size == 0 ?
+                0 :
+                existing_validity_buffer_size - curr_validity_size;
+
+        const bool has_mem_for_data =
+            (var_size && data_size_left >= varlen_size) ||
+            (!var_size && data_size_left >= fixedlen_size);
+        const bool has_mem_for_offset =
+            (var_size && offset_size_left >= fixedlen_size) || !var_size;
+        const bool has_mem_for_validity = validity_size_left >= validitylen_size;
+
+        if (!has_mem_for_data || !has_mem_for_offset || !has_mem_for_validity) {
+          return LOG_STATUS(Status_SerializationError(
+              "Error deserializing query; buffer too small for buffer '" + name
+              + "'."));
+        }
+
+        // Copy the response data into user buffers.
         if (var_size) {
           // Var size attribute; buffers already set.
           char* offset_dest = (char*)existing_offset_buffer + curr_offset_size;
@@ -1653,7 +1658,7 @@ Status query_from_capnp(
           }
 
           // The offsets in each buffer correspond to the values in its
-          // data buffer. To build a single contigious buffer, we must
+          // data buffer. To build a single contiguous buffer, we must
           // ensure the offset values continue in ascending order from the
           // previous buffer. For example, consider the following example
           // storing int32 values.
@@ -1666,7 +1671,7 @@ Status query_from_capnp(
           //   offsets: [0, 12]
           //   values:  [100, 200, 300, 400, 500]
           //
-          // The final, contigious buffer will be:
+          // The final, contiguous buffer will be:
           //   offsets: [0, 8, 16, 28, 40]
           //   values:  [1, 2, 3, 4, 5, 6, 7, 100, 200, 300, 400, 500]
           //
@@ -1696,9 +1701,7 @@ Status query_from_capnp(
             // eventually update the query).
             attr_copy_state->offset_size += fixedlen_size_to_copy;
             attr_copy_state->data_size += varlen_size;
-            if (nullable)
-              attr_copy_state->validity_size += validitylen_size;
-
+            attr_copy_state->validity_size += validitylen_size;
             // Set whether the extra offset was included or not
             attr_copy_state->last_query_added_extra_offset =
                 query_reader.getVarOffsetsAddExtraElement();
@@ -1730,12 +1733,14 @@ Status query_from_capnp(
           }
         }
       }
+      // Nothing to do for writes on client side.
+
     } else if (context == SerializationContext::SERVER) {
       // Always expect null buffers when deserializing.
       if (existing_buffer != nullptr || existing_offset_buffer != nullptr ||
           existing_validity_buffer != nullptr)
         return LOG_STATUS(Status_SerializationError(
-            "Error deserializing read query; unexpected "
+            "Error deserializing query; unexpected "
             "buffer set on server-side."));
 
       Query::SerializationState::AttrState* attr_state;
@@ -2120,14 +2125,18 @@ Status query_serialize(
 
         // Concatenate buffers to end of message
         if (serialize_buffers) {
+          auto& remote_buffer_storage = query->get_remote_buffer_storage();
+
           auto attr_buffer_builders = query_builder.getAttributeBufferHeaders();
           for (auto attr_buffer_builder : attr_buffer_builders) {
             const std::string name = attr_buffer_builder.getName().cStr();
 
             auto query_buffer = query->buffer(name);
+            auto query_buffer_cache = remote_buffer_storage[name];
 
             if (query_buffer.buffer_var_size_ != nullptr &&
                 query_buffer.buffer_var_ != nullptr) {
+              // TODO: Prepend var sized buffers
               Buffer offsets(query_buffer.buffer_, *query_buffer.buffer_size_);
               RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(offsets)));
               Buffer data(
@@ -2136,7 +2145,15 @@ Status query_serialize(
             } else if (
                 query_buffer.buffer_size_ != nullptr &&
                 query_buffer.buffer_ != nullptr) {
-              Buffer data(query_buffer.buffer_, *query_buffer.buffer_size_);
+              const uint64_t query_buf_size = *query_buffer.buffer_size_;
+              const uint64_t cache_buf_size = query_buffer_cache.buffer.size();
+              // Write data from buffer cache.
+              Buffer data(query_buffer_cache.buffer);
+
+              // Allocate required space and append query buffers.
+              throw_if_not_ok(data.realloc(cache_buf_size + query_buf_size));
+              throw_if_not_ok(data.write(
+                  query_buffer.buffer_, cache_buf_size, query_buf_size));
               RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
             } else {
               assert(false);
@@ -2270,7 +2287,7 @@ Status query_deserialize(
       query,
       compute_tp);
 
-  // If the deserialization failed, deserialize 'serialized_query_original'
+  // If the deserialization failed, deserialize 'original_buffer'
   // into 'query' to ensure that 'query' is in the state it was before the
   // deserialization of 'serialized_buffer' failed.
   if (!st.ok()) {
@@ -2580,9 +2597,9 @@ Status global_write_state_to_capnp(
 Status global_write_state_from_capnp(
     const Query& query,
     const capnp::GlobalWriteState::Reader& state_reader,
-    GlobalOrderWriter* globalwriter,
+    GlobalOrderWriter* global_writer,
     const SerializationContext context) {
-  auto write_state = globalwriter->get_global_state();
+  auto write_state = global_writer->get_global_state();
 
   if (state_reader.hasCellsWritten()) {
     auto& cells_written = write_state->cells_written_;
@@ -2658,7 +2675,7 @@ Status global_write_state_from_capnp(
           }
         }
 
-        RETURN_NOT_OK(globalwriter->set_multipart_upload_state(
+        RETURN_NOT_OK(global_writer->set_multipart_upload_state(
             buffer_uri,
             deserialized_state,
             context == SerializationContext::CLIENT));

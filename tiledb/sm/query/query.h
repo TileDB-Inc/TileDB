@@ -49,6 +49,7 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
@@ -371,6 +372,11 @@ class Query {
       uint64_t** buffer_val_size,
       uint8_t** buffer_validity_bytemap,
       uint64_t** buffer_validity_bytemap_size) const;
+
+  inline std::unordered_map<std::string, QueryRemoteBufferStorage>&
+  get_remote_buffer_storage() {
+    return query_remote_buffer_storage_;
+  }
 
   /**
    * Returns the serialization state associated with the given attribute.
@@ -913,6 +919,9 @@ class Query {
    * */
   std::unordered_map<std::string, QueryBuffer> buffers_;
 
+  std::unordered_map<std::string, QueryRemoteBufferStorage>
+      query_remote_buffer_storage_;
+
   /** Maps label names to their buffers. */
   std::unordered_map<std::string, QueryBuffer> label_buffers_;
 
@@ -1035,7 +1044,7 @@ class Query {
   /**
    * Internal routine for checking the completeness of all attribute
    * and dimensions buffers. Iteratively searches that all attributes &
-   * dimenstions buffers have been set correctly
+   * dimensions buffers have been set correctly
    * @return Status
    */
   Status check_buffers_correctness();
@@ -1101,18 +1110,14 @@ class Query {
       const ValidityVector** validity_vector) const;
 
   /**
-   * Check if input buffers are tile aligned. This function should be called
-   * only for remote global order writes and it should enforce tile alignment
-   * for both dense and sparse arrays.
+   * Check input buffers are tile aligned. Valid only for global order queries.
+   * Enforces tile alignment for dense and sparse arrays.
+   * If query is not tile-aligned, trim and cache buffers for later submissions.
+   * If query is finalized, unaligned data should remain cached until aligned.
+   *
+   * Returns true if query buffers meet S3 multipart upload size requirements.
    */
-  Status check_tile_alignment() const;
-
-  /**
-   * Check if input buffers are bigger than 5MB. S3 multipart upload
-   * requires each part be bigger than 5MB, except the last part.
-   * This function should be called only for remote global order writes.
-   */
-  Status check_buffer_multipart_size() const;
+  bool check_trim_and_buffer_tile_alignment();
 
   /**
    * Reset coord buffer markers at end of a global write submit.

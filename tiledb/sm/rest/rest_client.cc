@@ -539,6 +539,8 @@ Status RestClient::post_query_submit(
 
   auto rest_scratch = query->rest_scratch();
 
+  // When a read query overflows the user buffer we may already have the next
+  // part loaded in the scratch buffer.
   if (rest_scratch->size() > 0) {
     bool skip;
     query_post_call_back(
@@ -707,7 +709,7 @@ size_t RestClient::query_post_call_back(
       }
 
       // Deserialize the buffer and store it in 'copy_state'. If
-      // the user buffers are too small to accomodate the attribute
+      // the user buffers are too small to accommodate the attribute
       // data when deserializing read queries, this will return an
       // error status.
       aux.reset_offset();
@@ -719,7 +721,7 @@ size_t RestClient::query_post_call_back(
       }
     } else {
       // Deserialize the buffer and store it in 'copy_state'. If
-      // the user buffers are too small to accomodate the attribute
+      // the user buffers are too small to accommodate the attribute
       // data when deserializing read queries, this will return an
       // error status.
       st = serialization::query_deserialize(
