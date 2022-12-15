@@ -5850,13 +5850,13 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, global order with 0-sized buffers",
     "[capi][sparse][global-check][zero-buffers]") {
-  bool serialized_writes = false;
+  bool serialized = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialized = true;
   }
 #endif
 
@@ -5908,7 +5908,7 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx, array_name, &query, server_buffers_, serialized_writes, false);
+      ctx, array_name, &query, server_buffers_, serialized, false);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -6119,13 +6119,13 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers, global write",
     "[capi][sparse][split-coords][global]") {
-  bool serialized_writes = false;
+  bool serialized = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialized = true;
   }
 #endif
 
@@ -6200,7 +6200,7 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized_writes);
+      ctx_, array_name, &query, server_buffers_, serialized);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -6262,7 +6262,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
+  rc = submit_query_wrapper(
+      ctx_, array_name, &query, server_buffers_, serialized);
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -6889,13 +6890,13 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "Sparse array: 2D, multi write global order",
     "[capi][sparse][2D][multi-write]") {
-  bool serialized_writes = false;
+  bool serialized = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+  SECTION("serialization enabled") {
+    serialized = true;
   }
 #endif
 
@@ -6971,7 +6972,7 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized_writes, false);
+      ctx_, array_name, &query, server_buffers_, serialized, false);
   REQUIRE(rc == TILEDB_OK);
 
   // Create new buffers of smaller size to test being able to write multiple
@@ -7028,7 +7029,7 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized_writes);
+      ctx_, array_name, &query, server_buffers_, serialized);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array

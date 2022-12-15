@@ -52,6 +52,7 @@ struct IncompleteFx2 {
   // TileDB context
   tiledb_ctx_t* ctx_;
 
+  bool serialize_ = false;
   // Buffers to allocate on query size for serialized queries
   ServerQueryBuffers server_buffers_;
 
@@ -62,8 +63,8 @@ struct IncompleteFx2 {
   // Functions
   void create_dense_array();
   void create_sparse_array();
-  void write_dense_full(const bool serialized_writes);
-  void write_sparse_full(const bool serialized_writes);
+  void write_dense_full();
+  void write_sparse_full();
   void check_dense_incomplete();
   void check_dense_until_complete();
   void check_dense_shrink_buffer_size();
@@ -253,7 +254,7 @@ void IncompleteFx2::create_sparse_array() {
   tiledb_array_schema_free(&array_schema);
 }
 
-void IncompleteFx2::write_dense_full(const bool serialized_writes) {
+void IncompleteFx2::write_dense_full() {
   // Set attributes
   const char* attributes[] = {"a1", "a2", "a3"};
 
@@ -316,7 +317,7 @@ void IncompleteFx2::write_dense_full(const bool serialized_writes) {
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, serialized_writes);
+      ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, serialize_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -328,7 +329,7 @@ void IncompleteFx2::write_dense_full(const bool serialized_writes) {
   tiledb_query_free(&query);
 }
 
-void IncompleteFx2::write_sparse_full(const bool serialized_writes) {
+void IncompleteFx2::write_sparse_full() {
   // Prepare cell buffers
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
@@ -400,7 +401,7 @@ void IncompleteFx2::write_sparse_full(const bool serialized_writes) {
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialized_writes);
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialize_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -464,8 +465,8 @@ void IncompleteFx2::check_dense_incomplete() {
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
 
-  // Submit query
-  rc = tiledb_query_submit(ctx_, query);
+  rc = submit_query_wrapper(
+      ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
   REQUIRE(rc == TILEDB_OK);
 
   // Check status
@@ -474,8 +475,8 @@ void IncompleteFx2::check_dense_incomplete() {
   CHECK(rc == TILEDB_OK);
   CHECK(status == TILEDB_INCOMPLETE);
 
-  // Free/finalize query
-  rc = tiledb_query_finalize(ctx_, query);
+  // Finalize query
+  rc = finalize_query_wrapper(ctx_, DENSE_ARRAY_NAME, &query, serialize_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -524,7 +525,8 @@ void IncompleteFx2::check_dense_until_complete() {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
+  rc = submit_query_wrapper(
+      ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
   REQUIRE(rc == TILEDB_OK);
 
   // Check buffer
@@ -539,7 +541,8 @@ void IncompleteFx2::check_dense_until_complete() {
   CHECK(status == TILEDB_INCOMPLETE);
 
   // Resubmit query
-  rc = tiledb_query_submit(ctx_, query);
+  rc = submit_query_wrapper(
+      ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
   REQUIRE(rc == TILEDB_OK);
 
   // Check status
@@ -552,8 +555,8 @@ void IncompleteFx2::check_dense_until_complete() {
   CHECK(!memcmp(buffer_a1, c_buffer_a1_2, sizeof(c_buffer_a1_2)));
   CHECK(buffer_sizes[0] == 2 * sizeof(int));
 
-  // Free/finalize query
-  rc = tiledb_query_finalize(ctx_, query);
+  // Finalize query
+  rc = finalize_query_wrapper(ctx_, DENSE_ARRAY_NAME, &query, serialize_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -597,7 +600,8 @@ void IncompleteFx2::check_dense_shrink_buffer_size() {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
+  rc = submit_query_wrapper(
+      ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
   REQUIRE(rc == TILEDB_OK);
 
   // Check buffer
@@ -618,7 +622,8 @@ void IncompleteFx2::check_dense_shrink_buffer_size() {
   CHECK(rc == TILEDB_OK);
 
   // Resubmit query
-  rc = tiledb_query_submit(ctx_, query);
+  rc = submit_query_wrapper(
+      ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
   REQUIRE(rc == TILEDB_OK);
 
   // Check status
@@ -631,7 +636,7 @@ void IncompleteFx2::check_dense_shrink_buffer_size() {
   CHECK(buffer_a1[0] == 2);
 
   // Free/finalize query
-  rc = tiledb_query_finalize(ctx_, query);
+  rc = finalize_query_wrapper(ctx_, DENSE_ARRAY_NAME, &query, serialize_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -679,8 +684,9 @@ void IncompleteFx2::check_dense_unsplittable_overflow() {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  rc = submit_query_wrapper(
+      ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
+  REQUIRE(rc == TILEDB_OK);
 
   // Get status
   tiledb_query_status_t status;
@@ -692,7 +698,7 @@ void IncompleteFx2::check_dense_unsplittable_overflow() {
   CHECK(buffer_sizes[1] == 0);
 
   // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
+  rc = finalize_query_wrapper(ctx_, DENSE_ARRAY_NAME, &query, serialize_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -740,15 +746,16 @@ void IncompleteFx2::check_dense_unsplittable_complete() {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  rc = submit_query_wrapper(
+      ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
+  REQUIRE(rc == TILEDB_OK);
 
   // Check buffers
   char c_buffer_a2_var[2] = {'b', 'b'};
   CHECK(!memcmp(buffer_a2_var, c_buffer_a2_var, sizeof(c_buffer_a2_var)));
 
   // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
+  rc = finalize_query_wrapper(ctx_, DENSE_ARRAY_NAME, &query, serialize_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -792,7 +799,8 @@ void IncompleteFx2::check_dense_reset_buffers() {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
+  rc = submit_query_wrapper(
+      ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
   REQUIRE(rc == TILEDB_OK);
 
   // Check buffer
@@ -807,7 +815,8 @@ void IncompleteFx2::check_dense_reset_buffers() {
   CHECK(status == TILEDB_INCOMPLETE);
 
   // Resubmit query
-  rc = tiledb_query_submit(ctx_, query);
+  rc = submit_query_wrapper(
+      ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
   REQUIRE(rc == TILEDB_OK);
 
   // Check status
@@ -821,7 +830,7 @@ void IncompleteFx2::check_dense_reset_buffers() {
   CHECK(buffer_sizes[0] == 2 * sizeof(int));
 
   // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
+  rc = finalize_query_wrapper(ctx_, DENSE_ARRAY_NAME, &query, serialize_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -868,7 +877,8 @@ void IncompleteFx2::check_sparse_incomplete() {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
+  rc = submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
   REQUIRE(rc == TILEDB_OK);
 
   // Check status
@@ -926,7 +936,8 @@ void IncompleteFx2::check_sparse_until_complete() {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
+  rc = submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
   REQUIRE(rc == TILEDB_OK);
 
   // Check status
@@ -941,7 +952,8 @@ void IncompleteFx2::check_sparse_until_complete() {
   CHECK(buffer_sizes[0] == sizeof(int));
 
   // Resubmit the query
-  rc = tiledb_query_submit(ctx_, query);
+  rc = submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
   REQUIRE(rc == TILEDB_OK);
 
   // Check status
@@ -955,7 +967,8 @@ void IncompleteFx2::check_sparse_until_complete() {
   CHECK(buffer_sizes[0] == sizeof(int));
 
   // Resubmit the query
-  rc = tiledb_query_submit(ctx_, query);
+  rc = submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
   REQUIRE(rc == TILEDB_OK);
 
   // Check status
@@ -1014,8 +1027,9 @@ void IncompleteFx2::check_sparse_unsplittable_overflow() {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  rc = submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
+  REQUIRE(rc == TILEDB_OK);
   tiledb_query_status_t status;
   rc = tiledb_query_get_status(ctx_, query, &status);
   CHECK(rc == TILEDB_OK);
@@ -1023,7 +1037,7 @@ void IncompleteFx2::check_sparse_unsplittable_overflow() {
   CHECK(buffer_sizes[0] == 0);
 
   // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
+  rc = finalize_query_wrapper(ctx_, SPARSE_ARRAY_NAME, &query, serialize_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -1074,15 +1088,16 @@ void IncompleteFx2::check_sparse_unsplittable_complete() {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  rc = submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
+  REQUIRE(rc == TILEDB_OK);
 
   // Check buffers
   char c_buffer_a2_var[2] = {'b', 'b'};
   CHECK(!memcmp(buffer_a2_var, c_buffer_a2_var, sizeof(c_buffer_a2_var)));
 
   // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
+  rc = finalize_query_wrapper(ctx_, SPARSE_ARRAY_NAME, &query, serialize_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -1098,19 +1113,19 @@ TEST_CASE_METHOD(
     IncompleteFx2,
     "C API: Test incomplete read queries 2, dense",
     "[capi][incomplete-2][dense-incomplete-2]") {
-  bool serialized_writes = false;
+  bool serialize_ = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialize_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialize_ = true;
   }
 #endif
 
   remove_dense_array();
   create_dense_array();
-  write_dense_full(serialized_writes);
+  write_dense_full();
   check_dense_incomplete();
   check_dense_until_complete();
   check_dense_shrink_buffer_size();
@@ -1124,19 +1139,19 @@ TEST_CASE_METHOD(
     IncompleteFx2,
     "C API: Test incomplete read queries 2, sparse",
     "[capi][incomplete-2][sparse-incomplete-2]") {
-  bool serialized_writes = false;
+  bool serialize_ = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialize_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialize_ = true;
   }
 #endif
 
   remove_sparse_array();
   create_sparse_array();
-  write_sparse_full(serialized_writes);
+  write_sparse_full();
   check_sparse_incomplete();
   check_sparse_until_complete();
   check_sparse_unsplittable_overflow();

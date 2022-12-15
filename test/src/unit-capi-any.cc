@@ -48,8 +48,8 @@ struct AnyFx {
 
   void create_array(const std::string& array_name);
   void delete_array(const std::string& array_name);
-  void read_array(const std::string& array_name);
-  void write_array(const std::string& array_name, const bool serialized_writes);
+  void read_array(const std::string& array_name, const bool serialized);
+  void write_array(const std::string& array_name, const bool serialized);
 };
 
 // Create a simple dense 1D array
@@ -112,8 +112,7 @@ void AnyFx::create_array(const std::string& array_name) {
   tiledb_ctx_free(&ctx);
 }
 
-void AnyFx::write_array(
-    const std::string& array_name, const bool serialized_writes) {
+void AnyFx::write_array(const std::string& array_name, const bool serialized) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_alloc(NULL, &ctx);
@@ -168,11 +167,11 @@ void AnyFx::write_array(
   REQUIRE(rc == TILEDB_OK);
 
   rc = tiledb::test::submit_query_wrapper(
-      ctx, array_name, &query, server_buffers_, serialized_writes);
+      ctx, array_name, &query, server_buffers_, serialized);
   REQUIRE(rc == TILEDB_OK);
   // Second finalize must create no problem
-  rc = tiledb::test::finalize_query_wrapper(
-      ctx, array_name, &query, serialized_writes);
+  rc =
+      tiledb::test::finalize_query_wrapper(ctx, array_name, &query, serialized);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -185,7 +184,7 @@ void AnyFx::write_array(
   tiledb_ctx_free(&ctx);
 }
 
-void AnyFx::read_array(const std::string& array_name) {
+void AnyFx::read_array(const std::string& array_name, const bool serialized) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_alloc(NULL, &ctx);
@@ -222,9 +221,8 @@ void AnyFx::read_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
+  rc = tiledb::test::submit_query_wrapper(
+      ctx, array_name, &query, server_buffers_, serialized);
   REQUIRE(rc == TILEDB_OK);
 
   // Check results
@@ -277,20 +275,20 @@ void AnyFx::delete_array(const std::string& array_name) {
 }
 
 TEST_CASE_METHOD(AnyFx, "C API: Test `ANY` datatype", "[capi][any]") {
-  bool serialized_writes = false;
+  bool serialized = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialized = true;
   }
 #endif
 
   std::string array_name = "foo";
   delete_array(array_name);
   create_array(array_name);
-  write_array(array_name, serialized_writes);
-  read_array(array_name);
+  write_array(array_name, serialized);
+  read_array(array_name, serialized);
   delete_array(array_name);
 }

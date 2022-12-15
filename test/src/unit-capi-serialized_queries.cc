@@ -952,13 +952,13 @@ TEST_CASE_METHOD(
     SerializationFx,
     "Global order writes serialization",
     "[global-order-write][serialization][dense]") {
-  bool serialized_writes = false;
+  bool serialized = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialized = true;
   }
 #endif
 
@@ -1023,13 +1023,13 @@ TEST_CASE_METHOD(
     // Simulate REST submit()
     if (begin < end) {
       submit_query_wrapper(
-          ctx, array_uri, &query, server_buffers_, serialized_writes, false);
+          ctx, array_uri, &query, server_buffers_, serialized, false);
     }
   }
 
   // Submit query
-  auto rc = submit_query_wrapper(
-      ctx, array_uri, &query, server_buffers_, serialized_writes);
+  auto rc =
+      submit_query_wrapper(ctx, array_uri, &query, server_buffers_, serialized);
   REQUIRE(rc == TILEDB_OK);
 
   REQUIRE(query.query_status() == Query::Status::COMPLETE);
@@ -1054,7 +1054,9 @@ TEST_CASE_METHOD(
     query.set_offsets_buffer(
         "a3", a3_result_offsets.data(), a3_result_offsets.size());
 
-    query.submit();
+    auto rc = submit_query_wrapper(
+        ctx, array_uri, &query, server_buffers_, serialized);
+    REQUIRE(rc == TILEDB_OK);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
     for (uint64_t i = 0; i < ncells; ++i) {
