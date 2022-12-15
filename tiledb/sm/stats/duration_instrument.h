@@ -1,11 +1,11 @@
 /**
- * @file   timer_stat.h
+ * @file   duration_instrument.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,79 +27,64 @@
  *
  * @section DESCRIPTION
  *
- * This file contains the TimerStat definition.
- *
- * This allows starting and stopping concurrent timers on different threads,
- * but does not count overlapping time periods toward the recorded duration.
- *
- * Thread-safety: none.
+ * This file defines class DurationInstrument.
  */
 
-#ifndef TILEDB_TIMER_STAT_H
-#define TILEDB_TIMER_STAT_H
+#ifndef TILEDB_DURATION_INSTRUMENT_H
+#define TILEDB_DURATION_INSTRUMENT_H
 
-#include <thread>
-#include <unordered_map>
+#include "tiledb/common/common.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
 namespace stats {
 
-class TimerStat {
+class Stats;
+
+/**
+ * This class contains a simple duration instrument.
+ */
+class DurationInstrument {
  public:
   /* ****************************** */
   /*   CONSTRUCTORS & DESTRUCTORS   */
   /* ****************************** */
 
-  /** Constructor. */
-  TimerStat();
+  /** Constructs an empty duration instrument object. */
+  DurationInstrument()
+      : stats_(nullptr)
+      , stat_("") {
+  }
 
-  /** Destructor. */
-  ~TimerStat() = default;
+  /** Constructs a duration instrument object. */
+  DurationInstrument(Stats* stats, const std::string stat)
+      : stats_(stats)
+      , stat_(stat)
+      , start_time_(std::chrono::high_resolution_clock::now()) {
+  }
 
-  /* ****************************** */
-  /*              API               */
-  /* ****************************** */
-
-  /**
-   * Starts a timer for `tid`. This may not be called again
-   * until a subsequent call to `end_timer`.
-   */
-  void start_timer(std::thread::id tid);
-
-  /**
-   * Ends a timer for `tid`. This may not be called again
-   * until a subsequent call to `start_timer`.
-   */
-  void end_timer(std::thread::id tid);
-
-  /**
-   * Resets the total recorded durations.
-   */
-  void reset();
-
-  /**
-   * Returns the sum of all recorded durations among threads.
-   */
-  double duration() const;
+  /** Destructor, reports duration to the stats. */
+  ~DurationInstrument();
 
  private:
   /* ****************************** */
   /*       PRIVATE ATTRIBUTES       */
   /* ****************************** */
 
-  /** The total duration of all recorded timers. */
-  double duration_;
+  /** Pointer to the parent stats. */
+  Stats* stats_;
 
-  /** The start time for all pending timers. */
-  std::unordered_map<
-      std::thread::id,
-      std::chrono::high_resolution_clock::time_point>
-      start_times_;
+  /** Stat to report duration for. */
+  const std::string stat_;
+
+  /** Start time of the duration instrument. */
+  std::chrono::high_resolution_clock::time_point start_time_;
 };
 
 }  // namespace stats
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_TIMER_STAT_H
+#endif  // TILEDB_DURATION_INSTRUMENT_H
