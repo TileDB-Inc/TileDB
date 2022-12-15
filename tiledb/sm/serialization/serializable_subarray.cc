@@ -167,8 +167,8 @@ Subarray SerializableSubarray::from_capnp(
     size_t count = rel_fragments.size();
     std::vector<unsigned> rf;
     relevant_fragments.reserve(count);
-    for (size_t i = 0; i < count; i++) {
-      relevant_fragments.emplace_back(relevant_fragments[i]);
+    for (const auto& f : rel_fragments) {
+      relevant_fragments.emplace_back(f);
     }
   }
 
