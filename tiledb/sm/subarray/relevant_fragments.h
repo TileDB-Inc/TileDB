@@ -33,8 +33,6 @@
 #ifndef TILEDB_RELEVANT_FRAGMENTS_H
 #define TILEDB_RELEVANT_FRAGMENTS_H
 
-#include <atomic>
-
 #include "tiledb/common/common.h"
 
 #include <vector>
