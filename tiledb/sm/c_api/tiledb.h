@@ -5919,30 +5919,6 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info) TILEDB_NOEXCEPT;
 
 /**
- * Loads the fragment info from an encrypted array.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_fragment_info_load_with_key(
- *     ctx, fragment_info, TILEDB_AES_256_GCM, key, sizeof(key));
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
- * @param encryption_type The encryption type to use.
- * @param encryption_key The encryption key to use.
- * @param key_length Length in bytes of the encryption key.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_fragment_info_load_with_key(
-    tiledb_ctx_t* ctx,
-    tiledb_fragment_info_t* fragment_info,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) TILEDB_NOEXCEPT;
-
-/**
  * Gets a fragment name.
  *
  * **Example:**
