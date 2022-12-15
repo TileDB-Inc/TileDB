@@ -32,15 +32,33 @@
  * saved.  When the scheduler destructor is called, all tasks are waited on
  * (using future::get until they complete).
  *
- * This scheduler is assumed to be used in conjunction with an AsyncPolicy (a
- * policy that does its own synchronization).
+ * Notes:
+ *
+ *   - The bountiful scheduler does not wrap nodes up as tasks and does not
+ * manage their state of execution.  Rather, nodes are wrapped up in a lambda
+ * that invokes the `run` method of the node.
+ *
+ *   - The bountiful scheduler runs nodes lazily.  They are not launched until
+ * `sync_wait_all` is invoked.
+ *
+ *   - The bountiful scheduler is assumed to be used in conjunction with an
+ *     AsyncPolicy (a policy that does its own synchronization).
+ *
+ * More complete documentation about the generic interaction between schedulers
+ * and item movers can can be found in the docs subdirectory.
+ *
+ * @todo Refactor policies in policies.h to be specific to bountiful scheduler.
+ * @todo Implement with Task wrapper ?
+ *
  */
 
 #ifndef TILEDB_DAG_BOUNTIFUL_H
 #define TILEDB_DAG_BOUNTIFUL_H
 
+#include <condition_variable>
 #include <future>
 #include <iostream>
+#include <mutex>
 #include <thread>
 #include <vector>
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
@@ -71,17 +89,29 @@ struct SchedulerTraits<BountifulSchedulerPolicy<T>> {
   using task_handle_type = T;
 };
 
+/**
+ * @brief A scheduler that launches every task on its own thread and uses
+ * standard library mechanisms for synchronization (i.e.,
+ * std::condition_variable) The corresponding functionality is provided in
+ * policies.h
+ *
+ * @tparam Node The type of node being scheduled.
+ */
 template <class Node>
 class BountifulScheduler {
-  std::vector<std::future<void>> futures_;
+  /* Flag to indicate to enable debugging in the scheduler. */
+  std::atomic<bool> debug_{false};
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
  public:
-  std::atomic<bool> debug_{false};
-
+  /**
+   * @brief Constructor.
+   *
+   * @param num_threads
+   */
   BountifulScheduler([[maybe_unused]] size_t num_threads = 0) {
   }
 
@@ -102,7 +132,7 @@ class BountifulScheduler {
   /**
    * @brief Get state of debug mode.
    */
-  bool debug() {
+  bool debug_enabled() {
     return debug_.load();
   }
 
@@ -112,258 +142,56 @@ class BountifulScheduler {
    * @param node The task to submit.
    */
   void submit(Node&& n) {
-    if (debug()) {
+    if (debug_enabled()) {
       std::cout << "Submitting node " << n->id() << std::endl;
     }
-    auto f = std::async(std::launch::async, [this, n]() mutable {
-      if (debug()) {
-        std::cout << "Running node " << n->id() << std::endl;
-      }
-
-      n->run();
-
-      if (debug()) {
-        std::cout << "Completed node " << n->id() << std::endl;
-      }
-    });
-    futures_.push_back(std::move(f));
+    nodes_.emplace_back(std::move(n));
   }
 
   /**
-   * @brief Wait for all running tasks to complete
+   * @brief Wait for all running tasks to complete.  Since the bountiful
+   * scheduler lazily launches its task, they are launched here.
    */
   void sync_wait_all() {
+    if (debug_enabled()) {
+      std::cout << "Starting sync_wait_all()\n";
+      std::cout << "About to launch all tasks\n";
+    }
+
+    /*
+     * Launch all tasks.
+     */
+    for (auto&& n : nodes_) {
+      auto f = std::async(std::launch::async, [this, n]() mutable {
+        if (debug_enabled()) {
+          std::cout << "Running node " << n->id() << std::endl;
+        }
+
+        n->run();
+
+        if (debug_enabled()) {
+          std::cout << "Completed node " << n->id() << std::endl;
+        }
+      });
+      futures_.emplace_back(std::move(f));
+    }
+
+    /*
+     * Then we wait for the worker threads to complete.
+     *
+     */
     for (auto&& f : futures_) {
       f.get();
     }
   }
+
+ private:
+  /* Container for all nodes of the submitted task graph. */
+  std::vector<Node> nodes_;
+
+  /* Container of all futures corresponding to the launched tasks. */
+  std::vector<std::future<void>> futures_;
 };
-
-#if 0
-
-template <class Task>
-class BountifulSchedulerPolicy
-    : public SchedulerStateMachine<BountifulSchedulerPolicy<Task>> {
-  using state_machine_type = SchedulerStateMachine<BountifulSchedulerPolicy<Task>>;
-  using lock_type = typename state_machine_type::lock_type;
-
-private:
-  std::vector<Task> submitted_tasks_;
-  std::vector<Task> futures_;
-
- public:
-  using task_type =
-      typename SchedulerTraits<BountifulSchedulerPolicy<Task>>::task_type;
-  using task_handle_type =
-      typename SchedulerTraits<BountifulSchedulerPolicy<Task>>::task_handle_type;
-
-  ~BountifulSchedulerPolicy() {
-    if (this->debug())
-      std::cout << "policy destructor\n";
-  }
-
-  void on_create(task_handle_type& task) {
-    if (this->debug())
-      std::cout << "calling on_create"
-                << "\n";
-
-  }
-
-  void on_stop_create(task_handle_type&) {
-     if (this->debug())
-      std::cout << "calling on_stop_create"
-                << "\n";
-  }
-
-  void on_make_runnable(task_handle_type& task) {
-    if (this->debug())
-      std::cout << "calling on_make_runnable"
-                << "\n";
-
-  }
-
-  void on_stop_runnable(task_handle_type&) {
-    if (this->debug())
-      std::cout << "calling on_stop_runnable"
-                << "\n";
-  }
-
-  void on_make_running(task_handle_type& task) {
-    if (this->debug())
-      std::cout << "calling on_make_runninge"
-                << "\n";
-
-  }
-
-  void on_stop_running(task_handle_type& task) {
-    if (this->debug())
-      std::cout << "calling on_stop_running"
-                << "\n";
-
-  }
-
-  void on_make_waiting(task_handle_type& task) {
-    if (this->debug())
-      std::cout << "calling on_make_waiting"
-                << "\n";
-
-  }
-
-  void on_stop_waiting(task_handle_type& task) {
-    if (this->debug())
-      std::cout << "calling on_stop_waiting"
-                << "\n";
-  }
-
-  void on_terminate(task_handle_type& task) {
-    if (this->debug())
-      std::cout << "calling on_terminate"
-                << "\n";
-  }
-
-  void launch() {
-    if (this->debug()) {
-      this->dump_queue_state("Launching start");
-    }
-
-    while (true) {
-      auto s = submission_queue_.try_pop();
-      if (!s)
-        break;
-      if (this->debug())
-        (*s)->dump_task_state("Admitting");
-
-      this->task_admit(*s);
-    }
-    if (this->debug()) {
-      this->dump_queue_state("Launching end");
-    }
-  }
-
-  auto get_runnable_task() {
-
-    auto val = runnable_queue_.try_pop();
-    while (val && ((*val)->task_state() == TaskState::terminated)) {
-      val = runnable_queue_.try_pop();
-    }
-    return val;
-  }
-
-  void dump_queue_state(const std::string& msg = "") {
-    std::string preface = (msg != "" ? msg + "\n" : "");
-
-    std::cout << preface + "    runnable_queue_.size() = " +
-                     std::to_string(runnable_queue_.size()) + "\n" +
-                     "    running_set_.size() = " +
-                     std::to_string(running_set_.size()) + "\n" +
-                     "    waiting_set_.size() = " +
-                     std::to_string(waiting_set_.size()) + "\n" +
-                     "    finished_queue_.size() = " +
-                     std::to_string(finished_queue_.size()) + "\n" + "\n";
-  }
-};
-#endif
 
 }  // namespace tiledb::common
-
-#if 0
-namespace tiledb::common {
-
-template <class Node>
-class BountifulScheduler {
- public:
-  BountifulScheduler() = default;
-  ~BountifulScheduler() = default;
-
-  std::vector<std::future<void>> futures_{};
-  std::vector<std::function<void()>> tasks_{};
-
-  template <class C = Node>
-  void submit(Node& n, std::enable_if_t<std::is_same_v<decltype(n.resume()), void>, void*> = nullptr)  {
-    tasks_.emplace_back([&n]() {
-
-    auto mover = n.get_mover();
-    if (mover->debug_enabled()) {
-      std::cout << "producer starting run on " << n.get_mover()
-                << std::endl;
-    }
-
-    while (!mover->is_stopping()) {
-      n.resume();
-    }
-    });
-  }
-
-  template <class C = Node>
-  void submit(Node&& n, std::enable_if_t<std::is_same_v<decltype(n.resume()), void>, void*> = nullptr) {
-    futures_.emplace_back(std::async(std::launch::async, [&n]() { n.resume(); }));    
-  }
-
-  template <class C = Node>
-  void submit(C& n, std::enable_if_t<(!std::is_same_v<decltype(n.resume()), void> && std::is_same_v<decltype(n.run()), void>), void*> = nullptr)  {
-    futures_.emplace_back(std::async(std::launch::async, [&n]() { n.run(); }));
-  }
-
-  template <class C = Node>
-  void submit(C& n, std::enable_if_t<(std::is_same_v<decltype(n.resume()), void> && std::is_same_v<decltype(n.run()), void>), void*> = nullptr)  {
-    futures_.emplace_back(std::async(std::launch::async, [&n]() { n.run(); }));
-  }
-
-
-  auto sync_wait_all() {
-    for (auto&& t : tasks_) {
-      futures_.emplace_back(std::async(std::launch::async, t));
-    }
-    for (auto&& t : futures_) {
-       t.get();
-    }
-  }
-};
-
-
-
-template <class Node>
-class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node>> {
-  using Scheduler = ThrowCatchScheduler<Node>;
-  using Policy = ThrowCatchSchedulerPolicy<ThrowCatchTask<Node>>;
-
-
-  /** Deleted default constructor */
-  // ThrowCatchScheduler() = delete;
-  ThrowCatchScheduler(const ThrowCatchScheduler&) = delete;
-
-  /** Destructor. */
-  ~ThrowCatchScheduler() {
-    if (this->debug())
-      std::cout << "scheduler destructor\n";
-  }
-
-
-  /* ********************************* */
-  /*                API                */
-  /* ********************************* */
-
-
-  std::atomic<bool> debug_{false};
-
-  void enable_debug() {
-    debug_.store(true);
-  }
-  void disable_debug() {
-    debug_.store(false);
-  }
-
-  bool debug() {
-    return debug_.load();
-  }
-
-  void submit(Node&& n) {
-  }
-
-  void sync_wait_all() {
-
-  };
-}  // namespace tiledb::common
-#endif
-
 #endif  // TILEDB_DAG_BOUNTIFUL_H

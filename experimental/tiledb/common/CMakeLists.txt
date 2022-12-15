@@ -24,7 +24,7 @@
 # THE SOFTWARE.
 #
 
-message(STATUS "+++++++ in common")
+# message(STATUS "+++++++ in common")
 
 include(common-root)
 include(common)
