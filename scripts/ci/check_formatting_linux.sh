@@ -35,4 +35,4 @@ sudo ./scripts/install-clangformat.sh
 src=$GITHUB_WORKSPACE
 cd $src
 
-$src/scripts/run-clang-format.sh $src clang-format-9 0
+$src/scripts/run-clang-format.sh $src clang-format-14 0
