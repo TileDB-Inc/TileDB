@@ -48,6 +48,19 @@ namespace sm {
  */
 class RelevantFragments {
  public:
+  /* ********************************* */
+  /*           TYPE DEFINITIONS        */
+  /* ********************************* */
+
+  /**
+   * Size type for the number of dimensions of an array and for dimension
+   * indices.
+   *
+   * Note: This should be the same as `Domain::dimension_size_type`. We're
+   * not including `domain.h`, otherwise we'd use that definition here.
+   */
+  using dimension_size_type = unsigned int;
+
   /**
    * Simple iterator using an index.
    */
@@ -94,14 +107,74 @@ class RelevantFragments {
     size_t i_;
   };
 
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
   /**
-   * Constructs a relevant fragment object for an array with `frag_num`
+   * Constructs a relevant fragments object for an array with `frag_num`
    * fragments.
    */
   RelevantFragments(size_t frag_num)
       : frag_num_(frag_num)
       , relevant_fragments_computed_(false) {
   }
+
+  /**
+   * Constructs a relevant fragments object from a fragment bytemaps
+   * structure.
+   */
+  RelevantFragments(
+      dimension_size_type dim_num,
+      size_t frag_num,
+      std::vector<std::vector<uint8_t>> fragment_bytemaps)
+      : frag_num_(frag_num)
+      , relevant_fragments_computed_(true) {
+    // Recalculate relevant fragments.
+    computed_relevant_fragments_.reserve(frag_num);
+    for (unsigned f = 0; f < frag_num; ++f) {
+      bool relevant = true;
+      for (uint32_t d = 0; d < dim_num; ++d) {
+        if (fragment_bytemaps[d][f] == 0) {
+          relevant = false;
+          break;
+        }
+      }
+
+      if (relevant) {
+        computed_relevant_fragments_.emplace_back(f);
+      }
+    }
+  }
+
+  /**
+   * Constructs a relevant fragments object from another filtering fragments
+   * that are not in [min, max[.
+   */
+  RelevantFragments(
+      RelevantFragments& relevant_fragments, unsigned min, unsigned max)
+      : frag_num_(relevant_fragments.frag_num_)
+      , relevant_fragments_computed_(true) {
+    computed_relevant_fragments_.reserve(relevant_fragments.size());
+    for (auto f : relevant_fragments) {
+      if (f >= min && f < max) {
+        computed_relevant_fragments_.emplace_back(f);
+      }
+    }
+  }
+
+  /**
+   * Constructs a relevant fragments object from a vector.
+   */
+  RelevantFragments(std::vector<unsigned>& relevant_fragments)
+      : frag_num_(0)
+      , relevant_fragments_computed_(true)
+      , computed_relevant_fragments_(relevant_fragments) {
+  }
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
 
   /** Returns the start iterator for the relevant fragments. */
   Iterator begin() const {
@@ -132,24 +205,11 @@ class RelevantFragments {
                                           static_cast<unsigned>(i);
   }
 
-  /** Clears the computed relevant fragments. */
-  inline void clear_computed_relevant_fragments() {
-    relevant_fragments_computed_ = false;
-    computed_relevant_fragments_.clear();
-  }
-
-  /** Reserves the computed relevant fragments vector. */
-  inline void reserve_computed_relevant_fragments(size_t n) {
-    relevant_fragments_computed_ = true;
-    computed_relevant_fragments_.reserve(n);
-  }
-
-  /** Emplaces a computed relevant fragment to the end of the vector. */
-  inline void emplace_computed_relevant_fragments_back(unsigned v) {
-    computed_relevant_fragments_.emplace_back(v);
-  }
-
  private:
+  /* ********************************* */
+  /*        PRIVATE ATTRIBUTES         */
+  /* ********************************* */
+
   /** Number of fragments for the array. */
   size_t frag_num_;
 

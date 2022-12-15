@@ -1178,41 +1178,6 @@ class Subarray {
 
   /**
    * An opaque context to be used between successive calls
-   * to `compute_relevant_fragments`.
-   */
-  struct ComputeRelevantFragmentsCtx {
-    ComputeRelevantFragmentsCtx()
-        : initialized_(false) {
-    }
-
-    /**
-     * This context cache is lazy initialized. This will be
-     * set to `true` when initialized in `compute_relevant_fragments()`.
-     */
-    bool initialized_;
-
-    /**
-     * The last calibrated start coordinates.
-     */
-    std::vector<uint64_t> last_start_coords_;
-
-    /**
-     * The last calibrated end coordinates.
-     */
-    std::vector<uint64_t> last_end_coords_;
-
-    /**
-     * The fragment bytemaps for each dimension. The inner
-     * vector is the fragment bytemap that has a byte element
-     * for each fragment. Non-zero bytes represent relevant
-     * fragments for a specific dimension. Each dimension
-     * has its own fragment bytemap (the outer vector).
-     */
-    std::vector<std::vector<uint8_t>> frag_bytemaps_;
-  };
-
-  /**
-   * An opaque context to be used between successive calls
    * to `compute_relevant_fragment_tile_overlap`.
    */
   struct ComputeRelevantTileOverlapCtx {
@@ -1434,39 +1399,6 @@ class Subarray {
    * given subarray.
    */
   void swap(Subarray& subarray);
-
-  /**
-   * Computes the indexes of the fragments that are relevant to the query,
-   * that is those whose non-empty domain intersects with at least one
-   * range.
-   *
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param tile_overlap Mutated to store the computed tile overlap.
-   * @param fn_ctx An opaque context object to be used between successive
-   * invocations.
-   */
-  Status compute_relevant_fragments(
-      ThreadPool* compute_tp,
-      const SubarrayTileOverlap* tile_overlap,
-      ComputeRelevantFragmentsCtx* fn_ctx);
-
-  /**
-   * Computes the relevant fragment bytemap for a specific dimension.
-   *
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param dim_idx The index of the dimension to compute on.
-   * @param fragment_num The number of fragments to compute on.
-   * @param start_coords The starting range coordinates to compute between.
-   * @param end_coords The ending range coordinates to compute between.
-   * @param frag_bytemap The fragment bytemap to mutate.
-   */
-  Status compute_relevant_fragments_for_dim(
-      ThreadPool* compute_tp,
-      uint32_t dim_idx,
-      uint64_t fragment_num,
-      const std::vector<uint64_t>& start_coords,
-      const std::vector<uint64_t>& end_coords,
-      std::vector<uint8_t>* frag_bytemap) const;
 
   /** Loads the R-Trees of all relevant fragments in parallel. */
   Status load_relevant_fragment_rtrees(ThreadPool* compute_tp) const;

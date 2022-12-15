@@ -57,6 +57,7 @@
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/subarray/relevant_fragment_generator.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/type/range/range.h"
 
@@ -2587,13 +2588,15 @@ Status Subarray::precompute_tile_overlap(
   // each successive loop. The intent is to minimize the number of loops
   // at the risk of exceeding our target maximum memory usage for the
   // tile overlap data.
-  ComputeRelevantFragmentsCtx relevant_fragment_ctx;
+  RelevantFragmentGenerator relevant_fragment_generator(*array_, *this, stats_);
   ComputeRelevantTileOverlapCtx tile_overlap_ctx;
   SubarrayTileOverlap tile_overlap(
       fragment_num, tile_overlap_start, tmp_tile_overlap_end);
   do {
-    RETURN_NOT_OK(compute_relevant_fragments(
-        compute_tp, &tile_overlap, &relevant_fragment_ctx));
+    if (relevant_fragment_generator.update_range_coords(&tile_overlap)) {
+      relevant_fragments_ =
+          relevant_fragment_generator.compute_relevant_fragments(compute_tp);
+    }
     RETURN_NOT_OK(load_relevant_fragment_rtrees(compute_tp));
     RETURN_NOT_OK(compute_relevant_fragment_tile_overlap(
         compute_tp, &tile_overlap, &tile_overlap_ctx));
@@ -2643,10 +2646,11 @@ Status Subarray::precompute_all_ranges_tile_overlap(
   compute_range_offsets();
 
   // Compute relevant fragments and load rtrees.
-  ComputeRelevantFragmentsCtx relevant_fragment_ctx;
   ComputeRelevantTileOverlapCtx tile_overlap_ctx;
-  RETURN_NOT_OK(
-      compute_relevant_fragments(compute_tp, nullptr, &relevant_fragment_ctx));
+  RelevantFragmentGenerator relevant_fragment_generator(*array_, *this, stats_);
+  relevant_fragment_generator.update_range_coords(nullptr);
+  relevant_fragments_ =
+      relevant_fragment_generator.compute_relevant_fragments(compute_tp);
   RETURN_NOT_OK(load_relevant_fragment_rtrees(compute_tp));
 
   // Each thread will use one bitmap per dimensions.
@@ -2907,86 +2911,6 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(original_range_idx_, subarray.original_range_idx_);
 }
 
-Status Subarray::compute_relevant_fragments(
-    ThreadPool* const compute_tp,
-    const SubarrayTileOverlap* const tile_overlap,
-    ComputeRelevantFragmentsCtx* const fn_ctx) {
-  auto timer_se = stats_->start_timer("read_compute_relevant_frags");
-
-  // Fetch the calibrated, multi-dimensional coordinates from the
-  // flattened (total order) range indexes. In this context,
-  // "calibration" implies that the coordinates contain the minimum
-  // n-dimensional space to encapsulate all ranges within `tile_overlap`.
-  std::vector<uint64_t> start_coords;
-  std::vector<uint64_t> end_coords;
-  auto range_idx_start =
-      tile_overlap == nullptr ? 0 : tile_overlap->range_idx_start();
-  auto range_idx_end =
-      tile_overlap == nullptr ? range_num() - 1 : tile_overlap->range_idx_end();
-  get_expanded_coordinates(
-      range_idx_start, range_idx_end, &start_coords, &end_coords);
-
-  // If the calibrated coordinates have not changed from
-  // the last call to this function, the computed relevant
-  // fragments will not change.
-  if (fn_ctx->initialized_ && start_coords == fn_ctx->last_start_coords_ &&
-      end_coords == fn_ctx->last_end_coords_) {
-    return Status::Ok();
-  }
-
-  // Perform lazy-initialization the context cache for this routine.
-  const size_t fragment_num = array_->fragment_metadata().size();
-  const uint32_t dim_num = array_->array_schema_latest().dim_num();
-  if (!fn_ctx->initialized_) {
-    fn_ctx->initialized_ = true;
-
-    // Create a fragment bytemap for each dimension. Each
-    // non-zero byte represents an overlap between a fragment
-    // and at least one range in the corresponding dimension.
-    fn_ctx->frag_bytemaps_.resize(dim_num);
-    for (uint32_t d = 0; d < dim_num; ++d) {
-      fn_ctx->frag_bytemaps_[d].resize(fragment_num, is_default(d) ? 1 : 0);
-    }
-  }
-
-  // Store the current calibrated coordinates.
-  fn_ctx->last_start_coords_ = start_coords;
-  fn_ctx->last_end_coords_ = end_coords;
-
-  // Populate the fragment bytemap for each dimension in parallel.
-  RETURN_NOT_OK(parallel_for(compute_tp, 0, dim_num, [&](const uint32_t d) {
-    if (is_default(d))
-      return Status::Ok();
-
-    return compute_relevant_fragments_for_dim(
-        compute_tp,
-        d,
-        fragment_num,
-        start_coords,
-        end_coords,
-        &fn_ctx->frag_bytemaps_[d]);
-  }));
-
-  // Recalculate relevant fragments.
-  relevant_fragments_.clear_computed_relevant_fragments();
-  relevant_fragments_.reserve_computed_relevant_fragments(fragment_num);
-  for (unsigned f = 0; f < fragment_num; ++f) {
-    bool relevant = true;
-    for (uint32_t d = 0; d < dim_num; ++d) {
-      if (fn_ctx->frag_bytemaps_[d][f] == 0) {
-        relevant = false;
-        break;
-      }
-    }
-
-    if (relevant) {
-      relevant_fragments_.emplace_computed_relevant_fragments_back(f);
-    }
-  }
-
-  return Status::Ok();
-}
-
 void Subarray::get_expanded_coordinates(
     const uint64_t range_idx_start,
     const uint64_t range_idx_end,
@@ -3058,40 +2982,6 @@ void Subarray::get_expanded_coordinates(
       (*end_coords)[d] = range_subset_[d].num_ranges() - 1;
     }
   }
-}
-
-Status Subarray::compute_relevant_fragments_for_dim(
-    ThreadPool* const compute_tp,
-    const uint32_t dim_idx,
-    const uint64_t fragment_num,
-    const std::vector<uint64_t>& start_coords,
-    const std::vector<uint64_t>& end_coords,
-    std::vector<uint8_t>* const frag_bytemap) const {
-  const auto meta = array_->fragment_metadata();
-  auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
-
-  return parallel_for(compute_tp, 0, fragment_num, [&](const uint64_t f) {
-    // We're done when we have already determined fragment `f` to
-    // be relevant for this dimension.
-    if ((*frag_bytemap)[f] == 1) {
-      return Status::Ok();
-    }
-
-    // The fragment `f` is relevant to this dimension's fragment bytemap
-    // if it overlaps with any range between the start and end coordinates
-    // on this dimension.
-    const Range& frag_range = meta[f]->non_empty_domain()[dim_idx];
-    for (uint64_t r = start_coords[dim_idx]; r <= end_coords[dim_idx]; ++r) {
-      const Range& query_range = range_subset_[dim_idx][r];
-
-      if (dim->overlap(frag_range, query_range)) {
-        (*frag_bytemap)[f] = 1;
-        break;
-      }
-    }
-
-    return Status::Ok();
-  });
 }
 
 Status Subarray::load_relevant_fragment_rtrees(

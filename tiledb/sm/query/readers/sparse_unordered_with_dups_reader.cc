@@ -394,16 +394,11 @@ void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
             std::to_string(array_memory_tracker_->get_memory_budget()) + ").");
       }
 
-      // Make the vector of fragments to load.
-      RelevantFragments to_load(fragment_metadata_.size());
-      to_load.reserve_computed_relevant_fragments(relevant_fragments.size());
-      for (auto f : relevant_fragments) {
-        if (f >= tile_offsets_min_frag_idx_ && f < tile_offsets_max_frag_idx_) {
-          to_load.emplace_computed_relevant_fragments_back(f);
-        }
-      }
-
       // Load the tile offsets.
+      RelevantFragments to_load(
+          relevant_fragments,
+          tile_offsets_min_frag_idx_,
+          tile_offsets_max_frag_idx_);
       load_tile_offsets_for_fragments(std::move(to_load));
     }
   }

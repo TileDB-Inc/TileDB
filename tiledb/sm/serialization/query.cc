@@ -241,12 +241,13 @@ Status subarray_from_capnp(
   if (reader.hasRelevantFragments()) {
     auto relevant_fragments = reader.getRelevantFragments();
     size_t count = relevant_fragments.size();
-    subarray->relevant_fragments().clear_computed_relevant_fragments();
-    subarray->relevant_fragments().reserve_computed_relevant_fragments(count);
+    std::vector<unsigned> rf;
+    rf.reserve(count);
     for (size_t i = 0; i < count; i++) {
-      subarray->relevant_fragments().emplace_computed_relevant_fragments_back(
-          relevant_fragments[i]);
+      rf.emplace_back(relevant_fragments[i]);
     }
+
+    subarray->relevant_fragments() = RelevantFragments(rf);
   }
 
   return Status::Ok();
