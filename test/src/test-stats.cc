@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Some tests for the Stats functionality.
+ * Home for tests focused on some aspect of stats functionality.
  */
 
 #include <test/support/tdb_catch.h>
@@ -44,15 +44,14 @@ using namespace tiledb::sm::stats;
 
 static std::string empty_dumped_stats = { "[\n\n]\n" };
 // Currently there are no stats that are always present.
-// Can, however, envision a time when stats calls themselves might be
-// accumulated, thus having a forever outstanding stats item, the empty
+// Can, however, envision a time when something (stats calls themselves?) might be
+// accumulated, thus having a forever outstanding stats item, the base
 // version of which might be represented in this base_dumped_stats, rather
 // than the output being totally 'empty'.
 static std::string base_dumped_stats = empty_dumped_stats;
 
 TEST_CASE("Stats inferred registration handling, direct method calls", "[stats]") {
-  // Examine stats output as reflection of
-  // whether data might be held beyond a reset.
+  // Examine stats output as a reflection of whether allocations might be held beyond a destruction.
 
   std::string dumped_stats;
   all_stats.dump(&dumped_stats);
@@ -81,7 +80,7 @@ TEST_CASE("Stats inferred registration handling, direct method calls", "[stats]"
 
 TEST_CASE("Stats registration handling, indirect via Context", "[stats][context]") {
   // Examine stats output when class Context active as reflection of
-  // whether data might be held beyond a reset.
+  // whether data allocations might be held beyond a reset and/or registrant destruction.
   
   std::string dumped_stats;
   all_stats.dump(&dumped_stats);
@@ -133,7 +132,7 @@ TEST_CASE("Stats registration handling, indirect via Context", "[stats][context]
     all_stats.dump(&dumped_stats);
     CHECK(dumped_stats != base_dumped_stats);
 
-  // Perform reset of any remaining stats (none in this test) and remove
+  // Perform reset of any remaining stats and remove any
     // previously registered stats for already destructed registrants.
     all_stats.reset();
     all_stats.dump(&dumped_stats);
