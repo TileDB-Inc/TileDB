@@ -680,7 +680,7 @@ Status Query::get_data_buffer(
   }
 
   // Check attribute
-  if (name != constants::coords) {
+  if (name != constants::coords && name != constants::timestamps) {
     if (array_schema_->attribute(name) == nullptr &&
         array_schema_->dimension_ptr(name) == nullptr)
       return logger_->status(Status_QueryError(
