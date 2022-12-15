@@ -1669,7 +1669,7 @@ int submit_query_wrapper(
     return rc;
   }
 
-  // Get the query type and layout
+  // Get the query type
   tiledb_query_type_t query_type;
   REQUIRE_SAFE(tiledb_query_get_type(ctx, *query, &query_type) == TILEDB_OK);
 
@@ -1724,16 +1724,18 @@ int finalize_query_wrapper(
     const Context& ctx,
     const std::string& array_uri,
     Query* query,
+    ServerQueryBuffers& buffers,
     bool serialize_query) {
   auto query_c = query->ptr().get();
   return finalize_query_wrapper(
-      ctx.ptr().get(), array_uri, &query_c, serialize_query);
+      ctx.ptr().get(), array_uri, &query_c, buffers, serialize_query);
 }
 
 int finalize_query_wrapper(
     tiledb_ctx_t* ctx,
     const std::string& array_uri,
     tiledb_query_t** query,
+    ServerQueryBuffers& buffers,
     bool serialize_query) {
 #ifndef TILEDB_SERIALIZATION
   return tiledb_query_finalize(ctx, *query);
@@ -1743,7 +1745,7 @@ int finalize_query_wrapper(
     return tiledb_query_finalize(ctx, *query);
   }
 
-  // Get the query type and layout
+  // Get the query type
   tiledb_query_type_t query_type;
   REQUIRE_SAFE(tiledb_query_get_type(ctx, *query, &query_type) == TILEDB_OK);
 
@@ -1754,6 +1756,15 @@ int finalize_query_wrapper(
   int rc = tiledb_query_v2_serialize(
       ctx, array_uri.c_str(), serialized, true, *query, &server_deser_query);
   REQUIRE_SAFE(rc == TILEDB_OK);
+
+  // This is a feature of the server, not a bug, quoting from query_from_capnp:
+  // "On reads, just set null pointers with accurate size so that the
+  // server can introspect and allocate properly sized buffers separately."
+  // Empty buffers will naturally break query_submit so to go on in test we
+  // need to allocate here as if we were the server.
+  if (query_type == TILEDB_READ) {
+    allocate_query_buffers_server_side(ctx, server_deser_query, buffers);
+  }
 
   // 2. Server: Finalize query
   rc = tiledb_query_finalize(ctx, server_deser_query);

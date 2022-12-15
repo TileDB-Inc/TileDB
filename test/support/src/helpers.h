@@ -948,6 +948,7 @@ int finalize_query_wrapper(
     const Context& ctx,
     const std::string& array_uri,
     Query* query,
+    ServerQueryBuffers& buffers,
     bool serialize_query);
 
 // TODO: add docstring
@@ -955,6 +956,7 @@ int finalize_query_wrapper(
     tiledb_ctx_t* ctx,
     const std::string& array_uri,
     tiledb_query_t** query,
+    ServerQueryBuffers& buffers,
     bool serialize_query);
 
 /**

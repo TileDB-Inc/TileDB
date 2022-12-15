@@ -59,13 +59,14 @@ uint64_t UTF8_OFFSET_4_FOR_EMPTY =
     sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY;
 
 struct StringEmptyFx {
+  bool serialized_ = false;
   // Buffers to allocate on query size for serialized queries
   ServerQueryBuffers server_buffers_;
 
   void create_array(const std::string& array_name);
   void delete_array(const std::string& array_name);
   void read_array(const std::string& array_name);
-  void write_array(const std::string& array_name, const bool serialized_writes);
+  void write_array(const std::string& array_name);
 };
 
 // Create a simple dense 1D array with three string attributes
@@ -162,8 +163,7 @@ void StringEmptyFx::create_array(const std::string& array_name) {
   tiledb_ctx_free(&ctx);
 }
 
-void StringEmptyFx::write_array(
-    const std::string& array_name, const bool serialized_writes) {
+void StringEmptyFx::write_array(const std::string& array_name) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
@@ -262,7 +262,7 @@ void StringEmptyFx::write_array(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx, array_name, &query, server_buffers_, serialized_writes);
+      ctx, array_name, &query, server_buffers_, serialized_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -384,9 +384,9 @@ void StringEmptyFx::read_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx, array_name, &query, server_buffers_, serialized_);
   REQUIRE(rc == TILEDB_OK);
 
   // Check results
@@ -466,19 +466,19 @@ TEST_CASE_METHOD(
     StringEmptyFx, "C API: Test empty support", "[capi][empty-var-length]") {
   std::string array_name = "empty_string";
 
-  bool serialized_writes = false;
+  bool serialized_ = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialized_ = true;
   }
 #endif
 
   delete_array(array_name);
   create_array(array_name);
-  write_array(array_name, serialized_writes);
+  write_array(array_name);
   read_array(array_name);
   delete_array(array_name);
 }
