@@ -77,7 +77,7 @@ class spinlock_mutex {
  * and unlock(), which are suffient for use with std::lock (and relatives).
  */
 struct ttas_bool_spinlock_mutex {
-  std::atomic<bool> lock_ = {0};
+  std::atomic<bool> lock_ = {false};
 
   /**
    * Acquire lock.  This is optimized for the uncontended case.  Attempt to
