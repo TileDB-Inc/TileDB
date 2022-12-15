@@ -43,7 +43,7 @@ namespace stats {
 
 DurationInstrument::~DurationInstrument() {
   auto end_time = std::chrono::high_resolution_clock::now();
-  stats_->report_duration(stat_, end_time - start_time_);
+  parent_stats_->report_duration(stat_name_, end_time - start_time_);
 }
 
 }  // namespace stats

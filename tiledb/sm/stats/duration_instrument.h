@@ -54,14 +54,14 @@ class DurationInstrument {
 
   /** Constructs an empty duration instrument object. */
   DurationInstrument()
-      : stats_(nullptr)
-      , stat_("") {
+      : parent_stats_(nullptr)
+      , stat_name_("") {
   }
 
   /** Constructs a duration instrument object. */
-  DurationInstrument(Stats* stats, const std::string stat)
-      : stats_(stats)
-      , stat_(stat)
+  DurationInstrument(Stats* parent_stats, const std::string stat_name)
+      : parent_stats_(parent_stats)
+      , stat_name_(stat_name)
       , start_time_(std::chrono::high_resolution_clock::now()) {
   }
 
@@ -74,10 +74,10 @@ class DurationInstrument {
   /* ****************************** */
 
   /** Pointer to the parent stats. */
-  Stats* stats_;
+  Stats* parent_stats_;
 
   /** Stat to report duration for. */
-  const std::string stat_;
+  const std::string stat_name_;
 
   /** Start time of the duration instrument. */
   std::chrono::high_resolution_clock::time_point start_time_;
