@@ -2756,10 +2756,10 @@ Subarray Subarray::clone() const {
   clone.attr_range_subset_ = attr_range_subset_;
   clone.tile_overlap_ = tile_overlap_;
   clone.est_result_size_computed_ = est_result_size_computed_;
+  clone.relevant_fragments_ = relevant_fragments_;
   clone.coalesce_ranges_ = coalesce_ranges_;
   clone.est_result_size_ = est_result_size_;
   clone.max_mem_size_ = max_mem_size_;
-  clone.relevant_fragments_ = relevant_fragments_;
   clone.original_range_idx_ = original_range_idx_;
 
   return clone;
@@ -2904,10 +2904,10 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(range_offsets_, subarray.range_offsets_);
   std::swap(tile_overlap_, subarray.tile_overlap_);
   std::swap(est_result_size_computed_, subarray.est_result_size_computed_);
+  std::swap(relevant_fragments_, subarray.relevant_fragments_);
   std::swap(coalesce_ranges_, subarray.coalesce_ranges_);
   std::swap(est_result_size_, subarray.est_result_size_);
   std::swap(max_mem_size_, subarray.max_mem_size_);
-  std::swap(relevant_fragments_, subarray.relevant_fragments_);
   std::swap(original_range_idx_, subarray.original_range_idx_);
 }
 

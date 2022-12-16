@@ -115,8 +115,8 @@ class RelevantFragments {
    * Constructs a relevant fragments object for an array with `frag_num`
    * fragments.
    */
-  RelevantFragments(size_t frag_num)
-      : frag_num_(frag_num)
+  RelevantFragments(size_t array_frag_num)
+      : non_computed_fragment_num_(array_frag_num)
       , relevant_fragments_computed_(false) {
   }
 
@@ -126,13 +126,13 @@ class RelevantFragments {
    */
   RelevantFragments(
       dimension_size_type dim_num,
-      size_t frag_num,
+      size_t array_frag_num,
       std::vector<std::vector<uint8_t>> fragment_bytemaps)
-      : frag_num_(frag_num)
+      : non_computed_fragment_num_(0)
       , relevant_fragments_computed_(true) {
     // Recalculate relevant fragments.
-    computed_relevant_fragments_.reserve(frag_num);
-    for (unsigned f = 0; f < frag_num; ++f) {
+    computed_relevant_fragments_.reserve(array_frag_num);
+    for (unsigned f = 0; f < array_frag_num; ++f) {
       bool relevant = true;
       for (uint32_t d = 0; d < dim_num; ++d) {
         if (fragment_bytemaps[d][f] == 0) {
@@ -153,7 +153,7 @@ class RelevantFragments {
    */
   RelevantFragments(
       RelevantFragments& relevant_fragments, unsigned min, unsigned max)
-      : frag_num_(relevant_fragments.frag_num_)
+      : non_computed_fragment_num_(0)
       , relevant_fragments_computed_(true) {
     computed_relevant_fragments_.reserve(relevant_fragments.size());
     for (auto f : relevant_fragments) {
@@ -167,7 +167,7 @@ class RelevantFragments {
    * Constructs a relevant fragments object from a vector.
    */
   RelevantFragments(std::vector<unsigned>& relevant_fragments)
-      : frag_num_(0)
+      : non_computed_fragment_num_(0)
       , relevant_fragments_computed_(true)
       , computed_relevant_fragments_(relevant_fragments) {
   }
@@ -189,7 +189,7 @@ class RelevantFragments {
   /** Returns the size of the relevant fragments. */
   inline size_t size() const {
     return relevant_fragments_computed_ ? computed_relevant_fragments_.size() :
-                                          frag_num_;
+                                          non_computed_fragment_num_;
   }
 
   /**
@@ -210,8 +210,8 @@ class RelevantFragments {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  /** Number of fragments for the array. */
-  size_t frag_num_;
+  /** Number of fragments to use when relevant fragments are not computed. */
+  size_t non_computed_fragment_num_;
 
   /** Are the relevant fragments computed. */
   bool relevant_fragments_computed_;
