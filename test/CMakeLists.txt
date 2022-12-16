@@ -110,6 +110,8 @@ set(TILEDB_UNIT_TEST_SOURCES
   support/src/ast_helpers.h
   support/src/helpers.h
   support/src/helpers-dimension.h
+  src/test-capi-array-write-ordered-attr-fixed.cc
+  src/test-capi-array-write-ordered-attr-var.cc
   src/test-capi-consolidation-plan.cc
   src/test-capi-query-error-handling.cc
   src/test-cppapi-consolidation-plan.cc

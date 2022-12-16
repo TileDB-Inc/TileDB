@@ -359,7 +359,7 @@ std::string SupportedFsMem::temp_dir() {
   return temp_dir_;
 }
 
-void TemporaryDirectoryFixture::check_tiledb_ok(int rc) {
+void TemporaryDirectoryFixture::check_tiledb_ok(int rc) const {
   if (rc != TILEDB_OK) {
     tiledb_error_t* err = NULL;
     tiledb_ctx_get_last_error(ctx, &err);
@@ -370,7 +370,7 @@ void TemporaryDirectoryFixture::check_tiledb_ok(int rc) {
   CHECK(rc == TILEDB_OK);
 }
 
-void TemporaryDirectoryFixture::require_tiledb_ok(int rc) {
+void TemporaryDirectoryFixture::require_tiledb_ok(int rc) const {
   if (rc != TILEDB_OK) {
     tiledb_error_t* err = NULL;
     tiledb_ctx_get_last_error(ctx, &err);
