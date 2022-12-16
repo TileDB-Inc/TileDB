@@ -3186,7 +3186,6 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
 #endif
   }
-  serialize_query_ = true;
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();

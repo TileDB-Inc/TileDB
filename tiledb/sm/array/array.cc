@@ -1464,8 +1464,9 @@ void ensure_supported_schema_version_for_read(format_version_t version) {
   }
 }
 
-void Array::set_serialized_array_open(const QueryType& query_type) {
-  set_array_open(query_type);
+void Array::set_serialized_array_open() {
+  // set_array_open(query_type);
+  is_open_ = true;
 }
 
 }  // namespace sm
