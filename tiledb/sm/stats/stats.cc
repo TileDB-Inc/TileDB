@@ -173,8 +173,9 @@ std::string Stats::dump(
 #ifdef TILEDB_STATS
 
 void Stats::add_counter(const std::string& stat, uint64_t count) {
-  if (!enabled_)
+  if (!enabled_) {
     return;
+  }
 
   std::string new_stat = prefix_ + stat;
   std::unique_lock<std::mutex> lck(mtx_);
@@ -187,16 +188,14 @@ void Stats::add_counter(const std::string& stat, uint64_t count) {
 }
 
 DurationInstrument Stats::start_timer(const std::string& stat) {
-  if (!enabled_)
-    return DurationInstrument();
-
   return DurationInstrument(this, stat);
 }
 
 void Stats::report_duration(
     const std::string& stat, const std::chrono::duration<double> duration) {
-  if (!enabled_)
+  if (!enabled_) {
     return;
+  }
 
   std::string new_stat = prefix_ + stat;
   std::unique_lock<std::mutex> lck(mtx_);
@@ -233,7 +232,7 @@ void Stats::add_counter(const std::string&, uint64_t) {
 }
 
 DurationInstrument Stats::start_timer(const std::string&) {
-  return DurationInstrument();
+  return DurationInstrument(this, "");
 }
 
 void Stats::report_duration(

@@ -52,17 +52,14 @@ class DurationInstrument {
   /*   CONSTRUCTORS & DESTRUCTORS   */
   /* ****************************** */
 
-  /** Constructs an empty duration instrument object. */
-  DurationInstrument()
-      : parent_stats_(nullptr)
-      , stat_name_("") {
-  }
-
   /** Constructs a duration instrument object. */
   DurationInstrument(Stats* parent_stats, const std::string stat_name)
       : parent_stats_(parent_stats)
       , stat_name_(stat_name)
       , start_time_(std::chrono::high_resolution_clock::now()) {
+    if (parent_stats_ == nullptr) {
+      throw std::logic_error("Null stats object");
+    }
   }
 
   /** Destructor, reports duration to the stats. */
