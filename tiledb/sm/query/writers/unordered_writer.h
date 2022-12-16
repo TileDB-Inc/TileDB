@@ -109,6 +109,12 @@ class UnorderedWriter : public WriterBase {
   /** Already written buffers. */
   std::unordered_set<std::string> written_buffers_;
 
+  /**
+   * Does this pass of the write include coordinates. This is used when we are
+   * doing a partial attribute write with multiple passes.
+   */
+  bool is_coords_pass_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */

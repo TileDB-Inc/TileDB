@@ -204,7 +204,9 @@ void PartialAttrWriteFx::write_sparse(
   // Create query.
   tiledb_query_t* query;
   REQUIRE(tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query) == TILEDB_OK);
-  REQUIRE(tiledb_query_allow_partial_attribute_write(ctx_, query) == TILEDB_OK);
+  REQUIRE(
+      tiledb_query_set_write_mode(ctx_, query, TILEDB_SEPARATE_ATTRIBUTES) ==
+      TILEDB_OK);
   REQUIRE(tiledb_query_set_layout(ctx_, query, layout) == TILEDB_OK);
 
   uint64_t dim1_data_size = dim1.size() * sizeof(uint64_t);
@@ -262,7 +264,9 @@ void PartialAttrWriteFx::write_dense(
   // Create query.
   tiledb_query_t* query;
   REQUIRE(tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query) == TILEDB_OK);
-  REQUIRE(tiledb_query_allow_partial_attribute_write(ctx_, query) == TILEDB_OK);
+  REQUIRE(
+      tiledb_query_set_write_mode(ctx_, query, TILEDB_SEPARATE_ATTRIBUTES) ==
+      TILEDB_OK);
   REQUIRE(tiledb_query_set_layout(ctx_, query, layout) == TILEDB_OK);
 
   uint64_t a1_data_size = a1.size() * sizeof(int);

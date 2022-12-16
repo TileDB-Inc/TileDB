@@ -280,6 +280,12 @@ extern const std::string query_type_update_str;
 /** TILEDB_MODIFY_EXCLUSIVE Query String **/
 extern const std::string query_type_modify_exclusive_str;
 
+/** TILEDB_QUERY_WRITE_MODE_DEFAULT Query Write Mode String **/
+extern const std::string query_write_mode_default_str;
+
+/** TILEDB_QUERY_WRITE_MODE_SEPARATE_ATTRIBUTES Query Write Mode String **/
+extern const std::string query_write_mode_separate_attributes_str;
+
 /** TILEDB_FAILED Query String **/
 extern const std::string query_status_failed_str;
 

@@ -165,7 +165,7 @@ void CppPartialAttrWriteFx::write_sparse(
 
   // Create query.
   Query query(ctx_, array, TILEDB_WRITE);
-  QueryExperimental::allow_partial_attribute_write(ctx_, query);
+  QueryExperimental::set_write_mode(ctx_, query, TILEDB_SEPARATE_ATTRIBUTES);
   query.set_layout(layout);
   query.set_data_buffer("d1", dim1);
   query.set_data_buffer("d2", dim2);
@@ -197,7 +197,7 @@ void CppPartialAttrWriteFx::write_dense(
 
   // Create query.
   Query query(ctx_, array, TILEDB_WRITE);
-  QueryExperimental::allow_partial_attribute_write(ctx_, query);
+  QueryExperimental::set_write_mode(ctx_, query, TILEDB_SEPARATE_ATTRIBUTES);
   query.set_layout(layout);
   query.set_data_buffer("a1", a1);
   query.submit();
@@ -315,7 +315,7 @@ TEST_CASE_METHOD(
   // Create query.
   std::vector<uint64_t> dim1(10);
   Query query(ctx_, array, TILEDB_WRITE);
-  QueryExperimental::allow_partial_attribute_write(ctx_, query);
+  QueryExperimental::set_write_mode(ctx_, query, TILEDB_SEPARATE_ATTRIBUTES);
   query.set_layout(TILEDB_UNORDERED);
   query.set_data_buffer("d1", dim1);
   CHECK_THROWS_WITH(query.submit(), "Query: Dimension buffer d2 is not set");

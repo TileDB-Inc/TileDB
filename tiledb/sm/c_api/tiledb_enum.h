@@ -119,3 +119,10 @@
     /** application/pdf*/
     TILEDB_MIME_TYPE_ENUM(MIME_PDF) = 2,
 #endif
+
+#ifdef TILEDB_QUERY_WRITE_MODE_ENUM
+    /** Default write mode */
+    TILEDB_QUERY_WRITE_MODE_ENUM(DEFAULT) = 0,
+    /** Seperate attribute write mode */
+    TILEDB_QUERY_WRITE_MODE_ENUM(SEPARATE_ATTRIBUTES) = 1,
+#endif

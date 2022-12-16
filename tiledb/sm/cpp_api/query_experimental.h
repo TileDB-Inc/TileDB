@@ -84,11 +84,13 @@ class QueryExperimental {
    *
    * @param ctx TileDB context.
    * @param query Query object.
+   * @param write_mode Write mode.
    * @return Reference to this Query
    */
-  static void allow_partial_attribute_write(const Context& ctx, Query& query) {
-    ctx.handle_error(tiledb_query_allow_partial_attribute_write(
-        ctx.ptr().get(), query.ptr().get()));
+  static void set_write_mode(
+      const Context& ctx, Query& query, tiledb_query_write_mode_t write_mode) {
+    ctx.handle_error(tiledb_query_set_write_mode(
+        ctx.ptr().get(), query.ptr().get(), write_mode));
   }
 };
 }  // namespace tiledb

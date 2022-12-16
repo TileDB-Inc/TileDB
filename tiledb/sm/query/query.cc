@@ -109,7 +109,7 @@ Query::Query(
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
     , fragment_size_(std::numeric_limits<uint64_t>::max())
-    , allow_partial_attribute_write_(false) {
+    , write_mode_(QueryWriteMode::DEFAULT) {
   assert(array->is_open());
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
@@ -962,7 +962,7 @@ Status Query::check_buffer_names() {
 
     // All attributes/dimensions must be provided unless this query is only for
     // dimension labels.
-    if (!only_dim_label_query() && !allow_partial_attribute_write_) {
+    if (!only_dim_label_query() && write_mode_ == QueryWriteMode::DEFAULT) {
       auto expected_num = array_schema_->attribute_num();
       expected_num += static_cast<decltype(expected_num)>(
           buffers_.count(constants::timestamps));
@@ -981,8 +981,8 @@ Status Query::check_buffer_names() {
       }
     }
 
-    // All dimension buffers should be set for partial attribute writes.
-    if (allow_partial_attribute_write_) {
+    // All dimension buffers should be set for separate attribute writes.
+    if (write_mode_ == QueryWriteMode::SEPARATE_ATTRIBUTES) {
       for (unsigned d = 0; d < array_schema_->dim_num(); d++) {
         auto dim = array_schema_->dimension_ptr(d);
         if (buffers_.count(dim->name()) == 0) {
@@ -1335,7 +1335,7 @@ Status Query::set_data_buffer(
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-      !allow_partial_attribute_write_) {
+      write_mode_ == QueryWriteMode::DEFAULT) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
@@ -1449,7 +1449,7 @@ Status Query::set_offsets_buffer(
   // Error if setting a new attribute/dimension after initialization
   bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-      !allow_partial_attribute_write_) {
+      write_mode_ == QueryWriteMode::DEFAULT) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
@@ -1796,8 +1796,8 @@ Status Query::submit() {
     return Status::Ok();
   }
 
-  // Partial attribute write is only available for unordered queries.
-  if (allow_partial_attribute_write_ &&
+  // Separate attribute write is only available for unordered queries.
+  if (write_mode_ == QueryWriteMode::SEPARATE_ATTRIBUTES &&
       (type_ != QueryType::WRITE || layout_ != Layout::UNORDERED)) {
     throw QueryStatusException(
         "Partial attribute write is only supported for unordered writes.");

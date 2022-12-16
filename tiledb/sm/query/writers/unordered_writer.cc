@@ -101,7 +101,8 @@ UnorderedWriter::UnorderedWriter(
           remote_query,
           fragment_name,
           skip_checks_serialization)
-    , frag_uri_(std::nullopt) {
+    , frag_uri_(std::nullopt)
+    , is_coords_pass_(true) {
   // Check the layout is unordered.
   if (layout != Layout::UNORDERED) {
     throw StatusException(Status_WriterError(
@@ -641,10 +642,7 @@ Status UnorderedWriter::unordered_write() {
     }
   }
 
-  bool is_coords_pass = false;
-  if (cell_pos_.empty()) {
-    is_coords_pass = true;
-
+  if (is_coords_pass_) {
     // Sort coordinates first
     RETURN_CANCEL_OR_ERROR(sort_coords());
 
@@ -674,7 +672,7 @@ Status UnorderedWriter::unordered_write() {
 
   auto it = tiles.begin();
   auto tile_num = it->second.size();
-  if (is_coords_pass) {
+  if (is_coords_pass_) {
     // Set the number of tiles in the metadata
     throw_if_not_ok(frag_meta_->set_num_tiles(tile_num));
 
@@ -717,6 +715,7 @@ Status UnorderedWriter::unordered_write() {
     RETURN_NOT_OK(storage_manager_->vfs()->touch(commit_uri));
   }
 
+  is_coords_pass_ = false;
   return Status::Ok();
 }
 
