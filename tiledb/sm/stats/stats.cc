@@ -187,8 +187,8 @@ void Stats::add_counter(const std::string& stat, uint64_t count) {
   }
 }
 
-DurationInstrument Stats::start_timer(const std::string& stat) {
-  return DurationInstrument(this, stat);
+DurationInstrument<Stats> Stats::start_timer(const std::string& stat) {
+  return DurationInstrument<Stats>(*this, stat);
 }
 
 void Stats::report_duration(
@@ -231,8 +231,8 @@ void Stats::report_duration(
 void Stats::add_counter(const std::string&, uint64_t) {
 }
 
-DurationInstrument Stats::start_timer(const std::string&) {
-  return DurationInstrument(this, "");
+int Stats::start_timer(const std::string&) {
+  return 0;
 }
 
 void Stats::report_duration(

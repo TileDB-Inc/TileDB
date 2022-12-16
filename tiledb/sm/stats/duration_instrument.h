@@ -46,6 +46,7 @@ class Stats;
 /**
  * This class contains a simple duration instrument.
  */
+template <class ParentType>
 class DurationInstrument {
  public:
   /* ****************************** */
@@ -53,17 +54,17 @@ class DurationInstrument {
   /* ****************************** */
 
   /** Constructs a duration instrument object. */
-  DurationInstrument(Stats* parent_stats, const std::string stat_name)
+  DurationInstrument(ParentType& parent_stats, const std::string stat_name)
       : parent_stats_(parent_stats)
       , stat_name_(stat_name)
       , start_time_(std::chrono::high_resolution_clock::now()) {
-    if (parent_stats_ == nullptr) {
-      throw std::logic_error("Null stats object");
-    }
   }
 
   /** Destructor, reports duration to the stats. */
-  ~DurationInstrument();
+  ~DurationInstrument() {
+    auto end_time = std::chrono::high_resolution_clock::now();
+    parent_stats_.report_duration(stat_name_, end_time - start_time_);
+  }
 
  private:
   /* ****************************** */
@@ -71,7 +72,7 @@ class DurationInstrument {
   /* ****************************** */
 
   /** Pointer to the parent stats. */
-  Stats* parent_stats_;
+  ParentType& parent_stats_;
 
   /** Stat to report duration for. */
   const std::string stat_name_;

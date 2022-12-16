@@ -58,7 +58,7 @@ class Stats {
   /**
    * Friends with DurationInstrument so it can call `report_duration`.
    */
-  friend class DurationInstrument;
+  friend class DurationInstrument<Stats>;
 
  public:
   /* ****************************** */
@@ -76,15 +76,19 @@ class Stats {
   /** Destructor. */
   ~Stats() = default;
 
-  /* ****************************** */
-  /*              API               */
-  /* ****************************** */
+/* ****************************** */
+/*              API               */
+/* ****************************** */
 
-  /**
-   * Starts a timer for the input timer stat. The timer ends when the returned
-   * `DurationInstrument` object is destroyed.
-   */
-  DurationInstrument start_timer(const std::string& stat);
+/**
+ * Starts a timer for the input timer stat. The timer ends when the returned
+ * `DurationInstrument` object is destroyed.
+ */
+#ifdef TILEDB_STATS
+  DurationInstrument<Stats> start_timer(const std::string& stat);
+#else
+  int start_timer(const std::string& stat);
+#endif
 
   /** Adds `count` to the input counter stat. */
   void add_counter(const std::string& stat, uint64_t count);

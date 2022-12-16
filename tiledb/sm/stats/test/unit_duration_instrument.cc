@@ -1,5 +1,5 @@
 /**
- * @file   duration_instrument.cc
+ * @file unit_stats.cc
  *
  * @section LICENSE
  *
@@ -27,25 +27,41 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class DurationInstrument.
+ * Tests the `DurationInstrument` class.
  */
 
-#include "duration_instrument.h"
-#include "stats.h"
+#include "tiledb/common/common.h"
+#include "tiledb/sm/stats/duration_instrument.h"
 
-namespace tiledb {
-namespace sm {
-namespace stats {
+#include <test/support/tdb_catch.h>
+#include <iostream>
 
-/* ****************************** */
-/*   CONSTRUCTORS & DESTRUCTORS   */
-/* ****************************** */
+using namespace tiledb::sm;
 
-DurationInstrument::~DurationInstrument() {
-  auto end_time = std::chrono::high_resolution_clock::now();
-  parent_stats_->report_duration(stat_name_, end_time - start_time_);
+class TestStats {
+ public:
+  void report_duration(
+      const std::string& stat, const std::chrono::duration<double> duration) {
+    CHECK(!reported_);
+    reported_ = true;
+    reported_stat_ = stat;
+    duration_ = duration.count();
+  }
+
+  void check_reported_stat_and_duration(std::string expected) {
+    CHECK(reported_);
+    CHECK(reported_stat_ == expected);
+    CHECK((duration_ >= 0 && duration_ < 1));
+  }
+
+ private:
+  bool reported_ = false;
+  std::string reported_stat_ = "";
+  double duration_ = 1000;
+};
+
+TEST_CASE("DurationInstrument: basic test", "[stats][duration_instrument]") {
+  TestStats stats;
+  { stats::DurationInstrument<TestStats> temp(stats, "test_stat"); }
+  stats.check_reported_stat_and_duration("test_stat");
 }
-
-}  // namespace stats
-}  // namespace sm
-}  // namespace tiledb
