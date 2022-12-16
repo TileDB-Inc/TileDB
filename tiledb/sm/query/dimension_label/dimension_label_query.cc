@@ -143,7 +143,7 @@ DimensionLabelQuery::DimensionLabelQuery(
   // Set the subarray.
   Subarray subarray{*this->subarray()};
   subarray.set_attribute_ranges(dim_label_ref.label_attr_name(), label_ranges);
-  throw_if_not_ok(set_subarray(subarray));
+  set_subarray(subarray);
 
   // Set index data buffer that will store the computed ranges.
   throw_if_not_ok(set_data_buffer(
@@ -171,7 +171,7 @@ void DimensionLabelQuery::initialize_read_labels_query(
     Subarray subarray{*this->subarray()};
     throw_if_not_ok(subarray.set_ranges_for_dim(
         0, parent_subarray.ranges_for_dim(dim_idx)));
-    throw_if_not_ok(set_subarray(subarray));
+    set_subarray(subarray);
   }
 
   // Set the label data buffer.
@@ -425,7 +425,7 @@ void DimensionLabelQuery::initialize_ordered_write_query(
             "The dimension data must contain consecutive points when writing "
             "to a dimension label.");
       }
-      throw_if_not_ok(set_subarray(subarray));
+      set_subarray(subarray);
     }
 
   } else {
@@ -441,7 +441,7 @@ void DimensionLabelQuery::initialize_ordered_write_query(
       throw DimensionLabelQueryStatusException(
           "The dimension data must be for consecutive values.");
     }
-    throw_if_not_ok(set_subarray(subarray));
+    set_subarray(subarray);
   }
 }
 

@@ -2116,24 +2116,13 @@ TILEDB_EXPORT int32_t tiledb_query_get_config(
  * @param subarray The subarray in which the array read/write will be
  *     constrained on. It should be a sequence of [low, high] pairs (one
  *     pair per dimension). For the case of writes, this is meaningful only
- *     for dense arrays, and specifically dense writes. Note that `subarray`
- *     must have the same type as the domain.
+ *     for dense arrays. Note that `subarray` must have the same type as the
+ *     domain.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  *
- * @note If you set the subarray of a completed, incomplete or in-progress
- *     query, this function will clear the internal state and render it
- *     as uninitialized. However, the potentially set layout and attribute
- *     buffers will be retained. This is useful when the user wishes to
- *     fix the attributes and layout, but explore different subarrays with
- *     the same `tiledb_query_t` object (i.e., without having to create
- *     a new object).
+ * @note This will error if the query is already initialized.
  *
- * @note This function will error in the following case, provided that
- *     this is a write query:
- *     (i) the array is dense and the
- *     layout has been set to `TILEDB_UNORDERED`. In this case,
- *     if the user sets the layout to `TILEDB_UNORDERED` **after**
- *     the subarray has been set, the subarray will simply be ignored.
+ * @note This function will error for writes to sparse arrays.
  */
 TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_subarray(
     tiledb_ctx_t* ctx,
@@ -2159,27 +2148,13 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_subarray(
  * @param ctx The TileDB context.
  * @param query The TileDB query.
  * @param subarray The subarray by which the array read/write will be
- *     constrained. It should be a sequence of [low, high] pairs (one
- *     pair per dimension). For the case of writes, this is meaningful only
- *     for dense arrays, and specifically dense writes. Note that `subarray`
- *     must have the same type as the domain.
+ *     constrained. For the case of writes, this is meaningful only
+ *     for dense arrays.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  *
- * @note If you set the subarray of a completed, or uninitialized
- *     query, this function will clear the internal state and render it
- *     as uninitialized. However, the potentially set layout and attribute
- *     buffers will be retained. This is useful when the user wishes to
- *     fix the attributes and layout, but explore different subarrays with
- *     the same `tiledb_query_t` object (i.e., without having to create
- *     a new object).
+ * @note This will error if the query is already initialized.
  *
- * @note Setting the subarray in sparse writes is meaningless and, thus,
- *     this function will error in the following two cases, provided that
- *     this is a write query:
- *     (i) the array is sparse, and (ii) the array is dense and the
- *     layout has been set to `TILEDB_UNORDERED`. In the second case,
- *     if the user sets the layout to `TILEDB_UNORDERED` **after**
- *     the subarray has been set, the subarray will simply be ignored.
+ * @note This will error for writes to sparse arrays.
  */
 TILEDB_EXPORT int32_t tiledb_query_set_subarray_t(
     tiledb_ctx_t* ctx,
