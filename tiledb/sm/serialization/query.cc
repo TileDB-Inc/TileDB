@@ -1955,7 +1955,12 @@ Status query_from_capnp(
         void* subarray = nullptr;
         RETURN_NOT_OK(
             utils::deserialize_subarray(subarray_reader, schema, &subarray));
-        RETURN_NOT_OK_ELSE(query->set_subarray(subarray), tdb_free(subarray));
+        try {
+          query->set_subarray_unsafe(subarray);
+        } catch (...) {
+          tdb_free(subarray);
+          throw;
+        }
         tdb_free(subarray);
       }
 

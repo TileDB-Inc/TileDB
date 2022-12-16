@@ -1764,7 +1764,7 @@ int32_t tiledb_query_set_subarray(
     return TILEDB_ERR;
 
   // Set subarray
-  throw_if_not_ok(query->query_->set_subarray(subarray_vals));
+  query->query_->set_subarray(subarray_vals);
 
   return TILEDB_OK;
 }
@@ -1779,7 +1779,7 @@ int32_t tiledb_query_set_subarray_t(
       sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(query->query_->set_subarray(*subarray->subarray_));
+  query->query_->set_subarray(*subarray->subarray_);
 
   return TILEDB_OK;
 }
