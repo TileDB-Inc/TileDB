@@ -2367,9 +2367,7 @@ int32_t tiledb_query_get_relevant_fragment_num(
     return TILEDB_ERR;
 
   *relevant_fragment_num =
-      query->query_->subarray()->relevant_fragments().has_value() ?
-          query->query_->subarray()->relevant_fragments()->size() :
-          0;
+      query->query_->subarray()->relevant_fragments().relevant_fragments_size();
 
   return TILEDB_OK;
 }
