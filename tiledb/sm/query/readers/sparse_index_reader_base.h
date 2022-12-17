@@ -379,21 +379,18 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Returns the tile offset size for the list of relevant fragments.
    *
-   * @param relevant_fragments Relevant fragments to load offsets for or
-   * nullopt to load for all fragments.
+   * @param relevant_fragments Relevant fragments to load offsets for.
    * @return Total in memory size.
    */
-  uint64_t tile_offsets_size(
-      const optional<std::vector<unsigned>>& relevant_fragments);
+  uint64_t tile_offsets_size(const RelevantFragments& relevant_fragments);
 
   /**
    * Load all tile offsets.
    *
-   * @param relevant_fragments Relevant fragments to load offsets for or
-   * nullopt to load for all fragments.
+   * @param relevant_fragments Relevant fragments to load offsets for.
    */
   void load_tile_offsets_for_fragments(
-      const optional<std::vector<unsigned>>& relevant_fragments);
+      const RelevantFragments& relevant_fragments);
 
   /**
    * Read and unfilter coord tiles.
