@@ -287,7 +287,7 @@ class QueryBuffer {
     for (uint64_t index{0}; index < num_offset_values - 1; ++index) {
       uint64_t i0 = offsets[index];
       uint64_t i1 = offsets[index + 1];
-      uint64_t i2 = index + 1 < num_offset_values ? offsets[index + 2] :
+      uint64_t i2 = index + 2 < num_offset_values ? offsets[index + 2] :
                                                     last_offset_value;
       if (compare(
               std::string_view(&data[i1], i2 - i1),
