@@ -118,8 +118,6 @@ Status StorageManagerCanonical::init() {
   tile_cache_ =
       tdb_unique_ptr<BufferLRUCache>(tdb_new(BufferLRUCache, tile_cache_size));
 
-  // GlobalState must be initialized before initializing the VFS because
-  // S3::init calls GetGlobalState
   auto& global_state = global_state::GlobalState::GetGlobalState();
   RETURN_NOT_OK(global_state.init(config_));
 

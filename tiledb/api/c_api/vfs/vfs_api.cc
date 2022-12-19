@@ -245,6 +245,7 @@ capi_return_t tiledb_vfs_close(tiledb_vfs_fh_t* fh) {
   ensure_output_pointer_is_valid(fh);
   ensure_vfs_fh_is_valid(fh);
   throw_if_not_ok(fh->close());
+  tiledb_vfs_fh_t::break_handle(fh);
   return TILEDB_OK;
 }
 

@@ -53,6 +53,7 @@ TEST_CASE("C API: tiledb_vfs_alloc argument validation", "[capi][vfs]") {
     rc = tiledb_vfs_alloc(ctx, config, &vfs);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     CHECK(vfs != nullptr);
+    tiledb_vfs_free(&vfs);
   }
   SECTION("null context") {
     rc = tiledb_vfs_alloc(nullptr, config, &vfs);
@@ -526,6 +527,8 @@ TEST_CASE("C API: tiledb_vfs_open argument validation", "[capi][vfs]") {
   SECTION("success") {
     auto rc{tiledb_vfs_open(x.ctx, x.vfs, TEST_URI, TILEDB_VFS_WRITE, &vfs_fh)};
     CHECK(tiledb_status(rc) == TILEDB_OK);
+    CHECK(vfs_fh != nullptr);
+    tiledb_vfs_fh_free(&vfs_fh);
   }
   SECTION("null context") {
     auto rc{
@@ -550,7 +553,6 @@ TEST_CASE("C API: tiledb_vfs_open argument validation", "[capi][vfs]") {
     auto rc{tiledb_vfs_open(x.ctx, x.vfs, TEST_URI, TILEDB_VFS_WRITE, nullptr)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
-  tiledb_vfs_fh_free(&vfs_fh);
 }
 
 TEST_CASE("C API: tiledb_vfs_write argument validation", "[capi][vfs]") {
