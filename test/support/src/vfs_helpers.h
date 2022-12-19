@@ -620,6 +620,16 @@ struct TemporaryDirectoryFixture {
    */
   void require_tiledb_ok(int rc) const;
 
+  /**
+   * Require the return code for a TileDB C-API function is TILEDB_ERR and
+   * compare the last error message from the local TileDB context to an expected
+   * error message.
+   *
+   * @param rc Return code from a TileDB C-API function.
+   * @param expected_msg The expected message from the last error.
+   */
+  void require_tiledb_error_with(int rc, const std::string& expected_msg) const;
+
  protected:
   /** TileDB context */
   tiledb_ctx_t* ctx;

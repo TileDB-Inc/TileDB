@@ -1,5 +1,5 @@
 /**
- * @file   unit-ordered-dim-label-reader.cc
+ * @file  test-capi-array-write-ordered-array-var.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests the ordered dimension label reader.
+ * Tests sort checks for writing variable length ordered attributes.
  */
 
 #include <test/support/tdb_catch.h>
@@ -188,8 +188,10 @@ struct VarOrderedAttributeArrayFixture {
       CHECK(query_status == TILEDB_COMPLETED);
     } else {
       // Submit write query and verify if fails.
-      auto rc = tiledb_query_submit(ctx, query);
-      CHECK(rc != TILEDB_OK);
+      require_tiledb_error_with(
+          tiledb_query_submit(ctx, query),
+          "WriterBase: The data for attribute 'a' is not in the expected "
+          "order.");
     }
 
     // Clean-up.
@@ -206,6 +208,11 @@ struct VarOrderedAttributeArrayFixture {
   /** Require a TileDB return code is ok. */
   inline void require_tiledb_ok(int rc) const {
     temp_dir_.require_tiledb_ok(rc);
+  }
+
+  /** Require a TileDB return code is an error with the given message. */
+  inline void require_tiledb_error_with(int rc, const std::string& msg) {
+    temp_dir_.require_tiledb_error_with(rc, msg);
   }
 
  protected:
