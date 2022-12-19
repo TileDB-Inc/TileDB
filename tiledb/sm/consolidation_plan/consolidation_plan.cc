@@ -61,7 +61,7 @@ std::string ConsolidationPlan::dump() const {
     for (uint64_t u = 0; u < node.size(); u++) {
       auto uri = node[u];
       ret += "        {\n";
-      ret += "           \"uri\" : " + uri + "\n";
+      ret += "           \"uri\" : \"" + uri + "\"\n";
       if (u != node.size() - 1) {
         ret += "        },\n";
       } else {
