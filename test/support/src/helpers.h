@@ -66,31 +66,6 @@ extern std::mutex catch2_macro_mutex;
     REQUIRE(a);                                           \
   }
 
-// A variant of the CHECK macro for checking C API return value equals
-// TILEDB_OK.
-#define CHECK_TILEDB_OK(a) \
-  { CHECK(a == TILEDB_OK); }
-
-// A variant of the REQUIRE macro for checking C API return value equals
-// TILEDB_OK.
-#define REQUIRE_TILEDB_OK(a) \
-  { REQUIRE(a == TILEDB_OK); }
-
-// A variant of the CHECK macro for checking a Status object is okay.
-#define CHECK_TILEDB_STATUS_OK(status)   \
-  {                                      \
-    if (!status.ok())                    \
-      UNSCOPED_INFO(status.to_string()); \
-    CHECK(status.ok());                  \
-  }
-
-// A variant of the REQUIRE macro for checking a Status objects is okay.
-#define REQUIRE_TILEDB_STATUS_OK(status) \
-  {                                      \
-    if (!status.ok())                    \
-      UNSCOPED_INFO(status.to_string()); \
-    REQUIRE(status.ok());                \
-  }
 namespace tiledb {
 
 namespace sm {

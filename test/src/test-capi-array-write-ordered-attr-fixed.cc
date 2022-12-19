@@ -75,7 +75,7 @@ struct FixedOrderedAttributeArrayFixture {
     // exposed in the C-API yet.
     auto attr = make_shared<sm::Attribute>(HERE(), "a", type, 1, order);
     auto st = schema->array_schema_->add_attribute(attr);
-    REQUIRE_TILEDB_STATUS_OK(st);
+    REQUIRE(st.ok());
 
     // Create the array and clean-up.
     std::string base_name{"array_ordered_attr_" + datatype_str(type) + "_" +

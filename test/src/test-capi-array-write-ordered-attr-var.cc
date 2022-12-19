@@ -76,7 +76,7 @@ struct VarOrderedAttributeArrayFixture {
     auto attr = make_shared<sm::Attribute>(
         HERE(), "a", Datatype::STRING_ASCII, constants::var_num, order);
     auto st = schema->array_schema_->add_attribute(attr);
-    REQUIRE_TILEDB_STATUS_OK(st);
+    REQUIRE(st.ok());
 
     // Create the array and clean-up.
     std::string base_name{"array_ordered_attr_ascii_" + data_order_str(order)};
