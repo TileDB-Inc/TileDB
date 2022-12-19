@@ -1510,3 +1510,29 @@ TEST_CASE_METHOD(
   remove_temp_dir(temp_dir);
 }
 #endif
+
+TEST_CASE(
+    "C API: Group, implied create",
+    "[capi][group][sc-24058]") {
+  // Removal of C API tiledb_group_create() is intended.
+  // However, this requires an alternate means of creating a group.
+  // That means was thought to be through the process of
+  // tiledb_group_ alloc/open/<maybe-something-else>/close,
+  // but currently the open fails with an error.
+  // This test exists to track/monitor the state of that attempt.
+  tiledb_ctx_t *c_ctx;
+  CHECK(tiledb_ctx_alloc(nullptr, &c_ctx) == TILEDB_OK);
+  tiledb_group_t *c_group1;
+  CHECK(tiledb_group_alloc(c_ctx, "testgroupcreation", &c_group1) == TILEDB_OK);
+  // TBD: When the following CHECK_FALSE() fails, verify that, 
+  // after allowing the following close, the group has been successfully created.
+  // If so, then apparently the deficiency has been corrected, and the following 
+  // tests can be changed to a simple 'CHECK(...)'.
+  // (The proces of deprecating/removing the tiledb_group_create() API can then 
+  // proceed as well.)
+  auto query_type = TILEDB_WRITE;
+  // Currently failure expected, hence CHECK_FALSE.
+  CHECK_FALSE(tiledb_group_open(c_ctx, c_group1, query_type) == TILEDB_OK);
+  // Currently failure expected, hence CHECK_FALSE.
+  CHECK_FALSE (tiledb_group_close(c_ctx, c_group1) == TILEDB_OK);
+}
