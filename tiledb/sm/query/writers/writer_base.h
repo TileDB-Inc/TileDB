@@ -223,7 +223,15 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   void check_var_attr_offsets() const;
 
-  /** Throws an error if data is not sorted on an ordered attribute. */
+  /**
+   * Throws an error if ordered data buffers do not have the expected sort.
+   *
+   * This method only checks currently loaded data. It does not check the
+   * sort of data in subsequent writes for the global order writer.
+   *
+   * For unordered writes, this method will need to be modified to take into
+   * account the sort order.
+   */
   void check_attr_order() const;
 
   /**
