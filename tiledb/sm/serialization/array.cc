@@ -272,12 +272,12 @@ Status array_from_capnp(
         array_reader.getFragmentMetadataAll().size());
     for (auto frag_meta_reader : array_reader.getFragmentMetadataAll()) {
       auto meta = make_shared<FragmentMetadata>(HERE());
-      // TODO: consider a new constructor for fragment meta or using the
-      // existing one
-      meta->set_storage_manager(storage_manager);
-      meta->set_memory_tracker(array->memory_tracker());
       RETURN_NOT_OK(fragment_metadata_from_capnp(
-          array->array_schema_latest_ptr(), frag_meta_reader, meta));
+          array->array_schema_latest_ptr(),
+          frag_meta_reader,
+          meta,
+          storage_manager,
+          array->memory_tracker()));
       if (client_side) {
         meta->set_rtree_loaded();
       }

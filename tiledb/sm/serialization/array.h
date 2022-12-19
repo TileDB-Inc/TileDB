@@ -59,9 +59,8 @@ namespace serialization {
  * @param array to serialize
  * @param array_builder cap'n proto class
  * @param client_side Allows to specify different behavior depending on who is
- serializing, the client (1) or the Cloud server (0). This is sometimes needed
- since they are both using the same Core library APIs for serialization.
-
+ * serializing, the client (1) or the Cloud server (0). This is sometimes needed
+ * since they are both using the same Core library APIs for serialization.
  * @return Status
  */
 Status array_to_capnp(
@@ -71,6 +70,10 @@ Status array_to_capnp(
  * Deserialize an Array from Cap'n proto
  * @param array_reader cap'n proto class
  * @param array Array to deserialize into
+ * @param storage_manager the storage manager associated with the array
+ * @param client_side Allows to specify different behavior depending on who is
+ * serializing, the client (1) or the Cloud server (0). This is sometimes needed
+ * since they are both using the same Core library APIs for serialization.
  * @return Status
  */
 Status array_from_capnp(

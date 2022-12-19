@@ -769,9 +769,8 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  // TODO: verify if this needs to be v3 as well - probably?
   const std::string url =
-      redirect_uri(cache_key) + "/v1/arrays/" + array_ns + "/" +
+      redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
       curlc.url_escape(array_uri) +
       "/query/finalize?type=" + query_type_str(query->type());
   Buffer returned_data;

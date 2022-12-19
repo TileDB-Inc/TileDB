@@ -57,7 +57,17 @@ namespace serialization {
 Status fragment_metadata_from_capnp(
     const shared_ptr<const ArraySchema>& array_schema,
     const capnp::FragmentMetadata::Reader& frag_meta_reader,
-    shared_ptr<FragmentMetadata> frag_meta) {
+    shared_ptr<FragmentMetadata> frag_meta,
+    StorageManager* storage_manager,
+    MemoryTracker* memory_tracker) {
+  // TODO: consider a new constructor for fragment meta or using the
+  // existing one
+  if (storage_manager) {
+    frag_meta->set_storage_manager(storage_manager);
+  }
+  if (memory_tracker) {
+    frag_meta->set_memory_tracker(memory_tracker);
+  }
   if (frag_meta_reader.hasFileSizes()) {
     frag_meta->file_sizes().reserve(frag_meta_reader.getFileSizes().size());
     for (const auto& file_size : frag_meta_reader.getFileSizes()) {
@@ -252,6 +262,13 @@ Status fragment_metadata_from_capnp(
     // If there are no levels, we still need domain_ properly initialized
     frag_meta->rtree() = RTree(&domain, constants::rtree_fanout);
     Deserializer deserializer(data.begin(), data.size());
+    // What we actually deserialize is not something written on disk in a
+    // possibly historical format, but what has been serialized in
+    // `fragment_metadata_to_capnp` using
+    // `frag_meta.rtree().serialize(serializer)`. This means that no matter what
+    // the version of a fragment is on disk, we will be serializing _on wire_ in
+    // fragment_metadata_to_capnp in the "modern" (post v5) way, so we need to
+    // deserialize it as well in that way.
     frag_meta->rtree().deserialize(
         deserializer, &domain, constants::format_version);
   }

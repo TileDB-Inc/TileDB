@@ -374,8 +374,7 @@ void write_dense_array(
     query.set_subarray<int64_t>({1, 2, 1, 2});
   }
 
-  // TODO: remove this when sc21681 is fixed
-  // Submit query
+  // TODO: check why this doesn't fail also because of sc21681
   test::ServerQueryBuffers server_buffers_;
   auto rc = test::submit_query_wrapper(
       ctx, array_name, &query, server_buffers_, serialized);
