@@ -1724,18 +1724,16 @@ int finalize_query_wrapper(
     const Context& ctx,
     const std::string& array_uri,
     Query* query,
-    ServerQueryBuffers& buffers,
     bool serialize_query) {
   auto query_c = query->ptr().get();
   return finalize_query_wrapper(
-      ctx.ptr().get(), array_uri, &query_c, buffers, serialize_query);
+      ctx.ptr().get(), array_uri, &query_c, serialize_query);
 }
 
 int finalize_query_wrapper(
     tiledb_ctx_t* ctx,
     const std::string& array_uri,
     tiledb_query_t** query,
-    ServerQueryBuffers& buffers,
     bool serialize_query) {
 #ifndef TILEDB_SERIALIZATION
   return tiledb_query_finalize(ctx, *query);
@@ -1757,15 +1755,6 @@ int finalize_query_wrapper(
       ctx, array_uri.c_str(), serialized, true, *query, &server_deser_query);
   REQUIRE_SAFE(rc == TILEDB_OK);
 
-  // This is a feature of the server, not a bug, quoting from query_from_capnp:
-  // "On reads, just set null pointers with accurate size so that the
-  // server can introspect and allocate properly sized buffers separately."
-  // Empty buffers will naturally break query_submit so to go on in test we
-  // need to allocate here as if we were the server.
-  if (query_type == TILEDB_READ) {
-    allocate_query_buffers_server_side(ctx, server_deser_query, buffers);
-  }
-
   // 2. Server: Finalize query
   rc = tiledb_query_finalize(ctx, server_deser_query);
   if (rc != TILEDB_OK) {
@@ -1774,10 +1763,10 @@ int finalize_query_wrapper(
 
   // Serialize the new query and "send it over the network" (server-side)
   // 3. Server -> Client : Send query response
-  std::vector<uint8_t> serialized2;
-  rc = tiledb_query_v2_serialize(
-      ctx, array_uri.c_str(), serialized, false, server_deser_query, query);
-  REQUIRE_SAFE(rc == TILEDB_OK);
+  // std::vector<uint8_t> serialized2;
+  // rc = tiledb_query_v2_serialize(
+  //     ctx, array_uri.c_str(), serialized, false, server_deser_query, query);
+  // REQUIRE_SAFE(rc == TILEDB_OK);
 
   // Clean up.
   tiledb_query_free(&server_deser_query);

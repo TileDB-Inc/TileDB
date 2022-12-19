@@ -827,10 +827,9 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
-  // #ifdef TILEDB_SERIALIZATION
-  //   serialized_ = GENERATE(true, false);
-  // #endif
-  serialized_ = true;
+#ifdef TILEDB_SERIALIZATION
+  serialized_ = GENERATE(true, false);
+#endif
 
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -889,27 +888,24 @@ TEST_CASE_METHOD(
     }
   }
 
-  // SECTION("Read between the 2 writes") {
-  //   // Should see only first write.
-  //   read_sparse(a, dim1, dim2, stats, layout, 2, timestamps_ptr);
+  SECTION("Read between the 2 writes") {
+    // Should see only first write.
+    read_sparse(a, dim1, dim2, stats, layout, 2, timestamps_ptr);
 
-  //   std::vector<int> c_a = {0, 1, 2, 3};
-  //   std::vector<uint64_t> c_dim1 = {1, 1, 1, 2};
-  //   std::vector<uint64_t> c_dim2 = {1, 2, 4, 3};
-  //   CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
-  //   CHECK(
-  //       !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() *
-  //       sizeof(uint64_t)));
-  //   CHECK(
-  //       !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() *
-  //       sizeof(uint64_t)));
-  //   if (timestamps_ptr != nullptr) {
-  //     std::vector<uint64_t> exp_ts = {1, 1, 1, 1};
-  //     CHECK(!memcmp(
-  //         exp_ts.data(), timestamps.data(), exp_ts.size() *
-  //         sizeof(uint64_t)));
-  //   }
-  // }
+    std::vector<int> c_a = {0, 1, 2, 3};
+    std::vector<uint64_t> c_dim1 = {1, 1, 1, 2};
+    std::vector<uint64_t> c_dim2 = {1, 2, 4, 3};
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+    if (timestamps_ptr != nullptr) {
+      std::vector<uint64_t> exp_ts = {1, 1, 1, 1};
+      CHECK(!memcmp(
+          exp_ts.data(), timestamps.data(), exp_ts.size() * sizeof(uint64_t)));
+    }
+  }
 
   remove_sparse_array();
 }

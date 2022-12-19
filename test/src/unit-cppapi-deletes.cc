@@ -273,7 +273,6 @@ void DeletesFx::write_sparse_v11(uint64_t timestamp) {
   query.set_data_buffer("d2", buffer_coords_dim2);
 
   // Submit/finalize the query.
-  // Submit/finalize the query.
   submit_query_wrapper(
       ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialize_);
 
@@ -390,7 +389,8 @@ void DeletesFx::write_delete_condition(
   Query query(ctx_, *array, TILEDB_DELETE);
 
   query.set_condition(qc);
-  // Submit the query.
+  // Submit the query. In certain tests we want to check if this call throws, so
+  // we call directly query.submit() if serialization is not enabled.
   if (!serialize_) {
     query.submit();
   } else {

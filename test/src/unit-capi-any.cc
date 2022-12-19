@@ -170,8 +170,8 @@ void AnyFx::write_array(const std::string& array_name, const bool serialized) {
       ctx, array_name, &query, server_buffers_, serialized);
   REQUIRE(rc == TILEDB_OK);
   // Second finalize must create no problem
-  rc = tiledb::test::finalize_query_wrapper(
-      ctx, array_name, &query, server_buffers_, serialized);
+  rc =
+      tiledb::test::finalize_query_wrapper(ctx, array_name, &query, serialized);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array

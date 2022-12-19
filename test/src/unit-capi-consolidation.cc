@@ -4546,6 +4546,7 @@ TEST_CASE_METHOD(
     read_sparse_unordered_full(serialized);
   }
 
+  // Encrypted remote arrays are not supported
   if (!serialized) {
     SECTION("- write (encrypted) unordered, full") {
       remove_sparse_array();
@@ -6166,6 +6167,7 @@ TEST_CASE_METHOD(
     read_sparse_heterogeneous_unordered_full(serialized);
   }
 
+  // Encrypted remote arrays are not supported
   if (!serialized) {
     SECTION("- write (encrypted) unordered, full") {
       remove_sparse_heterogeneous_array();
@@ -6209,6 +6211,7 @@ TEST_CASE_METHOD(
     read_sparse_string_unordered_full(serialized);
   }
 
+  // Encrypted remote arrays are not supported
   if (!serialized) {
     SECTION("- write (encrypted) unordered, full") {
       remove_sparse_string_array();
@@ -6528,8 +6531,7 @@ TEST_CASE_METHOD(
     "C API: Test consolidation, dense, commits",
     "[capi][consolidation][dense][commits]") {
 #ifdef TILEDB_SERIALIZATION
-  // bool serialized = GENERATE(true, false);
-  bool serialized = true;
+  bool serialized = GENERATE(true, false);
 #else
   bool serialized = false;
 #endif
@@ -6616,6 +6618,7 @@ TEST_CASE_METHOD(
     check_commits_dir_dense(1, 0, 0);
   }
 
+  // Encrypted remote arrays are not supported
   if (!serialized) {
     SECTION("- write (encrypted) subarray, full") {
       remove_dense_array();
@@ -6758,6 +6761,7 @@ TEST_CASE_METHOD(
     check_commits_dir_sparse(1, 0, 0);
   }
 
+  // Encrypted remote arrays are not supported
   if (!serialized) {
     SECTION("- write (encrypted) unordered, full") {
       remove_sparse_array();

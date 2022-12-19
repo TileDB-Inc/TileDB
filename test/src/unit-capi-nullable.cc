@@ -873,9 +873,9 @@ TEST_CASE_METHOD(
   attrs.emplace_back("a2", TILEDB_INT32, 1, true);
   attrs.emplace_back("a3", TILEDB_INT32, TILEDB_VAR_NUM, true);
 
-  // SECTION("no serialization") {
-  //   serialized_ = false;
-  // }
+  SECTION("no serialization") {
+    serialized_ = false;
+  }
   SECTION("serialization enabled") {
 #ifdef TILEDB_SERIALIZATION
     serialized_ = true;

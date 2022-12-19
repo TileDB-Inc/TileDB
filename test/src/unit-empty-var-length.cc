@@ -384,7 +384,6 @@ void StringEmptyFx::read_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  // Submit query
   rc = submit_query_wrapper(
       ctx, array_name, &query, server_buffers_, serialized_);
   REQUIRE(rc == TILEDB_OK);
@@ -466,7 +465,6 @@ TEST_CASE_METHOD(
     StringEmptyFx, "C API: Test empty support", "[capi][empty-var-length]") {
   std::string array_name = "empty_string";
 
-  bool serialized_ = false;
   SECTION("no serialization") {
     serialized_ = false;
   }
