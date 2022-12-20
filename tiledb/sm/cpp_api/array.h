@@ -400,6 +400,8 @@ class Array {
   }
 
   /**
+   * Note: This API is deprecated and replaced with the static method above.
+   *
    * Deletes the data written to the array with the input uri.
    */
   TILEDB_DEPRECATED

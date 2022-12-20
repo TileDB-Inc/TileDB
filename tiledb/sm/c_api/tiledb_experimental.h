@@ -209,13 +209,14 @@ TILEDB_EXPORT int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri)
     TILEDB_NOEXCEPT;
 
 /**
+ * Note: This API is deprecated and replaced with tiledb_array_delete (above).
+ *
  * Deletes all written array data.
  *
  * **Example:**
  *
  * @code{.c}
- * tiledb_array_delete_array(
- *   ctx, array, "hdfs:///temp/my_array");
+ * tiledb_array_delete_array(ctx, array, "hdfs:///temp/my_array");
  * @endcode
  *
  * @param ctx The TileDB context.
