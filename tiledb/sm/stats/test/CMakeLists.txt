@@ -1,9 +1,9 @@
 #
-# tiledb/sm/stats/CMakeLists.txt
+# tiledb/sm/stats/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,16 +22,11 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-
-include(common NO_POLICY_SCOPE)
-include(object_library)
-
 #
-# Object library for other units to depend upon
-#
-commence(object_library stats)
-    this_target_sources(stats.cc)
-    this_target_object_libraries(baseline stringx)
-conclude(object_library)
 
-add_test_subdirectory()
+include(unit_test)
+
+commence(unit_test stats)
+    this_target_sources(main.cc unit_duration_instrument.cc)
+    this_target_object_libraries(stats)
+conclude(unit_test)
