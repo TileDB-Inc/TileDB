@@ -461,10 +461,7 @@ Status ArraySchema::check() const {
   // Check for ordered attributes on sparse arrays and arrays with more than one
   // dimension.
   if (array_type_ == ArrayType::SPARSE || this->dim_num() != 1) {
-    if (std::any_of(
-            attributes_.cbegin(), attributes_.cend(), [](const auto& attr) {
-              return attr->order() != DataOrder::UNORDERED_DATA;
-            })) {
+    if (has_ordered_attributes()) {
       throw ArraySchemaStatusException(
           "Array schema check failed; Ordered attributes are only supported on "
           "dense arrays with 1 dimension.");
@@ -702,6 +699,13 @@ Status ArraySchema::has_attribute(
   }
 
   return Status::Ok();
+}
+
+bool ArraySchema::has_ordered_attributes() const {
+  return std::any_of(
+      attributes_.cbegin(), attributes_.cend(), [](const auto& attr) {
+        return attr->order() != DataOrder::UNORDERED_DATA;
+      });
 }
 
 bool ArraySchema::is_attr(const std::string& name) const {

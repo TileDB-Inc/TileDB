@@ -286,6 +286,8 @@ class ArraySchema {
    */
   Status has_attribute(const std::string& name, bool* has_attr) const;
 
+  bool has_ordered_attributes() const;
+
   /** Returns true if the input name is an attribute. */
   bool is_attr(const std::string& name) const;
 

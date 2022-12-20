@@ -61,6 +61,13 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 
+class UnorderWriterStatusException : public StatusException {
+ public:
+  explicit UnorderWriterStatusException(const std::string& message)
+      : StatusException("UnorderWriter", message) {
+  }
+};
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -95,6 +102,7 @@ UnorderedWriter::UnorderedWriter(
           fragment_name,
           skip_checks_serialization)
     , frag_uri_(std::nullopt) {
+  // Check the layout is unordered.
   if (layout != Layout::UNORDERED) {
     throw StatusException(Status_WriterError(
         "Failed to initialize UnorderedWriter; The unordered writer does not "
@@ -102,10 +110,18 @@ UnorderedWriter::UnorderedWriter(
         layout_str(layout)));
   }
 
+  // Check the array is sparse.
   if (array_schema_.dense()) {
     throw StatusException(Status_WriterError(
         "Failed to initialize UnorderedWriter; The unordered "
         "writer does not support dense arrays."));
+  }
+
+  // Check no ordered attributes.
+  if (array_schema_.has_ordered_attributes()) {
+    throw UnorderWriterStatusException(
+        "Failed to initialize UnorderedWriter; The unordered writer does not "
+        "support ordered attributes.");
   }
 }
 

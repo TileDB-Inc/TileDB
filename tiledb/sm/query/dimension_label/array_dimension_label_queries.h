@@ -36,7 +36,6 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/query/dimension_label/dimension_label_query.h"
-#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <unordered_map>
@@ -79,7 +78,6 @@ class ArrayDimensionLabelQueries {
    */
   ArrayDimensionLabelQueries(
       StorageManager* storage_manager,
-      stats::Stats* stats,
       Array* array,
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers,
@@ -132,9 +130,6 @@ class ArrayDimensionLabelQueries {
  private:
   /** The storage manager. */
   StorageManager* storage_manager_;
-
-  /** Class stats object for timing. */
-  stats::Stats* stats_;
 
   /** Map from label name to dimension label opened by this query. */
   std::unordered_map<std::string, shared_ptr<Array>> dimension_labels_;
