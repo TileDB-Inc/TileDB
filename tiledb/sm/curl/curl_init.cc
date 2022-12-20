@@ -32,8 +32,8 @@
 
 #include <mutex>
 
-#include "tiledb/common/exception/exception.h"
 #include "curl_init.h"
+#include "tiledb/common/exception/exception.h"
 
 #ifdef TILEDB_SERIALIZATION
 #include <curl/curl.h>
@@ -56,12 +56,13 @@ namespace tiledb::sm::curl {
 static std::once_flag curl_lib_initialized;
 
 LibCurlInitializer::LibCurlInitializer() {
-  std::call_once(curl_lib_initialized, [](){
+  std::call_once(curl_lib_initialized, []() {
     auto rc = LIBCURL_INIT;
     if (rc != 0) {
-      throw common::StatusException("[TileDB::CurlInit]",
-          "Cannot initialize libcurl global state: got non-zero return code "
-            + std::to_string(rc));
+      throw common::StatusException(
+          "[TileDB::CurlInit]",
+          "Cannot initialize libcurl global state: got non-zero return code " +
+              std::to_string(rc));
     }
   });
 }

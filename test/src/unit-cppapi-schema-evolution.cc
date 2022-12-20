@@ -326,20 +326,19 @@ TEST_CASE(
           Catch::Matchers::Equals(std::vector<uint8_t>{0, 1, 0, 0}));
       CHECK_THAT(
           d_data,
-          Catch::Matchers::Equals(std::vector<char>{
-              't',
-              'e',
-              's',
-              't',
-              'd',
-              't',
-              'e',
-              's',
-              't',
-              't',
-              'e',
-              's',
-              't'}));
+          Catch::Matchers::Equals(std::vector<char>{'t',
+                                                    'e',
+                                                    's',
+                                                    't',
+                                                    'd',
+                                                    't',
+                                                    'e',
+                                                    's',
+                                                    't',
+                                                    't',
+                                                    'e',
+                                                    's',
+                                                    't'}));
       CHECK_THAT(
           d_offsets,
           Catch::Matchers::Equals(std::vector<uint64_t>{0, 4, 5, 9}));
@@ -368,20 +367,19 @@ TEST_CASE(
           Catch::Matchers::Equals(std::vector<uint8_t>{0, 0, 0, 1}));
       CHECK_THAT(
           d_data,
-          Catch::Matchers::Equals(std::vector<char>{
-              't',
-              'e',
-              's',
-              't',
-              't',
-              'e',
-              's',
-              't',
-              't',
-              'e',
-              's',
-              't',
-              'd'}));
+          Catch::Matchers::Equals(std::vector<char>{'t',
+                                                    'e',
+                                                    's',
+                                                    't',
+                                                    't',
+                                                    'e',
+                                                    's',
+                                                    't',
+                                                    't',
+                                                    'e',
+                                                    's',
+                                                    't',
+                                                    'd'}));
       CHECK_THAT(
           d_offsets,
           Catch::Matchers::Equals(std::vector<uint64_t>{0, 4, 8, 12}));
@@ -585,23 +583,22 @@ TEST_CASE(
               0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 49, 50, 51}));
       CHECK_THAT(
           e_data,
-          Catch::Matchers::Equals(std::vector<char>{
-              'n',
-              'n',
-              'n',
-              'n',
-              'n',
-              'n',
-              'n',
-              'n',
-              'n',
-              'n',
-              'n',
-              'n',
-              'e',
-              'e',
-              'e',
-              'e'}));
+          Catch::Matchers::Equals(std::vector<char>{'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'n',
+                                                    'e',
+                                                    'e',
+                                                    'e',
+                                                    'e'}));
       CHECK_THAT(
           e_offsets,
           Catch::Matchers::Equals(std::vector<uint64_t>{
@@ -742,12 +739,7 @@ TEST_CASE(
     //       in order to reproduce SC-23671.
     int value = 4;
     QueryCondition query_condition(ctx);
-    query_condition.init(
-      "b",
-      &value,
-      sizeof(value),
-      TILEDB_EQ
-    );
+    query_condition.init("b", &value, sizeof(value), TILEDB_EQ);
 
     // Prepare the query
     Query query(ctx, array, TILEDB_READ);
@@ -770,14 +762,10 @@ TEST_CASE(
     b_data.resize(result_num);
     d1_data.resize(result_num);
     d2_data.resize(result_num);
-    CHECK_THAT(a_data,
-               Catch::Matchers::Equals(std::vector<int>{4}));
-    CHECK_THAT(b_data,
-               Catch::Matchers::Equals(std::vector<uint32_t>{4}));
-    CHECK_THAT(d1_data,
-               Catch::Matchers::Equals(std::vector<int>{4}));
-    CHECK_THAT(d2_data,
-               Catch::Matchers::Equals(std::vector<int>{1}));
+    CHECK_THAT(a_data, Catch::Matchers::Equals(std::vector<int>{4}));
+    CHECK_THAT(b_data, Catch::Matchers::Equals(std::vector<uint32_t>{4}));
+    CHECK_THAT(d1_data, Catch::Matchers::Equals(std::vector<int>{4}));
+    CHECK_THAT(d2_data, Catch::Matchers::Equals(std::vector<int>{1}));
   }
 
   // Cleanup.
