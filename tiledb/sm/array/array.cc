@@ -1472,8 +1472,8 @@ void Array::array_get_fragments_tile_max_size(
 
   MemoryTracker memory_tracker;
   auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
-      storage_manager_->load_array_schemas_and_all_fragment_metadata(
-          array_dir, &memory_tracker, enc_key);
+      storage_manager_->load_array_schemas_and_fragment_metadata(
+          array_dir, &memory_tracker, enc_key, true);
   throw_if_not_ok(st);
 
   tiledb_fragment_max_tile_sizes_t& maxs = *max_tile_sizes;

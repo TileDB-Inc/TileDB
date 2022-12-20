@@ -129,6 +129,7 @@ struct MaxTileSizeFx {
     schema.set_domain(domain)
         .set_tile_order(tile_order)
         .set_cell_order(cell_order);
+
     // Specify attribute, nullable or not as indicated.
     auto a1_attr = tiledb::Attribute::create<std::string>(ctx_, "a1");
     if (a1_is_nullable) {
@@ -283,8 +284,7 @@ struct MaxTileSizeFx {
   };
 
   void array_schema_evolve_char_attr_257() {
-    // Targeted against schema created in
-    // create_dense_array_int_dim_nchar_attr.
+    // Targeted against schema created in create_dense_array_int_dim_nchar_attr.
     tiledb::ArraySchemaEvolution schemaEvolution =
         tiledb::ArraySchemaEvolution(ctx_);
 
@@ -293,6 +293,7 @@ struct MaxTileSizeFx {
         tiledb::Attribute::create<std::array<char, 257>>(ctx_, "b257");
     schemaEvolution.add_attribute(b);
 
+    // Drop attribute a2.
     schemaEvolution.drop_attribute(std::string("a2"));
 
     // Evolve array.
@@ -300,8 +301,7 @@ struct MaxTileSizeFx {
   };
 
   void array_schema_evolve_char_attr_42() {
-    // Targeted against schema created in
-    // create_dense_array_int_dim_nchar_attr.
+    // Targeted against schema created in create_dense_array_int_dim_nchar_attr.
     tiledb::ArraySchemaEvolution schemaEvolution =
         tiledb::ArraySchemaEvolution(ctx_);
 
@@ -310,6 +310,7 @@ struct MaxTileSizeFx {
         tiledb::Attribute::create<std::array<char, 42>>(ctx_, "c42");
     schemaEvolution.add_attribute(c);
 
+    // Drop attribute b257.
     schemaEvolution.drop_attribute(std::string("b257"));
 
     // Evolve array.
@@ -478,7 +479,9 @@ TEST_CASE_METHOD(
   CHECK(cppapi_max == capi_max);
 
   // Consolidate and validate sizes.
-  tiledb::Array::consolidate(ctx_, main_array_name_);
+  tiledb::Config config;
+  config.set("sm.consolidation.buffer_size", "10000");
+  tiledb::Array::consolidate(ctx_, main_array_name_, &config);
 
   capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(main_array_name_);
@@ -516,7 +519,9 @@ TEST_CASE_METHOD(
   CHECK(cppapi_max == capi_max);
 
   // Consolidate.
-  tiledb::Array::consolidate(ctx_, main_array_name_);
+  tiledb::Config config;
+  config.set("sm.consolidation.buffer_size", "10000");
+  tiledb::Array::consolidate(ctx_, main_array_name_, &config);
   capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(main_array_name_);
 
@@ -537,7 +542,7 @@ TEST_CASE_METHOD(
   CHECK(cppapi_max == capi_max);
 
   // Consolidate.
-  tiledb::Array::consolidate(ctx_, main_array_name_);
+  tiledb::Array::consolidate(ctx_, main_array_name_, &config);
   capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(main_array_name_);
 
@@ -557,7 +562,7 @@ TEST_CASE_METHOD(
   CHECK(cppapi_max == capi_max);
 
   // Secondary attempt still retains the overhead.
-  tiledb::Array::consolidate(ctx_, main_array_name_);
+  tiledb::Array::consolidate(ctx_, main_array_name_, &config);
   capi_max = c_get_fragments_max_in_memory_tile_size(main_array_name_);
   cppapi_max = cpp_get_fragments_max_in_memory_tile_size(main_array_name_);
 
@@ -615,7 +620,9 @@ TEST_CASE_METHOD(
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 257);
 
     // Now want to consolidate, but not vacuum, max should still be 257.
-    tiledb::Array::consolidate(ctx_, main_array_name_);
+    tiledb::Config config;
+    config.set("sm.consolidation.buffer_size", "10000");
+    tiledb::Array::consolidate(ctx_, main_array_name_, &config);
     // After consolidation, old fragment should still be there with 257.
     CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 257);
 
@@ -809,7 +816,9 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
 
   // Consolidate.
-  tiledb::Array::consolidate(ctx_, main_array_name_);
+  tiledb::Config config;
+  config.set("sm.consolidation.buffer_size", "10000");
+  tiledb::Array::consolidate(ctx_, main_array_name_, &config);
 
   // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
@@ -829,7 +838,7 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
 
   // Consolidate and validate size.
-  tiledb::Array::consolidate(ctx_, main_array_name_);
+  tiledb::Array::consolidate(ctx_, main_array_name_, &config);
 
   // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
@@ -849,7 +858,7 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
 
   // Consolidate.
-  tiledb::Array::consolidate(ctx_, main_array_name_);
+  tiledb::Array::consolidate(ctx_, main_array_name_, &config);
 
   // Earlier item(s) len 26 idx 3..7 dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
@@ -1013,7 +1022,9 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
 
   // Consolidat and validate size.
-  tiledb::Array::consolidate(ctx_, main_array_name_);
+  tiledb::Config config;
+  config.set("sm.consolidation.buffer_size", "10000");
+  tiledb::Array::consolidate(ctx_, main_array_name_, &config);
 
   // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
@@ -1033,7 +1044,7 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
 
   // Consolidate and validate size.
-  tiledb::Array::consolidate(ctx_, main_array_name_);
+  tiledb::Array::consolidate(ctx_, main_array_name_, &config);
 
   // Earlier item len 114 idx 1 still dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 114);
@@ -1053,7 +1064,7 @@ TEST_CASE_METHOD(
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);
 
   // Consolidate and validate size.
-  tiledb::Array::consolidate(ctx_, main_array_name_);
+  tiledb::Array::consolidate(ctx_, main_array_name_, &config);
 
   // Earlier item(s) len 26 idx 3..7 dominates.
   CHECK(c_get_fragments_max_in_memory_tile_size(main_array_name_) == 26);

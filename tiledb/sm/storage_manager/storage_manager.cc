@@ -194,7 +194,8 @@ std::tuple<
 StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
     const ArrayDirectory& array_dir,
     MemoryTracker* memory_tracker,
-    const EncryptionKey& enc_key) {
+    const EncryptionKey& enc_key,
+    const bool include_vaccummed_fragments) {
   auto timer_se =
       stats_->start_timer("sm_load_array_schemas_and_fragment_metadata");
 
@@ -206,7 +207,15 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
   auto filtered_fragment_uris = array_dir.filtered_fragment_uris(
       array_schema_latest.value().get()->dense());
   const auto& meta_uris = array_dir.fragment_meta_uris();
-  const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
+  auto fragments_to_load = filtered_fragment_uris.fragment_uris();
+  if (include_vaccummed_fragments) {
+    for (auto& uri : filtered_fragment_uris.fragment_uris_to_vacuum()) {
+      std::pair<uint64_t, uint64_t> fragment_timestamp_range;
+      throw_if_not_ok(
+          utils::parse::get_timestamp_range(uri, &fragment_timestamp_range));
+      fragments_to_load.emplace_back(uri, fragment_timestamp_range);
+    }
+  }
 
   // Get the consolidated fragment metadatas
   std::vector<shared_ptr<Tile>> fragment_metadata_tiles(meta_uris.size());
@@ -242,64 +251,6 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
       array_schemas_all.value(),
       enc_key,
       fragments_to_load,
-      offsets);
-  RETURN_NOT_OK_TUPLE(st_fragment_meta, nullopt, nullopt, nullopt);
-
-  return {
-      Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
-}
-
-std::tuple<
-    Status,
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-    optional<std::vector<shared_ptr<FragmentMetadata>>>>
-StorageManager::load_array_schemas_and_all_fragment_metadata(
-    const ArrayDirectory& array_dir,
-    MemoryTracker* memory_tracker,
-    const EncryptionKey& enc_key) {
-  auto timer_se =
-      stats_->start_timer("sm_load_array_schemas_and_all_fragment_metadata");
-
-  // Load array schemas
-  auto&& [st_schemas, array_schema_latest, array_schemas_all] =
-      load_array_schemas(array_dir, enc_key);
-  RETURN_NOT_OK_TUPLE(st_schemas, std::nullopt, std::nullopt, std::nullopt);
-
-  const auto& fragments_to_load = array_dir.unfiltered_fragment_uris();
-  auto timestamped_uris_from_uris =
-      [](const std::vector<URI>& uris) -> std::vector<TimestampedURI> {
-    std::vector<TimestampedURI> timestamp_uris;
-    for (auto& uri : uris) {
-      std::pair<uint64_t, uint64_t> fragment_timestamp_range;
-      // We only want 'normal' fragment metadata items, skip others
-      // skip '.vac' consolidated metadata files
-      // Note: attempts to load the .vac files in this fashion were leading to
-      // inconsistently occuring hangs, usually in vfs routines within
-      // parallel_[sort|for]() activities, currently guessing due to
-      // corruption using load_fragment_metadata() on these .vac files.
-      if (utils::parse::ends_with(
-              uri.to_string(), constants::vacuum_file_suffix))
-        continue;
-      throw_if_not_ok(
-          utils::parse::get_timestamp_range(uri, &fragment_timestamp_range));
-      timestamp_uris.emplace_back(uri, fragment_timestamp_range);
-    }
-    return timestamp_uris;
-  };
-  auto timestamped_fragment_uris_to_load =
-      timestamped_uris_from_uris(fragments_to_load);
-
-  // Get the unique fragment metadatas into a map.
-  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
-
-  // Load the fragment metadata
-  auto&& [st_fragment_meta, fragment_metadata] = load_fragment_metadata(
-      memory_tracker,
-      array_schema_latest.value(),
-      array_schemas_all.value(),
-      enc_key,
-      timestamped_fragment_uris_to_load,
       offsets);
   RETURN_NOT_OK_TUPLE(st_fragment_meta, nullopt, nullopt, nullopt);
 
