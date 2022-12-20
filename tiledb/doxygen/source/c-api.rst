@@ -217,6 +217,18 @@ Array
 -----
 .. doxygenfunction:: tiledb_array_alloc
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_set_open_timestamp_start
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_set_open_timestamp_end
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_get_open_timestamp_start
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_get_open_timestamp_end
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_delete
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_delete_fragments
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open_with_key
