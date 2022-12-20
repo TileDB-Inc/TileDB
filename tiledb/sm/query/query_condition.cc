@@ -419,7 +419,8 @@ void QueryCondition::apply_ast_node(
         starting_index += length;
         continue;
       } else if (!fragment_metadata[f]->array_schema()->is_field(field_name)) {
-        // Requested field does not exist in this result cell - added by evolution.
+        // Requested field does not exist in this result cell - added by
+        // evolution.
         for (size_t c = starting_index; c < starting_index + length; ++c) {
           result_cell_bitmap[c] = 0;
         }

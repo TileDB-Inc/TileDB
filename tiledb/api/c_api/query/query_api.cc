@@ -30,41 +30,41 @@
  * This file defines the query section of the C API for TileDB.
  */
 
+#include "query_api_external.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/sm/enums/query_type.h"
-#include "query_api_external.h"
 
 namespace tiledb::api {
 
 int32_t tiledb_query_type_to_str(
-  tiledb_query_type_t query_type, const char** str) {
+    tiledb_query_type_t query_type, const char** str) {
   const auto& strval =
-    tiledb::sm::query_type_str((tiledb::sm::QueryType)query_type);
+      tiledb::sm::query_type_str((tiledb::sm::QueryType)query_type);
   *str = strval.c_str();
   return strval.empty() ? TILEDB_ERR : TILEDB_OK;
 }
 
 int32_t tiledb_query_type_from_str(
-  const char* str, tiledb_query_type_t* query_type) {
+    const char* str, tiledb_query_type_t* query_type) {
   tiledb::sm::QueryType val = tiledb::sm::QueryType::READ;
   if (!tiledb::sm::query_type_enum(str, &val).ok())
-  return TILEDB_ERR;
+    return TILEDB_ERR;
   *query_type = (tiledb_query_type_t)val;
   return TILEDB_OK;
 }
 
-} // namespace tiledb::api
+}  // namespace tiledb::api
 
 using tiledb::api::api_entry_plain;
 
 int32_t tiledb_query_type_to_str(
-  tiledb_query_type_t query_type, const char** str) noexcept {
+    tiledb_query_type_t query_type, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_query_type_to_str>(
-    query_type, str);
+      query_type, str);
 }
 
 int32_t tiledb_query_type_from_str(
-  const char* str, tiledb_query_type_t* query_type) noexcept {
+    const char* str, tiledb_query_type_t* query_type) noexcept {
   return api_entry_plain<tiledb::api::tiledb_query_type_from_str>(
-    str, query_type);
+      str, query_type);
 }

@@ -30,42 +30,42 @@
  * This file defines the filesystem section of the C API for TileDB.
  */
 
+#include "filesystem_api_external.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/filesystem.h"
-#include "filesystem_api_external.h"
 
 namespace tiledb::api {
 
 capi_return_t tiledb_filesystem_to_str(
-  tiledb_filesystem_t filesystem, const char** str) {
+    tiledb_filesystem_t filesystem, const char** str) {
   const auto& strval =
-    tiledb::sm::filesystem_str((tiledb::sm::Filesystem)filesystem);
+      tiledb::sm::filesystem_str((tiledb::sm::Filesystem)filesystem);
   *str = strval.c_str();
   return strval.empty() ? TILEDB_ERR : TILEDB_OK;
 }
 
 capi_return_t tiledb_filesystem_from_str(
-  const char* str, tiledb_filesystem_t* filesystem) {
+    const char* str, tiledb_filesystem_t* filesystem) {
   tiledb::sm::Filesystem val = tiledb::sm::Filesystem::S3;
   if (!tiledb::sm::filesystem_enum(str, &val).ok())
-  return TILEDB_ERR;
+    return TILEDB_ERR;
   *filesystem = (tiledb_filesystem_t)val;
   return TILEDB_OK;
 }
 
-} // namespace tiledb::api
+}  // namespace tiledb::api
 
 using tiledb::api::api_entry_plain;
 
 capi_return_t tiledb_filesystem_to_str(
-  tiledb_filesystem_t filesystem, const char** str) noexcept {
+    tiledb_filesystem_t filesystem, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_filesystem_to_str>(
-    filesystem, str);
+      filesystem, str);
 }
 
 capi_return_t tiledb_filesystem_from_str(
-  const char* str, tiledb_filesystem_t* filesystem) noexcept {
+    const char* str, tiledb_filesystem_t* filesystem) noexcept {
   return api_entry_plain<tiledb::api::tiledb_filesystem_from_str>(
-    str, filesystem);
+      str, filesystem);
 }

@@ -50,13 +50,15 @@ void tiledb_buffer_free(tiledb_buffer_handle_t** buffer) {
   tiledb_buffer_handle_t::break_handle(*buffer);
 }
 
-capi_return_t tiledb_buffer_set_type(tiledb_buffer_handle_t* buffer, tiledb_datatype_t datatype) {
+capi_return_t tiledb_buffer_set_type(
+    tiledb_buffer_handle_t* buffer, tiledb_datatype_t datatype) {
   ensure_buffer_is_valid(buffer);
   buffer->set_datatype(static_cast<tiledb::sm::Datatype>(datatype));
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_buffer_get_type(const tiledb_buffer_handle_t* buffer, tiledb_datatype_t* datatype) {
+capi_return_t tiledb_buffer_get_type(
+    const tiledb_buffer_handle_t* buffer, tiledb_datatype_t* datatype) {
   ensure_buffer_is_valid(buffer);
   ensure_output_pointer_is_valid(datatype);
   *datatype = static_cast<tiledb_datatype_t>(buffer->datatype());
@@ -64,10 +66,7 @@ capi_return_t tiledb_buffer_get_type(const tiledb_buffer_handle_t* buffer, tiled
 }
 
 capi_return_t tiledb_buffer_get_data(
-  const tiledb_buffer_t* buffer,
-  void** data,
-  uint64_t* num_bytes) {
-
+    const tiledb_buffer_t* buffer, void** data, uint64_t* num_bytes) {
   ensure_buffer_is_valid(buffer);
   ensure_output_pointer_is_valid(data);
   ensure_output_pointer_is_valid(num_bytes);
@@ -78,7 +77,8 @@ capi_return_t tiledb_buffer_get_data(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_buffer_set_data(tiledb_buffer_t* buffer, void* data, uint64_t size) {
+capi_return_t tiledb_buffer_set_data(
+    tiledb_buffer_t* buffer, void* data, uint64_t size) {
   ensure_buffer_is_valid(buffer);
 
   // Create a temporary Buffer object as a wrapper.
@@ -93,13 +93,13 @@ capi_return_t tiledb_buffer_set_data(tiledb_buffer_t* buffer, void* data, uint64
   return TILEDB_OK;
 }
 
-} // namespace tiledb::api
+}  // namespace tiledb::api
 
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
 
 capi_return_t tiledb_buffer_alloc(
-  tiledb_ctx_t* ctx, tiledb_buffer_t** buffer) noexcept {
+    tiledb_ctx_t* ctx, tiledb_buffer_t** buffer) noexcept {
   return api_entry_context<tiledb::api::tiledb_buffer_alloc>(ctx, buffer);
 }
 
@@ -108,30 +108,32 @@ void tiledb_buffer_free(tiledb_buffer_t** buffer) noexcept {
 }
 
 capi_return_t tiledb_buffer_set_type(
-  tiledb_ctx_t* ctx,
-  tiledb_buffer_t* buffer,
-  tiledb_datatype_t datatype) noexcept {
-  return api_entry_context<tiledb::api::tiledb_buffer_set_type>(ctx, buffer, datatype);
+    tiledb_ctx_t* ctx,
+    tiledb_buffer_t* buffer,
+    tiledb_datatype_t datatype) noexcept {
+  return api_entry_context<tiledb::api::tiledb_buffer_set_type>(
+      ctx, buffer, datatype);
 }
 
 capi_return_t tiledb_buffer_get_type(
-  tiledb_ctx_t* ctx,
-  const tiledb_buffer_t* buffer,
-  tiledb_datatype_t* datatype) noexcept {
-  return api_entry_context<tiledb::api::tiledb_buffer_get_type>(ctx, buffer, datatype);
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_datatype_t* datatype) noexcept {
+  return api_entry_context<tiledb::api::tiledb_buffer_get_type>(
+      ctx, buffer, datatype);
 }
 
 capi_return_t tiledb_buffer_get_data(
-  tiledb_ctx_t* ctx,
-  const tiledb_buffer_t* buffer,
-  void** data,
-  uint64_t* size) noexcept {
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    void** data,
+    uint64_t* size) noexcept {
   return api_entry_context<tiledb::api::tiledb_buffer_get_data>(
-    ctx, buffer, data, size);
+      ctx, buffer, data, size);
 }
 
 capi_return_t tiledb_buffer_set_data(
-  tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, void* data, uint64_t size) {
+    tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, void* data, uint64_t size) {
   return api_entry_context<tiledb::api::tiledb_buffer_set_data>(
-    ctx, buffer, data, size);
+      ctx, buffer, data, size);
 }
