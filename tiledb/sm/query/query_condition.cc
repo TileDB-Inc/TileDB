@@ -34,6 +34,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/utils.h"
@@ -1734,6 +1735,7 @@ void QueryCondition::apply_ast_node_sparse(
   }
 
   if (var_size) {
+    //uint64_t cmpcount = 0;
     // Get var data buffer and tile offsets buffer.
     const auto& tile = tile_tuple->var_tile();
     const char* buffer = static_cast<char*>(tile.data());
@@ -1745,6 +1747,7 @@ void QueryCondition::apply_ast_node_sparse(
     const uint64_t buffer_offsets_el =
         tile_offsets.size() / constants::cell_var_offset_size;
 
+    // ORON NOTE: THIS IS THE "INNER LOOP"
     // Iterate through each cell.
     for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
       // Check the previous cell here, which breaks vectorization but as this
@@ -1759,6 +1762,7 @@ void QueryCondition::apply_ast_node_sparse(
       const void* const cell_value = buffer + buffer_offset;
 
       // Compare the cell value against the value in the value node.
+      //cmpcount++;
       const bool cmp = BinaryCmp<T, Op>::cmp(
           cell_value, cell_size, condition_value_content, condition_value_size);
 
@@ -1772,6 +1776,7 @@ void QueryCondition::apply_ast_node_sparse(
         result_bitmap[c] = combination_op(result_bitmap[c], cmp);
       }
     }
+    //printf("CMPCOUNT %d\n", (int)cmpcount);
   } else {
     // Get the fixed size data buffers.
     const auto& tile = tile_tuple->fixed_tile();
@@ -2035,6 +2040,7 @@ void QueryCondition::apply_tree_sparse(
     apply_ast_node_sparse<BitmapType>(
         node, array_schema, result_tile, combination_op, result_bitmap);
   } else {
+    auto t1 = tiledb::sm::utils::time::timestamp_now_ms();
     const auto result_bitmap_size = result_bitmap.size();
     switch (node->get_combination_op()) {
         /*
@@ -2071,6 +2077,7 @@ void QueryCondition::apply_tree_sparse(
         } else if constexpr (std::is_same_v<CombinationOp, QCMax<BitmapType>>) {
           std::vector<BitmapType> combination_op_bitmap(result_bitmap_size, 1);
 
+          // ORON NOTE: THIS IS THE "OUTER LOOP"
           for (const auto& child : node->get_children()) {
             apply_tree_sparse<BitmapType>(
                 child,
@@ -2093,6 +2100,8 @@ void QueryCondition::apply_tree_sparse(
       case QueryConditionCombinationOp::OR: {
         std::vector<BitmapType> combination_op_bitmap(result_bitmap_size, 0);
 
+        printf("CORE: The OR-clause has %d children\n", (int)node->get_children().size());
+        printf("CORE: The tile has %d cells for this attribute\n", (int)result_tile.cell_num());
         for (const auto& child : node->get_children()) {
           apply_tree_sparse<BitmapType>(
               child,
@@ -2115,6 +2124,8 @@ void QueryCondition::apply_tree_sparse(
             "Invalid combination operator when applying query condition.");
       }
     }
+    auto t2 = tiledb::sm::utils::time::timestamp_now_ms();
+    printf("CORE: APPLY TREE SPARSE %.3lf SECONDS\n", (double)(t2-t1)/1000.0);fflush(stdout);
   }
 }
 
