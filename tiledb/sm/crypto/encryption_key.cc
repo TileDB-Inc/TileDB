@@ -1,5 +1,5 @@
 /**
- * @file   encryption_key.h
+ * @file   encryption_key.cc
  *
  * @section LICENSE
  *
@@ -57,9 +57,7 @@ EncryptionKey::EncryptionKey(const Config& config)
   enc_key_str = config.get("sm.encryption_key", &found);
   if (!found) {
     throw_if_not_ok(set_key(
-        static_cast<EncryptionType>(0),
-        nullptr,
-        static_cast<uint32_t>(0)));
+        static_cast<EncryptionType>(0), nullptr, static_cast<uint32_t>(0)));
     return;
   }
 

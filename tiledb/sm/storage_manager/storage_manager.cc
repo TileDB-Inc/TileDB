@@ -287,7 +287,8 @@ StorageManager::load_array_schemas_and_all_fragment_metadata(
     }
     return timestamp_uris;
   };
-  auto timestamped_fragment_uris_to_load = timestamped_uris_from_uris(fragments_to_load);
+  auto timestamped_fragment_uris_to_load =
+      timestamped_uris_from_uris(fragments_to_load);
 
   // Get the unique fragment metadatas into a map.
   std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
@@ -2484,7 +2485,8 @@ StorageManagerCanonical::load_consolidated_fragment_meta(
   if (consolidated_metadata_uri.to_string().empty())
     return {Status::Ok(), nullopt, nullopt};
 
-  auto&& [st, tile_opt] = load_data_from_generic_tile(consolidated_metadata_uri, 0, enc_key);
+  auto&& [st, tile_opt] =
+      load_data_from_generic_tile(consolidated_metadata_uri, 0, enc_key);
   RETURN_NOT_OK_TUPLE(st, nullopt, nullopt);
   auto& tile = *tile_opt;
 

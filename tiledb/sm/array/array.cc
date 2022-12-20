@@ -1428,17 +1428,16 @@ void Array::set_array_closed() {
   is_open_ = false;
 }
 
-
 void Array::array_get_fragments_tile_max_size(
-    tiledb_fragment_max_tile_sizes_t* max_tile_sizes
-) {
+    tiledb_fragment_max_tile_sizes_t* max_tile_sizes) {
   assert(max_tile_sizes);
 
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr) {
-      throw StatusException(Status_Error(
-          "Failed to obtain maximum tile size; remote array with no REST client."));
+      throw StatusException(
+          Status_Error("Failed to obtain maximum tile size; remote array with "
+                       "no REST client."));
     }
 
     throw_if_not_ok(rest_client->get_array_maximum_tile_size_from_rest(
@@ -1448,8 +1447,8 @@ void Array::array_get_fragments_tile_max_size(
 
   // Check that array is open
   if (!is_open()) {
-    throw StatusException(
-        Status_ArrayError("[Array::array_get_fragment_tile_max_size] Array is closed"));
+    throw StatusException(Status_ArrayError(
+        "[Array::array_get_fragment_tile_max_size] Array is closed"));
   }
 
   if (query_type_ != QueryType::READ) {

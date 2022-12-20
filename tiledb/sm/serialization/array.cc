@@ -736,15 +736,13 @@ Status metadata_deserialize(Metadata*, SerializationType, const Buffer&) {
       "Cannot deserialize; serialization not enabled."));
 }
 
-Status maximum_tile_size_deserialize(uint64_t*, SerializationType, const Buffer&) {
+Status maximum_tile_size_deserialize(
+    uint64_t*, SerializationType, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
 
-Status maximum_tile_size_serialize(
-    uint64_t* ,
-    SerializationType ,
-    Buffer* ) {
+Status maximum_tile_size_serialize(uint64_t*, SerializationType, Buffer*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
