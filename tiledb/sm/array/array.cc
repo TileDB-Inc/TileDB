@@ -1111,7 +1111,8 @@ bool Array::use_refactored_array_open() const {
   return refactored_array_open;
 }
 
-std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes() {
+std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
+    const {
   std::unordered_map<std::string, uint64_t> ret;
 
   // Find the names of the var-sized dimensions or attributes.

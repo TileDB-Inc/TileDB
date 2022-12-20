@@ -64,7 +64,6 @@ class Stats {
    * Value constructor.
    *
    * @param prefix The stat name prefix.
-   * @param parent If non-null, stats will be added to this instance.
    */
   Stats(const std::string& prefix);
 
