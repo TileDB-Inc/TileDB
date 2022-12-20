@@ -1102,18 +1102,6 @@ class StorageManagerCanonical {
    */
   void group_metadata_vacuum(const char* group_name, const Config& config);
 
-  /**
-   * Populates an encryption key from either the option config param or the
-   * member config_, returning a null/empty configuration key in the event of
-   * no sm.encryption_key config data being found.
-   *
-   * @param enc_key to receive the populated EncryptionKey
-   * @param config optional config, if present, taking precedence over internal
-   *     object config
-   */
-  void encryption_key_from_configs(
-      EncryptionKey& enc_key, const Config* config);
-
  private:
   /* ********************************* */
   /*        PRIVATE DATATYPES          */

@@ -40,6 +40,7 @@
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
+#include "tiledb/api/c_api/tiledb_max_tile_sizes.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
@@ -49,7 +50,6 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/api_argument_validator.h"
-#include "tiledb/api/c_api/tiledb_max_tile_sizes.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
@@ -6169,16 +6169,14 @@ int32_t tiledb_consolidation_plan_free_json_str(char** out) {
 }
 
 TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
-    tiledb_array_t * array,
-    uint64_t* max_in_memory_tile_size) {
+    tiledb_array_t* array, uint64_t* max_in_memory_tile_size) {
   api::ensure_array_is_valid(array);
   api::ensure_output_pointer_is_valid(max_in_memory_tile_size);
   try {
     tiledb_fragment_max_tile_sizes_t max_tile_sizes;
     array->array_->array_get_fragments_tile_max_size(&max_tile_sizes);
     *max_in_memory_tile_size = max_tile_sizes.max_in_memory_tile_size;
-  }
-  catch (...) {
+  } catch (...) {
     std::throw_with_nested(
         api::CAPIStatusException("Failed to obtain max tile size "));
   }
@@ -9095,8 +9093,7 @@ int32_t tiledb_consolidation_plan_free_json_str(char** out) noexcept {
       out);
 }
 TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
-    tiledb_array_t* array,
-    uint64_t* max_in_memory_tile_size) {
+    tiledb_array_t* array, uint64_t* max_in_memory_tile_size) {
   return api_entry_plain<tiledb::api::tiledb_array_maximum_tile_size>(
       array, max_in_memory_tile_size);
 }
