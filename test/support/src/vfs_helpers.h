@@ -589,8 +589,8 @@ struct TemporaryDirectoryFixture {
   std::string create_temporary_array(
       std::string&& name, tiledb_array_schema_t* array_schema) {
     auto array_uri = fullpath(std::move(name));
-    REQUIRE_TILEDB_OK(tiledb_array_schema_check(ctx, array_schema));
-    REQUIRE_TILEDB_OK(
+    require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
+    require_tiledb_ok(
         tiledb_array_create(ctx, array_uri.c_str(), array_schema));
     return array_uri;
   };
@@ -602,7 +602,14 @@ struct TemporaryDirectoryFixture {
    *
    * @param rc Return code from a TileDB C-API function.
    */
-  void check_tiledb_ok(int rc);
+  void check_tiledb_ok(int rc) const;
+
+  /**
+   * Returns the context pointer object.
+   */
+  inline tiledb_ctx_t* get_ctx() {
+    return ctx;
+  }
 
   /**
    * Requires the return code for a TileDB C-API function is TILEDB_OK. If not,
@@ -611,7 +618,17 @@ struct TemporaryDirectoryFixture {
    *
    * @param rc Return code from a TileDB C-API function.
    */
-  void require_tiledb_ok(int rc);
+  void require_tiledb_ok(int rc) const;
+
+  /**
+   * Require the return code for a TileDB C-API function is TILEDB_ERR and
+   * compare the last error message from the local TileDB context to an expected
+   * error message.
+   *
+   * @param rc Return code from a TileDB C-API function.
+   * @param expected_msg The expected message from the last error.
+   */
+  void require_tiledb_error_with(int rc, const std::string& expected_msg) const;
 
  protected:
   /** TileDB context */

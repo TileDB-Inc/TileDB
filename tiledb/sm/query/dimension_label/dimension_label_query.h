@@ -67,7 +67,6 @@ class DimensionLabelQuery : public Query {
    * Constructor for queries to read or write label data.
    *
    * @param storage_manager Storage manager object.
-   * @param stats Stats object for the dimension label query.
    * @param dim_label Opened dimension label for the query.
    * @param dim_label_ref Description of the dimension label.
    * @param parent_subarray Subarray of the parent array.
@@ -78,7 +77,6 @@ class DimensionLabelQuery : public Query {
    */
   DimensionLabelQuery(
       StorageManager* storage_manager,
-      stats::Stats* stats,
       shared_ptr<Array> dim_label,
       const DimensionLabelReference& dim_label_ref,
       const Subarray& parent_subarray,
@@ -150,7 +148,6 @@ class DimensionLabelQuery : public Query {
    *
    * This should only be called inside constructors.
    *
-   * @param stats Statistics object for performing timing.
    * @param dim_label_schema Array schema for the opened dimension label.
    * @param parent_subarray Subarray of the parent array.
    * @param label_attr_name Name of the attribute storing label data.
@@ -161,7 +158,6 @@ class DimensionLabelQuery : public Query {
    *     label is for.
    */
   void initialize_ordered_write_query(
-      stats::Stats* stats,
       const Subarray& parent_subarray,
       const std::string& label_attr_name,
       const QueryBuffer& label_buffer,
