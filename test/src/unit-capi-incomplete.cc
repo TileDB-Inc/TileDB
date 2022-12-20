@@ -68,7 +68,6 @@ struct IncompleteFx {
   void write_dense_full();
   void write_sparse_full();
   void check_dense_incomplete();
-  void check_dense_incomplete_serialized();
   void check_dense_until_complete();
   void check_dense_shrink_buffer_size();
   void check_dense_unsplittable_overflow();
@@ -488,60 +487,6 @@ void IncompleteFx::check_dense_incomplete() {
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  // Check buffer
-  int c_buffer_a1[2] = {0, 1};
-  CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
-  CHECK(buffer_sizes[0] == 2 * sizeof(int));
-}
-
-void IncompleteFx::check_dense_incomplete_serialized() {
-  // Initialize a subarray
-  const uint64_t subarray[] = {1, 2, 1, 2};
-
-  // Subset over a specific attribute
-  const char* attributes[] = {"a1"};
-
-  // Prepare the buffers that will store the result
-  int buffer_a1[2];
-  void* buffers[] = {buffer_a1};
-  uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
-
-  // Open array
-  tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-
-  // Create query
-  tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
-  REQUIRE(rc == TILEDB_OK);
-
-  rc = submit_query_wrapper(
-      ctx_, DENSE_ARRAY_NAME, &query, server_buffers_, true, false);
-  CHECK(rc == TILEDB_OK);
-
-  // Check status
-  tiledb_query_status_t status;
-  rc = tiledb_query_get_status(ctx_, query, &status);
-  CHECK(status == TILEDB_INCOMPLETE);
-
-  // Close arrays
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-
-  // Clean up
-  tiledb_query_free(&query);
-  tiledb_array_free(&array);
 
   // Check buffer
   int c_buffer_a1[2] = {0, 1};
@@ -1242,7 +1187,7 @@ TEST_CASE_METHOD(
   remove_dense_array();
   create_dense_array();
   write_dense_full();
-  check_dense_incomplete_serialized();
+  check_dense_incomplete();
   remove_dense_array();
 }
 
