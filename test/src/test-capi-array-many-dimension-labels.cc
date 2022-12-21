@@ -176,20 +176,20 @@ class ExampleArray : public TemporaryDirectoryFixture {
     require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
     require_tiledb_ok(
         tiledb_query_set_data_buffer(ctx, query, "a", a1.data(), &a1_size));
-    require_tiledb_ok(tiledb_query_set_label_data_buffer(
-        ctx, query, "x", x1.data(), &x1_size));
-    require_tiledb_ok(tiledb_query_set_label_data_buffer(
-        ctx, query, "alpha", x2.data(), &x2_size));
-    require_tiledb_ok(tiledb_query_set_label_data_buffer(
-        ctx, query, "y", y1.data(), &y1_size));
-    require_tiledb_ok(tiledb_query_set_label_data_buffer(
-        ctx, query, "beta", y2.data(), &y2_size));
-    require_tiledb_ok(tiledb_query_set_label_data_buffer(
-        ctx, query, "z", z1.data(), &z1_size));
-    require_tiledb_ok(tiledb_query_set_label_data_buffer(
-        ctx, query, "gamma", z2.data(), &z2_size));
-    require_tiledb_ok(tiledb_query_set_label_data_buffer(
-        ctx, query, "t", time.data(), &time_size));
+    require_tiledb_ok(
+        tiledb_query_set_data_buffer(ctx, query, "x", x1.data(), &x1_size));
+    require_tiledb_ok(
+        tiledb_query_set_data_buffer(ctx, query, "alpha", x2.data(), &x2_size));
+    require_tiledb_ok(
+        tiledb_query_set_data_buffer(ctx, query, "y", y1.data(), &y1_size));
+    require_tiledb_ok(
+        tiledb_query_set_data_buffer(ctx, query, "beta", y2.data(), &y2_size));
+    require_tiledb_ok(
+        tiledb_query_set_data_buffer(ctx, query, "z", z1.data(), &z1_size));
+    require_tiledb_ok(
+        tiledb_query_set_data_buffer(ctx, query, "gamma", z2.data(), &z2_size));
+    require_tiledb_ok(
+        tiledb_query_set_data_buffer(ctx, query, "t", time.data(), &time_size));
 
     // Submit write query.
     require_tiledb_ok(tiledb_query_submit(ctx, query));
@@ -284,31 +284,31 @@ class ExampleArray : public TemporaryDirectoryFixture {
           tiledb_query_set_data_buffer(ctx, query, "a", a.data(), &a_size));
     }
     if (x1_size > 0) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
-          ctx, query, "x", x1.data(), &x1_size));
+      require_tiledb_ok(
+          tiledb_query_set_data_buffer(ctx, query, "x", x1.data(), &x1_size));
     }
     if (x2_size > 0) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+      require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "alpha", x2.data(), &x2_size));
     }
     if (y1_size > 0) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
-          ctx, query, "y", y1.data(), &y1_size));
+      require_tiledb_ok(
+          tiledb_query_set_data_buffer(ctx, query, "y", y1.data(), &y1_size));
     }
     if (y2_size > 0) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+      require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "beta", y2.data(), &y2_size));
     }
     if (z1_size > 0) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
-          ctx, query, "z", z1.data(), &z1_size));
+      require_tiledb_ok(
+          tiledb_query_set_data_buffer(ctx, query, "z", z1.data(), &z1_size));
     }
     if (z2_size > 0) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+      require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "gamma", z2.data(), &z2_size));
     }
     if (time_size > 0) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+      require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "t", time.data(), &time_size));
     }
 
