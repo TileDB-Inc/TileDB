@@ -67,7 +67,7 @@ constexpr bool is_compiler_msvc = true;
 constexpr bool is_compiler_mingw = false;
 #elif defined(__MINGW32__)
 constexpr bool is_compiler_clang = false;
-constexpr bool is_compiler_gnu = false;
+constexpr bool is_compiler_gnu = true;
 constexpr bool is_compiler_msvc = false;
 constexpr bool is_compiler_mingw = true;
 #endif
