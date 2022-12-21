@@ -295,26 +295,6 @@ class Query {
       const char* name, void** buffer, uint64_t** buffer_size) const;
 
   /**
-   * Retrieves the data buffer of a fixed or variable-sized dimension label.
-   *
-   * @param name The name of the the label.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size The size of the buffer.
-   */
-  void get_label_data_buffer(
-      const std::string& name, void** buffer, uint64_t** buffer_size) const;
-
-  /**
-   * Retrieves the offset buffer for a variable-sized dimension label.
-   *
-   * @param name The name of the label.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size The size of the buffer.
-   */
-  void get_label_offsets_buffer(
-      const std::string& name, uint64_t** buffer, uint64_t** buffer_size) const;
-
-  /**
    * Retrieves the offset buffer for a var-sized attribute/dimension.
    *
    * @param name The buffer attribute/dimension name. An empty string means
@@ -538,36 +518,6 @@ class Query {
    **/
   void set_dimension_label_buffer(
       const std::string& name, const QueryBuffer& buffer);
-
-  /**
-   * Sets the label data buffer for fixed or variable sized dimension labels.
-   *
-   * @param name The name of the dimension label to set the data buffer for.
-   * @param buffer The buffer for the data.
-   * @param buffer_size The size of the data.
-   * @param check_null_buffers If ``true`` verify buffer and buffersize are not
-   *     nullptrs.
-   */
-  void set_label_data_buffer(
-      const std::string& name,
-      void* const buffer,
-      uint64_t* const buffer_size,
-      const bool check_null_buffers = true);
-
-  /**
-   * Sets the label offsets buffer for variable sized dimension labels.
-   *
-   * @param name The name of the dimension label to set the offsets buffer for.
-   * @param buffer_offsets The buffer for offsets for the variable size data.
-   * @param buffer_offsets_size The size of the offsets buffer.
-   * @param check_null_buffers If ``true`` verify buffer and buffersize are not
-   *     nullptrs.
-   */
-  void set_label_offsets_buffer(
-      const std::string& name,
-      uint64_t* const buffer_offsets,
-      uint64_t* const buffer_offsets_size,
-      const bool check_null_buffers = true);
 
   /**
    * Sets the offset buffer for a var-sized attribute/dimension.

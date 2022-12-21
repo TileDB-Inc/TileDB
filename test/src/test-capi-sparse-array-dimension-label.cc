@@ -139,7 +139,7 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
           ctx, query, "a", input_attr_data.data(), &attr_data_size));
     }
     if (label_data_size != 0) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+      require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "x", input_label_data.data(), &label_data_size));
     }
 
@@ -189,7 +189,7 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
     require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_READ, &query));
     require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
     require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED));
-    require_tiledb_ok(tiledb_query_set_label_data_buffer(
+    require_tiledb_ok(tiledb_query_set_data_buffer(
         ctx, query, "x", label_data.data(), &label_data_size));
     if (!expected_attr_data.empty()) {
       require_tiledb_ok(tiledb_query_set_data_buffer(
@@ -258,7 +258,7 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
     require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
     require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR));
     if (!expected_label_data.empty()) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+      require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "x", label_data.data(), &label_data_size));
     }
     if (!expected_attr_data.empty()) {
