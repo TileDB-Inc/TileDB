@@ -1285,14 +1285,16 @@ Status query_to_capnp(
     const auto& name = buffer_names[i];
     const auto& buff = query.buffer(name);
     attr_buffer_builder.setName(name);
+    bool remote_global_order_write = query.array()->is_remote() &&
+                                     query.type() == QueryType::WRITE &&
+                                     query.layout() == Layout::GLOBAL_ORDER;
     if (buff.buffer_var_ != nullptr || buff.buffer_var_size_ != nullptr) {
       // Variable-sized buffer
       uint64_t var_buff_size = remote_buffer_cache[name].buffer_var.size();
       uint64_t offset_buff_size = remote_buffer_cache[name].buffer.size();
 
       // For remote GOWs the cache already contains user buffer data.
-      if (query.type() != QueryType::WRITE ||
-          query.layout() != Layout::GLOBAL_ORDER) {
+      if (!remote_global_order_write) {
         // Don't include user buffer for serializing remote global order writes.
         var_buff_size += *buff.buffer_var_size_;
         offset_buff_size += *buff.buffer_size_;
@@ -1312,8 +1314,7 @@ Status query_to_capnp(
       // Fixed-length buffer
       uint64_t buff_size = remote_buffer_cache[name].buffer.size();
 
-      if (query.type() != QueryType::WRITE ||
-          query.layout() != Layout::GLOBAL_ORDER) {
+      if (!remote_global_order_write) {
         buff_size += *buff.buffer_size_;
       }
       total_fixed_len_bytes += buff_size;
@@ -1331,8 +1332,7 @@ Status query_to_capnp(
 
     if (buff.validity_vector_.buffer_size() != nullptr) {
       uint64_t buff_size = remote_buffer_cache[name].buffer_validity.size();
-      if (query.type() != QueryType::WRITE ||
-          query.layout() != Layout::GLOBAL_ORDER) {
+      if (!remote_global_order_write) {
         buff_size += *buff.validity_vector_.buffer_size();
       }
       total_validity_len_bytes += buff_size;
@@ -2145,6 +2145,11 @@ Status query_serialize(
 
         // Concatenate buffers to end of message
         if (serialize_buffers) {
+          bool remote_global_order_write =
+              query->array()->is_remote() &&
+              query->type() == QueryType::WRITE &&
+              query->layout() == Layout::GLOBAL_ORDER;
+
           auto& remote_buffer_storage = query->get_remote_buffer_storage();
 
           auto attr_buffer_builders = query_builder.getAttributeBufferHeaders();
@@ -2160,8 +2165,7 @@ Status query_serialize(
               Buffer data(query_buffer_cache.buffer);
 
               // For remote GOWs the cache already contains user buffer data.
-              if (query->type() != QueryType::WRITE ||
-                  query->layout() != Layout::GLOBAL_ORDER) {
+              if (!remote_global_order_write) {
                 throw_if_not_ok(
                     data.realloc(data.size() + *query_buffer.buffer_size_));
                 throw_if_not_ok(data.write(
@@ -2171,8 +2175,7 @@ Status query_serialize(
 
               Buffer var(query_buffer_cache.buffer_var);
               // Variable sized data buffers.
-              if (query->type() != QueryType::WRITE ||
-                  query->layout() != Layout::GLOBAL_ORDER) {
+              if (!remote_global_order_write) {
                 throw_if_not_ok(
                     var.realloc(var.size() + *query_buffer.buffer_var_size_));
                 throw_if_not_ok(var.write(
@@ -2187,8 +2190,7 @@ Status query_serialize(
               // Write data from buffer cache.
               Buffer data(query_buffer_cache.buffer);
 
-              if (query->type() != QueryType::WRITE ||
-                  query->layout() != Layout::GLOBAL_ORDER) {
+              if (!remote_global_order_write) {
                 throw_if_not_ok(data.realloc(cache_buf_size + query_buf_size));
                 throw_if_not_ok(
                     data.write(query_buffer.buffer_, query_buf_size));
@@ -2202,8 +2204,7 @@ Status query_serialize(
             if (query_buffer.validity_vector_.buffer_size() != nullptr) {
               Buffer data(query_buffer_cache.buffer_validity);
 
-              if (query->type() != QueryType::WRITE ||
-                  query->layout() != Layout::GLOBAL_ORDER) {
+              if (!remote_global_order_write) {
                 throw_if_not_ok(data.write(
                     query_buffer.validity_vector_.buffer(),
                     *query_buffer.validity_vector_.buffer_size()));

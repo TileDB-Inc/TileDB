@@ -428,12 +428,15 @@ TEST_CASE("Debug", "[debug][!mayfail]") {
 }
 
 // All tests below are passing for all types using dense and sparse arrays.
+// Marked as mayfail pending CI for remote writes.
 // typedef std::tuple<
 //     uint64_t, int64_t, uint32_t, int32_t, uint16_t, int16_t, uint8_t, int8_t,
 //     float, double> TestTypes;
 typedef std::tuple<uint64_t, int64_t, float, double> TestTypes;
 TEMPLATE_LIST_TEST_CASE(
-    "Global order remote writes", "[global-order][remote][write]", TestTypes) {
+    "Global order remote writes",
+    "[global-order][remote][write][!mayfail]",
+    TestTypes) {
   typedef TestType T;
   uint64_t bytes;
   uint64_t extent;
