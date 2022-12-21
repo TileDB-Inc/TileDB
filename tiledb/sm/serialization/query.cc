@@ -1478,7 +1478,7 @@ Status query_from_capnp(
   // Make sure we have the right query strategy in place.
   bool force_legacy_reader =
       query_type == QueryType::READ && query_reader.hasReader();
-  RETURN_NOT_OK(query->reset_strategy_with_layout(layout, force_legacy_reader));
+  query->reset_strategy_with_layout(layout, force_legacy_reader);
 
   // Deserialize Config
   if (query_reader.hasConfig()) {
