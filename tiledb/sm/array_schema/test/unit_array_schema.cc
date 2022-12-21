@@ -237,3 +237,28 @@ TEST_CASE(
       zref.uri().to_string() ==
       constants::array_dimension_labels_dir_name + "/l2");
 }
+
+TEST_CASE(
+    "Test ArraySchema::has_ordered_attributes with no ordered attributes"
+    "[array_schema]") {
+  std::vector<shared_ptr<Dimension>> dims{
+      test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
+  std::vector<shared_ptr<Attribute>> attrs{
+      test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0),
+      test::make_attribute<float>("b", Datatype::FLOAT64, false, 1, 0)};
+  auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
+  REQUIRE(!schema->has_ordered_attributes());
+}
+
+TEST_CASE(
+    "Test ArraySchema::has_ordered_attributes with ordered attributes"
+    "[array_schema]") {
+  std::vector<shared_ptr<Dimension>> dims{
+      test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
+  std::vector<shared_ptr<Attribute>> attrs{
+      test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0),
+      make_shared<Attribute>(
+          HERE(), "b", Datatype::FLOAT64, 1, DataOrder::INCREASING_DATA)};
+  auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
+  REQUIRE(schema->has_ordered_attributes());
+}

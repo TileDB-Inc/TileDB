@@ -156,6 +156,7 @@ class ArrayExample : public TemporaryDirectoryFixture {
 
     // Clean-up.
     tiledb_query_free(&query);
+    tiledb_subarray_free(&subarray);
     tiledb_array_free(&array);
   }
 

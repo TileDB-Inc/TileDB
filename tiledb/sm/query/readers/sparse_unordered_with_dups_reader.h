@@ -164,9 +164,18 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   /** Result tiles currently loaded. */
   std::list<UnorderedWithDupsResultTile<BitmapType>> result_tiles_;
 
+  /** Minimum fragment index for loaded tile offsets data. */
+  unsigned tile_offsets_min_frag_idx_;
+
+  /** Maximum fragment index for loaded tile offsets data. */
+  unsigned tile_offsets_max_frag_idx_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Loads as much tile offset data in memory as possible. */
+  void load_tile_offsets_data();
 
   /**
    * Get the coordinate tiles size for a dimension.

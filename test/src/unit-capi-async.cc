@@ -439,18 +439,8 @@ void AsyncFx::write_sparse_async() {
       CHECK(callback_made == 1);
     }
   };
-  if (!use_external_subarray_) {
-    proc_query();
-  } else {
-    tiledb_subarray_t* query_subarray;
-    tiledb_query_get_subarray_t(ctx_, query, &query_subarray);
-    rc = tiledb_query_set_subarray_t(ctx_, query, query_subarray);
-    CHECK(rc == TILEDB_OK);
+  proc_query();
 
-    proc_query();
-
-    tiledb_subarray_free(&query_subarray);
-  }
   // Close array
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -572,18 +562,8 @@ void AsyncFx::write_sparse_async_cancelled() {
     rc = tiledb_query_finalize(ctx_, query);
     CHECK(rc == TILEDB_OK);
   };
-  if (!use_external_subarray_) {
-    proc_query();
-  } else {
-    tiledb_subarray_t* query_subarray;
-    tiledb_query_get_subarray_t(ctx_, query, &query_subarray);
-    rc = tiledb_query_set_subarray_t(ctx_, query, query_subarray);
-    CHECK(rc == TILEDB_OK);
 
-    proc_query();
-
-    tiledb_subarray_free(&query_subarray);
-  }
+  proc_query();
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

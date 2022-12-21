@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/webp_filter.h"
+#include "tiledb/common/scoped_executor.h"
 #include "tiledb/sm/tile/tile.h"
 
 namespace tiledb::sm {

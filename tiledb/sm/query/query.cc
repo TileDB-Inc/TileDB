@@ -66,6 +66,14 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 
+/** Class for query status exceptions. */
+class QueryStatusException : public StatusException {
+ public:
+  explicit QueryStatusException(const std::string& msg)
+      : StatusException("Query", msg) {
+  }
+};
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -990,7 +998,6 @@ Status Query::init() {
       dim_label_queries_ = tdb_unique_ptr<ArrayDimensionLabelQueries>(tdb_new(
           ArrayDimensionLabelQueries,
           storage_manager_,
-          stats_->create_child("ArrayDimensionLabelQueries"),
           array_,
           subarray_,
           label_buffers_,
@@ -2264,78 +2271,38 @@ void Query::set_status(QueryStatus status) {
   status_ = status;
 }
 
-Status Query::set_subarray(const void* subarray) {
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot set subarray; Unsupported query type."));
+void Query::set_subarray(const void* subarray) {
+  // Perform checks related to the query type.
+  switch (type_) {
+    case QueryType::READ:
+      break;
+
+    case QueryType::WRITE:
+    case QueryType::MODIFY_EXCLUSIVE:
+      if (!array_schema_->dense()) {
+        throw QueryStatusException(
+            "Cannot set subarray; Setting a subarray is not supported on "
+            "sparse writes.");
+      }
+      break;
+
+    default:
+
+      throw QueryStatusException(
+          "Cannot set subarray; Setting a subarray is not supported for query "
+          "type '" +
+          query_type_str(type_) + "'.");
   }
 
-  if (!array_schema_->domain().all_dims_same_type())
-    return logger_->status(
-        Status_QueryError("Cannot set subarray; Function not applicable to "
-                          "heterogeneous domains"));
-
-  if (!array_schema_->domain().all_dims_fixed())
-    return logger_->status(
-        Status_QueryError("Cannot set subarray; Function not applicable to "
-                          "domains with variable-sized dimensions"));
-
-  // Prepare a subarray object
-  Subarray sub(array_, layout_, stats_, logger_);
-  if (subarray != nullptr) {
-    auto dim_num = array_schema_->dim_num();
-    auto s_ptr = (const unsigned char*)subarray;
-    uint64_t offset = 0;
-
-    bool err_on_range_oob = true;
-    if (type_ == QueryType::READ) {
-      // Get read_range_oob config setting
-      bool found = false;
-      std::string read_range_oob_str =
-          config().get("sm.read_range_oob", &found);
-      assert(found);
-      if (read_range_oob_str != "error" && read_range_oob_str != "warn")
-        return logger_->status(Status_QueryError(
-            "Invalid value " + read_range_oob_str +
-            " for sm.read_range_obb. Acceptable values are 'error' or "
-            "'warn'."));
-      err_on_range_oob = read_range_oob_str == "error";
-    }
-
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto r_size{2 * array_schema_->dimension_ptr(d)->coord_size()};
-      Range range(&s_ptr[offset], r_size);
-      RETURN_NOT_OK(sub.add_range(d, std::move(range), err_on_range_oob));
-      offset += r_size;
-    }
+  // Check this isn't an already initialized query using dimension labels.
+  if (status_ != QueryStatus::UNINITIALIZED) {
+    throw QueryStatusException(
+        "Cannot set subarray; Setting a subarray on an already initialized  "
+        "query is not supported.");
   }
 
-  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
-    // Not applicable to sparse arrays
-    if (!array_schema_->dense())
-      return logger_->status(Status_WriterError(
-          "Setting a subarray is not supported in sparse writes"));
-
-    // Subarray must be unary for dense writes
-    if (sub.range_num() != 1)
-      return logger_->status(
-          Status_WriterError("Cannot set subarray; Multi-range dense writes "
-                             "are not supported"));
-
-    // When executed from serialization, resetting the strategy will delete
-    // the fragment for global order writes. We need to prevent this, thus
-    // persist the fragment between remote global order write submits.
-    if (strategy_ != nullptr && layout_ != Layout::GLOBAL_ORDER) {
-      strategy_->reset();
-    }
-  }
-
-  subarray_ = sub;
-
-  status_ = QueryStatus::UNINITIALIZED;
-
-  return Status::Ok();
+  // Set the subarray.
+  throw_if_not_ok(subarray_.set_subarray(subarray));
 }
 
 const Subarray* Query::subarray() const {
@@ -2347,24 +2314,39 @@ Status Query::set_subarray_unsafe(const Subarray& subarray) {
   return Status::Ok();
 }
 
-Status Query::set_subarray(const tiledb::sm::Subarray& subarray) {
-  auto query_status = status();
-  if (query_status != tiledb::sm::QueryStatus::UNINITIALIZED &&
-      query_status != tiledb::sm::QueryStatus::COMPLETED) {
-    // Can be in this initialized state when query has been de-serialized
-    // server-side and are trying to perform local submit.
-    // Don't change anything and return indication of success.
-    return Status::Ok();
+void Query::set_subarray(const tiledb::sm::Subarray& subarray) {
+  // Perform checks related to the query type.
+  switch (type_) {
+    case QueryType::READ:
+      break;
+
+    case QueryType::WRITE:
+    case QueryType::MODIFY_EXCLUSIVE:
+      if (!array_schema_->dense()) {
+        throw QueryStatusException(
+            "Cannot set subarray; Setting a subarray is not supported on "
+            "sparse writes.");
+      }
+      break;
+
+    default:
+      throw QueryStatusException(
+          "Cannot set subarray; Setting a subarray is not supported for query "
+          "type '" +
+          query_type_str(type_) + "'.");
   }
 
-  // Set subarray
+  // Check the query has not been initialized.
+  if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
+    throw QueryStatusException(
+        "Cannot set subarray; Setting a subarray on an already initialized "
+        "query is not supported.");
+  }
+
+  // Set the subarray.
   auto prev_layout = subarray_.layout();
   subarray_ = subarray;
   subarray_.set_layout(prev_layout);
-
-  status_ = QueryStatus::UNINITIALIZED;
-
-  return Status::Ok();
 }
 
 Status Query::set_subarray_unsafe(const NDRange& subarray) {
@@ -2379,9 +2361,11 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
   assert(layout_ == sub.layout());
   subarray_ = sub;
 
-  status_ = QueryStatus::UNINITIALIZED;
-
   return Status::Ok();
+}
+
+void Query::set_subarray_unsafe(const void* subarray) {
+  subarray_.set_subarray_unsafe(subarray);
 }
 
 Status Query::check_buffers_correctness() {

@@ -34,13 +34,28 @@
 #define TILEDB_CERT_FILE_H
 
 #include <array>
-#include <filesystem>
 #include <mutex>
 #include <string>
 #include <system_error>
 
 #include "tiledb/common/logger.h"
 #include "tiledb/platform/os.h"
+
+// We can remove this preprocessor block once our minimum
+// macOS version is at least 10.15. Until then macOS won't
+// compile even though this std::filesystem is only run
+// on Linux.
+#if defined(__APPLE__) && defined(__MACH__)
+static bool file_exists(const std::string&) {
+  throw std::runtime_error("cert file discovery not supported");
+}
+#else
+#include <filesystem>
+static bool file_exists(const std::string& path) {
+  std::error_code ec;
+  return std::filesystem::exists(path, ec);
+}
+#endif
 
 namespace tiledb::platform {
 
@@ -129,8 +144,7 @@ class CertFileTraits<LinuxOS> {
       };
 
       for (const std::string& cert : cert_files) {
-        std::error_code ec;
-        if (std::filesystem::exists(cert, ec)) {
+        if (file_exists(cert)) {
           cert_file_ = cert;
           return;
         }

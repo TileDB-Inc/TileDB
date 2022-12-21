@@ -337,14 +337,10 @@ void ReaderBase::check_validity_buffer_sizes() const {
   }
 }
 
-bool ReaderBase::partial_consolidated_fragment_overlap() const {
+bool ReaderBase::partial_consolidated_fragment_overlap(
+    Subarray& subarray) const {
   // Fetch relevant fragments so we check only intersecting fragments
-  const auto relevant_fragments = subarray_.relevant_fragments();
-  bool all_frag = !subarray_.is_set();
-  for (size_t i = 0;
-       i < (all_frag ? fragment_metadata_.size() : relevant_fragments->size());
-       i++) {
-    auto frag_idx = all_frag ? i : relevant_fragments->at(i);
+  for (const auto frag_idx : subarray.relevant_fragments()) {
     auto& fragment = fragment_metadata_[frag_idx];
     if (fragment->has_timestamps() &&
         fragment->partial_time_overlap(
@@ -417,22 +413,17 @@ bool ReaderBase::include_timestamps(const unsigned f) const {
 }
 
 Status ReaderBase::load_tile_offsets(
-    Subarray& subarray, const std::vector<std::string>& names) {
+    const RelevantFragments& relevant_fragments,
+    const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_offsets");
   const auto encryption_key = array_->encryption_key();
-
-  // Fetch relevant fragments so we load tile offsets only from intersecting
-  // fragments
-  const auto relevant_fragments = subarray.relevant_fragments();
-
-  bool all_frag = !subarray.is_set();
 
   const auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
-      all_frag ? fragment_metadata_.size() : relevant_fragments->size(),
+      relevant_fragments.size(),
       [&](const uint64_t i) {
-        auto frag_idx = all_frag ? i : relevant_fragments->at(i);
+        auto frag_idx = relevant_fragments[i];
         auto& fragment = fragment_metadata_[frag_idx];
         const auto format_version = fragment->format_version();
 
@@ -482,34 +473,31 @@ Status ReaderBase::load_tile_offsets(
 }
 
 Status ReaderBase::load_tile_var_sizes(
-    Subarray& subarray, const std::vector<std::string>& names) {
+    const RelevantFragments& relevant_fragments,
+    const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_var_sizes");
   const auto encryption_key = array_->encryption_key();
-
-  // Fetch relevant fragments so we load tile var sizes only from intersecting
-  // fragments
-  const auto relevant_fragments = subarray.relevant_fragments();
-
-  bool all_frag = !subarray.is_set();
 
   const auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
-      all_frag ? fragment_metadata_.size() : relevant_fragments->size(),
+      relevant_fragments.size(),
       [&](const uint64_t i) {
-        auto frag_idx = all_frag ? i : relevant_fragments->at(i);
+        auto frag_idx = relevant_fragments[i];
         auto& fragment = fragment_metadata_[frag_idx];
 
         const auto& schema = fragment->array_schema();
         for (const auto& name : names) {
           // Not a member of array schema, this field was added in array
           // schema evolution, ignore for this fragment's tile var sizes.
-          if (!schema->is_field(name))
+          if (!schema->is_field(name)) {
             continue;
+          }
 
           // Not a var size attribute.
-          if (!schema->var_size(name))
+          if (!schema->var_size(name)) {
             continue;
+          }
 
           throw_if_not_ok(fragment->load_tile_var_sizes(*encryption_key, name));
         }
@@ -1723,6 +1711,10 @@ uint64_t ReaderBase::offsets_bytesize() const {
 uint64_t ReaderBase::get_attribute_tile_size(
     const std::string& name, unsigned f, uint64_t t) {
   uint64_t tile_size = 0;
+  if (!fragment_metadata_[f]->array_schema()->is_field(name)) {
+    return tile_size;
+  }
+
   tile_size += fragment_metadata_[f]->tile_size(name, t);
 
   if (array_schema_.var_size(name)) {
@@ -1749,33 +1741,16 @@ void ReaderBase::compute_result_space_tiles(
 
   // Compute fragment tile domains
   std::vector<TileDomain<T>> frag_tile_domains;
-
-  if (partitioner_subarray.is_set()) {
-    auto relevant_frags = partitioner_subarray.relevant_fragments();
-    for (auto it = relevant_frags->rbegin(); it != relevant_frags->rend();
-         it++) {
-      if (fragment_metadata_[*it]->dense()) {
-        frag_tile_domains.emplace_back(
-            *it,
-            domain,
-            fragment_metadata_[*it]->non_empty_domain(),
-            tile_extents,
-            tile_order);
-      }
-    }
-  } else {
-    auto fragment_num = (int)fragment_metadata_.size();
-    if (fragment_num > 0) {
-      for (int i = fragment_num - 1; i >= 0; --i) {
-        if (fragment_metadata_[i]->dense()) {
-          frag_tile_domains.emplace_back(
-              i,
-              domain,
-              fragment_metadata_[i]->non_empty_domain(),
-              tile_extents,
-              tile_order);
-        }
-      }
+  auto relevant_frags = partitioner_subarray.relevant_fragments();
+  for (size_t i = relevant_frags.size(); i > 0; --i) {
+    auto f = relevant_frags[i - 1];
+    if (fragment_metadata_[f]->dense()) {
+      frag_tile_domains.emplace_back(
+          f,
+          domain,
+          fragment_metadata_[f]->non_empty_domain(),
+          tile_extents,
+          tile_order);
     }
   }
 

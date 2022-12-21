@@ -1,3 +1,5 @@
+#!/bin/bash
+
 BaseDir="$(pwd)"
 TestAppDir="$(pwd)/tiledb/examples/c_api"
 TestAppDataDir="$(pwd)/tiledb/examples/c_api/test_app_data"
@@ -23,6 +25,11 @@ TestAppDir="$(pwd)/tiledb/examples/cpp_api"
 TestAppDataDir="$(pwd)/tiledb/examples/cpp_api/test_app_data"
 for exampleexe in $(ls ${TestAppDir}/*_cpp) ;
 do
+  # Skip running WebP example with no input
+  if [ "${exampleexe##*/}" == png_ingestion_webp_cpp ]; then
+    continue
+  fi;
+
   cd ${TestAppDir}
   rm -rf ${TestAppDataDir}
   mkdir ${TestAppDataDir}

@@ -365,6 +365,9 @@ class Config {
    */
   static const std::string SM_FRAGMENT_INFO_PRELOAD_MBRS;
 
+  /** If `true` the readers might partially load/unload tile offsets. */
+  static const std::string SM_PARTIAL_TILE_OFFSETS_LOADING;
+
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;
 

@@ -659,11 +659,9 @@ TEST_CASE(
                                0, 17486, 1, 12277, 1, 12771, 1, 13389};
   tiledb::Array array_w(ctx, array_name, TILEDB_WRITE);
   tiledb::Query query_w(ctx, array_w);
-  tiledb::Subarray subarray_w(ctx, array_w);
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
       .set_data_buffer("a", data_w);
-  query_w.set_subarray(subarray_w);
   query_w.submit();
   query_w.finalize();
   array_w.close();
@@ -748,7 +746,6 @@ TEST_CASE(
   }
 
   // Resubmit
-  query.set_subarray(subarray);
   st = query.submit();
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
@@ -758,7 +755,6 @@ TEST_CASE(
   REQUIRE(data[1] == 'm');
 
   // Resubmit
-  query.set_subarray(subarray);
   st = query.submit();
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
@@ -773,7 +769,6 @@ TEST_CASE(
   }
 
   // Resubmit
-  query.set_subarray(subarray);
   st = query.submit();
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
@@ -788,7 +783,6 @@ TEST_CASE(
   }
 
   // Resubmit
-  query.set_subarray(subarray);
   st = query.submit();
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
@@ -803,7 +797,6 @@ TEST_CASE(
   }
 
   // Resubmit
-  query.set_subarray(subarray);
   st = query.submit();
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
@@ -818,7 +811,6 @@ TEST_CASE(
   }
 
   // Resubmit
-  query.set_subarray(subarray);
   st = query.submit();
   if (test::use_refactored_sparse_global_order_reader()) {
     REQUIRE(st == tiledb::Query::Status::COMPLETE);
@@ -989,11 +981,9 @@ TEST_CASE(
                                0, 17486, 1, 12277, 1, 12771, 1, 13389};
   tiledb::Array array_w(ctx, array_name, TILEDB_WRITE);
   tiledb::Query query_w(ctx, array_w);
-  tiledb::Subarray subarray_w(ctx, array_w);
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
       .set_buffer("a", data_w);
-  query_w.set_subarray(subarray_w);
   query_w.submit();
   query_w.finalize();
   array_w.close();
@@ -1036,7 +1026,6 @@ TEST_CASE(
     REQUIRE(data[0] == 'l');
   }
 
-  query.set_subarray(subarray);
   st = query.submit();
   REQUIRE(st == tiledb::Query::Status::COMPLETE);
   result_elts = query.result_buffer_elements();
