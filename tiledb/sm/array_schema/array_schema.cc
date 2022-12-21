@@ -855,6 +855,14 @@ bool ArraySchema::var_size(const std::string& name) const {
     return dim_it->second->var_size();
   }
 
+  // Dimension label
+  if constexpr (is_experimental_build) {
+    auto dim_label_ref_it = dimension_label_reference_map_.find(name);
+    if (dim_label_ref_it != dimension_label_reference_map_.end()) {
+      return dim_label_ref_it->second->is_var();
+    }
+  }
+
   // Name is not an attribute or dimension
   assert(false);
   return false;
