@@ -44,11 +44,9 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
-#include <algorithm>
 #include <cassert>
 #include <fstream>
 #include <iostream>
-#include <limits>
 #include <sstream>
 
 namespace tiledb {
@@ -135,42 +133,10 @@ void InfoCommand::print_tile_sizes() const {
   auto attributes = schema.attributes();
   uint64_t total_persisted_size = 0, total_in_memory_size = 0;
 
-  struct tile_size_extremes_t {
-    uint64_t max_persisted_tile_size = 0, max_in_memory_tile_size = 0;
-    uint64_t max_persisted_tile_size_var = 0, max_in_memory_tile_size_var = 0;
-    uint64_t max_persisted_tile_size_validity = 0, max_in_memory_tile_size_validity = 0;
-
-    uint64_t min_persisted_tile_size = std::numeric_limits<uint64_t>::max(),
-             min_in_memory_tile_size = std::numeric_limits<uint64_t>::max();
-    uint64_t min_persisted_tile_size_var = std::numeric_limits<uint64_t>::max(),
-             min_in_memory_tile_size_var = std::numeric_limits<uint64_t>::max();
-    uint64_t min_persisted_tile_size_validity = std::numeric_limits<uint64_t>::max(),
-             min_in_memory_tile_size_validity = std::numeric_limits<uint64_t>::max();
-  } mins_maxs;
-
   // Helper function for processing each attribute.
-  auto process_attr = [&](const std::string& name, bool var_size, bool is_nullable) {
+  auto process_attr = [&](const std::string& name, bool var_size) {
     uint64_t persisted_tile_size = 0, in_memory_tile_size = 0;
     uint64_t num_tiles = 0;
-
-    uint64_t max_frag_persisted_tile_size = 0, max_frag_in_memory_tile_size = 0;
-    uint64_t min_frag_persisted_tile_size =
-                 std::numeric_limits<uint64_t>::max(),
-             min_frag_in_memory_tile_size =
-                 std::numeric_limits<uint64_t>::max();
-
-    uint64_t max_frag_persisted_tile_size_var = 0, max_frag_in_memory_tile_size_var = 0;
-    uint64_t min_frag_persisted_tile_size_var =
-                 std::numeric_limits<uint64_t>::max(),
-             min_frag_in_memory_tile_size_var =
-                 std::numeric_limits<uint64_t>::max();
-
-    uint64_t max_frag_persisted_tile_size_validity = 0, max_frag_in_memory_tile_size_validity = 0;
-    uint64_t min_frag_persisted_tile_size_validity =
-                 std::numeric_limits<uint64_t>::max(),
-             min_frag_in_memory_tile_size_validity =
-                 std::numeric_limits<uint64_t>::max();
-
     for (const auto& f : fragment_metadata) {
       uint64_t tile_num = f->tile_num();
       std::vector<std::string> names;
@@ -179,81 +145,14 @@ void InfoCommand::print_tile_sizes() const {
       THROW_NOT_OK(f->load_tile_var_sizes(enc_key, name));
       for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
         persisted_tile_size += f->persisted_tile_size(name, tile_idx);
-        auto in_mem_tile_size = f->tile_size(name, tile_idx);
-        in_memory_tile_size += in_mem_tile_size;
+        in_memory_tile_size += f->tile_size(name, tile_idx);
         num_tiles++;
-        min_frag_persisted_tile_size = std::min(min_frag_persisted_tile_size, persisted_tile_size);
-        max_frag_persisted_tile_size = std::max(max_frag_persisted_tile_size, persisted_tile_size);
-
-        min_frag_in_memory_tile_size = std::min(min_frag_in_memory_tile_size, in_mem_tile_size);
-        max_frag_in_memory_tile_size = std::max(max_frag_in_memory_tile_size, in_mem_tile_size);
-
         if (var_size) {
-          auto tile_size_var_persisted =
-              f->persisted_tile_var_size(name, tile_idx);
-          persisted_tile_size += tile_size_var_persisted;
-          auto in_mem_tile_size_var =
-              f->tile_var_size(name, tile_idx);
-          in_memory_tile_size += in_mem_tile_size_var;
+          persisted_tile_size += f->persisted_tile_var_size(name, tile_idx);
+          in_memory_tile_size += f->tile_var_size(name, tile_idx);
           num_tiles++;
-
-          min_frag_persisted_tile_size_var = std::min(min_frag_persisted_tile_size_var, tile_size_var_persisted);
-          max_frag_persisted_tile_size_var = std::max(max_frag_persisted_tile_size_var, tile_size_var_persisted);
-          min_frag_in_memory_tile_size_var = std::min(min_frag_in_memory_tile_size_var, in_mem_tile_size_var);
-          max_frag_in_memory_tile_size_var = std::max(max_frag_in_memory_tile_size_var, in_mem_tile_size_var);
-        }
-        if (is_nullable) {
-          auto tile_size_validity_persisted =
-              f->persisted_tile_validity_size(name, tile_idx);
-          persisted_tile_size += tile_size_validity_persisted;
-          auto in_mem_tile_size_validity = f->tile_validity_size(name, tile_idx);
-          in_memory_tile_size += in_mem_tile_size_validity;
-          num_tiles++;
-
-          min_frag_persisted_tile_size_validity = std::min(
-              min_frag_persisted_tile_size_validity, tile_size_validity_persisted);
-          max_frag_persisted_tile_size_validity = std::max(
-              max_frag_persisted_tile_size_validity, tile_size_validity_persisted);
-          min_frag_in_memory_tile_size_validity =
-              std::min(min_frag_in_memory_tile_size_validity, in_mem_tile_size_validity);
-          max_frag_in_memory_tile_size_validity =
-              std::max(max_frag_in_memory_tile_size_validity, in_mem_tile_size_validity);
         }
       }
-      mins_maxs.max_persisted_tile_size = std::max(
-          mins_maxs.max_persisted_tile_size, max_frag_persisted_tile_size),
-      mins_maxs.max_in_memory_tile_size = std::max(
-          mins_maxs.max_in_memory_tile_size, max_frag_in_memory_tile_size);
-      mins_maxs.min_persisted_tile_size = std::min(
-          mins_maxs.min_persisted_tile_size, min_frag_persisted_tile_size);
-      mins_maxs.min_in_memory_tile_size = std::min(
-          mins_maxs.min_in_memory_tile_size, min_frag_in_memory_tile_size);
-
-      mins_maxs.max_persisted_tile_size_var = std::max(
-          mins_maxs.max_persisted_tile_size_var,
-          max_frag_persisted_tile_size_var);
-      mins_maxs.max_in_memory_tile_size_var = std::max
-          (mins_maxs.max_in_memory_tile_size_var,
-           max_frag_in_memory_tile_size_var);
-      mins_maxs.min_persisted_tile_size_var = std::min(
-          mins_maxs.min_persisted_tile_size_var,
-          min_frag_persisted_tile_size_var);
-      mins_maxs.min_in_memory_tile_size_var = std::min(
-          mins_maxs.min_in_memory_tile_size_var,
-          min_frag_in_memory_tile_size_var);
-
-      mins_maxs.max_persisted_tile_size_validity = std::max(
-          mins_maxs.max_persisted_tile_size_validity,
-          max_frag_persisted_tile_size_validity);
-      mins_maxs.max_in_memory_tile_size_validity = std::max(
-          mins_maxs.max_in_memory_tile_size_validity,
-          max_frag_in_memory_tile_size_validity);
-      mins_maxs.min_persisted_tile_size_validity = std::min(
-          mins_maxs.min_persisted_tile_size_validity,
-          min_frag_persisted_tile_size_validity);
-      mins_maxs.min_in_memory_tile_size_validity = std::min(
-          mins_maxs.min_in_memory_tile_size_validity,
-          min_frag_in_memory_tile_size_validity);
     }
     total_persisted_size += persisted_tile_size;
     total_in_memory_size += in_memory_tile_size;
@@ -263,49 +162,6 @@ void InfoCommand::print_tile_sizes() const {
               << " bytes." << std::endl;
     std::cout << "  Total in-memory tile size: " << in_memory_tile_size
               << " bytes." << std::endl;
-
-    std::cout << "max persisted tile sizes" << std::endl;
-    std::cout << "\tbasic " << mins_maxs.max_persisted_tile_size << std::endl;
-    std::cout << "\tvar_size " << mins_maxs.max_persisted_tile_size_var
-              << std::endl;
-    std::cout << "\tvalidity_size " << mins_maxs.max_persisted_tile_size_validity
-              << std::endl;
-    std::cout << "max in_memory tile sizes" << std::endl;
-    std::cout << "\tbasic " << mins_maxs.max_in_memory_tile_size << std::endl;
-    std::cout << "\tvar_size " << mins_maxs.max_in_memory_tile_size_var
-              << std::endl;
-    std::cout << "\tvalidity_size " << mins_maxs.max_in_memory_tile_size_validity
-              << std::endl;
-
-    std::cout << "min persisted tile sizes" << std::endl;
-    if (mins_maxs.min_persisted_tile_size != std::numeric_limits<uint64_t>::max()) {
-      std::cout << "\tbasic " << mins_maxs.min_persisted_tile_size << std::endl;
-    }
-    if (mins_maxs.min_persisted_tile_size_var !=
-        std::numeric_limits<uint64_t>::max()) {
-      std::cout << "\tvar_size " << mins_maxs.min_persisted_tile_size_var
-                << std::endl;
-    }
-    if (mins_maxs.min_persisted_tile_size_validity !=
-        std::numeric_limits<uint64_t>::max()) {
-      std::cout << "\tvalidity_size "
-                << mins_maxs.min_persisted_tile_size_validity << std::endl;
-    }
-    std::cout << "min in_memory tile sizes" << std::endl;
-    if (mins_maxs.min_in_memory_tile_size !=
-        std::numeric_limits<uint64_t>::max()) {
-      std::cout << "\tbasic " << mins_maxs.min_in_memory_tile_size << std::endl;
-    }
-    if (mins_maxs.min_in_memory_tile_size_var !=
-        std::numeric_limits<uint64_t>::max()) {
-      std::cout << "\tvar_size " << mins_maxs.min_in_memory_tile_size_var
-                << std::endl;
-    }
-    if (mins_maxs.min_in_memory_tile_size_validity !=
-        std::numeric_limits<uint64_t>::max()) {
-      std::cout << "\tvalidity_size "
-                << mins_maxs.min_in_memory_tile_size_validity << std::endl;
-    }
   };
 
   // Print header
@@ -314,11 +170,11 @@ void InfoCommand::print_tile_sizes() const {
 
   // Dump info about coords for sparse arrays.
   if (!schema.dense())
-    process_attr(constants::coords, false, false);
+    process_attr(constants::coords, false);
 
   // Dump info about the rest of the attributes
   for (const auto& attr : attributes)
-    process_attr(attr->name(), attr->var_size(), attr->nullable());
+    process_attr(attr->name(), attr->var_size());
 
   std::cout << "Sum of attribute persisted size: " << total_persisted_size
             << " bytes." << std::endl;
