@@ -39,7 +39,7 @@ using namespace tiledb::common;
 using namespace tiledb::sm;
 
 TEST_CASE("Test repeating names", "[array_schema]") {
-  SECTION("Label with dimension name okay") {
+  SECTION("Catch label with dimension name") {
     std::vector<shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
     std::vector<shared_ptr<Attribute>> attrs{
@@ -47,8 +47,7 @@ TEST_CASE("Test repeating names", "[array_schema]") {
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     schema->add_dimension_label(
         0, "x", DataOrder::INCREASING_DATA, Datatype::FLOAT64, false);
-    auto status = schema->check();
-    REQUIRE(status.ok());
+    REQUIRE_THROWS(throw_if_not_ok(schema->check()));
   }
 
   SECTION("Catch shared dimension/attribute name") {
@@ -87,9 +86,9 @@ TEST_CASE("Test repeating names", "[array_schema]") {
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     schema->add_dimension_label(
-        0, "x", DataOrder::INCREASING_DATA, Datatype::UINT64, true);
+        0, "x1", DataOrder::INCREASING_DATA, Datatype::UINT64, true);
     REQUIRE_THROWS(schema->add_dimension_label(
-        0, "x", DataOrder::INCREASING_DATA, Datatype::UINT64, true));
+        0, "x1", DataOrder::INCREASING_DATA, Datatype::UINT64, true));
   }
 
   SECTION("Catch repeating label name shared with dim with check") {
@@ -218,13 +217,13 @@ TEST_CASE(
   auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
   auto status = schema->check();
   schema->add_dimension_label(
-      0, "x", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true);
+      0, "x1", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true);
   schema->add_dimension_label(
       0, "y", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true);
   schema->add_dimension_label(
       0, "z", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true);
   // Check dimension label schemas
-  const auto& xref = schema->dimension_label_reference("x");
+  const auto& xref = schema->dimension_label_reference("x1");
   REQUIRE(
       xref.uri().to_string() ==
       constants::array_dimension_labels_dir_name + "/l0");
