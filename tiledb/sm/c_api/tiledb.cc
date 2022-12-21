@@ -6174,7 +6174,7 @@ TILEDB_EXPORT int32_t tiledb_array_maximum_tile_size(
   api::ensure_output_pointer_is_valid(max_in_memory_tile_size);
   try {
     tiledb_fragment_max_tile_sizes_t max_tile_sizes;
-    array->array_->array_get_fragments_tile_max_size(&max_tile_sizes);
+    array->array_->get_max_tile_size(&max_tile_sizes);
     *max_in_memory_tile_size = max_tile_sizes.max_in_memory_tile_size;
   } catch (...) {
     std::throw_with_nested(

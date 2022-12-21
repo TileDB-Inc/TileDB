@@ -467,9 +467,8 @@ class Array {
    */
   std::unordered_map<std::string, uint64_t> get_average_var_cell_sizes();
 
-  /** Return the max tile size across ALL fragments of the array. */
-  void array_get_fragments_tile_max_size(
-      tiledb_fragment_max_tile_sizes_t* max_tile_sizes);
+  /** Return the max tile size for the array. */
+  void get_max_tile_size(tiledb_fragment_max_tile_sizes_t* max_tile_sizes);
 
  private:
   /* ********************************* */
@@ -648,6 +647,15 @@ class Array {
    * Note: the Sentry object will also be released upon Array destruction.
    **/
   void set_array_closed();
+
+  /** Obtain the Fragment's max tile for the named attribute or dimension */
+  void get_max_tile_size_for_attribute_dim(
+      tiledb_fragment_max_tile_sizes_t& maxs,
+      FragmentMetadata& f,
+      const std::string& name,
+      bool var_size,
+      bool is_nullable,
+      EncryptionKey& enc_key);
 };
 
 }  // namespace sm

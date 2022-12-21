@@ -1428,7 +1428,7 @@ void Array::set_array_closed() {
   is_open_ = false;
 }
 
-void Array::array_get_fragments_tile_max_size(
+void Array::get_max_tile_size(
     tiledb_fragment_max_tile_sizes_t* max_tile_sizes) {
   assert(max_tile_sizes);
 
@@ -1462,7 +1462,8 @@ void Array::array_get_fragments_tile_max_size(
   uint64_t timestamp_start = 0;
   uint64_t timestamp_end = UINT64_MAX;
 
-  // Create an ArrayDirectory object and load
+  // Create an ArrayDirectory object and then load the array schemas
+  // and fragment metadata.
   auto array_dir = ArrayDirectory(
       storage_manager_->vfs(),
       storage_manager_->compute_tp(),
@@ -1479,95 +1480,27 @@ void Array::array_get_fragments_tile_max_size(
   tiledb_fragment_max_tile_sizes_t& maxs = *max_tile_sizes;
   memset(&maxs, 0, sizeof(maxs));
 
-  auto process_attr = [&](FragmentMetadata& f,
-                          const std::string& name,
-                          bool var_size,
-                          bool is_nullable) -> void {
-    uint64_t max_frag_persisted_fixed_tile_size = 0,
-             max_frag_in_memory_fixed_tile_size = 0;
-
-    uint64_t max_frag_persisted_tile_size_var = 0,
-             max_frag_in_memory_tile_size_var = 0;
-
-    uint64_t max_frag_persisted_tile_size_validity = 0,
-             max_frag_in_memory_tile_size_validity = 0;
-
-    uint64_t tile_num = f.tile_num();
-    std::vector<std::string> names;
-    names.push_back(name);
-    throw_if_not_ok(f.load_tile_offsets(enc_key, std::move(names)));
-    throw_if_not_ok(f.load_tile_var_sizes(enc_key, name));
-    for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
-      auto persisted_tile_size = f.persisted_tile_size(name, tile_idx);
-      // for dense, all tiles to be reported as same size
-      // for var, all tiles except last one reported as same size, with last one
-      // possibly smaller.
-      auto in_mem_tile_size = f.tile_size(name, tile_idx);
-      max_frag_persisted_fixed_tile_size =
-          std::max(max_frag_persisted_fixed_tile_size, persisted_tile_size);
-
-      max_frag_in_memory_fixed_tile_size =
-          std::max(max_frag_in_memory_fixed_tile_size, in_mem_tile_size);
-
-      if (var_size) {
-        auto tile_size_var_persisted =
-            f.persisted_tile_var_size(name, tile_idx);
-        auto tile_size_var_in_mem = f.tile_var_size(name, tile_idx);
-
-        max_frag_persisted_tile_size_var =
-            std::max(max_frag_persisted_tile_size_var, tile_size_var_persisted);
-        max_frag_in_memory_tile_size_var =
-            std::max(max_frag_in_memory_tile_size_var, tile_size_var_in_mem);
-      }
-      if (is_nullable) {
-        auto tile_size_validity_persisted =
-            f.persisted_tile_validity_size(name, tile_idx);
-        auto tile_size_validity_in_mem = f.tile_validity_size(name, tile_idx);
-
-        max_frag_persisted_tile_size_validity = std::max(
-            max_frag_persisted_tile_size_validity,
-            tile_size_validity_persisted);
-        max_frag_in_memory_tile_size_validity = std::max(
-            max_frag_in_memory_tile_size_validity, tile_size_validity_in_mem);
-      }
-      maxs.max_persisted_fixed_tile_size = std::max(
-          maxs.max_persisted_fixed_tile_size,
-          max_frag_persisted_fixed_tile_size),
-      maxs.max_in_memory_fixed_tile_size = std::max(
-          maxs.max_in_memory_fixed_tile_size,
-          max_frag_in_memory_fixed_tile_size);
-
-      maxs.max_persisted_tile_size_var = std::max(
-          maxs.max_persisted_tile_size_var, max_frag_persisted_tile_size_var);
-      maxs.max_in_memory_tile_size_var = std::max(
-          maxs.max_in_memory_tile_size_var, max_frag_in_memory_tile_size_var);
-
-      maxs.max_persisted_tile_size_validity = std::max(
-          maxs.max_persisted_tile_size_validity,
-          max_frag_persisted_tile_size_validity);
-      maxs.max_in_memory_tile_size_validity = std::max(
-          maxs.max_in_memory_tile_size_validity,
-          max_frag_in_memory_tile_size_validity);
-    }
-  };
   for (auto& frag : *fragment_metadata) {
     auto& frags_schema = frag->array_schema();
 
-    if (!frags_schema->dense())
-      process_attr(*frag, constants::coords, false, false);
+    if (!frags_schema->dense()) {
+      get_max_tile_size_for_attribute_dim(maxs, *frag, constants::coords, false, false, enc_key);
+    }
 
     auto& attributes = frags_schema->attributes();
     for (auto& attrib : attributes) {
-      process_attr(
-          *frag, attrib->name(), attrib->var_size(), attrib->nullable());
+      get_max_tile_size_for_attribute_dim(
+          maxs, *frag, attrib->name(), attrib->var_size(), attrib->nullable(), enc_key);
     }
     auto dim_names = frags_schema->dim_names();
     for (auto& dim_name : dim_names) {
-      process_attr(
+      get_max_tile_size_for_attribute_dim(
+          maxs,
           *frag,
           dim_name,
           frags_schema->var_size(dim_name),
-          frags_schema->is_nullable(dim_name));
+          frags_schema->is_nullable(dim_name), 
+          enc_key);
     }
   }
   maxs.max_in_memory_tile_size = std::max(
@@ -1575,5 +1508,76 @@ void Array::array_get_fragments_tile_max_size(
   maxs.max_persisted_tile_size = std::max(
       maxs.max_persisted_fixed_tile_size, maxs.max_persisted_tile_size_var);
 }
+
+void Array::get_max_tile_size_for_attribute_dim (
+    tiledb_fragment_max_tile_sizes_t& maxs,
+    FragmentMetadata& f,
+    const std::string& name,
+    bool var_size,
+    bool is_nullable,
+    EncryptionKey& enc_key) {
+  uint64_t max_frag_persisted_fixed_tile_size = 0,
+           max_frag_in_memory_fixed_tile_size = 0;
+
+  uint64_t max_frag_persisted_tile_size_var = 0,
+           max_frag_in_memory_tile_size_var = 0;
+
+  uint64_t max_frag_persisted_tile_size_validity = 0,
+           max_frag_in_memory_tile_size_validity = 0;
+
+  uint64_t tile_num = f.tile_num();
+  std::vector<std::string> names{name};
+  //names.push_back(name);
+  throw_if_not_ok(f.load_tile_offsets(enc_key, std::move(names)));
+  throw_if_not_ok(f.load_tile_var_sizes(enc_key, name));
+  for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
+    auto persisted_tile_size = f.persisted_tile_size(name, tile_idx);
+    auto in_mem_tile_size = f.tile_size(name, tile_idx);
+    max_frag_persisted_fixed_tile_size =
+        std::max(max_frag_persisted_fixed_tile_size, persisted_tile_size);
+
+    max_frag_in_memory_fixed_tile_size =
+        std::max(max_frag_in_memory_fixed_tile_size, in_mem_tile_size);
+
+    if (var_size) {
+      auto tile_size_var_persisted = f.persisted_tile_var_size(name, tile_idx);
+      auto tile_size_var_in_mem = f.tile_var_size(name, tile_idx);
+
+      max_frag_persisted_tile_size_var =
+          std::max(max_frag_persisted_tile_size_var, tile_size_var_persisted);
+      max_frag_in_memory_tile_size_var =
+          std::max(max_frag_in_memory_tile_size_var, tile_size_var_in_mem);
+    }
+
+    if (is_nullable) {
+      auto tile_size_validity_persisted =
+          f.persisted_tile_validity_size(name, tile_idx);
+      auto tile_size_validity_in_mem = f.tile_validity_size(name, tile_idx);
+
+      max_frag_persisted_tile_size_validity = std::max(
+          max_frag_persisted_tile_size_validity, tile_size_validity_persisted);
+      max_frag_in_memory_tile_size_validity = std::max(
+          max_frag_in_memory_tile_size_validity, tile_size_validity_in_mem);
+    }
+
+    maxs.max_persisted_fixed_tile_size = std::max(
+        maxs.max_persisted_fixed_tile_size, max_frag_persisted_fixed_tile_size),
+    maxs.max_in_memory_fixed_tile_size = std::max(
+        maxs.max_in_memory_fixed_tile_size, max_frag_in_memory_fixed_tile_size);
+
+    maxs.max_persisted_tile_size_var = std::max(
+        maxs.max_persisted_tile_size_var, max_frag_persisted_tile_size_var);
+    maxs.max_in_memory_tile_size_var = std::max(
+        maxs.max_in_memory_tile_size_var, max_frag_in_memory_tile_size_var);
+
+    maxs.max_persisted_tile_size_validity = std::max(
+        maxs.max_persisted_tile_size_validity,
+        max_frag_persisted_tile_size_validity);
+    maxs.max_in_memory_tile_size_validity = std::max(
+        maxs.max_in_memory_tile_size_validity,
+        max_frag_in_memory_tile_size_validity);
+  }
+}
+
 }  // namespace sm
 }  // namespace tiledb

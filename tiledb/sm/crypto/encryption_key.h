@@ -58,8 +58,8 @@ class EncryptionKey {
   ~EncryptionKey();
 
   /**
-   * Constructor init'ing object utilizing any provided configuration avoiding
-   * any need for set_key() usage on the init'd object.
+   * Constructor initializing object utilizing any provided configuration
+   * avoiding any need for set_key() usage on the initialized object.
    *
    * @param config containing sm.encryption_key and sm.encryption_type for
    *        initializing the object.

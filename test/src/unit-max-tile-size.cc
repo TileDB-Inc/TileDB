@@ -47,8 +47,6 @@
 struct MaxTileSizeFx {
   const std::string main_array_name_ = "max_tile_size_array";
 
-  bool showing_data_ = false;
-
   MaxTileSizeFx()
       : vfs_(ctx_) {
   }
@@ -400,10 +398,6 @@ struct MaxTileSizeFx {
         tiledb_array_maximum_tile_size(
             &*array.ptr(), &max_in_memory_tile_size) == TILEDB_OK);
 
-    if (showing_data_) {
-      std::cout << "maximum in memory tile size " << max_in_memory_tile_size
-                << std::endl;
-    }
     return max_in_memory_tile_size;
   }
 
@@ -413,10 +407,6 @@ struct MaxTileSizeFx {
     uint64_t max_in_memory_tile_size = 0;
     max_in_memory_tile_size = array.get_max_in_memory_tile_size();
 
-    if (showing_data_) {
-      std::cout << "maximum in memory tile size " << max_in_memory_tile_size
-                << std::endl;
-    }
     return max_in_memory_tile_size;
   }
 
