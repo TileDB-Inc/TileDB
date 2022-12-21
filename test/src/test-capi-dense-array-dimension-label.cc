@@ -78,7 +78,7 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
     auto array_schema = create_array_schema(
         ctx,
         TILEDB_DENSE,
-        {"x"},
+        {"dim"},
         {TILEDB_UINT64},
         {&index_domain_[0]},
         {&x_tile_extent},
