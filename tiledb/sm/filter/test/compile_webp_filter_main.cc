@@ -29,6 +29,10 @@
 #include "tiledb/sm/filter/webp_filter.h"
 
 int main() {
+<<<<<<< Updated upstream
   tiledb::sm::WebpFilter();
+=======
+  (void)sizeof(tiledb::sm::WebpFilter);
+>>>>>>> Stashed changes
   return 0;
 }

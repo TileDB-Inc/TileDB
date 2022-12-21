@@ -37,7 +37,7 @@
 #include <atomic>
 #include <functional>
 #include <type_traits>
-#include "../../utils/print_types.h"
+#include "../../utility/print_types.h"
 #include "../ports.h"
 
 namespace tiledb::common {
@@ -50,15 +50,15 @@ class GraphNode {};
  * event when the counter hits N.
  */
 template <class Block = size_t>
-class generator {
+class generators {
   std::atomic<Block> N_{0};
   std::atomic<Block> i_{0};
 
  public:
-  generator(Block N)
+  generators(Block N)
       : N_{N} {
   }
-  generator(const generator& rhs)
+  generators(const generators& rhs)
       : N_(rhs.N_.load())
       , i_(rhs.i_.load()) {
   }

@@ -89,10 +89,10 @@
 #include "experimental/tiledb/common/dag/execution/throw_catch_types.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/item_mover.h"
-#include "experimental/tiledb/common/dag/utils/bounded_buffer.h"
-#include "experimental/tiledb/common/dag/utils/concurrent_map.h"
-#include "experimental/tiledb/common/dag/utils/concurrent_set.h"
-#include "experimental/tiledb/common/dag/utils/print_types.h"
+#include "experimental/tiledb/common/dag/utility/bounded_buffer.h"
+#include "experimental/tiledb/common/dag/utility/concurrent_map.h"
+#include "experimental/tiledb/common/dag/utility/concurrent_set.h"
+#include "experimental/tiledb/common/dag/utility/print_types.h"
 
 namespace tiledb::common {
 
@@ -114,12 +114,15 @@ class ThrowCatchPortPolicy : public PortFiniteStateMachine<
   using lock_type = typename state_machine_type::lock_type;
 
   using mover_type = Mover;
+  using scheduler_event_type = SchedulerAction;
 
  public:
+  constexpr static bool wait_returns_{false};
+
   /**
    * @brief Constructs a port policy.  Initializes the port state to empty.
    * Uses `enable_if` to select between two-stage and three-stage port state for
-   * initalization values.
+   * initialization values.
    */
   ThrowCatchPortPolicy() {
     if constexpr (std::is_same_v<PortState, two_stage>) {
@@ -132,69 +135,80 @@ class ThrowCatchPortPolicy : public PortFiniteStateMachine<
   /**
    * Policy action called on the port `ac_return` action.
    */
-  inline void on_ac_return(lock_type&, std::atomic<int>&) {
+  inline scheduler_event_type on_ac_return(lock_type&, std::atomic<int>&) {
+    return scheduler_event_type::noop;
   }
 
   /**
    * Policy action called on the port `on_source_move` action.
    */
-  inline void on_source_move(lock_type&, std::atomic<int>& event) {
+  inline scheduler_event_type on_source_move(
+      lock_type&, std::atomic<int>& event) {
     static_cast<Mover*>(this)->on_move(event);
+    return scheduler_event_type::noop;
   }
 
   /**
    * Policy action called on the port `on_sink_move` action.
    */
-  inline void on_sink_move(lock_type&, std::atomic<int>& event) {
+  inline scheduler_event_type on_sink_move(
+      lock_type&, std::atomic<int>& event) {
     static_cast<Mover*>(this)->on_move(event);
+    return scheduler_event_type::noop;
   }
 
   /**
    * Policy action called on the port `on_notify_source` action.
    */
-  inline void on_notify_source(lock_type&, std::atomic<int>&) {
+  inline scheduler_event_type on_notify_source(lock_type&, std::atomic<int>&) {
     throw(throw_catch_notify_source);
+    return scheduler_event_type::notify_source;
   }
 
   /**
    * Policy action called on the port `on_notify_sink` action.
    */
-  inline void on_notify_sink(lock_type&, std::atomic<int>&) {
+  inline scheduler_event_type on_notify_sink(lock_type&, std::atomic<int>&) {
     throw(throw_catch_notify_sink);
+    return scheduler_event_type::notify_sink;
   }
 
   /**
    * Policy action called on the port `on_source_wait` action.
    */
-  inline void on_source_wait(lock_type&, std::atomic<int>&) {
+  inline scheduler_event_type on_source_wait(lock_type&, std::atomic<int>&) {
     // @todo Should wait predicate be checked here?  (It is currently checked in
     // the scheduler body.)
     throw(throw_catch_source_wait);
+    return scheduler_event_type::source_wait;
   }
 
   /**
    * Policy action called on the port `on_sink_wait` action.
    */
-  inline void on_sink_wait(lock_type&, std::atomic<int>&) {
+  inline scheduler_event_type on_sink_wait(lock_type&, std::atomic<int>&) {
     // @todo Should wait predicate be checked here?  (It is currently checked in
     // the scheduler body.)
     throw(throw_catch_sink_wait);  // Predicate: source is full?
+    return scheduler_event_type::sink_wait;
   }
 
   /**
    * Policy action called on the port `on_term_source` action.
    */
-  inline void on_term_source(lock_type&, std::atomic<int>&) {
+  inline scheduler_event_type on_term_source(lock_type&, std::atomic<int>&) {
     throw(throw_catch_source_exit);
+    return scheduler_event_type::source_exit;
   }
 
   /**
    * Policy action called on the port `on_term_sink` action.
    */
-  inline void on_term_sink(lock_type&, std::atomic<int>&) {
+  inline scheduler_event_type on_term_sink(lock_type&, std::atomic<int>&) {
     // @todo There might be a better way of integrating `term_sink` with
     // `term_source`.  For now, `term_sink` just returns.
     // throw(throw_catch_sink_exit);
+    return scheduler_event_type::noop;
   }
 
  private:
@@ -449,8 +463,14 @@ class ThrowCatchSchedulerPolicy
  */
 template <class Node>
 class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<Task<Node>> {
-  using Scheduler = ThrowCatchScheduler<Node>;
+  using Scheduler = ThrowCatchScheduler<Task<Node>>;
   using Policy = ThrowCatchSchedulerPolicy<Task<Node>>;
+
+  using task_type = Task<Node>;
+  using task_handle_type = typename task_type::task_handle_type;
+  using node_handle_type = typename task_type::node_handle_type;
+  using node_type =
+      typename node_handle_type::element_type;  // @todo abstraction violation?
 
  public:
   /* ********************************* */
@@ -548,7 +568,7 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<Task<Node>> {
   /**
    * @brief A map to convert node ids to tasks.
    */
-  ConcurrentMap<Node, Task<Node>> node_to_task;
+  std::map<node_handle_type, task_handle_type> node_to_task;
 
  public:
   /**
@@ -558,11 +578,11 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<Task<Node>> {
    *
    * @param n The task graph node to be submitted.
    */
-  void submit(Node&& n) {
+  void submit(node_handle_type&& n) {
     ++num_submitted_tasks_;
     ++num_tasks_;
 
-    auto t = Task<Node>{n};
+    auto t = task_handle_type{std::move(n)};
 
     node_to_task[n] = t;
 
@@ -644,8 +664,6 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<Task<Node>> {
    * concurrency_level).
    */
   void worker(size_t id = 0) {
-    [[maybe_unused]] thread_local static auto scheduler = this;
-    thread_local Task<Node> this_task{nullptr};
     thread_local size_t my_id{id};
 
     /*
@@ -749,7 +767,7 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<Task<Node>> {
         /*
          * Handle the `notify` event.  A notification is invoked on the
          * corresponding task in the task graph (where a corresponding task is
-         * the one connected to the current task via an edge.
+         * the one connected to the current task via an edge).
          */
         catch (const detail::throw_catch_notify& n) {
           lock.lock();
@@ -777,7 +795,7 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<Task<Node>> {
         /*
          * Handle the `exit` event.  The scheduler transitions the task to the
          * finished state. If a source is exiting (due to a `term_source` event,
-         * the corresponding sink is notified.
+         * the corresponding sink is notified).
          */
         catch (const detail::throw_catch_exit& ex) {
           lock.lock();
@@ -804,8 +822,9 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<Task<Node>> {
           --num_tasks_;
           ++num_exited_tasks_;
 
-          if (num_tasks_ + num_exited_tasks_ != num_submitted_tasks_) {
-          };
+          if (num_tasks_ + num_exited_tasks_ != num_submitted_tasks_)
+            ;
+          {}
 
           /*
            * The task graph is finished when all submitted tasks have exited.
@@ -868,7 +887,7 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<Task<Node>> {
   /** The maximum level of concurrency among all of the worker threads */
   std::atomic<size_t> concurrency_level_;
 
-  /** Track number of tasks submited to scheduler */
+  /** Track number of tasks submitted to scheduler */
   std::atomic<size_t> num_submitted_tasks_{0};
 
   /** Track number of tasks in the scheduler */

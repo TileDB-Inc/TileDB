@@ -37,3 +37,9 @@
  *
  */
 #include "unit_policies.h"
+
+TEST_CASE("Policies: Trivial test", "[policies]") {
+  CHECK(true);
+}
+
+

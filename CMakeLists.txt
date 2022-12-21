@@ -85,8 +85,8 @@ if(APPLE)
   set(CMAKE_FIND_FRAMEWORK NEVER)
 endif()
 
-# Set C++17 as default required standard for all C++ targets.
-set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ Standard")
+# Set C++17 as required standard for all C++ targets.
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(CMAKE_SYSTEM_NAME MATCHES "CYGWIN")
   # Use GNU extensions under Cygwin
@@ -125,7 +125,7 @@ option(TILEDB_SERIALIZATION "If true, enables building with support for query se
 option(TILEDB_CCACHE "If true, enables use of 'ccache' (if present)" OFF)
 option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit tests" OFF)
 option(TILEDB_CRC32 "If true, enables building crc32 and a simple linkage test" OFF)
-option(TILEDB_WEBP "If true, enables building webp and a simple linkage test" ON)
+option(TILEDB_WEBP "If true, enables building webp and a simple linkage test" OFF)
 option(TILEDB_ABSEIL "If true, enables building abseil and a simple linkage test" OFF)
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
@@ -236,13 +236,11 @@ if (MSVC)
   # Add /MPn flag from CMake invocation (if defined).
   add_compile_options(${MSVC_MP_FLAG})
   # Build-specific flags
-  if (CMAKE_BUILD_TYPE MATCHES "Debug")
-    add_compile_options(/DDEBUG /Od /Zi /bigobj)
-  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
-    add_compile_options(/DNDEBUG /Ox)
-  elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
-    add_compile_options(/DNDEBUG /Ox /Zi)
-  endif()
+  add_compile_options(
+                      "$<$<CONFIG:Debug>:/DDEBUG /Od /Zi /bigobj>"
+                      "$<$<CONFIG:Release>:/DNDEBUG /Ox>"
+                      "$<$<CONFIG:RelWithDebInfo>:/DNDEBUG /Ox /Zi>"
+                      )
 else()
   add_compile_options(-Wall -Wextra)
   if (TILEDB_WERROR)
@@ -334,23 +332,14 @@ list(APPEND TILEDB_C_API_FILENAME_HEADERS
 )
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
-    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer/buffer_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/context/context_api_external.h"
-    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/datatype/datatype_api_enum.h"
-    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/datatype/datatype_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"
-    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter_list/filter_list_api_external.h"
-    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/group/group_api_external.h"
-    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/group/group_api_external_experimental.h"
-    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_enum.h"
-    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_external.h"
-    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_enum.h"
-    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_external.h"
 )
 set(TILEDB_C_API_RELATIVE_HEADER_BASE "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -431,11 +420,10 @@ enable_testing()
 # Accumulators for object libraries and unit tests
 # -------------------------------------------------------
 #
-# All link-completeness targets from object libraries are aggregated onto a
-# single target.
+# Aggregate all link-completeness targets from object libraries.
 #
 # 1. Before any subdirectories are added:
-#    a) Declare a target for all link-completeness checks. It's a phantom target
+#    a) Declare a target for all link-completess checks. It's a phantom target
 #       having only dependencies and with no build actions of its own.
 #    b) Declare an accumulator for link-completeness targets.
 # 2. For each object library within the various subdirectories, add a
@@ -447,19 +435,14 @@ enable_testing()
 #    a) The list of all targets from the accumulator is added as a dependency
 #       of `all_link_complete`.
 #
-# All unit tests are similarly aggregated onto the target `all_unit_tests`.
-#
-include(accumulator)
-
 add_custom_target(all_link_complete)
+include(accumulator)
 define_accumulator(object_library_compile_targets)
 
-define_accumulator(unit_test_targets)
-add_custom_target(all_unit_tests)
-
-# -------------------------------------------------------
-# Subdirectories
-# -------------------------------------------------------
+if (TILEDB_TESTS)
+  # Add cmake target for "tests" to build all unit tests executables
+  add_custom_target(tests)
+endif()
 
 # Build the TileDB library experimental features
 add_subdirectory(experimental)
@@ -470,48 +453,36 @@ add_subdirectory(tiledb)
 # Build examples
 add_subdirectory(examples)
 
-# Build tools
-if (TILEDB_TOOLS)
-  add_subdirectory(tools)
-endif()
-
-# -------------------------------------------------------
-# Tests
-# -------------------------------------------------------
+# Build unit tests
 if (TILEDB_TESTS)
   add_subdirectory(test/support)
   add_subdirectory(test)
 
-  # ----------------------------------
-  # All unit test executables from `unit_test` environments are dependencies of
-  # the `all_unit_tests` phantom target.
-  #
-  retrieve_from(Unit_Tests ACCUMULATOR unit_test_targets)
-  add_dependencies(all_unit_tests ${Unit_Tests})
-
-  # ----------------------------------
-  # Target `tests` build and runs all test executables
-  add_custom_target(tests)
-  add_dependencies(tests all_unit_tests)
-
-  # ----------------------------------
-  # Test targets added explicitly
   add_dependencies(tests tiledb_unit)
-  add_dependencies(tests tiledb_regression)
   add_dependencies(tests test_assert)
+
+  add_dependencies(tests unit_buffer unit_datum unit_dynamic_memory)
+  add_dependencies(tests unit_exception unit_interval unit_thread_pool unit_experimental)
+  add_dependencies(tests unit_array_schema unit_filter_create unit_filter_pipeline unit_metadata)
+  add_dependencies(tests unit_compressors unit_query unit_misc unit_vfs unit_array)
+  add_dependencies(tests unit_config)
+  add_dependencies(tests unit_range_subset)
+  add_dependencies(tests unit_add_ranges_list)
+  add_dependencies(tests unit_consistency)
+  add_dependencies(tests unit_range)
+  add_dependencies(tests unit_rtree)
+  add_dependencies(tests unit_tile)
 
   # C API support
   add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
   # C API basics
   add_dependencies(tests unit_capi_error unit_capi_config unit_capi_context)
-  add_dependencies(tests unit_capi_buffer)
-  add_dependencies(tests unit_capi_datatype)
-  add_dependencies(tests unit_capi_filesystem)
-  add_dependencies(tests unit_capi_object_type)
-  add_dependencies(tests unit_capi_object_walk_order)
-  add_dependencies(tests unit_capi_query_type)
   # C API array schema
   add_dependencies(tests unit_capi_filter unit_capi_filter_list)
+
+  add_dependencies(tests unit_delete_update_condition)
+  add_dependencies(tests unit_ast)
+  add_dependencies(tests unit_serializers)
 
   if (TILEDB_CRC32)
     add_dependencies(tests unit_link_crc32)
@@ -532,10 +503,15 @@ if (TILEDB_TESTS)
   add_subdirectory(test/regression)
 endif()
 
+# Build tools
+if (TILEDB_TOOLS)
+  add_subdirectory(tools)
+endif()
+
 # -------------------------------------------------------
 #
-# All the compile-targets from object library definitions are dependencies of
-# the `all_link_complete` phantom target.
+# Add all the compile-targets from object library definitions as
+# dependencies of the `all_link_complete` phantom target.
 #
 retrieve_from(Compile_Targets ACCUMULATOR object_library_compile_targets)
 add_dependencies(all_link_complete ${Compile_Targets})

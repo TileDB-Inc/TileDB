@@ -53,8 +53,7 @@
 #include <memory>
 #include <vector>
 #include "experimental/tiledb/common/dag/data_block/data_block.h"
-#include "experimental/tiledb/common/dag/utils/range_join.h"
-
+#include "experimental/tiledb/common/dag/utility/range_join.h"
 using namespace tiledb::common;
 
 /**
