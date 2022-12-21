@@ -558,7 +558,7 @@ Status Query::check_buffer_multipart_size() const {
 Status Query::get_buffer(
     const char* name, void** buffer, uint64_t** buffer_size) const {
   // Check attribute
-  if (name != constants::coords) {
+  if (!ArraySchema::is_special_attribute(name)) {
     if (array_schema_->attribute(name) == nullptr &&
         array_schema_->dimension_ptr(name) == nullptr)
       return logger_->status(Status_QueryError(
@@ -680,7 +680,7 @@ Status Query::get_data_buffer(
   }
 
   // Check attribute
-  if (name != constants::coords && name != constants::timestamps) {
+  if (!ArraySchema::is_special_attribute(name)) {
     if (array_schema_->attribute(name) == nullptr &&
         array_schema_->dimension_ptr(name) == nullptr)
       return logger_->status(Status_QueryError(
