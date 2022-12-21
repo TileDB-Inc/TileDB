@@ -591,8 +591,8 @@ class ArraySchema {
   /* ********************************* */
 
   /**
-   * Returns false if the union of attribute and dimension names contain
-   * duplicates.
+   * Throws an error if the union of attribute, dimension, and dimension label
+   * names contain duplicates.
    */
   void check_attribute_dimension_label_names() const;
 

@@ -79,7 +79,7 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
     auto array_schema = create_array_schema(
         ctx,
         TILEDB_SPARSE,
-        {"x"},
+        {"dim"},
         {TILEDB_UINT64},
         {&index_domain_[0]},
         {&x_tile_extent},
@@ -132,7 +132,7 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
     require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED));
     if (index_data_size != 0) {
       require_tiledb_ok(tiledb_query_set_data_buffer(
-          ctx, query, "x", input_index_data.data(), &index_data_size));
+          ctx, query, "dim", input_index_data.data(), &index_data_size));
     }
     if (attr_data_size != 0) {
       require_tiledb_ok(tiledb_query_set_data_buffer(

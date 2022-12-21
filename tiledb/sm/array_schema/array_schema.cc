@@ -904,29 +904,23 @@ void ArraySchema::add_dimension_label(
   auto dim = domain_->dimension_ptr(dim_id);
 
   // Check the dimension label is unique among attribute, dimension, and label
-  // names; except for possibly matching the name of the dimension it is being
-  // added to.
+  // names.
   if (check_name) {
-    // Skip attribute/dimension name check if the label name matches the name of
-    // the dimension it is added to, since the dimension names also must be
-    // unique.
-    if (name != dim->name()) {
-      // Check no attribute with this name
-      bool has_matching_name{false};
-      throw_if_not_ok(has_attribute(name, &has_matching_name));
-      if (has_matching_name) {
-        throw ArraySchemaStatusException(
-            "Cannot add a dimension label with name '" + std::string(name) +
-            "'. An attribute with that name already exists.");
-      }
+    // Check no attribute with this name
+    bool has_matching_name{false};
+    throw_if_not_ok(has_attribute(name, &has_matching_name));
+    if (has_matching_name) {
+      throw ArraySchemaStatusException(
+          "Cannot add a dimension label with name '" + std::string(name) +
+          "'. An attribute with that name already exists.");
+    }
 
-      // Check no dimension with this name
-      throw_if_not_ok(domain_->has_dimension(name, &has_matching_name));
-      if (has_matching_name) {
-        throw ArraySchemaStatusException(
-            "Cannot add a dimension label with name '" + std::string(name) +
-            "'. A different dimension with that name already exists.");
-      }
+    // Check no dimension with this name
+    throw_if_not_ok(domain_->has_dimension(name, &has_matching_name));
+    if (has_matching_name) {
+      throw ArraySchemaStatusException(
+          "Cannot add a dimension label with name '" + std::string(name) +
+          "'. A dimension with that name already exists.");
     }
 
     // Check no other dimension label with this name.
@@ -1312,42 +1306,21 @@ void ArraySchema::check_attribute_dimension_label_names() const {
   std::set<std::string> names;
   // Check attribute and dimension names are unique.
   auto dim_num = this->dim_num();
-  uint64_t expected_unique_names{dim_num + attributes_.size()};
-  for (auto attr : attributes_)
+  uint64_t expected_unique_names{dim_num + attributes_.size() +
+                                 dimension_label_references_.size()};
+  for (const auto& attr : attributes_) {
     names.insert(attr->name());
-  for (dimension_size_type i = 0; i < dim_num; ++i)
+  }
+  for (dimension_size_type i = 0; i < dim_num; ++i) {
     names.insert(domain_->dimension_ptr(i)->name());
-  if (names.size() != expected_unique_names) {
-    throw ArraySchemaStatusException(
-        "Array schema check failed; Attributes and dimensions must have unique "
-        "names");
   }
-  // Check dimension label names are unique except at most 1 label / dimension
-  // that has the same name as the dimension it is on.
-  expected_unique_names += dimension_label_references_.size();
-  std::vector<bool> label_with_dim_name(dim_num, false);
-  for (const auto& label : dimension_label_references_) {
-    const auto& label_name = label->name();
-    const auto dim_id = label->dimension_index();
-    // Check if the dimension label has the same name as the dimension
-    if (label_name == domain_->dimension_ptr(dim_id)->name()) {
-      // Check if there is already a dimension label with that name.
-      if (label_with_dim_name[dim_id]) {
-        throw ArraySchemaStatusException(
-            "Array schema check failed; At most one dimension label can share "
-            "a name with the dimension it is on");
-      }
-      --expected_unique_names;  // decrement number of unique name - this name
-                                // is not unique
-      label_with_dim_name[dim_id] = true;
-    } else {
-      names.insert(label_name);
-    }
+  for (const auto& dim_label_ref : dimension_label_references_) {
+    names.insert(dim_label_ref->name());
   }
   if (names.size() != expected_unique_names) {
     throw ArraySchemaStatusException(
-        "Array schema check failed; Dimension labels must have unique "
-        "names from other labels, attributes, and dimensions");
+        "Array schema check failed; Attributes, dimensions and dimension "
+        "labels must have unique names");
   }
 }
 
