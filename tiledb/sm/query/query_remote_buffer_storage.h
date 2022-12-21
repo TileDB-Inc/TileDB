@@ -1,5 +1,5 @@
 /**
- * @file   query_remote_buffer.h
+ * @file query_remote_buffer_storage.h
  *
  * @section LICENSE
  *

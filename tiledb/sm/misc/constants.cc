@@ -672,6 +672,9 @@ const uint64_t max_tile_chunk_size = 64 * 1024;
 const uint64_t max_string_dim_split_depth = 7;
 
 /** Maximum number of attempts to wait for an S3 response. */
+const uint64_t s3_multipart_minimum_size = 5242880;
+
+/** Maximum number of attempts to wait for an S3 response. */
 const unsigned int s3_max_attempts = 100;
 
 /** Milliseconds of wait time between S3 attempts. */

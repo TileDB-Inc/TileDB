@@ -1117,7 +1117,7 @@ class Query {
    *
    * Returns true if query buffers meet S3 multipart upload size requirements.
    */
-  bool check_trim_and_buffer_tile_alignment();
+  bool check_trim_and_buffer_tile_alignment(bool finalize = false);
 
   /**
    * Reset coord buffer markers at end of a global write submit.

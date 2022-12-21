@@ -1285,22 +1285,37 @@ Status query_to_capnp(
     const auto& name = buffer_names[i];
     const auto& buff = query.buffer(name);
     attr_buffer_builder.setName(name);
-    if (buff.buffer_var_ != nullptr && buff.buffer_var_size_ != nullptr) {
-      // Variable-sized buffer TODO
-      total_var_len_bytes += *buff.buffer_var_size_;
-      attr_buffer_builder.setVarLenBufferSizeInBytes(*buff.buffer_var_size_);
-      total_fixed_len_bytes += *buff.buffer_size_;
-      attr_buffer_builder.setFixedLenBufferSizeInBytes(*buff.buffer_size_);
+    if (buff.buffer_var_ != nullptr || buff.buffer_var_size_ != nullptr) {
+      // Variable-sized buffer
+      uint64_t var_buff_size = remote_buffer_cache[name].buffer_var.size();
+      uint64_t offset_buff_size = remote_buffer_cache[name].buffer.size();
+
+      // For remote GOWs the cache already contains user buffer data.
+      if (query.type() != QueryType::WRITE ||
+          query.layout() != Layout::GLOBAL_ORDER) {
+        // Don't include user buffer for serializing remote global order writes.
+        var_buff_size += *buff.buffer_var_size_;
+        offset_buff_size += *buff.buffer_size_;
+      }
+      total_var_len_bytes += var_buff_size;
+      attr_buffer_builder.setVarLenBufferSizeInBytes(var_buff_size);
+
+      total_fixed_len_bytes += offset_buff_size;
+      attr_buffer_builder.setFixedLenBufferSizeInBytes(offset_buff_size);
 
       // Set original user requested sizes
       attr_buffer_builder.setOriginalVarLenBufferSizeInBytes(
           buff.original_buffer_var_size_);
       attr_buffer_builder.setOriginalFixedLenBufferSizeInBytes(
           buff.original_buffer_size_);
-    } else if (buff.buffer_ != nullptr && buff.buffer_size_ != nullptr) {
+    } else if (buff.buffer_ != nullptr || buff.buffer_size_ != nullptr) {
       // Fixed-length buffer
-      uint64_t buff_size =
-          *buff.buffer_size_ + remote_buffer_cache[name].buffer.size();
+      uint64_t buff_size = remote_buffer_cache[name].buffer.size();
+
+      if (query.type() != QueryType::WRITE ||
+          query.layout() != Layout::GLOBAL_ORDER) {
+        buff_size += *buff.buffer_size_;
+      }
       total_fixed_len_bytes += buff_size;
 
       attr_buffer_builder.setFixedLenBufferSizeInBytes(buff_size);
@@ -1315,9 +1330,13 @@ Status query_to_capnp(
     }
 
     if (buff.validity_vector_.buffer_size() != nullptr) {
-      total_validity_len_bytes += *buff.validity_vector_.buffer_size();
-      attr_buffer_builder.setValidityLenBufferSizeInBytes(
-          *buff.validity_vector_.buffer_size());
+      uint64_t buff_size = remote_buffer_cache[name].buffer_validity.size();
+      if (query.type() != QueryType::WRITE ||
+          query.layout() != Layout::GLOBAL_ORDER) {
+        buff_size += *buff.validity_vector_.buffer_size();
+      }
+      total_validity_len_bytes += buff_size;
+      attr_buffer_builder.setValidityLenBufferSizeInBytes(buff_size);
 
       // Set original user requested sizes
       attr_buffer_builder.setOriginalValidityLenBufferSizeInBytes(
@@ -1619,12 +1638,13 @@ Status query_from_capnp(
             (!var_size && data_size_left >= fixedlen_size);
         const bool has_mem_for_offset =
             (var_size && offset_size_left >= fixedlen_size) || !var_size;
-        const bool has_mem_for_validity = validity_size_left >= validitylen_size;
+        const bool has_mem_for_validity =
+            validity_size_left >= validitylen_size;
 
         if (!has_mem_for_data || !has_mem_for_offset || !has_mem_for_validity) {
           return LOG_STATUS(Status_SerializationError(
-              "Error deserializing query; buffer too small for buffer '" + name
-              + "'."));
+              "Error deserializing query; buffer too small for buffer '" +
+              name + "'."));
         }
 
         // Copy the response data into user buffers.
@@ -1739,9 +1759,9 @@ Status query_from_capnp(
       // Always expect null buffers when deserializing.
       if (existing_buffer != nullptr || existing_offset_buffer != nullptr ||
           existing_validity_buffer != nullptr)
-        return LOG_STATUS(Status_SerializationError(
-            "Error deserializing query; unexpected "
-            "buffer set on server-side."));
+        return LOG_STATUS(
+            Status_SerializationError("Error deserializing query; unexpected "
+                                      "buffer set on server-side."));
 
       Query::SerializationState::AttrState* attr_state;
       RETURN_NOT_OK(query->get_attr_serialization_state(name, &attr_state));
@@ -2132,16 +2152,33 @@ Status query_serialize(
             const std::string name = attr_buffer_builder.getName().cStr();
 
             auto query_buffer = query->buffer(name);
-            auto query_buffer_cache = remote_buffer_storage[name];
+            auto& query_buffer_cache = remote_buffer_storage[name];
 
             if (query_buffer.buffer_var_size_ != nullptr &&
                 query_buffer.buffer_var_ != nullptr) {
-              // TODO: Prepend var sized buffers
-              Buffer offsets(query_buffer.buffer_, *query_buffer.buffer_size_);
-              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(offsets)));
-              Buffer data(
-                  query_buffer.buffer_var_, *query_buffer.buffer_var_size_);
+              // Variable size offset buffers.
+              Buffer data(query_buffer_cache.buffer);
+
+              // For remote GOWs the cache already contains user buffer data.
+              if (query->type() != QueryType::WRITE ||
+                  query->layout() != Layout::GLOBAL_ORDER) {
+                throw_if_not_ok(
+                    data.realloc(data.size() + *query_buffer.buffer_size_));
+                throw_if_not_ok(data.write(
+                    query_buffer.buffer_, *query_buffer.buffer_size_));
+              }
               RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
+
+              Buffer var(query_buffer_cache.buffer_var);
+              // Variable sized data buffers.
+              if (query->type() != QueryType::WRITE ||
+                  query->layout() != Layout::GLOBAL_ORDER) {
+                throw_if_not_ok(
+                    var.realloc(var.size() + *query_buffer.buffer_var_size_));
+                throw_if_not_ok(var.write(
+                    query_buffer.buffer_var_, *query_buffer.buffer_var_size_));
+              }
+              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(var)));
             } else if (
                 query_buffer.buffer_size_ != nullptr &&
                 query_buffer.buffer_ != nullptr) {
@@ -2150,20 +2187,28 @@ Status query_serialize(
               // Write data from buffer cache.
               Buffer data(query_buffer_cache.buffer);
 
-              // Allocate required space and append query buffers.
-              throw_if_not_ok(data.realloc(cache_buf_size + query_buf_size));
-              throw_if_not_ok(data.write(
-                  query_buffer.buffer_, cache_buf_size, query_buf_size));
+              if (query->type() != QueryType::WRITE ||
+                  query->layout() != Layout::GLOBAL_ORDER) {
+                throw_if_not_ok(data.realloc(cache_buf_size + query_buf_size));
+                throw_if_not_ok(
+                    data.write(query_buffer.buffer_, query_buf_size));
+              }
               RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
             } else {
-              assert(false);
+              throw StatusException(Status_SerializationError(
+                  "Unable to serialize invalid query buffers."));
             }
 
             if (query_buffer.validity_vector_.buffer_size() != nullptr) {
-              Buffer validity(
-                  query_buffer.validity_vector_.buffer(),
-                  *query_buffer.validity_vector_.buffer_size());
-              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(validity)));
+              Buffer data(query_buffer_cache.buffer_validity);
+
+              if (query->type() != QueryType::WRITE ||
+                  query->layout() != Layout::GLOBAL_ORDER) {
+                throw_if_not_ok(data.write(
+                    query_buffer.validity_vector_.buffer(),
+                    *query_buffer.validity_vector_.buffer_size()));
+              }
+              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
             }
           }
         }

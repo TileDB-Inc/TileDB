@@ -105,7 +105,7 @@ Query::Query(
     , consolidation_with_timestamps_(false)
     , force_legacy_reader_(false)
     , fragment_name_(fragment_name)
-    , remote_query_(false)
+    , remote_query_(array_->is_remote())
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
     , fragment_size_(std::numeric_limits<uint64_t>::max()) {
@@ -469,6 +469,9 @@ Status Query::submit_and_finalize() {
           Status_QueryError("Error in query submit_and_finalize; remote array "
                             "with no rest client."));
 
+    // Finalize the global order write cache.
+    check_trim_and_buffer_tile_alignment(true);
+
     if (status_ == QueryStatus::UNINITIALIZED) {
       RETURN_NOT_OK(create_strategy());
     }
@@ -485,14 +488,13 @@ Status Query::submit_and_finalize() {
   return Status::Ok();
 }
 
-bool Query::check_trim_and_buffer_tile_alignment() {
+bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
   // Only applicable for remote global order writes
   if (!array_->is_remote() || type_ != QueryType::WRITE ||
       layout_ != Layout::GLOBAL_ORDER) {
     // Other query types are not restricted to 5MB.
     return true;
   }
-
   uint64_t cell_num_per_tile = array_schema_->dense() ?
                                    array_schema_->domain().cell_num_per_tile() :
                                    array_schema_->capacity();
@@ -500,74 +502,112 @@ bool Query::check_trim_and_buffer_tile_alignment() {
   // If any buffer is < 5 MB we can't submit to REST.
   bool submit = true;
   for (auto&& buff : buffers_) {
-    [[maybe_unused]] const bool is_nullable =
-        array_schema_->is_nullable(buff.first);
-    const bool is_cached = query_remote_buffer_storage_.count(buff.first);
-    if (array_schema_->var_size(buff.first)) {
-      auto offsets_buf_size = *buff.second.buffer_size_;
-      const uint64_t to_trim =
-          (offsets_buf_size / constants::cell_var_offset_size) %
-          cell_num_per_tile;
-      if (to_trim) {
-        QueryRemoteBufferStorage storage;
-        throw_if_not_ok(storage.buffer.write(
-            static_cast<char*>(buff.second.buffer_) + offsets_buf_size -
-                to_trim - 1,
-            to_trim));
+    bool is_var = array_schema_->var_size(buff.first);
+    bool is_nullable = array_schema_->is_nullable(buff.first);
+    uint64_t cell_size = datatype_size(array_schema_->type(buff.first));
+    uint64_t buffer_size = *buff.second.buffer_size_;
+    uint64_t buff_cells = is_var ?
+                              buffer_size / constants::cell_var_offset_size :
+                              buffer_size / cell_size;
+    // If tile_trim is > 0 the buffer is not tile aligned.
+    uint64_t tile_trim =
+        buff_cells > cell_num_per_tile ? buff_cells % cell_num_per_tile : 0;
 
-        query_remote_buffer_storage_.emplace(buff.first, storage);
-        *buff.second.buffer_size_ -= to_trim;
+    // If the attribute is nullable we should ensure validity buffer is 5MB.
+    uint64_t validity_buffer_size =
+        is_nullable ? *buff.second.validity_vector_.buffer_size() :
+                      constants::s3_multipart_minimum_size;
+    uint64_t var_buffer_size = is_var ? *buff.second.buffer_var_size_ :
+                                        constants::s3_multipart_minimum_size;
+
+    // If no bytes to trim, write is tile-aligned but less than s3 limit.
+    uint64_t trim_bytes = tile_trim * cell_size;
+
+    // If the cache does not exist in the map this will construct one.
+    auto& cache = query_remote_buffer_storage_[buff.first];
+
+    if (is_var) {
+      // For var sized attributes the fixed buffer is used for offsets.
+      throw_if_not_ok(cache.buffer.realloc(
+          cache.buffer.size() +
+          (buffer_size - (tile_trim * constants::cell_var_offset_size))));
+      throw_if_not_ok(cache.buffer.write(
+          buff.second.buffer_,
+          buffer_size - (tile_trim * constants::cell_var_offset_size)));
+      // Write the variable sized data into cache.
+      throw_if_not_ok(cache.buffer_var.realloc(
+          cache.buffer_var.size() + (var_buffer_size - trim_bytes)));
+      throw_if_not_ok(cache.buffer_var.write(
+          buff.second.buffer_var_, var_buffer_size - trim_bytes));
+      if (cache.buffer_var.size() < constants::s3_multipart_minimum_size) {
+        submit = false;
       }
     } else {
-      // Fixed size attribute or dimension.
-      const uint64_t cell_size = array_schema_->cell_size(buff.first);
-      const uint64_t fixed_buf_size = *buff.second.buffer_size_;
-      const uint64_t buff_cells = fixed_buf_size / cell_size;
+      // Fixed size attribute.
+      throw_if_not_ok(cache.buffer.realloc(
+          cache.buffer.size() + (buffer_size - trim_bytes)));
+      throw_if_not_ok(
+          cache.buffer.write(buff.second.buffer_, buffer_size - trim_bytes));
+    }
 
-      // If tile_trim is > 0 the buffer is not tile aligned.
-      const uint64_t tile_trim =
-          buff_cells > cell_num_per_tile ? buff_cells % cell_num_per_tile : 0;
+    if (is_nullable) {
+      // Write the validity buffers into cache.
+      throw_if_not_ok(cache.buffer_validity.realloc(
+          cache.buffer_validity.size() +
+          (validity_buffer_size - trim_bytes / cell_size)));
+      throw_if_not_ok(cache.buffer_validity.write(
+          buff.second.validity_vector_.buffer(),
+          validity_buffer_size - trim_bytes / cell_size));
+      if (cache.buffer_validity.size() < constants::s3_multipart_minimum_size) {
+        submit = false;
+      }
+    }
 
-      const uint64_t s3_limit = 5242880;
-      if (tile_trim || fixed_buf_size < s3_limit) {
-        // If no bytes to trim, write is tile-aligned but less than s3_limit.
-        const uint64_t trim_bytes =
-            tile_trim == 0 ? fixed_buf_size : tile_trim * cell_size;
+    if (cache.buffer.size() < constants::s3_multipart_minimum_size) {
+      submit = false;
+    }
 
-        if (is_cached) {
-          // If the buffer already has a cache update it.
-          auto& cache = query_remote_buffer_storage_[buff.first];
-          throw_if_not_ok(cache.buffer.realloc(
-              cache.buffer.size() + trim_bytes));
-          throw_if_not_ok(cache.buffer.write(
-              buff.second.buffer_, cache.buffer.offset(), trim_bytes));
-          cache.buffer.set_offset(cache.buffer.size());
+    // Drop trimmed data from the buffer size.
+    *buff.second.buffer_size_ -= trim_bytes;
+    if (is_var) {
+      *buff.second.buffer_var_size_ -= trim_bytes;
+    }
+    if (is_nullable) {
+      *buff.second.validity_vector_.buffer_size() -= trim_bytes;
+    }
 
-          // Check if we can submit the updated cache for a multipart upload.
-          if (cache.buffer.size() < s3_limit) {
-            submit = false;
-          }
+    if (finalize || submit) {
+      // If the user ever writes more tiles than this, the array will overflow.
+      auto num = array_schema_->domain().cell_num(subarray_.ndrange(0));
+      buff_cells = cache.buffer.size() / cell_size;
+      uint64_t overflow_cells = buff_cells > num ? buff_cells % num : 0;
+      if (overflow_cells != 0) {
+        if (is_var) {
+          cache.buffer.set_size(
+              cache.buffer.size() -
+              (overflow_cells * constants::cell_var_offset_size));
+          *buff.second.buffer_size_ -= std::min(
+              *buff.second.buffer_size_,
+              overflow_cells * constants::cell_var_offset_size);
+          cache.buffer_var.set_size(
+              cache.buffer_var.size() - (overflow_cells * cell_size));
+          *buff.second.buffer_var_size_ -= std::min(
+              *buff.second.buffer_var_size_,
+              overflow_cells * constants::cell_var_offset_size);
         } else {
-          // Create a cache for this buffer.
-          QueryRemoteBufferStorage storage;
-          throw_if_not_ok(storage.buffer.write(
-              buff.second.buffer_, 0, trim_bytes));
-          auto ins = query_remote_buffer_storage_.emplace(buff.first, storage);
-          if (!ins.second) {
-            throw StatusException(Status_QueryError(
-                "Unable to cache buffers for remote global order write."));
-          }
-
-          ins.first->second.buffer.set_offset(trim_bytes);
-          if (trim_bytes < s3_limit) {
-            submit = false;
-          }
+          cache.buffer.set_size(
+              cache.buffer.size() - (overflow_cells * cell_size));
+          *buff.second.buffer_size_ -=
+              std::min(*buff.second.buffer_size_, (overflow_cells * cell_size));
         }
 
-        *buff.second.buffer_size_ -= trim_bytes;
+        if (is_nullable) {
+          cache.buffer_validity.set_size(
+              cache.buffer_validity.size() - overflow_cells);
+          *buff.second.validity_vector_.buffer_size() -= std::min(
+              *buff.second.validity_vector_.buffer_size(), overflow_cells);
+        }
       }
-      // If fixed buffers meet S3 upload requirements we will include cached
-      // buffers during `query_serialize`.
     }
   }
 
@@ -2387,11 +2427,10 @@ Status Query::submit() {
     }
 
     RETURN_NOT_OK(rest_client->submit_query_to_rest(array_->array_uri(), this));
-    // Clear buffers we have already submitted to REST
+    reset_coords_markers();
     if (layout_ == Layout::GLOBAL_ORDER) {
       query_remote_buffer_storage_.clear();
     }
-    reset_coords_markers();
     return Status::Ok();
   }
   RETURN_NOT_OK(init());
