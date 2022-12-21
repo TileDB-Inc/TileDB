@@ -226,8 +226,8 @@ Status array_from_capnp(
           query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
         RETURN_NOT_OK(array->set_timestamp_end_opened_at(0));
       } else {
-        // TODO: fix type of error
-        throw Status_ArrayError("Cannot open array; Unsupported query type.");
+        throw StatusException(Status_SerializationError(
+            "Cannot open array; Unsupported query type."));
       }
     }
   }

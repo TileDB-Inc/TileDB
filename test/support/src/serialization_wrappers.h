@@ -132,11 +132,12 @@ int tiledb_fragment_info_serialize(
 /**
  * Wrap a query serialize/deserialize call
  *
- * @param ctx tiledb context
- * @param array_uri array to execute the query on
- * @param serialized vector allocated externally to store serialized data
- * @param query_to_serialize query to serialize
- * @param query_deserialized query to deserialize into
+ * @param ctx Tiledb context
+ * @param array_uri Array to execute the query on
+ * @param serialized Vector allocated externally to store serialized data
+ * @param client_to_server If it's server or client serializing this query
+ * @param query_to_serialize Query to serialize
+ * @param query_deserialized Query to deserialize into
  * @return status
  */
 int tiledb_query_v2_serialize(

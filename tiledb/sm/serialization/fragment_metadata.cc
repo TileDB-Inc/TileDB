@@ -54,6 +54,68 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
+void generic_tile_offsets_from_capnp(
+    const capnp::FragmentMetadata::GenericTileOffsets::Reader& gt_reader,
+    FragmentMetadata::GenericTileOffsets& gt_offsets) {
+  gt_offsets.rtree_ = gt_reader.getRtree();
+  if (gt_reader.hasTileOffsets()) {
+    gt_offsets.tile_offsets_.reserve(gt_reader.getTileOffsets().size());
+    for (const auto& tile_offset : gt_reader.getTileOffsets()) {
+      gt_offsets.tile_offsets_.emplace_back(tile_offset);
+    }
+  }
+  if (gt_reader.hasTileVarOffsets()) {
+    gt_offsets.tile_var_offsets_.reserve(gt_reader.getTileVarOffsets().size());
+    for (const auto& tile_var_offset : gt_reader.getTileVarOffsets()) {
+      gt_offsets.tile_var_offsets_.emplace_back(tile_var_offset);
+    }
+  }
+  if (gt_reader.hasTileVarSizes()) {
+    gt_offsets.tile_var_sizes_.reserve(gt_reader.getTileVarSizes().size());
+    for (const auto& tile_var_size : gt_reader.getTileVarSizes()) {
+      gt_offsets.tile_var_sizes_.emplace_back(tile_var_size);
+    }
+  }
+  if (gt_reader.hasTileValidityOffsets()) {
+    gt_offsets.tile_validity_offsets_.reserve(
+        gt_reader.getTileValidityOffsets().size());
+    for (const auto& tile_validity_offset :
+         gt_reader.getTileValidityOffsets()) {
+      gt_offsets.tile_validity_offsets_.emplace_back(tile_validity_offset);
+    }
+  }
+  if (gt_reader.hasTileMinOffsets()) {
+    gt_offsets.tile_min_offsets_.reserve(gt_reader.getTileMinOffsets().size());
+    for (const auto& tile_min_offset : gt_reader.getTileMinOffsets()) {
+      gt_offsets.tile_min_offsets_.emplace_back(tile_min_offset);
+    }
+  }
+  if (gt_reader.hasTileMaxOffsets()) {
+    gt_offsets.tile_max_offsets_.reserve(gt_reader.getTileMaxOffsets().size());
+    for (const auto& tile_max_offset : gt_reader.getTileMaxOffsets()) {
+      gt_offsets.tile_max_offsets_.emplace_back(tile_max_offset);
+    }
+  }
+  if (gt_reader.hasTileSumOffsets()) {
+    gt_offsets.tile_sum_offsets_.reserve(gt_reader.getTileSumOffsets().size());
+    for (const auto& tile_sum_offset : gt_reader.getTileSumOffsets()) {
+      gt_offsets.tile_sum_offsets_.emplace_back(tile_sum_offset);
+    }
+  }
+  if (gt_reader.hasTileNullCountOffsets()) {
+    gt_offsets.tile_null_count_offsets_.reserve(
+        gt_reader.getTileNullCountOffsets().size());
+    for (const auto& tile_null_count_offset :
+         gt_reader.getTileNullCountOffsets()) {
+      gt_offsets.tile_null_count_offsets_.emplace_back(tile_null_count_offset);
+    }
+  }
+  gt_offsets.fragment_min_max_sum_null_count_offset_ =
+      gt_reader.getFragmentMinMaxSumNullCountOffset();
+  gt_offsets.processed_conditions_offsets_ =
+      gt_reader.getProcessedConditionsOffsets();
+}
+
 Status fragment_metadata_from_capnp(
     const shared_ptr<const ArraySchema>& array_schema,
     const capnp::FragmentMetadata::Reader& frag_meta_reader,
@@ -296,78 +358,88 @@ Status fragment_metadata_from_capnp(
     }
   }
 
-  auto& gt_offsets = frag_meta->generic_tile_offsets();
   if (frag_meta_reader.hasGtOffsets()) {
-    auto gt_reader = frag_meta_reader.getGtOffsets();
-    gt_offsets.rtree_ = gt_reader.getRtree();
-    if (gt_reader.hasTileOffsets()) {
-      gt_offsets.tile_offsets_.reserve(gt_reader.getTileOffsets().size());
-      for (const auto& tile_offset : gt_reader.getTileOffsets()) {
-        gt_offsets.tile_offsets_.emplace_back(tile_offset);
-      }
-    }
-    if (gt_reader.hasTileVarOffsets()) {
-      gt_offsets.tile_var_offsets_.reserve(
-          gt_reader.getTileVarOffsets().size());
-      for (const auto& tile_var_offset : gt_reader.getTileVarOffsets()) {
-        gt_offsets.tile_var_offsets_.emplace_back(tile_var_offset);
-      }
-    }
-    if (gt_reader.hasTileVarSizes()) {
-      gt_offsets.tile_var_sizes_.reserve(gt_reader.getTileVarSizes().size());
-      for (const auto& tile_var_size : gt_reader.getTileVarSizes()) {
-        gt_offsets.tile_var_sizes_.emplace_back(tile_var_size);
-      }
-    }
-    if (gt_reader.hasTileValidityOffsets()) {
-      gt_offsets.tile_validity_offsets_.reserve(
-          gt_reader.getTileValidityOffsets().size());
-      for (const auto& tile_validity_offset :
-           gt_reader.getTileValidityOffsets()) {
-        gt_offsets.tile_validity_offsets_.emplace_back(tile_validity_offset);
-      }
-    }
-    if (gt_reader.hasTileMinOffsets()) {
-      gt_offsets.tile_min_offsets_.reserve(
-          gt_reader.getTileMinOffsets().size());
-      for (const auto& tile_min_offset : gt_reader.getTileMinOffsets()) {
-        gt_offsets.tile_min_offsets_.emplace_back(tile_min_offset);
-      }
-    }
-    if (gt_reader.hasTileMaxOffsets()) {
-      gt_offsets.tile_max_offsets_.reserve(
-          gt_reader.getTileMaxOffsets().size());
-      for (const auto& tile_max_offset : gt_reader.getTileMaxOffsets()) {
-        gt_offsets.tile_max_offsets_.emplace_back(tile_max_offset);
-      }
-    }
-    if (gt_reader.hasTileSumOffsets()) {
-      gt_offsets.tile_sum_offsets_.reserve(
-          gt_reader.getTileSumOffsets().size());
-      for (const auto& tile_sum_offset : gt_reader.getTileSumOffsets()) {
-        gt_offsets.tile_sum_offsets_.emplace_back(tile_sum_offset);
-      }
-    }
-    if (gt_reader.hasTileNullCountOffsets()) {
-      gt_offsets.tile_null_count_offsets_.reserve(
-          gt_reader.getTileNullCountOffsets().size());
-      for (const auto& tile_null_count_offset :
-           gt_reader.getTileNullCountOffsets()) {
-        gt_offsets.tile_null_count_offsets_.emplace_back(
-            tile_null_count_offset);
-      }
-    }
-    gt_offsets.fragment_min_max_sum_null_count_offset_ =
-        gt_reader.getFragmentMinMaxSumNullCountOffset();
-    gt_offsets.processed_conditions_offsets_ =
-        gt_reader.getProcessedConditionsOffsets();
-
+    generic_tile_offsets_from_capnp(
+        frag_meta_reader.getGtOffsets(), frag_meta->generic_tile_offsets());
     loaded_metadata.footer_ = true;
   }
 
   frag_meta->set_loaded_metadata(loaded_metadata);
 
   return Status::Ok();
+}
+
+void generic_tile_offsets_to_capnp(
+    const FragmentMetadata::GenericTileOffsets& gt_offsets,
+    capnp::FragmentMetadata::GenericTileOffsets::Builder& gt_offsets_builder) {
+  gt_offsets_builder.setRtree(gt_offsets.rtree_);
+  auto& gt_tile_offsets = gt_offsets.tile_offsets_;
+  if (!gt_tile_offsets.empty()) {
+    auto builder = gt_offsets_builder.initTileOffsets(gt_tile_offsets.size());
+    for (uint64_t i = 0; i < gt_tile_offsets.size(); ++i) {
+      builder.set(i, gt_tile_offsets[i]);
+    }
+  }
+  auto& gt_tile_var_offsets = gt_offsets.tile_var_offsets_;
+  if (!gt_tile_var_offsets.empty()) {
+    auto builder =
+        gt_offsets_builder.initTileVarOffsets(gt_tile_var_offsets.size());
+    for (uint64_t i = 0; i < gt_tile_var_offsets.size(); ++i) {
+      builder.set(i, gt_tile_var_offsets[i]);
+    }
+  }
+  auto& gt_tile_var_sizes = gt_offsets.tile_var_sizes_;
+  if (!gt_tile_var_sizes.empty()) {
+    auto builder =
+        gt_offsets_builder.initTileVarSizes(gt_tile_var_sizes.size());
+    for (uint64_t i = 0; i < gt_tile_var_sizes.size(); ++i) {
+      builder.set(i, gt_tile_var_sizes[i]);
+    }
+  }
+  auto& gt_tile_validity_offsets = gt_offsets.tile_validity_offsets_;
+  if (!gt_tile_validity_offsets.empty()) {
+    auto builder = gt_offsets_builder.initTileValidityOffsets(
+        gt_tile_validity_offsets.size());
+    for (uint64_t i = 0; i < gt_tile_validity_offsets.size(); ++i) {
+      builder.set(i, gt_tile_validity_offsets[i]);
+    }
+  }
+  auto& gt_tile_min_offsets = gt_offsets.tile_min_offsets_;
+  if (!gt_tile_min_offsets.empty()) {
+    auto builder =
+        gt_offsets_builder.initTileMinOffsets(gt_tile_min_offsets.size());
+    for (uint64_t i = 0; i < gt_tile_min_offsets.size(); ++i) {
+      builder.set(i, gt_tile_min_offsets[i]);
+    }
+  }
+  auto& gt_tile_max_offsets = gt_offsets.tile_max_offsets_;
+  if (!gt_tile_max_offsets.empty()) {
+    auto builder =
+        gt_offsets_builder.initTileMaxOffsets(gt_tile_max_offsets.size());
+    for (uint64_t i = 0; i < gt_tile_max_offsets.size(); ++i) {
+      builder.set(i, gt_tile_max_offsets[i]);
+    }
+  }
+  auto& gt_tile_sum_offsets = gt_offsets.tile_sum_offsets_;
+  if (!gt_tile_sum_offsets.empty()) {
+    auto builder =
+        gt_offsets_builder.initTileSumOffsets(gt_tile_sum_offsets.size());
+    for (uint64_t i = 0; i < gt_tile_sum_offsets.size(); ++i) {
+      builder.set(i, gt_tile_sum_offsets[i]);
+    }
+  }
+  auto& gt_tile_null_count_offsets = gt_offsets.tile_null_count_offsets_;
+  if (!gt_tile_null_count_offsets.empty()) {
+    auto builder = gt_offsets_builder.initTileNullCountOffsets(
+        gt_tile_null_count_offsets.size());
+    for (uint64_t i = 0; i < gt_tile_null_count_offsets.size(); ++i) {
+      builder.set(i, gt_tile_null_count_offsets[i]);
+    }
+  }
+  gt_offsets_builder.setFragmentMinMaxSumNullCountOffset(
+      gt_offsets.fragment_min_max_sum_null_count_offset_);
+  gt_offsets_builder.setProcessedConditionsOffsets(
+      gt_offsets.processed_conditions_offsets_);
 }
 
 Status fragment_metadata_to_capnp(
@@ -574,77 +646,9 @@ Status fragment_metadata_to_capnp(
       kj::ArrayPtr<uint8_t>(static_cast<uint8_t*>(buff.data()), buff.size()));
   frag_meta_builder->setRtree(vec.asPtr());
 
-  // set generic tile offsets : TODO: move to function
   auto gt_offsets_builder = frag_meta_builder->initGtOffsets();
-  const auto gt_offsets = frag_meta.generic_tile_offsets();
-  gt_offsets_builder.setRtree(gt_offsets.rtree_);
-  auto& gt_tile_offsets = gt_offsets.tile_offsets_;
-  if (!gt_tile_offsets.empty()) {
-    auto builder = gt_offsets_builder.initTileOffsets(gt_tile_offsets.size());
-    for (uint64_t i = 0; i < gt_tile_offsets.size(); ++i) {
-      builder.set(i, gt_tile_offsets[i]);
-    }
-  }
-  auto& gt_tile_var_offsets = gt_offsets.tile_var_offsets_;
-  if (!gt_tile_var_offsets.empty()) {
-    auto builder =
-        gt_offsets_builder.initTileVarOffsets(gt_tile_var_offsets.size());
-    for (uint64_t i = 0; i < gt_tile_var_offsets.size(); ++i) {
-      builder.set(i, gt_tile_var_offsets[i]);
-    }
-  }
-  auto& gt_tile_var_sizes = gt_offsets.tile_var_sizes_;
-  if (!gt_tile_var_sizes.empty()) {
-    auto builder =
-        gt_offsets_builder.initTileVarSizes(gt_tile_var_sizes.size());
-    for (uint64_t i = 0; i < gt_tile_var_sizes.size(); ++i) {
-      builder.set(i, gt_tile_var_sizes[i]);
-    }
-  }
-  auto& gt_tile_validity_offsets = gt_offsets.tile_validity_offsets_;
-  if (!gt_tile_validity_offsets.empty()) {
-    auto builder = gt_offsets_builder.initTileValidityOffsets(
-        gt_tile_validity_offsets.size());
-    for (uint64_t i = 0; i < gt_tile_validity_offsets.size(); ++i) {
-      builder.set(i, gt_tile_validity_offsets[i]);
-    }
-  }
-  auto& gt_tile_min_offsets = gt_offsets.tile_min_offsets_;
-  if (!gt_tile_min_offsets.empty()) {
-    auto builder =
-        gt_offsets_builder.initTileMinOffsets(gt_tile_min_offsets.size());
-    for (uint64_t i = 0; i < gt_tile_min_offsets.size(); ++i) {
-      builder.set(i, gt_tile_min_offsets[i]);
-    }
-  }
-  auto& gt_tile_max_offsets = gt_offsets.tile_max_offsets_;
-  if (!gt_tile_max_offsets.empty()) {
-    auto builder =
-        gt_offsets_builder.initTileMaxOffsets(gt_tile_max_offsets.size());
-    for (uint64_t i = 0; i < gt_tile_max_offsets.size(); ++i) {
-      builder.set(i, gt_tile_max_offsets[i]);
-    }
-  }
-  auto& gt_tile_sum_offsets = gt_offsets.tile_sum_offsets_;
-  if (!gt_tile_sum_offsets.empty()) {
-    auto builder =
-        gt_offsets_builder.initTileSumOffsets(gt_tile_sum_offsets.size());
-    for (uint64_t i = 0; i < gt_tile_sum_offsets.size(); ++i) {
-      builder.set(i, gt_tile_sum_offsets[i]);
-    }
-  }
-  auto& gt_tile_null_count_offsets = gt_offsets.tile_null_count_offsets_;
-  if (!gt_tile_null_count_offsets.empty()) {
-    auto builder = gt_offsets_builder.initTileNullCountOffsets(
-        gt_tile_null_count_offsets.size());
-    for (uint64_t i = 0; i < gt_tile_null_count_offsets.size(); ++i) {
-      builder.set(i, gt_tile_null_count_offsets[i]);
-    }
-  }
-  gt_offsets_builder.setFragmentMinMaxSumNullCountOffset(
-      gt_offsets.fragment_min_max_sum_null_count_offset_);
-  gt_offsets_builder.setProcessedConditionsOffsets(
-      gt_offsets.processed_conditions_offsets_);
+  generic_tile_offsets_to_capnp(
+      frag_meta.generic_tile_offsets(), gt_offsets_builder);
 
   return Status::Ok();
 }

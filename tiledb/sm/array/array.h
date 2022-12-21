@@ -481,10 +481,7 @@ class Array {
   void set_array_open(const QueryType& query_type);
 
   /**
-   * Sets the array state as open and adds the array to
-   * open arrays
-   *
-   * @param query_type The QueryType of the Array.
+   * Sets the array state as open, used in serialization
    */
   void set_serialized_array_open();
 
@@ -502,10 +499,12 @@ class Array {
   /** Load array directory for non-remote arrays */
   ArrayDirectory& load_array_directory();
 
+  /** Returns if this is a deserialized array or not */
   inline bool deserialized() const {
     return deserialized_;
   }
 
+  /** Sets the array deserialized_ member variable */
   inline void set_deserialized(bool deserialized) {
     deserialized_ = deserialized;
   }
@@ -631,6 +630,7 @@ class Array {
    */
   std::mutex mtx_;
 
+  /** True if this array has been deserialized. */
   bool deserialized_;
 
   /* ********************************* */

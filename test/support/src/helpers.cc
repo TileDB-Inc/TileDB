@@ -1761,12 +1761,22 @@ int finalize_query_wrapper(
     return rc;
   }
 
-  // Serialize the new query and "send it over the network" (server-side)
-  // 3. Server -> Client : Send query response
-  // std::vector<uint8_t> serialized2;
-  // rc = tiledb_query_v2_serialize(
-  //     ctx, array_uri.c_str(), serialized, false, server_deser_query, query);
-  // REQUIRE_SAFE(rc == TILEDB_OK);
+  /*
+   * TODO: This is disabled because it fails today as the previous serialization
+   * step before finalize, sets the query buffers to NULL for READ queries, so
+   * the following serialization step will hit an assert because of empty
+   * buffers, as query_finalize is a NOOP for READ queries. We need to figure
+   * out how to address this, and check if it actually works in real life and
+   * how. An idea is to skip sending a REST finalize request to server for
+   * queries for which is a NOOP.
+   *
+   * // Serialize the new query and "send it over the network" (server-side)
+   * 3. Server -> Client : Send query response
+   * std::vector<uint8_t> serialized2;
+   * rc = tiledb_query_v2_serialize(
+   *     ctx, array_uri.c_str(), serialized, false, server_deser_query, query);
+   * REQUIRE_SAFE(rc == TILEDB_OK);
+   */
 
   // Clean up.
   tiledb_query_free(&server_deser_query);
