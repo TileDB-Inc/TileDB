@@ -1527,7 +1527,6 @@ void Array::get_max_tile_size_for_attribute_dim (
 
   uint64_t tile_num = f.tile_num();
   std::vector<std::string> names{name};
-  //names.push_back(name);
   throw_if_not_ok(f.load_tile_offsets(enc_key, std::move(names)));
   throw_if_not_ok(f.load_tile_var_sizes(enc_key, name));
   for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
