@@ -459,11 +459,18 @@ class Query {
    * Switch the strategy depending on layout. Used by serialization.
    *
    * @param layout New layout
+   * @param fragment_timestamp The timestamp to use for new fragment names.
    * @param force_legacy_reader Force use of the legacy reader if the client
    *    requested it.
-   * @return Status
    */
-  Status reset_strategy_with_layout(Layout layout, bool force_legacy_reader);
+  void reset_strategy_with_layout(Layout layout, bool force_legacy_reader);
+
+  /**
+   * Get the fragment timestamp to use for writes.
+   *
+   * TODO: Add details
+   */
+  std::optional<uint64_t> get_fragment_timestamp() const;
 
   /**
    * Disables checking the global order and coordinate duplicates. Applicable
@@ -1043,16 +1050,12 @@ class Query {
    */
   optional<std::string> fragment_name_;
 
-  /** If set, use this timestamp when creating a new fragment. */
-  optional<uint64_t> default_fragment_timestamp_;
-
   /**
-   * The current timestamp to use for new fragments.
+   * The timestamp to use for new fragments.
    *
-   * This is only set once query is initialized or the strategy is created.
-   * Before it is initialized, it is set to nullopt.
+   * This is only used if `fragment_name_` is not set.
    */
-  optional<uint64_t> current_fragment_timestamp_;
+  optional<uint64_t> fragment_timestamp_;
 
   /** It tracks if this is a remote query */
   bool remote_query_;
@@ -1082,10 +1085,12 @@ class Query {
 
   /**
    * Create the strategy.
-   *
+   * @param timestamp Timestamp for new fragments. Must be set unless this is
+   *     a read query.
    * @param skip_checks_serialization Skip checks during serialization.
    */
-  Status create_strategy(bool skip_checks_serialization = false);
+  Status create_strategy(
+      optional<uint64_t> timestamp, bool skip_checks_serialization = false);
 
   Status check_set_fixed_buffer(const std::string& name);
 
@@ -1109,9 +1114,6 @@ class Query {
    * 3. At least one label buffer is set.
    */
   bool only_dim_label_query() const;
-
-  /** Sets the timestamp to use for new fragments. */
-  void set_current_fragment_timestamp();
 
   /**
    * This is a deprecated API.

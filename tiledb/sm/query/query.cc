@@ -107,8 +107,7 @@ Query::Query(
     , consolidation_with_timestamps_(false)
     , force_legacy_reader_(false)
     , fragment_name_(fragment_name)
-    , default_fragment_timestamp_(fragment_timestamp)
-    , current_fragment_timestamp_(nullopt)
+    , fragment_timestamp_(fragment_timestamp)
     , remote_query_(false)
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
@@ -135,6 +134,29 @@ Query::Query(
   throw_if_not_ok(subarray_.set_config(config_));
 
   rest_scratch_ = make_shared<Buffer>(HERE());
+
+  // If provided, update the fragment timestamp to match that given by the
+  // fragment name.
+  // TODO: Handle ranges.
+  // TODO: If this is appropriate, create a new function in parse_uri.cc that
+  // takes just the fragment name, not the URI.
+  if (fragment_name_.has_value()) {
+    std::pair<uint64_t, uint64_t> timestamp_range;
+    throw_if_not_ok(utils::parse::get_timestamp_range(
+        URI(fragment_name_.value()), &timestamp_range));
+    if (fragment_timestamp_.has_value()) {
+      // Fragment timestamp was also set. Make sure the timestamps match.
+      if (fragment_timestamp_.value() != timestamp_range.first) {
+        throw QueryStatusException(
+            "Cannot create query; Mismatched values provided for the fragment "
+            "name and fragment timestamp.");
+      }
+
+    } else {
+      // Set the fragment timestamp.
+      fragment_timestamp_ = timestamp_range.first;
+    }
+  }
 }
 
 Query::~Query() {
@@ -474,7 +496,7 @@ Status Query::submit_and_finalize() {
                             "with no rest client."));
 
     if (status_ == QueryStatus::UNINITIALIZED) {
-      RETURN_NOT_OK(create_strategy());
+      RETURN_NOT_OK(create_strategy(get_fragment_timestamp()));
     }
     return rest_client->submit_and_finalize_query_to_rest(
         array_->array_uri(), this);
@@ -979,11 +1001,9 @@ Status Query::init() {
     // Check the buffer names.
     RETURN_NOT_OK(check_buffer_names());
 
-    // Set the timestamp to use for new fragments if the query type is write,
-    // modify exclusive, update or delete (any type but read).
-    if (type_ != QueryType::READ) {
-      set_current_fragment_timestamp();
-    }
+    // Set the timestamp to use for new fragments. This is a no-op if the
+    // fragment timestamp is already set or the query is a read.
+    fragment_timestamp_ = get_fragment_timestamp();
 
     // Create dimension label queries and remove labels from subarray.
     if (uses_dimension_labels()) {
@@ -1015,13 +1035,13 @@ Status Query::init() {
           label_buffers_,
           buffers_,
           fragment_name_,
-          current_fragment_timestamp_));
+          fragment_timestamp_));
     }
 
     // Create the query strategy if querying main array and the Subarray does
     // not need to be updated.
     if (!only_dim_label_query() && !subarray_.has_label_ranges()) {
-      RETURN_NOT_OK(create_strategy());
+      RETURN_NOT_OK(create_strategy(fragment_timestamp_));
     }
   }
 
@@ -1097,7 +1117,7 @@ Status Query::process() {
         dynamic_cast<StrategyBase*>(strategy_.get())->stats()->reset();
         strategy_ = nullptr;
       }
-      throw_if_not_ok(create_strategy(true));
+      throw_if_not_ok(create_strategy(fragment_timestamp_, true));
     }
   }
 
@@ -1140,12 +1160,16 @@ Status Query::process() {
 
 IQueryStrategy* Query::strategy(bool skip_checks_serialization) {
   if (strategy_ == nullptr) {
-    throw_if_not_ok(create_strategy(skip_checks_serialization));
+    // Create the strategy. If this is not a read and the query is writing data
+    // to the current time, the timestamp in this strategy may differ from that
+    // used in the actual query.
+    throw_if_not_ok(
+        create_strategy(get_fragment_timestamp(), skip_checks_serialization));
   }
   return strategy_.get();
 }
 
-Status Query::reset_strategy_with_layout(
+void Query::reset_strategy_with_layout(
     Layout layout, bool force_legacy_reader) {
   force_legacy_reader_ = force_legacy_reader;
   if (strategy_ != nullptr) {
@@ -1154,9 +1178,17 @@ Status Query::reset_strategy_with_layout(
   }
   layout_ = layout;
   subarray_.set_layout(layout);
-  RETURN_NOT_OK(create_strategy(true));
+  throw_if_not_ok(create_strategy(get_fragment_timestamp(), true));
+}
 
-  return Status::Ok();
+std::optional<uint64_t> Query::get_fragment_timestamp() const {
+  if (type_ == QueryType::READ) {
+    return nullopt;
+  }
+  auto timestamp_opened = array_->timestamp_end_opened_at();
+  return fragment_timestamp_.value_or(
+      timestamp_opened == 0 ? sm::utils::time::timestamp_now_ms() :
+                              timestamp_opened);
 }
 
 bool Query::uses_dimension_labels() const {
@@ -1242,13 +1274,13 @@ Status Query::check_buffer_names() {
   return Status::Ok();
 }
 
-Status Query::create_strategy(bool skip_checks_serialization) {
+Status Query::create_strategy(
+    optional<uint64_t> timestamp, bool skip_checks_serialization) {
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     // Set the fragment timestamp if it has not yet been set.
-    if (!current_fragment_timestamp_.has_value()) {
-      set_current_fragment_timestamp();
+    if (!timestamp.has_value()) {
+      throw std::logic_error("Missing value for the fragment timestamp");
     }
-    auto timestamp = current_fragment_timestamp_.value();
 
     if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
       if (!array_schema_->dense()) {
@@ -1269,7 +1301,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           written_fragment_info_,
           coords_info_,
           remote_query_,
-          timestamp,
+          timestamp.value(),
           fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::UNORDERED) {
@@ -1291,7 +1323,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           written_fragment_info_,
           coords_info_,
           remote_query_,
-          timestamp,
+          timestamp.value(),
           fragment_name_,
           skip_checks_serialization));
     } else if (layout_ == Layout::GLOBAL_ORDER) {
@@ -1311,7 +1343,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           processed_conditions_,
           coords_info_,
           remote_query_,
-          timestamp,
+          timestamp.value(),
           fragment_name_,
           skip_checks_serialization));
     } else {
@@ -1437,9 +1469,9 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           skip_checks_serialization));
     }
   } else if (type_ == QueryType::DELETE || type_ == QueryType::UPDATE) {
-    // Set the fragment timestamp if it has not yet been set.
-    if (!current_fragment_timestamp_.has_value()) {
-      set_current_fragment_timestamp();
+    // Check the fragment timestamp is provided.
+    if (!timestamp.has_value()) {
+      throw std::logic_error("Missing value for the fragment timestamp");
     }
 
     strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
@@ -1454,7 +1486,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
         layout_,
         condition_,
         update_values_,
-        current_fragment_timestamp_.value(),
+        timestamp.value(),
         skip_checks_serialization));
   } else {
     return logger_->status(
@@ -2458,14 +2490,6 @@ bool Query::only_dim_label_query() const {
          coord_offsets_buffer_is_set_))));
 }
 
-void Query::set_current_fragment_timestamp() {
-  // Set the fragment timestamp.
-  auto timestamp_opened = array_->timestamp_end_opened_at();
-  current_fragment_timestamp_ = default_fragment_timestamp_.value_or(
-      timestamp_opened == 0 ? sm::utils::time::timestamp_now_ms() :
-                              timestamp_opened);
-}
-
 Status Query::submit() {
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
@@ -2489,7 +2513,7 @@ Status Query::submit() {
           "Error in query submission; remote array with no rest client."));
 
     if (status_ == QueryStatus::UNINITIALIZED) {
-      RETURN_NOT_OK(create_strategy());
+      RETURN_NOT_OK(create_strategy(get_fragment_timestamp()));
     }
 
     // Check that input buffers are tile-aligned for remote global order
