@@ -2005,7 +2005,7 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
     return LOG_STATUS(Status_FragmentMetadataError(
         "Cannot load R-tree; Insufficient memory budget; Needed " +
         std::to_string(tile.size()) + " but only had " +
-        std::to_string(memory_tracker_->get_memory_available()) +
+        std::to_string((int64_t)memory_tracker_->get_memory_available()) +
         " from budget " +
         std::to_string(memory_tracker_->get_memory_budget())));
   }
@@ -2934,7 +2934,7 @@ void FragmentMetadata::load_tile_offsets(Deserializer& deserializer) {
       throw FragmentMetadataStatusException(
           "Cannot load tile offsets; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
+          std::to_string((int64_t)memory_tracker_->get_memory_available()) +
           " from budget " +
           std::to_string(memory_tracker_->get_memory_budget()));
     }
@@ -2964,7 +2964,7 @@ void FragmentMetadata::load_tile_offsets(
       throw FragmentMetadataStatusException(
           "Cannot load tile offsets; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
+          std::to_string((int64_t)memory_tracker_->get_memory_available()) +
           " from budget " +
           std::to_string(memory_tracker_->get_memory_budget()));
     }
@@ -3008,7 +3008,7 @@ void FragmentMetadata::load_tile_var_offsets(Deserializer& deserializer) {
           "Cannot load tile var offsets; Insufficient memory budget; "
           "Needed " +
           std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
+          std::to_string((int64_t)memory_tracker_->get_memory_available()) +
           " from budget " +
           std::to_string(memory_tracker_->get_memory_budget()));
     }
@@ -3039,7 +3039,7 @@ void FragmentMetadata::load_tile_var_offsets(
           "Cannot load tile var offsets; Insufficient memory budget; "
           "Needed " +
           std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
+          std::to_string((int64_t)memory_tracker_->get_memory_available()) +
           " from budget " +
           std::to_string(memory_tracker_->get_memory_budget()));
     }
@@ -3080,7 +3080,7 @@ void FragmentMetadata::load_tile_var_sizes(Deserializer& deserializer) {
           "Cannot load tile var sizes; Insufficient memory budget; "
           "Needed " +
           std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
+          std::to_string((int64_t)memory_tracker_->get_memory_available()) +
           " from budget " +
           std::to_string(memory_tracker_->get_memory_budget()));
     }
@@ -3110,7 +3110,7 @@ void FragmentMetadata::load_tile_var_sizes(
           "Cannot load tile var sizes; Insufficient memory budget; "
           "Needed " +
           std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
+          std::to_string((int64_t)memory_tracker_->get_memory_available()) +
           " from budget " +
           std::to_string(memory_tracker_->get_memory_budget()));
     }
@@ -3144,7 +3144,7 @@ Status FragmentMetadata::load_tile_validity_offsets(
           "Cannot load tile validity offsets; Insufficient memory budget; "
           "Needed " +
           std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
+          std::to_string((int64_t)memory_tracker_->get_memory_available()) +
           " from budget " +
           std::to_string(memory_tracker_->get_memory_budget())));
     }
@@ -3193,7 +3193,7 @@ void FragmentMetadata::load_tile_min_values(
       throw FragmentMetadataStatusException(
           "Cannot load min values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
+          std::to_string((int64_t)memory_tracker_->get_memory_available()) +
           " from budget " +
           std::to_string(memory_tracker_->get_memory_budget()));
     }
@@ -3239,7 +3239,7 @@ void FragmentMetadata::load_tile_max_values(
       throw FragmentMetadataStatusException(
           "Cannot load max values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
+          std::to_string((int64_t)memory_tracker_->get_memory_available()) +
           " from budget " +
           std::to_string(memory_tracker_->get_memory_budget()));
     }
@@ -3278,7 +3278,7 @@ void FragmentMetadata::load_tile_sum_values(
       throw FragmentMetadataStatusException(
           "Cannot load sum values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
+          std::to_string((int64_t)memory_tracker_->get_memory_available()) +
           " from budget " +
           std::to_string(memory_tracker_->get_memory_budget()));
     }
@@ -3312,7 +3312,7 @@ void FragmentMetadata::load_tile_null_count_values(
           "Cannot load null count values; Insufficient memory budget; "
           "Needed " +
           std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
+          std::to_string((int64_t)memory_tracker_->get_memory_available()) +
           " from budget " +
           std::to_string(memory_tracker_->get_memory_budget()));
     }
@@ -4013,7 +4013,7 @@ Status FragmentMetadata::read_file_footer(
     return LOG_STATUS(Status_FragmentMetadataError(
         "Cannot load file footer; Insufficient memory budget; Needed " +
         std::to_string(*footer_size) + " but only had " +
-        std::to_string(memory_tracker_->get_memory_available()) +
+        std::to_string((int64_t)memory_tracker_->get_memory_available()) +
         " from budget " +
         std::to_string(memory_tracker_->get_memory_budget())));
   }
