@@ -716,7 +716,7 @@ Status Curl::post_data(
     Buffer* const returned_data,
     const std::string& res_uri) {
   struct curl_slist* headers;
-  RETURN_NOT_OK(post_data_common(serialization_type, data, &headers, url));
+  RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
   CURLcode ret;
   headerData.uri = &res_uri;
@@ -739,7 +739,7 @@ Status Curl::post_data(
     PostResponseCb&& cb,
     const std::string& res_uri) {
   struct curl_slist* headers;
-  RETURN_NOT_OK(post_data_common(serialization_type, data, &headers, url));
+  RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
   CURLcode ret;
   headerData.uri = &res_uri;
@@ -756,8 +756,7 @@ Status Curl::post_data(
 Status Curl::post_data_common(
     const SerializationType serialization_type,
     const BufferList* data,
-    struct curl_slist** headers,
-    const std::string& url) {
+    struct curl_slist** headers) {
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return LOG_STATUS(
@@ -770,7 +769,7 @@ Status Curl::post_data_common(
   } else {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
   }
-  logger_->debug("posting {} bytes to {}", data->total_size(), url);
+  logger_->debug("posting {} bytes", data->total_size());
 
   // Set auth and content-type for request
   *headers = nullptr;

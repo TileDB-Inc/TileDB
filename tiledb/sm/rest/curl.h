@@ -286,14 +286,12 @@ class Curl {
    * @param headers Request headers that must be freed after the curl
    *    request is complete. If this routine returns a non-OK status,
    *    the value returned through this parameter should be ignored.
-   * @param url URL (for debug-logging)
    * @return Status
    */
   Status post_data_common(
       SerializationType serialization_type,
       const BufferList* data,
-      struct curl_slist** headers,
-      const std::string& url);
+      struct curl_slist** headers);
 
   /**
    * Simple wrapper for getting data from server
