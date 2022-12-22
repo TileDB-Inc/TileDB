@@ -718,6 +718,8 @@ Status Curl::post_data(
   struct curl_slist* headers;
   RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
+  logger_->debug("posting {} bytes to {}", data->total_size(), url);
+
   CURLcode ret;
   headerData.uri = &res_uri;
   auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
@@ -769,7 +771,6 @@ Status Curl::post_data_common(
   } else {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
   }
-  logger_->debug("posting {} bytes", data->total_size());
 
   // Set auth and content-type for request
   *headers = nullptr;
