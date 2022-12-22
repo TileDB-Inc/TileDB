@@ -57,15 +57,16 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-// These classes are never defined and are only used
-// to specialize the query constraints function templates.
-class ApplyLegacy;
-class ApplyDense;
-class ApplySparse;
+enum class ApplyType : uint8_t {
+  LEGACY,
+  DENSE,
+  SPARSE
+};
 
 template<class BitmapType>
 struct QCExecContext {
   QCExecContext(
+      const ApplyType apply_type,
       const ArraySchema& array_schema,
       const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
       ResultTile* result_tile,
@@ -75,7 +76,8 @@ struct QCExecContext {
       const uint64_t src_cell,
       const uint64_t stride,
       span<BitmapType>& results)
-    : array_schema_(array_schema)
+    : apply_type_(apply_type)
+    , array_schema_(array_schema)
     , fragment_metadata_(fragment_metadata)
     , result_tile_(result_tile)
     , condition_marker_(condition_marker)
@@ -88,6 +90,7 @@ struct QCExecContext {
 
   QCExecContext derive(span<BitmapType>& new_results) {
     return QCExecContext(
+        apply_type_,
         array_schema_,
         fragment_metadata_,
         result_tile_,
@@ -100,6 +103,7 @@ struct QCExecContext {
     );
   }
 
+  const ApplyType apply_type_;
   const ArraySchema& array_schema_;
   const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata_;
   ResultTile* result_tile_;
@@ -477,42 +481,24 @@ struct BinaryCmp<T, QueryConditionOp::NE> {
   }
 };
 
-template<
-    class ApplyType,
-    typename BitmapType,
-    QueryConditionCombinationOp CombineOp>
+template<typename BitmapType, QueryConditionCombinationOp CombineOp>
 struct CombineFunc;
 
 template<typename BitmapType>
-struct CombineFunc<ApplySparse, BitmapType, QueryConditionCombinationOp::AND> {
+struct CombineFunc<BitmapType, QueryConditionCombinationOp::AND> {
   static inline BitmapType combine(BitmapType lhs, BitmapType rhs) {
     return lhs * rhs;
   }
 };
 
 template<typename BitmapType>
-struct CombineFunc<ApplySparse, BitmapType, QueryConditionCombinationOp::OR> {
+struct CombineFunc<BitmapType, QueryConditionCombinationOp::OR> {
   static inline BitmapType combine(BitmapType lhs, BitmapType rhs) {
     return std::max(lhs, rhs);
   }
 };
 
-template<class ApplyType, typename BitmapType>
-struct CombineFunc<ApplyType, BitmapType, QueryConditionCombinationOp::AND> {
-  static inline BitmapType combine(BitmapType lhs, BitmapType rhs) {
-    return lhs && rhs;
-  }
-};
-
-template<class ApplyType, typename BitmapType>
-struct CombineFunc<ApplyType, BitmapType, QueryConditionCombinationOp::OR> {
-  static inline BitmapType combine(BitmapType lhs, BitmapType rhs) {
-    return lhs || rhs;
-  }
-};
-
 template<
-    class ApplyType,
     typename BitmapType,
     QueryConditionCombinationOp CombineOp,
     QueryConditionOp CompareOp,
@@ -527,6 +513,7 @@ void apply_ast_node(
   const auto var_size = exec_ctx.array_schema_.var_size(field_name);
 
   // For shorter references below
+  auto apply_type = exec_ctx.apply_type_;
   auto result_tile = exec_ctx.result_tile_;
   const auto fragment_metadata = exec_ctx.fragment_metadata_;
   const auto src_cell = exec_ctx.src_cell_;
@@ -539,7 +526,7 @@ void apply_ast_node(
 
   const uint64_t length = results.size();
 
-  if constexpr (std::is_same_v<ApplyType, ApplyLegacy>) {
+  if (apply_type == ApplyType::LEGACY) {
     const auto nullable = exec_ctx.array_schema_.is_nullable(field_name);
 
     ByteVecValue fill_value;
@@ -599,7 +586,7 @@ void apply_ast_node(
           cv_content,
           cv_size);
       for (size_t c = 0; c < length; ++c) {
-        results[c] = CombineFunc<ApplyType, BitmapType, CombineOp>::combine(
+        results[c] = CombineFunc<BitmapType, CombineOp>::combine(
             results[c], (uint8_t) cmp);
       }
       return;
@@ -648,10 +635,10 @@ void apply_ast_node(
       if constexpr (
           CombineOp == QueryConditionCombinationOp::OR &&
           NullableType::value) {
-        results[c] = CombineFunc<ApplyType, BitmapType, CombineOp>::combine(
+        results[c] = CombineFunc<BitmapType, CombineOp>::combine(
             results[c], cmp && (buffer_validity[start + c * stride] != 0));
       } else {
-        results[c] = CombineFunc<ApplyType, BitmapType, CombineOp>::combine(
+        results[c] = CombineFunc<BitmapType, CombineOp>::combine(
             results[c], cmp);
       }
     }
@@ -679,18 +666,17 @@ void apply_ast_node(
     if constexpr (
         CombineOp == QueryConditionCombinationOp::OR &&
         NullableType::value) {
-      results[c] = CombineFunc<ApplyType, BitmapType, CombineOp>::combine(
+      results[c] = CombineFunc<BitmapType, CombineOp>::combine(
           results[c], cmp && (buffer_validity[start + c * stride] != 0));
     } else {
       std::string op;
-      results[c] = CombineFunc<ApplyType, BitmapType, CombineOp>::combine(
+      results[c] = CombineFunc<BitmapType, CombineOp>::combine(
           results[c], cmp);
     }
   }
 }
 
 template<
-    class ApplyType,
     typename BitmapType,
     QueryConditionCombinationOp CombineOp,
     QueryConditionOp CompareOp,
@@ -705,7 +691,6 @@ void apply_ast_node(
 
   if (nullable) {
     apply_ast_node<
-        ApplyType,
         BitmapType,
         CombineOp,
         CompareOp,
@@ -714,7 +699,6 @@ void apply_ast_node(
       >(exec_ctx, node);
   } else {
     apply_ast_node<
-      ApplyType,
       BitmapType,
       CombineOp,
       CompareOp,
@@ -725,7 +709,6 @@ void apply_ast_node(
 }
 
 template<
-    class ApplyType,
     typename BitmapType,
     QueryConditionCombinationOp CombineOp,
     QueryConditionOp CompareOp>
@@ -763,7 +746,6 @@ void apply_ast_node(
       if (node->get_op() == QueryConditionOp::NE) {
         for (uint64_t c = 0; c < results.size(); ++c) {
           results[c] = CombineFunc<
-              ApplyType,
               BitmapType,
               CombineOp
             >::combine(results[c], buffer_validity[start + c * stride] != 0);
@@ -771,7 +753,6 @@ void apply_ast_node(
       } else {
         for (uint64_t c = 0; c < results.size(); ++c) {
           results[c] = CombineFunc<
-              ApplyType,
               BitmapType,
               CombineOp
             >::combine(results[c], buffer_validity[start + c * stride] == 0);
@@ -790,7 +771,6 @@ void apply_ast_node(
   switch (type) {
     case Datatype::INT8:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           CompareOp,
@@ -799,7 +779,6 @@ void apply_ast_node(
     case Datatype::BOOL:
     case Datatype::UINT8:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           CompareOp,
@@ -807,7 +786,6 @@ void apply_ast_node(
         >(exec_ctx, node);
     case Datatype::INT16:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           CompareOp,
@@ -815,7 +793,6 @@ void apply_ast_node(
         >(exec_ctx, node);
     case Datatype::UINT16:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           CompareOp,
@@ -823,7 +800,6 @@ void apply_ast_node(
         >(exec_ctx, node);
     case Datatype::INT32:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           CompareOp,
@@ -831,7 +807,6 @@ void apply_ast_node(
         >(exec_ctx, node);
     case Datatype::UINT32:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           CompareOp,
@@ -839,7 +814,6 @@ void apply_ast_node(
         >(exec_ctx, node);
     case Datatype::INT64:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           CompareOp,
@@ -847,7 +821,6 @@ void apply_ast_node(
         >(exec_ctx, node);
     case Datatype::UINT64:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           CompareOp,
@@ -855,7 +828,6 @@ void apply_ast_node(
         >(exec_ctx, node);
     case Datatype::FLOAT32:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           CompareOp,
@@ -863,7 +835,6 @@ void apply_ast_node(
         >(exec_ctx, node);
     case Datatype::FLOAT64:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           CompareOp,
@@ -872,7 +843,6 @@ void apply_ast_node(
     case Datatype::CHAR:
       if (var_size) {
       return apply_ast_node<
-            ApplyType,
             BitmapType,
             CombineOp,
             CompareOp,
@@ -880,7 +850,6 @@ void apply_ast_node(
           >(exec_ctx, node);
       } else {
       return apply_ast_node<
-            ApplyType,
             BitmapType,
             CombineOp,
             CompareOp,
@@ -889,7 +858,6 @@ void apply_ast_node(
       }
     case Datatype::STRING_ASCII:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           CompareOp,
@@ -897,7 +865,6 @@ void apply_ast_node(
         >(exec_ctx, node);
     case Datatype::STRING_UTF8:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           CompareOp,
@@ -926,7 +893,6 @@ void apply_ast_node(
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           CompareOp,
@@ -948,10 +914,7 @@ void apply_ast_node(
   stdx::unreachable();
 }
 
-template<
-    class ApplyType,
-    typename BitmapType,
-    QueryConditionCombinationOp CombineOp>
+template<typename BitmapType, QueryConditionCombinationOp CombineOp>
 void apply_ast_node(
     QCExecContext<BitmapType>& exec_ctx,
     const tdb_unique_ptr<ASTNode>& node) {
@@ -959,42 +922,36 @@ void apply_ast_node(
   switch (node->get_op()) {
     case QueryConditionOp::LT:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           QueryConditionOp::LT
         >(exec_ctx, node);
     case QueryConditionOp::LE:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           QueryConditionOp::LE
         >(exec_ctx, node);
     case QueryConditionOp::GT:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           QueryConditionOp::GT
         >(exec_ctx, node);
     case QueryConditionOp::GE:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           QueryConditionOp::GE
         >(exec_ctx, node);
     case QueryConditionOp::EQ:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           QueryConditionOp::EQ
         >(exec_ctx, node);
     case QueryConditionOp::NE:
       return apply_ast_node<
-          ApplyType,
           BitmapType,
           CombineOp,
           QueryConditionOp::NE
@@ -1008,16 +965,13 @@ void apply_ast_node(
   stdx::unreachable();
 }
 
-template<
-  class ApplyType,
-  typename BitmapType,
-  QueryConditionCombinationOp CombineOp>
+template<typename BitmapType, QueryConditionCombinationOp CombineOp>
 void apply_tree(
     QCExecContext<BitmapType>& exec_ctx,
     const tdb_unique_ptr<ASTNode>& node) {
 
   if (!node->is_expr()) {
-    apply_ast_node<ApplyType, BitmapType, CombineOp>(exec_ctx, node);
+    apply_ast_node<BitmapType, CombineOp>(exec_ctx, node);
     return;
   }
 
@@ -1041,7 +995,7 @@ void apply_tree(
        */
       if constexpr (CombineOp == QueryConditionCombinationOp::AND) {
         for (const auto& child : node->get_children()) {
-          apply_tree<ApplyType, BitmapType, CombineOp>(exec_ctx, child);
+          apply_tree<BitmapType, CombineOp>(exec_ctx, child);
         }
         return;
       }
@@ -1054,7 +1008,6 @@ void apply_tree(
 
         for (const auto& child : node->get_children()) {
           apply_tree<
-              ApplyType,
               BitmapType,
               QueryConditionCombinationOp::AND
             >(sub_ctx, child);
@@ -1084,7 +1037,6 @@ void apply_tree(
 
       for (const auto& child : node->get_children()) {
         apply_tree<
-            ApplyType,
             BitmapType,
             QueryConditionCombinationOp::OR
           >(sub_ctx, child);
@@ -1129,6 +1081,7 @@ Status QueryCondition::apply(
     auto results_span = span(results);
 
     QCExecContext<uint8_t> exec_ctx(
+        ApplyType::LEGACY,
         array_schema,
         fragment_metadata,
         tile,
@@ -1140,7 +1093,6 @@ Status QueryCondition::apply(
         results_span);
 
     apply_tree<
-        ApplyLegacy,
         uint8_t,
         QueryConditionCombinationOp::AND
       >(exec_ctx, tree_);
@@ -1184,6 +1136,7 @@ Status QueryCondition::apply_dense(
   span<uint8_t> results_span(result_buffer + start, length);
 
   QCExecContext<uint8_t> exec_ctx(
+    ApplyType::DENSE,
     array_schema,
     fragment_metadata,
     result_tile,
@@ -1194,7 +1147,7 @@ Status QueryCondition::apply_dense(
     stride,
     results_span);
 
-  apply_tree<ApplyDense, uint8_t, QueryConditionCombinationOp::AND>(
+  apply_tree<uint8_t, QueryConditionCombinationOp::AND>(
       exec_ctx,
       tree_);
 
@@ -1211,6 +1164,7 @@ Status QueryCondition::apply_sparse(
   span<BitmapType> results_span(result_bitmap);
 
   QCExecContext<BitmapType> exec_ctx(
+    ApplyType::SPARSE,
     array_schema,
     fragment_metadata,
     &result_tile,
@@ -1221,7 +1175,7 @@ Status QueryCondition::apply_sparse(
     1,
     results_span);
 
-  apply_tree<ApplySparse, BitmapType, QueryConditionCombinationOp::AND>(
+  apply_tree<BitmapType, QueryConditionCombinationOp::AND>(
       exec_ctx,
       tree_);
 
