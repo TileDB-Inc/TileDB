@@ -30,13 +30,13 @@
  * This file tests the float scaling filter input validation.
  *
  */
-#include <iostream>
 #include <cmath>
+#include <iostream>
 
 #include <test/support/tdb_catch.h>
-#include "../float_scaling_filter.h"
-#include "../../enums/filter_option.h"
 #include "../../../common/common.h"
+#include "../../enums/filter_option.h"
+#include "../float_scaling_filter.h"
 
 using namespace tiledb::sm;
 
@@ -54,35 +54,43 @@ void check_input_values() {
   REQUIRE(std::fpclassify(subnormal_example) == FP_SUBNORMAL);
 }
 
-void check_throw_message(FilterOption option, double* value, const std::string& message) {
-    FloatScalingFilter filter;
-    Status status = filter.set_option_impl(option, value);
-    CHECK(!status.ok());
-    CHECK(status.message() == message);
+void check_throw_message(
+    FilterOption option, double* value, const std::string& message) {
+  FloatScalingFilter filter;
+  Status status = filter.set_option_impl(option, value);
+  CHECK(!status.ok());
+  CHECK(status.message() == message);
 }
 
 void check_ok(FilterOption option, double* value) {
-    FloatScalingFilter filter;
-    Status status = filter.set_option_impl(option, value);
-    CHECK(status.ok());
+  FloatScalingFilter filter;
+  Status status = filter.set_option_impl(option, value);
+  CHECK(status.ok());
 }
 
-TEST_CASE("Float scaling filter input validation, scale", "[filter][float-scaling][scale-validation]") {
-    check_input_values();
-    const std::string& err_msg = "Float scaling filter error; invalid scale value.";
-    check_throw_message(FilterOption::SCALE_FLOAT_FACTOR, &nan_example, err_msg);
-    check_throw_message(FilterOption::SCALE_FLOAT_FACTOR, &inf_example, err_msg);
-    check_throw_message(FilterOption::SCALE_FLOAT_FACTOR, &zero_example, err_msg);
-    check_throw_message(FilterOption::SCALE_FLOAT_FACTOR, &subnormal_example, err_msg);
-    check_ok(FilterOption::SCALE_FLOAT_FACTOR, &normal_example);
+TEST_CASE(
+    "Float scaling filter input validation, scale",
+    "[filter][float-scaling][scale-validation]") {
+  check_input_values();
+  const std::string& err_msg =
+      "Float scaling filter error; invalid scale value.";
+  check_throw_message(FilterOption::SCALE_FLOAT_FACTOR, &nan_example, err_msg);
+  check_throw_message(FilterOption::SCALE_FLOAT_FACTOR, &inf_example, err_msg);
+  check_throw_message(FilterOption::SCALE_FLOAT_FACTOR, &zero_example, err_msg);
+  check_throw_message(
+      FilterOption::SCALE_FLOAT_FACTOR, &subnormal_example, err_msg);
+  check_ok(FilterOption::SCALE_FLOAT_FACTOR, &normal_example);
 }
 
-TEST_CASE("Float scaling filter input validation, offset", "[filter][float-scaling][offset-validation]") {
-    check_input_values();
-    const std::string& err_msg = "Float scaling filter error; invalid offset value.";
-    check_throw_message(FilterOption::SCALE_FLOAT_OFFSET, &nan_example, err_msg);
-    check_throw_message(FilterOption::SCALE_FLOAT_OFFSET, &inf_example, err_msg);
-    check_ok(FilterOption::SCALE_FLOAT_OFFSET, &zero_example);
-    check_ok(FilterOption::SCALE_FLOAT_OFFSET, &subnormal_example);
-    check_ok(FilterOption::SCALE_FLOAT_OFFSET, &normal_example);
+TEST_CASE(
+    "Float scaling filter input validation, offset",
+    "[filter][float-scaling][offset-validation]") {
+  check_input_values();
+  const std::string& err_msg =
+      "Float scaling filter error; invalid offset value.";
+  check_throw_message(FilterOption::SCALE_FLOAT_OFFSET, &nan_example, err_msg);
+  check_throw_message(FilterOption::SCALE_FLOAT_OFFSET, &inf_example, err_msg);
+  check_ok(FilterOption::SCALE_FLOAT_OFFSET, &zero_example);
+  check_ok(FilterOption::SCALE_FLOAT_OFFSET, &subnormal_example);
+  check_ok(FilterOption::SCALE_FLOAT_OFFSET, &normal_example);
 }

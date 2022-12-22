@@ -261,12 +261,13 @@ Status FloatScalingFilter::set_option_impl(
 
   switch (option) {
     case FilterOption::SCALE_FLOAT_BYTEWIDTH: {
-      // The byte width parameter should be one of the sizes of the possible integer types. 
+      // The byte width parameter should be one of the sizes of the possible
+      // integer types.
       auto val = *(uint64_t*)value;
-      if (val != sizeof(int8_t) && val != sizeof(int16_t) 
-       && val != sizeof(int32_t) && val != sizeof(int64_t)) {
-        return LOG_STATUS(
-          Status_FilterError("Float scaling filter error; invalid byte width value."));
+      if (val != sizeof(int8_t) && val != sizeof(int16_t) &&
+          val != sizeof(int32_t) && val != sizeof(int64_t)) {
+        return LOG_STATUS(Status_FilterError(
+            "Float scaling filter error; invalid byte width value."));
       }
       byte_width_ = val;
     } break;
@@ -275,8 +276,8 @@ Status FloatScalingFilter::set_option_impl(
       auto val = *(double*)value;
       auto classify = std::fpclassify(val);
       if (classify != FP_NORMAL) {
-        return LOG_STATUS(
-          Status_FilterError("Float scaling filter error; invalid scale value."));
+        return LOG_STATUS(Status_FilterError(
+            "Float scaling filter error; invalid scale value."));
       }
       scale_ = val;
     } break;
@@ -285,8 +286,8 @@ Status FloatScalingFilter::set_option_impl(
       auto val = *(double*)value;
       auto classify = std::fpclassify(val);
       if (classify == FP_INFINITE || classify == FP_NAN) {
-        return LOG_STATUS(
-          Status_FilterError("Float scaling filter error; invalid offset value."));
+        return LOG_STATUS(Status_FilterError(
+            "Float scaling filter error; invalid offset value."));
       }
       offset_ = val;
     } break;
