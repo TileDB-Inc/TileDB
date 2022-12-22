@@ -359,50 +359,13 @@ std::string SupportedFsMem::temp_dir() {
   return temp_dir_;
 }
 
-void TemporaryDirectoryFixture::check_tiledb_ok(int rc) const {
-  if (rc != TILEDB_OK) {
-    tiledb_error_t* err = NULL;
-    tiledb_ctx_get_last_error(ctx, &err);
-    const char* msg;
-    tiledb_error_message(err, &msg);
-    UNSCOPED_INFO(msg);
-    tiledb_error_free(&err);
-  }
-  CHECK(rc == TILEDB_OK);
-}
-
-void TemporaryDirectoryFixture::require_tiledb_ok(int rc) const {
-  if (rc != TILEDB_OK) {
-    tiledb_error_t* err = NULL;
-    tiledb_ctx_get_last_error(ctx, &err);
-    const char* msg;
-    tiledb_error_message(err, &msg);
-    UNSCOPED_INFO(msg);
-    tiledb_error_free(&err);
-  }
-  REQUIRE(rc == TILEDB_OK);
-}
-
-void TemporaryDirectoryFixture::require_tiledb_error_with(
-    int rc, const std::string& expected_msg) const {
-  REQUIRE(rc == TILEDB_ERR);
-  tiledb_error_t* err{nullptr};
-  tiledb_ctx_get_last_error(ctx, &err);
-  if (err == nullptr) {
-    INFO("No message returned. Expected message: " + expected_msg);
-    REQUIRE(false);
-  }
-  const char* raw_msg;
-  tiledb_error_message(err, &raw_msg);
-  if (raw_msg == nullptr) {
-    INFO("No message returned. Expected message: " + expected_msg);
-    REQUIRE(false);
-  }
-  std::string err_msg{raw_msg};
-  REQUIRE(err_msg == expected_msg);
-  tiledb_error_free(&err);
+std::string TemporaryDirectoryFixture::create_temporary_array(
+    std::string&& name, tiledb_array_schema_t* array_schema) {
+  auto array_uri = fullpath(std::move(name));
+  require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
+  require_tiledb_ok(tiledb_array_create(ctx, array_uri.c_str(), array_schema));
+  return array_uri;
 }
 
 }  // End of namespace test
-
 }  // End of namespace tiledb

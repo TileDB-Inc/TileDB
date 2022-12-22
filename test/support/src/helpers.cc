@@ -51,6 +51,84 @@ namespace test {
 // Command line arguments.
 std::string g_vfs;
 
+void check_tiledb_error_with(
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg) {
+  CHECK(rc == TILEDB_ERR);
+  if (rc != TILEDB_ERR) {
+    return;
+  }
+  tiledb_error_t* err{nullptr};
+  tiledb_ctx_get_last_error(ctx, &err);
+  if (err == nullptr) {
+    INFO("No message returned. Expected message: " + expected_msg);
+    CHECK(false);
+  } else {
+    const char* raw_msg;
+    tiledb_error_message(err, &raw_msg);
+    if (raw_msg == nullptr) {
+      INFO("No message returned. Expected message: " + expected_msg);
+      CHECK(false);
+    } else {
+      std::string err_msg{raw_msg};
+      CHECK(err_msg == expected_msg);
+    }
+  }
+  tiledb_error_free(&err);
+}
+
+void check_tiledb_ok(tiledb_ctx_t* ctx, int rc) {
+  if (rc != TILEDB_OK) {
+    tiledb_error_t* err{nullptr};
+    tiledb_ctx_get_last_error(ctx, &err);
+    if (err != nullptr) {
+      const char* msg;
+      tiledb_error_message(err, &msg);
+      if (msg != nullptr) {
+        UNSCOPED_INFO(msg);
+      }
+    }
+    tiledb_error_free(&err);
+  }
+  CHECK(rc == TILEDB_OK);
+}
+
+void require_tiledb_error_with(
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg) {
+  REQUIRE(rc == TILEDB_ERR);
+  tiledb_error_t* err{nullptr};
+  tiledb_ctx_get_last_error(ctx, &err);
+  if (err == nullptr) {
+    INFO("No message returned. Expected message: " + expected_msg);
+    REQUIRE(false);
+  }
+  const char* raw_msg;
+  tiledb_error_message(err, &raw_msg);
+  if (raw_msg == nullptr) {
+    INFO("No message returned. Expected message: " + expected_msg);
+    tiledb_error_free(&err);
+    REQUIRE(false);
+  }
+  std::string err_msg{raw_msg};
+  REQUIRE(err_msg == expected_msg);
+  tiledb_error_free(&err);
+}
+
+void require_tiledb_ok(tiledb_ctx_t* ctx, int rc) {
+  if (rc != TILEDB_OK) {
+    tiledb_error_t* err{nullptr};
+    tiledb_ctx_get_last_error(ctx, &err);
+    if (err != nullptr) {
+      const char* msg;
+      tiledb_error_message(err, &msg);
+      if (msg != nullptr) {
+        UNSCOPED_INFO(msg);
+      }
+    }
+    tiledb_error_free(&err);
+  }
+  REQUIRE(rc == TILEDB_OK);
+}
+
 int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs) {
   if (!vfs.empty()) {
     if (std::find(vfs_fs.begin(), vfs_fs.end(), vfs) == vfs_fs.end()) {

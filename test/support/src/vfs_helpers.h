@@ -574,7 +574,7 @@ struct TemporaryDirectoryFixture {
   }
 
   /** Create a path in the temporary directory. */
-  std::string fullpath(std::string&& name) {
+  inline std::string fullpath(std::string&& name) {
     return temp_dir_ + name;
   }
 
@@ -587,13 +587,20 @@ struct TemporaryDirectoryFixture {
    * @returns URI of the array.
    */
   std::string create_temporary_array(
-      std::string&& name, tiledb_array_schema_t* array_schema) {
-    auto array_uri = fullpath(std::move(name));
-    require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
-    require_tiledb_ok(
-        tiledb_array_create(ctx, array_uri.c_str(), array_schema));
-    return array_uri;
-  };
+      std::string&& name, tiledb_array_schema_t* array_schema);
+
+  /**
+   * Check the return code for a TileDB C-API function is TILEDB_ERR and
+   * compare the last error message from the local TileDB context to an expected
+   * error message.
+   *
+   * @param rc Return code from a TileDB C-API function.
+   * @param expected_msg The expected message from the last error.
+   */
+  inline void check_tiledb_error_with(
+      int rc, const std::string& expected_msg) const {
+    test::check_tiledb_error_with(ctx, rc, expected_msg);
+  }
 
   /**
    * Checks the return code for a TileDB C-API function is TILEDB_OK. If not,
@@ -602,7 +609,9 @@ struct TemporaryDirectoryFixture {
    *
    * @param rc Return code from a TileDB C-API function.
    */
-  void check_tiledb_ok(int rc) const;
+  inline void check_tiledb_ok(int rc) const {
+    test::check_tiledb_ok(ctx, rc);
+  }
 
   /**
    * Returns the context pointer object.
@@ -612,15 +621,6 @@ struct TemporaryDirectoryFixture {
   }
 
   /**
-   * Requires the return code for a TileDB C-API function is TILEDB_OK. If not,
-   * it will end the Catch2 test and print the last error message from the local
-   * TileDB context.
-   *
-   * @param rc Return code from a TileDB C-API function.
-   */
-  void require_tiledb_ok(int rc) const;
-
-  /**
    * Require the return code for a TileDB C-API function is TILEDB_ERR and
    * compare the last error message from the local TileDB context to an expected
    * error message.
@@ -628,7 +628,21 @@ struct TemporaryDirectoryFixture {
    * @param rc Return code from a TileDB C-API function.
    * @param expected_msg The expected message from the last error.
    */
-  void require_tiledb_error_with(int rc, const std::string& expected_msg) const;
+  inline void require_tiledb_error_with(
+      int rc, const std::string& expected_msg) const {
+    test::require_tiledb_error_with(ctx, rc, expected_msg);
+  }
+
+  /**
+   * Requires the return code for a TileDB C-API function is TILEDB_OK. If not,
+   * it will end the Catch2 test and print the last error message from the local
+   * TileDB context.
+   *
+   * @param rc Return code from a TileDB C-API function.
+   */
+  inline void require_tiledb_ok(int rc) const {
+    test::require_tiledb_ok(ctx, rc);
+  }
 
  protected:
   /** TileDB context */

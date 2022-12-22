@@ -89,6 +89,50 @@ template <class T>
 using SubarrayRanges = std::vector<std::vector<T>>;
 
 /**
+ * Check the return code for a TileDB C-API function is TILEDB_ERR and
+ * compare the last error message from the local TileDB context to an expected
+ * error message.
+ *
+ * @param ctx Context to check for the error and error message.
+ * @param rc Return code from a TileDB C-API function.
+ * @param expected_msg The expected message from the last error.
+ */
+void check_tiledb_error_with(
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg);
+
+/**
+ * Checks the return code for a TileDB C-API function is TILEDB_OK. If not,
+ * if will add a failed assert to the Catch2 test and print the last error
+ * message from the local TileDB context.
+ *
+ * @param ctx Context to check for the error and error message.
+ * @param rc Return code from a TileDB C-API function.
+ */
+void check_tiledb_ok(tiledb_ctx_t* ctx, int rc);
+
+/**
+ * Require the return code for a TileDB C-API function is TILEDB_ERR and
+ * compare the last error message from the local TileDB context to an expected
+ * error message.
+ *
+ * @param ctx Context to check for the error and error message.
+ * @param rc Return code from a TileDB C-API function.
+ * @param expected_msg The expected message from the last error.
+ */
+void require_tiledb_error_with(
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg);
+
+/**
+ * Requires the return code for a TileDB C-API function is TILEDB_OK. If not,
+ * it will end the Catch2 test and print the last error message from the local
+ * TileDB context.
+ *
+ * @param ctx Context to check for the error and error message.
+ * @param rc Return code from a TileDB C-API function.
+ */
+void require_tiledb_ok(tiledb_ctx_t* ctx, int rc);
+
+/**
  * Helper struct for the buffers of an attribute/dimension
  * (fixed- or var-sized).
  */
