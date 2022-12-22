@@ -359,6 +359,31 @@ std::string SupportedFsMem::temp_dir() {
   return temp_dir_;
 }
 
+void TemporaryDirectoryFixture::alloc_encrypted_ctx(
+    const std::string& encryption_type,
+    const std::string& encryption_key,
+    tiledb_ctx_t** ctx_with_encrypt) const {
+  // Get the configuration settings for the fixture's context.
+  tiledb_config_t* config;
+  require_tiledb_ok(tiledb_ctx_get_config(ctx, &config));
+
+  // Change the configuration to match the desired encryption settings.
+  tiledb_error_t* error;
+  require_tiledb_ok(tiledb_config_set(
+      config, "sm.encryption_type", encryption_type.c_str(), &error));
+  REQUIRE(error == nullptr);
+  require_tiledb_ok(tiledb_config_set(
+      config, "sm.encryption_key", encryption_key.c_str(), &error));
+  REQUIRE(error == nullptr);
+
+  // Allocate the context with the updated configuration.
+  require_tiledb_ok(tiledb_ctx_alloc(config, ctx_with_encrypt));
+
+  // Free resources.
+  tiledb_config_free(&config);
+  tiledb_error_free(&error);
+}
+
 std::string TemporaryDirectoryFixture::create_temporary_array(
     std::string&& name, tiledb_array_schema_t* array_schema) {
   auto array_uri = fullpath(std::move(name));

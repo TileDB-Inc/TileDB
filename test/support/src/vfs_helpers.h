@@ -573,10 +573,20 @@ struct TemporaryDirectoryFixture {
     tiledb_vfs_free(&vfs_);
   }
 
-  /** Create a path in the temporary directory. */
-  inline std::string fullpath(std::string&& name) {
-    return temp_dir_ + name;
-  }
+  /**
+   * Allocate an TileDB context to use the same configuration as the context for
+   * the temporary directory except for encryption settings.
+   *
+   * @param encryption_type Value to set on the configuration for
+   * `sm.encryption_type`.
+   * @param encryption_key Value to set on the configuration for
+   * `sm.encryption_key`.
+   * @param ctx_with_encrypt Context that will be allocated.
+   */
+  void alloc_encrypted_ctx(
+      const std::string& encryption_type,
+      const std::string& encryption_key,
+      tiledb_ctx_t** ctx_with_encrypt) const;
 
   /**
    * Creates a new array array in the temporary directory and returns the
@@ -611,6 +621,11 @@ struct TemporaryDirectoryFixture {
    */
   inline void check_tiledb_ok(int rc) const {
     test::check_tiledb_ok(ctx, rc);
+  }
+
+  /** Create a path in the temporary directory. */
+  inline std::string fullpath(std::string&& name) {
+    return temp_dir_ + name;
   }
 
   /**
