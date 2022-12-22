@@ -286,7 +286,7 @@ Status FloatScalingFilter::set_option_impl(
       auto classify = std::fpclassify(val);
       if (classify == FP_INFINITE || classify == FP_NAN) {
         return LOG_STATUS(
-          Status_FilterError("Float scaling filter error; invalid scale value."));
+          Status_FilterError("Float scaling filter error; invalid offset value."));
       }
       offset_ = val;
     } break;
