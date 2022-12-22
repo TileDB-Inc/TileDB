@@ -192,7 +192,7 @@ TEST_CASE_METHOD(
 
   Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
 
-  tiledb_consolidation_plan_t* consolidation_plan;
+  tiledb_consolidation_plan_t* consolidation_plan{};
   CHECK(
       TILEDB_OK == tiledb_consolidation_plan_create_with_mbr(
                        ctx_.ptr().get(),
@@ -235,7 +235,7 @@ TEST_CASE_METHOD(
 
   Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
 
-  tiledb_consolidation_plan_t* consolidation_plan;
+  tiledb_consolidation_plan_t* consolidation_plan{};
   CHECK(
       TILEDB_OK == tiledb_consolidation_plan_create_with_mbr(
                        ctx_.ptr().get(),

@@ -267,10 +267,10 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/global_stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/stats.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/timer_stat.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/storage_manager.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/range_subset.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/relevant_fragment_generator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray_partitioner.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray_tile_overlap.cc

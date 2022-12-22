@@ -468,6 +468,112 @@ void WriterBase::check_subarray() const {
   }
 }
 
+bool is_sorted_buffer(
+    const QueryBuffer& buffer, Datatype type, bool increasing) {
+  switch (type) {
+    case Datatype::INT8:
+      return increasing ?
+                 buffer.is_sorted<int8_t, std::less_equal<int8_t>>() :
+                 buffer.is_sorted<int8_t, std::greater_equal<int8_t>>();
+    case Datatype::UINT8:
+      return increasing ?
+                 buffer.is_sorted<uint8_t, std::less_equal<uint8_t>>() :
+                 buffer.is_sorted<uint8_t, std::greater_equal<uint8_t>>();
+    case Datatype::INT16:
+      return increasing ?
+                 buffer.is_sorted<int16_t, std::less_equal<int16_t>>() :
+                 buffer.is_sorted<int16_t, std::greater_equal<int16_t>>();
+    case Datatype::UINT16:
+      return increasing ?
+                 buffer.is_sorted<uint16_t, std::less_equal<uint16_t>>() :
+                 buffer.is_sorted<uint16_t, std::greater_equal<uint16_t>>();
+    case Datatype::INT32:
+      return increasing ?
+                 buffer.is_sorted<int32_t, std::less_equal<int32_t>>() :
+                 buffer.is_sorted<int32_t, std::greater_equal<int32_t>>();
+    case Datatype::UINT32:
+      return increasing ?
+                 buffer.is_sorted<uint32_t, std::less_equal<uint32_t>>() :
+                 buffer.is_sorted<uint32_t, std::greater_equal<uint32_t>>();
+    case Datatype::INT64:
+      return increasing ?
+                 buffer.is_sorted<int64_t, std::less_equal<int64_t>>() :
+                 buffer.is_sorted<int64_t, std::greater_equal<int64_t>>();
+    case Datatype::UINT64:
+      return increasing ?
+                 buffer.is_sorted<uint64_t, std::less_equal<uint64_t>>() :
+                 buffer.is_sorted<uint64_t, std::greater_equal<uint64_t>>();
+    case Datatype::FLOAT32:
+      return increasing ? buffer.is_sorted<float, std::less_equal<float>>() :
+                          buffer.is_sorted<float, std::greater_equal<float>>();
+    case Datatype::FLOAT64:
+      return increasing ?
+                 buffer.is_sorted<double, std::less_equal<double>>() :
+                 buffer.is_sorted<double, std::greater_equal<double>>();
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+      return increasing ?
+                 buffer.is_sorted<int64_t, std::less_equal<int64_t>>() :
+                 buffer.is_sorted<int64_t, std::greater_equal<int64_t>>();
+    case Datatype::STRING_ASCII:
+      return increasing ?
+                 buffer.is_sorted_str<std::less_equal<std::string_view>>() :
+                 buffer.is_sorted_str<std::greater_equal<std::string_view>>();
+    default:
+      throw WriterBaseStatusException(
+          "Unexpected datatype '" + datatype_str(type) +
+          "' for an ordered attribute.");
+  }
+
+  return true;
+}
+
+void WriterBase::check_attr_order() const {
+  auto timer_se = stats_->start_timer("check_attr_order");
+  for (const auto& [name, buffer] : buffers_) {
+    // Skip non-attribute buffers.
+    if (!array_schema_.is_attr(name)) {
+      continue;
+    }
+
+    // Get the attribute data order. If the data type is unordered, no futher
+    // checks are needed.
+    const auto* attr{array_schema_.attribute(name)};
+    if (attr->order() == DataOrder::UNORDERED_DATA) {
+      continue;
+    }
+    bool increasing{attr->order() == DataOrder::INCREASING_DATA};
+
+    // Check the attribute sort. This assumes all ordered attributes are fixed
+    // except STRING_ASCII which is assumed to always be variable.
+    if (!is_sorted_buffer(buffer, attr->type(), increasing)) {
+      throw WriterBaseStatusException(
+          "The data for attribute '" + name +
+          "' is not in the expected order.");
+    }
+  }
+}
+
 void WriterBase::clear_coord_buffers() {
   // Applicable only if the coordinate buffers have been allocated by
   // TileDB, which happens only when the zipped coordinates buffer is set
@@ -687,8 +793,8 @@ Status WriterBase::create_fragment(
   auto& array_dir = array_->array_directory();
 
   // Create the directories.
-  // Create the fragment directory, the directory for the new fragment URI, and
-  // the commit directory.
+  // Create the fragment directory, the directory for the new fragment
+  // URI, and the commit directory.
   throw_if_not_ok(storage_manager_->vfs()->create_dir(
       array_dir.get_fragments_dir(write_version)));
   throw_if_not_ok(storage_manager_->create_dir(fragment_uri_));

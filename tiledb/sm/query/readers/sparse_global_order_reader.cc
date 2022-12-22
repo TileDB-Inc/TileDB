@@ -94,7 +94,8 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     , memory_used_for_coords_(array->fragment_metadata().size())
     , memory_used_for_qc_tiles_(array->fragment_metadata().size())
     , consolidation_with_timestamps_(consolidation_with_timestamps)
-    , last_cells_(array->fragment_metadata().size()) {
+    , last_cells_(array->fragment_metadata().size())
+    , tile_offsets_loaded_(false) {
   include_coords_ = true;
   SparseIndexReaderBase::init(skip_checks_serialization);
 
@@ -184,6 +185,9 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
                                  !delete_and_update_conditions_.empty();
   purge_deletes_no_dups_mode_ =
       !array_schema_.allows_dups() && purge_deletes_consolidation_;
+
+  // Load tile offsets, if required.
+  load_all_tile_offsets();
 
   // Attributes names to process.
   std::vector<std::string> names;
@@ -295,6 +299,30 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
 
 template <class BitmapType>
 void SparseGlobalOrderReader<BitmapType>::reset() {
+}
+
+template <class BitmapType>
+void SparseGlobalOrderReader<BitmapType>::load_all_tile_offsets() {
+  if (!tile_offsets_loaded_) {
+    // Make sure we have enough space for tile offsets data.
+    uint64_t total_tile_offset_usage =
+        tile_offsets_size(subarray_.relevant_fragments());
+    uint64_t available_memory = array_memory_tracker_->get_memory_available() -
+                                array_memory_tracker_->get_memory_usage(
+                                    MemoryTracker::MemoryType::TILE_OFFSETS);
+    if (total_tile_offset_usage > available_memory) {
+      throw SparseGlobalOrderReaderStatusException(
+          "Cannot load tile offsets, computed size (" +
+          std::to_string(total_tile_offset_usage) +
+          ") is larger than available memory (" +
+          std::to_string(available_memory) +
+          "). Total budget for array data (" +
+          std::to_string(array_memory_tracker_->get_memory_budget()) + ").");
+    }
+
+    tile_offsets_loaded_ = true;
+    load_tile_offsets_for_fragments(subarray_.relevant_fragments());
+  }
 }
 
 template <class BitmapType>

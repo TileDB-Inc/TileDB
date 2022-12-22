@@ -43,7 +43,7 @@ namespace tiledb::common::detail {
 int32_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    const uint32_t dim_id,
+    const uint32_t dim_index,
     const char* name,
     tiledb_data_order_t label_order,
     tiledb_datatype_t label_type) {
@@ -51,7 +51,7 @@ int32_t tiledb_array_schema_add_dimension_label(
     return TILEDB_ERR;
   }
   array_schema->array_schema_->add_dimension_label(
-      dim_id,
+      dim_index,
       name,
       static_cast<tiledb::sm::DataOrder>(label_order),
       static_cast<tiledb::sm::Datatype>(label_type));
@@ -92,42 +92,6 @@ int32_t tiledb_array_schema_set_dimension_label_tile_extent(
   }
   array_schema->array_schema_->set_dimension_label_tile_extent(
       label_name, static_cast<tiledb::sm::Datatype>(type), tile_extent);
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_set_label_data_buffer(
-    tiledb_query_t* query,
-    const char* name,
-    void* buffer,
-    uint64_t* buffer_size) {
-  query->query_->set_label_data_buffer(name, buffer, buffer_size);
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_set_label_offsets_buffer(
-    tiledb_query_t* query,
-    const char* name,
-    uint64_t* buffer,
-    uint64_t* buffer_size) {
-  query->query_->set_label_offsets_buffer(name, buffer, buffer_size);
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_label_data_buffer(
-    tiledb_query_t* query,
-    const char* name,
-    void** buffer,
-    uint64_t** buffer_size) {
-  query->query_->get_label_data_buffer(name, buffer, buffer_size);
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_get_label_offsets_buffer(
-    tiledb_query_t* query,
-    const char* name,
-    uint64_t** buffer,
-    uint64_t** buffer_size) {
-  query->query_->get_label_offsets_buffer(name, buffer, buffer_size);
   return TILEDB_OK;
 }
 
@@ -204,12 +168,12 @@ constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
 int32_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    const uint32_t dim_id,
+    const uint32_t dim_index,
     const char* name,
     tiledb_data_order_t label_order,
     tiledb_datatype_t label_type) noexcept {
   return api_entry<detail::tiledb_array_schema_add_dimension_label>(
-      ctx, array_schema, dim_id, name, label_order, label_type);
+      ctx, array_schema, dim_index, name, label_order, label_type);
 }
 
 int32_t tiledb_array_schema_has_dimension_label(
@@ -238,46 +202,6 @@ int32_t tiledb_array_schema_set_dimension_label_tile_extent(
     const void* tile_extent) noexcept {
   return api_entry<detail::tiledb_array_schema_set_dimension_label_tile_extent>(
       ctx, array_schema, label_name, type, tile_extent);
-}
-
-int32_t tiledb_query_set_label_data_buffer(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    void* buffer,
-    uint64_t* buffer_size) noexcept {
-  return api_entry_context<detail::tiledb_query_set_label_data_buffer>(
-      ctx, query, name, buffer, buffer_size);
-}
-
-int32_t tiledb_query_set_label_offsets_buffer(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint64_t* buffer,
-    uint64_t* buffer_size) noexcept {
-  return api_entry_context<detail::tiledb_query_set_label_offsets_buffer>(
-      ctx, query, name, buffer, buffer_size);
-}
-
-int32_t tiledb_query_get_label_data_buffer(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    void** buffer,
-    uint64_t** buffer_size) noexcept {
-  return api_entry_context<detail::tiledb_query_get_label_data_buffer>(
-      ctx, query, name, buffer, buffer_size);
-}
-
-int32_t tiledb_query_get_label_offsets_buffer(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint64_t** buffer,
-    uint64_t** buffer_size) noexcept {
-  return api_entry_context<detail::tiledb_query_get_label_offsets_buffer>(
-      ctx, query, name, buffer, buffer_size);
 }
 
 int32_t tiledb_subarray_add_label_range(

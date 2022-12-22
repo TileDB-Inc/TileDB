@@ -33,3 +33,5 @@ commence(object_library stats)
     this_target_sources(stats.cc)
     this_target_object_libraries(baseline stringx)
 conclude(object_library)
+
+add_test_subdirectory()
