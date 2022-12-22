@@ -262,6 +262,7 @@ if (TILEDB_EXPERIMENTAL_FEATURES)
     src/test-capi-dense-array-dimension-label.cc
     src/test-capi-dense-array-dimension-label-var.cc
     src/test-capi-sparse-array-dimension-label.cc
+    src/test-capi-subarray-labels.cc
   )
 endif()
 
