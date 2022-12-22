@@ -261,7 +261,8 @@ TEST_CASE(
   // Try to register an array for read
   REQUIRE_THROWS_WITH(
       x.register_array(uri, *array.get(), QueryType::READ),
-      Catch::Matchers::ContainsSubstring("close array opened for exclusive modification"));
+      Catch::Matchers::ContainsSubstring(
+          "close array opened for exclusive modification"));
   REQUIRE(x.registry_size() == 1);
   REQUIRE(x.is_open(uri) == true);
 

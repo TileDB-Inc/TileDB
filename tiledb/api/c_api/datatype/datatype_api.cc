@@ -30,19 +30,21 @@
  * This file defines the datatype section of the C API for TileDB.
  */
 
+#include "datatype_api_external.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "datatype_api_external.h"
 
 namespace tiledb::api {
 
-capi_return_t tiledb_datatype_to_str(tiledb_datatype_t datatype, const char** str) {
+capi_return_t tiledb_datatype_to_str(
+    tiledb_datatype_t datatype, const char** str) {
   const auto& strval = tiledb::sm::datatype_str((tiledb::sm::Datatype)datatype);
   *str = strval.c_str();
   return strval.empty() ? TILEDB_ERR : TILEDB_OK;
 }
 
-capi_return_t tiledb_datatype_from_str(const char* str, tiledb_datatype_t* datatype) {
+capi_return_t tiledb_datatype_from_str(
+    const char* str, tiledb_datatype_t* datatype) {
   tiledb::sm::Datatype val = tiledb::sm::Datatype::UINT8;
   if (!tiledb::sm::datatype_enum(str, &val).ok()) {
     return TILEDB_ERR;
@@ -55,17 +57,17 @@ uint64_t tiledb_datatype_size(tiledb_datatype_t type) {
   return tiledb::sm::datatype_size(static_cast<tiledb::sm::Datatype>(type));
 }
 
-} // namespace tiledb::api
+}  // namespace tiledb::api
 
 using tiledb::api::api_entry_plain;
 
 capi_return_t tiledb_datatype_to_str(
-  tiledb_datatype_t datatype, const char** str) noexcept {
+    tiledb_datatype_t datatype, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_datatype_to_str>(datatype, str);
 }
 
 capi_return_t tiledb_datatype_from_str(
-  const char* str, tiledb_datatype_t* datatype) noexcept {
+    const char* str, tiledb_datatype_t* datatype) noexcept {
   return api_entry_plain<tiledb::api::tiledb_datatype_from_str>(str, datatype);
 }
 
