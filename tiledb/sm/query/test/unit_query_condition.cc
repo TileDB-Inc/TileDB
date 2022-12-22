@@ -1582,7 +1582,7 @@ void test_apply(
  */
 template <>
 void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
-  REQUIRE(type == Datatype::STRING_ASCII);
+  REQUIRE((type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8));
 
   const std::string field_name = "foo";
   const uint64_t cells = 10;
@@ -1694,6 +1694,9 @@ TEST_CASE("QueryCondition: Test apply", "[QueryCondition][apply]") {
   test_apply<char*>(Datatype::STRING_ASCII);
   test_apply<char*>(Datatype::STRING_ASCII, true);
   test_apply<char*>(Datatype::STRING_ASCII, false, true);
+  test_apply<char*>(Datatype::STRING_UTF8);
+  test_apply<char*>(Datatype::STRING_UTF8, true);
+  test_apply<char*>(Datatype::STRING_UTF8, false, true);
 }
 
 TEST_CASE(
@@ -1702,7 +1705,7 @@ TEST_CASE(
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
-  const Datatype type = Datatype::STRING_ASCII;
+  const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
   bool var_size = true;
   bool nullable = GENERATE(true, false);
   bool null_cmp = GENERATE(true, false);
@@ -2232,7 +2235,7 @@ void test_apply_dense(
 template <>
 void test_apply_dense<char*>(
     const Datatype type, bool var_size, bool nullable) {
-  REQUIRE(type == Datatype::STRING_ASCII);
+  REQUIRE((type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8));
 
   const std::string field_name = "foo";
   const uint64_t cells = 10;
@@ -2355,6 +2358,9 @@ TEST_CASE(
   test_apply_dense<char*>(Datatype::STRING_ASCII);
   test_apply_dense<char*>(Datatype::STRING_ASCII, true);
   test_apply_dense<char*>(Datatype::STRING_ASCII, false, true);
+  test_apply_dense<char*>(Datatype::STRING_UTF8);
+  test_apply_dense<char*>(Datatype::STRING_UTF8, true);
+  test_apply_dense<char*>(Datatype::STRING_UTF8, false, true);
 }
 
 TEST_CASE(
@@ -2363,7 +2369,7 @@ TEST_CASE(
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
-  const Datatype type = Datatype::STRING_ASCII;
+  const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
   bool var_size = true;
   bool nullable = GENERATE(true, false);
   bool null_cmp = GENERATE(true, false);
@@ -2874,7 +2880,7 @@ void test_apply_sparse(
 template <>
 void test_apply_sparse<char*>(
     const Datatype type, bool var_size, bool nullable) {
-  REQUIRE(type == Datatype::STRING_ASCII);
+  REQUIRE((type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8));
 
   const std::string field_name = "foo";
   const uint64_t cells = 10;
@@ -2997,6 +3003,9 @@ TEST_CASE(
   test_apply_sparse<char*>(Datatype::STRING_ASCII);
   test_apply_sparse<char*>(Datatype::STRING_ASCII, true);
   test_apply_sparse<char*>(Datatype::STRING_ASCII, false, true);
+  test_apply_sparse<char*>(Datatype::STRING_UTF8);
+  test_apply_sparse<char*>(Datatype::STRING_UTF8, true);
+  test_apply_sparse<char*>(Datatype::STRING_UTF8, false, true);
 }
 
 /**
@@ -3955,7 +3964,7 @@ TEST_CASE(
   // Setup.
   const std::string field_name = "foo";
   const uint64_t cells = 10;
-  const Datatype type = Datatype::STRING_ASCII;
+  const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
 
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
@@ -4304,7 +4313,7 @@ TEST_CASE(
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
-  const Datatype type = Datatype::STRING_ASCII;
+  const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
   bool var_size = true;
   bool nullable = GENERATE(true, false);
   bool null_cmp = GENERATE(true, false);
