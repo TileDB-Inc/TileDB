@@ -294,7 +294,8 @@ TILEDB_EXPORT int32_t tiledb_deserialize_query(
 /**
  * Deserializes into a new query object from the given buffer, while
  * deserializing at the same time the (open) array object stored in the query
- * object as a member.
+ * object as a member. The caller has the responsibility to free the returned
+ * query and array objects.
  *
  * @note The deserialization is zero-copy, so the source buffer must exceed
  * the lifetime of the query being deserialized to.
@@ -307,6 +308,8 @@ TILEDB_EXPORT int32_t tiledb_deserialize_query(
  * since they are both using the same Core library APIs for serialization.
  * @param array_uri uri of the array the query is submitted to.
  * @param query The query object to allocate and deserialize into.
+ * @param array The array object to allocate and deserialize into. It can also
+ * be referenced as query->array().
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_deserialize_query_and_array(
@@ -315,7 +318,8 @@ TILEDB_EXPORT int32_t tiledb_deserialize_query_and_array(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     const char* array_uri,
-    tiledb_query_t** query) TILEDB_NOEXCEPT;
+    tiledb_query_t** query,
+    tiledb_array_t** array) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the given non-empty domain information into the given buffer.

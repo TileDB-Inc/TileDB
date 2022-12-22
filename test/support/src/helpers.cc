@@ -1543,8 +1543,9 @@ int deserialize_array_and_query(
   }
 
   // Deserialize
+  tiledb_array_t* array;
   return tiledb_deserialize_query_and_array(
-      ctx, c_buff, TILEDB_CAPNP, clientside ? 1 : 0, array_uri, query);
+      ctx, c_buff, TILEDB_CAPNP, clientside ? 1 : 0, array_uri, query, &array);
 }
 
 int array_open_wrapper(
