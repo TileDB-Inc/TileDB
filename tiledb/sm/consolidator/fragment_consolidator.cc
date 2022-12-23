@@ -537,8 +537,8 @@ FragmentConsolidator::create_buffers(
   auto sparse = !array_schema.dense();
 
   // Calculate buffer weights. We reserve the maximum possible number of buffers
-  // to make only one allocation. If an attrite is var size and nullable, it has
-  // 3 buffers, dimensions only have 2 as they cannot be nullable. Then one
+  // to make only one allocation. If an attribute is var size and nullable, it
+  // has 3 buffers, dimensions only have 2 as they cannot be nullable. Then one
   // buffer for timestamps, and 2 for delete metadata.
   std::vector<size_t> buffer_weights;
   buffer_weights.reserve(attribute_num * 3 + dim_num * 2 + 3);
