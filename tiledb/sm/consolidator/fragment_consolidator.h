@@ -55,6 +55,8 @@ class URI;
 
 /** Handles fragment consolidation. */
 class FragmentConsolidator : public Consolidator {
+  friend class WhiteboxFragmentConsolidator;
+
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -248,15 +250,17 @@ class FragmentConsolidator : public Consolidator {
    * writing into the new fragment. It also retrieves the number of buffers
    * created.
    *
+   * @param stats The stats.
+   * @param config The consolidation config.
    * @param array_schema The array schema.
-   * @param buffers The buffers to be created.
-   * @param buffer_sizes The corresponding buffer sizes.
-   * @return Status
+   * @param avg_cell_sizes The average cell sizes.
+   * @return Buffers, Buffer sizes.
    */
-  Status create_buffers(
+  static tuple<std::vector<ByteVec>, std::vector<uint64_t>> create_buffers(
+      stats::Stats* stats,
+      const ConsolidationConfig& config,
       const ArraySchema& array_schema,
-      std::vector<ByteVec>* buffers,
-      std::vector<uint64_t>* buffer_sizes);
+      std::unordered_map<std::string, uint64_t>& avg_cell_sizes);
 
   /**
    * Creates the queries needed for consolidation. It also retrieves
