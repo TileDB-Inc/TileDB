@@ -51,14 +51,13 @@ Context::Context(const Config& config)
     , logger_(make_shared<Logger>(
           HERE(), logger_prefix_ + std::to_string(++logger_id_)))
     , resources_(
-        config,
-        get_compute_thread_count(config),
-        get_io_thread_count(config),
-        // TODO: Remove `.StorageManager` from statistic names
-        // We're sticking with `Context.StorageManager` here because
-        // it is part of the public facing API.
-        "Context.StorageManager"
-      )
+          config,
+          get_compute_thread_count(config),
+          get_io_thread_count(config),
+          // TODO: Remove `.StorageManager` from statistic names
+          // We're sticking with `Context.StorageManager` here because
+          // it is part of the public facing API.
+          "Context.StorageManager")
     , storage_manager_{resources_, logger_, config} {
   /*
    * Logger class is not yet C.41-compliant

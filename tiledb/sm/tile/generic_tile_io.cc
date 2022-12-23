@@ -62,7 +62,6 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
     const Config& config) {
-
   auto&& header = read_generic_tile_header(resources_, uri_, file_offset);
 
   if (encryption_key.encryption_type() !=
@@ -114,18 +113,14 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
   return {Status::Ok(), std::move(tile)};
 }
 
-GenericTileIO::GenericTileHeader
-GenericTileIO::read_generic_tile_header(
+GenericTileIO::GenericTileHeader GenericTileIO::read_generic_tile_header(
     ContextResources& resources, const URI& uri, uint64_t file_offset) {
   GenericTileHeader header;
 
   std::vector<uint8_t> base_buf(GenericTileHeader::BASE_SIZE);
 
-  throw_if_not_ok(resources.vfs().read(
-      uri,
-      file_offset,
-      base_buf.data(),
-      base_buf.size()));
+  throw_if_not_ok(
+      resources.vfs().read(uri, file_offset, base_buf.data(), base_buf.size()));
 
   Deserializer base_deserializer(base_buf.data(), base_buf.size());
 
@@ -147,9 +142,8 @@ GenericTileIO::read_generic_tile_header(
 
   Deserializer filter_pipeline_deserializer(
       filter_pipeline_buf.data(), filter_pipeline_buf.size());
-  auto filterpipeline{
-      FilterPipeline::deserialize(
-          filter_pipeline_deserializer, header.version_number)};
+  auto filterpipeline{FilterPipeline::deserialize(
+      filter_pipeline_deserializer, header.version_number)};
   header.filters = std::move(filterpipeline);
 
   return header;
@@ -164,10 +158,7 @@ Status GenericTileIO::write_generic(
   // Filter tile
   assert(!tile->filtered());
   RETURN_NOT_OK(header.filters.run_forward(
-      &resources_.stats(),
-      tile,
-      nullptr,
-      &resources_.compute_tp()));
+      &resources_.stats(), tile, nullptr, &resources_.compute_tp()));
   header.persisted_size = tile->filtered_buffer().size();
   assert(tile->filtered());
 

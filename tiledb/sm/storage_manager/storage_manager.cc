@@ -1277,8 +1277,8 @@ Status StorageManagerCanonical::array_get_encryption(
   const URI& schema_uri = array_dir.latest_array_schema_uri();
 
   // Read tile header
-  auto&& header = GenericTileIO::read_generic_tile_header(
-      resources_, schema_uri, 0);
+  auto&& header =
+      GenericTileIO::read_generic_tile_header(resources_, schema_uri, 0);
   *encryption_type = static_cast<EncryptionType>(header.encryption_type);
 
   return Status::Ok();
