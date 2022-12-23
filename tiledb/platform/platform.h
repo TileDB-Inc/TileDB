@@ -49,28 +49,5 @@ constexpr bool is_os_macosx = false;
 constexpr bool is_os_linux = true;
 #endif  // _WIN32
 
-/** Compiler */
-#if defined(__clang__)
-constexpr bool is_compiler_clang = true;
-constexpr bool is_compiler_gnu = false;
-constexpr bool is_compiler_msvc = false;
-constexpr bool is_compiler_mingw = false;
-#elif defined(__GNUC__) || defined(__GNUG__)
-constexpr bool is_compiler_clang = false;
-constexpr bool is_compiler_gnu = true;
-constexpr bool is_compiler_msvc = false;
-constexpr bool is_compiler_mingw = false;
-#elif defined(_MSC_VER)
-constexpr bool is_compiler_clang = false;
-constexpr bool is_compiler_gnu = false;
-constexpr bool is_compiler_msvc = true;
-constexpr bool is_compiler_mingw = false;
-#elif defined(__MINGW32__)
-constexpr bool is_compiler_clang = false;
-constexpr bool is_compiler_gnu = true;
-constexpr bool is_compiler_msvc = false;
-constexpr bool is_compiler_mingw = true;
-#endif
-
 }  // namespace tiledb::platform
 #endif  // TILEDB_PLATFORM_H
