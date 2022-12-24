@@ -540,78 +540,37 @@ void QueryCondition::apply_ast_node(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
+  auto g = [&, *this]<QueryConditionOp Condition>() {
+    return apply_ast_node<T, Condition>(
+        node,
+        fragment_metadata,
+        stride,
+        var_size,
+        nullable,
+        fill_value,
+        result_cell_slabs,
+        combination_op,
+        result_cell_bitmap);
+  };
+
   switch (node->get_op()) {
     case QueryConditionOp::LT:
-      apply_ast_node<T, QueryConditionOp::LT, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
+      g.template operator()<QueryConditionOp::LT>();
       break;
     case QueryConditionOp::LE:
-      apply_ast_node<T, QueryConditionOp::LE, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
+      g.template operator()<QueryConditionOp::LE>();
       break;
     case QueryConditionOp::GT:
-      apply_ast_node<T, QueryConditionOp::GT, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
+      g.template operator()<QueryConditionOp::GT>();
       break;
     case QueryConditionOp::GE:
-      apply_ast_node<T, QueryConditionOp::GE, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
+      g.template operator()<QueryConditionOp::GE>();
       break;
     case QueryConditionOp::EQ:
-      apply_ast_node<T, QueryConditionOp::EQ, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
+      g.template operator()<QueryConditionOp::EQ>();
       break;
     case QueryConditionOp::NE:
-      apply_ast_node<T, QueryConditionOp::NE, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
+      g.template operator()<QueryConditionOp::NE>();
       break;
     default:
       throw std::runtime_error(
@@ -650,7 +609,7 @@ void QueryCondition::apply_ast_node(
   }
 
   auto g = [&, *this ]<class T>() {
-    return apply_ast_node_dense<T, CombinationOp>(
+    return apply_ast_node<T, CombinationOp>(
         node,
         fragment_metadata,
         stride,
@@ -673,6 +632,7 @@ void QueryCondition::apply_ast_node(
       g.template operator()<int16_t>();
       break;
     case Datatype::UINT16:
+      g.template operator()<uint16_t>();
       break;
     case Datatype::INT32:
       g.template operator()<int32_t>();
@@ -994,78 +954,37 @@ void QueryCondition::apply_ast_node_dense(
     const bool nullable,
     CombinationOp combination_op,
     span<uint8_t> result_buffer) const {
+  auto g = [&, *this]<QueryConditionOp Condition>() {
+    return apply_ast_node_dense<T, Condition>(
+        node,
+        result_tile,
+        start,
+        src_cell,
+        stride,
+        var_size,
+        nullable,
+        combination_op,
+        result_buffer);
+  };
+
   switch (node->get_op()) {
     case QueryConditionOp::LT:
-      apply_ast_node_dense<T, QueryConditionOp::LT, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
+      g.template operator()<QueryConditionOp::LT>();
       break;
     case QueryConditionOp::LE:
-      apply_ast_node_dense<T, QueryConditionOp::LE, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
+      g.template operator()<QueryConditionOp::LE>();
       break;
     case QueryConditionOp::GT:
-      apply_ast_node_dense<T, QueryConditionOp::GT, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
+      g.template operator()<QueryConditionOp::GT>();
       break;
     case QueryConditionOp::GE:
-      apply_ast_node_dense<T, QueryConditionOp::GE, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
+      g.template operator()<QueryConditionOp::GE>();
       break;
     case QueryConditionOp::EQ:
-      apply_ast_node_dense<T, QueryConditionOp::EQ, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
+      g.template operator()<QueryConditionOp::EQ>();
       break;
     case QueryConditionOp::NE:
-      apply_ast_node_dense<T, QueryConditionOp::NE, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
+      g.template operator()<QueryConditionOp::NE>();
       break;
     default:
       throw std::runtime_error(
@@ -1746,7 +1665,6 @@ void QueryCondition::apply_ast_node_sparse(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
     case Datatype::CHAR: {
-
       if (var_size) {
         apply_ast_node_sparse<char*>(
             node,
