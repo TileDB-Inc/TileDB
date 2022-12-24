@@ -649,162 +649,57 @@ void QueryCondition::apply_ast_node(
     }
   }
 
+  auto g = [&, *this ]<class T>() {
+    return apply_ast_node_dense<T, CombinationOp>(
+        node,
+        fragment_metadata,
+        stride,
+        var_size,
+        nullable,
+        fill_value,
+        result_cell_slabs,
+        combination_op,
+        result_cell_bitmap);
+  };
+
   switch (type) {
-    case Datatype::INT8: {
-      apply_ast_node<int8_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::UINT8: {
-      apply_ast_node<uint8_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::INT16: {
-      apply_ast_node<int16_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::UINT16: {
-      apply_ast_node<uint16_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::INT32: {
-      apply_ast_node<int32_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::UINT32: {
-      apply_ast_node<uint32_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::INT64: {
-      apply_ast_node<int64_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::UINT64: {
-      apply_ast_node<uint64_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::FLOAT32: {
-      apply_ast_node<float, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::FLOAT64: {
-      apply_ast_node<double, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::STRING_ASCII: {
-      apply_ast_node<char*, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
+    case Datatype::INT8:
+      g.template operator()<int8_t>();
+      break;
+    case Datatype::UINT8:
+      g.template operator()<uint8_t>();
+      break;
+    case Datatype::INT16:
+      g.template operator()<int16_t>();
+      break;
+    case Datatype::UINT16:
+      break;
+    case Datatype::INT32:
+      g.template operator()<int32_t>();
+      break;
+    case Datatype::UINT32:
+      g.template operator()<uint32_t>();
+      break;
+    case Datatype::INT64:
+      g.template operator()<int64_t>();
+      break;
+    case Datatype::UINT64:
+      g.template operator()<uint64_t>();
+      break;
+    case Datatype::FLOAT32:
+      g.template operator()<float>();
+      break;
+    case Datatype::FLOAT64:
+      g.template operator()<double>();
+      break;
+    case Datatype::STRING_ASCII:
+      g.template operator()<char*>();
+      break;
     case Datatype::CHAR: {
       if (var_size) {
-        apply_ast_node<char*, CombinationOp>(
-            node,
-            fragment_metadata,
-            stride,
-            var_size,
-            nullable,
-            fill_value,
-            result_cell_slabs,
-            combination_op,
-            result_cell_bitmap);
+        g.template operator()<char*>();
       } else {
-        apply_ast_node<char, CombinationOp>(
-            node,
-            fragment_metadata,
-            stride,
-            var_size,
-            nullable,
-            fill_value,
-            result_cell_slabs,
-            combination_op,
-            result_cell_bitmap);
+        g.template operator()<char>();
       }
     } break;
     case Datatype::DATETIME_YEAR:
@@ -819,18 +714,9 @@ void QueryCondition::apply_ast_node(
     case Datatype::DATETIME_NS:
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS: {
-      apply_ast_node<int64_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
+    case Datatype::DATETIME_AS:
+      g.template operator()<int64_t>();
+      break;
     case Datatype::ANY:
     case Datatype::BLOB:
     case Datatype::STRING_UTF8:
@@ -1227,163 +1113,59 @@ void QueryCondition::apply_ast_node_dense(
     return;
   }
 
+  auto g = [&, *this ]<class T>() {
+    return apply_ast_node_dense<T, CombinationOp>(
+        node,
+        result_tile,
+        start,
+        src_cell,
+        stride,
+        var_size,
+        nullable,
+        combination_op,
+        result_buffer);
+  };
+
   switch (attribute->type()) {
     case Datatype::INT8: {
-      apply_ast_node_dense<int8_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
+      g.template operator()<int8_t>();
     } break;
     case Datatype::BOOL:
-    case Datatype::UINT8: {
-      apply_ast_node_dense<uint8_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::INT16: {
-      apply_ast_node_dense<int16_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::UINT16: {
-      apply_ast_node_dense<uint16_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::INT32: {
-      apply_ast_node_dense<int32_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::UINT32: {
-      apply_ast_node_dense<uint32_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::INT64: {
-      apply_ast_node_dense<int64_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::UINT64: {
-      apply_ast_node_dense<uint64_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::FLOAT32: {
-      apply_ast_node_dense<float, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::FLOAT64: {
-      apply_ast_node_dense<double, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::STRING_ASCII: {
-      apply_ast_node_dense<char*, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
+    case Datatype::UINT8:
+      g.template operator()<uint8_t>();
+      break;
+    case Datatype::INT16:
+      g.template operator()<int16_t>();
+      break;
+    case Datatype::UINT16:
+      g.template operator()<uint16_t>();
+      break;
+    case Datatype::INT32:
+      g.template operator()<int32_t>();
+      break;
+    case Datatype::UINT32:
+      g.template operator()<int16_t>();
+      break;
+    case Datatype::INT64:
+      g.template operator()<int64_t>();
+      break;
+    case Datatype::UINT64:
+      g.template operator()<uint64_t>();
+      break;
+    case Datatype::FLOAT32:
+      g.template operator()<float>();
+      break;
+    case Datatype::FLOAT64:
+      g.template operator()<double>();
+      break;
+    case Datatype::STRING_ASCII:
+      g.template operator()<char*>();
+      break;
     case Datatype::CHAR: {
       if (var_size) {
-        apply_ast_node_dense<char*, CombinationOp>(
-            node,
-            result_tile,
-            start,
-            src_cell,
-            stride,
-            var_size,
-            nullable,
-            combination_op,
-            result_buffer);
+        g.template operator()<char*>();
       } else {
-        apply_ast_node_dense<char, CombinationOp>(
-            node,
-            result_tile,
-            start,
-            src_cell,
-            stride,
-            var_size,
-            nullable,
-            combination_op,
-            result_buffer);
+        g.template operator()<char>();
       }
     } break;
     case Datatype::DATETIME_YEAR:
@@ -1398,18 +1180,9 @@ void QueryCondition::apply_ast_node_dense(
     case Datatype::DATETIME_NS:
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS: {
-      apply_ast_node_dense<int64_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
+    case Datatype::DATETIME_AS:
+      g.template operator()<int64_t>();
+      break;
     case Datatype::ANY:
     case Datatype::BLOB:
     case Datatype::STRING_UTF8:
@@ -1822,54 +1595,38 @@ void QueryCondition::apply_ast_node_sparse(
     const bool var_size,
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
+  auto g = [*this,
+            &node,
+            &result_tile,
+            &var_size,
+            &combination_op,
+            &result_bitmap]<QueryConditionOp Condition>() {
+    return apply_ast_node_sparse<
+        T,
+        Condition,
+        BitmapType,
+        CombinationOp,
+        nullable>(node, result_tile, var_size, combination_op, result_bitmap);
+  };
+
   switch (node->get_op()) {
     case QueryConditionOp::LT:
-      apply_ast_node_sparse<
-          T,
-          QueryConditionOp::LT,
-          BitmapType,
-          CombinationOp,
-          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
+      g.template operator()<QueryConditionOp::LT>();
       break;
     case QueryConditionOp::LE:
-      apply_ast_node_sparse<
-          T,
-          QueryConditionOp::LE,
-          BitmapType,
-          CombinationOp,
-          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
+      g.template operator()<QueryConditionOp::LE>();
       break;
     case QueryConditionOp::GT:
-      apply_ast_node_sparse<
-          T,
-          QueryConditionOp::GT,
-          BitmapType,
-          CombinationOp,
-          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
+      g.template operator()<QueryConditionOp::GT>();
       break;
     case QueryConditionOp::GE:
-      apply_ast_node_sparse<
-          T,
-          QueryConditionOp::GE,
-          BitmapType,
-          CombinationOp,
-          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
+      g.template operator()<QueryConditionOp::GE>();
       break;
     case QueryConditionOp::EQ:
-      apply_ast_node_sparse<
-          T,
-          QueryConditionOp::EQ,
-          BitmapType,
-          CombinationOp,
-          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
+      g.template operator()<QueryConditionOp::EQ>();
       break;
     case QueryConditionOp::NE:
-      apply_ast_node_sparse<
-          T,
-          QueryConditionOp::NE,
-          BitmapType,
-          CombinationOp,
-          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
+      g.template operator()<QueryConditionOp::NE>();
       break;
     default:
       throw std::runtime_error(
@@ -1944,53 +1701,54 @@ void QueryCondition::apply_ast_node_sparse(
 
   switch (type) {
     case Datatype::INT8: {
-      apply_ast_node_sparse<int8_t, BitmapType, CombinationOp>(
+      apply_ast_node_sparse<int8_t>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
     case Datatype::BOOL:
     case Datatype::UINT8: {
-      apply_ast_node_sparse<uint8_t, BitmapType, CombinationOp>(
+      apply_ast_node_sparse<uint8_t>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
     case Datatype::INT16: {
-      apply_ast_node_sparse<int16_t, BitmapType, CombinationOp>(
+      apply_ast_node_sparse<int16_t>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
     case Datatype::UINT16: {
-      apply_ast_node_sparse<uint16_t, BitmapType, CombinationOp>(
+      apply_ast_node_sparse<uint16_t>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
     case Datatype::INT32: {
-      apply_ast_node_sparse<int32_t, BitmapType, CombinationOp>(
+      apply_ast_node_sparse<int32_t>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
     case Datatype::UINT32: {
-      apply_ast_node_sparse<uint32_t, BitmapType, CombinationOp>(
+      apply_ast_node_sparse<uint32_t>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
     case Datatype::INT64: {
-      apply_ast_node_sparse<int64_t, BitmapType, CombinationOp>(
+      apply_ast_node_sparse<int64_t>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
     case Datatype::UINT64: {
-      apply_ast_node_sparse<uint64_t, BitmapType, CombinationOp>(
+      apply_ast_node_sparse<uint64_t>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
     case Datatype::FLOAT32: {
-      apply_ast_node_sparse<float, BitmapType, CombinationOp>(
+      apply_ast_node_sparse<float>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
     case Datatype::FLOAT64: {
-      apply_ast_node_sparse<double, BitmapType, CombinationOp>(
+      apply_ast_node_sparse<double>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
     case Datatype::STRING_ASCII: {
-      apply_ast_node_sparse<char*, BitmapType, CombinationOp>(
+      apply_ast_node_sparse<char*>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
     case Datatype::CHAR: {
+
       if (var_size) {
-        apply_ast_node_sparse<char*, BitmapType, CombinationOp>(
+        apply_ast_node_sparse<char*>(
             node,
             result_tile,
             var_size,
@@ -1998,7 +1756,7 @@ void QueryCondition::apply_ast_node_sparse(
             combination_op,
             result_bitmap);
       } else {
-        apply_ast_node_sparse<char, BitmapType, CombinationOp>(
+        apply_ast_node_sparse<char>(
             node,
             result_tile,
             var_size,
@@ -2020,7 +1778,7 @@ void QueryCondition::apply_ast_node_sparse(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS: {
-      apply_ast_node_sparse<int64_t, BitmapType, CombinationOp>(
+      apply_ast_node_sparse<int64_t>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
     case Datatype::ANY:
