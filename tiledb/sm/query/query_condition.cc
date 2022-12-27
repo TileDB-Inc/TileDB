@@ -632,6 +632,61 @@ void QueryCondition::apply_ast_node(
   }
 }
 
+<<<<<<< HEAD
+=======
+template <typename T, typename CombinationOp>
+void QueryCondition::apply_ast_node(
+    const tdb_unique_ptr<ASTNode>& node,
+    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+    const uint64_t stride,
+    const bool var_size,
+    const bool nullable,
+    const ByteVecValue& fill_value,
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    CombinationOp combination_op,
+    std::vector<uint8_t>& result_cell_bitmap) const {
+  auto g = [&, *this]<QueryConditionOp Condition>() {
+    return apply_ast_node<T, Condition>(
+        node,
+        fragment_metadata,
+        stride,
+        var_size,
+        nullable,
+        fill_value,
+        result_cell_slabs,
+        combination_op,
+        result_cell_bitmap);
+  };
+
+  switch (node->get_op()) {
+    case QueryConditionOp::LT:
+      g.template operator()<QueryConditionOp::LT>();
+      break;
+    case QueryConditionOp::LE:
+      g.template operator()<QueryConditionOp::LE>();
+      break;
+    case QueryConditionOp::GT:
+      g.template operator()<QueryConditionOp::GT>();
+      break;
+    case QueryConditionOp::GE:
+      g.template operator()<QueryConditionOp::GE>();
+      break;
+    case QueryConditionOp::EQ:
+      g.template operator()<QueryConditionOp::EQ>();
+      break;
+    case QueryConditionOp::NE:
+      g.template operator()<QueryConditionOp::NE>();
+      break;
+    default:
+      throw std::runtime_error(
+          "QueryCondition::apply_ast_node: Cannot perform query comparison; "
+          "Unknown query condition operator.");
+  }
+
+  return;
+}
+
+>>>>>>> b7e9daf06 (Use C++20 lambda template to clean up switch/case copy pasta [akip ci])
 template <typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
@@ -659,6 +714,7 @@ void QueryCondition::apply_ast_node(
     }
   }
 
+<<<<<<< HEAD
   auto g = [&, *this](auto T) {
     auto h = [&, *this](auto ConditionOp) {
       return apply_ast_node<decltype(T), decltype(ConditionOp), CombinationOp>(
@@ -675,6 +731,93 @@ void QueryCondition::apply_ast_node(
     dispatch_on_op<decltype(T)>(node->get_op(), h);
   };
   dispatch_on_type(type, var_size, g);
+=======
+  auto g = [&, *this ]<class T>() {
+    return apply_ast_node<T, CombinationOp>(
+        node,
+        fragment_metadata,
+        stride,
+        var_size,
+        nullable,
+        fill_value,
+        result_cell_slabs,
+        combination_op,
+        result_cell_bitmap);
+  };
+
+  switch (type) {
+    case Datatype::INT8:
+      g.template operator()<int8_t>();
+      break;
+    case Datatype::UINT8:
+      g.template operator()<uint8_t>();
+      break;
+    case Datatype::INT16:
+      g.template operator()<int16_t>();
+      break;
+    case Datatype::UINT16:
+      g.template operator()<uint16_t>();
+      break;
+    case Datatype::INT32:
+      g.template operator()<int32_t>();
+      break;
+    case Datatype::UINT32:
+      g.template operator()<uint32_t>();
+      break;
+    case Datatype::INT64:
+      g.template operator()<int64_t>();
+      break;
+    case Datatype::UINT64:
+      g.template operator()<uint64_t>();
+      break;
+    case Datatype::FLOAT32:
+      g.template operator()<float>();
+      break;
+    case Datatype::FLOAT64:
+      g.template operator()<double>();
+      break;
+    case Datatype::STRING_ASCII:
+      g.template operator()<char*>();
+      break;
+    case Datatype::CHAR: {
+      if (var_size) {
+        g.template operator()<char*>();
+      } else {
+        g.template operator()<char>();
+      }
+    } break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      g.template operator()<int64_t>();
+      break;
+    case Datatype::ANY:
+    case Datatype::BLOB:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    default:
+      throw std::runtime_error(
+          "QueryCondition::apply_ast_node: Cannot perform query comparison; "
+          "Unsupported query "
+          "conditional type on " +
+          node->get_field_name());
+  }
+
+  return;
+>>>>>>> b7e9daf06 (Use C++20 lambda template to clean up switch/case copy pasta [akip ci])
 }
 
 template <typename CombinationOp>
@@ -924,6 +1067,58 @@ void QueryCondition::apply_ast_node_dense(
   }
 }
 
+<<<<<<< HEAD
+=======
+template <typename T, typename CombinationOp>
+void QueryCondition::apply_ast_node_dense(
+    const tdb_unique_ptr<ASTNode>& node,
+    ResultTile* result_tile,
+    const uint64_t start,
+    const uint64_t src_cell,
+    const uint64_t stride,
+    const bool var_size,
+    const bool nullable,
+    CombinationOp combination_op,
+    span<uint8_t> result_buffer) const {
+  auto g = [&, *this]<QueryConditionOp Condition>() {
+    return apply_ast_node_dense<T, Condition>(
+        node,
+        result_tile,
+        start,
+        src_cell,
+        stride,
+        var_size,
+        nullable,
+        combination_op,
+        result_buffer);
+  };
+
+  switch (node->get_op()) {
+    case QueryConditionOp::LT:
+      g.template operator()<QueryConditionOp::LT>();
+      break;
+    case QueryConditionOp::LE:
+      g.template operator()<QueryConditionOp::LE>();
+      break;
+    case QueryConditionOp::GT:
+      g.template operator()<QueryConditionOp::GT>();
+      break;
+    case QueryConditionOp::GE:
+      g.template operator()<QueryConditionOp::GE>();
+      break;
+    case QueryConditionOp::EQ:
+      g.template operator()<QueryConditionOp::EQ>();
+      break;
+    case QueryConditionOp::NE:
+      g.template operator()<QueryConditionOp::NE>();
+      break;
+    default:
+      throw std::runtime_error(
+          "Cannot perform query comparison; Unknown query condition operator");
+  }
+}
+
+>>>>>>> b7e9daf06 (Use C++20 lambda template to clean up switch/case copy pasta [akip ci])
 template <typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
@@ -964,6 +1159,7 @@ void QueryCondition::apply_ast_node_dense(
     return;
   }
 
+<<<<<<< HEAD
   auto g = [&, *this](auto T) {
     auto h = [&, *this](auto Condition) {
       return apply_ast_node_dense<decltype(T), decltype(Condition), CombinationOp>(
@@ -982,6 +1178,91 @@ void QueryCondition::apply_ast_node_dense(
   };
   dispatch_on_type(attribute->type(), var_size, g);
 
+=======
+  auto g = [&, *this ]<class T>() {
+    return apply_ast_node_dense<T, CombinationOp>(
+        node,
+        result_tile,
+        start,
+        src_cell,
+        stride,
+        var_size,
+        nullable,
+        combination_op,
+        result_buffer);
+  };
+
+  switch (attribute->type()) {
+    case Datatype::INT8: {
+      g.template operator()<int8_t>();
+    } break;
+    case Datatype::BOOL:
+    case Datatype::UINT8:
+      g.template operator()<uint8_t>();
+      break;
+    case Datatype::INT16:
+      g.template operator()<int16_t>();
+      break;
+    case Datatype::UINT16:
+      g.template operator()<uint16_t>();
+      break;
+    case Datatype::INT32:
+      g.template operator()<int32_t>();
+      break;
+    case Datatype::UINT32:
+      g.template operator()<int16_t>();
+      break;
+    case Datatype::INT64:
+      g.template operator()<int64_t>();
+      break;
+    case Datatype::UINT64:
+      g.template operator()<uint64_t>();
+      break;
+    case Datatype::FLOAT32:
+      g.template operator()<float>();
+      break;
+    case Datatype::FLOAT64:
+      g.template operator()<double>();
+      break;
+    case Datatype::STRING_ASCII:
+      g.template operator()<char*>();
+      break;
+    case Datatype::CHAR: {
+      if (var_size) {
+        g.template operator()<char*>();
+      } else {
+        g.template operator()<char>();
+      }
+    } break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      g.template operator()<int64_t>();
+      break;
+    case Datatype::ANY:
+    case Datatype::BLOB:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    default:
+      throw std::runtime_error(
+          "Cannot perform query comparison; Unsupported query conditional type "
+          "on " +
+          node->get_field_name());
+  }
+>>>>>>> b7e9daf06 (Use C++20 lambda template to clean up switch/case copy pasta [akip ci])
 }
 
 template <typename CombinationOp>
@@ -1226,6 +1507,76 @@ void QueryCondition::apply_ast_node_sparse(
   }
 }
 
+<<<<<<< HEAD
+=======
+template <
+    typename T,
+    typename BitmapType,
+    typename CombinationOp,
+    typename nullable>
+void QueryCondition::apply_ast_node_sparse(
+    const tdb_unique_ptr<ASTNode>& node,
+    ResultTile& result_tile,
+    const bool var_size,
+    CombinationOp combination_op,
+    std::vector<BitmapType>& result_bitmap) const {
+  auto g = [*this,
+            &node,
+            &result_tile,
+            &var_size,
+            &combination_op,
+            &result_bitmap]<QueryConditionOp Condition>() {
+    return apply_ast_node_sparse<
+        T,
+        Condition,
+        BitmapType,
+        CombinationOp,
+        nullable>(node, result_tile, var_size, combination_op, result_bitmap);
+  };
+
+  switch (node->get_op()) {
+    case QueryConditionOp::LT:
+      g.template operator()<QueryConditionOp::LT>();
+      break;
+    case QueryConditionOp::LE:
+      g.template operator()<QueryConditionOp::LE>();
+      break;
+    case QueryConditionOp::GT:
+      g.template operator()<QueryConditionOp::GT>();
+      break;
+    case QueryConditionOp::GE:
+      g.template operator()<QueryConditionOp::GE>();
+      break;
+    case QueryConditionOp::EQ:
+      g.template operator()<QueryConditionOp::EQ>();
+      break;
+    case QueryConditionOp::NE:
+      g.template operator()<QueryConditionOp::NE>();
+      break;
+    default:
+      throw std::runtime_error(
+          "Cannot perform query comparison; Unknown query condition operator.");
+  }
+}
+
+template <typename T, typename BitmapType, typename CombinationOp>
+void QueryCondition::apply_ast_node_sparse(
+    const tdb_unique_ptr<ASTNode>& node,
+    ResultTile& result_tile,
+    const bool var_size,
+    const bool nullable,
+    CombinationOp combination_op,
+    std::vector<BitmapType>& result_bitmap) const {
+  if (nullable) {
+    apply_ast_node_sparse<T, BitmapType, CombinationOp, std::true_type>(
+        node, result_tile, var_size, combination_op, result_bitmap);
+  } else {
+    apply_ast_node_sparse<T, BitmapType, CombinationOp, std::false_type>(
+        node, result_tile, var_size, combination_op, result_bitmap);
+  }
+}
+
+>>>>>>> b7e9daf06 (Use C++20 lambda template to clean up switch/case copy pasta [akip ci])
 template <typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
@@ -1274,6 +1625,7 @@ void QueryCondition::apply_ast_node_sparse(
     }
   }
 
+<<<<<<< HEAD
   auto g = [&, *this](auto T) {
     auto h = [&, *this](auto Condition) {
       if (nullable) {
@@ -1287,6 +1639,102 @@ void QueryCondition::apply_ast_node_sparse(
     dispatch_on_op<decltype(T)>(node->get_op(), h);
   };
   dispatch_on_type(type, var_size, g);
+=======
+  switch (type) {
+    case Datatype::INT8: {
+      apply_ast_node_sparse<int8_t>(
+          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    } break;
+    case Datatype::BOOL:
+    case Datatype::UINT8: {
+      apply_ast_node_sparse<uint8_t>(
+          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    } break;
+    case Datatype::INT16: {
+      apply_ast_node_sparse<int16_t>(
+          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    } break;
+    case Datatype::UINT16: {
+      apply_ast_node_sparse<uint16_t>(
+          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    } break;
+    case Datatype::INT32: {
+      apply_ast_node_sparse<int32_t>(
+          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    } break;
+    case Datatype::UINT32: {
+      apply_ast_node_sparse<uint32_t>(
+          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    } break;
+    case Datatype::INT64: {
+      apply_ast_node_sparse<int64_t>(
+          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    } break;
+    case Datatype::UINT64: {
+      apply_ast_node_sparse<uint64_t>(
+          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    } break;
+    case Datatype::FLOAT32: {
+      apply_ast_node_sparse<float>(
+          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    } break;
+    case Datatype::FLOAT64: {
+      apply_ast_node_sparse<double>(
+          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    } break;
+    case Datatype::STRING_ASCII: {
+      apply_ast_node_sparse<char*>(
+          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    } break;
+    case Datatype::CHAR: {
+      if (var_size) {
+        apply_ast_node_sparse<char*>(
+            node,
+            result_tile,
+            var_size,
+            nullable,
+            combination_op,
+            result_bitmap);
+      } else {
+        apply_ast_node_sparse<char>(
+            node,
+            result_tile,
+            var_size,
+            nullable,
+            combination_op,
+            result_bitmap);
+      }
+    } break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS: {
+      apply_ast_node_sparse<int64_t>(
+          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    } break;
+    case Datatype::ANY:
+    case Datatype::BLOB:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    default:
+      throw std::runtime_error(
+          "Cannot perform query comparison; Unsupported query conditional type "
+          "on " +
+          node->get_field_name());
+  }
+>>>>>>> b7e9daf06 (Use C++20 lambda template to clean up switch/case copy pasta [akip ci])
 }
 
 template <typename BitmapType, typename CombinationOp>
