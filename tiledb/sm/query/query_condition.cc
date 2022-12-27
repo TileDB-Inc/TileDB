@@ -2222,7 +2222,13 @@ void QueryCondition::apply_ast_node_sparse(
     }
   }
 
+  auto g = [&, *this ]<class T>() {
+    return apply_ast_node_sparse<T, BitmapType, CombinationOp>(
+        node, result_tile, var_size, nullable, combination_op, result_bitmap);
+  };
+
   switch (type) {
+<<<<<<< HEAD
     case Datatype::INT8: {
       apply_ast_node_sparse<int8_t, BitmapType, CombinationOp>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
@@ -2285,6 +2291,47 @@ void QueryCondition::apply_ast_node_sparse(
             nullable,
             combination_op,
             result_bitmap);
+=======
+    case Datatype::INT8:
+      g.template operator()<int8_t>();
+      break;
+    case Datatype::BOOL:
+    case Datatype::UINT8:
+      g.template operator()<uint8_t>();
+      break;
+    case Datatype::INT16:
+      g.template operator()<int16_t>();
+      break;
+    case Datatype::UINT16:
+      g.template operator()<int16_t>();
+      break;
+    case Datatype::INT32:
+      g.template operator()<int32_t>();
+      break;
+    case Datatype::UINT32:
+      g.template operator()<uint32_t>();
+      break;
+    case Datatype::INT64:
+      g.template operator()<int64_t>();
+      break;
+    case Datatype::UINT64:
+      g.template operator()<uint64_t>();
+      break;
+    case Datatype::FLOAT32:
+      g.template operator()<float>();
+      break;
+    case Datatype::FLOAT64:
+      g.template operator()<double>();
+      break;
+    case Datatype::STRING_ASCII:
+      g.template operator()<char*>();
+      break;
+    case Datatype::CHAR: {
+      if (var_size) {
+        g.template operator()<char*>();
+      } else {
+        g.template operator()<char>();
+>>>>>>> 866bd3488 (Update final switch/case [skip ci])
       }
     } break;
     case Datatype::DATETIME_YEAR:
@@ -2300,6 +2347,7 @@ void QueryCondition::apply_ast_node_sparse(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+<<<<<<< HEAD
     case Datatype::TIME_HR:
     case Datatype::TIME_MIN:
     case Datatype::TIME_SEC:
@@ -2316,6 +2364,10 @@ void QueryCondition::apply_ast_node_sparse(
       apply_ast_node_sparse<uint8_t*, BitmapType, CombinationOp>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
+=======
+      g.template operator()<int64_t>();
+      break;
+>>>>>>> 866bd3488 (Update final switch/case [skip ci])
     case Datatype::ANY:
     case Datatype::BLOB:
     case Datatype::STRING_UTF16:
