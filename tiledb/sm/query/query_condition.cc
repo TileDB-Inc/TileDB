@@ -74,7 +74,11 @@ QueryCondition::QueryCondition(const QueryCondition& rhs)
     , tree_(rhs.tree_ == nullptr ? nullptr : rhs.tree_->clone()) {
 }
 
+<<<<<<< HEAD
 QueryCondition::QueryCondition(QueryCondition&& rhs) noexcept
+=======
+giQueryCondition::QueryCondition(QueryCondition&& rhs) noexcept
+>>>>>>> 1ebfe5aa9 (parent 49a65fdf9fa44aabcc8c868bbc6588e82a9d02ef)
     : condition_marker_(std::move(rhs.condition_marker_))
     , condition_index_(rhs.condition_index_)
     , tree_(std::move(rhs.tree_)) {
