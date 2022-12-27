@@ -31,7 +31,6 @@
  */
 
 #include "tiledb/sm/query/query_condition.h"
-#include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
@@ -41,28 +40,22 @@
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <algorithm>
-#include <functional>
-#include <iostream>
-#include <map>
+#include <cstring>
 #include <memory>
 #include <mutex>
-#include <numeric>
 #include <type_traits>
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-
-QueryCondition::QueryCondition() {
-}
+namespace tiledb::sm {
 
 QueryCondition::QueryCondition(const std::string& condition_marker)
     : condition_marker_(condition_marker)
     , condition_index_(0) {
 }
 
-QueryCondition::QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree)
+QueryCondition::QueryCondition(
+    tdb_unique_ptr<tiledb::sm::ASTNode>&& tree) noexcept
     : tree_(std::move(tree)) {
 }
 
@@ -81,13 +74,10 @@ QueryCondition::QueryCondition(const QueryCondition& rhs)
     , tree_(rhs.tree_ == nullptr ? nullptr : rhs.tree_->clone()) {
 }
 
-QueryCondition::QueryCondition(QueryCondition&& rhs)
+giQueryCondition::QueryCondition(QueryCondition&& rhs) noexcept
     : condition_marker_(std::move(rhs.condition_marker_))
     , condition_index_(rhs.condition_index_)
     , tree_(std::move(rhs.tree_)) {
-}
-
-QueryCondition::~QueryCondition() {
 }
 
 QueryCondition& QueryCondition::operator=(const QueryCondition& rhs) {
@@ -96,11 +86,10 @@ QueryCondition& QueryCondition::operator=(const QueryCondition& rhs) {
     condition_index_ = rhs.condition_index_;
     tree_ = rhs.tree_ == nullptr ? nullptr : rhs.tree_->clone();
   }
-
   return *this;
 }
 
-QueryCondition& QueryCondition::operator=(QueryCondition&& rhs) {
+QueryCondition& QueryCondition::operator=(QueryCondition&& rhs) noexcept {
   condition_marker_ = std::move(rhs.condition_marker_);
   condition_index_ = std::move(rhs.condition_index_);
   tree_ = std::move(rhs.tree_);
@@ -174,203 +163,312 @@ uint64_t QueryCondition::condition_timestamp() const {
   return timestamps.first;
 }
 
-/** Full template specialization for `char*` and `QueryConditionOp::LT`. */
+template <typename T>
+struct is_string_like {
+  inline constexpr static bool value = false;
+};
 template <>
-struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LT> {
+struct is_string_like<char*> {
+  inline constexpr static bool value = true;
+};
+template <>
+struct is_string_like<uint8_t*> {
+  inline constexpr static bool value = true;
+};
+template <typename T>
+inline constexpr bool is_string_like_v = is_string_like<T>::value;
+
+template <typename T>
+struct string_like_cmp;
+template <>
+struct string_like_cmp<char*> {
+  constexpr static auto value = strncmp;
+};
+template <>
+struct string_like_cmp<uint8_t*> {
+  constexpr static auto value = memcmp;
+};
+template <typename T>
+inline constexpr auto string_like_cmp_v =  string_like_cmp<T>::value;
+
+/** Generic binary comparison functor.  No null checking. */
+template <typename T, typename Cmp, typename E>
+struct QueryCondition::BinaryCmp {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    return Cmp{}(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
+  }
+};
+
+/** Generic comparison functor, null checking */
+template <typename T, typename Cmp, typename E>
+struct QueryCondition::BinaryCmpNullChecks {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    return lhs != nullptr &&
+           Cmp{}(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
+  }
+};
+
+/** Generic comparison functor, null checking, equal and not_equal */
+template <typename T, typename Cmp>
+struct QueryCondition::BinaryCmpNullChecks<
+    T,
+    Cmp,
+    typename std::enable_if_t<(
+        (std::is_same_v<Cmp, std::equal_to<T>> ||
+         std::is_same_v<Cmp, std::not_equal_to<T>>)&&(!is_string_like_v<T>))>> {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    if constexpr (std::is_same_v<Cmp, std::equal_to<T>>) {
+      if (lhs == rhs) {
+        return true;
+      }
+    } else if constexpr (std::is_same_v<Cmp, std::not_equal_to<T>>) {
+      if (rhs == nullptr && lhs != nullptr) {
+        return true;
+      }
+    } else {
+      throw std::runtime_error("Unsupported comparison operator");
+    }
+    if (lhs == nullptr || rhs == nullptr) {
+      return false;
+    }
+    return Cmp{}(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
+  }
+};
+
+/** Special case for char* and uint8_t* -- it will be so nice when we can use
+ * concepts.... */
+template <typename T, template <class> typename Cmp>
+struct QueryCondition::BinaryCmp<
+    T,
+    Cmp<T>,
+    std::enable_if_t<(
+        is_string_like_v<T> &&
+        !(std::is_same_v<Cmp<T>, std::equal_to<T>> ||
+          std::is_same_v<Cmp<T>, std::not_equal_to<T>>))>> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+
+    const int cmp = string_like_cmp_v<T>(
+        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+
+    if (cmp != 0) {
+      return Cmp<decltype(cmp)>{}(cmp, 0);
+    }
+
+    return Cmp<uint64_t>{}(lhs_size, rhs_size);
+  }
+};
+
+/** Special case for char* and uint8_t*, equal and not equal */
+template <typename T, template <class> typename Cmp>
+struct QueryCondition::BinaryCmp<
+    T,
+    Cmp<T>,
+    typename std::enable_if_t<
+        is_string_like_v<T> &&
+        (std::is_same_v<Cmp<T>, std::equal_to<T>> ||
+         std::is_same_v<Cmp<T>, std::not_equal_to<T>>)>> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    using Op = Cmp<T>;
+    if constexpr (std::is_same_v<Op, std::equal_to<T>>) {
+      if (lhs_size != rhs_size) {
+        return false;
+      }
+    } else if constexpr (std::is_same_v<Op, std::not_equal_to<T>>) {
+      if (lhs_size != rhs_size) {
+        return true;
+      }
+    } else {
+      throw std::logic_error(
+          "Invalid comparison operator for string comparison.");
+    }
+    return Cmp<int>{}(
+        string_like_cmp_v<T>(
+            static_cast<const char*>(lhs),
+            static_cast<const char*>(rhs),
+            lhs_size),
+        0);
+  }
+};
+
+/** Specialization for char* and uint8_t* */
+template <typename T, template <class> typename Cmp>
+struct QueryCondition::BinaryCmpNullChecks<
+    T,
+    Cmp<T>,
+    typename std::enable_if_t<(
+        is_string_like_v<T> &&
+        (!(std::is_same_v<Cmp<T>, std::equal_to<T>> ||
+           std::is_same_v<Cmp<T>, std::not_equal_to<T>>)))>> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
     if (lhs == nullptr) {
       return false;
     }
-
     const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
+    const int cmp = string_like_cmp_v<T>(
         static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
     if (cmp != 0) {
-      return cmp < 0;
+      return Cmp<decltype(cmp)>{}(cmp, 0);
     }
 
-    return lhs_size < rhs_size;
+    return Cmp<T>{}(
+        reinterpret_cast<T const>(lhs_size),
+        reinterpret_cast<T const>(rhs_size));
   }
 };
 
-/** Full template specialization for `char*` and `QueryConditionOp::LE. */
-template <>
-struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LE> {
+/** Specialization for char* and uint8_t*, equal and not equal */
+template <typename T, template <class> typename Cmp>
+struct QueryCondition::BinaryCmpNullChecks<
+    T,
+    Cmp<T>,
+    typename std::enable_if_t<(
+        is_string_like_v<T> &&
+        (std::is_same_v<Cmp<T>, std::equal_to<T>> ||
+         std::is_same_v<Cmp<T>, std::not_equal_to<T>>))>> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs == nullptr) {
-      return false;
+    const size_t min_size =
+        std::min<size_t>(lhs_size, rhs_size);  // @todo min_size or lhs_size?
+
+    if constexpr (std::is_same_v<Cmp<T>, std::equal_to<T>>) {
+      if (lhs == rhs) {
+        return true;
+      }
+      if (lhs == nullptr || rhs == nullptr) {
+        return false;
+      }
+      if (lhs_size != rhs_size) {
+        return false;
+      }
+    } else if constexpr (std::is_same_v<Cmp<T>, std::not_equal_to<T>>) {
+      if (rhs == nullptr && lhs != nullptr) {
+        return true;
+      }
+      if (lhs == nullptr || rhs == nullptr) {
+        return false;
+      }
+      if (lhs_size != rhs_size) {
+        return true;
+      }
+    } else {
+      throw std::logic_error("Invalid template specialization");
     }
 
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp < 0;
-    }
-
-    return lhs_size <= rhs_size;
+    return Cmp<int>{}(
+        string_like_cmp_v<T>(
+            static_cast<const char*>(lhs),
+            static_cast<const char*>(rhs),
+            min_size),
+        0);
   }
 };
 
-/** Full template specialization for `char*` and `QueryConditionOp::GT`. */
-template <>
-struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GT> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs == nullptr) {
-      return false;
-    }
-
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp > 0;
-    }
-
-    return lhs_size > rhs_size;
+template <typename T, typename O, typename G>
+void dispatch_on_op(O op, const G& g) {
+  switch (op) {
+    case QueryConditionOp::LT:
+      g(std::less<T>{});
+      break;
+    case QueryConditionOp::LE:
+      g(std::less_equal<T>{});
+      break;
+    case QueryConditionOp::GT:
+      g(std::greater<T>{});
+      break;
+    case QueryConditionOp::GE:
+      g(std::greater_equal<T>{});
+      break;
+    case QueryConditionOp::EQ:
+      g(std::equal_to<T>{});
+      break;
+    case QueryConditionOp::NE:
+      g(std::not_equal_to<T>{});
+      break;
+    default:
+      throw std::runtime_error(
+          "QueryCondition::apply_ast_node: Cannot perform query comparison; "
+          "Unknown query condition operator.");
   }
-};
+}
 
-/** Full template specialization for `char*` and `QueryConditionOp::GE`. */
-template <>
-struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GE> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs == nullptr) {
-      return false;
-    }
-
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp > 0;
-    }
-
-    return lhs_size >= rhs_size;
+template <typename T, typename V, typename G>
+void dispatch_on_type(T type, V var_size, const G& g) {
+  switch (type) {
+    case Datatype::INT8:
+      g(int8_t{});
+      break;
+    case Datatype::UINT8:
+      g(uint8_t{});
+      break;
+    case Datatype::INT16:
+      g(int16_t{});
+      break;
+    case Datatype::UINT16:
+      g(uint16_t{});
+      break;
+    case Datatype::INT32:
+      g(int32_t{});
+      break;
+    case Datatype::UINT32:
+      g(uint32_t{});
+      break;
+    case Datatype::INT64:
+      g(int64_t{});
+      break;
+    case Datatype::UINT64:
+      g(uint64_t{});
+      break;
+    case Datatype::FLOAT32:
+      g(float{});
+      break;
+    case Datatype::FLOAT64:
+      g(double{});
+      break;
+    case Datatype::STRING_ASCII:
+      g((char*){});
+      break;
+    case Datatype::CHAR: {
+      if (var_size) {
+        g((char*){});
+      } else {
+        g(char{});
+      }
+    } break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      g(int64_t{});
+      break;
+    case Datatype::ANY:
+    case Datatype::BLOB:
+    case Datatype::STRING_UTF8:
+      g((uint8_t*){});
+      break;
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    default:
+      throw std::runtime_error(
+          "QueryCondition::dispatch_on_type: Unknown query condition type.");
   }
-};
+}
 
-/** Full template specialization for `char*` and `QueryConditionOp::EQ`. */
-template <>
-struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::EQ> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs == rhs) {
-      return true;
-    }
-
-    if (lhs == nullptr || rhs == nullptr) {
-      return false;
-    }
-
-    if (lhs_size != rhs_size) {
-      return false;
-    }
-
-    return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) == 0;
-  }
-};
-
-/** Full template specialization for `char*` and `QueryConditionOp::NE`. */
-template <>
-struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::NE> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (rhs == nullptr && lhs != nullptr) {
-      return true;
-    }
-
-    if (lhs == nullptr || rhs == nullptr) {
-      return false;
-    }
-
-    if (lhs_size != rhs_size) {
-      return true;
-    }
-
-    return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) != 0;
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::LT`. */
-template <typename T>
-struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::LT> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return lhs != nullptr &&
-           *static_cast<const T*>(lhs) < *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::LE`. */
-template <typename T>
-struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::LE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return lhs != nullptr &&
-           *static_cast<const T*>(lhs) <= *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::GT`. */
-template <typename T>
-struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::GT> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return lhs != nullptr &&
-           *static_cast<const T*>(lhs) > *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::GE`. */
-template <typename T>
-struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::GE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return lhs != nullptr &&
-           *static_cast<const T*>(lhs) >= *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::EQ`. */
-template <typename T>
-struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::EQ> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    if (lhs == rhs) {
-      return true;
-    }
-
-    if (lhs == nullptr || rhs == nullptr) {
-      return false;
-    }
-
-    return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::NE`. */
-template <typename T>
-struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::NE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    if (rhs == nullptr && lhs != nullptr) {
-      return true;
-    }
-
-    if (lhs == nullptr || rhs == nullptr) {
-      return false;
-    }
-
-    return *static_cast<const T*>(lhs) != *static_cast<const T*>(rhs);
-  }
-};
-
-template <typename T, QueryConditionOp Op, typename CombinationOp>
+template <typename T, typename Op, typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
     const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
@@ -379,7 +477,7 @@ void QueryCondition::apply_ast_node(
     const bool nullable,
     const ByteVecValue& fill_value,
     const std::vector<ResultCellSlab>& result_cell_slabs,
-    CombinationOp combination_op,
+    typename std::common_type<CombinationOp>::type combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
   const std::string& field_name = node->get_field_name();
   const void* condition_value_content =
@@ -412,7 +510,8 @@ void QueryCondition::apply_ast_node(
           (!fragment_metadata[f]->has_delete_meta() ||
            fragment_metadata[f]->get_processed_conditions_set().count(
                condition_marker_) != 0)) {
-        assert(Op == QueryConditionOp::GT);
+        // assert(Op == QueryConditionOp::GT);
+        assert((std::is_same_v<Op, std::greater<T>>));
         for (size_t c = starting_index; c < starting_index + length; ++c) {
           result_cell_bitmap[c] = 1;
         }
@@ -529,99 +628,6 @@ void QueryCondition::apply_ast_node(
   }
 }
 
-template <typename T, typename CombinationOp>
-void QueryCondition::apply_ast_node(
-    const tdb_unique_ptr<ASTNode>& node,
-    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
-    const uint64_t stride,
-    const bool var_size,
-    const bool nullable,
-    const ByteVecValue& fill_value,
-    const std::vector<ResultCellSlab>& result_cell_slabs,
-    CombinationOp combination_op,
-    std::vector<uint8_t>& result_cell_bitmap) const {
-  switch (node->get_op()) {
-    case QueryConditionOp::LT:
-      apply_ast_node<T, QueryConditionOp::LT, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-      break;
-    case QueryConditionOp::LE:
-      apply_ast_node<T, QueryConditionOp::LE, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-      break;
-    case QueryConditionOp::GT:
-      apply_ast_node<T, QueryConditionOp::GT, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-      break;
-    case QueryConditionOp::GE:
-      apply_ast_node<T, QueryConditionOp::GE, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-      break;
-    case QueryConditionOp::EQ:
-      apply_ast_node<T, QueryConditionOp::EQ, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-      break;
-    case QueryConditionOp::NE:
-      apply_ast_node<T, QueryConditionOp::NE, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-      break;
-    default:
-      throw std::runtime_error(
-          "QueryCondition::apply_ast_node: Cannot perform query comparison; "
-          "Unknown query condition operator.");
-  }
-
-  return;
-}
-
 template <typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
@@ -649,9 +655,9 @@ void QueryCondition::apply_ast_node(
     }
   }
 
-  switch (type) {
-    case Datatype::INT8: {
-      apply_ast_node<int8_t, CombinationOp>(
+  auto g = [&, *this](auto T) {
+    auto h = [&, *this](auto ConditionOp) {
+      return apply_ast_node<decltype(T), decltype(ConditionOp), CombinationOp>(
           node,
           fragment_metadata,
           stride,
@@ -661,192 +667,10 @@ void QueryCondition::apply_ast_node(
           result_cell_slabs,
           combination_op,
           result_cell_bitmap);
-    } break;
-    case Datatype::UINT8: {
-      apply_ast_node<uint8_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::INT16: {
-      apply_ast_node<int16_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::UINT16: {
-      apply_ast_node<uint16_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::INT32: {
-      apply_ast_node<int32_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::UINT32: {
-      apply_ast_node<uint32_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::INT64: {
-      apply_ast_node<int64_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::UINT64: {
-      apply_ast_node<uint64_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::FLOAT32: {
-      apply_ast_node<float, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::FLOAT64: {
-      apply_ast_node<double, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::STRING_ASCII: {
-      apply_ast_node<char*, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::CHAR: {
-      if (var_size) {
-        apply_ast_node<char*, CombinationOp>(
-            node,
-            fragment_metadata,
-            stride,
-            var_size,
-            nullable,
-            fill_value,
-            result_cell_slabs,
-            combination_op,
-            result_cell_bitmap);
-      } else {
-        apply_ast_node<char, CombinationOp>(
-            node,
-            fragment_metadata,
-            stride,
-            var_size,
-            nullable,
-            fill_value,
-            result_cell_slabs,
-            combination_op,
-            result_cell_bitmap);
-      }
-    } break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS: {
-      apply_ast_node<int64_t, CombinationOp>(
-          node,
-          fragment_metadata,
-          stride,
-          var_size,
-          nullable,
-          fill_value,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
-    } break;
-    case Datatype::ANY:
-    case Datatype::BLOB:
-    case Datatype::STRING_UTF8:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    default:
-      throw std::runtime_error(
-          "QueryCondition::apply_ast_node: Cannot perform query comparison; "
-          "Unsupported query "
-          "conditional type on " +
-          node->get_field_name());
-  }
-
-  return;
+    };
+    dispatch_on_op<decltype(T)>(node->get_op(), h);
+  };
+  dispatch_on_type(type, var_size, g);
 }
 
 template <typename CombinationOp>
@@ -870,21 +694,22 @@ void QueryCondition::apply_tree(
   } else {
     const auto result_bitmap_size = result_cell_bitmap.size();
     switch (node->get_combination_op()) {
+
         /*
          * cl(q; a) means evaluate a clause (which may be compound) with query q
          * given existing bitmap a
          *
          * Identities:
          *
-         * cl(q; a) = cl(q; 1) /\ a
-         * cl1(q; a) /\ cl2(q; b) = cl1(q; cl2(q; a))
+         * cl(q; a) = cl(q; 1) ∧ a
+         * cl1(q; a) ∧ cl2(q; b) = cl1(q; cl2(q; a))
          *
-         * cl1(q; a) \/ cl2(q; a) = (cl1(q; 1) /\ a) \/ (cl2(q; 1) /\ a)
-         *                        = (cl1(q; 1) \/ cl2(q; 1)) /\ a
+         * cl1(q; a) ∨ cl2(q; a) = (cl1(q; 1) ∧ a) ∨ (cl2(q; 1) ∧ a)
+         *                        = (cl1(q; 1) ∨ cl2(q; 1)) ∧ a
          */
 
         /*
-         * cl1(q; a) /\ cl2(q; a) = cl1(q; cl2(q; a))
+         * cl1(q; a) ∧ cl2(q; a) = cl1(q; cl2(q; a))
          */
       case QueryConditionCombinationOp::AND: {
         if constexpr (std::
@@ -923,9 +748,9 @@ void QueryCondition::apply_tree(
       } break;
 
         /*
-         * cl1(q; a) \/ cl2(q; a) = a /\ (cl1(q; 1) \/ cl2(q; 1))
-         *                        = a /\ (cl1'(q; 0) \/ cl2'(q; 0))
-         *                        = a /\ (cl1'(q; cl2'(q; 0)))
+         * cl1(q; a) ∨ cl2(q; a) = a ∧ (cl1(q; 1) ∨ cl2(q; 1))
+         *                        = a ∧ (cl1'(q; 0) ∨ cl2'(q; 0))
+         *                        = a ∧ (cl1'(q; cl2'(q; 0)))
          */
       case QueryConditionCombinationOp::OR: {
         std::vector<uint8_t> combination_op_bitmap(result_bitmap_size, 0);
@@ -1007,7 +832,7 @@ Status QueryCondition::apply(
   return Status::Ok();
 }
 
-template <typename T, QueryConditionOp Op, typename CombinationOp>
+template <typename T, typename Op, typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
     ResultTile* result_tile,
@@ -1016,7 +841,7 @@ void QueryCondition::apply_ast_node_dense(
     const uint64_t stride,
     const bool var_size,
     const bool nullable,
-    CombinationOp combination_op,
+    typename std::common_type_t<CombinationOp> combination_op,
     span<uint8_t> result_buffer) const {
   const std::string& field_name = node->get_field_name();
   const void* condition_value_content =
@@ -1063,9 +888,8 @@ void QueryCondition::apply_ast_node_dense(
           cell_value, cell_size, condition_value_content, condition_value_size);
 
       // Set the value.
-      bool buffer_validity_val = buffer_validity == nullptr ?
-                                     true :
-                                     buffer_validity[start + c * stride] != 0;
+      bool buffer_validity_val = buffer_validity == nullptr ||
+                                 buffer_validity[start + c * stride] != 0;
       result_buffer[c] =
           combination_op(result_buffer[c], (uint8_t)cmp && buffer_validity_val);
     }
@@ -1088,102 +912,11 @@ void QueryCondition::apply_ast_node_dense(
           cell_value, cell_size, condition_value_content, condition_value_size);
 
       // Set the value.
-      bool buffer_validity_val = buffer_validity == nullptr ?
-                                     true :
-                                     buffer_validity[start + c * stride] != 0;
+      bool buffer_validity_val = buffer_validity == nullptr ||
+                                 buffer_validity[start + c * stride] != 0;
       result_buffer[c] =
           combination_op(result_buffer[c], (uint8_t)cmp && buffer_validity_val);
     }
-  }
-}
-
-template <typename T, typename CombinationOp>
-void QueryCondition::apply_ast_node_dense(
-    const tdb_unique_ptr<ASTNode>& node,
-    ResultTile* result_tile,
-    const uint64_t start,
-    const uint64_t src_cell,
-    const uint64_t stride,
-    const bool var_size,
-    const bool nullable,
-    CombinationOp combination_op,
-    span<uint8_t> result_buffer) const {
-  switch (node->get_op()) {
-    case QueryConditionOp::LT:
-      apply_ast_node_dense<T, QueryConditionOp::LT, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-      break;
-    case QueryConditionOp::LE:
-      apply_ast_node_dense<T, QueryConditionOp::LE, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-      break;
-    case QueryConditionOp::GT:
-      apply_ast_node_dense<T, QueryConditionOp::GT, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-      break;
-    case QueryConditionOp::GE:
-      apply_ast_node_dense<T, QueryConditionOp::GE, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-      break;
-    case QueryConditionOp::EQ:
-      apply_ast_node_dense<T, QueryConditionOp::EQ, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-      break;
-    case QueryConditionOp::NE:
-      apply_ast_node_dense<T, QueryConditionOp::NE, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-      break;
-    default:
-      throw std::runtime_error(
-          "Cannot perform query comparison; Unknown query condition operator");
   }
 }
 
@@ -1227,9 +960,9 @@ void QueryCondition::apply_ast_node_dense(
     return;
   }
 
-  switch (attribute->type()) {
-    case Datatype::INT8: {
-      apply_ast_node_dense<int8_t, CombinationOp>(
+  auto g = [&, *this](auto T) {
+    auto h = [&, *this](auto Condition) {
+      return apply_ast_node_dense<decltype(T), decltype(Condition), CombinationOp>(
           node,
           result_tile,
           start,
@@ -1239,190 +972,12 @@ void QueryCondition::apply_ast_node_dense(
           nullable,
           combination_op,
           result_buffer);
-    } break;
-    case Datatype::BOOL:
-    case Datatype::UINT8: {
-      apply_ast_node_dense<uint8_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::INT16: {
-      apply_ast_node_dense<int16_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::UINT16: {
-      apply_ast_node_dense<uint16_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::INT32: {
-      apply_ast_node_dense<int32_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::UINT32: {
-      apply_ast_node_dense<uint32_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::INT64: {
-      apply_ast_node_dense<int64_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::UINT64: {
-      apply_ast_node_dense<uint64_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::FLOAT32: {
-      apply_ast_node_dense<float, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::FLOAT64: {
-      apply_ast_node_dense<double, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::STRING_ASCII: {
-      apply_ast_node_dense<char*, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::CHAR: {
-      if (var_size) {
-        apply_ast_node_dense<char*, CombinationOp>(
-            node,
-            result_tile,
-            start,
-            src_cell,
-            stride,
-            var_size,
-            nullable,
-            combination_op,
-            result_buffer);
-      } else {
-        apply_ast_node_dense<char, CombinationOp>(
-            node,
-            result_tile,
-            start,
-            src_cell,
-            stride,
-            var_size,
-            nullable,
-            combination_op,
-            result_buffer);
-      }
-    } break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS: {
-      apply_ast_node_dense<int64_t, CombinationOp>(
-          node,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          var_size,
-          nullable,
-          combination_op,
-          result_buffer);
-    } break;
-    case Datatype::ANY:
-    case Datatype::BLOB:
-    case Datatype::STRING_UTF8:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    default:
-      throw std::runtime_error(
-          "Cannot perform query comparison; Unsupported query conditional type "
-          "on " +
-          node->get_field_name());
-  }
+    };
+    dispatch_on_op<decltype(T)>(node->get_op(), h);
+
+  };
+  dispatch_on_type(attribute->type(), var_size, g);
+
 }
 
 template <typename CombinationOp>
@@ -1454,15 +1009,15 @@ void QueryCondition::apply_tree_dense(
          *
          * Identities:
          *
-         * cl(q; a) = cl(q; 1) /\ a
-         * cl1(q; a) /\ cl2(q; b) = cl1(q; cl2(q; a))
+         * cl(q; a) = cl(q; 1) ∧ a
+         * cl1(q; a) ∧ cl2(q; b) = cl1(q; cl2(q; a))
          *
-         * cl1(q; a) \/ cl2(q; a) = (cl1(q; 1) /\ a) \/ (cl2(q; 1) /\ a)
-         *                        = (cl1(q; 1) \/ cl2(q; 1)) /\ a
+         * cl1(q; a) ∨ cl2(q; a) = (cl1(q; 1) ∧ a) ∨ (cl2(q; 1) ∧ a)
+         *                        = (cl1(q; 1) ∨ cl2(q; 1)) ∧ a
          */
 
         /*
-         * cl1(q; a) /\ cl2(q; a) = cl1(q; cl2(q; a))
+         * cl1(q; a) ∧ cl2(q; a) = cl1(q; cl2(q; a))
          */
       case QueryConditionCombinationOp::AND: {
         if constexpr (std::
@@ -1504,9 +1059,9 @@ void QueryCondition::apply_tree_dense(
         }
       } break;
         /*
-         * cl1(q; a) \/ cl2(q; a) = a /\ (cl1(q; 1) \/ cl2(q; 1))
-         *                        = a /\ (cl1'(q; 0) \/ cl2'(q; 0))
-         *                        = a /\ (cl1'(q; cl2'(q; 0)))
+         * cl1(q; a) ∨ cl2(q; a) = a ∧ (cl1(q; 1) ∨ cl2(q; 1))
+         *                        = a ∧ (cl1'(q; 0) ∨ cl2'(q; 0))
+         *                        = a ∧ (cl1'(q; cl2'(q; 0)))
          */
       case QueryConditionCombinationOp::OR: {
         std::vector<uint8_t> combination_op_bitmap(result_buffer_size, 0);
@@ -1566,150 +1121,6 @@ Status QueryCondition::apply_dense(
   return Status::Ok();
 }
 
-/** Full template specialization for `char*` and `QueryConditionOp::LT`. */
-template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LT> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp < 0;
-    }
-
-    return lhs_size < rhs_size;
-  }
-};
-
-/** Partial template specialization for `char*` and `QueryConditionOp::LE. */
-template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LE> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp < 0;
-    }
-
-    return lhs_size <= rhs_size;
-  }
-};
-
-/** Partial template specialization for `char*` and `QueryConditionOp::GT`. */
-template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GT> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp > 0;
-    }
-
-    return lhs_size > rhs_size;
-  }
-};
-
-/** Partial template specialization for `char*` and `QueryConditionOp::GE`. */
-template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GE> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp > 0;
-    }
-
-    return lhs_size >= rhs_size;
-  }
-};
-
-/** Partial template specialization for `char*` and `QueryConditionOp::EQ`. */
-template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::EQ> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs_size != rhs_size) {
-      return false;
-    }
-
-    return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) == 0;
-  }
-};
-
-/** Partial template specialization for `char*` and `QueryConditionOp::NE`. */
-template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::NE> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs_size != rhs_size) {
-      return true;
-    }
-
-    return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) != 0;
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::LT`. */
-template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::LT> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) < *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::LE`. */
-template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::LE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) <= *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::GT`. */
-template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::GT> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) > *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::GE`. */
-template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::GE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) >= *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::EQ`. */
-template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::EQ> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::NE`. */
-template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::NE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) != *static_cast<const T*>(rhs);
-  }
-};
-
 template <typename T>
 struct QCMax {
   const T& operator()(const T& a, const T& b) const {
@@ -1719,7 +1130,7 @@ struct QCMax {
 
 template <
     typename T,
-    QueryConditionOp Op,
+    typename Op,
     typename BitmapType,
     typename CombinationOp,
     typename nullable>
@@ -1811,89 +1222,6 @@ void QueryCondition::apply_ast_node_sparse(
   }
 }
 
-template <
-    typename T,
-    typename BitmapType,
-    typename CombinationOp,
-    typename nullable>
-void QueryCondition::apply_ast_node_sparse(
-    const tdb_unique_ptr<ASTNode>& node,
-    ResultTile& result_tile,
-    const bool var_size,
-    CombinationOp combination_op,
-    std::vector<BitmapType>& result_bitmap) const {
-  switch (node->get_op()) {
-    case QueryConditionOp::LT:
-      apply_ast_node_sparse<
-          T,
-          QueryConditionOp::LT,
-          BitmapType,
-          CombinationOp,
-          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
-      break;
-    case QueryConditionOp::LE:
-      apply_ast_node_sparse<
-          T,
-          QueryConditionOp::LE,
-          BitmapType,
-          CombinationOp,
-          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
-      break;
-    case QueryConditionOp::GT:
-      apply_ast_node_sparse<
-          T,
-          QueryConditionOp::GT,
-          BitmapType,
-          CombinationOp,
-          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
-      break;
-    case QueryConditionOp::GE:
-      apply_ast_node_sparse<
-          T,
-          QueryConditionOp::GE,
-          BitmapType,
-          CombinationOp,
-          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
-      break;
-    case QueryConditionOp::EQ:
-      apply_ast_node_sparse<
-          T,
-          QueryConditionOp::EQ,
-          BitmapType,
-          CombinationOp,
-          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
-      break;
-    case QueryConditionOp::NE:
-      apply_ast_node_sparse<
-          T,
-          QueryConditionOp::NE,
-          BitmapType,
-          CombinationOp,
-          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
-      break;
-    default:
-      throw std::runtime_error(
-          "Cannot perform query comparison; Unknown query condition operator.");
-  }
-}
-
-template <typename T, typename BitmapType, typename CombinationOp>
-void QueryCondition::apply_ast_node_sparse(
-    const tdb_unique_ptr<ASTNode>& node,
-    ResultTile& result_tile,
-    const bool var_size,
-    const bool nullable,
-    CombinationOp combination_op,
-    std::vector<BitmapType>& result_bitmap) const {
-  if (nullable) {
-    apply_ast_node_sparse<T, BitmapType, CombinationOp, std::true_type>(
-        node, result_tile, var_size, combination_op, result_bitmap);
-  } else {
-    apply_ast_node_sparse<T, BitmapType, CombinationOp, std::false_type>(
-        node, result_tile, var_size, combination_op, result_bitmap);
-  }
-}
-
 template <typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
@@ -1942,100 +1270,19 @@ void QueryCondition::apply_ast_node_sparse(
     }
   }
 
-  switch (type) {
-    case Datatype::INT8: {
-      apply_ast_node_sparse<int8_t, BitmapType, CombinationOp>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
-    } break;
-    case Datatype::BOOL:
-    case Datatype::UINT8: {
-      apply_ast_node_sparse<uint8_t, BitmapType, CombinationOp>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
-    } break;
-    case Datatype::INT16: {
-      apply_ast_node_sparse<int16_t, BitmapType, CombinationOp>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
-    } break;
-    case Datatype::UINT16: {
-      apply_ast_node_sparse<uint16_t, BitmapType, CombinationOp>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
-    } break;
-    case Datatype::INT32: {
-      apply_ast_node_sparse<int32_t, BitmapType, CombinationOp>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
-    } break;
-    case Datatype::UINT32: {
-      apply_ast_node_sparse<uint32_t, BitmapType, CombinationOp>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
-    } break;
-    case Datatype::INT64: {
-      apply_ast_node_sparse<int64_t, BitmapType, CombinationOp>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
-    } break;
-    case Datatype::UINT64: {
-      apply_ast_node_sparse<uint64_t, BitmapType, CombinationOp>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
-    } break;
-    case Datatype::FLOAT32: {
-      apply_ast_node_sparse<float, BitmapType, CombinationOp>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
-    } break;
-    case Datatype::FLOAT64: {
-      apply_ast_node_sparse<double, BitmapType, CombinationOp>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
-    } break;
-    case Datatype::STRING_ASCII: {
-      apply_ast_node_sparse<char*, BitmapType, CombinationOp>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
-    } break;
-    case Datatype::CHAR: {
-      if (var_size) {
-        apply_ast_node_sparse<char*, BitmapType, CombinationOp>(
-            node,
-            result_tile,
-            var_size,
-            nullable,
-            combination_op,
-            result_bitmap);
+  auto g = [&, *this](auto T) {
+    auto h = [&, *this](auto Condition) {
+      if (nullable) {
+        apply_ast_node_sparse<decltype(T), decltype(Condition), BitmapType, CombinationOp, std::true_type>(
+            node, result_tile, var_size, combination_op, result_bitmap);
       } else {
-        apply_ast_node_sparse<char, BitmapType, CombinationOp>(
-            node,
-            result_tile,
-            var_size,
-            nullable,
-            combination_op,
-            result_bitmap);
+        apply_ast_node_sparse<decltype(T), decltype(Condition), BitmapType, CombinationOp, std::false_type>(
+            node, result_tile, var_size, combination_op, result_bitmap);
       }
-    } break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS: {
-      apply_ast_node_sparse<int64_t, BitmapType, CombinationOp>(
-          node, result_tile, var_size, nullable, combination_op, result_bitmap);
-    } break;
-    case Datatype::ANY:
-    case Datatype::BLOB:
-    case Datatype::STRING_UTF8:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    default:
-      throw std::runtime_error(
-          "Cannot perform query comparison; Unsupported query conditional type "
-          "on " +
-          node->get_field_name());
-  }
+    };
+    dispatch_on_op<decltype(T)>(node->get_op(), h);
+  };
+  dispatch_on_type(type, var_size, g);
 }
 
 template <typename BitmapType, typename CombinationOp>
@@ -2046,7 +1293,7 @@ void QueryCondition::apply_tree_sparse(
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
   if (!node->is_expr()) {
-    apply_ast_node_sparse<BitmapType>(
+    apply_ast_node_sparse<BitmapType, CombinationOp>(
         node, array_schema, result_tile, combination_op, result_bitmap);
   } else {
     const auto result_bitmap_size = result_bitmap.size();
@@ -2057,15 +1304,15 @@ void QueryCondition::apply_tree_sparse(
          *
          * Identities:
          *
-         * cl(q; a) = cl(q; 1) /\ a
-         * cl1(q; a) /\ cl2(q; b) = cl1(q; cl2(q; a))
+         * cl(q; a) = cl(q; 1) ∧ a
+         * cl1(q; a) ∧ cl2(q; b) = cl1(q; cl2(q; a))
          *
-         * cl1(q; a) \/ cl2(q; a) = (cl1(q; 1) /\ a) \/ (cl2(q; 1) /\ a)
-         *                        = (cl1(q; 1) \/ cl2(q; 1)) /\ a
+         * cl1(q; a) ∨ cl2(q; a) = (cl1(q; 1) ∧ a) ∨ (cl2(q; 1) ∧ a)
+         *                        = (cl1(q; 1) ∨ cl2(q; 1)) ∧ a
          */
 
         /*
-         * cl1(q; a) /\ cl2(q; a) = cl1(q; cl2(q; a))
+         * cl1(q; a) ∧ cl2(q; a) = cl1(q; cl2(q; a))
          */
       case QueryConditionCombinationOp::AND: {
         if constexpr (std::is_same_v<
@@ -2100,9 +1347,9 @@ void QueryCondition::apply_tree_sparse(
       } break;
 
         /*
-         * cl1(q; a) \/ cl2(q; a) = a /\ (cl1(q; 1) \/ cl2(q; 1))
-         *                        = a /\ (cl1'(q; 0) \/ cl2'(q; 0))
-         *                        = a /\ (cl1'(q; cl2'(q; 0)))
+         * cl1(q; a) ∨ cl2(q; a) = a ∧ (cl1(q; 1) ∨ cl2(q; 1))
+         *                        = a ∧ (cl1'(q; 0) ∨ cl2'(q; 0))
+         *                        = a ∧ (cl1'(q; cl2'(q; 0)))
          */
       case QueryConditionCombinationOp::OR: {
         std::vector<BitmapType> combination_op_bitmap(result_bitmap_size, 0);
@@ -2123,7 +1370,7 @@ void QueryCondition::apply_tree_sparse(
       case QueryConditionCombinationOp::NOT: {
         throw std::runtime_error(
             "Query condition NOT operator is not currently supported.");
-      } break;
+      }
       default: {
         throw std::logic_error(
             "Invalid combination operator when applying query condition.");
@@ -2148,7 +1395,7 @@ Status QueryCondition::apply_sparse(
 }
 
 QueryCondition QueryCondition::negated_condition() {
-  return QueryCondition(tree_->get_negated_tree());
+  return QueryCondition{tree_->get_negated_tree()};
 }
 
 const tdb_unique_ptr<ASTNode>& QueryCondition::ast() const {
@@ -2172,5 +1419,4 @@ template Status QueryCondition::apply_sparse<uint8_t>(
     const ArraySchema& array_schema, ResultTile&, std::vector<uint8_t>&);
 template Status QueryCondition::apply_sparse<uint64_t>(
     const ArraySchema& array_schema, ResultTile&, std::vector<uint64_t>&);
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

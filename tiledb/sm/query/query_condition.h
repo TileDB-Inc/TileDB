@@ -44,8 +44,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class FragmentMetadata;
 struct ResultCellSlab;
@@ -60,13 +59,13 @@ class QueryCondition {
   /* ********************************* */
 
   /** Default constructor. */
-  QueryCondition();
+  explicit QueryCondition() = default;
 
   /** Constructor from a marker. */
-  QueryCondition(const std::string& condition_marker);
+  explicit QueryCondition(const std::string& condition_marker);
 
   /** Constructor from a tree. */
-  QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree);
+  QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree) noexcept;
 
   /** Constructor from a tree and marker. */
   QueryCondition(
@@ -78,10 +77,10 @@ class QueryCondition {
   QueryCondition(const QueryCondition& rhs);
 
   /** Move constructor. */
-  QueryCondition(QueryCondition&& rhs);
+  QueryCondition(QueryCondition&& rhs) noexcept;
 
   /** Destructor. */
-  ~QueryCondition();
+  ~QueryCondition() = default;
 
   /* ********************************* */
   /*             OPERATORS             */
@@ -91,7 +90,7 @@ class QueryCondition {
   QueryCondition& operator=(const QueryCondition& rhs);
 
   /** Move-assignment operator. */
-  QueryCondition& operator=(QueryCondition&& rhs);
+  QueryCondition& operator=(QueryCondition&& rhs) noexcept;
 
   /* ********************************* */
   /*                API                */
@@ -118,7 +117,7 @@ class QueryCondition {
    *   - Fixed-size, single-value, non-nullable attributes.
    *   - The QueryConditionCombinationOp::AND operator.
    *
-   * @param array_schema The current array schena.
+   * @param array_schema The current array schema.
    * @return Status
    */
   Status check(const ArraySchema& array_schema) const;
@@ -238,6 +237,7 @@ class QueryCondition {
   /*         PRIVATE DATATYPES         */
   /* ********************************* */
 
+
   /**
    * Performs a binary comparison between two primitive types.
    * We use a `struct` here because it can support partial
@@ -246,7 +246,7 @@ class QueryCondition {
    * Note that this comparator includes if statements that will
    * prevent vectorization.
    */
-  template <typename T, QueryConditionOp Cmp>
+  template <typename T, typename Op, typename E = void>
   struct BinaryCmpNullChecks;
 
   /**
@@ -254,7 +254,7 @@ class QueryCondition {
    * We use a `struct` here because it can support partial
    * template specialization while a standard function does not.
    */
-  template <typename T, QueryConditionOp Cmp>
+  template <typename T, typename Op, typename E = void>
   struct BinaryCmp;
 
   /* ********************************* */
@@ -276,6 +276,7 @@ class QueryCondition {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
+
   /**
    * Applies a value node on primitive-typed result cell slabs,
    * templated for a query condition operator.
@@ -290,7 +291,8 @@ class QueryCondition {
    * @param result_cell_bitmap The input cell bitmap.
    * @return The filtered cell slabs.
    */
-  template <typename T, QueryConditionOp Op, typename CombinationOp>
+
+  template <typename T, typename Op, typename CombinationOp>
   void apply_ast_node(
       const tdb_unique_ptr<ASTNode>& node,
       const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
@@ -299,7 +301,7 @@ class QueryCondition {
       const bool nullable,
       const ByteVecValue& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs,
-      CombinationOp combination_op,
+      typename std::common_type_t<CombinationOp> combination_op,
       std::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
@@ -386,7 +388,7 @@ class QueryCondition {
    * @param combination_op The combination op.
    * @param result_buffer The result buffer.
    */
-  template <typename T, QueryConditionOp Op, typename CombinationOp>
+  template <typename T, typename Op, typename CombinationOp>
   void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
       ResultTile* result_tile,
@@ -395,7 +397,7 @@ class QueryCondition {
       const uint64_t stride,
       const bool var_size,
       const bool nullable,
-      CombinationOp combination_op,
+      typename std::common_type_t<CombinationOp> combination_op,
       span<uint8_t> result_buffer) const;
 
   /**
@@ -484,7 +486,7 @@ class QueryCondition {
    */
   template <
       typename T,
-      QueryConditionOp Op,
+      typename Op,
       typename BitmapType,
       typename CombinationOp,
       typename nullable>
@@ -533,7 +535,7 @@ class QueryCondition {
       ResultTile& result_tile,
       const bool var_size,
       const bool nullable,
-      CombinationOp combination_op,
+      std::common_type_t<CombinationOp> combination_op,
       std::vector<BitmapType>& result_bitmap) const;
 
   /**
@@ -576,7 +578,30 @@ class QueryCondition {
       std::vector<BitmapType>& result_bitmap) const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+/**
+ * Function for dispatching the application of function `g` based on the
+ * QueryCondition enum `op`, i.e., QueryCondition::LT will invoke
+ * `g(std::less<T>{})`.  `g` is assumed to be a polymorphic function in
+ * its first argument.
+ *
+ * @tparam T
+ * @tparam O
+ * @tparam G
+ * @param op
+ * @param g
+ */
+template <typename T, typename O, typename G>
+void dispatch_on_op(O op, const G& g);
+
+/**
+ * Function for dispatching the application of function `g` based on the
+ * Datatype enum `type`, i.e., Datatype::INT32 will invoke
+ * `g(int32_t{})`.  `g` is assumed to be a polymorphic function in
+ * its first argument.
+ */
+template <typename T, typename V, typename G>
+void dispatch_on_type(T type, V var_size, const G& g);
+
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_QUERY_CONDITION_H
