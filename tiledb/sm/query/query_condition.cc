@@ -1188,7 +1188,7 @@ void QueryCondition::apply_ast_node_dense(
     const uint64_t* buffer_offsets =
         static_cast<uint64_t*>(tile_offsets.data()) + src_cell;
     const uint64_t buffer_offsets_el =
-        tile_offsets.size() / constants::cell_var_offset_size;
+        (tile_offsets.size() / constants::cell_var_offset_size) - src_cell;
 
     // Iterate through each cell in this slab.
     for (uint64_t c = 0; c < result_buffer.size(); ++c) {
