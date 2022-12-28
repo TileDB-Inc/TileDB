@@ -1329,17 +1329,16 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 
   // Check correctness
-  int buffer_read_reopen_start_c[] = {
-      INT_MIN,
-      INT_MIN,
-      INT_MIN,
-      INT_MIN,
-      50,
-      60,
-      70,
-      INT_MIN,
-      INT_MIN,
-      INT_MIN};
+  int buffer_read_reopen_start_c[] = {INT_MIN,
+                                      INT_MIN,
+                                      INT_MIN,
+                                      INT_MIN,
+                                      50,
+                                      60,
+                                      70,
+                                      INT_MIN,
+                                      INT_MIN,
+                                      INT_MIN};
   CHECK(!std::memcmp(
       buffer_read,
       buffer_read_reopen_start_c,
@@ -1395,17 +1394,16 @@ TEST_CASE_METHOD(
 
   // Check correctness
   // Check correctness
-  int buffer_read_open_start_c[] = {
-      INT_MIN,
-      INT_MIN,
-      INT_MIN,
-      INT_MIN,
-      50,
-      60,
-      70,
-      INT_MIN,
-      INT_MIN,
-      INT_MIN};
+  int buffer_read_open_start_c[] = {INT_MIN,
+                                    INT_MIN,
+                                    INT_MIN,
+                                    INT_MIN,
+                                    50,
+                                    60,
+                                    70,
+                                    INT_MIN,
+                                    INT_MIN,
+                                    INT_MIN};
   CHECK(!std::memcmp(
       buffer_read, buffer_read_open_start_c, sizeof(buffer_read_open_start_c)));
   CHECK(buffer_read_size == sizeof(buffer_read_open_start_c));
@@ -1458,17 +1456,16 @@ TEST_CASE_METHOD(
   tiledb_config_free(&cfg);
 
   // Check correctness
-  int buffer_read_open_start_now_c[] = {
-      INT_MIN,
-      INT_MIN,
-      INT_MIN,
-      INT_MIN,
-      INT_MIN,
-      INT_MIN,
-      INT_MIN,
-      INT_MIN,
-      INT_MIN,
-      INT_MIN};
+  int buffer_read_open_start_now_c[] = {INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN,
+                                        INT_MIN};
   CHECK(!std::memcmp(
       buffer_read,
       buffer_read_open_start_now_c,
@@ -2338,8 +2335,8 @@ TEST_CASE_METHOD(
   tiledb_dimension_t* dim;
 
   SECTION("- valid and supported Datatypes") {
-    std::vector<tiledb_datatype_t> valid_supported_types = {
-        TILEDB_UINT64, TILEDB_INT64};
+    std::vector<tiledb_datatype_t> valid_supported_types = {TILEDB_UINT64,
+                                                            TILEDB_INT64};
 
     for (auto dim_type : valid_supported_types) {
       int rc = tiledb_dimension_alloc(
@@ -2349,8 +2346,8 @@ TEST_CASE_METHOD(
   }
 
   SECTION("- valid and unsupported Datatypes") {
-    std::vector<tiledb_datatype_t> valid_unsupported_types = {
-        TILEDB_CHAR, TILEDB_BOOL};
+    std::vector<tiledb_datatype_t> valid_unsupported_types = {TILEDB_CHAR,
+                                                              TILEDB_BOOL};
 
     for (auto dim_type : valid_unsupported_types) {
       int rc = tiledb_dimension_alloc(
