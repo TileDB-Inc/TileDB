@@ -267,7 +267,8 @@ tuple<
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
     optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManagerCanonical::array_open_for_reads(Array* array) {
-  auto timer_se = stats_->start_timer("array_open_for_reads");
+  auto timer_se =
+      stats_->start_timer("array_open_read_load_schemas_and_fragment_meta");
   auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
       load_array_schemas_and_fragment_metadata(
           array->array_directory(),
@@ -288,8 +289,7 @@ tuple<
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManagerCanonical::array_open_for_reads_without_fragments(Array* array) {
   auto timer_se =
-      stats_->start_timer("sm_array_open_for_reads_without_fragments");
-
+      stats_->start_timer("array_open_read_without_fragments_load_schemas");
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =
       load_array_schemas(array->array_directory(), *array->encryption_key());
@@ -306,6 +306,7 @@ tuple<
     optional<shared_ptr<ArraySchema>>,
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManagerCanonical::array_open_for_writes(Array* array) {
+  auto timer_se = stats_->start_timer("array_open_write_load_schemas");
   // Checks
   if (!vfs_->supports_uri_scheme(array->array_uri()))
     return {logger_->status(Status_StorageManagerError(
@@ -353,7 +354,7 @@ StorageManagerCanonical::array_open_for_writes(Array* array) {
 tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManagerCanonical::array_load_fragments(
     Array* array, const std::vector<TimestampedURI>& fragments_to_load) {
-  auto timer_se = stats_->start_timer("array_load_fragments");
+  auto timer_se = stats_->start_timer("sm_array_load_fragments");
 
   // Load the fragment metadata
   std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
@@ -375,7 +376,6 @@ tuple<
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
     optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManagerCanonical::array_reopen(Array* array) {
-  auto timer_se = stats_->start_timer("read_array_open");
   return array_open_for_reads(array);
 }
 
@@ -2346,7 +2346,7 @@ StorageManagerCanonical::load_fragment_metadata(
     const std::vector<TimestampedURI>& fragments_to_load,
     const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
         offsets) {
-  auto timer_se = stats_->start_timer("load_fragment_metadata");
+  auto timer_se = stats_->start_timer("sm_load_fragment_metadata");
 
   // Load the metadata for each fragment
   auto fragment_num = fragments_to_load.size();
@@ -2421,7 +2421,7 @@ tuple<
     optional<std::vector<std::pair<std::string, uint64_t>>>>
 StorageManagerCanonical::load_consolidated_fragment_meta(
     const URI& uri, const EncryptionKey& enc_key) {
-  auto timer_se = stats_->start_timer("read_load_consolidated_frag_meta");
+  auto timer_se = stats_->start_timer("sm_read_load_consolidated_frag_meta");
 
   // No consolidated fragment metadata file
   if (uri.to_string().empty())

@@ -137,6 +137,8 @@ Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  auto timer =
+      storage_manager_->stats()->start_timer("array_open_without_fragments");
   Status st;
   // Checks
   if (is_open()) {
@@ -190,14 +192,17 @@ Status Array::open_without_fragments(
         }
       }
     } else {
-      array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
-          array_uri_,
-          0,
-          UINT64_MAX,
-          ArrayDirectoryMode::READ);
-
+      {
+        auto timer_se = storage_manager_->stats()->start_timer(
+            "array_open_without_fragments_load_directory");
+        array_dir_ = ArrayDirectory(
+            storage_manager_->vfs(),
+            storage_manager_->compute_tp(),
+            array_uri_,
+            0,
+            UINT64_MAX,
+            ArrayDirectoryMode::READ);
+      }
       auto&& [st, array_schema, array_schemas] =
           storage_manager_->array_open_for_reads_without_fragments(this);
       if (!st.ok())
@@ -247,6 +252,8 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  auto timer = storage_manager_->stats()->start_timer(
+      "array_open_" + query_type_str(query_type));
   Status st;
   // Checks
   if (is_open()) {
@@ -363,12 +370,16 @@ Status Array::open(
         }
       }
     } else if (query_type == QueryType::READ) {
-      array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
-          array_uri_,
-          timestamp_start_,
-          timestamp_end_opened_at_);
+      {
+        auto timer_se = storage_manager_->stats()->start_timer(
+            "array_open_read_load_directory");
+        array_dir_ = ArrayDirectory(
+            storage_manager_->vfs(),
+            storage_manager_->compute_tp(),
+            array_uri_,
+            timestamp_start_,
+            timestamp_end_opened_at_);
+      }
 
       auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
           storage_manager_->array_open_for_reads(this);
@@ -382,13 +393,17 @@ Status Array::open(
     } else if (
         query_type == QueryType::WRITE ||
         query_type == QueryType::MODIFY_EXCLUSIVE) {
-      array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
-          array_uri_,
-          timestamp_start_,
-          timestamp_end_opened_at_,
-          ArrayDirectoryMode::SCHEMA_ONLY);
+      {
+        auto timer_se = storage_manager_->stats()->start_timer(
+            "array_open_write_load_directory");
+        array_dir_ = ArrayDirectory(
+            storage_manager_->vfs(),
+            storage_manager_->compute_tp(),
+            array_uri_,
+            timestamp_start_,
+            timestamp_end_opened_at_,
+            ArrayDirectoryMode::SCHEMA_ONLY);
+      }
 
       auto&& [st, array_schema_latest, array_schemas] =
           storage_manager_->array_open_for_writes(this);
@@ -401,13 +416,17 @@ Status Array::open(
       metadata_.reset(timestamp_end_opened_at_);
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
-      array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
-          array_uri_,
-          timestamp_start_,
-          timestamp_end_opened_at_,
-          ArrayDirectoryMode::READ);
+      {
+        auto timer_se = storage_manager_->stats()->start_timer(
+            "array_open_delete_or_update_load_directory");
+        array_dir_ = ArrayDirectory(
+            storage_manager_->vfs(),
+            storage_manager_->compute_tp(),
+            array_uri_,
+            timestamp_start_,
+            timestamp_end_opened_at_,
+            ArrayDirectoryMode::READ);
+      }
 
       auto&& [st, array_schema_latest, array_schemas] =
           storage_manager_->array_open_for_writes(this);
@@ -754,6 +773,7 @@ Status Array::reopen() {
 }
 
 Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
+  auto timer = storage_manager_->stats()->start_timer("array_reopen");
   if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot reopen array; Array is not open"));
@@ -788,14 +808,18 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   }
 
   try {
-    array_dir_ = ArrayDirectory(
-        storage_manager_->vfs(),
-        storage_manager_->compute_tp(),
-        array_uri_,
-        timestamp_start_,
-        timestamp_end_opened_at_,
-        query_type_ == QueryType::READ ? ArrayDirectoryMode::READ :
-                                         ArrayDirectoryMode::SCHEMA_ONLY);
+    {
+      auto timer_se =
+          storage_manager_->stats()->start_timer("array_reopen_directory");
+      array_dir_ = ArrayDirectory(
+          storage_manager_->vfs(),
+          storage_manager_->compute_tp(),
+          array_uri_,
+          timestamp_start_,
+          timestamp_end_opened_at_,
+          query_type_ == QueryType::READ ? ArrayDirectoryMode::READ :
+                                           ArrayDirectoryMode::SCHEMA_ONLY);
+    }
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
