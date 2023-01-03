@@ -448,8 +448,9 @@ Status ArraySchema::check() const {
   }
 
   if (array_type_ == ArrayType::SPARSE && capacity_ == 0) {
-    throw ArraySchemaStatusException("Array schema check failed; Sparse arrays "
-                                "cannot have their capacity equal to zero.");
+    throw ArraySchemaStatusException(
+        "Array schema check failed; Sparse arrays "
+        "cannot have their capacity equal to zero.");
   }
 
   RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
