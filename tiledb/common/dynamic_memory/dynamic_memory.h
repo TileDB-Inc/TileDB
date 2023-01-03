@@ -69,7 +69,9 @@ struct HeapProfilerTracer {
   }
 
   static void deallocate(void* p, size_t, size_t, const TracingLabel&) {
-    heap_profiler.record_dealloc(p);
+    // We store the address here to avoid a use after free error.
+    uint64_t addr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(p));
+    heap_profiler.record_dealloc(addr);
   }
 };
 

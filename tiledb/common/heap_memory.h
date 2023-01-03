@@ -87,9 +87,10 @@ void tiledb_delete(T* const p) {
   }
 
   std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
-
+  // We store the address here to avoid a use after free error.
+  uint64_t addr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(p));
   delete p;
-  heap_profiler.record_dealloc(p);
+  heap_profiler.record_dealloc(addr);
 }
 
 /** TileDB variant of `operator new[]`. */
@@ -121,8 +122,10 @@ void tiledb_delete_array(T* const p) {
 
   std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
+  // We store the address here to avoid a use after free error.
+  uint64_t addr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(p));
   delete[] p;
-  heap_profiler.record_dealloc(p);
+  heap_profiler.record_dealloc(addr);
 }
 
 /** TileDB variant of `std::unique_ptr`. */

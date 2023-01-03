@@ -85,12 +85,14 @@ void* tiledb_realloc(
 
   std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
+  // We store the address here to avoid a use after free error.
+  uint64_t addr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(p));
   void* const p_realloc = std::realloc(p, size);
 
   if (!p_realloc)
     heap_profiler.dump_and_terminate();
 
-  heap_profiler.record_dealloc(p);
+  heap_profiler.record_dealloc(addr);
   heap_profiler.record_alloc(p_realloc, size, label);
 
   return p_realloc;
@@ -104,8 +106,10 @@ void tiledb_free(void* const p) {
 
   std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
+  // We store the address here to avoid a use after free error.
+  uint64_t addr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(p));
   free(p);
-  heap_profiler.record_dealloc(p);
+  heap_profiler.record_dealloc(addr);
 }
 
 }  // namespace common

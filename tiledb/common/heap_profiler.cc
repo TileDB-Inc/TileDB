@@ -137,12 +137,10 @@ void HeapProfiler::record_alloc(
   }
 }
 
-void HeapProfiler::record_dealloc(const void* const p) {
+void HeapProfiler::record_dealloc(const uint64_t addr) {
   std::unique_lock<std::mutex> ul(mutex_);
 
   try {
-    const uint64_t addr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(p));
-
     // Until we have replaced all dynamic memory APIs, we will silently
     // ignore mismatched `record_alloc` and `record_dealloc` calls.
     // assert(addr_to_alloc_.count(addr) > 0);

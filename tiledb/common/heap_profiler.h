@@ -119,7 +119,7 @@ class HeapProfiler {
    *
    * @param p The pointer to the deallocated memory.
    */
-  void record_dealloc(const void* p);
+  void record_dealloc(const uint64_t addr);
 
   /** Dumps the current stats and terminates the process. */
   void dump_and_terminate();
