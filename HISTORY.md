@@ -1,3 +1,16 @@
+# TileDB v2.13.1 Release Notes
+
+## Improvements
+
+* Sparse globalorder reader: prevent unused tiles from being loaded again. [#3710](https://github.com/TileDB-Inc/TileDB/pull/3710)
+* Do not resubmit http requests for curl errors for REST requests [#3712](https://github.com/TileDB-Inc/TileDB/pull/3712)
+* Enables WebP by default [#3724](https://github.com/TileDB-Inc/TileDB/pull/3724)
+
+## Bug fixes
+
+* Query condition: fix when attribute condition is not in user buffers. [#3713](https://github.com/TileDB-Inc/TileDB/pull/3713)
+
+
 # TileDB v2.13.0 Release Notes
 
 # Announcements
