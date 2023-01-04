@@ -37,6 +37,12 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+static inline bool supported_string_type(Datatype type) {
+  return (
+      type == Datatype::CHAR || type == Datatype::STRING_ASCII ||
+      type == Datatype::STRING_UTF8);
+}
+
 bool ASTNodeVal::is_expr() const {
   return false;
 }
@@ -81,9 +87,7 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 
     // Ensure that an attribute that is marked as nullable
     // corresponds to a type that is nullable.
-    if ((!nullable) &&
-        (type != Datatype::CHAR && type != Datatype::STRING_ASCII &&
-         type != Datatype::STRING_UTF8)) {
+    if ((!nullable) && !supported_string_type(type)) {
       return Status_QueryConditionError(
           "Null value can only be used with nullable attributes");
     }
@@ -91,8 +95,7 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 
   // Ensure that non-empty attributes are only var-sized for
   // ASCII and UTF-8 strings.
-  if (var_size && type != Datatype::CHAR && type != Datatype::STRING_ASCII &&
-      type != Datatype::STRING_UTF8 &&
+  if (var_size && !supported_string_type(type) &&
       condition_value_view_.content() != nullptr) {
     return Status_QueryConditionError(
         "Value node non-empty attribute may only be var-sized for ASCII "
@@ -101,9 +104,7 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   }
 
   // Ensure that non string fixed size attributes store only one value per cell.
-  if (cell_val_num != 1 && type != Datatype::CHAR &&
-      type != Datatype::STRING_ASCII && type != Datatype::STRING_UTF8 &&
-      (!var_size)) {
+  if (cell_val_num != 1 && !supported_string_type(type) && !var_size) {
     return Status_QueryConditionError(
         "Value node attribute must have one value per cell for non-string "
         "fixed size attributes: " +
@@ -114,8 +115,7 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   // value size.
   if (cell_size != constants::var_size && cell_size != condition_value_size &&
       !(nullable && condition_value_view_.content() == nullptr) &&
-      type != Datatype::CHAR && type != Datatype::STRING_ASCII &&
-      type != Datatype::STRING_UTF8 && (!var_size)) {
+      !supported_string_type(type) && (!var_size)) {
     return Status_QueryConditionError(
         "Value node condition value size mismatch: " +
         std::to_string(cell_size) +
