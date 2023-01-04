@@ -311,6 +311,8 @@ Status fragment_metadata_from_capnp(
       frag_meta->fragment_null_counts().emplace_back(fragment_null_count);
     }
   }
+
+  frag_meta->version() = frag_meta_reader.getVersion();
   if (frag_meta_reader.hasTimestampRange()) {
     frag_meta->timestamp_range() = std::make_pair(
         frag_meta_reader.getTimestampRange()[0],
