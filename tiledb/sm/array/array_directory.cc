@@ -58,6 +58,7 @@ ArrayDirectory::ArrayDirectory(
     : uri_(uri.add_trailing_slash())
     , vfs_(vfs)
     , tp_(tp)
+    , stats_(vfs->stats()->create_child("ArrayDirectory"))
     , timestamp_start_(timestamp_start)
     , timestamp_end_(timestamp_end)
     , mode_(mode)
@@ -163,7 +164,7 @@ Status ArrayDirectory::load() {
       // Load (in parallel) the fragment metadata directory URIs
       tasks.emplace_back(tp_->execute([&]() {
         auto&& [st, fragment_meta_uris] =
-            load_fragment_metadata_dir_uris_v12_or_higher();
+            list_fragment_metadata_dir_uris_v12_or_higher();
         RETURN_NOT_OK(st);
         fragment_meta_uris_v12_or_higher =
             std::move(fragment_meta_uris.value());
@@ -408,6 +409,8 @@ bool ArrayDirectory::loaded() const {
 
 tuple<Status, optional<std::vector<URI>>> ArrayDirectory::list_root_dir_uris() {
   // List the array directory URIs
+  [[maybe_unused]] auto timer_se = stats_->start_timer("list_root_uris");
+
   std::vector<URI> array_dir_uris;
   RETURN_NOT_OK_TUPLE(vfs_->ls(uri_, &array_dir_uris), nullopt);
 
@@ -429,6 +432,8 @@ ArrayDirectory::load_root_dir_uris_v1_v11(
 tuple<Status, optional<std::vector<URI>>>
 ArrayDirectory::list_commits_dir_uris() {
   // List the commits folder array directory URIs
+  [[maybe_unused]] auto timer_se = stats_->start_timer("list_commit_uris");
+
   auto commits_uri = uri_.join_path(constants::array_commits_dir_name);
   std::vector<URI> commits_dir_uris;
   RETURN_NOT_OK_TUPLE(vfs_->ls(commits_uri, &commits_dir_uris), nullopt);
@@ -497,8 +502,11 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
 }
 
 tuple<Status, optional<std::vector<URI>>>
-ArrayDirectory::load_fragment_metadata_dir_uris_v12_or_higher() {
+ArrayDirectory::list_fragment_metadata_dir_uris_v12_or_higher() {
   // List the fragment metadata directory URIs
+  [[maybe_unused]] auto timer_se =
+      stats_->start_timer("list_fragment_meta_uris");
+
   auto fragment_metadata_uri =
       uri_.join_path(constants::array_fragment_meta_dir_name);
 
@@ -626,9 +634,14 @@ Status ArrayDirectory::load_array_meta_uris() {
   // Load the URIs in the array metadata directory
   std::vector<URI> array_meta_dir_uris;
   auto array_meta_uri = uri_.join_path(constants::array_metadata_dir_name);
-  RETURN_NOT_OK(vfs_->ls(array_meta_uri, &array_meta_dir_uris));
+  {
+    [[maybe_unused]] auto timer_se =
+        stats_->start_timer("list_array_meta_uris");
 
-  // Compute and array metadata URIs and the vacuum file URIs to vacuum. */
+    RETURN_NOT_OK(vfs_->ls(array_meta_uri, &array_meta_dir_uris));
+  }
+
+  // Compute array metadata URIs and vacuum URIs to vacuum. */
   auto&& [st1, array_meta_uris_to_vacuum, array_meta_vac_uris_to_vacuum] =
       compute_uris_to_vacuum(true, array_meta_dir_uris);
   RETURN_NOT_OK(st1);
@@ -650,7 +663,12 @@ Status ArrayDirectory::load_array_schema_uris() {
   // Load the URIs from the array schema directory
   std::vector<URI> array_schema_dir_uris;
   auto schema_dir_uri = uri_.join_path(constants::array_schema_dir_name);
-  RETURN_NOT_OK(vfs_->ls(schema_dir_uri, &array_schema_dir_uris));
+  {
+    [[maybe_unused]] auto timer_se =
+        stats_->start_timer("list_array_schema_uris");
+
+    RETURN_NOT_OK(vfs_->ls(schema_dir_uri, &array_schema_dir_uris));
+  }
 
   // Compute all the array schema URIs plus the latest array schema URI
   RETURN_NOT_OK(compute_array_schema_uris(array_schema_dir_uris));

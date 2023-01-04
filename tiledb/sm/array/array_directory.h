@@ -37,6 +37,7 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/stats/stats.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <unordered_map>
@@ -445,6 +446,9 @@ class ArrayDirectory {
   /** A thread pool used for parallelism. */
   ThreadPool* tp_;
 
+  /** The class stats. */
+  stats::Stats* stats_;
+
   /** Fragment URIs. */
   std::vector<URI> unfiltered_fragment_uris_;
 
@@ -551,7 +555,7 @@ class ArrayDirectory {
    * @return Status, fragment metadata URIs.
    */
   tuple<Status, optional<std::vector<URI>>>
-  load_fragment_metadata_dir_uris_v12_or_higher();
+  list_fragment_metadata_dir_uris_v12_or_higher();
 
   /**
    * Loads the commits URIs to consolidate.
