@@ -341,17 +341,15 @@ shared_ptr<Array> ArrayDimensionLabelQueries::open_dimension_label(
       make_shared<Array>(HERE(), dim_label_uri, storage_manager_));
   const auto dim_label = label_iter.first->second;
 
-  // Open the dimension label. Handling encrypted dimension labels is not yet
-  // implemented.
-  // TODO: Make sure these timestamps are the desired timestamps.
-  // TODO: Make sure the encryption is as expected.
+  // Open the dimension label with the same timestamps and encryption as the
+  // parent array.
   throw_if_not_ok(dim_label->open(
       query_type,
       array->timestamp_start(),
       array->timestamp_end(),
-      EncryptionType::NO_ENCRYPTION,
-      nullptr,
-      0));
+      array->encryption_key()->encryption_type(),
+      array->encryption_key()->key().data(),
+      array->encryption_key()->key().size()));
 
   // Check the dimension label is compatible with expected dimension label.
   array->array_schema_latest().check_dimension_label_schema(
