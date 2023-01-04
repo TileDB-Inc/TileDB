@@ -259,6 +259,7 @@ if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/test-capi-array-many-dimension-labels.cc
     src/test-capi-dimension_labels.cc
+    src/test-capi-dimension-label-encrypted.cc
     src/test-capi-dense-array-dimension-label.cc
     src/test-capi-dense-array-dimension-label-var.cc
     src/test-capi-sparse-array-dimension-label.cc
