@@ -2908,6 +2908,44 @@ int32_t tiledb_array_get_open_timestamp_end(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Allocate an array object
+  tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
+  try {
+    array->array_ = make_shared<tiledb::sm::Array>(
+        HERE(), tiledb::sm::URI(uri), ctx->storage_manager());
+  } catch (std::bad_alloc&) {
+    auto st = Status_Error(
+        "Failed to create TileDB array object; Memory allocation error");
+    delete array;
+    array = nullptr;
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Open the array for exclusive modification
+  throw_if_not_ok(array->array_->open(
+      static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
+      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+      nullptr,
+      0));
+
+  try {
+    array->array_->delete_array(tiledb::sm::URI(uri));
+  } catch (std::exception& e) {
+    auto st = Status_ArrayError(e.what());
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_delete_array(
     tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
@@ -7421,6 +7459,10 @@ int32_t tiledb_array_get_open_timestamp_end(
     uint64_t* timestamp_end) noexcept {
   return api_entry<tiledb::api::tiledb_array_get_open_timestamp_end>(
       ctx, array, timestamp_end);
+}
+
+int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri) noexcept {
+  return api_entry<tiledb::api::tiledb_array_delete>(ctx, uri);
 }
 
 int32_t tiledb_array_delete_array(

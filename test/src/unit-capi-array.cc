@@ -88,6 +88,7 @@ struct ArrayFx {
   void create_sparse_array(const std::string& path);
   void create_dense_vector(const std::string& path);
   void create_dense_array(const std::string& path);
+  void write_fragment(tiledb_array_t* array, uint64_t timestamp);
   static std::string random_name(const std::string& prefix);
   static int get_fragment_timestamps(const char* path, void* data);
   void array_serialize_wrapper(
@@ -362,6 +363,36 @@ void ArrayFx::create_dense_array(const std::string& path) {
   tiledb_dimension_free(&dim_2);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
+}
+
+void ArrayFx::write_fragment(tiledb_array_t* array, uint64_t timestamp) {
+  // Open the array at the given timestamp
+  int rc = tiledb_array_set_open_timestamp_start(ctx_, array, timestamp);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Buffers
+  int buffer[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  uint64_t buffer_size = sizeof(buffer);
+
+  // Write to the array
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", buffer, &buffer_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_free(&query);
 }
 
 void ArrayFx::array_serialize_wrapper(
@@ -1869,6 +1900,65 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+}
+
+TEST_CASE_METHOD(
+    ArrayFx, "C API: Test deletion of array", "[capi][array][delete]") {
+  SupportedFsLocal local_fs;
+  std::string array_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + "array_delete";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  create_dense_vector(array_name);
+
+  // Conditionally consolidate
+  // Note: there's no need to vacuum; delete_array will delete all fragments
+  bool consolidate = GENERATE(true, false);
+
+  // Write fragments at timestamps 1, 3, 5
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  write_fragment(array, 1);
+  write_fragment(array, 3);
+  write_fragment(array, 5);
+
+  // Check write
+  CHECK(tiledb::test::num_commits(array_name) == 3);
+  CHECK(tiledb::test::num_fragments(array_name) == 3);
+
+  // Conditionally consolidate commits
+  if (consolidate) {
+    tiledb_config_t* cfg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.consolidation.mode", "commits", &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_consolidate(ctx_, array_name.c_str(), cfg);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_config_free(&cfg);
+
+    // Validate working directory
+    CHECK(tiledb::test::num_commits(array_name) == 3);
+    CHECK(tiledb::test::num_fragments(array_name) == 3);
+  }
+
+  // Delete array data
+  rc = tiledb_array_delete(ctx_, array_name.c_str());
+
+  // Validate working directory after delete
+  CHECK(tiledb::test::num_commits(array_name) == 0);
+  CHECK(tiledb::test::num_fragments(array_name) == 0);
+
+  // Try to open array
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_ERR);
+
+  // Clean up
+  tiledb_array_free(&array);
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 

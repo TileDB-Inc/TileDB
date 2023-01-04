@@ -1592,6 +1592,32 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DeletesFx,
+    "CPP API: Deletion of invalid fragment writes",
+    "[cppapi][deletes][fragments][invalid]") {
+  // Note: An array must be open in MODIFY_EXCLUSIVE mode to delete fragments
+  remove_sparse_array();
+
+  // Write fragments at timestamps 1, 3
+  create_sparse_array();
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 3);
+  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
+
+  // Open array in WRITE mode and try to delete fragments
+  std::unique_ptr<Array> array =
+      std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE);
+  REQUIRE_THROWS_WITH(
+      array->delete_fragments(SPARSE_ARRAY_NAME, 0, UINT64_MAX),
+      Catch::Matchers::ContainsSubstring(
+          "Query type must be MODIFY_EXCLUSIVE"));
+  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
+
+  array->close();
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    DeletesFx,
     "CPP API: Deletion of fragment writes",
     "[cppapi][deletes][fragments]") {
   remove_sparse_array();
@@ -1731,45 +1757,6 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
-    "CPP API: Deletion of invalid array writes",
-    "[cppapi][deletes][array][invalid]") {
-  // Note: An array must be open in MODIFY_EXCLUSIVE mode to delete data
-  remove_sparse_array();
-  auto array_name = std::string(SPARSE_ARRAY_NAME);
-
-  // Write fragments
-  create_sparse_array();
-  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
-  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 3);
-
-  // Ensure expected data was written
-  CHECK(tiledb::test::num_commits(SPARSE_ARRAY_NAME) == 2);
-  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
-  auto schemas =
-      vfs_.ls(array_name + "/" + tiledb::sm::constants::array_schema_dir_name);
-  CHECK(schemas.size() == 1);
-
-  // Open array in WRITE mode and try to delete data
-  std::unique_ptr<Array> array =
-      std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE);
-  REQUIRE_THROWS_WITH(
-      array->delete_array(SPARSE_ARRAY_NAME),
-      Catch::Matchers::ContainsSubstring(
-          "Query type must be MODIFY_EXCLUSIVE"));
-  array->close();
-
-  // Ensure nothing was deleted
-  CHECK(tiledb::test::num_commits(SPARSE_ARRAY_NAME) == 2);
-  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
-  schemas =
-      vfs_.ls(array_name + "/" + tiledb::sm::constants::array_schema_dir_name);
-  CHECK(schemas.size() == 1);
-
-  remove_sparse_array();
-}
-
-TEST_CASE_METHOD(
     DeletesFx, "CPP API: Deletion of array data", "[cppapi][deletes][array]") {
   remove_sparse_array();
   auto array_name = std::string(SPARSE_ARRAY_NAME);
@@ -1825,12 +1812,7 @@ TEST_CASE_METHOD(
   }
 
   // Delete array data
-  array =
-      std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
-  array->delete_array(array_name);
-
-  // Note: delete_array closes the array; closing here is an extraneous no-op
-  array->close();
+  Array::delete_array(ctx_, array_name);
 
   // Check working directory after delete
   REQUIRE(vfs_.is_file(extraneous_file_path));
@@ -1907,9 +1889,7 @@ TEST_CASE_METHOD(
   }
 
   // Delete array data
-  std::unique_ptr<Array> array =
-      std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
-  array->delete_array(array_name);
+  Array::delete_array(ctx_, array_name);
 
   // Check working directory after delete
   uris = vfs_.ls(array_name);
