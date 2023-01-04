@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.2.269">
+<meta name="generator" content="quarto-1.2.280">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -252,7 +252,7 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 <p>The XOR filter applies the XOR operation sequentally to the input data, in chunks of 1-4 bytes, depending on the <code>sizeof</code> the attribute’s type representation. For example, given <code>data</code> as a NumPy int64 array:</p>
-<pre><code>data = np.random.rang(npts)
+<pre><code>data = np.random.rand(npts)
 data_b = data.view(np.int64)
 for i in range(1, len(data)):
   data_b[i] = data_b[i] ^ data_b[i-1]</code></pre>
