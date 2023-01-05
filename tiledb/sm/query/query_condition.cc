@@ -1186,20 +1186,20 @@ void QueryCondition::apply_ast_node_dense(
 
     const auto& tile_offsets = tile_tuple->fixed_tile();
     const uint64_t* buffer_offsets =
-        static_cast<uint64_t*>(tile_offsets.data()) + src_cell;
+        static_cast<uint64_t*>(tile_offsets.data());
     const uint64_t buffer_offsets_el =
-        (tile_offsets.size() / constants::cell_var_offset_size) - src_cell;
+        tile_offsets.size() / constants::cell_var_offset_size;
 
     // Iterate through each cell in this slab.
     for (uint64_t c = 0; c < result_buffer.size(); ++c) {
-      // Check the previous cell here, which breaks vectorization but as this
+      // Check the next cell here, which breaks vectorization but as this
       // is string data requiring a strcmp which cannot be vectorized, this is
       // ok.
-      const uint64_t buffer_offset = buffer_offsets[start + c * stride];
-      const uint64_t next_cell_offset =
-          (start + c * stride + 1 < buffer_offsets_el) ?
-              buffer_offsets[start + c * stride + 1] :
-              buffer_size;
+      const uint64_t offset_idx = start + src_cell + c * stride;
+      const uint64_t buffer_offset = buffer_offsets[offset_idx];
+      const uint64_t next_cell_offset = (offset_idx + 1 < buffer_offsets_el) ?
+                                            buffer_offsets[offset_idx + 1] :
+                                            buffer_size;
       const uint64_t cell_size = next_cell_offset - buffer_offset;
 
       // Get the cell value.
