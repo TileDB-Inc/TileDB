@@ -409,7 +409,7 @@ bool ArrayDirectory::loaded() const {
 
 tuple<Status, optional<std::vector<URI>>> ArrayDirectory::list_root_dir_uris() {
   // List the array directory URIs
-  [[maybe_unused]] auto timer_se = stats_->start_timer("list_root_uris");
+  auto timer_se = stats_->start_timer("list_root_uris");
 
   std::vector<URI> array_dir_uris;
   RETURN_NOT_OK_TUPLE(vfs_->ls(uri_, &array_dir_uris), nullopt);
@@ -432,7 +432,7 @@ ArrayDirectory::load_root_dir_uris_v1_v11(
 tuple<Status, optional<std::vector<URI>>>
 ArrayDirectory::list_commits_dir_uris() {
   // List the commits folder array directory URIs
-  [[maybe_unused]] auto timer_se = stats_->start_timer("list_commit_uris");
+  auto timer_se = stats_->start_timer("list_commit_uris");
 
   auto commits_uri = uri_.join_path(constants::array_commits_dir_name);
   std::vector<URI> commits_dir_uris;
