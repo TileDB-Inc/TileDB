@@ -40,78 +40,6 @@
 
 using namespace tiledb::sm;
 
-#if 01
-//TBD: Figure out what actually needs to be in here and (finish) change(s)
-
-TEST_CASE("C API: Test buffer", "[capi][buffer_list]") {
-  tiledb_ctx_handle_t* ctx{nullptr};
-  tiledb_ctx_alloc(nullptr, &ctx);
-
-  tiledb_buffer_list_t* buffer_list{nullptr};
-  REQUIRE(tiledb_buffer_list_alloc(ctx, &buffer_list) == TILEDB_OK);
-
-  #if 0
-  SECTION("- Check size and data pointer") {
-    void* data;
-    uint64_t size = 123;
-    REQUIRE(tiledb_buffer_list_get_data(ctx, buffer_list, &data, &size) == TILEDB_OK);
-    REQUIRE(data == nullptr);
-    REQUIRE(size == 0);
-  }
-  #endif
-
-  #if 0
-  SECTION("- Check get/set datatype") {
-    tiledb_datatype_t type;
-    REQUIRE(tiledb_buffer_get_type(ctx, buffer, &type) == TILEDB_OK);
-    REQUIRE(type == TILEDB_UINT8);
-    REQUIRE(tiledb_buffer_set_type(ctx, buffer, TILEDB_INT32) == TILEDB_OK);
-    REQUIRE(tiledb_buffer_get_type(ctx, buffer, &type) == TILEDB_OK);
-    REQUIRE(type == TILEDB_INT32);
-  }
-  #endif
-
-  #if 0
-  SECTION("- Check get/set buffer") {
-    const unsigned alloc_size = 123;
-    void* alloc = std::malloc(alloc_size);
-    REQUIRE(
-      tiledb_buffer_set_data(ctx, buffer, alloc, alloc_size) == TILEDB_OK);
-
-    // Check size/data
-    void* data;
-    uint64_t size = 123;
-    REQUIRE(tiledb_buffer_get_data(ctx, buffer, &data, &size) == TILEDB_OK);
-    REQUIRE(data == alloc);
-    REQUIRE(size == alloc_size);
-
-    // Check it works to set again
-    REQUIRE(
-      tiledb_buffer_set_data(ctx, buffer, alloc, alloc_size) == TILEDB_OK);
-
-    // Buffers can alias
-    tiledb_buffer_t* buffer2;
-    REQUIRE(tiledb_buffer_alloc(ctx, &buffer2) == TILEDB_OK);
-    REQUIRE(
-      tiledb_buffer_set_data(ctx, buffer2, alloc, alloc_size) == TILEDB_OK);
-    tiledb_buffer_free(&buffer2);
-
-    // Check setting to nullptr works
-    REQUIRE(tiledb_buffer_set_data(ctx, buffer, nullptr, 0) == TILEDB_OK);
-    REQUIRE(tiledb_buffer_get_data(ctx, buffer, &data, &size) == TILEDB_OK);
-    REQUIRE(size == 0);
-    REQUIRE(data == nullptr);
-
-    std::free(alloc);
-  }
-  #endif
-
-  tiledb_buffer_list_free(&buffer_list);
-  tiledb_ctx_free(&ctx);
-}
-
-//... CAPI test_case()s from test\src\unit-bufferlist.cc...
-
 TEST_CASE("C API: Test empty BufferList", "[capi][buffer][bufferlist]") {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
@@ -137,7 +65,6 @@ TEST_CASE("C API: Test empty BufferList", "[capi][buffer][bufferlist]") {
   tiledb_ctx_free(&ctx);
 }
 
-#if 0
 TEST_CASE("C API: Test BufferList get buffers", "[capi][buffer][bufferlist]") {
   // Create a testing buffer list
   BufferList buffer_list;
@@ -204,6 +131,3 @@ TEST_CASE("C API: Test BufferList get buffers", "[capi][buffer][bufferlist]") {
   tiledb_buffer_list_free(&c_buffer_list);
   tiledb_ctx_free(&ctx);
 }
-#endif
-
-#endif

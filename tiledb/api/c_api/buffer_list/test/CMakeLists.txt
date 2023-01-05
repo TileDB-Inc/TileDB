@@ -30,6 +30,7 @@ add_executable(unit_capi_buffer_list EXCLUDE_FROM_ALL)
 target_sources(unit_capi_buffer_list PUBLIC unit_capi_buffer_list.cc)
 target_link_libraries(unit_capi_buffer_list PUBLIC capi_buffer_list_stub)
 target_link_libraries(unit_capi_buffer_list PUBLIC Catch2::Catch2WithMain)
+target_link_libraries(unit_capi_buffer_list PUBLIC capi_buffer_stub)
 
 add_test(
   NAME "unit_capi_buffer_list"
