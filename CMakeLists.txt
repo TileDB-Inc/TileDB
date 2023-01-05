@@ -348,6 +348,7 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/data_order/data_order_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/datatype/datatype_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/datatype/datatype_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/dimension_label/dimension_label_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_external.h"
@@ -550,7 +551,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_capi_query_type)
   add_dependencies(tests unit_capi_vfs)
   # C API array schema
-  add_dependencies(tests unit_capi_filter unit_capi_filter_list)
+  add_dependencies(tests unit_capi_filter unit_capi_filter_list unit_capi_dimension_label)
 
   if (TILEDB_CRC32)
     add_dependencies(tests unit_link_crc32)

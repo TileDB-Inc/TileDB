@@ -67,6 +67,9 @@ add_subdirectory(datatype)
 # `data_order`: no dependencies
 add_subdirectory(data_order)
 
+# `dimension_label`: depends on `context`, `datatype`, `data_order`
+add_subdirectory(dimension_label)
+
 # `filesystem`: no dependencies
 add_subdirectory(filesystem)
 
@@ -93,3 +96,4 @@ add_subdirectory(string)
 
 # `vfs`: depends on `context`
 add_subdirectory(vfs)
+
