@@ -1703,14 +1703,13 @@ VFS::multipart_upload_state(const URI& uri) {
     }
     return {Status::Ok(), state};
 #else
-    return {
-        LOG_STATUS(Status_VFSError("TileDB was built without S3 support")),
-        nullopt};
+    return {LOG_STATUS(Status_VFSError("TileDB was built without S3 support")),
+            nullopt};
 #endif
   } else if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return {
-        LOG_STATUS(Status_VFSError("Not yet supported for Azure")), nullopt};
+    return {LOG_STATUS(Status_VFSError("Not yet supported for Azure")),
+            nullopt};
 #else
     return {
         LOG_STATUS(Status_VFSError("TileDB was built without Azure support")),
@@ -1720,16 +1719,14 @@ VFS::multipart_upload_state(const URI& uri) {
 #ifdef HAVE_GCS
     return {LOG_STATUS(Status_VFSError("Not yet supported for GCS")), nullopt};
 #else
-    return {
-        LOG_STATUS(Status_VFSError("TileDB was built without GCS support")),
-        nullopt};
+    return {LOG_STATUS(Status_VFSError("TileDB was built without GCS support")),
+            nullopt};
 #endif
   }
 
-  return {
-      LOG_STATUS(
-          Status_VFSError("Unsupported URI schemes: " + uri.to_string())),
-      nullopt};
+  return {LOG_STATUS(
+              Status_VFSError("Unsupported URI schemes: " + uri.to_string())),
+          nullopt};
 }
 
 Status VFS::set_multipart_upload_state(

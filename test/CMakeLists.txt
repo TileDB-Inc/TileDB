@@ -110,9 +110,12 @@ set(TILEDB_UNIT_TEST_SOURCES
   support/src/ast_helpers.h
   support/src/helpers.h
   support/src/helpers-dimension.h
+  src/test-capi-array-write-ordered-attr-fixed.cc
+  src/test-capi-array-write-ordered-attr-var.cc
   src/test-capi-consolidation-plan.cc
   src/test-capi-query-error-handling.cc
   src/test-cppapi-consolidation-plan.cc
+  src/unit-average-cell-size.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
@@ -216,6 +219,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-query.cc
     src/cpp-integration-query-condition.cc
     src/unit-cppapi-schema.cc
+    src/unit-cppapi-schema-evolution.cc
     src/unit-cppapi-string-dims.cc
     src/unit-cppapi-subarray.cc
     src/unit-cppapi-type.cc

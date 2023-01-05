@@ -39,7 +39,8 @@ struct TestCase {
   TestCase(tiledb_object_t obj_type, const char* name, int defined_as)
       : obj_type_(obj_type)
       , name_(name)
-      , defined_as_(defined_as) {}
+      , defined_as_(defined_as) {
+  }
 
   tiledb_object_t obj_type_;
   const char* name_;

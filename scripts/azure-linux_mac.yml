@@ -138,6 +138,9 @@ steps:
       # Add superbuild flag
       bootstrap_args="${bootstrap_args} --force-build-all-deps";
     fi
+    if [[ "$TILEDB_WEBP" == "OFF" ]]; then
+      bootstrap_args="${bootstrap_args} --disable-webp";
+    fi;
     if [[ "$AGENT_OS" == "Darwin" ]]; then
       # We want to be able to print a stack trace when a core dump occurs
       sudo chmod 1777 /cores

@@ -49,7 +49,7 @@ template <class Item, class Container, bool Bounded>
 class BoundedBufferQ {
  public:
   template <bool B = Bounded>
-  BoundedBufferQ(size_t max_size, std::enable_if_t<B, void*> = nullptr)
+  explicit BoundedBufferQ(size_t max_size, std::enable_if_t<B, void*> = nullptr)
       : max_size_(max_size) {
   }
 
@@ -57,7 +57,7 @@ class BoundedBufferQ {
    * Constructor for bounded buffer
    */
   template <bool B = Bounded>
-  BoundedBufferQ(std::enable_if_t<!B, void*> = nullptr)
+  explicit BoundedBufferQ(std::enable_if_t<!B, void*> = nullptr)
       : max_size_(0) {
   }
 
@@ -67,7 +67,7 @@ class BoundedBufferQ {
   /**
    * Copy Constructor
    */
-  BoundedBufferQ(BoundedBufferQ&& rhs)
+  BoundedBufferQ(BoundedBufferQ&& rhs) noexcept
       : max_size_(rhs.max_size_)
       , queue_(std::move(rhs.queue_))
       , draining_{rhs.draining_.load()}

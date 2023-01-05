@@ -177,6 +177,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   // before to be purged.
   bool purge_deletes_no_dups_mode_;
 
+  /** Are tile offsets loaded? */
+  bool tile_offsets_loaded_;
+
   /* ********************************* */
   /*       PRIVATE DECLARATIONS        */
   /* ********************************* */
@@ -195,6 +198,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Load all tile offsets required for the read operation. */
+  void load_all_tile_offsets();
 
   /**
    * Get the coordinate tiles size for a dimension.

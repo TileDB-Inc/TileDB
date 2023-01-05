@@ -175,11 +175,13 @@ Status subarray_to_capnp(
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
   }
 
-  if (subarray->relevant_fragments()->size() > 0) {
-    auto relevant_fragments_builder =
-        builder->initRelevantFragments(subarray->relevant_fragments()->size());
-    for (size_t i = 0; i < subarray->relevant_fragments()->size(); ++i) {
-      relevant_fragments_builder.set(i, subarray->relevant_fragments()->at(i));
+  if (subarray->relevant_fragments().relevant_fragments_size() > 0) {
+    auto relevant_fragments_builder = builder->initRelevantFragments(
+        subarray->relevant_fragments().relevant_fragments_size());
+    for (size_t i = 0;
+         i < subarray->relevant_fragments().relevant_fragments_size();
+         ++i) {
+      relevant_fragments_builder.set(i, subarray->relevant_fragments()[i]);
     }
   }
 
@@ -239,10 +241,13 @@ Status subarray_from_capnp(
   if (reader.hasRelevantFragments()) {
     auto relevant_fragments = reader.getRelevantFragments();
     size_t count = relevant_fragments.size();
-    subarray->relevant_fragments()->reserve(count);
+    std::vector<unsigned> rf;
+    rf.reserve(count);
     for (size_t i = 0; i < count; i++) {
-      subarray->relevant_fragments()->emplace_back(relevant_fragments[i]);
+      rf.emplace_back(relevant_fragments[i]);
     }
+
+    subarray->relevant_fragments() = RelevantFragments(rf);
   }
 
   return Status::Ok();
@@ -1953,7 +1958,12 @@ Status query_from_capnp(
         void* subarray = nullptr;
         RETURN_NOT_OK(
             utils::deserialize_subarray(subarray_reader, schema, &subarray));
-        RETURN_NOT_OK_ELSE(query->set_subarray(subarray), tdb_free(subarray));
+        try {
+          query->set_subarray_unsafe(subarray);
+        } catch (...) {
+          tdb_free(subarray);
+          throw;
+        }
         tdb_free(subarray);
       }
 

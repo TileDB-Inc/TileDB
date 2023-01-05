@@ -92,6 +92,9 @@ steps:
       # Add superbuild flag
       cmake_args="${cmake_args} -DCOMPILER_SUPPORTS_AVX2=OFF";
     fi
+    if [[ "$TILEDB_WEBP" == "OFF" ]]; then
+      cmake_args="${cmake_args} -DTILEDB_WEBP=OFF";
+    fi;
 
     mkdir -p $BUILD_REPOSITORY_LOCALPATH/build
     cd $BUILD_REPOSITORY_LOCALPATH/build

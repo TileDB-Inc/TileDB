@@ -286,6 +286,8 @@ class ArraySchema {
    */
   Status has_attribute(const std::string& name, bool* has_attr) const;
 
+  bool has_ordered_attributes() const;
+
   /** Returns true if the input name is an attribute. */
   bool is_attr(const std::string& name) const;
 
@@ -589,8 +591,8 @@ class ArraySchema {
   /* ********************************* */
 
   /**
-   * Returns false if the union of attribute and dimension names contain
-   * duplicates.
+   * Throws an error if the union of attribute, dimension, and dimension label
+   * names contain duplicates.
    */
   void check_attribute_dimension_label_names() const;
 

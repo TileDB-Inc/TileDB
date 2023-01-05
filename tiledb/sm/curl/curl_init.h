@@ -1,5 +1,5 @@
 /**
- * @file   libcurl_state.h
+ * @file curl_init.h
  *
  * @section LICENSE
  *
@@ -27,29 +27,28 @@
  *
  * @section DESCRIPTION
  *
- This file initializes the libcurl state, if libcurl is present.
+ * This file initializes the libcurl state, if libcurl is present.
  */
 
-#ifndef TILEDB_LIBCURL_STATE_H
-#define TILEDB_LIBCURL_STATE_H
+#ifndef TILEDB_CURL_INIT_H
+#define TILEDB_CURL_INIT_H
 
-#include "tiledb/common/status.h"
-
-using namespace tiledb::common;
-
-namespace tiledb {
-namespace sm {
-namespace global_state {
+namespace tiledb::sm::curl {
 
 /**
- * Initializes any required state for the libcurl library.
- *
- * @return Status
+ * A sentry class for ensuring that libcurl has
+ * been initialized for any classes that use it.
  */
-Status init_libcurl();
+class LibCurlInitializer {
+ public:
+  /**
+   * Construct an instance of LibCurlInitializer which
+   * has the side effect of ensuring that libcurl has
+   * been initialized for use.
+   */
+  LibCurlInitializer();
+};
 
-}  // namespace global_state
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::curl
 
 #endif

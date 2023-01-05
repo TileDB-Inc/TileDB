@@ -29,6 +29,6 @@
 #include "../rtree.h"
 
 int main() {
-  (void)sizeof(tiledb::sm::RTree);
+  tiledb::sm::RTree x{};
   return 0;
 }

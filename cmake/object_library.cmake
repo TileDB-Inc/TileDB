@@ -1,5 +1,5 @@
 #
-# cmake/environment.cmake
+# cmake/object_library.cmake
 #
 # The MIT License
 #
@@ -42,6 +42,7 @@
 # -------------------------------------------------------
 include_guard()
 include(environment)
+include(environment-this-functions)
 
 #
 # Module-scope log level
@@ -81,7 +82,7 @@ function(TileDB_Environment_object_library_begin_body Result Library_Name)
     # The library name must not already be a target
     #
     if (TARGET ${Library_Name})
-        message(SEND_ERROR "`${Library_Name}` is already a target and cannot be redefined an object library")
+        message(SEND_ERROR "`${Library_Name}` is already a target and cannot be redefined as an object library")
         set(${Result} false PARENT_SCOPE)
         return()
     endif()
@@ -191,26 +192,6 @@ macro(TileDB_Environment_object_library_end)
     # ----------------------------------
 
     message(${TileDB_Environment_object_library_end_Log_Level} "<<< object-library conclude end <<<")
-endmacro()
-
-# -------------------------------------------------------
-# Parameter functions
-# -------------------------------------------------------
-
-macro(this_target_sources)
-    append_this_property(sources ${ARGV})
-endmacro()
-
-macro(this_target_object_libraries)
-    append_this_property(object_library_dependencies ${ARGV})
-endmacro()
-
-macro(this_target_link_libraries)
-    append_this_property(link_library_dependencies ${ARGV})
-endmacro()
-
-macro(this_target_compile_definitions)
-    append_this_property(compile_definitions ${ARGV})
 endmacro()
 
 verify_outside_of_environment()

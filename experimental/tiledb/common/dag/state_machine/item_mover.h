@@ -104,7 +104,7 @@ class BaseMover<Mover, three_stage, Block> {
   }
 
   /**
-   * Deegister items.
+   * Deregister items.
    *
    * @pre Called under lock.
    */
@@ -265,12 +265,14 @@ class BaseMover<Mover, three_stage, Block> {
     return static_cast<Mover*>(this)->state() == three_stage::done;
   }
 
+#if 0
  private:
   void debug_msg(const std::string& msg) {
     if (static_cast<Mover*>(this)->debug_enabled()) {
       std::cout << msg << std::endl;
     }
   }
+#endif
 };
 
 /**
@@ -468,6 +470,7 @@ class ItemMover
   using BaseMover<Mover, PortState, Block>::BaseMover;
   using Base = BaseMover<Mover, PortState, Block>;
 
+  using policy_type = Policy<Mover, PortState>;
   using port_state_type = PortState;
   using block_type = Block;
   constexpr inline static bool edgeful = Base::edgeful;
@@ -530,10 +533,18 @@ class ItemMover
     this->event(PortEvent::exhausted, msg);
   }
 
+  bool is_terminated() {
+    return terminated(this->state());
+  }
+
+  bool is_terminating() {
+    return terminating(this->state());
+  }
+
  private:
   void debug_msg(const std::string& msg) {
     if (static_cast<Mover*>(this)->debug_enabled()) {
-      std::cout << msg << std::endl;
+      std::cout << msg + ": state = " + str(this->state()) + "\n";
     }
   }
 };

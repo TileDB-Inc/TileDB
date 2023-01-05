@@ -25,26 +25,14 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
-# Object library for other units to depend upon
+# `rtree` object library
 #
-add_library(rtree OBJECT rtree.cc)
-target_link_libraries(rtree PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(rtree PUBLIC dimension $<TARGET_OBJECTS:dimension>)
-target_link_libraries(rtree PUBLIC domain $<TARGET_OBJECTS:domain>)
-target_link_libraries(rtree PUBLIC math $<TARGET_OBJECTS:math>)
+commence(object_library rtree)
+    this_target_sources(rtree.cc)
+    this_target_object_libraries(baseline dimension domain math)
+conclude(object_library)
 
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_rtree EXCLUDE_FROM_ALL)
-add_dependencies(all_link_complete compile_rtree)
-target_link_libraries(compile_rtree PRIVATE rtree)
-target_sources(compile_rtree PRIVATE
-    test/compile_rtree_main.cc $<TARGET_OBJECTS:rtree>
-)
-
-if (TILEDB_TESTS)
-  add_subdirectory(test)
-endif()
+add_test_subdirectory()

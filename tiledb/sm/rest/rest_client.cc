@@ -225,12 +225,11 @@ RestClient::get_array_schema_from_rest(const URI& uri) {
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK_TUPLE(
       ensure_json_null_delimited_string(&returned_data), nullopt);
-  return {
-      Status::Ok(),
-      make_shared<ArraySchema>(
-          HERE(),
-          serialization::array_schema_deserialize(
-              serialization_type_, returned_data))};
+  return {Status::Ok(),
+          make_shared<ArraySchema>(
+              HERE(),
+              serialization::array_schema_deserialize(
+                  serialization_type_, returned_data))};
 }
 
 Status RestClient::post_array_schema_to_rest(
@@ -1317,10 +1316,9 @@ Status RestClient::set_header(const std::string&, const std::string&) {
 
 tuple<Status, optional<shared_ptr<ArraySchema>>>
 RestClient::get_array_schema_from_rest(const URI&) {
-  return {
-      LOG_STATUS(Status_RestError(
-          "Cannot use rest client; serialization not enabled.")),
-      nullopt};
+  return {LOG_STATUS(Status_RestError(
+              "Cannot use rest client; serialization not enabled.")),
+          nullopt};
 }
 
 Status RestClient::post_array_schema_to_rest(const URI&, const ArraySchema&) {
@@ -1397,18 +1395,16 @@ Status RestClient::post_array_schema_evolution_to_rest(
 
 tuple<Status, std::optional<bool>> RestClient::check_array_exists_from_rest(
     const URI&) {
-  return {
-      LOG_STATUS(Status_RestError(
-          "Cannot use rest client; serialization not enabled.")),
-      std::nullopt};
+  return {LOG_STATUS(Status_RestError(
+              "Cannot use rest client; serialization not enabled.")),
+          std::nullopt};
 }
 
 tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
     const URI&) {
-  return {
-      LOG_STATUS(Status_RestError(
-          "Cannot use rest client; serialization not enabled.")),
-      std::nullopt};
+  return {LOG_STATUS(Status_RestError(
+              "Cannot use rest client; serialization not enabled.")),
+          std::nullopt};
 }
 
 Status RestClient::post_group_metadata_from_rest(const URI&, Group*) {

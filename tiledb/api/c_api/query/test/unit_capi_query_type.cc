@@ -39,7 +39,8 @@ struct TestCase {
   TestCase(tiledb_query_type_t query_type, const char* name, int defined_as)
       : query_type_(query_type)
       , name_(name)
-      , defined_as_(defined_as) {}
+      , defined_as_(defined_as) {
+  }
 
   tiledb_query_type_t query_type_;
   const char* name_;

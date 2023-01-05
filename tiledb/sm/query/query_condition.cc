@@ -416,6 +416,15 @@ void QueryCondition::apply_ast_node(
         for (size_t c = starting_index; c < starting_index + length; ++c) {
           result_cell_bitmap[c] = 1;
         }
+        starting_index += length;
+        continue;
+      } else if (!fragment_metadata[f]->array_schema()->is_field(field_name)) {
+        // Requested field does not exist in this result cell - added by
+        // evolution.
+        for (size_t c = starting_index; c < starting_index + length; ++c) {
+          result_cell_bitmap[c] = 0;
+        }
+        starting_index += length;
         continue;
       }
 
@@ -1893,6 +1902,11 @@ void QueryCondition::apply_ast_node_sparse(
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
   std::string node_field_name = node->get_field_name();
+  if (!array_schema.is_field(node_field_name)) {
+    std::fill(result_bitmap.begin(), result_bitmap.end(), 0);
+    return;
+  }
+
   const auto nullable = array_schema.is_nullable(node_field_name);
   const auto var_size = array_schema.var_size(node_field_name);
   const auto type = array_schema.type(node_field_name);
