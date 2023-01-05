@@ -90,3 +90,6 @@ add_subdirectory(vfs)
 
 # `data_order`: no dependencies
 add_subdirectory(data_order)
+
+# `dimension_label`: depends on `context`, `datatype`, `data_order`
+add_subdirectory(dimension_label)

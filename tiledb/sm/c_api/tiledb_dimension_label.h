@@ -34,6 +34,7 @@
 #define TILEDB_DIMENSION_LABEL_EXPERIMENTAL_H
 
 #include "tiledb.h"
+#include "tiledb/api/c_api/dimension_label/dimension_label_api_external.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,13 +63,38 @@ extern "C" {
  * @param label_type The datatype of the label data.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_schema_add_dimension_label(
+TILEDB_EXPORT capi_return_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const uint32_t dim_index,
     const char* name,
     tiledb_data_order_t label_order,
     tiledb_datatype_t label_type) TILEDB_NOEXCEPT;
+
+/**
+ * Retrieves a dimension label from an array schema with the requested name.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_schema_t* array_schema;
+ * tiledb_array_schema_load(ctx, "s3://tiledb_bucket/my_array", &array_schema);
+ * tiledb_dimension_label_t* dimension_label;
+ * tiledb_array_schema_get_dimension_label_from_name(
+ *      ctx, array_schema, "label1", &dimension_label);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] array_schema The schema the dimension label is defined on.
+ * @param[in] label_name The name of the dimension label.
+ * @param[out] dim_label The target dimension label.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_get_dimension_label_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* label_name,
+    tiledb_dimension_label_t** dim_label) TILEDB_NOEXCEPT;
 
 /**
  * Checks whether the array schema has a dimension label of the given name.
@@ -88,7 +114,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_add_dimension_label(
  *      given name, else `0`.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_schema_has_dimension_label(
+TILEDB_EXPORT capi_return_t tiledb_array_schema_has_dimension_label(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     const char* name,
@@ -116,7 +142,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_dimension_label(
  * @param filter_list The filter_list to be set.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_schema_set_dimension_label_filter_list(
+TILEDB_EXPORT capi_return_t tiledb_array_schema_set_dimension_label_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* label_name,
@@ -150,7 +176,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_dimension_label_filter_list(
  * @note The dimension label tile extent must be the same datatype as the
  *     dimension it is set on, not as the label.
  */
-TILEDB_EXPORT int32_t tiledb_array_schema_set_dimension_label_tile_extent(
+TILEDB_EXPORT capi_return_t tiledb_array_schema_set_dimension_label_tile_extent(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* label_name,
@@ -183,7 +209,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_dimension_label_tile_extent(
  * @note The stride is currently unsupported. Use 0/NULL/nullptr as the
  *     stride argument.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_add_label_range(
+TILEDB_EXPORT capi_return_t tiledb_subarray_add_label_range(
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
     const char* label_name,
@@ -215,7 +241,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_label_range(
  * @param end_size The size of the range end in bytes.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_add_label_range_var(
+TILEDB_EXPORT capi_return_t tiledb_subarray_add_label_range_var(
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
     const char* label_name,
@@ -247,7 +273,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_label_range_var(
  * @param stride Receives the retrieved range stride.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_get_label_range(
+TILEDB_EXPORT capi_return_t tiledb_subarray_get_label_range(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* label_name,
@@ -275,7 +301,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_label_range(
  * @param range_num Receives the retrieved number of ranges.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_num(
+TILEDB_EXPORT capi_return_t tiledb_subarray_get_label_range_num(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* label_name,
@@ -302,7 +328,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_num(
  * @param end Receives the retrieved range end.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_var(
+TILEDB_EXPORT capi_return_t tiledb_subarray_get_label_range_var(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* label_name,
@@ -332,7 +358,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_var(
  * @param end_size Receives the retrieved range end size in bytes
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_subarray_get_label_range_var_size(
+TILEDB_EXPORT capi_return_t tiledb_subarray_get_label_range_var_size(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* label_name,
