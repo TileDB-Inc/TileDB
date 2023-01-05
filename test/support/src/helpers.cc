@@ -1090,7 +1090,7 @@ void write_array(
     const char* key,
     uint64_t key_len,
     uint64_t timestamp,
-    const void* subarray,
+    const void* sub,
     tiledb_layout_t layout,
     const QueryBuffers& buffers,
     std::string* uri) {
@@ -1129,8 +1129,15 @@ void write_array(
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  if (subarray != nullptr) {
-    query->query_->set_subarray(subarray);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx, array, &subarray);
+  REQUIRE(rc == TILEDB_OK);
+  if (sub != nullptr) {
+    query->query_->set_subarray(sub);
+    rc = tiledb_subarray_set_subarray(ctx, subarray, sub);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray_t(ctx, query, subarray);
+    CHECK(rc == TILEDB_OK);
   }
   rc = tiledb_query_set_layout(ctx, query, layout);
   CHECK(rc == TILEDB_OK);
@@ -1184,6 +1191,7 @@ void write_array(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
   tiledb_config_free(&cfg);
 }
 
