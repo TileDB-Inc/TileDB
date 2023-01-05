@@ -91,8 +91,10 @@ struct TestTracer {
                     label});
   }
 
+#if __GNUC__ >= 12
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuse-after-free"
+#endif
   static void deallocate(
       void* p, size_t type_size, size_t n_elements, const TracingLabel& label) {
     log_.push_back({"deallocate",
@@ -101,7 +103,9 @@ struct TestTracer {
                     n_elements,
                     label});
   }
+#if __GNUC__ >= 12
 #pragma GCC diagnostic pop
+#endif
 
   static std::vector<TestTraceEntry> log_;
 
