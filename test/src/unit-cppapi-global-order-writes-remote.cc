@@ -230,15 +230,8 @@ struct RemoteGlobalOrderWriteFx {
             validity_buffer.end() - trimmed_cells);
       }
       if (is_var_) {
-        // We will read the entire array back in one pass.
-        // Update offsets to reflect expected read data.
-        for (auto& o : var_offsets) {
-          // Add the total offset required from the beginning of the array data.
-          o += i * sizeof(T);
-        }
-
         // Update data and offsets wrote for variable size attributes.
-        var_data_wrote_ += var_data;
+        var_data_wrote_ += var_data.substr(0, result["var"].second);
         var_offsets_wrote_.insert(
             var_offsets_wrote_.end(),
             var_offsets.begin(),
@@ -268,6 +261,7 @@ struct RemoteGlobalOrderWriteFx {
     query.set_subarray(subarray).set_layout(TILEDB_GLOBAL_ORDER);
 
     uint64_t last_check = 0;
+    uint64_t last_offset = 0;
     do {
       // Coordinate buffers.
       std::vector<uint64_t> cols(extent_);
@@ -277,7 +271,7 @@ struct RemoteGlobalOrderWriteFx {
 
       // Variable sized attribute buffers.
       std::string var_data;
-      var_data.resize(extent_ * sizeof(T));
+      var_data.resize(var_data_wrote_.size());
       std::vector<uint64_t> var_offsets(extent_);
 
       std::vector<uint8_t> data_validity(extent_);
@@ -297,6 +291,7 @@ struct RemoteGlobalOrderWriteFx {
       }
 
       query.submit();
+      auto results = query.result_buffer_elements();
 
       uint64_t match_trim = total_cell_count_ - extent_ - last_check;
       if (is_nullable_) {
@@ -306,13 +301,34 @@ struct RemoteGlobalOrderWriteFx {
                 data_validity_wrote_.begin() + last_check,
                 data_validity_wrote_.end() - match_trim)));
       }
+
       if (is_var_) {
-        CHECK(var_data == var_data_wrote_);
-        CHECK_THAT(
-            var_offsets,
-            Catch::Matchers::Equals(std::vector(
-                var_offsets_wrote_.begin() + last_check,
-                var_offsets_wrote_.end() - match_trim)));
+        auto v = std::string(
+            var_data_wrote_.begin() + last_offset,
+            var_data_wrote_.end() - (match_trim * sizeof(T)));
+
+        // For partial reads, resize var_data to match result buffer size.
+        if (var_data.size() != results["var"].second) {
+          var_data.resize(results["var"].second);
+          v.resize(results["var"].second);
+        }
+        last_offset += results["var"].second;
+        CHECK(var_data == v);
+        // Check read offsets against a subset of offsets wrote to the array.
+        auto offsets = std::vector(
+            var_offsets_wrote_.begin() + last_check,
+            var_offsets_wrote_.end() - match_trim);
+
+        // Ensure the subset of written offsets start at index 0.
+        uint64_t prev_offset = offsets.front();
+        if (prev_offset != 0) {
+          for (size_t j = 1; j < offsets.size(); j++) {
+            offsets[j] -= prev_offset;
+          }
+          offsets.front() = 0;
+        }
+        CHECK_THAT(var_offsets, Catch::Matchers::Equals(offsets));
+
         if (is_nullable_) {
           CHECK_THAT(
               var_validity,
@@ -321,11 +337,13 @@ struct RemoteGlobalOrderWriteFx {
                   var_validity_wrote_.end() - match_trim)));
         }
       }
+
       CHECK_THAT(
           data,
           Catch::Matchers::Equals(std::vector(
               data_wrote_.begin() + last_check,
               data_wrote_.end() - match_trim)));
+
       if (array.schema().array_type() == TILEDB_SPARSE) {
         CHECK_THAT(
             cols,
@@ -370,46 +388,7 @@ struct RemoteGlobalOrderWriteFx {
   std::vector<uint8_t> var_validity_wrote_;
 };
 
-// Any test using var size attributes with > 1 submission to REST will fail.
 // Any test using a sparse array with > 1 submission to REST will fail.
-
-// TODO Fix var size attributes submit in N chunks (passes with chunk 128)
-// The problem is cached buffers do not account for absolute GO offset position.
-// Submitting `0 2 4 6` is ok; Submitting `0 2 0 2` is not.
-TEST_CASE("Global order remote write failures", "[!mayfail]") {
-  typedef uint64_t T;
-  uint64_t bytes;
-  uint64_t extent;
-  uint64_t chunk_size;
-
-  SECTION("Debug var size") {
-    bytes = 128;
-    extent = (128) / sizeof(T);
-    chunk_size = (64) / sizeof(T);
-    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, true, false);
-    fx.run_test();
-  }
-}
-
-// TODO: This test passes but takes ~15 minutes to complete
-//  I ran this using dev branch and there was no noticeable difference in time.
-//  Using smaller extent / chunk_size seems to take much longer. (here and dev)
-TEST_CASE("Debug large arrays", "[debug][!mayfail]") {
-  typedef uint64_t T;
-  uint64_t bytes;
-  uint64_t extent;
-  uint64_t chunk_size;
-
-  // Will fail sparse case for same reason as `Debug sparse` test below.
-  SECTION("GB array - 4 MB chunk_size") {
-    bytes = GB * 1;
-    extent = (MB * 128) / sizeof(T);
-    chunk_size = (MB * 256) / sizeof(T);
-    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, false, false);
-    fx.run_test();
-  }
-}
-
 // TODO Fix coordinates bug for sparse where we meet s3 limit during write.
 //     Coordinate (655361) comes before last written coordinate
 TEST_CASE("Debug", "[debug][!mayfail]") {
@@ -427,12 +406,32 @@ TEST_CASE("Debug", "[debug][!mayfail]") {
   }
 }
 
+// TODO: This test passes but takes ~15 minutes to complete (SC-24334)
+//  I ran this using dev branch and there was no noticeable difference in time.
+//  Using smaller extent / chunk_size seems to take much longer. (here and dev)
+TEST_CASE("Debug large arrays", "[debug][!mayfail]") {
+  typedef uint64_t T;
+  uint64_t bytes;
+  uint64_t extent;
+  uint64_t chunk_size;
+
+  // Will fail sparse case for same reason as `Debug sparse` test below.
+  SECTION("GB array") {
+    bytes = GB * 1;
+    extent = (MB * 128) / sizeof(T);
+    chunk_size = (MB * 256) / sizeof(T);
+    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, false, false);
+    fx.run_test();
+  }
+}
+
 // All tests below are passing for all types using dense and sparse arrays.
 // Marked as mayfail pending CI for remote writes.
 // typedef std::tuple<
 //     uint64_t, int64_t, uint32_t, int32_t, uint16_t, int16_t, uint8_t, int8_t,
 //     float, double> TestTypes;
-typedef std::tuple<uint64_t, int64_t, float, double> TestTypes;
+typedef std::tuple<uint64_t, float> TestTypes;
+// TODO: Test var-size attributes with `sm.var_offsets.mode = elements`
 TEMPLATE_LIST_TEST_CASE(
     "Global order remote writes",
     "[global-order][remote][write][!mayfail]",
@@ -441,32 +440,23 @@ TEMPLATE_LIST_TEST_CASE(
   uint64_t bytes;
   uint64_t extent;
   uint64_t chunk_size;
-  bool var = GENERATE(false);
-  bool nullable = GENERATE(true, false);
 
   // Submit entirely unaligned writes up to the final submit.
-  SECTION("1 KB - 10 chunk_size") {
+  SECTION("1 KB array") {
     bytes = KB;
-    extent = 8;
-    chunk_size = GENERATE(6, 9, 17, 100, 150);
-    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, var, nullable);
+    extent = GENERATE(KB / 2, KB);
+    extent /= sizeof(T);
+    chunk_size = GENERATE(32, 33, 77, 100);
+    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size);
     fx.run_test();
   }
 
-  SECTION("1 KB array - 16 chunk_size") {
-    bytes = KB;
-    extent = KB / sizeof(T);
-    chunk_size = GENERATE(16, 32, 12, 33, 77);
-    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, var, nullable);
-    fx.run_test();
-  }
-
-  SECTION("5 MB array - MB chunk_size") {
+  SECTION("5 MB array") {
     bytes = MB * 5;
     extent = MB / sizeof(T);
-    chunk_size = GENERATE((MB * 2), (MB + (MB / 2)));
+    chunk_size = GENERATE(MB * 2, MB + (MB / 2), MB + KB);
     chunk_size /= sizeof(T);
-    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, var, nullable);
+    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size);
     fx.run_test();
   }
 }

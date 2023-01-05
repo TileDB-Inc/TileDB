@@ -504,14 +504,22 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
   for (auto&& buff : buffers_) {
     bool is_var = array_schema_->var_size(buff.first);
     bool is_nullable = array_schema_->is_nullable(buff.first);
-    uint64_t cell_size = datatype_size(array_schema_->type(buff.first));
+
+    // Data type size stored in buffer cells. For fixed-size this is cell_size
+    uint64_t data_size = datatype_size(array_schema_->type(buff.first));
+    // Buffer element size, or size of offsets if attribute is var-sized.
+    uint64_t cell_size = is_var ? constants::cell_var_offset_size : data_size;
     uint64_t buffer_size = *buff.second.buffer_size_;
-    uint64_t buff_cells = is_var ?
-                              buffer_size / constants::cell_var_offset_size :
-                              buffer_size / cell_size;
-    // If tile_trim is > 0 the buffer is not tile aligned.
-    uint64_t tile_trim =
-        buff_cells > cell_num_per_tile ? buff_cells % cell_num_per_tile : 0;
+
+    // If the cache does not exist in the map this will construct one.
+    auto& cache = query_remote_buffer_storage_[buff.first];
+    uint64_t buffer_cells = buffer_size / cell_size;
+
+    // If tile_trim_cells is > 0 the buffer is not tile aligned.
+    uint64_t tile_trim_cells =
+        buffer_cells > cell_num_per_tile ? buffer_cells % cell_num_per_tile : 0;
+    // If no bytes to trim, write is tile-aligned but less than s3 limit.
+    uint64_t tile_trim_bytes = tile_trim_cells * data_size;
 
     // If the attribute is nullable we should ensure validity buffer is 5MB.
     uint64_t validity_buffer_size =
@@ -520,44 +528,59 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
     uint64_t var_buffer_size = is_var ? *buff.second.buffer_var_size_ :
                                         constants::s3_multipart_minimum_size;
 
-    // If no bytes to trim, write is tile-aligned but less than s3 limit.
-    uint64_t trim_bytes = tile_trim * cell_size;
-
-    // If the cache does not exist in the map this will construct one.
-    auto& cache = query_remote_buffer_storage_[buff.first];
-
+    // Used to trim var size data if needed.
+    uint64_t last_buffer_offset = 0;
+    uint64_t trimmed_offset = 0;
     if (is_var) {
+      if (cache.buffer.size() > 0) {
+        uint64_t s = cache.buffer_var.size();
+        // If offsets exist in the cache ensure buffer is in ascending order.
+        for (size_t i = 0; i < buffer_cells; i++) {
+          ((uint64_t*)buff.second.buffer_)[i] += s;
+        }
+      }
+      // If we are trimming var data retrieve the first and last offset trimmed.
+      if (tile_trim_cells != 0) {
+        last_buffer_offset = ((uint64_t*)buff.second.buffer_)[buffer_cells - 1];
+        trimmed_offset =
+            ((uint64_t*)
+                 buff.second.buffer_)[buffer_cells - tile_trim_cells - 1];
+      }
+
       // For var sized attributes the fixed buffer is used for offsets.
       throw_if_not_ok(cache.buffer.realloc(
           cache.buffer.size() +
-          (buffer_size - (tile_trim * constants::cell_var_offset_size))));
+          (buffer_size - (tile_trim_cells * constants::cell_var_offset_size))));
       throw_if_not_ok(cache.buffer.write(
           buff.second.buffer_,
-          buffer_size - (tile_trim * constants::cell_var_offset_size)));
+          buffer_size - (tile_trim_cells * constants::cell_var_offset_size)));
+
       // Write the variable sized data into cache.
       throw_if_not_ok(cache.buffer_var.realloc(
-          cache.buffer_var.size() + (var_buffer_size - trim_bytes)));
+          cache.buffer_var.size() +
+          (var_buffer_size - (last_buffer_offset - trimmed_offset))));
       throw_if_not_ok(cache.buffer_var.write(
-          buff.second.buffer_var_, var_buffer_size - trim_bytes));
+          buff.second.buffer_var_,
+          var_buffer_size - (last_buffer_offset - trimmed_offset)));
       if (cache.buffer_var.size() < constants::s3_multipart_minimum_size) {
         submit = false;
       }
     } else {
       // Fixed size attribute.
       throw_if_not_ok(cache.buffer.realloc(
-          cache.buffer.size() + (buffer_size - trim_bytes)));
-      throw_if_not_ok(
-          cache.buffer.write(buff.second.buffer_, buffer_size - trim_bytes));
+          cache.buffer.size() + (buffer_size - tile_trim_bytes)));
+      throw_if_not_ok(cache.buffer.write(
+          buff.second.buffer_, buffer_size - tile_trim_bytes));
     }
 
     if (is_nullable) {
       // Write the validity buffers into cache.
       throw_if_not_ok(cache.buffer_validity.realloc(
           cache.buffer_validity.size() +
-          (validity_buffer_size - trim_bytes / cell_size)));
+          (validity_buffer_size - tile_trim_cells)));
       throw_if_not_ok(cache.buffer_validity.write(
           buff.second.validity_vector_.buffer(),
-          validity_buffer_size - trim_bytes / cell_size));
+          validity_buffer_size - tile_trim_cells));
       if (cache.buffer_validity.size() < constants::s3_multipart_minimum_size) {
         submit = false;
       }
@@ -568,21 +591,32 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
     }
 
     // Drop trimmed data from the buffer size.
-    *buff.second.buffer_size_ -= trim_bytes;
     if (is_var) {
-      *buff.second.buffer_var_size_ -= trim_bytes;
+      *buff.second.buffer_size_ -=
+          tile_trim_cells * constants::cell_var_offset_size;
+      *buff.second.buffer_var_size_ -= last_buffer_offset - trimmed_offset;
+    } else {
+      *buff.second.buffer_size_ -= tile_trim_bytes;
     }
     if (is_nullable) {
-      *buff.second.validity_vector_.buffer_size() -= trim_bytes;
+      *buff.second.validity_vector_.buffer_size() -= tile_trim_cells;
     }
 
     if (finalize || submit) {
       // If the user ever writes more tiles than this, the array will overflow.
       auto num = array_schema_->domain().cell_num(subarray_.ndrange(0));
-      buff_cells = cache.buffer.size() / cell_size;
-      uint64_t overflow_cells = buff_cells > num ? buff_cells % num : 0;
+      buffer_cells = cache.buffer.size() / cell_size;
+      uint64_t overflow_cells = buffer_cells > num ? buffer_cells - num : 0;
       if (overflow_cells != 0) {
         if (is_var) {
+          // Offset at the position we are trimming.
+          trimmed_offset = *(uint64_t*)cache.buffer.data(
+              cache.buffer.size() -
+              (overflow_cells * constants::cell_var_offset_size));
+          // Final offset in the cache.
+          uint64_t last_cache_offset = *(uint64_t*)cache.buffer.data(
+              cache.buffer.size() - constants::cell_var_offset_size);
+
           cache.buffer.set_size(
               cache.buffer.size() -
               (overflow_cells * constants::cell_var_offset_size));
@@ -590,15 +624,15 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
               *buff.second.buffer_size_,
               overflow_cells * constants::cell_var_offset_size);
           cache.buffer_var.set_size(
-              cache.buffer_var.size() - (overflow_cells * cell_size));
+              cache.buffer_var.size() - (last_cache_offset - trimmed_offset));
           *buff.second.buffer_var_size_ -= std::min(
               *buff.second.buffer_var_size_,
-              overflow_cells * constants::cell_var_offset_size);
+              last_cache_offset - trimmed_offset);
         } else {
           cache.buffer.set_size(
-              cache.buffer.size() - (overflow_cells * cell_size));
+              cache.buffer.size() - (overflow_cells * data_size));
           *buff.second.buffer_size_ -=
-              std::min(*buff.second.buffer_size_, (overflow_cells * cell_size));
+              std::min(*buff.second.buffer_size_, (overflow_cells * data_size));
         }
 
         if (is_nullable) {
@@ -2421,7 +2455,7 @@ Status Query::submit() {
 
     // Align buffers to tile extents.
     bool submit = check_trim_and_buffer_tile_alignment();
-    // Only continue to submit if all buffers are > 5MB.
+    // Only continue to submit if all buffers are > 5MB or query type is READ.
     if (!submit) {
       return Status::Ok();
     }

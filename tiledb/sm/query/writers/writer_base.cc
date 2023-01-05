@@ -214,7 +214,11 @@ WriterBase::WriterBase(
   }
 
   optimize_layout_for_1D();
-  check_var_attr_offsets();
+
+  // Remote GOWs may submit offsets > var_buffer size due to cached data.
+  if (layout_ != Layout::GLOBAL_ORDER || !remote_query_) {
+    check_var_attr_offsets();
+  }
 
   // Get the timestamp the array was opened and the array write version.
   uint64_t timestamp = array_->timestamp_end_opened_at();

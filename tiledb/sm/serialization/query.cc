@@ -1327,7 +1327,8 @@ Status query_to_capnp(
       attr_buffer_builder.setOriginalFixedLenBufferSizeInBytes(
           buff.original_buffer_size_);
     } else {
-      assert(false);
+      throw StatusException(Status_SerializationError(
+          "Unable to serialize query buffers with invalid size."));
     }
 
     if (buff.validity_vector_.buffer_size() != nullptr) {
@@ -2187,7 +2188,7 @@ Status query_serialize(
                 query_buffer.buffer_ != nullptr) {
               const uint64_t query_buf_size = *query_buffer.buffer_size_;
               const uint64_t cache_buf_size = query_buffer_cache.buffer.size();
-              // Write data from buffer cache.
+              // Write data from fixed buffer cache.
               Buffer data(query_buffer_cache.buffer);
 
               if (!remote_global_order_write) {
