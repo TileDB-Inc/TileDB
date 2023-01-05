@@ -26,7 +26,6 @@
 
 find_package(Catch_EP REQUIRED)
 
-if(0) # TBD implement me
 add_executable(unit_capi_buffer_list EXCLUDE_FROM_ALL)
 target_sources(unit_capi_buffer_list PUBLIC unit_capi_buffer_list.cc)
 target_link_libraries(unit_capi_buffer_list PUBLIC capi_buffer_list_stub)
@@ -37,4 +36,3 @@ add_test(
   COMMAND $<TARGET_FILE:unit_capi_buffer_list>
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
-endif()

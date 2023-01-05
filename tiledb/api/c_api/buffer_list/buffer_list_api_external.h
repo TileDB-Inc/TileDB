@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/buffer/buffer_api_external.h
+ * @file tiledb/api/c_api/buffer/buffer_list_api_external.h
  *
  * @section LICENSE
  *
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the buffer C API for TileDB.
+ * This file declares the buffer_list C API for TileDB.
  */
 
 #ifndef TILEDB_CAPI_BUFFER_LIST_API_EXTERNAL_H

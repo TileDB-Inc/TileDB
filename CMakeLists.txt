@@ -235,11 +235,19 @@ if (MSVC)
   # Add /MPn flag from CMake invocation (if defined).
   add_compile_options(${MSVC_MP_FLAG})
   # Build-specific flags
-  add_compile_options(
-                      "$<$<CONFIG:Debug>:/DDEBUG /Od /Zi /bigobj>"
-                      "$<$<CONFIG:Release>:/DNDEBUG /Ox>"
-                      "$<$<CONFIG:RelWithDebInfo>:/DNDEBUG /Ox /Zi>"
-                      )
+ #~ 'CONFIG' has been found to -not- be correctly populated by EH (maybe was in past, but not now?)
+  #~ add_compile_options(
+                      #~ "$<$<CONFIG:Debug>:/DDEBUG /Od /Zi /bigobj>"
+                      #~ "$<$<CONFIG:Release>:/DNDEBUG /Ox>"
+                      #~ "$<$<CONFIG:RelWithDebInfo>:/DNDEBUG /Ox /Zi>"
+                      #~ )
+  if (CMAKE_BUILD_TYPE MATCHES "Debug")
+    add_compile_options(/DDEBUG /Od /Zi /bigobj)
+  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
+    add_compile_options(/DNDEBUG /Ox)
+  elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+    add_compile_options(/DNDEBUG /Ox /Zi)
+  endif()
 else()
   add_compile_options(-Wall -Wextra)
   if (TILEDB_WERROR)

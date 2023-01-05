@@ -46,25 +46,11 @@ struct tiledb_buffer_list_handle_t
 
  private:
   tiledb::sm::BufferList buffer_list_;
-  //tiledb::sm::Datatype datatype_;
 
  public:
   explicit tiledb_buffer_list_handle_t()
       : buffer_list_() {
   }
-
-  //~ explicit tiledb_buffer_list_handle_t(void* data, uint64_t size)
-      //~ : buffer_(data, size)
-      //~ , datatype_(tiledb::sm::Datatype::UINT8) {
-  //~ }
-
-  //~ inline void set_datatype(tiledb::sm::Datatype datatype) {
-    //~ datatype_ = datatype;
-  //~ }
-
-  //~ inline tiledb::sm::Datatype datatype() const {
-    //~ return datatype_;
-  //~ }
 
   inline void set_buffer_list(tiledb::sm::BufferList& buffer_list) {
     buffer_list_ = buffer_list;
@@ -92,4 +78,4 @@ inline void ensure_buffer_list_is_valid(const tiledb_buffer_list_handle_t* buffe
 
 }  // namespace tiledb::api
 
-#endif  // TILEDB_CAPI_BUFFER_API_INTERNAL_H
+#endif  // TILEDB_CAPI_BUFFER_LIST_API_INTERNAL_H

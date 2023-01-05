@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/buffer/buffer_api.cc
+ * @file tiledb/api/c_api/buffer/buffer_list_api.cc
  *
  * @section LICENSE
  *
@@ -28,7 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines the buffer C API of TileDB.
+ * This file defines the buffer_list C API of TileDB.
  **/
 
 #include "tiledb/api/c_api_support/c_api_support.h"
@@ -71,8 +71,6 @@ int32_t tiledb_buffer_list_get_buffer(
   ensure_output_pointer_is_valid(buffer);
   // Get the underlying buffer
   const tiledb::sm::Buffer* b;
-  // TBD: Is the throw...() still needed?
-  // .... or should the ->get_buffer() be changed?
   throw_if_not_ok(buffer_list->buffer_list().get_buffer(buffer_idx, &b));
 
   // Create a non-owning wrapper of the underlying buffer

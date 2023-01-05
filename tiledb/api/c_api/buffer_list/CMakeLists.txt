@@ -37,6 +37,7 @@ gather_sources(${SOURCES})
 add_library(capi_buffer_list_stub OBJECT ${SOURCES})
 target_link_libraries(capi_buffer_list_stub PUBLIC export)
 target_link_libraries(capi_buffer_list_stub PUBLIC buffer $<TARGET_OBJECTS:buffer>)
+target_link_libraries(capi_buffer_list_stub PUBLIC buffer_list $<TARGET_OBJECTS:buffer_list>)
 #
 # We need to build this as a stub-based library because the API wrappers make
 # reference to `context`, even though the functions in the buffer section of the

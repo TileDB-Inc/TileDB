@@ -167,8 +167,6 @@ TEST_CASE("C API: Test BufferList get buffers", "[capi][buffer][bufferlist]") {
   tiledb_buffer_list_t* c_buffer_list = nullptr;
   REQUIRE(tiledb_buffer_list_alloc(ctx, &c_buffer_list) == TILEDB_OK);
   // For testing only: set the underlying buffer list ptr to the one we created
-  //delete c_buffer_list->buffer_list_;
-  //c_buffer_list->buffer_list_ = &buffer_list;
   c_buffer_list->set_buffer_list(buffer_list);
 
   // Check num buffers and size
@@ -217,7 +215,6 @@ TEST_CASE("C API: Test BufferList get buffers", "[capi][buffer][bufferlist]") {
       tiledb_buffer_list_get_buffer(ctx, c_buffer_list, 2, &b) == TILEDB_ERR);
 
   // Clean up
-  // c_buffer_list->buffer_list_ = nullptr;
   tiledb_buffer_list_free(&c_buffer_list);
   tiledb_ctx_free(&ctx);
 }

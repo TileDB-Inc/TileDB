@@ -35,4 +35,12 @@ commence(object_library buffer)
     this_target_object_libraries(baseline)
 conclude(object_library)
 
+#
+# `buffer_list` object library
+#
+commence(object_library buffer_list)
+    this_target_sources(buffer_list.cc)
+    this_target_object_libraries(baseline)
+conclude(object_library)
+
 add_test_subdirectory()
