@@ -58,6 +58,7 @@
 #include "tiledb/api/c_api/buffer/buffer_api_external.h"
 #include "tiledb/api/c_api/config/config_api_external.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
+#include "tiledb/api/c_api/data_order/data_order_api_external.h"
 #include "tiledb/api/c_api/datatype/datatype_api_external.h"
 #include "tiledb/api/c_api/error/error_api_external.h"
 #include "tiledb/api/c_api/filesystem/filesystem_api_external.h"
@@ -134,14 +135,6 @@ typedef enum {
 #include "tiledb_enum.h"
 #undef TILEDB_MIME_TYPE_ENUM
 } tiledb_mime_type_t;
-
-/** DataOrder Type*/
-typedef enum {
-/** Helper macro for defining DataOrder enums. */
-#define TILEDB_DATA_ORDER_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_DATA_ORDER_ENUM
-} tiledb_data_order_t;
 
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
