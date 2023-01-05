@@ -84,14 +84,22 @@ struct TestTraceEntry {
 struct TestTracer {
   static void allocate(
       void* p, size_t type_size, size_t n_elements, const TracingLabel& label) {
-    log_.push_back({"allocate", static_cast<uint64_t>(reinterpret_cast<uintptr_t>(p)), type_size, n_elements, label});
+    log_.push_back({"allocate",
+                    static_cast<uint64_t>(reinterpret_cast<uintptr_t>(p)),
+                    type_size,
+                    n_elements,
+                    label});
   }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuse-after-free"
   static void deallocate(
       void* p, size_t type_size, size_t n_elements, const TracingLabel& label) {
-    log_.push_back({"deallocate", static_cast<uint64_t>(reinterpret_cast<uintptr_t>(p)), type_size, n_elements, label});
+    log_.push_back({"deallocate",
+                    static_cast<uint64_t>(reinterpret_cast<uintptr_t>(p)),
+                    type_size,
+                    n_elements,
+                    label});
   }
 #pragma GCC diagnostic pop
 
