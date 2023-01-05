@@ -111,6 +111,6 @@ TEST_CASE_METHOD(TracingFixture, "Tracer - trace bad_alloc") {
   const auto& log = TestTracer::log_;
   REQUIRE(log.size() == 1);
   CHECK(log[0].event_ == "allocate");
-  CHECK(log[0].p_ == 0);
+  CHECK(log[0].p_ == nullptr);
   WARN(TestTracer::dump());
 }

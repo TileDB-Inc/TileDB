@@ -75,7 +75,7 @@ struct NullTracer {
 
 struct TestTraceEntry {
   std::string_view event_;
-  uint64_t p_;
+  void* p_;
   size_t type_size_;
   size_t n_elements_;
   TracingLabel label_;
@@ -84,28 +84,13 @@ struct TestTraceEntry {
 struct TestTracer {
   static void allocate(
       void* p, size_t type_size, size_t n_elements, const TracingLabel& label) {
-    log_.push_back({"allocate",
-                    static_cast<uint64_t>(reinterpret_cast<uintptr_t>(p)),
-                    type_size,
-                    n_elements,
-                    label});
+    log_.push_back({"allocate", p, type_size, n_elements, label});
   }
 
-#if __GNUC__ >= 12
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wuse-after-free"
-#endif
   static void deallocate(
       void* p, size_t type_size, size_t n_elements, const TracingLabel& label) {
-    log_.push_back({"deallocate",
-                    static_cast<uint64_t>(reinterpret_cast<uintptr_t>(p)),
-                    type_size,
-                    n_elements,
-                    label});
+    log_.push_back({"deallocate", p, type_size, n_elements, label});
   }
-#if __GNUC__ >= 12
-#pragma GCC diagnostic pop
-#endif
 
   static std::vector<TestTraceEntry> log_;
 
