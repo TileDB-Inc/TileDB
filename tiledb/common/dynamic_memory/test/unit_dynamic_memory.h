@@ -87,10 +87,13 @@ struct TestTracer {
     log_.push_back({"allocate", p, type_size, n_elements, label});
   }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuse-after-free"
   static void deallocate(
       void* p, size_t type_size, size_t n_elements, const TracingLabel& label) {
     log_.push_back({"deallocate", p, type_size, n_elements, label});
   }
+#pragma GCC diagnostic pop
 
   static std::vector<TestTraceEntry> log_;
 
