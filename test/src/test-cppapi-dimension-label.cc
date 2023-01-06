@@ -94,6 +94,10 @@ TEST_CASE_METHOD(
     CHECK(dim_label.label_cell_val_num() == tiledb::sm::constants::var_num);
     CHECK(dim_label.label_type() == TILEDB_STRING_ASCII);
   }
+  auto uri = dim_label.uri();
+  tiledb_object_t dim_label_object_type;
+  check_tiledb_ok(tiledb_object_type(ctx, uri.c_str(), &dim_label_object_type));
+  CHECK(dim_label_object_type == TILEDB_ARRAY);
 
   // Free the C-API.
   tiledb_dimension_label_free(&c_dim_label);

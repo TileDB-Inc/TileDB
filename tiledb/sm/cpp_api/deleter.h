@@ -37,6 +37,7 @@
 
 #include "context.h"
 #include "tiledb.h"
+#include "tiledb_dimension_label.h"
 #include "tiledb_experimental.h"
 
 namespace tiledb {
@@ -100,6 +101,10 @@ class Deleter {
 
   void operator()(tiledb_dimension_t* p) const {
     tiledb_dimension_free(&p);
+  }
+
+  void operator()(tiledb_dimension_label_t* p) const {
+    tiledb_dimension_label_free(&p);
   }
 
   void operator()(tiledb_domain_t* p) const {

@@ -231,6 +231,11 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-webp-filter.cc
     src/unit-cppapi-xor-filter.cc
   )
+  if (TILEDB_EXPERIMENTAL_FEATURES)
+    list(APPEND TILEDB_UNIT_TEST_SOURCES
+        src/test-cppapi-dimension-label.cc
+    )
+  endif()
 endif()
 
 if (TILEDB_SERIALIZATION)
