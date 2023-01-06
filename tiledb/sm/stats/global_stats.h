@@ -144,6 +144,14 @@ class GlobalStats {
 
   /** Dump the current registered stats. */
   std::string dump_registered_stats() const;
+
+  /** iterate over raw stats calling f() */
+  template <class FuncT>
+  void iterate(const FuncT&);
+
+  /** iterate over raw stats calling f() */
+  template <class FuncT>
+  void iterate(const FuncT&) const;
 };
 
 /* ********************************* */

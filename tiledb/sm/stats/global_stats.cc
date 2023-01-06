@@ -88,15 +88,7 @@ void GlobalStats::set_enabled(bool enabled) {
 }
 
 void GlobalStats::reset() {
-  std::unique_lock<std::mutex> ul(mtx_);
-  for (auto register_stat = registered_stats_.begin(); register_stat != registered_stats_.end();) {
-    if (std::shared_ptr<Stats> stat(register_stat->lock()); stat.use_count()) {
-      stat->reset();
-      ++register_stat;
-    } else {
-      register_stat = registered_stats_.erase(register_stat);
-    }
-  }
+  iterate([](Stats& stat) { stat.reset(); });
 }
 
 void GlobalStats::register_stats(const shared_ptr<Stats>& stats) {
@@ -104,34 +96,53 @@ void GlobalStats::register_stats(const shared_ptr<Stats>& stats) {
   registered_stats_.emplace_back(stats);
 }
 
+template <class FuncT>
+void GlobalStats::iterate(const FuncT &f) {
+  std::unique_lock<std::mutex> ul(mtx_);
+  for (auto register_stat = registered_stats_.begin();
+       register_stat != registered_stats_.end();) {
+    if (std::shared_ptr<Stats> stat(register_stat->lock()); stat.use_count()) {
+      f(*stat);
+      ++register_stat;
+    } else {
+      register_stat = registered_stats_.erase(register_stat);
+    }
+  }
+}
+
+template <class FuncT>
+void GlobalStats::iterate(const FuncT& f) const {
+  std::unique_lock<std::mutex> ul(mtx_);
+  for (auto register_stat = registered_stats_.begin();
+       register_stat != registered_stats_.end();) {
+    if (std::shared_ptr<Stats> stat(register_stat->lock()); stat.use_count()) {
+      f(*stat);
+    }
+    ++register_stat;
+  }
+}
+
 /* ****************************** */
 /*       PRIVATE FUNCTIONS        */
 /* ****************************** */
 
 std::string GlobalStats::dump_registered_stats() const {
-  std::unique_lock<std::mutex> ul(mtx_);
-
   std::stringstream ss;
 
   ss << "[\n";
 
   bool printed_first_stats = false;
-  auto iter = registered_stats_.begin();
-  while (iter != registered_stats_.end()) {
+  iterate([&](Stats& stat) -> void {
     const uint64_t indent_size = 2;
-    if (std::shared_ptr<Stats> stat(iter->lock()); stat.use_count()) {
-      const std::string stats_dump = stat->dump(indent_size, 1);
-      if (!stats_dump.empty()) {
-        if (printed_first_stats) {
-          ss << ",\n";
-        }
-        ss << stats_dump;
-        printed_first_stats = true;
+    const std::string stats_dump = stat.dump(indent_size, 1);
+    if (!stats_dump.empty()) {
+      if (printed_first_stats) {
+        ss << ",\n";
       }
+      ss << stats_dump;
+      printed_first_stats = true;
     }
-
-    ++iter;
-  }
+  });
 
   ss << "\n]\n";
 
