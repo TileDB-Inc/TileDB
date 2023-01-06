@@ -88,8 +88,9 @@ void tiledb_delete(T* const p) {
 
   std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
+  auto p_orig{std::launder(reinterpret_cast<const char*>(p))};
   delete p;
-  heap_profiler.record_dealloc(p);
+  heap_profiler.record_dealloc(p_orig);
 }
 
 /** TileDB variant of `operator new[]`. */

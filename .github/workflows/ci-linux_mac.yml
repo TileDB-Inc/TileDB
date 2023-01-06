@@ -20,6 +20,14 @@ on:
         default: ''
         required: true
         type: string
+      matrix_compiler_cc:
+        default: 'gcc'
+        required: false
+        type: string
+      matrix_compiler_cxx:
+        default: 'g++'
+        required: false
+        type: string
       timeout:
         default: 90
         description: 'Job timeout (minutes)'
@@ -30,7 +38,8 @@ env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
   TILEDB_CI_BACKEND: ${{ inputs.ci_backend }}
   TILEDB_CI_OS: runner.os
-  CXX: g++
+  CXX: ${{ inputs.matrix_compiler_cxx }}
+  CC: ${{ inputs.matrix_compiler_cc }}
   bootstrap_args: ${{ inputs.bootstrap_args }}
 
 jobs:
