@@ -52,6 +52,7 @@ endif()
 find_package(Catch2 3.1
   HINTS
     ${CATCH_PATHS}
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 if(Catch2_FOUND)
   set(CATCH_INCLUDE_DIR ${Catch2_INCLUDE_DIR})

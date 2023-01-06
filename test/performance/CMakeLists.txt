@@ -93,7 +93,7 @@ target_compile_definitions(tiledb_explore_msys_handle_leakage PRIVATE
 )
 
 # Linking dl is only needed on linux with gcc
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set_target_properties(tiledb_explore_msys_handle_leakage PROPERTIES
       LINK_FLAGS "-Wl,--no-as-needed -ldl"
     )
