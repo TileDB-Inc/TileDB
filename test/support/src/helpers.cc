@@ -1130,9 +1130,9 @@ void write_array(
   rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   tiledb_subarray_t* subarray;
-  rc = tiledb_subarray_alloc(ctx, array, &subarray);
-  REQUIRE(rc == TILEDB_OK);
   if (sub != nullptr) {
+    rc = tiledb_subarray_alloc(ctx, array, &subarray);
+    REQUIRE(rc == TILEDB_OK);
     query->query_->set_subarray(sub);
     rc = tiledb_subarray_set_subarray(ctx, subarray, sub);
     CHECK(rc == TILEDB_OK);
@@ -1191,7 +1191,9 @@ void write_array(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_subarray_free(&subarray);
+  if (sub != nullptr) {
+    tiledb_subarray_free(&subarray);
+  }
   tiledb_config_free(&cfg);
 }
 
