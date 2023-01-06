@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/c_api/experimental/tiledb_dimension_label.cc
+ * @file tiledb/sm/c_api/tiledb_dimension_label.cc
  *
  * @section LICENSE
  *
@@ -26,7 +26,7 @@
  * THE SOFTWARE.
  */
 
-#include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
+#include "tiledb/sm/c_api/tiledb_dimension_label.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
