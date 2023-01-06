@@ -216,8 +216,9 @@ class TracedAllocator : public Alloc<T> {
 
   void deallocate(pointer p, std::size_t n) noexcept {
     Alloc<T>& a{*this};
+    auto p_orig = std::launder(reinterpret_cast<char*>(p));
     inner_traits::deallocate(a, p, n);
-    Tracer::deallocate(p, sizeof(T), n, label_);
+    Tracer::deallocate(p_orig, sizeof(T), n, label_);
   }
 
   TracedAllocator select_on_container_copy_construction() const {
