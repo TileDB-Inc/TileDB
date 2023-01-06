@@ -252,6 +252,7 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 <p>The WebP filter compresses image data using <a href="https://developers.google.com/speed/webp/docs/api#headers_and_libraries">libwebp</a>. The current input formats supported are <code>RGB</code>, <code>RGBA</code>, <code>BGR</code>, and <code>BGRA</code>. The colorspace format can be configured for this filter by setting the <code>TILEDB_WEBP_INPUT_FORMAT</code> filter option. Tile-based compression is determined by dimension extents. Extents equal to dimension bounds will compress the image in one pass.</p>
+<p>For attributes, the WebP filter supports only the uint8_t data type. Dimension data types can be any two matching integral types, such as <code>{uint32_t, uint32_t}</code> or <code>{int64_t, int64_t}</code> for example.</p>
 <pre><code># Data from 2x3 pixel image
 input = [[255,62,83, 149,43,67, 138,43,67]
          [255,62,83, 149,43,67, 138,43,67]]
@@ -265,7 +266,7 @@ output = [[251,60,84, 148,51,61, 142,42,64]
 <p><img src="../figures/bgra_layout.png" class="img-fluid"><br>
 <a href="https://developers.google.com/static/speed/webp/images/image_layout.png">Photo</a> by <a href="https://developers.google.com/speed/webp/docs/api">Google</a> licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></p>
 <p>Using the figure above from <a href="https://developers.google.com/speed/webp/docs/api">WebP API documentation</a>, <code>height</code> should correspond with dimension 0 upper bound, while <code>stride</code> corresponds with dimension 1 upper bound. The pixel <code>width</code> of the image is internally calculated based on colorspace format and tile extents.</p>
-<p>Tile extents are used to configure tile-based compression. We should note that the <a href="https://developers.google.com/speed/webp/faq#what_is_the_maximum_size_a_webp_image_can_be">maximum WebP image size</a> is 16383x16383. Because of this, our extents can not exceed <code>16383</code> for dimension 0, and <code>16383 * pixel_depth</code> for dimension 0. <code>pixel_depth</code> is defined by our colorspace format selection. <code>RGB</code> and <code>BGR</code> images have a depth of 3, while <code>RGBA</code> and <code>BGRA</code> have a depth of 4 for the additional alpha value provided for each pixel.</p>
+<p>Tile extents are used to configure tile-based compression. We should note that the <a href="https://developers.google.com/speed/webp/faq#what_is_the_maximum_size_a_webp_image_can_be">maximum WebP image size</a> is 16383x16383. Because of this, our extents can not exceed <code>16383</code> for dimension 0, and <code>16383 * pixel_depth</code> for dimension 1. <code>pixel_depth</code> is defined by our colorspace format selection. <code>RGB</code> and <code>BGR</code> images have a depth of 3, while <code>RGBA</code> and <code>BGRA</code> have a depth of 4 for the additional alpha value provided for each pixel.</p>
 <section id="filter-enum-value" class="level1">
 <h1>Filter Enum Value</h1>
 <p>The filter enum value for the WEBP filter is <code>17</code> (TILEDB_FILTER_WEBP enum).</p>
