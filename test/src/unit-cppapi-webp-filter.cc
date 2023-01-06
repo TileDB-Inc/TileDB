@@ -233,8 +233,9 @@ TEMPLATE_LIST_TEST_CASE(
   if constexpr (webp_filter_exists) {
     Context ctx;
     VFS vfs(ctx);
-    if (vfs.is_dir(webp_array_name))
+    if (vfs.is_dir(webp_array_name)) {
       vfs.remove_dir(webp_array_name);
+    }
 
     uint8_t format_expected = GENERATE(
         TILEDB_WEBP_RGB, TILEDB_WEBP_RGBA, TILEDB_WEBP_BGR, TILEDB_WEBP_BGRA);
@@ -318,8 +319,99 @@ TEMPLATE_LIST_TEST_CASE(
           read_rgb, width, height, pixel_depth, format_expected, nullptr);
     }
 
-    if (vfs.is_dir(webp_array_name))
+    if (vfs.is_dir(webp_array_name)) {
       vfs.remove_dir(webp_array_name);
+    }
+  }
+}
+
+using TestTypes = std::tuple<uint16_t, int16_t, int32_t, int64_t, uint32_t>;
+TEMPLATE_LIST_TEST_CASE(
+    "C++ API: WEBP filter schema validation",
+    "[cppapi][filter][webp]",
+    TestTypes) {
+  if constexpr (webp_filter_exists) {
+    Context ctx;
+    VFS vfs(ctx);
+    if (vfs.is_dir(webp_array_name)) {
+      vfs.remove_dir(webp_array_name);
+    }
+    Filter filter(ctx, TILEDB_FILTER_WEBP);
+    FilterList filterList(ctx);
+    filterList.add_filter(filter);
+
+    // Create valid attribute, domain, and schema.
+    auto valid_attr = Attribute::create<uint8_t>(ctx, "rgb");
+    valid_attr.set_filter_list(filterList);
+
+    Domain valid_domain(ctx);
+    valid_domain.add_dimension(
+        Dimension::create<uint64_t>(ctx, "y", {{1, 100}}, 90));
+    valid_domain.add_dimension(
+        Dimension::create<uint64_t>(ctx, "x", {{1, 100}}, 90));
+
+    ArraySchema valid_schema(ctx, TILEDB_DENSE);
+    valid_schema.set_domain(valid_domain);
+    valid_schema.add_attribute(valid_attr);
+
+    // Create an invalid attribute for use with WebP filter.
+    auto invalid_attr = Attribute::create<TestType>(ctx, "rgb");
+    invalid_attr.set_filter_list(filterList);
+
+    // WebP filter requires at least 2 dimensions.
+    {
+      Domain invalid_domain(ctx);
+      invalid_domain.add_dimension(
+          Dimension::create<uint64_t>(ctx, "y", {{1, 100}}, 90));
+
+      ArraySchema invalid_schema(ctx, TILEDB_DENSE);
+      invalid_schema.set_domain(invalid_domain);
+      invalid_schema.add_attribute(valid_attr);
+
+      REQUIRE_THROWS_AS(
+          Array::create(webp_array_name, invalid_schema), tiledb::TileDBError);
+    }
+
+    // In dense arrays, all dimensions must have matching datatype.
+    {
+      Domain invalid_domain(ctx);
+      invalid_domain.add_dimension(
+          Dimension::create<uint64_t>(ctx, "y", {{1, 100}}, 90));
+      invalid_domain.add_dimension(
+          Dimension::create<TestType>(ctx, "x", {{1, 100}}, 90));
+
+      ArraySchema invalid_schema(ctx, TILEDB_DENSE);
+
+      // This is also enforced by ArraySchema::check_webp_filter.
+      REQUIRE_THROWS_AS(
+          invalid_schema.set_domain(invalid_domain), tiledb::TileDBError);
+    }
+
+    // WebP filter supports only uint8 attributes.
+    {
+      ArraySchema invalid_schema(ctx, TILEDB_DENSE);
+      invalid_schema.set_domain(valid_domain);
+
+      invalid_schema.add_attribute(invalid_attr);
+      REQUIRE_THROWS_AS(
+          Array::create(webp_array_name, invalid_schema), tiledb::TileDBError);
+    }
+
+    // WebP filter can only be applied to dense arrays.
+    {
+      ArraySchema invalid_schema(ctx, TILEDB_SPARSE);
+      invalid_schema.set_domain(valid_domain);
+      invalid_schema.add_attribute(valid_attr);
+
+      REQUIRE_THROWS_AS(
+          Array::create(webp_array_name, invalid_schema), tiledb::TileDBError);
+    }
+
+    REQUIRE_NOTHROW(Array::create(webp_array_name, valid_schema));
+
+    if (vfs.is_dir(webp_array_name)) {
+      vfs.remove_dir(webp_array_name);
+    }
   }
 }
 
@@ -329,8 +421,9 @@ TEMPLATE_LIST_TEST_CASE(
   if constexpr (webp_filter_exists) {
     Context ctx;
     VFS vfs(ctx);
-    if (vfs.is_dir(webp_array_name))
+    if (vfs.is_dir(webp_array_name)) {
       vfs.remove_dir(webp_array_name);
+    }
 
     uint8_t format_expected = GENERATE(
         TILEDB_WEBP_RGB, TILEDB_WEBP_RGBA, TILEDB_WEBP_BGR, TILEDB_WEBP_BGRA);
@@ -442,8 +535,9 @@ TEMPLATE_LIST_TEST_CASE(
           read_rgb, width, height, pixel_depth, format_expected, nullptr);
     }
 
-    if (vfs.is_dir(webp_array_name))
+    if (vfs.is_dir(webp_array_name)) {
       vfs.remove_dir(webp_array_name);
+    }
   }
 }
 
@@ -455,8 +549,9 @@ TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
     tiledb_vfs_alloc(ctx, nullptr, &vfs);
     int32_t is_dir = false;
     tiledb_vfs_is_dir(ctx, vfs, webp_array_name.c_str(), &is_dir);
-    if (is_dir)
+    if (is_dir) {
       tiledb_vfs_remove_dir(ctx, vfs, webp_array_name.c_str());
+    }
 
     uint8_t expected_lossless = GENERATE(1, 0);
     uint8_t expected_fmt = GENERATE(
@@ -622,7 +717,8 @@ TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
     }
 
     tiledb_vfs_is_dir(ctx, vfs, webp_array_name.c_str(), &is_dir);
-    if (is_dir)
+    if (is_dir) {
       tiledb_vfs_remove_dir(ctx, vfs, webp_array_name.c_str());
+    }
   }
 }
