@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/c_api/experimental/tiledb_dimension_label.h
+ * @file tiledb/sm/c_api/tiledb_dimension_label.h
  *
  * @section LICENSE
  *
