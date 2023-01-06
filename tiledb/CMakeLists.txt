@@ -114,6 +114,11 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/arrowio
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
   )
+  if (TILEDB_EXPERIMENTAL_FEATURES)
+    list(APPEND TILEDB_PUBLIC_HEADERS
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/dimension_label.h
+    )
+  endif()
 else()
   message(STATUS "TileDB C++ API is not built.")
 endif()
