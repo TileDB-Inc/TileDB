@@ -34,6 +34,7 @@ gather_sources(${SOURCES})
 list(APPEND OTHER_SOURCES
     # We need to recompile sources that depend on StorageManager to use the stub
     ../../../sm/storage_manager/context.cc
+    ../../../sm/storage_manager/context_resources.cc
     # Source included here because it's not in object library `stats`
     ../../../sm/stats/global_stats.cc
     )

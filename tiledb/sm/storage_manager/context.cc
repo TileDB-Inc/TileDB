@@ -50,18 +50,19 @@ Context::Context(const Config& config)
     : last_error_(nullopt)
     , logger_(make_shared<Logger>(
           HERE(), logger_prefix_ + std::to_string(++logger_id_)))
-    , compute_tp_(get_compute_thread_count(config))
-    , io_tp_(get_io_thread_count(config))
-    , stats_(make_shared<stats::Stats>(HERE(), "Context"))
-    , storage_manager_{&compute_tp_, &io_tp_, stats_.get(), logger_, config} {
+    , resources_(
+          config,
+          get_compute_thread_count(config),
+          get_io_thread_count(config),
+          // TODO: Remove `.StorageManager` from statistic names
+          // We're sticking with `Context.StorageManager` here because
+          // it is part of the public facing API.
+          "Context.StorageManager")
+    , storage_manager_{resources_, logger_, config} {
   /*
    * Logger class is not yet C.41-compliant
    */
   throw_if_not_ok(init_loggers(config));
-  /*
-   * Explicitly register our `stats` object with the global.
-   */
-  stats::all_stats.register_stats(stats_);
 }
 
 /* ****************************** */
@@ -81,18 +82,6 @@ void Context::save_error(const Status& st) {
 void Context::save_error(const StatusException& st) {
   std::lock_guard<std::mutex> lock(mtx_);
   last_error_ = st.what();
-}
-
-ThreadPool* Context::compute_tp() const {
-  return &compute_tp_;
-}
-
-ThreadPool* Context::io_tp() const {
-  return &io_tp_;
-}
-
-stats::Stats* Context::stats() const {
-  return stats_.get();
 }
 
 Status Context::get_config_thread_count(

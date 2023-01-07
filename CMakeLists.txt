@@ -374,6 +374,31 @@ set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER_DIR}/${TILEDB_EXPORT_HEADER_NAM
 set(TILEDB_EXPORT_HEADER_LOCALINSTALL_PATH "tiledb/api/c_api/${TILEDB_EXPORT_HEADER_NAME}")
 
 ##################################
+# VFS Object Storage Configuration
+##################################
+# Create an interface library for use in passing the
+# appropriate compiler definitions for the set of
+# configured object storage backends.
+
+add_library(object_store_definitions INTERFACE)
+
+if (TILEDB_AZURE)
+  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_AZURE)
+endif()
+
+if (TILEDB_GCS)
+  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_GCS)
+endif()
+
+if (TILEDB_HDFS)
+  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_HDFS)
+endif()
+
+if (TILEDB_S3)
+  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_S3)
+endif()
+
+##################################
 # Local install
 ##################################
 #
