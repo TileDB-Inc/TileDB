@@ -54,6 +54,7 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+
 QueryCondition::QueryCondition() {
 }
 
@@ -173,6 +174,18 @@ uint64_t QueryCondition::condition_timestamp() const {
 
   return timestamps.first;
 }
+
+
+/** Helper metaprogram */
+template <QueryConditionOp I>
+struct qc_op {
+  using type = std::integral_constant<QueryConditionOp, I>;
+};
+
+/** Helper metaprogram */
+template <QueryConditionOp I>
+using qc_op_t = typename qc_op<I>::type;
+
 
 /** Full template specialization for `char*` and `QueryConditionOp::LT`. */
 template <>
@@ -664,20 +677,6 @@ void QueryCondition::apply_ast_node(
     starting_index += length;
   }
 }
-
-template <int I>
-struct foo {
-  using type = std::integral_constant<int, I>;
-};
-template <int I>
-using foo_t = typename foo<I>::type;
-
-template <QueryConditionOp I>
-struct qc_op {
-  using type = std::integral_constant<QueryConditionOp, I>;
-};
-template <QueryConditionOp I>
-using qc_op_t = typename qc_op<I>::type;
 
 template <typename T, typename CombinationOp>
 void QueryCondition::apply_ast_node(
