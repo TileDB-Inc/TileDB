@@ -383,6 +383,34 @@ struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::NE> {
   }
 };
 
+/** Generic */
+template <typename T, typename Cmp, typename E>
+struct QueryCondition::BinaryCmpNullChecks_T {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    return lhs != nullptr &&
+           Cmp{}(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
+  }
+};
+
+
+/** Partial template specialization */
+template <typename T, typename Cmp>
+struct QueryCondition::BinaryCmpNullChecks_T<T, Cmp,
+    typename std::enable_if_t<(std::is_same_v<Cmp, std::equal_to<T>>
+                               || std::is_same_v<Cmp, std::equal_to<T>>)>> {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    if (lhs == rhs) {
+      return true;
+    }
+
+    if (lhs == nullptr || rhs == nullptr) {
+      return false;
+    }
+
+    return Cmp{}(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
+  }
+};
+
 template <typename T, QueryConditionOp Op, typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
@@ -590,7 +618,6 @@ void QueryCondition::apply_ast_node(
           "QueryCondition::apply_ast_node: Cannot perform query comparison; "
           "Unknown query condition operator.");
   }
-
   return;
 }
 
@@ -1272,147 +1299,155 @@ Status QueryCondition::apply_dense(
   return Status::Ok();
 }
 
+template <typename Cmp>
+struct QueryCondition::BinaryCmp_T<char*, Cmp> {
+  static inline bool cmp(
+    const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+
+    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const int cmp = strncmp(
+        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+
+    if constexpr (std::is_same_v<Cmp, std::less<char*>>) {
+      if (cmp != 0) {
+        return cmp < 0;
+      }
+      return lhs_size <= rhs_size;
+    } else if constexpr (std::is_same_v<Cmp, std::less_equal<char*>>) {
+      if (cmp != 0) {
+        return cmp < 0;
+      }
+      return lhs_size <= rhs_size;
+    } else if constexpr (std::is_same_v<Cmp, std::greater<char*>>) {
+      if (cmp != 0) {
+        return cmp > 0;
+      }
+      return lhs_size >= rhs_size;
+    } else if constexpr (std::is_same_v<Cmp, std::greater_equal<char*>>) {
+      if (cmp != 0) {
+        return cmp > 0;
+      }
+      return lhs_size >= rhs_size;
+    } else if constexpr (std::is_same_v<Cmp, std::equal_to<char*>>) {
+      if (lhs_size != rhs_size) {
+        return false;
+      }
+      return strncmp(
+                 static_cast<const char*>(lhs),
+                 static_cast<const char*>(rhs),
+                 lhs_size) == 0;
+    } else if constexpr (std::is_same_v<Cmp, std::not_equal_to<char*>>) {
+      if (lhs_size != rhs_size) {
+        return true;
+      }
+      return strncmp(
+                 static_cast<const char*>(lhs),
+                 static_cast<const char*>(rhs),
+                 lhs_size) != 0;
+    } else {
+      throw std::logic_error("Invalid comparison operator.");
+    }
+  }
+};
+
 /** Full template specialization for `char*` and `QueryConditionOp::LT`. */
-template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LT> {
+template <QueryConditionOp Cond>
+struct QueryCondition::BinaryCmp<char*, Cond> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+
     const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
     const int cmp = strncmp(
         static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp < 0;
-    }
 
-    return lhs_size < rhs_size;
+    if constexpr(Cond == QueryConditionOp::LT) {
+      if (cmp != 0) {
+        return cmp < 0;
+      }
+      return lhs_size < rhs_size;
+    } else if constexpr(Cond == QueryConditionOp::LE) {
+      if (cmp != 0) {
+        return cmp < 0;
+      }
+      return lhs_size <= rhs_size;
+
+    } else if constexpr(Cond == QueryConditionOp::GT) {
+      if (cmp != 0) {
+        return cmp > 0;
+      }
+      return lhs_size > rhs_size;
+    } else if constexpr(Cond == QueryConditionOp::GE) {
+      if (cmp != 0) {
+        return cmp > 0;
+      }
+      return lhs_size >= rhs_size;
+    } else if constexpr(Cond == QueryConditionOp::EQ) {
+      if (lhs_size != rhs_size) {
+        return false;
+      }
+      return strncmp(
+                 static_cast<const char*>(lhs),
+                 static_cast<const char*>(rhs),
+                 lhs_size) == 0;
+    } else if constexpr (Cond == QueryConditionOp::NE) {
+      if (lhs_size != rhs_size) {
+        return true;
+      }
+      return strncmp(
+                 static_cast<const char*>(lhs),
+                 static_cast<const char*>(rhs),
+                 lhs_size) != 0;
+    } else {
+      throw std::logic_error("Invalid comparison operator.");
+    }
   }
 };
 
-/** Partial template specialization for `char*` and `QueryConditionOp::LE. */
-template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LE> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp < 0;
+template <typename T, QueryConditionOp Op>
+struct QueryCondition::BinaryCmp {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    if constexpr (Op == QueryConditionOp::LT) {
+      return *static_cast<const T*>(lhs) < *static_cast<const T*>(rhs);
+    } else if constexpr (Op == QueryConditionOp::LE) {
+      return *static_cast<const T*>(lhs) <= *static_cast<const T*>(rhs);
+    } else if constexpr (Op == QueryConditionOp::GT) {
+      return *static_cast<const T*>(lhs) > *static_cast<const T*>(rhs);
+    } else if constexpr (Op == QueryConditionOp::GE) {
+      return *static_cast<const T*>(lhs) >= *static_cast<const T*>(rhs);
+    } else if constexpr (Op == QueryConditionOp::EQ) {
+      return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
+    } else if constexpr (Op == QueryConditionOp::NE) {
+      return *static_cast<const T*>(lhs) != *static_cast<const T*>(rhs);
+    } else {
+      throw std::logic_error("Invalid comparison operator.");
     }
-
-    return lhs_size <= rhs_size;
   }
 };
 
-/** Partial template specialization for `char*` and `QueryConditionOp::GT`. */
-template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GT> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp > 0;
-    }
-
-    return lhs_size > rhs_size;
+/** Generic */
+template <typename T, typename Cmp, typename E>
+struct QueryCondition::BinaryCmp_T {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    return lhs != nullptr &&
+           Cmp{}(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
   }
 };
 
-/** Partial template specialization for `char*` and `QueryConditionOp::GE`. */
-template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GE> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp > 0;
-    }
-
-    return lhs_size >= rhs_size;
-  }
-};
-
-/** Partial template specialization for `char*` and `QueryConditionOp::EQ`. */
-template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::EQ> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs_size != rhs_size) {
-      return false;
-    }
-
-    return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) == 0;
-  }
-};
-
-/** Partial template specialization for `char*` and `QueryConditionOp::NE`. */
-template <>
-struct QueryCondition::BinaryCmp<char*, QueryConditionOp::NE> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs_size != rhs_size) {
+/** Special case for equal and not_equal. */
+template <typename T, typename Cmp>
+struct QueryCondition::BinaryCmp_T<T, Cmp,
+    typename std::enable_if_t<(std::is_same_v<Cmp, std::equal_to<T>>
+                               || std::is_same_v<Cmp, std::equal_to<T>>)>> {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    if (lhs == rhs) {
       return true;
     }
 
-    return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) != 0;
-  }
-};
+    if (lhs == nullptr || rhs == nullptr) {
+      return false;
+    }
 
-/** Partial template specialization for `QueryConditionOp::LT`. */
-template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::LT> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) < *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::LE`. */
-template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::LE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) <= *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::GT`. */
-template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::GT> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) > *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::GE`. */
-template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::GE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) >= *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::EQ`. */
-template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::EQ> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::NE`. */
-template <typename T>
-struct QueryCondition::BinaryCmp<T, QueryConditionOp::NE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return *static_cast<const T*>(lhs) != *static_cast<const T*>(rhs);
+    return Cmp{}(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
   }
 };
 
