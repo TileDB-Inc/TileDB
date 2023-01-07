@@ -238,6 +238,8 @@ class QueryCondition {
   /*         PRIVATE DATATYPES         */
   /* ********************************* */
 
+
+
   /**
    * Performs a binary comparison between two primitive types.
    * We use a `struct` here because it can support partial
@@ -246,7 +248,26 @@ class QueryCondition {
    * Note that this comparator includes if statements that will
    * prevent vectorization.
    */
-  template <typename T, QueryConditionOp Cmp>
+  template <typename T, typename Cmp = std::less<T>, typename E = void>
+  struct BinaryCmpNullChecks_T;
+
+  /**
+   * Performs a binary comparison between two primitive types.
+   * We use a `struct` here because it can support partial
+   * template specialization while a standard function does not.
+   */
+  template <typename T, typename Cmp = std::less<T>, typename E = void>
+  struct BinaryCmp_T;
+
+  /**
+   * Performs a binary comparison between two primitive types.
+   * We use a `struct` here because it can support partial
+   * template specialization while a standard function does not.
+   *
+   * Note that this comparator includes if statements that will
+   * prevent vectorization.
+   */
+  template <typename T, QueryConditionOp Op>
   struct BinaryCmpNullChecks;
 
   /**
@@ -254,8 +275,9 @@ class QueryCondition {
    * We use a `struct` here because it can support partial
    * template specialization while a standard function does not.
    */
-  template <typename T, QueryConditionOp Cmp>
+  template <typename T, QueryConditionOp Op>
   struct BinaryCmp;
+
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
