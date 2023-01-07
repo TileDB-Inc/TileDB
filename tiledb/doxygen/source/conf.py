@@ -72,13 +72,13 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'TileDB'
-copyright = '2022 TileDB, Inc'
+copyright = '2023 TileDB, Inc'
 author = 'TileDB, Inc.'
 
 # The short X.Y version.
-version = '2.14'
+version = '2.15'
 # The full version, including alpha/beta/rc tags.
-release = '2.14.0'
+release = '2.15.0'
 
 # Breathe extension configuration.
 doxygen_xml_dir = os.path.join(TILEDB_BUILD_DIR, 'xml/')
