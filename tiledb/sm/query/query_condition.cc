@@ -529,6 +529,20 @@ void QueryCondition::apply_ast_node(
   }
 }
 
+template <int I>
+struct foo {
+  using type = std::integral_constant<int, I>;
+};
+template <int I>
+using foo_t = typename foo<I>::type;
+
+template <QueryConditionOp I>
+struct qc_op {
+  using type = std::integral_constant<QueryConditionOp, I>;
+};
+template <QueryConditionOp I>
+using qc_op_t = typename qc_op<I>::type;
+
 template <typename T, typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
@@ -540,8 +554,8 @@ void QueryCondition::apply_ast_node(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
-  auto g = [&, *this]<QueryConditionOp Condition>() {
-    return apply_ast_node<T, Condition>(
+  auto g = [&, *this](auto Condition) {
+    return apply_ast_node<T, decltype(Condition)::value>(
         node,
         fragment_metadata,
         stride,
@@ -555,22 +569,22 @@ void QueryCondition::apply_ast_node(
 
   switch (node->get_op()) {
     case QueryConditionOp::LT:
-      g.template operator()<QueryConditionOp::LT>();
+      g(qc_op_t<QueryConditionOp::LT>{});
       break;
     case QueryConditionOp::LE:
-      g.template operator()<QueryConditionOp::LE>();
+      g(qc_op_t<QueryConditionOp::LE>{});
       break;
     case QueryConditionOp::GT:
-      g.template operator()<QueryConditionOp::GT>();
+      g(qc_op_t<QueryConditionOp::GT>{});
       break;
     case QueryConditionOp::GE:
-      g.template operator()<QueryConditionOp::GE>();
+      g(qc_op_t<QueryConditionOp::GE>{});
       break;
     case QueryConditionOp::EQ:
-      g.template operator()<QueryConditionOp::EQ>();
+      g(qc_op_t<QueryConditionOp::EQ>{});
       break;
     case QueryConditionOp::NE:
-      g.template operator()<QueryConditionOp::NE>();
+      g(qc_op_t<QueryConditionOp::NE>{});
       break;
     default:
       throw std::runtime_error(
@@ -608,8 +622,8 @@ void QueryCondition::apply_ast_node(
     }
   }
 
-  auto g = [&, *this ]<class T>() {
-    return apply_ast_node<T, CombinationOp>(
+  auto g = [&, *this](auto T) {
+    return apply_ast_node<decltype(T), CombinationOp>(
         node,
         fragment_metadata,
         stride,
@@ -623,43 +637,43 @@ void QueryCondition::apply_ast_node(
 
   switch (type) {
     case Datatype::INT8:
-      g.template operator()<int8_t>();
+      g(int8_t{});
       break;
     case Datatype::UINT8:
-      g.template operator()<uint8_t>();
+      g(uint8_t{});
       break;
     case Datatype::INT16:
-      g.template operator()<int16_t>();
+      g(int16_t{});
       break;
     case Datatype::UINT16:
-      g.template operator()<uint16_t>();
+      g(uint16_t{});
       break;
     case Datatype::INT32:
-      g.template operator()<int32_t>();
+      g(int32_t{});
       break;
     case Datatype::UINT32:
-      g.template operator()<uint32_t>();
+      g(uint32_t{});
       break;
     case Datatype::INT64:
-      g.template operator()<int64_t>();
+      g(int64_t{});
       break;
     case Datatype::UINT64:
-      g.template operator()<uint64_t>();
+      g(uint64_t{});
       break;
     case Datatype::FLOAT32:
-      g.template operator()<float>();
+      g(float{});
       break;
     case Datatype::FLOAT64:
-      g.template operator()<double>();
+      g(double{});
       break;
     case Datatype::STRING_ASCII:
-      g.template operator()<char*>();
+      g((char*){});
       break;
     case Datatype::CHAR: {
       if (var_size) {
-        g.template operator()<char*>();
+        g((char*){});
       } else {
-        g.template operator()<char>();
+        g(char{});
       }
     } break;
     case Datatype::DATETIME_YEAR:
@@ -675,7 +689,7 @@ void QueryCondition::apply_ast_node(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
-      g.template operator()<int64_t>();
+      g(int64_t{});
       break;
     case Datatype::ANY:
     case Datatype::BLOB:
@@ -954,8 +968,8 @@ void QueryCondition::apply_ast_node_dense(
     const bool nullable,
     CombinationOp combination_op,
     span<uint8_t> result_buffer) const {
-  auto g = [&, *this]<QueryConditionOp Condition>() {
-    return apply_ast_node_dense<T, Condition>(
+  auto g = [&, *this](auto Condition) {
+    return apply_ast_node_dense<T, decltype(Condition)::value>(
         node,
         result_tile,
         start,
@@ -969,22 +983,22 @@ void QueryCondition::apply_ast_node_dense(
 
   switch (node->get_op()) {
     case QueryConditionOp::LT:
-      g.template operator()<QueryConditionOp::LT>();
+      g(qc_op_t<QueryConditionOp::LT>{});
       break;
     case QueryConditionOp::LE:
-      g.template operator()<QueryConditionOp::LE>();
+      g(qc_op_t<QueryConditionOp::LE>{});
       break;
     case QueryConditionOp::GT:
-      g.template operator()<QueryConditionOp::GT>();
+      g(qc_op_t<QueryConditionOp::GT>{});
       break;
     case QueryConditionOp::GE:
-      g.template operator()<QueryConditionOp::GE>();
+      g(qc_op_t<QueryConditionOp::GE>{});
       break;
     case QueryConditionOp::EQ:
-      g.template operator()<QueryConditionOp::EQ>();
+      g(qc_op_t<QueryConditionOp::EQ>{});
       break;
     case QueryConditionOp::NE:
-      g.template operator()<QueryConditionOp::NE>();
+      g(qc_op_t<QueryConditionOp::NE>{});
       break;
     default:
       throw std::runtime_error(
@@ -1032,8 +1046,8 @@ void QueryCondition::apply_ast_node_dense(
     return;
   }
 
-  auto g = [&, *this ]<class T>() {
-    return apply_ast_node_dense<T, CombinationOp>(
+  auto g = [&, *this](auto T) {
+    return apply_ast_node_dense<decltype(T), CombinationOp>(
         node,
         result_tile,
         start,
@@ -1046,45 +1060,46 @@ void QueryCondition::apply_ast_node_dense(
   };
 
   switch (attribute->type()) {
-    case Datatype::INT8: {
-      g.template operator()<int8_t>();
-    } break;
+    case Datatype::INT8:
+      g(int8_t{});
+      break;
     case Datatype::BOOL:
     case Datatype::UINT8:
-      g.template operator()<uint8_t>();
+      g(uint8_t{});
       break;
     case Datatype::INT16:
-      g.template operator()<int16_t>();
+      g(int16_t{});
       break;
     case Datatype::UINT16:
-      g.template operator()<uint16_t>();
+      g(uint16_t{});
       break;
     case Datatype::INT32:
-      g.template operator()<int32_t>();
+      g(int32_t{});
       break;
     case Datatype::UINT32:
-      g.template operator()<int16_t>();
+      g(uint32_t{});
       break;
     case Datatype::INT64:
-      g.template operator()<int64_t>();
+      g(int64_t{});
       break;
     case Datatype::UINT64:
-      g.template operator()<uint64_t>();
+      g(uint64_t{});
       break;
     case Datatype::FLOAT32:
-      g.template operator()<float>();
+      g(float{});
       break;
     case Datatype::FLOAT64:
-      g.template operator()<double>();
+      g(double{});
       break;
     case Datatype::STRING_ASCII:
-      g.template operator()<char*>();
+      g((char*){});
+      g((char*){});
       break;
     case Datatype::CHAR: {
       if (var_size) {
-        g.template operator()<char*>();
+        g((char*){});
       } else {
-        g.template operator()<char>();
+        g(char{});
       }
     } break;
     case Datatype::DATETIME_YEAR:
@@ -1100,7 +1115,7 @@ void QueryCondition::apply_ast_node_dense(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
-      g.template operator()<int64_t>();
+      g(int64_t{});
       break;
     case Datatype::ANY:
     case Datatype::BLOB:
@@ -1514,15 +1529,10 @@ void QueryCondition::apply_ast_node_sparse(
     const bool var_size,
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
-  auto g = [*this,
-            &node,
-            &result_tile,
-            &var_size,
-            &combination_op,
-            &result_bitmap]<QueryConditionOp Condition>() {
+  auto g = [&, *this](auto Condition) {
     return apply_ast_node_sparse<
         T,
-        Condition,
+        decltype(Condition)::value,
         BitmapType,
         CombinationOp,
         nullable>(node, result_tile, var_size, combination_op, result_bitmap);
@@ -1530,22 +1540,22 @@ void QueryCondition::apply_ast_node_sparse(
 
   switch (node->get_op()) {
     case QueryConditionOp::LT:
-      g.template operator()<QueryConditionOp::LT>();
+      g(qc_op_t<QueryConditionOp::LT>{});
       break;
     case QueryConditionOp::LE:
-      g.template operator()<QueryConditionOp::LE>();
+      g(qc_op_t<QueryConditionOp::LE>{});
       break;
     case QueryConditionOp::GT:
-      g.template operator()<QueryConditionOp::GT>();
+      g(qc_op_t<QueryConditionOp::GT>{});
       break;
     case QueryConditionOp::GE:
-      g.template operator()<QueryConditionOp::GE>();
+      g(qc_op_t<QueryConditionOp::GE>{});
       break;
     case QueryConditionOp::EQ:
-      g.template operator()<QueryConditionOp::EQ>();
+      g(qc_op_t<QueryConditionOp::EQ>{});
       break;
     case QueryConditionOp::NE:
-      g.template operator()<QueryConditionOp::NE>();
+      g(qc_op_t<QueryConditionOp::NE>{});
       break;
     default:
       throw std::runtime_error(
@@ -1618,51 +1628,51 @@ void QueryCondition::apply_ast_node_sparse(
     }
   }
 
-  auto g = [&, *this ]<class T>() {
-    return apply_ast_node_sparse<T, BitmapType, CombinationOp>(
+  auto g = [&, *this](auto T) {
+    return apply_ast_node_sparse<decltype(T), BitmapType, CombinationOp>(
         node, result_tile, var_size, nullable, combination_op, result_bitmap);
   };
 
   switch (type) {
     case Datatype::INT8:
-      g.template operator()<int8_t>();
+      g(int8_t{});
       break;
     case Datatype::BOOL:
     case Datatype::UINT8:
-      g.template operator()<uint8_t>();
+      g(uint8_t{});
       break;
     case Datatype::INT16:
-      g.template operator()<int16_t>();
+      g(int16_t{});
       break;
     case Datatype::UINT16:
-      g.template operator()<int16_t>();
+      g(uint16_t{});
       break;
     case Datatype::INT32:
-      g.template operator()<int32_t>();
+      g(int32_t{});
       break;
     case Datatype::UINT32:
-      g.template operator()<uint32_t>();
+      g(uint32_t{});
       break;
     case Datatype::INT64:
-      g.template operator()<int64_t>();
+      g(int64_t{});
       break;
     case Datatype::UINT64:
-      g.template operator()<uint64_t>();
+      g(uint64_t{});
       break;
     case Datatype::FLOAT32:
-      g.template operator()<float>();
+      g(float{});
       break;
     case Datatype::FLOAT64:
-      g.template operator()<double>();
+      g(double{});
       break;
     case Datatype::STRING_ASCII:
-      g.template operator()<char*>();
+      g((char*){});
       break;
     case Datatype::CHAR: {
       if (var_size) {
-        g.template operator()<char*>();
+        g((char*){});
       } else {
-        g.template operator()<char>();
+        g((char){});
       }
     } break;
     case Datatype::DATETIME_YEAR:
@@ -1678,7 +1688,7 @@ void QueryCondition::apply_ast_node_sparse(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
-      g.template operator()<int64_t>();
+      g(int64_t{});
       break;
     case Datatype::ANY:
     case Datatype::BLOB:
