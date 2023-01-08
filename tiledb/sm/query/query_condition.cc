@@ -175,7 +175,7 @@ uint64_t QueryCondition::condition_timestamp() const {
   return timestamps.first;
 }
 
-
+#if 0
 /** Helper metaprogram */
 template <QueryConditionOp I>
 struct qc_op {
@@ -185,8 +185,8 @@ struct qc_op {
 /** Helper metaprogram */
 template <QueryConditionOp I>
 using qc_op_t = typename qc_op<I>::type;
-
-
+#endif
+#if 0
 template <QueryConditionOp Op>
 struct QueryCondition::BinaryCmpNullChecks<char*, Op> {
   static inline bool cmp(
@@ -263,7 +263,6 @@ struct QueryCondition::BinaryCmpNullChecks<char*, Op> {
   }
 };
 
-
 template <typename T, QueryConditionOp Op>
 struct QueryCondition::BinaryCmpNullChecks {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
@@ -298,6 +297,7 @@ struct QueryCondition::BinaryCmpNullChecks {
     }
   }
 };
+#endif
 
 
 /** Generic */
@@ -314,10 +314,16 @@ struct QueryCondition::BinaryCmpNullChecks_T {
 template <typename T, typename Cmp>
 struct QueryCondition::BinaryCmpNullChecks_T<T, Cmp,
     typename std::enable_if_t<(std::is_same_v<Cmp, std::equal_to<T>>
-                               || std::is_same_v<Cmp, std::equal_to<T>>)>> {
+                               || std::is_same_v<Cmp, std::not_equal_to<T>>)>> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    if (lhs == rhs) {
-      return true;
+    if constexpr (std::is_same_v<Cmp, std::equal_to<T>>) {
+      if (lhs == rhs) {
+        return true;
+      }
+    } else if constexpr (std::is_same_v<Cmp, std::not_equal_to<T>>) {
+      if (rhs == nullptr && lhs != nullptr) {
+        return true;
+      }
     }
 
     if (lhs == nullptr || rhs == nullptr) {
@@ -328,7 +334,9 @@ struct QueryCondition::BinaryCmpNullChecks_T<T, Cmp,
   }
 };
 
-template <typename T, QueryConditionOp Op, typename CombinationOp>
+
+
+template <typename T, typename Op, typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
     const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
@@ -337,8 +345,11 @@ void QueryCondition::apply_ast_node(
     const bool nullable,
     const ByteVecValue& fill_value,
     const std::vector<ResultCellSlab>& result_cell_slabs,
-    CombinationOp combination_op,
+    typename std::common_type<CombinationOp>::type combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
+
+  // print_types(Op{}, CombinationOp{});
+
   const std::string& field_name = node->get_field_name();
   const void* condition_value_content =
       node->get_condition_value_view().content();
@@ -351,7 +362,7 @@ void QueryCondition::apply_ast_node(
 
     // Handle an empty range.
     if (result_tile == nullptr && !nullable) {
-      const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
+      const bool cmp = BinaryCmpNullChecks_T<T, Op>::cmp(
           fill_value.data(),
           fill_value.size(),
           condition_value_content,
@@ -370,7 +381,8 @@ void QueryCondition::apply_ast_node(
           (!fragment_metadata[f]->has_delete_meta() ||
            fragment_metadata[f]->get_processed_conditions_set().count(
                condition_marker_) != 0)) {
-        assert(Op == QueryConditionOp::GT);
+        // assert(Op == QueryConditionOp::GT);
+            assert((std::same_as<Op, std::greater<T>>));
         for (size_t c = starting_index; c < starting_index + length; ++c) {
           result_cell_bitmap[c] = 1;
         }
@@ -426,7 +438,7 @@ void QueryCondition::apply_ast_node(
               null_cell ? nullptr : buffer + buffer_offset;
 
           // Compare the cell value against the value in the value node.
-          const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
+          const bool cmp = BinaryCmpNullChecks_T<T, Op>::cmp(
               cell_value,
               cell_size,
               condition_value_content,
@@ -442,7 +454,7 @@ void QueryCondition::apply_ast_node(
         if (field_name == constants::timestamps && tile_tuple == nullptr) {
           auto timestamp =
               fragment_metadata[result_tile->frag_idx()]->first_timestamp();
-          const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
+          const bool cmp = BinaryCmpNullChecks_T<T, Op>::cmp(
               &timestamp,
               constants::timestamp_size,
               condition_value_content,
@@ -470,7 +482,7 @@ void QueryCondition::apply_ast_node(
             buffer_offset += buffer_offset_inc;
 
             // Compare the cell value against the value in the value node.
-            const bool cmp = BinaryCmpNullChecks<T, Op>::cmp(
+            const bool cmp = BinaryCmpNullChecks_T<T, Op>::cmp(
                 cell_value,
                 cell_size,
                 condition_value_content,
@@ -498,8 +510,8 @@ void QueryCondition::apply_ast_node(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
-  auto g = [&, *this](auto Condition) {
-    return apply_ast_node<T, decltype(Condition)::value>(
+  auto g = [&, *this](auto ConditionOp) {
+    return apply_ast_node<T, decltype(ConditionOp), CombinationOp>(
         node,
         fragment_metadata,
         stride,
@@ -513,29 +525,28 @@ void QueryCondition::apply_ast_node(
 
   switch (node->get_op()) {
     case QueryConditionOp::LT:
-      g(qc_op_t<QueryConditionOp::LT>{});
+      g(std::less<T>{});
       break;
     case QueryConditionOp::LE:
-      g(qc_op_t<QueryConditionOp::LE>{});
+      g(std::less_equal<T>{});
       break;
     case QueryConditionOp::GT:
-      g(qc_op_t<QueryConditionOp::GT>{});
+      g(std::greater<T>{});
       break;
     case QueryConditionOp::GE:
-      g(qc_op_t<QueryConditionOp::GE>{});
+      g(std::greater_equal<T>{});
       break;
     case QueryConditionOp::EQ:
-      g(qc_op_t<QueryConditionOp::EQ>{});
+      g(std::equal_to<T>{});
       break;
     case QueryConditionOp::NE:
-      g(qc_op_t<QueryConditionOp::NE>{});
+      g(std::not_equal_to<T>{});
       break;
     default:
       throw std::runtime_error(
           "QueryCondition::apply_ast_node: Cannot perform query comparison; "
           "Unknown query condition operator.");
   }
-  return;
 }
 
 template <typename CombinationOp>
@@ -810,7 +821,7 @@ Status QueryCondition::apply(
   return Status::Ok();
 }
 
-template <typename T, QueryConditionOp Op, typename CombinationOp>
+template <typename T, typename Op, typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
     ResultTile* result_tile,
@@ -819,7 +830,7 @@ void QueryCondition::apply_ast_node_dense(
     const uint64_t stride,
     const bool var_size,
     const bool nullable,
-    CombinationOp combination_op,
+    dont_deduce_t<CombinationOp> combination_op,
     span<uint8_t> result_buffer) const {
   const std::string& field_name = node->get_field_name();
   const void* condition_value_content =
@@ -862,7 +873,7 @@ void QueryCondition::apply_ast_node_dense(
       const void* const cell_value = buffer + buffer_offset;
 
       // Compare the cell value against the value in the value node.
-      const bool cmp = BinaryCmp<T, Op>::cmp(
+      const bool cmp = BinaryCmp_T<T, Op>::cmp(
           cell_value, cell_size, condition_value_content, condition_value_size);
 
       // Set the value.
@@ -887,7 +898,7 @@ void QueryCondition::apply_ast_node_dense(
       buffer_offset += buffer_offset_inc;
 
       // Compare the cell value against the value in the value node.
-      const bool cmp = BinaryCmp<T, Op>::cmp(
+      const bool cmp = BinaryCmp_T<T, Op>::cmp(
           cell_value, cell_size, condition_value_content, condition_value_size);
 
       // Set the value.
@@ -912,7 +923,7 @@ void QueryCondition::apply_ast_node_dense(
     CombinationOp combination_op,
     span<uint8_t> result_buffer) const {
   auto g = [&, *this](auto Condition) {
-    return apply_ast_node_dense<T, decltype(Condition)::value>(
+    return apply_ast_node_dense<T, decltype(Condition), CombinationOp>(
         node,
         result_tile,
         start,
@@ -926,22 +937,22 @@ void QueryCondition::apply_ast_node_dense(
 
   switch (node->get_op()) {
     case QueryConditionOp::LT:
-      g(qc_op_t<QueryConditionOp::LT>{});
+      g(std::less<T>{});
       break;
     case QueryConditionOp::LE:
-      g(qc_op_t<QueryConditionOp::LE>{});
+      g(std::less_equal<T>{});
       break;
     case QueryConditionOp::GT:
-      g(qc_op_t<QueryConditionOp::GT>{});
+      g(std::greater<T>{});
       break;
     case QueryConditionOp::GE:
-      g(qc_op_t<QueryConditionOp::GE>{});
+      g(std::greater_equal<T>{});
       break;
     case QueryConditionOp::EQ:
-      g(qc_op_t<QueryConditionOp::EQ>{});
+      g(std::equal_to<T>{});
       break;
     case QueryConditionOp::NE:
-      g(qc_op_t<QueryConditionOp::NE>{});
+      g(std::not_equal_to<T>{});
       break;
     default:
       throw std::runtime_error(
@@ -1354,7 +1365,8 @@ struct QueryCondition::BinaryCmp_T {
 template <typename T, typename Cmp>
 struct QueryCondition::BinaryCmp_T<T, Cmp,
     typename std::enable_if_t<(std::is_same_v<Cmp, std::equal_to<T>>
-                               || std::is_same_v<Cmp, std::equal_to<T>>)>> {
+                               || std::is_same_v<Cmp, std::equal_to<T>>)
+                                                                 && (!std::is_same_v<T, char*>)     >> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
     if (lhs == rhs) {
       return true;
@@ -1377,7 +1389,7 @@ struct QCMax {
 
 template <
     typename T,
-    QueryConditionOp Op,
+    typename Op,
     typename BitmapType,
     typename CombinationOp,
     typename nullable>
@@ -1426,7 +1438,7 @@ void QueryCondition::apply_ast_node_sparse(
       const void* const cell_value = buffer + buffer_offset;
 
       // Compare the cell value against the value in the value node.
-      const bool cmp = BinaryCmp<T, Op>::cmp(
+      const bool cmp = BinaryCmp_T<T, Op>::cmp(
           cell_value, cell_size, condition_value_content, condition_value_size);
 
       // Set the value, casing on whether the combination op = OR and the
@@ -1453,7 +1465,7 @@ void QueryCondition::apply_ast_node_sparse(
       const void* const cell_value = buffer + c * cell_size;
 
       // Compare the cell value against the value in the value node.
-      const bool cmp = BinaryCmp<T, Op>::cmp(
+      const bool cmp = BinaryCmp_T<T, Op>::cmp(
           cell_value, cell_size, condition_value_content, condition_value_size);
 
       // Set the value, casing on whether the combination op = OR and the
@@ -1483,7 +1495,7 @@ void QueryCondition::apply_ast_node_sparse(
   auto g = [&, *this](auto Condition) {
     return apply_ast_node_sparse<
         T,
-        decltype(Condition)::value,
+        decltype(Condition),
         BitmapType,
         CombinationOp,
         nullable>(node, result_tile, var_size, combination_op, result_bitmap);
@@ -1491,23 +1503,23 @@ void QueryCondition::apply_ast_node_sparse(
 
   switch (node->get_op()) {
     case QueryConditionOp::LT:
-      g(qc_op_t<QueryConditionOp::LT>{});
+      g(std::less<T>{});
       break;
     case QueryConditionOp::LE:
-      g(qc_op_t<QueryConditionOp::LE>{});
+      g(std::less_equal<T>{});
       break;
     case QueryConditionOp::GT:
-      g(qc_op_t<QueryConditionOp::GT>{});
-      break;
+      g(std::greater<T>{});
+            break;
     case QueryConditionOp::GE:
-      g(qc_op_t<QueryConditionOp::GE>{});
-      break;
+      g(std::greater_equal<T>{});
+            break;
     case QueryConditionOp::EQ:
-      g(qc_op_t<QueryConditionOp::EQ>{});
-      break;
+      g(std::equal_to<T>{});
+            break;
     case QueryConditionOp::NE:
-      g(qc_op_t<QueryConditionOp::NE>{});
-      break;
+      g(std::not_equal_to<T>{});
+            break;
     default:
       throw std::runtime_error(
           "Cannot perform query comparison; Unknown query condition operator.");
@@ -1520,7 +1532,7 @@ void QueryCondition::apply_ast_node_sparse(
     ResultTile& result_tile,
     const bool var_size,
     const bool nullable,
-    CombinationOp combination_op,
+    std::common_type_t<CombinationOp> combination_op,
     std::vector<BitmapType>& result_bitmap) const {
   if (nullable) {
     apply_ast_node_sparse<T, BitmapType, CombinationOp, std::true_type>(
@@ -1664,7 +1676,7 @@ void QueryCondition::apply_tree_sparse(
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
   if (!node->is_expr()) {
-    apply_ast_node_sparse<BitmapType>(
+    apply_ast_node_sparse<BitmapType, CombinationOp>(
         node, array_schema, result_tile, combination_op, result_bitmap);
   } else {
     const auto result_bitmap_size = result_bitmap.size();
