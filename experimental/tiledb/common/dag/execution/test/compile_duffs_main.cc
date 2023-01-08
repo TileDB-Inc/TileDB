@@ -28,7 +28,6 @@
 
 #include "../duffs.h"
 
-
 using namespace tiledb::common;
 
 int main() {

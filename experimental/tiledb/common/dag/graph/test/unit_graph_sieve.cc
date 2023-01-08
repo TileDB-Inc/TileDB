@@ -408,9 +408,10 @@ auto sieve_async_block(
       auto b = transform_node(graph, [block_size, sqrt_n, n](size_t in) {
         return gen_range<bool_t>(in, block_size, sqrt_n, n);
       });
-      auto c = transform_node(graph, [&base_primes](const part_info<bool_t>& in) {
-        return range_sieve<bool_t>(in, base_primes);
-      });
+      auto c =
+          transform_node(graph, [&base_primes](const part_info<bool_t>& in) {
+            return range_sieve<bool_t>(in, base_primes);
+          });
       auto d = transform_node(graph, sieve_to_primes_part<bool_t>);
       auto e = terminal_node(graph, [&prime_list](const prime_info& in) {
         output_body(in, prime_list);
@@ -432,9 +433,10 @@ auto sieve_async_block(
         output_body(in, prime_list);
       });
       auto d = transform_node(graph, sieve_to_primes_part<bool_t>);
-      auto c = transform_node(graph, [&base_primes](const part_info<bool_t>& in) {
-        return range_sieve<bool_t>(in, base_primes);
-      });
+      auto c =
+          transform_node(graph, [&base_primes](const part_info<bool_t>& in) {
+            return range_sieve<bool_t>(in, base_primes);
+          });
       auto b = transform_node(graph, [block_size, sqrt_n, n](size_t in) {
         return gen_range<bool_t>(in, block_size, sqrt_n, n);
       });

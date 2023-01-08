@@ -46,7 +46,8 @@ TEST_CASE("TaskGraph: Default construction", "[taskgraph]") {
 TEST_CASE("TaskGraph: Default construction + initial node", "[taskgraph]") {
   auto graph = TaskGraph<DuffsScheduler<node>>();
 
-  initial_node(graph, []([[maybe_unused]] std::stop_source stop) { return 0UL; });
+  initial_node(
+      graph, []([[maybe_unused]] std::stop_source stop) { return 0UL; });
 }
 
 void bar(const size_t) {
@@ -162,7 +163,10 @@ template <class Block = size_t>
 void dummy_bind_sink_t(Block, float, const int) {
 }
 
-TEST_CASE("TaskGraph: Initial and terminal node construction with various function types", "[taskgraph]") {
+TEST_CASE(
+    "TaskGraph: Initial and terminal node construction with various function "
+    "types",
+    "[taskgraph]") {
   auto graph = TaskGraph<DuffsScheduler<node>>();
 
   SECTION("function") {
@@ -191,7 +195,7 @@ TEST_CASE("TaskGraph: Initial and terminal node construction with various functi
     auto b = graph.terminal_node([](size_t&) {});
 
     auto c = initial_node(graph, [](std::stop_source) { return 0UL; });
-   // auto d = terminal_node(graph, [](size_t) {});
+    // auto d = terminal_node(graph, [](size_t) {});
   }
 
   SECTION("function object") {
@@ -232,9 +236,10 @@ TEST_CASE("TaskGraph: Initial and terminal node construction with various functi
 #endif
 }
 
-
-
-TEST_CASE("TaskGraph: Initial, terminal, and transform node construction with various function types", "[taskgraph]") {
+TEST_CASE(
+    "TaskGraph: Initial, terminal, and transform node construction with "
+    "various function types",
+    "[taskgraph]") {
   auto graph = TaskGraph<DuffsScheduler<node>>();
 
   SECTION("function") {
@@ -269,7 +274,6 @@ TEST_CASE("TaskGraph: Initial, terminal, and transform node construction with va
     auto d = initial_node(graph, [](std::stop_source) { return 0UL; });
     auto e = transform_node(graph, [](size_t&) { return 0UL; });
     auto f = terminal_node(graph, [](const size_t&) {});
-
   }
 
   SECTION("function object") {
@@ -287,7 +291,6 @@ TEST_CASE("TaskGraph: Initial, terminal, and transform node construction with va
     auto w = terminal_node(graph, dummy_sink_class());
   }
 }
-
 
 TEST_CASE("TaskGraph: Task graph construction + edges", "[taskgraph]") {
   auto graph = TaskGraph<DuffsScheduler<node>>();
@@ -349,14 +352,16 @@ TEST_CASE("TaskGraph: Task graph construction + edges", "[taskgraph]") {
   }
 }
 
-
 TEST_CASE("TaskGraph: Schedule", "[taskgraph]") {
   auto graph = TaskGraph<DuffsScheduler<node>>();
 
   auto num_threads = GENERATE(1, 2, 3, 4, 5, 8, 17);
   auto sched = DuffsScheduler<node>(num_threads);
 
-  auto u = initial_node(graph, [](std::stop_source stop) { stop.request_stop(); return 0UL; });
+  auto u = initial_node(graph, [](std::stop_source stop) {
+    stop.request_stop();
+    return 0UL;
+  });
   auto v = transform_node(graph, [](size_t) { return 0UL; });
   auto w = terminal_node(graph, [](size_t) {});
 
@@ -388,7 +393,8 @@ TEST_CASE("TaskGraph: Run Passing Integers", "[taskgraph]") {
     CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
   }
 
-  auto p = graph.initial_node([problem_size, &i, &input](std::stop_source& stop_source) {
+  auto p = graph.initial_node([problem_size, &i, &input](
+                                  std::stop_source& stop_source) {
     if (std::distance(input.begin(), i) >= static_cast<long>(problem_size)) {
       stop_source.request_stop();
       return *(input.begin()) + 1;
@@ -396,13 +402,9 @@ TEST_CASE("TaskGraph: Run Passing Integers", "[taskgraph]") {
     return (*i++) + 1;
   });
 
-  auto f = transform_node(graph, [](std::size_t k) {
-    return k - 1;
-  });
+  auto f = transform_node(graph, [](std::size_t k) { return k - 1; });
 
-  auto c = terminal_node(graph, [&j](std::size_t k) {
-    *j++ = k;
-  });
+  auto c = terminal_node(graph, [&j](std::size_t k) { *j++ = k; });
 
   SECTION("Producer, Function, and Consumer, submit") {
     make_edge(graph, p, f);

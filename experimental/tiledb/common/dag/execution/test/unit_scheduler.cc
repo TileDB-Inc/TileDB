@@ -336,7 +336,6 @@ TEMPLATE_TEST_CASE(
         FrugalScheduler<node>>)) {
   bool debug{false};
 
-
   auto num_threads = GENERATE(1, 2, 3, 4, 5, 8, 17);
 
   if ((!std::is_same_v<
@@ -585,7 +584,6 @@ TEMPLATE_TEST_CASE(
       sched.submit(c);
       sched.sync_wait_all();
     }
-
   }
 }
 

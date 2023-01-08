@@ -455,4 +455,3 @@ TEMPLATE_TEST_CASE(
     Edge j{*b, *c};
   }
 }
-
