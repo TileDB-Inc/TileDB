@@ -61,6 +61,7 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
                              FrugalPortPolicy<Mover, PortState>,
                              PortState> {
   using mover_type = Mover;
+  using scheduler_event_type = SchedulerAction;
 
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;
@@ -72,6 +73,8 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
       PortFiniteStateMachine<FrugalPortPolicy<Mover, PortState>, PortState>;
   using lock_type = typename state_machine_type::lock_type;
 
+  constexpr static bool wait_returns_{true};
+
   FrugalPortPolicy() = default;
   FrugalPortPolicy(const FrugalPortPolicy&) {
   }
@@ -80,26 +83,29 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
   /**
    * Function for handling `ac_return` action.
    */
-  inline void on_ac_return(lock_type&, std::atomic<int>&) {
+  inline scheduler_event_type on_ac_return(lock_type&, std::atomic<int>&) {
+    return scheduler_event_type::noop;
   }
 
   /**
    * Function for handling `source_move` action.
    */
-  inline void on_source_move(
-      lock_type& _unused(lock), std::atomic<int>& event) {
-    assert(lock.owns_lock());
+  inline scheduler_event_type on_source_move(
+      lock_type&, std::atomic<int>& event) {
     moves_[0]++;
     static_cast<Mover*>(this)->on_move(event);
+    return scheduler_event_type::noop;
   }
 
   /**
    * Function for handling `sink_move` action.
    */
-  inline void on_sink_move(lock_type& _unused(lock), std::atomic<int>& event) {
+  inline scheduler_event_type on_sink_move(
+      [[maybe_unused]] lock_type& lock, std::atomic<int>& event) {
     assert(lock.owns_lock());
     moves_[1]++;
     static_cast<Mover*>(this)->on_move(event);
+    return scheduler_event_type::noop;
   }
 
   /* Utility for testing, counts number of data transfers at source end. */
@@ -115,15 +121,18 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
   /**
    * Function for handling `notify_source` action.
    */
-  inline void on_notify_source(lock_type& _unused(lock), std::atomic<int>&) {
+  inline scheduler_event_type on_notify_source(
+      [[maybe_unused]] lock_type& lock, std::atomic<int>&) {
     assert(lock.owns_lock());
     source_cv_.notify_one();
+    return scheduler_event_type::notify_source;
   }
 
   /**
    * Function for handling `notify_sink` action.
    */
-  inline void on_notify_sink(lock_type& _unused(lock), std::atomic<int>&) {
+  inline scheduler_event_type on_notify_sink(
+      [[maybe_unused]] lock_type& lock, std::atomic<int>&) {
     assert(lock.owns_lock());
 
     // This assertion will fail when state machine is stopping, so check
@@ -131,12 +140,14 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
       assert(is_source_full(this->state()) == "");
     }
     sink_cv_.notify_one();
+    return scheduler_event_type::notify_sink;
   }
 
   /**
    * Function for handling `source_wait` action.  Waits on cv.
    */
-  inline bool on_source_wait(lock_type& lock, std::atomic<int>&) {
+  inline scheduler_event_type on_source_wait(
+      lock_type& lock, std::atomic<int>&) {
     assert(lock.owns_lock());
     if constexpr (std::is_same_v<PortState, two_stage>) {
       // CHECK(str(this->state()) == "st_11");
@@ -149,13 +160,13 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
 
     assert(is_source_post_move(this->state()) == "");
 
-    return true;
+    return scheduler_event_type::source_wait;
   }
 
   /**
    * Function for handling `sink_wait` action.  Waits on cv.
    */
-  inline bool on_sink_wait(lock_type& lock, std::atomic<int>&) {
+  inline scheduler_event_type on_sink_wait(lock_type& lock, std::atomic<int>&) {
     assert(lock.owns_lock());
 
     sink_cv_.wait(lock, [this]() {
@@ -165,7 +176,7 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
 
     // assert(is_sink_post_move(this->state()) == "");
 
-    return true;
+    return scheduler_event_type::sink_wait;
   }
 
   /**
@@ -173,11 +184,13 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
    * throw_catch scheduler. Since exit is an infrequent event, this should have
    * no impact on performance.
    */
-  inline void on_term_source(lock_type& lock, std::atomic<int>& event) {
+  inline scheduler_event_type on_term_source(
+      lock_type& lock, std::atomic<int>& event) {
     assert(lock.owns_lock());
 
     on_notify_sink(lock, event);
     throw throw_catch_source_exit;
+    return scheduler_event_type::source_exit;
   }
 
   /**
@@ -185,9 +198,11 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
    * throw_catch scheduler. Since exit is an infrequent event, this should have
    * no impact on performance.
    */
-  inline void on_term_sink(lock_type& _unused(lock), std::atomic<int>&) {
+  inline scheduler_event_type on_term_sink(
+      [[maybe_unused]] lock_type& lock, std::atomic<int>&) {
     assert(lock.owns_lock());
     // throw throw_catch_sink_exit;
+    return scheduler_event_type::noop;
   }
 
  private:
