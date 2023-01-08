@@ -2993,46 +2993,6 @@ int32_t tiledb_array_open(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_open_at(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    uint64_t timestamp) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Open array
-  throw_if_not_ok(array->array_->open(
-      static_cast<tiledb::sm::QueryType>(query_type),
-      0,
-      timestamp,
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-      nullptr,
-      0));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_open_with_key(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Open array
-  throw_if_not_ok(array->array_->open(
-      static_cast<tiledb::sm::QueryType>(query_type),
-      static_cast<tiledb::sm::EncryptionType>(encryption_type),
-      encryption_key,
-      key_length));
-
-  return TILEDB_OK;
-}
-
 int32_t tiledb_array_open_at_with_key(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
@@ -3072,27 +3032,6 @@ int32_t tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
 
   // Reopen array
   throw_if_not_ok(array->array_->reopen());
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_reopen_at(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Reopen array
-  throw_if_not_ok(array->array_->reopen(0, timestamp_end));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_timestamp(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *timestamp = array->array_->timestamp_end_opened_at();
 
   return TILEDB_OK;
 }
@@ -5380,25 +5319,6 @@ int32_t tiledb_fragment_info_load(
   return TILEDB_OK;
 }
 
-int32_t tiledb_fragment_info_load_with_key(
-    tiledb_ctx_t* ctx,
-    tiledb_fragment_info_t* fragment_info,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Load fragment info
-  throw_if_not_ok(fragment_info->fragment_info_->load(
-      static_cast<tiledb::sm::EncryptionType>(encryption_type),
-      encryption_key,
-      key_length));
-
-  return TILEDB_OK;
-}
-
 int32_t tiledb_fragment_info_get_fragment_name(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
@@ -7487,26 +7407,6 @@ int32_t tiledb_array_open(
   return api_entry<tiledb::api::tiledb_array_open>(ctx, array, query_type);
 }
 
-int32_t tiledb_array_open_at(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    uint64_t timestamp) noexcept {
-  return api_entry<tiledb::api::tiledb_array_open_at>(
-      ctx, array, query_type, timestamp);
-}
-
-int32_t tiledb_array_open_with_key(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) noexcept {
-  return api_entry<tiledb::api::tiledb_array_open_with_key>(
-      ctx, array, query_type, encryption_type, encryption_key, key_length);
-}
-
 int32_t tiledb_array_open_at_with_key(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
@@ -7532,18 +7432,6 @@ int32_t tiledb_array_is_open(
 
 int32_t tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) noexcept {
   return api_entry<tiledb::api::tiledb_array_reopen>(ctx, array);
-}
-
-int32_t tiledb_array_reopen_at(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end) noexcept {
-  return api_entry<tiledb::api::tiledb_array_reopen_at>(
-      ctx, array, timestamp_end);
-}
-
-int32_t tiledb_array_get_timestamp(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp) noexcept {
-  return api_entry<tiledb::api::tiledb_array_get_timestamp>(
-      ctx, array, timestamp);
 }
 
 int32_t tiledb_array_set_config(
@@ -8435,16 +8323,6 @@ int32_t tiledb_fragment_info_get_config(
 int32_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info) noexcept {
   return api_entry<tiledb::api::tiledb_fragment_info_load>(ctx, fragment_info);
-}
-
-int32_t tiledb_fragment_info_load_with_key(
-    tiledb_ctx_t* ctx,
-    tiledb_fragment_info_t* fragment_info,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) noexcept {
-  return api_entry<tiledb::api::tiledb_fragment_info_load_with_key>(
-      ctx, fragment_info, encryption_type, encryption_key, key_length);
 }
 
 int32_t tiledb_fragment_info_get_fragment_name(

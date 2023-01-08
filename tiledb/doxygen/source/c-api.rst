@@ -229,19 +229,11 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_open_with_key
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_open_at
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open_at_with_key
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_is_open
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_reopen
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_reopen_at
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_get_timestamp
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_set_config
     :project: TileDB-C
