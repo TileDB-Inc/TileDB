@@ -187,201 +187,118 @@ template <QueryConditionOp I>
 using qc_op_t = typename qc_op<I>::type;
 
 
-/** Full template specialization for `char*` and `QueryConditionOp::LT`. */
-template <>
-struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LT> {
+template <QueryConditionOp Op>
+struct QueryCondition::BinaryCmpNullChecks<char*, Op> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+
+  if constexpr(Op != QueryConditionOp::EQ && Op != QueryConditionOp::NE) {
     if (lhs == nullptr) {
       return false;
     }
-
     const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
     const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp < 0;
-    }
+        static_cast<const char*>(lhs),
+        static_cast<const char*>(rhs),
+        min_size);
 
-    return lhs_size < rhs_size;
+    if constexpr (Op == QueryConditionOp::LT) {
+      if (cmp != 0) {
+        return cmp < 0;
+      }
+      return lhs_size < rhs_size;
+    } else if constexpr (Op == QueryConditionOp::LE) {
+      if (cmp != 0) {
+        return cmp < 0;
+      }
+      return lhs_size <= rhs_size;
+    } else if constexpr (Op == QueryConditionOp::GT) {
+      if (cmp != 0) {
+        return cmp > 0;
+      }
+      return lhs_size > rhs_size;
+    } else if constexpr (Op == QueryConditionOp::GE) {
+      if (cmp != 0) {
+        return cmp > 0;
+      }
+      return lhs_size >= rhs_size;
+    }
+  }
+  if constexpr (Op == QueryConditionOp::EQ) {
+      if (lhs == rhs) {
+        return true;
+      }
+
+      if (lhs == nullptr || rhs == nullptr) {  // @todo: just check rhs
+        return false;
+      }
+
+      if (lhs_size != rhs_size) {
+        return false;
+      }
+
+      return strncmp(
+                 static_cast<const char*>(lhs),
+                 static_cast<const char*>(rhs),
+                 lhs_size) == 0;
+
+    } else if constexpr (Op == QueryConditionOp::NE) {
+      if (rhs == nullptr && lhs != nullptr) {
+        return true;
+      }
+
+      if (lhs == nullptr || rhs == nullptr) {
+        return false;
+      }
+
+      if (lhs_size != rhs_size) {
+        return true;
+      }
+
+      return strncmp(
+                 static_cast<const char*>(lhs),
+                 static_cast<const char*>(rhs),
+                 lhs_size) != 0;
+    }
   }
 };
 
-/** Full template specialization for `char*` and `QueryConditionOp::LE. */
-template <>
-struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LE> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs == nullptr) {
-      return false;
-    }
 
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp < 0;
-    }
-
-    return lhs_size <= rhs_size;
-  }
-};
-
-/** Full template specialization for `char*` and `QueryConditionOp::GT`. */
-template <>
-struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GT> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs == nullptr) {
-      return false;
-    }
-
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp > 0;
-    }
-
-    return lhs_size > rhs_size;
-  }
-};
-
-/** Full template specialization for `char*` and `QueryConditionOp::GE`. */
-template <>
-struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GE> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs == nullptr) {
-      return false;
-    }
-
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp > 0;
-    }
-
-    return lhs_size >= rhs_size;
-  }
-};
-
-/** Full template specialization for `char*` and `QueryConditionOp::EQ`. */
-template <>
-struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::EQ> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (lhs == rhs) {
-      return true;
-    }
-
-    if (lhs == nullptr || rhs == nullptr) {
-      return false;
-    }
-
-    if (lhs_size != rhs_size) {
-      return false;
-    }
-
-    return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) == 0;
-  }
-};
-
-/** Full template specialization for `char*` and `QueryConditionOp::NE`. */
-template <>
-struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::NE> {
-  static inline bool cmp(
-      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    if (rhs == nullptr && lhs != nullptr) {
-      return true;
-    }
-
-    if (lhs == nullptr || rhs == nullptr) {
-      return false;
-    }
-
-    if (lhs_size != rhs_size) {
-      return true;
-    }
-
-    return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) != 0;
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::LT`. */
-template <typename T>
-struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::LT> {
+template <typename T, QueryConditionOp Op>
+struct QueryCondition::BinaryCmpNullChecks {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return lhs != nullptr &&
-           *static_cast<const T*>(lhs) < *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::LE`. */
-template <typename T>
-struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::LE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return lhs != nullptr &&
-           *static_cast<const T*>(lhs) <= *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::GT`. */
-template <typename T>
-struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::GT> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return lhs != nullptr &&
-           *static_cast<const T*>(lhs) > *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::GE`. */
-template <typename T>
-struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::GE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return lhs != nullptr &&
-           *static_cast<const T*>(lhs) >= *static_cast<const T*>(rhs);
-  }
-};
-
-/** Partial template specialization for `QueryConditionOp::EQ`. */
-template <typename T>
-struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::EQ> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    if (lhs == rhs) {
-      return true;
+    if constexpr (Op == QueryConditionOp::LT) {
+      return lhs != nullptr &&
+             *static_cast<const T*>(lhs) < *static_cast<const T*>(rhs);
+    } else if constexpr (Op == QueryConditionOp::LE) {
+      return lhs != nullptr &&
+             *static_cast<const T*>(lhs) <= *static_cast<const T*>(rhs);
+    } else if constexpr (Op == QueryConditionOp::GT) {
+      return lhs != nullptr &&
+             *static_cast<const T*>(lhs) > *static_cast<const T*>(rhs);
+    } else if constexpr (Op == QueryConditionOp::GE) {
+      return lhs != nullptr &&
+             *static_cast<const T*>(lhs) >= *static_cast<const T*>(rhs);
+    } else if constexpr (Op == QueryConditionOp::EQ) {
+      if (lhs == rhs) {
+        return true;
+      }
+      if (lhs == nullptr || rhs == nullptr) {
+        return false;
+      }
+      return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
+    } else if constexpr (Op == QueryConditionOp::NE) {
+      if (rhs == nullptr && lhs != nullptr) {
+        return true;
+      }
+      if (lhs == nullptr || rhs == nullptr) {
+        return false;
+      }
+      return *static_cast<const T*>(lhs) != *static_cast<const T*>(rhs);
     }
-
-    if (lhs == nullptr || rhs == nullptr) {
-      return false;
-    }
-
-    return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
   }
 };
 
-/** Partial template specialization for `QueryConditionOp::NE`. */
-template <typename T>
-struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::NE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    if (rhs == nullptr && lhs != nullptr) {
-      return true;
-    }
-
-    if (lhs == nullptr || rhs == nullptr) {
-      return false;
-    }
-
-    return *static_cast<const T*>(lhs) != *static_cast<const T*>(rhs);
-  }
-};
 
 /** Generic */
 template <typename T, typename Cmp, typename E>
