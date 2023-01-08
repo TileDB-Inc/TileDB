@@ -298,6 +298,16 @@ class QueryCondition {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
+
+    template <class T>
+    struct dont_deduce
+    {
+      using type = T;
+    };
+
+    template <class T>
+    using dont_deduce_t = typename dont_deduce<T>::type;
+
   /**
    * Applies a value node on primitive-typed result cell slabs,
    * templated for a query condition operator.
@@ -312,7 +322,16 @@ class QueryCondition {
    * @param result_cell_bitmap The input cell bitmap.
    * @return The filtered cell slabs.
    */
-  template <typename T, QueryConditionOp Op, typename CombinationOp>
+
+    template <class... Ts>
+    struct print_types_t;
+
+    template <class... Ts>
+    constexpr auto print_types(Ts...) {
+      return print_types_t<Ts...>{};
+    }
+
+  template <typename T, typename Op, typename CombinationOp>
   void apply_ast_node(
       const tdb_unique_ptr<ASTNode>& node,
       const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
@@ -321,7 +340,7 @@ class QueryCondition {
       const bool nullable,
       const ByteVecValue& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs,
-      CombinationOp combination_op,
+      typename std::common_type_t<CombinationOp> combination_op,
       std::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
@@ -408,7 +427,7 @@ class QueryCondition {
    * @param combination_op The combination op.
    * @param result_buffer The result buffer.
    */
-  template <typename T, QueryConditionOp Op, typename CombinationOp>
+  template <typename T, typename Op, typename CombinationOp>
   void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
       ResultTile* result_tile,
@@ -417,7 +436,7 @@ class QueryCondition {
       const uint64_t stride,
       const bool var_size,
       const bool nullable,
-      CombinationOp combination_op,
+      dont_deduce_t<CombinationOp> combination_op,
       span<uint8_t> result_buffer) const;
 
   /**
@@ -506,7 +525,7 @@ class QueryCondition {
    */
   template <
       typename T,
-      QueryConditionOp Op,
+      typename Op,
       typename BitmapType,
       typename CombinationOp,
       typename nullable>
@@ -555,7 +574,7 @@ class QueryCondition {
       ResultTile& result_tile,
       const bool var_size,
       const bool nullable,
-      CombinationOp combination_op,
+      std::common_type_t<CombinationOp> combination_op,
       std::vector<BitmapType>& result_bitmap) const;
 
   /**
