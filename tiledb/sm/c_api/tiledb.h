@@ -4758,58 +4758,6 @@ TILEDB_EXPORT int32_t tiledb_array_has_metadata_key(
     tiledb_datatype_t* value_type,
     int32_t* has_key) TILEDB_NOEXCEPT;
 
-/**
- * Consolidates the array metadata into a single array metadata file.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_consolidate_metadata(
- *     ctx, "hdfs:///tiledb_arrays/my_array", nullptr);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_uri The name of the TileDB array whose metadata will
- *     be consolidated.
- * @param config Configuration parameters for the consolidation
- *     (`nullptr` means default, which will use the config from `ctx`).
- * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_config_t* config) TILEDB_NOEXCEPT;
-
-/**
- * Consolidates the array metadata of an encrypted array into a single file.
- *
- * **Example:**
- *
- * @code{.c}
- * uint8_t key[32] = ...;
- * tiledb_array_consolidate_metadata_with_key(
- *     ctx, "hdfs:///tiledb_arrays/my_array",
- *     TILEDB_AES_256_GCM, key, sizeof(key), nullptr);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_uri The name of the TileDB array to be consolidated.
- * @param encryption_type The encryption type to use.
- * @param encryption_key The encryption key to use.
- * @param key_length Length in bytes of the encryption key.
- * @param config Configuration parameters for the consolidation
- *     (`nullptr` means default, which will use the config from `ctx`).
- *
- * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata_with_key(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    tiledb_config_t* config) TILEDB_NOEXCEPT;
-
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */
 /* ********************************* */
