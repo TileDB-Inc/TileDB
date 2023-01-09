@@ -64,18 +64,18 @@ The fragment metadata file has the following on-disk format:
 | Validity tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized validity tile offsets for attribute/dimension 1 |
 | … | … | … |
 | Validity tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized validity tile offsets for attribute/dimension N |
-| Tile mins for attribute/dimension 1 | [Tile Mins/Maxs](#tile-mins-maxs) | The serialized mins for attribute/dimension 1 |
+| Tile mins for attribute/dimension 1 | [Tile Mins/Maxes](#tile-mins-maxes) | The serialized mins for attribute/dimension 1 |
 | … | … | … |
-| Variable mins for attribute/dimension N | [Tile Mins/Maxs](#tile-mins-maxs) | The serialized mins for attribute/dimension N |
-| Tile maxs for attribute/dimension 1 | [Tile Mins/Maxs](#tile-mins-maxs) | The serialized maxs for attribute/dimension 1 |
+| Variable mins for attribute/dimension N | [Tile Mins/Maxes](#tile-mins-maxes) | The serialized mins for attribute/dimension N |
+| Tile maxes for attribute/dimension 1 | [Tile Mins/Maxes](#tile-mins-maxes) | The serialized maxes for attribute/dimension 1 |
 | … | … | … |
-| Variable maxs for attribute/dimension N | [Tile Mins/Maxs](#tile-mins-maxs) | The serialized maxs for attribute/dimension N |
+| Variable maxes for attribute/dimension N | [Tile Mins/Maxes](#tile-mins-maxes) | The serialized maxes for attribute/dimension N |
 | Tile sums for attribute/dimension 1 | [Tile Sums](#tile-sums) | The serialized sums for attribute/dimension 1 |
 | … | … | … |
 | Variable sums for attribute/dimension N | [Tile Sums](#tile-sums) | The serialized sums for attribute/dimension N |
 | Tile null counts for attribute/dimension 1 | [Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension 1 |
 | … | … | … |
-| Variable maxs for attribute/dimension N | [[Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension N |
+| Variable maxes for attribute/dimension N | [[Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension N |
 | Fragment min, max, sum, null count | [[Tile Fragment Min Max Sum Null Count](#tile-fragment-min-max-sum-null-count) | The serialized fragment min max sum null count |
 | Processed conditions | [[Tile Processed Conditions](#tile-processed-conditions) | The serialized processed conditions |
 | Metadata footer | [Footer](#footer) | Basic metadata gathered in the footer |
@@ -146,9 +146,9 @@ The tile sizes is a [generic tile](./generic_tile.md) with the following interna
 | … | … | … |
 | Tile size N | `uint64_t` | Size N |
 
-### Tile Mins Maxs
+### Tile Mins Maxes
 
-The tile mins maxs is a [generic tile](./generic_tile.md) with the following internal format:
+The tile mins maxes is a [generic tile](./generic_tile.md) with the following internal format:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
@@ -249,9 +249,9 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Tile mins offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile mins for attribute/dimension 1. |
 | … | … | … |
 | Tile mins offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile mins for attribute/dimension N |
-| Tile maxs offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile maxs for attribute/dimension 1. |
+| Tile maxes offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile maxes for attribute/dimension 1. |
 | … | … | … |
-| Tile maxs offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile maxs for attribute/dimension N |
+| Tile maxes offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile maxes for attribute/dimension N |
 | Tile sums offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile sums for attribute/dimension 1. |
 | … | … | … |
 | Tile sums offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile sums for attribute/dimension N |
