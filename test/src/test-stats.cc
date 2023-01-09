@@ -31,32 +31,34 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "tiledb/api/c_api/context/context_api_internal.h"
-#include <tiledb/common/dynamic_memory/dynamic_memory.h>
 #include <tiledb/common/common.h>
-#include <tiledb/sm/cpp_api/tiledb>
+#include <tiledb/common/dynamic_memory/dynamic_memory.h>
 #include <tiledb/sm/filesystem/vfs.h>
 #include <tiledb/sm/stats/global_stats.h>
+#include <tiledb/sm/cpp_api/tiledb>
+#include "tiledb/api/c_api/context/context_api_internal.h"
 
 #include <string>
 
 using namespace tiledb::sm::stats;
-// redefine the globally defined name normally used in effort to have 
+// redefine the globally defined name normally used in effort to have
 // compiler alert if referenced in this module.
 int all_stats = 0;
-// tests here are to use a local definition of GlobalStats rather than the global one.
+// tests here are to use a local definition of GlobalStats rather than the
+// global one.
 static tiledb::sm::stats::GlobalStats pseudo_all_stats;
 
-static std::string empty_dumped_stats = { "[\n\n]\n" };
+static std::string empty_dumped_stats = {"[\n\n]\n"};
 // Currently there are no stats that are always present.
-// Can, however, envision a time when something (stats calls themselves?) might be
-// accumulated, thus having a forever outstanding stats item, the base
+// Can, however, envision a time when something (stats calls themselves?) might
+// be accumulated, thus having a forever outstanding stats item, the base
 // version of which might be represented in this base_dumped_stats, rather
 // than the output being totally 'empty'.
 static std::string base_dumped_stats = empty_dumped_stats;
 
 TEST_CASE("Stats registration handling via direct method calls", "[stats]") {
-  // Examine stats output as a reflection of whether allocations might be held beyond a destruction.
+  // Examine stats output as a reflection of whether allocations might be held
+  // beyond a destruction.
 
   std::string dumped_stats;
 
@@ -94,22 +96,24 @@ TEST_CASE("Stats registration handling via direct method calls", "[stats]") {
   }
 }
 
-TEST_CASE("Stats registration handling, indirect via Context", "[stats][context]") {
+TEST_CASE(
+    "Stats registration handling, indirect via Context", "[stats][context]") {
   // Examine stats output when class Context active as reflection of
-  // whether data allocations might be held beyond a reset and/or registrant destruction.
-  
+  // whether data allocations might be held beyond a reset and/or registrant
+  // destruction.
+
   std::string dumped_stats;
 
   SECTION(" - baseline of no stats") {
     pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
-  
+
     // Nothing has been done to generate stats, should still be base.
     pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
   }
 
-  // Similar to above, but this do something that 
+  // Similar to above, but this do something that
   // should populate some stats.
   SECTION(" - verify stats generated and then released") {
     // Nothing has been done to generate stats, should still be base.
@@ -157,13 +161,12 @@ TEST_CASE("Stats registration handling, indirect via Context", "[stats][context]
     pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
 
-  // Perform reset of any remaining stats (none in this test) and remove
-  // previously registered stats for already destructed registrants.
-  pseudo_all_stats.reset();
+    // Perform reset of any remaining stats (none in this test) and remove
+    // previously registered stats for already destructed registrants.
+    pseudo_all_stats.reset();
 
-  // Stats should still be base level.
-  pseudo_all_stats.dump(&dumped_stats);
-  CHECK(dumped_stats == base_dumped_stats);
+    // Stats should still be base level.
+    pseudo_all_stats.dump(&dumped_stats);
+    CHECK(dumped_stats == base_dumped_stats);
   }
-  
 }

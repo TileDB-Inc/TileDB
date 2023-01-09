@@ -97,7 +97,7 @@ void GlobalStats::register_stats(const shared_ptr<Stats>& stats) {
 }
 
 template <class FuncT>
-void GlobalStats::iterate(const FuncT &f) {
+void GlobalStats::iterate(const FuncT& f) {
   std::unique_lock<std::mutex> ul(mtx_);
   for (auto register_stat = registered_stats_.begin();
        register_stat != registered_stats_.end();) {
