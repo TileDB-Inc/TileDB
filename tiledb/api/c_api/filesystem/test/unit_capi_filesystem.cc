@@ -39,7 +39,8 @@ struct TestCase {
   TestCase(tiledb_filesystem_t fs, const char* name, int defined_as)
       : fs_(fs)
       , name_(name)
-      , defined_as_(defined_as) {}
+      , defined_as_(defined_as) {
+  }
 
   tiledb_filesystem_t fs_;
   const char* name_;

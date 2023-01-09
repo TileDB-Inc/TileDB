@@ -360,7 +360,7 @@ void ArraySchema::check_webp_filter() const {
       if (webp != nullptr) {
         // WebP attributes must be of type uint8_t.
         if (attr->type() != Datatype::UINT8) {
-          throw Status_ArraySchemaError(
+          throw ArraySchemaStatusException(
               "WebP filter supports only uint8 attributes");
         }
       }
@@ -370,19 +370,19 @@ void ArraySchema::check_webp_filter() const {
       return;
     }
     if (array_type_ != ArrayType::DENSE) {
-      throw Status_ArraySchemaError(
+      throw ArraySchemaStatusException(
           "WebP filter can only be applied to dense arrays");
     }
 
     // WebP filter requires at least 2 dimensions for Y, X.
     if (dim_map_.size() < 2) {
-      throw Status_ArraySchemaError(
+      throw ArraySchemaStatusException(
           "WebP filter requires at least 2 dimensions");
     }
     auto y_dim = dimension_ptr(0);
     auto x_dim = dimension_ptr(1);
     if (y_dim->type() != x_dim->type()) {
-      throw Status_ArraySchemaError(
+      throw ArraySchemaStatusException(
           "WebP filter dimensions 0, 1 should have matching integral types");
     }
 
@@ -412,7 +412,7 @@ void ArraySchema::check_webp_filter() const {
         webp->set_extents<uint64_t>(domain_->tile_extents());
         break;
       default:
-        throw Status_ArraySchemaError(
+        throw ArraySchemaStatusException(
             "WebP filter requires integral dimensions at index 0, 1");
     }
   }
@@ -448,9 +448,9 @@ Status ArraySchema::check() const {
   }
 
   if (array_type_ == ArrayType::SPARSE && capacity_ == 0) {
-    throw LOG_STATUS(
-        Status_ArraySchemaError("Array schema check failed; Sparse arrays "
-                                "cannot have their capacity equal to zero."));
+    throw ArraySchemaStatusException(
+        "Array schema check failed; Sparse arrays "
+        "cannot have their capacity equal to zero.");
   }
 
   RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
@@ -461,10 +461,7 @@ Status ArraySchema::check() const {
   // Check for ordered attributes on sparse arrays and arrays with more than one
   // dimension.
   if (array_type_ == ArrayType::SPARSE || this->dim_num() != 1) {
-    if (std::any_of(
-            attributes_.cbegin(), attributes_.cend(), [](const auto& attr) {
-              return attr->order() != DataOrder::UNORDERED_DATA;
-            })) {
+    if (has_ordered_attributes()) {
       throw ArraySchemaStatusException(
           "Array schema check failed; Ordered attributes are only supported on "
           "dense arrays with 1 dimension.");
@@ -704,6 +701,13 @@ Status ArraySchema::has_attribute(
   return Status::Ok();
 }
 
+bool ArraySchema::has_ordered_attributes() const {
+  return std::any_of(
+      attributes_.cbegin(), attributes_.cend(), [](const auto& attr) {
+        return attr->order() != DataOrder::UNORDERED_DATA;
+      });
+}
+
 bool ArraySchema::is_attr(const std::string& name) const {
   return this->attribute(name) != nullptr;
 }
@@ -851,6 +855,14 @@ bool ArraySchema::var_size(const std::string& name) const {
     return dim_it->second->var_size();
   }
 
+  // Dimension label
+  if constexpr (is_experimental_build) {
+    auto dim_label_ref_it = dimension_label_reference_map_.find(name);
+    if (dim_label_ref_it != dimension_label_reference_map_.end()) {
+      return dim_label_ref_it->second->is_var();
+    }
+  }
+
   // Name is not an attribute or dimension
   assert(false);
   return false;
@@ -900,29 +912,23 @@ void ArraySchema::add_dimension_label(
   auto dim = domain_->dimension_ptr(dim_id);
 
   // Check the dimension label is unique among attribute, dimension, and label
-  // names; except for possibly matching the name of the dimension it is being
-  // added to.
+  // names.
   if (check_name) {
-    // Skip attribute/dimension name check if the label name matches the name of
-    // the dimension it is added to, since the dimension names also must be
-    // unique.
-    if (name != dim->name()) {
-      // Check no attribute with this name
-      bool has_matching_name{false};
-      throw_if_not_ok(has_attribute(name, &has_matching_name));
-      if (has_matching_name) {
-        throw ArraySchemaStatusException(
-            "Cannot add a dimension label with name '" + std::string(name) +
-            "'. An attribute with that name already exists.");
-      }
+    // Check no attribute with this name
+    bool has_matching_name{false};
+    throw_if_not_ok(has_attribute(name, &has_matching_name));
+    if (has_matching_name) {
+      throw ArraySchemaStatusException(
+          "Cannot add a dimension label with name '" + std::string(name) +
+          "'. An attribute with that name already exists.");
+    }
 
-      // Check no dimension with this name
-      throw_if_not_ok(domain_->has_dimension(name, &has_matching_name));
-      if (has_matching_name) {
-        throw ArraySchemaStatusException(
-            "Cannot add a dimension label with name '" + std::string(name) +
-            "'. A different dimension with that name already exists.");
-      }
+    // Check no dimension with this name
+    throw_if_not_ok(domain_->has_dimension(name, &has_matching_name));
+    if (has_matching_name) {
+      throw ArraySchemaStatusException(
+          "Cannot add a dimension label with name '" + std::string(name) +
+          "'. A dimension with that name already exists.");
     }
 
     // Check no other dimension label with this name.
@@ -1308,42 +1314,21 @@ void ArraySchema::check_attribute_dimension_label_names() const {
   std::set<std::string> names;
   // Check attribute and dimension names are unique.
   auto dim_num = this->dim_num();
-  uint64_t expected_unique_names{dim_num + attributes_.size()};
-  for (auto attr : attributes_)
+  uint64_t expected_unique_names{dim_num + attributes_.size() +
+                                 dimension_label_references_.size()};
+  for (const auto& attr : attributes_) {
     names.insert(attr->name());
-  for (dimension_size_type i = 0; i < dim_num; ++i)
+  }
+  for (dimension_size_type i = 0; i < dim_num; ++i) {
     names.insert(domain_->dimension_ptr(i)->name());
-  if (names.size() != expected_unique_names) {
-    throw ArraySchemaStatusException(
-        "Array schema check failed; Attributes and dimensions must have unique "
-        "names");
   }
-  // Check dimension label names are unique except at most 1 label / dimension
-  // that has the same name as the dimension it is on.
-  expected_unique_names += dimension_label_references_.size();
-  std::vector<bool> label_with_dim_name(dim_num, false);
-  for (const auto& label : dimension_label_references_) {
-    const auto& label_name = label->name();
-    const auto dim_id = label->dimension_index();
-    // Check if the dimension label has the same name as the dimension
-    if (label_name == domain_->dimension_ptr(dim_id)->name()) {
-      // Check if there is already a dimension label with that name.
-      if (label_with_dim_name[dim_id]) {
-        throw ArraySchemaStatusException(
-            "Array schema check failed; At most one dimension label can share "
-            "a name with the dimension it is on");
-      }
-      --expected_unique_names;  // decrement number of unique name - this name
-                                // is not unique
-      label_with_dim_name[dim_id] = true;
-    } else {
-      names.insert(label_name);
-    }
+  for (const auto& dim_label_ref : dimension_label_references_) {
+    names.insert(dim_label_ref->name());
   }
   if (names.size() != expected_unique_names) {
     throw ArraySchemaStatusException(
-        "Array schema check failed; Dimension labels must have unique "
-        "names from other labels, attributes, and dimensions");
+        "Array schema check failed; Attributes, dimensions and dimension "
+        "labels must have unique names");
   }
 }
 

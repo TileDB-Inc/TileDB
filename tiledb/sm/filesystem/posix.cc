@@ -61,7 +61,8 @@ namespace tiledb {
 namespace sm {
 
 Posix::Posix()
-    : config_(default_config_) {
+    : default_config_(Config())
+    , config_(default_config_) {
 }
 
 bool Posix::both_slashes(char a, char b) {

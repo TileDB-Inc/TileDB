@@ -170,19 +170,15 @@ std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
   std::vector<uint64_t> ret(fragment_metadata_.size());
   const auto dim_num = array_schema_.dim_num();
 
-  // Either compute for all fragments or relevant fragments if a subarray is
-  // set.
-  bool all_frag = !subarray_.is_set();
-  const auto relevant_fragments = subarray_.relevant_fragments();
-
   // Compute the size of tile offsets per fragments.
+  const auto relevant_fragments = subarray_.relevant_fragments();
   throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
-      all_frag ? fragment_metadata_.size() : relevant_fragments->size(),
+      relevant_fragments.size(),
       [&](uint64_t i) {
         // For easy reference.
-        auto frag_idx = all_frag ? i : relevant_fragments.value()[i];
+        auto frag_idx = relevant_fragments[i];
         auto& fragment = fragment_metadata_[frag_idx];
         const auto& schema = fragment->array_schema();
         const auto tile_num = fragment->tile_num();
@@ -505,24 +501,17 @@ Status SparseIndexReaderBase::load_initial_data() {
 }
 
 uint64_t SparseIndexReaderBase::tile_offsets_size(
-    const optional<std::vector<unsigned>>& relevant_fragments) {
+    const RelevantFragments& relevant_fragments) {
   uint64_t total_tile_offset_usage = 0;
-  if (!relevant_fragments.has_value()) {
-    total_tile_offset_usage = std::accumulate(
-        per_frag_tile_offsets_usage_.begin(),
-        per_frag_tile_offsets_usage_.end(),
-        0);
-  } else {
-    for (auto f : relevant_fragments.value()) {
-      total_tile_offset_usage += per_frag_tile_offsets_usage_[f];
-    }
+  for (auto f : relevant_fragments) {
+    total_tile_offset_usage += per_frag_tile_offsets_usage_[f];
   }
 
   return total_tile_offset_usage;
 }
 
 void SparseIndexReaderBase::load_tile_offsets_for_fragments(
-    const optional<std::vector<unsigned>>& relevant_fragments) {
+    const RelevantFragments& relevant_fragments) {
   // Preload zipped coordinate tile offsets. Note that this will
   // ignore fragments with a version >= 5.
   std::vector<std::string> zipped_coords_names = {constants::coords};

@@ -285,13 +285,8 @@ class ManualPolicy
  */
 template <class Mover, class PortState = typename Mover::PortState>
 class AsyncPolicy
-    : public PortFiniteStateMachine<AsyncPolicy<Mover, PortState>, PortState>
-
-{
+    : public PortFiniteStateMachine<AsyncPolicy<Mover, PortState>, PortState> {
   using mover_type = Mover;
-  using state_machine_type =
-      PortFiniteStateMachine<AsyncPolicy<Mover, PortState>, PortState>;
-  using lock_type = typename state_machine_type::lock_type;
 
   std::condition_variable sink_cv_;
   std::condition_variable source_cv_;
@@ -299,6 +294,10 @@ class AsyncPolicy
   std::array<size_t, 2> moves_{0, 0};
 
  public:
+  using state_machine_type =
+      PortFiniteStateMachine<AsyncPolicy<Mover, PortState>, PortState>;
+  using lock_type = typename state_machine_type::lock_type;
+
   AsyncPolicy() = default;
   AsyncPolicy(const AsyncPolicy&) {
   }
@@ -359,7 +358,7 @@ class AsyncPolicy
         str(this->state()) + " and " + str(this->next_state()));
 
 #ifndef FXM
-    CHECK(is_sink_empty(this->state()) == "");
+    assert(is_sink_empty(this->state()) == "");
 #endif
 
     source_cv_.notify_one();
@@ -379,7 +378,7 @@ class AsyncPolicy
 
     // This CHECK will fail when state machine is stopping, so check
     if (!static_cast<Mover*>(this)->is_stopping()) {
-      CHECK(is_source_full(this->state()) == "");
+      assert(is_source_full(this->state()) == "");
     }
 
     sink_cv_.notify_one();
@@ -396,9 +395,9 @@ class AsyncPolicy
     assert(lock.owns_lock());
 #ifndef FXM
     if constexpr (std::is_same_v<PortState, two_stage>) {
-      CHECK(str(this->state()) == "st_11");
+      assert(str(this->state()) == "st_11");
     } else if constexpr (std::is_same_v<PortState, three_stage>) {
-      CHECK(str(this->state()) == "st_111");
+      assert(str(this->state()) == "st_111");
     }
 #endif
 
@@ -413,7 +412,7 @@ class AsyncPolicy
     source_cv_.wait(lock, [this]() { return empty_source(this->state()); });
 #endif
 
-    CHECK(is_source_post_move(this->state()) == "");
+    assert(is_source_post_move(this->state()) == "");
 
     debug_msg(
         std::to_string(event++) + "    source waking up to " +
@@ -445,7 +444,7 @@ class AsyncPolicy
     sink_cv_.wait(lock, [this]() { return full_sink(this->state()); });
 #endif
 
-  CHECK(is_sink_post_move(this->state()) == "");
+  assert(is_sink_post_move(this->state()) == "");
 
   debug_msg(
       std::to_string(event++) + "    sink waking up on_sink_move with " +
@@ -511,17 +510,17 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
                                UnifiedAsyncPolicy<Mover, PortState>,
                                PortState> {
   using mover_type = Mover;
+  std::condition_variable cv_;
+
+ public:
   using state_machine_type =
       PortFiniteStateMachine<UnifiedAsyncPolicy<Mover, PortState>, PortState>;
   using lock_type = typename state_machine_type::lock_type;
 
-  std::condition_variable cv_;
-
- public:
   UnifiedAsyncPolicy() = default;
   UnifiedAsyncPolicy(const UnifiedAsyncPolicy&) {
   }
-  UnifiedAsyncPolicy(UnifiedAsyncPolicy&&) = default;
+  UnifiedAsyncPolicy(UnifiedAsyncPolicy&&) noexcept = default;
 
   /**
    * Function for handling `ac_return` action.

@@ -130,6 +130,7 @@ option(TILEDB_ABSEIL "If true, enables building abseil and a simple linkage test
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
 option(TILEDB_EXPERIMENTAL_FEATURES "If true, build and include experimental features" OFF)
+option(CMAKE_EXPORT_COMPILE_COMMANDS "cmake compile commands" ON)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
@@ -331,6 +332,13 @@ list(APPEND TILEDB_C_API_FILENAME_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_experimental.h"
 )
+
+if (TILEDB_SERIALIZATION)
+    list(APPEND TILEDB_C_API_FILENAME_HEADERS
+        "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_serialization.h"
+    )
+endif()
+
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer/buffer_api_external.h"
@@ -364,6 +372,31 @@ set(TILEDB_EXPORT_HEADER_DIR "${CMAKE_BINARY_DIR}/tiledb")
 set(TILEDB_EXPORT_HEADER_NAME "tiledb_export.h")
 set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER_DIR}/${TILEDB_EXPORT_HEADER_NAME}")
 set(TILEDB_EXPORT_HEADER_LOCALINSTALL_PATH "tiledb/api/c_api/${TILEDB_EXPORT_HEADER_NAME}")
+
+##################################
+# VFS Object Storage Configuration
+##################################
+# Create an interface library for use in passing the
+# appropriate compiler definitions for the set of
+# configured object storage backends.
+
+add_library(object_store_definitions INTERFACE)
+
+if (TILEDB_AZURE)
+  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_AZURE)
+endif()
+
+if (TILEDB_GCS)
+  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_GCS)
+endif()
+
+if (TILEDB_HDFS)
+  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_HDFS)
+endif()
+
+if (TILEDB_S3)
+  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_S3)
+endif()
 
 ##################################
 # Local install

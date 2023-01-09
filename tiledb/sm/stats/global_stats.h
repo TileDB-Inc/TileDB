@@ -48,7 +48,6 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/sm/stats/stats.h"
-#include "tiledb/sm/stats/timer_stat.h"
 
 namespace tiledb {
 namespace sm {

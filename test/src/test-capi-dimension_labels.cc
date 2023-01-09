@@ -75,8 +75,8 @@ class DimensionLabelTestFixture : public TemporaryDirectoryFixture {
    *    - y: (type=UINT64, domain=[0, 63], tile=64)
    *  * Attributes:
    *    - a: (type=FLOAT64)
-   *  * Dimesnion labels:
-   *    - x: (dim_idx=0, type=label_type)
+   *  * Dimension labels:
+   *    - label: (dim_idx=0, type=label_type)
    *
    * @param array_name Array name relative to the fixture temporary directory.
    * @param label_type The data type of the dimension label.
@@ -95,7 +95,7 @@ class DimensionLabelTestFixture : public TemporaryDirectoryFixture {
    *  * Attributes:
    *    - a: (type=FLOAT64)
    *  * Dimension labels:
-   *    - x: (dim_idx=0, type=FLOAT64)
+   *    - label: (dim_idx=0, type=FLOAT64)
    *    - id: (dim_idx=0, type=STRING_ASCII)
    *
    * @param array_name Array name relative to the fixture temporary directory.
@@ -127,11 +127,11 @@ std::string DimensionLabelTestFixture::create_single_label_array(
       4096,
       false);
 
-  REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
-      ctx, array_schema, 0, "x", TILEDB_INCREASING_DATA, label_type));
+  require_tiledb_ok(tiledb_array_schema_add_dimension_label(
+      ctx, array_schema, 0, "label", TILEDB_INCREASING_DATA, label_type));
 
   // Check array schema and number of dimension labels.
-  REQUIRE_TILEDB_OK(tiledb_array_schema_check(ctx, array_schema));
+  require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
   auto dim_label_num = array_schema->array_schema_->dim_label_num();
   REQUIRE(dim_label_num == 1);
 
@@ -149,7 +149,7 @@ std::string DimensionLabelTestFixture::create_multi_label_array(
   auto array_schema = create_array_schema(
       ctx,
       TILEDB_DENSE,
-      {"x"},
+      {"dim"},
       {TILEDB_UINT64},
       {&x_domain[0]},
       {&x_tile_extent},
@@ -163,13 +163,13 @@ std::string DimensionLabelTestFixture::create_multi_label_array(
       false);
 
   // Add dimension labels.
-  REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
-      ctx, array_schema, 0, "x", TILEDB_INCREASING_DATA, TILEDB_FLOAT64));
-  REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
+  require_tiledb_ok(tiledb_array_schema_add_dimension_label(
+      ctx, array_schema, 0, "label", TILEDB_INCREASING_DATA, TILEDB_FLOAT64));
+  require_tiledb_ok(tiledb_array_schema_add_dimension_label(
       ctx, array_schema, 0, "id", TILEDB_INCREASING_DATA, TILEDB_STRING_ASCII));
 
   // Check array schema and number of dimension labels.
-  REQUIRE_TILEDB_OK(tiledb_array_schema_check(ctx, array_schema));
+  require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
   auto dim_label_num = array_schema->array_schema_->dim_label_num();
   REQUIRE(dim_label_num == 2);
 
@@ -190,13 +190,13 @@ TEST_CASE_METHOD(
 
   // Load array schema and check number of labels.
   tiledb_array_schema_t* loaded_array_schema{nullptr};
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(
       tiledb_array_schema_load(ctx, array_name.c_str(), &loaded_array_schema));
 
   // Check the array schema has the expected dimension label.
   int32_t has_label;
-  CHECK_TILEDB_OK(tiledb_array_schema_has_dimension_label(
-      ctx, loaded_array_schema, "x", &has_label));
+  check_tiledb_ok(tiledb_array_schema_has_dimension_label(
+      ctx, loaded_array_schema, "label", &has_label));
   CHECK(has_label == 1);
 
   // Check the expected number of attributes, dimenions and labels.
@@ -242,25 +242,25 @@ TEST_CASE_METHOD(
       false);
 
   // Add dimension label.
-  REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
-      ctx, array_schema, 0, "x", TILEDB_INCREASING_DATA, label_type));
+  require_tiledb_ok(tiledb_array_schema_add_dimension_label(
+      ctx, array_schema, 0, "label", TILEDB_INCREASING_DATA, label_type));
 
   // Set filter.
   tiledb_filter_list_t* filter_list;
-  REQUIRE_TILEDB_OK(tiledb_filter_list_alloc(ctx, &filter_list));
+  require_tiledb_ok(tiledb_filter_list_alloc(ctx, &filter_list));
   tiledb_filter_t* filter;
   int32_t level = 6;
-  REQUIRE_TILEDB_OK(tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter));
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter));
+  require_tiledb_ok(
       tiledb_filter_set_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, &level));
-  REQUIRE_TILEDB_OK(tiledb_filter_list_add_filter(ctx, filter_list, filter));
-  REQUIRE_TILEDB_OK(tiledb_array_schema_set_dimension_label_filter_list(
-      ctx, array_schema, "x", filter_list));
+  require_tiledb_ok(tiledb_filter_list_add_filter(ctx, filter_list, filter));
+  require_tiledb_ok(tiledb_array_schema_set_dimension_label_filter_list(
+      ctx, array_schema, "label", filter_list));
   tiledb_filter_free(&filter);
   tiledb_filter_list_free(&filter_list);
 
   // Check array schema and number of dimension labels.
-  REQUIRE_TILEDB_OK(tiledb_array_schema_check(ctx, array_schema));
+  require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
   auto dim_label_num = array_schema->array_schema_->dim_label_num();
   REQUIRE(dim_label_num == 1);
 
@@ -272,41 +272,44 @@ TEST_CASE_METHOD(
 
   // Get the schema for array containing the dimension label.
   tiledb_array_schema_t* loaded_array_schema{nullptr};
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(
       tiledb_array_schema_load(ctx, array_uri.c_str(), &loaded_array_schema));
   auto dim_label_ref =
-      loaded_array_schema->array_schema_->dimension_label_reference("x");
+      loaded_array_schema->array_schema_->dimension_label_reference("label");
   auto dim_label_uri = dim_label_ref.uri(array_uri);
   tiledb_array_schema_t* loaded_dim_label_array_schema{nullptr};
-  REQUIRE_TILEDB_OK(tiledb_array_schema_load(
+  require_tiledb_ok(tiledb_array_schema_load(
       ctx, dim_label_uri.c_str(), &loaded_dim_label_array_schema));
   tiledb_array_schema_free(&loaded_array_schema);
 
   // Check the filter on the label attribute.
   tiledb_attribute_t* label_attr;
-  REQUIRE_TILEDB_OK(tiledb_array_schema_get_attribute_from_index(
+  require_tiledb_ok(tiledb_array_schema_get_attribute_from_index(
       ctx, loaded_dim_label_array_schema, 0, &label_attr));
   tiledb_filter_list_t* loaded_filter_list;
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(
       tiledb_attribute_get_filter_list(ctx, label_attr, &loaded_filter_list));
   uint32_t nfilters;
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(
       tiledb_filter_list_get_nfilters(ctx, loaded_filter_list, &nfilters));
   CHECK(nfilters == 1);
   tiledb_filter_t* loaded_filter;
-  REQUIRE_TILEDB_OK(tiledb_filter_list_get_filter_from_index(
+  require_tiledb_ok(tiledb_filter_list_get_filter_from_index(
       ctx, loaded_filter_list, 0, &loaded_filter));
   REQUIRE(loaded_filter != nullptr);
   tiledb_filter_type_t loaded_filter_type{};
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(
       tiledb_filter_get_type(ctx, loaded_filter, &loaded_filter_type));
   CHECK(loaded_filter_type == TILEDB_FILTER_BZIP2);
   int32_t loaded_level{};
-  REQUIRE_TILEDB_OK(tiledb_filter_get_option(
+  require_tiledb_ok(tiledb_filter_get_option(
       ctx, loaded_filter, TILEDB_COMPRESSION_LEVEL, &loaded_level));
   CHECK(loaded_level == level);
+  tiledb_attribute_free(&label_attr);
+  tiledb_filter_free(&loaded_filter);
+  tiledb_filter_list_free(&loaded_filter_list);
 
-  // Free remaining resources
+  // Free remaining resources.
   tiledb_array_schema_free(&loaded_dim_label_array_schema);
 }
 
@@ -340,16 +343,16 @@ TEST_CASE_METHOD(
       false);
 
   // Add dimension label.
-  REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
-      ctx, array_schema, 0, "x", TILEDB_INCREASING_DATA, label_type));
+  require_tiledb_ok(tiledb_array_schema_add_dimension_label(
+      ctx, array_schema, 0, "label", TILEDB_INCREASING_DATA, label_type));
 
   // Set tile.
   uint64_t tile_extent{8};
-  REQUIRE_TILEDB_OK(tiledb_array_schema_set_dimension_label_tile_extent(
-      ctx, array_schema, "x", TILEDB_UINT64, &tile_extent));
+  require_tiledb_ok(tiledb_array_schema_set_dimension_label_tile_extent(
+      ctx, array_schema, "label", TILEDB_UINT64, &tile_extent));
 
   // Check array schema and number of dimension labels.
-  REQUIRE_TILEDB_OK(tiledb_array_schema_check(ctx, array_schema));
+  require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
   auto dim_label_num = array_schema->array_schema_->dim_label_num();
   REQUIRE(dim_label_num == 1);
 
@@ -361,15 +364,15 @@ TEST_CASE_METHOD(
 
   // Get the URI for the dimension label array schema.
   tiledb_array_schema_t* loaded_array_schema{nullptr};
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(
       tiledb_array_schema_load(ctx, array_uri.c_str(), &loaded_array_schema));
   auto dim_label_ref =
-      loaded_array_schema->array_schema_->dimension_label_reference("x");
+      loaded_array_schema->array_schema_->dimension_label_reference("label");
   auto dim_label_uri = dim_label_ref.uri(array_uri);
 
   // Open the dimension label array schema and check the tile extent.
   tiledb_array_schema_t* loaded_dim_label_array_schema{nullptr};
-  REQUIRE_TILEDB_OK(tiledb_array_schema_load(
+  require_tiledb_ok(tiledb_array_schema_load(
       ctx, dim_label_uri.c_str(), &loaded_dim_label_array_schema));
   uint64_t loaded_tile_extent{
       loaded_dim_label_array_schema->array_schema_->dimension_ptr(0)
@@ -390,34 +393,34 @@ TEST_CASE_METHOD(
 
   // Create array and subarray.
   tiledb_array_t* array;
-  REQUIRE_TILEDB_OK(tiledb_array_alloc(ctx, array_name.c_str(), &array));
-  REQUIRE_TILEDB_OK(tiledb_array_open(ctx, array, TILEDB_READ));
+  require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
+  require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_READ));
   tiledb_subarray_t* subarray;
-  REQUIRE_TILEDB_OK(tiledb_subarray_alloc(ctx, array, &subarray));
+  require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
 
   // Check label range num is zero for all labels.
   uint64_t range_num{0};
-  REQUIRE_TILEDB_OK(
-      tiledb_subarray_get_label_range_num(ctx, subarray, "x", &range_num));
+  require_tiledb_ok(
+      tiledb_subarray_get_label_range_num(ctx, subarray, "label", &range_num));
   CHECK(range_num == 0);
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(
       tiledb_subarray_get_label_range_num(ctx, subarray, "id", &range_num));
   CHECK(range_num == 0);
 
   // Add fixed ranges
   double r1[2]{-1.0, 1.0};
-  REQUIRE_TILEDB_OK(tiledb_subarray_add_label_range(
-      ctx, subarray, "x", &r1[0], &r1[1], nullptr));
+  require_tiledb_ok(tiledb_subarray_add_label_range(
+      ctx, subarray, "label", &r1[0], &r1[1], nullptr));
   // Check no regular ranges set.
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(
       tiledb_subarray_get_range_num(ctx, subarray, 0, &range_num));
   CHECK(range_num == 0);
   // Check 1 label range set by name.
-  REQUIRE_TILEDB_OK(
-      tiledb_subarray_get_label_range_num(ctx, subarray, "x", &range_num));
+  require_tiledb_ok(
+      tiledb_subarray_get_label_range_num(ctx, subarray, "label", &range_num));
   CHECK(range_num == 1);
   // Check 0 label range set by name to other label on dim.
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(
       tiledb_subarray_get_label_range_num(ctx, subarray, "id", &range_num));
   CHECK(range_num == 0);
 
@@ -425,8 +428,8 @@ TEST_CASE_METHOD(
   const void* r1_start{};
   const void* r1_end{};
   const void* r1_stride{};
-  REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range(
-      ctx, subarray, "x", 0, &r1_start, &r1_end, &r1_stride));
+  require_tiledb_ok(tiledb_subarray_get_label_range(
+      ctx, subarray, "label", 0, &r1_start, &r1_end, &r1_stride));
   CHECK(r1_stride == nullptr);
   CHECK(*static_cast<const double*>(r1_start) == r1[0]);
   CHECK(*static_cast<const double*>(r1_end) == r1[1]);
@@ -443,6 +446,10 @@ TEST_CASE_METHOD(
   rc = tiledb_subarray_add_label_range_var(
       ctx, subarray, "id", start.data(), start.size(), end.data(), end.size());
   CHECK(rc != TILEDB_OK);
+
+  // Free resources.
+  tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -453,46 +460,46 @@ TEST_CASE_METHOD(
 
   // Create array and subarray.
   tiledb_array_t* array;
-  REQUIRE_TILEDB_OK(tiledb_array_alloc(ctx, array_name.c_str(), &array));
-  REQUIRE_TILEDB_OK(tiledb_array_open(ctx, array, TILEDB_READ));
+  require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
+  require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_READ));
   tiledb_subarray_t* subarray;
-  REQUIRE_TILEDB_OK(tiledb_subarray_alloc(ctx, array, &subarray));
+  require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
 
   // Check label range num is zero for all labels.
   uint64_t range_num{0};
-  REQUIRE_TILEDB_OK(
-      tiledb_subarray_get_label_range_num(ctx, subarray, "x", &range_num));
+  require_tiledb_ok(
+      tiledb_subarray_get_label_range_num(ctx, subarray, "label", &range_num));
   CHECK(range_num == 0);
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(
       tiledb_subarray_get_label_range_num(ctx, subarray, "id", &range_num));
   CHECK(range_num == 0);
 
   // Set range.
   std::string start{"alpha"};
   std::string end{"beta"};
-  REQUIRE_TILEDB_OK(tiledb_subarray_add_label_range_var(
+  require_tiledb_ok(tiledb_subarray_add_label_range_var(
       ctx, subarray, "id", start.data(), start.size(), end.data(), end.size()));
   // Check no regular ranges set.
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(
       tiledb_subarray_get_range_num(ctx, subarray, 0, &range_num));
   CHECK(range_num == 0);
   // Check 1 label range set by name.
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(
       tiledb_subarray_get_label_range_num(ctx, subarray, "id", &range_num));
   CHECK(range_num == 1);
   // Check 0 label range set by name to other label on dim.
-  REQUIRE_TILEDB_OK(
-      tiledb_subarray_get_label_range_num(ctx, subarray, "x", &range_num));
+  require_tiledb_ok(
+      tiledb_subarray_get_label_range_num(ctx, subarray, "label", &range_num));
   CHECK(range_num == 0);
 
   // Check getting the range back from the subarray.
   uint64_t start_size{0};
   uint64_t end_size{0};
-  REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_var_size(
+  require_tiledb_ok(tiledb_subarray_get_label_range_var_size(
       ctx, subarray, "id", 0, &start_size, &end_size));
   std::vector<char> start_data(start_size);
   std::vector<char> end_data(end_size);
-  REQUIRE_TILEDB_OK(tiledb_subarray_get_label_range_var(
+  require_tiledb_ok(tiledb_subarray_get_label_range_var(
       ctx, subarray, "id", 0, start_data.data(), end_data.data()));
   CHECK(std::string(start_data.data(), start_data.size()) == start);
   CHECK(std::string(end_data.data(), end_data.size()) == end);
@@ -506,8 +513,12 @@ TEST_CASE_METHOD(
   // Check cannot set dimension range to another label on same dimension
   double r1[2]{-1.0, 1.0};
   rc = tiledb_subarray_add_label_range(
-      ctx, subarray, "x", &r1[0], &r1[1], nullptr);
+      ctx, subarray, "label", &r1[0], &r1[1], nullptr);
   CHECK(rc != TILEDB_OK);
+
+  // Free resources.
+  tiledb_subarray_free(&subarray);
+  tiledb_array_free(&array);
 }
 
 TEST_CASE_METHOD(
@@ -518,31 +529,31 @@ TEST_CASE_METHOD(
 
   // Create array and subarray.
   tiledb_array_t* array;
-  REQUIRE_TILEDB_OK(tiledb_array_alloc(ctx, array_name.c_str(), &array));
-  REQUIRE_TILEDB_OK(tiledb_array_open(ctx, array, TILEDB_READ));
+  require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
+  require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_READ));
   tiledb_subarray_t* subarray;
-  REQUIRE_TILEDB_OK(tiledb_subarray_alloc(ctx, array, &subarray));
+  require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
 
   // Check label range num is zero for all labels.
   uint64_t range_num{0};
-  REQUIRE_TILEDB_OK(
-      tiledb_subarray_get_label_range_num(ctx, subarray, "x", &range_num));
+  require_tiledb_ok(
+      tiledb_subarray_get_label_range_num(ctx, subarray, "label", &range_num));
   CHECK(range_num == 0);
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(
       tiledb_subarray_get_label_range_num(ctx, subarray, "id", &range_num));
   CHECK(range_num == 0);
 
   // Check error when adding range to non-existent label.
   double r0[2]{-1.0, 1.0};
   auto rc = tiledb_subarray_add_label_range(
-      ctx, subarray, "label1", &r0[0], &r0[1], nullptr);
+      ctx, subarray, "fake_label", &r0[0], &r0[1], nullptr);
   CHECK(rc != TILEDB_OK);
   std::string start0{"start"};
   std::string end0{"end"};
   rc = tiledb_subarray_add_label_range_var(
       ctx,
       subarray,
-      "label1",
+      "fake_label",
       start0.data(),
       start0.size(),
       end0.data(),
@@ -552,12 +563,12 @@ TEST_CASE_METHOD(
   // Check cannot add dimension label range to dimension with standard ranges
   // explicitly set
   uint64_t r1[2]{1, 10};
-  REQUIRE_TILEDB_OK(
+  require_tiledb_ok(
       tiledb_subarray_add_range(ctx, subarray, 0, &r1[0], &r1[1], nullptr));
   // Check cannot set dimension range to another label on same dimension
   double r2[2]{-1.0, 1.0};
   rc = tiledb_subarray_add_label_range(
-      ctx, subarray, "x", &r2[0], &r2[1], nullptr);
+      ctx, subarray, "label", &r2[0], &r2[1], nullptr);
   CHECK(rc != TILEDB_OK);
   // Check cannot set label range for different label on same dimension
   std::string start{"alpha"};

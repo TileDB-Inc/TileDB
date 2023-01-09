@@ -322,12 +322,12 @@ class ReaderBase : public StrategyBase {
    * Loads tile offsets for each attribute/dimension name into
    * their associated element in `fragment_metadata_`.
    *
-   * @param relevant_fragments Optional list of relevant fragments.
+   * @param relevant_fragments List of relevant fragments.
    * @param names The attribute/dimension names.
    * @return Status
    */
   Status load_tile_offsets(
-      const optional<std::vector<unsigned>>& relevant_fragments,
+      const RelevantFragments& relevant_fragments,
       const std::vector<std::string>& names);
 
   /**
@@ -355,12 +355,12 @@ class ReaderBase : public StrategyBase {
    * Loads tile var sizes for each attribute/dimension name into
    * their associated element in `fragment_metadata_`.
    *
-   * @param relevant_fragments Optional list of relevant fragments.
+   * @param relevant_fragments List of relevant fragments.
    * @param names The attribute/dimension names.
    * @return Status
    */
   Status load_tile_var_sizes(
-      const optional<std::vector<unsigned>>& relevant_fragments,
+      const RelevantFragments& relevant_fragments,
       const std::vector<std::string>& names);
 
   /**

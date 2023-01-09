@@ -43,6 +43,7 @@ endif()
 
 if (TILEDB_CPP_API)
   list(APPEND SOURCES targets/sc-19240_cppapi-vfs-exception.cc)
+  list(APPEND SOURCES targets/sc-24079.cc)
 endif()
 
 add_executable(tiledb_regression
