@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2018-2021 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -32,49 +32,45 @@
 #   - The libmagic imported target
 
 # Include some common helper functions.
+include(FindPackageHandleStandardArgs)
 include(TileDBCommon)
 
-# Search the path set during the superbuild for the EP.
-set(LIBMAGIC_PATHS ${TILEDB_EP_INSTALL_PREFIX})
-
-if(TILEDB_LIBMAGIC_EP_BUILT)
-  find_package(libmagic PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
+if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_LIBMAGIC_EP_BUILT)
+  find_package(libmagic QUIET PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
+  find_file(libmagic_DICTIONARY magic.mgc
+      PATHS ${TILEDB_EP_INSTALL_PREFIX}
+      PATH_SUFFIXES
+        bin
+        share
+      ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    )
 endif()
 
-if (TILEDB_LIBMAGIC_EP_BUILT)
+if (NOT libgmagic_FOUND AND NOT TILEDB_FORCE_ALL_DEPS)
+  find_library(libmagic_LIBRARIES
+    NAMES
+      ${CMAKE_STATIC_LIBRARY_PREFIX}magic${CMAKE_STATIC_LIBRARY_SUFFIX}
+  )
   find_path(libmagic_INCLUDE_DIR
     NAMES magic.h
-    PATHS ${LIBMAGIC_PATHS}
     PATH_SUFFIXES include
-    ${NO_DEFAULT_PATH}
   )
-
-  if (NOT libmagic_INCLUDE_DIR)
-    find_path(libmagic_INCLUDE_DIR
-      NAMES file/file.h
-      PATHS ${LIBMAGIC_PATHS}
-      PATH_SUFFIXES include
-      ${NO_DEFAULT_PATH}
-    )
-  endif()
-
-  # Link statically if installed with the EP.
-  find_library(libmagic_LIBRARIES
-    libmagic
-    PATHS ${LIBMAGIC_PATHS}
-    PATH_SUFFIXES lib a
-    #${TILEDB_DEPS_NO_DEFAULT_PATH}
-    ${NO_DEFAULT_PATH}
+  find_file(libmagic_DICTIONARY magic.mgc
+    PATH_SUFFIXES
+      bin
+      share
+      share/misc
   )
-
-  include(FindPackageHandleStandardArgs)
   FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
-    REQUIRED_VARS libmagic_LIBRARIES libmagic_INCLUDE_DIR
+    REQUIRED_VARS
+      libmagic_LIBRARIES
+      libmagic_INCLUDE_DIR
+      libmagic_DICTIONARY
   )
 endif()
 
 # if not yet built add it as an external project
-if(NOT TILEDB_LIBMAGIC_EP_BUILT)
+if(NOT libmagic_FOUND)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Magic as an external project")
 
@@ -119,14 +115,12 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
   endif()
 endif()
 
-find_file(libmagic_DICTIONARY magic.mgc
-  PATHS ${LIBMAGIC_PATHS}
-  PATH_SUFFIXES bin share
-  ${NO_DEFAULT_PATH}
-)
+# Check that we successfully found magic.mgc
+if(NOT TILEDB_SUPERBUILD AND NOT libmagic_DICTIONARY)
+  message(FATAL_ERROR "Unable to find libmagic dictionary")
+endif()
 
 if (libmagic_FOUND AND NOT TARGET libmagic)
-  message(STATUS "Found Magic, adding imported target: ${libmagic_LIBRARIES}")
   add_library(libmagic UNKNOWN IMPORTED)
   set_target_properties(libmagic PROPERTIES
     IMPORTED_LOCATION "${libmagic_LIBRARIES}"
