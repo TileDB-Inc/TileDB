@@ -65,7 +65,7 @@ struct tiledb_dimension_label_handle_t
       const tiledb::sm::URI& array_uri,
       const tiledb::sm::DimensionLabelReference& dim_label)
       : dim_label_{dim_label}
-      , uri_{dim_label_.uri(array_uri)} {
+      , uri_{array_uri.empty() ? dim_label_.uri() : dim_label_.uri(array_uri)} {
   }
 
   [[nodiscard]] inline const tiledb::sm::DimensionLabelReference&
