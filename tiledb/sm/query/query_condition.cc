@@ -737,6 +737,35 @@ void QueryCondition::apply_ast_node(
   }
 }
 
+template <typename T, typename O, typename G>
+void op_switcher(O op, const G& g) {
+  switch (op) {
+    case QueryConditionOp::LT:
+      g(std::less<T>{});
+      break;
+    case QueryConditionOp::LE:
+      g(std::less_equal<T>{});
+      break;
+    case QueryConditionOp::GT:
+      g(std::greater<T>{});
+      break;
+    case QueryConditionOp::GE:
+      g(std::greater_equal<T>{});
+      break;
+    case QueryConditionOp::EQ:
+      g(std::equal_to<T>{});
+      break;
+    case QueryConditionOp::NE:
+      g(std::not_equal_to<T>{});
+      break;
+    default:
+      throw std::runtime_error(
+          "QueryCondition::apply_ast_node: Cannot perform query comparison; "
+          "Unknown query condition operator.");
+  }
+}
+
+
 template <typename T, typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
@@ -840,6 +869,7 @@ void QueryCondition::apply_ast_node(
         result_cell_bitmap);
   };
 
+<<<<<<< HEAD
   switch (node->get_op()) {
     case QueryConditionOp::LT:
       g(std::less<T>{});
@@ -869,6 +899,9 @@ void QueryCondition::apply_ast_node(
           "QueryCondition::apply_ast_node: Cannot perform query comparison; "
           "Unknown query condition operator.");
   }
+=======
+  op_switcher<T>(node->get_op(), g);
+>>>>>>> 625dd1c9b (Compressed some more [skip ci])
 }
 
 template <typename CombinationOp>
@@ -1069,6 +1102,7 @@ void QueryCondition::apply_ast_node(
         result_cell_bitmap);
   };
 
+<<<<<<< HEAD
   switch (type) {
     case Datatype::INT8:
       g(int8_t{});
@@ -1176,6 +1210,9 @@ void QueryCondition::apply_ast_node(
   }
 
   return;
+=======
+  type_switcher(type, var_size, g);
+>>>>>>> 625dd1c9b (Compressed some more [skip ci])
 }
 
 template <typename CombinationOp>
@@ -1524,6 +1561,7 @@ void QueryCondition::apply_ast_node_dense(
         result_buffer);
   };
 
+<<<<<<< HEAD
   switch (node->get_op()) {
     case QueryConditionOp::LT:
       g(std::less<T>{});
@@ -1552,6 +1590,9 @@ void QueryCondition::apply_ast_node_dense(
       throw std::runtime_error(
           "Cannot perform query comparison; Unknown query condition operator");
   }
+=======
+  op_switcher<T>(node->get_op(), g);
+>>>>>>> 625dd1c9b (Compressed some more [skip ci])
 }
 
 template <typename CombinationOp>
@@ -1766,6 +1807,7 @@ void QueryCondition::apply_ast_node_dense(
         result_buffer);
   };
 
+<<<<<<< HEAD
   switch (attribute->type()) {
     case Datatype::INT8:
       g(int8_t{});
@@ -1871,6 +1913,10 @@ void QueryCondition::apply_ast_node_dense(
           "on " +
           node->get_field_name());
   }
+=======
+
+  type_switcher(attribute->type(), var_size, g);
+>>>>>>> 625dd1c9b (Compressed some more [skip ci])
 }
 
 template <typename CombinationOp>
@@ -2511,6 +2557,7 @@ void QueryCondition::apply_ast_node_sparse(
         CombinationOp,
         nullable>(node, result_tile, var_size, combination_op, result_bitmap);
   };
+<<<<<<< HEAD
 
   switch (node->get_op()) {
     case QueryConditionOp::LT:
@@ -2545,6 +2592,9 @@ void QueryCondition::apply_ast_node_sparse(
       throw std::runtime_error(
           "Cannot perform query comparison; Unknown query condition operator.");
   }
+=======
+  op_switcher<T>(node->get_op(), g);
+>>>>>>> 625dd1c9b (Compressed some more [skip ci])
 }
 
 template <typename T, typename BitmapType, typename CombinationOp>
@@ -2563,6 +2613,78 @@ void QueryCondition::apply_ast_node_sparse(
         node, result_tile, var_size, combination_op, result_bitmap);
   }
 }
+
+
+template <typename T, typename V, typename G>
+void type_switcher(T type, V var_size, const G& g) {
+  switch (type) {
+    case Datatype::INT8:
+      g(int8_t{});
+      break;
+    case Datatype::UINT8:
+      g(uint8_t{});
+      break;
+    case Datatype::INT16:
+      g(int16_t{});
+      break;
+    case Datatype::UINT16:
+      g(uint16_t{});
+      break;
+    case Datatype::INT32:
+      g(int32_t{});
+      break;
+    case Datatype::UINT32:
+      g(uint32_t{});
+      break;
+    case Datatype::INT64:
+      g(int64_t{});
+      break;
+    case Datatype::UINT64:
+      g(uint64_t{});
+      break;
+    case Datatype::FLOAT32:
+      g(float{});
+      break;
+    case Datatype::FLOAT64:
+      g(double{});
+      break;
+    case Datatype::STRING_ASCII:
+      g((char*){});
+      break;
+    case Datatype::CHAR: {
+      if (var_size) {
+        g((char*){});
+      } else {
+        g(char{});
+      }
+    } break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      g(int64_t{});
+      break;
+    case Datatype::ANY:
+    case Datatype::BLOB:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    default:
+      throw;
+  }
+}
+
 
 template <typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_ast_node_sparse(
@@ -2616,6 +2738,7 @@ void QueryCondition::apply_ast_node_sparse(
     return apply_ast_node_sparse<decltype(T), BitmapType, CombinationOp>(
         node, result_tile, var_size, nullable, combination_op, result_bitmap);
   };
+<<<<<<< HEAD
 
   switch (type) {
 <<<<<<< HEAD
@@ -2778,7 +2901,11 @@ void QueryCondition::apply_ast_node_sparse(
           "on " +
           node->get_field_name());
   }
+=======
+  type_switcher(type, var_size, g);
+>>>>>>> 625dd1c9b (Compressed some more [skip ci])
 }
+
 
 template <typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_tree_sparse(
