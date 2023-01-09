@@ -510,8 +510,7 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
 tuple<Status, optional<std::vector<URI>>>
 ArrayDirectory::list_fragment_metadata_dir_uris_v12_or_higher() {
   // List the fragment metadata directory URIs
-  [[maybe_unused]] auto timer_se =
-      stats_->start_timer("list_fragment_meta_uris");
+  auto timer_se = stats_->start_timer("list_fragment_meta_uris");
 
   auto fragment_metadata_uri =
       uri_.join_path(constants::array_fragment_meta_dir_name);
@@ -648,8 +647,7 @@ Status ArrayDirectory::load_array_meta_uris() {
   std::vector<URI> array_meta_dir_uris;
   auto array_meta_uri = uri_.join_path(constants::array_metadata_dir_name);
   {
-    [[maybe_unused]] auto timer_se =
-        stats_->start_timer("list_array_meta_uris");
+    auto timer_se = stats_->start_timer("list_array_meta_uris");
     RETURN_NOT_OK(
         resources_.get().vfs().ls(array_meta_uri, &array_meta_dir_uris));
   }
@@ -677,8 +675,7 @@ Status ArrayDirectory::load_array_schema_uris() {
   std::vector<URI> array_schema_dir_uris;
   auto schema_dir_uri = uri_.join_path(constants::array_schema_dir_name);
   {
-    [[maybe_unused]] auto timer_se =
-        stats_->start_timer("list_array_schema_uris");
+    auto timer_se = stats_->start_timer("list_array_schema_uris");
 
     RETURN_NOT_OK(
         resources_.get().vfs().ls(schema_dir_uri, &array_schema_dir_uris));
