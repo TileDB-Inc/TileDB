@@ -107,10 +107,18 @@ GlobalOrderWriter::GlobalOrderWriter(
     , processed_conditions_(processed_conditions)
     , fragment_size_(fragment_size)
     , current_fragment_size_(0) {
+  // Check the layout is global order.
   if (layout != Layout::GLOBAL_ORDER) {
     throw GlobalOrderWriterStatusException(
         "Failed to initialize global order writer. Layout " +
         layout_str(layout) + " is not global order.");
+  }
+
+  // Check no ordered attributes.
+  if (array_schema_.has_ordered_attributes()) {
+    throw GlobalOrderWriterStatusException(
+        "Failed to initialize global order writer. Global order writes to "
+        "ordered attributes are not yet supported.");
   }
 }
 

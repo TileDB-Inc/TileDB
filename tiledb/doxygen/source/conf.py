@@ -72,13 +72,13 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'TileDB'
-copyright = '2022 TileDB, Inc'
+copyright = '2023 TileDB, Inc'
 author = 'TileDB, Inc.'
 
 # The short X.Y version.
-version = '2.14'
+version = '2.15'
 # The full version, including alpha/beta/rc tags.
-release = '2.14.0'
+release = '2.15.0'
 
 # Breathe extension configuration.
 doxygen_xml_dir = os.path.join(TILEDB_BUILD_DIR, 'xml/')
@@ -87,12 +87,13 @@ cpp_api_src_path = os.path.join(TILEDB_SRC_PATH, 'tiledb/sm/cpp_api/')
 breathe_projects = {'TileDB-C': doxygen_xml_dir, 'TileDB-C++': doxygen_xml_dir}
 breathe_default_project = 'TileDB-C'
 breathe_projects_source = {
-    'TileDB-C': (c_api_src_path, ['tiledb.h', 'tiledb_experimental.h']),
+    'TileDB-C': (c_api_src_path, ['tiledb.h', 'tiledb_experimental.h', 'tiledb_serialization.h']),
     'TileDB-C++': (cpp_api_src_path, ['tiledb', 'tiledb_experimental'])
 }
 breathe_domain_by_file_pattern = {
     '*/c_api/tiledb.h': 'c',
     '*/c_api/tiledb_experimental.h': 'c',
+    '*/c_api/tiledb_serialization.h': 'c',
     '*/cpp_api/tiledb': 'cpp',
     '*/cpp_api/tiledb_experimental': 'cpp',
 }

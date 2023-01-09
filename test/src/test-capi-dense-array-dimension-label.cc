@@ -78,7 +78,7 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
     auto array_schema = create_array_schema(
         ctx,
         TILEDB_DENSE,
-        {"x"},
+        {"dim"},
         {TILEDB_UINT64},
         {&index_domain_[0]},
         {&x_tile_extent},
@@ -142,7 +142,7 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
           ctx, query, "a", input_attr_data.data(), &attr_data_size));
     }
     if (label_data_size != 0) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+      require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "x", input_label_data.data(), &label_data_size));
     }
 
@@ -158,6 +158,7 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
     }
 
     // Clean-up.
+    tiledb_subarray_free(&subarray);
     tiledb_query_free(&query);
     tiledb_array_free(&array);
   }
@@ -204,7 +205,7 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
           ctx, query, "a", input_attr_data.data(), &attr_data_size));
     }
     if (label_data_size != 0) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+      require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "x", input_label_data.data(), &label_data_size));
     }
 
@@ -221,6 +222,7 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
 
     // Clean-up.
     tiledb_query_free(&query);
+    tiledb_subarray_free(&subarray);
     tiledb_array_free(&array);
   }
 
@@ -256,7 +258,7 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
     require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_READ, &query));
     require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
     require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR));
-    require_tiledb_ok(tiledb_query_set_label_data_buffer(
+    require_tiledb_ok(tiledb_query_set_data_buffer(
         ctx, query, "x", label_data.data(), &label_data_size));
     if (!expected_attr_data.empty()) {
       require_tiledb_ok(tiledb_query_set_data_buffer(
@@ -325,7 +327,7 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
     require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
     require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR));
     if (!expected_label_data.empty()) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+      require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "x", label_data.data(), &label_data_size));
     }
     if (!expected_attr_data.empty()) {

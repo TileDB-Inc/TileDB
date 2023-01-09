@@ -687,11 +687,6 @@ const void* fill_value(Datatype type);
 /** The redirection header key in REST response. */
 extern const std::string redirection_header_key;
 
-#ifdef __linux__
-/** List of possible certificates files for libcurl */
-extern const std::array<std::string, 6> cert_files_linux;
-#endif
-
 /** Delimiter for lists passed as config parameter */
 extern const std::string config_delimiter;
 

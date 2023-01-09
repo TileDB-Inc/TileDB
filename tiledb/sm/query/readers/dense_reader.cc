@@ -391,10 +391,10 @@ Status DenseReader::dense_read() {
 
   // Pre-load all attribute offsets into memory for attributes
   // in query condition to be read.
-  RETURN_CANCEL_OR_ERROR(
-      load_tile_var_sizes(read_state_.partitioner_.subarray(), var_names));
-  RETURN_CANCEL_OR_ERROR(
-      load_tile_offsets(read_state_.partitioner_.subarray(), names));
+  RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(
+      read_state_.partitioner_.subarray().relevant_fragments(), var_names));
+  RETURN_CANCEL_OR_ERROR(load_tile_offsets(
+      read_state_.partitioner_.subarray().relevant_fragments(), names));
 
   auto&& [st, qc_result] = apply_query_condition<DimType, OffType>(
       subarray,
@@ -416,7 +416,12 @@ Status DenseReader::dense_read() {
 
   // Process attributes.
   std::vector<std::string> to_read(1);
-  for (auto& name : names) {
+  for (auto& buff : buffers_) {
+    auto& name = buff.first;
+    if (name == constants::coords || array_schema_.is_dim(name)) {
+      continue;
+    }
+
     if (condition_.field_names().count(name) == 0) {
       // Read and unfilter tiles.
       to_read[0] = name;

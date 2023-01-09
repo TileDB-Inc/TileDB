@@ -246,7 +246,7 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Read state. */
   ReadState read_state_;
 
-  /** Have we loaded all thiles for this fragment. */
+  /** Have we loaded all tiles for this fragment. */
   std::vector<uint8_t> all_tiles_loaded_;
 
   /** Include coordinates when loading tiles. */
@@ -258,8 +258,10 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Are dimensions var sized. */
   std::vector<bool> is_dim_var_size_;
 
-  /** Reverse sorted vector, per fragments, of tiles ranges in the subarray, if
-   * set. */
+  /**
+   * Reverse sorted vector, per fragments, of tiles ranges in the subarray, if
+   * set.
+   */
   std::vector<std::vector<std::pair<uint64_t, uint64_t>>> result_tile_ranges_;
 
   /** Total memory budget. */
@@ -310,6 +312,18 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Optional string for a bitsort attribute. */
   std::optional<std::string> bitsort_attribute_;
 
+  /** Do we allo partial tile offset loading for this query? */
+  bool partial_tile_offsets_loading_;
+
+  /** Var dimensions/attributes for which to load tile var sizes. */
+  std::vector<std::string> var_size_to_load_;
+
+  /** Attributes for which to load tile offsets. */
+  std::vector<std::string> attr_tile_offsets_to_load_;
+
+  /** Per fragment tile offsets memory usage. */
+  std::vector<uint64_t> per_frag_tile_offsets_usage_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -356,11 +370,27 @@ class SparseIndexReaderBase : public ReaderBase {
       unsigned dim_num, unsigned f, uint64_t t);
 
   /**
-   * Load tile offsets and result tile ranges.
+   * Load result tile ranges and dimension/attributes to load tile offsets for.
    *
    * @return Status.
    */
   Status load_initial_data();
+
+  /**
+   * Returns the tile offset size for the list of relevant fragments.
+   *
+   * @param relevant_fragments Relevant fragments to load offsets for.
+   * @return Total in memory size.
+   */
+  uint64_t tile_offsets_size(const RelevantFragments& relevant_fragments);
+
+  /**
+   * Load all tile offsets.
+   *
+   * @param relevant_fragments Relevant fragments to load offsets for.
+   */
+  void load_tile_offsets_for_fragments(
+      const RelevantFragments& relevant_fragments);
 
   /**
    * Read and unfilter coord tiles.

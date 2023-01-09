@@ -184,37 +184,4 @@ commence(object_library filter_pipeline)
     this_target_object_libraries(all_filters baseline buffer constants stats thread_pool tile)
 conclude(object_library)
 
-if (TILEDB_TESTS)
-    add_executable(unit_filter_create EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_filter_create PUBLIC all_filters)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_filter_create PUBLIC Catch2::Catch2WithMain)
-
-    add_executable(unit_filter_pipeline EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_filter_pipeline PUBLIC filter_pipeline)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_filter_pipeline PUBLIC Catch2::Catch2WithMain)
-
-    # Sources for tests
-    target_sources(unit_filter_create PUBLIC
-            test/main.cc
-            test/unit_filter_create.cc
-            )
-
-    target_sources(unit_filter_pipeline PUBLIC
-            test/main.cc
-            test/unit_filter_pipeline.cc
-            )
-
-    add_test(
-            NAME "unit_filter_create"
-            COMMAND $<TARGET_FILE:unit_filter_create>
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-
-    add_test(
-            NAME "unit_filter_pipeline"
-            COMMAND $<TARGET_FILE:unit_filter_pipeline>
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-endif()
+add_test_subdirectory()

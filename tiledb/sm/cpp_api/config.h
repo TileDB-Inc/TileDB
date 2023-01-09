@@ -466,6 +466,11 @@ class Config {
    *    info, otherwise they will be loaded lazily when some info related to
    *    MBRs is requested by the user. <br>
    *    **Default**: false
+   * -  `sm.partial_tile_offsets_loading`
+   *    **Experimental** <br>
+   *    If `true` tile offsets can be partially loaded and unloaded by the
+   *    readers. <br>
+   *    **Default**: false
    * -  `vfs.read_ahead_cache_size` <br>
    *    The the total maximum size of the read-ahead cache, which is an LRU.
    *    <br>

@@ -41,7 +41,6 @@ add_executable(unit_ports_sieve EXCLUDE_FROM_ALL)
 #
 # Required libraries
 #
-target_link_libraries(unit_ports_sieve PUBLIC baseline)
 #
 # Define sources for test
 #

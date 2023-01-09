@@ -692,16 +692,20 @@ TEST_CASE(
 
   tiledb::Array::create(array_name, schema);
   auto array_w = tiledb::Array(ctx, array_name, TILEDB_WRITE);
-  auto query_w = tiledb::Query(ctx, array_w, TILEDB_WRITE);
   std::vector<int> data = {0, 1};
 
-  query_w.set_data_buffer("a", data).set_subarray({0, 1}).submit();
-  query_w.set_data_buffer("a", data).set_subarray({2, 3}).submit();
+  auto query_1 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
+  query_1.set_data_buffer("a", data).set_subarray({0, 1}).submit();
+
+  auto query_2 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
+  query_2.set_data_buffer("a", data).set_subarray({2, 3}).submit();
+
   // this fragment write caused crash during consolidation
   //   https://github.com/TileDB-Inc/TileDB/issues/1205
   //   https://github.com/TileDB-Inc/TileDB/issues/1212
-  query_w.set_data_buffer("a", data).set_subarray({4, 5}).submit();
-  query_w.finalize();
+  auto query_3 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
+  query_3.set_data_buffer("a", data).set_subarray({4, 5}).submit();
+
   array_w.close();
   CHECK(tiledb::test::num_fragments(array_name) == 3);
   Array::consolidate(ctx, array_name);
@@ -1791,7 +1795,8 @@ TEST_CASE(
   REQUIRE_THROWS_WITH(
       Array(ctx, old_array_name, TILEDB_WRITE),
       Catch::Matchers::ContainsSubstring("Array format version") &&
-          Catch::Matchers::ContainsSubstring("is not the library format version"));
+          Catch::Matchers::ContainsSubstring(
+              "is not the library format version"));
 
   // Read from an older-versioned array
   Array array(ctx, old_array_name, TILEDB_READ);

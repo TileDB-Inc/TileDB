@@ -2006,13 +2006,14 @@ TILEDB_EXPORT int32_t tiledb_query_alloc(
  * @code{.c}
  * char* stats_json;
  * tiledb_query_get_stats(ctx, query, &stats_json);
- * // Make sure to free the retrieved `stats_json`
+ * // Use the string
+ * tiledb_stats_free_str(&stats_json);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param query The query object.
  * @param stats_json The output json. The caller takes ownership
- *   of the c-string.
+ *   of the c-string and must free it using tiledb_stats_free_str().
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_get_stats(
@@ -2083,24 +2084,13 @@ TILEDB_EXPORT int32_t tiledb_query_get_config(
  * @param subarray The subarray in which the array read/write will be
  *     constrained on. It should be a sequence of [low, high] pairs (one
  *     pair per dimension). For the case of writes, this is meaningful only
- *     for dense arrays, and specifically dense writes. Note that `subarray`
- *     must have the same type as the domain.
+ *     for dense arrays. Note that `subarray` must have the same type as the
+ *     domain.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  *
- * @note If you set the subarray of a completed, incomplete or in-progress
- *     query, this function will clear the internal state and render it
- *     as uninitialized. However, the potentially set layout and attribute
- *     buffers will be retained. This is useful when the user wishes to
- *     fix the attributes and layout, but explore different subarrays with
- *     the same `tiledb_query_t` object (i.e., without having to create
- *     a new object).
+ * @note This will error if the query is already initialized.
  *
- * @note This function will error in the following case, provided that
- *     this is a write query:
- *     (i) the array is dense and the
- *     layout has been set to `TILEDB_UNORDERED`. In this case,
- *     if the user sets the layout to `TILEDB_UNORDERED` **after**
- *     the subarray has been set, the subarray will simply be ignored.
+ * @note This function will error for writes to sparse arrays.
  */
 TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_subarray(
     tiledb_ctx_t* ctx,
@@ -2126,211 +2116,18 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_subarray(
  * @param ctx The TileDB context.
  * @param query The TileDB query.
  * @param subarray The subarray by which the array read/write will be
- *     constrained. It should be a sequence of [low, high] pairs (one
- *     pair per dimension). For the case of writes, this is meaningful only
- *     for dense arrays, and specifically dense writes. Note that `subarray`
- *     must have the same type as the domain.
+ *     constrained. For the case of writes, this is meaningful only
+ *     for dense arrays.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  *
- * @note If you set the subarray of a completed, or uninitialized
- *     query, this function will clear the internal state and render it
- *     as uninitialized. However, the potentially set layout and attribute
- *     buffers will be retained. This is useful when the user wishes to
- *     fix the attributes and layout, but explore different subarrays with
- *     the same `tiledb_query_t` object (i.e., without having to create
- *     a new object).
+ * @note This will error if the query is already initialized.
  *
- * @note Setting the subarray in sparse writes is meaningless and, thus,
- *     this function will error in the following two cases, provided that
- *     this is a write query:
- *     (i) the array is sparse, and (ii) the array is dense and the
- *     layout has been set to `TILEDB_UNORDERED`. In the second case,
- *     if the user sets the layout to `TILEDB_UNORDERED` **after**
- *     the subarray has been set, the subarray will simply be ignored.
+ * @note This will error for writes to sparse arrays.
  */
 TILEDB_EXPORT int32_t tiledb_query_set_subarray_t(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const tiledb_subarray_t* subarray) TILEDB_NOEXCEPT;
-
-/**
- * Sets the buffer for a fixed-sized attribute/dimension to a query, which will
- * either hold the values to be written (if it is a write query), or will hold
- * the results from a read query.
- *
- * **Example:**
- *
- * @code{.c}
- * int32_t a1[100];
- * uint64_t a1_size = sizeof(a1);
- * tiledb_query_set_buffer(ctx, query, "a1", a1, &a1_size);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The TileDB query.
- * @param name The attribute/dimension to set the buffer for. Note that
- *     zipped coordinates have special name `TILEDB_COORDS`.
- * @param buffer The buffer that either have the input data to be written,
- *     or will hold the data to be read.
- * @param buffer_size In the case of writes, this is the size of `buffer`
- *     in bytes. In the case of reads, this initially contains the allocated
- *     size of `buffer`, but after the termination of the query
- *     it will contain the size of the useful (read) data in `buffer`.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_buffer(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    void* buffer,
-    uint64_t* buffer_size) TILEDB_NOEXCEPT;
-
-/**
- * Sets the buffer for a var-sized attribute/dimension to a query, which will
- * either hold the values to be written (if it is a write query), or will hold
- * the results from a read query.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t a2_off[10];
- * uint64_t a2_off_size = sizeof(a2_off);
- * char a2_val[100];
- * uint64_t a2_val_size = sizeof(a2_val);
- * tiledb_query_set_buffer_var(
- *     ctx, query, "a2", a2_off, &a2_off_size, a2_val, &a2_val_size);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The TileDB query.
- * @param name The attribute/dimension to set the buffer for.
- * @param buffer_off The buffer that either have the input data to be written,
- *     or will hold the data to be read. This buffer holds the starting offsets
- *     of each cell value in `buffer_val`.
- * @param buffer_off_size In the case of writes, it is the size of `buffer_off`
- *     in bytes. In the case of reads, this initially contains the allocated
- *     size of `buffer_off`, but after the *end of the query*
- *     (`tiledb_query_submit`) it will contain the size of the useful (read)
- *     data in `buffer_off`.
- * @param buffer_val The buffer that either have the input data to be written,
- *     or will hold the data to be read. This buffer holds the actual var-sized
- *     cell values.
- * @param buffer_val_size In the case of writes, it is the size of `buffer_val`
- *     in bytes. In the case of reads, this initially contains the allocated
- *     size of `buffer_val`, but after the termination of the function
- *     it will contain the size of the useful (read) data in `buffer_val`.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_buffer_var(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint64_t* buffer_off,
-    uint64_t* buffer_off_size,
-    void* buffer_val,
-    uint64_t* buffer_val_size) TILEDB_NOEXCEPT;
-
-/**
- * Sets the buffer for a fixed-sized, nullable attribute to a query, which will
- * either hold the values to be written (if it is a write query), or will hold
- * the results from a read query. The validity buffer is a byte map, where each
- * non-zero byte represents a valid (i.e. "non-null") attribute value.
- *
- * **Example:**
- *
- * @code{.c}
- * int32_t a1[100];
- * uint64_t a1_size = sizeof(a1);
- * uint8_t a1_validity[100];
- * uint64_t a1_validity_size = sizeof(a1_validity);
- * tiledb_query_set_buffer_nullable(
- *   ctx, query, "a1", a1, &a1_size, a1_validity, &a1_validity_size);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The TileDB query.
- * @param name The attribute/dimension to set the buffer for. Note that
- *     zipped coordinates have special name `TILEDB_COORDS`.
- * @param buffer The buffer that either have the input data to be written,
- *     or will hold the data to be read.
- * @param buffer_size In the case of writes, this is the size of `buffer`
- *     in bytes. In the case of reads, this initially contains the allocated
- *     size of `buffer`, but after the termination of the query
- *     it will contain the size of the useful (read) data in `buffer`.
- * @param buffer_validity_bytemap The validity byte map that has exactly
- *     one value for each value in `buffer`.
- * @param buffer_validity_bytemap_size In the case of writes, this is the
- *     size of `buffer_validity_bytemap` in bytes. In the case of reads,
- *     this initially contains the allocated size of `buffer_validity_bytemap`,
- *     but after the termination of the query it will contain the size of the
- *     useful (read) data in `buffer_validity_bytemap`.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_buffer_nullable(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    void* buffer,
-    uint64_t* buffer_size,
-    uint8_t* buffer_validity_bytemap,
-    uint64_t* buffer_validity_bytemap_size) TILEDB_NOEXCEPT;
-
-/**
- * Sets the buffer for a var-sized, nullable attribute to a query, which will
- * either hold the values to be written (if it is a write query), or will hold
- * the results from a read query.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t a2_off[10];
- * uint64_t a2_off_size = sizeof(a2_off);
- * char a2_val[100];
- * uint64_t a2_val_size = sizeof(a2_val);
- * uint8_t a2_validity[100];
- * uint64_t a2_validity_size = sizeof(a2_validity);
- * tiledb_query_set_buffer_var(
- *     ctx, query, "a2", a2_off, &a2_off_size, a2_val, &a2_val_size,
- *     a2_validity, &a2_validity_size);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The TileDB query.
- * @param name The attribute/dimension to set the buffer for.
- * @param buffer_off The buffer that either have the input data to be written,
- *     or will hold the data to be read. This buffer holds the starting offsets
- *     of each cell value in `buffer_val`.
- * @param buffer_off_size In the case of writes, it is the size of `buffer_off`
- *     in bytes. In the case of reads, this initially contains the allocated
- *     size of `buffer_off`, but after the *end of the query*
- *     (`tiledb_query_submit`) it will contain the size of the useful (read)
- *     data in `buffer_off`.
- * @param buffer_val The buffer that either have the input data to be written,
- *     or will hold the data to be read. This buffer holds the actual var-sized
- *     cell values.
- * @param buffer_val_size In the case of writes, it is the size of `buffer_val`
- *     in bytes. In the case of reads, this initially contains the allocated
- *     size of `buffer_val`, but after the termination of the function
- *     it will contain the size of the useful (read) data in `buffer_val`.
- * @param buffer_validity_bytemap The validity byte map that has exactly
- *     one value for each value in `buffer`.
- * @param buffer_validity_bytemap_size In the case of writes, this is the
- *     size of `buffer_validity_bytemap` in bytes. In the case of reads,
- *     this initially contains the allocated size of `buffer_validity_bytemap`,
- *     but after the termination of the query it will contain the size of the
- *     useful (read) data in `buffer_validity_bytemap`.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_buffer_var_nullable(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint64_t* buffer_off,
-    uint64_t* buffer_off_size,
-    void* buffer_val,
-    uint64_t* buffer_val_size,
-    uint8_t* buffer_validity_bytemap,
-    uint64_t* buffer_validity_bytemap_size) TILEDB_NOEXCEPT;
 
 /**
  * Sets the buffer for an attribute/dimension to a query, which will
@@ -2426,159 +2223,6 @@ TILEDB_EXPORT int32_t tiledb_query_set_validity_buffer(
     const char* name,
     uint8_t* buffer,
     uint64_t* buffer_size) TILEDB_NOEXCEPT;
-
-/**
- * Gets the buffer of a fixed-sized attribute/dimension from a query. If the
- * buffer has not been set, then `buffer` is set to `nullptr`.
- *
- * **Example:**
- *
- * @code{.c}
- * int* a1;
- * uint64_t* a1_size;
- * tiledb_query_get_buffer(ctx, query, "a1", &a1, &a1_size);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The TileDB query.
- * @param name The attribute/dimension to get the buffer for. Note that the
- *     zipped coordinates have special name `TILEDB_COORDS`.
- * @param buffer The buffer to retrieve.
- * @param buffer_size A pointer to the size of the buffer. Note that this is
- *     a double pointer and returns the original variable address from
- *     `set_buffer`.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_buffer(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    void** buffer,
-    uint64_t** buffer_size) TILEDB_NOEXCEPT;
-
-/**
- * Gets the values and offsets buffers for a var-sized attribute/dimension
- * to a query. If the buffers have not been set, then `buffer_off` and
- * `buffer_val` are set to `nullptr`.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t* a2_off;
- * uint64_t* a2_off_size;
- * char* a2_val;
- * uint64_t* a2_val_size;
- * tiledb_query_get_buffer_var(
- *     ctx, query, "a2", &a2_off, &a2_off_size, &a2_val, &a2_val_size);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The TileDB query.
- * @param name The attribute/dimension to set the buffer for.
- * @param buffer_off The offsets buffer to be retrieved.
- * @param buffer_off_size A pointer to the size of the offsets buffer. Note that
- *     this is a `uint_64**` pointer and returns the original variable address
- * from `set_buffer`.
- * @param buffer_val The values buffer to be retrieved.
- * @param buffer_val_size A pointer to the size of the values buffer. Note that
- *     this is a `uint_64**` pointer and returns the original variable address
- * from `set_buffer`.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_buffer_var(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint64_t** buffer_off,
-    uint64_t** buffer_off_size,
-    void** buffer_val,
-    uint64_t** buffer_val_size) TILEDB_NOEXCEPT;
-
-/**
- * Gets the buffer of a fixed-sized, nullable attribute from a query. If the
- * buffer has not been set, then `buffer` and `buffer_validity_bytemap` are
- * set to `nullptr`.
- *
- * **Example:**
- *
- * @code{.c}
- * int* a1;
- * uint64_t* a1_size;
- * uint8_t* a1_validity;
- * uint64_t* a1_validity_size;
- * tiledb_query_get_buffer_nullable(
- *   ctx, query, "a1", &a1, &a1_size, &a1_validity, &a1_validity_size);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The TileDB query.
- * @param name The attribute/dimension to get the buffer for. Note that the
- *     zipped coordinates have special name `TILEDB_COORDS`.
- * @param buffer The buffer to retrieve.
- * @param buffer_size A pointer to the size of the buffer. Note that this is
- *     a double pointer and returns the original variable address from
- *     `set_buffer`.
- * @param buffer_validity_bytemap The validity bytemap buffer to retrieve.
- * @param buffer_validity_bytemap_size A pointer to the size of the validity
- *     bytemap buffer. Note that this is a double pointer and returns the
- * origina variable address from `set_buffer_nullable`.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_buffer_nullable(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    void** buffer,
-    uint64_t** buffer_size,
-    uint8_t** buffer_validity_bytemap,
-    uint64_t** buffer_validity_bytemap_size) TILEDB_NOEXCEPT;
-
-/**
- * Gets the values and offsets buffers for a var-sized, nullable attribute
- * to a query. If the buffers have not been set, then `buffer_off`,
- * `buffer_val`, and `buffer_validity_bytemap` are set to `nullptr`.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t* a2_off;
- * uint64_t* a2_off_size;
- * char* a2_val;
- * uint64_t* a2_val_size;
- * uint8_t* a2_validity;
- * uint64_t* a2_validity_size;
- * tiledb_query_get_buffer_var_nullable(
- *     ctx, query, "a2", &a2_off, &a2_off_size, &a2_val, &a2_val_size,
- *     &a2_validity, &a2_validity_size);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The TileDB query.
- * @param name The attribute/dimension to set the buffer for.
- * @param buffer_off The offsets buffer to be retrieved.
- * @param buffer_off_size A pointer to the size of the offsets buffer. Note that
- *     this is a `uint_64**` pointer and returns the original variable address
- * from `set_buffer`.
- * @param buffer_val The values buffer to be retrieved.
- * @param buffer_val_size A pointer to the size of the values buffer. Note that
- *     this is a `uint_64**` pointer and returns the original variable address
- * from `set_buffer`.
- * @param buffer_validity_bytemap The validity bytemap buffer to retrieve.
- * @param buffer_validity_bytemap_size A pointer to the size of the validity
- *     bytemap buffer. Note that this is a double pointer and returns the
- * origina variable address from `set_buffer_var_nullable`.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_buffer_var_nullable(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint64_t** buffer_off,
-    uint64_t** buffer_off_size,
-    void** buffer_val,
-    uint64_t** buffer_val_size,
-    uint8_t** buffer_validity_bytemap,
-    uint64_t** buffer_validity_bytemap_size) TILEDB_NOEXCEPT;
 
 /**
  * Gets the buffer of a fixed-sized attribute/dimension from a query. If the
@@ -4325,81 +3969,6 @@ TILEDB_EXPORT int32_t tiledb_array_open(
     tiledb_query_type_t query_type) TILEDB_NOEXCEPT;
 
 /**
- * Similar to `tiledb_array_open`, but this function takes as input a
- * timestamp, representing time in milliseconds ellapsed since
- * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
- * timestamp provides a view of the array with all writes/updates that
- * happened at or before `timestamp` (i.e., excluding those that
- * occurred after `timestamp`). This function is useful to ensure
- * consistency at a potential distributed setting, where machines
- * need to operate on the same view of the array.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_t* array;
- * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
- * // Assuming `timestamp` is time represented in milliseconds:
- * tiledb_array_open_at(ctx, array, TILEDB_READ, timestamp);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The array object to be opened.
- * @param query_type The type of queries the array object will be receiving.
- * @param timestamp The timestamp to open the array at.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note If the same array object is opened again without being closed,
- *     an error will be thrown.
- * @note This function is applicable only to read queries.
- * @note The config should be set before opening an array.
- * @note If the array is to be opened at a specfic time interval, the
- *      `timestamp{start, end}` values should be set to a config that's set to
- *       the array object before opening the array.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_open_at(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    uint64_t timestamp) TILEDB_NOEXCEPT;
-
-/**
- * Opens an encrypted array using the given encryption key. This function has
- * the same semantics as `tiledb_array_open()` but is used for encrypted arrays.
- *
- * An encrypted array must be opened with this function before queries can be
- * issued to it.
- *
- * **Example:**
- *
- * @code{.c}
- * // Load AES-256 key from disk, environment variable, etc.
- * uint8_t key[32] = ...;
- * tiledb_array_t* array;
- * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
- * tiledb_array_open_with_key(ctx, array, TILEDB_READ,
- *     TILEDB_AES_256_GCM, key, sizeof(key));
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The array object to be opened.
- * @param query_type The type of queries the array object will be receiving.
- * @param encryption_type The encryption type to use.
- * @param encryption_key The encryption key to use.
- * @param key_length Length in bytes of the encryption key.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note The config should be set before opening an array.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_open_with_key(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) TILEDB_NOEXCEPT;
-
-/**
  * Similar to `tiledb_array_open_with_key`, but this function takes as
  * input a timestamp, representing time in milliseconds ellapsed since
  * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
@@ -4486,67 +4055,6 @@ TILEDB_EXPORT int32_t tiledb_array_is_open(
  */
 TILEDB_EXPORT int32_t
 tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) TILEDB_NOEXCEPT;
-
-/**
- * Reopens a TileDB array (the array must be already open) at a specific
- * timestamp.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_t* array;
- * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
- * tiledb_array_open(ctx, array, TILEDB_READ);
- * uint64_t timestamp = tiledb_timestamp_now_ms();
- * tiledb_array_reopen_at(ctx, array, timestamp);
- *
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The array object to be re-opened.
- * @param timestamp Timestamp at which to reopen.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note This is applicable only to arrays opened for reads.
- * @note If the array is to be reopened after opening at a specfic time
- *      interval, the `timestamp{start, end}` values and subsequent config
- *      object should be reset for the array before reopening.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_reopen_at(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint64_t timestamp) TILEDB_NOEXCEPT;
-
-/**
- * The start/end timestamps for opening an array
- * are now set in the config.
- *
- * Returns the timestamp, representing time in milliseconds ellapsed since
- * 1970-01-01 00:00:00 +0000 (UTC), at which the array was opened. See also the
- * documentation of `tiledb_array_open_at`.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_t* array;
- * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
- * tiledb_array_open(ctx, array, TILEDB_READ);
- * // Get the timestamp the array at which the array was opened.
- * uint64_t timestamp;
- * tiledb_array_get_timestamp(ctx, array, &timestamp);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The array to retrieve the timestamp for.
- * @param timestamp Set to the timestamp at which the array was opened.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note The array does not need to be open to use this function.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_get_timestamp(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint64_t* timestamp) TILEDB_NOEXCEPT;
 
 /**
  * Sets the array config.
@@ -4746,7 +4254,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_create_with_key(
  * @param array_uri The name of the TileDB array whose metadata will
  *     be consolidated.
  * @param config Configuration parameters for the consolidation
- *     (`nullptr` means default, which will use the config from `ctx`).
+ *     (`nullptr` means default, which will use the config from \p ctx).
  *     The `sm.consolidation.mode` parameter determines which type of
  *     consolidation to perform.
  *
@@ -4805,7 +4313,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_with_key(
  * @param ctx The TileDB context.
  * @param array_uri The name of the TileDB array to vacuum.
  * @param config Configuration parameters for the vacuuming
- *     (`nullptr` means default, which will use the config from `ctx`).
+ *     (`nullptr` means default, which will use the config from \p ctx).
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
 TILEDB_EXPORT int32_t tiledb_array_vacuum(
@@ -5217,58 +4725,6 @@ TILEDB_EXPORT int32_t tiledb_array_has_metadata_key(
     tiledb_datatype_t* value_type,
     int32_t* has_key) TILEDB_NOEXCEPT;
 
-/**
- * Consolidates the array metadata into a single array metadata file.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_consolidate_metadata(
- *     ctx, "hdfs:///tiledb_arrays/my_array", nullptr);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_uri The name of the TileDB array whose metadata will
- *     be consolidated.
- * @param config Configuration parameters for the consolidation
- *     (`nullptr` means default, which will use the config from `ctx`).
- * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_config_t* config) TILEDB_NOEXCEPT;
-
-/**
- * Consolidates the array metadata of an encrypted array into a single file.
- *
- * **Example:**
- *
- * @code{.c}
- * uint8_t key[32] = ...;
- * tiledb_array_consolidate_metadata_with_key(
- *     ctx, "hdfs:///tiledb_arrays/my_array",
- *     TILEDB_AES_256_GCM, key, sizeof(key), nullptr);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_uri The name of the TileDB array to be consolidated.
- * @param encryption_type The encryption type to use.
- * @param encryption_key The encryption key to use.
- * @param key_length Length in bytes of the encryption key.
- * @param config Configuration parameters for the consolidation
- *     (`nullptr` means default, which will use the config from `ctx`).
- *
- * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata_with_key(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    tiledb_config_t* config) TILEDB_NOEXCEPT;
-
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */
 /* ********************************* */
@@ -5633,30 +5089,6 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_config(
  */
 TILEDB_EXPORT int32_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info) TILEDB_NOEXCEPT;
-
-/**
- * Loads the fragment info from an encrypted array.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_fragment_info_load_with_key(
- *     ctx, fragment_info, TILEDB_AES_256_GCM, key, sizeof(key));
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
- * @param encryption_type The encryption type to use.
- * @param encryption_key The encryption key to use.
- * @param key_length Length in bytes of the encryption key.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_fragment_info_load_with_key(
-    tiledb_ctx_t* ctx,
-    tiledb_fragment_info_t* fragment_info,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) TILEDB_NOEXCEPT;
 
 /**
  * Gets a fragment name.

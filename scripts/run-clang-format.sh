@@ -36,10 +36,10 @@ SOURCE_PATHS=($src/tiledb $src/test $src/examples $src/tools $src/experimental)
 FIND_FILES=(-name "*.cc" -or -name "*.c" -or -name "*.h")
 
 if [ "$APPLY_FIXES" == "1" ]; then
-  find "${SOURCE_PATHS[@]}" "${FIND_FILES[@]}" -print0 | xargs -0 -P8 $CLANG_FORMAT -i
+  find "${SOURCE_PATHS[@]}" \( "${FIND_FILES[@]}" \) -print0 | xargs -0 -P8 $CLANG_FORMAT -i
 
 else
-  NUM_CORRECTIONS=`find "${SOURCE_PATHS[@]}" "${FIND_FILES[@]}" -print0 | xargs -0 -P8 $CLANG_FORMAT -output-replacements-xml | grep offset | wc -l`
+  NUM_CORRECTIONS=`find "${SOURCE_PATHS[@]}" \( "${FIND_FILES[@]}" \) -print0 | xargs -0 -P8 $CLANG_FORMAT -output-replacements-xml | grep offset | wc -l`
 
   if [ "$NUM_CORRECTIONS" -gt "0" ]; then
     echo "clang-format suggested changes, please run 'make format'!!!!"

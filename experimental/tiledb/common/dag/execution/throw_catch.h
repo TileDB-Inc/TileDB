@@ -52,12 +52,26 @@
  *
  * When a task has completed execution, it is moved to the finished queue.
  *
+ * The throw_catch scheduler introduces some challenges for the port state
+ * machine in particular. Since calls to notify and wait don't return, we can't
+ * invoke the two together in response to the same event.  Thus, we need to
+ * decrement the program counter for a waiting task rather than letting the
+ * event handler do the retry.
+ *
+ * Some very basic thread-safe data structures were required for this scheduler
+ * and implemented in utils subdirectory.  These are not intended to be general
+ * purpose, but rather to provide just enough functionality to support the
+ * scheduler.
+ *
+ * More complete documentation about the generic interaction between schedulers
+ * and item movers can can be found in the docs subdirectory.
+ *
  * @todo Factor scheduler, task, and policy so they are more orthogonal and
  * can be mixed and matched.
  */
 
-#ifndef TILEDB_DAG_throw_catch_H
-#define TILEDB_DAG_throw_catch_H
+#ifndef TILEDB_DAG_THROW_CATCH_H
+#define TILEDB_DAG_THROW_CATCH_H
 
 #include <condition_variable>
 #include <functional>
@@ -68,8 +82,11 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <vector>
+#include "experimental/tiledb/common/dag/execution/task.h"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
+#include "experimental/tiledb/common/dag/execution/throw_catch_types.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/item_mover.h"
 #include "experimental/tiledb/common/dag/utils/bounded_buffer.h"
@@ -79,48 +96,15 @@
 
 namespace tiledb::common {
 
-namespace detail {
-
-enum class throw_catch_target { self, source, sink, last };
-
-class throw_catch_exception : public std::exception {
-  throw_catch_target target_{throw_catch_target::self};
-
- public:
-  explicit throw_catch_exception(
-      throw_catch_target target = throw_catch_target::self)
-      : target_{target} {
-  }
-
-  [[nodiscard]] throw_catch_target target() const {
-    return target_;
-  }
-};
-
-class throw_catch_exit : public throw_catch_exception {
-  using throw_catch_exception::throw_catch_exception;
-};
-
-class throw_catch_wait : public throw_catch_exception {
-  using throw_catch_exception::throw_catch_exception;
-};
-
-class throw_catch_notify : public throw_catch_exception {
-  using throw_catch_exception::throw_catch_exception;
-};
-
-}  // namespace detail
-
-const detail::throw_catch_exit throw_catch_exit;
-const detail::throw_catch_wait throw_catch_sink_wait{
-    detail::throw_catch_target::sink};
-const detail::throw_catch_wait throw_catch_source_wait{
-    detail::throw_catch_target::source};
-const detail::throw_catch_notify throw_catch_notify_sink{
-    detail::throw_catch_target::sink};
-const detail::throw_catch_notify throw_catch_notify_source{
-    detail::throw_catch_target::source};
-
+/**
+ * @brief A scheduler that uses a fixed number of threads to execute tasks and
+ * an experimental "throw-catch" mechanism for signalling from port to
+ * scheduler.
+ *
+ * @tparam Mover The type of data mover used to move data between nodes ports.
+ * @tparam PortState The type of port state, either `PortState::two_stage` or
+ * `PortState::three_stage`.
+ */
 template <class Mover, class PortState = typename Mover::PortState>
 class ThrowCatchPortPolicy : public PortFiniteStateMachine<
                                  ThrowCatchPortPolicy<Mover, PortState>,
@@ -132,6 +116,11 @@ class ThrowCatchPortPolicy : public PortFiniteStateMachine<
   using mover_type = Mover;
 
  public:
+  /**
+   * @brief Constructs a port policy.  Initializes the port state to empty.
+   * Uses `enable_if` to select between two-stage and three-stage port state for
+   * initalization values.
+   */
   ThrowCatchPortPolicy() {
     if constexpr (std::is_same_v<PortState, two_stage>) {
       assert(static_cast<Mover*>(this)->state() == PortState::st_00);
@@ -140,61 +129,98 @@ class ThrowCatchPortPolicy : public PortFiniteStateMachine<
     }
   }
 
+  /**
+   * Policy action called on the port `ac_return` action.
+   */
   inline void on_ac_return(lock_type&, std::atomic<int>&) {
-    debug_msg("ScheduledPolicy Action return");
   }
 
+  /**
+   * Policy action called on the port `on_source_move` action.
+   */
   inline void on_source_move(lock_type&, std::atomic<int>& event) {
     static_cast<Mover*>(this)->on_move(event);
   }
 
+  /**
+   * Policy action called on the port `on_sink_move` action.
+   */
   inline void on_sink_move(lock_type&, std::atomic<int>& event) {
     static_cast<Mover*>(this)->on_move(event);
   }
 
+  /**
+   * Policy action called on the port `on_notify_source` action.
+   */
   inline void on_notify_source(lock_type&, std::atomic<int>&) {
-    debug_msg("ScheduledPolicy Action notify source");
-    throw(detail::throw_catch_notify{detail::throw_catch_target::source});
+    throw(throw_catch_notify_source);
   }
 
+  /**
+   * Policy action called on the port `on_notify_sink` action.
+   */
   inline void on_notify_sink(lock_type&, std::atomic<int>&) {
-    debug_msg("ScheduledPolicy Action notify sink");
-    throw(detail::throw_catch_notify{detail::throw_catch_target::sink});
+    throw(throw_catch_notify_sink);
   }
 
+  /**
+   * Policy action called on the port `on_source_wait` action.
+   */
   inline void on_source_wait(lock_type&, std::atomic<int>&) {
-    debug_msg("ScheduledPolicy Action source wait");
-    throw(detail::throw_catch_wait{detail::throw_catch_target::source});
+    // @todo Should wait predicate be checked here?  (It is currently checked in
+    // the scheduler body.)
+    throw(throw_catch_source_wait);
   }
 
+  /**
+   * Policy action called on the port `on_sink_wait` action.
+   */
   inline void on_sink_wait(lock_type&, std::atomic<int>&) {
-    debug_msg("ScheduledPolicy Action sink wait");
-    throw(detail::throw_catch_wait{detail::throw_catch_target::sink});
+    // @todo Should wait predicate be checked here?  (It is currently checked in
+    // the scheduler body.)
+    throw(throw_catch_sink_wait);  // Predicate: source is full?
   }
 
+  /**
+   * Policy action called on the port `on_term_source` action.
+   */
   inline void on_term_source(lock_type&, std::atomic<int>&) {
-    debug_msg("ScheduledPolicy Action source done");
-    throw(detail::throw_catch_exit{detail::throw_catch_target::source});
+    throw(throw_catch_source_exit);
   }
 
+  /**
+   * Policy action called on the port `on_term_sink` action.
+   */
   inline void on_term_sink(lock_type&, std::atomic<int>&) {
-    debug_msg("ScheduledPolicy Action sink done");
-    throw(detail::throw_catch_exit{detail::throw_catch_target::sink});
+    // @todo There might be a better way of integrating `term_sink` with
+    // `term_source`.  For now, `term_sink` just returns.
+    // throw(throw_catch_sink_exit);
   }
 
  private:
   void debug_msg(const std::string& msg) {
     if (static_cast<Mover*>(this)->debug_enabled()) {
-      std::cout << msg << "\n";
+      std::cout << msg << "@" << str(this->state()) << "\n";
     }
   }
 };
 
+/**
+ * Alias to define the three-stage data mover for the throw-catch scheduler.
+ */
 template <class T>
 using ThrowCatchMover3 = ItemMover<ThrowCatchPortPolicy, three_stage, T>;
+
+/**
+ * Alias to define the two-stage data mover for the throw-catch scheduler.
+ */
 template <class T>
 using ThrowCatchMover2 = ItemMover<ThrowCatchPortPolicy, two_stage, T>;
 
+/*
+ * The following types trait mechanism is necessary to get the
+ * `ThrowCatchSchedulerPolicy` to compile.
+ */
 template <class Node>
 class ThrowCatchScheduler;
 
@@ -207,6 +233,11 @@ struct SchedulerTraits<ThrowCatchSchedulerPolicy<T>> {
   using task_handle_type = T;
 };
 
+/**
+ * @brief Defines actions for scheduler state transitions.
+ *
+ * @tparam Task The type of task to be scheduled.
+ */
 template <class Task>
 class ThrowCatchSchedulerPolicy
     : public SchedulerStateMachine<ThrowCatchSchedulerPolicy<Task>> {
@@ -220,361 +251,206 @@ class ThrowCatchSchedulerPolicy
   using task_handle_type = typename SchedulerTraits<
       ThrowCatchSchedulerPolicy<Task>>::task_handle_type;
 
+  /**
+   * @brief Destructor.
+   */
   ~ThrowCatchSchedulerPolicy() {
-    if (this->debug())
-      std::cout << "policy destructor\n";
-
-    waiting_set_.clear();
-    runnable_queue_.drain();
-    running_set_.clear();
-    finished_queue_.drain();
+    done();
   }
 
+  /**
+   * @brief Initial action for task creation transition.  Moves `task` to the
+   * task submission queue.
+   *
+   * @param task The task to be transitioned.
+   */
   void on_create(task_handle_type& task) {
-    if (this->debug())
-      std::cout << "calling on_create"
-                << "\n";
+    debug_msg("calling on_create");
     this->submission_queue_.push(task);
   }
 
+  /**
+   * @brief Action for task submission transition.
+   *
+   * @param task The task to be transitioned.
+   */
   void on_stop_create(task_handle_type&) {
-    if (this->debug())
-      std::cout << "calling on_stop_create"
-                << "\n";
   }
 
+  /**
+   * @brief Action for transitioning a task to the `runnable` state.  Puts the
+   * task on the runnable queue.
+   *
+   * @param task The task to be transitioned.
+   */
   void on_make_runnable(task_handle_type& task) {
-    if (this->debug())
-      std::cout << "calling on_make_runnable"
-                << "\n";
+    debug_msg("calling on_make_runnable");
     this->runnable_queue_.push(task);
   }
 
+  /**
+   *  @brief Action for transitioning a task out of the `runnable` state.  Note
+   * that this does not remove task from the runnable queue.  Tasks are removed
+   * from the runnable queue by the scheduler when they are to be executed.
+   *
+   * @param task The task to be transitioned.
+   */
   void on_stop_runnable(task_handle_type&) {
-    if (this->debug())
-      std::cout << "calling on_stop_runnable"
-                << "\n";
   }
 
+  /**
+   * @brief Action for transitioning a task to the `running` state.  Puts task
+   * into the running set.
+   *
+   * @param task The task to be transitioned.
+   */
   void on_make_running(task_handle_type& task) {
-    if (this->debug())
-      std::cout << "calling on_make_running"
-                << "\n";
     this->running_set_.insert(task);
   }
 
+  /**
+   * @brief Action for transitioning a task out of the `running` state.  Removes
+   * task from the running set.
+   *
+   * @param task The task to be transitioned.
+   */
   void on_stop_running(task_handle_type& task) {
-    if (this->debug())
-      std::cout << "calling on_stop_running"
-                << "\n";
     auto n = this->running_set_.extract(task);
 
     assert(!n.empty());
   }
 
+  /**
+   * @brief Action for transitioning a task to the `waiting` state.
+   * Note that a task in the waiting state must have its program counter
+   * decremented so that when it resumes it will resume before the action that
+   * caused it to wait. (This similar in behavior to a cv wait.) Currently the
+   * decrementing is done in the scheduler body. But we might want to move it
+   * here.
+   *
+   * @param task The task to be transitioned.
+   */
   void on_make_waiting(task_handle_type& task) {
-    if (this->debug())
-      std::cout << "calling on_make_waiting"
-                << "\n";
+    // @todo: try decrementing here?
+    auto node = (*(task->node()));
+    node->decrement_program_counter();
     this->waiting_set_.insert(task);
   }
 
+  /**
+   * @brief Action for transitioning a task out of the `waiting` state.  Removes
+   * task from the waiting set. As described in `on_make_waiting`, the program
+   * counter must be decremented. This is another possible location for doing
+   * the decrement.
+   *
+   * @param task The task to be transitioned.
+   */
   void on_stop_waiting(task_handle_type& task) {
-    if (this->debug())
-      std::cout << "calling on_stop_waiting"
-                << "\n";
-
     auto n = this->waiting_set_.extract(task);
-    assert(!n.empty());
+    // @todo: Should this never be empty?
+    // if (n.empty()) {
+    //   throw std::runtime_error("on_stop_waiting: task not in waiting set");
+    // }
 
-    // Try waited-on condition again
-    // @todo Is this the best place to be doing this?
-    n.value()->decrement_program_counter();
+    // @todo: try decrementing program counter here?
   }
 
+  /**
+   * @brief Action for transitioning a task to the `done` state.  Puts task on
+   * the finished queue.
+   *
+   * @param task The task to be transitioned.
+   */
   void on_terminate(task_handle_type& task) {
-    if (this->debug())
-      std::cout << "calling on_terminate"
-                << "\n";
     this->finished_queue_.push(task);
   }
 
+  /**
+   * @brief Transitions all tasks from submission queue to runnable queue.
+   */
   void launch() {
-    if (this->debug()) {
-      this->dump_queue_state("Launching start");
-    }
     while (true) {
       auto s = submission_queue_.try_pop();
       if (!s)
         break;
-      if (this->debug())
+      if (this->debug_enabled())
         (*s)->dump_task_state("Admitting");
 
       this->task_admit(*s);
     }
-    if (this->debug()) {
-      this->dump_queue_state("Launching end");
-    }
   }
 
+  /**
+   * @brief Gets a task from the runnable queue.  Blocking unless job is
+   * finished and queue is shut down.
+   */
   auto get_runnable_task() {
-#if 1
-    auto val = runnable_queue_.try_pop();
-    while (val && ((*val)->task_state() == TaskState::terminated)) {
-      val = runnable_queue_.try_pop();
-    }
-    return val;
-#else
     auto val = runnable_queue_.pop();
     return val;
-#endif
   }
 
-  void p_shutdown() {
-#if 0
-    if (this->debug())
-      std::cout << "policy shutdown\n";
-
-    size_t loops = waiting_set_.size();
-
-    for (size_t i = 0; i < loops; ++i) {
-      std::vector<Task> notified_waiters_;
-      notified_waiters_.reserve(waiting_set_.size());
-
-      for (auto t : waiting_set_) {
-
-  // Notify can change the waiting_set_
-  // But it should be empty by here?
-        this->task_notify(t);
-      }
-
-      for (auto&& t : notified_waiters_) {
-        this->task_dispatch(t);
-        waiting_set_.erase(t);
-        runnable_queue_.push(t);
-      }
-      notified_waiters_.clear();
-    }
-
-    // all waiters must have been notified
-    assert(waiting_set_.empty());
-
-    runnable_queue_.drain();
-    finished_queue_.drain();
-
+  /**
+   * @brief Cleans up the scheduler policy.  This is called when the scheduler
+   * is done. All queues are shut down.  All queues and sets should be empty at
+   * this point.
+   */
+  void done([[maybe_unused]] const std::string& msg = "") {
     waiting_set_.clear();
+    runnable_queue_.drain();
     running_set_.clear();
-#endif
+    finished_queue_.drain();
   }
 
+  /**
+   * @brief Debug helper function.
+   */
   void dump_queue_state(const std::string& msg = "") {
-    std::string preface = (!msg.empty() ? msg + "\n" : "");
+    if (this->debug_enabled()) {
+      std::string preface = (!msg.empty() ? msg + "\n" : "");
 
-    std::cout << preface + "    runnable_queue_.size() = " +
-                     std::to_string(runnable_queue_.size()) + "\n" +
-                     "    running_set_.size() = " +
-                     std::to_string(running_set_.size()) + "\n" +
-                     "    waiting_set_.size() = " +
-                     std::to_string(waiting_set_.size()) + "\n" +
-                     "    finished_queue_.size() = " +
-                     std::to_string(finished_queue_.size()) + "\n" + "\n";
+      std::cout << preface + "    runnable_queue_.size() = " +
+                       std::to_string(runnable_queue_.size()) + "\n" +
+                       "    running_set_.size() = " +
+                       std::to_string(running_set_.size()) + "\n" +
+                       "    waiting_set_.size() = " +
+                       std::to_string(waiting_set_.size()) + "\n" +
+                       "    finished_queue_.size() = " +
+                       std::to_string(finished_queue_.size()) + "\n" + "\n";
+    }
+  }
+
+  /**
+   * @brief Debug helper function.
+   */
+  void debug_msg(const std::string& msg) {
+    if (this->debug_enabled()) {
+      std::cout << msg + "\n";
+    }
   }
 
  private:
-#if 1
+  /**
+   * @brief Data structures to hold tasks in various states of execution.
+   */
   ConcurrentSet<Task> waiting_set_;
   ConcurrentSet<Task> running_set_;
   BoundedBufferQ<Task, std::queue<Task>, false> submission_queue_;
   BoundedBufferQ<Task, std::queue<Task>, false> runnable_queue_;
   BoundedBufferQ<Task, std::queue<Task>, false> finished_queue_;
-#else
-  ConcurrentSet<std::shared_ptr<Task>> waiting_set_;
-  ConcurrentSet<std::shared_ptr<Task>> running_set_;
-  BoundedBufferQ<
-      std::shared_ptr<Task>,
-      std::queue<std::shared_ptr<Task>>,
-      false>
-      submission_queue_;
-  BoundedBufferQ<
-      std::shared_ptr<Task>,
-      std::queue<std::shared_ptr<Task>>,
-      false>
-      runnable_queue_;
-  BoundedBufferQ<
-      std::shared_ptr<Task>,
-      std::queue<std::shared_ptr<Task>>,
-      false>
-      finished_queue_;
-#endif
 };
 
-#if 0
+/**
+ * @brief A scheduler that uses a policy to manage tasks.  Task graph nodes are
+ * submitted to the scheduler, which wraps them up as tasks.  The tasks are
+ * maintain execution state (rather than having nodes do it).  Tasks are what
+ * are actually scheduled.
+ *
+ * @tparam Node The type of the task graph node to be scheduled as a task.
+ */
 template <class Node>
-class ThrowCatchTaskImpl {
-  using scheduler = ThrowCatchScheduler<Node>;
-  scheduler* scheduler_{nullptr};
-  TaskState state_{TaskState::created};
-
-  /** @todo Is there a way to derive from Node to be able to use statements like
-   * `using Node::resume` even though it is a `shared_ptr`? */
-  Node node_;
-
- public:
-  ThrowCatchTaskImpl(const Node& n)
-      : node_{n} {
-  }
-
-  ThrowCatchTaskImpl() = default;
-  ThrowCatchTaskImpl(const ThrowCatchTaskImpl&) = default;
-  ThrowCatchTaskImpl(ThrowCatchTaskImpl&&) = default;
-  ThrowCatchTaskImpl& operator=(const ThrowCatchTaskImpl&) = default;
-  ThrowCatchTaskImpl& operator=(ThrowCatchTaskImpl&&) = default;
-
-  void set_scheduler(scheduler* sched) {
-    scheduler_ = sched;
-  }
-
-  TaskState& task_state() {
-    return state_;
-  }
-
-  void resume() {
-    node_->resume();
-  }
-
-  void decrement_program_counter() {
-    node_->decrement_program_counter();
-  }
-
-  Node* sink_correspondent() const {
-    return node_->sink_correspondent();
-  }
-
-  Node* source_correspondent() const {
-    return node_->source_correspondent();
-  }
-
-  std::string name() const {
-    return node_->name() + " task";
-  }
-
-  auto id() const {
-    return node_->id();
-  }
-
-  virtual ~ThrowCatchTaskImpl() = default;
-
-  void dump_task_state(const std::string msg = "") {
-    std::string preface = (msg != "" ? msg + "\n" : "");
-
-    std::cout << preface + "    " + this->name() + " with id " +
-                     std::to_string(this->id()) + "\n" +
-                     "    state = " + str(this->task_state()) + "\n";
-  }
-};
-
-#else
-
-template <class Node>
-class ThrowCatchTaskImpl : Node {
-  using scheduler = ThrowCatchScheduler<Node>;
-  scheduler* scheduler_{nullptr};
-  TaskState state_{TaskState::created};
-
-  /** @todo Is there a way to derive from Node to be able to use statements like
-   * `using Node::resume` even though it is a `shared_ptr`? */
-  //  Node node_;
-  using node_ = Node;
-
- public:
-  explicit ThrowCatchTaskImpl(const Node& n)
-      : node_{n} {
-  }
-
-  ThrowCatchTaskImpl() = default;
-
-  ThrowCatchTaskImpl(const ThrowCatchTaskImpl&) = default;
-
-  ThrowCatchTaskImpl(ThrowCatchTaskImpl&&) noexcept = default;
-
-  ThrowCatchTaskImpl& operator=(const ThrowCatchTaskImpl&) = default;
-
-  ThrowCatchTaskImpl& operator=(ThrowCatchTaskImpl&&) noexcept = default;
-
-  void set_scheduler(scheduler* sched) {
-    scheduler_ = sched;
-  }
-
-  TaskState& task_state() {
-    return state_;
-  }
-
-  void resume() {
-    (*this)->resume();
-  }
-
-  void decrement_program_counter() {
-    (*this)->decrement_program_counter();
-  }
-
-  Node& sink_correspondent() const {
-    return (*this)->sink_correspondent();
-  }
-
-  Node& source_correspondent() const {
-    return (*this)->source_correspondent();
-  }
-
-  [[nodiscard]] std::string name() const {
-    return (*this)->name() + " task";
-  }
-
-  [[nodiscard]] size_t id() const {
-    return (*this)->id();
-  }
-
-  virtual ~ThrowCatchTaskImpl() = default;
-
-  void dump_task_state(const std::string& msg = "") {
-    std::string preface = (!msg.empty() ? msg + "\n" : "");
-
-    std::cout << preface + "    " + this->name() + " with id " +
-                     std::to_string(this->id()) + "\n" +
-                     "    state = " + str(this->task_state()) + "\n";
-  }
-};
-
-#endif
-
-template <class Node>
-class ThrowCatchTask : public std::shared_ptr<ThrowCatchTaskImpl<Node>> {
-  using Base = std::shared_ptr<ThrowCatchTaskImpl<Node>>;
-
- public:
-  explicit ThrowCatchTask(const Node& n)
-      : Base{std::make_shared<ThrowCatchTaskImpl<Node>>(n)} {
-  }
-
-  ThrowCatchTask() = default;
-
-  ThrowCatchTask(const ThrowCatchTask& rhs) = default;
-
-  ThrowCatchTask(ThrowCatchTask&& rhs) noexcept = default;
-
-  ThrowCatchTask& operator=(const ThrowCatchTask& rhs) = default;
-
-  ThrowCatchTask& operator=(ThrowCatchTask&& rhs) noexcept = default;
-
-  [[nodiscard]] TaskState& task_state() const {
-    return (*this)->task_state();
-  }
-};
-
-template <class Node>
-class ThrowCatchScheduler
-    : public ThrowCatchSchedulerPolicy<ThrowCatchTask<Node>> {
+class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<Task<Node>> {
   using Scheduler = ThrowCatchScheduler<Node>;
-  using Policy = ThrowCatchSchedulerPolicy<ThrowCatchTask<Node>>;
+  using Policy = ThrowCatchSchedulerPolicy<Task<Node>>;
 
  public:
   /* ********************************* */
@@ -619,7 +495,7 @@ class ThrowCatchScheduler
       size_t tries = 3;
       while (tries--) {
         try {
-          tmp = std::thread(&ThrowCatchScheduler::worker, this);
+          tmp = std::thread(&ThrowCatchScheduler::worker, this, i);
         } catch (const std::system_error& e) {
           if (e.code() != std::errc::resource_unavailable_try_again ||
               tries == 0) {
@@ -645,12 +521,11 @@ class ThrowCatchScheduler
   /** Deleted default constructor */
   ThrowCatchScheduler() = delete;
 
+  /** Deleted copy constructor */
   ThrowCatchScheduler(const ThrowCatchScheduler&) = delete;
 
   /** Destructor. */
   ~ThrowCatchScheduler() {
-    if (this->debug())
-      std::cout << "scheduler destructor\n";
     shutdown();
   }
 
@@ -659,45 +534,39 @@ class ThrowCatchScheduler
   /* ********************************* */
 
  public:
+  /**
+   * @brief Get the concurrency level (number of threads in the thread pool) of
+   * the scheduler.
+   *
+   * @returns The concurrency level of the scheduler.
+   */
   size_t concurrency_level() {
     return concurrency_level_;
   }
 
-  std::atomic<bool> debug_{false};
-
-  void enable_debug() {
-    debug_.store(true);
-  }
-
-  void disable_debug() {
-    debug_.store(false);
-  }
-
-  bool debug() {
-    return debug_.load();
-  }
-
  private:
-  /** @todo Need to make ConcurrentMap */
-  ConcurrentMap<Node, ThrowCatchTask<Node>> node_to_task;
-  //  ConcurrentMap<Node, ThrowCatchTask<Node>> port_to_task;
+  /**
+   * @brief A map to convert node ids to tasks.
+   */
+  ConcurrentMap<Node, Task<Node>> node_to_task;
 
  public:
+  /**
+   * @brief Submit a task graph node to the scheduler.  The task create action
+   * is invoked, which results in the wrapped node being put into the
+   * submission queue.
+   *
+   * @param n The task graph node to be submitted.
+   */
   void submit(Node&& n) {
     ++num_submitted_tasks_;
     ++num_tasks_;
 
-    auto t = ThrowCatchTask{n};
-
-    t->set_scheduler(this);
+    auto t = Task<Node>{n};
 
     node_to_task[n] = t;
 
     this->task_create(t);
-
-    if (this->debug()) {
-      t->dump_task_state("Submitting");
-    }
   }
 
   /**
@@ -707,8 +576,6 @@ class ThrowCatchScheduler
    * transferring them from the submitted queue to the runnable queue.
    */
   void sync_wait_all() {
-    std::cout << "Starting sync_wait_all()\n";
-
     /*
      * Swap the submission queue (where all the submitted tasks are) with the
      * runnable queue, making all the tasks runnable.
@@ -716,8 +583,6 @@ class ThrowCatchScheduler
     Policy::launch();
 
     this->make_ready_to_run();
-
-    std::cout << "About to release worker threads\n";
 
     /*
      * Once we have put all tasks into the runnable queue, we release the
@@ -747,18 +612,41 @@ class ThrowCatchScheduler
  private:
   std::atomic<bool> ready_to_run_{false};
 
+  /**
+   * @brief Set the ready_to_run_ flag to true.
+   */
   void make_ready_to_run() {
     ready_to_run_.store(true);
   }
 
+  /**
+   * @brief Get the values of the ready_to_run_ flag.
+   * @returns The value of the ready_to_run_ flag.
+   */
   bool ready_to_run() {
     return ready_to_run_.load();
   }
 
-  /** The worker thread routine */
-  void worker() {
+  /**
+   * @brief The worker thread routine, which is the body of the scheduler and
+   * the main loop of the thread pool (each thread runs this function).
+   *
+   * The primary operation of the worker thread is to get a task and execute it.
+   * Task actions will be invoked in response to port events as used by
+   * execution of the `resume` function in the node.
+   *
+   * Task actions throw exceptions when they are invoked.  The worker function
+   * catches these exceptions and reacts accordingly.  Events handled by the
+   * scheduler are: wait, notify, and exit.
+   *
+   * @param id The id of the thread.  These are assigned on thread creation,
+   * to be used for debugging purposes.  The id is in the range [0,
+   * concurrency_level).
+   */
+  void worker(size_t id = 0) {
     [[maybe_unused]] thread_local static auto scheduler = this;
-    thread_local ThrowCatchTask<Node> this_task{nullptr};
+    thread_local Task<Node> this_task{nullptr};
+    thread_local size_t my_id{id};
 
     /*
      * The worker threads wait on a condition variable until they are released
@@ -770,157 +658,174 @@ class ThrowCatchScheduler
     }
 
     if (num_submitted_tasks_ == 0) {
-      if (this->debug())
-        std::cout << "No submissions, returning\n";
       return;
     }
 
     while (true) {
       {
+        /*
+         * Lock the scheduler mutex.
+         * @todo We might be able to make this more fine grained.
+         */
         std::unique_lock lock(mutex_);
 
+        /*
+         * If all of our tasks are done, then we are done.
+         */
         if (num_exited_tasks_ == num_submitted_tasks_) {
-          if (this->debug()) {
-            std::cout << "Breaking at top of while true with " +
-                             std::to_string(num_exited_tasks_) +
-                             " exited tasks and " +
-                             std::to_string(num_submitted_tasks_) +
-                             " submitted tasks\n";
-            this->dump_queue_state("Breaking at top of while true");
-          }
+          this->done(std::to_string(my_id));
           break;
         }
 
-        if (this->debug())
-          this->dump_queue_state("About to get task");
-
         /*
          * Get a runnable task.
-         * This is a blocking call, unless the queue is finished
+         * This is a blocking call, unless the queue is finished.
+         * We don't want to call this under the lock, because
+         * `get_runnable_task` may block, causing deadlock.  So we release lock.
          */
+        lock.unlock();
         auto val = this->get_runnable_task();
+        lock.lock();
 
+        /*
+         * An empty `val` means that the queue is finished and that the task
+         * graph task is finished.  We can exit the worker thread.
+         */
         if (!val) {
-          if (this->debug())
-            this->dump_queue_state("breaking with empty val");
           break;
         }
 
         auto task_to_run = *val;
+        auto node = (*(task_to_run->node()));
 
-        if (this->debug()) {
-          this->dump_queue_state("Pre dispatch");
-          task_to_run->dump_task_state();
-        }
+        // @todo Do we need to do this?
+        // if (task_to_run->task_state() == TaskState::terminated) {
+        //   this->task_exit(task_to_run);
+        // }
 
         /*
          * Transition task from runnable to running
          */
         this->task_dispatch(task_to_run);
 
-        if (this->debug()) {
-          this->dump_queue_state("Post dispatch");
-          task_to_run->dump_task_state();
-        }
-
         /*
-         * Experimental throw-catch mechanism for cooperative multitasking.
-         *
-         * Executing tasks throw on
+         * Invoke the node's `resume` function.  This is done in a try-catch.
+         * Events invoked by the node are caught and handled by the scheduler.
          */
-
         try {
-          if (this->debug())
-            task_to_run->dump_task_state("About to resume");
-
           lock.unlock();
           task_to_run->resume();
           lock.lock();
-
-          if (this->debug())
-            task_to_run->dump_task_state("Returning from resume");
-
-        } catch (const detail::throw_catch_wait& w) {
+        }
+        /*
+         * Handle the `wait` event.  The scheduler transitions the task to the
+         * waiting state (and puts it on the waiting queue).
+         */
+        catch (const detail::throw_catch_wait& w) {
           lock.lock();
 
-          assert(
-              w.target() == detail::throw_catch_target::sink ||
-              w.target() == detail::throw_catch_target::source);
+          if (!(w.target() == detail::throw_catch_target::sink ||
+                w.target() == detail::throw_catch_target::source)) {
+            throw std::runtime_error("Unknown throw catch target");
+          }
 
-          if (this->debug())
-            task_to_run->dump_task_state("Caught wait");
-
-          this->task_wait(task_to_run);
-
-          if (this->debug())
-            task_to_run->dump_task_state("Post wait");
-
-        } catch (const detail::throw_catch_notify& n) {
+          /*
+           * Check predicates for the wait event, in order to avoid lost
+           * wakeups.
+           */
+          if (((w.target() == detail::throw_catch_target::sink) &&
+               // !is_sink_state_full
+               node->is_sink_state_empty() && !node->is_sink_done() &&
+               !node->is_sink_terminated()) ||
+              ((w.target() == detail::throw_catch_target::source) &&
+               // ! is_source_state_empty
+               node->is_source_state_full() &&
+               !node->is_source_done() /*&& !node->is_source_terminated()*/)) {
+            this->task_wait(task_to_run);
+          } else {
+            node->decrement_program_counter();
+          }
+        }
+        /*
+         * Handle the `notify` event.  A notification is invoked on the
+         * corresponding task in the task graph (where a corresponding task is
+         * the one connected to the current task via an edge.
+         */
+        catch (const detail::throw_catch_notify& n) {
           lock.lock();
 
           assert(
               n.target() == detail::throw_catch_target::sink ||
               n.target() == detail::throw_catch_target::source);
 
-          if (this->debug())
-            task_to_run->dump_task_state("Caught notify");
-
-          /** @note Notification goes to correspondent task of task_to_run */
-          // auto task_to_notify = node_to_task[task_to_run->correspondent()];
-
+          /*
+           * @note Notification goes to correspondent task of task_to_run
+           *  @todo This isn't being done under a lock -- race condition?
+           */
           if (n.target() == detail::throw_catch_target::sink) {
             auto task_to_notify =
                 node_to_task[task_to_run->sink_correspondent()];
+
             this->task_notify(task_to_notify);
-
-            if (this->debug()) {
-              task_to_run->dump_task_state("Post notify");
-              task_to_notify->dump_task_state("Correspondent task");
-            }
-
           } else {
             auto task_to_notify =
                 node_to_task[task_to_run->source_correspondent()];
             this->task_notify(task_to_notify);
-
-            if (this->debug()) {
-              task_to_run->dump_task_state("Post notify");
-              task_to_notify->dump_task_state("Correspondent task");
-            }
           }
-
-        } catch (const detail::throw_catch_exit& ex) {
-          lock.lock();
-
-          if (true || ex.target() == detail::throw_catch_target::source) {
-            if (this->debug()) {
-              task_to_run->dump_task_state("Caught exit");
-              this->dump_queue_state("Caught exit");
-            }
-
-            --num_tasks_;
-            ++num_exited_tasks_;
-            this->task_exit(task_to_run);
-
-            if (this->debug()) {
-              task_to_run->dump_task_state("Post exit");
-              this->dump_queue_state("Post exit");
-            }
-
-            /* Slight optimization to skip call to yield when exiting */
-            continue;
-          } else {
-            std::cout << "*** Caught sink exit\n";
-          }
-
-          // break; // Don't do this
-        } catch (...) {
-          throw;
         }
 
-        if (this->debug()) {
-          this->dump_queue_state("Pre yield");
-          task_to_run->dump_task_state();
+        /*
+         * Handle the `exit` event.  The scheduler transitions the task to the
+         * finished state. If a source is exiting (due to a `term_source` event,
+         * the corresponding sink is notified.
+         */
+        catch (const detail::throw_catch_exit& ex) {
+          lock.lock();
+
+          /*
+           * Term source needs to notify sink of exit
+           */
+          if (ex.target() == detail::throw_catch_target::source) {
+            if (task_to_run->sink_correspondent() != nullptr) {
+              auto task_to_notify =
+                  node_to_task[task_to_run->sink_correspondent()];
+
+              if (task_to_notify == nullptr) {
+                throw std::runtime_error("task_to_notify is null");
+              }
+              this->task_notify(task_to_notify);
+            }
+          }
+
+          /*
+           * Transition task to finished state.
+           */
+          this->task_exit(task_to_run);
+          --num_tasks_;
+          ++num_exited_tasks_;
+
+          if (num_tasks_ + num_exited_tasks_ != num_submitted_tasks_) {
+          };
+
+          /*
+           * The task graph is finished when all submitted tasks have exited.
+           */
+          if (num_exited_tasks_ == num_submitted_tasks_) {
+            this->done(std::to_string(my_id));
+            break;
+          }
+
+          /* Slight optimization to skip call to yield when exiting */
+          continue;
+
+        }
+
+        /*
+         * Catch anything else.  Any other exception is a bug.
+         */
+        catch (const std::exception& e) {
+          std::cout << e.what() << std::endl;
+          throw;
         }
 
         /*
@@ -928,44 +833,26 @@ class ThrowCatchScheduler
          */
         this->task_yield(task_to_run);
 
-        if (this->debug()) {
-          this->dump_queue_state("Post yield");
-          task_to_run->dump_task_state();
-        }
+        /*
+         * @todo Is this check necessary here?
+         */
         if (num_exited_tasks_ == num_submitted_tasks_) {
-          if (this->debug()) {
-            std::cout << "Breaking at bottom of while true with " +
-                             std::to_string(num_exited_tasks_) +
-                             " exited tasks and " +
-                             std::to_string(num_submitted_tasks_) +
-                             " submitted tasks\n";
-            this->dump_queue_state("Breaking at bottom of while true");
-            task_to_run->dump_task_state();
-          }
-
+          this->done(std::to_string(my_id));
           break;
         }
       }  // End lock
     }    // end while(true);
-    if (this->debug())
-      std::cout << "Finished while (true)\n";
+  }      // worker()
 
-  }  // worker()
-
-  /** Terminate threads in the thread pool */
+  /**
+   * @brief Terminate threads in the thread pool
+   */
   void shutdown() {
-    if (this->debug())
-      std::cout << "scheduler shutdown\n";
-
-    /** Clear out any submitted tasks that haven't been put into the scheduler
+    /*
+     * Clear out any submitted tasks that haven't been put into the scheduler
      */
     this->make_ready_to_run();
     start_cv_.notify_all();
-
-    // This doesn't seem to be necessary
-    // All queues should be empty by the time we come to shutdown
-
-    // Policy::p_shutdown();
 
     concurrency_level_.store(0);
 
@@ -997,4 +884,4 @@ class ThrowCatchScheduler
 
 }  // namespace tiledb::common
 
-#endif  // TILEDB_DAG_throw_catch_H
+#endif  // TILEDB_DAG_THROW_CATCH_H

@@ -41,8 +41,8 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/platform/cert_file.h"
 #include "tiledb/sm/filesystem/azure.h"
-#include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
@@ -158,18 +158,18 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   // 'curl_easy_init'. This ensures that our 'thread_pool_' threads
   // will not block on the blob client's internal request queue
   // unless the user is performing concurrent I/O on this instance.
-#ifdef __linux__
+
   // Get CA Cert bundle file from global state. This is initialized and cached
   // if detected. We have only had issues with finding the certificate path on
   // Linux.
-  const std::string cert_file =
-      global_state::GlobalState::GetGlobalState().cert_file();
-  client_ = make_shared<azure::storage_lite::blob_client>(
-      HERE(), account, thread_pool_->concurrency_level(), cert_file);
-#else
-  client_ = make_shared<azure::storage_lite::blob_client>(
-      HERE(), account, static_cast<int>(thread_pool_->concurrency_level()));
-#endif
+  if constexpr (tiledb::platform::PlatformCertFile::enabled) {
+    const std::string cert_file = tiledb::platform::PlatformCertFile::get();
+    client_ = make_shared<azure::storage_lite::blob_client>(
+        HERE(), account, thread_pool_->concurrency_level(), cert_file);
+  } else {
+    client_ = make_shared<azure::storage_lite::blob_client>(
+        HERE(), account, static_cast<int>(thread_pool_->concurrency_level()));
+  }
 
   // The Azure SDK does not provide a way to configure the retry
   // policy or construct a client with our own retry policy. This

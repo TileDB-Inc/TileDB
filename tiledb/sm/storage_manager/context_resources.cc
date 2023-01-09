@@ -1,11 +1,11 @@
 /**
- * @file   libcurl_state.h
+ * @file context_resources.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,29 +27,32 @@
  *
  * @section DESCRIPTION
  *
- This file initializes the libcurl state, if libcurl is present.
+ * This file implements class ContextResources.
  */
 
-#ifndef TILEDB_LIBCURL_STATE_H
-#define TILEDB_LIBCURL_STATE_H
-
-#include "tiledb/common/status.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-namespace global_state {
+namespace tiledb::sm {
 
-/**
- * Initializes any required state for the libcurl library.
- *
- * @return Status
- */
-Status init_libcurl();
+/* ****************************** */
+/*   CONSTRUCTORS & DESTRUCTORS   */
+/* ****************************** */
 
-}  // namespace global_state
-}  // namespace sm
-}  // namespace tiledb
+ContextResources::ContextResources(
+    const Config& config,
+    size_t compute_thread_count,
+    size_t io_thread_count,
+    std::string stats_name)
+    : compute_tp_(compute_thread_count)
+    , io_tp_(io_thread_count)
+    , stats_(make_shared<stats::Stats>(HERE(), stats_name))
+    , vfs_(stats_.get(), &compute_tp_, &io_tp_, config) {
+  /*
+   * Explicitly register our `stats` object with the global.
+   */
+  stats::all_stats.register_stats(stats_);
+}
 
-#endif
+}  // namespace tiledb::sm

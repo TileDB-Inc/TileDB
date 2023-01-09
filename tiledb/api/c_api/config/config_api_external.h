@@ -106,7 +106,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    If `true`, an error will be thrown if there are cells with coordinates
  *    lying outside the domain during sparse fragment writes.  <br>
  *    **Default**: true
- *    `sm.read_range_oob` <br>
+ * - `sm.read_range_oob` <br>
  *    If `error`, this will check ranges for read with out-of-bounds on the
  *    dimension domain's. If `warn`, the ranges will be capped at the
  *    dimension's domain and a warning logged. <br>
@@ -141,8 +141,8 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    `commits` (consolidate all commit files),
  *    `fragments` (consolidate all fragments),
  *    `fragment_meta` (consolidate only fragment metadata footers to a single
- * file), `array_meta` (consolidate array metadata only), or `group_meta`
- * (consolidate group metadata only). <br>
+ *    file), `array_meta` (consolidate array metadata only), or `group_meta`
+ *    (consolidate group metadata only). <br>
  *    **Default**: "fragments"
  * - `sm.consolidation.amplification` <br>
  *    The factor by which the size of the dense fragment resulting
@@ -272,12 +272,22 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The end timestamp used for opening the group. <br>
  *    Also used for the write timestamp if set. <br>
  *    **Default**: UINT64_MAX
+ * -  `sm.partial_tile_offsets_loading`
+ *    **Experimental** <br>
+ *    If `true` tile offsets can be partially loaded and unloaded by the
+ *    readers. <br>
+ *    **Default**: false
  * - `sm.fragment_info.preload_mbrs` <br>
  *    If `true` MBRs will be loaded at the same time as the rest of fragment
  *    info, otherwise they will be loaded lazily when some info related to MBRs
  *    is requested by the user. <br>
  *    **Default**: false
- * -  `vfs.read_ahead_cache_size` <br>
+ * - `sm.partial_tile_offset_loading`
+ *    **Experimental** <br>
+ *    If `true` tile offsets can be partially loaded and unloaded by the
+ *    readers. <br>
+ *    **Default**: false
+ * - `vfs.read_ahead_cache_size` <br>
  *    The the total maximum size of the read-ahead cache, which is an LRU. <br>
  *    **Default**: 10485760
  * - `vfs.min_parallel_size` <br>

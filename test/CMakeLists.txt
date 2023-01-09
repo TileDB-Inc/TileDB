@@ -110,9 +110,12 @@ set(TILEDB_UNIT_TEST_SOURCES
   support/src/ast_helpers.h
   support/src/helpers.h
   support/src/helpers-dimension.h
+  src/test-capi-array-write-ordered-attr-fixed.cc
+  src/test-capi-array-write-ordered-attr-var.cc
   src/test-capi-consolidation-plan.cc
   src/test-capi-query-error-handling.cc
   src/test-cppapi-consolidation-plan.cc
+  src/unit-average-cell-size.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
@@ -216,6 +219,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-query.cc
     src/cpp-integration-query-condition.cc
     src/unit-cppapi-schema.cc
+    src/unit-cppapi-schema-evolution.cc
     src/unit-cppapi-string-dims.cc
     src/unit-cppapi-subarray.cc
     src/unit-cppapi-type.cc
@@ -306,27 +310,14 @@ if (TILEDB_HDFS)
       LibJVM::libjvm
       LibJVM::libjsig
   )
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_HDFS)
   target_include_directories(tiledb_unit PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
     )
 endif()
 
-if (TILEDB_S3)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_S3)
-endif()
-
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
-endif()
-
-if (TILEDB_AZURE)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_AZURE)
-endif()
-
-if (TILEDB_GCS)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_GCS)
 endif()
 
 if (TILEDB_SERIALIZATION)

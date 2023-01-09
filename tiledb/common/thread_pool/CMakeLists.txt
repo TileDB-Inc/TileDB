@@ -40,25 +40,4 @@ commence(object_library thread_pool)
     this_target_object_libraries(baseline)
 conclude(object_library)
 
-if (TILEDB_TESTS)
-    add_executable(unit_thread_pool EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_thread_pool PUBLIC thread_pool)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_thread_pool PUBLIC Catch2::Catch2WithMain)
-    target_link_libraries(unit_thread_pool PUBLIC $<TARGET_OBJECTS:cancelable_tasks>)
-
-    # Sources for code elsewhere required for tests
-    target_sources(unit_thread_pool PUBLIC ${DEPENDENT_SOURCES})
-
-    # Sources for tests
-    target_sources(unit_thread_pool PUBLIC
-            test/main.cc
-            test/unit_thread_pool.cc
-            )
-
-    add_test(
-            NAME "unit_thread_pool"
-            COMMAND $<TARGET_FILE:unit_thread_pool> --durations=yes
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-endif()
+add_test_subdirectory()

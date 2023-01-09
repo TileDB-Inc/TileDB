@@ -49,9 +49,10 @@
 namespace tiledb::common {
 /*
  * Below we just use standard OS scheduling terminology.  For our purposes a
- * "Task" is a node.
+ * "Task" is a node (perhaps wrapped up in another class).
  */
 
+/** Possible states of a task. */
 enum class TaskState {
   created,
   runnable,
@@ -62,25 +63,30 @@ enum class TaskState {
   last
 };
 
+/** Utility function to convert a TaskState to an index. */
 constexpr unsigned short to_index(TaskState x) {
   return static_cast<unsigned short>(x);
 }
-
+/** Strings corresponding to each TaskState. Useful for testing and debugging.
+ */
 namespace {
 std::vector<std::string> task_state_strings{
     "created", "runnable", "running", "waiting", "terminated", "error", "last"};
 }
 
+/** Utility function to convert a TaskState to a string. */
 static inline auto str(TaskState st) {
   return task_state_strings[to_index(st)];
 }
 
+/** Function to test validity of a state variable. */
 constexpr unsigned short num_task_states = to_index(TaskState::last) + 1;
 static inline bool is_valid_state(TaskState st) {
   return to_index(st) >= to_index(TaskState::created) &&
          to_index(st) < to_index(TaskState::last);
 }
 
+/** Possible events that can cause a task state transition. */
 enum class TaskEvent {
   create,
   admit,
@@ -92,23 +98,30 @@ enum class TaskEvent {
   last
 };
 
+/** Utility function to convert a TaskEvent to an index. */
 constexpr unsigned short to_index(TaskEvent x) {
   return static_cast<unsigned short>(x);
 }
 
+/** Strings corresponding to each TaskEvent. Useful for testing and debugging.
+ */
 namespace {
 std::vector<std::string> task_event_strings{
     "create", "admit", "dispatch", "wait", "notify", "exit", "yield", "last"};
 }
+
+/** Utility function to convert a TaskEvent to a string. */
 static inline auto str(TaskEvent st) {
   return task_event_strings[to_index(st)];
 }
 
+/** Function to test validity of an event variable. */
 static inline bool is_valid_event(TaskEvent st) {
   return to_index(st) >= to_index(TaskEvent::create) &&
          to_index(st) < to_index(TaskEvent::last);
 }
 
+/** Possible actions that can be taken when a task state transition occurs. */
 enum class TaskAction {
   none,
   create,
@@ -124,10 +137,13 @@ enum class TaskAction {
   last
 };
 
+/** Utility function to convert a TaskAction to an index. */
 constexpr unsigned short to_index(TaskAction ac) {
   return static_cast<unsigned short>(ac);
 }
 
+/** Strings corresponding to each TaskAction. Useful for testing and debugging.
+ */
 namespace {
 std::vector<std::string> task_action_strings{"none",
                                              "create",
@@ -142,8 +158,16 @@ std::vector<std::string> task_action_strings{"none",
                                              "terminate",
                                              "last"};
 }
+
+/** Utility function to convert a TaskAction to a string. */
 static inline auto str(TaskAction ac) {
   return task_action_strings[to_index(ac)];
+}
+
+/** Function to test validity of an action variable. */
+static inline bool is_valid_event(TaskAction st) {
+  return to_index(st) >= to_index(TaskAction::create) &&
+         to_index(st) < to_index(TaskAction::last);
 }
 
 constexpr unsigned short num_task_events = to_index(TaskEvent::last) + 1;
@@ -161,39 +185,228 @@ namespace detail {
     // last };
     // enum class TaskEvent { admit, dispatch, wait, notify, exit, yield, last
     // };
+    // clang-format on
+    /* state      */ /* create */ /* admit */ /* dispatch */ /* wait */
+    /* notify */ /* exit */                                  /* yield */
+    /* created    */ {
+        TaskState::created,
+        TaskState::runnable,
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+    },
+    /* runnable   */
+    {
+        TaskState::error,
+        TaskState::error,
+        TaskState::running,
+        TaskState::waiting,
+        TaskState::runnable,
+        TaskState::terminated,
+        TaskState::error,
+    },
+    /* running    */
+    {
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+        TaskState::waiting,
+        TaskState::running,
+        TaskState::terminated,
+        TaskState::runnable,
+    },
+    /* waiting    */
+    {
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+        TaskState::runnable,
+        TaskState::error,
+        TaskState::waiting,
+    },
+    /* terminated */
+    {
+        TaskState::error,
+        TaskState::error,
+        TaskState::terminated,
+        TaskState::error,
+        TaskState::terminated,
+        TaskState::error,
+        TaskState::terminated,
+    },
+    /* error      */
+    {
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+    },
+    /* last       */
+    {
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+        TaskState::error,
+    },
 
-    /* state      */   /* create */         /* admit */          /* dispatch */      /* wait */          /* notify */         /* exit */             /* yield */
-    /* created    */ { TaskState::created,  TaskState::runnable, TaskState::error,   TaskState::error,   TaskState::error,    TaskState::error,      TaskState::error,   },
-    /* runnable   */ { TaskState::error,    TaskState::error,    TaskState::running, TaskState::waiting, TaskState::runnable, TaskState::terminated,      TaskState::error,   },
-    /* running    */ { TaskState::error,    TaskState::error,    TaskState::error,   TaskState::waiting, TaskState::running,  TaskState::terminated, TaskState::runnable,},
-    /* waiting    */ { TaskState::error,    TaskState::error,    TaskState::error,   TaskState::error,   TaskState::runnable, TaskState::error,      TaskState::waiting, },
-    /* terminated */ { TaskState::error,    TaskState::error,    TaskState::terminated, TaskState::error,   TaskState::error,    TaskState::error,      TaskState::terminated,   },
-    /* error      */ { TaskState::error,    TaskState::error,    TaskState::error,   TaskState::error,   TaskState::error,    TaskState::error,      TaskState::error,   },
-    /* last       */ { TaskState::error,    TaskState::error,    TaskState::error,   TaskState::error,   TaskState::error,    TaskState::error,      TaskState::error,   },
+};
 
-  };
+constexpr const TaskAction exit_table[num_task_states][num_task_events]{
+    /* state      */ /* create */ /* admit */ /* dispatch */ /* wait */
+    /* notify */ /* exit */                                  /* yield */
+    /* created    */ {
+        TaskAction::none,
+        TaskAction::stop_create,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+    },
+    /* runnable   */
+    {
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::stop_runnable,
+        TaskAction::stop_runnable /*none*/,
+        TaskAction::ac_return,
+        TaskAction::none,
+        TaskAction::none,
+    },
+    /* running    */
+    {
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::stop_running,
+        TaskAction::ac_return /*none*/,
+        TaskAction::stop_running,
+        TaskAction::stop_running,
+    },
+    /* waiting    */
+    {
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::stop_waiting,
+        TaskAction::none,
+        TaskAction::none,
+    },
+    /* terminated */
+    {
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::stop_runnable,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+    },
+    /* error      */
+    {
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+    },
+    /* last       */
+    {
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+    },
+};
 
-  constexpr const TaskAction exit_table[num_task_states][num_task_events]{
-    /* state      */   /* create */               /* admit */                /* dispatch */             /* wait */                /* notify */               /* exit */                   /* yield */
-    /* created    */ { TaskAction::none,          TaskAction::stop_create,   TaskAction::none,          TaskAction::none,         TaskAction::none,          TaskAction::none,            TaskAction::none,         },
-    /* runnable   */ { TaskAction::none,          TaskAction::none,          TaskAction::stop_runnable, TaskAction::none,         TaskAction::ac_return,     TaskAction::none,            TaskAction::none,         },
-    /* running    */ { TaskAction::none,          TaskAction::none,          TaskAction::none,          TaskAction::stop_running, TaskAction::none,          TaskAction::stop_running,    TaskAction::stop_running, },
-    /* waiting    */ { TaskAction::none,          TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::stop_waiting,  TaskAction::none,            TaskAction::none,         },
-    /* terminated */ { TaskAction::none,          TaskAction::none,          TaskAction::stop_runnable, TaskAction::none,         TaskAction::none,          TaskAction::none,            TaskAction::none,         },
-    /* error      */ { TaskAction::none,          TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::none,          TaskAction::none,            TaskAction::none,         },
-    /* last       */ { TaskAction::none,          TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::none,          TaskAction::none,            TaskAction::none,         },
-  };
-
-  constexpr const TaskAction entry_table[num_task_states][num_task_events]{
-    /* state      */   /* create */               /* admit */                /* dispatch */            /* wait */                /* notify */               /* exit */                  /* yield */
-    /* created    */ { TaskAction::create,        TaskAction::none,          TaskAction::none,         TaskAction::none,         TaskAction::none,          TaskAction::none,           TaskAction::none,          },
-    /* runnable   */ { TaskAction::none,          TaskAction::make_runnable, TaskAction::none,         TaskAction::none,         TaskAction::make_runnable, TaskAction::none,           TaskAction::make_runnable, },
-    /* running    */ { TaskAction::none,          TaskAction::none,          TaskAction::make_running, TaskAction::none,         TaskAction::none,          TaskAction::none,           TaskAction::none,          },
-    /* waiting    */ { TaskAction::none,          TaskAction::none,          TaskAction::make_waiting, TaskAction::make_waiting, TaskAction::none,          TaskAction::none,           TaskAction::none,          },
-    /* terminated */ { TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::none,         TaskAction::none,          TaskAction::terminate,      TaskAction::none,          },
-    /* error      */ { TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::none,         TaskAction::none,          TaskAction::none,           TaskAction::none,          },
-    /* last       */ { TaskAction::none,          TaskAction::none,          TaskAction::none,         TaskAction::none,         TaskAction::none,          TaskAction::none,           TaskAction::none,          },
-  };
+constexpr const TaskAction entry_table[num_task_states][num_task_events]{
+    /* state      */ /* create */ /* admit */ /* dispatch */ /* wait */
+    /* notify */ /* exit */                                  /* yield */
+    /* created    */ {
+        TaskAction::create,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+    },
+    /* runnable   */
+    {
+        TaskAction::none,
+        TaskAction::make_runnable,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::make_runnable,
+        TaskAction::none,
+        TaskAction::make_runnable,
+    },
+    /* running    */
+    {
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::make_running,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+    },
+    /* waiting    */
+    {
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::make_waiting,
+        TaskAction::make_waiting,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+    },
+    /* terminated */
+    {
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::terminate,
+        TaskAction::none,
+    },
+    /* error      */
+    {
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+    },
+    /* last       */
+    {
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+        TaskAction::none,
+    },
+};
 // clang-format on
 }  // namespace detail
 
@@ -207,6 +420,11 @@ class EmptySchedulerPolicy;
 template <typename T>
 struct SchedulerTraits;
 
+/**
+ * A state machine for managing task state transitions.
+ * @tparam Policy Class providing actual actions associated with state
+ * transitions.
+ */
 template <class Policy>
 class SchedulerStateMachine {
   std::mutex mutex_;
@@ -216,20 +434,39 @@ class SchedulerStateMachine {
   using task_handle_type = typename SchedulerTraits<Policy>::task_handle_type;
   using lock_type = std::unique_lock<std::mutex>;
 
+  /**
+   * Default constructor.
+   */
   SchedulerStateMachine() = default;
 
+  /**
+   * Default move constructor.
+   */
   SchedulerStateMachine(SchedulerStateMachine&&) noexcept = default;
 
+  /**
+   * Nonsense copy constructor, needed so that the `SchedulerStateMachine`
+   * meets movable concept requirements.
+   */
   SchedulerStateMachine(const SchedulerStateMachine&) {
     std::cout << "Nonsense copy constructor" << std::endl;
   }
 
  protected:
+  /**
+   * @brief Main function for transitioning a task to a new state.
+   * @param event
+   * @param task
+   */
   void event(TaskEvent event, task_handle_type& task, const std::string&) {
     std::unique_lock lock(mutex_);
 
-    assert(is_valid_state(task->task_state()));
-    assert(is_valid_event(event));
+    if (!is_valid_state(task->task_state())) {
+      throw std::runtime_error("Invalid state: " + str(task->task_state()));
+    }
+    if (!is_valid_event(event)) {
+      throw std::runtime_error("Invalid event: " + str(event));
+    }
 
     auto next_state =
         detail::transition_table[to_index(task->task_state())][to_index(event)];
@@ -240,9 +477,24 @@ class SchedulerStateMachine {
     auto entry_action{
         detail::entry_table[to_index(next_state)][to_index(event)]};
 
-    // assert(next_state != TaskState::error);
-    // CHECK(next_state != TaskState::error);
+    if (next_state == TaskState::error) {
+      auto msg = "Invalid state --  event: " + str(event) +
+                 ", state: " + str(task->task_state()) +
+                 ", next_state: " + str(next_state) +
+                 ", exit_action: " + str(exit_action) +
+                 ", entry_action: " + str(entry_action);
+      throw std::runtime_error(msg);
+    }
+    if (task->task_state() == TaskState::error) {
+      auto msg = "Invalid state --  event: " + str(event) +
+                 ", state: " + str(task->task_state()) +
+                 ", next_state: " + str(next_state) +
+                 ", exit_action: " + str(exit_action) +
+                 ", entry_action: " + str(entry_action);
+      throw std::runtime_error(msg);
+    }
 
+    /* Process actions.  Should be self-explanatory. */
     switch (exit_action) {
       case TaskAction::none:
         break;
@@ -293,8 +545,10 @@ class SchedulerStateMachine {
         throw(std::logic_error("Bad action"));
     }
 
+    /* Make the actual state transition. */
     task->task_state() = next_state;
 
+    /* Process actions.  Should be self-explanatory. */
     switch (entry_action) {
       case TaskAction::none:
         break;
@@ -355,9 +609,10 @@ class SchedulerStateMachine {
     debug_ = false;
   }
 
-  bool debug() {
+  bool debug_enabled() {
     return debug_;
   }
+
   void task_create(task_handle_type& task) {
     event(TaskEvent::create, task, "");
   }
@@ -371,6 +626,8 @@ class SchedulerStateMachine {
   }
 
   void task_wait(task_handle_type& task) {
+    // auto node = (*(task->node()));
+
     event(TaskEvent::wait, task, "");
   }
 
@@ -387,50 +644,15 @@ class SchedulerStateMachine {
   }
 };
 
-#if 0
-
-template <class Task>
-class SchedulerBase {
- public:
-  //    template <class C>
-  //    virtual void submit(C&) = 0;
-  virtual void wait(Task*) = 0;
-  virtual void notify(Task*) = 0;
-  virtual void yield(Task*) = 0;
-
-    void enable_debug() {
-      debug_.store(true);
-    }
-
-    void disable_debug() {
-      debug_.store(false);
-    }
-
-    bool debug() {
-      return debug_.load();
-    }
- protected:
-  void make_ready_to_run() {
-    ready_to_run_.store(true);
-  }
-
-  bool ready_to_run() {
-    return ready_to_run_.load();
-  }
-
- private:
-  std::atomic<bool> debug_{false};
-  std::atomic<bool> ready_to_run_{false};
-};
-
-#endif
-
 template <typename T>
 struct SchedulerTraits<EmptySchedulerPolicy<T>> {
   using task_type = T;
   using task_handle_type = T;
 };
 
+/**
+ * Rump scheduler policy.  Useful for testing.
+ */
 template <class Task>
 class EmptySchedulerPolicy
     : public SchedulerStateMachine<EmptySchedulerPolicy<Task>> {
@@ -473,6 +695,9 @@ struct SchedulerTraits<DebugSchedulerPolicy<T>> {
   using task_handle_type = typename DebugSchedulerPolicy<T>::task_handle_type;
 };
 
+/**
+ * Rump scheduler policy. Useful for testing.
+ */
 template <class Task>
 class DebugSchedulerPolicy
     : public SchedulerStateMachine<DebugSchedulerPolicy<Task>> {
