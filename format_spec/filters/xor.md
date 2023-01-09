@@ -2,7 +2,7 @@
 title: XOR Filter
 ---
 
-The XOR filter applies the XOR operation sequentally to the input data, in chunks of 1-4 bytes, depending on the `sizeof` the attribute's type representation. For example, given `data` as a NumPy int64 array:
+The XOR filter applies the XOR operation sequentially to the input data, in chunks of 1-4 bytes, depending on the `sizeof` the attribute's type representation. For example, given `data` as a NumPy int64 array:
 
   ```
   data = np.random.rang(npts)

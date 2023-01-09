@@ -31,5 +31,5 @@ The group member is the content inside a [group](./group.md)
 | Version | `uint32_t` | Format version number of the group member |
 | Object type | `uint8_t` | Object type of the member |
 | Relative | `uint8_t` | Is the URI relative to the group |
-| URI length | `uint32_t` | Number of characters in uri |
+| URI length | `uint32_t` | Number of characters in URI |
 | URI | `uint8_t[]` | URI character array |
