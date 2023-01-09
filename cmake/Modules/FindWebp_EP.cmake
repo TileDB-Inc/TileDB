@@ -2,7 +2,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,14 +25,52 @@
 # Fetches and builds libwebp for use by tiledb.
 
 # Include some common helper functions.
+include(FindPackageHandleStandardArgs)
 include(TileDBCommon)
 
-if (TILEDB_WEBP_EP_BUILT)
-  find_package(WebP REQUIRED PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
+if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_WEBP_EP_BUILT)
+  find_package(WebP QUIET PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
+endif()
+
+# If WebP is not built and installed via CMake (i.e., when installed
+# via Homebrew on macOS) there is no WebPConfig.cmake file installed
+# which prevents CMake's `find_package` from discovering WebP.
+# These `find_{path|library}` checks will locate a system libwebp
+# if one exists.
+if (NOT WebP_FOUND AND NOT TILEDB_FORCE_ALL_DEPS)
+  find_library(WEBP_LIBRARIES
+    NAMES
+      ${CMAKE_STATIC_LIBRARY_PREFIX}webp${CMAKE_STATIC_LIBRARY_SUFFIX}
+  )
+  find_library(WEBPDECODER_LIBRARIES
+    NAMES
+      ${CMAKE_STATIC_LIBRARY_PREFIX}webpdecoder${CMAKE_STATIC_LIBRARY_SUFFIX}
+  )
+  find_library(WEBPDEMUX_LIBRARIES
+    NAMES
+      ${CMAKE_STATIC_LIBRARY_PREFIX}webpdemux${CMAKE_STATIC_LIBRARY_SUFFIX}
+  )
+  find_library(WEBPMUX_LIBRARIES
+    NAMES
+      ${CMAKE_STATIC_LIBRARY_PREFIX}webpmux${CMAKE_STATIC_LIBRARY_SUFFIX}
+  )
+  find_path(WEBP_INCLUDE_DIR
+    NAMES webp/decode.h
+    PATH_SUFFIXES include
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
+  FIND_PACKAGE_HANDLE_STANDARD_ARGS(WebP
+    REQUIRED_VARS
+      WEBP_LIBRARIES
+      WEBPDECODER_LIBRARIES
+      WEBPDEMUX_LIBRARIES
+      WEBPMUX_LIBRARIES
+      WEBP_INCLUDE_DIR
+  )
 endif()
 
 # if not yet built add it as an external project
-if(NOT TILEDB_WEBP_EP_BUILT)
+if(NOT WebP_FOUND)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Webp as an external project")
 
@@ -78,8 +116,40 @@ if(NOT TILEDB_WEBP_EP_BUILT)
   endif()
 endif()
 
+if (WebP_FOUND AND NOT TARGET WebP::webp)
+  add_library(WebP::webp UNKNOWN IMPORTED)
+  set_target_properties(WebP::webp PROPERTIES
+    IMPORTED_LOCATION "${WEBP_LIBRARIES}"
+    INTERFACE_INCLUDE_DIRECTORIES "${WEBP_INCLUDE_DIR}"
+  )
+endif()
+
+if (WebP_FOUND AND NOT TARGET WebP::webpdecoder)
+  add_library(WebP::webpdecoder UNKNOWN IMPORTED)
+  set_target_properties(WebP::webpdecoder PROPERTIES
+    IMPORTED_LOCATION "${WEBPDECODER_LIBRARIES}"
+    INTERFACE_INCLUDE_DIRECTORIES "${WEBP_INCLUDE_DIR}"
+  )
+endif()
+
+if (WebP_FOUND AND NOT TARGET WebP::webpdemux)
+  add_library(WebP::webpdemux UNKNOWN IMPORTED)
+  set_target_properties(WebP::webpdemux PROPERTIES
+    IMPORTED_LOCATION "${WEBPDEMUX_LIBRARIES}"
+    INTERFACE_INCLUDE_DIRECTORIES "${WEBP_INCLUDE_DIR}"
+  )
+endif()
+
+if (WebP_FOUND AND NOT TARGET WebP::webpmux)
+  add_library(WebP::webpmux UNKNOWN IMPORTED)
+  set_target_properties(WebP::webpmux PROPERTIES
+    IMPORTED_LOCATION "${WEBPMUX_LIBRARIES}"
+    INTERFACE_INCLUDE_DIRECTORIES "${WEBP_INCLUDE_DIR}"
+  )
+endif()
+
 # Always building static EP, install it..
-if (TILEDB_WEBP_EP_BUILT)
+if (TILEDB_WEBP_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
   # One install_target_libs() with all of these was only installing the first item.
   install_target_libs(WebP::webp)
   install_target_libs(WebP::webpdecoder)
