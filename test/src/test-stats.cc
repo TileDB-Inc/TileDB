@@ -41,6 +41,11 @@
 #include <string>
 
 using namespace tiledb::sm::stats;
+// redefine the globally defined name normally used in effort to have 
+// compiler alert if referenced in this module.
+int all_stats = 0;
+// tests here are to use a local definition of GlobalStats rather than the global one.
+static tiledb::sm::stats::GlobalStats pseudo_all_stats;
 
 static std::string empty_dumped_stats = { "[\n\n]\n" };
 // Currently there are no stats that are always present.
@@ -54,27 +59,27 @@ TEST_CASE("Stats inferred registration handling, direct method calls", "[stats]"
   // Examine stats output as a reflection of whether allocations might be held beyond a destruction.
 
   std::string dumped_stats;
-  all_stats.dump(&dumped_stats);
+  pseudo_all_stats.dump(&dumped_stats);
   CHECK(dumped_stats == base_dumped_stats);
 
   {
     std::shared_ptr<Stats> stats { make_shared<Stats>(HERE(), "Test") };
     
-    all_stats.register_stats(stats);
+    pseudo_all_stats.register_stats(stats);
 
-    all_stats.dump(&dumped_stats);
+    pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
 
     stats->create_child("childstats");
-    all_stats.dump(&dumped_stats);
+    pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
 
     stats->add_counter("testcounter", 1);
-    all_stats.dump(&dumped_stats);
+    pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats != base_dumped_stats);
   }  
 
-  all_stats.dump(&dumped_stats);
+  pseudo_all_stats.dump(&dumped_stats);
   CHECK(dumped_stats == base_dumped_stats);
 }
 
@@ -83,81 +88,70 @@ TEST_CASE("Stats registration handling, indirect via Context", "[stats][context]
   // whether data allocations might be held beyond a reset and/or registrant destruction.
   
   std::string dumped_stats;
-  all_stats.dump(&dumped_stats);
+  pseudo_all_stats.dump(&dumped_stats);
   CHECK(dumped_stats == base_dumped_stats);
   
   {
-    // class Context registers a GlobalStats entity.
-    tiledb::Context ctx;
     // Nothing has been done to generate stats, should still be base.
-    all_stats.dump(&dumped_stats);
+    pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
   }
 
   // should still be base after Context gone
-  all_stats.dump(&dumped_stats);
+  pseudo_all_stats.dump(&dumped_stats);
   CHECK(dumped_stats == base_dumped_stats);
 
   // Similar to above, but this time exerciase another item that 
   // should populate some stats.
   {
-
-    // class Context registers a GlobalStats entity.
-    tiledb::Context ctx;
     // Nothing has been done to generate stats, should still be base.
-    all_stats.dump(&dumped_stats);
+    pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
 
-    // Now set up for and performs stats generating action.
+    // Now set up for and performs stats generating actions.
 
-    // ...
-    auto stats = ctx.ptr()->storage_manager()->stats();
-    auto compute_tp = ctx.ptr()->storage_manager()->compute_tp();
-    auto io_tp = ctx.ptr()->storage_manager()->io_tp();
-    auto ctx_config = ctx.ptr()->storage_manager()->config();
-    // construction invokes a stats->create_child()
-    tiledb::sm::VFS vfs(stats, compute_tp, io_tp, ctx_config);
+    std::shared_ptr<Stats> stats = make_shared<Stats>(HERE(), "test_stats");
+    Stats* stats_{stats->create_child("TestStats")};
+    pseudo_all_stats.register_stats(stats);
     
     // Stats still base.
-    all_stats.dump(&dumped_stats);
+    pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
 
-    bool does_it_exist = false;
-    std::string irrelevant_filename =
-        "not.expected.to.exist.but.doesnt.matter.if.does";
-    tiledb::sm::URI uri(irrelevant_filename);
-    // .is_file() actually adds a counter to the stats.
-    CHECK(vfs.is_file(uri, &does_it_exist).ok());
+    stats_->add_counter("file_size_num", 1);
+    stats_->add_counter("is_object_num", 1);
+
     // Stats should no longer be base.
-    all_stats.dump(&dumped_stats);
+    pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats != base_dumped_stats);
 
-  // Perform reset of any remaining stats and remove any
+    // Perform reset of any remaining stats and remove any
     // previously registered stats for already destructed registrants.
-    all_stats.reset();
-    all_stats.dump(&dumped_stats);
+    pseudo_all_stats.reset();
+    pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
 
     // Populate it again, to be sure it's missing after we exit block and
     // original (Context ctx) registered stats were destroyed.
-    CHECK(vfs.is_file(uri, &does_it_exist).ok());
+    stats_->add_counter("is_object_num", 1);
+    stats_->add_counter("file_size_num", 1);
 
     // check again that it's not at base level.
-    all_stats.dump(&dumped_stats);
+    pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats != base_dumped_stats);
   }
 
   // Registered stats only knows about weak_ptr, original registered stats
   // is gone and output is now again base level.
-  all_stats.dump(&dumped_stats);
+  pseudo_all_stats.dump(&dumped_stats);
   CHECK(dumped_stats == base_dumped_stats);
 
   // Perform reset of any remaining stats (none in this test) and remove
   // previously registered stats for already destructed registrants.
-  all_stats.reset();
+  pseudo_all_stats.reset();
 
   // Stats should still be base level.
-  all_stats.dump(&dumped_stats);
+  pseudo_all_stats.dump(&dumped_stats);
   CHECK(dumped_stats == base_dumped_stats);
   
 }

@@ -34,6 +34,7 @@ set(SOURCES
   targets/sc-12024.cc
   targets/sc-15387.cc
   targets/sc-18836.cc
+  targets/sc-23712.cc
 )
 
 if (TILEDB_SERIALIZATION)
@@ -59,6 +60,7 @@ target_link_libraries(tiledb_regression
     Catch2::Catch2WithMain
     local_install
     tiledb_shared
+#     tiledb_static
 )
 
 target_include_directories(tiledb_regression
