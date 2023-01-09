@@ -354,7 +354,7 @@ target_compile_definitions(tiledb_unit PRIVATE
 )
 
 # Linking dl is only needed on linux with gcc
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set_target_properties(tiledb_unit PROPERTIES
       LINK_FLAGS "-Wl,--no-as-needed -ldl"
     )
