@@ -60,13 +60,13 @@ class QueryCondition {
   /* ********************************* */
 
   /** Default constructor. */
-  QueryCondition();
+  explicit QueryCondition() = default;
 
   /** Constructor from a marker. */
   QueryCondition(const std::string& condition_marker);
 
   /** Constructor from a tree. */
-  QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree);
+  QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree) noexcept;
 
   /** Constructor from a tree and marker. */
   QueryCondition(
@@ -78,7 +78,7 @@ class QueryCondition {
   QueryCondition(const QueryCondition& rhs);
 
   /** Move constructor. */
-  QueryCondition(QueryCondition&& rhs);
+  QueryCondition(QueryCondition&& rhs) noexcept;
 
   /** Destructor. */
   ~QueryCondition();
@@ -91,7 +91,7 @@ class QueryCondition {
   QueryCondition& operator=(const QueryCondition& rhs);
 
   /** Move-assignment operator. */
-  QueryCondition& operator=(QueryCondition&& rhs);
+  QueryCondition& operator=(QueryCondition&& rhs) noexcept;
 
   /* ********************************* */
   /*                API                */
@@ -239,7 +239,6 @@ class QueryCondition {
   /* ********************************* */
 
 
-
   /**
    * Performs a binary comparison between two primitive types.
    * We use a `struct` here because it can support partial
@@ -248,26 +247,7 @@ class QueryCondition {
    * Note that this comparator includes if statements that will
    * prevent vectorization.
    */
-  template <typename T, typename Cmp = std::less<T>, typename E = void>
-  struct BinaryCmpNullChecks_T;
-
-  /**
-   * Performs a binary comparison between two primitive types.
-   * We use a `struct` here because it can support partial
-   * template specialization while a standard function does not.
-   */
-  template <typename T, typename Cmp = std::less<T>, typename E = void>
-  struct BinaryCmp_T;
-
-  /**
-   * Performs a binary comparison between two primitive types.
-   * We use a `struct` here because it can support partial
-   * template specialization while a standard function does not.
-   *
-   * Note that this comparator includes if statements that will
-   * prevent vectorization.
-   */
-  template <typename T, QueryConditionOp Op>
+  template <typename T, typename Op, typename E = void>
   struct BinaryCmpNullChecks;
 
   /**
@@ -275,7 +255,7 @@ class QueryCondition {
    * We use a `struct` here because it can support partial
    * template specialization while a standard function does not.
    */
-  template <typename T, QueryConditionOp Op>
+  template <typename T, typename Op, typename E = void>
   struct BinaryCmp;
 
 
@@ -299,15 +279,6 @@ class QueryCondition {
   /* ********************************* */
 
 
-    template <class T>
-    struct dont_deduce
-    {
-      using type = T;
-    };
-
-    template <class T>
-    using dont_deduce_t = typename dont_deduce<T>::type;
-
   /**
    * Applies a value node on primitive-typed result cell slabs,
    * templated for a query condition operator.
@@ -322,14 +293,6 @@ class QueryCondition {
    * @param result_cell_bitmap The input cell bitmap.
    * @return The filtered cell slabs.
    */
-
-    template <class... Ts>
-    struct print_types_t;
-
-    template <class... Ts>
-    constexpr auto print_types(Ts...) {
-      return print_types_t<Ts...>{};
-    }
 
   template <typename T, typename Op, typename CombinationOp>
   void apply_ast_node(
@@ -436,7 +399,7 @@ class QueryCondition {
       const uint64_t stride,
       const bool var_size,
       const bool nullable,
-      dont_deduce_t<CombinationOp> combination_op,
+      typename std::common_type_t<CombinationOp> combination_op,
       span<uint8_t> result_buffer) const;
 
   /**
