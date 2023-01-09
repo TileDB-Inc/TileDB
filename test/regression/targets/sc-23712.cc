@@ -95,8 +95,8 @@ TEST_CASE(
       // check again that it's not at base level.
       check_stats_is_not(base_dumped_stats);
 
-      //'ctx' is destructed at end of block and registered stats should be
-      //released.
+      // 'ctx' is destructed at end of block and registered stats should be
+      // released.
     }
 
     // Registered stats only knows about weak_ptr, original registered stats
