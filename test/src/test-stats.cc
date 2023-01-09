@@ -55,32 +55,43 @@ static std::string empty_dumped_stats = { "[\n\n]\n" };
 // than the output being totally 'empty'.
 static std::string base_dumped_stats = empty_dumped_stats;
 
-TEST_CASE("Stats inferred registration handling, direct method calls", "[stats]") {
+TEST_CASE("Stats registration handling via direct method calls", "[stats]") {
   // Examine stats output as a reflection of whether allocations might be held beyond a destruction.
 
   std::string dumped_stats;
-  pseudo_all_stats.dump(&dumped_stats);
-  CHECK(dumped_stats == base_dumped_stats);
 
-  {
-    std::shared_ptr<Stats> stats { make_shared<Stats>(HERE(), "Test") };
-    
-    pseudo_all_stats.register_stats(stats);
+  SECTION(" - baseline of no stats") {
+    // If this fails, look for something else in overall test program that may
+    // have generated stats in a fashion that they were not cleaned up, most
+    // likely something creating and keeping a Context active outside of these
+    // tests.
+    pseudo_all_stats.dump(&dumped_stats);
+    CHECK(dumped_stats == base_dumped_stats);
+  }
+
+  SECTION(" - create local stats, verify that its released") {
+    {
+      std::shared_ptr<Stats> stats{make_shared<Stats>(HERE(), "Test")};
+
+      pseudo_all_stats.register_stats(stats);
+
+      pseudo_all_stats.dump(&dumped_stats);
+      CHECK(dumped_stats == base_dumped_stats);
+
+      stats->create_child("childstats");
+      pseudo_all_stats.dump(&dumped_stats);
+      CHECK(dumped_stats == base_dumped_stats);
+
+      stats->add_counter("testcounter", 1);
+      pseudo_all_stats.dump(&dumped_stats);
+      CHECK(dumped_stats != base_dumped_stats);
+
+      // 'stats' destroyed, should no longer be active as registered item.
+    }
 
     pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
-
-    stats->create_child("childstats");
-    pseudo_all_stats.dump(&dumped_stats);
-    CHECK(dumped_stats == base_dumped_stats);
-
-    stats->add_counter("testcounter", 1);
-    pseudo_all_stats.dump(&dumped_stats);
-    CHECK(dumped_stats != base_dumped_stats);
-  }  
-
-  pseudo_all_stats.dump(&dumped_stats);
-  CHECK(dumped_stats == base_dumped_stats);
+  }
 }
 
 TEST_CASE("Stats registration handling, indirect via Context", "[stats][context]") {
@@ -88,63 +99,63 @@ TEST_CASE("Stats registration handling, indirect via Context", "[stats][context]
   // whether data allocations might be held beyond a reset and/or registrant destruction.
   
   std::string dumped_stats;
-  pseudo_all_stats.dump(&dumped_stats);
-  CHECK(dumped_stats == base_dumped_stats);
+
+  SECTION(" - baseline of no stats") {
+    pseudo_all_stats.dump(&dumped_stats);
+    CHECK(dumped_stats == base_dumped_stats);
   
-  {
     // Nothing has been done to generate stats, should still be base.
     pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
   }
 
-  // should still be base after Context gone
-  pseudo_all_stats.dump(&dumped_stats);
-  CHECK(dumped_stats == base_dumped_stats);
-
-  // Similar to above, but this time exerciase another item that 
+  // Similar to above, but this do something that 
   // should populate some stats.
-  {
+  SECTION(" - verify stats generated and then released") {
     // Nothing has been done to generate stats, should still be base.
     pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
 
-    // Now set up for and performs stats generating actions.
+    {
+      // Now set up for and performs stats generating actions.
 
-    std::shared_ptr<Stats> stats = make_shared<Stats>(HERE(), "test_stats");
-    Stats* stats_{stats->create_child("TestStats")};
-    pseudo_all_stats.register_stats(stats);
-    
-    // Stats still base.
+      std::shared_ptr<Stats> stats = make_shared<Stats>(HERE(), "test_stats");
+      Stats* stats_{stats->create_child("TestStats")};
+      pseudo_all_stats.register_stats(stats);
+
+      // Stats still base.
+      pseudo_all_stats.dump(&dumped_stats);
+      CHECK(dumped_stats == base_dumped_stats);
+
+      stats_->add_counter("file_size_num", 1);
+      stats_->add_counter("is_object_num", 1);
+
+      // Stats should no longer be base.
+      pseudo_all_stats.dump(&dumped_stats);
+      CHECK(dumped_stats != base_dumped_stats);
+
+      // Perform reset of any remaining stats and remove any
+      // previously registered stats for already destructed registrants.
+      pseudo_all_stats.reset();
+      pseudo_all_stats.dump(&dumped_stats);
+      CHECK(dumped_stats == base_dumped_stats);
+
+      // Populate it again, to be sure it's missing after we exit block and
+      // original (Context ctx) registered stats were destroyed.
+      stats_->add_counter("is_object_num", 1);
+      stats_->add_counter("file_size_num", 1);
+
+      // check again that it's not at base level.
+      pseudo_all_stats.dump(&dumped_stats);
+      CHECK(dumped_stats != base_dumped_stats);
+
+      // 'stats' destroyed, should no longer be active as registered item.
+    }
+
+    // Registered stats only knows about weak_ptr, original registered stats
+    // should now be gone and output again at base level.
     pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
-
-    stats_->add_counter("file_size_num", 1);
-    stats_->add_counter("is_object_num", 1);
-
-    // Stats should no longer be base.
-    pseudo_all_stats.dump(&dumped_stats);
-    CHECK(dumped_stats != base_dumped_stats);
-
-    // Perform reset of any remaining stats and remove any
-    // previously registered stats for already destructed registrants.
-    pseudo_all_stats.reset();
-    pseudo_all_stats.dump(&dumped_stats);
-    CHECK(dumped_stats == base_dumped_stats);
-
-    // Populate it again, to be sure it's missing after we exit block and
-    // original (Context ctx) registered stats were destroyed.
-    stats_->add_counter("is_object_num", 1);
-    stats_->add_counter("file_size_num", 1);
-
-    // check again that it's not at base level.
-    pseudo_all_stats.dump(&dumped_stats);
-    CHECK(dumped_stats != base_dumped_stats);
-  }
-
-  // Registered stats only knows about weak_ptr, original registered stats
-  // is gone and output is now again base level.
-  pseudo_all_stats.dump(&dumped_stats);
-  CHECK(dumped_stats == base_dumped_stats);
 
   // Perform reset of any remaining stats (none in this test) and remove
   // previously registered stats for already destructed registrants.
@@ -153,5 +164,6 @@ TEST_CASE("Stats registration handling, indirect via Context", "[stats][context]
   // Stats should still be base level.
   pseudo_all_stats.dump(&dumped_stats);
   CHECK(dumped_stats == base_dumped_stats);
+  }
   
 }

@@ -28,68 +28,80 @@ TEST_CASE("Stats registration handling, indirect via Context", "[stats][context]
     CHECK(std::string(ptr_dumped_stats) == s);
     tiledb_stats_free_str(&ptr_dumped_stats);
   };
-  check_stats_is(base_dumped_stats);
-
   auto check_stats_is_not = [](std::string s) -> void {
     char *ptr_dumped_stats{nullptr};
     tiledb_stats_raw_dump_str(&ptr_dumped_stats); 
     CHECK(std::string(ptr_dumped_stats) != s);
     tiledb_stats_free_str(&ptr_dumped_stats);
   };
-  
-  {
-    // class Context registers a GlobalStats entity.
-    tiledb::Context ctx;
-    // Nothing has been done to generate stats, should still be base.
+
+  SECTION(" - baseline of no stats") {  
+    // If this fails, look for something else in overall test program that may have generated
+    // stats in a fashion that they were not cleaned up, most likely something creating and
+    // keeping a Context active outside of these tests.
     check_stats_is(base_dumped_stats);
   }
 
-  // should still be base after Context gone
-  check_stats_is(base_dumped_stats);
-
-  // Similar to above, but this time exercise another item that 
-  // should populate some stats.
-  {
-
-    // class Context registers a GlobalStats entity.
-    tiledb::Context ctx;
-    // Nothing has been done to generate stats, should still be base.
+  SECTION(" - creation/destruction of context should leave no stats") {
+    { 
+      // local block to enclose construction/destruction of Context ctx.
+      tiledb::Context ctx;
+      // Nothing has been done to generate stats, should still be base.
+      check_stats_is(base_dumped_stats);
+    }
+    // should still be base after Context gone
     check_stats_is(base_dumped_stats);
-
-    // Now set up for and performs stats generating action.
-
-    tiledb::VFS vfs(ctx);
-    
-    // Stats still base.
-    check_stats_is(base_dumped_stats);
-
-    bool does_it_exist = false;
-    std::string irrelevant_filename =
-        "not.expected.to.exist.but.doesnt.matter.if.does";
-    does_it_exist = vfs.is_file(irrelevant_filename);
-    // Stats should no longer be base.
-    check_stats_is_not(base_dumped_stats);
-
-    // Perform reset of any remaining stats and remove any
-    // previously registered stats for already destructed registrants.
-    tiledb_stats_reset();
-    check_stats_is(base_dumped_stats);
-
-    // Populate it again, to be sure it's missing after we exit block and
-    // original (Context ctx) registered stats were destroyed.
-    does_it_exist = vfs.is_file(irrelevant_filename);
-
-    // check again that it's not at base level.
-    check_stats_is_not(base_dumped_stats);
-    
-    //'ctx' is destructed at end of block and registered stats should be released.
   }
 
-  // Registered stats only knows about weak_ptr, original registered stats
-  // is gone and output is now again base level.
-  check_stats_is(base_dumped_stats);
 
-  // Perform reset of any remaining stats (none in this test) and remove
+  SECTION(" - create stats, be sure they are released") {
+    // Similar to above, but this time exercise another item that 
+    // should populate some stats.
+    { // local block to enclose construction/destruction of Context ctx.
+
+      // class Context registers a GlobalStats entity.
+      tiledb::Context ctx;
+      // Nothing has been done to generate stats, should still be base.
+      check_stats_is(base_dumped_stats);
+
+      // Now set up for and performs stats generating action.
+
+      tiledb::VFS vfs(ctx);
+      
+      // Stats still base.
+      check_stats_is(base_dumped_stats);
+
+      std::string irrelevant_filename =
+          "not.expected.to.exist.but.doesnt.matter.if.does";
+      // After the side effect of stats generation from this call, 
+      // actual results irrelevant.
+      (void)vfs.is_file(irrelevant_filename);
+      // Stats should no longer be base.
+      check_stats_is_not(base_dumped_stats);
+
+      // Perform reset of any remaining stats and remove any
+      // previously registered stats for already destructed registrants.
+      tiledb_stats_reset();
+      check_stats_is(base_dumped_stats);
+
+      // Populate it again, to be sure it's missing after we exit block and
+      // original (Context ctx) registered stats were destroyed.
+      // After the side effect of stats generation from this call, 
+      // actual results irrelevant.
+      (void)vfs.is_file(irrelevant_filename);
+
+      // check again that it's not at base level.
+      check_stats_is_not(base_dumped_stats);
+      
+      //'ctx' is destructed at end of block and registered stats should be released.
+    }
+
+    // Registered stats only knows about weak_ptr, original registered stats
+    // is gone and output is now again base level.
+    check_stats_is(base_dumped_stats);
+  }
+
+  // Perform reset of any remaining stats (none in this test) to remove
   // previously registered stats for already destructed registrants.
   tiledb_stats_reset();
 
