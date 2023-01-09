@@ -209,10 +209,10 @@ The processed conditions is a [generic tile](./generic_tile.md) and is the list 
 | :--- | :--- | :--- |
 | Num | `uint64_t` | Number of processed conditions |
 | Condition size | `uint64_t` | Condition size 1 |
-| Condition | `char` | Condition marker filename 1 |
+| Condition | `uint8_t` | Condition marker filename 1 |
 | … | … | … |
 | Condition size | `uint64_t` | Condition size N |
-| Condition | `char` | Condition marker filename N |
+| Condition | `uint8_t` | Condition marker filename N |
 
 ### Footer
 
@@ -223,13 +223,13 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Version number | `uint32_t` | Format version number of the fragment |
 | Array schema name size | `uint64_t` | Size of the array schema name |
 | Array schema name | `string` | Array schema name |
-| Dense | `char` | Whether the array is dense |
-| Null non-empty domain | `char` | Indicates whether the non-empty domain is null or not |
+| Dense | `uint8_t` | Whether the array is dense (1) or not (0) |
+| Null non-empty domain | `uint8_t` | Indicates whether the non-empty domain is null (1) or not (0) |
 | Non-empty domain | [MBR](#mbr) | An MBR denoting the non-empty domain |
 | Number of sparse tiles | `uint64_t` | Number of sparse tiles |
 | Last tile cell num | `uint64_t` | For sparse arrays, the number of cells in the last tile in the fragment |
-| Includes timestamps | `char` | Whether the fragment includes timestamps or not |
-| Includes delete metadata | `char` | Whether the fragment includes delete metadata or not |
+| Includes timestamps | `uint8_t` | Whether the fragment includes timestamps (1) or not (0) |
+| Includes delete metadata | `uint8_t` | Whether the fragment includes delete metadata (1) or not (0) |
 | File sizes | `uint64_t[]` | The size in bytes of each attribute/dimension file in the fragment. For var-length attributes/dimensions, this is the size of the offsets file. |
 | File var sizes | `uint64_t[]` | The size in bytes of each var-length attribute/dimension file in the fragment. |
 | File validity sizes | `uint64_t[]` | The size in bytes of each attribute/dimension validity vector file in the fragment. |
@@ -261,9 +261,7 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Fragment min max sum null count offset | `uint64_t` | The offset to the generic tile storing the fragment min max sum null count data. |
 | Processed conditions offset | `uint64_t` | The offset to the generic tile storing the processed conditions. |
 | Array schema name size | `uint64_t` | The total number of characters of the array schema name. |
-| Array schema name character 1 | `char` | The first character of the array schema name. |
-| … | … | … |
-| Array schema name character N | `char` | The last character of the array schema name. |
+| Array schema name | `uint8_t[]` | The array schema name. |
 | Footer length | `uint64_t` | Sum of bytes of the above fields. Only present when there is at least one var-sized dimension. |
 
 ## Data File 
