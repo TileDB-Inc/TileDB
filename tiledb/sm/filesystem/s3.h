@@ -757,7 +757,7 @@ class S3 {
    * resets the buffer.
    *
    * @param uri The S3 object to write to.
-   * @param buff The input buffer to flust.
+   * @param buff The input buffer to flush.
    * @param last_part Should be true only when the flush corresponds to the last
    * part(s) of a multi-part upload.
    * @return Status

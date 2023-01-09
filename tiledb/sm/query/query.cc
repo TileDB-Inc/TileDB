@@ -518,20 +518,15 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
     // If tile_trim_cells is > 0 the buffer is not tile aligned.
     uint64_t tile_trim_cells =
         buffer_cells > cell_num_per_tile ? buffer_cells % cell_num_per_tile : 0;
-    // If no bytes to trim, write is tile-aligned but less than s3 limit.
     uint64_t tile_trim_bytes = tile_trim_cells * data_size;
 
-    // If the attribute is nullable we should ensure validity buffer is 5MB.
-    uint64_t validity_buffer_size =
-        is_nullable ? *buff.second.validity_vector_.buffer_size() :
-                      constants::s3_multipart_minimum_size;
-    uint64_t var_buffer_size = is_var ? *buff.second.buffer_var_size_ :
-                                        constants::s3_multipart_minimum_size;
-
-    // Used to trim var size data if needed.
+    // Last offset for var-sized attribute buffer.
     uint64_t last_buffer_offset = 0;
+    // Offset at the trimmed cell position in variable size attribute buffer.
     uint64_t trimmed_offset = 0;
     if (is_var) {
+      uint64_t var_buffer_size = *buff.second.buffer_var_size_;
+
       if (cache.buffer.size() > 0) {
         uint64_t s = cache.buffer_var.size();
         // If offsets exist in the cache ensure buffer is in ascending order.
@@ -574,6 +569,9 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
     }
 
     if (is_nullable) {
+      uint64_t validity_buffer_size =
+          *buff.second.validity_vector_.buffer_size();
+
       // Write the validity buffers into cache.
       throw_if_not_ok(cache.buffer_validity.realloc(
           cache.buffer_validity.size() +
@@ -603,10 +601,31 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
     }
 
     if (finalize || submit) {
-      // If the user ever writes more tiles than this, the array will overflow.
-      auto num = array_schema_->domain().cell_num(subarray_.ndrange(0));
+      // Update buffer_cells to reflect total cells within cached data.
       buffer_cells = cache.buffer.size() / cell_size;
-      uint64_t overflow_cells = buffer_cells > num ? buffer_cells - num : 0;
+      // Recheck that the final cache buffers do not exceed tile boundaries.
+      uint64_t overflow_cells = buffer_cells > cell_num_per_tile ?
+                                    buffer_cells % cell_num_per_tile :
+                                    0;
+
+      // If the user writes more cells than this, the array will overflow.
+      auto array_num = array_schema_->domain().cell_num(subarray_.ndrange(0));
+      // Strategy may be null if query is uninitialized.
+      auto global_writer = dynamic_cast<GlobalOrderWriter*>(strategy_.get());
+      if (global_writer != nullptr &&
+          global_writer->get_global_state() != nullptr) {
+        // Consider previous cells written to trim array overflow data.
+        uint64_t cells_written =
+            global_writer->get_global_state()->cells_written_[buff.first] +
+            buffer_cells;
+        overflow_cells = cells_written > array_num ? cells_written % array_num :
+                                                     overflow_cells;
+      } else if (finalize) {
+        // If we are finalizing cache buffers and there was no previous submit.
+        overflow_cells = buffer_cells > array_num ? buffer_cells % array_num :
+                                                    overflow_cells;
+      }
+
       if (overflow_cells != 0) {
         if (is_var) {
           // Offset at the position we are trimming.

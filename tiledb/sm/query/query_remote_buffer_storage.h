@@ -42,8 +42,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 struct QueryRemoteBufferStorage {
   Buffer buffer;
@@ -51,7 +50,6 @@ struct QueryRemoteBufferStorage {
   Buffer buffer_validity;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_QUERY_REMOTE_BUFFER_H

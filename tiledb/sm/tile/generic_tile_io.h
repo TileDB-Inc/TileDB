@@ -150,7 +150,7 @@ class GenericTileIO {
    * Writes a tile generically to the file. This means that a header will be
    * prepended to the file before writing the tile contents. The reason is
    * that there will be no tile metadata retrieved from another source,
-   * other thant the file itself.
+   * other than the file itself.
    *
    * @param tile The tile to be written.
    * @param encryption_key The encryption key to use.

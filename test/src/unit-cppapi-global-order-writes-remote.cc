@@ -58,9 +58,9 @@ struct RemoteGlobalOrderWriteFx {
       bool is_nullable = true)
       : is_var_(is_var)
       , is_nullable_(is_nullable)
-      , submit_cell_count_(chunk_size)
+      , submit_cell_count_(chunk_size / sizeof(T))
       , bytes_(bytes)
-      , extent_(extent) {
+      , extent_(extent / sizeof(T)) {
     if constexpr (remote) {
       // Config for using local REST server.
       Config localConfig;
@@ -99,8 +99,6 @@ struct RemoteGlobalOrderWriteFx {
 
   // Create a simple dense array
   void create_array() {
-    std::cout << "Creating array...\n";
-
     Domain domain(ctx_);
     domain.add_dimension(Dimension::create<uint64_t>(
         ctx_, "cols", {{1, total_cell_count_}}, extent_));
@@ -109,6 +107,13 @@ struct RemoteGlobalOrderWriteFx {
 
     ArraySchema schema(ctx_, array_type);
     schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+
+    // TODO: Default filters for coordinates and offsets compress data to < 5MB
+    //  after submitting to REST. Disable them and tests are passing.
+    // If filters compress data size serverside we may fail S3 multipart upload.
+    FilterList filter_list(ctx_);
+    schema.set_coords_filter_list(filter_list);
+    schema.set_offsets_filter_list(filter_list);
 
     if (array_type == TILEDB_SPARSE) {
       schema.set_capacity(extent_);
@@ -388,24 +393,6 @@ struct RemoteGlobalOrderWriteFx {
   std::vector<uint8_t> var_validity_wrote_;
 };
 
-// Any test using a sparse array with > 1 submission to REST will fail.
-// TODO Fix coordinates bug for sparse where we meet s3 limit during write.
-//     Coordinate (655361) comes before last written coordinate
-TEST_CASE("Debug", "[debug][!mayfail]") {
-  typedef uint64_t T;
-  uint64_t bytes;
-  uint64_t extent;
-  uint64_t chunk_size;
-
-  SECTION("Debug sparse") {
-    bytes = MB * 15;
-    extent = (MB * 1) / sizeof(T);
-    chunk_size = (MB * 1) / sizeof(T);
-    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, false, false);
-    fx.run_test();
-  }
-}
-
 // TODO: This test passes but takes ~15 minutes to complete (SC-24334)
 //  I ran this using dev branch and there was no noticeable difference in time.
 //  Using smaller extent / chunk_size seems to take much longer. (here and dev)
@@ -415,23 +402,20 @@ TEST_CASE("Debug large arrays", "[debug][!mayfail]") {
   uint64_t extent;
   uint64_t chunk_size;
 
-  // Will fail sparse case for same reason as `Debug sparse` test below.
   SECTION("GB array") {
     bytes = GB * 1;
-    extent = (MB * 128) / sizeof(T);
-    chunk_size = (MB * 256) / sizeof(T);
+    extent = MB * 128;
+    chunk_size = MB * 256;
     RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, false, false);
     fx.run_test();
   }
 }
 
-// All tests below are passing for all types using dense and sparse arrays.
-// Marked as mayfail pending CI for remote writes.
 // typedef std::tuple<
 //     uint64_t, int64_t, uint32_t, int32_t, uint16_t, int16_t, uint8_t, int8_t,
 //     float, double> TestTypes;
 typedef std::tuple<uint64_t, float> TestTypes;
-// TODO: Test var-size attributes with `sm.var_offsets.mode = elements`
+// Marked as mayfail pending CI for remote writes. (SC-23785)
 TEMPLATE_LIST_TEST_CASE(
     "Global order remote writes",
     "[global-order][remote][write][!mayfail]",
@@ -440,23 +424,46 @@ TEMPLATE_LIST_TEST_CASE(
   uint64_t bytes;
   uint64_t extent;
   uint64_t chunk_size;
+  // Each validity cell is 1 byte.
+  // If nullable we can't submit to REST until we cache 5242880 cells.
+  bool nullable = GENERATE(true, false);
 
   // Submit entirely unaligned writes up to the final submit.
-  SECTION("1 KB array") {
+  SECTION("1 KB array - unaligned trim and cache") {
     bytes = KB;
-    extent = GENERATE(KB / 2, KB);
-    extent /= sizeof(T);
-    chunk_size = GENERATE(32, 33, 77, 100);
-    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size);
+    extent = KB / 2;
+    chunk_size = GENERATE(264, 544, 1088);
+    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, true, nullable);
     fx.run_test();
   }
 
-  SECTION("5 MB array") {
+  // Trim excess tile data from unaligned submissions.
+  SECTION("5 MB array - unaligned trim and cache") {
     bytes = MB * 5;
-    extent = MB / sizeof(T);
-    chunk_size = GENERATE(MB * 2, MB + (MB / 2), MB + KB);
-    chunk_size /= sizeof(T);
-    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size);
+    extent = MB;
+    // Trims KB of data per submission.
+    chunk_size = MB + KB;
+    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, true, nullable);
+    fx.run_test();
+  }
+
+  // Submit writes that are all greater than tile cell num.
+  SECTION("15 MB array - tile / array overflow") {
+    bytes = MB * 15;
+    extent = MB * 5;
+    // We will trim 1MB from each 6MB submit, including submit_and_finalize.
+    chunk_size = GENERATE(MB * 6, MB * 16);
+    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, true, nullable);
+    fx.run_test();
+  }
+
+  // Submit writes that are all aligned, leading up to array overflow.
+  SECTION("15 MB array - array overflow") {
+    bytes = MB * 15;
+    extent = MB * 1;
+    // Trims 3MB from final submission.
+    chunk_size = MB * 6;
+    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, true, nullable);
     fx.run_test();
   }
 }

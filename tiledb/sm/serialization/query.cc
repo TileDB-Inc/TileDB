@@ -2577,7 +2577,7 @@ Status global_write_state_to_capnp(
       auto builder = coord_builder.initCoords(coords.size());
       for (uint64_t i = 0; i < coords.size(); ++i) {
         builder.init(i, coords[i].size());
-        for (uint64_t j = 0; j < coords.size(); ++j) {
+        for (uint64_t j = 0; j < coords[i].size(); ++j) {
           builder[i].set(j, coords[i][j]);
         }
       }
