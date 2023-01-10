@@ -78,7 +78,6 @@ Array::Array(
     ConsistencyController& cc)
     : array_schema_latest_(nullptr)
     , array_uri_(array_uri)
-    , array_dir_()
     , array_uri_serialized_(array_uri)
     , encryption_key_(make_shared<EncryptionKey>(HERE()))
     , is_open_(false)
@@ -124,7 +123,7 @@ const URI& Array::array_uri() const {
 }
 
 const ArrayDirectory& Array::array_directory() const {
-  return array_dir_;
+  return *array_dir_;
 }
 
 const URI& Array::array_uri_serialized() const {
@@ -193,13 +192,8 @@ Status Array::open_without_fragments(
         }
       }
     } else {
-      array_dir_ = ArrayDirectory(
-          &resources_.vfs(),
-          &resources_.compute_tp(),
-          array_uri_,
-          0,
-          UINT64_MAX,
-          ArrayDirectoryMode::READ);
+      array_dir_.emplace(
+          resources_, array_uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ);
 
       auto&& [array_schema, array_schemas] = open_for_reads_without_fragments();
       if (!st.ok())
@@ -365,12 +359,8 @@ Status Array::open(
         }
       }
     } else if (query_type == QueryType::READ) {
-      array_dir_ = ArrayDirectory(
-          &resources_.vfs(),
-          &resources_.compute_tp(),
-          array_uri_,
-          timestamp_start_,
-          timestamp_end_opened_at_);
+      array_dir_.emplace(
+          resources_, array_uri_, timestamp_start_, timestamp_end_opened_at_);
 
       auto&& [array_schema_latest, array_schemas, fragment_metadata] =
           open_for_reads();
@@ -382,9 +372,8 @@ Status Array::open(
     } else if (
         query_type == QueryType::WRITE ||
         query_type == QueryType::MODIFY_EXCLUSIVE) {
-      array_dir_ = ArrayDirectory(
-          &resources_.vfs(),
-          &resources_.compute_tp(),
+      array_dir_.emplace(
+          resources_,
           array_uri_,
           timestamp_start_,
           timestamp_end_opened_at_,
@@ -401,9 +390,8 @@ Status Array::open(
       metadata_.reset(timestamp_end_opened_at_);
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
-      array_dir_ = ArrayDirectory(
-          &resources_.vfs(),
-          &resources_.compute_tp(),
+      array_dir_.emplace(
+          resources_,
           array_uri_,
           timestamp_start_,
           timestamp_end_opened_at_,
@@ -788,9 +776,8 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   }
 
   try {
-    array_dir_ = ArrayDirectory(
-        &resources_.vfs(),
-        &resources_.compute_tp(),
+    array_dir_.emplace(
+        resources_,
         array_uri_,
         timestamp_start_,
         timestamp_end_opened_at_,
@@ -1375,7 +1362,7 @@ Status Array::load_metadata() {
   } else {
     assert(array_dir_.loaded());
     storage_manager_->load_array_metadata(
-        array_dir_, *encryption_key_, &metadata_);
+        *array_dir_, *encryption_key_, &metadata_);
   }
   metadata_loaded_ = true;
   return Status::Ok();

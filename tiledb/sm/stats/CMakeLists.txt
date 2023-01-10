@@ -30,7 +30,7 @@ include(object_library)
 # Object library for other units to depend upon
 #
 commence(object_library stats)
-    this_target_sources(stats.cc)
+    this_target_sources(stats.cc global_stats.cc)
     this_target_object_libraries(baseline stringx)
 conclude(object_library)
 

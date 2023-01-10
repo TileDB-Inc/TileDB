@@ -34,6 +34,7 @@
 #define TILEDB_ARRAY_H
 
 #include <atomic>
+#include <functional>
 #include <unordered_map>
 #include <vector>
 
@@ -483,8 +484,13 @@ class Array {
   /** The array URI. */
   URI array_uri_;
 
-  /** The array directory object for listing URIs. */
-  ArrayDirectory array_dir_;
+  /**
+   * The array directory object for listing URIs.
+   *
+   * Eventually this will become a syncronized_optional when that
+   * class is available.
+   */
+  std::optional<ArrayDirectory> array_dir_;
 
   /** This is a backwards compatible URI from serialization
    *  In TileDB 2.5 we removed sending the URI but 2.4 and older were
