@@ -49,33 +49,27 @@ class Config;
 class VFS;
 
 class StorageManagerStub {
-  common::ThreadPool* compute_tp_;
-  common::ThreadPool* io_tp_;
-  stats::Stats* stats_;
+  ContextResources& resources_;
   Config config_;
 
  public:
   static constexpr bool is_overriding_class = true;
   StorageManagerStub(
-      common::ThreadPool* compute_tp,
-      common::ThreadPool* io_tp,
-      stats::Stats* stats,
+      ContextResources& resources,
       std::shared_ptr<common::Logger>,
       const Config& config)
-      : compute_tp_(compute_tp)
-      , io_tp_(io_tp)
-      , stats_(stats)
+      : resources_(resources)
       , config_(config) {
   }
 
   inline common::ThreadPool* compute_tp() {
-    return compute_tp_;
+    return &resources_.compute_tp();
   }
   inline common::ThreadPool* io_tp() {
-    return io_tp_;
+    return &resources_.io_tp();
   }
   inline stats::Stats* stats() {
-    return stats_;
+    return &resources_.stats();
   }
   const Config& config() {
     return config_;
