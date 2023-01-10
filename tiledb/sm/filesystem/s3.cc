@@ -275,7 +275,7 @@ Status S3::init(
       "vfs.s3.multipart_part_size", &multipart_part_size_, &found));
   assert(found);
   file_buffer_size_ = multipart_part_size_ * max_parallel_ops_;
-  region_ = config.get("vfs.s3.region", &found);
+  region_ = config.get<std::string>("vfs.s3.region").value_or("");
   assert(found);
   RETURN_NOT_OK(config.get<bool>(
       "vfs.s3.use_virtual_addressing", &use_virtual_addressing_, &found));
