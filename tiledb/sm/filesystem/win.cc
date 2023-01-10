@@ -428,16 +428,11 @@ Status Win::read(
 
   LARGE_INTEGER offset_lg_int;
   offset_lg_int.QuadPart = offset;
-  if (SetFilePointerEx(file_h, offset_lg_int, NULL, FILE_BEGIN) == 0) {
-    auto gle = GetLastError();
-    CloseHandle(file_h);
-    return LOG_STATUS(Status_IOError(
-        "Cannot read from file '" + path + "'; File seek error " +
-        get_last_error_msg(gle, "SetFilePointerEx")));
-  }
-
+  OVERLAPPED ov = {0, 0, {{0, 0}}, 0};
+  ov.Offset = offset_lg_int.LowPart;
+  ov.OffsetHigh = offset_lg_int.HighPart;
   unsigned long num_bytes_read = 0;
-  if (ReadFile(file_h, buffer, nbytes, &num_bytes_read, NULL) == 0 ||
+  if (ReadFile(file_h, buffer, nbytes, &num_bytes_read, &ov) == 0 ||
       num_bytes_read != nbytes) {
     auto gle = GetLastError();
     CloseHandle(file_h);
