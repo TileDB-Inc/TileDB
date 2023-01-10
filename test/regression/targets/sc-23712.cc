@@ -15,14 +15,13 @@ static std::string empty_dumped_stats = {"[\n\n]\n"};
 // than the output being totally 'empty'.
 static std::string base_dumped_stats = empty_dumped_stats;
 
-// Using C_API routines, exercise a routine registering stats
-// to exercise the paths (before bug fix) causing the leakage
+// Using CPP_API (which invokes C_API) routines, exercise a routine registering
+// stats to exercise the paths (before bug fix) causing the leakage
 // problem even when involved Context(s) were destructed.
 TEST_CASE(
     "Stats registration handling, indirect via Context", "[stats][context]") {
-  // Examine stats output when class Context active as reflection of
-  // whether data allocations might be held beyond a reset and/or registrant
-  // destruction.
+  // Examine stats output as reflection of whether data allocations might be 
+  // held beyond a reset and/or registrant destruction.
 
   auto check_stats_is = [](std::string s) -> void {
     char* ptr_dumped_stats{nullptr};
@@ -61,7 +60,7 @@ TEST_CASE(
     // should populate some stats.
     {  // local block to enclose construction/destruction of Context ctx.
 
-      // class Context registers a GlobalStats entity.
+      // class Context registers data with the global GlobalStats entity.
       tiledb::Context ctx;
       // Nothing has been done to generate stats, should still be base.
       check_stats_is(base_dumped_stats);
@@ -75,8 +74,8 @@ TEST_CASE(
 
       std::string irrelevant_filename =
           "not.expected.to.exist.but.doesnt.matter.if.does";
-      // After the side effect of stats generation from this call,
-      // actual results irrelevant.
+      // Need the side effect of stats generation from this call,
+      // actual results of the call irrelevant.
       (void)vfs.is_file(irrelevant_filename);
       // Stats should no longer be base.
       check_stats_is_not(base_dumped_stats);
