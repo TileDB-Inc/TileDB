@@ -61,6 +61,8 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+void ensure_supported_schema_version_for_read(format_version_t version);
+
 ConsistencyController& controller() {
   static ConsistencyController controller;
   return controller;
@@ -85,6 +87,7 @@ Array::Array(
     , timestamp_end_(UINT64_MAX)
     , timestamp_end_opened_at_(UINT64_MAX)
     , storage_manager_(storage_manager)
+    , resources_(storage_manager_->resources())
     , config_(storage_manager_->config())
     , remote_(array_uri.is_tiledb())
     , metadata_()
@@ -191,15 +194,14 @@ Status Array::open_without_fragments(
       }
     } else {
       array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
+          &resources_.vfs(),
+          &resources_.compute_tp(),
           array_uri_,
           0,
           UINT64_MAX,
           ArrayDirectoryMode::READ);
 
-      auto&& [st, array_schema, array_schemas] =
-          storage_manager_->array_open_for_reads_without_fragments(this);
+      auto&& [array_schema, array_schemas] = open_for_reads_without_fragments();
       if (!st.ok())
         throw StatusException(st);
 
@@ -364,17 +366,15 @@ Status Array::open(
       }
     } else if (query_type == QueryType::READ) {
       array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
+          &resources_.vfs(),
+          &resources_.compute_tp(),
           array_uri_,
           timestamp_start_,
           timestamp_end_opened_at_);
 
-      auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
-          storage_manager_->array_open_for_reads(this);
-      if (!st.ok()) {
-        throw StatusException(st);
-      }
+      auto&& [array_schema_latest, array_schemas, fragment_metadata] =
+          open_for_reads();
+
       // Set schemas
       array_schema_latest_ = array_schema_latest.value();
       array_schemas_all_ = array_schemas.value();
@@ -383,8 +383,8 @@ Status Array::open(
         query_type == QueryType::WRITE ||
         query_type == QueryType::MODIFY_EXCLUSIVE) {
       array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
+          &resources_.vfs(),
+          &resources_.compute_tp(),
           array_uri_,
           timestamp_start_,
           timestamp_end_opened_at_,
@@ -402,8 +402,8 @@ Status Array::open(
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
       array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
+          &resources_.vfs(),
+          &resources_.compute_tp(),
           array_uri_,
           timestamp_start_,
           timestamp_end_opened_at_,
@@ -789,8 +789,8 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
 
   try {
     array_dir_ = ArrayDirectory(
-        storage_manager_->vfs(),
-        storage_manager_->compute_tp(),
+        &resources_.vfs(),
+        &resources_.compute_tp(),
         array_uri_,
         timestamp_start_,
         timestamp_end_opened_at_,
@@ -800,13 +800,15 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
 
-  auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
-      storage_manager_->array_reopen(this);
-  RETURN_NOT_OK(st);
+  {
+    auto timer_se = resources_.stats().start_timer("read_array_open");
+    auto&& [array_schema_latest, array_schemas, fragment_metadata] =
+        open_for_reads();
 
-  array_schema_latest_ = array_schema_latest.value();
-  array_schemas_all_ = array_schemas.value();
-  fragment_metadata_ = fragment_metadata.value();
+    array_schema_latest_ = array_schema_latest.value();
+    array_schemas_all_ = array_schemas.value();
+    fragment_metadata_ = fragment_metadata.value();
+  }
 
   return Status::Ok();
 }
@@ -1138,7 +1140,7 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
   // Load all metadata for tile var sizes among fragments.
   for (const auto& var_name : var_names) {
     throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(),
+        &resources_.compute_tp(),
         0,
         fragment_metadata_.size(),
         [&](const unsigned f) {
@@ -1156,10 +1158,7 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
 
   // Now compute for each var size names, the average cell size.
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      var_names.size(),
-      [&](const uint64_t n) {
+      &resources_.compute_tp(), 0, var_names.size(), [&](const uint64_t n) {
         uint64_t total_size = 0;
         uint64_t cell_num = 0;
         auto& var_name = var_names[n];
@@ -1192,6 +1191,43 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
+
+tuple<
+    optional<shared_ptr<ArraySchema>>,
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
+    optional<std::vector<shared_ptr<FragmentMetadata>>>>
+Array::open_for_reads() {
+  auto timer_se = resources_.stats().start_timer("array_open_for_reads");
+  auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
+      storage_manager_->load_array_schemas_and_fragment_metadata(
+          array_directory(), memory_tracker(), *encryption_key());
+
+  throw_if_not_ok(st);
+
+  auto version = array_schema_latest.value()->version();
+  ensure_supported_schema_version_for_read(version);
+
+  return {array_schema_latest, array_schemas_all, fragment_metadata};
+}
+
+tuple<
+    optional<shared_ptr<ArraySchema>>,
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+Array::open_for_reads_without_fragments() {
+  auto timer_se =
+      resources_.stats().start_timer("array_open_for_reads_without_fragments");
+
+  // Load array schemas
+  auto&& [st_schemas, array_schema_latest, array_schemas_all] =
+      storage_manager_->load_array_schemas(
+          array_directory(), *encryption_key());
+  throw_if_not_ok(st_schemas);
+
+  auto version = array_schema_latest.value()->version();
+  ensure_supported_schema_version_for_read(version);
+
+  return {array_schema_latest, array_schemas_all};
+}
 
 void Array::clear_last_max_buffer_sizes() {
   last_max_buffer_sizes_.clear();
@@ -1427,6 +1463,18 @@ void Array::set_array_closed() {
   /* Note: the Sentry object will also be released upon Array destruction. */
   consistency_sentry_.reset();
   is_open_ = false;
+}
+
+void ensure_supported_schema_version_for_read(format_version_t version) {
+  // We do not allow reading from arrays written by newer version of TileDB
+  if (version > constants::format_version) {
+    std::stringstream err;
+    err << "Cannot open array for reads; Array format version (";
+    err << version;
+    err << ") is newer than library format version (";
+    err << constants::format_version << ")";
+    throw Status_StorageManagerError(err.str());
+  }
 }
 
 }  // namespace sm
