@@ -166,25 +166,37 @@ uint64_t QueryCondition::condition_timestamp() const {
 
 template <typename T>
 struct is_string_like {
-  const static bool value = false;
+  inline constexpr static bool value = false;
 };
 template <>
 struct is_string_like<char*> {
-  const static bool value = true;
+  inline constexpr static bool value = true;
 };
 template <>
 struct is_string_like<uint8_t*> {
-  const static bool value = true;
+  inline constexpr static bool value = true;
 };
 template <typename T>
 inline constexpr bool is_string_like_v = is_string_like<T>::value;
+
+template <typename T>
+struct string_like_cmp;
+template <>
+struct string_like_cmp<char*> {
+  constexpr static auto value = strncmp;
+};
+template <>
+struct string_like_cmp<uint8_t*> {
+  constexpr static auto value = memcmp;
+};
+template <typename T>
+inline constexpr auto string_like_cmp_v =  string_like_cmp<T>::value;
 
 /** Generic binary comparison functor.  No null checking. */
 template <typename T, typename Cmp, typename E>
 struct QueryCondition::BinaryCmp {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return lhs != nullptr &&
-           Cmp{}(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
+    return Cmp{}(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
   }
 };
 
@@ -197,7 +209,7 @@ struct QueryCondition::BinaryCmpNullChecks {
   }
 };
 
-/** Generic comparison functor, null checking */
+/** Generic comparison functor, null checking, equal and not_equal */
 template <typename T, typename Cmp>
 struct QueryCondition::BinaryCmpNullChecks<
     T,
@@ -210,20 +222,15 @@ struct QueryCondition::BinaryCmpNullChecks<
       if (lhs == rhs) {
         return true;
       }
-
-      if (lhs == nullptr || rhs == nullptr) {
-        return false;
-      }
     } else if constexpr (std::is_same_v<Cmp, std::not_equal_to<T>>) {
       if (rhs == nullptr && lhs != nullptr) {
         return true;
       }
-
-      if (lhs == nullptr || rhs == nullptr) {
-        return false;
-      }
     } else {
       throw std::runtime_error("Unsupported comparison operator");
+    }
+    if (lhs == nullptr || rhs == nullptr) {
+      return false;
     }
     return Cmp{}(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
   }
@@ -242,8 +249,10 @@ struct QueryCondition::BinaryCmp<
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
     const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
+
+    const int cmp = string_like_cmp_v<T>(
         static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
+
     if (cmp != 0) {
       return Cmp<decltype(cmp)>{}(cmp, 0);
     }
@@ -264,7 +273,6 @@ struct QueryCondition::BinaryCmp<
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
     using Op = Cmp<T>;
-
     if constexpr (std::is_same_v<Op, std::equal_to<T>>) {
       if (lhs_size != rhs_size) {
         return false;
@@ -278,7 +286,7 @@ struct QueryCondition::BinaryCmp<
           "Invalid comparison operator for string comparison.");
     }
     return Cmp<int>{}(
-        strncmp(
+        string_like_cmp_v<T>(
             static_cast<const char*>(lhs),
             static_cast<const char*>(rhs),
             lhs_size),
@@ -301,7 +309,7 @@ struct QueryCondition::BinaryCmpNullChecks<
       return false;
     }
     const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
+    const int cmp = string_like_cmp_v<T>(
         static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
     if (cmp != 0) {
       return Cmp<decltype(cmp)>{}(cmp, 0);
@@ -331,11 +339,9 @@ struct QueryCondition::BinaryCmpNullChecks<
       if (lhs == rhs) {
         return true;
       }
-
       if (lhs == nullptr || rhs == nullptr) {
         return false;
       }
-
       if (lhs_size != rhs_size) {
         return false;
       }
@@ -343,21 +349,18 @@ struct QueryCondition::BinaryCmpNullChecks<
       if (rhs == nullptr && lhs != nullptr) {
         return true;
       }
-
       if (lhs == nullptr || rhs == nullptr) {
         return false;
       }
-
       if (lhs_size != rhs_size) {
         return true;
       }
-
     } else {
       throw std::logic_error("Invalid template specialization");
     }
 
     return Cmp<int>{}(
-        strncmp(
+        string_like_cmp_v<T>(
             static_cast<const char*>(lhs),
             static_cast<const char*>(rhs),
             min_size),
@@ -1436,21 +1439,22 @@ void QueryCondition::apply_tree(
   } else {
     const auto result_bitmap_size = result_cell_bitmap.size();
     switch (node->get_combination_op()) {
+
         /*
          * cl(q; a) means evaluate a clause (which may be compound) with query q
          * given existing bitmap a
          *
          * Identities:
          *
-         * cl(q; a) = cl(q; 1) /\ a
-         * cl1(q; a) /\ cl2(q; b) = cl1(q; cl2(q; a))
+         * cl(q; a) = cl(q; 1) ∧ a
+         * cl1(q; a) ∧ cl2(q; b) = cl1(q; cl2(q; a))
          *
-         * cl1(q; a) \/ cl2(q; a) = (cl1(q; 1) /\ a) \/ (cl2(q; 1) /\ a)
-         *                        = (cl1(q; 1) \/ cl2(q; 1)) /\ a
+         * cl1(q; a) ∨ cl2(q; a) = (cl1(q; 1) ∧ a) ∨ (cl2(q; 1) ∧ a)
+         *                        = (cl1(q; 1) ∨ cl2(q; 1)) ∧ a
          */
 
         /*
-         * cl1(q; a) /\ cl2(q; a) = cl1(q; cl2(q; a))
+         * cl1(q; a) ∧ cl2(q; a) = cl1(q; cl2(q; a))
          */
       case QueryConditionCombinationOp::AND: {
         if constexpr (std::
@@ -1489,9 +1493,9 @@ void QueryCondition::apply_tree(
       } break;
 
         /*
-         * cl1(q; a) \/ cl2(q; a) = a /\ (cl1(q; 1) \/ cl2(q; 1))
-         *                        = a /\ (cl1'(q; 0) \/ cl2'(q; 0))
-         *                        = a /\ (cl1'(q; cl2'(q; 0)))
+         * cl1(q; a) ∨ cl2(q; a) = a ∧ (cl1(q; 1) ∨ cl2(q; 1))
+         *                        = a ∧ (cl1'(q; 0) ∨ cl2'(q; 0))
+         *                        = a ∧ (cl1'(q; cl2'(q; 0)))
          */
       case QueryConditionCombinationOp::OR: {
         std::vector<uint8_t> combination_op_bitmap(result_bitmap_size, 0);
@@ -2154,15 +2158,15 @@ void QueryCondition::apply_tree_dense(
          *
          * Identities:
          *
-         * cl(q; a) = cl(q; 1) /\ a
-         * cl1(q; a) /\ cl2(q; b) = cl1(q; cl2(q; a))
+         * cl(q; a) = cl(q; 1) ∧ a
+         * cl1(q; a) ∧ cl2(q; b) = cl1(q; cl2(q; a))
          *
-         * cl1(q; a) \/ cl2(q; a) = (cl1(q; 1) /\ a) \/ (cl2(q; 1) /\ a)
-         *                        = (cl1(q; 1) \/ cl2(q; 1)) /\ a
+         * cl1(q; a) ∨ cl2(q; a) = (cl1(q; 1) ∧ a) ∨ (cl2(q; 1) ∧ a)
+         *                        = (cl1(q; 1) ∨ cl2(q; 1)) ∧ a
          */
 
         /*
-         * cl1(q; a) /\ cl2(q; a) = cl1(q; cl2(q; a))
+         * cl1(q; a) ∧ cl2(q; a) = cl1(q; cl2(q; a))
          */
       case QueryConditionCombinationOp::AND: {
         if constexpr (std::
@@ -2204,9 +2208,9 @@ void QueryCondition::apply_tree_dense(
         }
       } break;
         /*
-         * cl1(q; a) \/ cl2(q; a) = a /\ (cl1(q; 1) \/ cl2(q; 1))
-         *                        = a /\ (cl1'(q; 0) \/ cl2'(q; 0))
-         *                        = a /\ (cl1'(q; cl2'(q; 0)))
+         * cl1(q; a) ∨ cl2(q; a) = a ∧ (cl1(q; 1) ∨ cl2(q; 1))
+         *                        = a ∧ (cl1'(q; 0) ∨ cl2'(q; 0))
+         *                        = a ∧ (cl1'(q; cl2'(q; 0)))
          */
       case QueryConditionCombinationOp::OR: {
         std::vector<uint8_t> combination_op_bitmap(result_buffer_size, 0);
@@ -3070,15 +3074,15 @@ void QueryCondition::apply_tree_sparse(
          *
          * Identities:
          *
-         * cl(q; a) = cl(q; 1) /\ a
-         * cl1(q; a) /\ cl2(q; b) = cl1(q; cl2(q; a))
+         * cl(q; a) = cl(q; 1) ∧ a
+         * cl1(q; a) ∧ cl2(q; b) = cl1(q; cl2(q; a))
          *
-         * cl1(q; a) \/ cl2(q; a) = (cl1(q; 1) /\ a) \/ (cl2(q; 1) /\ a)
-         *                        = (cl1(q; 1) \/ cl2(q; 1)) /\ a
+         * cl1(q; a) ∨ cl2(q; a) = (cl1(q; 1) ∧ a) ∨ (cl2(q; 1) ∧ a)
+         *                        = (cl1(q; 1) ∨ cl2(q; 1)) ∧ a
          */
 
         /*
-         * cl1(q; a) /\ cl2(q; a) = cl1(q; cl2(q; a))
+         * cl1(q; a) ∧ cl2(q; a) = cl1(q; cl2(q; a))
          */
       case QueryConditionCombinationOp::AND: {
         if constexpr (std::is_same_v<
@@ -3113,9 +3117,9 @@ void QueryCondition::apply_tree_sparse(
       } break;
 
         /*
-         * cl1(q; a) \/ cl2(q; a) = a /\ (cl1(q; 1) \/ cl2(q; 1))
-         *                        = a /\ (cl1'(q; 0) \/ cl2'(q; 0))
-         *                        = a /\ (cl1'(q; cl2'(q; 0)))
+         * cl1(q; a) ∨ cl2(q; a) = a ∧ (cl1(q; 1) ∨ cl2(q; 1))
+         *                        = a ∧ (cl1'(q; 0) ∨ cl2'(q; 0))
+         *                        = a ∧ (cl1'(q; cl2'(q; 0)))
          */
       case QueryConditionCombinationOp::OR: {
         std::vector<BitmapType> combination_op_bitmap(result_bitmap_size, 0);
