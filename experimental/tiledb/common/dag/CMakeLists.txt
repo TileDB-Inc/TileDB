@@ -84,7 +84,7 @@ macro (dag_add_header_only_unit_test TESTNAME)
         COMMAND $<TARGET_FILE:unit_${TESTNAME}> --durations=yes
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
-    add_dependencies(tests "unit_${TESTNAME}")
+    add_dependencies(all_unit_tests "unit_${TESTNAME}")
 endmacro(dag_add_header_only_unit_test)
 
 if (TILEDB_TESTS)
