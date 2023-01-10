@@ -164,6 +164,21 @@ uint64_t QueryCondition::condition_timestamp() const {
   return timestamps.first;
 }
 
+template <typename T>
+struct is_string_like {
+  const static bool value = false;
+};
+template <>
+struct is_string_like<char*> {
+  const static bool value = true;
+};
+template <>
+struct is_string_like<uint8_t*> {
+  const static bool value = true;
+};
+template <typename T>
+inline constexpr bool is_string_like_v = is_string_like<T>::value;
+
 /** Generic binary comparison functor.  No null checking. */
 template <typename T, typename Cmp, typename E>
 struct QueryCondition::BinaryCmp {
@@ -173,9 +188,57 @@ struct QueryCondition::BinaryCmp {
   }
 };
 
-/** Special case for char* */
-template <template <class> typename Cmp, typename E>
-struct QueryCondition::BinaryCmp<char*, Cmp<char*>, E> {
+/** Generic comparison functor, null checking */
+template <typename T, typename Cmp, typename E>
+struct QueryCondition::BinaryCmpNullChecks {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    return lhs != nullptr &&
+           Cmp{}(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
+  }
+};
+
+/** Generic comparison functor, null checking */
+template <typename T, typename Cmp>
+struct QueryCondition::BinaryCmpNullChecks<
+    T,
+    Cmp,
+    typename std::enable_if_t<(
+        (std::is_same_v<Cmp, std::equal_to<T>> ||
+         std::is_same_v<Cmp, std::not_equal_to<T>>)&&(!is_string_like_v<T>))>> {
+  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
+    if constexpr (std::is_same_v<Cmp, std::equal_to<T>>) {
+      if (lhs == rhs) {
+        return true;
+      }
+
+      if (lhs == nullptr || rhs == nullptr) {
+        return false;
+      }
+    } else if constexpr (std::is_same_v<Cmp, std::not_equal_to<T>>) {
+      if (rhs == nullptr && lhs != nullptr) {
+        return true;
+      }
+
+      if (lhs == nullptr || rhs == nullptr) {
+        return false;
+      }
+    } else {
+      throw std::runtime_error("Unsupported comparison operator");
+    }
+    return Cmp{}(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
+  }
+};
+
+/** Special case for char* and uint8_t* -- it will be so nice when we can use
+ * concepts.... */
+template <typename T, template <class> typename Cmp>
+struct QueryCondition::BinaryCmp<
+    T,
+    Cmp<T>,
+    std::enable_if_t<(
+        is_string_like_v<T> &&
+        !(std::is_same_v<Cmp<T>, std::equal_to<T>> ||
+          std::is_same_v<Cmp<T>, std::not_equal_to<T>>))>> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
     const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
@@ -189,23 +252,24 @@ struct QueryCondition::BinaryCmp<char*, Cmp<char*>, E> {
   }
 };
 
-/** Special case for char*, equal and not equal */
-template <template <class> typename Cmp>
+/** Special case for char* and uint8_t*, equal and not equal */
+template <typename T, template <class> typename Cmp>
 struct QueryCondition::BinaryCmp<
-    char*,
-    Cmp<char*>,
-    typename std::enable_if_t<(
-        std::is_same_v<Cmp<char*>, std::equal_to<char*>> ||
-        std::is_same_v<Cmp<char*>, std::not_equal_to<char*>>)>> {
+    T,
+    Cmp<T>,
+    typename std::enable_if_t<
+        is_string_like_v<T> &&
+        (std::is_same_v<Cmp<T>, std::equal_to<T>> ||
+         std::is_same_v<Cmp<T>, std::not_equal_to<T>>)>> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    using Op = Cmp<char*>;
+    using Op = Cmp<T>;
 
-    if constexpr (std::is_same_v<Op, std::equal_to<char*>>) {
+    if constexpr (std::is_same_v<Op, std::equal_to<T>>) {
       if (lhs_size != rhs_size) {
         return false;
       }
-    } else if constexpr (std::is_same_v<Op, std::not_equal_to<char*>>) {
+    } else if constexpr (std::is_same_v<Op, std::not_equal_to<T>>) {
       if (lhs_size != rhs_size) {
         return true;
       }
@@ -222,23 +286,15 @@ struct QueryCondition::BinaryCmp<
   }
 };
 
-/** Generic comparison functor, null checking */
-template <typename T, typename Cmp, typename E>
-struct QueryCondition::BinaryCmpNullChecks {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    return lhs != nullptr &&
-           Cmp{}(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
-  }
-};
-
-/** Specialization for char* */
-template <template <class> typename Cmp>
+/** Specialization for char* and uint8_t* */
+template <typename T, template <class> typename Cmp>
 struct QueryCondition::BinaryCmpNullChecks<
-    char*,
-    Cmp<char*>,
+    T,
+    Cmp<T>,
     typename std::enable_if_t<(
-        (!(std::is_same_v<Cmp<char*>, std::equal_to<char*>> ||
-           std::is_same_v<Cmp<char*>, std::not_equal_to<char*>>)))>> {
+        is_string_like_v<T> &&
+        (!(std::is_same_v<Cmp<T>, std::equal_to<T>> ||
+           std::is_same_v<Cmp<T>, std::not_equal_to<T>>)))>> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
     if (lhs == nullptr) {
@@ -251,26 +307,27 @@ struct QueryCondition::BinaryCmpNullChecks<
       return Cmp<decltype(cmp)>{}(cmp, 0);
     }
 
-    return Cmp<char*>{}(
-        reinterpret_cast<char* const>(lhs_size),
-        reinterpret_cast<char* const>(rhs_size));
+    return Cmp<T>{}(
+        reinterpret_cast<T const>(lhs_size),
+        reinterpret_cast<T const>(rhs_size));
   }
 };
 
-/** Specialization for char*, equal and not equal */
-template <template <class> typename Cmp>
+/** Specialization for char* and uint8_t*, equal and not equal */
+template <typename T, template <class> typename Cmp>
 struct QueryCondition::BinaryCmpNullChecks<
-    char*,
-    Cmp<char*>,
+    T,
+    Cmp<T>,
     typename std::enable_if_t<(
-        (std::is_same_v<Cmp<char*>, std::equal_to<char*>> ||
-         std::is_same_v<Cmp<char*>, std::not_equal_to<char*>>))>> {
+        is_string_like_v<T> &&
+        (std::is_same_v<Cmp<T>, std::equal_to<T>> ||
+         std::is_same_v<Cmp<T>, std::not_equal_to<T>>))>> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    const size_t min_size =
+        std::min<size_t>(lhs_size, rhs_size);  // @todo min_size or lhs_size?
 
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size); // @todo min_size or lhs_size?
-
-    if constexpr (std::is_same_v<Cmp<char*>, std::equal_to<char*>>) {
+    if constexpr (std::is_same_v<Cmp<T>, std::equal_to<T>>) {
       if (lhs == rhs) {
         return true;
       }
@@ -282,7 +339,7 @@ struct QueryCondition::BinaryCmpNullChecks<
       if (lhs_size != rhs_size) {
         return false;
       }
-    } else if constexpr (std::is_same_v<Cmp<char*>, std::not_equal_to<char*>>) {
+    } else if constexpr (std::is_same_v<Cmp<T>, std::not_equal_to<T>>) {
       if (rhs == nullptr && lhs != nullptr) {
         return true;
       }
@@ -305,39 +362,6 @@ struct QueryCondition::BinaryCmpNullChecks<
             static_cast<const char*>(rhs),
             min_size),
         0);
-  }
-};
-
-template <typename T, typename Cmp>
-struct QueryCondition::BinaryCmpNullChecks<
-    T,
-    Cmp,
-    typename std::enable_if_t<(
-        (std::is_same_v<Cmp, std::equal_to<T>> ||
-         std::is_same_v<
-             Cmp,
-             std::not_equal_to<T>>)&&(!std::is_same_v<T, char*>))>> {
-  static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
-    if constexpr (std::is_same_v<Cmp, std::equal_to<T>>) {
-      if (lhs == rhs) {
-        return true;
-      }
-
-      if (lhs == nullptr || rhs == nullptr) {
-        return false;
-      }
-    } else if constexpr (std::is_same_v<Cmp, std::not_equal_to<T>>) {
-      if (rhs == nullptr && lhs != nullptr) {
-        return true;
-      }
-
-      if (lhs == nullptr || rhs == nullptr) {
-        return false;
-      }
-    } else {
-      throw std::runtime_error("Unsupported comparison operator");
-    }
-    return Cmp{}(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
   }
 };
 
@@ -430,6 +454,8 @@ void dispatch_on_type(T type, V var_size, const G& g) {
     case Datatype::ANY:
     case Datatype::BLOB:
     case Datatype::STRING_UTF8:
+      g((uint8_t*){});
+      break;
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
@@ -450,7 +476,6 @@ void QueryCondition::apply_ast_node(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     typename std::common_type<CombinationOp>::type combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
-
   const std::string& field_name = node->get_field_name();
   const void* condition_value_content =
       node->get_condition_value_view().content();
