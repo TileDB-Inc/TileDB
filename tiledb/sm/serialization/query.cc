@@ -1278,20 +1278,20 @@ Status query_to_capnp(
   uint64_t total_fixed_len_bytes = 0;
   uint64_t total_var_len_bytes = 0;
   uint64_t total_validity_len_bytes = 0;
-  auto& remote_buffer_cache = query.get_remote_buffer_storage();
 
   for (uint64_t i = 0; i < buffer_names.size(); i++) {
     auto attr_buffer_builder = attr_buffers_builder[i];
     const auto& name = buffer_names[i];
     const auto& buff = query.buffer(name);
+    auto buff_cache = query.get_remote_buffer_cache(name);
     attr_buffer_builder.setName(name);
     bool remote_global_order_write = query.array()->is_remote() &&
                                      query.type() == QueryType::WRITE &&
                                      query.layout() == Layout::GLOBAL_ORDER;
     if (buff.buffer_var_ != nullptr || buff.buffer_var_size_ != nullptr) {
       // Variable-sized buffer
-      uint64_t var_buff_size = remote_buffer_cache[name].buffer_var.size();
-      uint64_t offset_buff_size = remote_buffer_cache[name].buffer.size();
+      uint64_t var_buff_size = buff_cache.buffer_var.size();
+      uint64_t offset_buff_size = buff_cache.buffer.size();
 
       // For remote GOWs the cache already contains user buffer data.
       if (!remote_global_order_write) {
@@ -1312,7 +1312,7 @@ Status query_to_capnp(
           buff.original_buffer_size_);
     } else if (buff.buffer_ != nullptr || buff.buffer_size_ != nullptr) {
       // Fixed-length buffer
-      uint64_t buff_size = remote_buffer_cache[name].buffer.size();
+      uint64_t buff_size = buff_cache.buffer.size();
 
       if (!remote_global_order_write) {
         buff_size += *buff.buffer_size_;
@@ -1332,7 +1332,8 @@ Status query_to_capnp(
     }
 
     if (buff.validity_vector_.buffer_size() != nullptr) {
-      uint64_t buff_size = remote_buffer_cache[name].buffer_validity.size();
+      uint64_t buff_size = buff_cache.buffer_validity.size();
+
       if (!remote_global_order_write) {
         buff_size += *buff.validity_vector_.buffer_size();
       }
@@ -2151,14 +2152,12 @@ Status query_serialize(
               query->type() == QueryType::WRITE &&
               query->layout() == Layout::GLOBAL_ORDER;
 
-          auto& remote_buffer_storage = query->get_remote_buffer_storage();
-
           auto attr_buffer_builders = query_builder.getAttributeBufferHeaders();
           for (auto attr_buffer_builder : attr_buffer_builders) {
             const std::string name = attr_buffer_builder.getName().cStr();
 
             auto query_buffer = query->buffer(name);
-            auto& query_buffer_cache = remote_buffer_storage[name];
+            auto query_buffer_cache = query->get_remote_buffer_cache(name);
 
             if (query_buffer.buffer_var_size_ != nullptr &&
                 query_buffer.buffer_var_ != nullptr) {

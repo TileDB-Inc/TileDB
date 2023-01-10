@@ -492,14 +492,12 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
   // Only applicable for remote global order writes
   if (!array_->is_remote() || type_ != QueryType::WRITE ||
       layout_ != Layout::GLOBAL_ORDER) {
-    // Other query types are not restricted to 5MB.
     return true;
   }
   uint64_t cell_num_per_tile = array_schema_->dense() ?
                                    array_schema_->domain().cell_num_per_tile() :
                                    array_schema_->capacity();
 
-  // If any buffer is < 5 MB we can't submit to REST.
   bool submit = true;
   for (auto&& buff : buffers_) {
     bool is_var = array_schema_->var_size(buff.first);
@@ -557,7 +555,7 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
       throw_if_not_ok(cache.buffer_var.write(
           buff.second.buffer_var_,
           var_buffer_size - (last_buffer_offset - trimmed_offset)));
-      if (cache.buffer_var.size() < constants::s3_multipart_minimum_size) {
+      if (cache.buffer.size() / data_size < cell_num_per_tile) {
         submit = false;
       }
     } else {
@@ -579,12 +577,12 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
       throw_if_not_ok(cache.buffer_validity.write(
           buff.second.validity_vector_.buffer(),
           validity_buffer_size - tile_trim_cells));
-      if (cache.buffer_validity.size() < constants::s3_multipart_minimum_size) {
+      if (cache.buffer_validity.size() < cell_num_per_tile) {
         submit = false;
       }
     }
 
-    if (cache.buffer.size() < constants::s3_multipart_minimum_size) {
+    if (cache.buffer.size() / data_size < cell_num_per_tile) {
       submit = false;
     }
 

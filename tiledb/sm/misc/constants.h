@@ -648,9 +648,6 @@ extern const uint64_t max_tile_chunk_size;
 extern const uint64_t max_string_dim_split_depth;
 
 /** Maximum number of attempts to wait for an S3 response. */
-extern const uint64_t s3_multipart_minimum_size;
-
-/** Maximum number of attempts to wait for an S3 response. */
 extern const unsigned int s3_max_attempts;
 
 /** Milliseconds of wait time between S3 attempts. */

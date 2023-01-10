@@ -373,9 +373,16 @@ class Query {
       uint8_t** buffer_validity_bytemap,
       uint64_t** buffer_validity_bytemap_size) const;
 
-  inline std::unordered_map<std::string, QueryRemoteBufferStorage>&
-  get_remote_buffer_storage() {
-    return query_remote_buffer_storage_;
+  /**
+   * Retrieve query buffer cache for remote global order write.
+   * If the cache does not exist, this will construct one.
+   *
+   * @param name The buffer name to retrieve.
+   * @return QueryRemoteBufferStorage for the requested buffer.
+   */
+  inline QueryRemoteBufferStorage get_remote_buffer_cache(
+      const std::string& name) {
+    return query_remote_buffer_storage_[name];
   }
 
   /**

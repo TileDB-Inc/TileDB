@@ -108,13 +108,6 @@ struct RemoteGlobalOrderWriteFx {
     ArraySchema schema(ctx_, array_type);
     schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
-    // TODO: Default filters for coordinates and offsets compress data to < 5MB
-    //  after submitting to REST. Disable them and tests are passing.
-    // If filters compress data size serverside we may fail S3 multipart upload.
-    FilterList filter_list(ctx_);
-    schema.set_coords_filter_list(filter_list);
-    schema.set_offsets_filter_list(filter_list);
-
     if (array_type == TILEDB_SPARSE) {
       schema.set_capacity(extent_);
     }
@@ -167,7 +160,6 @@ struct RemoteGlobalOrderWriteFx {
     uint64_t cols_start = 1;
     // Track the number of cells trimmed from this submit.
     uint64_t trimmed_cells = 0;
-    // Track last submitted offset value.
     // Resubmit until we reach total mbs requested
     for (uint64_t i = 0; i < total_cell_count_;
          i += (submit_cell_count_ - trimmed_cells)) {
