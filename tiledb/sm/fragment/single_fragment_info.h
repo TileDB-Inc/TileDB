@@ -55,6 +55,7 @@ class SingleFragmentInfo {
   /** Constructor. */
   SingleFragmentInfo() {
     uri_ = URI("");
+    name_ = "";
     version_ = 0;
     cell_num_ = 0;
     sparse_ = false;
@@ -73,6 +74,7 @@ class SingleFragmentInfo {
       const NDRange& expanded_non_empty_domain,
       shared_ptr<FragmentMetadata> meta)
       : uri_(uri)
+      , name_(meta->fragment_uri().remove_trailing_slash().last_path_part())
       , version_(meta->format_version())
       , sparse_(sparse)
       , timestamp_range_(timestamp_range)
@@ -147,6 +149,11 @@ class SingleFragmentInfo {
     return uri_;
   }
 
+  /** Returns the fragment name. */
+  const std::string& name() const {
+    return name_;
+  }
+
   /** Returns the timestamp range. */
   const std::pair<uint64_t, uint64_t>& timestamp_range() const {
     return timestamp_range_;
@@ -219,6 +226,13 @@ class SingleFragmentInfo {
   /** The fragment URI. */
   URI uri_;
 
+  /**
+   * The fragment name.
+   *
+   * #TODO: Remove upon removal of tiledb_fragment_info_get_fragment_name.
+   */
+  std::string name_;
+
   /** The format version of the fragment. */
   format_version_t version_;
 
@@ -261,6 +275,7 @@ class SingleFragmentInfo {
   SingleFragmentInfo clone() const {
     SingleFragmentInfo clone;
     clone.uri_ = uri_;
+    clone.name_ = name_;
     clone.version_ = version_;
     clone.cell_num_ = cell_num_;
     clone.sparse_ = sparse_;
@@ -277,6 +292,7 @@ class SingleFragmentInfo {
   /** Swaps the contents (all field values) of this info with the given info. */
   void swap(SingleFragmentInfo& info) {
     std::swap(uri_, info.uri_);
+    std::swap(name_, info.name_);
     std::swap(version_, info.version_);
     std::swap(cell_num_, info.cell_num_);
     std::swap(sparse_, info.sparse_);

@@ -206,10 +206,7 @@ Status FragmentInfo::get_fragment_name(uint32_t fid, const char** name) const {
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; Invalid fragment index"));
 
-  auto meta = single_fragment_info_vec_[fid].meta();
-  auto meta_name =
-      meta->fragment_uri().remove_trailing_slash().last_path_part();
-  *name = meta_name.c_str();
+  *name = single_fragment_info_vec_[fid].name().c_str();
 
   return Status::Ok();
 }
@@ -743,9 +740,10 @@ Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
 tuple<Status, optional<shared_ptr<ArraySchema>>> FragmentInfo::get_array_schema(
     uint32_t fid) {
   if (fid >= fragment_num())
-    return {LOG_STATUS(Status_FragmentInfoError(
-                "Cannot get array schema; Invalid fragment index")),
-            nullopt};
+    return {
+        LOG_STATUS(Status_FragmentInfoError(
+            "Cannot get array schema; Invalid fragment index")),
+        nullopt};
   URI schema_uri;
   uint32_t version = single_fragment_info_vec_[fid].format_version();
   if (version >= 10) {
