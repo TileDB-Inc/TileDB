@@ -20,8 +20,8 @@ static std::string base_dumped_stats = empty_dumped_stats;
 // problem even when involved Context(s) were destructed.
 TEST_CASE(
     "Stats registration handling, indirect via Context", "[stats][context]") {
-  // Examine stats output as reflection of whether data allocations might be
-  // held beyond a reset and/or registrant destruction.
+  // Examine stats output as reflection of whether registered data allocations
+  // might be held beyond a reset and/or registrant destruction.
 
   auto check_stats_is = [](std::string s) -> void {
     char* ptr_dumped_stats{nullptr};

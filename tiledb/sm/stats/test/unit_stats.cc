@@ -58,9 +58,8 @@ static std::string base_dumped_stats = empty_dumped_stats;
 
 TEST_CASE(
     "Stats registration handling, indirect via Context", "[stats][context]") {
-  // Examine stats output when class Context active as reflection of
-  // whether data allocations might be held beyond a reset and/or registrant
-  // destruction.
+  // Examine stats output as reflection of whether registered data allocations
+  // might be held beyond a reset and/or registrant destruction.
 
   std::string dumped_stats;
 
