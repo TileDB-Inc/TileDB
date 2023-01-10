@@ -191,11 +191,8 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
 
   // Get the consolidated fragment metadata URIs to be deleted
   // (all except the last one)
-  auto vfs = storage_manager_->vfs();
-  auto compute_tp = storage_manager_->compute_tp();
-
-  auto array_dir =
-      ArrayDirectory(vfs, compute_tp, URI(array_name), 0, UINT64_MAX);
+  ArrayDirectory array_dir(
+      storage_manager_->resources(), URI(array_name), 0, UINT64_MAX);
 
   const auto& fragment_meta_uris = array_dir.fragment_meta_uris();
 
@@ -208,6 +205,9 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
       t_latest = timestamp_range.second;
     }
   }
+
+  auto vfs = storage_manager_->vfs();
+  auto compute_tp = storage_manager_->compute_tp();
 
   // Vacuum
   throw_if_not_ok(

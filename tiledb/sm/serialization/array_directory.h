@@ -38,6 +38,7 @@
 #endif
 
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
@@ -60,6 +61,7 @@ namespace serialization {
  */
 shared_ptr<ArrayDirectory> array_directory_from_capnp(
     const capnp::ArrayDirectory::Reader& array_directory_reader,
+    ContextResources& resources,
     const URI& array_uri);
 
 /**

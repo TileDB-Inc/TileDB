@@ -78,7 +78,7 @@ Array::Array(
     ConsistencyController& cc)
     : array_schema_latest_(nullptr)
     , array_uri_(array_uri)
-    , array_dir_()
+    , array_dir_(storage_manager->resources(), array_uri)
     , array_uri_serialized_(array_uri)
     , encryption_key_(make_shared<EncryptionKey>(HERE()))
     , is_open_(false)
@@ -194,12 +194,7 @@ Status Array::open_without_fragments(
       }
     } else {
       array_dir_ = ArrayDirectory(
-          &resources_.vfs(),
-          &resources_.compute_tp(),
-          array_uri_,
-          0,
-          UINT64_MAX,
-          ArrayDirectoryMode::READ);
+          resources_, array_uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ);
 
       auto&& [array_schema, array_schemas] = open_for_reads_without_fragments();
       if (!st.ok())
@@ -366,11 +361,7 @@ Status Array::open(
       }
     } else if (query_type == QueryType::READ) {
       array_dir_ = ArrayDirectory(
-          &resources_.vfs(),
-          &resources_.compute_tp(),
-          array_uri_,
-          timestamp_start_,
-          timestamp_end_opened_at_);
+          resources_, array_uri_, timestamp_start_, timestamp_end_opened_at_);
 
       auto&& [array_schema_latest, array_schemas, fragment_metadata] =
           open_for_reads();
@@ -383,8 +374,7 @@ Status Array::open(
         query_type == QueryType::WRITE ||
         query_type == QueryType::MODIFY_EXCLUSIVE) {
       array_dir_ = ArrayDirectory(
-          &resources_.vfs(),
-          &resources_.compute_tp(),
+          resources_,
           array_uri_,
           timestamp_start_,
           timestamp_end_opened_at_,
@@ -402,8 +392,7 @@ Status Array::open(
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
       array_dir_ = ArrayDirectory(
-          &resources_.vfs(),
-          &resources_.compute_tp(),
+          resources_,
           array_uri_,
           timestamp_start_,
           timestamp_end_opened_at_,
@@ -789,8 +778,7 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
 
   try {
     array_dir_ = ArrayDirectory(
-        &resources_.vfs(),
-        &resources_.compute_tp(),
+        resources_,
         array_uri_,
         timestamp_start_,
         timestamp_end_opened_at_,

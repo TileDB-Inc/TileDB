@@ -7149,12 +7149,10 @@ TEST_CASE_METHOD(
 
   // Get the array directory
   tiledb::Context ctx;
-  auto vfs = tiledb::VFS(ctx);
-  auto sm = ctx.ptr().get()->storage_manager();
+  tiledb::sm::ContextResources& resources = ctx.ptr()->context().resources();
   tiledb::sm::URI array_uri(array_name);
-  ThreadPool tp(2);
   tiledb::sm::ArrayDirectory array_dir =
-      tiledb::sm::ArrayDirectory(sm->vfs(), &tp, array_uri, 0, 5);
+      tiledb::sm::ArrayDirectory(resources, array_uri, 0, 5);
 
   // Serialize and deserialize it
   ::capnp::MallocMessageBuilder message;
@@ -7164,7 +7162,7 @@ TEST_CASE_METHOD(
       array_dir, &array_dir_builder);
   auto deserialized_array_dir =
       tiledb::sm::serialization::array_directory_from_capnp(
-          array_dir_builder, array_uri);
+          array_dir_builder, resources, array_uri);
 
   // Compare original array_directory to the deserialized one
   REQUIRE(
@@ -7208,6 +7206,6 @@ TEST_CASE_METHOD(
       deserialized_array_dir->timestamp_start() == array_dir.timestamp_start());
   REQUIRE(deserialized_array_dir->timestamp_end() == array_dir.timestamp_end());
 
-  vfs.remove_dir(array_name);
+  REQUIRE(resources.vfs().remove_dir(tiledb::sm::URI(array_name)).ok());
 #endif
 }

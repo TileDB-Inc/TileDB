@@ -1136,15 +1136,12 @@ int32_t tiledb_array_schema_load(
 
     // For easy reference
     auto storage_manager{ctx->storage_manager()};
-    auto vfs = storage_manager->vfs();
-    auto tp = storage_manager->compute_tp();
 
     // Load URIs from the array directory
-    tiledb::sm::ArrayDirectory array_dir;
+    tiledb::sm::ArrayDirectory array_dir(storage_manager->resources(), uri);
     try {
       array_dir = tiledb::sm::ArrayDirectory(
-          vfs,
-          tp,
+          storage_manager->resources(),
           uri,
           0,
           UINT64_MAX,
@@ -1240,15 +1237,12 @@ int32_t tiledb_array_schema_load_with_key(
 
     // For easy reference
     auto storage_manager{ctx->storage_manager()};
-    auto vfs = storage_manager->vfs();
-    auto tp = storage_manager->compute_tp();
 
     // Load URIs from the array directory
-    tiledb::sm::ArrayDirectory array_dir;
+    tiledb::sm::ArrayDirectory array_dir(storage_manager->resources(), uri);
     try {
       array_dir = tiledb::sm::ArrayDirectory(
-          vfs,
-          tp,
+          storage_manager->resources(),
           uri,
           0,
           UINT64_MAX,
@@ -3506,16 +3500,13 @@ int32_t tiledb_array_encryption_type(
 
   // For easy reference
   auto storage_manager = ctx->storage_manager();
-  auto vfs = storage_manager->vfs();
-  auto tp = storage_manager->compute_tp();
   auto uri = tiledb::sm::URI(array_uri);
 
   // Load URIs from the array directory
-  tiledb::sm::ArrayDirectory array_dir;
+  tiledb::sm::ArrayDirectory array_dir(storage_manager->resources(), uri);
   try {
     array_dir = tiledb::sm::ArrayDirectory(
-        vfs,
-        tp,
+        storage_manager->resources(),
         uri,
         0,
         UINT64_MAX,
