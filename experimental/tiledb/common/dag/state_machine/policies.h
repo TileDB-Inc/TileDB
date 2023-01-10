@@ -154,22 +154,31 @@ class NullPolicy
   using scheduler_event_type = SchedulerAction;
 
   inline scheduler_event_type on_ac_return(lock_type&, std::atomic<int>&) {
+    return {};
   }
   inline scheduler_event_type on_source_move(lock_type&, std::atomic<int>&) {
+    return {};
   }
   inline scheduler_event_type on_sink_move(lock_type&, std::atomic<int>&) {
+    return {};
   }
   inline scheduler_event_type on_notify_source(lock_type&, std::atomic<int>&) {
+    return {};
   }
   inline scheduler_event_type on_notify_sink(lock_type&, std::atomic<int>&) {
+    return {};
   }
   inline scheduler_event_type on_source_wait(lock_type&, std::atomic<int>&) {
+    return {};
   }
   inline scheduler_event_type on_sink_wait(lock_type&, std::atomic<int>&) {
+    return {};
   }
   inline scheduler_event_type on_term_source(lock_type&, std::atomic<int>&) {
+    return {};
   }
   inline scheduler_event_type on_term_sink(lock_type&, std::atomic<int>&) {
+    return {};
   }
 };
 
