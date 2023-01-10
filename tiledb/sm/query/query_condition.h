@@ -44,8 +44,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class FragmentMetadata;
 struct ResultCellSlab;
@@ -63,7 +62,7 @@ class QueryCondition {
   explicit QueryCondition() = default;
 
   /** Constructor from a marker. */
-  QueryCondition(const std::string& condition_marker);
+  explicit QueryCondition(const std::string& condition_marker);
 
   /** Constructor from a tree. */
   QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree) noexcept;
@@ -81,7 +80,7 @@ class QueryCondition {
   QueryCondition(QueryCondition&& rhs) noexcept;
 
   /** Destructor. */
-  ~QueryCondition();
+  ~QueryCondition() = default;
 
   /* ********************************* */
   /*             OPERATORS             */
@@ -118,7 +117,7 @@ class QueryCondition {
    *   - Fixed-size, single-value, non-nullable attributes.
    *   - The QueryConditionCombinationOp::AND operator.
    *
-   * @param array_schema The current array schena.
+   * @param array_schema The current array schema.
    * @return Status
    */
   Status check(const ArraySchema& array_schema) const;
@@ -257,7 +256,6 @@ class QueryCondition {
    */
   template <typename T, typename Op, typename E = void>
   struct BinaryCmp;
-
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -580,7 +578,30 @@ class QueryCondition {
       std::vector<BitmapType>& result_bitmap) const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+/**
+ * Function for dispatching the application of function `g` based on the
+ * QueryCondition enum `op`, i.e., QueryCondition::LT will invoke
+ * `g(std::less<T>{})`.  `g` is assumed to be a polymorphic function in
+ * its first argument.
+ *
+ * @tparam T
+ * @tparam O
+ * @tparam G
+ * @param op
+ * @param g
+ */
+template <typename T, typename O, typename G>
+void dispatch_on_op(O op, const G& g);
+
+/**
+ * Function for dispatching the application of function `g` based on the
+ * Datatype enum `type`, i.e., Datatype::INT32 will invoke
+ * `g(int32_t{})`.  `g` is assumed to be a polymorphic function in
+ * its first argument.
+ */
+template <typename T, typename V, typename G>
+void dispatch_on_type(T type, V var_size, const G& g);
+
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_QUERY_CONDITION_H
