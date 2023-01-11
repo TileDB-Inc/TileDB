@@ -64,7 +64,7 @@ TEST_CASE(
   std::string dumped_stats;
 
   SECTION(" - baseline of no stats") {
-	// Verify on initial entry that stats are at expected 'baseline'
+    // Verify on initial entry that stats are at expected 'baseline'
     pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
 
@@ -76,7 +76,8 @@ TEST_CASE(
   // Similar to above, but this do something that
   // should populate some stats.
   SECTION(" - verify stats generated and then released") {
-    // Verify that no stats exist after prior activity including its exit/cleanup.
+    // Verify that no stats exist after prior activity including its
+    // exit/cleanup.
     pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
 
@@ -114,8 +115,8 @@ TEST_CASE(
       pseudo_all_stats.dump(&dumped_stats);
       CHECK(dumped_stats != base_dumped_stats);
 
-      // 'stats'/stats_ destroyed, on exist, afterward should not be any lingering
-      // active items.
+      // 'stats'/stats_ destroyed, on exist, afterward should not be any
+      // lingering active items.
     }
 
     // Registered stats only knows about weak_ptr, original registered stats
@@ -136,4 +137,4 @@ TEST_CASE(
   pseudo_all_stats.dump(&dumped_stats);
   CHECK(dumped_stats == base_dumped_stats);
 }
-#endif // #ifdef TILEDB_STATS
+#endif  // #ifdef TILEDB_STATS

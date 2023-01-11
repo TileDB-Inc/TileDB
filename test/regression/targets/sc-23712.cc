@@ -100,7 +100,7 @@ TEST_CASE(
     // is gone and output should be base level.
     check_stats_is(base_dumped_stats);
   }
-  
+
   // verify once more
   check_stats_is(base_dumped_stats);
 
