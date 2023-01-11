@@ -64,6 +64,9 @@ add_subdirectory(context)
 # `datatype`: no dependencies
 add_subdirectory(datatype)
 
+# `data_order`: no dependencies
+add_subdirectory(data_order)
+
 # `filesystem`: no dependencies
 add_subdirectory(filesystem)
 
@@ -87,6 +90,3 @@ add_subdirectory(query)
 
 # `vfs`: depends on `context`
 add_subdirectory(vfs)
-
-# `data_order`: no dependencies
-add_subdirectory(data_order)
