@@ -24,20 +24,9 @@
 # THE SOFTWARE.
 #
 
-add_executable(unit_capi_string EXCLUDE_FROM_ALL)
-find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_capi_string PUBLIC Catch2::Catch2WithMain)
+include(unit_test)
 
-# Sources for code under test
-target_link_libraries(unit_capi_string PUBLIC capi_string)
-
-# Sources for tests
-target_sources(unit_capi_string PUBLIC
-    unit_capi_string.cc
-    )
-
-add_test(
-    NAME "unit_capi_string"
-    COMMAND $<TARGET_FILE:unit_capi_string>
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+commence(unit_test capi_string)
+  this_target_sources(unit_capi_string.cc)
+  this_target_object_libraries(capi_string)
+conclude(unit_test)

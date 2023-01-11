@@ -25,6 +25,7 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
     string_api.cc
@@ -34,16 +35,10 @@ gather_sources(${SOURCES})
 #
 # object library `capi_string`
 #
-add_library(capi_string OBJECT ${SOURCES})
-target_link_libraries(capi_string PUBLIC export)
-target_link_libraries(capi_string PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_capi_string EXCLUDE_FROM_ALL)
-target_link_libraries(compile_capi_string PRIVATE capi_string)
-target_sources(compile_capi_string PRIVATE test/compile_capi_string_main.cc)
-add_dependencies(all_link_complete compile_capi_string)
+commence(object_library capi_string)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(baseline)
+conclude(object_library)
 
 add_test_subdirectory()
