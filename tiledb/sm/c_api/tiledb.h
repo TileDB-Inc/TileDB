@@ -6266,7 +6266,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_fragment_info_load_with_key(
  * @param name The fragment name to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_name(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_fragment_info_get_fragment_name(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
