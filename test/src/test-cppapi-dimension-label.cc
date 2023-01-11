@@ -32,10 +32,8 @@
 
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
-#include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_dimension_label.h"
-#include "tiledb/sm/cpp_api/dimension_label.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
 
 #include <test/support/tdb_catch.h>
 
@@ -45,44 +43,35 @@ TEST_CASE_METHOD(
     TemporaryDirectoryFixture,
     "Get dimension label from schema",
     "[cppapi][ArraySchema][DimensionLabel]") {
-  // Use C-API to create an array with a dimension label.
+  // Set array name.
+  auto array_name = fullpath("simple_array_with_label");
+
+  // Create the C++ context.
+  tiledb::Context ctx_{ctx, false};
+
+  // Define label order for test.
   auto label_type = GENERATE(TILEDB_FLOAT64, TILEDB_STRING_ASCII);
-  uint64_t x_domain[2]{0, 63};
-  uint64_t x_tile_extent{64};
-  uint64_t y_domain[2]{0, 63};
-  uint64_t y_tile_extent{64};
-  auto array_schema = create_array_schema(
-      ctx,
-      TILEDB_DENSE,
-      {"x", "y"},
-      {TILEDB_UINT64, TILEDB_UINT64},
-      {&x_domain[0], &y_domain[0]},
-      {&x_tile_extent, &y_tile_extent},
-      {"a"},
-      {TILEDB_FLOAT64},
-      {1},
-      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
-      TILEDB_ROW_MAJOR,
-      TILEDB_ROW_MAJOR,
-      4096,
-      false);
-  require_tiledb_ok(tiledb_array_schema_add_dimension_label(
-      ctx, array_schema, 0, "label", TILEDB_INCREASING_DATA, label_type));
-  auto array_name =
-      create_temporary_array("simple_array_with_label", array_schema);
-  tiledb_array_schema_free(&array_schema);
 
-  // Allocate the C-API dimension label struct using the array schema.
-  tiledb_dimension_label_t* c_dim_label{nullptr};
-  tiledb_array_schema_t* loaded_array_schema{nullptr};
-  require_tiledb_ok(
-      tiledb_array_schema_load(ctx, array_name.c_str(), &loaded_array_schema));
-  require_tiledb_ok(tiledb_array_schema_get_dimension_label_from_name(
-      ctx, loaded_array_schema, "label", &c_dim_label));
+  // Create an array with a dimension label.
+  tiledb::ArraySchema schema(ctx_, TILEDB_DENSE);
+  tiledb::Domain domain(ctx_);
+  auto d1 = tiledb::Dimension::create<uint64_t>(ctx_, "x", {{0, 63}}, 64);
+  auto d2 = tiledb::Dimension::create<uint64_t>(ctx_, "y", {{0, 63}}, 64);
+  domain.add_dimension(d1);
+  schema.set_domain(domain);
+  auto a1 = tiledb::Attribute::create<double>(ctx_, "a");
+  schema.add_attribute(a1);
+  tiledb::ArraySchemaExperimental::add_dimension_label(
+      ctx_, schema, 0, "l1", TILEDB_INCREASING_DATA, label_type);
+  tiledb::Array::create(array_name, schema);
 
-  // Create C++ Dimension Label
-  tiledb::Context context{ctx, false};
-  tiledb::DimensionLabel dim_label{context, c_dim_label};
+  // Load the array schema and get the dimension label from it.
+  auto loaded_schema = tiledb::ArraySchema(ctx_, array_name);
+  auto has_label = tiledb::ArraySchemaExperimental::has_dimension_label(
+      ctx_, loaded_schema, "l1");
+  REQUIRE(has_label);
+  auto dim_label = tiledb::ArraySchemaExperimental::dimension_label(
+      ctx_, loaded_schema, "l1");
 
   // Check the values.
   CHECK(dim_label.dimension_index() == 0);
@@ -94,12 +83,7 @@ TEST_CASE_METHOD(
     CHECK(dim_label.label_cell_val_num() == tiledb::sm::constants::var_num);
     CHECK(dim_label.label_type() == TILEDB_STRING_ASCII);
   }
-  auto uri = dim_label.uri();
-  tiledb_object_t dim_label_object_type;
-  check_tiledb_ok(tiledb_object_type(ctx, uri.c_str(), &dim_label_object_type));
-  CHECK(dim_label_object_type == TILEDB_ARRAY);
-
-  // Free the C-API.
-  tiledb_dimension_label_free(&c_dim_label);
-  tiledb_array_schema_free(&loaded_array_schema);
+  // Make sure the URI is to a valid array.
+  auto dim_label_object = tiledb::Object::object(ctx_, dim_label.uri());
+  CHECK(dim_label_object.type() == tiledb::Object::Type::Array);
 }
