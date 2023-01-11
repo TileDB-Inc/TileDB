@@ -797,7 +797,8 @@ void dispatch_on_type(T type, V var_size, const G& g) {
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
-      throw;
+      throw std::runtime_error(
+          "QueryCondition::dispatch_on_type: Unknown query condition type.");
   }
 }
 
@@ -961,6 +962,7 @@ void QueryCondition::apply_ast_node(
   }
 }
 
+<<<<<<< HEAD
 template <typename T, typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
@@ -1103,6 +1105,8 @@ void QueryCondition::apply_ast_node(
 >>>>>>> 9bd2b2aa7 (Slight reorganization [skip ci])
 }
 
+=======
+>>>>>>> 71435ec0a (Roll trivial functions into callers [skip ci])
 template <typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
@@ -1289,17 +1293,21 @@ void QueryCondition::apply_ast_node(
             result_cell_bitmap);
 =======
   auto g = [&, *this](auto T) {
-    return apply_ast_node<decltype(T), CombinationOp>(
-        node,
-        fragment_metadata,
-        stride,
-        var_size,
-        nullable,
-        fill_value,
-        result_cell_slabs,
-        combination_op,
-        result_cell_bitmap);
+    auto h = [&, *this](auto ConditionOp) {
+      return apply_ast_node<decltype(T), decltype(ConditionOp), CombinationOp>(
+          node,
+          fragment_metadata,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          combination_op,
+          result_cell_bitmap);
+    };
+    dispatch_on_op<decltype(T)>(node->get_op(), h);
   };
+<<<<<<< HEAD
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1414,6 +1422,8 @@ void QueryCondition::apply_ast_node(
   type_switcher(type, var_size, g);
 >>>>>>> 625dd1c9b (Compressed some more [skip ci])
 =======
+=======
+>>>>>>> 71435ec0a (Roll trivial functions into callers [skip ci])
   dispatch_on_type(type, var_size, g);
 >>>>>>> 9bd2b2aa7 (Slight reorganization [skip ci])
 }
@@ -1665,6 +1675,7 @@ void QueryCondition::apply_ast_node_dense(
   }
 }
 
+<<<<<<< HEAD
 template <typename T, typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
@@ -1801,6 +1812,8 @@ void QueryCondition::apply_ast_node_dense(
 >>>>>>> 9bd2b2aa7 (Slight reorganization [skip ci])
 }
 
+=======
+>>>>>>> 71435ec0a (Roll trivial functions into callers [skip ci])
 template <typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
@@ -2001,16 +2014,20 @@ void QueryCondition::apply_ast_node_dense(
             result_buffer);
 =======
   auto g = [&, *this](auto T) {
-    return apply_ast_node_dense<decltype(T), CombinationOp>(
-        node,
-        result_tile,
-        start,
-        src_cell,
-        stride,
-        var_size,
-        nullable,
-        combination_op,
-        result_buffer);
+    auto h = [&, *this](auto Condition) {
+      return apply_ast_node_dense<decltype(T), decltype(Condition), CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          combination_op,
+          result_buffer);
+    };
+    dispatch_on_op<decltype(T)>(node->get_op(), h);
+
   };
 <<<<<<< HEAD
 
@@ -2126,7 +2143,11 @@ void QueryCondition::apply_ast_node_dense(
 >>>>>>> 625dd1c9b (Compressed some more [skip ci])
 =======
   dispatch_on_type(attribute->type(), var_size, g);
+<<<<<<< HEAD
 >>>>>>> 9bd2b2aa7 (Slight reorganization [skip ci])
+=======
+
+>>>>>>> 71435ec0a (Roll trivial functions into callers [skip ci])
 }
 
 template <typename CombinationOp>
@@ -2701,6 +2722,7 @@ void QueryCondition::apply_ast_node_sparse(
   }
 }
 
+<<<<<<< HEAD
 template <
     typename T,
     typename BitmapType,
@@ -2831,6 +2853,8 @@ void QueryCondition::apply_ast_node_sparse(
   }
 }
 
+=======
+>>>>>>> 71435ec0a (Roll trivial functions into callers [skip ci])
 template <typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
@@ -2880,8 +2904,16 @@ void QueryCondition::apply_ast_node_sparse(
   }
 
   auto g = [&, *this](auto T) {
-    return apply_ast_node_sparse<decltype(T), BitmapType, CombinationOp>(
-        node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    auto h = [&, *this](auto Condition) {
+      if (nullable) {
+        apply_ast_node_sparse<decltype(T), decltype(Condition), BitmapType, CombinationOp, std::true_type>(
+            node, result_tile, var_size, combination_op, result_bitmap);
+      } else {
+        apply_ast_node_sparse<decltype(T), decltype(Condition), BitmapType, CombinationOp, std::false_type>(
+            node, result_tile, var_size, combination_op, result_bitmap);
+      }
+    };
+    dispatch_on_op<decltype(T)>(node->get_op(), h);
   };
 <<<<<<< HEAD
 <<<<<<< HEAD
