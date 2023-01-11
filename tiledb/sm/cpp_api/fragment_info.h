@@ -106,6 +106,7 @@ class FragmentInfo {
   }
 
   /** Returns the name of the fragment with the given index. */
+  TILEDB_DEPRECATED
   std::string fragment_name(uint32_t fid) const {
     auto& ctx = ctx_.get();
     const char* name_c;
