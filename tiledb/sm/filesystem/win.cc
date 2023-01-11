@@ -596,10 +596,12 @@ Status Win::write_at(
   // file handle. Instead, we use the OVERLAPPED struct to specify an offset at
   // which to write. Note that the file handle does not have to be opened in
   // "overlapped" mode (i.e. async writes) to do this.
-  unsigned long bytes_written = 0;
   uint64_t byte_idx = 0;
   const char* byte_buffer = reinterpret_cast<const char*>(buffer);
-  while (buffer_size > constants::max_write_bytes) {
+  while (buffer_size > 0) {
+    DWORD bytes_to_write = buffer_size > std::numeric_limits<DWORD>::max() ?
+        std::numeric_limits<DWORD>::max() : (DWORD)buffer_size;
+    DWORD bytes_written = 0;
     LARGE_INTEGER offset;
     offset.QuadPart = file_offset;
     OVERLAPPED ov = {0, 0, {{0, 0}}, 0};
@@ -608,30 +610,16 @@ Status Win::write_at(
     if (WriteFile(
             file_h,
             byte_buffer + byte_idx,
-            constants::max_write_bytes,
+            bytes_to_write,
             &bytes_written,
-            &ov) == 0 ||
-        bytes_written != constants::max_write_bytes) {
+            &ov) == 0) {
       return LOG_STATUS(Status_IOError(std::string(
           "Cannot write to file; File writing error: " +
           get_last_error_msg("WriteFile"))));
     }
-    buffer_size -= constants::max_write_bytes;
-    byte_idx += constants::max_write_bytes;
-    file_offset += constants::max_write_bytes;
-  }
-  LARGE_INTEGER offset;
-  offset.QuadPart = file_offset;
-  OVERLAPPED ov = {0, 0, {{0, 0}}, 0};
-  ov.Offset = offset.LowPart;
-  ov.OffsetHigh = offset.HighPart;
-  if (WriteFile(
-          file_h, byte_buffer + byte_idx, buffer_size, &bytes_written, &ov) ==
-          0 ||
-      bytes_written != buffer_size) {
-    return LOG_STATUS(Status_IOError(std::string(
-        "Cannot write to file; File writing error: " +
-        get_last_error_msg("WriteFile"))));
+    buffer_size -= bytes_written;
+    byte_idx += bytes_written;
+    file_offset += bytes_written;
   }
   return Status::Ok();
 }
