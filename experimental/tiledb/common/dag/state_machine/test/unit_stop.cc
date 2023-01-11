@@ -217,7 +217,7 @@ TEST_CASE("Port FSM: Just stop, three stage", "[stop]") {
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_000");
   CHECK_THROWS(a.port_push());
-  //CHECK(str(a.state()) == "error");
+  // CHECK(str(a.state()) == "error");
 
   a.set_state(three_stage::st_001);
   CHECK(str(a.state()) == "st_001");
@@ -231,7 +231,7 @@ TEST_CASE("Port FSM: Just stop, three stage", "[stop]") {
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_010");
   CHECK_THROWS(a.port_push());
-  //CHECK(str(a.state()) == "error");
+  // CHECK(str(a.state()) == "error");
 
   a.set_state(three_stage::st_011);
   CHECK(str(a.state()) == "st_011");

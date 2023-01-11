@@ -29,7 +29,6 @@
 #include "../duffs.h"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
 
-
 using namespace tiledb::common;
 
 int main() {

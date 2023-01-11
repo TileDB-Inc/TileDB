@@ -50,7 +50,6 @@ TEST_CASE("Construct Scheduler", "[duffs]") {
 }
 
 TEST_CASE("Construct functions", "[duffs]") {
-
   // Test 2 stage edges -- 3 stage will have different behavior,
   // so needs its own test case
   auto p = P2([](std::stop_source&) { return 0; });
@@ -71,7 +70,7 @@ TEST_CASE("Resume functions", "[duffs]") {
   Edge(*p, *f);
   Edge(*f, *c);
 
-  SECTION ("Test Producer in Isolation ") {
+  SECTION("Test Producer in Isolation ") {
     // One pass through node operation
     auto x = p->resume();
     CHECK(p->get_program_counter() == 3);
@@ -83,7 +82,8 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(p->get_program_counter() == 0);
     CHECK(str(x) == "yield");
 
-    // Second pass through node operation -- this should wait since port will be full
+    // Second pass through node operation -- this should wait since port will be
+    // full
     x = p->resume();
     CHECK(p->get_program_counter() == 3);
     CHECK(str(x) == "notify_sink");
@@ -93,14 +93,14 @@ TEST_CASE("Resume functions", "[duffs]") {
     // Don't resume further after wait
   }
 
-  SECTION ("Test Consumer in Isolation ") {
+  SECTION("Test Consumer in Isolation ") {
     // One pass through node operation
     auto x = c->resume();
     CHECK(c->get_program_counter() == 1);
     CHECK(str(x) == "sink_wait");
   }
 
-  SECTION ("Test Function in Isolation ") {
+  SECTION("Test Function in Isolation ") {
     // One pass through node operation
     auto x = f->resume();
     CHECK(f->get_program_counter() == 1);
@@ -108,7 +108,6 @@ TEST_CASE("Resume functions", "[duffs]") {
   }
 
   SECTION("Emulate Passing Datum") {
-
     CHECK(p->get_program_counter() == 0);
     CHECK(f->get_program_counter() == 0);
     CHECK(c->get_program_counter() == 0);
@@ -160,7 +159,6 @@ TEST_CASE("Resume functions", "[duffs]") {
   }
 
   SECTION("Emulate Passing Data, with Some Blocking") {
-
     CHECK(p->get_program_counter() == 0);
     CHECK(f->get_program_counter() == 0);
     CHECK(c->get_program_counter() == 0);
@@ -182,7 +180,6 @@ TEST_CASE("Resume functions", "[duffs]") {
     x = p->resume();
     CHECK(p->get_program_counter() == 5);
     CHECK(str(x) == "source_wait");
-
 
     // Move datum to next node
     auto y = f->resume();  // pull
@@ -222,7 +219,6 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(f->get_program_counter() == 9);
     CHECK(str(y) == "source_wait");
 
-
     auto z = c->resume();  // pull
     CHECK(c->get_program_counter() == 1);
     CHECK(str(z) == "noop");
@@ -236,7 +232,7 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(c->get_program_counter() == 6);
     CHECK(str(z) == "noop");
 
-     z = c->resume();  // pull
+    z = c->resume();  // pull
     CHECK(c->get_program_counter() == 1);
     CHECK(str(z) == "yield");
 
@@ -251,7 +247,6 @@ TEST_CASE("Resume functions", "[duffs]") {
   }
 
   SECTION("Emulate Pulling Data, with Some Blocking") {
-
     auto z = c->resume();  // pull
     CHECK(c->get_program_counter() == 1);
     CHECK(str(z) == "sink_wait");
@@ -295,14 +290,17 @@ TEST_CASE("Resume functions", "[duffs]") {
     z = c->resume();  // pull
     CHECK(c->get_program_counter() == 6);
     CHECK(str(z) == "sink_wait");
-
   }
 }
 
-TEMPLATE_TEST_CASE("Submit Nodes", "[duffs]", (std::tuple<C2, F2, P2>), (std::tuple<C3, F3, P3>)) {
-        using C = typename std::tuple_element<0, TestType>::type;
-        using F = typename std::tuple_element<1, TestType>::type;
-        using P = typename std::tuple_element<2, TestType>::type;
+TEMPLATE_TEST_CASE(
+    "Submit Nodes",
+    "[duffs]",
+    (std::tuple<C2, F2, P2>),
+    (std::tuple<C3, F3, P3>)) {
+  using C = typename std::tuple_element<0, TestType>::type;
+  using F = typename std::tuple_element<1, TestType>::type;
+  using P = typename std::tuple_element<2, TestType>::type;
 
   auto sched = S(1);
   auto p = P([](std::stop_source& stop_source) {
@@ -364,8 +362,11 @@ TEMPLATE_TEST_CASE("Submit Nodes", "[duffs]", (std::tuple<C2, F2, P2>), (std::tu
   }
 }
 
-
-TEMPLATE_TEST_CASE("Run Simple Nodes", "[duffs]", (std::tuple<C2, F2, P2>), (std::tuple<C3, F3, P3>)) {
+TEMPLATE_TEST_CASE(
+    "Run Simple Nodes",
+    "[duffs]",
+    (std::tuple<C2, F2, P2>),
+    (std::tuple<C3, F3, P3>)) {
   using C = typename std::tuple_element<0, TestType>::type;
   using F = typename std::tuple_element<1, TestType>::type;
   using P = typename std::tuple_element<2, TestType>::type;
