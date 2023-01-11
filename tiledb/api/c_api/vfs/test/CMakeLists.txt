@@ -1,9 +1,9 @@
 #
-# tiledb/sm/vfs/CMakeLists.txt
+# tiledb/api/c_api/vfs/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,26 +25,20 @@
 #
 
 include(common NO_POLICY_SCOPE)
-include(object_library)
 
-#
-# `vfs` object library
-#
-commence(object_library vfs)
-    this_target_sources(
-        vfs.cc vfs_file_handle.cc mem_filesystem.cc path_win.cc posix.cc win.cc uri.cc)
-    this_target_object_libraries(
-        baseline buffer cancelable_tasks config math stats stringx thread_pool)
-    if(WIN32)
-        if(MSVC)
-            find_library(SHLWAPI_LIBRARY shlwapi)
-            message(STATUS "Found Win32 lib shlwapi: ${SHLWAPI_LIBRARY}")
-            this_target_link_libraries(${SHLWAPI_LIBRARY})
-        else()
-            message(STATUS "Linking to Win32 lib shlwapi")
-            this_target_link_libraries(-lshlwapi)
-        endif()
-    endif()
-conclude(object_library)
+add_executable(unit_capi_vfs EXCLUDE_FROM_ALL)
+find_package(Catch_EP REQUIRED)
+target_link_libraries(unit_capi_vfs PUBLIC Catch2::Catch2WithMain)
+target_link_libraries(unit_capi_vfs PUBLIC capi_vfs)
 
-add_test_subdirectory()
+# Sources for tests
+target_sources(unit_capi_vfs PUBLIC
+    # Only contains a single null test at present
+    unit_capi_vfs.cc
+)
+
+add_test(
+    NAME "unit_capi_vfs"
+    COMMAND $<TARGET_FILE:unit_capi_vfs>
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)

@@ -358,6 +358,8 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_external.h"
 )
 set(TILEDB_C_API_RELATIVE_HEADER_BASE "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -542,6 +544,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_capi_object_type)
   add_dependencies(tests unit_capi_object_walk_order)
   add_dependencies(tests unit_capi_query_type)
+  add_dependencies(tests unit_capi_vfs)
   # C API array schema
   add_dependencies(tests unit_capi_filter unit_capi_filter_list)
 
