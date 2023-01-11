@@ -95,6 +95,8 @@ enum class TaskEvent {
   notify,
   exit,
   yield,
+  noop,
+  error,
   last
 };
 
@@ -106,8 +108,16 @@ constexpr unsigned short to_index(TaskEvent x) {
 /** Strings corresponding to each TaskEvent. Useful for testing and debugging.
  */
 namespace {
-std::vector<std::string> task_event_strings{
-    "create", "admit", "dispatch", "wait", "notify", "exit", "yield", "last"};
+std::vector<std::string> task_event_strings{"create",
+                                            "admit",
+                                            "dispatch",
+                                            "wait",
+                                            "notify",
+                                            "exit",
+                                            "yield",
+                                            "noop",
+                                            "error",
+                                            "last"};
 }
 
 /** Utility function to convert a TaskEvent to a string. */
@@ -172,14 +182,101 @@ static inline bool is_valid_event(TaskAction st) {
 
 constexpr unsigned short num_task_events = to_index(TaskEvent::last) + 1;
 
+/**
+ * enum class for port actions associated with transitions.
+ */
+enum class SchedulerAction : unsigned short {
+  noop,
+  yield,
+  notify_source,  // To scheduler
+  notify_sink,    // To scheduler
+  source_wait,    // To scheduler
+  sink_wait,      // To scheduler
+  source_exit,    // To scheduler
+  sink_exit,      // To scheduler
+  error,          // General error condition
+  last,
+};
+
+inline constexpr unsigned short to_index(SchedulerAction x) {
+  return static_cast<unsigned short>(x);
+}
+
+/**
+ * Number of actions in the Port state machine
+ */
+constexpr unsigned int n_sch_actions = to_index(SchedulerAction::last) + 1;
+
+/**
+ * Strings for each enum member, useful for debugging.
+ */
+static std::vector<std::string> sch_action_strings{
+    "noop",
+    "yield",
+    "notify_source",
+    "notify_sink",
+    "source_wait",
+    "sink_wait",
+    "source_exit",
+    "sink_exit",
+    "error",
+    "last",
+};
+
+/**
+ * Function to convert an action to a string.
+ *
+ * @param ac The action to stringify.
+ * @return The string corresponding to the action.
+ */
+static auto inline str(SchedulerAction ac) {
+  return sch_action_strings[static_cast<int>(ac)];
+}
+
 namespace detail {
 
 /**
  * Tables for state transitions, exit events, and entry events.  Indexed by
  * state and event.
+ * @todo noop and error (and last) do not have columns
  */
 
 // clang-format off
+constexpr const TaskState transition_table[num_task_states][num_task_events]{
+  /* state      */      /* create */        /* admit */          /* dispatch */         /* wait */          /* notify */           /* exit */             /* yield */
+  /* created    */    { TaskState::created, TaskState::runnable, TaskState::error,      TaskState::error,   TaskState::error,      TaskState::error,      TaskState::error      },
+  /* runnable   */    { TaskState::error,   TaskState::error,    TaskState::running,    TaskState::waiting, TaskState::runnable,   TaskState::terminated, TaskState::error      },
+  /* running    */    { TaskState::error,   TaskState::error,    TaskState::error,      TaskState::waiting, TaskState::running,    TaskState::terminated, TaskState::runnable   },
+  /* waiting    */    { TaskState::error,   TaskState::error,    TaskState::error,      TaskState::error,   TaskState::runnable,   TaskState::error,      TaskState::waiting    },
+  /* terminated */    { TaskState::error,   TaskState::error,    TaskState::terminated, TaskState::error,   TaskState::terminated, TaskState::error,      TaskState::terminated },
+  /* error      */    { TaskState::error,   TaskState::error,    TaskState::error,      TaskState::error,   TaskState::error,      TaskState::error,      TaskState::error      },
+  /* last       */    { TaskState::error,   TaskState::error,    TaskState::error,      TaskState::error,   TaskState::error,      TaskState::error,      TaskState::error      },
+};
+
+constexpr const TaskAction exit_table[num_task_states][num_task_events]{
+  /* state      */      /* create */      /* admit */              /* dispatch */             /* wait */                 /* notify */                    /* exit */                /* yield */
+  /* created    */    { TaskAction::none, TaskAction::stop_create, TaskAction::none,          TaskAction::none,          TaskAction::none,               TaskAction::none,         TaskAction::none         },
+  /* runnable   */    { TaskAction::none, TaskAction::none,        TaskAction::stop_runnable, TaskAction::stop_runnable, TaskAction::ac_return,          TaskAction::none,         TaskAction::none         },
+  /* running    */    { TaskAction::none, TaskAction::none,        TaskAction::none,          TaskAction::stop_running,  TaskAction::ac_return /*none*/, TaskAction::stop_running, TaskAction::stop_running },
+  /* waiting    */    { TaskAction::none, TaskAction::none,        TaskAction::none,          TaskAction::none,          TaskAction::stop_waiting,       TaskAction::none,         TaskAction::none         },
+  /* terminated */    { TaskAction::none, TaskAction::none,        TaskAction::stop_runnable, TaskAction::none,          TaskAction::none,               TaskAction::none,         TaskAction::none         },
+  /* error      */    { TaskAction::none, TaskAction::none,        TaskAction::none,          TaskAction::none,          TaskAction::none,               TaskAction::none,         TaskAction::none         },
+  /* last       */    { TaskAction::none, TaskAction::none,        TaskAction::none,          TaskAction::none,          TaskAction::none,               TaskAction::none,         TaskAction::none         },
+};
+
+constexpr const TaskAction entry_table[num_task_states][num_task_events]{
+  /* state      */      /* create */        /* admit */                /* dispatch */            /* wait */                /* notify */               /* exit */             /* yield */
+  /* created    */    { TaskAction::create, TaskAction::none,          TaskAction::none,         TaskAction::none,         TaskAction::none,          TaskAction::none,      TaskAction::none          },
+  /* runnable   */    { TaskAction::none,   TaskAction::make_runnable, TaskAction::none,         TaskAction::none,         TaskAction::make_runnable, TaskAction::none,      TaskAction::make_runnable },
+  /* running    */    { TaskAction::none,   TaskAction::none,          TaskAction::make_running, TaskAction::none,         TaskAction::none,          TaskAction::none,      TaskAction::none          },
+  /* waiting    */    { TaskAction::none,   TaskAction::none,          TaskAction::make_waiting, TaskAction::make_waiting, TaskAction::none,          TaskAction::none,      TaskAction::none          },
+  /* terminated */    { TaskAction::none,   TaskAction::none,          TaskAction::none,         TaskAction::none,         TaskAction::none,          TaskAction::terminate, TaskAction::none          },
+  /* error      */    { TaskAction::none,   TaskAction::none,          TaskAction::none,         TaskAction::none,         TaskAction::none,          TaskAction::none,      TaskAction::none          },
+  /* last       */    { TaskAction::none,   TaskAction::none,          TaskAction::none,         TaskAction::none,         TaskAction::none,          TaskAction::none,      TaskAction::none          },
+};
+
+// Had some merge trouble. Keeping this until completely tested, just in case
+#if 0
   constexpr const TaskState transition_table[num_task_states][num_task_events]{
     // enum class TaskState { created, runnable, running, waiting, terminated,
     // last };
@@ -407,6 +504,7 @@ constexpr const TaskAction entry_table[num_task_states][num_task_events]{
         TaskAction::none,
     },
 };
+#endif
 // clang-format on
 }  // namespace detail
 
@@ -459,7 +557,7 @@ class SchedulerStateMachine {
    * @param task
    */
   void event(TaskEvent event, task_handle_type& task, const std::string&) {
-    std::unique_lock lock(mutex_);
+    // std::unique_lock lock(mutex_);
 
     if (!is_valid_state(task->task_state())) {
       throw std::runtime_error("Invalid state: " + str(task->task_state()));

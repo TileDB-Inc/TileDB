@@ -34,9 +34,9 @@
 #include "unit_util_functions.h"
 #include <future>
 #include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/nodes/consumer.h"
-#include "experimental/tiledb/common/dag/nodes/generator.h"
+#include "experimental/tiledb/common/dag/nodes/generators.h"
 #include "experimental/tiledb/common/dag/nodes/nodes.h"
+#include "experimental/tiledb/common/dag/nodes/terminals.h"
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
 
 using namespace tiledb::common;
@@ -51,14 +51,14 @@ TEST_CASE(
   std::iota(begin(w), end(w), 19);
 
   /**
-   * Test that the consumer can fill an existing container.
+   * Test that the terminal can fill an existing container.
    */
   SECTION("Output iterator, starting a begin()") {
     std::vector<size_t> v(10);
     std::iota(begin(v), end(v), 0);
     CHECK(!std::equal(begin(v), end(v), begin(w)));
 
-    auto c = consumer{v.begin()};
+    auto c = terminal{v.begin()};
     for (size_t i = 0; i < size(v); ++i) {
       c(i + 19);
     }
@@ -75,7 +75,7 @@ TEST_CASE(
     std::vector<size_t> v;
 
     auto x = std::back_inserter(v);
-    consumer c{x};
+    terminal c{x};
     for (size_t i = 0; i < size(w); ++i) {
       c(i + 19);
     }
@@ -103,7 +103,7 @@ TEST_CASE(
     std::iota(begin(v), end(v), 0);
     CHECK(!std::equal(begin(v), end(v), begin(w)));
 
-    auto c = consumer{v.begin()};
+    auto c = terminal{v.begin()};
     size_t i = 0;
     ConsumerNode<ManualMover3, size_t> consumer_node{c};
     ProducerNode<ManualMover3, size_t> producer_node{
@@ -128,7 +128,7 @@ TEST_CASE(
       "vector") {
     std::vector<size_t> v;
     auto x = std::back_inserter(v);
-    consumer c{x};
+    terminal c{x};
 
     size_t i{0};
     ConsumerNode<ManualMover3, size_t> consumer_node{c};
@@ -151,7 +151,7 @@ TEST_CASE(
   SECTION("Back insert iterator, starting at begin(), with reserved vector") {
     std::vector<size_t> v;
     auto x = std::back_inserter(v);
-    consumer c{x};
+    terminal c{x};
 
     size_t i{0};
     ConsumerNode<ManualMover3, size_t> consumer_node{c};
@@ -187,7 +187,7 @@ TEST_CASE(
     std::iota(begin(v), end(v), 0);
     CHECK(!std::equal(begin(v), end(v), begin(w)));
 
-    auto c = generator{19};
+    auto c = generators{19};
     for (size_t i = 0; i < size(v); ++i) {
       v[i] = c(stop_source);
     }
@@ -262,7 +262,7 @@ TEST_CASE(
 
     CHECK(!std::equal(begin(v), end(v), begin(w)));
 
-    auto c = generator{19};
+    auto c = generators{19};
     size_t i = 0;
     ConsumerNode<ManualMover3, size_t> consumer_node{
         [&v, &i](size_t k) { v[i++] = k; }};
@@ -303,9 +303,9 @@ TEST_CASE(
     CHECK(!std::equal(begin(v), end(v), begin(w)));
 
     auto x = begin(v);
-    consumer con{x};
+    terminal con{x};
 
-    auto gen = generator{19};
+    auto gen = generators{19};
     ConsumerNode<ManualMover3, size_t> consumer_node{con};
     ProducerNode<ManualMover3, size_t> producer_node{gen};
     Edge(producer_node, consumer_node);
@@ -328,9 +328,9 @@ TEST_CASE(
       "at begin(v)") {
     std::vector<size_t> v;
     auto x = std::back_inserter(v);
-    consumer con{x};
+    terminal con{x};
 
-    auto gen = generator{19};
+    auto gen = generators{19};
     ConsumerNode<ManualMover3, size_t> consumer_node{con};
     ProducerNode<ManualMover3, size_t> producer_node{gen};
     Edge(producer_node, consumer_node);
@@ -354,8 +354,8 @@ TEST_CASE(
     std::vector<size_t> v;
     auto x = std::back_inserter(v);
 
-    ConsumerNode<ManualMover3, size_t> consumer_node{consumer{x}};
-    ProducerNode<ManualMover3, size_t> producer_node{generator{19}};
+    ConsumerNode<ManualMover3, size_t> consumer_node{terminal{x}};
+    ProducerNode<ManualMover3, size_t> producer_node{generators{19}};
     Edge(producer_node, consumer_node);
 
     for (size_t i = 0; i < size(w); ++i) {
@@ -382,9 +382,9 @@ TEST_CASE(
     CHECK(!std::equal(begin(v), end(v), begin(w)));
 
     auto x = begin(v);
-    consumer con{x};
+    terminal con{x};
 
-    auto gen = generator{19};
+    auto gen = generators{19};
     ConsumerNode<AsyncMover3, size_t> consumer_node{con};
     ProducerNode<AsyncMover3, size_t> producer_node{gen};
     Edge(producer_node, consumer_node);
@@ -413,9 +413,9 @@ TEST_CASE(
     size_t offset = GENERATE(0, 1, 2, 5);
     std::vector<size_t> v;
     auto x = std::back_inserter(v);
-    consumer con{x};
+    terminal con{x};
 
-    auto gen = generator{19};
+    auto gen = generators{19};
     ConsumerNode<AsyncMover3, size_t> consumer_node{con};
     ProducerNode<AsyncMover3, size_t> producer_node{gen};
     Edge(producer_node, consumer_node);
@@ -460,7 +460,7 @@ TEMPLATE_TEST_CASE(
 
   std::vector<size_t> v;
   auto x = std::back_inserter(v);
-  consumer con{x};
+  terminal con{x};
   auto decon = [&con, delay](size_t j) {
     if (delay)
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));

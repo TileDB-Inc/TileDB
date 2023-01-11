@@ -34,3 +34,11 @@
 
 #include "unit_block_edge.h"
 #include "experimental/tiledb/common/dag/data_block/data_block.h"
+
+/*
+ * There used to be tests in here, but they seem to have been disappeared.
+ * Not sure why.
+ */
+TEST_CASE("BlockEdge: Trivial test", "[block_edge]") {
+  CHECK(true);
+}

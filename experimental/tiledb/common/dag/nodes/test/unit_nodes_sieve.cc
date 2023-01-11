@@ -82,7 +82,7 @@
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
-#include "experimental/tiledb/common/dag/utils/print_types.h"
+#include "experimental/tiledb/common/dag/utility/print_types.h"
 
 // #include "experimental/tiledb/common/dag/execution/threadpool.h"
 
@@ -430,8 +430,8 @@ auto sieve_async_block(
     size_t width,
     bool reverse_order,
     bool grouped,
-    bool use_futures,
-    bool use_threadpool) {
+    [[maybe_unused]] bool use_futures,
+    [[maybe_unused]] bool use_threadpool) {
   if (debug)
     std::cout << "== I am running" << std::endl;
 
@@ -485,7 +485,8 @@ auto sieve_async_block(
               << " " << block_size << " " << width << " " << rounds
               << std::endl;
 
-  using time_t = std::chrono::time_point<std::chrono::high_resolution_clock>;
+  //  using time_t =
+  //  std::chrono::time_point<std::chrono::high_resolution_clock>;
 
   std::vector<std::tuple<size_t, size_t, std::string, double>> timestamps(
       width * rounds * 20);
