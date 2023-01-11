@@ -822,9 +822,9 @@ class ThrowCatchScheduler : public ThrowCatchSchedulerPolicy<Task<Node>> {
           --num_tasks_;
           ++num_exited_tasks_;
 
-          if (num_tasks_ + num_exited_tasks_ != num_submitted_tasks_)
-            ;
-          {}
+          if (num_tasks_ + num_exited_tasks_ != num_submitted_tasks_) {
+            throw std::runtime_error("Impossible task numbers");
+          }
 
           /*
            * The task graph is finished when all submitted tasks have exited.
