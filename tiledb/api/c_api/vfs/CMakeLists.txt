@@ -1,9 +1,9 @@
 #
-# tiledb/sm/vfs/CMakeLists.txt
+# tiledb/api/c_api/vfs/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,26 +25,24 @@
 #
 
 include(common NO_POLICY_SCOPE)
-include(object_library)
+
+list(APPEND SOURCES
+    vfs_api.cc
+)
+gather_sources(${SOURCES})
 
 #
-# `vfs` object library
+# Object library for other units to depend upon
 #
-commence(object_library vfs)
-    this_target_sources(
-        vfs.cc vfs_file_handle.cc mem_filesystem.cc path_win.cc posix.cc win.cc uri.cc)
-    this_target_object_libraries(
-        baseline buffer cancelable_tasks config math stats stringx thread_pool)
-    if(WIN32)
-        if(MSVC)
-            find_library(SHLWAPI_LIBRARY shlwapi)
-            message(STATUS "Found Win32 lib shlwapi: ${SHLWAPI_LIBRARY}")
-            this_target_link_libraries(${SHLWAPI_LIBRARY})
-        else()
-            message(STATUS "Linking to Win32 lib shlwapi")
-            this_target_link_libraries(-lshlwapi)
-        endif()
-    endif()
-conclude(object_library)
+add_library(capi_vfs OBJECT ${SOURCES})
+target_link_libraries(capi_vfs PUBLIC capi_context_stub $<TARGET_OBJECTS:capi_context_stub>)
+
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_capi_vfs EXCLUDE_FROM_ALL)
+target_link_libraries(compile_capi_vfs PRIVATE capi_vfs)
+target_sources(compile_capi_vfs PRIVATE test/compile_capi_vfs_main.cc)
+add_dependencies(all_link_complete compile_capi_vfs)
 
 add_test_subdirectory()

@@ -12,13 +12,13 @@ For example, given `data` as a NumPy float64 array, with scale/offset parameters
   data_b = data.view(np.float64)
   new_data_b = np.zeros(npts, dtype=np.int32) # byte width is 4
   scale, offset
-  
+
   for i in range(0, len(data)):
     # round works like <cmath>'s round
     new_data_b[i] = round((data_b[i] - offset) / scale)
   ```
-  
-  
+
+
 On read, the float scaling filter will reverse the scale factor and offset, restoring the original floating point data, with a potential loss of precision. Given the previous example:
    ```
    restored_data = np.zeros(npts, dtype=np.float64)
