@@ -464,7 +464,8 @@ void dispatch_on_type(T type, V var_size, const G& g) {
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
-      throw;
+      throw std::runtime_error(
+          "QueryCondition::dispatch_on_type: Unknown query condition type.");
   }
 }
 
@@ -628,33 +629,6 @@ void QueryCondition::apply_ast_node(
   }
 }
 
-template <typename T, typename CombinationOp>
-void QueryCondition::apply_ast_node(
-    const tdb_unique_ptr<ASTNode>& node,
-    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
-    const uint64_t stride,
-    const bool var_size,
-    const bool nullable,
-    const ByteVecValue& fill_value,
-    const std::vector<ResultCellSlab>& result_cell_slabs,
-    CombinationOp combination_op,
-    std::vector<uint8_t>& result_cell_bitmap) const {
-  auto g = [&, *this](auto ConditionOp) {
-    return apply_ast_node<T, decltype(ConditionOp), CombinationOp>(
-        node,
-        fragment_metadata,
-        stride,
-        var_size,
-        nullable,
-        fill_value,
-        result_cell_slabs,
-        combination_op,
-        result_cell_bitmap);
-  };
-
-  dispatch_on_op<T>(node->get_op(), g);
-}
-
 template <typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
@@ -683,18 +657,20 @@ void QueryCondition::apply_ast_node(
   }
 
   auto g = [&, *this](auto T) {
-    return apply_ast_node<decltype(T), CombinationOp>(
-        node,
-        fragment_metadata,
-        stride,
-        var_size,
-        nullable,
-        fill_value,
-        result_cell_slabs,
-        combination_op,
-        result_cell_bitmap);
+    auto h = [&, *this](auto ConditionOp) {
+      return apply_ast_node<decltype(T), decltype(ConditionOp), CombinationOp>(
+          node,
+          fragment_metadata,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          combination_op,
+          result_cell_bitmap);
+    };
+    dispatch_on_op<decltype(T)>(node->get_op(), h);
   };
-
   dispatch_on_type(type, var_size, g);
 }
 
@@ -945,33 +921,6 @@ void QueryCondition::apply_ast_node_dense(
   }
 }
 
-template <typename T, typename CombinationOp>
-void QueryCondition::apply_ast_node_dense(
-    const tdb_unique_ptr<ASTNode>& node,
-    ResultTile* result_tile,
-    const uint64_t start,
-    const uint64_t src_cell,
-    const uint64_t stride,
-    const bool var_size,
-    const bool nullable,
-    CombinationOp combination_op,
-    span<uint8_t> result_buffer) const {
-  auto g = [&, *this](auto Condition) {
-    return apply_ast_node_dense<T, decltype(Condition), CombinationOp>(
-        node,
-        result_tile,
-        start,
-        src_cell,
-        stride,
-        var_size,
-        nullable,
-        combination_op,
-        result_buffer);
-  };
-
-  dispatch_on_op<T>(node->get_op(), g);
-}
-
 template <typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
@@ -1013,18 +962,23 @@ void QueryCondition::apply_ast_node_dense(
   }
 
   auto g = [&, *this](auto T) {
-    return apply_ast_node_dense<decltype(T), CombinationOp>(
-        node,
-        result_tile,
-        start,
-        src_cell,
-        stride,
-        var_size,
-        nullable,
-        combination_op,
-        result_buffer);
+    auto h = [&, *this](auto Condition) {
+      return apply_ast_node_dense<decltype(T), decltype(Condition), CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          combination_op,
+          result_buffer);
+    };
+    dispatch_on_op<decltype(T)>(node->get_op(), h);
+
   };
   dispatch_on_type(attribute->type(), var_size, g);
+
 }
 
 template <typename CombinationOp>
@@ -1269,45 +1223,6 @@ void QueryCondition::apply_ast_node_sparse(
   }
 }
 
-template <
-    typename T,
-    typename BitmapType,
-    typename CombinationOp,
-    typename nullable>
-void QueryCondition::apply_ast_node_sparse(
-    const tdb_unique_ptr<ASTNode>& node,
-    ResultTile& result_tile,
-    const bool var_size,
-    CombinationOp combination_op,
-    std::vector<BitmapType>& result_bitmap) const {
-  auto g = [&, *this](auto Condition) {
-    return apply_ast_node_sparse<
-        T,
-        decltype(Condition),
-        BitmapType,
-        CombinationOp,
-        nullable>(node, result_tile, var_size, combination_op, result_bitmap);
-  };
-  dispatch_on_op<T>(node->get_op(), g);
-}
-
-template <typename T, typename BitmapType, typename CombinationOp>
-void QueryCondition::apply_ast_node_sparse(
-    const tdb_unique_ptr<ASTNode>& node,
-    ResultTile& result_tile,
-    const bool var_size,
-    const bool nullable,
-    std::common_type_t<CombinationOp> combination_op,
-    std::vector<BitmapType>& result_bitmap) const {
-  if (nullable) {
-    apply_ast_node_sparse<T, BitmapType, CombinationOp, std::true_type>(
-        node, result_tile, var_size, combination_op, result_bitmap);
-  } else {
-    apply_ast_node_sparse<T, BitmapType, CombinationOp, std::false_type>(
-        node, result_tile, var_size, combination_op, result_bitmap);
-  }
-}
-
 template <typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
@@ -1357,8 +1272,16 @@ void QueryCondition::apply_ast_node_sparse(
   }
 
   auto g = [&, *this](auto T) {
-    return apply_ast_node_sparse<decltype(T), BitmapType, CombinationOp>(
-        node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    auto h = [&, *this](auto Condition) {
+      if (nullable) {
+        apply_ast_node_sparse<decltype(T), decltype(Condition), BitmapType, CombinationOp, std::true_type>(
+            node, result_tile, var_size, combination_op, result_bitmap);
+      } else {
+        apply_ast_node_sparse<decltype(T), decltype(Condition), BitmapType, CombinationOp, std::false_type>(
+            node, result_tile, var_size, combination_op, result_bitmap);
+      }
+    };
+    dispatch_on_op<decltype(T)>(node->get_op(), h);
   };
   dispatch_on_type(type, var_size, g);
 }
