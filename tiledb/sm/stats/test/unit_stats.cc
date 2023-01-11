@@ -64,10 +64,11 @@ TEST_CASE(
   std::string dumped_stats;
 
   SECTION(" - baseline of no stats") {
+	// Verify on initial entry that stats are at expected 'baseline'
     pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
 
-    // Nothing has been done to generate stats, should still be base.
+    // Verify that previous actions themselves did not generate any stats.
     pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
   }
@@ -75,12 +76,13 @@ TEST_CASE(
   // Similar to above, but this do something that
   // should populate some stats.
   SECTION(" - verify stats generated and then released") {
-    // Nothing has been done to generate stats, should still be base.
+    // Verify that no stats exist after prior activity including its exit/cleanup.
     pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
 
     {
-      // Now set up for and performs stats generating actions.
+      // Now set up for and performs stats generating/cleanup actions, checking
+      // that state of stats at various points is as expected.
 
       std::shared_ptr<Stats> stats = make_shared<Stats>(HERE(), "test_stats");
       Stats* stats_{stats->create_child("TestStats")};
@@ -112,21 +114,26 @@ TEST_CASE(
       pseudo_all_stats.dump(&dumped_stats);
       CHECK(dumped_stats != base_dumped_stats);
 
-      // 'stats' destroyed, should no longer be active as registered item.
+      // 'stats'/stats_ destroyed, on exist, afterward should not be any lingering
+      // active items.
     }
 
     // Registered stats only knows about weak_ptr, original registered stats
     // should now be gone and output again at base level.
     pseudo_all_stats.dump(&dumped_stats);
     CHECK(dumped_stats == base_dumped_stats);
-
-    // Perform reset of any remaining stats (none in this test) and remove
-    // previously registered stats for already destructed registrants.
-    pseudo_all_stats.reset();
-
-    // Stats should still be base level.
-    pseudo_all_stats.dump(&dumped_stats);
-    CHECK(dumped_stats == base_dumped_stats);
   }
+
+  // verify once more
+  pseudo_all_stats.dump(&dumped_stats);
+  CHECK(dumped_stats == base_dumped_stats);
+
+  // Perform reset of any remaining stats (none in this test) and remove
+  // previously registered stats for already destructed registrants.
+  pseudo_all_stats.reset();
+
+  // Stats should still be base level.
+  pseudo_all_stats.dump(&dumped_stats);
+  CHECK(dumped_stats == base_dumped_stats);
 }
-#endif
+#endif // #ifdef TILEDB_STATS

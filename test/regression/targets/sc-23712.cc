@@ -56,8 +56,6 @@ TEST_CASE(
   }
 
   SECTION(" - create stats, be sure they are released") {
-    // Similar to above, but this time exercise another item that
-    // should populate some stats.
     {  // local block to enclose construction/destruction of Context ctx.
 
       // class Context registers data with the global GlobalStats entity.
@@ -94,14 +92,17 @@ TEST_CASE(
       // check again that it's not at base level.
       check_stats_is_not(base_dumped_stats);
 
-      // 'ctx' is destructed at end of block and registered stats should be
+      // 'ctx' is destructed at end of block and items it registered should be
       // released.
     }
 
     // Registered stats only knows about weak_ptr, original registered stats
-    // is gone and output is now again base level.
+    // is gone and output should be base level.
     check_stats_is(base_dumped_stats);
   }
+  
+  // verify once more
+  check_stats_is(base_dumped_stats);
 
   // Perform reset of any remaining stats (none in this test) to remove
   // previously registered stats for already destructed registrants.
