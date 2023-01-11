@@ -85,5 +85,8 @@ add_subdirectory(object)
 # `query`: no dependencies yet but will have some
 add_subdirectory(query)
 
+# `string`: no dependencies
+add_subdirectory(string)
+
 # `vfs`: depends on `context`
 add_subdirectory(vfs)
