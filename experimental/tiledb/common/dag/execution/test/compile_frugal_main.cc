@@ -1,5 +1,5 @@
 /**
- * @file compile_throwcatch_main.cc
+ * @file compile_frugal_main.cc
  *
  * @section LICENSE
  *
@@ -26,10 +26,11 @@
  * THE SOFTWARE.
  */
 
-#include "../throw_catch.h"
+#include "../../nodes/segmented_nodes.h"
+#include "../frugal.h"
 
 using namespace tiledb::common;
 
 int main() {
-  (void)sizeof(ThrowCatchScheduler<size_t>(1));
+  (void)sizeof(FrugalScheduler<node>);
 }

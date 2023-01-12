@@ -47,11 +47,11 @@
 #include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 
-#include "experimental/tiledb/common/dag/nodes/consumer.h"
+#include "experimental/tiledb/common/dag/nodes/terminals.h"
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
 
-#include "experimental/tiledb/common/dag/utils/print_types.h"
+#include "experimental/tiledb/common/dag/utility/print_types.h"
 
 using namespace tiledb::common;
 
@@ -336,9 +336,7 @@ TEMPLATE_TEST_CASE(
         FrugalScheduler<node>>)) {
   bool debug{false};
 
-  // auto num_threads = GENERATE(1, 2, 3, 4, 5, 8, 17);
-  auto num_threads = GENERATE(1, 2, 3, 4, 5);
-  // auto num_threads = 5;
+  auto num_threads = GENERATE(1, 2, 3, 4, 5, 8, 17);
 
   if ((!std::is_same_v<
            typename std::tuple_element<0, TestType>::type,
@@ -550,6 +548,7 @@ TEMPLATE_TEST_CASE(
            consumer_node<FrugalMover3, size_t>>) ||
       num_threads > 43) {
     using C = typename std::tuple_element<0, TestType>::type;
+    using F = typename std::tuple_element<1, TestType>::type;
     using P = typename std::tuple_element<2, TestType>::type;
     using S = typename std::tuple_element<3, TestType>::type;
 
@@ -557,6 +556,7 @@ TEMPLATE_TEST_CASE(
       stop_source.request_stop();
       return 0;
     });
+    auto f = F([](const size_t& i) { return i; });
     auto c = C([](const size_t&) {});
     auto sched = S(num_threads);
 
@@ -567,12 +567,23 @@ TEMPLATE_TEST_CASE(
       p->enable_debug();
       c->enable_debug();
     }
-
-    connect(p, c);
-    Edge(*p, *c);
-    sched.submit(p);
-    sched.submit(c);
-    sched.sync_wait_all();
+    SECTION("Producer Consumer") {
+      connect(p, c);
+      Edge(*p, *c);
+      sched.submit(p);
+      sched.submit(c);
+      sched.sync_wait_all();
+    }
+    SECTION("Producer Function Consumer") {
+      connect(p, f);
+      connect(f, c);
+      Edge(*p, *f);
+      Edge(*f, *c);
+      sched.submit(p);
+      sched.submit(f);
+      sched.submit(c);
+      sched.sync_wait_all();
+    }
   }
 }
 

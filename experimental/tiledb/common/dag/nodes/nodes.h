@@ -34,8 +34,7 @@
 #ifndef TILEDB_DAG_NODE_H
 #define TILEDB_DAG_NODE_H
 
-#include "experimental/tiledb/common/dag/nodes/base.h"
 // #include "experimental/tiledb/common/dag/nodes/general.h"
-#include "experimental/tiledb/common/dag/nodes/simple_node.h"
+#include "experimental/tiledb/common/dag/nodes/simple_nodes.h"
 
 #endif  // TILEDB_DAG_NODE_H

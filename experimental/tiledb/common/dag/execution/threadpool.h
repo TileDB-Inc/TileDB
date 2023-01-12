@@ -33,7 +33,7 @@
 #ifndef TILEDB_THREADPOOL_H
 #define TILEDB_THREADPOOL_H
 
-#include "../utils/bounded_buffer.h"
+#include "../utility/bounded_buffer.h"
 
 #include <functional>
 #include <future>
