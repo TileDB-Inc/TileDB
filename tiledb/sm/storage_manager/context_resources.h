@@ -34,6 +34,7 @@
 #define TILEDB_CONTEXT_RESOURCES_H
 
 #include "tiledb/common/exception/exception.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/vfs.h"
@@ -42,6 +43,8 @@
 using namespace tiledb::common;
 
 namespace tiledb::sm {
+
+class RestClient;
 
 /**
  * This class manages the context for the C API, wrapping a
@@ -61,6 +64,7 @@ class ContextResources {
   /** Constructor. */
   explicit ContextResources(
       const Config& config,
+      shared_ptr<Logger> logger,
       size_t compute_thread_count,
       size_t io_thread_count,
       std::string stats_name);
@@ -71,6 +75,16 @@ class ContextResources {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /** Returns the config object. */
+  [[nodiscard]] inline Config& config() const {
+    return config_;
+  }
+
+  /** Returns the internal logger object. */
+  [[nodiscard]] inline shared_ptr<Logger> logger() const {
+    return logger_;
+  }
 
   /** Returns the thread pool for compute-bound tasks. */
   [[nodiscard]] inline ThreadPool& compute_tp() const {
@@ -91,10 +105,20 @@ class ContextResources {
     return vfs_;
   }
 
+  [[nodiscard]] inline shared_ptr<RestClient> rest_client() const {
+    return rest_client_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The configuration for this ContextResources */
+  mutable Config config_;
+
+  /** The class logger. */
+  shared_ptr<Logger> logger_;
 
   /** The thread pool for compute-bound tasks. */
   mutable ThreadPool compute_tp_;
@@ -110,6 +134,9 @@ class ContextResources {
    * filesystem backend. Note that this is stateful.
    */
   mutable VFS vfs_;
+
+  /** The rest client (may be null if none was configured). */
+  shared_ptr<RestClient> rest_client_;
 };
 
 }  // namespace tiledb::sm

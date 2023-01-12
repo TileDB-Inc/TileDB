@@ -105,10 +105,6 @@ Status StorageManagerCanonical::init() {
   auto& global_state = global_state::GlobalState::GetGlobalState();
   RETURN_NOT_OK(global_state.init(config_));
 
-#ifdef TILEDB_SERIALIZATION
-  RETURN_NOT_OK(init_rest_client());
-#endif
-
   RETURN_NOT_OK(set_default_tags());
 
   global_state.register_storage_manager(this);
@@ -746,7 +742,7 @@ Status StorageManager::array_evolve_schema(
   }
 
   if (array_uri.is_tiledb()) {
-    return rest_client_->post_array_schema_evolution_to_rest(
+    return rest_client()->post_array_schema_evolution_to_rest(
         array_uri, schema_evolution);
   }
 
@@ -1300,7 +1296,7 @@ Status StorageManagerCanonical::group_create(const std::string& group_uri) {
 
   if (uri.is_tiledb()) {
     GroupV1 group(uri, this);
-    RETURN_NOT_OK(rest_client_->post_group_create_to_rest(uri, &group));
+    RETURN_NOT_OK(rest_client()->post_group_create_to_rest(uri, &group));
     return Status::Ok();
   }
 
@@ -1321,10 +1317,6 @@ Status StorageManagerCanonical::group_create(const std::string& group_uri) {
   return Status::Ok();
 }
 
-RestClient* StorageManagerCanonical::rest_client() const {
-  return rest_client_.get();
-}
-
 void StorageManagerCanonical::increment_in_progress() {
   std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
   queries_in_progress_++;
@@ -1334,7 +1326,7 @@ void StorageManagerCanonical::increment_in_progress() {
 bool StorageManagerCanonical::is_array(const URI& uri) const {
   // Handle remote array
   if (uri.is_tiledb()) {
-    auto&& [st, exists] = rest_client_->check_array_exists_from_rest(uri);
+    auto&& [st, exists] = rest_client()->check_array_exists_from_rest(uri);
     throw_if_not_ok(st);
     assert(exists.has_value());
     return exists.value();
@@ -1361,7 +1353,7 @@ bool StorageManagerCanonical::is_array(const URI& uri) const {
 Status StorageManagerCanonical::is_group(const URI& uri, bool* is_group) const {
   // Handle remote array
   if (uri.is_tiledb()) {
-    auto&& [st, exists] = rest_client_->check_group_exists_from_rest(uri);
+    auto&& [st, exists] = rest_client()->check_group_exists_from_rest(uri);
     RETURN_NOT_OK(st);
     *is_group = *exists;
   } else {
@@ -1797,8 +1789,8 @@ Status StorageManagerCanonical::set_tag(
   tags_[key] = value;
 
   // Tags are added to REST requests as HTTP headers.
-  if (rest_client_ != nullptr)
-    RETURN_NOT_OK(rest_client_->set_header(key, value));
+  if (rest_client() != nullptr)
+    RETURN_NOT_OK(rest_client()->set_header(key, value));
 
   return Status::Ok();
 }
@@ -1918,17 +1910,6 @@ void StorageManagerCanonical::wait_for_zero_in_progress() {
   std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
   queries_in_progress_cv_.wait(
       lck, [this]() { return queries_in_progress_ == 0; });
-}
-
-Status StorageManagerCanonical::init_rest_client() {
-  const char* server_address;
-  RETURN_NOT_OK(config_.get("rest.server_address", &server_address));
-  if (server_address != nullptr) {
-    rest_client_.reset(tdb_new(RestClient));
-    RETURN_NOT_OK(rest_client_->init(stats(), &config_, compute_tp(), logger_));
-  }
-
-  return Status::Ok();
 }
 
 shared_ptr<Logger> StorageManagerCanonical::logger() const {

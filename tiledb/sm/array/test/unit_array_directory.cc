@@ -63,7 +63,7 @@ TEST_CASE(
     "[array-directory][timestamp-overlap]") {
   WhiteboxArrayDirectory wb_array_dir;
   Config cfg;
-  ContextResources resources{cfg, 1, 1, ""};
+  ContextResources resources{cfg, nullptr, 1, 1, ""};
   ArrayDirectory array_dir(resources, URI());
   wb_array_dir.set_open_timestamps(array_dir, 2, 4);
 

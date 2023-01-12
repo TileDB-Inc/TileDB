@@ -624,7 +624,9 @@ class StorageManagerCanonical {
    * If the storage manager was configured with a REST server, return the
    * client instance. Else, return nullptr.
    */
-  RestClient* rest_client() const;
+  inline RestClient* rest_client() const {
+    return resources_.rest_client().get();
+  }
 
   /**
    * Checks if the input URI represents an array.
@@ -995,9 +997,6 @@ class StorageManagerCanonical {
   /** Tags for the context object. */
   std::unordered_map<std::string, std::string> tags_;
 
-  /** The rest client (may be null if none was configured). */
-  tdb_unique_ptr<RestClient> rest_client_;
-
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */
@@ -1064,9 +1063,6 @@ class StorageManagerCanonical {
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();
-
-  /** Initializes a REST client, if one was configured. */
-  Status init_rest_client();
 
   /** Sets default tag values on this StorageManagerCanonical. */
   Status set_default_tags();

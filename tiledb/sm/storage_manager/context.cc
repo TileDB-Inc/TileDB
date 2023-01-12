@@ -52,6 +52,7 @@ Context::Context(const Config& config)
           HERE(), logger_prefix_ + std::to_string(++logger_id_)))
     , resources_(
           config,
+          logger_,
           get_compute_thread_count(config),
           get_io_thread_count(config),
           // TODO: Remove `.StorageManager` from statistic names

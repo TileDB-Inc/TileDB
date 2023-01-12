@@ -95,7 +95,7 @@ Array::Array(
     , timestamp_end_opened_at_(UINT64_MAX)
     , storage_manager_(storage_manager)
     , resources_(storage_manager_->resources())
-    , config_(storage_manager_->config())
+    , config_(resources_.config())
     , remote_(array_uri.is_tiledb())
     , metadata_()
     , metadata_loaded_(false)
@@ -181,7 +181,7 @@ Status Array::open_without_fragments(
     }
 
     if (remote_) {
-      auto rest_client = storage_manager_->rest_client();
+      auto rest_client = resources_.rest_client();
       if (rest_client == nullptr) {
         throw Status_ArrayError(
             "Cannot open array; remote array with no REST client.");
@@ -356,7 +356,7 @@ Status Array::open(
     }
 
     if (remote_) {
-      auto rest_client = storage_manager_->rest_client();
+      auto rest_client = resources_.rest_client();
       if (rest_client == nullptr) {
         throw Status_ArrayError(
             "Cannot open array; remote array with no REST client.");
@@ -490,7 +490,7 @@ Status Array::close() {
         // Set metadata loaded to be true so when serialization fetchs the
         // metadata it won't trigger a deadlock
         metadata_loaded_ = true;
-        auto rest_client = storage_manager_->rest_client();
+        auto rest_client = resources_.rest_client();
         if (rest_client == nullptr)
           throw Status_ArrayError(
               "Error closing array; remote array with no REST client.");
@@ -537,7 +537,7 @@ void Array::delete_array(const URI& uri) {
 
   // Delete array data
   if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
+    auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
       throw ArrayStatusException(
           "[Array::delete_array] Remote array with no REST client.");
@@ -1295,7 +1295,7 @@ Status Array::compute_max_buffer_sizes(
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const {
   if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
+    auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
       return LOG_STATUS(Status_ArrayError(
           "Cannot get max buffer sizes; remote array with no REST client."));
@@ -1377,7 +1377,7 @@ Status Array::compute_max_buffer_sizes(
 
 Status Array::load_metadata() {
   if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
+    auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
       return LOG_STATUS(Status_ArrayError(
           "Cannot load metadata; remote array with no REST client."));
@@ -1395,7 +1395,7 @@ Status Array::load_metadata() {
 
 Status Array::load_remote_non_empty_domain() {
   if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
+    auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
       return LOG_STATUS(Status_ArrayError(
           "Cannot load metadata; remote array with no REST client."));

@@ -49,7 +49,9 @@ namespace tiledb {
 namespace sm {
 
 class ArraySchema;
+class ArraySchemaEvolution;
 class Config;
+class FragmentInfo;
 class Query;
 
 enum class SerializationType : uint8_t;
