@@ -73,7 +73,7 @@ class XORFilter : public Filter {
    * of elements.
    */
   Status run_forward(
-      const Tile& tile,
+      const WriterTile& tile,
       void* const support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,

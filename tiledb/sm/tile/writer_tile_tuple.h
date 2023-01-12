@@ -1,5 +1,5 @@
 /**
- * @file   writer_tile.h
+ * @file   writer_tile_tuple.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class WriterTile.
+ * This file defines class WriterTileTuple.
  */
 
-#ifndef TILEDB_WRITER_TILE_H
-#define TILEDB_WRITER_TILE_H
+#ifndef TILEDB_WRITER_TILE_TUPLE_H
+#define TILEDB_WRITER_TILE_TUPLE_H
 
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
@@ -44,13 +44,13 @@ namespace sm {
 /**
  * Handles tile information, with added data used by writer.
  */
-class WriterTile {
+class WriterTileTuple {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  WriterTile(
+  WriterTileTuple(
       const ArraySchema& array_schema,
       const uint64_t cell_num_per_tile,
       const bool var_size,
@@ -59,37 +59,37 @@ class WriterTile {
       const Datatype type);
 
   /** Move constructor. */
-  WriterTile(WriterTile&& tile);
+  WriterTileTuple(WriterTileTuple&& tile);
 
   /** Move-assign operator. */
-  WriterTile& operator=(WriterTile&& tile);
+  WriterTileTuple& operator=(WriterTileTuple&& tile);
 
-  DISABLE_COPY_AND_COPY_ASSIGN(WriterTile);
+  DISABLE_COPY_AND_COPY_ASSIGN(WriterTileTuple);
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
   /** Returns the fixed tile. */
-  inline Tile& fixed_tile() {
+  inline WriterTile& fixed_tile() {
     assert(!var_tile_.has_value());
     return fixed_tile_;
   }
 
   /** Returns the fixed tile. */
-  inline const Tile& fixed_tile() const {
+  inline const WriterTile& fixed_tile() const {
     assert(!var_tile_.has_value());
     return fixed_tile_;
   }
 
   /** Returns the offset tile. */
-  inline Tile& offset_tile() {
+  inline WriterTile& offset_tile() {
     assert(var_tile_.has_value());
     return fixed_tile_;
   }
 
   /** Returns the offset tile. */
-  inline const Tile& offset_tile() const {
+  inline const WriterTile& offset_tile() const {
     assert(var_tile_.has_value());
     return fixed_tile_;
   }
@@ -100,12 +100,12 @@ class WriterTile {
   }
 
   /** Returns the var tile. */
-  inline Tile& var_tile() {
+  inline WriterTile& var_tile() {
     return *var_tile_;
   }
 
   /** Returns the var tile. */
-  inline const Tile& var_tile() const {
+  inline const WriterTile& var_tile() const {
     return *var_tile_;
   }
 
@@ -115,12 +115,12 @@ class WriterTile {
   }
 
   /** Returns the validity tile. */
-  inline Tile& validity_tile() {
+  inline WriterTile& validity_tile() {
     return *validity_tile_;
   }
 
   /** Returns the validity tile. */
-  inline const Tile& validity_tile() const {
+  inline const WriterTile& validity_tile() const {
     return *validity_tile_;
   }
 
@@ -216,7 +216,7 @@ class WriterTile {
   }
 
   /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(WriterTile& tile);
+  void swap(WriterTileTuple& tile);
 
  private:
   /* ********************************* */
@@ -227,13 +227,13 @@ class WriterTile {
    * Fixed data tile. Contains offsets for var size attribute/dimension and
    * the data itself in case of fixed sized attribute/dimension.
    */
-  Tile fixed_tile_;
+  WriterTile fixed_tile_;
 
   /** Var data tile. */
-  std::optional<Tile> var_tile_;
+  std::optional<WriterTile> var_tile_;
 
   /** Validity data tile. */
-  std::optional<Tile> validity_tile_;
+  std::optional<WriterTile> validity_tile_;
 
   /** Cell size for this attribute. */
   uint64_t cell_size_;
@@ -266,4 +266,4 @@ class WriterTile {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_WRITER_TILE_H
+#endif  // TILEDB_WRITER_TILE_TUPLE_H

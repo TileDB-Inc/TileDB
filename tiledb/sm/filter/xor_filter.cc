@@ -49,7 +49,7 @@ void XORFilter::dump(FILE* out) const {
 }
 
 Status XORFilter::run_forward(
-    const Tile& tile,
+    const WriterTile& tile,
     void* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,

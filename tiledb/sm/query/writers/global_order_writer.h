@@ -66,7 +66,7 @@ class GlobalOrderWriter : public WriterBase {
      * second tile is the values tile. In both cases, the third tile stores a
      * validity tile for nullable attributes.
      */
-    std::unordered_map<std::string, WriterTileVector> last_tiles_;
+    std::unordered_map<std::string, WriterTileTupleVector> last_tiles_;
 
     /**
      * Stores the last offset into the var size tile buffer for var size
@@ -304,7 +304,7 @@ class GlobalOrderWriter : public WriterBase {
    */
   Status prepare_full_tiles(
       const std::set<uint64_t>& coord_dups,
-      std::unordered_map<std::string, WriterTileVector>* tiles) const;
+      std::unordered_map<std::string, WriterTileTupleVector>* tiles) const;
 
   /**
    * Applicable only to write in global order. It prepares only full
@@ -323,7 +323,7 @@ class GlobalOrderWriter : public WriterBase {
   Status prepare_full_tiles(
       const std::string& name,
       const std::set<uint64_t>& coord_dups,
-      WriterTileVector* tiles) const;
+      WriterTileTupleVector* tiles) const;
 
   /**
    * Applicable only to write in global order. It prepares only full
@@ -342,7 +342,7 @@ class GlobalOrderWriter : public WriterBase {
   Status prepare_full_tiles_fixed(
       const std::string& name,
       const std::set<uint64_t>& coord_dups,
-      WriterTileVector* tiles) const;
+      WriterTileTupleVector* tiles) const;
 
   /**
    * Applicable only to write in global order. It prepares only full
@@ -361,7 +361,7 @@ class GlobalOrderWriter : public WriterBase {
   Status prepare_full_tiles_var(
       const std::string& name,
       const std::set<uint64_t>& coord_dups,
-      WriterTileVector* tiles) const;
+      WriterTileTupleVector* tiles) const;
 
   /**
    * Return the number of tiles to write depending on the desired fragment
@@ -376,7 +376,7 @@ class GlobalOrderWriter : public WriterBase {
   uint64_t num_tiles_to_write(
       uint64_t start,
       uint64_t tile_num,
-      std::unordered_map<std::string, WriterTileVector>& tiles);
+      std::unordered_map<std::string, WriterTileTupleVector>& tiles);
 
   /**
    * Close the current fragment and start a new one. The closed fragment will

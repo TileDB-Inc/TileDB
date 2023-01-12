@@ -52,7 +52,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
-#include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/tile/writer_tile_tuple.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -243,9 +243,9 @@ Status OrderedWriter::ordered_write() {
   auto attr_num = buffers_.size();
   auto compute_tp = storage_manager_->compute_tp();
   auto thread_num = compute_tp->concurrency_level();
-  std::unordered_map<std::string, std::vector<WriterTileVector>> tiles;
+  std::unordered_map<std::string, std::vector<WriterTileTupleVector>> tiles;
   for (const auto& buff : buffers_) {
-    tiles.emplace(buff.first, std::vector<WriterTileVector>());
+    tiles.emplace(buff.first, std::vector<WriterTileTupleVector>());
   }
 
   if (attr_num > tile_num) {  // Parallelize over attributes
@@ -329,7 +329,7 @@ Status OrderedWriter::ordered_write() {
 template <class T>
 Status OrderedWriter::prepare_filter_and_write_tiles(
     const std::string& name,
-    std::vector<WriterTileVector>& tile_batches,
+    std::vector<WriterTileTupleVector>& tile_batches,
     shared_ptr<FragmentMetadata> frag_meta,
     DenseTiler<T>* dense_tiler,
     uint64_t thread_num) {
@@ -362,7 +362,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     assert(batch_size > 0);
     tile_batches[b].reserve(batch_size);
     for (uint64_t i = 0; i < batch_size; i++) {
-      tile_batches[b].emplace_back(WriterTile(
+      tile_batches[b].emplace_back(WriterTileTuple(
           array_schema_, cell_num_per_tile, var, nullable, cell_size, type));
     }
     auto st = parallel_for(

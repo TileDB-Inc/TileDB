@@ -143,7 +143,7 @@ class UnorderedWriter : public WriterBase {
   Status prepare_tiles(
       const std::vector<uint64_t>& cell_pos,
       const std::set<uint64_t>& coord_dups,
-      std::unordered_map<std::string, WriterTileVector>* tiles) const;
+      std::unordered_map<std::string, WriterTileTupleVector>* tiles) const;
 
   /**
    * It prepares the tiles for the input attribute or dimension, re-organizing
@@ -161,7 +161,7 @@ class UnorderedWriter : public WriterBase {
       const std::string& name,
       const std::vector<uint64_t>& cell_pos,
       const std::set<uint64_t>& coord_dups,
-      WriterTileVector* tiles) const;
+      WriterTileTupleVector* tiles) const;
 
   /**
    * It prepares the tiles for the input attribute or dimension, re-organizing
@@ -180,7 +180,7 @@ class UnorderedWriter : public WriterBase {
       const std::string& name,
       const std::vector<uint64_t>& cell_pos,
       const std::set<uint64_t>& coord_dups,
-      WriterTileVector* tiles) const;
+      WriterTileTupleVector* tiles) const;
 
   /**
    * It prepares the tiles for the input attribute or dimension, re-organizing
@@ -199,7 +199,7 @@ class UnorderedWriter : public WriterBase {
       const std::string& name,
       const std::vector<uint64_t>& cell_pos,
       const std::set<uint64_t>& coord_dups,
-      WriterTileVector* tiles) const;
+      WriterTileTupleVector* tiles) const;
 
   /**
    * Sorts the coordinates of the user buffers, creating a vector with

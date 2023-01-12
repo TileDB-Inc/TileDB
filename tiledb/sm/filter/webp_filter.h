@@ -157,7 +157,7 @@ class WebpFilter : public Filter {
    * @return Status::Ok() on success. Throws on failure.
    */
   Status run_forward(
-      const Tile& tile,
+      const WriterTile& tile,
       void* const support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,

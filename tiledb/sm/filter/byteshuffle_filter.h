@@ -78,7 +78,7 @@ class ByteshuffleFilter : public Filter {
    * Shuffle the bytes of the input data into the output data buffer.
    */
   Status run_forward(
-      const Tile& tile,
+      const WriterTile& tile,
       void* const support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
@@ -110,7 +110,7 @@ class ByteshuffleFilter : public Filter {
    * @return Status
    */
   Status shuffle_part(
-      const Tile& tile, const ConstBuffer* part, Buffer* output) const;
+      const WriterTile& tile, const ConstBuffer* part, Buffer* output) const;
 
   /**
    * Perform byte unshuffling on the given input buffer.

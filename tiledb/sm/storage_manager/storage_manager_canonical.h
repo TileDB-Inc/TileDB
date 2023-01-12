@@ -1011,7 +1011,7 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status store_data_to_generic_tile(
-      Tile& tile, const URI& uri, const EncryptionKey& encryption_key);
+      WriterTile& tile, const URI& uri, const EncryptionKey& encryption_key);
 
   /** Closes a file, flushing its contents to persistent storage. */
   Status close_file(const URI& uri);

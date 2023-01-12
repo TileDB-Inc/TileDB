@@ -115,7 +115,7 @@ class CompressionFilter : public Filter {
    * Compress the given input into the given output.
    */
   Status run_forward(
-      const Tile& tile,
+      const WriterTile& tile,
       void* const support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
@@ -173,7 +173,7 @@ class CompressionFilter : public Filter {
 
   /** Helper function to compress a single contiguous buffer (part). */
   Status compress_part(
-      const Tile& tile,
+      const WriterTile& tile,
       ConstBuffer* part,
       Buffer* output,
       FilterBuffer* output_metadata) const;
@@ -203,7 +203,7 @@ class CompressionFilter : public Filter {
    */
   Status compress_var_string_coords(
       const FilterBuffer& input,
-      Tile* const offsets_tile,
+      WriterTile* const offsets_tile,
       FilterBuffer& output,
       FilterBuffer& output_metadata) const;
 
@@ -224,7 +224,7 @@ class CompressionFilter : public Filter {
   static Compressor filter_to_compressor(FilterType type);
 
   /** Computes the compression overhead on nbytes of the input data. */
-  uint64_t overhead(const Tile& tile, uint64_t nbytes) const;
+  uint64_t overhead(const WriterTile& tile, uint64_t nbytes) const;
 
   /** Sets an option on this filter. */
   Status set_option_impl(FilterOption option, const void* value) override;
@@ -241,7 +241,7 @@ class CompressionFilter : public Filter {
   /** Creates a vector of views of the input strings and returns the max string
    * size */
   static tuple<std::vector<std::string_view>, uint64_t> create_input_view(
-      const FilterBuffer& input, Tile* const offsets_tile);
+      const FilterBuffer& input, WriterTile* const offsets_tile);
 
   /**
    * Return the number of bytes required to store an integer
