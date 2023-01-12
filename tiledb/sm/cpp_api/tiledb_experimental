@@ -39,5 +39,6 @@
 #include "consolidation_plan_experimental.h"
 #include "group_experimental.h"
 #include "query_experimental.h"
+#include "subarray_experimental.h"
 
 #endif  // TILEDB_EXPERIMENTAL_CPP_H

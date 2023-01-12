@@ -634,6 +634,8 @@ class Subarray {
   }
 
  private:
+  friend class SubarrayExperimental;
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

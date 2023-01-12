@@ -241,6 +241,7 @@ if (TILEDB_CPP_API)
   if (TILEDB_EXPERIMENTAL_FEATURES)
     list(APPEND TILEDB_UNIT_TEST_SOURCES
         src/test-cppapi-dimension-label.cc
+        src/test-cppapi-dense-array-dimension-label.cc
     )
   endif()
 endif()
