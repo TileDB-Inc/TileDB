@@ -248,46 +248,6 @@ class StorageManagerCanonical {
       MemoryTracker* memory_tracker,
       const EncryptionKey& enc_key);
 
-  /**
-   * Opens an array for reads at a timestamp. All the metadata of the
-   * fragments created before or at the input timestamp are retrieved.
-   *
-   * If a timestamp_start is provided, this API will open the array between
-   * `timestamp_start` and `timestamp_end`.
-   *
-   * @param array The array to be opened.
-   * @return tuple of Status, latest ArraySchema, map of all array schemas and
-   * vector of FragmentMetadata
-   *        Status Ok on success, else error
-   *        ArraySchema The array schema to be retrieved after the
-   *           array is opened.
-   *        ArraySchemaMap Map of all array schemas found keyed by name
-   *        fragment_metadata The fragment metadata to be retrieved
-   *           after the array is opened.
-   */
-  tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-      optional<std::vector<shared_ptr<FragmentMetadata>>>>
-  array_open_for_reads(Array* array);
-
-  /**
-   * Opens an array for reads without fragments.
-   *
-   * @param array The array to be opened.
-   * @return tuple of Status, latest ArraySchema and map of all array schemas
-   *        Status Ok on success, else error
-   *        ArraySchema The array schema to be retrieved after the
-   *          array is opened.
-   *        ArraySchemaMap Map of all array schemas found keyed by name
-   */
-  tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
-  array_open_for_reads_without_fragments(Array* array);
-
   /** Opens an array for writes.
    *
    * @param array The array to open.
@@ -338,26 +298,6 @@ class StorageManagerCanonical {
   tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
   array_load_fragments(
       Array* array, const std::vector<TimestampedURI>& fragment_info);
-
-  /**
-   * Reopen an array for reads.
-   *
-   * @param array The array to reopen.
-   * @return tuple of Status, latest ArraySchema, map of all array schemas and
-   * vector of FragmentMetadata
-   *        Status Ok on success, else error
-   *        ArraySchema The array schema to be retrieved after the
-   *          array is opened.
-   *        ArraySchemaMap Map of all array schemas found keyed by name
-   *        FragmentMetadata The fragment metadata to be retrieved
-   *          after the array is opened.
-   */
-  tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-      optional<std::vector<shared_ptr<FragmentMetadata>>>>
-  array_reopen(Array* array);
 
   /**
    * Consolidates the fragments of an array into a single one.

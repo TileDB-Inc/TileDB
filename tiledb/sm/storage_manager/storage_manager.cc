@@ -238,58 +238,6 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
       Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
 }
 
-void ensure_supported_schema_version_for_read(format_version_t version) {
-  // We do not allow reading from arrays written by newer version of TileDB
-  if (version > constants::format_version) {
-    std::stringstream err;
-    err << "Cannot open array for reads; Array format version (";
-    err << version;
-    err << ") is newer than library format version (";
-    err << constants::format_version << ")";
-    throw Status_StorageManagerError(err.str());
-  }
-}
-
-tuple<
-    Status,
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-    optional<std::vector<shared_ptr<FragmentMetadata>>>>
-StorageManagerCanonical::array_open_for_reads(Array* array) {
-  auto timer_se = stats()->start_timer("array_open_for_reads");
-  auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
-      load_array_schemas_and_fragment_metadata(
-          array->array_directory(),
-          array->memory_tracker(),
-          *array->encryption_key());
-  RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
-
-  auto version = array_schema_latest.value()->version();
-  ensure_supported_schema_version_for_read(version);
-
-  return {
-      Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
-}
-
-tuple<
-    Status,
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
-StorageManagerCanonical::array_open_for_reads_without_fragments(Array* array) {
-  auto timer_se =
-      stats()->start_timer("sm_array_open_for_reads_without_fragments");
-
-  // Load array schemas
-  auto&& [st_schemas, array_schema_latest, array_schemas_all] =
-      load_array_schemas(array->array_directory(), *array->encryption_key());
-  RETURN_NOT_OK_TUPLE(st_schemas, nullopt, nullopt);
-
-  auto version = array_schema_latest.value()->version();
-  ensure_supported_schema_version_for_read(version);
-
-  return {Status::Ok(), array_schema_latest, array_schemas_all};
-}
-
 tuple<
     Status,
     optional<shared_ptr<ArraySchema>>,
@@ -356,16 +304,6 @@ StorageManagerCanonical::array_load_fragments(
   RETURN_NOT_OK_TUPLE(st_fragment_meta, nullopt);
 
   return {Status::Ok(), fragment_metadata};
-}
-
-tuple<
-    Status,
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-    optional<std::vector<shared_ptr<FragmentMetadata>>>>
-StorageManagerCanonical::array_reopen(Array* array) {
-  auto timer_se = stats()->start_timer("read_array_open");
-  return array_open_for_reads(array);
 }
 
 Status StorageManagerCanonical::array_consolidate(
