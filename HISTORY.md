@@ -1,10 +1,178 @@
+# TileDB v2.14.0 Release Notes
+
+## Announcements
+
+* TileDB 2.17, targeted for release in April 2023, will require C++20 support for full library compilation.
+  C++17 compatibility will be maintained in the public C++ API for several releases beyond 2.17.
+
+## Disk Format
+
+* Format version updated to 17. [#3611](https://github.com/TileDB-Inc/TileDB/pull/3611)
+
+## Breaking API changes
+
+* In TileDB 2.15, we will begin removing C and C++ API functions deprecated through TileDB 2.12. See [list of deprecated functions](doc/policy/api_changes.md#Deprecation-version-history).
+
+## Breaking behavior
+
+* For global order reads, an error is now raised if multiple ranges are set when the query is submitted. Previously, an error was raised immediately upon adding another range during subarray creation. [#3664](https://github.com/TileDB-Inc/TileDB/pull/3664)
+* For dense writes, an error is now raised if multiple ranges are set when the query is submitted. Previously, an error was raised immediately upon adding another range during subarray creation. [#3664](https://github.com/TileDB-Inc/TileDB/pull/3664)
+* For sparse writes, an error is now raised if the subarray is not default when the query is submitted. Previously, an error was raised when adding ranges to a subarray for a sparse write. [#3664](https://github.com/TileDB-Inc/TileDB/pull/3664)
+* TileDB will not longer override the `AWS_DEFAULT_REGION` or `AWS_REGION` environment variables, if set in the process environment. Previously, the library would unconditionally default to setting the region to "us-east-1" _unless_ the `vfs.s3.region` config variable was specified; now the library will check for the mentioned environment variables, and avoid setting a default if present. The `vfs.s3.region` config variable will still take precedence if provided [#3788](https://github.com/TileDB-Inc/TileDB/pull/3788)
+
+## New features
+
+* Add UTF-8 attribute binary comparison support for QueryConditions. [#3766](https://github.com/TileDB-Inc/TileDB/pull/3766)
+* Add Boolean Support For Sparse Query Conditions. [#3651](https://github.com/TileDB-Inc/TileDB/pull/3651)
+* Consolidation plan API. [#3647](https://github.com/TileDB-Inc/TileDB/pull/3647)
+
+## Improvements
+
+### Defects Removed
+
+* Sparse global order reader: fix tile cleanup when ending an iteration. [#3674](https://github.com/TileDB-Inc/TileDB/pull/3674)
+* Dense array: Tile var size metadata not loaded on read. [#3645](https://github.com/TileDB-Inc/TileDB/pull/3645)
+* Fix parsing of multiple enable= arguments to bootstrap script. [#3650](https://github.com/TileDB-Inc/TileDB/pull/3650)
+* Fix bad write by label error. [#3664](https://github.com/TileDB-Inc/TileDB/pull/3664)
+* Fix build issue with consolidation plan. [#3704](https://github.com/TileDB-Inc/TileDB/pull/3704)
+* Fix macOS versions before 10.15 do not support `<filesystem>`. [#3729](https://github.com/TileDB-Inc/TileDB/pull/3729)
+* Segfault reading array with query condition after schema evolution. [#3732](https://github.com/TileDB-Inc/TileDB/pull/3732)
+* Query condition: fix when attribute condition is not in user buffers. [#3713](https://github.com/TileDB-Inc/TileDB/pull/3713)
+* Fragment consolidator: stop consolidation if no progress can be made. [#3671](https://github.com/TileDB-Inc/TileDB/pull/3671)
+* Throw error when memory budget leads to splitting to unary range. [#3715](https://github.com/TileDB-Inc/TileDB/pull/3715)
+* Do not resubmit http requests for curl errors for REST requests [#3712](https://github.com/TileDB-Inc/TileDB/pull/3712)
+
+### Internal
+
+* Validation for scale and offsets input to the float scale filter. [#3726](https://github.com/TileDB-Inc/TileDB/pull/3726)
+* Adding attribute ordering checks to ordered dimension label reader. [#3643](https://github.com/TileDB-Inc/TileDB/pull/3643)
+* Sparse globalorder reader: prevent unused tiles from being loaded again. [#3710](https://github.com/TileDB-Inc/TileDB/pull/3710)
+* Array directory serialization. [#3543](https://github.com/TileDB-Inc/TileDB/pull/3543)
+* Global order writes serialization tests: fixing incorrect section usage. [#3670](https://github.com/TileDB-Inc/TileDB/pull/3670)
+* Update dimension labels to use an array instead of group. [#3667](https://github.com/TileDB-Inc/TileDB/pull/3667)
+* Consolidation plan: implementation for creating a plan using MBRs. [#3696](https://github.com/TileDB-Inc/TileDB/pull/3696)
+* Sparse unordered w/dups reader: allow partial tile offsets loading. [#3716](https://github.com/TileDB-Inc/TileDB/pull/3716)
+* Implement static thread pool scheduler using "throw-catch" state transitions, as well as segmented nodes. [#3638](https://github.com/TileDB-Inc/TileDB/pull/3638)
+* Remove `open_arrays_` from StorageManager. [#3649](https://github.com/TileDB-Inc/TileDB/pull/3649)
+* Replaces domain_str with range_str. [#3640](https://github.com/TileDB-Inc/TileDB/pull/3640)
+* Replace use of Buffer with Serializer/Deserializer FragmentMetadata footer methods. [#3551](https://github.com/TileDB-Inc/TileDB/pull/3551)
+* Remove non owning tile constructor. [#3661](https://github.com/TileDB-Inc/TileDB/pull/3661)
+* Add CMake modules for compactly specifying object libraries. [#3548](https://github.com/TileDB-Inc/TileDB/pull/3548)
+* CMake environment `unit_test`. [#3703](https://github.com/TileDB-Inc/TileDB/pull/3703)
+* Add Attribute data order constructor and checks. [#3662](https://github.com/TileDB-Inc/TileDB/pull/3662)
+* Adding size computation for tile offsets to sparse readers. [#3669](https://github.com/TileDB-Inc/TileDB/pull/3669)
+* Extract CA certificate discovery from GlobalState. [#3717](https://github.com/TileDB-Inc/TileDB/pull/3717)
+* Extract libcurl initialization from GlobalState. [#3718](https://github.com/TileDB-Inc/TileDB/pull/3718)
+* Remove StorageManager::array_close_for_$type methods. [#3658](https://github.com/TileDB-Inc/TileDB/pull/3658)
+* Fix build on upcoming gcc-13. [#3722](https://github.com/TileDB-Inc/TileDB/pull/3722)
+* Adds nightly C++20 builds alongside C++17 nightlies. [#3688](https://github.com/TileDB-Inc/TileDB/pull/3688)
+* Adding average cell size API to array. [#3700](https://github.com/TileDB-Inc/TileDB/pull/3700)
+
+## API Changes
+
+### C API
+
+* Deprecate `tiledb_array_delete_array` add `tiledb_array_delete`. [#3744](https://github.com/TileDB-Inc/TileDB/pull/3744)
+* Added `tiledb_group_delete_group` API. [#3560](https://github.com/TileDB-Inc/TileDB/pull/3560)
+* Document `tiledb_mime_type_t`. [#3625](https://github.com/TileDB-Inc/TileDB/pull/3625)
+* Fix missing argument in set dimension label tile C-API. [#3739](https://github.com/TileDB-Inc/TileDB/pull/3739)
+
+## Full Changelog:
+
+* https://github.com/TileDB-Inc/TileDB/compare/2.13.0...2.14.0
+
+# TileDB v2.13.1 Release Notes
+
+## Improvements
+
+* Sparse globalorder reader: prevent unused tiles from being loaded again. [#3710](https://github.com/TileDB-Inc/TileDB/pull/3710)
+* Do not resubmit http requests for curl errors for REST requests [#3712](https://github.com/TileDB-Inc/TileDB/pull/3712)
+* Enables WebP by default [#3724](https://github.com/TileDB-Inc/TileDB/pull/3724)
+
+## Bug fixes
+
+* Query condition: fix when attribute condition is not in user buffers. [#3713](https://github.com/TileDB-Inc/TileDB/pull/3713)
+
+
 # TileDB v2.13.0 Release Notes
 
-# API Announcements
+# Announcements
 
 - We have created a [deprecation and removal policy for the C and C++ API.](doc/policy/api_changes.md#deprecations). Deprecated functions will be in place for at least two releases, with a removal notification one version prior to the removal.
 
 - All functions deprecated through TileDB 2.12 will be removed in TileDB 2.15. See [list of deprecated functions here](doc/policy/api_changes.md#Deprecation-version-history).
+
+## Disk Format
+
+### Documentation
+
+* Document dictionary encoding format [#3566](https://github.com/TileDB-Inc/TileDB/pull/3566)
+* Improve documentation of consolidated commits files and ignore files [#3606](https://github.com/TileDB-Inc/TileDB/pull/3606)
+
+## New features
+
+* Bitsort filter, to write attribute and associated coordinates in the attribute's data order, and re-sort into global order on read [#3483](https://github.com/TileDB-Inc/TileDB/pull/3483), [#3570](https://github.com/TileDB-Inc/TileDB/pull/3570)
+* Support for lossless and lossy RGB(A) and BGR(A) image compression using WebP [#3549](https://github.com/TileDB-Inc/TileDB/pull/3549)
+
+## API Changes
+
+### C API
+
+* Added `tiledb_status_code` [#3580](https://github.com/TileDB-Inc/TileDB/pull/3580)
+* Added `tiledb_group_get_is_relative_uri_by_name` [#3550](https://github.com/TileDB-Inc/TileDB/pull/3550)
+* Added `tiledb_array_delete_array` API [#3539](https://github.com/TileDB-Inc/TileDB/pull/3539)
+
+### Documentation
+
+* Document missing fragment info C APIs. [#3577](https://github.com/TileDB-Inc/TileDB/pull/3577)
+* Document that the callback of `tiledb_query_submit_async` is executed in an internal thread pool thread. [#3558](https://github.com/TileDB-Inc/TileDB/pull/3558)
+
+## Improvements
+
+### Defects removed
+
+* Fix for dense arrays: var size metadata not loaded on read [#3645]https://github.com/TileDB-Inc/TileDB/pull/3645)
+* Dense consolidation: set correct non-empty domain [#3635](https://github.com/TileDB-Inc/TileDB/pull/3635)
+* Sparse global order reader: fixing incomplete reason for rest queries [#3620](https://github.com/TileDB-Inc/TileDB/pull/3620)
+* Fixes dim label reader range order to always take valid ranges [#3561](https://github.com/TileDB-Inc/TileDB/pull/3561)
+* Global order writes should send relative uris over serialization [#3557](https://github.com/TileDB-Inc/TileDB/pull/3557)
+* Fix unit-cppapi-update-queries test failure when throwing UpdateValue exception. [#3578](https://github.com/TileDB-Inc/TileDB/pull/3578)
+* Fix duplicate logger instantiations in global state [#3591](https://github.com/TileDB-Inc/TileDB/pull/3591)
+* Add missing query_type in array_open capnp [#3616](https://github.com/TileDB-Inc/TileDB/pull/3616)
+* Fix use-after-free on a capnp::FlatArrayMessageReader [#3631](https://github.com/TileDB-Inc/TileDB/pull/3631)
+* Bitsort filter: preallocate filtered buffer for dim tiles. [#3632](https://github.com/TileDB-Inc/TileDB/pull/3632)
+* Add Boolean Support For Sparse Query Conditions [#3651](https://github.com/TileDB-Inc/TileDB/pull/3651)
+
+### Internal
+
+* Read tiles: refactor tile creation code. [#3492](https://github.com/TileDB-Inc/TileDB/pull/3492)
+* Use snprintf to avoid deprecation warnings as errors [#3608](https://github.com/TileDB-Inc/TileDB/pull/3608)
+* Removes non-C.41 range setting (part 1) [#3598](https://github.com/TileDB-Inc/TileDB/pull/3598)
+* Add [[nodiscard]] attribute to Status class and fix failures [#3559](https://github.com/TileDB-Inc/TileDB/pull/3559)
+* Remove WhiteboxTile. [#3612](https://github.com/TileDB-Inc/TileDB/pull/3612)
+* Global order writer: allow splitting fragments. [#3605](https://github.com/TileDB-Inc/TileDB/pull/3605)
+* Move unit uuid to unit tests. [#3614](https://github.com/TileDB-Inc/TileDB/pull/3614)
+* Consolidation: add fragment max size. [#3607](https://github.com/TileDB-Inc/TileDB/pull/3607)
+* Move unit-bytevecvalue, unit-TileDomain and unit-domain to unit test. [#3615](https://github.com/TileDB-Inc/TileDB/pull/3615)
+* Adding rtree object library. [#3613](https://github.com/TileDB-Inc/TileDB/pull/3613)
+* Global order writes serialization: no tests when serialization disabled. [#3603](https://github.com/TileDB-Inc/TileDB/pull/3603)
+* Fragment info serialization support [#3530](https://github.com/TileDB-Inc/TileDB/pull/3530)
+* Array Metadata related refactoring, use Serializer/Deserializer instead of Buffer [#3544](https://github.com/TileDB-Inc/TileDB/pull/3544)
+* Class VFS C.41 compliance, Part 1 [#3477](https://github.com/TileDB-Inc/TileDB/pull/3477)
+* Updates: adding strategy. [#3513](https://github.com/TileDB-Inc/TileDB/pull/3513)
+* Remove stale declarations from query [#3565](https://github.com/TileDB-Inc/TileDB/pull/3565)
+* Improvements in C API implementation [#3524](https://github.com/TileDB-Inc/TileDB/pull/3524)
+* Sparse readers: adding relevant cells stats. [#3593](https://github.com/TileDB-Inc/TileDB/pull/3593)
+* Fix find_heap_api_violations.py [#3634](https://github.com/TileDB-Inc/TileDB/pull/3634)
+
+### Build system changes
+
+* Update to catch2 ver3 [#3504](https://github.com/TileDB-Inc/TileDB/pull/3504)
+* Linux release artifacts now target manylinux2014 [#3656](https://github.com/TileDB-Inc/TileDB/pull/3656)
+
+## Full Changelog:
+
+* https://github.com/TileDB-Inc/TileDB/compare/2.12.0...2.13.0
 
 # TileDB v2.12.0 Release Notes
 
