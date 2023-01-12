@@ -129,6 +129,27 @@ class ArrayDirectory {
       return fragment_uris_;
     };
 
+    /** Returns the filtered fragment URIs matching the given fragments_list. */
+    std::vector<TimestampedURI> fragment_uris(
+        std::vector<std::string> fragments_list) const {
+      std::vector<TimestampedURI> uris;
+      for (auto fragment : fragments_list) {
+        for (auto uri : fragment_uris_) {
+          if (URI(fragment) == uri.uri_) {
+            uris.emplace_back(uri);
+            break;
+          } else {
+            if (uri == fragment_uris_.back()) {
+              throw std::runtime_error(
+                  "[ArrayDirectory::fragment_uris] " + fragment +
+                  " is not a fragment of the ArrayDirectory.");
+            }
+          }
+        }
+      }
+      return uris;
+    };
+
    private:
     /* ********************************* */
     /*         PRIVATE ATTRIBUTES        */

@@ -2947,8 +2947,68 @@ int32_t tiledb_array_delete_fragments(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(array->array_->delete_fragments(
-      tiledb::sm::URI(uri), timestamp_start, timestamp_end));
+  try {
+    array->array_->delete_fragments(
+        tiledb::sm::URI(uri), timestamp_start, timestamp_end);
+  } catch (std::exception& e) {
+    auto st = Status_ArrayError(e.what());
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_delete_fragments_list(
+    tiledb_ctx_t* ctx,
+    const char* uri,
+    const char** fragment_uris,
+    const uint64_t num_fragments) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Allocate an array object
+  tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
+  try {
+    array->array_ = make_shared<tiledb::sm::Array>(
+        HERE(), tiledb::sm::URI(uri), ctx->storage_manager());
+  } catch (std::bad_alloc&) {
+    auto st = Status_Error(
+        "Failed to create TileDB array object; Memory allocation error");
+    delete array;
+    array = nullptr;
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Open the array for exclusive modification
+  throw_if_not_ok(array->array_->open(
+      static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
+      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+      nullptr,
+      0));
+
+  // Convert the list of fragment uris to a vector
+  std::vector<std::string> uris;
+  uris.reserve(num_fragments);
+  for (uint64_t i = 0; i < num_fragments; i++) {
+    uris.emplace_back(fragment_uris[i]);
+  }
+
+  try {
+    array->array_->delete_fragments_list(tiledb::sm::URI(uri), uris);
+  } catch (std::exception& e) {
+    throw_if_not_ok(array->array_->close());
+    auto st = Status_ArrayError(e.what());
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Close the array
+  throw_if_not_ok(array->array_->close());
 
   return TILEDB_OK;
 }
@@ -7012,6 +7072,15 @@ int32_t tiledb_array_delete_fragments(
     uint64_t timestamp_end) noexcept {
   return api_entry<tiledb::api::tiledb_array_delete_fragments>(
       ctx, array, uri, timestamp_start, timestamp_end);
+}
+
+int32_t tiledb_array_delete_fragments_list(
+    tiledb_ctx_t* ctx,
+    const char* uri,
+    const char** fragment_uris,
+    const uint64_t num_fragments) noexcept {
+  return api_entry<tiledb::api::tiledb_array_delete_fragments_list>(
+      ctx, uri, fragment_uris, num_fragments);
 }
 
 int32_t tiledb_array_open(

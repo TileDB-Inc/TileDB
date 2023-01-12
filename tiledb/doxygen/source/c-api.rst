@@ -223,6 +223,8 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_delete_fragments
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_delete_fragments_list
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open_at_with_key

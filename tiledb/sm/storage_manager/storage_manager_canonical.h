@@ -375,10 +375,18 @@ class StorageManagerCanonical {
    * @param array_name The name of the array whose fragments are to be deleted.
    * @param timestamp_start The start timestamp at which to delete.
    * @param timestamp_end The end timestamp at which to delete.
-   * @return Status
    */
-  Status delete_fragments(
+  void delete_fragments(
       const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
+
+  /**
+   * Cleans up the array fragments.
+   *
+   * @param array_name The name of the array whose fragments are to be deleted.
+   * @param fragment_uris The list of fragment uris to be deleted.
+   */
+  void delete_fragments_list(
+      const char* array_name, const std::vector<std::string> fragment_uris);
 
   /**
    * Cleans up the group data.

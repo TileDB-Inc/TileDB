@@ -527,8 +527,7 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
   }
 
   // Delete fragments and commits
-  throw_if_not_ok(
-      delete_fragments(array_name, 0, std::numeric_limits<uint64_t>::max()));
+  delete_fragments(array_name, 0, std::numeric_limits<uint64_t>::max());
 
   auto array_dir = ArrayDirectory(
       resources(), URI(array_name), 0, std::numeric_limits<uint64_t>::max());
@@ -540,9 +539,8 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
   vfs()->remove_files(compute_tp(), array_dir.array_schema_uris());
 }
 
-Status StorageManagerCanonical::delete_fragments(
+void StorageManagerCanonical::delete_fragments(
     const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
-  Status st;
   if (array_name == nullptr) {
     throw Status_StorageManagerError(
         "[delete_fragments] Array name cannot be null");
@@ -569,22 +567,69 @@ Status StorageManagerCanonical::delete_fragments(
 
   // Write ignore file
   if (commit_uris_to_ignore.size() != 0) {
-    RETURN_NOT_OK(write_commit_ignore_file(array_dir, commit_uris_to_ignore));
+    throw_if_not_ok(write_commit_ignore_file(array_dir, commit_uris_to_ignore));
   }
 
   // Delete fragments and commits
-  st = parallel_for(compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
-    RETURN_NOT_OK(vfs()->remove_dir(fragment_uris[i].uri_));
+  throw_if_not_ok(
+      parallel_for(compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs()->remove_dir(fragment_uris[i].uri_));
+        bool is_file = false;
+        RETURN_NOT_OK(vfs()->is_file(commit_uris_to_delete[i], &is_file));
+        if (is_file) {
+          RETURN_NOT_OK(vfs()->remove_file(commit_uris_to_delete[i]));
+        }
+        return Status::Ok();
+      }));
+}
+
+void StorageManagerCanonical::delete_fragments_list(
+    const char* array_name, const std::vector<std::string> fragment_uris) {
+  if (array_name == nullptr) {
+    throw Status_StorageManagerError(
+        "[delete_fragments_list] Array name cannot be null");
+  }
+
+  auto array_dir = ArrayDirectory(
+      vfs(),
+      compute_tp(),
+      URI(array_name),
+      0,
+      std::numeric_limits<uint64_t>::max());
+
+  // Get fragment URIs from the array that match the input fragment_uris
+  auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
+  auto uris = filtered_fragment_uris.fragment_uris(fragment_uris);
+
+  // Retrieve commit uris to delete and ignore
+  std::vector<URI> commit_uris_to_delete;
+  std::vector<URI> commit_uris_to_ignore;
+  URI commit_uri;
+
+  for (auto& timestamped_uri : uris) {
+    commit_uri = array_dir.get_commit_uri(timestamped_uri.uri_);
+    commit_uris_to_delete.emplace_back(commit_uri);
+    if (array_dir.consolidated_commit_uris_set().count(commit_uri.c_str()) !=
+        0) {
+      commit_uris_to_ignore.emplace_back(commit_uri);
+    }
+  }
+
+  // Write ignore file
+  if (commit_uris_to_ignore.size() != 0) {
+    throw_if_not_ok(write_commit_ignore_file(array_dir, commit_uris_to_ignore));
+  }
+
+  // Delete fragments and commits
+  throw_if_not_ok(parallel_for(compute_tp(), 0, uris.size(), [&](size_t i) {
+    RETURN_NOT_OK(vfs()->remove_dir(uris[i].uri_));
     bool is_file = false;
     RETURN_NOT_OK(vfs()->is_file(commit_uris_to_delete[i], &is_file));
     if (is_file) {
       RETURN_NOT_OK(vfs()->remove_file(commit_uris_to_delete[i]));
     }
     return Status::Ok();
-  });
-  RETURN_NOT_OK(st);
-
-  return Status::Ok();
+  }));
 }
 
 void StorageManagerCanonical::delete_group(const char* group_name) {

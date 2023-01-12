@@ -385,6 +385,18 @@ class Array {
   }
 
   /**
+   * Deletes the fragments with the input uris on an array with the input uri.
+   */
+  static void delete_fragments_list(
+      const Context& ctx,
+      const std::string& uri,
+      const char** fragment_uris,
+      const uint64_t num_fragments) {
+    ctx.handle_error(tiledb_array_delete_fragments_list(
+        ctx.ptr().get(), uri.c_str(), fragment_uris, num_fragments));
+  }
+
+  /**
    * @brief Opens the array. The array is opened using a query type as input.
    *
    * This is to indicate that queries created for this `Array`

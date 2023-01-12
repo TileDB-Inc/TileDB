@@ -3917,6 +3917,31 @@ TILEDB_EXPORT int32_t tiledb_array_delete_fragments(
     uint64_t timestamp_end) TILEDB_NOEXCEPT;
 
 /**
+ * Deletes array fragments with the input uris.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * auto fragment_uris{
+ *   "hdfs:///temp/my_array/__fragments/1",
+ *   "hdfs:///temp/my_array/__fragments/2"};
+ * tiledb_array_delete_fragments_list(
+ *   ctx, "hdfs:///temp/my_array", fragment_uris, 2);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri The URI of the fragments' parent Array.
+ * @param fragment_uris The URIs of the fragments to be deleted.
+ * @param num_fragments The number of fragments to be deleted.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_delete_fragments_list(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const char** fragment_uris,
+    const uint64_t num_fragments) TILEDB_NOEXCEPT;
+
+/**
  * Opens a TileDB array. The array is opened using a query type as input.
  * This is to indicate that queries created for this `tiledb_array_t`
  * object will inherit the query type. In other words, `tiledb_array_t`
