@@ -595,7 +595,8 @@ Status Win::write_at(
   const char* byte_buffer = reinterpret_cast<const char*>(buffer);
   while (buffer_size > 0) {
     DWORD bytes_to_write = buffer_size > std::numeric_limits<DWORD>::max() ?
-        std::numeric_limits<DWORD>::max() : (DWORD)buffer_size;
+                               std::numeric_limits<DWORD>::max() :
+                               (DWORD)buffer_size;
     DWORD bytes_written = 0;
     LARGE_INTEGER offset;
     offset.QuadPart = file_offset;
