@@ -558,6 +558,7 @@ TEST_CASE("C API: tiledb_vfs_open argument validation", "[capi][vfs]") {
 TEST_CASE("C API: tiledb_vfs_write argument validation", "[capi][vfs]") {
   ordinary_vfs_fh x;
   const void* buffer = nullptr;
+  const char* non_null_buffer = "Hello, world!";
   /*
    * No "success" sections here; too much overhead to set up.
    */
@@ -570,7 +571,7 @@ TEST_CASE("C API: tiledb_vfs_write argument validation", "[capi][vfs]") {
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("invalid number of bytes") {
-    auto rc{tiledb_vfs_write(x.ctx, x.vfs_fh, buffer, -1)};
+    auto rc{tiledb_vfs_write(x.ctx, x.vfs_fh, non_null_buffer, UINT64_MAX)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
 }
