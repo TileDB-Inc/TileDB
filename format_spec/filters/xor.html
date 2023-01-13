@@ -251,7 +251,7 @@ ul.task-list li input[type="checkbox"] {
 
 </header>
 
-<p>The XOR filter applies the XOR operation sequentally to the input data, in chunks of 1-4 bytes, depending on the <code>sizeof</code> the attribute’s type representation. For example, given <code>data</code> as a NumPy int64 array:</p>
+<p>The XOR filter applies the XOR operation sequentially to the input data, in chunks of 1-4 bytes, depending on the <code>sizeof</code> the attribute’s type representation. For example, given <code>data</code> as a NumPy int64 array:</p>
 <pre><code>data = np.random.rand(npts)
 data_b = data.view(np.int64)
 for i in range(1, len(data)):

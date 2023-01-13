@@ -235,7 +235,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#mbr" id="toc-mbr" class="nav-link" data-scroll-target="#mbr">MBR</a></li>
   <li><a href="#tile-offsets" id="toc-tile-offsets" class="nav-link" data-scroll-target="#tile-offsets">Tile Offsets</a></li>
   <li><a href="#tile-sizes" id="toc-tile-sizes" class="nav-link" data-scroll-target="#tile-sizes">Tile Sizes</a></li>
-  <li><a href="#tile-mins-maxs" id="toc-tile-mins-maxs" class="nav-link" data-scroll-target="#tile-mins-maxs">Tile Mins Maxs</a></li>
+  <li><a href="#tile-mins-maxes" id="toc-tile-mins-maxes" class="nav-link" data-scroll-target="#tile-mins-maxes">Tile Mins Maxes</a></li>
   <li><a href="#tile-sums" id="toc-tile-sums" class="nav-link" data-scroll-target="#tile-sums">Tile Sums</a></li>
   <li><a href="#tile-null-count" id="toc-tile-null-count" class="nav-link" data-scroll-target="#tile-null-count">Tile Null Count</a></li>
   <li><a href="#tile-fragment-min-max-sum-null-count" id="toc-tile-fragment-min-max-sum-null-count" class="nav-link" data-scroll-target="#tile-fragment-min-max-sum-null-count">Tile Fragment Min Max Sum Null Count</a></li>
@@ -381,7 +381,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td style="text-align: left;">Tile mins for attribute/dimension 1</td>
-<td style="text-align: left;"><a href="#tile-mins-maxs">Tile Mins/Maxs</a></td>
+<td style="text-align: left;"><a href="#tile-mins-maxes">Tile Mins/Maxes</a></td>
 <td style="text-align: left;">The serialized mins for attribute/dimension 1</td>
 </tr>
 <tr class="odd">
@@ -391,13 +391,13 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td style="text-align: left;">Variable mins for attribute/dimension N</td>
-<td style="text-align: left;"><a href="#tile-mins-maxs">Tile Mins/Maxs</a></td>
+<td style="text-align: left;"><a href="#tile-mins-maxes">Tile Mins/Maxes</a></td>
 <td style="text-align: left;">The serialized mins for attribute/dimension N</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">Tile maxs for attribute/dimension 1</td>
-<td style="text-align: left;"><a href="#tile-mins-maxs">Tile Mins/Maxs</a></td>
-<td style="text-align: left;">The serialized maxs for attribute/dimension 1</td>
+<td style="text-align: left;">Tile maxes for attribute/dimension 1</td>
+<td style="text-align: left;"><a href="#tile-mins-maxes">Tile Mins/Maxes</a></td>
+<td style="text-align: left;">The serialized maxes for attribute/dimension 1</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">…</td>
@@ -405,9 +405,9 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">…</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">Variable maxs for attribute/dimension N</td>
-<td style="text-align: left;"><a href="#tile-mins-maxs">Tile Mins/Maxs</a></td>
-<td style="text-align: left;">The serialized maxs for attribute/dimension N</td>
+<td style="text-align: left;">Variable maxes for attribute/dimension N</td>
+<td style="text-align: left;"><a href="#tile-mins-maxes">Tile Mins/Maxes</a></td>
+<td style="text-align: left;">The serialized maxes for attribute/dimension N</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Tile sums for attribute/dimension 1</td>
@@ -435,7 +435,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">…</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">Variable maxs for attribute/dimension N</td>
+<td style="text-align: left;">Variable maxes for attribute/dimension N</td>
 <td style="text-align: left;">[<a href="#tile-null-count">Tile Null Count</a></td>
 <td style="text-align: left;">The serialized null counts for attribute/dimension N</td>
 </tr>
@@ -695,9 +695,9 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 </section>
-<section id="tile-mins-maxs" class="level3">
-<h3 class="anchored" data-anchor-id="tile-mins-maxs">Tile Mins Maxs</h3>
-<p>The tile mins maxs is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
+<section id="tile-mins-maxes" class="level3">
+<h3 class="anchored" data-anchor-id="tile-mins-maxes">Tile Mins Maxes</h3>
+<p>The tile mins maxes is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
 <table class="table">
 <thead>
 <tr class="header">
@@ -919,7 +919,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Condition</td>
-<td style="text-align: left;"><code>char</code></td>
+<td style="text-align: left;"><code>uint8_t</code></td>
 <td style="text-align: left;">Condition marker filename 1</td>
 </tr>
 <tr class="even">
@@ -934,7 +934,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td style="text-align: left;">Condition</td>
-<td style="text-align: left;"><code>char</code></td>
+<td style="text-align: left;"><code>uint8_t</code></td>
 <td style="text-align: left;">Condition marker filename N</td>
 </tr>
 </tbody>
@@ -969,13 +969,13 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td style="text-align: left;">Dense</td>
-<td style="text-align: left;"><code>char</code></td>
-<td style="text-align: left;">Whether the array is dense</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Whether the array is dense (1) or not (0)</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Null non-empty domain</td>
-<td style="text-align: left;"><code>char</code></td>
-<td style="text-align: left;">Indicates whether the non-empty domain is null or not</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Indicates whether the non-empty domain is null (1) or not (0)</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Non-empty domain</td>
@@ -994,13 +994,13 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Includes timestamps</td>
-<td style="text-align: left;"><code>char</code></td>
-<td style="text-align: left;">Whether the fragment includes timestamps or not</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Whether the fragment includes timestamps (1) or not (0)</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Includes delete metadata</td>
-<td style="text-align: left;"><code>char</code></td>
-<td style="text-align: left;">Whether the fragment includes delete metadata or not</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Whether the fragment includes delete metadata (1) or not (0)</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">File sizes</td>
@@ -1098,9 +1098,9 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">The offset to the generic tile storing the tile mins for attribute/dimension N</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">Tile maxs offset for attribute/dimension 1</td>
+<td style="text-align: left;">Tile maxes offset for attribute/dimension 1</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
-<td style="text-align: left;">The offset to the generic tile storing the tile maxs for attribute/dimension 1.</td>
+<td style="text-align: left;">The offset to the generic tile storing the tile maxes for attribute/dimension 1.</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">…</td>
@@ -1108,9 +1108,9 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">…</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">Tile maxs offset for attribute/dimension N</td>
+<td style="text-align: left;">Tile maxes offset for attribute/dimension N</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
-<td style="text-align: left;">The offset to the generic tile storing the tile maxs for attribute/dimension N</td>
+<td style="text-align: left;">The offset to the generic tile storing the tile maxes for attribute/dimension N</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Tile sums offset for attribute/dimension 1</td>
@@ -1158,19 +1158,9 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">The total number of characters of the array schema name.</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">Array schema name character 1</td>
-<td style="text-align: left;"><code>char</code></td>
-<td style="text-align: left;">The first character of the array schema name.</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">…</td>
-<td style="text-align: left;">…</td>
-<td style="text-align: left;">…</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Array schema name character N</td>
-<td style="text-align: left;"><code>char</code></td>
-<td style="text-align: left;">The last character of the array schema name.</td>
+<td style="text-align: left;">Array schema name</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">The array schema name.</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Footer length</td>
