@@ -89,7 +89,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           condition)
     , tile_offsets_min_frag_idx_(std::numeric_limits<unsigned>::max())
     , tile_offsets_max_frag_idx_(0) {
-  include_coords_ = subarray_.is_set() || bitsort_attribute_.has_value();
+  include_coords_ = false;
   SparseIndexReaderBase::init(skip_checks_serialization);
 
   // Initialize memory budget variables.
@@ -173,6 +173,9 @@ Status SparseUnorderedWithDupsReader<BitmapType>::initialize_memory_budget() {
 
 template <class BitmapType>
 Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
+  // Subarray is not known to be explicitly set until buffers are deserialized
+  include_coords_ = subarray_.is_set() || bitsort_attribute_.has_value();
+
   auto timer_se = stats_->start_timer("dowork");
 
   // Make sure user didn't request delete timestamps.
@@ -233,7 +236,6 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
     for (auto& result_tile : result_tiles_) {
       if (!result_tile.coords_loaded()) {
         result_tile.set_coords_loaded();
-        ;
         result_tiles_created.emplace_back(&result_tile);
       } else {
         result_tiles_loaded.emplace_back(&result_tile);
