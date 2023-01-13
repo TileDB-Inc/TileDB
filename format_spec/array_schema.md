@@ -73,7 +73,7 @@ The dimension has internal format:
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Dimension name length | `uint32_t` | Number of characters in dimension name |
-| Dimension name | `char[]` | Dimension name character array |
+| Dimension name | `uint8_t[]` | Dimension name character array |
 | Dimension datatype | `uint8_t` | Datatype of the coordinate values |
 | Cell val num | `uint32_t` | Number of coordinate values per cell. For variable-length dimensions, this is `std::numeric_limits<uint32_t>::max()` |
 | Filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used on coordinate value tiles |
@@ -89,7 +89,7 @@ The attribute has internal format:
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Attribute name length | `uint32_t` | Number of characters in attribute name |
-| Attribute name | `char[]` | Attribute name character array |
+| Attribute name | `uint8_t[]` | Attribute name character array |
 | Attribute datatype | `uint8_t` | Datatype of the attribute values |
 | Cell val num | `uint32_t` | Number of attribute values per cell. For variable-length attributes, this is `std::numeric_limits<uint32_t>::max()` |
 | Filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used on attribute value tiles |
