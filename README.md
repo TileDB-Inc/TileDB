@@ -69,6 +69,7 @@ The TileDB team maintains a variety of APIs built on top of the C++ library:
 * [R](https://github.com/TileDB-Inc/TileDB-R)
 * [Java](https://github.com/TileDB-Inc/TileDB-Java)
 * [Go](https://github.com/TileDB-Inc/TileDB-Go)
+* [C#](https://github.com/TileDB-Inc/TileDB-CSharp)
 
 ## Integrations
 
