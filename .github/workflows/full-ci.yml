@@ -15,6 +15,7 @@ on:
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
+      - '!build-*'
     paths-ignore:
       - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
