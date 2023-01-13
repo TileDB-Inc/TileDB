@@ -227,7 +227,9 @@ Status CompressionFilter::run_forward(
     return LOG_STATUS(
         Status_FilterError("Input is too large to be compressed."));
 
-  if (tile.type() == Datatype::STRING_ASCII && offsets_tile) {
+  if ((tile.type() == Datatype::STRING_ASCII ||
+       tile.type() == Datatype::STRING_UTF8) &&
+      offsets_tile) {
     if (compressor_ == Compressor::RLE ||
         compressor_ == Compressor::DICTIONARY_ENCODING)
       return compress_var_string_coords(
@@ -299,7 +301,9 @@ Status CompressionFilter::run_reverse(
   Buffer* metadata_buffer = output_metadata->buffer_ptr(0);
   assert(metadata_buffer != nullptr);
 
-  if (tile.type() == Datatype::STRING_ASCII && version_ >= 12 && offsets_tile) {
+  if ((tile.type() == Datatype::STRING_ASCII ||
+       tile.type() == Datatype::STRING_UTF8) &&
+      version_ >= 12 && offsets_tile) {
     if (compressor_ == Compressor::RLE ||
         compressor_ == Compressor::DICTIONARY_ENCODING)
       return decompress_var_string_coords(
