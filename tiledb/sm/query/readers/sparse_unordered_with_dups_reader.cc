@@ -86,9 +86,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           buffers,
           subarray,
           layout,
-          condition)
-    , tile_offsets_min_frag_idx_(std::numeric_limits<unsigned>::max())
-    , tile_offsets_max_frag_idx_(0) {
+          condition) {
   include_coords_ = false;
   SparseIndexReaderBase::init(skip_checks_serialization);
 
