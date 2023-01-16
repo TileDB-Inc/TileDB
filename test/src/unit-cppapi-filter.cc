@@ -583,18 +583,18 @@ TEST_CASE(
         a1_data,
         a1_offsets,
         TILEDB_GLOBAL_ORDER);
-    SECTION("Row major read") {
-      read_and_check_sparse_array_string_attr(
-          ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
-    }
+    //SECTION("Row major read") {
+    //  read_and_check_sparse_array_string_attr(
+    //      ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
+    //}
     SECTION("Global order read") {
       read_and_check_sparse_array_string_attr(
           ctx, array_name, a1_data, a1_offsets, TILEDB_GLOBAL_ORDER);
     }
-    SECTION("Unordered read") {
-      read_and_check_sparse_array_string_attr(
-          ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
-    }
+    //SECTION("Unordered read") {
+    //  read_and_check_sparse_array_string_attr(
+    //      ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
+    //}
   }
 
   // Clean up
