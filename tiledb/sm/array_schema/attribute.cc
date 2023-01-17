@@ -345,7 +345,8 @@ Status Attribute::set_filter_pipeline(const FilterPipeline& pipeline) {
                                 "attribute with a real datatype"));
   }
 
-  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline.size() > 1) {
+  if ((type_ == Datatype::STRING_ASCII || type_ == Datatype::STRING_UTF8) &&
+      var_size() && pipeline.size() > 1) {
     if (pipeline.has_filter(FilterType::FILTER_RLE) &&
         pipeline.get_filter(0)->type() != FilterType::FILTER_RLE) {
       return LOG_STATUS(Status_ArraySchemaError(
