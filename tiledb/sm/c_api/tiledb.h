@@ -226,15 +226,6 @@ TILEDB_EXPORT int32_t tiledb_query_status_from_str(
 /*            CONSTANTS           */
 /* ****************************** */
 
-/**
- * Returns a special name indicating the coordinates attribute.
- *
- * The coordinate buffer has been deprecated. Set the coordinates for
- * each individual dimension with the `set_buffer` API. Consult the current
- * documentation for more information.
- */
-TILEDB_DEPRECATED_EXPORT const char* tiledb_coords(void) TILEDB_NOEXCEPT;
-
 /** Returns a special value indicating a variable number of elements. */
 TILEDB_EXPORT uint32_t tiledb_var_num(void) TILEDB_NOEXCEPT;
 
@@ -257,8 +248,6 @@ TILEDB_EXPORT const char* tiledb_timestamps(void) TILEDB_NOEXCEPT;
  * @name Constants wrapping special functions
  */
 /**@{*/
-/** A special name indicating the coordinates attribute. */
-#define TILEDB_COORDS tiledb_coords()
 /** A special value indicating a variable number of elements. */
 #define TILEDB_VAR_NUM tiledb_var_num()
 /** The maximum path length on the current platform. */
