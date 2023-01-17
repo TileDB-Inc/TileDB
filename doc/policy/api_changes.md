@@ -70,6 +70,10 @@ Function removal shall be announced one release cycle before removal, following 
 - `tiledb_array_consolidate_metadata`
 - `tiledb_array_consolidate_metadata_with_key`
 
+### 2.13.0..2.14.0
+
+- `tiledb_query_submit_async`
+
 ## Deprecation History Generation
 
 <details>
