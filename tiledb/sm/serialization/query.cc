@@ -1312,11 +1312,9 @@ Status query_to_capnp(
           buff.original_buffer_size_);
     } else if (buff.buffer_ != nullptr || buff.buffer_size_ != nullptr) {
       // Fixed-length buffer
-      uint64_t buff_size = buff_cache.buffer.size();
 
-      if (!remote_global_order_write) {
-        buff_size += *buff.buffer_size_;
-      }
+      uint64_t buff_size = *buff.buffer_size_ + buff_cache.byte_offset;
+
       total_fixed_len_bytes += buff_size;
 
       attr_buffer_builder.setFixedLenBufferSizeInBytes(buff_size);
@@ -2185,16 +2183,16 @@ Status query_serialize(
             } else if (
                 query_buffer.buffer_size_ != nullptr &&
                 query_buffer.buffer_ != nullptr) {
+              // Fixed size buffers.
               const uint64_t query_buf_size = *query_buffer.buffer_size_;
-              const uint64_t cache_buf_size = query_buffer_cache.buffer.size();
-              // Write data from fixed buffer cache.
-              Buffer data(query_buffer_cache.buffer);
+              const uint64_t cache_buf_size = query_buffer_cache.byte_offset;
 
-              if (!remote_global_order_write) {
-                throw_if_not_ok(data.realloc(cache_buf_size + query_buf_size));
-                throw_if_not_ok(
-                    data.write(query_buffer.buffer_, query_buf_size));
-              }
+              // Append user data to trimmed cache data.
+              Buffer data;
+              throw_if_not_ok(
+                  data.write(query_buffer_cache.buffer.data(), cache_buf_size));
+              throw_if_not_ok(data.write(query_buffer.buffer_, query_buf_size));
+              query->set_remote_buffer_cache_submit(name, true);
               RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
             } else {
               throw StatusException(Status_SerializationError(

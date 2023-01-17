@@ -48,6 +48,12 @@ struct QueryRemoteBufferStorage {
   Buffer buffer;
   Buffer buffer_var;
   Buffer buffer_validity;
+
+  // Offset position to use for submission. Data after this offset will be held.
+  uint64_t byte_offset;
+
+  // True if the cache has been submit up to byte_offset position.
+  bool submit = false;
 };
 
 }  // namespace tiledb::sm

@@ -554,6 +554,18 @@ class Query {
       const bool check_null_buffers = true);
 
   /**
+   * Sets submit state for remote query buffer cache.
+   * Only used for remote global order writes.
+   *
+   * @param name Buffer name to set state.
+   * @param submit True if the buffer has been submit, else false.
+   */
+  inline void set_remote_buffer_cache_submit(
+      const std::string& name, bool submit) {
+    query_remote_buffer_storage_[name].submit = submit;
+  }
+
+  /**
    * Sets the validity buffer for nullable attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
@@ -926,6 +938,7 @@ class Query {
    * */
   std::unordered_map<std::string, QueryBuffer> buffers_;
 
+  /** Cache for tile aligned remote global order writes. */
   std::unordered_map<std::string, QueryRemoteBufferStorage>
       query_remote_buffer_storage_;
 

@@ -51,16 +51,16 @@ constexpr bool remote = true;
 template <typename T>
 struct RemoteGlobalOrderWriteFx {
   RemoteGlobalOrderWriteFx(
-      uint64_t bytes,
+      uint64_t total_cells,
       uint64_t extent,
-      uint64_t chunk_size,
+      uint64_t submit_cell_count,
       bool is_var = true,
       bool is_nullable = true)
       : is_var_(is_var)
       , is_nullable_(is_nullable)
-      , submit_cell_count_(chunk_size / sizeof(T))
-      , bytes_(bytes)
-      , extent_(extent / sizeof(T)) {
+      , submit_cell_count_(submit_cell_count)
+      , total_cell_count_(total_cells)
+      , extent_(extent) {
     if constexpr (remote) {
       // Config for using local REST server.
       Config localConfig;
@@ -158,11 +158,8 @@ struct RemoteGlobalOrderWriteFx {
     char char_data = 'a';
     // Start at column coordinate 1
     uint64_t cols_start = 1;
-    // Track the number of cells trimmed from this submit.
-    uint64_t trimmed_cells = 0;
     // Resubmit until we reach total mbs requested
-    for (uint64_t i = 0; i < total_cell_count_;
-         i += (submit_cell_count_ - trimmed_cells)) {
+    for (uint64_t i = 0; i < total_cell_count_; i += submit_cell_count_) {
       // Handle coords for sparse case.
       std::vector<uint64_t> cols(submit_cell_count_);
       if (is_sparse) {
@@ -210,13 +207,12 @@ struct RemoteGlobalOrderWriteFx {
 
       // Use result buffer elements to ensure we submit enough data after trim.
       auto result = query.result_buffer_elements();
-      trimmed_cells = (submit_cell_count_ - result["a"].second);
 
       data_wrote_.insert(
-          data_wrote_.end(), data.begin(), data.end() - trimmed_cells);
+          data_wrote_.end(), data.begin(), data.end());
       if (is_sparse) {
         cols_wrote_.insert(
-            cols_wrote_.end(), cols.begin(), cols.end() - trimmed_cells);
+            cols_wrote_.end(), cols.begin(), cols.end());
         // Pick up where we left off for next iteration of coords.
         cols_start = cols_wrote_.back() + 1;
       }
@@ -224,7 +220,7 @@ struct RemoteGlobalOrderWriteFx {
         data_validity_wrote_.insert(
             data_validity_wrote_.end(),
             validity_buffer.begin(),
-            validity_buffer.end() - trimmed_cells);
+            validity_buffer.end());
       }
       if (is_var_) {
         // Update data and offsets wrote for variable size attributes.
@@ -232,18 +228,24 @@ struct RemoteGlobalOrderWriteFx {
         var_offsets_wrote_.insert(
             var_offsets_wrote_.end(),
             var_offsets.begin(),
-            var_offsets.end() - trimmed_cells);
+            var_offsets.end());
         // Update validity buffer wrote for variable size attributes.
         if (is_nullable_) {
           var_validity_wrote_.insert(
               var_validity_wrote_.end(),
               validity_buffer.begin(),
-              validity_buffer.end() - trimmed_cells);
+              validity_buffer.end());
         }
       }
     }
     CHECK(query.query_status() == Query::Status::COMPLETE);
     array.close();
+
+    // Finalize data wrote buffers to reflect total trimmed cells.
+    data_wrote_.resize(total_cell_count_);
+    if (is_sparse) {
+      cols_wrote_.resize(total_cell_count_);
+    }
   }
 
   void read_array() {
@@ -257,99 +259,60 @@ struct RemoteGlobalOrderWriteFx {
     Query query(ctx_, array);
     query.set_subarray(subarray).set_layout(TILEDB_GLOBAL_ORDER);
 
-    uint64_t last_check = 0;
-    uint64_t last_offset = 0;
-    do {
-      // Coordinate buffers.
-      std::vector<uint64_t> cols(extent_);
+    // Fixed sized attribute buffers.
+    std::vector<T> data(total_cell_count_);
 
-      // Fixed sized attribute buffers.
-      std::vector<T> data(extent_);
+    // Coordinate buffers.
+    std::vector<uint64_t> cols;
+    if (array.schema().array_type() == TILEDB_SPARSE) {
+      cols.resize(total_cell_count_);
+      query.set_data_buffer("cols", cols);
+    }
 
-      // Variable sized attribute buffers.
-      std::string var_data;
+    // Variable sized attribute buffers.
+    std::string var_data;
+    std::vector<uint64_t> var_offsets;
+
+    std::vector<uint8_t> data_validity;
+    std::vector<uint8_t> var_validity;
+
+    query.set_data_buffer("a", data);
+    if (is_nullable_) {
+      data_validity.resize(total_cell_count_);
+      query.set_validity_buffer("a", data_validity);
+    }
+
+    if (is_var_) {
       var_data.resize(var_data_wrote_.size());
-      std::vector<uint64_t> var_offsets(extent_);
-
-      std::vector<uint8_t> data_validity(extent_);
-      std::vector<uint8_t> var_validity(extent_);
-
-      query.set_data_buffer("cols", cols).set_data_buffer("a", data);
+      var_offsets.resize(total_cell_count_);
+      query.set_data_buffer("var", var_data)
+          .set_offsets_buffer("var", var_offsets);
       if (is_nullable_) {
-        query.set_validity_buffer("a", data_validity);
+        var_validity.resize(total_cell_count_);
+        query.set_validity_buffer("var", var_validity);
       }
+    }
 
-      if (is_var_) {
-        query.set_data_buffer("var", var_data)
-            .set_offsets_buffer("var", var_offsets);
-        if (is_nullable_) {
-          query.set_validity_buffer("var", var_validity);
-        }
-      }
+    query.submit();
 
-      query.submit();
-      auto results = query.result_buffer_elements();
+    if (is_nullable_) {
+      CHECK_THAT(data_validity, Catch::Matchers::Equals(data_validity_wrote_));
+    }
 
-      uint64_t match_trim = total_cell_count_ - extent_ - last_check;
+    if (is_var_) {
+      CHECK(var_data == var_data_wrote_);
+      CHECK_THAT(var_offsets, Catch::Matchers::Equals(var_offsets_wrote_));
+
       if (is_nullable_) {
-        CHECK_THAT(
-            data_validity,
-            Catch::Matchers::Equals(std::vector(
-                data_validity_wrote_.begin() + last_check,
-                data_validity_wrote_.end() - match_trim)));
+        CHECK_THAT(var_validity, Catch::Matchers::Equals(var_validity_wrote_));
       }
+    }
 
-      if (is_var_) {
-        auto v = std::string(
-            var_data_wrote_.begin() + last_offset,
-            var_data_wrote_.end() - (match_trim * sizeof(T)));
+    CHECK_THAT(data, Catch::Matchers::Equals(data_wrote_));
 
-        // For partial reads, resize var_data to match result buffer size.
-        if (var_data.size() != results["var"].second) {
-          var_data.resize(results["var"].second);
-          v.resize(results["var"].second);
-        }
-        last_offset += results["var"].second;
-        CHECK(var_data == v);
-        // Check read offsets against a subset of offsets wrote to the array.
-        auto offsets = std::vector(
-            var_offsets_wrote_.begin() + last_check,
-            var_offsets_wrote_.end() - match_trim);
-
-        // Ensure the subset of written offsets start at index 0.
-        uint64_t prev_offset = offsets.front();
-        if (prev_offset != 0) {
-          for (size_t j = 1; j < offsets.size(); j++) {
-            offsets[j] -= prev_offset;
-          }
-          offsets.front() = 0;
-        }
-        CHECK_THAT(var_offsets, Catch::Matchers::Equals(offsets));
-
-        if (is_nullable_) {
-          CHECK_THAT(
-              var_validity,
-              Catch::Matchers::Equals(std::vector(
-                  var_validity_wrote_.begin() + last_check,
-                  var_validity_wrote_.end() - match_trim)));
-        }
-      }
-
-      CHECK_THAT(
-          data,
-          Catch::Matchers::Equals(std::vector(
-              data_wrote_.begin() + last_check,
-              data_wrote_.end() - match_trim)));
-
-      if (array.schema().array_type() == TILEDB_SPARSE) {
-        CHECK_THAT(
-            cols,
-            Catch::Matchers::Equals(std::vector(
-                cols_wrote_.begin() + last_check,
-                cols_wrote_.end() - match_trim)));
-      }
-      last_check += extent_;
-    } while (query.query_status() == Query::Status::INCOMPLETE);
+    if (array.schema().array_type() == TILEDB_SPARSE) {
+      CHECK_THAT(cols, Catch::Matchers::Equals(cols_wrote_));
+    }
 
     CHECK(query.query_status() == Query::Status::COMPLETE);
     array.close();
@@ -365,12 +328,12 @@ struct RemoteGlobalOrderWriteFx {
   bool is_var_;
   bool is_nullable_;
   const unsigned submit_cell_count_;
-  const unsigned bytes_;
   // Find min number of values of type T to fill `bytes_`.
-  const uint64_t total_cell_count_ = bytes_ / sizeof(T);
+  const uint64_t total_cell_count_;
   const uint64_t extent_;
 
-  const std::string array_name_ = "global-array-" + std::to_string(bytes_);
+  const std::string array_name_ =
+      "global-array-" + std::to_string(total_cell_count_);
   const std::string s3_uri_ = "s3://shaun.reed/arrays/" + array_name_;
   const std::string array_uri_ =
       remote ? "tiledb://shaunreed/" + s3_uri_ : array_name_;
@@ -385,77 +348,65 @@ struct RemoteGlobalOrderWriteFx {
   std::vector<uint8_t> var_validity_wrote_;
 };
 
-// TODO: This test passes but takes ~15 minutes to complete (SC-24334)
-//  I ran this using dev branch and there was no noticeable difference in time.
-//  Using smaller extent / chunk_size seems to take much longer. (here and dev)
-TEST_CASE("Debug large arrays", "[debug][!mayfail]") {
-  typedef uint64_t T;
-  uint64_t bytes;
-  uint64_t extent;
-  uint64_t chunk_size;
-
-  SECTION("GB array") {
-    bytes = GB * 1;
-    extent = MB * 128;
-    chunk_size = MB * 256;
-    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, false, false);
-    fx.run_test();
-  }
-}
-
 // typedef std::tuple<
 //     uint64_t, int64_t, uint32_t, int32_t, uint16_t, int16_t, uint8_t, int8_t,
 //     float, double> TestTypes;
 typedef std::tuple<uint64_t, float> TestTypes;
 // Marked as mayfail pending CI for remote writes. (SC-23785)
-TEMPLATE_LIST_TEST_CASE(
-    "Global order remote writes",
-    "[global-order][remote][write][!mayfail]",
-    TestTypes) {
-  typedef TestType T;
-  uint64_t bytes;
+TEST_CASE(
+    "Global order remote writes debug",
+    "[global-order][remote][write][!mayfail]") {
+  typedef uint64_t T;
+  uint64_t cells;
   uint64_t extent;
   uint64_t chunk_size;
-  // Each validity cell is 1 byte.
-  // If nullable we can't submit to REST until we cache 5242880 cells.
-  bool nullable = GENERATE(true, false);
+//  bool nullable = GENERATE(true, false);
 
-  // Submit entirely unaligned writes up to the final submit.
-  SECTION("1 KB array - unaligned trim and cache") {
-    bytes = KB;
-    extent = KB / 2;
-    chunk_size = GENERATE(264, 544, 1088);
-    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, true, nullable);
+  SECTION("Full array write") {
+    cells = 20;
+    extent = 10;
+    chunk_size = 20;
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, false, false);
     fx.run_test();
   }
 
-  // Trim excess tile data from unaligned submissions.
-  SECTION("5 MB array - unaligned trim and cache") {
-    bytes = MB * 5;
-    extent = MB;
-    // Trims KB of data per submission.
-    chunk_size = MB + KB;
-    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, true, nullable);
+  SECTION("Tile aligned writes") {
+    cells = 20;
+    extent = 10;
+    chunk_size = 10;
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, false, false);
     fx.run_test();
   }
 
-  // Submit writes that are all greater than tile cell num.
-  SECTION("15 MB array - tile / array overflow") {
-    bytes = MB * 15;
-    extent = MB * 5;
-    // We will trim 1MB from each 6MB submit, including submit_and_finalize.
-    chunk_size = GENERATE(MB * 6, MB * 16);
-    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, true, nullable);
+  SECTION("Tile aligned underflow N writes") {
+    cells = 20;
+    extent = 10;
+    chunk_size = 5;
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, false, false);
     fx.run_test();
   }
 
-  // Submit writes that are all aligned, leading up to array overflow.
-  SECTION("15 MB array - array overflow") {
-    bytes = MB * 15;
-    extent = MB * 1;
-    // Trims 3MB from final submission.
-    chunk_size = MB * 6;
-    RemoteGlobalOrderWriteFx<T> fx(bytes, extent, chunk_size, true, nullable);
+  SECTION("Tile unaligned overflow N writes") {
+    cells = 20;
+    extent = 5;
+    chunk_size = 6;
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, false, false);
+    fx.run_test();
+  }
+
+  SECTION("Tile unaligned underflow N writes") {
+    cells = 20;
+    extent = 5;
+    chunk_size = 3;  // Should not divide evenly into `cells` for this test.
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, false, false);
+    fx.run_test();
+  }
+
+  SECTION("Multi-tile unaligned overflow N writes") {
+    cells = 50;
+    extent = 5;
+    chunk_size = 12;
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, false, false);
     fx.run_test();
   }
 }

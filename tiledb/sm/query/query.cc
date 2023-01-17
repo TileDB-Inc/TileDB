@@ -494,10 +494,10 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
       layout_ != Layout::GLOBAL_ORDER) {
     return true;
   }
+
   uint64_t cell_num_per_tile = array_schema_->dense() ?
                                    array_schema_->domain().cell_num_per_tile() :
                                    array_schema_->capacity();
-
   bool submit = true;
   for (auto&& buff : buffers_) {
     bool is_var = array_schema_->var_size(buff.first);
@@ -509,13 +509,29 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
     uint64_t cell_size = is_var ? constants::cell_var_offset_size : data_size;
     uint64_t buffer_size = *buff.second.buffer_size_;
 
-    // If the cache does not exist in the map this will construct one.
     auto& cache = query_remote_buffer_storage_[buff.first];
-    uint64_t buffer_cells = buffer_size / cell_size;
+    // Check if the cache was submit up to cache.byte_offset position.
+    if (cache.submit) {
+      // Retrieve unsubmitted data from cache. Discard submitted data.
+      Buffer temp_buffer;
+      throw_if_not_ok(temp_buffer.write(
+          cache.buffer.data(cache.byte_offset),
+          cache.buffer.size() - cache.byte_offset));
+      cache.buffer.swap(temp_buffer);
+      cache.submit = false;
+    }
+    // Prefer cached buffer data for submission.
+    // If cache + user buffer overflows, trim user and write at byte_offset.
+    cache.byte_offset = cache.buffer.size();
 
-    // If tile_trim_cells is > 0 the buffer is not tile aligned.
-    uint64_t tile_trim_cells =
-        buffer_cells > cell_num_per_tile ? buffer_cells % cell_num_per_tile : 0;
+    uint64_t buffer_cells = buffer_size / cell_size;
+    uint64_t cache_buffer_cells = cache.buffer.size() / cell_size;
+    uint64_t total_buffer_cells = buffer_cells + cache_buffer_cells;
+
+    // If buffer_cells does not fill a tile, cache the entire buffer.
+    uint64_t tile_trim_cells = total_buffer_cells >= cell_num_per_tile ?
+                                   total_buffer_cells % cell_num_per_tile :
+                                   buffer_cells;
     uint64_t tile_trim_bytes = tile_trim_cells * data_size;
 
     // Last offset for var-sized attribute buffer.
@@ -532,6 +548,7 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
           ((uint64_t*)buff.second.buffer_)[i] += s;
         }
       }
+
       // If we are trimming var data retrieve the first and last offset trimmed.
       if (tile_trim_cells != 0) {
         last_buffer_offset = ((uint64_t*)buff.second.buffer_)[buffer_cells - 1];
@@ -547,6 +564,8 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
       throw_if_not_ok(cache.buffer.write(
           buff.second.buffer_,
           buffer_size - (tile_trim_cells * constants::cell_var_offset_size)));
+      *buff.second.buffer_size_ -=
+          tile_trim_cells * constants::cell_var_offset_size;
 
       // Write the variable sized data into cache.
       throw_if_not_ok(cache.buffer_var.realloc(
@@ -555,15 +574,13 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
       throw_if_not_ok(cache.buffer_var.write(
           buff.second.buffer_var_,
           var_buffer_size - (last_buffer_offset - trimmed_offset)));
-      if (cache.buffer.size() / data_size < cell_num_per_tile) {
-        submit = false;
-      }
+      *buff.second.buffer_var_size_ -= last_buffer_offset - trimmed_offset;
     } else {
-      // Fixed size attribute.
-      throw_if_not_ok(cache.buffer.realloc(
-          cache.buffer.size() + (buffer_size - tile_trim_bytes)));
+      // Write fixed attribute trimmed data into cache buffer.
       throw_if_not_ok(cache.buffer.write(
-          buff.second.buffer_, buffer_size - tile_trim_bytes));
+          (char*)buff.second.buffer_ + buffer_size - tile_trim_bytes,
+          tile_trim_bytes));
+      *buff.second.buffer_size_ -= tile_trim_bytes;
     }
 
     if (is_nullable) {
@@ -577,86 +594,71 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
       throw_if_not_ok(cache.buffer_validity.write(
           buff.second.validity_vector_.buffer(),
           validity_buffer_size - tile_trim_cells));
-      if (cache.buffer_validity.size() < cell_num_per_tile) {
-        submit = false;
-      }
-    }
-
-    if (cache.buffer.size() / data_size < cell_num_per_tile) {
-      submit = false;
-    }
-
-    // Drop trimmed data from the buffer size.
-    if (is_var) {
-      *buff.second.buffer_size_ -=
-          tile_trim_cells * constants::cell_var_offset_size;
-      *buff.second.buffer_var_size_ -= last_buffer_offset - trimmed_offset;
-    } else {
-      *buff.second.buffer_size_ -= tile_trim_bytes;
-    }
-    if (is_nullable) {
       *buff.second.validity_vector_.buffer_size() -= tile_trim_cells;
+    }
+
+    // Total cells written from cache and user buffers.
+    total_buffer_cells =
+        (cache.byte_offset + *buff.second.buffer_size_) / cell_size;
+    if (total_buffer_cells < cell_num_per_tile) {
+      submit = false;
     }
 
     if (finalize || submit) {
       // Update buffer_cells to reflect total cells within cached data.
-      buffer_cells = cache.buffer.size() / cell_size;
+      buffer_cells = *buff.second.buffer_size_ / cell_size;
       // Recheck that the final cache buffers do not exceed tile boundaries.
-      uint64_t overflow_cells = buffer_cells > cell_num_per_tile ?
-                                    buffer_cells % cell_num_per_tile :
+      uint64_t overflow_cells = total_buffer_cells > cell_num_per_tile ?
+                                total_buffer_cells % cell_num_per_tile :
                                     0;
 
       // If the user writes more cells than this, the array will overflow.
       auto array_num = array_schema_->domain().cell_num(subarray_.ndrange(0));
       // Strategy may be null if query is uninitialized.
       auto global_writer = dynamic_cast<GlobalOrderWriter*>(strategy_.get());
-      if (global_writer != nullptr &&
+      if (finalize && global_writer != nullptr &&
           global_writer->get_global_state() != nullptr) {
         // Consider previous cells written to trim array overflow data.
         uint64_t cells_written =
             global_writer->get_global_state()->cells_written_[buff.first] +
-            buffer_cells;
+            total_buffer_cells;
         overflow_cells = cells_written > array_num ? cells_written % array_num :
                                                      overflow_cells;
-      } else if (finalize) {
-        // If we are finalizing cache buffers and there was no previous submit.
-        overflow_cells = buffer_cells > array_num ? buffer_cells % array_num :
-                                                    overflow_cells;
-      }
+        if (overflow_cells != 0) {
+          if (is_var) {
+            // Offset at the position we are trimming.
+            trimmed_offset = *(uint64_t*)cache.buffer.data(
+                cache.buffer.size() -
+                (overflow_cells * constants::cell_var_offset_size));
+            // Final offset in the cache.
+            uint64_t last_cache_offset = *(uint64_t*)cache.buffer.data(
+                cache.buffer.size() - constants::cell_var_offset_size);
 
-      if (overflow_cells != 0) {
-        if (is_var) {
-          // Offset at the position we are trimming.
-          trimmed_offset = *(uint64_t*)cache.buffer.data(
-              cache.buffer.size() -
-              (overflow_cells * constants::cell_var_offset_size));
-          // Final offset in the cache.
-          uint64_t last_cache_offset = *(uint64_t*)cache.buffer.data(
-              cache.buffer.size() - constants::cell_var_offset_size);
+            cache.buffer.set_size(
+                cache.buffer.size() -
+                (overflow_cells * constants::cell_var_offset_size));
+            *buff.second.buffer_size_ -= std::min(
+                *buff.second.buffer_size_,
+                overflow_cells * constants::cell_var_offset_size);
+            cache.buffer_var.set_size(
+                cache.buffer_var.size() - (last_cache_offset - trimmed_offset));
+            *buff.second.buffer_var_size_ -= std::min(
+                *buff.second.buffer_var_size_,
+                last_cache_offset - trimmed_offset);
+          } else {
+            uint64_t cache_overflow = overflow_cells * data_size;
+            cache_overflow -= std::min(*buff.second.buffer_size_, cache_overflow);
+            cache.byte_offset -= std::min(cache.byte_offset, cache_overflow);
+            *buff.second.buffer_size_ -=
+                std::min(*buff.second.buffer_size_, (overflow_cells * data_size));
+          }
 
-          cache.buffer.set_size(
-              cache.buffer.size() -
-              (overflow_cells * constants::cell_var_offset_size));
-          *buff.second.buffer_size_ -= std::min(
-              *buff.second.buffer_size_,
-              overflow_cells * constants::cell_var_offset_size);
-          cache.buffer_var.set_size(
-              cache.buffer_var.size() - (last_cache_offset - trimmed_offset));
-          *buff.second.buffer_var_size_ -= std::min(
-              *buff.second.buffer_var_size_,
-              last_cache_offset - trimmed_offset);
-        } else {
-          cache.buffer.set_size(
-              cache.buffer.size() - (overflow_cells * data_size));
-          *buff.second.buffer_size_ -=
-              std::min(*buff.second.buffer_size_, (overflow_cells * data_size));
-        }
-
-        if (is_nullable) {
-          cache.buffer_validity.set_size(
-              cache.buffer_validity.size() - overflow_cells);
-          *buff.second.validity_vector_.buffer_size() -= std::min(
-              *buff.second.validity_vector_.buffer_size(), overflow_cells);
+          if (is_nullable) {
+            cache.buffer_validity.set_size(
+                cache.buffer_validity.size() - overflow_cells);
+            *buff.second.validity_vector_.buffer_size() -= std::min(
+                *buff.second.validity_vector_.buffer_size(), overflow_cells);
+          }
         }
       }
     }
@@ -2479,9 +2481,6 @@ Status Query::submit() {
 
     RETURN_NOT_OK(rest_client->submit_query_to_rest(array_->array_uri(), this));
     reset_coords_markers();
-    if (layout_ == Layout::GLOBAL_ORDER) {
-      query_remote_buffer_storage_.clear();
-    }
     return Status::Ok();
   }
   RETURN_NOT_OK(init());
