@@ -106,7 +106,7 @@ Subarray::Subarray(
     StorageManager* storage_manager)
     : stats_(
           parent_stats ? parent_stats->create_child("Subarray") :
-                         storage_manager ?
+          storage_manager ?
                          storage_manager->stats()->create_child("subSubarray") :
                          nullptr)
     , logger_(logger->clone("Subarray", ++logger_id_))
@@ -1230,6 +1230,19 @@ Status Subarray::get_est_result_size(
     return LOG_STATUS(Status_SubarrayError(
         std::string("Error in query estimate result size; remote/REST "
                     "array functionality not implemented.")));
+  }
+
+  // Cannot estimate size if label ranges haven't been updated
+  if (has_label_ranges() &&
+      !std::all_of(
+          range_subset_.cbegin(),
+          range_subset_.cend(),
+          [](const auto& dim_range_subset) {
+            return dim_range_subset.is_explicitly_initialized();
+          })) {
+    return LOG_STATUS(Status_SubarrayError(
+        std::string("Cannot get estimated result size; Label ranges need to be "
+                    "queried first.")));
   }
 
   return get_est_result_size_internal(
