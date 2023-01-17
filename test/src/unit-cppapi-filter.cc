@@ -504,3 +504,100 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE(
+    "C++ API: Filter UTF-8 strings with RLE or Dictionary encoding, sparse "
+    "array",
+    "[cppapi][filter][rle-strings][dict-strings][sparse][utf-8]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+  std::string array_name = "cpp_unit_array";
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
+
+  // Create schema with filter lists
+  FilterList a1_filters(ctx);
+  a1_filters.add_filter({ctx, f});
+
+  auto a1 = Attribute(ctx, "a1", TILEDB_STRING_UTF8);
+  a1.set_cell_val_num(TILEDB_VAR_NUM);
+  a1.set_filter_list(a1_filters);
+
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int64_t>(ctx, "d1", {{0, 100}}, 10);
+  auto d2 = Dimension::create<int64_t>(ctx, "d2", {{0, 100}}, 10);
+  domain.add_dimensions(d1, d2);
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.add_attribute(a1);
+  schema.set_allows_dups(true);
+
+  // Create array
+  Array::create(array_name, schema);
+
+  std::vector<std::string> a1_strings{
+      "föö", "föö", "fööbär", "bär", "bär", "bär", "bär"};
+  std::vector<uint64_t> a1_offsets;
+  a1_offsets.reserve(a1_strings.size());
+
+  size_t offset = 0;
+  std::stringstream a1_ss;
+  for (auto& s : a1_strings) {
+    a1_offsets.emplace_back(offset);
+    offset += s.size();
+    a1_ss << s;
+  }
+  std::string a1_data = a1_ss.str();
+
+  SECTION("Unordered write") {
+    write_sparse_array_string_attr(
+        false, ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
+    SECTION("Row major read") {
+      read_and_check_sparse_array_string_attr(
+          ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
+    }
+    SECTION("Global order read") {
+      read_and_check_sparse_array_string_attr(
+          ctx, array_name, a1_data, a1_offsets, TILEDB_GLOBAL_ORDER);
+    }
+    SECTION("Unordered read") {
+      read_and_check_sparse_array_string_attr(
+          ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
+    }
+  }
+  SECTION("Global order write") {
+#ifdef TILEDB_SERIALIZATION
+    bool serialized_writes = GENERATE(true, false);
+#else
+    bool serialized_writes = false;
+#endif
+    write_sparse_array_string_attr(
+        serialized_writes,
+        ctx,
+        array_name,
+        a1_data,
+        a1_offsets,
+        TILEDB_GLOBAL_ORDER);
+    SECTION("Row major read") {
+      read_and_check_sparse_array_string_attr(
+          ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
+    }
+    SECTION("Global order read") {
+      read_and_check_sparse_array_string_attr(
+          ctx, array_name, a1_data, a1_offsets, TILEDB_GLOBAL_ORDER);
+    }
+    SECTION("Unordered read") {
+      read_and_check_sparse_array_string_attr(
+          ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
+    }
+  }
+
+  // Clean up
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
