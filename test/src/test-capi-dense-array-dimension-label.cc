@@ -510,6 +510,71 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DenseArrayExample1,
+    "Test read ranges only",
+    "[capi][query][DimensionLabel]") {
+  // Vectors for input data.
+  std::vector<double> input_label_data{-1.0, 0.0, 0.5, 1.0};
+  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
+
+  // Set the label order.
+  tiledb_data_order_t label_order{TILEDB_INCREASING_DATA};
+
+  // Create the array
+  create_example(label_order);
+
+  // Write only dimension label data and check.
+  write_by_index(0, 3, {}, input_label_data);
+
+  // Read only dimension label ranges.
+  tiledb_array_t* array;
+  require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
+  require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_READ));
+
+  // Create subarray.
+  double r1{-0.5};
+  double r2{0.75};
+  tiledb_subarray_t* subarray;
+  require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
+  require_tiledb_ok(
+      tiledb_subarray_add_label_range(ctx, subarray, "x", &r1, &r2, nullptr));
+
+  // Create read query.
+  tiledb_query_t* query;
+  require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_READ, &query));
+  require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
+  require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR));
+
+  // Check the dimension range is not set.
+  uint64_t range_num;
+  require_tiledb_ok(tiledb_query_get_range_num(ctx, query, 0, &range_num));
+  CHECK(range_num == 0);
+
+  // Submit read query.
+  require_tiledb_ok(tiledb_query_submit(ctx, query));
+  tiledb_query_status_t query_status;
+  require_tiledb_ok(tiledb_query_get_status(ctx, query, &query_status));
+  REQUIRE(query_status == TILEDB_COMPLETED);
+
+  // Check the dimension ranges.
+  require_tiledb_ok(tiledb_query_get_range_num(ctx, query, 0, &range_num));
+  CHECK(range_num == 1);
+  const void* i1;
+  const void* i2;
+  const void* stride;
+  require_tiledb_ok(
+      tiledb_query_get_range(ctx, query, 0, 0, &i1, &i2, &stride));
+  CHECK(*static_cast<const uint64_t*>(i1) == 1);
+  CHECK(*static_cast<const uint64_t*>(i2) == 2);
+  CHECK(stride == nullptr);
+
+  // Clean-up.
+  tiledb_subarray_free(&subarray);
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayExample1,
     "Test write array by label",
     "[capi][query][DimensionLabel]") {
   // Vectors for input data.
