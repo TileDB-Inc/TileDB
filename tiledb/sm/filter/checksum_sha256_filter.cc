@@ -61,7 +61,7 @@ void ChecksumSHA256Filter::dump(FILE* out) const {
 }
 
 Status ChecksumSHA256Filter::run_forward(
-    const Tile&,
+    const WriterTile&,
     void* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,

@@ -1774,7 +1774,7 @@ class FragmentMetadata {
   Status store_footer(const EncryptionKey& encryption_key);
 
   /** Writes the R-tree to a tile. */
-  Tile write_rtree();
+  WriterTile write_rtree();
 
   /** Writes the non-empty domain to the input buffer. */
   void write_non_empty_domain(Serializer& serializer) const;
@@ -1988,7 +1988,9 @@ class FragmentMetadata {
    * @return Status
    */
   Status write_generic_tile_to_file(
-      const EncryptionKey& encryption_key, Tile& tile, uint64_t* nbytes) const;
+      const EncryptionKey& encryption_key,
+      WriterTile& tile,
+      uint64_t* nbytes) const;
 
   /**
    * Writes the contents of the input buffer at the end of the fragment
@@ -1996,7 +1998,7 @@ class FragmentMetadata {
    * retrieval upon reading (as its size is predictable based on the
    * number of attributes).
    */
-  Status write_footer_to_file(Tile&) const;
+  Status write_footer_to_file(WriterTile&) const;
 
   /**
    * Simple clean up function called in the case of error. It removes the

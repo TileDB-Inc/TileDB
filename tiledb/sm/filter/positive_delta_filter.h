@@ -92,7 +92,7 @@ class PositiveDeltaFilter : public Filter {
    * Perform positive-delta encoding of the given input into the given output.
    */
   Status run_forward(
-      const Tile& tile,
+      const WriterTile& tile,
       void* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
@@ -142,8 +142,8 @@ class PositiveDeltaFilter : public Filter {
   /** Run_forward method templated on the tile cell datatype. */
   template <typename T>
   Status run_forward(
-      const Tile& tile,
-      Tile* const tile_offsets,
+      const WriterTile& tile,
+      WriterTile* const tile_offsets,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

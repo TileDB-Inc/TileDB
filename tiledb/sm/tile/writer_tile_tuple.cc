@@ -1,5 +1,5 @@
 /**
- * @file   writer_tile.cc
+ * @file   writer_tile_tuple.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class WriterTile.
+ * This file implements class WriterTileTuple.
  */
 
-#include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/tile/writer_tile_tuple.h"
 #include "tiledb/sm/array_schema/domain.h"
 
 using namespace tiledb::common;
@@ -42,7 +42,7 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-WriterTile::WriterTile(
+WriterTileTuple::WriterTileTuple(
     const ArraySchema& array_schema,
     const uint64_t cell_num_per_tile,
     const bool var_size,
@@ -50,37 +50,29 @@ WriterTile::WriterTile(
     const uint64_t cell_size,
     const Datatype type)
     : fixed_tile_(
-          var_size ? Tile(
+          var_size ? WriterTile(
                          array_schema.write_version(),
                          constants::cell_var_offset_type,
                          constants::cell_var_offset_size,
-                         0,
-                         cell_num_per_tile * constants::cell_var_offset_size,
-                         0) :
-                     Tile(
+                         cell_num_per_tile * constants::cell_var_offset_size) :
+                     WriterTile(
                          array_schema.write_version(),
                          type,
                          cell_size,
-                         0,
-                         cell_num_per_tile * cell_size,
-                         0))
+                         cell_num_per_tile * cell_size))
     , var_tile_(
-          var_size ? std::optional<Tile>(Tile(
+          var_size ? std::optional<WriterTile>(WriterTile(
                          array_schema.write_version(),
                          type,
                          datatype_size(type),
-                         0,
-                         cell_num_per_tile * constants::cell_var_offset_size,
-                         0)) :
+                         cell_num_per_tile * constants::cell_var_offset_size)) :
                      std::nullopt)
     , validity_tile_(
-          nullable ? std::optional<Tile>(Tile(
+          nullable ? std::optional<WriterTile>(WriterTile(
                          array_schema.write_version(),
                          constants::cell_validity_type,
                          constants::cell_validity_size,
-                         0,
-                         cell_num_per_tile * constants::cell_validity_size,
-                         0)) :
+                         cell_num_per_tile * constants::cell_validity_size)) :
                      std::nullopt)
     , cell_size_(cell_size)
     , var_pre_filtered_size_(0)
@@ -90,7 +82,7 @@ WriterTile::WriterTile(
     , cell_num_(cell_num_per_tile) {
 }
 
-WriterTile::WriterTile(WriterTile&& tile)
+WriterTileTuple::WriterTileTuple(WriterTileTuple&& tile)
     : fixed_tile_(std::move(tile.fixed_tile_))
     , var_tile_(std::move(tile.var_tile_))
     , validity_tile_(std::move(tile.validity_tile_))
@@ -105,7 +97,7 @@ WriterTile::WriterTile(WriterTile&& tile)
     , cell_num_(std::move(tile.cell_num_)) {
 }
 
-WriterTile& WriterTile::operator=(WriterTile&& tile) {
+WriterTileTuple& WriterTileTuple::operator=(WriterTileTuple&& tile) {
   // Swap with the argument
   swap(tile);
 
@@ -116,7 +108,7 @@ WriterTile& WriterTile::operator=(WriterTile&& tile) {
 /*               API              */
 /* ****************************** */
 
-void WriterTile::set_metadata(
+void WriterTileTuple::set_metadata(
     const void* min,
     const uint64_t min_size,
     const void* max,
@@ -143,7 +135,7 @@ void WriterTile::set_metadata(
   }
 }
 
-void WriterTile::swap(WriterTile& tile) {
+void WriterTileTuple::swap(WriterTileTuple& tile) {
   std::swap(fixed_tile_, tile.fixed_tile_);
   std::swap(var_tile_, tile.var_tile_);
   std::swap(validity_tile_, tile.validity_tile_);

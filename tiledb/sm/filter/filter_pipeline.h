@@ -202,8 +202,8 @@ class FilterPipeline {
    */
   Status run_forward(
       stats::Stats* writer_stats,
-      Tile* tile,
-      Tile* offsets_tile,
+      WriterTile* tile,
+      WriterTile* offsets_tile,
       ThreadPool* compute_tp,
       void* support_data = nullptr,
       bool chunking = true) const;
@@ -361,7 +361,9 @@ class FilterPipeline {
    * @return Status, chunk offsets vector.
    */
   tuple<Status, optional<std::vector<uint64_t>>> get_var_chunk_sizes(
-      uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const;
+      uint32_t chunk_size,
+      WriterTile* const tile,
+      WriterTile* const offsets_tile) const;
 
   /**
    * Run the given buffer forward through the pipeline.
@@ -377,7 +379,7 @@ class FilterPipeline {
    * @return Status
    */
   Status filter_chunks_forward(
-      const Tile& tile,
+      const WriterTile& tile,
       void* support_data,
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,

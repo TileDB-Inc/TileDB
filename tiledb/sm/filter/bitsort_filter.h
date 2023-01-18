@@ -82,7 +82,7 @@ class BitSortFilter : public Filter {
    * @return Status
    */
   Status run_forward(
-      const Tile& tile,
+      const WriterTile& tile,
       void* const support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
@@ -128,7 +128,7 @@ class BitSortFilter : public Filter {
    */
   template <typename AttrType>
   Status run_forward(
-      const std::vector<Tile*>& dim_tiles,
+      const std::vector<WriterTile*>& dim_tiles,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -163,7 +163,7 @@ class BitSortFilter : public Filter {
    */
   template <typename DimType>
   void run_forward_dim_tile(
-      const std::vector<size_t>& positions, Tile* dim_tile) const;
+      const std::vector<size_t>& positions, WriterTile* dim_tile) const;
 
   /**
    * @brief Unsorts the input buffer and restores the array by sorting the

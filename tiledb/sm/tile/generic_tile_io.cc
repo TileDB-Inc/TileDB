@@ -150,7 +150,7 @@ GenericTileIO::GenericTileHeader GenericTileIO::read_generic_tile_header(
 }
 
 Status GenericTileIO::write_generic(
-    Tile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes) {
+    WriterTile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   // Create a header
   GenericTileHeader header;
   RETURN_NOT_OK(init_generic_tile_header(tile, &header, encryption_key));
@@ -227,7 +227,7 @@ Status GenericTileIO::configure_encryption_filter(
 }
 
 Status GenericTileIO::init_generic_tile_header(
-    Tile* tile,
+    WriterTile* tile,
     GenericTileHeader* header,
     const EncryptionKey& encryption_key) const {
   header->tile_size = tile->size();

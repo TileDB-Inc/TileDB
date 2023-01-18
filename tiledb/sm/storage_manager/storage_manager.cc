@@ -1901,7 +1901,7 @@ Status StorageManagerCanonical::store_group_detail(
   SizeComputationSerializer size_computation_serializer;
   group->serialize(size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   group->serialize(serializer);
@@ -1930,7 +1930,7 @@ Status StorageManagerCanonical::store_array_schema(
   SizeComputationSerializer size_computation_serializer;
   array_schema->serialize(size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
   Serializer serializer(tile.data(), tile.size());
   array_schema->serialize(serializer);
 
@@ -1973,7 +1973,7 @@ Status StorageManagerCanonical::store_metadata(
   if (0 == size_computation_serializer.size()) {
     return Status::Ok();
   }
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
   Serializer serializer(tile.data(), tile.size());
   metadata->serialize(serializer);
 
@@ -1989,7 +1989,7 @@ Status StorageManagerCanonical::store_metadata(
 }
 
 Status StorageManagerCanonical::store_data_to_generic_tile(
-    Tile& tile, const URI& uri, const EncryptionKey& encryption_key) {
+    WriterTile& tile, const URI& uri, const EncryptionKey& encryption_key) {
   GenericTileIO tile_io(resources_, uri);
   uint64_t nbytes = 0;
   Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);

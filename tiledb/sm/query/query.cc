@@ -54,7 +54,7 @@
 #include "tiledb/sm/query/writers/unordered_writer.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
-#include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/tile/writer_tile_tuple.h"
 
 #include <cassert>
 #include <iostream>

@@ -45,7 +45,7 @@
 #include "tiledb/sm/query/writers/dense_tiler.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
-#include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/tile/writer_tile_tuple.h"
 
 using namespace tiledb::common;
 
@@ -57,7 +57,7 @@ class DomainBuffersView;
 class FragmentMetadata;
 class TileMetadataGenerator;
 
-using WriterTileVector = std::vector<WriterTile>;
+using WriterTileTupleVector = std::vector<WriterTileTuple>;
 
 /** Processes write queries. */
 class WriterBase : public StrategyBase, public IQueryStrategy {
@@ -251,7 +251,8 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @return MBRs.
    */
   std::vector<NDRange> compute_mbrs(
-      const std::unordered_map<std::string, WriterTileVector>& tiles) const;
+      const std::unordered_map<std::string, WriterTileTupleVector>& tiles)
+      const;
 
   /**
    * Set the coordinates metadata (e.g., MBRs).
@@ -266,7 +267,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   void set_coords_metadata(
       const uint64_t start_tile_idx,
       const uint64_t end_tile_idx,
-      const std::unordered_map<std::string, WriterTileVector>& tiles,
+      const std::unordered_map<std::string, WriterTileTupleVector>& tiles,
       const std::vector<NDRange>& mbrs,
       shared_ptr<FragmentMetadata> meta) const;
 
@@ -280,7 +281,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status compute_tiles_metadata(
       uint64_t tile_num,
-      std::unordered_map<std::string, WriterTileVector>& tiles) const;
+      std::unordered_map<std::string, WriterTileTupleVector>& tiles) const;
 
   /**
    * Returns the i-th coordinates in the coordinate buffers in string
@@ -305,7 +306,8 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * filter pipelines. The tile buffers are modified to contain the output
    * of the pipeline.
    */
-  Status filter_tiles(std::unordered_map<std::string, WriterTileVector>* tiles);
+  Status filter_tiles(
+      std::unordered_map<std::string, WriterTileTupleVector>* tiles);
 
   /**
    * Runs the input tiles for the input attribute through the filter pipeline.
@@ -315,7 +317,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @param tile The tiles to be filtered.
    * @return Status
    */
-  Status filter_tiles(const std::string& name, WriterTileVector* tiles);
+  Status filter_tiles(const std::string& name, WriterTileTupleVector* tiles);
 
   /**
    * Runs the input tiles for the input attribute through the filter pipeline
@@ -328,7 +330,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status filter_tiles_bitsort(
       const std::string& name,
-      std::unordered_map<std::string, WriterTileVector>* tiles);
+      std::unordered_map<std::string, WriterTileTupleVector>* tiles);
 
   /**
    * Runs the input tile for the input attribute/dimension through the filter
@@ -346,8 +348,8 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status filter_tile(
       const std::string& name,
-      Tile* tile,
-      Tile* offsets_tile,
+      WriterTile* tile,
+      WriterTile* offsets_tile,
       bool offsets,
       bool nullable,
       void* support_data);
@@ -382,7 +384,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status init_tiles(
       const std::string& name,
       uint64_t tile_num,
-      WriterTileVector* tiles) const;
+      WriterTileTupleVector* tiles) const;
 
   /**
    * Optimize the layout for 1D arrays. Specifically, if the array
@@ -456,7 +458,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       const uint64_t start_tile_idx,
       const uint64_t end_tile_idx,
       shared_ptr<FragmentMetadata> frag_meta,
-      std::unordered_map<std::string, WriterTileVector>* tiles);
+      std::unordered_map<std::string, WriterTileTupleVector>* tiles);
 
   /**
    * Writes the input tiles for the input attribute/dimension to storage.
@@ -478,7 +480,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       const std::string& name,
       shared_ptr<FragmentMetadata> frag_meta,
       uint64_t start_tile_id,
-      WriterTileVector* tiles,
+      WriterTileTupleVector* tiles,
       bool close_files = true);
 
   /**
@@ -505,7 +507,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   template <class T>
   Status prepare_filter_and_write_tiles(
       const std::string& name,
-      std::vector<WriterTileVector>& tile_batches,
+      std::vector<WriterTileTupleVector>& tile_batches,
       tdb_shared_ptr<FragmentMetadata> frag_meta,
       DenseTiler<T>* dense_tiler,
       uint64_t thread_num);

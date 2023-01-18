@@ -54,7 +54,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
-#include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/tile/writer_tile_tuple.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
 using namespace tiledb;
@@ -639,7 +639,7 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
 }
 
 std::vector<NDRange> WriterBase::compute_mbrs(
-    const std::unordered_map<std::string, WriterTileVector>& tiles) const {
+    const std::unordered_map<std::string, WriterTileTupleVector>& tiles) const {
   auto timer_se = stats_->start_timer("compute_coord_meta");
 
   // Applicable only if there are coordinates
@@ -685,7 +685,7 @@ std::vector<NDRange> WriterBase::compute_mbrs(
 void WriterBase::set_coords_metadata(
     const uint64_t start_tile_idx,
     const uint64_t end_tile_idx,
-    const std::unordered_map<std::string, WriterTileVector>& tiles,
+    const std::unordered_map<std::string, WriterTileTupleVector>& tiles,
     const std::vector<NDRange>& mbrs,
     shared_ptr<FragmentMetadata> meta) const {
   // Applicable only if there are coordinates
@@ -717,7 +717,7 @@ void WriterBase::set_coords_metadata(
 
 Status WriterBase::compute_tiles_metadata(
     uint64_t tile_num,
-    std::unordered_map<std::string, WriterTileVector>& tiles) const {
+    std::unordered_map<std::string, WriterTileTupleVector>& tiles) const {
   auto attr_num = buffers_.size();
   auto compute_tp = storage_manager_->compute_tp();
 
@@ -822,7 +822,7 @@ Status WriterBase::create_fragment(
 }
 
 Status WriterBase::filter_tiles(
-    std::unordered_map<std::string, WriterTileVector>* tiles) {
+    std::unordered_map<std::string, WriterTileTupleVector>* tiles) {
   auto timer_se = stats_->start_timer("filter_tiles");
   const auto bitsort_attr = array_schema_.bitsort_filter_attr();
 
@@ -850,7 +850,7 @@ Status WriterBase::filter_tiles(
 }
 
 Status WriterBase::filter_tiles(
-    const std::string& name, WriterTileVector* tiles) {
+    const std::string& name, WriterTileTupleVector* tiles) {
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
 
@@ -858,7 +858,7 @@ Status WriterBase::filter_tiles(
   auto tile_num = tiles->size();
 
   // Process all tiles, minus offsets, they get processed separately.
-  std::vector<std::tuple<Tile*, Tile*, bool, bool>> args;
+  std::vector<std::tuple<WriterTile*, WriterTile*, bool, bool>> args;
   args.reserve(tile_num * (1 + nullable));
   for (auto& tile : *tiles) {
     if (var_size) {
@@ -905,9 +905,9 @@ Status WriterBase::filter_tiles(
 
 Status WriterBase::filter_tiles_bitsort(
     const std::string& name,
-    std::unordered_map<std::string, WriterTileVector>* tiles) {
+    std::unordered_map<std::string, WriterTileTupleVector>* tiles) {
   // Cache the dimention tile vectors.
-  std::vector<WriterTileVector*> dim_tiles;
+  std::vector<WriterTileTupleVector*> dim_tiles;
   dim_tiles.reserve(array_schema_.dim_num());
   for (const auto& name : array_schema_.dim_names()) {
     dim_tiles.emplace_back(&((*tiles)[name]));
@@ -916,17 +916,18 @@ Status WriterBase::filter_tiles_bitsort(
   // Generate arguments to filter all tiles
   auto& attr_tiles = (*tiles)[name];
   auto tile_num = tiles->size();
-  std::vector<std::tuple<Tile*, std::vector<Tile*>, bool, bool>> args;
+  std::vector<std::tuple<WriterTile*, std::vector<WriterTile*>, bool, bool>>
+      args;
   args.reserve(tile_num);
   for (uint64_t i = 0; i < attr_tiles.size(); i++) {
     auto& tile = attr_tiles[i];
     auto cell_num = tile.cell_num();
 
     // Collect the dim tiles argument.
-    std::vector<Tile*> dim_tiles_temp;
+    std::vector<WriterTile*> dim_tiles_temp;
     dim_tiles_temp.reserve(dim_tiles.size());
     for (const auto& elem : dim_tiles) {
-      Tile* dim_tile = &((*elem)[i].fixed_tile());
+      WriterTile* dim_tile = &((*elem)[i].fixed_tile());
       dim_tiles_temp.emplace_back(dim_tile);
       dim_tile->filtered_buffer().expand(cell_num * dim_tile->cell_size());
     }
@@ -954,8 +955,8 @@ Status WriterBase::filter_tiles_bitsort(
 
 Status WriterBase::filter_tile(
     const std::string& name,
-    Tile* const tile,
-    Tile* const offsets_tile,
+    WriterTile* const tile,
+    WriterTile* const offsets_tile,
     const bool offsets,
     const bool nullable,
     void* support_data) {
@@ -1022,7 +1023,9 @@ bool WriterBase::has_sum_metadata(
 }
 
 Status WriterBase::init_tiles(
-    const std::string& name, uint64_t tile_num, WriterTileVector* tiles) const {
+    const std::string& name,
+    uint64_t tile_num,
+    WriterTileTupleVector* tiles) const {
   // Initialize tiles
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
@@ -1034,7 +1037,7 @@ Status WriterBase::init_tiles(
       coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
-    tiles->emplace_back(WriterTile(
+    tiles->emplace_back(WriterTileTuple(
         array_schema_, cell_num_per_tile, var_size, nullable, cell_size, type));
   }
 
@@ -1125,7 +1128,7 @@ Status WriterBase::write_tiles(
     const uint64_t start_tile_idx,
     const uint64_t end_tile_idx,
     shared_ptr<FragmentMetadata> frag_meta,
-    std::unordered_map<std::string, WriterTileVector>* const tiles) {
+    std::unordered_map<std::string, WriterTileTupleVector>* const tiles) {
   auto timer_se = stats_->start_timer("write_num_tiles");
 
   assert(!tiles->empty());
@@ -1169,7 +1172,7 @@ Status WriterBase::write_tiles(
     const std::string& name,
     shared_ptr<FragmentMetadata> frag_meta,
     uint64_t start_tile_id,
-    WriterTileVector* const tiles,
+    WriterTileTupleVector* const tiles,
     bool close_files) {
   auto timer_se = stats_->start_timer("tiles");
 

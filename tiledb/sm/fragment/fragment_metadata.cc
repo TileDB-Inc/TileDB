@@ -3925,12 +3925,12 @@ Status FragmentMetadata::store_rtree(
   return Status::Ok();
 }
 
-Tile FragmentMetadata::write_rtree() {
+WriterTile FragmentMetadata::write_rtree() {
   rtree_.build_tree();
   SizeComputationSerializer size_computation_serializer;
   rtree_.serialize(size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   rtree_.serialize(serializer);
@@ -4027,7 +4027,9 @@ Status FragmentMetadata::read_file_footer(
 }
 
 Status FragmentMetadata::write_generic_tile_to_file(
-    const EncryptionKey& encryption_key, Tile& tile, uint64_t* nbytes) const {
+    const EncryptionKey& encryption_key,
+    WriterTile& tile,
+    uint64_t* nbytes) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
@@ -4037,7 +4039,7 @@ Status FragmentMetadata::write_generic_tile_to_file(
   return Status::Ok();
 }
 
-Status FragmentMetadata::write_footer_to_file(Tile& tile) const {
+Status FragmentMetadata::write_footer_to_file(WriterTile& tile) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
@@ -4057,7 +4059,7 @@ void FragmentMetadata::store_tile_offsets(
   SizeComputationSerializer size_computation_serializer;
   write_tile_offsets(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_offsets(idx, serializer);
@@ -4085,7 +4087,7 @@ void FragmentMetadata::store_tile_var_offsets(
   SizeComputationSerializer size_computation_serializer;
   write_tile_var_offsets(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_var_offsets(idx, serializer);
@@ -4115,7 +4117,7 @@ void FragmentMetadata::store_tile_var_sizes(
   SizeComputationSerializer size_computation_serializer;
   write_tile_var_sizes(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_var_sizes(idx, serializer);
@@ -4143,7 +4145,7 @@ void FragmentMetadata::store_tile_validity_offsets(
   SizeComputationSerializer size_computation_serializer;
   write_tile_validity_offsets(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_validity_offsets(idx, serializer);
@@ -4173,7 +4175,7 @@ void FragmentMetadata::store_tile_mins(
   SizeComputationSerializer size_computation_serializer;
   write_tile_mins(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_mins(idx, serializer);
@@ -4210,7 +4212,7 @@ void FragmentMetadata::store_tile_maxs(
   SizeComputationSerializer size_computation_serializer;
   write_tile_maxs(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_maxs(idx, serializer);
@@ -4247,7 +4249,7 @@ void FragmentMetadata::store_tile_sums(
   SizeComputationSerializer size_computation_serializer;
   write_tile_sums(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_sums(idx, serializer);
@@ -4273,7 +4275,7 @@ void FragmentMetadata::store_tile_null_counts(
   SizeComputationSerializer size_computation_serializer;
   write_tile_null_counts(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_null_counts(idx, serializer);
@@ -4327,7 +4329,7 @@ void FragmentMetadata::store_fragment_min_max_sum_null_count(
   SizeComputationSerializer size_computation_serializer;
   serialize_data(size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   serialize_data(serializer);
@@ -4354,7 +4356,7 @@ void FragmentMetadata::store_processed_conditions(
   SizeComputationSerializer size_computation_serializer;
   serialize_processed_conditions(size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   serialize_processed_conditions(serializer);
@@ -4686,7 +4688,7 @@ Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
   (void)encryption_key;  // Not used for now, maybe in the future
   SizeComputationSerializer size_computation_serializer;
   RETURN_NOT_OK(write_footer(size_computation_serializer));
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   RETURN_NOT_OK(write_footer(serializer));

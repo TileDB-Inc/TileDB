@@ -52,7 +52,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
-#include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/tile/writer_tile_tuple.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -370,14 +370,14 @@ Status UnorderedWriter::compute_coord_dups(
 Status UnorderedWriter::prepare_tiles(
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
-    std::unordered_map<std::string, WriterTileVector>* tiles) const {
+    std::unordered_map<std::string, WriterTileTupleVector>* tiles) const {
   auto timer_se = stats_->start_timer("prepare_tiles");
 
   // Initialize attribute tiles
   tiles->clear();
   for (const auto& it : buffers_) {
     const auto& name = it.first;
-    (*tiles).emplace(name, WriterTileVector());
+    (*tiles).emplace(name, WriterTileTupleVector());
   }
 
   // Prepare tiles for all attributes and coordinates
@@ -401,7 +401,7 @@ Status UnorderedWriter::prepare_tiles(
     const std::string& name,
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
-    WriterTileVector* tiles) const {
+    WriterTileTupleVector* tiles) const {
   return array_schema_.var_size(name) ?
              prepare_tiles_var(name, cell_pos, coord_dups, tiles) :
              prepare_tiles_fixed(name, cell_pos, coord_dups, tiles);
@@ -411,7 +411,7 @@ Status UnorderedWriter::prepare_tiles_fixed(
     const std::string& name,
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
-    WriterTileVector* tiles) const {
+    WriterTileTupleVector* tiles) const {
   // Trivial case
   if (cell_pos.empty())
     return Status::Ok();
@@ -434,7 +434,7 @@ Status UnorderedWriter::prepare_tiles_fixed(
   // Initialize tiles
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
-    tiles->emplace_back(WriterTile(
+    tiles->emplace_back(WriterTileTuple(
         array_schema_, cell_num_per_tile, false, nullable, cell_size, type));
   }
 
@@ -489,7 +489,7 @@ Status UnorderedWriter::prepare_tiles_var(
     const std::string& name,
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
-    WriterTileVector* tiles) const {
+    WriterTileTupleVector* tiles) const {
   // For easy reference
   auto it = buffers_.find(name);
   auto nullable = array_schema_.is_nullable(name);
@@ -511,7 +511,7 @@ Status UnorderedWriter::prepare_tiles_var(
   // Initialize tiles
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
-    tiles->emplace_back(WriterTile(
+    tiles->emplace_back(WriterTileTuple(
         array_schema_, cell_num_per_tile, true, nullable, cell_size, type));
   }
 
@@ -659,7 +659,7 @@ Status UnorderedWriter::unordered_write() {
   frag_uri_ = frag_meta->fragment_uri();
 
   // Prepare tiles
-  std::unordered_map<std::string, WriterTileVector> tiles;
+  std::unordered_map<std::string, WriterTileTupleVector> tiles;
   RETURN_CANCEL_OR_ERROR(prepare_tiles(cell_pos, coord_dups, &tiles));
 
   // Clear the boolean vector for coordinate duplicates

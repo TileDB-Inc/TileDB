@@ -44,7 +44,7 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class WriterTile;
+class WriterTileTuple;
 
 /**
  * Sum structure used to bind a type and sum type to a sum and sum_nullable
@@ -60,7 +60,7 @@ struct Sum {
    * @param end End cell index.
    * @param sum The current sum.
    */
-  static void sum(Tile& tile, uint64_t start, uint64_t end, ByteVec& sum);
+  static void sum(WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum);
 
   /**
    * Add the sum cells of from [start, end] to the current sum for a nullable
@@ -73,8 +73,8 @@ struct Sum {
    * @param sum The current sum.
    */
   static void sum_nullable(
-      const Tile& tile,
-      const Tile& tile_validity,
+      const WriterTile& tile,
+      const WriterTile& tile_validity,
       uint64_t start,
       uint64_t end,
       ByteVec& sum);
@@ -85,10 +85,11 @@ struct Sum {
  */
 template <typename T>
 struct Sum<T, int64_t> {
-  static void sum(const Tile& tile, uint64_t start, uint64_t end, ByteVec& sum);
+  static void sum(
+      const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum);
   static void sum_nullable(
-      const Tile& tile,
-      const Tile& tile_validity,
+      const WriterTile& tile,
+      const WriterTile& tile_validity,
       uint64_t start,
       uint64_t end,
       ByteVec& sum);
@@ -99,10 +100,11 @@ struct Sum<T, int64_t> {
  */
 template <typename T>
 struct Sum<T, uint64_t> {
-  static void sum(const Tile& tile, uint64_t start, uint64_t end, ByteVec& sum);
+  static void sum(
+      const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum);
   static void sum_nullable(
-      const Tile& tile,
-      const Tile& tile_validity,
+      const WriterTile& tile,
+      const WriterTile& tile_validity,
       uint64_t start,
       uint64_t end,
       ByteVec& sum);
@@ -113,10 +115,11 @@ struct Sum<T, uint64_t> {
  */
 template <typename T>
 struct Sum<T, double> {
-  static void sum(const Tile& tile, uint64_t start, uint64_t end, ByteVec& sum);
+  static void sum(
+      const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum);
   static void sum_nullable(
-      const Tile& tile,
-      const Tile& tile_validity,
+      const WriterTile& tile,
+      const WriterTile& tile_validity,
       uint64_t start,
       uint64_t end,
       ByteVec& sum);
@@ -212,7 +215,7 @@ class TileMetadataGenerator {
    *
    * @param tile Writer tile that contains the data.
    */
-  void process_full_tile(const WriterTile& tile);
+  void process_full_tile(const WriterTileTuple& tile);
 
   /**
    * Compute metatada for a slab.
@@ -221,14 +224,15 @@ class TileMetadataGenerator {
    * @param start Start cell index.
    * @param end End cell index.
    */
-  void process_cell_slab(const WriterTile& tile, uint64_t start, uint64_t end);
+  void process_cell_slab(
+      const WriterTileTuple& tile, uint64_t start, uint64_t end);
 
   /**
    * Copies the metadata to the tile once done processing slabs.
    *
    * @param tile Writer tile to copy the metadata to.
    */
-  void set_tile_metadata(WriterTile& tile);
+  void set_tile_metadata(WriterTileTuple& tile);
 
  private:
   /* ********************************* */
@@ -280,7 +284,7 @@ class TileMetadataGenerator {
    * @param end End cell index.
    */
   template <class T>
-  void min_max(const Tile& tile, uint64_t start, uint64_t end);
+  void min_max(const WriterTile& tile, uint64_t start, uint64_t end);
 
   /**
    * Updates the min and max of a fixed data tile with nullable values.
@@ -292,8 +296,8 @@ class TileMetadataGenerator {
    */
   template <class T>
   void min_max_nullable(
-      const Tile& tile,
-      const Tile& tile_validity,
+      const WriterTile& tile,
+      const WriterTile& tile_validity,
       uint64_t start,
       uint64_t end);
 
@@ -305,7 +309,7 @@ class TileMetadataGenerator {
    * @param end End index.
    */
   void process_cell_range_var(
-      const WriterTile& tile, uint64_t start, uint64_t end);
+      const WriterTileTuple& tile, uint64_t start, uint64_t end);
 
   /**
    * Process cell range for fixed size attribute.
@@ -315,7 +319,8 @@ class TileMetadataGenerator {
    * @param end End index.
    */
   template <class T>
-  void process_cell_range(const WriterTile& tile, uint64_t start, uint64_t end);
+  void process_cell_range(
+      const WriterTileTuple& tile, uint64_t start, uint64_t end);
 
   /**
    * Min max function for var sized attributes.

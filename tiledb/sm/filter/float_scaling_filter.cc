@@ -132,7 +132,7 @@ Status FloatScalingFilter::run_forward(
 }
 
 Status FloatScalingFilter::run_forward(
-    const Tile& tile,
+    const WriterTile& tile,
     void* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
