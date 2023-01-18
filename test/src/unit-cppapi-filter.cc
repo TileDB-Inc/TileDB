@@ -516,6 +516,11 @@ TEST_CASE(
     "C++ API: Filter UTF-8 strings with RLE or Dictionary encoding, sparse "
     "array",
     "[cppapi][filter][rle-strings][dict-strings][sparse][utf-8]") {
+#ifdef TILEDB_SERIALIZATION
+  bool serialized = GENERATE(true, false);
+#else
+  bool serialized = false;
+#endif
   using namespace tiledb;
   Context ctx;
   VFS vfs(ctx);
@@ -566,41 +571,41 @@ TEST_CASE(
         false, ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
     SECTION("Row major read") {
       read_and_check_sparse_array_string_attr(
-          ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
+          serialized, ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
     }
     SECTION("Global order read") {
       read_and_check_sparse_array_string_attr(
-          ctx, array_name, a1_data, a1_offsets, TILEDB_GLOBAL_ORDER);
+          serialized,
+          ctx,
+          array_name,
+          a1_data,
+          a1_offsets,
+          TILEDB_GLOBAL_ORDER);
     }
     SECTION("Unordered read") {
       read_and_check_sparse_array_string_attr(
-          ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
+          serialized, ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
     }
   }
   SECTION("Global order write") {
-#ifdef TILEDB_SERIALIZATION
-    bool serialized_writes = GENERATE(true, false);
-#else
-    bool serialized_writes = false;
-#endif
     write_sparse_array_string_attr(
-        serialized_writes,
-        ctx,
-        array_name,
-        a1_data,
-        a1_offsets,
-        TILEDB_GLOBAL_ORDER);
+        serialized, ctx, array_name, a1_data, a1_offsets, TILEDB_GLOBAL_ORDER);
     SECTION("Row major read") {
       read_and_check_sparse_array_string_attr(
-          ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
+          serialized, ctx, array_name, a1_data, a1_offsets, TILEDB_ROW_MAJOR);
     }
     SECTION("Global order read") {
       read_and_check_sparse_array_string_attr(
-          ctx, array_name, a1_data, a1_offsets, TILEDB_GLOBAL_ORDER);
+          serialized,
+          ctx,
+          array_name,
+          a1_data,
+          a1_offsets,
+          TILEDB_GLOBAL_ORDER);
     }
     SECTION("Unordered read") {
       read_and_check_sparse_array_string_attr(
-          ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
+          serialized, ctx, array_name, a1_data, a1_offsets, TILEDB_UNORDERED);
     }
   }
 
