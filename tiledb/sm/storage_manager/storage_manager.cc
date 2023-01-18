@@ -527,11 +527,7 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
       delete_fragments(array_name, 0, std::numeric_limits<uint64_t>::max()));
 
   auto array_dir = ArrayDirectory(
-      vfs(),
-      compute_tp(),
-      URI(array_name),
-      0,
-      std::numeric_limits<uint64_t>::max());
+      resources(), URI(array_name), 0, std::numeric_limits<uint64_t>::max());
 
   // Delete array metadata, fragment metadata and array schema files
   // Note: metadata files may not be present, try to delete anyway
@@ -549,7 +545,7 @@ Status StorageManagerCanonical::delete_fragments(
   }
 
   auto array_dir = ArrayDirectory(
-      vfs(), compute_tp(), URI(array_name), timestamp_start, timestamp_end);
+      resources(), URI(array_name), timestamp_start, timestamp_end);
 
   // Get the fragment URIs to be deleted
   auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
@@ -797,8 +793,7 @@ Status StorageManager::array_evolve_schema(
 
   // Load URIs from the array directory
   tiledb::sm::ArrayDirectory array_dir{
-      vfs(),
-      io_tp(),
+      resources(),
       array_uri,
       0,
       UINT64_MAX,
@@ -840,8 +835,7 @@ Status StorageManagerCanonical::array_upgrade_version(
 
   // Load URIs from the array directory
   tiledb::sm::ArrayDirectory array_dir{
-      vfs(),
-      io_tp(),
+      resources(),
       array_uri,
       0,
       UINT64_MAX,

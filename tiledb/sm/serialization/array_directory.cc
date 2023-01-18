@@ -232,10 +232,10 @@ void array_directory_to_capnp(
 
 shared_ptr<ArrayDirectory> array_directory_from_capnp(
     const capnp::ArrayDirectory::Reader& array_directory_reader,
+    ContextResources& resources,
     const URI& array_uri) {
-  auto array_directory = make_shared<ArrayDirectory>(HERE());
-  // Array uri
-  array_directory->uri() = array_uri.add_trailing_slash();
+  auto array_directory =
+      make_shared<ArrayDirectory>(HERE(), resources, array_uri);
 
   // Get unfiltered fragment uris
   if (array_directory_reader.hasUnfilteredFragmentUris()) {

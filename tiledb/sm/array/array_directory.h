@@ -37,8 +37,10 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
+#include <functional>
 #include <unordered_map>
 
 using namespace tiledb::common;
@@ -236,14 +238,18 @@ class ArrayDirectory {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  ArrayDirectory() = default;
+  /**
+   * Constructor.
+   *
+   * @param resources A reference to a ContextResources instance
+   * @param uri The URI of the array directory
+   */
+  ArrayDirectory(ContextResources& resources, const URI& uri);
 
   /**
    * Constructor.
    *
-   * @param vfs A pointer to a VFS object for all IO.
-   * @param tp A thread pool used for parallelism.
+   * @param resources A reference to the ContextResources instance
    * @param uri The URI of the array directory.
    * @param timestamp_start Only array fragments, metadata, etc. that
    *     were created within timestamp range
@@ -256,8 +262,7 @@ class ArrayDirectory {
    * @param mode The mode to load the array directory in.
    */
   ArrayDirectory(
-      VFS* vfs,
-      ThreadPool* tp,
+      ContextResources& resources,
       const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
@@ -436,14 +441,11 @@ class ArrayDirectory {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The ContextResources class. */
+  std::reference_wrapper<ContextResources> resources_;
+
   /** The array URI. */
   URI uri_;
-
-  /** The storage manager. */
-  VFS* vfs_;
-
-  /** A thread pool used for parallelism. */
-  ThreadPool* tp_;
 
   /** Fragment URIs. */
   std::vector<URI> unfiltered_fragment_uris_;

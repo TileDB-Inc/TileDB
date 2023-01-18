@@ -1,9 +1,9 @@
 #
-# tiledb/sm/array/test/CMakeLists.txt
+# tiledb/sm/storage_manager/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,17 +22,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+
+include(common NO_POLICY_SCOPE)
+include(object_library)
+
 #
-
-include(unit_test)
-
-commence(unit_test array)
-    this_target_object_libraries(array context_resources)
-    this_target_sources(main.cc unit_array_directory.cc)
-conclude(unit_test)
-
-commence(unit_test consistency)
-    this_target_sources(main.cc unit_consistency.cc)
-    this_target_sources($<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
-    this_target_link_libraries(TILEDB_CORE_OBJECTS_ILIB)
-conclude(unit_test)
+# Object library for other units to depend upon
+#
+commence(object_library context_resources)
+    this_target_sources(context_resources.cc)
+    this_target_object_libraries(baseline config stats thread_pool vfs)
+conclude(object_library)
