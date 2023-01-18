@@ -72,7 +72,8 @@ namespace tiledb::api {
  *
  * @param group A buffer of unknown validity
  */
-inline void ensure_buffer_list_is_valid(const tiledb_buffer_list_handle_t* buffer_list) {
+inline void ensure_buffer_list_is_valid(
+    const tiledb_buffer_list_handle_t* buffer_list) {
   ensure_handle_is_valid(buffer_list);
 }
 

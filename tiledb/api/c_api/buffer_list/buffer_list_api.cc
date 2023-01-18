@@ -56,8 +56,7 @@ void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list) {
 }
 
 int32_t tiledb_buffer_list_get_num_buffers(
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t* num_buffers) {
+    const tiledb_buffer_list_t* buffer_list, uint64_t* num_buffers) {
   ensure_buffer_list_is_valid(buffer_list);
   *num_buffers = buffer_list->buffer_list().num_buffers();
   return TILEDB_OK;
@@ -80,16 +79,14 @@ int32_t tiledb_buffer_list_get_buffer(
 }
 
 int32_t tiledb_buffer_list_get_total_size(
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t* total_size) {
+    const tiledb_buffer_list_t* buffer_list, uint64_t* total_size) {
   ensure_buffer_list_is_valid(buffer_list);
   *total_size = buffer_list->buffer_list().total_size();
   return TILEDB_OK;
 }
 
 int32_t tiledb_buffer_list_flatten(
-    tiledb_buffer_list_t* buffer_list,
-    tiledb_buffer_t** buffer) {
+    tiledb_buffer_list_t* buffer_list, tiledb_buffer_t** buffer) {
   ensure_buffer_list_is_valid(buffer_list);
   ensure_output_pointer_is_valid(buffer);
 
@@ -99,7 +96,7 @@ int32_t tiledb_buffer_list_flatten(
   // Resize the dest buffer
   const auto nbytes = buffer_list->buffer_list().total_size();
   auto st = buf->buffer().realloc(nbytes);
-  if(!st.ok()) {
+  if (!st.ok()) {
     tiledb_buffer_handle_t::break_handle(buf);
     throw StatusException(st);
   }
@@ -107,7 +104,7 @@ int32_t tiledb_buffer_list_flatten(
   // Read all into the dest buffer
   buffer_list->buffer_list().reset_offset();
   st = buffer_list->buffer_list().read(buf->buffer().data(), nbytes);
-  if(!st.ok()) {
+  if (!st.ok()) {
     tiledb_buffer_handle_t::break_handle(buf);
     throw StatusException(st);
   }
@@ -120,7 +117,7 @@ int32_t tiledb_buffer_list_flatten(
   return TILEDB_OK;
 }
 
-} // namespace tiledb::api
+}  // namespace tiledb::api
 
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
@@ -131,7 +128,8 @@ using tiledb::api::api_entry_void;
 
 int32_t tiledb_buffer_list_alloc(
     tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) noexcept {
-  return api_entry_context<tiledb::api::tiledb_buffer_list_alloc>(ctx, buffer_list);
+  return api_entry_context<tiledb::api::tiledb_buffer_list_alloc>(
+      ctx, buffer_list);
 }
 
 void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list) noexcept {
@@ -170,4 +168,3 @@ int32_t tiledb_buffer_list_flatten(
   return api_entry_context<tiledb::api::tiledb_buffer_list_flatten>(
       ctx, buffer_list, buffer);
 }
-

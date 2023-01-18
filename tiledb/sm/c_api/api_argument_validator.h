@@ -81,7 +81,7 @@ inline int32_t sanity_check(
   return TILEDB_OK;
 }
 
-//inline int32_t sanity_check(
+// inline int32_t sanity_check(
 //		tiledb_ctx_t* ctx, const tiledb_buffer_list_t* buffer_list) {
 //	if (buffer_list == nullptr || buffer_list->buffer_list_ == nullptr) {
 //		auto st = Status_Error("Invalid TileDB buffer list object");

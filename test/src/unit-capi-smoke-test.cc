@@ -1402,9 +1402,11 @@ TEST_CASE_METHOD(
 
   for (auto attr_iter = attrs.begin(); attr_iter != attrs.end(); ++attr_iter) {
     vector<test_attr_t> test_attrs(attrs.begin(), attr_iter + 1);
-    if(query_conditions_vec.size() > 15) CHECK(false);
+    if (query_conditions_vec.size() > 15)
+      CHECK(false);
     for (const auto& query_conditions : query_conditions_vec) {
-      if(query_conditions_vec.size() > 15) CHECK(false);
+      if (query_conditions_vec.size() > 15)
+        CHECK(false);
       for (const tiledb_array_type_t array_type :
            {TILEDB_DENSE, TILEDB_SPARSE}) {
         for (const tiledb_layout_t cell_order :

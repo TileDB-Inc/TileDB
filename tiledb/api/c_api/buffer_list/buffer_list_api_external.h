@@ -34,9 +34,9 @@
 #define TILEDB_CAPI_BUFFER_LIST_API_EXTERNAL_H
 
 #include "../api_external_common.h"
+#include "../buffer/buffer_api_external.h"
 #include "../context/context_api_external.h"
 #include "../datatype/datatype_api_external.h"
-#include "../buffer/buffer_api_external.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -189,7 +189,6 @@ TILEDB_EXPORT int32_t tiledb_buffer_list_flatten(
     tiledb_ctx_t* ctx,
     tiledb_buffer_list_t* buffer_list,
     tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
-
 
 #ifdef __cplusplus
 }

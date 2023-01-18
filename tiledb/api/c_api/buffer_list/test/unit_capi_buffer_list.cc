@@ -32,11 +32,11 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "../buffer_list_api_external.h"
+#include "../buffer_list_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
-#include "../buffer_list_api_external.h"
-#include "../buffer_list_api_internal.h"
 
 using namespace tiledb::sm;
 

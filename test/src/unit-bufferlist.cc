@@ -31,8 +31,8 @@
  * Tests the `BufferList` class.
  */
 
-#include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/api/c_api/buffer_list/buffer_list_api_internal.h"
+#include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 
