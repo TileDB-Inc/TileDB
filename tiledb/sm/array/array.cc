@@ -61,6 +61,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class ArrayStatusException : public StatusException {
+ public:
+  explicit ArrayStatusException(const std::string& message)
+      : StatusException("Array", message) {
+  }
+};
+
 void ensure_supported_schema_version_for_read(format_version_t version);
 
 ConsistencyController& controller() {
@@ -525,24 +532,8 @@ Status Array::close() {
 }
 
 void Array::delete_array(const URI& uri) {
-  // Check that query type is MODIFY_EXCLUSIVE
-  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw StatusException(Status_ArrayError(
-        "[Array::delete_array] Query type must be MODIFY_EXCLUSIVE"));
-  }
-
-  // Check that array is open
-  if (!is_open() && !controller().is_open(uri)) {
-    throw StatusException(
-        Status_ArrayError("[Array::delete_array] Array is closed"));
-  }
-
-  // Check that array is not in the process of opening or closing
-  if (is_opening_or_closing_) {
-    throw StatusException(Status_ArrayError(
-        "[Array::delete_array] "
-        "May not perform simultaneous open or close operations."));
-  }
+  // Check that data deletion is allowed
+  ensure_array_is_valid_for_delete(uri);
 
   // Delete array data
   if (remote_) {
@@ -562,24 +553,8 @@ void Array::delete_array(const URI& uri) {
 
 void Array::delete_fragments(
     const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
-  // Check that query type is MODIFY_EXCLUSIVE
-  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw StatusException(Status_ArrayError(
-        "[Array::delete_fragments] Query type must be MODIFY_EXCLUSIVE"));
-  }
-
-  // Check that array is open
-  if (!is_open() && !controller().is_open(uri)) {
-    throw StatusException(
-        Status_ArrayError("[Array::delete_fragments] Array is closed"));
-  }
-
-  // Check that array is not in the process of opening or closing
-  if (is_opening_or_closing_) {
-    throw StatusException(Status_ArrayError(
-        "[Array::delete_fragments] "
-        "May not perform simultaneous open or close operations."));
-  }
+  // Check that data deletion is allowed
+  ensure_array_is_valid_for_delete(uri);
 
   // Delete fragments
   storage_manager_->delete_fragments(
@@ -587,28 +562,18 @@ void Array::delete_fragments(
 }
 
 void Array::delete_fragments_list(
-    const URI& uri, const std::vector<std::string> fragment_uris) {
-  // Check that query type is MODIFY_EXCLUSIVE
-  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw StatusException(Status_ArrayError(
-        "[Array::delete_fragments_list] Query type must be MODIFY_EXCLUSIVE"));
-  }
-
-  // Check that array is open
-  if (!is_open() && !controller().is_open(uri)) {
-    throw StatusException(
-        Status_ArrayError("[Array::delete_fragments_list] Array is closed"));
-  }
-
-  // Check that array is not in the process of opening or closing
-  if (is_opening_or_closing_) {
-    throw StatusException(Status_ArrayError(
-        "[Array::delete_fragments_list] "
-        "May not perform simultaneous open or close operations."));
-  }
+    const URI& uri, const std::vector<URI>& fragment_uris) {
+  // Check that data deletion is allowed
+  ensure_array_is_valid_for_delete(uri);
 
   // Delete fragments
-  storage_manager_->delete_fragments_list(uri.c_str(), fragment_uris);
+  auto array_dir = ArrayDirectory(
+      &resources_.vfs(),
+      &resources_.compute_tp(),
+      uri,
+      0,
+      std::numeric_limits<uint64_t>::max());
+  array_dir.delete_fragments_list(fragment_uris);
 }
 
 bool Array::is_empty() const {
@@ -1525,6 +1490,28 @@ void Array::set_array_closed() {
   /* Note: the Sentry object will also be released upon Array destruction. */
   consistency_sentry_.reset();
   is_open_ = false;
+}
+
+void Array::ensure_array_is_valid_for_delete(const URI& uri) {
+  // Check that query type is MODIFY_EXCLUSIVE
+  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+    throw ArrayStatusException(
+        "[ensure_array_is_valid_for_delete] "
+        "Query type must be MODIFY_EXCLUSIVE to perform a delete.");
+  }
+
+  // Check that array is open
+  if (!is_open() && !controller().is_open(uri)) {
+    throw ArrayStatusException(
+        "[ensure_array_is_valid_for_delete] Array is closed");
+  }
+
+  // Check that array is not in the process of opening or closing
+  if (is_opening_or_closing_) {
+    throw ArrayStatusException(
+        "[ensure_array_is_valid_for_delete] "
+        "May not perform simultaneous open or close operations.");
+  }
 }
 
 void ensure_supported_schema_version_for_read(format_version_t version) {

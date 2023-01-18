@@ -2960,14 +2960,11 @@ int32_t tiledb_array_delete_fragments(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_delete_fragments_list(
+capi_return_t tiledb_array_delete_fragments_list(
     tiledb_ctx_t* ctx,
     const char* uri,
     const char** fragment_uris,
-    const uint64_t num_fragments) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
+    const size_t num_fragments) {
   // Allocate an array object
   tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
   try {
@@ -2991,10 +2988,10 @@ int32_t tiledb_array_delete_fragments_list(
       0));
 
   // Convert the list of fragment uris to a vector
-  std::vector<std::string> uris;
+  std::vector<tiledb::sm::URI> uris;
   uris.reserve(num_fragments);
-  for (uint64_t i = 0; i < num_fragments; i++) {
-    uris.emplace_back(fragment_uris[i]);
+  for (size_t i = 0; i < num_fragments; i++) {
+    uris.emplace_back(tiledb::sm::URI(fragment_uris[i]));
   }
 
   try {
@@ -7074,11 +7071,11 @@ int32_t tiledb_array_delete_fragments(
       ctx, array, uri, timestamp_start, timestamp_end);
 }
 
-int32_t tiledb_array_delete_fragments_list(
+capi_return_t tiledb_array_delete_fragments_list(
     tiledb_ctx_t* ctx,
     const char* uri,
     const char** fragment_uris,
-    const uint64_t num_fragments) noexcept {
+    const size_t num_fragments) noexcept {
   return api_entry<tiledb::api::tiledb_array_delete_fragments_list>(
       ctx, uri, fragment_uris, num_fragments);
 }

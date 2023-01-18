@@ -239,7 +239,7 @@ class Array {
    * @pre The Array must be open for exclusive writes
    */
   void delete_fragments_list(
-      const URI& uri, const std::vector<std::string> fragment_uris);
+      const URI& uri, const std::vector<URI>& fragment_uris);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
@@ -502,6 +502,11 @@ class Array {
   inline void set_query_type(QueryType query_type) {
     query_type_ = query_type;
   }
+
+  /**
+   * Checks the array is open, in MODIFY_EXCLUSIVE mode, before deleting data.
+   */
+  void ensure_array_is_valid_for_delete(const URI& uri);
 
   /**
    * Returns a map of the computed average cell size for var size

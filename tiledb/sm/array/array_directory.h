@@ -131,17 +131,17 @@ class ArrayDirectory {
 
     /** Returns the filtered fragment URIs matching the given fragments_list. */
     std::vector<TimestampedURI> fragment_uris(
-        std::vector<std::string> fragments_list) const {
+        const std::vector<URI>& fragments_list) const {
       std::vector<TimestampedURI> uris;
       for (auto fragment : fragments_list) {
         for (auto uri : fragment_uris_) {
-          if (URI(fragment) == uri.uri_) {
+          if (fragment == uri.uri_) {
             uris.emplace_back(uri);
             break;
           } else {
             if (uri == fragment_uris_.back()) {
               throw std::runtime_error(
-                  "[ArrayDirectory::fragment_uris] " + fragment +
+                  "[ArrayDirectory::fragment_uris] " + fragment.to_string() +
                   " is not a fragment of the ArrayDirectory.");
             }
           }
@@ -359,7 +359,7 @@ class ArrayDirectory {
    * The new fragment name is computed
    * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
    */
-  tuple<Status, optional<std::string>> compute_new_fragment_name(
+  std::string compute_new_fragment_name(
       const URI& first, const URI& last, format_version_t format_version) const;
 
   /** Returns `true` if `load` has been run. */
@@ -374,6 +374,12 @@ class ArrayDirectory {
 
   /** Returns the end timestamp of the files to be considered */
   const uint64_t& timestamp_end() const;
+
+  /** Writes a commit ignore file. */
+  void write_commit_ignore_file(const std::vector<URI>& commit_uris_to_ignore);
+
+  /** Deletes the array fragments at the given fragment URIs. */
+  void delete_fragments_list(const std::vector<URI>& fragment_uris);
 
   /* ACCESSORS */
 

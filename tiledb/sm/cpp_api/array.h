@@ -391,7 +391,7 @@ class Array {
       const Context& ctx,
       const std::string& uri,
       const char** fragment_uris,
-      const uint64_t num_fragments) {
+      const size_t num_fragments) {
     ctx.handle_error(tiledb_array_delete_fragments_list(
         ctx.ptr().get(), uri.c_str(), fragment_uris, num_fragments));
   }

@@ -3939,7 +3939,7 @@ TILEDB_EXPORT int32_t tiledb_array_delete_fragments_list(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     const char** fragment_uris,
-    const uint64_t num_fragments) TILEDB_NOEXCEPT;
+    const size_t num_fragments) TILEDB_NOEXCEPT;
 
 /**
  * Opens a TileDB array. The array is opened using a query type as input.
