@@ -23,6 +23,7 @@
 ## New features
 
 * Add UTF-8 attribute binary comparison support for QueryConditions. [#3766](https://github.com/TileDB-Inc/TileDB/pull/3766)
+* Enable RLE and Dictionary encoding on UTF-8 attrs. [#3808](https://github.com/TileDB-Inc/TileDB/pull/3808)
 * Add Boolean Support For Sparse Query Conditions. [#3651](https://github.com/TileDB-Inc/TileDB/pull/3651)
 * Consolidation plan API. [#3647](https://github.com/TileDB-Inc/TileDB/pull/3647)
 
@@ -30,6 +31,7 @@
 
 ### Defects Removed
 
+* Fix initialization of include_coords for multipart, sparse, unordered remote queries. [#3795](https://github.com/TileDB-Inc/TileDB/pull/3795)
 * Sparse global order reader: fix tile cleanup when ending an iteration. [#3674](https://github.com/TileDB-Inc/TileDB/pull/3674)
 * Dense array: Tile var size metadata not loaded on read. [#3645](https://github.com/TileDB-Inc/TileDB/pull/3645)
 * Fix parsing of multiple enable= arguments to bootstrap script. [#3650](https://github.com/TileDB-Inc/TileDB/pull/3650)
@@ -40,7 +42,7 @@
 * Query condition: fix when attribute condition is not in user buffers. [#3713](https://github.com/TileDB-Inc/TileDB/pull/3713)
 * Fragment consolidator: stop consolidation if no progress can be made. [#3671](https://github.com/TileDB-Inc/TileDB/pull/3671)
 * Throw error when memory budget leads to splitting to unary range. [#3715](https://github.com/TileDB-Inc/TileDB/pull/3715)
-* Do not resubmit http requests for curl errors for REST requests [#3712](https://github.com/TileDB-Inc/TileDB/pull/3712)
+* Do not resubmit http requests for curl errors for REST requests. [#3712](https://github.com/TileDB-Inc/TileDB/pull/3712)
 
 ### Internal
 
@@ -73,6 +75,7 @@
 ### C API
 
 * Deprecate `tiledb_array_delete_array` add `tiledb_array_delete`. [#3744](https://github.com/TileDB-Inc/TileDB/pull/3744)
+* Deprecate `tiledb_query_submit_async`. [#3802](https://github.com/TileDB-Inc/TileDB/pull/3802)
 * Added `tiledb_group_delete_group` API. [#3560](https://github.com/TileDB-Inc/TileDB/pull/3560)
 * Document `tiledb_mime_type_t`. [#3625](https://github.com/TileDB-Inc/TileDB/pull/3625)
 * Fix missing argument in set dimension label tile C-API. [#3739](https://github.com/TileDB-Inc/TileDB/pull/3739)
