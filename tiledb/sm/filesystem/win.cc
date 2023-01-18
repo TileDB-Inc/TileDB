@@ -441,7 +441,7 @@ Status Win::read(
   OVERLAPPED ov = {0, 0, {{0, 0}}, 0};
   ov.Offset = offset_lg_int.LowPart;
   ov.OffsetHigh = offset_lg_int.HighPart;
-  unsigned long num_bytes_read = 0;
+  DWORD num_bytes_read = 0;
   if (ReadFile(file_h, buffer, nbytes, &num_bytes_read, &ov) == 0 ||
       num_bytes_read != nbytes) {
     auto gle = GetLastError();
@@ -593,10 +593,12 @@ Status Win::write_at(
   // "overlapped" mode (i.e. async writes) to do this.
   uint64_t byte_idx = 0;
   const char* byte_buffer = reinterpret_cast<const char*>(buffer);
-  while (buffer_size > 0) {
-    DWORD bytes_to_write = buffer_size > std::numeric_limits<DWORD>::max() ?
-                               std::numeric_limits<DWORD>::max() :
-                               (DWORD)buffer_size;
+  uint64_t remaining_bytes_to_write = buffer_size;
+  while (remaining_bytes_to_write > 0) {
+    DWORD bytes_to_write =
+        remaining_bytes_to_write > std::numeric_limits<DWORD>::max() ?
+            std::numeric_limits<DWORD>::max() :
+            (DWORD)remaining_bytes_to_write;
     DWORD bytes_written = 0;
     LARGE_INTEGER offset;
     offset.QuadPart = file_offset;
@@ -613,7 +615,7 @@ Status Win::write_at(
           "Cannot write to file; File writing error: " +
           get_last_error_msg("WriteFile"))));
     }
-    buffer_size -= bytes_written;
+    remaining_bytes_to_write -= bytes_written;
     byte_idx += bytes_written;
     file_offset += bytes_written;
   }
