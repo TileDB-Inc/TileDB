@@ -2820,7 +2820,7 @@ TILEDB_EXPORT void tiledb_query_condition_free(tiledb_query_condition_t** cond)
  *
  * @param ctx The TileDB context.
  * @param cond The allocated query condition object.
- * @param attribute_name The attribute name.
+ * @param field_name The attribute or dimension name.
  * @param condition_value The value to compare against an attribute value.
  * @param condition_value_size The byte size of `condition_value`.
  * @param op The comparison operator.
@@ -2829,7 +2829,7 @@ TILEDB_EXPORT void tiledb_query_condition_free(tiledb_query_condition_t** cond)
 TILEDB_EXPORT int32_t tiledb_query_condition_init(
     tiledb_ctx_t* ctx,
     tiledb_query_condition_t* cond,
-    const char* attribute_name,
+    const char* field_name,
     const void* condition_value,
     uint64_t condition_value_size,
     tiledb_query_condition_op_t op) TILEDB_NOEXCEPT;

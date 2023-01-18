@@ -62,6 +62,36 @@ class QueryCondition {
   /** Default constructor. */
   QueryCondition();
 
+  /** Construct a field/value QueryCondition */
+  QueryCondition(
+      std::string field_name,
+      const void* condition_value,
+      uint64_t condition_value_size,
+      const QueryConditionOp& op);
+
+  /** Construct a field/value QueryCondition */
+  template <
+      typename T,
+      typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
+  QueryCondition(
+      std::string field_name, T condition_value, const QueryConditionOp& op)
+      : QueryCondition(field_name, &condition_value, sizeof(T), op) {
+  }
+
+  /** Construct a field/value QueryCondition */
+  QueryCondition(
+      std::string field_name,
+      std::string condition_value,
+      const QueryConditionOp& op)
+      : QueryCondition(
+            field_name, condition_value.c_str(), condition_value.size(), op) {
+  }
+
+  /** Construct an expression QueryCondition */
+  QueryCondition(
+      std::vector<QueryCondition*> conditions,
+      const QueryConditionCombinationOp& combination_op);
+
   /** Constructor from a marker. */
   QueryCondition(const std::string& condition_marker);
 

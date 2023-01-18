@@ -401,6 +401,115 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
     tiledb_query_t* query,
     tiledb_query_status_details_t* status_details) TILEDB_NOEXCEPT;
 
+/* ****************************** */
+/*          QUERY CONDITION       */
+/* ****************************** */
+
+/**
+ * Allocates a TileDB query condition value object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value = 5;
+ * tiledb_query_condition_t* query_condition;
+ * tiledb_query_condition_create_value(
+ *    ctx,
+ *    "longitude",
+ *    &value,
+ *    sizeof(value),
+ *    TILEDB_LT,
+ *    &query_condition);
+ *
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attribute_name The attribute name.
+ * @param condition_value The value to compare against an attribute value.
+ * @param condition_value_size The byte size of `condition_value`.
+ * @param op The comparison operator.
+ * @param query_condition The query condition to create
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_condition_create_value(
+    tiledb_ctx_t* ctx,
+    const char* attribute_name,
+    const void* condition_value,
+    uint64_t condition_value_size,
+    tiledb_query_condition_op_t op,
+    tiledb_query_condition_t** cond) TILEDB_NOEXCEPT;
+
+/**
+ * Allocates a TileDB query condition expression object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value_1 = 5;
+ * tiledb_query_condition_t* query_condition_1;
+ * tiledb_query_condition_create_comparison(
+ *   ctx,
+ *   "longitude",
+ *   &value_1,
+ *   sizeof(value_1),
+ *   TILEDB_LT,
+ *   &query_condition_1);
+ *
+ * uint32_t value_2 = 20;
+ * tiledb_query_condition_t* query_condition_2;
+ * tiledb_query_condition_create_comparison(
+ *   ctx,
+ *   "latitude",
+ *   &value_2,
+ *   sizeof(value_2),
+ *   TILEDB_GE,
+ *   &query_condition_2);
+ *
+ * uint32_t value_3 = 100;
+ * tiledb_query_condition_t* query_condition_3;
+ * tiledb_query_condition_create_comparison(
+ *   ctx,
+ *   "latitude",
+ *   &value_3,
+ *   sizeof(value_3),
+ *   TILEDB_LE,
+ *   &query_condition_3);
+ *
+ * tiledb_query_condition_t* conditions[3];
+ * conditions[0] = &query_condition_1;
+ * conditions[1] = &query_condition_2;
+ * conditions[2] = &query_condition_3;
+ * tiledb_query_condition_t* query_condition_4;
+ * tiledb_query_condition_create_expression(
+ *   ctx,
+ *   conditions,
+ *   3,
+ *   TILEDB_AND,
+ *   &query_condition_4);
+ *
+ * tiledb_query_condition_free(&query_condition_1);
+ * tiledb_query_condition_free(&query_condition_2);
+ * tiledb_query_condition_free(&query_condition_3);
+ *
+ * tiledb_query_set_condition(ctx, query, query_condition_4);
+ * tiledb_query_submit(ctx, query);
+ * tiledb_query_condition_free(&query_condition_4);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param cond_list The list of conditions to combine
+ * @param cond_list_len The number of conditions in cond_list
+ * @param op The combination operator to use
+ * @param combined_cond The query condition to create
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_condition_create_expression(
+    tiledb_ctx_t* ctx,
+    tiledb_query_condition_t** cond_list,
+    size_t cond_list_len,
+    tiledb_query_condition_combination_op_t op,
+    tiledb_query_condition_t** cond) TILEDB_NOEXCEPT;
+
 /* ********************************* */
 /*              CONTEXT              */
 /* ********************************* */

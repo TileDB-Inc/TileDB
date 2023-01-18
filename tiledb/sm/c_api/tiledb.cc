@@ -2390,6 +2390,98 @@ void tiledb_query_condition_free(tiledb_query_condition_t** cond) {
   }
 }
 
+int32_t tiledb_query_condition_create_value(
+    const char* const field_name,
+    const void* const condition_value,
+    const uint64_t condition_value_size,
+    const tiledb_query_condition_op_t op,
+    tiledb_query_condition_t** cond) {
+  if (field_name == nullptr) {
+    throw api::CAPIStatusException("field_name must not be nullptr");
+  }
+
+  if (condition_value == nullptr && condition_value_size != 0) {
+    throw api::CAPIStatusException(
+        "condition_value must not be nullptr when condition_value_size > 0");
+  }
+
+  api::ensure_output_pointer_is_valid(cond);
+
+  // Create query condition struct
+  *cond = new tiledb_query_condition_t;
+
+  // Create QueryCondition object
+  try {
+    (*cond)->query_condition_ = new tiledb::sm::QueryCondition(
+        field_name,
+        condition_value,
+        condition_value_size,
+        static_cast<tiledb::sm::QueryConditionOp>(op));
+  } catch (...) {
+    delete *cond;
+    *cond = nullptr;
+    throw;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_condition_create_expression(
+    tiledb_ctx_t* ctx,
+    tiledb_query_condition_t** const cond_list,
+    size_t cond_list_len,
+    const tiledb_query_condition_combination_op_t combination_op,
+    tiledb_query_condition_t** cond) {
+  if (cond_list == nullptr) {
+    throw api::CAPIStatusException("cond_list must not be nullptr");
+  }
+
+  if (cond_list_len < 1) {
+    throw api::CAPIStatusException("cond_list_len must be greater than zero");
+  }
+
+  if (combination_op == TILEDB_NOT && cond_list_len != 1) {
+    throw api::CAPIStatusException("cond_list_len must be one for TILEDB_NOT");
+  }
+
+  if ((combination_op == TILEDB_AND || combination_op == TILEDB_OR) &&
+      cond_list_len < 2) {
+    throw api::CAPIStatusException(
+        "cond_list_len must be at least two for TILEDB_AND or TILEDB_OR");
+  }
+
+  for (size_t i = 0; i < cond_list_len; i++) {
+    if (sanity_check(ctx, cond_list[i]) == TILEDB_ERR) {
+      return TILEDB_ERR;
+    }
+  }
+
+  api::ensure_output_pointer_is_valid(cond);
+
+  // Create query condition struct
+  *cond = new tiledb_query_condition_t;
+
+  try {
+    std::vector<tiledb::sm::QueryCondition*> cond_vec(cond_list_len);
+    for (size_t i = 0; i < cond_list_len; ++i) {
+      cond_vec[i] = cond_list[i]->query_condition_;
+    }
+
+    // Create QueryCondition object
+    (*cond)->query_condition_ = new tiledb::sm::QueryCondition(
+        cond_vec,
+        static_cast<tiledb::sm::QueryConditionCombinationOp>(combination_op));
+  } catch (...) {
+    delete *cond;
+    *cond = nullptr;
+    throw;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_condition_init(
     tiledb_ctx_t* const ctx,
     tiledb_query_condition_t* const cond,
@@ -3826,8 +3918,8 @@ int32_t tiledb_serialize_array_open(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_buffer_t** buffer) {
-  // Currently no different behaviour is required if array open is serialized by
-  // the client or the Cloud server, so the variable is unused
+  // Currently no different behaviour is required if array open is serialized
+  // by the client or the Cloud server, so the variable is unused
   (void)client_side;
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -3858,8 +3950,8 @@ int32_t tiledb_deserialize_array_open(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_array_t** array) {
-  // Currently no different behaviour is required if array open is deserialized
-  // by the client or the Cloud server, so the variable is unused
+  // Currently no different behaviour is required if array open is
+  // deserialized by the client or the Cloud server, so the variable is unused
   (void)client_side;
 
   // Sanity check
@@ -5222,7 +5314,8 @@ TILEDB_EXPORT int32_t tiledb_consolidation_plan_create_with_mbr(
   *consolidation_plan = new (std::nothrow) tiledb_consolidation_plan_t;
   if (*consolidation_plan == nullptr) {
     auto st = Status_Error(
-        "Failed to create TileDB consolidation plan object; Memory allocation "
+        "Failed to create TileDB consolidation plan object; Memory "
+        "allocation "
         "error");
     LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
@@ -5236,7 +5329,8 @@ TILEDB_EXPORT int32_t tiledb_consolidation_plan_create_with_mbr(
             HERE(), array->array_, fragment_size);
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
-        "Failed to create TileDB consolidation plan object; Memory allocation "
+        "Failed to create TileDB consolidation plan object; Memory "
+        "allocation "
         "error");
     delete *consolidation_plan;
     *consolidation_plan = nullptr;
@@ -6554,6 +6648,27 @@ int32_t tiledb_query_condition_alloc(
 
 void tiledb_query_condition_free(tiledb_query_condition_t** cond) noexcept {
   return api_entry_void<tiledb::api::tiledb_query_condition_free>(cond);
+}
+
+int32_t tiledb_query_condition_create_value(
+    tiledb_ctx_t* const ctx,
+    const char* const field_name,
+    const void* const condition_value,
+    const uint64_t condition_value_size,
+    const tiledb_query_condition_op_t op,
+    tiledb_query_condition_t** const cond) noexcept {
+  return api_entry_context<tiledb::api::tiledb_query_condition_create_value>(
+      ctx, field_name, condition_value, condition_value_size, op, cond);
+}
+
+int32_t tiledb_query_condition_create_expression(
+    tiledb_ctx_t* const ctx,
+    tiledb_query_condition_t** const cond_list,
+    size_t cond_list_len,
+    const tiledb_query_condition_combination_op_t combination_op,
+    tiledb_query_condition_t** cond) noexcept {
+  return api_entry<tiledb::api::tiledb_query_condition_create_expression>(
+      ctx, cond_list, cond_list_len, combination_op, cond);
 }
 
 int32_t tiledb_query_condition_init(

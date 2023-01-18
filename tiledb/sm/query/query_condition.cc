@@ -57,6 +57,36 @@ namespace sm {
 QueryCondition::QueryCondition() {
 }
 
+QueryCondition::QueryCondition(
+    std::string field_name,
+    const void* condition_value,
+    uint64_t condition_value_size,
+    const QueryConditionOp& op)
+    : tree_(tdb_unique_ptr<ASTNode>(tdb_new(
+          ASTNodeVal, field_name, condition_value, condition_value_size, op))) {
+}
+
+QueryCondition::QueryCondition(
+    std::vector<QueryCondition*> conditions,
+    const QueryConditionCombinationOp& combination_op) {
+  std::vector<tdb_unique_ptr<ASTNode>> nodes;
+  nodes.reserve(conditions.size());
+  for (auto& cond : conditions) {
+    if (cond->ast()->is_expr() &&
+        cond->ast()->get_combination_op() == combination_op) {
+      for (auto& node : cond->ast()->get_children()) {
+        nodes.push_back(node->clone());
+      }
+    } else {
+      nodes.push_back(cond->ast()->clone());
+    }
+  }
+
+  // AST Construction.
+  tree_ = tdb_unique_ptr<ASTNode>(
+      tdb_new(ASTNodeExpr, std::move(nodes), combination_op));
+}
+
 QueryCondition::QueryCondition(const std::string& condition_marker)
     : condition_marker_(condition_marker)
     , condition_index_(0) {

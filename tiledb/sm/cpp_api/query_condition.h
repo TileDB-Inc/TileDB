@@ -58,6 +58,168 @@ class QueryCondition {
     query_condition_ = std::shared_ptr<tiledb_query_condition_t>(qc, deleter_);
   }
 
+  /**
+   * Construct a TileDB query condition value object.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "my_array", TILEDB_READ);
+   * tiledb::Query query(ctx, array, TILEDB_READ);
+   *
+   * int cmp_value = 5;
+   * tiledb::QueryCondition qc(ctx, "a1", cmp_value, TILEDB_LT);
+   * query.set_condition(qc);
+   * @endcode
+   *
+   * @param ctx TileDB context.
+   * @param field_name The name of the dimenssion or attribute
+   * to compare against.
+   * @param condition_value The fixed value to compare against.
+   * @param op The comparison operation between each cell value and
+   * `condition_value`.
+   */
+  template <
+      typename T,
+      typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
+  QueryCondition(
+      const Context& ctx,
+      const std::string field_name,
+      T condition_value,
+      tiledb_query_condition_op_t op)
+      : QueryCondition(ctx, field_name, &condition_value, sizeof(T), op) {
+  }
+
+  QueryCondition(
+      const Context& ctx,
+      const std::string field_name,
+      const std::string condition_value,
+      tiledb_query_condition_op_t op)
+      : QueryCondition(
+            ctx,
+            field_name,
+            condition_value.c_str(),
+            condition_value.size(),
+            op) {
+  }
+
+  /**
+   * Construct a TileDB query condition value object.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "my_array", TILEDB_READ);
+   * tiledb::Query query(ctx, array, TILEDB_READ);
+   *
+   * int cmp_value = 5;
+   * tiledb::QueryCondition qc(ctx, "a1", &cmp_value, sizeof(int), TILEDB_LT);
+   * query.set_condition(qc);
+   * @endcode
+   *
+   * @param ctx TileDB context.
+   * @param field_name The name of the dimenssion or attribute
+   * to compare against.
+   * @param condition_value The fixed value to compare against.
+   * @param condition_value_size The byte size of `condition_value`.
+   * @param op The comparison operation between each cell value and
+   * `condition_value`.
+   */
+  QueryCondition(
+      const Context& ctx,
+      const std::string field_name,
+      const void* condition_value,
+      uint64_t condition_value_size,
+      tiledb_query_condition_op_t op)
+      : ctx_(ctx) {
+    tiledb_query_condition_t* qc;
+    ctx.handle_error(tiledb_query_condition_create_value(
+        ctx.ptr().get(),
+        field_name.c_str(),
+        condition_value,
+        condition_value_size,
+        op,
+        &qc));
+    query_condition_ = std::shared_ptr<tiledb_query_condition_t>(qc, deleter_);
+  }
+
+  /**
+   * Construct a TileDB query condition value object.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "my_array", TILEDB_READ);
+   * tiledb::Query query(ctx, array, TILEDB_READ);
+   *
+   * std::string cmp_value = "abc";
+   * tiledb::QueryCondition qc(ctx, "a1", cmp_value, TILEDB_LT);
+   * query.set_condition(qc);
+   * @endcode
+   *
+   * @param ctx TileDB context.
+   * @param field_name The name of the dimension or attribute
+   * to compare against.
+   * @param condition_value The string value to compare against.
+   * @param op The comparison operation between each cell value and
+   * `condition_value`.
+   */
+  QueryCondition(
+      const Context& ctx,
+      const std::string& attribute_name,
+      const std::string& condition_value,
+      tiledb_query_condition_op_t op)
+      : ctx_(ctx) {
+    tiledb_query_condition_t* qc;
+    ctx.handle_error(tiledb_query_condition_create_value(
+        ctx.ptr().get(),
+        attribute_name.c_str(),
+        condition_value.c_str(),
+        condition_value.size(),
+        op,
+        &qc));
+    query_condition_ = std::shared_ptr<tiledb_query_condition_t>(qc, deleter_);
+  }
+
+  /**
+   * Creates a TileDB query condition expression object.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "my_array", TILEDB_READ);
+   * tiledb::Query query(ctx, array, TILEDB_READ);
+   *
+   * std::vector<QueryCondition> conditions;
+   * conditions.push_back(QueryCondition::create(ctx, "a1", "foo", TILEDB_LE);
+   * conditions.push_back(QueryCondition::create(ctx, "a2", "bar", TILEDB_GT);
+   * tildb::QueryCondition qc(conditions, TILEDB_AND);
+   * query.set_condition(qc);
+   * @endcode
+   *
+   * @param conditions A vector of query conditions to combine
+   * @param op The combination operator used for the combination.
+   */
+  QueryCondition(
+      const Context& ctx,
+      std::vector<QueryCondition>& conditions,
+      tiledb_query_condition_combination_op_t op)
+      : ctx_(ctx) {
+    std::vector<tiledb_query_condition_t*> raw_conditions(conditions.size());
+    for (size_t i = 0; i < conditions.size(); ++i) {
+      raw_conditions[i] = conditions[i].ptr().get();
+    }
+
+    tiledb_query_condition_t* qc;
+    ctx.handle_error(tiledb_query_condition_create_expression(
+        ctx.ptr().get(), raw_conditions.data(), conditions.size(), op, &qc));
+    query_condition_ = std::shared_ptr<tiledb_query_condition_t>(qc, deleter_);
+  }
+
   /** Copy constructor. */
   QueryCondition(const QueryCondition&) = default;
 

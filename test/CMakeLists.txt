@@ -153,6 +153,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-partial-attribute-write.cc
   src/unit-capi-query.cc
   src/unit-capi-query_2.cc
+  src/unit-capi-query-condition-create.cc
   src/unit-capi-smoke-test.cc
   src/unit-capi-sparse_array.cc
   src/unit-capi-sparse_heter.cc

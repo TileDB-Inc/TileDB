@@ -1333,6 +1333,157 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "Testing read query with complex constructed QC, with ranges across tiles "
+    "on both dimensions.",
+    "[query][query-condition]") {
+  // Initial setup.
+  std::srand(static_cast<uint32_t>(time(0)));
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Define query condition (b < 4.0f AND b <= 3.7f AND b >= 3.3f AND b
+  // != 3.4f);
+  QueryCondition qc1(ctx, "b", 4.0f, TILEDB_LT);
+  QueryCondition qc2(ctx, "b", 3.7f, TILEDB_LE);
+  QueryCondition qc3(ctx, "b", 3.3f, TILEDB_GE);
+  QueryCondition qc4(ctx, "b", 3.4f, TILEDB_NE);
+
+  std::vector<QueryCondition> conds{qc1, qc2, qc3, qc4};
+  QueryCondition qc5(ctx, conds, TILEDB_AND);
+
+  // Create buffers with size of the results of the two queries.
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
+
+  // These buffers store the results of the second query made with the query
+  // condition specified above.
+  std::vector<int> a_data_read_2(64);
+  std::vector<float> b_data_read_2(64);
+
+  // Generate test parameters.
+  TestParams params = GENERATE(
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
+
+  // Setup by creating buffers to store all elements of the original array.
+  create_array(
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
+
+  // Create the query, which reads over the entire array with query condition
+  // (b < 4.0).
+  Config config;
+  if (params.legacy_) {
+    config.set("sm.query.sparse_global_order.reader", "legacy");
+    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
+  }
+  Context ctx2 = Context(config);
+  Array array(ctx2, array_name, TILEDB_READ);
+  Query query(ctx2, array);
+
+  // Define range.
+  int range[] = {7, 14};
+  query.add_range("rows", range[0], range[1])
+      .add_range("cols", range[0], range[1]);
+
+  // Perform query and validate.
+  perform_query(a_data_read_2, b_data_read_2, qc5, params.layout_, query);
+  if (params.array_type_ == TILEDB_SPARSE) {
+    // Check the query for accuracy. The query results should contain 8
+    // elements.
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 8);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 8);
+
+    int i = 0;
+    std::vector<std::pair<int, int>> ranges_vec;
+    ranges_vec.push_back(std::make_pair(7, 8));
+    ranges_vec.push_back(std::make_pair(9, 12));
+    ranges_vec.push_back(std::make_pair(13, 14));
+
+    for (size_t a = 0; a < 3; ++a) {    // Iterating over rows.
+      for (size_t b = 0; b < 3; ++b) {  // Iterating over cols.
+        int row_lo = ranges_vec[a].first;
+        int row_hi = ranges_vec[a].second;
+        int col_lo = ranges_vec[b].first;
+        int col_hi = ranges_vec[b].second;
+
+        for (int r = row_lo; r <= row_hi; ++r) {
+          for (int c = col_lo; c <= col_hi; ++c) {
+            int original_arr_i = index_from_row_col(r, c);
+            // The buffer should have kept elements that were originally
+            // constructed to have values that satisfy the range [3.3, 3.7] but
+            // are not equal to 3.4. This means that any element whose original
+            // index is 4 mod 8 should be in the result buffer.
+            if (original_arr_i % 8 == 4) {
+              REQUIRE(a_data_read_2[i] == 1);
+              REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
+              REQUIRE(
+                  fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
+                  std::numeric_limits<float>::epsilon());
+              i += 1;
+            }
+          }
+        }
+      }
+    }
+  } else {
+    // Check the query for accuracy. The query results should contain 64
+    // elements.
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 64);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 64);
+
+    for (int r = 7; r <= 14; ++r) {
+      for (int c = 7; c <= 14; ++c) {
+        int original_arr_i = index_from_row_col(r, c);
+        int i = ((r - 7) * 8) + (c - 7);
+        // The buffer should have kept elements that were originally constructed
+        // to have values that satisfy the range [3.3, 3.7] but are not equal
+        // to 3.4. This means that any element whose original index is 4 mod 8
+        // should have been kept.
+        if (original_arr_i % 8 == 4) {
+          // Checking for original value.
+          REQUIRE(a_data_read_2[i] == 1);
+          REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
+          REQUIRE(
+              fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
+              std::numeric_limits<float>::epsilon());
+        } else {
+          // Checking for fill value.
+          REQUIRE(a_data_read_2[i] == a_fill_value);
+          REQUIRE(
+              fabs(b_data_read_2[i] - b_fill_value) <
+              std::numeric_limits<float>::epsilon());
+        }
+      }
+    }
+  }
+
+  query.finalize();
+  array.close();
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}
+
+TEST_CASE(
     "Testing read query with complex QC, with ranges across tiles on both "
     "dimensions and a UTF-8 attribute",
     "[query][query-condition][utf8]") {

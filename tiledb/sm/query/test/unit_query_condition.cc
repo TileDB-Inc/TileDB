@@ -238,6 +238,22 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "Query Condition: Test AST combined AND construction",
+    "[QueryCondition][ast][api]") {
+  int val1 = 0xabcdef12;
+  int val2 = 0x33333333;
+
+  QueryCondition qc1("x", val1, QueryConditionOp::LT);
+  QueryCondition qc2("y", val2, QueryConditionOp::GT);
+
+  std::vector<QueryCondition*> conditions{&qc1, &qc2};
+  QueryCondition qc(conditions, QueryConditionCombinationOp::AND);
+
+  auto sqc = tiledb::test::ast_node_to_str(qc.ast());
+  CHECK(sqc == "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
+}
+
+TEST_CASE(
     "Query Condition: Test AST construction, basic OR combine",
     "[QueryCondition][ast][api]") {
   // OR combine.
@@ -273,6 +289,23 @@ TEST_CASE(
   check_ast_str(
       combined_or.negated_condition(),
       "(x GE 12 ef cd ab AND y LE 33 33 33 33)");
+}
+
+TEST_CASE(
+    "Query Condition: Test AST combined OR construction",
+    "[QueryCondition][ast][api]") {
+  // OR combine.
+  int val1 = 0xabcdef12;
+  int val2 = 0x33333333;
+
+  QueryCondition qc1("x", val1, QueryConditionOp::LT);
+  QueryCondition qc2("y", val2, QueryConditionOp::GT);
+
+  std::vector<QueryCondition*> conditions{&qc1, &qc2};
+  QueryCondition qc(conditions, QueryConditionCombinationOp::OR);
+
+  auto sqc = tiledb::test::ast_node_to_str(qc.ast());
+  CHECK(sqc == "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
 }
 
 TEST_CASE(
@@ -572,6 +605,54 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "Query Condition: Test AST combined construction, tree structure with same "
+    "combining operator, OR of 2 OR ASTs",
+    "[QueryCondition][ast][api]") {
+  int val1 = 0xabcdef12;
+  int val2 = 0x33333333;
+  int val3 = 0x12121212;
+  int val4 = 0x34343434;
+
+  QueryCondition qc1("x", val1, QueryConditionOp::LT);
+  QueryCondition qc2("y", val2, QueryConditionOp::GT);
+  QueryCondition qc3("a", val3, QueryConditionOp::EQ);
+  QueryCondition qc4("b", val4, QueryConditionOp::NE);
+
+  std::vector<QueryCondition*> conds5{&qc1, &qc2};
+  QueryCondition qc5(conds5, QueryConditionCombinationOp::OR);
+
+  std::string sqc5 = tiledb::test::ast_node_to_str(qc5.ast());
+  CHECK(sqc5 == "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
+
+  std::vector<QueryCondition*> conds6{&qc3, &qc4};
+  QueryCondition qc6(conds6, QueryConditionCombinationOp::OR);
+
+  std::string sqc6 = tiledb::test::ast_node_to_str(qc6.ast());
+  CHECK(sqc6 == "(a EQ 12 12 12 12 OR b NE 34 34 34 34)");
+
+  std::vector<QueryCondition*> conds7{&qc5, &qc6};
+  QueryCondition qc7(conds7, QueryConditionCombinationOp::OR);
+
+  std::string sqc7 = tiledb::test::ast_node_to_str(qc7.ast());
+  CHECK(
+      sqc7 ==
+      "(x LT 12 ef cd ab OR y GT 33 33 33 33 "
+      "OR a EQ 12 12 12 12 OR b NE 34 34 34 34)");
+
+  std::vector<QueryCondition*> conds8{&qc1, &qc2, &qc3, &qc4};
+  QueryCondition qc8(conds8, QueryConditionCombinationOp::OR);
+  CHECK(tiledb::test::ast_node_to_str(qc8.ast()) == sqc7);
+
+  std::vector<QueryCondition*> conds9{&qc1, &qc2, &qc6};
+  QueryCondition qc9(conds9, QueryConditionCombinationOp::OR);
+  CHECK(tiledb::test::ast_node_to_str(qc9.ast()) == sqc7);
+
+  std::vector<QueryCondition*> conds10{&qc5, &qc3, &qc4};
+  QueryCondition qc10(conds10, QueryConditionCombinationOp::OR);
+  CHECK(tiledb::test::ast_node_to_str(qc10.ast()) == sqc7);
+}
+
+TEST_CASE(
     "Query Condition: Test AST construction, tree structure with same "
     "combining operator, AND of 2 AND ASTs",
     "[QueryCondition][ast][api]") {
@@ -654,6 +735,54 @@ TEST_CASE(
       combined_and2.negated_condition(),
       "(x GE 12 ef cd ab OR y LE 33 33 33 33 "
       "OR a NE 12 12 12 12 OR b EQ 34 34 34 34)");
+}
+
+TEST_CASE(
+    "Query Condition: Test AST combined construction, tree structure with same "
+    "combining operator, AND of 2 AND ASTs",
+    "[QueryCondition][ast][api]") {
+  int val1 = 0xabcdef12;
+  int val2 = 0x33333333;
+  int val3 = 0x12121212;
+  int val4 = 0x34343434;
+
+  QueryCondition qc1("x", &val1, sizeof(int), QueryConditionOp::LT);
+  QueryCondition qc2("y", &val2, sizeof(int), QueryConditionOp::GT);
+  QueryCondition qc3("a", &val3, sizeof(int), QueryConditionOp::EQ);
+  QueryCondition qc4("b", &val4, sizeof(int), QueryConditionOp::NE);
+
+  std::vector<QueryCondition*> conds5{&qc1, &qc2};
+  QueryCondition qc5(conds5, QueryConditionCombinationOp::AND);
+
+  std::string sqc5 = tiledb::test::ast_node_to_str(qc5.ast());
+  REQUIRE(sqc5 == "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
+
+  std::vector<QueryCondition*> conds6{&qc3, &qc4};
+  QueryCondition qc6(conds6, QueryConditionCombinationOp::AND);
+
+  std::string sqc6 = tiledb::test::ast_node_to_str(qc6.ast());
+  REQUIRE(sqc6 == "(a EQ 12 12 12 12 AND b NE 34 34 34 34)");
+
+  std::vector<QueryCondition*> conds7{&qc5, &qc6};
+  QueryCondition qc7(conds7, QueryConditionCombinationOp::AND);
+
+  std::string sqc7 = tiledb::test::ast_node_to_str(qc7.ast());
+  REQUIRE(
+      sqc7 ==
+      "(x LT 12 ef cd ab AND y GT 33 33 33 33 "
+      "AND a EQ 12 12 12 12 AND b NE 34 34 34 34)");
+
+  std::vector<QueryCondition*> conds8{&qc1, &qc2, &qc3, &qc4};
+  QueryCondition qc8(conds8, QueryConditionCombinationOp::AND);
+  CHECK(tiledb::test::ast_node_to_str(qc8.ast()) == sqc7);
+
+  std::vector<QueryCondition*> conds9{&qc1, &qc2, &qc6};
+  QueryCondition qc9(conds9, QueryConditionCombinationOp::AND);
+  CHECK(tiledb::test::ast_node_to_str(qc9.ast()) == sqc7);
+
+  std::vector<QueryCondition*> conds10{&qc5, &qc3, &qc4};
+  QueryCondition qc10(conds10, QueryConditionCombinationOp::AND);
+  CHECK(tiledb::test::ast_node_to_str(qc10.ast()) == sqc7);
 }
 
 TEST_CASE(
@@ -1001,6 +1130,93 @@ TEST_CASE(
       "AND (((x EQ 08 00 00 00 OR x EQ 09 00 00 00 "
       "OR (x NE 06 00 00 00 AND x NE 07 00 00 00)) "
       "AND x NE 05 00 00 00) OR x EQ 06 00 00 00))");
+}
+
+TEST_CASE(
+    "Query Condition: Test AST combined construction, "
+    "complex tree with depth > 2",
+    "[QueryCondition][ast][api]") {
+  std::vector<int> vals = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  std::vector<QueryCondition> qc_vec;
+
+  for (int i = 0; i < 7; ++i) {
+    QueryCondition qc("x", &vals[i], sizeof(vals[i]), QueryConditionOp::EQ);
+    auto sqc = tiledb::test::ast_node_to_str(qc.ast());
+    CHECK(sqc == "x EQ 0" + std::to_string(vals[i]) + " 00 00 00");
+    qc_vec.push_back(qc);
+  }
+
+  for (int i = 7; i < 9; ++i) {
+    QueryCondition qc("x", &vals[i], sizeof(vals[i]), QueryConditionOp::NE);
+    auto sqc = tiledb::test::ast_node_to_str(qc.ast());
+    CHECK(sqc == "x NE 0" + std::to_string(vals[i]) + " 00 00 00");
+    qc_vec.push_back(qc);
+  }
+
+  int x = 6;
+  QueryCondition x_neq_six("x", &x, sizeof(x), QueryConditionOp::NE);
+  CHECK(tiledb::test::ast_node_to_str(x_neq_six.ast()) == "x NE 06 00 00 00");
+
+  std::vector<QueryCondition*> conds1{&qc_vec[0], &qc_vec[1]};
+  QueryCondition qc1(conds1, QueryConditionCombinationOp::OR);
+  CHECK(
+      tiledb::test::ast_node_to_str(qc1.ast()) ==
+      "(x EQ 01 00 00 00 OR x EQ 02 00 00 00)");
+
+  std::vector<QueryCondition*> conds2{&qc_vec[2], &qc_vec[3]};
+  QueryCondition qc2(conds2, QueryConditionCombinationOp::OR);
+  CHECK(
+      tiledb::test::ast_node_to_str(qc2.ast()) ==
+      "(x EQ 03 00 00 00 OR x EQ 04 00 00 00)");
+
+  std::vector<QueryCondition*> conds3{&qc_vec[5], &qc_vec[6]};
+  QueryCondition qc3(conds3, QueryConditionCombinationOp::OR);
+  CHECK(
+      tiledb::test::ast_node_to_str(qc3.ast()) ==
+      "(x EQ 06 00 00 00 OR x EQ 07 00 00 00)");
+
+  std::vector<QueryCondition*> conds4{&qc_vec[7], &qc_vec[8]};
+  QueryCondition qc4(conds4, QueryConditionCombinationOp::AND);
+  CHECK(
+      tiledb::test::ast_node_to_str(qc4.ast()) ==
+      "(x NE 08 00 00 00 AND x NE 09 00 00 00)");
+
+  std::vector<QueryCondition*> conds5{&qc1, &qc2};
+  QueryCondition qc5(conds5, QueryConditionCombinationOp::AND);
+  CHECK(
+      tiledb::test::ast_node_to_str(qc5.ast()) ==
+      "((x EQ 01 00 00 00 OR x EQ 02 00 00 00) AND (x EQ 03 00 00 00 OR x EQ "
+      "04 00 00 00))");
+
+  std::vector<QueryCondition*> conds6{&qc4, &qc3};
+  QueryCondition qc6(conds6, QueryConditionCombinationOp::AND);
+  CHECK(
+      tiledb::test::ast_node_to_str(qc6.ast()) ==
+      "(x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 00 00 00 OR x EQ 07 "
+      "00 00 00))");
+
+  std::vector<QueryCondition*> conds7{&qc6, &qc_vec[4]};
+  QueryCondition qc7(conds7, QueryConditionCombinationOp::OR);
+  CHECK(
+      tiledb::test::ast_node_to_str(qc7.ast()) ==
+      "((x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 00 00 00 OR x EQ "
+      "07 00 00 00)) OR x EQ 05 00 00 00)");
+
+  std::vector<QueryCondition*> conds8{&qc7, &x_neq_six};
+  QueryCondition qc8(conds8, QueryConditionCombinationOp::AND);
+  CHECK(
+      tiledb::test::ast_node_to_str(qc8.ast()) ==
+      "(((x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 00 00 00 OR x EQ "
+      "07 00 00 00)) OR x EQ 05 00 00 00) AND x NE 06 00 00 00)");
+
+  std::vector<QueryCondition*> conds9{&qc5, &qc8};
+  QueryCondition qc9(conds9, QueryConditionCombinationOp::OR);
+  CHECK(
+      tiledb::test::ast_node_to_str(qc9.ast()) ==
+      "(((x EQ 01 00 00 00 OR x EQ 02 00 00 00) AND (x EQ 03 00 00 00 OR x EQ "
+      "04 00 00 00)) OR (((x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 "
+      "00 00 00 OR x EQ 07 00 00 00)) OR x EQ 05 00 00 00) AND x NE 06 00 00 "
+      "00))");
 }
 
 /**
@@ -3705,6 +3921,195 @@ void populate_test_params_vector(
   }
 }
 
+/**
+ * @brief Function that takes a selection of QueryConditions, with their
+ * expected results, and combines them together.
+ *
+ * @param field The field name of the query condition.
+ * @param result_tile The result tile of the array we're running the query on.
+ * @param tp_vec The vector that stores the test parameter structs.
+ */
+void populate_test_params_construct_combined_vector(
+    const char* field,
+    ResultTile* result_tile,
+    std::vector<TestParams>& tp_vec) {
+  // Construct basic AND query condition `foo > 3 AND foo <= 6`.
+  {
+    uint64_t val1 = 3;
+    uint64_t val2 = 6;
+    QueryCondition qc1(field, val1, QueryConditionOp::GT);
+    QueryCondition qc2(field, val2, QueryConditionOp::LE);
+
+    std::vector<QueryCondition*> conds{&qc1, &qc2};
+    QueryCondition qc3(conds, QueryConditionCombinationOp::AND);
+
+    std::vector<uint8_t> expected_bitmap = {0, 0, 0, 0, 1, 1, 1, 0, 0, 0};
+    TestParams tp(result_tile, std::move(qc3), std::move(expected_bitmap));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct basic OR query condition `foo > 6 OR foo <= 3`.
+  {
+    uint64_t val1 = 6;
+    uint64_t val2 = 3;
+
+    QueryCondition qc1(field, val1, QueryConditionOp::GT);
+    QueryCondition qc2(field, val2, QueryConditionOp::LE);
+
+    std::vector<QueryCondition*> conds{&qc1, &qc2};
+    QueryCondition qc3(conds, QueryConditionCombinationOp::OR);
+
+    std::vector<uint8_t> expected_bitmap = {1, 1, 1, 1, 0, 0, 0, 1, 1, 1};
+    TestParams tp(result_tile, std::move(qc3), std::move(expected_bitmap));
+    tp_vec.push_back(tp);
+  }
+  // Construct query condition `(foo >= 3 AND foo <= 6) OR (foo > 5 AND foo <
+  // 9)`. (OR of 2 AND ASTs)
+  {
+    uint64_t val1 = 3;
+    uint64_t val2 = 6;
+    uint64_t val3 = 5;
+    uint64_t val4 = 9;
+
+    QueryCondition qc1(field, val1, QueryConditionOp::GE);
+    QueryCondition qc2(field, val2, QueryConditionOp::LE);
+    QueryCondition qc3(field, val3, QueryConditionOp::GT);
+    QueryCondition qc4(field, val4, QueryConditionOp::LT);
+
+    std::vector<QueryCondition*> conds5{&qc1, &qc2};
+    QueryCondition qc5(conds5, QueryConditionCombinationOp::AND);
+
+    std::vector<QueryCondition*> conds6{&qc3, &qc4};
+    QueryCondition qc6(conds6, QueryConditionCombinationOp::AND);
+
+    std::vector<QueryCondition*> conds7{&qc5, &qc6};
+    QueryCondition qc7(conds7, QueryConditionCombinationOp::OR);
+
+    std::vector<uint8_t> expected_bitmap = {0, 0, 0, 1, 1, 1, 1, 1, 1, 0};
+    TestParams tp(result_tile, std::move(qc7), std::move(expected_bitmap));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct query condition `(foo < 3 OR foo >= 8) AND (foo <= 4 OR foo =
+  // 9)`. (AND of 2 OR ASTs)
+  {
+    uint64_t val1 = 3;
+    uint64_t val2 = 8;
+    uint64_t val3 = 4;
+    uint64_t val4 = 9;
+
+    QueryCondition qc1(field, val1, QueryConditionOp::LT);
+    QueryCondition qc2(field, val2, QueryConditionOp::GE);
+    QueryCondition qc3(field, val3, QueryConditionOp::LT);
+    QueryCondition qc4(field, val4, QueryConditionOp::EQ);
+
+    std::vector<QueryCondition*> conds5{&qc1, &qc2};
+    QueryCondition qc5(conds5, QueryConditionCombinationOp::OR);
+
+    std::vector<QueryCondition*> conds6{&qc3, &qc4};
+    QueryCondition qc6(conds6, QueryConditionCombinationOp::OR);
+
+    std::vector<QueryCondition*> conds7{&qc5, &qc6};
+    QueryCondition qc7(conds7, QueryConditionCombinationOp::AND);
+
+    std::vector<uint8_t> expected_bitmap = {1, 1, 1, 0, 0, 0, 0, 0, 0, 1};
+    TestParams tp(result_tile, std::move(qc7), std::move(expected_bitmap));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct query condition `(((foo = 1 || foo = 2) && (foo = 3 || foo = 4))
+  // || (((foo != 8
+  // && foo != 9 && (foo = 6 || foo = 7)) || foo = 5) && foo != 6))`. (Complex
+  // tree with depth > 2)
+  {
+    std::vector<uint64_t> v = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::vector<QueryCondition> qc_vec;
+    for (int i = 0; i < 7; ++i) {
+      qc_vec.emplace_back(field, v[i], QueryConditionOp::EQ);
+    }
+
+    for (int i = 7; i < 9; ++i) {
+      qc_vec.emplace_back(field, v[i], QueryConditionOp::NE);
+    }
+
+    uint64_t x = 6;
+    QueryCondition x_neq_six(field, x, QueryConditionOp::NE);
+
+    std::vector<QueryCondition*> conds1{&qc_vec[0], &qc_vec[1]};
+    QueryCondition qc1(conds1, QueryConditionCombinationOp::OR);
+
+    std::vector<QueryCondition*> conds2{&qc_vec[2], &qc_vec[3]};
+    QueryCondition qc2(conds2, QueryConditionCombinationOp::OR);
+
+    std::vector<QueryCondition*> conds3{&qc_vec[5], &qc_vec[6]};
+    QueryCondition qc3(conds3, QueryConditionCombinationOp::OR);
+
+    std::vector<QueryCondition*> conds4{&qc_vec[7], &qc_vec[8]};
+    QueryCondition qc4(conds4, QueryConditionCombinationOp::AND);
+
+    std::vector<QueryCondition*> conds5{&qc1, &qc2};
+    QueryCondition qc5(conds5, QueryConditionCombinationOp::AND);
+
+    std::vector<QueryCondition*> conds6{&qc4, &qc3};
+    QueryCondition qc6(conds6, QueryConditionCombinationOp::AND);
+
+    std::vector<QueryCondition*> conds7{&qc6, &qc_vec[4]};
+    QueryCondition qc7(conds7, QueryConditionCombinationOp::OR);
+
+    std::vector<QueryCondition*> conds8{&x_neq_six, &qc7};
+    QueryCondition qc8(conds8, QueryConditionCombinationOp::AND);
+
+    std::vector<QueryCondition*> conds9{&qc5, &qc8};
+    QueryCondition qc9(conds9, QueryConditionCombinationOp::OR);
+
+    std::vector<uint8_t> expected_bitmap = {0, 0, 0, 0, 0, 1, 0, 1, 0, 0};
+    TestParams tp(result_tile, std::move(qc9), std::move(expected_bitmap));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct query condition `foo != 1 && foo != 3 && foo != 5 && foo != 7 &&
+  // foo != 9`. (Adding simple clauses to AND tree)
+  {
+    std::vector<uint64_t> vals = {1, 3, 5, 7, 9};
+    std::vector<QueryCondition> qc_vec;
+    for (auto& i : vals) {
+      qc_vec.emplace_back(field, i, QueryConditionOp::NE);
+    }
+
+    std::vector<QueryCondition*> conds;
+    for (auto it = qc_vec.begin(); it != qc_vec.end(); ++it) {
+      conds.push_back(&(*it));
+    }
+
+    QueryCondition qc(conds, QueryConditionCombinationOp::AND);
+
+    std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
+    TestParams tp(result_tile, std::move(qc), std::move(expected_bitmap));
+    tp_vec.push_back(tp);
+  }
+
+  // Construct query condition `foo = 0 || foo = 2 || foo = 4 || foo = 6 || foo
+  // = 8`. (Adding simple clauses to OR tree)
+  {
+    std::vector<uint64_t> vals = {0, 2, 4, 6, 8};
+    std::vector<QueryCondition> qc_vec;
+    for (auto& i : vals) {
+      qc_vec.emplace_back(field, i, QueryConditionOp::EQ);
+    }
+
+    std::vector<QueryCondition*> conds;
+    for (auto it = qc_vec.begin(); it != qc_vec.end(); ++it) {
+      conds.push_back(&(*it));
+    }
+
+    QueryCondition qc(conds, QueryConditionCombinationOp::OR);
+
+    std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
+    TestParams tp(result_tile, std::move(qc), std::move(expected_bitmap));
+    tp_vec.push_back(tp);
+  }
+}
+
 TEST_CASE(
     "QueryCondition: Test combinations", "[QueryCondition][combinations]") {
   // Setup.
@@ -3757,6 +4162,8 @@ TEST_CASE(
 
   std::vector<TestParams> tp_vec;
   populate_test_params_vector(field_name, &result_tile, tp_vec);
+  populate_test_params_construct_combined_vector(
+      field_name.c_str(), &result_tile, tp_vec);
 
   SECTION("Validate apply.") {
     for (auto& elem : tp_vec) {
