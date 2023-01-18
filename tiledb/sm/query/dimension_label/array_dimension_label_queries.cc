@@ -139,10 +139,10 @@ void ArrayDimensionLabelQueries::process_data_queries() {
           throw_if_not_ok(query->init());
           throw_if_not_ok(query->process());
           return Status::Ok();
-        } catch (...) {
-          std::throw_with_nested(DimensionLabelQueryStatusException(
+        } catch (const StatusException& err) {
+          throw DimensionLabelQueryStatusException(
               "Failed to process data query for label '" +
-              query->dim_label_name() + "'."));
+              query->dim_label_name() + "'. " + err.what());
         }
       }));
 }
@@ -180,10 +180,10 @@ void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
                 dim_idx, is_point_ranges, range_data, count);
           }
           return Status::Ok();
-        } catch (...) {
-          std::throw_with_nested(DimensionLabelQueryStatusException(
+        } catch (const StatusException& err) {
+          throw DimensionLabelQueryStatusException(
               "Failed to process and update index ranges for label '" +
-              range_query->dim_label_name() + "'."));
+              range_query->dim_label_name() + "'. " + err.what());
         }
       }));
 
@@ -233,10 +233,10 @@ void ArrayDimensionLabelQueries::add_read_queries(
           dim_label_ref,
           label_ranges));
       label_range_queries_by_dim_idx_[dim_idx] = range_queries_.back().get();
-    } catch (...) {
-      std::throw_with_nested(DimensionLabelQueryStatusException(
+    } catch (const StatusException& err) {
+      throw DimensionLabelQueryStatusException(
           "Failed to initialize the query to read range data from label '" +
-          label_name + "'."));
+          label_name + "'. " + err.what());
     }
   }
 
@@ -269,10 +269,10 @@ void ArrayDimensionLabelQueries::add_read_queries(
           nullopt));
       label_data_queries_by_dim_idx_[dim_label_ref.dimension_index()].push_back(
           data_queries_.back().get());
-    } catch (...) {
-      std::throw_with_nested(DimensionLabelQueryStatusException(
+    } catch (const StatusException& err) {
+      throw DimensionLabelQueryStatusException(
           "Failed to initialize the data query for label '" + label_name +
-          "'."));
+          "'. " + err.what());
     }
   }
 }
@@ -322,10 +322,10 @@ void ArrayDimensionLabelQueries::add_write_queries(
           fragment_name_));
       label_data_queries_by_dim_idx_[dim_label_ref.dimension_index()].push_back(
           data_queries_.back().get());
-    } catch (...) {
-      std::throw_with_nested(DimensionLabelQueryStatusException(
+    } catch (const StatusException& err) {
+      throw DimensionLabelQueryStatusException(
           "Failed to initialize the data query for label '" + label_name +
-          "'."));
+          "'. " + err.what());
     }
   }
 }
