@@ -256,7 +256,7 @@ TEMPLATE_LIST_TEST_CASE(
     auto invalid_attr = Attribute::create<TestType>(ctx, "rgb");
     invalid_attr.set_filter_list(filterList);
 
-    // WebP filter requires exactly 2 dimensions for X, Y.
+    // WebP filter requires exactly 2 dimensions for Y, X.
     {
       Domain invalid_domain(ctx);
       invalid_domain.add_dimension(
@@ -270,7 +270,7 @@ TEMPLATE_LIST_TEST_CASE(
           Array::create(webp_array_name, invalid_schema), tiledb::TileDBError);
 
       // Test with > 2 dimensions.
-      invalid_domain.template add_dimensions(
+      invalid_domain.add_dimensions(
           Dimension::create<uint64_t>(ctx, "x", {{1, 100}}, 90),
           Dimension::create<uint64_t>(ctx, "z", {{1, 100}}, 90));
       invalid_schema.set_domain(invalid_domain);
