@@ -107,6 +107,15 @@ DimensionLabelReference::DimensionLabelReference(
     }
   }
 
+  // Check the label order is valid.
+  if constexpr (!is_experimental_build) {
+    if (label_order == DataOrder::UNORDERED_DATA) {
+      std::invalid_argument(
+          "Unordered dimension labels are only supported in experimental "
+          "builds.");
+    }
+  }
+
   // Check URI is relative if it is internal to the array.
   if (!is_external_ && !relative_uri_) {
     throw std::invalid_argument(
@@ -152,6 +161,15 @@ DimensionLabelReference::DimensionLabelReference(
     std::throw_with_nested(std::invalid_argument(
         "Datatype Datatype::" + datatype_str(label_type) +
         " is not a valid dimension datatype."));
+  }
+
+  // Check the label order is valid.
+  if constexpr (!is_experimental_build) {
+    if (label_order == DataOrder::UNORDERED_DATA) {
+      std::invalid_argument(
+          "Unordered dimension labels are only supported in experimental "
+          "builds.");
+    }
   }
 
   // Create and set dimension label domain.

@@ -794,16 +794,14 @@ void ArraySchema::serialize(Serializer& serializer) const {
   }
 
   // Write dimension labels
-  if constexpr (is_experimental_build) {
-    auto label_num = static_cast<uint32_t>(dimension_label_references_.size());
-    if (label_num != dimension_label_references_.size()) {
-      throw ArraySchemaStatusException(
-          "Overflow when attempting to serialize label number.");
-    }
-    serializer.write<uint32_t>(label_num);
-    for (auto& label : dimension_label_references_) {
-      label->serialize(serializer, version);
-    }
+  auto label_num = static_cast<uint32_t>(dimension_label_references_.size());
+  if (label_num != dimension_label_references_.size()) {
+    throw ArraySchemaStatusException(
+        "Overflow when attempting to serialize label number.");
+  }
+  serializer.write<uint32_t>(label_num);
+  for (auto& label : dimension_label_references_) {
+    label->serialize(serializer, version);
   }
 }
 
@@ -856,11 +854,9 @@ bool ArraySchema::var_size(const std::string& name) const {
   }
 
   // Dimension label
-  if constexpr (is_experimental_build) {
-    auto dim_label_ref_it = dimension_label_reference_map_.find(name);
-    if (dim_label_ref_it != dimension_label_reference_map_.end()) {
-      return dim_label_ref_it->second->is_var();
-    }
+  auto dim_label_ref_it = dimension_label_reference_map_.find(name);
+  if (dim_label_ref_it != dimension_label_reference_map_.end()) {
+    return dim_label_ref_it->second->is_var();
   }
 
   // Name is not an attribute or dimension
@@ -943,9 +939,10 @@ void ArraySchema::add_dimension_label(
   // Add dimension label
   try {
     // Create relative URI in dimension label directory
-    URI uri{constants::array_dimension_labels_dir_name + "/l" +
-                std::to_string(nlabel_internal_),
-            false};
+    URI uri{
+        constants::array_dimension_labels_dir_name + "/l" +
+            std::to_string(nlabel_internal_),
+        false};
 
     // Create the dimension label reference.
     auto dim_label_ref = make_shared<DimensionLabelReference>(
@@ -1059,13 +1056,11 @@ ArraySchema ArraySchema::deserialize(
 
   // Load dimension labels
   std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels;
-  if constexpr (is_experimental_build) {
-    if (version == constants::format_version) {
-      uint32_t label_num = deserializer.read<uint32_t>();
-      for (uint32_t i{0}; i < label_num; ++i) {
-        dimension_labels.emplace_back(
-            DimensionLabelReference::deserialize(deserializer, version));
-      }
+  if (version >= 18) {
+    uint32_t label_num = deserializer.read<uint32_t>();
+    for (uint32_t i{0}; i < label_num; ++i) {
+      dimension_labels.emplace_back(
+          DimensionLabelReference::deserialize(deserializer, version));
     }
   }
 
@@ -1314,8 +1309,8 @@ void ArraySchema::check_attribute_dimension_label_names() const {
   std::set<std::string> names;
   // Check attribute and dimension names are unique.
   auto dim_num = this->dim_num();
-  uint64_t expected_unique_names{dim_num + attributes_.size() +
-                                 dimension_label_references_.size()};
+  uint64_t expected_unique_names{
+      dim_num + attributes_.size() + dimension_label_references_.size()};
   for (const auto& attr : attributes_) {
     names.insert(attr->name());
   }
