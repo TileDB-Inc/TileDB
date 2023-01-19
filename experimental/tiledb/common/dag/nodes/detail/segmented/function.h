@@ -290,6 +290,7 @@ auto post_state = sink_mover->state();
 
         out_thing = f_(in_thing);
       }
+        [[fallthrough]];
 
         // inject / fill / push
 
