@@ -1129,10 +1129,8 @@ int32_t tiledb_array_schema_load(
   } else {
     // Create key
     tiledb::sm::EncryptionKey key;
-    throw_if_not_ok(key.set_key(
-        static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-        nullptr,
-        0));
+    throw_if_not_ok(
+        key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
     // For easy reference
     auto storage_manager{ctx->storage_manager()};
@@ -2906,8 +2904,8 @@ int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri) {
 
   // Open the array for exclusive modification
   throw_if_not_ok(array->array_->open(
-      static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+      tiledb::sm::QueryType::MODIFY_EXCLUSIVE,
+      tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0));
 
@@ -2963,7 +2961,7 @@ int32_t tiledb_array_open(
   // Open array
   throw_if_not_ok(array->array_->open(
       static_cast<tiledb::sm::QueryType>(query_type),
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+      tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0));
 
@@ -3144,10 +3142,8 @@ int32_t tiledb_array_create(
   } else {
     // Create key
     tiledb::sm::EncryptionKey key;
-    throw_if_not_ok(key.set_key(
-        static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-        nullptr,
-        0));
+    throw_if_not_ok(
+        key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
     // Create the array
     throw_if_not_ok(ctx->storage_manager()->array_create(
         uri, array_schema->array_schema_, key));
@@ -3272,7 +3268,7 @@ int32_t tiledb_array_consolidate(
   api::ensure_config_is_valid_if_present(config);
   throw_if_not_ok(ctx->storage_manager()->array_consolidate(
       array_uri,
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+      tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0,
       (config == nullptr) ? ctx->storage_manager()->config() :
@@ -3321,7 +3317,7 @@ int32_t tiledb_array_consolidate_fragments(
 
   throw_if_not_ok(ctx->storage_manager()->fragments_consolidate(
       array_uri,
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+      tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0,
       uris,
@@ -3649,10 +3645,8 @@ int32_t tiledb_array_evolve(
 
   // Create key
   tiledb::sm::EncryptionKey key;
-  throw_if_not_ok(key.set_key(
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-      nullptr,
-      0));
+  throw_if_not_ok(
+      key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
   // Evolve schema
   throw_if_not_ok(ctx->storage_manager()->array_evolve_schema(
       uri, array_schema_evolution->array_schema_evolution_, key));
