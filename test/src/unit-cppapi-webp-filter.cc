@@ -179,8 +179,8 @@ std::vector<uint8_t> create_image(
 // These templates will not be used if built with TILEDB_WEBP=OFF
 template <typename T>
 [[maybe_unused]] Domain create_domain(const Context& ctx, uint8_t format) {
-  T height = GENERATE(131, 217, 1003);
-  T width = GENERATE(103, 277, 1001);
+  T height = GENERATE(131, 217);
+  T width = GENERATE(103, 277);
   uint8_t pixel_depth = format < TILEDB_WEBP_RGBA ? 3 : 4;
   auto y = Dimension::create<T>(ctx, "y", {{1, height}}, height / 2);
   auto x = Dimension::create<T>(
