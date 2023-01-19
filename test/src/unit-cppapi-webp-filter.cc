@@ -223,108 +223,6 @@ template <>
   return domain;
 }
 
-// TODO: When this test passes it can be combined with `C++ API: WEBP Filter`.
-// We can explicitly run the test with `tiledb_unit [.xfail]` for debugging.
-using DimensionTypesSmall = std::tuple<int8_t, int16_t, uint8_t, uint16_t>;
-TEMPLATE_LIST_TEST_CASE(
-    "C++ API: WEBP Filter small dims",
-    "[cppapi][filter][webp]",
-    DimensionTypesSmall) {
-  if constexpr (webp_filter_exists) {
-    Context ctx;
-    VFS vfs(ctx);
-    if (vfs.is_dir(webp_array_name)) {
-      vfs.remove_dir(webp_array_name);
-    }
-
-    uint8_t format_expected = GENERATE(
-        TILEDB_WEBP_RGB, TILEDB_WEBP_RGBA, TILEDB_WEBP_BGR, TILEDB_WEBP_BGRA);
-    uint8_t lossless_expected = GENERATE(1, 0);
-
-    Filter filter(ctx, TILEDB_FILTER_WEBP);
-    REQUIRE(filter.filter_type() == TILEDB_FILTER_WEBP);
-    REQUIRE(
-        filter.to_str(filter.filter_type()) == sm::constants::filter_webp_str);
-
-    float quality_found;
-    REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_QUALITY, 100.0f));
-    REQUIRE_NOTHROW(
-        filter.get_option<float>(TILEDB_WEBP_QUALITY, &quality_found));
-    REQUIRE(100.0f == quality_found);
-
-    uint8_t format_found;
-    REQUIRE_NOTHROW(
-        filter.set_option(TILEDB_WEBP_INPUT_FORMAT, &format_expected));
-    REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
-    REQUIRE(format_expected == format_found);
-
-    // Check WEBP_LOSSLESS option.
-    uint8_t lossless_found;
-    REQUIRE_NOTHROW(
-        filter.set_option(TILEDB_WEBP_LOSSLESS, &lossless_expected));
-    REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
-    REQUIRE(lossless_expected == lossless_found);
-
-    // Test against images of different sizes.
-    Domain domain = create_domain<TestType>(ctx, format_expected);
-    uint8_t pixel_depth = format_expected < TILEDB_WEBP_RGBA ? 3 : 4;
-    TestType height = domain.dimension(0).template domain<TestType>().second;
-    TestType width =
-        domain.dimension(1).template domain<TestType>().second / pixel_depth;
-
-    FilterList filterList(ctx);
-    filterList.add_filter(filter);
-
-    // This attribute is used for all colorspace formats: RGB, RGBA, BGR, BGRA.
-    auto a = Attribute::create<uint8_t>(ctx, "rgb");
-    a.set_filter_list(filterList);
-
-    ArraySchema schema(ctx, TILEDB_DENSE);
-    schema.set_domain(domain);
-    schema.add_attribute(a);
-    Array::create(webp_array_name, schema);
-
-    auto rgb = create_image(width, height, pixel_depth);
-
-    // Write pixel data to the array.
-    Array array(ctx, webp_array_name, TILEDB_WRITE);
-    Query write(ctx, array);
-    write.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("rgb", rgb);
-    write.submit();
-    array.close();
-    REQUIRE(Query::Status::COMPLETE == write.query_status());
-
-    array.open(TILEDB_READ);
-    std::vector<uint8_t> read_rgb((width * pixel_depth) * height);
-    std::vector<TestType> subarray = {
-        1, height, 1, (TestType)(width * pixel_depth)};
-    Query read(ctx, array);
-    read.set_layout(TILEDB_ROW_MAJOR)
-        .set_subarray(subarray)
-        .set_data_buffer("rgb", read_rgb);
-    read.submit();
-    array.close();
-    REQUIRE(Query::Status::COMPLETE == read.query_status());
-
-    if (lossless_expected == 1) {
-      // Lossless compression should be exact.
-      REQUIRE_THAT(read_rgb, Catch::Matchers::Equals(rgb));
-    } else {
-      // Lossy compression at 100.0f quality should be approx.
-      REQUIRE_THAT(read_rgb, Catch::Matchers::Approx(rgb).margin(200));
-    }
-
-    if constexpr (png_found) {
-      write_image(
-          read_rgb, width, height, pixel_depth, format_expected, nullptr);
-    }
-
-    if (vfs.is_dir(webp_array_name)) {
-      vfs.remove_dir(webp_array_name);
-    }
-  }
-}
-
 using TestTypes = std::tuple<uint16_t, int16_t, int32_t, int64_t, uint32_t>;
 TEMPLATE_LIST_TEST_CASE(
     "C++ API: WEBP filter schema validation",
@@ -423,7 +321,15 @@ TEMPLATE_LIST_TEST_CASE(
   }
 }
 
-using DimensionTypes = std::tuple<int32_t, int64_t, uint32_t, uint64_t>;
+using DimensionTypes = std::tuple<
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t,
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t>;
 TEMPLATE_LIST_TEST_CASE(
     "C++ API: WEBP Filter", "[cppapi][filter][webp]", DimensionTypes) {
   if constexpr (webp_filter_exists) {
