@@ -247,6 +247,7 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
         f_(thing);
         ++consumed_items_;
       }
+        [[fallthrough]];
 
         // @todo Should skip yield if pull waited;
       case 5: {
