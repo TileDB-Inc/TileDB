@@ -494,10 +494,34 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
       layout_ != Layout::GLOBAL_ORDER) {
     return true;
   }
-
   uint64_t cell_num_per_tile = array_schema_->dense() ?
-                                   array_schema_->domain().cell_num_per_tile() :
-                                   array_schema_->capacity();
+                               array_schema_->domain().cell_num_per_tile() :
+                               array_schema_->capacity();
+
+  if (query_remote_buffer_storage_.empty()) {
+    for (const auto& buff : buffers_) {
+      bool is_var = array_schema_->var_size(buff.first);
+      bool is_nullable = array_schema_->is_nullable(buff.first);
+
+      uint64_t data_size = datatype_size(array_schema_->type(buff.first));
+      uint64_t cell_size = is_var ? constants::cell_var_offset_size : data_size;
+
+      // Construct and move a preallocated Buffer to initialize cache.
+      query_remote_buffer_storage_[buff.first].buffer = {
+          cell_num_per_tile * cell_size * 2};
+      query_remote_buffer_storage_[buff.first].buffer.set_size(0);
+
+      if (is_var) {
+        // TODO
+        Buffer var_buffer(nullptr, 0);
+      }
+      if (is_nullable) {
+        // TODO
+        Buffer validity_buffer(nullptr, 0);
+      }
+    }
+  }
+
   bool submit = true;
   for (auto&& buff : buffers_) {
     bool is_var = array_schema_->var_size(buff.first);
@@ -510,22 +534,28 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
     uint64_t buffer_size = *buff.second.buffer_size_;
 
     auto& cache = query_remote_buffer_storage_[buff.first];
+    // Count cells cached since the last submit.
+    uint64_t latest_cached_cells = 0;
     // Check if the cache was submit up to cache.byte_offset position.
     if (cache.submit) {
-      // Retrieve unsubmitted data from cache. Discard submitted data.
-      Buffer temp_buffer;
-      throw_if_not_ok(temp_buffer.write(
-          cache.buffer.data(cache.byte_offset),
-          cache.buffer.size() - cache.byte_offset));
-      cache.buffer.swap(temp_buffer);
+      uint64_t prev_size = cache.buffer.size() - cache.byte_offset;
+      // Shift cached data to overwrite already submitted data.
+      throw_if_not_ok(cache.buffer.write(cache.buffer.data(cache.byte_offset), 0, prev_size));
+      // Any cached data after this position will be held for next submits.
+      cache.byte_offset = prev_size;
       cache.submit = false;
+      // Begin subsequent cache writes at this position.
+      cache.buffer.set_offset(prev_size);
+      cache.buffer.set_size(prev_size);
+    } else {
+      // Cells cached since our last submit.
+      // If this ever reaches the size of a tile, adjust byte_offset and submit.
+      latest_cached_cells = cache.buffer.size() - cache.byte_offset / cell_size;
     }
-    // Prefer cached buffer data for submission.
-    // If cache + user buffer overflows, trim user and write at byte_offset.
-    cache.byte_offset = cache.buffer.size();
 
     uint64_t buffer_cells = buffer_size / cell_size;
-    uint64_t cache_buffer_cells = cache.buffer.size() / cell_size;
+    // Only consider cached data up to byte_offset that is queued for submit.
+    uint64_t cache_buffer_cells = cache.byte_offset / cell_size;
     uint64_t total_buffer_cells = buffer_cells + cache_buffer_cells;
 
     // If buffer_cells does not fill a tile, cache the entire buffer.
@@ -581,6 +611,7 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
           (char*)buff.second.buffer_ + buffer_size - tile_trim_bytes,
           tile_trim_bytes));
       *buff.second.buffer_size_ -= tile_trim_bytes;
+      latest_cached_cells += tile_trim_cells;
     }
 
     if (is_nullable) {
@@ -597,16 +628,11 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
       *buff.second.validity_vector_.buffer_size() -= tile_trim_cells;
     }
 
-    // Total cells written from cache and user buffers.
-    total_buffer_cells =
-        (cache.byte_offset + *buff.second.buffer_size_) / cell_size;
-    if (total_buffer_cells < cell_num_per_tile) {
-      submit = false;
-    }
-
-    if (finalize || submit) {
+    if (finalize) {
       // Update buffer_cells to reflect total cells within cached data.
       buffer_cells = *buff.second.buffer_size_ / cell_size;
+      // Total cells written from cache and user buffers.
+      total_buffer_cells = cache_buffer_cells + buffer_cells;
       // Recheck that the final cache buffers do not exceed tile boundaries.
       uint64_t overflow_cells = total_buffer_cells > cell_num_per_tile ?
                                 total_buffer_cells % cell_num_per_tile :
@@ -647,10 +673,14 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
                 last_cache_offset - trimmed_offset);
           } else {
             uint64_t cache_overflow = overflow_cells * data_size;
-            cache_overflow -= std::min(*buff.second.buffer_size_, cache_overflow);
-            cache.byte_offset -= std::min(cache.byte_offset, cache_overflow);
-            *buff.second.buffer_size_ -=
-                std::min(*buff.second.buffer_size_, (overflow_cells * data_size));
+            uint64_t dropped_bytes =
+                std::min(*buff.second.buffer_size_, cache_overflow);
+            *buff.second.buffer_size_ -= dropped_bytes;
+            cache_overflow -= dropped_bytes;
+            // If more excess data, drop from data cached in previous submit.
+            if (cache_overflow != 0) {
+              cache.byte_offset -= std::min(cache.byte_offset, cache_overflow);
+            }
           }
 
           if (is_nullable) {
@@ -661,6 +691,17 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
           }
         }
       }
+    }
+
+    if (latest_cached_cells >= cell_num_per_tile) {
+      cache.byte_offset = cell_num_per_tile * cell_size;
+    }
+
+    // Update total cells written from cache and user buffers.
+    total_buffer_cells =
+        (cache.byte_offset + *buff.second.buffer_size_) / cell_size;
+    if (total_buffer_cells < cell_num_per_tile) {
+      submit = false;
     }
   }
 
