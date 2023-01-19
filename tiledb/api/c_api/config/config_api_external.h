@@ -136,7 +136,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    `group_meta` (remove only consolidate group metadata only).
  *    <br>
  *    **Default**: fragments
- * - `sm.consolidation_mode` <br>
+ * - `sm.consolidation.mode` <br>
  *    The consolidation mode, one of
  *    `commits` (consolidate all commit files),
  *    `fragments` (consolidate all fragments),
