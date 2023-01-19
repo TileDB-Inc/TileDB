@@ -495,8 +495,8 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
     return true;
   }
   uint64_t cell_num_per_tile = array_schema_->dense() ?
-                               array_schema_->domain().cell_num_per_tile() :
-                               array_schema_->capacity();
+                                   array_schema_->domain().cell_num_per_tile() :
+                                   array_schema_->capacity();
 
   if (query_remote_buffer_storage_.empty()) {
     for (const auto& buff : buffers_) {
@@ -540,7 +540,8 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
     if (cache.submit) {
       uint64_t prev_size = cache.buffer.size() - cache.byte_offset;
       // Shift cached data to overwrite already submitted data.
-      throw_if_not_ok(cache.buffer.write(cache.buffer.data(cache.byte_offset), 0, prev_size));
+      throw_if_not_ok(cache.buffer.write(
+          cache.buffer.data(cache.byte_offset), 0, prev_size));
       // Any cached data after this position will be held for next submits.
       cache.byte_offset = prev_size;
       cache.submit = false;
@@ -635,7 +636,7 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
       total_buffer_cells = cache_buffer_cells + buffer_cells;
       // Recheck that the final cache buffers do not exceed tile boundaries.
       uint64_t overflow_cells = total_buffer_cells > cell_num_per_tile ?
-                                total_buffer_cells % cell_num_per_tile :
+                                    total_buffer_cells % cell_num_per_tile :
                                     0;
 
       // If the user writes more cells than this, the array will overflow.

@@ -208,11 +208,9 @@ struct RemoteGlobalOrderWriteFx {
       // Use result buffer elements to ensure we submit enough data after trim.
       auto result = query.result_buffer_elements();
 
-      data_wrote_.insert(
-          data_wrote_.end(), data.begin(), data.end());
+      data_wrote_.insert(data_wrote_.end(), data.begin(), data.end());
       if (is_sparse) {
-        cols_wrote_.insert(
-            cols_wrote_.end(), cols.begin(), cols.end());
+        cols_wrote_.insert(cols_wrote_.end(), cols.begin(), cols.end());
         // Pick up where we left off for next iteration of coords.
         cols_start = cols_wrote_.back() + 1;
       }
@@ -226,9 +224,7 @@ struct RemoteGlobalOrderWriteFx {
         // Update data and offsets wrote for variable size attributes.
         var_data_wrote_ += var_data.substr(0, result["var"].second);
         var_offsets_wrote_.insert(
-            var_offsets_wrote_.end(),
-            var_offsets.begin(),
-            var_offsets.end());
+            var_offsets_wrote_.end(), var_offsets.begin(), var_offsets.end());
         // Update validity buffer wrote for variable size attributes.
         if (is_nullable_) {
           var_validity_wrote_.insert(
@@ -360,7 +356,7 @@ TEST_CASE(
   uint64_t cells;
   uint64_t extent;
   uint64_t chunk_size;
-//  bool nullable = GENERATE(true, false);
+  //  bool nullable = GENERATE(true, false);
 
   SECTION("Full array write") {
     cells = 20;
