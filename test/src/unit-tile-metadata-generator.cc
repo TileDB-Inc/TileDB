@@ -35,7 +35,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
-#include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/tile/writer_tile_tuple.h"
 
 using namespace tiledb::sm;
 
@@ -95,7 +95,7 @@ TEMPLATE_LIST_TEST_CASE(
   }
 
   // Initialize a new tile.
-  WriterTile writer_tile(
+  WriterTileTuple writer_tile(
       schema,
       num_cells,
       false,
@@ -263,7 +263,7 @@ TEMPLATE_LIST_TEST_CASE(
 
   // Initialize a new tile.
   auto tiledb_type = static_cast<Datatype>(type.tiledb_type);
-  WriterTile writer_tile(schema, 4, false, false, sizeof(T), tiledb_type);
+  WriterTileTuple writer_tile(schema, 4, false, false, sizeof(T), tiledb_type);
   auto tile_buff = (T*)writer_tile.fixed_tile().data();
 
   // Once an overflow happens, the computation should abort, try to add a few
@@ -288,7 +288,8 @@ TEMPLATE_LIST_TEST_CASE(
   // Test negative overflow.
   if constexpr (std::is_signed_v<T>) {
     // Initialize a new tile.
-    WriterTile writer_tile(schema, 4, false, false, sizeof(T), tiledb_type);
+    WriterTileTuple writer_tile(
+        schema, 4, false, false, sizeof(T), tiledb_type);
     auto tile_buff = (T*)writer_tile.fixed_tile().data();
 
     // Once an overflow happens, the computation should abort, try to add a few
@@ -354,7 +355,8 @@ TEST_CASE(
   }
 
   // Initialize tile.
-  WriterTile writer_tile(schema, num_cells, true, nullable, 1, Datatype::CHAR);
+  WriterTileTuple writer_tile(
+      schema, num_cells, true, nullable, 1, Datatype::CHAR);
   auto offsets_tile_buff = (uint64_t*)writer_tile.offset_tile().data();
 
   // Initialize a new nullable tile.
@@ -437,7 +439,7 @@ TEST_CASE(
 
   // Store '123' and '12'
   // Initialize offsets tile.
-  WriterTile writer_tile(schema, 2, true, false, 1, Datatype::CHAR);
+  WriterTileTuple writer_tile(schema, 2, true, false, 1, Datatype::CHAR);
   auto offsets_tile_buff = (uint64_t*)writer_tile.offset_tile().data();
   offsets_tile_buff[0] = 0;
   offsets_tile_buff[1] = 3;

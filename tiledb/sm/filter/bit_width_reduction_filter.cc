@@ -98,13 +98,13 @@ void BitWidthReductionFilter::dump(FILE* out) const {
 }
 
 Status BitWidthReductionFilter::run_forward(
-    const Tile& tile,
+    const WriterTile& tile,
     void* const support_data,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  Tile* const offsets_tile = static_cast<Tile*>(support_data);
+  WriterTile* const offsets_tile = static_cast<WriterTile*>(support_data);
   auto tile_type = tile.type();
   auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
 
@@ -177,8 +177,8 @@ Status BitWidthReductionFilter::run_forward(
 
 template <typename T>
 Status BitWidthReductionFilter::run_forward(
-    const Tile&,
-    Tile* const,
+    const WriterTile&,
+    WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

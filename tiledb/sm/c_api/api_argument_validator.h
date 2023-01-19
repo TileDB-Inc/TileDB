@@ -175,26 +175,6 @@ inline int32_t sanity_check(
   return TILEDB_OK;
 }
 
-inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_t* vfs) {
-  if (vfs == nullptr || vfs->vfs_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB virtual filesystem object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
-inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_fh_t* fh) {
-  if (fh == nullptr || fh->vfs_fh_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB virtual filesystem file handle");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
 inline int32_t sanity_check(
     tiledb_ctx_t* ctx, const tiledb_fragment_info_t* fragment_info) {
   if (fragment_info == nullptr || fragment_info->fragment_info_ == nullptr) {

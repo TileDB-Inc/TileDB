@@ -34,6 +34,7 @@ set(SOURCES
   targets/sc-12024.cc
   targets/sc-15387.cc
   targets/sc-18836.cc
+  targets/sc-23712.cc
 )
 
 if (TILEDB_SERIALIZATION)

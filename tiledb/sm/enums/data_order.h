@@ -45,10 +45,16 @@ namespace tiledb::sm {
 /** Defines the ordering of data in a dimension data. */
 enum class DataOrder : uint8_t {
 #define TILEDB_DATA_ORDER_ENUM(id) id
-#include "tiledb/sm/c_api/tiledb_enum.h"
+#include "tiledb/api/c_api/data_order/data_order_api_enum.h"
 #undef TILEDB_DATA_ORDER_ENUM
 };
 
+/**
+ * Converts an input DataOrder enum to a string representation.
+ *
+ * @param order The target DataOrder enum.
+ * @returns The constant string representation of the enum.
+ */
 inline const std::string& data_order_str(DataOrder order) {
   switch (order) {
     case DataOrder::UNORDERED_DATA:
@@ -79,6 +85,21 @@ inline DataOrder data_order_from_int(uint8_t data_order_int) {
       throw std::runtime_error(
           "Invalid DataOrder( " +
           std::to_string(static_cast<uint16_t>(data_order_int)) + ")");
+  }
+}
+
+/** Converts a string to a DataOrder enum. */
+inline DataOrder data_order_from_str(const std::string& str) {
+  if (str == constants::data_unordered_str) {
+    return DataOrder::UNORDERED_DATA;
+  } else if (str == constants::data_increasing_str) {
+    return DataOrder::INCREASING_DATA;
+  } else if (str == constants::data_decreasing_str) {
+    return DataOrder::DECREASING_DATA;
+  } else {
+    throw std::runtime_error(
+        "Invalid input string '" + str +
+        "' does not correspond to a data order type.");
   }
 }
 

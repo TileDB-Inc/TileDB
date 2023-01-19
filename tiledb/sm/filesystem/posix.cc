@@ -61,7 +61,8 @@ namespace tiledb {
 namespace sm {
 
 Posix::Posix()
-    : config_(default_config_) {
+    : default_config_(Config())
+    , config_(default_config_) {
 }
 
 bool Posix::both_slashes(char a, char b) {
@@ -513,6 +514,20 @@ Status Posix::sync(const std::string& path) {
 
 Status Posix::write(
     const std::string& path, const void* buffer, uint64_t buffer_size) {
+  // Check for valid inputs before attempting the actual
+  // write system call. This is to avoid a bug on macOS
+  // Ventura 13.0 on Apple's M1 processors.
+  if (buffer == nullptr) {
+    throw std::invalid_argument("buffer must not be nullptr");
+  }
+  if constexpr (SSIZE_MAX < UINT64_MAX) {
+    if (buffer_size > SSIZE_MAX) {
+      throw std::invalid_argument(
+          "invalid write with more than " + std::to_string(SSIZE_MAX) +
+          " bytes");
+    }
+  }
+
   // Get config params
   bool found = false;
   uint64_t min_parallel_size = 0;

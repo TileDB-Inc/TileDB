@@ -37,6 +37,7 @@
  * Use C headers since we need to compile externally-visible headers as C
  */
 #ifndef TILEDB_CAPI_WRAPPING
+#include <stddef.h>
 #include <stdint.h>
 #endif
 

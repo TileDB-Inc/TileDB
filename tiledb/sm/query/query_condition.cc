@@ -302,6 +302,142 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::NE> {
   }
 };
 
+/** Full template specialization for `uint8_t*` and `QueryConditionOp::LT`. */
+template <>
+struct QueryCondition::BinaryCmpNullChecks<uint8_t*, QueryConditionOp::LT> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (lhs == nullptr) {
+      return false;
+    }
+
+    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const int cmp = memcmp(
+        static_cast<const uint8_t*>(lhs),
+        static_cast<const uint8_t*>(rhs),
+        min_size);
+    if (cmp != 0) {
+      return cmp < 0;
+    }
+
+    return lhs_size < rhs_size;
+  }
+};
+
+/** Full template specialization for `uint8_t*` and `QueryConditionOp::LE. */
+template <>
+struct QueryCondition::BinaryCmpNullChecks<uint8_t*, QueryConditionOp::LE> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (lhs == nullptr) {
+      return false;
+    }
+
+    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const int cmp = memcmp(
+        static_cast<const uint8_t*>(lhs),
+        static_cast<const uint8_t*>(rhs),
+        min_size);
+    if (cmp != 0) {
+      return cmp < 0;
+    }
+
+    return lhs_size <= rhs_size;
+  }
+};
+
+/** Full template specialization for `uint8_t*` and `QueryConditionOp::GT`. */
+template <>
+struct QueryCondition::BinaryCmpNullChecks<uint8_t*, QueryConditionOp::GT> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (lhs == nullptr) {
+      return false;
+    }
+
+    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const int cmp = memcmp(
+        static_cast<const uint8_t*>(lhs),
+        static_cast<const uint8_t*>(rhs),
+        min_size);
+    if (cmp != 0) {
+      return cmp > 0;
+    }
+
+    return lhs_size > rhs_size;
+  }
+};
+
+/** Full template specialization for `uint8_t*` and `QueryConditionOp::GE`. */
+template <>
+struct QueryCondition::BinaryCmpNullChecks<uint8_t*, QueryConditionOp::GE> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (lhs == nullptr) {
+      return false;
+    }
+
+    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const int cmp = memcmp(
+        static_cast<const uint8_t*>(lhs),
+        static_cast<const uint8_t*>(rhs),
+        min_size);
+    if (cmp != 0) {
+      return cmp > 0;
+    }
+
+    return lhs_size >= rhs_size;
+  }
+};
+
+/** Full template specialization for `uint8_t*` and `QueryConditionOp::EQ`. */
+template <>
+struct QueryCondition::BinaryCmpNullChecks<uint8_t*, QueryConditionOp::EQ> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (lhs == rhs) {
+      return true;
+    }
+
+    if (lhs == nullptr || rhs == nullptr) {
+      return false;
+    }
+
+    if (lhs_size != rhs_size) {
+      return false;
+    }
+
+    return memcmp(
+               static_cast<const uint8_t*>(lhs),
+               static_cast<const uint8_t*>(rhs),
+               lhs_size) == 0;
+  }
+};
+
+/** Full template specialization for `uint8_t*` and `QueryConditionOp::NE`. */
+template <>
+struct QueryCondition::BinaryCmpNullChecks<uint8_t*, QueryConditionOp::NE> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (rhs == nullptr && lhs != nullptr) {
+      return true;
+    }
+
+    if (lhs == nullptr || rhs == nullptr) {
+      return false;
+    }
+
+    if (lhs_size != rhs_size) {
+      return true;
+    }
+
+    return memcmp(
+               static_cast<const uint8_t*>(lhs),
+               static_cast<const uint8_t*>(rhs),
+               lhs_size) != 0;
+  }
+};
+
 /** Partial template specialization for `QueryConditionOp::LT`. */
 template <typename T>
 struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::LT> {
@@ -819,8 +955,29 @@ void QueryCondition::apply_ast_node(
     case Datatype::DATETIME_NS:
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS: {
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS: {
       apply_ast_node<int64_t, CombinationOp>(
+          node,
+          fragment_metadata,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          combination_op,
+          result_cell_bitmap);
+    } break;
+    case Datatype::STRING_UTF8: {
+      apply_ast_node<uint8_t*, CombinationOp>(
           node,
           fragment_metadata,
           stride,
@@ -833,7 +990,6 @@ void QueryCondition::apply_ast_node(
     } break;
     case Datatype::ANY:
     case Datatype::BLOB:
-    case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
@@ -1039,20 +1195,20 @@ void QueryCondition::apply_ast_node_dense(
 
     const auto& tile_offsets = tile_tuple->fixed_tile();
     const uint64_t* buffer_offsets =
-        static_cast<uint64_t*>(tile_offsets.data()) + src_cell;
+        static_cast<uint64_t*>(tile_offsets.data());
     const uint64_t buffer_offsets_el =
         tile_offsets.size() / constants::cell_var_offset_size;
 
     // Iterate through each cell in this slab.
     for (uint64_t c = 0; c < result_buffer.size(); ++c) {
-      // Check the previous cell here, which breaks vectorization but as this
+      // Check the next cell here, which breaks vectorization but as this
       // is string data requiring a strcmp which cannot be vectorized, this is
       // ok.
-      const uint64_t buffer_offset = buffer_offsets[start + c * stride];
-      const uint64_t next_cell_offset =
-          (start + c * stride + 1 < buffer_offsets_el) ?
-              buffer_offsets[start + c * stride + 1] :
-              buffer_size;
+      const uint64_t offset_idx = start + src_cell + c * stride;
+      const uint64_t buffer_offset = buffer_offsets[offset_idx];
+      const uint64_t next_cell_offset = (offset_idx + 1 < buffer_offsets_el) ?
+                                            buffer_offsets[offset_idx + 1] :
+                                            buffer_size;
       const uint64_t cell_size = next_cell_offset - buffer_offset;
 
       // Get the cell value.
@@ -1398,8 +1554,29 @@ void QueryCondition::apply_ast_node_dense(
     case Datatype::DATETIME_NS:
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS: {
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS: {
       apply_ast_node_dense<int64_t, CombinationOp>(
+          node,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          combination_op,
+          result_buffer);
+    } break;
+    case Datatype::STRING_UTF8: {
+      apply_ast_node_dense<uint8_t*, CombinationOp>(
           node,
           result_tile,
           start,
@@ -1412,7 +1589,6 @@ void QueryCondition::apply_ast_node_dense(
     } break;
     case Datatype::ANY:
     case Datatype::BLOB:
-    case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
@@ -1582,7 +1758,7 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LT> {
   }
 };
 
-/** Partial template specialization for `char*` and `QueryConditionOp::LE. */
+/** Full template specialization for `char*` and `QueryConditionOp::LE. */
 template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LE> {
   static inline bool cmp(
@@ -1598,7 +1774,7 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LE> {
   }
 };
 
-/** Partial template specialization for `char*` and `QueryConditionOp::GT`. */
+/** Full template specialization for `char*` and `QueryConditionOp::GT`. */
 template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GT> {
   static inline bool cmp(
@@ -1614,7 +1790,7 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GT> {
   }
 };
 
-/** Partial template specialization for `char*` and `QueryConditionOp::GE`. */
+/** Full template specialization for `char*` and `QueryConditionOp::GE`. */
 template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GE> {
   static inline bool cmp(
@@ -1630,7 +1806,7 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GE> {
   }
 };
 
-/** Partial template specialization for `char*` and `QueryConditionOp::EQ`. */
+/** Full template specialization for `char*` and `QueryConditionOp::EQ`. */
 template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::EQ> {
   static inline bool cmp(
@@ -1646,7 +1822,7 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::EQ> {
   }
 };
 
-/** Partial template specialization for `char*` and `QueryConditionOp::NE`. */
+/** Full template specialization for `char*` and `QueryConditionOp::NE`. */
 template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::NE> {
   static inline bool cmp(
@@ -1658,6 +1834,110 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::NE> {
     return strncmp(
                static_cast<const char*>(lhs),
                static_cast<const char*>(rhs),
+               lhs_size) != 0;
+  }
+};
+
+/** Full template specialization for `uint8_t*` and `QueryConditionOp::LT`. */
+template <>
+struct QueryCondition::BinaryCmp<uint8_t*, QueryConditionOp::LT> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const int cmp = memcmp(
+        static_cast<const uint8_t*>(lhs),
+        static_cast<const char*>(rhs),
+        min_size);
+    if (cmp != 0) {
+      return cmp < 0;
+    }
+
+    return lhs_size < rhs_size;
+  }
+};
+
+/** Full template specialization for `uint8_t*` and `QueryConditionOp::LE. */
+template <>
+struct QueryCondition::BinaryCmp<uint8_t*, QueryConditionOp::LE> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const int cmp = memcmp(
+        static_cast<const uint8_t*>(lhs),
+        static_cast<const uint8_t*>(rhs),
+        min_size);
+    if (cmp != 0) {
+      return cmp < 0;
+    }
+
+    return lhs_size <= rhs_size;
+  }
+};
+
+/** Full template specialization for `uint8_t*` and `QueryConditionOp::GT`. */
+template <>
+struct QueryCondition::BinaryCmp<uint8_t*, QueryConditionOp::GT> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const int cmp = memcmp(
+        static_cast<const uint8_t*>(lhs),
+        static_cast<const uint8_t*>(rhs),
+        min_size);
+    if (cmp != 0) {
+      return cmp > 0;
+    }
+
+    return lhs_size > rhs_size;
+  }
+};
+
+/** Full template specialization for `uint8_t*` and `QueryConditionOp::GE`. */
+template <>
+struct QueryCondition::BinaryCmp<uint8_t*, QueryConditionOp::GE> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
+    const int cmp = memcmp(
+        static_cast<const uint8_t*>(lhs),
+        static_cast<const uint8_t*>(rhs),
+        min_size);
+    if (cmp != 0) {
+      return cmp > 0;
+    }
+
+    return lhs_size >= rhs_size;
+  }
+};
+
+/** Full template specialization for `uint8_t*` and `QueryConditionOp::EQ`. */
+template <>
+struct QueryCondition::BinaryCmp<uint8_t*, QueryConditionOp::EQ> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (lhs_size != rhs_size) {
+      return false;
+    }
+
+    return memcmp(
+               static_cast<const uint8_t*>(lhs),
+               static_cast<const uint8_t*>(rhs),
+               lhs_size) == 0;
+  }
+};
+
+/** Full template specialization for `uint8_t*` and `QueryConditionOp::NE`. */
+template <>
+struct QueryCondition::BinaryCmp<uint8_t*, QueryConditionOp::NE> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
+    if (lhs_size != rhs_size) {
+      return true;
+    }
+
+    return memcmp(
+               static_cast<const uint8_t*>(lhs),
+               static_cast<const uint8_t*>(rhs),
                lhs_size) != 0;
   }
 };
@@ -2019,13 +2299,25 @@ void QueryCondition::apply_ast_node_sparse(
     case Datatype::DATETIME_NS:
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS: {
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS: {
       apply_ast_node_sparse<int64_t, BitmapType, CombinationOp>(
+          node, result_tile, var_size, nullable, combination_op, result_bitmap);
+    } break;
+    case Datatype::STRING_UTF8: {
+      apply_ast_node_sparse<uint8_t*, BitmapType, CombinationOp>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
     case Datatype::ANY:
     case Datatype::BLOB:
-    case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:

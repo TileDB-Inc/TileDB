@@ -51,6 +51,84 @@ namespace test {
 // Command line arguments.
 std::string g_vfs;
 
+void check_tiledb_error_with(
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg) {
+  CHECK(rc == TILEDB_ERR);
+  if (rc != TILEDB_ERR) {
+    return;
+  }
+  tiledb_error_t* err{nullptr};
+  tiledb_ctx_get_last_error(ctx, &err);
+  if (err == nullptr) {
+    INFO("No message returned. Expected message: " + expected_msg);
+    CHECK(false);
+  } else {
+    const char* raw_msg;
+    tiledb_error_message(err, &raw_msg);
+    if (raw_msg == nullptr) {
+      INFO("No message returned. Expected message: " + expected_msg);
+      CHECK(false);
+    } else {
+      std::string err_msg{raw_msg};
+      CHECK(err_msg == expected_msg);
+    }
+  }
+  tiledb_error_free(&err);
+}
+
+void check_tiledb_ok(tiledb_ctx_t* ctx, int rc) {
+  if (rc != TILEDB_OK) {
+    tiledb_error_t* err{nullptr};
+    tiledb_ctx_get_last_error(ctx, &err);
+    if (err != nullptr) {
+      const char* msg;
+      tiledb_error_message(err, &msg);
+      if (msg != nullptr) {
+        UNSCOPED_INFO(msg);
+      }
+    }
+    tiledb_error_free(&err);
+  }
+  CHECK(rc == TILEDB_OK);
+}
+
+void require_tiledb_error_with(
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg) {
+  REQUIRE(rc == TILEDB_ERR);
+  tiledb_error_t* err{nullptr};
+  tiledb_ctx_get_last_error(ctx, &err);
+  if (err == nullptr) {
+    INFO("No message returned. Expected message: " + expected_msg);
+    REQUIRE(false);
+  }
+  const char* raw_msg;
+  tiledb_error_message(err, &raw_msg);
+  if (raw_msg == nullptr) {
+    INFO("No message returned. Expected message: " + expected_msg);
+    tiledb_error_free(&err);
+    REQUIRE(false);
+  }
+  std::string err_msg{raw_msg};
+  REQUIRE(err_msg == expected_msg);
+  tiledb_error_free(&err);
+}
+
+void require_tiledb_ok(tiledb_ctx_t* ctx, int rc) {
+  if (rc != TILEDB_OK) {
+    tiledb_error_t* err{nullptr};
+    tiledb_ctx_get_last_error(ctx, &err);
+    if (err != nullptr) {
+      const char* msg;
+      tiledb_error_message(err, &msg);
+      if (msg != nullptr) {
+        UNSCOPED_INFO(msg);
+      }
+    }
+    tiledb_error_free(&err);
+  }
+  REQUIRE(rc == TILEDB_OK);
+}
+
 int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs) {
   if (!vfs.empty()) {
     if (std::find(vfs_fs.begin(), vfs_fs.end(), vfs) == vfs_fs.end()) {
@@ -1090,7 +1168,7 @@ void write_array(
     const char* key,
     uint64_t key_len,
     uint64_t timestamp,
-    const void* subarray,
+    const void* sub,
     tiledb_layout_t layout,
     const QueryBuffers& buffers,
     std::string* uri) {
@@ -1129,9 +1207,14 @@ void write_array(
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  if (subarray != nullptr) {
-    rc = tiledb_query_set_subarray(ctx, query, subarray);
-    CHECK(rc == TILEDB_OK);
+  tiledb_subarray_t* subarray;
+  if (sub != nullptr) {
+    rc = tiledb_subarray_alloc(ctx, array, &subarray);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_subarray_set_subarray(ctx, subarray, sub);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray_t(ctx, query, subarray);
+    REQUIRE(rc == TILEDB_OK);
   }
   rc = tiledb_query_set_layout(ctx, query, layout);
   CHECK(rc == TILEDB_OK);
@@ -1185,6 +1268,9 @@ void write_array(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  if (sub != nullptr) {
+    tiledb_subarray_free(&subarray);
+  }
   tiledb_config_free(&cfg);
 }
 

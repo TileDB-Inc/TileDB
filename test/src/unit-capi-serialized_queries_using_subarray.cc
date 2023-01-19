@@ -391,7 +391,7 @@ struct SerializationFx {
     ctx.handle_error(tiledb_query_get_data_buffer(
         ctx.ptr().get(),
         query->ptr().get(),
-        TILEDB_COORDS,
+        tiledb::test::TILEDB_COORDS,
         &unused1,
         &coords_size));
 
@@ -433,7 +433,7 @@ struct SerializationFx {
       ctx.handle_error(tiledb_query_set_data_buffer(
           ctx.ptr().get(),
           query->ptr().get(),
-          TILEDB_COORDS,
+          tiledb::test::TILEDB_COORDS,
           buff,
           coords_size));
       to_free.push_back(buff);
@@ -813,7 +813,7 @@ TEST_CASE_METHOD(
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
     auto result_el = query.result_buffer_elements_nullable();
-    REQUIRE(std::get<1>(result_el[TILEDB_COORDS]) == 20);
+    REQUIRE(std::get<1>(result_el[tiledb::test::TILEDB_COORDS]) == 20);
     REQUIRE(std::get<1>(result_el["a1"]) == 10);
     REQUIRE(std::get<1>(result_el["a2"]) == 20);
     REQUIRE(std::get<2>(result_el["a2"]) == 10);

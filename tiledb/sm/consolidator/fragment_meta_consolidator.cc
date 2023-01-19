@@ -121,13 +121,14 @@ Status FragmentMetaConsolidator::consolidate(
   }
 
   // Serialize all fragment metadata footers in parallel
-  std::vector<tiledb_unique_ptr<Tile>> tiles(meta.size());
+  std::vector<tiledb_unique_ptr<WriterTile>> tiles(meta.size());
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tiles.size(), [&](size_t i) {
         SizeComputationSerializer size_computation_serializer;
         throw_if_not_ok(meta[i]->write_footer(size_computation_serializer));
         tiles[i].reset(tdb_new(
-            Tile, Tile::from_generic(size_computation_serializer.size())));
+            WriterTile,
+            WriterTile::from_generic(size_computation_serializer.size())));
         Serializer serializer(tiles[i]->data(), tiles[i]->size());
         throw_if_not_ok(meta[i]->write_footer(serializer));
 
@@ -163,7 +164,7 @@ Status FragmentMetaConsolidator::consolidate(
   SizeComputationSerializer size_computation_serializer;
   serialize_data(size_computation_serializer, offset);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   serialize_data(serializer, offset);
@@ -174,7 +175,7 @@ Status FragmentMetaConsolidator::consolidate(
   EncryptionKey enc_key;
   RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
 
-  GenericTileIO tile_io(storage_manager_, uri);
+  GenericTileIO tile_io(storage_manager_->resources(), uri);
   uint64_t nbytes = 0;
   RETURN_NOT_OK(tile_io.write_generic(&tile, enc_key, &nbytes));
   (void)nbytes;
@@ -191,11 +192,8 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
 
   // Get the consolidated fragment metadata URIs to be deleted
   // (all except the last one)
-  auto vfs = storage_manager_->vfs();
-  auto compute_tp = storage_manager_->compute_tp();
-
-  auto array_dir =
-      ArrayDirectory(vfs, compute_tp, URI(array_name), 0, UINT64_MAX);
+  ArrayDirectory array_dir(
+      storage_manager_->resources(), URI(array_name), 0, UINT64_MAX);
 
   const auto& fragment_meta_uris = array_dir.fragment_meta_uris();
 
@@ -208,6 +206,9 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
       t_latest = timestamp_range.second;
     }
   }
+
+  auto vfs = storage_manager_->vfs();
+  auto compute_tp = storage_manager_->compute_tp();
 
   // Vacuum
   throw_if_not_ok(

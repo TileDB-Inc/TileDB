@@ -51,8 +51,6 @@ Return Codes
 
 Constants
 ---------
-.. doxygendefine:: TILEDB_COORDS
-    :project: TileDB-C
 .. doxygendefine:: TILEDB_VAR_NUM
     :project: TileDB-C
 .. doxygendefine:: TILEDB_MAX_PATH
@@ -60,8 +58,6 @@ Constants
 .. doxygendefine:: TILEDB_OFFSET_SIZE
     :project: TileDB-C
 .. doxygendefine:: TILEDB_TIMESTAMPS
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_coords
     :project: TileDB-C
 .. doxygenfunction:: tiledb_var_num
     :project: TileDB-C
@@ -229,19 +225,11 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_open_with_key
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_open_at
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open_at_with_key
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_is_open
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_reopen
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_reopen_at
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_get_timestamp
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_set_config
     :project: TileDB-C
@@ -294,10 +282,6 @@ Array
 .. doxygenfunction:: tiledb_array_get_metadata_num
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_delete_metadata
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_consolidate_metadata
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_consolidate_metadata_with_key
     :project: TileDB-C
 
 Array Schema

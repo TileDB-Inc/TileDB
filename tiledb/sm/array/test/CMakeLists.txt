@@ -27,7 +27,7 @@
 include(unit_test)
 
 commence(unit_test array)
-    this_target_object_libraries(array)
+    this_target_object_libraries(array context_resources)
     this_target_sources(main.cc unit_array_directory.cc)
 conclude(unit_test)
 

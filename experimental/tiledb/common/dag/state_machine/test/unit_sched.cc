@@ -52,7 +52,7 @@
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
-#include "experimental/tiledb/common/dag/utils/print_types.h"
+#include "experimental/tiledb/common/dag/utility/print_types.h"
 #include "unit_fsm.h"
 
 using namespace tiledb::common;

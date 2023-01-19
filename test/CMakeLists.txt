@@ -259,9 +259,11 @@ if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/test-capi-array-many-dimension-labels.cc
     src/test-capi-dimension_labels.cc
+    src/test-capi-dimension-label-encrypted.cc
     src/test-capi-dense-array-dimension-label.cc
     src/test-capi-dense-array-dimension-label-var.cc
     src/test-capi-sparse-array-dimension-label.cc
+    src/test-capi-subarray-labels.cc
   )
 endif()
 
@@ -310,27 +312,14 @@ if (TILEDB_HDFS)
       LibJVM::libjvm
       LibJVM::libjsig
   )
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_HDFS)
   target_include_directories(tiledb_unit PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
     )
 endif()
 
-if (TILEDB_S3)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_S3)
-endif()
-
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
-endif()
-
-if (TILEDB_AZURE)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_AZURE)
-endif()
-
-if (TILEDB_GCS)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_GCS)
 endif()
 
 if (TILEDB_SERIALIZATION)
@@ -367,7 +356,7 @@ target_compile_definitions(tiledb_unit PRIVATE
 )
 
 # Linking dl is only needed on linux with gcc
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set_target_properties(tiledb_unit PROPERTIES
       LINK_FLAGS "-Wl,--no-as-needed -ldl"
     )

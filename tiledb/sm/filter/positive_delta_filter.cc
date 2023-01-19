@@ -61,13 +61,13 @@ void PositiveDeltaFilter::dump(FILE* out) const {
 }
 
 Status PositiveDeltaFilter::run_forward(
-    const Tile& tile,
+    const WriterTile& tile,
     void* const support_data,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  Tile* const offsets_tile = static_cast<Tile*>(support_data);
+  WriterTile* const offsets_tile = static_cast<WriterTile*>(support_data);
   auto tile_type = tile.type();
 
   // If encoding can't work, just return the input unmodified.
@@ -139,8 +139,8 @@ Status PositiveDeltaFilter::run_forward(
 
 template <typename T>
 Status PositiveDeltaFilter::run_forward(
-    const Tile&,
-    Tile* const,
+    const WriterTile&,
+    WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

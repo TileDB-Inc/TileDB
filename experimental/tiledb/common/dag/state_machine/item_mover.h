@@ -46,7 +46,7 @@
 #include <string>
 #include <tuple>
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
-#include "experimental/tiledb/common/dag/utils/traits.h"
+#include "experimental/tiledb/common/dag/utility/traits.h"
 
 namespace tiledb::common {
 
@@ -471,6 +471,7 @@ class ItemMover
   using Base = BaseMover<Mover, PortState, Block>;
 
   using policy_type = Policy<Mover, PortState>;
+  using scheduler_event_type = SchedulerAction;
   using port_state_type = PortState;
   using block_type = Block;
   constexpr inline static bool edgeful = Base::edgeful;
@@ -479,37 +480,37 @@ class ItemMover
   /**
    * Invoke `source_fill` event
    */
-  void port_fill(const std::string& msg = "") {
+  scheduler_event_type port_fill(const std::string& msg = "") {
     debug_msg("    -- filling");
 
-    this->event(PortEvent::source_fill, msg);
+    return this->event(PortEvent::source_fill, msg);
   }
 
   /**
    * Invoke `source_push` event
    */
-  void port_push(const std::string& msg = "") {
+  scheduler_event_type port_push(const std::string& msg = "") {
     debug_msg("  -- pushing");
 
-    this->event(PortEvent::source_push, msg);
+    return this->event(PortEvent::source_push, msg);
   }
 
   /**
    * Invoke `sink_drain` event
    */
-  void port_drain(const std::string& msg = "") {
+  scheduler_event_type port_drain(const std::string& msg = "") {
     debug_msg("  -- draining");
 
-    this->event(PortEvent::sink_drain, msg);
+    return this->event(PortEvent::sink_drain, msg);
   }
 
   /**
    * Invoke `sink_pull` event
    */
-  void port_pull(const std::string& msg = "") {
+  scheduler_event_type port_pull(const std::string& msg = "") {
     debug_msg("  -- pulling");
 
-    this->event(PortEvent::sink_pull, msg);
+    return this->event(PortEvent::sink_pull, msg);
   }
 #else
 
@@ -529,8 +530,8 @@ class ItemMover
   /**
    * Invoke `port_exhausted` event
    */
-  void port_exhausted(const std::string& msg = "") {
-    this->event(PortEvent::exhausted, msg);
+  scheduler_event_type port_exhausted(const std::string& msg = "") {
+    return this->event(PortEvent::exhausted, msg);
   }
 
   bool is_terminated() {

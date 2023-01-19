@@ -297,11 +297,8 @@ void FragmentConsolidator::vacuum(const char* array_name) {
   }
 
   // Get the fragment URIs and vacuum file URIs to be vacuumed
-  auto vfs = storage_manager_->vfs();
-  auto compute_tp = storage_manager_->compute_tp();
-  auto array_dir = ArrayDirectory(
-      vfs,
-      compute_tp,
+  ArrayDirectory array_dir(
+      storage_manager_->resources(),
       URI(array_name),
       0,
       std::numeric_limits<uint64_t>::max(),
@@ -319,6 +316,8 @@ void FragmentConsolidator::vacuum(const char* array_name) {
   }
 
   // Delete the commit and vacuum files
+  auto vfs = storage_manager_->vfs();
+  auto compute_tp = storage_manager_->compute_tp();
   vfs->remove_files(compute_tp, filtered_fragment_uris.commit_uris_to_vacuum());
   vfs->remove_files(
       compute_tp, filtered_fragment_uris.fragment_vac_uris_to_vacuum());

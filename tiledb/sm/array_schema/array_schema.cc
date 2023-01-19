@@ -360,7 +360,7 @@ void ArraySchema::check_webp_filter() const {
       if (webp != nullptr) {
         // WebP attributes must be of type uint8_t.
         if (attr->type() != Datatype::UINT8) {
-          throw Status_ArraySchemaError(
+          throw ArraySchemaStatusException(
               "WebP filter supports only uint8 attributes");
         }
       }
@@ -370,19 +370,19 @@ void ArraySchema::check_webp_filter() const {
       return;
     }
     if (array_type_ != ArrayType::DENSE) {
-      throw Status_ArraySchemaError(
+      throw ArraySchemaStatusException(
           "WebP filter can only be applied to dense arrays");
     }
 
     // WebP filter requires at least 2 dimensions for Y, X.
     if (dim_map_.size() < 2) {
-      throw Status_ArraySchemaError(
+      throw ArraySchemaStatusException(
           "WebP filter requires at least 2 dimensions");
     }
     auto y_dim = dimension_ptr(0);
     auto x_dim = dimension_ptr(1);
     if (y_dim->type() != x_dim->type()) {
-      throw Status_ArraySchemaError(
+      throw ArraySchemaStatusException(
           "WebP filter dimensions 0, 1 should have matching integral types");
     }
 
@@ -412,7 +412,7 @@ void ArraySchema::check_webp_filter() const {
         webp->set_extents<uint64_t>(domain_->tile_extents());
         break;
       default:
-        throw Status_ArraySchemaError(
+        throw ArraySchemaStatusException(
             "WebP filter requires integral dimensions at index 0, 1");
     }
   }
@@ -448,9 +448,9 @@ Status ArraySchema::check() const {
   }
 
   if (array_type_ == ArrayType::SPARSE && capacity_ == 0) {
-    throw LOG_STATUS(
-        Status_ArraySchemaError("Array schema check failed; Sparse arrays "
-                                "cannot have their capacity equal to zero."));
+    throw ArraySchemaStatusException(
+        "Array schema check failed; Sparse arrays "
+        "cannot have their capacity equal to zero.");
   }
 
   RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));

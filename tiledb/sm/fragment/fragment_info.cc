@@ -206,10 +206,7 @@ Status FragmentInfo::get_fragment_name(uint32_t fid, const char** name) const {
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; Invalid fragment index"));
 
-  auto meta = single_fragment_info_vec_[fid].meta();
-  auto meta_name =
-      meta->fragment_uri().remove_trailing_slash().last_path_part();
-  *name = meta_name.c_str();
+  *name = single_fragment_info_vec_[fid].name().c_str();
 
   return Status::Ok();
 }
@@ -818,9 +815,8 @@ Status FragmentInfo::load() {
   }
 
   // Create an ArrayDirectory object and load
-  auto array_dir = ArrayDirectory(
-      storage_manager_->vfs(),
-      storage_manager_->compute_tp(),
+  ArrayDirectory array_dir(
+      storage_manager_->resources(),
       array_uri_,
       timestamp_start_,
       timestamp_end_);
@@ -836,9 +832,8 @@ Status FragmentInfo::load(
   RETURN_NOT_OK(set_default_timestamp_range());
 
   // Create an ArrayDirectory object and load
-  auto array_dir = ArrayDirectory(
-      storage_manager_->vfs(),
-      storage_manager_->compute_tp(),
+  ArrayDirectory array_dir(
+      storage_manager_->resources(),
       array_uri_,
       timestamp_start_,
       timestamp_end_);

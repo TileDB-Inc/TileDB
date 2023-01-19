@@ -82,8 +82,7 @@ Status CommitsConsolidator::consolidate(
 
   // Get the array uri to consolidate from the array directory.
   auto array_dir = ArrayDirectory(
-      storage_manager_->vfs(),
-      storage_manager_->compute_tp(),
+      storage_manager_->resources(),
       URI(array_name),
       0,
       utils::time::timestamp_now_ms(),
@@ -109,18 +108,16 @@ void CommitsConsolidator::vacuum(const char* array_name) {
   }
 
   // Get the array metadata URIs and vacuum file URIs to be vacuum
-  auto vfs = storage_manager_->vfs();
-  auto compute_tp = storage_manager_->compute_tp();
-  ArrayDirectory array_dir;
-  array_dir = ArrayDirectory(
-      vfs,
-      compute_tp,
+  ArrayDirectory array_dir(
+      storage_manager_->resources(),
       URI(array_name),
       0,
       utils::time::timestamp_now_ms(),
       ArrayDirectoryMode::COMMITS);
 
   // Delete the commits and vacuum files
+  auto vfs = storage_manager_->vfs();
+  auto compute_tp = storage_manager_->compute_tp();
   vfs->remove_files(compute_tp, array_dir.commit_uris_to_vacuum());
   vfs->remove_files(
       compute_tp, array_dir.consolidated_commits_uris_to_vacuum());

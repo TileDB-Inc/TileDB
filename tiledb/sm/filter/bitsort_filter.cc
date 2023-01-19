@@ -57,14 +57,14 @@ void BitSortFilter::dump(FILE* out) const {
 }
 
 Status BitSortFilter::run_forward(
-    const Tile& tile,
+    const WriterTile& tile,
     void* const support_data,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  const std::vector<Tile*> dim_tiles =
-      *static_cast<std::vector<Tile*>*>(support_data);
+  const std::vector<WriterTile*> dim_tiles =
+      *static_cast<std::vector<WriterTile*>*>(support_data);
 
   // Since run_forward interprets the filter's data as integers, we case on
   // the size of the type and pass in the corresponding integer type into
@@ -97,7 +97,7 @@ Status BitSortFilter::run_forward(
 
 template <typename AttrType>
 Status BitSortFilter::run_forward(
-    const std::vector<Tile*>& dim_tiles,
+    const std::vector<WriterTile*>& dim_tiles,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -187,7 +187,7 @@ Status BitSortFilter::run_forward(
 
 template <typename DimType>
 void BitSortFilter::run_forward_dim_tile(
-    const std::vector<size_t>& cell_pos, Tile* dim_tile) const {
+    const std::vector<size_t>& cell_pos, WriterTile* dim_tile) const {
   // Obtain the pointer to the data the code modifies.
   uint64_t cell_num = cell_pos.size();
   DimType* tile_data = dim_tile->data_as<DimType>();

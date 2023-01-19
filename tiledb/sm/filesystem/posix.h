@@ -237,11 +237,11 @@ class Posix {
       const std::string& path, const void* buffer, uint64_t buffer_size);
 
  private:
-  /** Config parameters inherited from parent VFS. */
-  std::reference_wrapper<const Config> config_;
-
   /** Default config. */
   Config default_config_;
+
+  /** Config parameters inherited from parent VFS. */
+  std::reference_wrapper<const Config> config_;
 
   /** Thread pool from parent VFS instance. */
   ThreadPool* vfs_thread_pool_;

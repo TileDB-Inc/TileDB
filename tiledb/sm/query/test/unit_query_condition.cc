@@ -1582,7 +1582,7 @@ void test_apply(
  */
 template <>
 void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
-  REQUIRE(type == Datatype::STRING_ASCII);
+  REQUIRE((type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8));
 
   const std::string field_name = "foo";
   const uint64_t cells = 10;
@@ -1691,9 +1691,21 @@ TEST_CASE("QueryCondition: Test apply", "[QueryCondition][apply]") {
   test_apply<int64_t>(Datatype::DATETIME_PS);
   test_apply<int64_t>(Datatype::DATETIME_FS);
   test_apply<int64_t>(Datatype::DATETIME_AS);
+  test_apply<int64_t>(Datatype::TIME_HR);
+  test_apply<int64_t>(Datatype::TIME_MIN);
+  test_apply<int64_t>(Datatype::TIME_SEC);
+  test_apply<int64_t>(Datatype::TIME_MS);
+  test_apply<int64_t>(Datatype::TIME_US);
+  test_apply<int64_t>(Datatype::TIME_NS);
+  test_apply<int64_t>(Datatype::TIME_PS);
+  test_apply<int64_t>(Datatype::TIME_FS);
+  test_apply<int64_t>(Datatype::TIME_AS);
   test_apply<char*>(Datatype::STRING_ASCII);
   test_apply<char*>(Datatype::STRING_ASCII, true);
   test_apply<char*>(Datatype::STRING_ASCII, false, true);
+  test_apply<char*>(Datatype::STRING_UTF8);
+  test_apply<char*>(Datatype::STRING_UTF8, true);
+  test_apply<char*>(Datatype::STRING_UTF8, false, true);
 }
 
 TEST_CASE(
@@ -1702,7 +1714,7 @@ TEST_CASE(
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
-  const Datatype type = Datatype::STRING_ASCII;
+  const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
   bool var_size = true;
   bool nullable = GENERATE(true, false);
   bool null_cmp = GENERATE(true, false);
@@ -2232,7 +2244,7 @@ void test_apply_dense(
 template <>
 void test_apply_dense<char*>(
     const Datatype type, bool var_size, bool nullable) {
-  REQUIRE(type == Datatype::STRING_ASCII);
+  REQUIRE((type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8));
 
   const std::string field_name = "foo";
   const uint64_t cells = 10;
@@ -2352,9 +2364,21 @@ TEST_CASE(
   test_apply_dense<int64_t>(Datatype::DATETIME_PS);
   test_apply_dense<int64_t>(Datatype::DATETIME_FS);
   test_apply_dense<int64_t>(Datatype::DATETIME_AS);
+  test_apply_dense<int64_t>(Datatype::TIME_HR);
+  test_apply_dense<int64_t>(Datatype::TIME_MIN);
+  test_apply_dense<int64_t>(Datatype::TIME_SEC);
+  test_apply_dense<int64_t>(Datatype::TIME_MS);
+  test_apply_dense<int64_t>(Datatype::TIME_US);
+  test_apply_dense<int64_t>(Datatype::TIME_NS);
+  test_apply_dense<int64_t>(Datatype::TIME_PS);
+  test_apply_dense<int64_t>(Datatype::TIME_FS);
+  test_apply_dense<int64_t>(Datatype::TIME_AS);
   test_apply_dense<char*>(Datatype::STRING_ASCII);
   test_apply_dense<char*>(Datatype::STRING_ASCII, true);
   test_apply_dense<char*>(Datatype::STRING_ASCII, false, true);
+  test_apply_dense<char*>(Datatype::STRING_UTF8);
+  test_apply_dense<char*>(Datatype::STRING_UTF8, true);
+  test_apply_dense<char*>(Datatype::STRING_UTF8, false, true);
 }
 
 TEST_CASE(
@@ -2363,7 +2387,7 @@ TEST_CASE(
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
-  const Datatype type = Datatype::STRING_ASCII;
+  const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
   bool var_size = true;
   bool nullable = GENERATE(true, false);
   bool null_cmp = GENERATE(true, false);
@@ -2874,7 +2898,7 @@ void test_apply_sparse(
 template <>
 void test_apply_sparse<char*>(
     const Datatype type, bool var_size, bool nullable) {
-  REQUIRE(type == Datatype::STRING_ASCII);
+  REQUIRE((type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8));
 
   const std::string field_name = "foo";
   const uint64_t cells = 10;
@@ -2994,9 +3018,21 @@ TEST_CASE(
   test_apply_sparse<int64_t>(Datatype::DATETIME_PS);
   test_apply_sparse<int64_t>(Datatype::DATETIME_FS);
   test_apply_sparse<int64_t>(Datatype::DATETIME_AS);
+  test_apply_sparse<int64_t>(Datatype::TIME_HR);
+  test_apply_sparse<int64_t>(Datatype::TIME_MIN);
+  test_apply_sparse<int64_t>(Datatype::TIME_SEC);
+  test_apply_sparse<int64_t>(Datatype::TIME_MS);
+  test_apply_sparse<int64_t>(Datatype::TIME_US);
+  test_apply_sparse<int64_t>(Datatype::TIME_NS);
+  test_apply_sparse<int64_t>(Datatype::TIME_PS);
+  test_apply_sparse<int64_t>(Datatype::TIME_FS);
+  test_apply_sparse<int64_t>(Datatype::TIME_AS);
   test_apply_sparse<char*>(Datatype::STRING_ASCII);
   test_apply_sparse<char*>(Datatype::STRING_ASCII, true);
   test_apply_sparse<char*>(Datatype::STRING_ASCII, false, true);
+  test_apply_sparse<char*>(Datatype::STRING_UTF8);
+  test_apply_sparse<char*>(Datatype::STRING_UTF8, true);
+  test_apply_sparse<char*>(Datatype::STRING_UTF8, false, true);
 }
 
 /**
@@ -3955,7 +3991,7 @@ TEST_CASE(
   // Setup.
   const std::string field_name = "foo";
   const uint64_t cells = 10;
-  const Datatype type = Datatype::STRING_ASCII;
+  const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
 
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
@@ -4000,6 +4036,431 @@ TEST_CASE(
 
   std::vector<TestParams> tp_vec;
   populate_string_test_params_vector(field_name, &result_tile, tp_vec);
+
+  SECTION("Validate apply.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply(elem, cells, array_schema, result_tile);
+    }
+  }
+
+  SECTION("Validate apply_sparse.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply_sparse(elem, cells, array_schema, result_tile);
+    }
+  }
+
+  SECTION("Validate apply_dense.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply_dense(elem, cells, array_schema, result_tile);
+    }
+  }
+}
+
+/**
+ * @brief Function that takes a selection of QueryConditions, with their
+ * expected results, and combines them together. This function is
+ * exclusively for UTF-8 string query conditions.
+ *
+ * @param field_name The field name of the query condition.
+ * @param result_tile The result tile of the array we're running the query on.
+ * @param tp_vec The vector that stores the test parameter structs.
+ */
+void populate_utf8_string_test_params_vector(
+    const std::string& field_name,
+    ResultTile* result_tile,
+    std::vector<TestParams>& tp_vec) {
+  // UTF-8 String data sorted according to raw byte comparisons.
+  std::string upper_a = "\x41";
+  std::string upper_aa = "\x41\x41";
+  std::string lower_a = "\x61";
+  std::string lower_a0 = "\x61\x30";
+  std::string lower_aa = "\x61\x61";
+  std::string n_plus_tilda = "\x6e\xcc\x83";
+  std::string n_with_tilda = "\xc3\xb1";
+  std::string u_with_umlaut = "\xc3\xbc";
+  std::string infinity = "\xe2\x88\x9e";
+  std::string snowman = "\xe2\x98\x83\xef\xb8\x8f";
+  std::string mahjong = "\xf0\x9f\x80\x84";
+  std::string yarn = "\xf0\x9f\xa7\xb6";
+  std::string flag_gr = "\xf0\x9f\x87\xac\xf0\x9f\x87\xb7";
+  std::string icecream = "\xf0\x9f\x8d\xa8";
+  std::string doughnut = "\xf0\x9f\x8d\xa9";
+
+  // N.B. This is a cop-pasta of populate_string_test_params_vector
+  // updated to use different string data. The equivalency table is:
+  //
+  // alice -> upper_a
+  // ask -> uper_aa
+  // bob -> lower_a
+  // bye -> lower_a0
+  // craig -> lower_aa
+  // dave -> n_plus_tilda
+  // erin -> n_with_tilda
+  // eve -> u_with_umlaut
+  // frank -> infinity
+  // grace -> snowman
+  // heidi -> mahjong
+  // hi -> yarn
+  // ivan -> flag_gr
+  // judy -> icecream
+  // just -> doughnut
+
+  // $val < u_with_umlaut
+  {
+    QueryCondition qc;
+    REQUIRE(qc.init(
+                  std::string(field_name),
+                  u_with_umlaut.data(),
+                  u_with_umlaut.size(),
+                  QueryConditionOp::LT)
+                .ok());
+    std::vector<uint8_t> expected_bitmap = {1, 1, 1, 1, 1, 0, 0, 0, 0, 0};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 5}};
+    TestParams tp(
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  // $val >= lower_a && $val <= u_with_umlaut
+  {
+    QueryCondition qc1;
+    REQUIRE(qc1.init(
+                   std::string(field_name),
+                   u_with_umlaut.data(),
+                   u_with_umlaut.size(),
+                   QueryConditionOp::LE)
+                .ok());
+
+    QueryCondition qc2;
+    REQUIRE(qc2.init(
+                   std::string(field_name),
+                   lower_a.data(),
+                   lower_a.size(),
+                   QueryConditionOp::GE)
+                .ok());
+
+    QueryCondition qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::AND, &qc).ok());
+    std::vector<uint8_t> expected_bitmap = {0, 1, 1, 1, 1, 0, 0, 0, 0, 0};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 4}};
+    TestParams tp(
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  // $val >= u_with_umlaut || $val <= lower_a
+  {
+    QueryCondition qc1;
+    REQUIRE(qc1.init(
+                   std::string(field_name),
+                   u_with_umlaut.data(),
+                   u_with_umlaut.size(),
+                   QueryConditionOp::GE)
+                .ok());
+
+    QueryCondition qc2;
+    REQUIRE(qc2.init(
+                   std::string(field_name),
+                   lower_a.data(),
+                   lower_a.size(),
+                   QueryConditionOp::LE)
+                .ok());
+
+    QueryCondition qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
+
+    std::vector<uint8_t> expected_bitmap = {1, 1, 0, 0, 0, 1, 1, 1, 1, 1};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 2},
+                                                  {result_tile, 5, 5}};
+    TestParams tp(
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  // ($val > upper_aa && $val <= yarn) || ($val > lower_a0 && $val < doughnut)
+  // I.e., OR of 2 AND ASTs
+  {
+    QueryCondition qc1;
+    REQUIRE(qc1.init(
+                   std::string(field_name),
+                   upper_aa.data(),
+                   upper_aa.size(),
+                   QueryConditionOp::GT)
+                .ok());
+
+    QueryCondition qc2;
+    REQUIRE(qc2.init(
+                   std::string(field_name),
+                   yarn.data(),
+                   yarn.size(),
+                   QueryConditionOp::LE)
+                .ok());
+
+    QueryCondition qc3;
+    REQUIRE(qc3.init(
+                   std::string(field_name),
+                   lower_a0.data(),
+                   lower_a0.size(),
+                   QueryConditionOp::GT)
+                .ok());
+
+    QueryCondition qc4;
+    REQUIRE(qc4.init(
+                   std::string(field_name),
+                   doughnut.data(),
+                   doughnut.size(),
+                   QueryConditionOp::LT)
+                .ok());
+
+    QueryCondition qc5, qc6, qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::AND, &qc5).ok());
+    REQUIRE(qc3.combine(qc4, QueryConditionCombinationOp::AND, &qc6).ok());
+    REQUIRE(qc5.combine(qc6, QueryConditionCombinationOp::OR, &qc).ok());
+
+    std::vector<uint8_t> expected_bitmap = {0, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 9}};
+    TestParams tp(
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  // ($val == lower_aa || $val == mahjong) &&
+  //    ($val > u_with_umlaut || $val < lower_a0)
+  // I.e., AND of 2 OR ASTs
+  {
+    QueryCondition qc1;
+    REQUIRE(qc1.init(
+                   std::string(field_name),
+                   lower_aa.data(),
+                   lower_aa.size(),
+                   QueryConditionOp::EQ)
+                .ok());
+
+    QueryCondition qc2;
+    REQUIRE(qc2.init(
+                   std::string(field_name),
+                   mahjong.data(),
+                   mahjong.size(),
+                   QueryConditionOp::EQ)
+                .ok());
+
+    QueryCondition qc3;
+    REQUIRE(qc3.init(
+                   std::string(field_name),
+                   u_with_umlaut.data(),
+                   u_with_umlaut.size(),
+                   QueryConditionOp::GT)
+                .ok());
+
+    QueryCondition qc4;
+    REQUIRE(qc4.init(
+                   std::string(field_name),
+                   lower_a0.data(),
+                   lower_a0.size(),
+                   QueryConditionOp::LT)
+                .ok());
+
+    QueryCondition qc5, qc6, qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc5).ok());
+    REQUIRE(qc3.combine(qc4, QueryConditionCombinationOp::OR, &qc6).ok());
+    REQUIRE(qc5.combine(qc6, QueryConditionCombinationOp::AND, &qc).ok());
+
+    std::vector<uint8_t> expected_bitmap = {0, 0, 0, 0, 0, 0, 0, 1, 0, 0};
+    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 7, 1}};
+    TestParams tp(
+        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    tp_vec.push_back(tp);
+  }
+
+  {
+    std::vector<std::string> vec = {
+        upper_a, lower_aa, n_with_tilda, snowman, flag_gr};
+    // $val != upper_a && $val != lower_a && $val != n_with_tilda &&
+    //    $val != snowman && $val != flag_gr
+    // I.e., combine multiple simple AND clauses
+    {
+      std::vector<QueryCondition> val_nodes;
+      for (uint64_t i = 0; i < 5; ++i) {
+        QueryCondition temp;
+        REQUIRE(temp.init(
+                        std::string(field_name),
+                        vec[i].c_str(),
+                        vec[i].size(),
+                        QueryConditionOp::NE)
+                    .ok());
+        val_nodes.push_back(temp);
+      }
+
+      QueryCondition qc1, qc2, qc3, qc;
+      REQUIRE(val_nodes[0]
+                  .combine(val_nodes[1], QueryConditionCombinationOp::AND, &qc1)
+                  .ok());
+      REQUIRE(qc1.combine(val_nodes[2], QueryConditionCombinationOp::AND, &qc2)
+                  .ok());
+      REQUIRE(qc2.combine(val_nodes[3], QueryConditionCombinationOp::AND, &qc3)
+                  .ok());
+      REQUIRE(qc3.combine(val_nodes[4], QueryConditionCombinationOp::AND, &qc)
+                  .ok());
+
+      std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
+      std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
+                                                    {result_tile, 3, 1},
+                                                    {result_tile, 5, 1},
+                                                    {result_tile, 7, 1},
+                                                    {result_tile, 9, 1}};
+      TestParams tp(
+          std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+      tp_vec.push_back(tp);
+    }
+
+    // $val == $upper_a || $val == lower_a || $val == n_with_tilda ||
+    //    $ val == snowman || $val == flag_gr
+    // I.e., combine multiple simple OR clauses
+    {
+      std::vector<QueryCondition> val_nodes;
+      for (uint64_t i = 0; i < 5; ++i) {
+        QueryCondition temp;
+        REQUIRE(temp.init(
+                        std::string(field_name),
+                        vec[i].c_str(),
+                        vec[i].size(),
+                        QueryConditionOp::EQ)
+                    .ok());
+        val_nodes.push_back(temp);
+      }
+
+      QueryCondition qc1, qc2, qc3, qc;
+      REQUIRE(val_nodes[0]
+                  .combine(val_nodes[1], QueryConditionCombinationOp::OR, &qc1)
+                  .ok());
+      REQUIRE(qc1.combine(val_nodes[2], QueryConditionCombinationOp::OR, &qc2)
+                  .ok());
+      REQUIRE(qc2.combine(val_nodes[3], QueryConditionCombinationOp::OR, &qc3)
+                  .ok());
+      REQUIRE(
+          qc3.combine(val_nodes[4], QueryConditionCombinationOp::OR, &qc).ok());
+
+      std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
+      std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
+                                                    {result_tile, 2, 1},
+                                                    {result_tile, 4, 1},
+                                                    {result_tile, 6, 1},
+                                                    {result_tile, 8, 1}};
+      TestParams tp(
+          std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+      tp_vec.push_back(tp);
+    }
+  }
+}
+
+TEST_CASE(
+    "QueryCondition: Test combinations, string with UTF-8 data",
+    "[QueryCondition][combinations][string][utf-8]") {
+  // Setup.
+  const std::string field_name = "foo";
+  const uint64_t cells = 10;
+  const Datatype type = Datatype::STRING_UTF8;
+
+  // Initialize the array schema.
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  Attribute attr(field_name, type);
+  REQUIRE(attr.set_nullable(false).ok());
+  REQUIRE(attr.set_cell_val_num(constants::var_num).ok());
+  REQUIRE(attr.set_fill_value("ac", 2 * sizeof(char)).ok());
+
+  REQUIRE(
+      array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
+  Domain domain;
+  Dimension dim("dim1", Datatype::UINT32);
+  uint32_t bounds[2] = {1, cells};
+  Range range(bounds, 2 * sizeof(uint32_t));
+  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(domain.add_dimension(make_shared<Dimension>(HERE(), &dim)).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+
+  // For pasting into a Python shell:
+  //
+  // To install pyicu on MacOS:
+  // $ brew install icu4c
+  // $ python3 -m venv venv
+  // $ source venv/bin/activate
+  // $ PATH="$(brew --prefix icu4c)/bin:$PATH" pip install pyicu
+  //
+  // If you run the snippet below you'll see that the sort order
+  // changes drastically using the ICU collator. Specifically, you
+  // should see the following orders for without and with ICU collation:
+  //
+  //   A a aa n-yay n-yay :infinity: :snowman: :mahjong: :flag-gr: :icecream:
+  //   :infinity: :snowman: :flag-gr: :mahjong: :icecream: a A aa n-yay n-yay
+  //
+  // data = [
+  //   b"\x41".decode("utf-8"),
+  //   b"\x61".decode("utf-8"),
+  //   b"\x61\x61".decode("utf-8"),
+  //   b"\x6e\xcc\x83".decode("utf-8"),
+  //   b"\xc3\xb1".decode("utf-8"),
+  //   b"\xe2\x88\x9e".decode("utf-8"),
+  //   b"\xe2\x98\x83\xef\xb8\x8f".decode("utf-8"),
+  //   b"\xf0\x9f\x80\x84".decode("utf-8"),
+  //   b"\xf0\x9f\x87\xac\xf0\x9f\x87\xb7".decode("utf-8"),
+  //   b"\xf0\x9f\x8d\xa8".decode("utf-8")
+  // ]
+  // sorted(data)
+  // import icu
+  // coll = icu.Collator.createInstance()
+  // sorted(data, key=coll.getSortKey)
+
+  // UTF-8 String Data
+  //
+  // These strings are sorted according to raw byte comparisons
+  // without the use of ICU collation. The Python snippet above shows
+  // the difference between the two sort methods.
+  std::vector<std::string> utf8_data = {
+      "\x41",                              // "A"
+      "\x61",                              // "a"
+      "\x61\x61",                          // "aa"
+      "\x6e\xcc\x83",                      // n-plus-tilda
+      "\xc3\xb1",                          // n-with-tilda
+      "\xe2\x88\x9e",                      // :infinity:
+      "\xe2\x98\x83\xef\xb8\x8f",          // :snowman:
+      "\xf0\x9f\x80\x84",                  // :mahjong:
+      "\xf0\x9f\x87\xac\xf0\x9f\x87\xb7",  // :flag-gr:
+      "\xf0\x9f\x8d\xa8"                   // :icecream:
+  };
+
+  std::string data;
+  std::vector<uint64_t> offsets;
+  uint64_t curr_offset = 0;
+  for (auto& elem : utf8_data) {
+    data += elem;
+    offsets.push_back(curr_offset);
+    curr_offset += elem.size();
+  }
+
+  // Initialize the result tile.
+  ResultTile::TileSizes tile_sizes(
+      cells * constants::cell_var_offset_size,
+      0,
+      data.size(),
+      0,
+      std::nullopt,
+      std::nullopt);
+  ResultTile result_tile(0, 0, *array_schema);
+  result_tile.init_attr_tile(
+      constants::format_version, *array_schema, field_name, tile_sizes);
+
+  ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
+  Tile* const tile = &tile_tuple->var_tile();
+
+  REQUIRE(tile->write(data.c_str(), 0, data.size()).ok());
+
+  // Write the tile offsets.
+  Tile* const tile_offsets = &tile_tuple->fixed_tile();
+  REQUIRE(
+      tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+
+  std::vector<TestParams> tp_vec;
+  populate_utf8_string_test_params_vector(field_name, &result_tile, tp_vec);
 
   SECTION("Validate apply.") {
     for (auto& elem : tp_vec) {
@@ -4304,7 +4765,7 @@ TEST_CASE(
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
-  const Datatype type = Datatype::STRING_ASCII;
+  const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
   bool var_size = true;
   bool nullable = GENERATE(true, false);
   bool null_cmp = GENERATE(true, false);

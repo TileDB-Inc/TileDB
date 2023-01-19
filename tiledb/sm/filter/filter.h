@@ -47,6 +47,7 @@ class Buffer;
 class ConstBuffer;
 class FilterBuffer;
 class Tile;
+class WriterTile;
 
 enum class FilterOption : uint8_t;
 enum class FilterType : uint8_t;
@@ -102,7 +103,7 @@ class Filter {
    * @return
    */
   virtual Status run_forward(
-      const Tile& tile,
+      const WriterTile& tile,
       void* const support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,

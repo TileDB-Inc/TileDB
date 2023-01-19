@@ -112,9 +112,17 @@ class BountifulScheduler {
    *
    * @param num_threads
    */
-  BountifulScheduler([[maybe_unused]] size_t num_threads = 0) {
+  explicit BountifulScheduler([[maybe_unused]] size_t num_threads = 0) {
   }
 
+  ~BountifulScheduler() {
+    // Wait for all tasks to complete.
+    for (auto&& f : futures_) {
+      f.get();
+    }
+    futures_.clear();
+    nodes_.clear();
+  }
   /**
    * @brief Turn on debug mode.
    */
@@ -181,8 +189,14 @@ class BountifulScheduler {
      *
      */
     for (auto&& f : futures_) {
-      f.get();
+      try {
+        f.get();
+      } catch (const std::exception& e) {
+        std::cout << "Exception caught in sync_wait_all: " << e.what()
+                  << std::endl;
+      }
     }
+    futures_.clear();
   }
 
  private:

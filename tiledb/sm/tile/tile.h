@@ -46,35 +46,127 @@ namespace tiledb {
 namespace sm {
 
 /**
- * Handles tile information. A tile can be in main memory if it has been
- * fetched from the disk or has been mmap-ed from a file. However, a tile
- * can be solely on the disk, in which case the Tile object stores the
- * offset in the file where the tile data begin, plus the tile size.
+ * Base class for common code between Tile and WriterTile objects.
  */
-class Tile {
+class TileBase {
  public:
   /**
-   * Computes the chunk size for a tile.
+   * Constructor.
    *
-   * @param tile_size The total size of the tile.
-   * @param tile_dim_num The number of coordinate dimensions.
-   * @param tile_cell_size The cell size.
-   * @param chunk_size Mutates to the calculated chunk size.
-   * @return Status
+   * @param format_version The format version.
+   * @param type The data type.
+   * @param cell_size The cell size.
+   * @param size The size of the tile.
    */
-  static Status compute_chunk_size(
-      const uint64_t tile_size,
-      const uint32_t tile_dim_num,
-      const uint64_t tile_cell_size,
-      uint32_t* const chunk_size);
+  TileBase(
+      const format_version_t format_version,
+      const Datatype type,
+      const uint64_t cell_size,
+      const uint64_t size);
+
+  /** Move constructor. */
+  TileBase(TileBase&& tile);
+
+  /** Move-assign operator. */
+  TileBase& operator=(TileBase&& tile);
+
+  DISABLE_COPY_AND_COPY_ASSIGN(TileBase);
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /** Returns the tile data type. */
+  inline Datatype type() const {
+    return type_;
+  }
+
+  /** Gets the format version number of the data in this Tile. */
+  inline uint32_t format_version() const {
+    return format_version_;
+  }
+
+  /** Converts the data pointer to a specific type. */
+  template <class T>
+  inline T* data_as() const {
+    return static_cast<T*>(data());
+  }
+
+  /** Gets the size, considering the data as a specific type. */
+  template <class T>
+  inline size_t size_as() const {
+    return size() / sizeof(T);
+  }
+
+  /** Returns the number of cells stored in the tile. */
+  uint64_t cell_num() const {
+    return size() / cell_size_;
+  }
+
+  /** Returns the internal buffer. */
+  inline void* data() const {
+    return data_.get();
+  }
 
   /**
-   * Override max_tile_chunk_size_ used to process tile chunks in parallel.
-   *
-   * @param max_tile_chunk_size The maximum chunk size.
+   * Reads from the tile at the given offset into the input
+   * buffer of size nbytes. Does not mutate the internal offset.
+   * Thread-safe among readers.
    */
-  static void set_max_tile_chunk_size(uint64_t max_tile_chunk_size);
+  Status read(void* buffer, uint64_t offset, uint64_t nbytes) const;
 
+  /** Returns the tile size. */
+  inline uint64_t size() const {
+    return (data_ == nullptr) ? 0 : size_;
+  }
+
+  /** Returns the cell size. */
+  inline uint64_t cell_size() const {
+    return cell_size_;
+  }
+
+  /**
+   * Writes `nbytes` from `data` to the tile at `offset`.
+   *
+   * @note This function assumes that the tile buffer has already been
+   *     properly allocated. It does not alter the tile offset and size.
+   */
+  Status write(const void* data, uint64_t offset, uint64_t nbytes);
+
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(TileBase& tile);
+
+ protected:
+  /* ********************************* */
+  /*       PROTECTED ATTRIBUTES        */
+  /* ********************************* */
+
+  /**
+   * The buffer backing the tile data.
+   *
+   * TODO: Convert to regular allocations once tdb_realloc is not used for var
+   * size data anymore and remove custom deleter.
+   */
+  std::unique_ptr<char, void (*)(void*)> data_;
+
+  /** Size of the data. */
+  uint64_t size_;
+
+  /** The cell size. */
+  uint64_t cell_size_;
+
+  /** The format version of the data in this tile. */
+  format_version_t format_version_;
+
+  /** The tile data type. */
+  Datatype type_;
+};
+
+/**
+ * Tile object used for read operations.
+ */
+class Tile : public TileBase {
+ public:
   /**
    * returns a Tile initialized with parameters commonly used for
    * generic data storage.
@@ -118,32 +210,9 @@ class Tile {
   /*                API                */
   /* ********************************* */
 
-  /** Converts the data pointer to a specific type. */
-  template <class T>
-  inline T* data_as() const {
-    return static_cast<T*>(data());
-  }
-
-  /** Gets the size, considering the data as a specific type. */
-  template <class T>
-  inline size_t size_as() const {
-    return size() / sizeof(T);
-  }
-
-  /** Returns the number of cells stored in the tile. */
-  uint64_t cell_num() const;
-
-  /** Returns the internal buffer. */
-  inline void* data() const {
-    return data_.get();
-  }
-
-  /** Clears the internal buffer. */
-  void clear_data();
-
-  /** Returns the cell size. */
-  inline uint64_t cell_size() const {
-    return cell_size_;
+  /** Returns *true* if the tile stores zipped coordinates. */
+  inline bool stores_coords() const {
+    return zipped_coords_dim_num_ > 0;
   }
 
   /** Returns the number of zipped coordinates (0 if this is an attribute tile).
@@ -167,40 +236,115 @@ class Tile {
     return filtered_buffer_;
   }
 
-  /** Gets the format version number of the data in this Tile. */
-  inline uint32_t format_version() const {
-    return format_version_;
-  }
-
   /**
-   * Reads from the tile at the given offset into the input
-   * buffer of size nbytes. Does not mutate the internal offset.
-   * Thread-safe among readers.
+   * Zips the coordinate values such that a cell's coordinates across
+   * all dimensions appear contiguously in the buffer.
    */
-  Status read(void* buffer, uint64_t offset, uint64_t nbytes) const;
+  Status zip_coordinates();
 
-  /** Returns the tile size. */
-  inline uint64_t size() const {
-    return (data_ == nullptr) ? 0 : size_;
-  }
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(Tile& tile);
 
-  /** Returns *true* if the tile stores zipped coordinates. */
-  inline bool stores_coords() const {
-    return zipped_coords_dim_num_ > 0;
-  }
-
-  /** Returns the tile data type. */
-  inline Datatype type() const {
-    return type_;
-  }
+ private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
 
   /**
-   * Writes `nbytes` from `data` to the tile at `offset`.
+   * The number of dimensions, in case the tile stores zipped coordinates.
+   * It is 0 in case the tile stores attributes or other type of dimensions
+   */
+  unsigned int zipped_coords_dim_num_;
+
+  /**
+   * The buffer that contains the filtered, on-disk bytes. This buffer is
+   * exclusively used in the I/O path between the disk and the filter
+   * pipeline. Note that this buffer is _only_ accessed in the filtered()
+   * public API, all other public API routines operate on 'buffer_'.
+   */
+  FilteredBuffer filtered_buffer_;
+};
+
+/**
+ * Tile object for write operations.
+ */
+class WriterTile : public TileBase {
+ public:
+  /**
+   * returns a Tile initialized with parameters commonly used for
+   * generic data storage.
    *
-   * @note This function assumes that the tile buffer has already been
-   *     properly allocated. It does not alter the tile offset and size.
+   * @param tile_size to be provided to init_unfiltered call
    */
-  Status write(const void* data, uint64_t offset, uint64_t nbytes);
+  static WriterTile from_generic(storage_size_t tile_size);
+
+  /**
+   * Computes the chunk size for a tile.
+   *
+   * @param tile_size The total size of the tile.
+   * @param tile_cell_size The cell size.
+   * @param chunk_size Mutates to the calculated chunk size.
+   * @return Status
+   */
+  static Status compute_chunk_size(
+      const uint64_t tile_size,
+      const uint64_t tile_cell_size,
+      uint32_t* const chunk_size);
+
+  /**
+   * Override max_tile_chunk_size_ used to process tile chunks in parallel.
+   *
+   * @param max_tile_chunk_size The maximum chunk size.
+   */
+  static void set_max_tile_chunk_size(uint64_t max_tile_chunk_size);
+
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  /**
+   * Constructor.
+   *
+   * @param format_version The format version.
+   * @param type The data type.
+   * @param cell_size The cell size.
+   * @param size The size of the tile.
+   */
+  WriterTile(
+      const format_version_t format_version,
+      const Datatype type,
+      const uint64_t cell_size,
+      const uint64_t size);
+
+  /** Move constructor. */
+  WriterTile(WriterTile&& tile);
+
+  /** Move-assign operator. */
+  WriterTile& operator=(WriterTile&& tile);
+
+  DISABLE_COPY_AND_COPY_ASSIGN(WriterTile);
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /** Clears the internal buffer. */
+  void clear_data();
+
+  /**
+   * Returns the current filtered state of the tile data in the buffer. When
+   * `true`, the buffer contains the filtered, on-disk format of the tile.
+   */
+  inline bool filtered() const {
+    return filtered_buffer_.size() > 0;
+  }
+
+  /**
+   * Returns the buffer that contains the filtered, on-disk format.
+   */
+  inline FilteredBuffer& filtered_buffer() {
+    return filtered_buffer_;
+  }
 
   /**
    * Write method used for var data. Resizes the internal buffer if needed.
@@ -213,12 +357,6 @@ class Tile {
   Status write_var(const void* data, uint64_t offset, uint64_t nbytes);
 
   /**
-   * Zips the coordinate values such that a cell's coordinates across
-   * all dimensions appear contiguously in the buffer.
-   */
-  Status zip_coordinates();
-
-  /**
    * Sets the size of the tile.
    *
    * @param size The new size.
@@ -228,38 +366,12 @@ class Tile {
   }
 
   /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(Tile& tile);
+  void swap(WriterTile& tile);
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-
-  /**
-   * The buffer backing the tile data.
-   *
-   * TODO: Convert to regular allocations once tdb_realloc is not used for var
-   * size data anymore and remove custom deleter.
-   */
-  std::unique_ptr<char, void (*)(void*)> data_;
-
-  /** Size of the data. */
-  uint64_t size_;
-
-  /** The cell size. */
-  uint64_t cell_size_;
-
-  /**
-   * The number of dimensions, in case the tile stores zipped coordinates.
-   * It is 0 in case the tile stores attributes or other type of dimensions
-   */
-  unsigned int zipped_coords_dim_num_;
-
-  /** The format version of the data in this tile. */
-  format_version_t format_version_;
-
-  /** The tile data type. */
-  Datatype type_;
 
   /**
    * The buffer that contains the filtered, on-disk bytes. This buffer is

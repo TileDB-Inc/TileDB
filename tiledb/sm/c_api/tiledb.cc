@@ -62,9 +62,6 @@
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/enums/vfs_mode.h"
-#include "tiledb/sm/filesystem/vfs.h"
-#include "tiledb/sm/filesystem/vfs_file_handle.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/query/query.h"
@@ -204,20 +201,6 @@ int32_t tiledb_serialization_type_from_str(
   if (!tiledb::sm::serialization_type_enum(str, &val).ok())
     return TILEDB_ERR;
   *serialization_type = (tiledb_serialization_type_t)val;
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_mode_to_str(tiledb_vfs_mode_t vfs_mode, const char** str) {
-  const auto& strval = tiledb::sm::vfsmode_str((tiledb::sm::VFSMode)vfs_mode);
-  *str = strval.c_str();
-  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
-}
-
-int32_t tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode) {
-  tiledb::sm::VFSMode val = tiledb::sm::VFSMode::VFS_READ;
-  if (!tiledb::sm::vfsmode_enum(str, &val).ok())
-    return TILEDB_ERR;
-  *vfs_mode = (tiledb_vfs_mode_t)val;
   return TILEDB_OK;
 }
 
@@ -1156,15 +1139,12 @@ int32_t tiledb_array_schema_load(
 
     // For easy reference
     auto storage_manager{ctx->storage_manager()};
-    auto vfs = storage_manager->vfs();
-    auto tp = storage_manager->compute_tp();
 
     // Load URIs from the array directory
-    tiledb::sm::ArrayDirectory array_dir;
+    tiledb::sm::ArrayDirectory array_dir(storage_manager->resources(), uri);
     try {
       array_dir = tiledb::sm::ArrayDirectory(
-          vfs,
-          tp,
+          storage_manager->resources(),
           uri,
           0,
           UINT64_MAX,
@@ -1260,15 +1240,12 @@ int32_t tiledb_array_schema_load_with_key(
 
     // For easy reference
     auto storage_manager{ctx->storage_manager()};
-    auto vfs = storage_manager->vfs();
-    auto tp = storage_manager->compute_tp();
 
     // Load URIs from the array directory
-    tiledb::sm::ArrayDirectory array_dir;
+    tiledb::sm::ArrayDirectory array_dir(storage_manager->resources(), uri);
     try {
       array_dir = tiledb::sm::ArrayDirectory(
-          vfs,
-          tp,
+          storage_manager->resources(),
           uri,
           0,
           UINT64_MAX,
@@ -2996,46 +2973,6 @@ int32_t tiledb_array_open(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_open_at(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    uint64_t timestamp) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Open array
-  throw_if_not_ok(array->array_->open(
-      static_cast<tiledb::sm::QueryType>(query_type),
-      0,
-      timestamp,
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-      nullptr,
-      0));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_open_with_key(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Open array
-  throw_if_not_ok(array->array_->open(
-      static_cast<tiledb::sm::QueryType>(query_type),
-      static_cast<tiledb::sm::EncryptionType>(encryption_type),
-      encryption_key,
-      key_length));
-
-  return TILEDB_OK;
-}
-
 int32_t tiledb_array_open_at_with_key(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
@@ -3075,27 +3012,6 @@ int32_t tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
 
   // Reopen array
   throw_if_not_ok(array->array_->reopen());
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_reopen_at(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Reopen array
-  throw_if_not_ok(array->array_->reopen(0, timestamp_end));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_timestamp(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *timestamp = array->array_->timestamp_end_opened_at();
 
   return TILEDB_OK;
 }
@@ -3217,6 +3133,15 @@ int32_t tiledb_array_create(
       return TILEDB_ERR;
     }
 
+    // Check no dimension labels (not yet implemented in REST)
+    if constexpr (is_experimental_build) {
+      if (array_schema->array_schema_->dim_label_num() > 0) {
+        throw StatusException(
+            Status_Error("Failed to create array; remote arrays with dimension "
+                         "labels are not currently supported."));
+      }
+    }
+
     throw_if_not_ok(rest_client->post_array_schema_to_rest(
         uri, *(array_schema->array_schema_.get())));
   } else {
@@ -3229,40 +3154,27 @@ int32_t tiledb_array_create(
     // Create the array
     throw_if_not_ok(ctx->storage_manager()->array_create(
         uri, array_schema->array_schema_, key));
-  }
 
-  // Create any dimension labels in the array.
-  if constexpr (is_experimental_build) {
-    // Check no dimension labels with REST
-    if (uri.is_tiledb() && array_schema->array_schema_->dim_label_num() > 0)
-      throw StatusException(Status_Error(
-          "Failed to create array; remote arrays with dimension labels are not "
-          "currently supported."));
+    // Create any dimension labels in the array.
+    if constexpr (is_experimental_build) {
+      for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
+           ilabel < array_schema->array_schema_->dim_label_num();
+           ++ilabel) {
+        // Get dimension label information and define URI and name.
+        const auto& dim_label_ref =
+            array_schema->array_schema_->dimension_label_reference(ilabel);
+        if (dim_label_ref.is_external())
+          continue;
+        if (!dim_label_ref.has_schema()) {
+          throw StatusException(
+              Status_Error("Failed to create array. Dimension labels that are "
+                           "not external must have a schema."));
+        }
 
-    // Add dimension labels
-    for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
-         ilabel < array_schema->array_schema_->dim_label_num();
-         ++ilabel) {
-      // Get dimension label information and define URI and name.
-      const auto& dim_label_ref =
-          array_schema->array_schema_->dimension_label_reference(ilabel);
-      if (dim_label_ref.is_external())
-        continue;
-      if (!dim_label_ref.has_schema()) {
-        throw StatusException(
-            Status_Error("Failed to create array. Dimension labels that are "
-                         "not external must have a schema."));
+        // Create the dimension label array with the same key.
+        throw_if_not_ok(ctx->storage_manager()->array_create(
+            dim_label_ref.uri(uri), dim_label_ref.schema(), key));
       }
-
-      // Create key
-      tiledb::sm::EncryptionKey key;
-      throw_if_not_ok(key.set_key(
-          static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-          nullptr,
-          0));
-      // Create the array
-      throw_if_not_ok(ctx->storage_manager()->array_create(
-          dim_label_ref.uri(uri), dim_label_ref.schema(), key));
     }
   }
   return TILEDB_OK;
@@ -3310,6 +3222,15 @@ int32_t tiledb_array_create_with_key(
       return TILEDB_ERR;
     }
 
+    // Check no dimension labels (not yet implemented in REST)
+    if constexpr (is_experimental_build) {
+      if (array_schema->array_schema_->dim_label_num() > 0) {
+        throw StatusException(
+            Status_Error("Failed to create array; remote arrays with dimension "
+                         "labels are not currently supported."));
+      }
+    }
+
     throw_if_not_ok(rest_client->post_array_schema_to_rest(
         uri, *(array_schema->array_schema_.get())));
   } else {
@@ -3323,6 +3244,28 @@ int32_t tiledb_array_create_with_key(
     // Create the array
     throw_if_not_ok(ctx->storage_manager()->array_create(
         uri, array_schema->array_schema_, key));
+
+    // Create any dimension labels in the array.
+    if constexpr (is_experimental_build) {
+      for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
+           ilabel < array_schema->array_schema_->dim_label_num();
+           ++ilabel) {
+        // Get dimension label information and define URI and name.
+        const auto& dim_label_ref =
+            array_schema->array_schema_->dimension_label_reference(ilabel);
+        if (dim_label_ref.is_external())
+          continue;
+        if (!dim_label_ref.has_schema()) {
+          throw StatusException(
+              Status_Error("Failed to create array. Dimension labels that are "
+                           "not external must have a schema."));
+        }
+
+        // Create the dimension label array with the same key.
+        throw_if_not_ok(ctx->storage_manager()->array_create(
+            dim_label_ref.uri(uri), dim_label_ref.schema(), key));
+      }
+    }
   }
   return TILEDB_OK;
 }
@@ -3560,16 +3503,13 @@ int32_t tiledb_array_encryption_type(
 
   // For easy reference
   auto storage_manager = ctx->storage_manager();
-  auto vfs = storage_manager->vfs();
-  auto tp = storage_manager->compute_tp();
   auto uri = tiledb::sm::URI(array_uri);
 
   // Load URIs from the array directory
-  tiledb::sm::ArrayDirectory array_dir;
+  tiledb::sm::ArrayDirectory array_dir(storage_manager->resources(), uri);
   try {
     array_dir = tiledb::sm::ArrayDirectory(
-        vfs,
-        tp,
+        storage_manager->resources(),
         uri,
         0,
         UINT64_MAX,
@@ -3689,45 +3629,6 @@ int32_t tiledb_array_has_metadata_key(
   if (has_the_key) {
     *value_type = static_cast<tiledb_datatype_t>(type);
   }
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_consolidate_metadata(
-    tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
-  // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(ctx->storage_manager()->array_metadata_consolidate(
-      array_uri,
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-      nullptr,
-      0,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_consolidate_metadata_with_key(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    tiledb_config_t* config) {
-  // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(ctx->storage_manager()->array_metadata_consolidate(
-      array_uri,
-      static_cast<tiledb::sm::EncryptionType>(encryption_type),
-      encryption_key,
-      key_length,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
-
   return TILEDB_OK;
 }
 
@@ -3911,418 +3812,6 @@ int32_t tiledb_object_ls(
 
   if (rc == -1)
     return TILEDB_ERR;
-  return TILEDB_OK;
-}
-
-/* ****************************** */
-/*        VIRTUAL FILESYSTEM      */
-/* ****************************** */
-
-int32_t tiledb_vfs_alloc(
-    tiledb_ctx_t* ctx, tiledb_config_t* config, tiledb_vfs_t** vfs) {
-  if (config != nullptr) {
-    api::ensure_config_is_valid(config);
-  }
-  api::ensure_output_pointer_is_valid(vfs);
-
-  // Create VFS struct
-  *vfs = new (std::nothrow) tiledb_vfs_t;
-  if (*vfs == nullptr) {
-    auto st =
-        Status_Error("Failed to allocate TileDB virtual filesystem object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Create VFS object
-  auto stats = ctx->storage_manager()->stats();
-  auto compute_tp = ctx->storage_manager()->compute_tp();
-  auto io_tp = ctx->storage_manager()->io_tp();
-  auto ctx_config = ctx->storage_manager()->config();
-  if (config)
-    ctx_config.inherit(config->config());
-  (*vfs)->vfs_ =
-      new (std::nothrow) tiledb::sm::VFS(stats, compute_tp, io_tp, ctx_config);
-  if ((*vfs)->vfs_ == nullptr) {
-    auto st =
-        Status_Error("Failed to allocate TileDB virtual filesystem object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    delete *vfs;
-    *vfs = nullptr;
-    return TILEDB_OOM;
-  }
-
-  // Success
-  return TILEDB_OK;
-}
-
-void tiledb_vfs_free(tiledb_vfs_t** vfs) {
-  if (vfs != nullptr && *vfs != nullptr) {
-    delete (*vfs)->vfs_;
-    delete *vfs;
-    *vfs = nullptr;
-  }
-}
-
-int32_t tiledb_vfs_get_config(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_config_t** config) {
-  if (sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-  api::ensure_output_pointer_is_valid(config);
-  *config = tiledb_config_handle_t::make_handle(vfs->vfs_->config());
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_create_bucket(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(vfs->vfs_->create_bucket(tiledb::sm::URI(uri)));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_remove_bucket(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(vfs->vfs_->remove_bucket(tiledb::sm::URI(uri)));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_empty_bucket(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(vfs->vfs_->empty_bucket(tiledb::sm::URI(uri)));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_is_empty_bucket(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_empty) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  bool b;
-  throw_if_not_ok(vfs->vfs_->is_empty_bucket(tiledb::sm::URI(uri), &b));
-  *is_empty = (int32_t)b;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_is_bucket(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_bucket) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  bool exists;
-  throw_if_not_ok(vfs->vfs_->is_bucket(tiledb::sm::URI(uri), &exists));
-
-  *is_bucket = (int32_t)exists;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_create_dir(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(vfs->vfs_->create_dir(tiledb::sm::URI(uri)));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_is_dir(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_dir) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  bool exists;
-  throw_if_not_ok(vfs->vfs_->is_dir(tiledb::sm::URI(uri), &exists));
-  *is_dir = (int32_t)exists;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_remove_dir(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(vfs->vfs_->remove_dir(tiledb::sm::URI(uri)));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_is_file(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_file) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  bool exists;
-  throw_if_not_ok(vfs->vfs_->is_file(tiledb::sm::URI(uri), &exists));
-  *is_file = (int32_t)exists;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_remove_file(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(vfs->vfs_->remove_file(tiledb::sm::URI(uri)));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_dir_size(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, uint64_t* size) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(vfs->vfs_->dir_size(tiledb::sm::URI(uri), size));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_file_size(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, uint64_t* size) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(vfs->vfs_->file_size(tiledb::sm::URI(uri), size));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_move_file(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* old_uri,
-    const char* new_uri) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(
-      vfs->vfs_->move_file(tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri)));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_move_dir(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* old_uri,
-    const char* new_uri) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(
-      vfs->vfs_->move_dir(tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri)));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_copy_file(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* old_uri,
-    const char* new_uri) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(
-      vfs->vfs_->copy_file(tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri)));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_copy_dir(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* old_uri,
-    const char* new_uri) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(
-      vfs->vfs_->copy_dir(tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri)));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_open(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* uri,
-    tiledb_vfs_mode_t mode,
-    tiledb_vfs_fh_t** fh) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *fh = new (std::nothrow) tiledb_vfs_fh_t;
-  if (*fh == nullptr) {
-    auto st = Status_Error(
-        "Failed to create TileDB VFS file handle; Memory allocation error");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Check URI
-  auto fh_uri = tiledb::sm::URI(uri);
-  if (fh_uri.is_invalid()) {
-    auto st =
-        Status_Error("Failed to create TileDB VFS file handle; Invalid URI");
-    delete *fh;
-    *fh = nullptr;
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  auto vfs_mode = static_cast<tiledb::sm::VFSMode>(mode);
-
-  // Create VFS file handle
-  (*fh)->vfs_fh_ =
-      new (std::nothrow) tiledb::sm::VFSFileHandle(fh_uri, vfs->vfs_, vfs_mode);
-  if ((*fh)->vfs_fh_ == nullptr) {
-    auto st = Status_Error(
-        "Failed to create TileDB VFS file handle; Memory allocation error");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    delete (*fh);
-    *fh = nullptr;
-    return TILEDB_OOM;
-  }
-
-  // Open VFS file
-  if (SAVE_ERROR_CATCH(ctx, (*fh)->vfs_fh_->open())) {
-    delete (*fh)->vfs_fh_;
-    delete (*fh);
-    *fh = nullptr;
-    return TILEDB_ERR;
-  }
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(fh->vfs_fh_->close());
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_read(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_fh_t* fh,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(fh->vfs_fh_->read(offset, buffer, nbytes));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_write(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_fh_t* fh,
-    const void* buffer,
-    uint64_t nbytes) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(fh->vfs_fh_->write(buffer, nbytes));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(fh->vfs_fh_->sync());
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_ls(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* path,
-    int32_t (*callback)(const char*, void*),
-    void* data) {
-  // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-  if (callback == nullptr) {
-    auto st = Status_Error("Cannot initiate VFS ls; Invalid callback function");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Get children
-  std::vector<tiledb::sm::URI> children;
-  auto st = vfs->vfs_->ls(tiledb::sm::URI(path), &children);
-
-  if (!st.ok()) {
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Apply the callback to every child
-  int rc = 1;
-  for (const auto& uri : children) {
-    rc = callback(uri.to_string().c_str(), data);
-    if (rc != 1)
-      break;
-  }
-
-  if (rc == -1)
-    return TILEDB_ERR;
-  return TILEDB_OK;
-}
-
-void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) {
-  if (fh != nullptr && *fh != nullptr) {
-    delete (*fh)->vfs_fh_;
-    delete *fh;
-    *fh = nullptr;
-  }
-}
-
-int32_t tiledb_vfs_fh_is_closed(
-    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int32_t* is_closed) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, fh) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *is_closed = !fh->vfs_fh_->is_open();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_vfs_touch(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(vfs->vfs_->touch(tiledb::sm::URI(uri)));
-
   return TILEDB_OK;
 }
 
@@ -5382,25 +4871,6 @@ int32_t tiledb_fragment_info_load(
   return TILEDB_OK;
 }
 
-int32_t tiledb_fragment_info_load_with_key(
-    tiledb_ctx_t* ctx,
-    tiledb_fragment_info_t* fragment_info,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Load fragment info
-  throw_if_not_ok(fragment_info->fragment_info_->load(
-      static_cast<tiledb::sm::EncryptionType>(encryption_type),
-      encryption_key,
-      key_length));
-
-  return TILEDB_OK;
-}
-
 int32_t tiledb_fragment_info_get_fragment_name(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
@@ -6123,23 +5593,9 @@ int32_t tiledb_serialization_type_from_str(
       str, serialization_type);
 }
 
-int32_t tiledb_vfs_mode_to_str(
-    tiledb_vfs_mode_t vfs_mode, const char** str) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_vfs_mode_to_str>(vfs_mode, str);
-}
-
-int32_t tiledb_vfs_mode_from_str(
-    const char* str, tiledb_vfs_mode_t* vfs_mode) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_vfs_mode_from_str>(str, vfs_mode);
-}
-
 /* ****************************** */
 /*            CONSTANTS           */
 /* ****************************** */
-
-const char* tiledb_coords() noexcept {
-  return tiledb::sm::constants::coords.c_str();
-}
 
 uint32_t tiledb_var_num() noexcept {
   return tiledb::sm::constants::var_num;
@@ -7491,26 +6947,6 @@ int32_t tiledb_array_open(
   return api_entry<tiledb::api::tiledb_array_open>(ctx, array, query_type);
 }
 
-int32_t tiledb_array_open_at(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    uint64_t timestamp) noexcept {
-  return api_entry<tiledb::api::tiledb_array_open_at>(
-      ctx, array, query_type, timestamp);
-}
-
-int32_t tiledb_array_open_with_key(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) noexcept {
-  return api_entry<tiledb::api::tiledb_array_open_with_key>(
-      ctx, array, query_type, encryption_type, encryption_key, key_length);
-}
-
 int32_t tiledb_array_open_at_with_key(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
@@ -7536,18 +6972,6 @@ int32_t tiledb_array_is_open(
 
 int32_t tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) noexcept {
   return api_entry<tiledb::api::tiledb_array_reopen>(ctx, array);
-}
-
-int32_t tiledb_array_reopen_at(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end) noexcept {
-  return api_entry<tiledb::api::tiledb_array_reopen_at>(
-      ctx, array, timestamp_end);
-}
-
-int32_t tiledb_array_get_timestamp(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp) noexcept {
-  return api_entry<tiledb::api::tiledb_array_get_timestamp>(
-      ctx, array, timestamp);
 }
 
 int32_t tiledb_array_set_config(
@@ -7793,25 +7217,6 @@ int32_t tiledb_array_has_metadata_key(
       ctx, array, key, value_type, has_key);
 }
 
-int32_t tiledb_array_consolidate_metadata(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_config_t* config) noexcept {
-  return api_entry<tiledb::api::tiledb_array_consolidate_metadata>(
-      ctx, array_uri, config);
-}
-
-int32_t tiledb_array_consolidate_metadata_with_key(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    tiledb_config_t* config) noexcept {
-  return api_entry<tiledb::api::tiledb_array_consolidate_metadata_with_key>(
-      ctx, array_uri, encryption_type, encryption_key, key_length, config);
-}
-
 int32_t tiledb_array_evolve(
     tiledb_ctx_t* ctx,
     const char* array_uri,
@@ -7862,197 +7267,6 @@ int32_t tiledb_object_ls(
     int32_t (*callback)(const char*, tiledb_object_t, void*),
     void* data) noexcept {
   return api_entry<tiledb::api::tiledb_object_ls>(ctx, path, callback, data);
-}
-
-/* ****************************** */
-/*        VIRTUAL FILESYSTEM      */
-/* ****************************** */
-
-int32_t tiledb_vfs_alloc(
-    tiledb_ctx_t* ctx, tiledb_config_t* config, tiledb_vfs_t** vfs) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_alloc>(ctx, config, vfs);
-}
-
-void tiledb_vfs_free(tiledb_vfs_t** vfs) noexcept {
-  return api_entry_void<tiledb::api::tiledb_vfs_free>(vfs);
-}
-
-int32_t tiledb_vfs_get_config(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_config_t** config) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_get_config>(ctx, vfs, config);
-}
-
-int32_t tiledb_vfs_create_bucket(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_create_bucket>(ctx, vfs, uri);
-}
-
-int32_t tiledb_vfs_remove_bucket(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_remove_bucket>(ctx, vfs, uri);
-}
-
-int32_t tiledb_vfs_empty_bucket(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_empty_bucket>(ctx, vfs, uri);
-}
-
-int32_t tiledb_vfs_is_empty_bucket(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* uri,
-    int32_t* is_empty) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_is_empty_bucket>(
-      ctx, vfs, uri, is_empty);
-}
-
-int32_t tiledb_vfs_is_bucket(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* uri,
-    int32_t* is_bucket) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_is_bucket>(ctx, vfs, uri, is_bucket);
-}
-
-int32_t tiledb_vfs_create_dir(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_create_dir>(ctx, vfs, uri);
-}
-
-int32_t tiledb_vfs_is_dir(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* uri,
-    int32_t* is_dir) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_is_dir>(ctx, vfs, uri, is_dir);
-}
-
-int32_t tiledb_vfs_remove_dir(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_remove_dir>(ctx, vfs, uri);
-}
-
-int32_t tiledb_vfs_is_file(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* uri,
-    int32_t* is_file) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_is_file>(ctx, vfs, uri, is_file);
-}
-
-int32_t tiledb_vfs_remove_file(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_remove_file>(ctx, vfs, uri);
-}
-
-int32_t tiledb_vfs_dir_size(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* uri,
-    uint64_t* size) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_dir_size>(ctx, vfs, uri, size);
-}
-
-int32_t tiledb_vfs_file_size(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* uri,
-    uint64_t* size) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_file_size>(ctx, vfs, uri, size);
-}
-
-int32_t tiledb_vfs_move_file(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* old_uri,
-    const char* new_uri) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_move_file>(
-      ctx, vfs, old_uri, new_uri);
-}
-
-int32_t tiledb_vfs_move_dir(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* old_uri,
-    const char* new_uri) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_move_dir>(
-      ctx, vfs, old_uri, new_uri);
-}
-
-int32_t tiledb_vfs_copy_file(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* old_uri,
-    const char* new_uri) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_copy_file>(
-      ctx, vfs, old_uri, new_uri);
-}
-
-int32_t tiledb_vfs_copy_dir(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* old_uri,
-    const char* new_uri) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_copy_dir>(
-      ctx, vfs, old_uri, new_uri);
-}
-
-int32_t tiledb_vfs_open(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* uri,
-    tiledb_vfs_mode_t mode,
-    tiledb_vfs_fh_t** fh) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_open>(ctx, vfs, uri, mode, fh);
-}
-
-int32_t tiledb_vfs_close(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_close>(ctx, fh);
-}
-
-int32_t tiledb_vfs_read(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_fh_t* fh,
-    uint64_t offset,
-    void* buffer,
-    uint64_t nbytes) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_read>(
-      ctx, fh, offset, buffer, nbytes);
-}
-
-int32_t tiledb_vfs_write(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_fh_t* fh,
-    const void* buffer,
-    uint64_t nbytes) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_write>(ctx, fh, buffer, nbytes);
-}
-
-int32_t tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_sync>(ctx, fh);
-}
-
-int32_t tiledb_vfs_ls(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* path,
-    int32_t (*callback)(const char*, void*),
-    void* data) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_ls>(ctx, vfs, path, callback, data);
-}
-
-void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) noexcept {
-  return api_entry_void<tiledb::api::tiledb_vfs_fh_free>(fh);
-}
-
-int32_t tiledb_vfs_fh_is_closed(
-    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int32_t* is_closed) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_fh_is_closed>(ctx, fh, is_closed);
-}
-
-int32_t tiledb_vfs_touch(
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) noexcept {
-  return api_entry<tiledb::api::tiledb_vfs_touch>(ctx, vfs, uri);
 }
 
 /* ****************************** */
@@ -8439,16 +7653,6 @@ int32_t tiledb_fragment_info_get_config(
 int32_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info) noexcept {
   return api_entry<tiledb::api::tiledb_fragment_info_load>(ctx, fragment_info);
-}
-
-int32_t tiledb_fragment_info_load_with_key(
-    tiledb_ctx_t* ctx,
-    tiledb_fragment_info_t* fragment_info,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) noexcept {
-  return api_entry<tiledb::api::tiledb_fragment_info_load_with_key>(
-      ctx, fragment_info, encryption_type, encryption_key, key_length);
 }
 
 int32_t tiledb_fragment_info_get_fragment_name(

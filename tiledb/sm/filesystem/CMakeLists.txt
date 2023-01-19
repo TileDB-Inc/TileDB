@@ -32,7 +32,7 @@ include(object_library)
 #
 commence(object_library vfs)
     this_target_sources(
-        vfs.cc mem_filesystem.cc path_win.cc posix.cc win.cc uri.cc)
+        vfs.cc vfs_file_handle.cc mem_filesystem.cc path_win.cc posix.cc win.cc uri.cc)
     this_target_object_libraries(
         baseline buffer cancelable_tasks config math stats stringx thread_pool)
     if(WIN32)

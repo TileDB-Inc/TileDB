@@ -84,7 +84,10 @@ enum class WebpInputFormat : uint8_t;
  *
  * This filter expects the array to provide two dimensions for Y, X pixel
  * position. Dimensions may be defined with any name, but Y, X should be at
- * dimension index 0, 1 respectively.
+ * dimension index 0, 1 respectively. Dimension data types must use matching
+ * integral types.
+ *
+ * The WebP filter supports attribute data types of uint8 only.
  */
 class WebpFilter : public Filter {
  public:
@@ -154,7 +157,7 @@ class WebpFilter : public Filter {
    * @return Status::Ok() on success. Throws on failure.
    */
   Status run_forward(
-      const Tile& tile,
+      const WriterTile& tile,
       void* const support_data,
       FilterBuffer* input_metadata,
       FilterBuffer* input,

@@ -454,27 +454,29 @@ class Dimension {
    * Computes the minimum bounding range of the values stored in
    * `tile`. Applicable only to fixed-size dimensions.
    */
-  Range compute_mbr(const Tile& tile) const;
+  Range compute_mbr(const WriterTile& tile) const;
 
   /**
    * Computed the minimum bounding range of the values stored in
    * `tile`.
    */
   template <class T>
-  static Range compute_mbr(const Tile& tile);
+  static Range compute_mbr(const WriterTile& tile);
 
   /**
    * Computes the minimum bounding range of the values stored in
    * `tile_val`. Applicable only to var-sized dimensions.
    */
-  Range compute_mbr_var(const Tile& tile_off, const Tile& tile_val) const;
+  Range compute_mbr_var(
+      const WriterTile& tile_off, const WriterTile& tile_val) const;
 
   /**
    * Computes the minimum bounding range of the values stored in
    * `tile_val`. Applicable only to var-sized dimensions.
    */
   template <class T>
-  static Range compute_mbr_var(const Tile& tile_off, const Tile& tile_val);
+  static Range compute_mbr_var(
+      const WriterTile& tile_off, const WriterTile& tile_val);
 
   /**
    * Crops the input 1D range such that it does not exceed the
@@ -797,13 +799,14 @@ class Dimension {
    * Stores the appropriate templated compute_mbr() function based on the
    * dimension datatype.
    */
-  std::function<Range(const Tile&)> compute_mbr_func_;
+  std::function<Range(const WriterTile&)> compute_mbr_func_;
 
   /**
    * Stores the appropriate templated compute_mbr_var() function based on the
    * dimension datatype.
    */
-  std::function<Range(const Tile&, const Tile&)> compute_mbr_var_func_;
+  std::function<Range(const WriterTile&, const WriterTile&)>
+      compute_mbr_var_func_;
 
   /**
    * Stores the appropriate templated crop_range() function based on the
