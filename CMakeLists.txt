@@ -103,6 +103,20 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 # Build options
 ############################################################
 
+if (SANITIZER)
+  if (NOT CMAKE_BUILD_TYPE MATCHES "Debug")
+    message(FATAL_ERROR "Sanitizers only enabled for Debug build")
+  endif()
+  string(TOLOWER ${SANITIZER} SANITIZER)
+  if (NOT SANITIZER MATCHES "^(address|memory|leak|thread|undefined)$")
+    message(FATAL_ERROR "Unknown clang sanitizer: ${SANITIZER})")
+  else()
+    message(STATUS "The TileDB library is compiled with sanitizer ${SANITIZER} enabled")
+  endif()
+  add_compile_options(-g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=${SANITIZER})
+  add_link_options(-fsanitize=${SANITIZER})
+endif()
+
 # Note: when adding options, make sure to forward them via INHERITED_CMAKE_ARGS
 # in TileDB-Superbuild.cmake.
 
