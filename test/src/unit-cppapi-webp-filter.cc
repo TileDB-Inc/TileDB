@@ -228,7 +228,7 @@ template <>
 using DimensionTypesSmall = std::tuple<int8_t, int16_t, uint8_t, uint16_t>;
 TEMPLATE_LIST_TEST_CASE(
     "C++ API: WEBP Filter small dims",
-    "[cppapi][filter][webp][.xfail]",
+    "[cppapi][filter][webp]",
     DimensionTypesSmall) {
   if constexpr (webp_filter_exists) {
     Context ctx;
@@ -358,16 +358,24 @@ TEMPLATE_LIST_TEST_CASE(
     auto invalid_attr = Attribute::create<TestType>(ctx, "rgb");
     invalid_attr.set_filter_list(filterList);
 
-    // WebP filter requires at least 2 dimensions.
+    // WebP filter requires exactly 2 dimensions for X, Y.
     {
       Domain invalid_domain(ctx);
       invalid_domain.add_dimension(
           Dimension::create<uint64_t>(ctx, "y", {{1, 100}}, 90));
 
+      // Test with < 2 dimensions.
       ArraySchema invalid_schema(ctx, TILEDB_DENSE);
       invalid_schema.set_domain(invalid_domain);
       invalid_schema.add_attribute(valid_attr);
+      REQUIRE_THROWS_AS(
+          Array::create(webp_array_name, invalid_schema), tiledb::TileDBError);
 
+      // Test with > 2 dimensions.
+      invalid_domain.template add_dimensions(
+          Dimension::create<uint64_t>(ctx, "x", {{1, 100}}, 90),
+          Dimension::create<uint64_t>(ctx, "z", {{1, 100}}, 90));
+      invalid_schema.set_domain(invalid_domain);
       REQUIRE_THROWS_AS(
           Array::create(webp_array_name, invalid_schema), tiledb::TileDBError);
     }

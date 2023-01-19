@@ -374,10 +374,9 @@ void ArraySchema::check_webp_filter() const {
           "WebP filter can only be applied to dense arrays");
     }
 
-    // WebP filter requires at least 2 dimensions for Y, X.
-    if (dim_map_.size() < 2) {
+    if (dim_map_.size() != 2) {
       throw ArraySchemaStatusException(
-          "WebP filter requires at least 2 dimensions");
+          "WebP filter requires exactly 2 dimensions Y, X.");
     }
     auto y_dim = dimension_ptr(0);
     auto x_dim = dimension_ptr(1);
