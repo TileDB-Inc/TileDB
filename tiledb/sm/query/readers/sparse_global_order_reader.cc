@@ -1827,17 +1827,17 @@ uint64_t SparseGlobalOrderReader<BitmapType>::compute_var_size_offsets(
     cell_offsets[result_cell_slabs.size()] = total_cells;
     last_rcs.length_ = total_cells - cell_offsets[result_cell_slabs.size() - 1];
 
-    // Remove empty cell slab.
-    if (last_rcs.length_ == 0) {
-      result_cell_slabs.pop_back();
-    }
-
     // Update the buffer size.
     new_var_buffer_size = ((OffType*)query_buffer.buffer_)[total_cells];
 
     // Update the cell progress.
     read_state_.frag_idx_[last_rcs.tile_->frag_idx()] =
         FragIdx(last_rcs.tile_->tile_idx(), last_rcs.start_ + last_rcs.length_);
+
+    // Remove empty cell slab.
+    if (last_rcs.length_ == 0) {
+      result_cell_slabs.pop_back();
+    }
   }
 
   return new_var_buffer_size;
