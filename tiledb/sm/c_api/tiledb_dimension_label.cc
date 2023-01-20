@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/c_api/experimental/tiledb_dimension_label.cc
+ * @file tiledb/sm/c_api/tiledb_dimension_label.cc
  *
  * @section LICENSE
  *
@@ -26,21 +26,18 @@
  * THE SOFTWARE.
  */
 
-#include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
+#include "tiledb/sm/c_api/tiledb_dimension_label.h"
+#include "tiledb/api/c_api/dimension_label/dimension_label_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_experimental.h"
-#include "tiledb/sm/group/group_v1.h"
-#include "tiledb/sm/rest/rest_client.h"
 
 using namespace tiledb::common;
 
 namespace tiledb::common::detail {
 
-int32_t tiledb_array_schema_add_dimension_label(
+capi_return_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const uint32_t dim_index,
@@ -58,7 +55,22 @@ int32_t tiledb_array_schema_add_dimension_label(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_schema_has_dimension_label(
+capi_return_t tiledb_array_schema_get_dimension_label_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* label_name,
+    tiledb_dimension_label_t** dim_label) {
+  if (sanity_check(ctx, array_schema)) {
+    return TILEDB_ERR;
+  }
+  tiledb::api::ensure_output_pointer_is_valid(dim_label);
+  *dim_label = tiledb_dimension_label_t::make_handle(
+      array_schema->array_schema_->array_uri(),
+      array_schema->array_schema_->dimension_label_reference(label_name));
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_array_schema_has_dimension_label(
     const tiledb_array_schema_t* array_schema,
     const char* name,
     int32_t* has_dim_label) {
@@ -67,7 +79,7 @@ int32_t tiledb_array_schema_has_dimension_label(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_schema_set_dimension_label_filter_list(
+capi_return_t tiledb_array_schema_set_dimension_label_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* label_name,
@@ -81,7 +93,7 @@ int32_t tiledb_array_schema_set_dimension_label_filter_list(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_schema_set_dimension_label_tile_extent(
+capi_return_t tiledb_array_schema_set_dimension_label_tile_extent(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* label_name,
@@ -95,7 +107,7 @@ int32_t tiledb_array_schema_set_dimension_label_tile_extent(
   return TILEDB_OK;
 }
 
-int32_t tiledb_subarray_add_label_range(
+capi_return_t tiledb_subarray_add_label_range(
     tiledb_subarray_t* subarray,
     const char* label_name,
     const void* start,
@@ -105,7 +117,7 @@ int32_t tiledb_subarray_add_label_range(
   return TILEDB_OK;
 }
 
-int32_t tiledb_subarray_add_label_range_var(
+capi_return_t tiledb_subarray_add_label_range_var(
     tiledb_subarray_t* subarray,
     const char* label_name,
     const void* start,
@@ -117,7 +129,7 @@ int32_t tiledb_subarray_add_label_range_var(
   return TILEDB_OK;
 }
 
-int32_t tiledb_subarray_get_label_range(
+capi_return_t tiledb_subarray_get_label_range(
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
@@ -128,7 +140,7 @@ int32_t tiledb_subarray_get_label_range(
   return TILEDB_OK;
 }
 
-int32_t tiledb_subarray_get_label_range_num(
+capi_return_t tiledb_subarray_get_label_range_num(
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t* range_num) {
@@ -136,7 +148,7 @@ int32_t tiledb_subarray_get_label_range_num(
   return TILEDB_OK;
 }
 
-int32_t tiledb_subarray_get_label_range_var(
+capi_return_t tiledb_subarray_get_label_range_var(
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
@@ -146,7 +158,7 @@ int32_t tiledb_subarray_get_label_range_var(
   return TILEDB_OK;
 }
 
-int32_t tiledb_subarray_get_label_range_var_size(
+capi_return_t tiledb_subarray_get_label_range_var_size(
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
@@ -165,7 +177,7 @@ using tiledb::api::api_entry_with_context;
 template <auto f>
 constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
 
-int32_t tiledb_array_schema_add_dimension_label(
+capi_return_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const uint32_t dim_index,
@@ -176,7 +188,17 @@ int32_t tiledb_array_schema_add_dimension_label(
       ctx, array_schema, dim_index, name, label_order, label_type);
 }
 
-int32_t tiledb_array_schema_has_dimension_label(
+capi_return_t tiledb_array_schema_get_dimension_label_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* label_name,
+    tiledb_dimension_label_t** dim_label) noexcept {
+  return api_entry_with_context<
+      detail::tiledb_array_schema_get_dimension_label_from_name>(
+      ctx, array_schema, label_name, dim_label);
+}
+
+capi_return_t tiledb_array_schema_has_dimension_label(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     const char* name,
@@ -185,7 +207,7 @@ int32_t tiledb_array_schema_has_dimension_label(
       ctx, array_schema, name, has_dim_label);
 }
 
-int32_t tiledb_array_schema_set_dimension_label_filter_list(
+capi_return_t tiledb_array_schema_set_dimension_label_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* label_name,
@@ -194,7 +216,7 @@ int32_t tiledb_array_schema_set_dimension_label_filter_list(
       ctx, array_schema, label_name, filter_list);
 }
 
-int32_t tiledb_array_schema_set_dimension_label_tile_extent(
+capi_return_t tiledb_array_schema_set_dimension_label_tile_extent(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* label_name,
@@ -204,7 +226,7 @@ int32_t tiledb_array_schema_set_dimension_label_tile_extent(
       ctx, array_schema, label_name, type, tile_extent);
 }
 
-int32_t tiledb_subarray_add_label_range(
+capi_return_t tiledb_subarray_add_label_range(
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
     const char* label_name,
@@ -215,7 +237,7 @@ int32_t tiledb_subarray_add_label_range(
       ctx, subarray, label_name, start, end, stride);
 }
 
-int32_t tiledb_subarray_add_label_range_var(
+capi_return_t tiledb_subarray_add_label_range_var(
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
     const char* label_name,
@@ -227,7 +249,7 @@ int32_t tiledb_subarray_add_label_range_var(
       ctx, subarray, label_name, start, start_size, end, end_size);
 }
 
-int32_t tiledb_subarray_get_label_range(
+capi_return_t tiledb_subarray_get_label_range(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
@@ -239,7 +261,7 @@ int32_t tiledb_subarray_get_label_range(
       ctx, subarray, dim_name, range_idx, start, end, stride);
 }
 
-int32_t tiledb_subarray_get_label_range_num(
+capi_return_t tiledb_subarray_get_label_range_num(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
@@ -248,7 +270,7 @@ int32_t tiledb_subarray_get_label_range_num(
       ctx, subarray, dim_name, range_num);
 }
 
-int32_t tiledb_subarray_get_label_range_var(
+capi_return_t tiledb_subarray_get_label_range_var(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
@@ -259,7 +281,7 @@ int32_t tiledb_subarray_get_label_range_var(
       ctx, subarray, dim_name, range_idx, start, end);
 }
 
-int32_t tiledb_subarray_get_label_range_var_size(
+capi_return_t tiledb_subarray_get_label_range_var_size(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,

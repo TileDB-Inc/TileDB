@@ -33,9 +33,8 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
-#include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/c_api/tiledb_dimension_label.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -91,6 +90,30 @@ TEST_CASE_METHOD(
   auto dim_label_num = array_schema->array_schema_->dim_label_num();
   REQUIRE(dim_label_num == 1);
 
+  // Check the dimension label properies.
+  tiledb_dimension_label_t* dim_label;
+  require_tiledb_ok(tiledb_array_schema_get_dimension_label_from_name(
+      ctx, array_schema, "label", &dim_label));
+  uint32_t label_cell_val_num;
+  check_tiledb_ok(tiledb_dimension_label_get_label_cell_val_num(
+      ctx, dim_label, &label_cell_val_num));
+  tiledb_datatype_t label_type_;
+  check_tiledb_ok(
+      tiledb_dimension_label_get_label_type(ctx, dim_label, &label_type_));
+  if (label_type == TILEDB_FLOAT64) {
+    CHECK(label_cell_val_num == 1);
+    CHECK(label_type_ == TILEDB_FLOAT64);
+  } else {
+    CHECK(label_cell_val_num == tiledb::sm::constants::var_num);
+    CHECK(label_type_ == TILEDB_STRING_ASCII);
+  }
+  const char* dim_label_uri;
+  check_tiledb_ok(
+      tiledb_dimension_label_get_uri(ctx, dim_label, &dim_label_uri));
+  std::string expected_dim_label_uri{"__labels/l0"};
+  CHECK(dim_label_uri == expected_dim_label_uri);
+  tiledb_dimension_label_free(&dim_label);
+
   // Create array.
   auto array_name =
       create_temporary_array("simple_array_with_label", array_schema);
@@ -102,19 +125,13 @@ TEST_CASE_METHOD(
       tiledb_array_schema_load(ctx, array_name.c_str(), &loaded_array_schema));
 
   // Check the array schema has the expected dimension label.
+  auto loaded_dim_label_num =
+      loaded_array_schema->array_schema_->dim_label_num();
+  CHECK(loaded_dim_label_num == 1);
   int32_t has_label;
   check_tiledb_ok(tiledb_array_schema_has_dimension_label(
       ctx, loaded_array_schema, "label", &has_label));
   CHECK(has_label == 1);
-
-  // Check the expected number of attributes, dimenions and labels.
-  auto nattr = loaded_array_schema->array_schema_->attribute_num();
-  CHECK(nattr == 1);
-  auto ndim = loaded_array_schema->array_schema_->domain().dim_num();
-  CHECK(ndim == 2);
-  auto loaded_dim_label_num =
-      loaded_array_schema->array_schema_->dim_label_num();
-  CHECK(loaded_dim_label_num == 1);
 
   // Free remaining resources
   tiledb_array_schema_free(&loaded_array_schema);
@@ -178,16 +195,20 @@ TEST_CASE_METHOD(
   URI array_uri{array_name};
   tiledb_array_schema_free(&array_schema);
 
-  // Get the schema for array containing the dimension label.
+  // Get the schema for dimension label array.
   tiledb_array_schema_t* loaded_array_schema{nullptr};
   require_tiledb_ok(
       tiledb_array_schema_load(ctx, array_uri.c_str(), &loaded_array_schema));
-  auto dim_label_ref =
-      loaded_array_schema->array_schema_->dimension_label_reference("label");
-  auto dim_label_uri = dim_label_ref.uri(array_uri);
+  tiledb_dimension_label_t* loaded_dim_label{nullptr};
+  require_tiledb_ok(tiledb_array_schema_get_dimension_label_from_name(
+      ctx, loaded_array_schema, "label", &loaded_dim_label));
+  const char* dim_label_uri;
+  require_tiledb_ok(
+      tiledb_dimension_label_get_uri(ctx, loaded_dim_label, &dim_label_uri));
   tiledb_array_schema_t* loaded_dim_label_array_schema{nullptr};
   require_tiledb_ok(tiledb_array_schema_load(
-      ctx, dim_label_uri.c_str(), &loaded_dim_label_array_schema));
+      ctx, dim_label_uri, &loaded_dim_label_array_schema));
+  tiledb_dimension_label_free(&loaded_dim_label);
   tiledb_array_schema_free(&loaded_array_schema);
 
   // Check the filter on the label attribute.
@@ -274,14 +295,17 @@ TEST_CASE_METHOD(
   tiledb_array_schema_t* loaded_array_schema{nullptr};
   require_tiledb_ok(
       tiledb_array_schema_load(ctx, array_uri.c_str(), &loaded_array_schema));
-  auto dim_label_ref =
-      loaded_array_schema->array_schema_->dimension_label_reference("label");
-  auto dim_label_uri = dim_label_ref.uri(array_uri);
+  tiledb_dimension_label_t* loaded_dim_label{nullptr};
+  require_tiledb_ok(tiledb_array_schema_get_dimension_label_from_name(
+      ctx, loaded_array_schema, "label", &loaded_dim_label));
+  const char* dim_label_uri;
+  require_tiledb_ok(
+      tiledb_dimension_label_get_uri(ctx, loaded_dim_label, &dim_label_uri));
 
   // Open the dimension label array schema and check the tile extent.
   tiledb_array_schema_t* loaded_dim_label_array_schema{nullptr};
   require_tiledb_ok(tiledb_array_schema_load(
-      ctx, dim_label_uri.c_str(), &loaded_dim_label_array_schema));
+      ctx, dim_label_uri, &loaded_dim_label_array_schema));
   uint64_t loaded_tile_extent{
       loaded_dim_label_array_schema->array_schema_->dimension_ptr(0)
           ->tile_extent()
@@ -289,6 +313,7 @@ TEST_CASE_METHOD(
   REQUIRE(tile_extent == loaded_tile_extent);
 
   // Free remaining resources
-  tiledb_array_schema_free(&loaded_array_schema);
   tiledb_array_schema_free(&loaded_dim_label_array_schema);
+  tiledb_dimension_label_free(&loaded_dim_label);
+  tiledb_array_schema_free(&loaded_array_schema);
 }

@@ -78,7 +78,7 @@ endif()
 
 if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_PUBLIC_HEADERS
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/experimental/tiledb_dimension_label.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_dimension_label.h
   )
 endif()
 
@@ -289,7 +289,7 @@ list(APPEND TILEDB_CORE_SOURCES ${TILEDB_API_SOURCES})
 
 if (TILEDB_EXPERIMENTAL_FEATURES)
   list(APPEND TILEDB_CORE_SOURCES
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/experimental/tiledb_dimension_label.cc)
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_dimension_label.cc)
 endif()
 
 
