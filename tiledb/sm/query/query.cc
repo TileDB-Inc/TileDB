@@ -495,8 +495,8 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
     return true;
   }
   uint64_t cell_num_per_tile = array_schema_->dense() ?
-                                   array_schema_->domain().cell_num_per_tile() :
-                                   array_schema_->capacity();
+                               array_schema_->domain().cell_num_per_tile() :
+                               array_schema_->capacity();
 
   if (query_remote_buffer_storage_.empty()) {
     for (const auto& buff : buffers_) {
@@ -510,14 +510,17 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
       query_remote_buffer_storage_[buff.first].buffer = {
           cell_num_per_tile * cell_size * 2};
       query_remote_buffer_storage_[buff.first].buffer.set_size(0);
+      query_remote_buffer_storage_[buff.first].cell_size = cell_size;
 
       if (is_var) {
         // TODO
         Buffer var_buffer(nullptr, 0);
       }
       if (is_nullable) {
-        // TODO
-        Buffer validity_buffer(nullptr, 0);
+        query_remote_buffer_storage_[buff.first].buffer_validity =
+            { cell_num_per_tile * 2 };
+        // TODO: Add this to preallocated buffer ctor
+        query_remote_buffer_storage_[buff.first].buffer_validity.set_size(0);
       }
     }
   }
@@ -542,16 +545,26 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
       // Shift cached data to overwrite already submitted data.
       throw_if_not_ok(cache.buffer.write(
           cache.buffer.data(cache.byte_offset), 0, prev_size));
-      // Any cached data after this position will be held for next submits.
-      cache.byte_offset = prev_size;
-      cache.submit = false;
       // Begin subsequent cache writes at this position.
       cache.buffer.set_offset(prev_size);
       cache.buffer.set_size(prev_size);
+
+      if (is_nullable) {
+        throw_if_not_ok(cache.buffer_validity.write(
+            cache.buffer_validity.data(cache.byte_offset / cell_size),
+            0,
+            prev_size / cell_size));
+        cache.buffer_validity.set_offset(prev_size / cell_size);
+        cache.buffer_validity.set_size(prev_size / cell_size);
+      }
+
+      // Any cached data after this position will be held for next submits.
+      cache.byte_offset = prev_size;
+      cache.submit = false;
     } else {
       // Cells cached since our last submit.
       // If this ever reaches the size of a tile, adjust byte_offset and submit.
-      latest_cached_cells = cache.buffer.size() - cache.byte_offset / cell_size;
+      latest_cached_cells = (cache.buffer.size() - cache.byte_offset) / cell_size;
     }
 
     uint64_t buffer_cells = buffer_size / cell_size;
@@ -616,16 +629,11 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
     }
 
     if (is_nullable) {
-      uint64_t validity_buffer_size =
-          *buff.second.validity_vector_.buffer_size();
-
       // Write the validity buffers into cache.
-      throw_if_not_ok(cache.buffer_validity.realloc(
-          cache.buffer_validity.size() +
-          (validity_buffer_size - tile_trim_cells)));
       throw_if_not_ok(cache.buffer_validity.write(
-          buff.second.validity_vector_.buffer(),
-          validity_buffer_size - tile_trim_cells));
+          buff.second.validity_vector_.buffer() +
+              *buff.second.validity_vector_.buffer_size() - tile_trim_cells,
+          tile_trim_cells));
       *buff.second.validity_vector_.buffer_size() -= tile_trim_cells;
     }
 
@@ -685,10 +693,11 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
           }
 
           if (is_nullable) {
-            cache.buffer_validity.set_size(
-                cache.buffer_validity.size() - overflow_cells);
-            *buff.second.validity_vector_.buffer_size() -= std::min(
-                *buff.second.validity_vector_.buffer_size(), overflow_cells);
+            uint64_t validity_buffer_size =
+                *buff.second.validity_vector_.buffer_size();
+            *buff.second.validity_vector_.buffer_size() -=
+                std::min(validity_buffer_size, overflow_cells);
+            // We have already adjusted byte_offset in the checks above.
           }
         }
       }

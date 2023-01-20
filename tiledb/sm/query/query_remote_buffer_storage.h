@@ -49,6 +49,9 @@ struct QueryRemoteBufferStorage {
   Buffer buffer_var;
   Buffer buffer_validity;
 
+  // Size of a single cell stored in fixed buffer.
+  int8_t cell_size;
+
   // Offset position to use for submission. Data after this offset will be held.
   uint64_t byte_offset;
 

@@ -1330,11 +1330,11 @@ Status query_to_capnp(
     }
 
     if (buff.validity_vector_.buffer_size() != nullptr) {
-      uint64_t buff_size = buff_cache.buffer_validity.size();
+      uint64_t buff_size = *buff.validity_vector_.buffer_size();
+      // Avoid division by 0 if buff_cache is not in use.
+      buff_size += remote_global_order_write ?
+          buff_cache.byte_offset / buff_cache.cell_size : 0;
 
-      if (!remote_global_order_write) {
-        buff_size += *buff.validity_vector_.buffer_size();
-      }
       total_validity_len_bytes += buff_size;
       attr_buffer_builder.setValidityLenBufferSizeInBytes(buff_size);
 
@@ -2187,10 +2187,11 @@ Status query_serialize(
               const uint64_t query_buf_size = *query_buffer.buffer_size_;
               const uint64_t cache_buf_size = query_buffer_cache.byte_offset;
 
-              // Append user data to trimmed cache data.
               Buffer data;
               throw_if_not_ok(
                   data.write(query_buffer_cache.buffer.data(), cache_buf_size));
+
+              // Append user data to trimmed cache data.
               throw_if_not_ok(data.write(query_buffer.buffer_, query_buf_size));
               query->set_remote_buffer_cache_submit(name, true);
               RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
@@ -2200,13 +2201,18 @@ Status query_serialize(
             }
 
             if (query_buffer.validity_vector_.buffer_size() != nullptr) {
-              Buffer data(query_buffer_cache.buffer_validity);
+              uint64_t cached_cells = remote_global_order_write ?
+                                          query_buffer_cache.byte_offset /
+                                              query_buffer_cache.cell_size :
+                                          0;
+              Buffer data;
+              throw_if_not_ok(data.write(
+                  query_buffer_cache.buffer_validity.data(), cached_cells));
 
-              if (!remote_global_order_write) {
-                throw_if_not_ok(data.write(
-                    query_buffer.validity_vector_.buffer(),
-                    *query_buffer.validity_vector_.buffer_size()));
-              }
+              // Append user data to trimmed cache data.
+              throw_if_not_ok(data.write(
+                  query_buffer.validity_vector_.buffer(),
+                  *query_buffer.validity_vector_.buffer_size()));
               RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
             }
           }

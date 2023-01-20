@@ -242,6 +242,12 @@ struct RemoteGlobalOrderWriteFx {
     if (is_sparse) {
       cols_wrote_.resize(total_cell_count_);
     }
+    if (is_nullable_) {
+      data_validity_wrote_.resize(total_cell_count_);
+      if (is_var_) {
+        var_validity_wrote_.resize(total_cell_count_);
+      }
+    }
   }
 
   void read_array() {
