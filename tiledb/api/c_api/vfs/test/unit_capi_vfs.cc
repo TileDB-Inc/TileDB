@@ -25,7 +25,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @section DESCRIPTION
+ * Validates the arguments for the VFS C API.
  */
 
 #define CATCH_CONFIG_MAIN

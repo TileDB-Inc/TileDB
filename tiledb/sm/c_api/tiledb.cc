@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -2963,8 +2963,34 @@ int32_t tiledb_array_delete_fragments(
 capi_return_t tiledb_array_delete_fragments_list(
     tiledb_ctx_t* ctx,
     const char* uri,
-    const char** fragment_uris,
+    const char* fragment_uris[],
     const size_t num_fragments) {
+  if (tiledb::sm::URI(uri).is_invalid()) {
+    auto st =
+        Status_Error("Failed to delete_fragments_list; Invalid input uri");
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  if (num_fragments < 1) {
+    auto st = Status_Error(
+        "Failed to delete_fragments_list; Invalid input number of fragments");
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  for (size_t i = 0; i < num_fragments; i++) {
+    if (tiledb::sm::URI(fragment_uris[i]).is_invalid()) {
+      auto st = Status_Error(
+          "Failed to delete_fragments_list; Invalid input fragment uri");
+      LOG_STATUS_NO_RETURN_VALUE(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+  }
+
   // Allocate an array object
   tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
   try {
@@ -7074,7 +7100,7 @@ int32_t tiledb_array_delete_fragments(
 capi_return_t tiledb_array_delete_fragments_list(
     tiledb_ctx_t* ctx,
     const char* uri,
-    const char** fragment_uris,
+    const char* fragment_uris[],
     const size_t num_fragments) noexcept {
   return api_entry<tiledb::api::tiledb_array_delete_fragments_list>(
       ctx, uri, fragment_uris, num_fragments);

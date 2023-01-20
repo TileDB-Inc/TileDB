@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -77,6 +77,11 @@ class ArrayDirectory {
    */
   class FilteredFragmentUris {
    public:
+    /**
+     * Type alias for a set of fragment_uris.
+     */
+    using FragmentSet = std::set<URI>;
+
     /* ********************************* */
     /*     CONSTRUCTORS & DESTRUCTORS    */
     /* ********************************* */
@@ -129,20 +134,41 @@ class ArrayDirectory {
       return fragment_uris_;
     };
 
-    /** Returns the filtered fragment URIs matching the given fragments_list. */
-    std::vector<TimestampedURI> fragment_uris(
+    /**
+     * Returns the filtered fragment URIs matching the given fragments_list.
+     *
+     * Note: though fragment_uris_ is of type TimestampedURI,
+     * this API will return non-timestamped URIs.
+     */
+    std::vector<URI> fragment_uris(
         const std::vector<URI>& fragments_list) const {
-      std::vector<TimestampedURI> uris;
-      for (auto fragment : fragments_list) {
-        for (auto uri : fragment_uris_) {
-          if (fragment == uri.uri_) {
-            uris.emplace_back(uri);
-            break;
+      std::vector<URI> uris;
+
+      // Use a FragmentSet for parsing large fragment lists
+      if (fragments_list.size() > 100) {
+        FragmentSet fragment_set = fragment_uris_to_set();
+        for (auto fragment : fragments_list) {
+          auto iter = fragment_set.find(fragment);
+          if (iter == fragment_set.end()) {
+            throw std::runtime_error(
+                "[ArrayDirectory::fragment_uris] " + fragment.to_string() +
+                " is not a fragment of the ArrayDirectory.");
           } else {
-            if (uri == fragment_uris_.back()) {
-              throw std::runtime_error(
-                  "[ArrayDirectory::fragment_uris] " + fragment.to_string() +
-                  " is not a fragment of the ArrayDirectory.");
+            uris.emplace_back(*iter);
+          }
+        }
+      } else {
+        for (auto fragment : fragments_list) {
+          for (auto uri : fragment_uris_) {
+            if (fragment == uri.uri_) {
+              uris.emplace_back(uri.uri_);
+              break;
+            } else {
+              if (uri == fragment_uris_.back()) {
+                throw std::runtime_error(
+                    "[ArrayDirectory::fragment_uris] " + fragment.to_string() +
+                    " is not a fragment of the ArrayDirectory.");
+              }
             }
           }
         }
@@ -173,6 +199,24 @@ class ArrayDirectory {
      * [`timestamp_start_`, `timestamp_end_`].
      */
     std::vector<TimestampedURI> fragment_uris_;
+
+    /* ********************************* */
+    /*             PRIVATE API           */
+    /* ********************************* */
+
+    /**
+     * Convert the filtered fragment URIs into a FragmentSet for parsing large
+     * amounts of fragments.
+     *
+     * Note: this function is private and may only be called internally.
+     */
+    inline const FragmentSet fragment_uris_to_set() const {
+      FragmentSet fragment_set;
+      for (auto timestamped_uri : fragment_uris_) {
+        fragment_set.insert(timestamped_uri.uri_);
+      }
+      return fragment_set;
+    }
   };
 
  public:

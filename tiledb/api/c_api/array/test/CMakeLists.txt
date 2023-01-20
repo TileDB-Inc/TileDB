@@ -1,9 +1,9 @@
 #
-# tiledb/api/c_api/vfs/test/CMakeLists.txt
+# tiledb/api/c_api/array/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,19 +25,28 @@
 #
 
 include(common NO_POLICY_SCOPE)
-
-add_executable(unit_capi_vfs EXCLUDE_FROM_ALL)
 find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_capi_vfs PUBLIC Catch2::Catch2WithMain)
-target_link_libraries(unit_capi_vfs PUBLIC capi_vfs)
+
+# #TODO: link only against a new CAPI array handle, not all core objects
+add_executable(
+    unit_capi_array EXCLUDE_FROM_ALL
+    $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+)
+
+target_link_libraries(unit_capi_array
+  PUBLIC
+    Catch2::Catch2WithMain
+    export
+    TILEDB_CORE_OBJECTS_ILIB
+)
 
 # Sources for tests
-target_sources(unit_capi_vfs PUBLIC
-    unit_capi_vfs.cc
+target_sources(unit_capi_array PUBLIC  
+    unit_capi_array.cc
 )
 
 add_test(
-    NAME "unit_capi_vfs"
-    COMMAND $<TARGET_FILE:unit_capi_vfs>
+    NAME "unit_capi_array"
+    COMMAND $<TARGET_FILE:unit_capi_array>
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )

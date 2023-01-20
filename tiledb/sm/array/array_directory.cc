@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -163,7 +163,7 @@ void ArrayDirectory::delete_fragments_list(
   std::vector<URI> commit_uris_to_delete;
   std::vector<URI> commit_uris_to_ignore;
   for (auto& timestamped_uri : uris) {
-    auto commit_uri = get_commit_uri(timestamped_uri.uri_);
+    auto commit_uri = get_commit_uri(timestamped_uri);
     commit_uris_to_delete.emplace_back(commit_uri);
     if (consolidated_commit_uris_set().count(commit_uri.c_str()) != 0) {
       commit_uris_to_ignore.emplace_back(commit_uri);
@@ -177,7 +177,7 @@ void ArrayDirectory::delete_fragments_list(
 
   // Delete fragments and commits
   throw_if_not_ok(parallel_for(tp_, 0, uris.size(), [&](size_t i) {
-    RETURN_NOT_OK(vfs_->remove_dir(uris[i].uri_));
+    RETURN_NOT_OK(vfs_->remove_dir(uris[i]));
     bool is_file = false;
     RETURN_NOT_OK(vfs_->is_file(commit_uris_to_delete[i], &is_file));
     if (is_file) {

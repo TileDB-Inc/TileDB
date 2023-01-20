@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -3922,7 +3922,7 @@ TILEDB_EXPORT int32_t tiledb_array_delete_fragments(
  * **Example:**
  *
  * @code{.c}
- * auto fragment_uris{
+ * const char* fragment_uris[2] = {
  *   "hdfs:///temp/my_array/__fragments/1",
  *   "hdfs:///temp/my_array/__fragments/2"};
  * tiledb_array_delete_fragments_list(
@@ -3938,7 +3938,7 @@ TILEDB_EXPORT int32_t tiledb_array_delete_fragments(
 TILEDB_EXPORT int32_t tiledb_array_delete_fragments_list(
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    const char** fragment_uris,
+    const char* fragment_uris[],
     const size_t num_fragments) TILEDB_NOEXCEPT;
 
 /**
