@@ -266,16 +266,20 @@ TEMPLATE_LIST_TEST_CASE(
       ArraySchema invalid_schema(ctx, TILEDB_DENSE);
       invalid_schema.set_domain(invalid_domain);
       invalid_schema.add_attribute(valid_attr);
-      REQUIRE_THROWS_AS(
-          Array::create(webp_array_name, invalid_schema), tiledb::TileDBError);
+      REQUIRE_THROWS_WITH(
+          Array::create(webp_array_name, invalid_schema),
+          Catch::Matchers::ContainsSubstring(
+              "WebP filter requires exactly 2 dimensions Y, X"));
 
       // Test with > 2 dimensions.
       invalid_domain.add_dimensions(
           Dimension::create<uint64_t>(ctx, "x", {{1, 100}}, 90),
           Dimension::create<uint64_t>(ctx, "z", {{1, 100}}, 90));
       invalid_schema.set_domain(invalid_domain);
-      REQUIRE_THROWS_AS(
-          Array::create(webp_array_name, invalid_schema), tiledb::TileDBError);
+      REQUIRE_THROWS_WITH(
+          Array::create(webp_array_name, invalid_schema),
+          Catch::Matchers::ContainsSubstring(
+              "WebP filter requires exactly 2 dimensions Y, X"));
     }
 
     // In dense arrays, all dimensions must have matching datatype.
@@ -289,8 +293,10 @@ TEMPLATE_LIST_TEST_CASE(
       ArraySchema invalid_schema(ctx, TILEDB_DENSE);
 
       // This is also enforced by ArraySchema::check_webp_filter.
-      REQUIRE_THROWS_AS(
-          invalid_schema.set_domain(invalid_domain), tiledb::TileDBError);
+      REQUIRE_THROWS_WITH(
+          invalid_schema.set_domain(invalid_domain),
+          Catch::Matchers::ContainsSubstring(
+              "In dense arrays, all dimensions must have the same datatype"));
     }
 
     // WebP filter supports only uint8 attributes.
@@ -299,8 +305,10 @@ TEMPLATE_LIST_TEST_CASE(
       invalid_schema.set_domain(valid_domain);
 
       invalid_schema.add_attribute(invalid_attr);
-      REQUIRE_THROWS_AS(
-          Array::create(webp_array_name, invalid_schema), tiledb::TileDBError);
+      REQUIRE_THROWS_WITH(
+          Array::create(webp_array_name, invalid_schema),
+          Catch::Matchers::ContainsSubstring(
+              "WebP filter supports only uint8 attributes"));
     }
 
     // WebP filter can only be applied to dense arrays.
@@ -309,8 +317,10 @@ TEMPLATE_LIST_TEST_CASE(
       invalid_schema.set_domain(valid_domain);
       invalid_schema.add_attribute(valid_attr);
 
-      REQUIRE_THROWS_AS(
-          Array::create(webp_array_name, invalid_schema), tiledb::TileDBError);
+      REQUIRE_THROWS_WITH(
+          Array::create(webp_array_name, invalid_schema),
+          Catch::Matchers::ContainsSubstring(
+              "WebP filter can only be applied to dense arrays"));
     }
 
     REQUIRE_NOTHROW(Array::create(webp_array_name, valid_schema));
