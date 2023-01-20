@@ -36,7 +36,6 @@
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_dimension_label.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -359,27 +358,29 @@ TEST_CASE_METHOD(
     index_data_sorted_by_label = {3, 2, 1, 0};
   }
 
-  SECTION("Write unordered labels and array", "[UnorderedLabels]") {
-    // Set the label order.
-    label_order = TILEDB_UNORDERED_DATA;
+  if constexpr (is_experimental_build) {
+    SECTION("Write unordered labels and array", "[UnorderedLabels]") {
+      // Set the label order.
+      label_order = TILEDB_UNORDERED_DATA;
 
-    // Set the data values.
-    input_index_data = {0, 3, 2, 1};
-    input_label_data = {1.0, 0.0, -0.5, -1.0};
+      // Set the data values.
+      input_index_data = {0, 3, 2, 1};
+      input_label_data = {1.0, 0.0, -0.5, -1.0};
 
-    SECTION("With attribute values") {
-      input_attr_data = {0.5, 1.0, 1.5, 2.0};
-      attr_data_sorted_by_index = {0.5, 2.0, 1.5, 1.0};
+      SECTION("With attribute values") {
+        input_attr_data = {0.5, 1.0, 1.5, 2.0};
+        attr_data_sorted_by_index = {0.5, 2.0, 1.5, 1.0};
+      }
+      SECTION("Without attribute values") {
+        input_attr_data = {};
+        attr_data_sorted_by_index = {};
+      }
+
+      // Define expected output data.
+      label_data_sorted_by_index = {1.0, -1.0, -0.5, 0.0};
+      label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
+      index_data_sorted_by_label = {1, 2, 3, 0};
     }
-    SECTION("Without attribute values") {
-      input_attr_data = {};
-      attr_data_sorted_by_index = {};
-    }
-
-    // Define expected output data.
-    label_data_sorted_by_index = {1.0, -1.0, -0.5, 0.0};
-    label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
-    index_data_sorted_by_label = {1, 2, 3, 0};
   }
 
   INFO(

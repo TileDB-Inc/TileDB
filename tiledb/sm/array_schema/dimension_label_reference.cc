@@ -110,9 +110,9 @@ DimensionLabelReference::DimensionLabelReference(
   // Check the label order is valid.
   if constexpr (!is_experimental_build) {
     if (label_order == DataOrder::UNORDERED_DATA) {
-      std::invalid_argument(
-          "Unordered dimension labels are only supported in experimental "
-          "builds.");
+      throw std::invalid_argument(
+          "Cannot create dimension label reference; Unordered dimension labels "
+          "are not yet supported.");
     }
   }
 
@@ -166,9 +166,8 @@ DimensionLabelReference::DimensionLabelReference(
   // Check the label order is valid.
   if constexpr (!is_experimental_build) {
     if (label_order == DataOrder::UNORDERED_DATA) {
-      std::invalid_argument(
-          "Unordered dimension labels are only supported in experimental "
-          "builds.");
+      throw std::invalid_argument(
+          "Unordered dimension labels are not yet supported.");
     }
   }
 

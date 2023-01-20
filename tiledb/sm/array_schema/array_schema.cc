@@ -892,6 +892,15 @@ void ArraySchema::add_dimension_label(
     DataOrder label_order,
     Datatype label_type,
     bool check_name) {
+  // Check the label order is valid.
+  if constexpr (!is_experimental_build) {
+    if (label_order == DataOrder::UNORDERED_DATA) {
+      throw ArraySchemaStatusException(
+          "Cannot add dimension label; Unordered dimension labels are not yet "
+          "supported.");
+    }
+  }
+
   // Check domain is set and `dim_id` is a valid dimension index.
   if (!domain_) {
     throw ArraySchemaStatusException(

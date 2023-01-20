@@ -40,7 +40,6 @@
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_dimension_label.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -363,19 +362,21 @@ TEST_CASE_METHOD(
     }
   }
 
-  SECTION("Write unordered labels", "[UnorderedLabels]") {
-    // Set the label order.
-    label_order = TILEDB_UNORDERED_DATA;
+  if constexpr (is_experimental_build) {
+    SECTION("Write unordered labels", "[UnorderedLabels]") {
+      // Set the label order.
+      label_order = TILEDB_UNORDERED_DATA;
 
-    // Set the data values.
-    input_label_data_raw = {15, 30, 20, 10};
+      // Set the data values.
+      input_label_data_raw = {15, 30, 20, 10};
 
-    // Set the attribute values.
-    SECTION("With array data") {
-      input_attr_data = {0.5, 1.0, 1.5, 2.0};
-    }
-    SECTION("Without array data") {
-      input_attr_data = {};
+      // Set the attribute values.
+      SECTION("With array data") {
+        input_attr_data = {0.5, 1.0, 1.5, 2.0};
+      }
+      SECTION("Without array data") {
+        input_attr_data = {};
+      }
     }
   }
 
