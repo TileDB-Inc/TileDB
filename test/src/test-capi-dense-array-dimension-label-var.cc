@@ -324,7 +324,7 @@ TEST_CASE_METHOD(
     "[capi][query][DimensionLabel][var]") {
   // Array parameters.
   std::vector<uint64_t> index_domain{0, 3};
-  tiledb_data_order_t label_order;
+  tiledb_data_order_t label_order{};
 
   // Vectors for input data.
   std::vector<uint64_t> input_label_data_raw{};

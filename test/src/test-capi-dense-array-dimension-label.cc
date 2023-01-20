@@ -374,7 +374,7 @@ TEST_CASE_METHOD(
   std::vector<double> input_attr_data{};
 
   // Dimension label parameters.
-  tiledb_data_order_t label_order;
+  tiledb_data_order_t label_order{};
 
   SECTION("Write increasing labels", "[IncreasingLabels]") {
     // Set the label order.
@@ -478,7 +478,7 @@ TEST_CASE_METHOD(
   std::vector<double> input_attr_data{};
 
   // Dimension label parameters.
-  tiledb_data_order_t label_order;
+  tiledb_data_order_t label_order{};
 
   SECTION("Increasing labels with bad order", "[IncreasingLabels]") {
     label_order = TILEDB_INCREASING_DATA;
