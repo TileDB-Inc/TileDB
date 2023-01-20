@@ -319,7 +319,7 @@ class Config {
    *    `group_meta` (remove only consolidate group metadata only).
    *    <br>
    *    **Default**: "fragments"
-   * - `sm.consolidation_mode` <br>
+   * - `sm.consolidation.mode` <br>
    *    The consolidation mode, one of
    *    `commits` (consolidate all commit files),
    *    `fragments` (consolidate all fragments),
