@@ -375,7 +375,7 @@ void BitSortFilter::run_reverse_dim_tile(
   }
 
   // Clear out the filtered buffer.
-  filtered_buffer.clear();
+  // filtered_buffer.clear();
 }
 
 BitSortFilter* BitSortFilter::clone_impl() const {
