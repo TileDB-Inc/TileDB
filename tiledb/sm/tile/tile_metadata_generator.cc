@@ -415,10 +415,12 @@ void TileMetadataGenerator::min_max<char>(
   // Process all cells, starting at the second value.
   auto value = data + start * cell_size_;
   for (uint64_t c = start; c < end; c++) {
-    min_ =
-        strncmp((const char*)min_, (const char*)value, size) > 0 ? value : min_;
-    max_ =
-        strncmp((const char*)max_, (const char*)value, size) < 0 ? value : max_;
+    min_ = strncmp((const char*)min_, (const char*)value, cell_size_) > 0 ?
+               value :
+               min_;
+    max_ = strncmp((const char*)max_, (const char*)value, cell_size_) < 0 ?
+               value :
+               max_;
     value += cell_size_;
   }
 }
