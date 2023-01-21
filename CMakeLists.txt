@@ -31,6 +31,7 @@
 ############################################################
 
 cmake_minimum_required(VERSION 3.21)
+include("cmake/global-policies.cmake" NO_POLICY_SCOPE)
 
 ############################################################
 # Parse version file
