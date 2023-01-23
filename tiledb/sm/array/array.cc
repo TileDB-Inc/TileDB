@@ -179,7 +179,8 @@ Status Array::open_without_fragments(
       }
       /* #TODO Change get_array_schema_from_rest function signature to
         throw instead of return Status */
-      auto st = rest_client->post_array_from_rest(array_uri_, this);
+      auto st =
+          rest_client->post_array_from_rest(array_uri_, storage_manager_, this);
       if (!st.ok()) {
         throw StatusException(st);
       }
@@ -337,7 +338,8 @@ Status Array::open(
         throw Status_ArrayError(
             "Cannot open array; remote array with no REST client.");
       }
-      auto st = rest_client->post_array_from_rest(array_uri_, this);
+      auto st =
+          rest_client->post_array_from_rest(array_uri_, storage_manager_, this);
       if (!st.ok()) {
         throw StatusException(st);
       }
@@ -1369,8 +1371,7 @@ ArrayDirectory& Array::load_array_directory() {
                   ArrayDirectoryMode::READ;
   if (!array_dir_.loaded()) {
     array_dir_ = ArrayDirectory(
-        storage_manager_->vfs(),
-        storage_manager_->compute_tp(),
+        resources_,
         array_uri_,
         timestamp_start_,
         timestamp_end_opened_at_,

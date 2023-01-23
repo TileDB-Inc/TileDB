@@ -34,6 +34,7 @@
 #include <test/support/tdb_catch.h>
 #include "serialization_wrappers.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -1610,7 +1611,8 @@ int array_open_wrapper(
   auto st = tiledb::sm::serialization::array_deserialize(
       (*open_array)->array_.get(),
       tiledb::sm::SerializationType::CAPNP,
-      buff->buffer());
+      buff->buffer(),
+      ctx->storage_manager());
   REQUIRE(st.ok());
 
   // 6. Server: Close array and clean up

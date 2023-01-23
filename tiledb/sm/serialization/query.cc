@@ -2031,7 +2031,7 @@ Status array_from_query_deserialize(
         capnp::Query::Reader query_reader = query_builder.asReader();
         // Deserialize array instance.
         RETURN_NOT_OK(array_from_capnp(
-            query_reader.getArray(), &array, storage_manager, false));
+            query_reader.getArray(), storage_manager, &array, false));
         break;
       }
       case SerializationType::CAPNP: {
@@ -2054,7 +2054,7 @@ Status array_from_query_deserialize(
         capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
         // Deserialize array instance.
         RETURN_NOT_OK(array_from_capnp(
-            query_reader.getArray(), &array, storage_manager, false));
+            query_reader.getArray(), storage_manager, &array, false));
         break;
       }
       default:

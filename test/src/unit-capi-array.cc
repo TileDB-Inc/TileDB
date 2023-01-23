@@ -2534,7 +2534,8 @@ TEST_CASE_METHOD(
   auto st = tiledb::sm::serialization::array_deserialize(
       array->array_.get(),
       tiledb::sm::SerializationType::CAPNP,
-      buff->buffer());
+      buff->buffer(),
+      ctx_->storage_manager());
   REQUIRE(st.ok());
 
   // 6. Server: Close array and clean up

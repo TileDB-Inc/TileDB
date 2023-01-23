@@ -192,8 +192,8 @@ Status array_to_capnp(
 
 Status array_from_capnp(
     const capnp::Array::Reader& array_reader,
-    Array* array,
     StorageManager* storage_manager,
+    Array* array,
     const bool client_side) {
   // The serialized URI is set if it exists
   // this is used for backwards compatibility with pre TileDB 2.5 clients that
@@ -261,8 +261,10 @@ Status array_from_capnp(
   // Deserialize array directory
   if (array_reader.hasArrayDirectory()) {
     const auto& array_directory_reader = array_reader.getArrayDirectory();
-    auto array_dir =
-        array_directory_from_capnp(array_directory_reader, array->array_uri());
+    auto array_dir = array_directory_from_capnp(
+        array_directory_reader,
+        storage_manager->resources(),
+        array->array_uri());
     array->set_array_directory(*array_dir);
   }
 
@@ -508,7 +510,8 @@ Status array_serialize(
 Status array_deserialize(
     Array* array,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    const Buffer& serialized_buffer,
+    StorageManager* storage_manager) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -520,7 +523,7 @@ Status array_deserialize(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             array_builder);
         capnp::Array::Reader array_reader = array_builder.asReader();
-        RETURN_NOT_OK(array_from_capnp(array_reader, array));
+        RETURN_NOT_OK(array_from_capnp(array_reader, storage_manager, array));
         break;
       }
       case SerializationType::CAPNP: {
@@ -530,7 +533,7 @@ Status array_deserialize(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             serialized_buffer.size() / sizeof(::capnp::word)));
         capnp::Array::Reader array_reader = reader.getRoot<capnp::Array>();
-        RETURN_NOT_OK(array_from_capnp(array_reader, array));
+        RETURN_NOT_OK(array_from_capnp(array_reader, storage_manager, array));
         break;
       }
       default: {
@@ -662,7 +665,8 @@ Status array_serialize(Array*, SerializationType, Buffer*, const bool) {
       "Cannot serialize; serialization not enabled."));
 }
 
-Status array_deserialize(Array*, SerializationType, const Buffer&) {
+Status array_deserialize(
+    Array*, SerializationType, const Buffer&, StorageManager*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

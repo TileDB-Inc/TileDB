@@ -269,7 +269,8 @@ Status RestClient::post_array_schema_to_rest(
   return sc;
 }
 
-Status RestClient::post_array_from_rest(const URI& uri, Array* array) {
+Status RestClient::post_array_from_rest(
+    const URI& uri, StorageManager* storage_manager, Array* array) {
   if (array == nullptr) {
     return LOG_STATUS(Status_SerializationError(
         "Error getting remote array; array is null."));
@@ -312,7 +313,7 @@ Status RestClient::post_array_from_rest(const URI& uri, Array* array) {
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::array_deserialize(
-      array, serialization_type_, returned_data);
+      array, serialization_type_, returned_data, storage_manager);
 }
 
 void RestClient::delete_array_from_rest(const URI& uri) {
@@ -1326,7 +1327,7 @@ Status RestClient::post_array_schema_to_rest(const URI&, const ArraySchema&) {
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::post_array_from_rest(const URI&, Array*) {
+Status RestClient::post_array_from_rest(const URI&, StorageManager*, Array*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }

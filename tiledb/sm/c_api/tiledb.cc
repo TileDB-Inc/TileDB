@@ -4001,7 +4001,8 @@ int32_t tiledb_deserialize_array(
           tiledb::sm::serialization::array_deserialize(
               (*array)->array_.get(),
               (tiledb::sm::SerializationType)serialize_type,
-              buffer->buffer()))) {
+              buffer->buffer(),
+              ctx->storage_manager()))) {
     delete *array;
     *array = nullptr;
     return TILEDB_ERR;

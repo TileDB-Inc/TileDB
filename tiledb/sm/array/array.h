@@ -499,11 +499,6 @@ class Array {
   /** Load array directory for non-remote arrays */
   ArrayDirectory& load_array_directory();
 
-  /** Sets the array deserialized_ member variable */
-  inline void set_deserialized(bool deserialized) {
-    deserialized_ = deserialized;
-  }
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -624,9 +619,6 @@ class Array {
    * ConsistencySentry registration and the is_open_ flag.
    */
   std::mutex mtx_;
-
-  /** True if this array has been deserialized. */
-  bool deserialized_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

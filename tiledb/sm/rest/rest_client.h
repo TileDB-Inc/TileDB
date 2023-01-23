@@ -102,9 +102,11 @@ class RestClient {
    * Post the array config and get an array from rest server
    *
    * @param uri of array being loaded
+   * @param storage_manager storage manager of array being loaded
    * @param array array to load into
    */
-  Status post_array_from_rest(const URI& uri, Array* array);
+  Status post_array_from_rest(
+      const URI& uri, StorageManager* storage_manager, Array* array);
 
   /**
    * Post a data array schema to rest server

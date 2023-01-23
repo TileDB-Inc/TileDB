@@ -56,6 +56,7 @@ namespace serialization {
  * Convert Cap'n Proto message to Array Directory
  *
  * @param array_dir_reader cap'n proto class
+ * @param resources A reference to the ContextResources instance
  * @param array_uri uri of the array that the directory belongs to
  * @return array_directory array directory object to deserialize into
  */

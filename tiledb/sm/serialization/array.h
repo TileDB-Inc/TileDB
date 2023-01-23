@@ -69,8 +69,8 @@ Status array_to_capnp(
 /**
  * Deserialize an Array from Cap'n proto
  * @param array_reader cap'n proto class
- * @param array Array to deserialize into
  * @param storage_manager the storage manager associated with the array
+ * @param array Array to deserialize into
  * @param client_side Allows to specify different behavior depending on who is
  * serializing, the client (1) or the Cloud server (0). This is sometimes needed
  * since they are both using the same Core library APIs for serialization.
@@ -78,8 +78,8 @@ Status array_to_capnp(
  */
 Status array_from_capnp(
     const capnp::Array::Reader& array_reader,
+    StorageManager* storage_manager,
     Array* array,
-    StorageManager* storage_manager = nullptr,
     const bool client_side = true);
 
 /**
@@ -134,7 +134,8 @@ Status array_serialize(
 Status array_deserialize(
     Array* array,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    const Buffer& serialized_buffer,
+    StorageManager* storage_manager);
 
 /**
  * Serialize an open array request via Cap'n Proto
