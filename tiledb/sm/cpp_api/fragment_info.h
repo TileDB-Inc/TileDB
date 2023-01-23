@@ -82,6 +82,20 @@ class FragmentInfo {
         tiledb_fragment_info_load(ctx.ptr().get(), fragment_info_.get()));
   }
 
+  /** Loads the fragment info from an encrypted array. */
+  TILEDB_DEPRECATED
+  void load(
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_fragment_info_load_with_key(
+        ctx.ptr().get(),
+        fragment_info_.get(),
+        encryption_type,
+        encryption_key.data(),
+        (uint32_t)encryption_key.size()));
+  }
+
   /** Returns the URI of the fragment with the given index. */
   std::string fragment_uri(uint32_t fid) const {
     auto& ctx = ctx_.get();
