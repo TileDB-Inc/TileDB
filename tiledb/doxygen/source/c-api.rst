@@ -432,6 +432,22 @@ Query
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_stats
     :project: TileDB-C
+.. doxygenfunction:: tiledb_query_set_buffer
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_set_buffer_var
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_set_buffer_nullable
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_set_buffer_var_nullable
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_buffer
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_buffer_var
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_buffer_nullable
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_buffer_var_nullable
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_query_set_config
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_config
