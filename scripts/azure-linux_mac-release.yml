@@ -23,9 +23,6 @@ steps:
   displayName: 'Remove sdks for testing (OSX only)'
 
 - bash: |
-    # DELETEME work-around for https://github.com/microsoft/azure-pipelines-image-generation/issues/969
-    $SUDO chown root.root /
-
     # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
     #   - openssl configure uses ENV{SYSTEM} if available:
     #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
