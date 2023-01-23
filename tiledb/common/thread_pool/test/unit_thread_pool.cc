@@ -149,6 +149,7 @@ TEST_CASE("ThreadPool: Test wait status", "[threadpool]") {
 TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
   {
     ThreadPool pool{4};
+    std::vector<ThreadPool::Task> tasks;
     std::atomic<int> result(0);
     for (int i = 0; i < 5; i++) {
       ThreadPool::Task task = pool.execute([&result]() {
@@ -157,9 +158,10 @@ TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
         return Status::Ok();
       });
       REQUIRE(task.valid());
+      tasks.emplace_back(std::move(task));
     }
-    // There may be an error logged when the pool is destroyed if there are
-    // outstanding tasks, but everything should still complete.
+    REQUIRE(pool.wait_all(tasks).ok());
+    REQUIRE(result == 5);
   }
 }
 
