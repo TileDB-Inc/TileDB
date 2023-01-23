@@ -62,7 +62,6 @@ class SubarrayExperimental {
   }
 
   /* TODO docs */
-  template <class T>
   static void add_label_range(
       const Context& ctx,
       Subarray& subarray,
