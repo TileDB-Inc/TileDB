@@ -1409,14 +1409,6 @@ Status query_from_capnp(
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; array pointer is null."));
   }
-  // Deserialize array instance if it was not already deserialized.
-  if (!array->deserialized()) {
-    RETURN_NOT_OK(array_from_capnp(
-        query_reader.getArray(),
-        array,
-        nullptr,
-        context != SerializationContext::SERVER));
-  }
 
   // Deserialize query type (sanity check).
   auto type = query->type();

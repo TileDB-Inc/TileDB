@@ -299,7 +299,6 @@ Status array_from_capnp(
         metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
     array->set_metadata_loaded(true);
   }
-  array->set_deserialized(true);
 
   return Status::Ok();
 }

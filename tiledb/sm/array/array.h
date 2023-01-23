@@ -499,11 +499,6 @@ class Array {
   /** Load array directory for non-remote arrays */
   ArrayDirectory& load_array_directory();
 
-  /** Returns if this is a deserialized array or not */
-  inline bool deserialized() const {
-    return deserialized_;
-  }
-
   /** Sets the array deserialized_ member variable */
   inline void set_deserialized(bool deserialized) {
     deserialized_ = deserialized;

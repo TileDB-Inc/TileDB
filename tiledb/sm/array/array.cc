@@ -94,8 +94,7 @@ Array::Array(
     , metadata_loaded_(false)
     , non_empty_domain_computed_(false)
     , consistency_controller_(cc)
-    , consistency_sentry_(nullopt)
-    , deserialized_(false) {
+    , consistency_sentry_(nullopt) {
 }
 
 /* ********************************* */
