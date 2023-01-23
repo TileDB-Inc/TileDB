@@ -98,7 +98,7 @@ Domain create_domain(
     }
     ByteVecValue tile_extent;
     if (dim_tile_extents[d] != nullptr) {
-      auto tile_extent_size = 2 * datatype_size(dim_types[d]);
+      auto tile_extent_size = datatype_size(dim_types[d]);
       tile_extent.resize(tile_extent_size);
       std::memcpy(tile_extent.data(), dim_tile_extents[d], tile_extent_size);
     }
