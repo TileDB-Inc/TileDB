@@ -33,6 +33,7 @@
 #ifndef TILEDB_CPP_API_CONSOLIDATION_PLAN_EXPERIMENTAL_H
 #define TILEDB_CPP_API_CONSOLIDATION_PLAN_EXPERIMENTAL_H
 
+#include "array.h"
 #include "context.h"
 #include "tiledb.h"
 
