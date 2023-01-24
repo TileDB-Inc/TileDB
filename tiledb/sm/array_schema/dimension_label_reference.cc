@@ -108,12 +108,10 @@ DimensionLabelReference::DimensionLabelReference(
   }
 
   // Check the label order is valid.
-  if constexpr (!is_experimental_build) {
-    if (label_order == DataOrder::UNORDERED_DATA) {
-      throw std::invalid_argument(
-          "Cannot create dimension label reference; Unordered dimension labels "
-          "are not yet supported.");
-    }
+  if (label_order == DataOrder::UNORDERED_DATA) {
+    throw std::invalid_argument(
+        "Cannot create dimension label reference; Unordered dimension labels "
+        "are not yet supported.");
   }
 
   // Check URI is relative if it is internal to the array.
@@ -164,11 +162,9 @@ DimensionLabelReference::DimensionLabelReference(
   }
 
   // Check the label order is valid.
-  if constexpr (!is_experimental_build) {
-    if (label_order == DataOrder::UNORDERED_DATA) {
-      throw std::invalid_argument(
-          "Unordered dimension labels are not yet supported.");
-    }
+  if (label_order == DataOrder::UNORDERED_DATA) {
+    throw std::invalid_argument(
+        "Unordered dimension labels are not yet supported.");
   }
 
   // Create and set dimension label domain.

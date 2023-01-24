@@ -362,24 +362,6 @@ TEST_CASE_METHOD(
     }
   }
 
-  if constexpr (is_experimental_build) {
-    SECTION("Write unordered labels", "[UnorderedLabels]") {
-      // Set the label order.
-      label_order = TILEDB_UNORDERED_DATA;
-
-      // Set the data values.
-      input_label_data_raw = {15, 30, 20, 10};
-
-      // Set the attribute values.
-      SECTION("With array data") {
-        input_attr_data = {0.5, 1.0, 1.5, 2.0};
-      }
-      SECTION("Without array data") {
-        input_attr_data = {};
-      }
-    }
-  }
-
   // Create label data from raw data.
   std::string input_label_data{};
   std::vector<uint64_t> input_label_offsets(4);
@@ -413,7 +395,7 @@ TEST_CASE_METHOD(
   }
 
   // Check range reader.
-  if (label_order != TILEDB_UNORDERED_DATA) {
+  {
     INFO("Reading data by label range.");
 
     // Check full range

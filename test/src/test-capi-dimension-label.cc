@@ -167,68 +167,12 @@ TEST_CASE_METHOD(
       4096,
       false);
 
-  if constexpr (is_experimental_build) {
-    require_tiledb_ok(tiledb_array_schema_add_dimension_label(
-        ctx, array_schema, 0, "label", TILEDB_UNORDERED_DATA, label_type));
-
-    // Check array schema and number of dimension labels.
-    require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
-    auto dim_label_num = array_schema->array_schema_->dim_label_num();
-    REQUIRE(dim_label_num == 1);
-
-    // Check the dimension label properies.
-    tiledb_dimension_label_t* dim_label;
-    require_tiledb_ok(tiledb_array_schema_get_dimension_label_from_name(
-        ctx, array_schema, "label", &dim_label));
-    uint32_t label_cell_val_num;
-    check_tiledb_ok(tiledb_dimension_label_get_label_cell_val_num(
-        ctx, dim_label, &label_cell_val_num));
-    tiledb_datatype_t label_type_;
-    check_tiledb_ok(
-        tiledb_dimension_label_get_label_type(ctx, dim_label, &label_type_));
-    if (label_type == TILEDB_FLOAT64) {
-      CHECK(label_cell_val_num == 1);
-      CHECK(label_type_ == TILEDB_FLOAT64);
-    } else {
-      CHECK(label_cell_val_num == tiledb::sm::constants::var_num);
-      CHECK(label_type_ == TILEDB_STRING_ASCII);
-    }
-    const char* dim_label_uri;
-    check_tiledb_ok(
-        tiledb_dimension_label_get_uri(ctx, dim_label, &dim_label_uri));
-    std::string expected_dim_label_uri{"__labels/l0"};
-    CHECK(dim_label_uri == expected_dim_label_uri);
-    tiledb_dimension_label_free(&dim_label);
-
-    // Create array.
-    auto array_name =
-        create_temporary_array("simple_array_with_label", array_schema);
-    tiledb_array_schema_free(&array_schema);
-
-    // Load array schema and check number of labels.
-    tiledb_array_schema_t* loaded_array_schema{nullptr};
-    require_tiledb_ok(tiledb_array_schema_load(
-        ctx, array_name.c_str(), &loaded_array_schema));
-
-    // Check the array schema has the expected dimension label.
-    auto loaded_dim_label_num =
-        loaded_array_schema->array_schema_->dim_label_num();
-    CHECK(loaded_dim_label_num == 1);
-    int32_t has_label;
-    check_tiledb_ok(tiledb_array_schema_has_dimension_label(
-        ctx, loaded_array_schema, "label", &has_label));
-    CHECK(has_label == 1);
-
-    // Free remaining resources
-    tiledb_array_schema_free(&loaded_array_schema);
-  } else {
-    check_tiledb_error_with(
-        tiledb_array_schema_add_dimension_label(
-            ctx, array_schema, 0, "label", TILEDB_UNORDERED_DATA, label_type),
-        "ArraySchema: Cannot add dimension label; Unordered dimension labels "
-        "are not yet supported.");
-    tiledb_array_schema_free(&array_schema);
-  }
+  check_tiledb_error_with(
+      tiledb_array_schema_add_dimension_label(
+          ctx, array_schema, 0, "label", TILEDB_UNORDERED_DATA, label_type),
+      "ArraySchema: Cannot add dimension label; Unordered dimension labels "
+      "are not yet supported.");
+  tiledb_array_schema_free(&array_schema);
 }
 
 TEST_CASE_METHOD(

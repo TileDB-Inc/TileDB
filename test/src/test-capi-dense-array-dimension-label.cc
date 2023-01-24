@@ -408,24 +408,6 @@ TEST_CASE_METHOD(
     }
   }
 
-  if constexpr (is_experimental_build) {
-    SECTION("Write unordered labels and array", "[UnorderedLabels]") {
-      // Set the label order.
-      label_order = TILEDB_UNORDERED_DATA;
-
-      // Set the data values.
-      input_label_data = {-0.5, 1.0, 0.0, -1.0};
-
-      // Set the attribute values.
-      SECTION("With array data") {
-        input_attr_data = {0.5, 1.0, 1.5, 2.0};
-      }
-      SECTION("Without array data") {
-        input_attr_data = {};
-      }
-    }
-  }
-
   INFO(
       "Testing array with label order " +
       data_order_str(static_cast<DataOrder>(label_order)) + ".");
@@ -441,7 +423,7 @@ TEST_CASE_METHOD(
   }
 
   // Check range reader.
-  if (label_order != TILEDB_UNORDERED_DATA) {
+  {
     INFO("Reading data by label range.");
 
     // Check query on full range.
