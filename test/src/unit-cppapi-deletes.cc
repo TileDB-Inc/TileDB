@@ -218,13 +218,13 @@ void DeletesFx::write_sparse(
   // Open array.
   std::unique_ptr<Array> array;
   if (encrypt) {
+    const char* enc_type_str;
+    tiledb_encryption_type_to_str(enc_type_, &enc_type_str);
+    auto config = ctx_.config();
+    config.set("sm.encryption_type", enc_type_str);
+    config.set("sm.encryption_key", std::string(key_));
     array = std::make_unique<Array>(
-        ctx_,
-        SPARSE_ARRAY_NAME,
-        TILEDB_WRITE,
-        enc_type_,
-        std::string(key_),
-        timestamp);
+        ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE, &config, timestamp);
   } else {
     array = std::make_unique<Array>(
         ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE, timestamp);
@@ -299,13 +299,13 @@ void DeletesFx::read_sparse(
   // Open array.
   std::unique_ptr<Array> array;
   if (encrypt) {
+    const char* enc_type_str;
+    tiledb_encryption_type_to_str(enc_type_, &enc_type_str);
+    auto config = ctx_.config();
+    config.set("sm.encryption_type", enc_type_str);
+    config.set("sm.encryption_key", std::string(key_));
     array = std::make_unique<Array>(
-        ctx_,
-        SPARSE_ARRAY_NAME,
-        TILEDB_READ,
-        enc_type_,
-        std::string(key_),
-        timestamp);
+        ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, &config, timestamp);
   } else {
     array = std::make_unique<Array>(
         ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
@@ -368,13 +368,13 @@ void DeletesFx::write_delete_condition(
   // Open array.
   std::unique_ptr<Array> array;
   if (encrypt) {
+    const char* enc_type_str;
+    tiledb_encryption_type_to_str(enc_type_, &enc_type_str);
+    auto config = ctx_.config();
+    config.set("sm.encryption_type", enc_type_str);
+    config.set("sm.encryption_key", std::string(key_));
     array = std::make_unique<Array>(
-        ctx_,
-        SPARSE_ARRAY_NAME,
-        TILEDB_DELETE,
-        enc_type_,
-        std::string(key_),
-        timestamp);
+        ctx_, SPARSE_ARRAY_NAME, TILEDB_DELETE, &config, timestamp);
   } else {
     array = std::make_unique<Array>(
         ctx_, SPARSE_ARRAY_NAME, TILEDB_DELETE, timestamp);
@@ -396,13 +396,13 @@ void DeletesFx::check_delete_conditions(
   // Open array.
   std::unique_ptr<Array> array;
   if (encrypt) {
+    const char* enc_type_str;
+    tiledb_encryption_type_to_str(enc_type_, &enc_type_str);
+    auto config = ctx_.config();
+    config.set("sm.encryption_type", enc_type_str);
+    config.set("sm.encryption_key", std::string(key_));
     array = std::make_unique<Array>(
-        ctx_,
-        SPARSE_ARRAY_NAME,
-        TILEDB_READ,
-        enc_type_,
-        std::string(key_),
-        timestamp);
+        ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, &config, timestamp);
   } else {
     array = std::make_unique<Array>(
         ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);

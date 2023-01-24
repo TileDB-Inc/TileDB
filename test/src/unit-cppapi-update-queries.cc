@@ -137,13 +137,13 @@ void UpdatesFx::write_update_condition(
   // Open array.
   std::unique_ptr<Array> array;
   if (encrypt) {
+    const char* enc_type_str;
+    tiledb_encryption_type_to_str(enc_type_, &enc_type_str);
+    auto config = ctx_.config();
+    config.set("sm.encryption_type", enc_type_str);
+    config.set("sm.encryption_key", std::string(key_));
     array = std::make_unique<Array>(
-        ctx_,
-        SPARSE_ARRAY_NAME,
-        TILEDB_UPDATE,
-        enc_type_,
-        std::string(key_),
-        timestamp);
+        ctx_, SPARSE_ARRAY_NAME, TILEDB_UPDATE, &config, timestamp);
   } else {
     array = std::make_unique<Array>(
         ctx_, SPARSE_ARRAY_NAME, TILEDB_UPDATE, timestamp);
@@ -184,13 +184,13 @@ void UpdatesFx::check_update_conditions(
   // Open array.
   std::unique_ptr<Array> array;
   if (encrypt) {
+    const char* enc_type_str;
+    tiledb_encryption_type_to_str(enc_type_, &enc_type_str);
+    auto config = ctx_.config();
+    config.set("sm.encryption_type", enc_type_str);
+    config.set("sm.encryption_key", std::string(key_));
     array = std::make_unique<Array>(
-        ctx_,
-        SPARSE_ARRAY_NAME,
-        TILEDB_READ,
-        enc_type_,
-        std::string(key_),
-        timestamp);
+        ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, &config, timestamp);
   } else {
     array = std::make_unique<Array>(
         ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);

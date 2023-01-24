@@ -328,7 +328,8 @@ TEST_CASE_METHOD(
   array.close();
 
   // Delete an item that exists and one that does not exist
-  array.open(TILEDB_WRITE, 2);
+  array.set_open_timestamp_end(2);
+  array.open(TILEDB_WRITE);
   array.delete_metadata("aaa");
   array.delete_metadata("foo");
   array.close();
