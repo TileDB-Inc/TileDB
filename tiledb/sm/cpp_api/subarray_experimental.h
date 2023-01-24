@@ -90,6 +90,29 @@ class SubarrayExperimental {
     return range_num;
   }
 
+  /** TODO: docs */
+  static uint64_t label_range_num(
+      const Context& ctx, Subarray& subarray, uint32_t dim_idx) {
+    // Check if any label ranges are set. Return 0 if not.
+    int32_t has_label_range;
+    ctx.handle_error(tiledb_subarray_has_label_ranges(
+        ctx.ptr().get(), subarray.ptr().get(), dim_idx, &has_label_range));
+    if (has_label_range == 0) {
+      return 0;
+    }
+
+    // If label ranges are set, get the name of the dimension label.
+    const char* label_name;
+    ctx.handle_error(tiledb_subarray_get_label_name(
+        ctx.ptr().get(), subarray.ptr().get(), dim_idx, &label_name));
+
+    // Use the label name to get the total number of label ranges.
+    uint64_t range_num;
+    ctx.handle_error(tiledb_subarray_get_label_range_num(
+        ctx.ptr().get(), subarray.ptr().get(), label_name, &range_num));
+    return range_num;
+  }
+
   /** TODO: Docs */
   template <class T>
   static std::array<T, 3> label_range(
