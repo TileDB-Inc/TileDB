@@ -68,6 +68,14 @@ using namespace tiledb::type;
 namespace tiledb {
 namespace sm {
 
+/** Class for query status exceptions. */
+class SubarrayStatusException : public StatusException {
+ public:
+  explicit SubarrayStatusException(const std::string& msg)
+      : StatusException("Subarray", msg) {
+  }
+};
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -106,7 +114,7 @@ Subarray::Subarray(
     StorageManager* storage_manager)
     : stats_(
           parent_stats ? parent_stats->create_child("Subarray") :
-          storage_manager ?
+                         storage_manager ?
                          storage_manager->stats()->create_child("subSubarray") :
                          nullptr)
     , logger_(logger->clone("Subarray", ++logger_id_))
@@ -368,7 +376,7 @@ Status Subarray::add_range(
     return LOG_STATUS(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
 
-  if (label_range_subset_[dim_idx].has_value()) {
+  if (has_label_ranges(dim_idx)) {
     return logger_->status(Status_SubarrayError(
         "Cannot add range to to dimension; A range is already set on a "
         "dimension label for this dimension"));
@@ -521,7 +529,7 @@ Status Subarray::add_range_var(
         Status_SubarrayError("Cannot add range; Invalid dimension index"));
   }
 
-  if (label_range_subset_[dim_idx].has_value()) {
+  if (has_label_ranges(dim_idx)) {
     return logger_->status(Status_SubarrayError(
         "Cannot add range to to dimension; A range is already set on a "
         "dimension label for this dimension"));
@@ -576,6 +584,10 @@ const std::vector<Range>& Subarray::get_attribute_ranges(
 }
 
 const std::string& Subarray::get_label_name(const uint32_t dim_index) const {
+  if (!has_label_ranges(dim_index)) {
+    throw SubarrayStatusException(
+        "Cannot get label name. No label ranges set.");
+  }
   return label_range_subset_[dim_index]->name;
 }
 
