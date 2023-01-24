@@ -112,15 +112,15 @@ The dimension label has internal format:
 | Dimension index            | `uint32_t` | Index of the dimension the label is for |
 | Label order                | `uint8_t`  | Order of the label data |
 | Dimension label name length| `uint64_t` | Number of characters in the dimension label name |
-| Dimension label name       | `char []`  | The name of the dimension label |
-| Relative URI               | `bool`     | If the URI of the array the label data is stored in is relative to this array |
+| Dimension label name       | `uint8_t []`  | The name of the dimension label |
+| Relative URI               | `uint8_t`     | If the URI of the array the label data is stored in is relative to this array |
 | URI length                 | `uint64_t` | The number of characters in the URI |
-| URI                        | `char []`  | The URI the label data is stored in |
+| URI                        | `uint8_t []`  | The URI the label data is stored in |
 | Label attribute name length| `uint32_t` | The length of the attribute name of the label data |
-| Label attribute name       | `char []`  | The name of the attribute the label data is stored in |
+| Label attribute name       | `uint8_t []`  | The name of the attribute the label data is stored in |
 | Label datatype             | `uint8_t`  | The datatype of the label data |
 | Label cell_val_num         | `uint32_t` | The number of values per cell of the label data. For variable-length labels, this is `std::numeric_limits<uint32_t>::max()` |
 | Label domain size          | `uint64_t` | The size of the label domain |
 | Label domain start size    | `uint64_t` | The size of the first value of the domain for variable-lenght datatypes. For fixed-lenght labels, this is 0|
 | Label domain data          | `uint8_t[]`| Byte array of length equal to domain size above, storing the min, max values of the dimension |
-| Is external                | `bool`     | If the URI is not stored as part of this array |
+| Is external                | `uint8_t`     | If the URI is not stored as part of this array |
