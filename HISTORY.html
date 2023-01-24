@@ -244,10 +244,14 @@ ul.task-list li input[type="checkbox"] {
   </ul></li>
   <li><a href="#full-changelog" id="toc-full-changelog" class="nav-link" data-scroll-target="#full-changelog">Full Changelog:</a></li>
   </ul></li>
+  <li><a href="#tiledb-v2.13.2-release-notes" id="toc-tiledb-v2.13.2-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.13.2-release-notes">TileDB v2.13.2 Release Notes</a>
+  <ul class="collapse">
+  <li><a href="#bug-fixes" id="toc-bug-fixes" class="nav-link" data-scroll-target="#bug-fixes">Bug fixes</a></li>
+  </ul></li>
   <li><a href="#tiledb-v2.13.1-release-notes" id="toc-tiledb-v2.13.1-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.13.1-release-notes">TileDB v2.13.1 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-1" id="toc-improvements-1" class="nav-link" data-scroll-target="#improvements-1">Improvements</a></li>
-  <li><a href="#bug-fixes" id="toc-bug-fixes" class="nav-link" data-scroll-target="#bug-fixes">Bug fixes</a></li>
+  <li><a href="#bug-fixes-1" id="toc-bug-fixes-1" class="nav-link" data-scroll-target="#bug-fixes-1">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.13.0-release-notes" id="toc-tiledb-v2.13.0-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.13.0-release-notes">TileDB v2.13.0 Release Notes</a></li>
   <li><a href="#announcements-1" id="toc-announcements-1" class="nav-link" data-scroll-target="#announcements-1">Announcements</a>
@@ -337,7 +341,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#new-features-4" id="toc-new-features-4" class="nav-link" data-scroll-target="#new-features-4">New features</a></li>
   <li><a href="#breaking-behavior-2" id="toc-breaking-behavior-2" class="nav-link" data-scroll-target="#breaking-behavior-2">Breaking behavior</a></li>
   <li><a href="#deprecations" id="toc-deprecations" class="nav-link" data-scroll-target="#deprecations">Deprecations</a></li>
-  <li><a href="#bug-fixes-1" id="toc-bug-fixes-1" class="nav-link" data-scroll-target="#bug-fixes-1">Bug fixes</a></li>
+  <li><a href="#bug-fixes-2" id="toc-bug-fixes-2" class="nav-link" data-scroll-target="#bug-fixes-2">Bug fixes</a></li>
   <li><a href="#api-changes-3" id="toc-api-changes-3" class="nav-link" data-scroll-target="#api-changes-3">API Changes</a>
   <ul class="collapse">
   <li><a href="#c-api-4" id="toc-c-api-4" class="nav-link" data-scroll-target="#c-api-4">C++ API</a></li>
@@ -347,11 +351,11 @@ ul.task-list li input[type="checkbox"] {
   </ul></li>
   <li><a href="#tiledb-v2.9.5-release-notes" id="toc-tiledb-v2.9.5-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.9.5-release-notes">TileDB v2.9.5 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-2" id="toc-bug-fixes-2" class="nav-link" data-scroll-target="#bug-fixes-2">Bug fixes</a></li>
+  <li><a href="#bug-fixes-3" id="toc-bug-fixes-3" class="nav-link" data-scroll-target="#bug-fixes-3">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.9.4-release-notes" id="toc-tiledb-v2.9.4-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.9.4-release-notes">TileDB v2.9.4 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-3" id="toc-bug-fixes-3" class="nav-link" data-scroll-target="#bug-fixes-3">Bug fixes</a></li>
+  <li><a href="#bug-fixes-4" id="toc-bug-fixes-4" class="nav-link" data-scroll-target="#bug-fixes-4">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.9.3-release-notes" id="toc-tiledb-v2.9.3-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.9.3-release-notes">TileDB v2.9.3 Release Notes</a>
   <ul class="collapse">
@@ -362,18 +366,18 @@ ul.task-list li input[type="checkbox"] {
   </ul></li>
   <li><a href="#tiledb-v2.9.2-release-notes" id="toc-tiledb-v2.9.2-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.9.2-release-notes">TileDB v2.9.2 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-4" id="toc-bug-fixes-4" class="nav-link" data-scroll-target="#bug-fixes-4">Bug fixes</a></li>
+  <li><a href="#bug-fixes-5" id="toc-bug-fixes-5" class="nav-link" data-scroll-target="#bug-fixes-5">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.9.1-release-notes" id="toc-tiledb-v2.9.1-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.9.1-release-notes">TileDB v2.9.1 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-5" id="toc-bug-fixes-5" class="nav-link" data-scroll-target="#bug-fixes-5">Bug fixes</a></li>
+  <li><a href="#bug-fixes-6" id="toc-bug-fixes-6" class="nav-link" data-scroll-target="#bug-fixes-6">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.9.0-release-notes" id="toc-tiledb-v2.9.0-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.9.0-release-notes">TileDB v2.9.0 Release Notes</a>
   <ul class="collapse">
   <li><a href="#disk-format-5" id="toc-disk-format-5" class="nav-link" data-scroll-target="#disk-format-5">Disk Format</a></li>
   <li><a href="#new-features-5" id="toc-new-features-5" class="nav-link" data-scroll-target="#new-features-5">New features</a></li>
   <li><a href="#improvements-9" id="toc-improvements-9" class="nav-link" data-scroll-target="#improvements-9">Improvements</a></li>
-  <li><a href="#bug-fixes-6" id="toc-bug-fixes-6" class="nav-link" data-scroll-target="#bug-fixes-6">Bug fixes</a></li>
+  <li><a href="#bug-fixes-7" id="toc-bug-fixes-7" class="nav-link" data-scroll-target="#bug-fixes-7">Bug fixes</a></li>
   <li><a href="#api-additions-1" id="toc-api-additions-1" class="nav-link" data-scroll-target="#api-additions-1">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-6" id="toc-c-api-6" class="nav-link" data-scroll-target="#c-api-6">C++ API</a></li>
@@ -381,23 +385,23 @@ ul.task-list li input[type="checkbox"] {
   </ul></li>
   <li><a href="#tiledb-v2.8.3-release-notes" id="toc-tiledb-v2.8.3-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.8.3-release-notes">TileDB v2.8.3 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-7" id="toc-bug-fixes-7" class="nav-link" data-scroll-target="#bug-fixes-7">Bug fixes</a></li>
+  <li><a href="#bug-fixes-8" id="toc-bug-fixes-8" class="nav-link" data-scroll-target="#bug-fixes-8">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.8.2-release-notes" id="toc-tiledb-v2.8.2-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.8.2-release-notes">TileDB v2.8.2 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-8" id="toc-bug-fixes-8" class="nav-link" data-scroll-target="#bug-fixes-8">Bug fixes</a></li>
+  <li><a href="#bug-fixes-9" id="toc-bug-fixes-9" class="nav-link" data-scroll-target="#bug-fixes-9">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.8.1-release-notes" id="toc-tiledb-v2.8.1-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.8.1-release-notes">TileDB v2.8.1 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-10" id="toc-improvements-10" class="nav-link" data-scroll-target="#improvements-10">Improvements</a></li>
-  <li><a href="#bug-fixes-9" id="toc-bug-fixes-9" class="nav-link" data-scroll-target="#bug-fixes-9">Bug fixes</a></li>
+  <li><a href="#bug-fixes-10" id="toc-bug-fixes-10" class="nav-link" data-scroll-target="#bug-fixes-10">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.8.0-release-notes" id="toc-tiledb-v2.8.0-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.8.0-release-notes">TileDB v2.8.0 Release Notes</a>
   <ul class="collapse">
   <li><a href="#disk-format-6" id="toc-disk-format-6" class="nav-link" data-scroll-target="#disk-format-6">Disk Format</a></li>
   <li><a href="#new-features-6" id="toc-new-features-6" class="nav-link" data-scroll-target="#new-features-6">New features</a></li>
   <li><a href="#improvements-11" id="toc-improvements-11" class="nav-link" data-scroll-target="#improvements-11">Improvements</a></li>
-  <li><a href="#bug-fixes-10" id="toc-bug-fixes-10" class="nav-link" data-scroll-target="#bug-fixes-10">Bug fixes</a></li>
+  <li><a href="#bug-fixes-11" id="toc-bug-fixes-11" class="nav-link" data-scroll-target="#bug-fixes-11">Bug fixes</a></li>
   <li><a href="#api-additions-2" id="toc-api-additions-2" class="nav-link" data-scroll-target="#api-additions-2">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-7" id="toc-c-api-7" class="nav-link" data-scroll-target="#c-api-7">C API</a></li>
@@ -406,7 +410,7 @@ ul.task-list li input[type="checkbox"] {
   </ul></li>
   <li><a href="#tiledb-v2.7.1-release-notes" id="toc-tiledb-v2.7.1-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.7.1-release-notes">TileDB v2.7.1 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-11" id="toc-bug-fixes-11" class="nav-link" data-scroll-target="#bug-fixes-11">Bug fixes</a></li>
+  <li><a href="#bug-fixes-12" id="toc-bug-fixes-12" class="nav-link" data-scroll-target="#bug-fixes-12">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.7.0-release-notes" id="toc-tiledb-v2.7.0-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.7.0-release-notes">TileDB v2.7.0 Release Notes</a>
   <ul class="collapse">
@@ -414,7 +418,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#new-features-7" id="toc-new-features-7" class="nav-link" data-scroll-target="#new-features-7">New features</a></li>
   <li><a href="#improvements-12" id="toc-improvements-12" class="nav-link" data-scroll-target="#improvements-12">Improvements</a></li>
   <li><a href="#deprecations-1" id="toc-deprecations-1" class="nav-link" data-scroll-target="#deprecations-1">Deprecations</a></li>
-  <li><a href="#bug-fixes-12" id="toc-bug-fixes-12" class="nav-link" data-scroll-target="#bug-fixes-12">Bug fixes</a></li>
+  <li><a href="#bug-fixes-13" id="toc-bug-fixes-13" class="nav-link" data-scroll-target="#bug-fixes-13">Bug fixes</a></li>
   <li><a href="#api-additions-3" id="toc-api-additions-3" class="nav-link" data-scroll-target="#api-additions-3">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-9" id="toc-c-api-9" class="nav-link" data-scroll-target="#c-api-9">C API</a></li>
@@ -423,19 +427,19 @@ ul.task-list li input[type="checkbox"] {
   </ul></li>
   <li><a href="#tiledb-v2.6.4-release-notes" id="toc-tiledb-v2.6.4-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.6.4-release-notes">TileDB v2.6.4 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-13" id="toc-bug-fixes-13" class="nav-link" data-scroll-target="#bug-fixes-13">Bug fixes</a></li>
+  <li><a href="#bug-fixes-14" id="toc-bug-fixes-14" class="nav-link" data-scroll-target="#bug-fixes-14">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.6.3-release-notes" id="toc-tiledb-v2.6.3-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.6.3-release-notes">TileDB v2.6.3 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-14" id="toc-bug-fixes-14" class="nav-link" data-scroll-target="#bug-fixes-14">Bug fixes</a></li>
+  <li><a href="#bug-fixes-15" id="toc-bug-fixes-15" class="nav-link" data-scroll-target="#bug-fixes-15">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.6.2-release-notes" id="toc-tiledb-v2.6.2-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.6.2-release-notes">TileDB v2.6.2 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-15" id="toc-bug-fixes-15" class="nav-link" data-scroll-target="#bug-fixes-15">Bug fixes</a></li>
+  <li><a href="#bug-fixes-16" id="toc-bug-fixes-16" class="nav-link" data-scroll-target="#bug-fixes-16">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.6.1-release-notes" id="toc-tiledb-v2.6.1-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.6.1-release-notes">TileDB v2.6.1 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-16" id="toc-bug-fixes-16" class="nav-link" data-scroll-target="#bug-fixes-16">Bug fixes</a></li>
+  <li><a href="#bug-fixes-17" id="toc-bug-fixes-17" class="nav-link" data-scroll-target="#bug-fixes-17">Bug fixes</a></li>
   <li><a href="#api-additions-4" id="toc-api-additions-4" class="nav-link" data-scroll-target="#api-additions-4">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-11" id="toc-c-api-11" class="nav-link" data-scroll-target="#c-api-11">C++ API</a></li>
@@ -445,7 +449,7 @@ ul.task-list li input[type="checkbox"] {
   <ul class="collapse">
   <li><a href="#improvements-13" id="toc-improvements-13" class="nav-link" data-scroll-target="#improvements-13">Improvements</a></li>
   <li><a href="#deprecations-2" id="toc-deprecations-2" class="nav-link" data-scroll-target="#deprecations-2">Deprecations</a></li>
-  <li><a href="#bug-fixes-17" id="toc-bug-fixes-17" class="nav-link" data-scroll-target="#bug-fixes-17">Bug fixes</a></li>
+  <li><a href="#bug-fixes-18" id="toc-bug-fixes-18" class="nav-link" data-scroll-target="#bug-fixes-18">Bug fixes</a></li>
   <li><a href="#api-additions-5" id="toc-api-additions-5" class="nav-link" data-scroll-target="#api-additions-5">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-12" id="toc-c-api-12" class="nav-link" data-scroll-target="#c-api-12">C API</a></li>
@@ -455,18 +459,18 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#tiledb-v2.5.3-release-notes" id="toc-tiledb-v2.5.3-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.5.3-release-notes">TileDB v2.5.3 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-14" id="toc-improvements-14" class="nav-link" data-scroll-target="#improvements-14">Improvements</a></li>
-  <li><a href="#bug-fixes-18" id="toc-bug-fixes-18" class="nav-link" data-scroll-target="#bug-fixes-18">Bug fixes</a></li>
+  <li><a href="#bug-fixes-19" id="toc-bug-fixes-19" class="nav-link" data-scroll-target="#bug-fixes-19">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.5.2-release-notes" id="toc-tiledb-v2.5.2-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.5.2-release-notes">TileDB v2.5.2 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-15" id="toc-improvements-15" class="nav-link" data-scroll-target="#improvements-15">Improvements</a></li>
-  <li><a href="#bug-fixes-19" id="toc-bug-fixes-19" class="nav-link" data-scroll-target="#bug-fixes-19">Bug fixes</a></li>
+  <li><a href="#bug-fixes-20" id="toc-bug-fixes-20" class="nav-link" data-scroll-target="#bug-fixes-20">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.5.1-release-notes" id="toc-tiledb-v2.5.1-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.5.1-release-notes">TileDB v2.5.1 Release Notes</a>
   <ul class="collapse">
   <li><a href="#new-features-8" id="toc-new-features-8" class="nav-link" data-scroll-target="#new-features-8">New features</a></li>
   <li><a href="#improvements-16" id="toc-improvements-16" class="nav-link" data-scroll-target="#improvements-16">Improvements</a></li>
-  <li><a href="#bug-fixes-20" id="toc-bug-fixes-20" class="nav-link" data-scroll-target="#bug-fixes-20">Bug fixes</a></li>
+  <li><a href="#bug-fixes-21" id="toc-bug-fixes-21" class="nav-link" data-scroll-target="#bug-fixes-21">Bug fixes</a></li>
   <li><a href="#api-additions-6" id="toc-api-additions-6" class="nav-link" data-scroll-target="#api-additions-6">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-14" id="toc-c-api-14" class="nav-link" data-scroll-target="#c-api-14">C++ API</a></li>
@@ -477,7 +481,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#breaking-c-api-changes-1" id="toc-breaking-c-api-changes-1" class="nav-link" data-scroll-target="#breaking-c-api-changes-1">Breaking C API changes</a></li>
   <li><a href="#new-features-9" id="toc-new-features-9" class="nav-link" data-scroll-target="#new-features-9">New features</a></li>
   <li><a href="#improvements-17" id="toc-improvements-17" class="nav-link" data-scroll-target="#improvements-17">Improvements</a></li>
-  <li><a href="#bug-fixes-21" id="toc-bug-fixes-21" class="nav-link" data-scroll-target="#bug-fixes-21">Bug fixes</a></li>
+  <li><a href="#bug-fixes-22" id="toc-bug-fixes-22" class="nav-link" data-scroll-target="#bug-fixes-22">Bug fixes</a></li>
   <li><a href="#api-additions-7" id="toc-api-additions-7" class="nav-link" data-scroll-target="#api-additions-7">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-15" id="toc-c-api-15" class="nav-link" data-scroll-target="#c-api-15">C API</a></li>
@@ -486,14 +490,14 @@ ul.task-list li input[type="checkbox"] {
   </ul></li>
   <li><a href="#tiledb-v2.4.3-release-notes" id="toc-tiledb-v2.4.3-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.4.3-release-notes">TileDB v2.4.3 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-22" id="toc-bug-fixes-22" class="nav-link" data-scroll-target="#bug-fixes-22">Bug fixes</a></li>
+  <li><a href="#bug-fixes-23" id="toc-bug-fixes-23" class="nav-link" data-scroll-target="#bug-fixes-23">Bug fixes</a></li>
   <li><a href="#api-additions-8" id="toc-api-additions-8" class="nav-link" data-scroll-target="#api-additions-8">API additions</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.4.2-release-notes" id="toc-tiledb-v2.4.2-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.4.2-release-notes">TileDB v2.4.2 Release Notes</a>
   <ul class="collapse">
   <li><a href="#new-features-10" id="toc-new-features-10" class="nav-link" data-scroll-target="#new-features-10">New features</a></li>
   <li><a href="#improvements-18" id="toc-improvements-18" class="nav-link" data-scroll-target="#improvements-18">Improvements</a></li>
-  <li><a href="#bug-fixes-23" id="toc-bug-fixes-23" class="nav-link" data-scroll-target="#bug-fixes-23">Bug fixes</a></li>
+  <li><a href="#bug-fixes-24" id="toc-bug-fixes-24" class="nav-link" data-scroll-target="#bug-fixes-24">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.4.0-release-notes" id="toc-tiledb-v2.4.0-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.4.0-release-notes">TileDB v2.4.0 Release Notes</a>
   <ul class="collapse">
@@ -501,7 +505,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#new-features-11" id="toc-new-features-11" class="nav-link" data-scroll-target="#new-features-11">New features</a></li>
   <li><a href="#improvements-19" id="toc-improvements-19" class="nav-link" data-scroll-target="#improvements-19">Improvements</a></li>
   <li><a href="#deprecations-3" id="toc-deprecations-3" class="nav-link" data-scroll-target="#deprecations-3">Deprecations</a></li>
-  <li><a href="#bug-fixes-24" id="toc-bug-fixes-24" class="nav-link" data-scroll-target="#bug-fixes-24">Bug fixes</a></li>
+  <li><a href="#bug-fixes-25" id="toc-bug-fixes-25" class="nav-link" data-scroll-target="#bug-fixes-25">Bug fixes</a></li>
   <li><a href="#api-additions-9" id="toc-api-additions-9" class="nav-link" data-scroll-target="#api-additions-9">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-17" id="toc-c-api-17" class="nav-link" data-scroll-target="#c-api-17">C API</a></li>
@@ -511,22 +515,22 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#tiledb-v2.3.4-release-notes" id="toc-tiledb-v2.3.4-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.3.4-release-notes">TileDB v2.3.4 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-20" id="toc-improvements-20" class="nav-link" data-scroll-target="#improvements-20">Improvements</a></li>
-  <li><a href="#bug-fixes-25" id="toc-bug-fixes-25" class="nav-link" data-scroll-target="#bug-fixes-25">Bug fixes</a></li>
+  <li><a href="#bug-fixes-26" id="toc-bug-fixes-26" class="nav-link" data-scroll-target="#bug-fixes-26">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.3.3-release-notes" id="toc-tiledb-v2.3.3-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.3.3-release-notes">TileDB v2.3.3 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-21" id="toc-improvements-21" class="nav-link" data-scroll-target="#improvements-21">Improvements</a></li>
-  <li><a href="#bug-fixes-26" id="toc-bug-fixes-26" class="nav-link" data-scroll-target="#bug-fixes-26">Bug fixes</a></li>
+  <li><a href="#bug-fixes-27" id="toc-bug-fixes-27" class="nav-link" data-scroll-target="#bug-fixes-27">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.3.2-release-notes" id="toc-tiledb-v2.3.2-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.3.2-release-notes">TileDB v2.3.2 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-22" id="toc-improvements-22" class="nav-link" data-scroll-target="#improvements-22">Improvements</a></li>
-  <li><a href="#bug-fixes-27" id="toc-bug-fixes-27" class="nav-link" data-scroll-target="#bug-fixes-27">Bug fixes</a></li>
+  <li><a href="#bug-fixes-28" id="toc-bug-fixes-28" class="nav-link" data-scroll-target="#bug-fixes-28">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.3.1-release-notes" id="toc-tiledb-v2.3.1-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.3.1-release-notes">TileDB v2.3.1 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-23" id="toc-improvements-23" class="nav-link" data-scroll-target="#improvements-23">Improvements</a></li>
-  <li><a href="#bug-fixes-28" id="toc-bug-fixes-28" class="nav-link" data-scroll-target="#bug-fixes-28">Bug fixes</a></li>
+  <li><a href="#bug-fixes-29" id="toc-bug-fixes-29" class="nav-link" data-scroll-target="#bug-fixes-29">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.3.0-release-notes" id="toc-tiledb-v2.3.0-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.3.0-release-notes">TileDB v2.3.0 Release Notes</a>
   <ul class="collapse">
@@ -535,7 +539,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#new-features-12" id="toc-new-features-12" class="nav-link" data-scroll-target="#new-features-12">New features</a></li>
   <li><a href="#improvements-24" id="toc-improvements-24" class="nav-link" data-scroll-target="#improvements-24">Improvements</a></li>
   <li><a href="#deprecations-4" id="toc-deprecations-4" class="nav-link" data-scroll-target="#deprecations-4">Deprecations</a></li>
-  <li><a href="#bug-fixes-29" id="toc-bug-fixes-29" class="nav-link" data-scroll-target="#bug-fixes-29">Bug fixes</a></li>
+  <li><a href="#bug-fixes-30" id="toc-bug-fixes-30" class="nav-link" data-scroll-target="#bug-fixes-30">Bug fixes</a></li>
   <li><a href="#api-additions-10" id="toc-api-additions-10" class="nav-link" data-scroll-target="#api-additions-10">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-19" id="toc-c-api-19" class="nav-link" data-scroll-target="#c-api-19">C API</a></li>
@@ -544,7 +548,7 @@ ul.task-list li input[type="checkbox"] {
   </ul></li>
   <li><a href="#tiledb-v2.2.9-release-notes" id="toc-tiledb-v2.2.9-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.2.9-release-notes">TileDB v2.2.9 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-30" id="toc-bug-fixes-30" class="nav-link" data-scroll-target="#bug-fixes-30">Bug fixes</a></li>
+  <li><a href="#bug-fixes-31" id="toc-bug-fixes-31" class="nav-link" data-scroll-target="#bug-fixes-31">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.2.8-release-notes" id="toc-tiledb-v2.2.8-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.2.8-release-notes">TileDB v2.2.8 Release Notes</a>
   <ul class="collapse">
@@ -554,7 +558,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#new-features-13" id="toc-new-features-13" class="nav-link" data-scroll-target="#new-features-13">New features</a></li>
   <li><a href="#improvements-25" id="toc-improvements-25" class="nav-link" data-scroll-target="#improvements-25">Improvements</a></li>
   <li><a href="#deprecations-5" id="toc-deprecations-5" class="nav-link" data-scroll-target="#deprecations-5">Deprecations</a></li>
-  <li><a href="#bug-fixes-31" id="toc-bug-fixes-31" class="nav-link" data-scroll-target="#bug-fixes-31">Bug fixes</a></li>
+  <li><a href="#bug-fixes-32" id="toc-bug-fixes-32" class="nav-link" data-scroll-target="#bug-fixes-32">Bug fixes</a></li>
   <li><a href="#api-additions-11" id="toc-api-additions-11" class="nav-link" data-scroll-target="#api-additions-11">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-21" id="toc-c-api-21" class="nav-link" data-scroll-target="#c-api-21">C API</a></li>
@@ -567,18 +571,18 @@ ul.task-list li input[type="checkbox"] {
   </ul></li>
   <li><a href="#tiledb-v2.2.6-release-notes" id="toc-tiledb-v2.2.6-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.2.6-release-notes">TileDB v2.2.6 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-32" id="toc-bug-fixes-32" class="nav-link" data-scroll-target="#bug-fixes-32">Bug fixes</a></li>
+  <li><a href="#bug-fixes-33" id="toc-bug-fixes-33" class="nav-link" data-scroll-target="#bug-fixes-33">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.2.5-release-notes" id="toc-tiledb-v2.2.5-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.2.5-release-notes">TileDB v2.2.5 Release Notes</a>
   <ul class="collapse">
   <li><a href="#new-features-14" id="toc-new-features-14" class="nav-link" data-scroll-target="#new-features-14">New features</a></li>
   <li><a href="#improvements-27" id="toc-improvements-27" class="nav-link" data-scroll-target="#improvements-27">Improvements</a></li>
-  <li><a href="#bug-fixes-33" id="toc-bug-fixes-33" class="nav-link" data-scroll-target="#bug-fixes-33">Bug fixes</a></li>
+  <li><a href="#bug-fixes-34" id="toc-bug-fixes-34" class="nav-link" data-scroll-target="#bug-fixes-34">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.2.4-release-notes" id="toc-tiledb-v2.2.4-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.2.4-release-notes">TileDB v2.2.4 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-28" id="toc-improvements-28" class="nav-link" data-scroll-target="#improvements-28">Improvements</a></li>
-  <li><a href="#bug-fixes-34" id="toc-bug-fixes-34" class="nav-link" data-scroll-target="#bug-fixes-34">Bug fixes</a>
+  <li><a href="#bug-fixes-35" id="toc-bug-fixes-35" class="nav-link" data-scroll-target="#bug-fixes-35">Bug fixes</a>
   <ul class="collapse">
   <li><a href="#c-api-23" id="toc-c-api-23" class="nav-link" data-scroll-target="#c-api-23">C++ API</a></li>
   </ul></li>
@@ -592,7 +596,7 @@ ul.task-list li input[type="checkbox"] {
   <ul class="collapse">
   <li><a href="#new-features-16" id="toc-new-features-16" class="nav-link" data-scroll-target="#new-features-16">New features</a></li>
   <li><a href="#improvements-30" id="toc-improvements-30" class="nav-link" data-scroll-target="#improvements-30">Improvements</a></li>
-  <li><a href="#bug-fixes-35" id="toc-bug-fixes-35" class="nav-link" data-scroll-target="#bug-fixes-35">Bug fixes</a></li>
+  <li><a href="#bug-fixes-36" id="toc-bug-fixes-36" class="nav-link" data-scroll-target="#bug-fixes-36">Bug fixes</a></li>
   <li><a href="#api-additions-12" id="toc-api-additions-12" class="nav-link" data-scroll-target="#api-additions-12">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-24" id="toc-c-api-24" class="nav-link" data-scroll-target="#c-api-24">C API</a></li>
@@ -604,7 +608,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#breaking-behavior-5" id="toc-breaking-behavior-5" class="nav-link" data-scroll-target="#breaking-behavior-5">Breaking behavior</a></li>
   <li><a href="#new-features-17" id="toc-new-features-17" class="nav-link" data-scroll-target="#new-features-17">New features</a></li>
   <li><a href="#improvements-31" id="toc-improvements-31" class="nav-link" data-scroll-target="#improvements-31">Improvements</a></li>
-  <li><a href="#bug-fixes-36" id="toc-bug-fixes-36" class="nav-link" data-scroll-target="#bug-fixes-36">Bug fixes</a></li>
+  <li><a href="#bug-fixes-37" id="toc-bug-fixes-37" class="nav-link" data-scroll-target="#bug-fixes-37">Bug fixes</a></li>
   <li><a href="#api-additions-13" id="toc-api-additions-13" class="nav-link" data-scroll-target="#api-additions-13">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-26" id="toc-c-api-26" class="nav-link" data-scroll-target="#c-api-26">C API</a></li>
@@ -614,12 +618,12 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#tiledb-v2.2.0-release-notes" id="toc-tiledb-v2.2.0-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.2.0-release-notes">TileDB v2.2.0 Release Notes</a></li>
   <li><a href="#tiledb-v2.1.6-release-notes" id="toc-tiledb-v2.1.6-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.1.6-release-notes">TileDB v2.1.6 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-37" id="toc-bug-fixes-37" class="nav-link" data-scroll-target="#bug-fixes-37">Bug fixes</a></li>
+  <li><a href="#bug-fixes-38" id="toc-bug-fixes-38" class="nav-link" data-scroll-target="#bug-fixes-38">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.1.5-release-notes" id="toc-tiledb-v2.1.5-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.1.5-release-notes">TileDB v2.1.5 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-32" id="toc-improvements-32" class="nav-link" data-scroll-target="#improvements-32">Improvements</a></li>
-  <li><a href="#bug-fixes-38" id="toc-bug-fixes-38" class="nav-link" data-scroll-target="#bug-fixes-38">Bug fixes</a></li>
+  <li><a href="#bug-fixes-39" id="toc-bug-fixes-39" class="nav-link" data-scroll-target="#bug-fixes-39">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.1.4-release-notes" id="toc-tiledb-v2.1.4-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.1.4-release-notes">TileDB v2.1.4 Release Notes</a>
   <ul class="collapse">
@@ -628,15 +632,15 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#tiledb-v2.1.3-release-notes" id="toc-tiledb-v2.1.3-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.1.3-release-notes">TileDB v2.1.3 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-34" id="toc-improvements-34" class="nav-link" data-scroll-target="#improvements-34">Improvements</a></li>
-  <li><a href="#bug-fixes-39" id="toc-bug-fixes-39" class="nav-link" data-scroll-target="#bug-fixes-39">Bug fixes</a></li>
+  <li><a href="#bug-fixes-40" id="toc-bug-fixes-40" class="nav-link" data-scroll-target="#bug-fixes-40">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.1.2-release-notes" id="toc-tiledb-v2.1.2-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.1.2-release-notes">TileDB v2.1.2 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-40" id="toc-bug-fixes-40" class="nav-link" data-scroll-target="#bug-fixes-40">Bug fixes</a></li>
+  <li><a href="#bug-fixes-41" id="toc-bug-fixes-41" class="nav-link" data-scroll-target="#bug-fixes-41">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.1.1-release-notes" id="toc-tiledb-v2.1.1-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.1.1-release-notes">TileDB v2.1.1 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-41" id="toc-bug-fixes-41" class="nav-link" data-scroll-target="#bug-fixes-41">Bug fixes</a></li>
+  <li><a href="#bug-fixes-42" id="toc-bug-fixes-42" class="nav-link" data-scroll-target="#bug-fixes-42">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.1.0-release-notes" id="toc-tiledb-v2.1.0-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.1.0-release-notes">TileDB v2.1.0 Release Notes</a>
   <ul class="collapse">
@@ -644,7 +648,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#new-features-18" id="toc-new-features-18" class="nav-link" data-scroll-target="#new-features-18">New features</a></li>
   <li><a href="#improvements-35" id="toc-improvements-35" class="nav-link" data-scroll-target="#improvements-35">Improvements</a></li>
   <li><a href="#deprecations-6" id="toc-deprecations-6" class="nav-link" data-scroll-target="#deprecations-6">Deprecations</a></li>
-  <li><a href="#bug-fixes-42" id="toc-bug-fixes-42" class="nav-link" data-scroll-target="#bug-fixes-42">Bug fixes</a></li>
+  <li><a href="#bug-fixes-43" id="toc-bug-fixes-43" class="nav-link" data-scroll-target="#bug-fixes-43">Bug fixes</a></li>
   <li><a href="#api-additions-14" id="toc-api-additions-14" class="nav-link" data-scroll-target="#api-additions-14">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-28" id="toc-c-api-28" class="nav-link" data-scroll-target="#c-api-28">C API</a></li>
@@ -654,17 +658,17 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#tiledb-v2.0.8-release-notes" id="toc-tiledb-v2.0.8-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.0.8-release-notes">TileDB v2.0.8 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-36" id="toc-improvements-36" class="nav-link" data-scroll-target="#improvements-36">Improvements</a></li>
-  <li><a href="#bug-fixes-43" id="toc-bug-fixes-43" class="nav-link" data-scroll-target="#bug-fixes-43">Bug fixes</a></li>
+  <li><a href="#bug-fixes-44" id="toc-bug-fixes-44" class="nav-link" data-scroll-target="#bug-fixes-44">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.0.7-release-notes" id="toc-tiledb-v2.0.7-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.0.7-release-notes">TileDB v2.0.7 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-37" id="toc-improvements-37" class="nav-link" data-scroll-target="#improvements-37">Improvements</a></li>
-  <li><a href="#bug-fixes-44" id="toc-bug-fixes-44" class="nav-link" data-scroll-target="#bug-fixes-44">Bug fixes</a></li>
+  <li><a href="#bug-fixes-45" id="toc-bug-fixes-45" class="nav-link" data-scroll-target="#bug-fixes-45">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.0.6-release-notes" id="toc-tiledb-v2.0.6-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.0.6-release-notes">TileDB v2.0.6 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-38" id="toc-improvements-38" class="nav-link" data-scroll-target="#improvements-38">Improvements</a></li>
-  <li><a href="#bug-fixes-45" id="toc-bug-fixes-45" class="nav-link" data-scroll-target="#bug-fixes-45">Bug fixes</a></li>
+  <li><a href="#bug-fixes-46" id="toc-bug-fixes-46" class="nav-link" data-scroll-target="#bug-fixes-46">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.0.5-release-notes" id="toc-tiledb-v2.0.5-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.0.5-release-notes">TileDB v2.0.5 Release Notes</a>
   <ul class="collapse">
@@ -673,24 +677,24 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#tiledb-v2.0.4-release-notes" id="toc-tiledb-v2.0.4-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.0.4-release-notes">TileDB v2.0.4 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-40" id="toc-improvements-40" class="nav-link" data-scroll-target="#improvements-40">Improvements</a></li>
-  <li><a href="#bug-fixes-46" id="toc-bug-fixes-46" class="nav-link" data-scroll-target="#bug-fixes-46">Bug fixes</a></li>
+  <li><a href="#bug-fixes-47" id="toc-bug-fixes-47" class="nav-link" data-scroll-target="#bug-fixes-47">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.0.3-release-notes" id="toc-tiledb-v2.0.3-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.0.3-release-notes">TileDB v2.0.3 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-41" id="toc-improvements-41" class="nav-link" data-scroll-target="#improvements-41">Improvements</a></li>
-  <li><a href="#bug-fixes-47" id="toc-bug-fixes-47" class="nav-link" data-scroll-target="#bug-fixes-47">Bug fixes</a></li>
+  <li><a href="#bug-fixes-48" id="toc-bug-fixes-48" class="nav-link" data-scroll-target="#bug-fixes-48">Bug fixes</a></li>
   <li><a href="#api-additions-15" id="toc-api-additions-15" class="nav-link" data-scroll-target="#api-additions-15">API additions</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.0.2-release-notes" id="toc-tiledb-v2.0.2-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.0.2-release-notes">TileDB v2.0.2 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-48" id="toc-bug-fixes-48" class="nav-link" data-scroll-target="#bug-fixes-48">Bug fixes</a></li>
+  <li><a href="#bug-fixes-49" id="toc-bug-fixes-49" class="nav-link" data-scroll-target="#bug-fixes-49">Bug fixes</a></li>
   <li><a href="#improvements-42" id="toc-improvements-42" class="nav-link" data-scroll-target="#improvements-42">Improvements</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.0.1-release-notes" id="toc-tiledb-v2.0.1-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.0.1-release-notes">TileDB v2.0.1 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-43" id="toc-improvements-43" class="nav-link" data-scroll-target="#improvements-43">Improvements</a></li>
   <li><a href="#deprecations-7" id="toc-deprecations-7" class="nav-link" data-scroll-target="#deprecations-7">Deprecations</a></li>
-  <li><a href="#bug-fixes-49" id="toc-bug-fixes-49" class="nav-link" data-scroll-target="#bug-fixes-49">Bug fixes</a></li>
+  <li><a href="#bug-fixes-50" id="toc-bug-fixes-50" class="nav-link" data-scroll-target="#bug-fixes-50">Bug fixes</a></li>
   <li><a href="#api-additions-16" id="toc-api-additions-16" class="nav-link" data-scroll-target="#api-additions-16">API additions</a></li>
   </ul></li>
   <li><a href="#tiledb-v2.0.0-release-notes" id="toc-tiledb-v2.0.0-release-notes" class="nav-link" data-scroll-target="#tiledb-v2.0.0-release-notes">TileDB v2.0.0 Release Notes</a>
@@ -701,20 +705,20 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#new-features-19" id="toc-new-features-19" class="nav-link" data-scroll-target="#new-features-19">New features</a></li>
   <li><a href="#improvements-44" id="toc-improvements-44" class="nav-link" data-scroll-target="#improvements-44">Improvements</a></li>
   <li><a href="#deprecations-8" id="toc-deprecations-8" class="nav-link" data-scroll-target="#deprecations-8">Deprecations</a></li>
-  <li><a href="#bug-fixes-50" id="toc-bug-fixes-50" class="nav-link" data-scroll-target="#bug-fixes-50">Bug fixes</a></li>
+  <li><a href="#bug-fixes-51" id="toc-bug-fixes-51" class="nav-link" data-scroll-target="#bug-fixes-51">Bug fixes</a></li>
   <li><a href="#api-additions-17" id="toc-api-additions-17" class="nav-link" data-scroll-target="#api-additions-17">API additions</a></li>
   <li><a href="#api-removals" id="toc-api-removals" class="nav-link" data-scroll-target="#api-removals">API removals</a></li>
   </ul></li>
   <li><a href="#tiledb-v1.7.7-release-notes" id="toc-tiledb-v1.7.7-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.7.7-release-notes">TileDB v1.7.7 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-51" id="toc-bug-fixes-51" class="nav-link" data-scroll-target="#bug-fixes-51">Bug fixes</a></li>
+  <li><a href="#bug-fixes-52" id="toc-bug-fixes-52" class="nav-link" data-scroll-target="#bug-fixes-52">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v1.7.6-release-notes" id="toc-tiledb-v1.7.6-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.7.6-release-notes">TileDB v1.7.6 Release Notes</a>
   <ul class="collapse">
   <li><a href="#new-features-20" id="toc-new-features-20" class="nav-link" data-scroll-target="#new-features-20">New features</a></li>
   <li><a href="#improvements-45" id="toc-improvements-45" class="nav-link" data-scroll-target="#improvements-45">Improvements</a></li>
   <li><a href="#deprecations-9" id="toc-deprecations-9" class="nav-link" data-scroll-target="#deprecations-9">Deprecations</a></li>
-  <li><a href="#bug-fixes-52" id="toc-bug-fixes-52" class="nav-link" data-scroll-target="#bug-fixes-52">Bug fixes</a></li>
+  <li><a href="#bug-fixes-53" id="toc-bug-fixes-53" class="nav-link" data-scroll-target="#bug-fixes-53">Bug fixes</a></li>
   <li><a href="#api-additions-18" id="toc-api-additions-18" class="nav-link" data-scroll-target="#api-additions-18">API additions</a></li>
   <li><a href="#api-removals-1" id="toc-api-removals-1" class="nav-link" data-scroll-target="#api-removals-1">API removals</a></li>
   </ul></li>
@@ -723,7 +727,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#new-features-21" id="toc-new-features-21" class="nav-link" data-scroll-target="#new-features-21">New features</a></li>
   <li><a href="#improvements-46" id="toc-improvements-46" class="nav-link" data-scroll-target="#improvements-46">Improvements</a></li>
   <li><a href="#deprecations-10" id="toc-deprecations-10" class="nav-link" data-scroll-target="#deprecations-10">Deprecations</a></li>
-  <li><a href="#bug-fixes-53" id="toc-bug-fixes-53" class="nav-link" data-scroll-target="#bug-fixes-53">Bug fixes</a></li>
+  <li><a href="#bug-fixes-54" id="toc-bug-fixes-54" class="nav-link" data-scroll-target="#bug-fixes-54">Bug fixes</a></li>
   <li><a href="#api-additions-19" id="toc-api-additions-19" class="nav-link" data-scroll-target="#api-additions-19">API additions</a></li>
   <li><a href="#api-removals-2" id="toc-api-removals-2" class="nav-link" data-scroll-target="#api-removals-2">API removals</a></li>
   </ul></li>
@@ -732,7 +736,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#new-features-22" id="toc-new-features-22" class="nav-link" data-scroll-target="#new-features-22">New features</a></li>
   <li><a href="#improvements-47" id="toc-improvements-47" class="nav-link" data-scroll-target="#improvements-47">Improvements</a></li>
   <li><a href="#deprecations-11" id="toc-deprecations-11" class="nav-link" data-scroll-target="#deprecations-11">Deprecations</a></li>
-  <li><a href="#bug-fixes-54" id="toc-bug-fixes-54" class="nav-link" data-scroll-target="#bug-fixes-54">Bug fixes</a></li>
+  <li><a href="#bug-fixes-55" id="toc-bug-fixes-55" class="nav-link" data-scroll-target="#bug-fixes-55">Bug fixes</a></li>
   <li><a href="#api-additions-20" id="toc-api-additions-20" class="nav-link" data-scroll-target="#api-additions-20">API additions</a></li>
   <li><a href="#api-removals-3" id="toc-api-removals-3" class="nav-link" data-scroll-target="#api-removals-3">API removals</a></li>
   </ul></li>
@@ -741,7 +745,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#new-features-23" id="toc-new-features-23" class="nav-link" data-scroll-target="#new-features-23">New features</a></li>
   <li><a href="#improvements-48" id="toc-improvements-48" class="nav-link" data-scroll-target="#improvements-48">Improvements</a></li>
   <li><a href="#deprecations-12" id="toc-deprecations-12" class="nav-link" data-scroll-target="#deprecations-12">Deprecations</a></li>
-  <li><a href="#bug-fixes-55" id="toc-bug-fixes-55" class="nav-link" data-scroll-target="#bug-fixes-55">Bug fixes</a></li>
+  <li><a href="#bug-fixes-56" id="toc-bug-fixes-56" class="nav-link" data-scroll-target="#bug-fixes-56">Bug fixes</a></li>
   <li><a href="#api-additions-21" id="toc-api-additions-21" class="nav-link" data-scroll-target="#api-additions-21">API additions</a></li>
   <li><a href="#api-removals-4" id="toc-api-removals-4" class="nav-link" data-scroll-target="#api-removals-4">API removals</a></li>
   </ul></li>
@@ -750,7 +754,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#new-features-24" id="toc-new-features-24" class="nav-link" data-scroll-target="#new-features-24">New features</a></li>
   <li><a href="#improvements-49" id="toc-improvements-49" class="nav-link" data-scroll-target="#improvements-49">Improvements</a></li>
   <li><a href="#deprecations-13" id="toc-deprecations-13" class="nav-link" data-scroll-target="#deprecations-13">Deprecations</a></li>
-  <li><a href="#bug-fixes-56" id="toc-bug-fixes-56" class="nav-link" data-scroll-target="#bug-fixes-56">Bug fixes</a></li>
+  <li><a href="#bug-fixes-57" id="toc-bug-fixes-57" class="nav-link" data-scroll-target="#bug-fixes-57">Bug fixes</a></li>
   <li><a href="#api-additions-22" id="toc-api-additions-22" class="nav-link" data-scroll-target="#api-additions-22">API additions</a></li>
   <li><a href="#api-removals-5" id="toc-api-removals-5" class="nav-link" data-scroll-target="#api-removals-5">API removals</a></li>
   </ul></li>
@@ -759,7 +763,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#new-features-25" id="toc-new-features-25" class="nav-link" data-scroll-target="#new-features-25">New features</a></li>
   <li><a href="#improvements-50" id="toc-improvements-50" class="nav-link" data-scroll-target="#improvements-50">Improvements</a></li>
   <li><a href="#deprecations-14" id="toc-deprecations-14" class="nav-link" data-scroll-target="#deprecations-14">Deprecations</a></li>
-  <li><a href="#bug-fixes-57" id="toc-bug-fixes-57" class="nav-link" data-scroll-target="#bug-fixes-57">Bug fixes</a></li>
+  <li><a href="#bug-fixes-58" id="toc-bug-fixes-58" class="nav-link" data-scroll-target="#bug-fixes-58">Bug fixes</a></li>
   <li><a href="#api-additions-23" id="toc-api-additions-23" class="nav-link" data-scroll-target="#api-additions-23">API additions</a></li>
   <li><a href="#api-removals-6" id="toc-api-removals-6" class="nav-link" data-scroll-target="#api-removals-6">API removals</a></li>
   </ul></li>
@@ -767,29 +771,29 @@ ul.task-list li input[type="checkbox"] {
   <ul class="collapse">
   <li><a href="#new-features-26" id="toc-new-features-26" class="nav-link" data-scroll-target="#new-features-26">New features</a></li>
   <li><a href="#improvements-51" id="toc-improvements-51" class="nav-link" data-scroll-target="#improvements-51">Improvements</a></li>
-  <li><a href="#bug-fixes-58" id="toc-bug-fixes-58" class="nav-link" data-scroll-target="#bug-fixes-58">Bug fixes</a></li>
+  <li><a href="#bug-fixes-59" id="toc-bug-fixes-59" class="nav-link" data-scroll-target="#bug-fixes-59">Bug fixes</a></li>
   <li><a href="#api-additions-24" id="toc-api-additions-24" class="nav-link" data-scroll-target="#api-additions-24">API additions</a></li>
   <li><a href="#api-removals-7" id="toc-api-removals-7" class="nav-link" data-scroll-target="#api-removals-7">API removals</a></li>
   </ul></li>
   <li><a href="#tiledb-v1.6.3-release-notes" id="toc-tiledb-v1.6.3-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.6.3-release-notes">TileDB v1.6.3 Release Notes</a>
   <ul class="collapse">
   <li><a href="#additions" id="toc-additions" class="nav-link" data-scroll-target="#additions">Additions</a></li>
-  <li><a href="#bug-fixes-59" id="toc-bug-fixes-59" class="nav-link" data-scroll-target="#bug-fixes-59">Bug fixes</a></li>
+  <li><a href="#bug-fixes-60" id="toc-bug-fixes-60" class="nav-link" data-scroll-target="#bug-fixes-60">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v1.6.2-release-notes" id="toc-tiledb-v1.6.2-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.6.2-release-notes">TileDB v1.6.2 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-60" id="toc-bug-fixes-60" class="nav-link" data-scroll-target="#bug-fixes-60">Bug fixes</a></li>
+  <li><a href="#bug-fixes-61" id="toc-bug-fixes-61" class="nav-link" data-scroll-target="#bug-fixes-61">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v1.6.1-release-notes" id="toc-tiledb-v1.6.1-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.6.1-release-notes">TileDB v1.6.1 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-61" id="toc-bug-fixes-61" class="nav-link" data-scroll-target="#bug-fixes-61">Bug fixes</a></li>
+  <li><a href="#bug-fixes-62" id="toc-bug-fixes-62" class="nav-link" data-scroll-target="#bug-fixes-62">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v1.6.0-release-notes" id="toc-tiledb-v1.6.0-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.6.0-release-notes">TileDB v1.6.0 Release Notes</a>
   <ul class="collapse">
   <li><a href="#new-features-27" id="toc-new-features-27" class="nav-link" data-scroll-target="#new-features-27">New features</a></li>
   <li><a href="#improvements-52" id="toc-improvements-52" class="nav-link" data-scroll-target="#improvements-52">Improvements</a></li>
   <li><a href="#deprecations-15" id="toc-deprecations-15" class="nav-link" data-scroll-target="#deprecations-15">Deprecations</a></li>
-  <li><a href="#bug-fixes-62" id="toc-bug-fixes-62" class="nav-link" data-scroll-target="#bug-fixes-62">Bug fixes</a></li>
+  <li><a href="#bug-fixes-63" id="toc-bug-fixes-63" class="nav-link" data-scroll-target="#bug-fixes-63">Bug fixes</a></li>
   <li><a href="#api-additions-25" id="toc-api-additions-25" class="nav-link" data-scroll-target="#api-additions-25">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-30" id="toc-c-api-30" class="nav-link" data-scroll-target="#c-api-30">C API</a></li>
@@ -801,13 +805,13 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#tiledb-v1.5.1-release-notes" id="toc-tiledb-v1.5.1-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.5.1-release-notes">TileDB v1.5.1 Release Notes</a>
   <ul class="collapse">
   <li><a href="#improvements-53" id="toc-improvements-53" class="nav-link" data-scroll-target="#improvements-53">Improvements</a></li>
-  <li><a href="#bug-fixes-63" id="toc-bug-fixes-63" class="nav-link" data-scroll-target="#bug-fixes-63">Bug fixes</a></li>
+  <li><a href="#bug-fixes-64" id="toc-bug-fixes-64" class="nav-link" data-scroll-target="#bug-fixes-64">Bug fixes</a></li>
   </ul></li>
   <li><a href="#tiledb-v1.5.0-release-notes" id="toc-tiledb-v1.5.0-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.5.0-release-notes">TileDB v1.5.0 Release Notes</a>
   <ul class="collapse">
   <li><a href="#new-features-28" id="toc-new-features-28" class="nav-link" data-scroll-target="#new-features-28">New features</a></li>
   <li><a href="#improvements-54" id="toc-improvements-54" class="nav-link" data-scroll-target="#improvements-54">Improvements</a></li>
-  <li><a href="#bug-fixes-64" id="toc-bug-fixes-64" class="nav-link" data-scroll-target="#bug-fixes-64">Bug fixes</a></li>
+  <li><a href="#bug-fixes-65" id="toc-bug-fixes-65" class="nav-link" data-scroll-target="#bug-fixes-65">Bug fixes</a></li>
   <li><a href="#api-additions-26" id="toc-api-additions-26" class="nav-link" data-scroll-target="#api-additions-26">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-34" id="toc-c-api-34" class="nav-link" data-scroll-target="#c-api-34">C API</a></li>
@@ -821,19 +825,19 @@ ul.task-list li input[type="checkbox"] {
   </ul></li>
   <li><a href="#tiledb-v1.4.2-release-notes" id="toc-tiledb-v1.4.2-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.4.2-release-notes">TileDB v1.4.2 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-65" id="toc-bug-fixes-65" class="nav-link" data-scroll-target="#bug-fixes-65">Bug fixes</a></li>
+  <li><a href="#bug-fixes-66" id="toc-bug-fixes-66" class="nav-link" data-scroll-target="#bug-fixes-66">Bug fixes</a></li>
   <li><a href="#improvements-55" id="toc-improvements-55" class="nav-link" data-scroll-target="#improvements-55">Improvements</a></li>
   </ul></li>
   <li><a href="#tiledb-v1.4.1-release-notes" id="toc-tiledb-v1.4.1-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.4.1-release-notes">TileDB v1.4.1 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-66" id="toc-bug-fixes-66" class="nav-link" data-scroll-target="#bug-fixes-66">Bug fixes</a></li>
+  <li><a href="#bug-fixes-67" id="toc-bug-fixes-67" class="nav-link" data-scroll-target="#bug-fixes-67">Bug fixes</a></li>
   <li><a href="#improvements-56" id="toc-improvements-56" class="nav-link" data-scroll-target="#improvements-56">Improvements</a></li>
   </ul></li>
   <li><a href="#tiledb-v1.4.0-release-notes" id="toc-tiledb-v1.4.0-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.4.0-release-notes">TileDB v1.4.0 Release Notes</a>
   <ul class="collapse">
   <li><a href="#new-features-29" id="toc-new-features-29" class="nav-link" data-scroll-target="#new-features-29">New features</a></li>
   <li><a href="#deprecations-16" id="toc-deprecations-16" class="nav-link" data-scroll-target="#deprecations-16">Deprecations</a></li>
-  <li><a href="#bug-fixes-67" id="toc-bug-fixes-67" class="nav-link" data-scroll-target="#bug-fixes-67">Bug fixes</a></li>
+  <li><a href="#bug-fixes-68" id="toc-bug-fixes-68" class="nav-link" data-scroll-target="#bug-fixes-68">Bug fixes</a></li>
   <li><a href="#improvements-57" id="toc-improvements-57" class="nav-link" data-scroll-target="#improvements-57">Improvements</a></li>
   <li><a href="#api-additions-27" id="toc-api-additions-27" class="nav-link" data-scroll-target="#api-additions-27">API additions</a>
   <ul class="collapse">
@@ -848,19 +852,19 @@ ul.task-list li input[type="checkbox"] {
   </ul></li>
   <li><a href="#tiledb-v1.3.2-release-notes" id="toc-tiledb-v1.3.2-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.3.2-release-notes">TileDB v1.3.2 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-68" id="toc-bug-fixes-68" class="nav-link" data-scroll-target="#bug-fixes-68">Bug fixes</a></li>
+  <li><a href="#bug-fixes-69" id="toc-bug-fixes-69" class="nav-link" data-scroll-target="#bug-fixes-69">Bug fixes</a></li>
   <li><a href="#improvements-58" id="toc-improvements-58" class="nav-link" data-scroll-target="#improvements-58">Improvements</a></li>
   </ul></li>
   <li><a href="#tiledb-v1.3.1-release-notes" id="toc-tiledb-v1.3.1-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.3.1-release-notes">TileDB v1.3.1 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-69" id="toc-bug-fixes-69" class="nav-link" data-scroll-target="#bug-fixes-69">Bug fixes</a></li>
+  <li><a href="#bug-fixes-70" id="toc-bug-fixes-70" class="nav-link" data-scroll-target="#bug-fixes-70">Bug fixes</a></li>
   <li><a href="#improvements-59" id="toc-improvements-59" class="nav-link" data-scroll-target="#improvements-59">Improvements</a></li>
   </ul></li>
   <li><a href="#tiledb-v1.3.0-release-notes" id="toc-tiledb-v1.3.0-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.3.0-release-notes">TileDB v1.3.0 Release Notes</a>
   <ul class="collapse">
   <li><a href="#new-features-30" id="toc-new-features-30" class="nav-link" data-scroll-target="#new-features-30">New features</a></li>
   <li><a href="#improvements-60" id="toc-improvements-60" class="nav-link" data-scroll-target="#improvements-60">Improvements</a></li>
-  <li><a href="#bug-fixes-70" id="toc-bug-fixes-70" class="nav-link" data-scroll-target="#bug-fixes-70">Bug Fixes</a></li>
+  <li><a href="#bug-fixes-71" id="toc-bug-fixes-71" class="nav-link" data-scroll-target="#bug-fixes-71">Bug Fixes</a></li>
   <li><a href="#api-additions-28" id="toc-api-additions-28" class="nav-link" data-scroll-target="#api-additions-28">API additions</a>
   <ul class="collapse">
   <li><a href="#c-api-42" id="toc-c-api-42" class="nav-link" data-scroll-target="#c-api-42">C API</a></li>
@@ -874,12 +878,12 @@ ul.task-list li input[type="checkbox"] {
   </ul></li>
   <li><a href="#tiledb-v1.2.2-release-notes" id="toc-tiledb-v1.2.2-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.2.2-release-notes">TileDB v1.2.2 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-71" id="toc-bug-fixes-71" class="nav-link" data-scroll-target="#bug-fixes-71">Bug fixes</a></li>
+  <li><a href="#bug-fixes-72" id="toc-bug-fixes-72" class="nav-link" data-scroll-target="#bug-fixes-72">Bug fixes</a></li>
   <li><a href="#improvements-61" id="toc-improvements-61" class="nav-link" data-scroll-target="#improvements-61">Improvements</a></li>
   </ul></li>
   <li><a href="#tiledb-v1.2.1-release-notes" id="toc-tiledb-v1.2.1-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.2.1-release-notes">TileDB v1.2.1 Release Notes</a>
   <ul class="collapse">
-  <li><a href="#bug-fixes-72" id="toc-bug-fixes-72" class="nav-link" data-scroll-target="#bug-fixes-72">Bug fixes</a></li>
+  <li><a href="#bug-fixes-73" id="toc-bug-fixes-73" class="nav-link" data-scroll-target="#bug-fixes-73">Bug fixes</a></li>
   <li><a href="#improvements-62" id="toc-improvements-62" class="nav-link" data-scroll-target="#improvements-62">Improvements</a></li>
   </ul></li>
   <li><a href="#tiledb-v1.2.0-release-notes" id="toc-tiledb-v1.2.0-release-notes" class="nav-link" data-scroll-target="#tiledb-v1.2.0-release-notes">TileDB v1.2.0 Release Notes</a>
@@ -1004,6 +1008,15 @@ ul.task-list li input[type="checkbox"] {
 </ul>
 </section>
 </section>
+<section id="tiledb-v2.13.2-release-notes" class="level1">
+<h1>TileDB v2.13.2 Release Notes</h1>
+<section id="bug-fixes" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes">Bug fixes</h2>
+<ul>
+<li>Ensures coordinate tiles are initialized for multipart remote queries <a href="https://github.com/TileDB-Inc/TileDB/pull/3795">#3795</a></li>
+</ul>
+</section>
+</section>
 <section id="tiledb-v2.13.1-release-notes" class="level1">
 <h1>TileDB v2.13.1 Release Notes</h1>
 <section id="improvements-1" class="level2">
@@ -1014,8 +1027,8 @@ ul.task-list li input[type="checkbox"] {
 <li>Enables WebP by default <a href="https://github.com/TileDB-Inc/TileDB/pull/3724">#3724</a></li>
 </ul>
 </section>
-<section id="bug-fixes" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes">Bug fixes</h2>
+<section id="bug-fixes-1" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-1">Bug fixes</h2>
 <ul>
 <li>Query condition: fix when attribute condition is not in user buffers. <a href="https://github.com/TileDB-Inc/TileDB/pull/3713">#3713</a></li>
 </ul>
@@ -1469,8 +1482,8 @@ DELETE feature pull-requests
 <li>Deprecate <code>sm.num_tbb_threads</code> config option <a href="https://github.com/TileDB-Inc/TileDB/pull/3177">#3177</a></li>
 </ul>
 </section>
-<section id="bug-fixes-1" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-1">Bug fixes</h2>
+<section id="bug-fixes-2" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-2">Bug fixes</h2>
 <ul>
 <li>Dense reader: fixing query conditions with overlapping domains. <a href="https://github.com/TileDB-Inc/TileDB/pull/3244">#3244</a></li>
 <li>Consolidation w timestamps: cell slab length computations fix. <a href="https://github.com/TileDB-Inc/TileDB/pull/3230">#3230</a></li>
@@ -1530,8 +1543,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.9.5-release-notes" class="level1">
 <h1>TileDB v2.9.5 Release Notes</h1>
-<section id="bug-fixes-2" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-2">Bug fixes</h2>
+<section id="bug-fixes-3" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-3">Bug fixes</h2>
 <ul>
 <li>Fix a typo in the byteshuffle constructor for capnp serialization <a href="https://github.com/TileDB-Inc/TileDB/pull/3284">#3284</a></li>
 </ul>
@@ -1539,8 +1552,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.9.4-release-notes" class="level1">
 <h1>TileDB v2.9.4 Release Notes</h1>
-<section id="bug-fixes-3" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-3">Bug fixes</h2>
+<section id="bug-fixes-4" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-4">Bug fixes</h2>
 <ul>
 <li>Fix File API failure when importing into TileDB Cloud array <a href="https://github.com/TileDB-Inc/TileDB/pull/3246">#3246</a></li>
 <li>Fix printing of TILEDB_BLOB attributes in <code>Attribute::Dump</code> <a href="https://github.com/TileDB-Inc/TileDB/pull/3250">#3250</a></li>
@@ -1567,8 +1580,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.9.2-release-notes" class="level1">
 <h1>TileDB v2.9.2 Release Notes</h1>
-<section id="bug-fixes-4" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-4">Bug fixes</h2>
+<section id="bug-fixes-5" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-5">Bug fixes</h2>
 <ul>
 <li>Update Zlib Download URL <a href="https://github.com/TileDB-Inc/TileDB/pull/3200">#3200</a></li>
 </ul>
@@ -1576,8 +1589,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.9.1-release-notes" class="level1">
 <h1>TileDB v2.9.1 Release Notes</h1>
-<section id="bug-fixes-5" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-5">Bug fixes</h2>
+<section id="bug-fixes-6" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-6">Bug fixes</h2>
 <ul>
 <li>[Backport release-2.9] Sparse global order reader: refactor merge algorithm. (#3173) by <span class="citation" data-cites="KiterLuc">@KiterLuc</span> in https://github.com/TileDB-Inc/TileDB/pull/3182</li>
 <li>[Backport release-2.9] Sparse unordered w/ dups reader: fixing overflow on int value. by <span class="citation" data-cites="github-actions">@github-actions</span> in https://github.com/TileDB-Inc/TileDB/pull/3184</li>
@@ -1645,8 +1658,8 @@ DELETE feature pull-requests
 <li>Global writes: check global order on write continuation. <a href="https://github.com/TileDB-Inc/TileDB/pull/3109">#3109</a></li>
 </ul>
 </section>
-<section id="bug-fixes-6" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-6">Bug fixes</h2>
+<section id="bug-fixes-7" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-7">Bug fixes</h2>
 <ul>
 <li>[bug] Fix SC-17415: segfault due to underflow in for loop <a href="https://github.com/TileDB-Inc/TileDB/pull/3143">#3143</a></li>
 <li>Sparse global order reader: prevent dims from being unfiltered twice. <a href="https://github.com/TileDB-Inc/TileDB/pull/3150">#3150</a></li>
@@ -1673,8 +1686,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.8.3-release-notes" class="level1">
 <h1>TileDB v2.8.3 Release Notes</h1>
-<section id="bug-fixes-7" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-7">Bug fixes</h2>
+<section id="bug-fixes-8" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-8">Bug fixes</h2>
 <ul>
 <li>All ranges tile overlap: skip computation for default dimensions. <a href="https://github.com/TileDB-Inc/TileDB/pull/3080">#3080</a></li>
 <li>Filter pipeline: fixing empty pipeline, multi chunk, refactored queries. <a href="https://github.com/TileDB-Inc/TileDB/pull/3149">#3149</a></li>
@@ -1684,8 +1697,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.8.2-release-notes" class="level1">
 <h1>TileDB v2.8.2 Release Notes</h1>
-<section id="bug-fixes-8" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-8">Bug fixes</h2>
+<section id="bug-fixes-9" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-9">Bug fixes</h2>
 <ul>
 <li>Sparse unordered w/ dups reader: fix incomplete reason for cloud reads. <a href="https://github.com/TileDB-Inc/TileDB/pull/3104">#3104</a></li>
 </ul>
@@ -1700,8 +1713,8 @@ DELETE feature pull-requests
 <li>Update group metadata REST request to standardize cap’n proto class usage <a href="https://github.com/TileDB-Inc/TileDB/pull/3095">#3095</a></li>
 </ul>
 </section>
-<section id="bug-fixes-9" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-9">Bug fixes</h2>
+<section id="bug-fixes-10" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-10">Bug fixes</h2>
 <ul>
 <li>Sparse Index Reader Fix: Check For Empty Buffer <a href="https://github.com/TileDB-Inc/TileDB/pull/3051">#3051</a></li>
 <li>Reset group metadata only based on end timestamp to ensure its always reset to now <a href="https://github.com/TileDB-Inc/TileDB/pull/3091">#3091</a></li>
@@ -1766,8 +1779,8 @@ DELETE feature pull-requests
 <li><p>Add ability to store (optional) name with group member <a href="https://github.com/TileDB-Inc/TileDB/pull/3068">#3068</a></p></li>
 </ul>
 </section>
-<section id="bug-fixes-10" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-10">Bug fixes</h2>
+<section id="bug-fixes-11" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-11">Bug fixes</h2>
 <ul>
 <li>Avoid thread starvation by removing std::future usage in S3 multipart upload <a href="https://github.com/TileDB-Inc/TileDB/pull/2851">#2851</a></li>
 <li>windows_sanity fix <a href="https://github.com/TileDB-Inc/TileDB/pull/2870">#2870</a></li>
@@ -1799,8 +1812,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.7.1-release-notes" class="level1">
 <h1>TileDB v2.7.1 Release Notes</h1>
-<section id="bug-fixes-11" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-11">Bug fixes</h2>
+<section id="bug-fixes-12" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-12">Bug fixes</h2>
 <ul>
 <li>Sparse unordered w/ dups reader: fixing memory management for tiles. <a href="https://github.com/TileDB-Inc/TileDB/pull/2924">#2924</a></li>
 </ul>
@@ -1886,8 +1899,8 @@ DELETE feature pull-requests
 <li>Drop support for Visual Studio 2017 compiler <a href="https://github.com/TileDB-Inc/TileDB/pull/2847">#2847</a></li>
 </ul>
 </section>
-<section id="bug-fixes-12" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-12">Bug fixes</h2>
+<section id="bug-fixes-13" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-13">Bug fixes</h2>
 <ul>
 <li>Better windows relative path support with ‘/’ <a href="https://github.com/TileDB-Inc/TileDB/pull/2607">#2607</a></li>
 <li>Fixed dangling links in README. <a href="https://github.com/TileDB-Inc/TileDB/pull/2712">#2712</a></li>
@@ -1933,8 +1946,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.6.4-release-notes" class="level1">
 <h1>TileDB v2.6.4 Release Notes</h1>
-<section id="bug-fixes-13" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-13">Bug fixes</h2>
+<section id="bug-fixes-14" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-14">Bug fixes</h2>
 <ul>
 <li>Sparse unordered w/ dups reader: all empty string attribute fix. <a href="https://github.com/TileDB-Inc/TileDB/pull/2874">#2874</a></li>
 <li>Update Location of Zlib Download URL <a href="https://github.com/TileDB-Inc/TileDB/pull/2945">#2945</a></li>
@@ -1943,8 +1956,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.6.3-release-notes" class="level1">
 <h1>TileDB v2.6.3 Release Notes</h1>
-<section id="bug-fixes-14" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-14">Bug fixes</h2>
+<section id="bug-fixes-15" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-15">Bug fixes</h2>
 <ul>
 <li>compute_results_count_sparse_string: fixing incorect memcmp. <a href="https://github.com/TileDB-Inc/TileDB/pull/2892">#2892</a></li>
 <li>Sparse rindex readers: fixing query resume on TileDB cloud. <a href="https://github.com/TileDB-Inc/TileDB/pull/2900">#2900</a></li>
@@ -1953,8 +1966,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.6.2-release-notes" class="level1">
 <h1>TileDB v2.6.2 Release Notes</h1>
-<section id="bug-fixes-15" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-15">Bug fixes</h2>
+<section id="bug-fixes-16" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-16">Bug fixes</h2>
 <ul>
 <li>Only initialize REST query strategies once <a href="https://github.com/TileDB-Inc/TileDB/pull/2836">#2836</a></li>
 <li>Sparse unordered w dups reader: fixing max pos calculation in tile copy. <a href="https://github.com/TileDB-Inc/TileDB/pull/2840">#2840</a></li>
@@ -1963,8 +1976,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.6.1-release-notes" class="level1">
 <h1>TileDB v2.6.1 Release Notes</h1>
-<section id="bug-fixes-16" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-16">Bug fixes</h2>
+<section id="bug-fixes-17" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-17">Bug fixes</h2>
 <ul>
 <li>Sparse unordered w/ dups reader: off by one error in query continuation. <a href="https://github.com/TileDB-Inc/TileDB/pull/2815">#2815</a></li>
 <li>Sparse unordered w dups reader: fixing query continuation with subarray. <a href="https://github.com/TileDB-Inc/TileDB/pull/2824">#2824</a></li>
@@ -2022,8 +2035,8 @@ DELETE feature pull-requests
 <li>eliminate usage of std::iterator due to c++17 deprecation <a href="https://github.com/TileDB-Inc/TileDB/pull/2675">#2675</a></li>
 </ul>
 </section>
-<section id="bug-fixes-17" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-17">Bug fixes</h2>
+<section id="bug-fixes-18" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-18">Bug fixes</h2>
 <ul>
 <li>upgrade to blosc 1.21.0 from 1.14.x <a href="https://github.com/TileDB-Inc/TileDB/pull/2422">#2422</a></li>
 <li>Guard ZStd resource pool to fix initialization race <a href="https://github.com/TileDB-Inc/TileDB/pull/2699">#2699</a></li>
@@ -2059,8 +2072,8 @@ DELETE feature pull-requests
 <li>Sparse refactored reader: change all_tiles_loaded_ to vector of uint8_t. <a href="https://github.com/TileDB-Inc/TileDB/pull/2724">#2724</a></li>
 </ul>
 </section>
-<section id="bug-fixes-18" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-18">Bug fixes</h2>
+<section id="bug-fixes-19" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-19">Bug fixes</h2>
 <ul>
 <li>Properly check and use legacy readers instead of refactored in serialized query. <a href="https://github.com/TileDB-Inc/TileDB/pull/2667">#2667</a></li>
 <li>Set array URI in cap’n proto object for compatibility with repeated opened array usage in TileDB 2.4 and older. <a href="https://github.com/TileDB-Inc/TileDB/pull/2676">#2676</a></li>
@@ -2077,8 +2090,8 @@ DELETE feature pull-requests
 <li>Error out when setting multiple ranges for global layout <a href="https://github.com/TileDB-Inc/TileDB/pull/2658">#2658</a></li>
 </ul>
 </section>
-<section id="bug-fixes-19" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-19">Bug fixes</h2>
+<section id="bug-fixes-20" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-20">Bug fixes</h2>
 <ul>
 <li>Patch AWS sdk for cmake 3.22 support <a href="https://github.com/TileDB-Inc/TileDB/pull/2639">#2639</a></li>
 <li>Remove assert on memory_used_result_tile_ranges_ in SparseUnorderedWithDupsReader <a href="https://github.com/TileDB-Inc/TileDB/pull/2652">#2652</a></li>
@@ -2101,8 +2114,8 @@ DELETE feature pull-requests
 <li>Clarify error messages in <code>check_buffers_correctness()</code> <a href="https://github.com/TileDB-Inc/TileDB/pull/2580">#2580</a></li>
 </ul>
 </section>
-<section id="bug-fixes-20" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-20">Bug fixes</h2>
+<section id="bug-fixes-21" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-21">Bug fixes</h2>
 <ul>
 <li>Fix schema evolution calls on all pre-TileDB 2.4 arrays <a href="https://github.com/TileDB-Inc/TileDB/pull/2611">#2611</a></li>
 <li>Unordered reads should be allowed for dense arrays <a href="https://github.com/TileDB-Inc/TileDB/pull/2608">#2608</a></li>
@@ -2164,8 +2177,8 @@ DELETE feature pull-requests
 <li>use ROW_MAJOR read paths for unordered reads of Hilbert layout array <a href="https://github.com/TileDB-Inc/TileDB/pull/2551">#2551</a></li>
 </ul>
 </section>
-<section id="bug-fixes-21" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-21">Bug fixes</h2>
+<section id="bug-fixes-22" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-22">Bug fixes</h2>
 <ul>
 <li>Fix the memory leak in store_array_schema in the StorageManager class. <a href="https://github.com/TileDB-Inc/TileDB/pull/2480">#2480</a></li>
 <li>Fix curl/REST query scratch size to reset after each query is processed. <a href="https://github.com/TileDB-Inc/TileDB/pull/2535">#2535</a></li>
@@ -2195,8 +2208,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.4.3-release-notes" class="level1">
 <h1>TileDB v2.4.3 Release Notes</h1>
-<section id="bug-fixes-22" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-22">Bug fixes</h2>
+<section id="bug-fixes-23" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-23">Bug fixes</h2>
 <ul>
 <li>Fix segfault in result <code>ResultTile::coord_string</code> and <code>ResultTile::compute_results_sparse&lt;char&gt;</code> due empty chunk buffer <a href="https://github.com/TileDB-Inc/TileDB/pull/2531">#2531</a></li>
 <li>Fix memory corruption with empty result set in extra_element mode <a href="https://github.com/TileDB-Inc/TileDB/pull/2540">#2540</a></li>
@@ -2223,8 +2236,8 @@ DELETE feature pull-requests
 <li>Refactored readers can segfault when multiple contexts are used. <a href="https://github.com/TileDB-Inc/TileDB/pull/2525">#2525</a></li>
 </ul>
 </section>
-<section id="bug-fixes-23" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-23">Bug fixes</h2>
+<section id="bug-fixes-24" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-24">Bug fixes</h2>
 <ul>
 <li>Fix ch10191: check cell_val_num for varlen status instead of result count <a href="https://github.com/TileDB-Inc/TileDB/pull/2505">#2505</a></li>
 <li>Do not access variables after moving them <a href="https://github.com/TileDB-Inc/TileDB/pull/2522">#2522</a></li>
@@ -2292,8 +2305,8 @@ DELETE feature pull-requests
 <li>Deprecate all <code>*_with_key</code> APIs. <a href="https://github.com/TileDB-Inc/TileDB/pull/2245">#2245</a> <a href="https://github.com/TileDB-Inc/TileDB/pull/2308">#2308</a> <a href="https://github.com/TileDB-Inc/TileDB/pull/2412">#2412</a></li>
 </ul>
 </section>
-<section id="bug-fixes-24" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-24">Bug fixes</h2>
+<section id="bug-fixes-25" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-25">Bug fixes</h2>
 <ul>
 <li>Fix to correctly apply capnproto create_symlink avoidance patch <a href="https://github.com/TileDB-Inc/TileDB/pull/2264">#2264</a></li>
 <li>The bug for calculating max_size_validity for var_size attribute caused incomplete query <a href="https://github.com/TileDB-Inc/TileDB/pull/2266">#2266</a></li>
@@ -2347,8 +2360,8 @@ DELETE feature pull-requests
 <li>Allow empty attribute writes. <a href="https://github.com/TileDB-Inc/TileDB/pull/2461">#2461</a></li>
 </ul>
 </section>
-<section id="bug-fixes-25" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-25">Bug fixes</h2>
+<section id="bug-fixes-26" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-26">Bug fixes</h2>
 <ul>
 <li>Fix deserialization of buffers in write queries with nullable var-length attributes <a href="https://github.com/TileDB-Inc/TileDB/pull/2442">#2442</a></li>
 </ul>
@@ -2364,8 +2377,8 @@ DELETE feature pull-requests
 <li>Use newer Azure patch for all platforms to solve missing header error <a href="https://github.com/TileDB-Inc/TileDB/pull/2433">#2433</a></li>
 </ul>
 </section>
-<section id="bug-fixes-26" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-26">Bug fixes</h2>
+<section id="bug-fixes-27" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-27">Bug fixes</h2>
 <ul>
 <li>Fix c-api error paths always resetting any alloced pointers to nullptr in-addition to deleting <a href="https://github.com/TileDB-Inc/TileDB/pull/2427">#2427</a></li>
 </ul>
@@ -2380,8 +2393,8 @@ DELETE feature pull-requests
 <li>Enable Azure/Serialization for windows CI artifacts <a href="https://github.com/TileDB-Inc/TileDB/pull/2400">#2400</a></li>
 </ul>
 </section>
-<section id="bug-fixes-27" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-27">Bug fixes</h2>
+<section id="bug-fixes-28" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-28">Bug fixes</h2>
 <ul>
 <li>Correct check for last offset position so that undefined memory is not accessed. <a href="https://github.com/TileDB-Inc/TileDB/pull/2390">#2390</a></li>
 <li>Fix ch8416, failure to read array written with tiledb 2.2 via REST <a href="https://github.com/TileDB-Inc/TileDB/pull/2404">#2404</a></li>
@@ -2405,8 +2418,8 @@ DELETE feature pull-requests
 <li>Support credentials refresh for AWS <a href="https://github.com/TileDB-Inc/TileDB/pull/2376">#2376</a></li>
 </ul>
 </section>
-<section id="bug-fixes-28" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-28">Bug fixes</h2>
+<section id="bug-fixes-29" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-29">Bug fixes</h2>
 <ul>
 <li>Fixing intermittent metadata test failure <a href="https://github.com/TileDB-Inc/TileDB/pull/2338">#2338</a></li>
 <li>Fix query condition validation check for nullable attributes with null conditions <a href="https://github.com/TileDB-Inc/TileDB/pull/2344">#2344</a></li>
@@ -2501,8 +2514,8 @@ DELETE feature pull-requests
 <li>The following APIs have been deprecated: <code>tiledb_array_open_at</code>, <code>tiledb_array_open_at_with_key</code>, <code>tiledb_array_reopen_at</code>. <a href="https://github.com/TileDB-Inc/TileDB/pull/2142">#2142</a></li>
 </ul>
 </section>
-<section id="bug-fixes-29" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-29">Bug fixes</h2>
+<section id="bug-fixes-30" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-30">Bug fixes</h2>
 <ul>
 <li>Fix a segfault on <code>VFS::ls</code> for the in-memory filesystem <a href="https://github.com/TileDB-Inc/TileDB/pull/2255">#2255</a></li>
 <li>Fix rare read corruption in S3 <a href="https://github.com/TileDB-Inc/TileDB/pull/2253">#2253</a></li>
@@ -2557,8 +2570,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.2.9-release-notes" class="level1">
 <h1>TileDB v2.2.9 Release Notes</h1>
-<section id="bug-fixes-30" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-30">Bug fixes</h2>
+<section id="bug-fixes-31" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-31">Bug fixes</h2>
 <ul>
 <li>Fix rare read corruption in S3 <a href="https://github.com/TileDB-Inc/TileDB/pull/2254">#2254</a></li>
 <li>Write fix for unordered writes on nullable, fixed attributes <a href="https://github.com/TileDB-Inc/TileDB/pull/2241">#2241</a></li>
@@ -2596,8 +2609,8 @@ DELETE feature pull-requests
 <section id="deprecations-5" class="level2">
 <h2 class="anchored" data-anchor-id="deprecations-5">Deprecations</h2>
 </section>
-<section id="bug-fixes-31" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-31">Bug fixes</h2>
+<section id="bug-fixes-32" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-32">Bug fixes</h2>
 <ul>
 <li>Fixes a potential memory leak in the filter pipeline <a href="https://github.com/TileDB-Inc/TileDB/pull/2185">#2185</a></li>
 <li>Fixes misc memory leaks in the unit tests <a href="https://github.com/TileDB-Inc/TileDB/pull/2183">#2183</a></li>
@@ -2635,8 +2648,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.2.6-release-notes" class="level1">
 <h1>TileDB v2.2.6 Release Notes</h1>
-<section id="bug-fixes-32" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-32">Bug fixes</h2>
+<section id="bug-fixes-33" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-33">Bug fixes</h2>
 <ul>
 <li>Fixes a potential crash when retrying incomplete reads <a href="https://github.com/TileDB-Inc/TileDB/pull/2137">#2137</a></li>
 </ul>
@@ -2659,8 +2672,8 @@ DELETE feature pull-requests
 <li>Allow open array stats to be printed without read query <a href="https://github.com/TileDB-Inc/TileDB/pull/2131">#2131</a></li>
 </ul>
 </section>
-<section id="bug-fixes-33" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-33">Bug fixes</h2>
+<section id="bug-fixes-34" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-34">Bug fixes</h2>
 <ul>
 <li>Fixes a potential crash when opening an array with consolidated fragment metadata <a href="https://github.com/TileDB-Inc/TileDB/pull/2135">#2135</a></li>
 <li>Corrected a bug where sparse cells may be incorrectly returned using string dimensions. <a href="https://github.com/TileDB-Inc/TileDB/pull/2125">#2125</a></li>
@@ -2678,8 +2691,8 @@ DELETE feature pull-requests
 <li>Improve GCS multipart locking <a href="https://github.com/TileDB-Inc/TileDB/pull/2087">#2087</a></li>
 </ul>
 </section>
-<section id="bug-fixes-34" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-34">Bug fixes</h2>
+<section id="bug-fixes-35" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-35">Bug fixes</h2>
 <ul>
 <li>Fix an edge-case where a read query may hang on array with string dimensions <a href="https://github.com/TileDB-Inc/TileDB/pull/2089">#2089</a></li>
 <li>Fix mutex locking bugs on Windows due to unlocking on different thread and missing task join <a href="https://github.com/TileDB-Inc/TileDB/pull/2077">#2077</a></li>
@@ -2725,8 +2738,8 @@ DELETE feature pull-requests
 <li>Add <code>rest.creation_access_credentials_name</code> configuration parameter <a href="https://github.com/TileDB-Inc/TileDB/pull/2025">#2025</a></li>
 </ul>
 </section>
-<section id="bug-fixes-35" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-35">Bug fixes</h2>
+<section id="bug-fixes-36" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-36">Bug fixes</h2>
 <ul>
 <li>Fixed ArrowAdapter export of string arrays with 64-bit offsets <a href="https://github.com/TileDB-Inc/TileDB/pull/2037">#2037</a></li>
 <li>Fixed ArrowAdapter export of TILEDB_CHAR arrays with 64-bit offsets <a href="https://github.com/TileDB-Inc/TileDB/pull/2039">#2039</a></li>
@@ -2781,8 +2794,8 @@ DELETE feature pull-requests
 <li>Optimize consolidated fragment metadata loading <a href="https://github.com/TileDB-Inc/TileDB/pull/1975">#1975</a></li>
 </ul>
 </section>
-<section id="bug-fixes-36" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-36">Bug fixes</h2>
+<section id="bug-fixes-37" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-37">Bug fixes</h2>
 <ul>
 <li>Fix tiledb_dimension_alloc returning a non-null pointer after error [#1959]((https://github.com/TileDB-Inc/TileDB/pull/1859)</li>
 <li>Fixed issue with string dimensions and non-set subarray (which implies spanning the whole domain). There was an assertion being triggered. Now it works properly.</li>
@@ -2818,8 +2831,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.1.6-release-notes" class="level1">
 <h1>TileDB v2.1.6 Release Notes</h1>
-<section id="bug-fixes-37" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-37">Bug fixes</h2>
+<section id="bug-fixes-38" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-38">Bug fixes</h2>
 <ul>
 <li>Fix deadlock in <code>ThreadPool::wait_or_work</code> <a href="https://github.com/TileDB-Inc/TileDB/pull/1994">#1994</a></li>
 <li>Fix “[TileDB::ChunkedBuffer] Error: Cannot init chunk buffers; Total size must be non-zero.” in read path <a href="https://github.com/TileDB-Inc/TileDB/pull/1992">#1992</a></li>
@@ -2837,8 +2850,8 @@ DELETE feature pull-requests
 <li>Exit early in <code>Reader::copy_coordinates</code>/<code>Reader::copy_attribute_values</code> when no results <a href="https://github.com/TileDB-Inc/TileDB/pull/1984">#1984</a></li>
 </ul>
 </section>
-<section id="bug-fixes-38" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-38">Bug fixes</h2>
+<section id="bug-fixes-39" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-39">Bug fixes</h2>
 <ul>
 <li>Fix segfault in optimized <code>compute_results_sparse&lt;char&gt;</code> <a href="https://github.com/TileDB-Inc/TileDB/pull/1969">#1969</a></li>
 <li>Fix GCS “Error:: Read object failed”<a href="https://github.com/TileDB-Inc/TileDB/pull/1966">#1966</a></li>
@@ -2863,8 +2876,8 @@ DELETE feature pull-requests
 <li>Optimized string dimension performance. <a href="https://github.com/TileDB-Inc/TileDB/pull/1922">#1922</a></li>
 </ul>
 </section>
-<section id="bug-fixes-39" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-39">Bug fixes</h2>
+<section id="bug-fixes-40" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-40">Bug fixes</h2>
 <ul>
 <li>Updated the AWS SDK to v1.8.84 to fix an uncaught exception when using S3 <a href="https://github.com/TileDB-Inc/TileDB/pull/1899">#1899</a><a href="https://github.com/TileDB-Inc/TileDB-Py/issues/409">TileDB-Py #409</a></li>
 <li>Fixed bug where a read on a sparse array may return duplicate values. <a href="https://github.com/TileDB-Inc/TileDB/pull/1905">#1905</a></li>
@@ -2875,8 +2888,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.1.2-release-notes" class="level1">
 <h1>TileDB v2.1.2 Release Notes</h1>
-<section id="bug-fixes-40" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-40">Bug fixes</h2>
+<section id="bug-fixes-41" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-41">Bug fixes</h2>
 <ul>
 <li>Fix ArraySchema not write protecting fill values for only schema version 6 or newer <a href="https://github.com/TileDB-Inc/TileDB/pull/1868">#1868</a></li>
 <li>Fix segfault that may occur in the VFS read-ahead cache <a href="https://github.com/TileDB-Inc/TileDB/pull/1871">#1871</a></li>
@@ -2885,8 +2898,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.1.1-release-notes" class="level1">
 <h1>TileDB v2.1.1 Release Notes</h1>
-<section id="bug-fixes-41" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-41">Bug fixes</h2>
+<section id="bug-fixes-42" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-42">Bug fixes</h2>
 <ul>
 <li>The result size estimatation routines will no longer return non-zero sizes that can not contain a single value. <a href="https://github.com/TileDB-Inc/TileDB/pull/1849">#1849</a></li>
 <li>Fix serialization of dense writes that use ranges <a href="https://github.com/TileDB-Inc/TileDB/pull/1860">#1860</a></li>
@@ -2943,8 +2956,8 @@ DELETE feature pull-requests
 <li>No longer building release artifacts with Intel’s Thread Building Blocks (TBB) enabled <a href="https://github.com/TileDB-Inc/TileDB/pull/1825">#1825</a></li>
 </ul>
 </section>
-<section id="bug-fixes-42" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-42">Bug fixes</h2>
+<section id="bug-fixes-43" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-43">Bug fixes</h2>
 <ul>
 <li>Fixed bug in setting a fill value for var-sized attributes.</li>
 <li>Fixed a bug where the cpp headers would always produce compile-time warnings about using the deprecated c-api “tiledb_coords()” <a href="https://github.com/TileDB-Inc/TileDB/pull/1765">#1765</a></li>
@@ -2977,8 +2990,8 @@ DELETE feature pull-requests
 <li>Add additional release artifacts which include disabling TBB <a href="https://github.com/TileDB-Inc/TileDB/pull/1753">#1753</a></li>
 </ul>
 </section>
-<section id="bug-fixes-43" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-43">Bug fixes</h2>
+<section id="bug-fixes-44" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-44">Bug fixes</h2>
 <ul>
 <li>Fix crash during GCS backend initialization due to upstream bug. <a href="https://github.com/TileDB-Inc/TileDB/pull/1752">#1752</a></li>
 </ul>
@@ -2993,8 +3006,8 @@ DELETE feature pull-requests
 <li>Google Cloud SDK bumped to 1.14. <a href="https://github.com/TileDB-Inc/TileDB/pull/1687">#1687</a>, <a href="https://github.com/TileDB-Inc/TileDB/pull/1742">#1742</a></li>
 </ul>
 </section>
-<section id="bug-fixes-44" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-44">Bug fixes</h2>
+<section id="bug-fixes-45" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-45">Bug fixes</h2>
 <ul>
 <li>Fixed error “Error: Out of bounds read to internal chunk buffer of size 65536” that may occur when writing var-sized attributes. <a href="https://github.com/TileDB-Inc/TileDB/pull/1732">#1732</a></li>
 <li>Fixed error “Error: Chunk read error; chunk unallocated error” that may occur when reading arrays with more than one dimension. <a href="https://github.com/TileDB-Inc/TileDB/pull/1736">#1736</a></li>
@@ -3015,8 +3028,8 @@ DELETE feature pull-requests
 <li>Add new config option <code>vfs.file.posix_permissions</code>. <a href="https://github.com/TileDB-Inc/TileDB/pull/1710">#1710</a></li>
 </ul>
 </section>
-<section id="bug-fixes-45" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-45">Bug fixes</h2>
+<section id="bug-fixes-46" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-46">Bug fixes</h2>
 <ul>
 <li>Return possible env config variables in config iter <a href="https://github.com/TileDB-Inc/TileDB/pull/1714">#1714</a></li>
 </ul>
@@ -3042,8 +3055,8 @@ DELETE feature pull-requests
 <li>Handle ubuntu’s cap’n proto package not providing cmake targets <a href="https://github.com/TileDB-Inc/TileDB/pull/1659">#1659</a></li>
 </ul>
 </section>
-<section id="bug-fixes-46" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-46">Bug fixes</h2>
+<section id="bug-fixes-47" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-47">Bug fixes</h2>
 <ul>
 <li>The C++ Attribute::create API now correctly builds from an STL array <a href="https://github.com/TileDB-Inc/TileDB/pull/1670">#1670</a></li>
 <li>Allow opening arrays with read-only permission on posix filesystems <a href="https://github.com/TileDB-Inc/TileDB/pull/1676">#1676</a></li>
@@ -3064,8 +3077,8 @@ DELETE feature pull-requests
 <li>Add artifacts to releases from CI <a href="https://github.com/TileDB-Inc/TileDB/pull/1663">#1663</a></li>
 </ul>
 </section>
-<section id="bug-fixes-47" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-47">Bug fixes</h2>
+<section id="bug-fixes-48" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-48">Bug fixes</h2>
 <ul>
 <li>Remove to unneeded semicolons noticed by the -pedantic flag <a href="https://github.com/TileDB-Inc/TileDB/pull/1653">#1653</a></li>
 <li>Fix cases were TILEDB_FORCE_ALL_DEPS picked up system builds <a href="https://github.com/TileDB-Inc/TileDB/pull/1654">#1654</a></li>
@@ -3084,8 +3097,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v2.0.2-release-notes" class="level1">
 <h1>TileDB v2.0.2 Release Notes</h1>
-<section id="bug-fixes-48" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-48">Bug fixes</h2>
+<section id="bug-fixes-49" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-49">Bug fixes</h2>
 <ul>
 <li>Fix hang on open array v1.6 <a href="https://github.com/TileDB-Inc/TileDB/pull/1645">#1645</a></li>
 </ul>
@@ -3111,8 +3124,8 @@ DELETE feature pull-requests
 <section id="deprecations-7" class="level2">
 <h2 class="anchored" data-anchor-id="deprecations-7">Deprecations</h2>
 </section>
-<section id="bug-fixes-49" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-49">Bug fixes</h2>
+<section id="bug-fixes-50" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-50">Bug fixes</h2>
 <ul>
 <li>Allow setting zipped coords multiple times <a href="https://github.com/TileDB-Inc/TileDB/pull/1627">#1627</a></li>
 <li>Fix overflow in check_tile_extent <a href="https://github.com/TileDB-Inc/TileDB/pull/1635">#1635</a></li>
@@ -3177,8 +3190,8 @@ DELETE feature pull-requests
 <li>The TileDB Array::consolidate_metadata CPP-API routine has been deprecated and will be <a href="https://github.com/TileDB-Inc/TileDB/issues/1591">removed entirely</a> in a future release. The Array::consolidate routine achieves the same behavior when the “sm.consolidation.mode” parameter of the configuration argument is equivalent to “array_meta”.</li>
 </ul>
 </section>
-<section id="bug-fixes-50" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-50">Bug fixes</h2>
+<section id="bug-fixes-51" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-51">Bug fixes</h2>
 <ul>
 <li>Fixed bug in dense consolidation when the array domain is not divisible by the tile extents.</li>
 </ul>
@@ -3214,8 +3227,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v1.7.7-release-notes" class="level1">
 <h1>TileDB v1.7.7 Release Notes</h1>
-<section id="bug-fixes-51" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-51">Bug fixes</h2>
+<section id="bug-fixes-52" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-52">Bug fixes</h2>
 <ul>
 <li>Fix expanded domain consolidation <a href="https://github.com/TileDB-Inc/TileDB/pull/1572">#1572</a></li>
 </ul>
@@ -3238,8 +3251,8 @@ DELETE feature pull-requests
 <section id="deprecations-9" class="level2">
 <h2 class="anchored" data-anchor-id="deprecations-9">Deprecations</h2>
 </section>
-<section id="bug-fixes-52" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-52">Bug fixes</h2>
+<section id="bug-fixes-53" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-53">Bug fixes</h2>
 <ul>
 <li>Fix new SHA1 for intel TBB in superbuild due to change in repository name <a href="https://github.com/TileDB-Inc/TileDB/pull/1551">#1551</a></li>
 </ul>
@@ -3266,8 +3279,8 @@ DELETE feature pull-requests
 <section id="deprecations-10" class="level2">
 <h2 class="anchored" data-anchor-id="deprecations-10">Deprecations</h2>
 </section>
-<section id="bug-fixes-53" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-53">Bug fixes</h2>
+<section id="bug-fixes-54" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-54">Bug fixes</h2>
 <ul>
 <li>Fix deadlock in writes of TileDB Cloud Arrays <a href="https://github.com/TileDB-Inc/TileDB/pull/1486">#1486</a></li>
 </ul>
@@ -3293,8 +3306,8 @@ DELETE feature pull-requests
 <section id="deprecations-11" class="level2">
 <h2 class="anchored" data-anchor-id="deprecations-11">Deprecations</h2>
 </section>
-<section id="bug-fixes-54" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-54">Bug fixes</h2>
+<section id="bug-fixes-55" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-55">Bug fixes</h2>
 </section>
 <section id="api-additions-20" class="level2">
 <h2 class="anchored" data-anchor-id="api-additions-20">API additions</h2>
@@ -3318,8 +3331,8 @@ DELETE feature pull-requests
 <section id="deprecations-12" class="level2">
 <h2 class="anchored" data-anchor-id="deprecations-12">Deprecations</h2>
 </section>
-<section id="bug-fixes-55" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-55">Bug fixes</h2>
+<section id="bug-fixes-56" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-56">Bug fixes</h2>
 </section>
 <section id="api-additions-21" class="level2">
 <h2 class="anchored" data-anchor-id="api-additions-21">API additions</h2>
@@ -3343,8 +3356,8 @@ DELETE feature pull-requests
 <section id="deprecations-13" class="level2">
 <h2 class="anchored" data-anchor-id="deprecations-13">Deprecations</h2>
 </section>
-<section id="bug-fixes-56" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-56">Bug fixes</h2>
+<section id="bug-fixes-57" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-57">Bug fixes</h2>
 <ul>
 <li>Fixed several REST query and deserialization bugs. <a href="https://github.com/TileDB-Inc/TileDB/pull/1433">#1433</a>, <a href="https://github.com/TileDB-Inc/TileDB/pull/1437">#1437</a>, <a href="https://github.com/TileDB-Inc/TileDB/pull/1440">#1440</a>, <a href="https://github.com/TileDB-Inc/TileDB/pull/1444">#1444</a></li>
 <li>Fixed bug in setting certificate path on Linux for the REST client. <a href="https://github.com/TileDB-Inc/TileDB/pull/1452">#1452</a></li>
@@ -3369,8 +3382,8 @@ DELETE feature pull-requests
 <section id="deprecations-14" class="level2">
 <h2 class="anchored" data-anchor-id="deprecations-14">Deprecations</h2>
 </section>
-<section id="bug-fixes-57" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-57">Bug fixes</h2>
+<section id="bug-fixes-58" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-58">Bug fixes</h2>
 <ul>
 <li>Fixed bug in dense consolidation when the array domain is not divisible by the tile extents. <a href="https://github.com/TileDB-Inc/TileDB/pull/1442">#1442</a></li>
 </ul>
@@ -3403,8 +3416,8 @@ DELETE feature pull-requests
 <li>Use <code>major.minor</code> for SOVERSION instead of full <code>major.minor.rev</code>. <a href="https://github.com/TileDB-Inc/TileDB/pull/1398">#1398</a></li>
 </ul>
 </section>
-<section id="bug-fixes-58" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-58">Bug fixes</h2>
+<section id="bug-fixes-59" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-59">Bug fixes</h2>
 <ul>
 <li>Numerous query serialization bugfixes and performance improvements.</li>
 <li>Numerous tweaks to build strategy for libcurl dependency.</li>
@@ -3437,8 +3450,8 @@ DELETE feature pull-requests
 <li>Added config param <code>vfs.s3.logging_level</code>. <a href="https://github.com/TileDB-Inc/TileDB/pull/1236">#1236</a></li>
 </ul>
 </section>
-<section id="bug-fixes-59" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-59">Bug fixes</h2>
+<section id="bug-fixes-60" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-60">Bug fixes</h2>
 <ul>
 <li>Fixed FP slice point-query with small (eps) gap coordinates. <a href="https://github.com/TileDB-Inc/TileDB/pull/1384">#1384</a></li>
 <li>Fixed several unused variable warnings in unit tests. <a href="https://github.com/TileDB-Inc/TileDB/pull/1385">#1385</a></li>
@@ -3450,8 +3463,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v1.6.2-release-notes" class="level1">
 <h1>TileDB v1.6.2 Release Notes</h1>
-<section id="bug-fixes-60" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-60">Bug fixes</h2>
+<section id="bug-fixes-61" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-61">Bug fixes</h2>
 <ul>
 <li>Fix incorrect version number listed in <code>tiledb_version.h</code> header file and doc page.</li>
 <li>Fix issue with release notes from 1.6.0 release. <a href="https://github.com/TileDB-Inc/TileDB/pull/1359">#1359</a></li>
@@ -3460,8 +3473,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v1.6.1-release-notes" class="level1">
 <h1>TileDB v1.6.1 Release Notes</h1>
-<section id="bug-fixes-61" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-61">Bug fixes</h2>
+<section id="bug-fixes-62" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-62">Bug fixes</h2>
 <ul>
 <li>Bug fix in incomplete query behavior. <a href="https://github.com/TileDB-Inc/TileDB/pull/1358">#1358</a></li>
 </ul>
@@ -3497,8 +3510,8 @@ DELETE feature pull-requests
 <li>The TileDB KV API has been deprecated and will be <a href="https://github.com/TileDB-Inc/TileDB/issues/1258">removed entirely</a> in a future release. The KV mechanism will be removed when full support for string-valued dimensions has been added.</li>
 </ul>
 </section>
-<section id="bug-fixes-62" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-62">Bug fixes</h2>
+<section id="bug-fixes-63" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-63">Bug fixes</h2>
 <ul>
 <li>Bug fix with amplification factor in consolidation. <a href="https://github.com/TileDB-Inc/TileDB/pull/1275">#1275</a></li>
 <li>Fixed thread safety issue in opening arrays. <a href="https://github.com/TileDB-Inc/TileDB/pull/1252">#1252</a></li>
@@ -3553,8 +3566,8 @@ DELETE feature pull-requests
 <li>Update libcurl dependency to v7.64.1 for S3 builds. <a href="https://github.com/TileDB-Inc/TileDB/pull/1240">#1240</a></li>
 </ul>
 </section>
-<section id="bug-fixes-63" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-63">Bug fixes</h2>
+<section id="bug-fixes-64" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-64">Bug fixes</h2>
 <ul>
 <li>S3 SDK build error fix. <a href="https://github.com/TileDB-Inc/TileDB/pull/1201">#1201</a></li>
 <li>Fixed thread safety issue with ZStd compressor. <a href="https://github.com/TileDB-Inc/TileDB/pull/1208">#1208</a></li>
@@ -3585,8 +3598,8 @@ DELETE feature pull-requests
 <li>S3 multi-part uploads are aborted on error. <a href="https://github.com/TileDB-Inc/TileDB/pull/1166">#1166</a></li>
 </ul>
 </section>
-<section id="bug-fixes-64" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-64">Bug fixes</h2>
+<section id="bug-fixes-65" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-65">Bug fixes</h2>
 <ul>
 <li>Bug fix when reading from a sparse array with real domain. Also added some checks on NaN and INF. <a href="https://github.com/TileDB-Inc/TileDB/pull/1100">#1100</a></li>
 <li>Fixed C++ API functions <code>group_by_cell</code> and <code>ungroup_var_buffer</code> to treat offsets in units of bytes. <a href="https://github.com/TileDB-Inc/TileDB/pull/1047">#1047</a></li>
@@ -3648,8 +3661,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v1.4.2-release-notes" class="level1">
 <h1>TileDB v1.4.2 Release Notes</h1>
-<section id="bug-fixes-65" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-65">Bug fixes</h2>
+<section id="bug-fixes-66" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-66">Bug fixes</h2>
 <ul>
 <li>Fixed support for config parameter values <code>sm.num_reader_threads</code> and `sm.num_writer_threads. User-specified values had been ignored for these parameters. <a href="https://github.com/TileDB-Inc/TileDB/pull/1096">#1096</a></li>
 <li>Fixed GCC 7 linker errors. <a href="https://github.com/TileDB-Inc/TileDB/pull/1091">#1091</a></li>
@@ -3669,8 +3682,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v1.4.1-release-notes" class="level1">
 <h1>TileDB v1.4.1 Release Notes</h1>
-<section id="bug-fixes-66" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-66">Bug fixes</h2>
+<section id="bug-fixes-67" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-67">Bug fixes</h2>
 <ul>
 <li>Fixed bug in incomplete queries, which should always return partial results. An incomplete status with 0 returned results must always mean that the buffers cannot even fit a single cell value. <a href="https://github.com/TileDB-Inc/TileDB/pull/1056">#1056</a></li>
 <li>Fixed performance bug during global order write finalization. <a href="https://github.com/TileDB-Inc/TileDB/pull/1065">#1065</a></li>
@@ -3712,8 +3725,8 @@ DELETE feature pull-requests
 <li>Removed Blosc compressors (obviated by byteshuffle -&gt; compressor filter list).</li>
 </ul>
 </section>
-<section id="bug-fixes-67" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-67">Bug fixes</h2>
+<section id="bug-fixes-68" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-68">Bug fixes</h2>
 <ul>
 <li>Fix issue where performing a read query with empty result could cause future reads to return empty <a href="https://github.com/TileDB-Inc/TileDB/pull/882">#882</a></li>
 <li>Fix TBB initialization bug with multiple contexts <a href="https://github.com/TileDB-Inc/TileDB/pull/898">#898</a></li>
@@ -3785,8 +3798,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v1.3.2-release-notes" class="level1">
 <h1>TileDB v1.3.2 Release Notes</h1>
-<section id="bug-fixes-68" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-68">Bug fixes</h2>
+<section id="bug-fixes-69" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-69">Bug fixes</h2>
 <ul>
 <li>Fix read query bug from multiple fragments when query layout differs from array layout <a href="https://github.com/TileDB-Inc/TileDB/pull/869">#869</a></li>
 <li>Fix error when consolidating empty arrays <a href="https://github.com/TileDB-Inc/TileDB/pull/861">#861</a></li>
@@ -3806,8 +3819,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v1.3.1-release-notes" class="level1">
 <h1>TileDB v1.3.1 Release Notes</h1>
-<section id="bug-fixes-69" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-69">Bug fixes</h2>
+<section id="bug-fixes-70" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-70">Bug fixes</h2>
 <ul>
 <li>Add missing checks when setting subarray for sparse writes <a href="https://github.com/TileDB-Inc/TileDB/pull/843">#843</a></li>
 <li>Fix dl linking build issue for C/C++ examples on Linux <a href="https://github.com/TileDB-Inc/TileDB/pull/844">#844</a></li>
@@ -3858,8 +3871,8 @@ DELETE feature pull-requests
 <li>Map usage via the C++ API <code>operator[]</code> is faster, similar to the <code>MapItem</code> path.</li>
 </ul>
 </section>
-<section id="bug-fixes-70" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-70">Bug Fixes</h2>
+<section id="bug-fixes-71" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-71">Bug Fixes</h2>
 <ul>
 <li>Fixed bugs with reads/writes of variable-sized attributes.</li>
 <li>Fixed file locking issue with simultaneous queries.</li>
@@ -3981,8 +3994,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v1.2.2-release-notes" class="level1">
 <h1>TileDB v1.2.2 Release Notes</h1>
-<section id="bug-fixes-71" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-71">Bug fixes</h2>
+<section id="bug-fixes-72" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-72">Bug fixes</h2>
 <ul>
 <li>Fix I/O bug on POSIX systems with large reads/writes (<a href="https://github.com/TileDB-Inc/TileDB/pull/467">#467</a>)</li>
 <li>Memory overflow error handling (moved from constructors to init functions) (<a href="https://github.com/TileDB-Inc/TileDB/pull/472">#472</a>)</li>
@@ -4003,8 +4016,8 @@ DELETE feature pull-requests
 </section>
 <section id="tiledb-v1.2.1-release-notes" class="level1">
 <h1>TileDB v1.2.1 Release Notes</h1>
-<section id="bug-fixes-72" class="level2">
-<h2 class="anchored" data-anchor-id="bug-fixes-72">Bug fixes</h2>
+<section id="bug-fixes-73" class="level2">
+<h2 class="anchored" data-anchor-id="bug-fixes-73">Bug fixes</h2>
 <ul>
 <li>Fixed TileDB header includes for all examples (<a href="https://github.com/TileDB-Inc/TileDB/pull/409">#409</a>)</li>
 <li>Fixed TileDB library dynamic linking problem for C++ API (<a href="https://github.com/TileDB-Inc/TileDB/pull/412">#412</a>)</li>
