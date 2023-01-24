@@ -32,6 +32,11 @@
 
 cmake_minimum_required(VERSION 3.21)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Options")
+include(global-policies NO_POLICY_SCOPE)
+
 ############################################################
 # Parse version file
 # credit: https://stackoverflow.com/a/47084079
@@ -68,9 +73,6 @@ if (NOT TILEDB_ALLOW_REGEX_CHAR_PATH)
 endif()
 
 ############################################################
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Options")
 
 set(TILEDB_CMAKE_INPUTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/inputs")
 
