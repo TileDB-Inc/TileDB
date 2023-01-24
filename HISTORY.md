@@ -81,6 +81,12 @@
 
 * https://github.com/TileDB-Inc/TileDB/compare/2.13.0...2.14.0
 
+# TileDB v2.13.2 Release Notes
+
+## Bug fixes
+
+* Ensures coordinate tiles are initialized for multipart remote queries [#3795](https://github.com/TileDB-Inc/TileDB/pull/3795)
+
 # TileDB v2.13.1 Release Notes
 
 ## Improvements
