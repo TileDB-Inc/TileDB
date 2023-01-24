@@ -149,8 +149,9 @@ void ArrayDirectory::write_commit_ignore_file(
   auto data = ss.str();
   URI ignore_file_uri = get_commits_dir(constants::format_version)
                             .join_path(name + constants::ignore_file_suffix);
-  throw_if_not_ok(vfs_->write(ignore_file_uri, data.c_str(), data.size()));
-  throw_if_not_ok(vfs_->close_file(ignore_file_uri));
+  throw_if_not_ok(
+      resources_.get().vfs().write(ignore_file_uri, data.c_str(), data.size()));
+  throw_if_not_ok(resources_.get().vfs().close_file(ignore_file_uri));
 }
 
 void ArrayDirectory::delete_fragments_list(
@@ -176,15 +177,18 @@ void ArrayDirectory::delete_fragments_list(
   }
 
   // Delete fragments and commits
-  throw_if_not_ok(parallel_for(tp_, 0, uris.size(), [&](size_t i) {
-    RETURN_NOT_OK(vfs_->remove_dir(uris[i]));
-    bool is_file = false;
-    RETURN_NOT_OK(vfs_->is_file(commit_uris_to_delete[i], &is_file));
-    if (is_file) {
-      RETURN_NOT_OK(vfs_->remove_file(commit_uris_to_delete[i]));
-    }
-    return Status::Ok();
-  }));
+  throw_if_not_ok(parallel_for(
+      &resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(resources_.get().vfs().remove_dir(uris[i]));
+        bool is_file = false;
+        RETURN_NOT_OK(
+            resources_.get().vfs().is_file(commit_uris_to_delete[i], &is_file));
+        if (is_file) {
+          RETURN_NOT_OK(
+              resources_.get().vfs().remove_file(commit_uris_to_delete[i]));
+        }
+        return Status::Ok();
+      }));
 }
 
 Status ArrayDirectory::load() {

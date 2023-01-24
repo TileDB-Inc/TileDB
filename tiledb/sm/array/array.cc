@@ -567,12 +567,8 @@ void Array::delete_fragments_list(
   ensure_array_is_valid_for_delete(uri);
 
   // Delete fragments
-  auto array_dir = ArrayDirectory(
-      &resources_.vfs(),
-      &resources_.compute_tp(),
-      uri,
-      0,
-      std::numeric_limits<uint64_t>::max());
+  auto array_dir =
+      ArrayDirectory(resources_, uri, 0, std::numeric_limits<uint64_t>::max());
   array_dir.delete_fragments_list(fragment_uris);
 }
 
