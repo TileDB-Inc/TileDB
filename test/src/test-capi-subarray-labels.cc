@@ -128,6 +128,10 @@ TEST_CASE_METHOD(
   require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
 
   // Check label range num is zero for all labels.
+  int32_t has_label_ranges{0};
+  require_tiledb_ok(
+      tiledb_subarray_has_label_ranges(ctx, subarray, 0, &has_label_ranges));
+  CHECK(has_label_ranges == 0);
   uint64_t range_num{0};
   require_tiledb_ok(
       tiledb_subarray_get_label_range_num(ctx, subarray, "label", &range_num));
@@ -140,6 +144,10 @@ TEST_CASE_METHOD(
   double r1[2]{-1.0, 1.0};
   require_tiledb_ok(tiledb_subarray_add_label_range(
       ctx, subarray, "label", &r1[0], &r1[1], nullptr));
+  // Check has label ranges.
+  require_tiledb_ok(
+      tiledb_subarray_has_label_ranges(ctx, subarray, 0, &has_label_ranges));
+  CHECK(has_label_ranges != 0);
   // Check no regular ranges set.
   require_tiledb_ok(
       tiledb_subarray_get_range_num(ctx, subarray, 0, &range_num));
@@ -152,6 +160,12 @@ TEST_CASE_METHOD(
   require_tiledb_ok(
       tiledb_subarray_get_label_range_num(ctx, subarray, "id", &range_num));
   CHECK(range_num == 0);
+  // Get the name of the set label.
+  const char* label_name;
+  require_tiledb_ok(
+      tiledb_subarray_get_label_name(ctx, subarray, 0, &label_name));
+  std::string expected_label_name{"label"};
+  CHECK(label_name == expected_label_name);
 
   // Check getting the range back
   const void* r1_start{};

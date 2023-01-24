@@ -250,6 +250,13 @@ TILEDB_EXPORT capi_return_t tiledb_subarray_add_label_range_var(
     const void* end,
     uint64_t end_size) TILEDB_NOEXCEPT;
 
+/** TODO: DOCS */
+TILEDB_EXPORT capi_return_t tiledb_subarray_get_label_name(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    uint32_t dim_idx,
+    const char** label_name) TILEDB_NOEXCEPT;
+
 /**
  * Retrieves a specific label range of the subarray from the ranges set for the
  * given dimension label name.
@@ -365,6 +372,13 @@ TILEDB_EXPORT capi_return_t tiledb_subarray_get_label_range_var_size(
     uint64_t range_idx,
     uint64_t* start_size,
     uint64_t* end_size) TILEDB_NOEXCEPT;
+
+/** TODO: DOCS */
+TILEDB_EXPORT capi_return_t tiledb_subarray_has_label_ranges(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
+    const uint32_t dim_idx,
+    int32_t* has_label_range) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }
