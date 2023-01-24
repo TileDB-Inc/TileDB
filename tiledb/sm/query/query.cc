@@ -495,8 +495,8 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
     return true;
   }
   uint64_t cell_num_per_tile = array_schema_->dense() ?
-                               array_schema_->domain().cell_num_per_tile() :
-                               array_schema_->capacity();
+                                   array_schema_->domain().cell_num_per_tile() :
+                                   array_schema_->capacity();
 
   if (query_remote_buffer_storage_.empty()) {
     for (const auto& buff : buffers_) {
@@ -505,22 +505,14 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
 
       uint64_t data_size = datatype_size(array_schema_->type(buff.first));
       uint64_t cell_size = is_var ? constants::cell_var_offset_size : data_size;
+      query_remote_buffer_storage_[buff.first].cell_size = cell_size;
 
       // Construct and move a preallocated Buffer to initialize cache.
       query_remote_buffer_storage_[buff.first].buffer = {
           cell_num_per_tile * cell_size * 2};
-      query_remote_buffer_storage_[buff.first].buffer.set_size(0);
-      query_remote_buffer_storage_[buff.first].cell_size = cell_size;
-
-      if (is_var) {
-        // TODO
-        Buffer var_buffer(nullptr, 0);
-      }
       if (is_nullable) {
-        query_remote_buffer_storage_[buff.first].buffer_validity =
-            { cell_num_per_tile * 2 };
-        // TODO: Add this to preallocated buffer ctor
-        query_remote_buffer_storage_[buff.first].buffer_validity.set_size(0);
+        query_remote_buffer_storage_[buff.first].buffer_validity = {
+            cell_num_per_tile * 2};
       }
     }
   }
@@ -530,103 +522,78 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
     bool is_var = array_schema_->var_size(buff.first);
     bool is_nullable = array_schema_->is_nullable(buff.first);
 
-    // Data type size stored in buffer cells. For fixed-size this is cell_size
-    uint64_t data_size = datatype_size(array_schema_->type(buff.first));
-    // Buffer element size, or size of offsets if attribute is var-sized.
-    uint64_t cell_size = is_var ? constants::cell_var_offset_size : data_size;
-    uint64_t buffer_size = *buff.second.buffer_size_;
-
     auto& cache = query_remote_buffer_storage_[buff.first];
-    // Count cells cached since the last submit.
-    uint64_t latest_cached_cells = 0;
     // Check if the cache was submit up to cache.byte_offset position.
     if (cache.submit) {
-      uint64_t prev_size = cache.buffer.size() - cache.byte_offset;
-      // Shift cached data to overwrite already submitted data.
-      throw_if_not_ok(cache.buffer.write(
-          cache.buffer.data(cache.byte_offset), 0, prev_size));
-      // Begin subsequent cache writes at this position.
-      cache.buffer.set_offset(prev_size);
-      cache.buffer.set_size(prev_size);
-
-      if (is_nullable) {
-        throw_if_not_ok(cache.buffer_validity.write(
-            cache.buffer_validity.data(cache.byte_offset / cell_size),
-            0,
-            prev_size / cell_size));
-        cache.buffer_validity.set_offset(prev_size / cell_size);
-        cache.buffer_validity.set_size(prev_size / cell_size);
-      }
-
-      // Any cached data after this position will be held for next submits.
-      cache.byte_offset = prev_size;
-      cache.submit = false;
-    } else {
-      // Cells cached since our last submit.
-      // If this ever reaches the size of a tile, adjust byte_offset and submit.
-      latest_cached_cells = (cache.buffer.size() - cache.byte_offset) / cell_size;
+      cache.shift_cache(is_var);
     }
 
-    uint64_t buffer_cells = buffer_size / cell_size;
+    // Buffer element size, or size of offsets if attribute is var-sized.
+    uint64_t buffer_size = *buff.second.buffer_size_;
+    uint64_t buffer_cells = buffer_size / cache.cell_size;
     // Only consider cached data up to byte_offset that is queued for submit.
-    uint64_t cache_buffer_cells = cache.byte_offset / cell_size;
+    uint64_t cache_buffer_cells = cache.byte_offset / cache.cell_size;
     uint64_t total_buffer_cells = buffer_cells + cache_buffer_cells;
+    // Cells cached since our last submit to REST.
+    uint64_t latest_cached_cells =
+        (cache.buffer.size() - cache.byte_offset) / cache.cell_size;
 
     // If buffer_cells does not fill a tile, cache the entire buffer.
     uint64_t tile_trim_cells = total_buffer_cells >= cell_num_per_tile ?
                                    total_buffer_cells % cell_num_per_tile :
                                    buffer_cells;
-    uint64_t tile_trim_bytes = tile_trim_cells * data_size;
+    uint64_t tile_trim_bytes = tile_trim_cells * cache.cell_size;
 
-    // Last offset for var-sized attribute buffer.
-    uint64_t last_buffer_offset = 0;
-    // Offset at the trimmed cell position in variable size attribute buffer.
-    uint64_t trimmed_offset = 0;
+    // Write fixed attribute trimmed data into cache buffer.
+    throw_if_not_ok(cache.buffer.write(
+        (char*)buff.second.buffer_ + buffer_size - tile_trim_bytes,
+        tile_trim_bytes));
+    *buff.second.buffer_size_ -= tile_trim_bytes;
+
     if (is_var) {
       uint64_t var_buffer_size = *buff.second.buffer_var_size_;
 
-      if (cache.buffer.size() > 0) {
-        uint64_t s = cache.buffer_var.size();
-        // If offsets exist in the cache ensure buffer is in ascending order.
-        for (size_t i = 0; i < buffer_cells; i++) {
-          ((uint64_t*)buff.second.buffer_)[i] += s;
-        }
-      }
-
-      // If we are trimming var data retrieve the first and last offset trimmed.
+      // Total bytes to trim from var data and offset buffers.
+      uint64_t tile_offset_trim_bytes = tile_trim_cells * cache.cell_size;
+      uint64_t var_data_trim_bytes = 0;
       if (tile_trim_cells != 0) {
-        last_buffer_offset = ((uint64_t*)buff.second.buffer_)[buffer_cells - 1];
-        trimmed_offset =
-            ((uint64_t*)
-                 buff.second.buffer_)[buffer_cells - tile_trim_cells - 1];
+        // Use var_buffer_size if we are trimming the entire var-size buffer.
+        uint64_t first_trimmed_offset =
+            buffer_cells == tile_trim_cells ?
+                var_buffer_size :
+                ((uint64_t*)
+                     buff.second.buffer_)[buffer_cells - tile_trim_cells];
+        // Use the first trimmed offset to calculate var bytes to trim.
+        var_data_trim_bytes = first_trimmed_offset == var_buffer_size ?
+                                  first_trimmed_offset :
+                                  var_buffer_size - first_trimmed_offset;
       }
+      // Total bytes cached for offset and var data since last REST submit.
+      uint64_t last_cached_offset_bytes =
+          cache.buffer.size() - cache.byte_offset - tile_trim_bytes;
+      uint64_t last_cached_var_bytes =
+          cache.buffer_var.size() - cache.var_data_offset;
 
-      // For var sized attributes the fixed buffer is used for offsets.
-      throw_if_not_ok(cache.buffer.realloc(
-          cache.buffer.size() +
-          (buffer_size - (tile_trim_cells * constants::cell_var_offset_size))));
-      throw_if_not_ok(cache.buffer.write(
-          buff.second.buffer_,
-          buffer_size - (tile_trim_cells * constants::cell_var_offset_size)));
-      *buff.second.buffer_size_ -=
-          tile_trim_cells * constants::cell_var_offset_size;
+      // Adjust any appended offsets to be relative to already cached data.
+      for (uint64_t pos = cache.byte_offset;
+           pos < tile_offset_trim_bytes + cache.byte_offset;
+           pos += constants::cell_var_offset_size) {
+        uint64_t cell_index =
+            (last_cached_offset_bytes + pos) / cache.cell_size;
+        *cache.get_cell_offset(cell_index) +=
+            last_cached_var_bytes + cache.var_data_offset;
+      }
 
       // Write the variable sized data into cache.
-      throw_if_not_ok(cache.buffer_var.realloc(
-          cache.buffer_var.size() +
-          (var_buffer_size - (last_buffer_offset - trimmed_offset))));
       throw_if_not_ok(cache.buffer_var.write(
-          buff.second.buffer_var_,
-          var_buffer_size - (last_buffer_offset - trimmed_offset)));
-      *buff.second.buffer_var_size_ -= last_buffer_offset - trimmed_offset;
-    } else {
-      // Write fixed attribute trimmed data into cache buffer.
-      throw_if_not_ok(cache.buffer.write(
-          (char*)buff.second.buffer_ + buffer_size - tile_trim_bytes,
-          tile_trim_bytes));
-      *buff.second.buffer_size_ -= tile_trim_bytes;
-      latest_cached_cells += tile_trim_cells;
+          (char*)buff.second.buffer_var_ + var_buffer_size -
+              var_data_trim_bytes,
+          var_data_trim_bytes));
+      *buff.second.buffer_var_size_ -= var_data_trim_bytes;
     }
+    // Count cells cached since last submission to REST.
+    // Handles the case where N cached writes add up to be exactly one tile.
+    latest_cached_cells += tile_trim_cells;
 
     if (is_nullable) {
       // Write the validity buffers into cache.
@@ -639,7 +606,7 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
 
     if (finalize) {
       // Update buffer_cells to reflect total cells within cached data.
-      buffer_cells = *buff.second.buffer_size_ / cell_size;
+      buffer_cells = *buff.second.buffer_size_ / cache.cell_size;
       // Total cells written from cache and user buffers.
       total_buffer_cells = cache_buffer_cells + buffer_cells;
       // Recheck that the final cache buffers do not exceed tile boundaries.
@@ -651,65 +618,82 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
       auto array_num = array_schema_->domain().cell_num(subarray_.ndrange(0));
       // Strategy may be null if query is uninitialized.
       auto global_writer = dynamic_cast<GlobalOrderWriter*>(strategy_.get());
-      if (finalize && global_writer != nullptr &&
+      if (global_writer != nullptr &&
           global_writer->get_global_state() != nullptr) {
         // Consider previous cells written to trim array overflow data.
         uint64_t cells_written =
             global_writer->get_global_state()->cells_written_[buff.first] +
             total_buffer_cells;
-        overflow_cells = cells_written > array_num ? cells_written % array_num :
+        overflow_cells = cells_written > array_num ? cells_written - array_num :
                                                      overflow_cells;
-        if (overflow_cells != 0) {
-          if (is_var) {
-            // Offset at the position we are trimming.
-            trimmed_offset = *(uint64_t*)cache.buffer.data(
-                cache.buffer.size() -
-                (overflow_cells * constants::cell_var_offset_size));
-            // Final offset in the cache.
-            uint64_t last_cache_offset = *(uint64_t*)cache.buffer.data(
-                cache.buffer.size() - constants::cell_var_offset_size);
 
-            cache.buffer.set_size(
-                cache.buffer.size() -
-                (overflow_cells * constants::cell_var_offset_size));
-            *buff.second.buffer_size_ -= std::min(
-                *buff.second.buffer_size_,
-                overflow_cells * constants::cell_var_offset_size);
-            cache.buffer_var.set_size(
-                cache.buffer_var.size() - (last_cache_offset - trimmed_offset));
-            *buff.second.buffer_var_size_ -= std::min(
-                *buff.second.buffer_var_size_,
-                last_cache_offset - trimmed_offset);
+      } else {
+        // No previous submissions. Check current buffers only.
+        total_buffer_cells += cache_buffer_cells + latest_cached_cells;
+        overflow_cells = total_buffer_cells > array_num ?
+                             total_buffer_cells - array_num :
+                             overflow_cells;
+      }
+
+      // Trim overflow cells is any are found.
+      if (overflow_cells != 0) {
+        uint64_t cache_overflow = overflow_cells * cache.cell_size;
+        uint64_t dropped_bytes =
+            std::min(*buff.second.buffer_size_, cache_overflow);
+        *buff.second.buffer_size_ -= dropped_bytes;
+        cache_overflow -= dropped_bytes;
+
+        if (is_var) {
+          // Cell index we are trimming in the data queued for submission.
+          uint64_t trimmed_cell = total_buffer_cells - overflow_cells;
+
+          // Check if the user buffer contains the trimmed overflow cell.
+          if (trimmed_cell < buffer_cells) {
+            auto trimmed_user_offset =
+                ((uint64_t*)buff.second.buffer_)[trimmed_cell];
+            *buff.second.buffer_var_size_ = trimmed_user_offset;
           } else {
-            uint64_t cache_overflow = overflow_cells * data_size;
-            uint64_t dropped_bytes =
-                std::min(*buff.second.buffer_size_, cache_overflow);
-            *buff.second.buffer_size_ -= dropped_bytes;
-            cache_overflow -= dropped_bytes;
-            // If more excess data, drop from data cached in previous submit.
-            if (cache_overflow != 0) {
-              cache.byte_offset -= std::min(cache.byte_offset, cache_overflow);
-            }
-          }
+            // User buffer does not contain enough data to trim overflow.
+            uint64_t trimmed_user_cells =
+                *buff.second.buffer_size_ / cache.cell_size;
+            *buff.second.buffer_var_size_ = 0;
 
-          if (is_nullable) {
-            uint64_t validity_buffer_size =
-                *buff.second.validity_vector_.buffer_size();
-            *buff.second.validity_vector_.buffer_size() -=
-                std::min(validity_buffer_size, overflow_cells);
-            // We have already adjusted byte_offset in the checks above.
+            // Trim from var data in the cache that would prefix user buffers.
+            uint64_t cached_cells = cache.byte_offset / cache.cell_size;
+            uint64_t cache_trim_cell =
+                cached_cells - (trimmed_cell - trimmed_user_cells);
+            cache.var_data_offset = *cache.get_cell_offset(cache_trim_cell);
           }
+        }
+
+        // If more excess data, drop from data cached in previous submit.
+        if (cache_overflow != 0) {
+          cache.byte_offset -= std::min(cache.byte_offset, cache_overflow);
+        }
+
+        if (is_nullable) {
+          uint64_t validity_buffer_size =
+              *buff.second.validity_vector_.buffer_size();
+          *buff.second.validity_vector_.buffer_size() -=
+              std::min(validity_buffer_size, overflow_cells);
+          // We have already adjusted byte_offset in fixed buffer checks above.
         }
       }
     }
 
+    // If cached values since last REST submit grows over a tile.
     if (latest_cached_cells >= cell_num_per_tile) {
-      cache.byte_offset = cell_num_per_tile * cell_size;
+      cache.byte_offset = cell_num_per_tile * cache.cell_size;
+      cache.var_data_offset = cache.buffer_var.size();
+      // Adjust offset if there will be data left in the cache after submit.
+      if (is_var && latest_cached_cells > cell_num_per_tile) {
+        cache.var_data_offset = *cache.get_cell_offset(cell_num_per_tile);
+      }
     }
 
     // Update total cells written from cache and user buffers.
     total_buffer_cells =
-        (cache.byte_offset + *buff.second.buffer_size_) / cell_size;
+        (cache.byte_offset + *buff.second.buffer_size_) / cache.cell_size;
     if (total_buffer_cells < cell_num_per_tile) {
       submit = false;
     }

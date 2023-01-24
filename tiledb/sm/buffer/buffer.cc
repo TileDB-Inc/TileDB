@@ -163,6 +163,7 @@ Buffer::Buffer(uint64_t size)
     , alloced_size_(0) {
   throw_if_not_ok(ensure_alloced_size(size_));
   preallocated_ = true;
+  size_ = 0;
 }
 
 Buffer::Buffer(void* data, const uint64_t size)

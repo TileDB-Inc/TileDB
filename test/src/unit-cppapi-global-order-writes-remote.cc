@@ -39,8 +39,6 @@
 
 using namespace tiledb;
 
-enum { KB = 1024, MB = KB * 1024, GB = MB * 1024 };
-
 const std::string aws_region = "us-east-2";
 const std::string aws_key_id = "<AWS_KEY_ID>";
 const std::string aws_secret_key = "<AWS_SECRET_KEY>";
@@ -222,7 +220,7 @@ struct RemoteGlobalOrderWriteFx {
       }
       if (is_var_) {
         // Update data and offsets wrote for variable size attributes.
-        var_data_wrote_ += var_data.substr(0, result["var"].second);
+        var_data_wrote_ += var_data;
         var_offsets_wrote_.insert(
             var_offsets_wrote_.end(), var_offsets.begin(), var_offsets.end());
         // Update validity buffer wrote for variable size attributes.
@@ -236,22 +234,14 @@ struct RemoteGlobalOrderWriteFx {
     }
     CHECK(query.query_status() == Query::Status::COMPLETE);
     array.close();
-
-    // Finalize data wrote buffers to reflect total trimmed cells.
-    data_wrote_.resize(total_cell_count_);
-    if (is_sparse) {
-      cols_wrote_.resize(total_cell_count_);
-    }
-    if (is_nullable_) {
-      data_validity_wrote_.resize(total_cell_count_);
-      if (is_var_) {
-        var_validity_wrote_.resize(total_cell_count_);
-      }
-    }
   }
 
-  void read_array() {
+  void read_array(uint64_t batch_size) {
     Array array(ctx_, array_uri_, TILEDB_READ);
+
+    // Make all offsets absolute from 0.
+    // Allows slicing offsets at any position for validating.
+    make_absolute();
 
     // Read the entire array.
     auto c = array.schema().domain().dimension("cols").domain<uint64_t>();
@@ -261,69 +251,140 @@ struct RemoteGlobalOrderWriteFx {
     Query query(ctx_, array);
     query.set_subarray(subarray).set_layout(TILEDB_GLOBAL_ORDER);
 
-    // Fixed sized attribute buffers.
-    std::vector<T> data(total_cell_count_);
+    uint64_t last_check = 0;
+    uint64_t last_var_check = 0;
+    uint64_t last_offset_check = 1;
+    do {
+      // Fixed sized attribute buffers.
+      std::vector<T> data(batch_size);
 
-    // Coordinate buffers.
-    std::vector<uint64_t> cols;
-    if (array.schema().array_type() == TILEDB_SPARSE) {
-      cols.resize(total_cell_count_);
-      query.set_data_buffer("cols", cols);
-    }
-
-    // Variable sized attribute buffers.
-    std::string var_data;
-    std::vector<uint64_t> var_offsets;
-
-    std::vector<uint8_t> data_validity;
-    std::vector<uint8_t> var_validity;
-
-    query.set_data_buffer("a", data);
-    if (is_nullable_) {
-      data_validity.resize(total_cell_count_);
-      query.set_validity_buffer("a", data_validity);
-    }
-
-    if (is_var_) {
-      var_data.resize(var_data_wrote_.size());
-      var_offsets.resize(total_cell_count_);
-      query.set_data_buffer("var", var_data)
-          .set_offsets_buffer("var", var_offsets);
-      if (is_nullable_) {
-        var_validity.resize(total_cell_count_);
-        query.set_validity_buffer("var", var_validity);
+      // Coordinate buffers.
+      std::vector<uint64_t> cols;
+      if (array.schema().array_type() == TILEDB_SPARSE) {
+        cols.resize(batch_size);
+        query.set_data_buffer("cols", cols);
       }
-    }
 
-    query.submit();
+      // Variable sized attribute buffers.
+      std::string var_data;
+      std::vector<uint64_t> var_offsets;
 
-    if (is_nullable_) {
-      CHECK_THAT(data_validity, Catch::Matchers::Equals(data_validity_wrote_));
-    }
+      std::vector<uint8_t> data_validity;
+      std::vector<uint8_t> var_validity;
 
-    if (is_var_) {
-      CHECK(var_data == var_data_wrote_);
-      CHECK_THAT(var_offsets, Catch::Matchers::Equals(var_offsets_wrote_));
+      query.set_data_buffer("a", data);
+      if (is_nullable_) {
+        data_validity.resize(batch_size);
+        query.set_validity_buffer("a", data_validity);
+      }
+
+      if (is_var_) {
+        var_data.clear();
+        var_data.resize(var_data_wrote_.size());
+        var_offsets.resize(batch_size);
+        query.set_data_buffer("var", var_data)
+            .set_offsets_buffer("var", var_offsets);
+        if (is_nullable_) {
+          var_validity.resize(batch_size);
+          query.set_validity_buffer("var", var_validity);
+        }
+      }
+
+      query.submit();
+      auto result = query.result_buffer_elements();
 
       if (is_nullable_) {
-        CHECK_THAT(var_validity, Catch::Matchers::Equals(var_validity_wrote_));
+        auto data_validity_slice = std::vector(
+            data_validity_wrote_.begin() + last_check,
+            data_validity_wrote_.begin() + last_check + batch_size);
+        CHECK_THAT(data_validity, Catch::Matchers::Equals(data_validity_slice));
       }
-    }
 
-    CHECK_THAT(data, Catch::Matchers::Equals(data_wrote_));
+      if (is_var_) {
+        // Validate variable size data and offsets.
+        auto var_data_slice =
+            var_data_wrote_.substr(last_var_check, result["var"].second);
+        last_var_check += result["var"].second;
 
-    if (array.schema().array_type() == TILEDB_SPARSE) {
-      CHECK_THAT(cols, Catch::Matchers::Equals(cols_wrote_));
-    }
+        var_data.resize(result["var"].second);
+        CHECK(var_data == var_data_slice);
+
+        // Slice absolute offsets and make them relative to this range.
+        auto var_offsets_slice = std::vector(
+            var_offsets_wrote_.begin() + last_check,
+            var_offsets_wrote_.begin() + last_check + batch_size);
+        std::adjacent_difference(
+            var_offsets_slice.begin(),
+            var_offsets_slice.end(),
+            var_offsets_slice.begin());
+        var_offsets_slice[0] = 0;
+        for (size_t i = 1; i < var_offsets_slice.size();
+             i++, last_offset_check++) {
+          var_offsets_slice[i] += var_offsets_slice[i - 1];
+        }
+        CHECK_THAT(var_offsets, Catch::Matchers::Equals(var_offsets_slice));
+
+        if (is_nullable_) {
+          auto var_validity_slice = std::vector(
+              var_validity_wrote_.begin() + last_check,
+              var_validity_wrote_.begin() + last_check + batch_size);
+          CHECK_THAT(var_validity, Catch::Matchers::Equals(var_validity_slice));
+        }
+      }
+
+      auto data_slice = std::vector(
+          data_wrote_.begin() + last_check,
+          data_wrote_.begin() + last_check + batch_size);
+      CHECK_THAT(data, Catch::Matchers::Equals(data_slice));
+
+      if (array.schema().array_type() == TILEDB_SPARSE) {
+        auto cols_slice = std::vector(
+            cols_wrote_.begin() + last_check,
+            cols_wrote_.begin() + last_check + batch_size);
+        CHECK_THAT(cols, Catch::Matchers::Equals(cols_slice));
+      }
+
+      last_check += batch_size;
+    } while (query.query_status() == tiledb::Query::Status::INCOMPLETE);
 
     CHECK(query.query_status() == Query::Status::COMPLETE);
     array.close();
   }
 
+  // For validating batched reads.
+  // Converts a set of offsets to absolute positions.
+  // The resulting vector can be sliced anywhere and validated using adj_diff.
+  void make_absolute() {
+    // If we can't find a 0 after the first element offsets are already abs.
+    auto it =
+        std::find(var_offsets_wrote_.begin() + 1, var_offsets_wrote_.end(), 0);
+    if (it != var_offsets_wrote_.end()) {
+      std::adjacent_difference(it, var_offsets_wrote_.end(), it);
+      uint64_t submit = submit_cell_count_;
+      uint64_t count = 1;
+      for (size_t i = 1; i < var_offsets_wrote_.size(); i++) {
+        if (i == submit) {
+          var_offsets_wrote_[i] = count * (submit_cell_count_ * sizeof(T));
+          count += 1;
+          submit += submit_cell_count_;
+          if (i + 1 < var_offsets_wrote_.size()) {
+            var_offsets_wrote_[i + 1] += var_offsets_wrote_[i];
+            i++;
+          }
+          continue;
+        }
+        if (count > 1) {
+          var_offsets_wrote_[i] += var_offsets_wrote_[i - 1];
+        }
+      }
+    }
+  }
+
   void run_test() {
     create_array();
     write_array();
-    read_array();
+    read_array(total_cell_count_);
+    read_array(extent_);
   }
 
   Context ctx_;
@@ -355,20 +416,43 @@ struct RemoteGlobalOrderWriteFx {
 //     float, double> TestTypes;
 typedef std::tuple<uint64_t, float> TestTypes;
 // Marked as mayfail pending CI for remote writes. (SC-23785)
-TEST_CASE(
-    "Global order remote writes debug",
-    "[global-order][remote][write][!mayfail]") {
+TEST_CASE("Global order remote writes debug", "[.mayfail]") {
   typedef uint64_t T;
   uint64_t cells;
   uint64_t extent;
   uint64_t chunk_size;
-  //  bool nullable = GENERATE(true, false);
+  bool var = true;
+  bool nullable = true;
+
+  SECTION("XL unaligned chunks") {
+    cells = 20;
+    extent = 10;
+    chunk_size = 200;
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
+    fx.run_test();
+  }
+
+  SECTION("Small unaligned chunks") {
+    cells = 20;
+    extent = 10;
+    chunk_size = 2;
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
+    fx.run_test();
+  }
+
+  SECTION("Large unaligned chunks") {
+    cells = 20;
+    extent = 10;
+    chunk_size = 19;
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
+    fx.run_test();
+  }
 
   SECTION("Full array write") {
     cells = 20;
     extent = 10;
     chunk_size = 20;
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, false, false);
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
     fx.run_test();
   }
 
@@ -376,15 +460,16 @@ TEST_CASE(
     cells = 20;
     extent = 10;
     chunk_size = 10;
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, false, false);
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
     fx.run_test();
   }
 
+  // These writes will align when combined.
   SECTION("Tile aligned underflow N writes") {
     cells = 20;
     extent = 10;
     chunk_size = 5;
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, false, false);
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
     fx.run_test();
   }
 
@@ -392,7 +477,7 @@ TEST_CASE(
     cells = 20;
     extent = 5;
     chunk_size = 6;
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, false, false);
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
     fx.run_test();
   }
 
@@ -400,7 +485,7 @@ TEST_CASE(
     cells = 20;
     extent = 5;
     chunk_size = 3;  // Should not divide evenly into `cells` for this test.
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, false, false);
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
     fx.run_test();
   }
 
@@ -408,7 +493,15 @@ TEST_CASE(
     cells = 50;
     extent = 5;
     chunk_size = 12;
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, false, false);
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
+    fx.run_test();
+  }
+
+  SECTION("> half-tile unaligned overflow N writes") {
+    cells = 50;
+    extent = 10;
+    chunk_size = 18;
+    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
     fx.run_test();
   }
 }
