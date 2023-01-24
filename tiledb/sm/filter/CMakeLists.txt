@@ -83,11 +83,9 @@ conclude(object_library)
 # `checksum_filters` object library
 #
 commence(object_library checksum_filters)
-    cmake_path(APPEND TILEDB_SOURCE_ROOT "external/src/md5" OUTPUT_VARIABLE MD5_SOURCE_ROOT)
     this_target_sources(
-        checksum_md5_filter.cc ${MD5_SOURCE_ROOT}/md5.cc checksum_sha256_filter.cc)
+        checksum_md5_filter.cc checksum_sha256_filter.cc)
     this_target_object_libraries(config filter)
-    set_source_files_properties(${MD5_SOURCE_ROOT}/md5.cc PROPERTIES INCLUDE_DIRECTORIES "${TILEDB_EXTERNAL_INCLUDE}")
 conclude(object_library)
 
 #
