@@ -39,11 +39,11 @@
 using namespace tiledb::common;
 
 class big_class {
-  [[maybe_unused]] std::array<char, 2 * 1024 * 1024> storage_;
+  std::array<char, 2 * 1024 * 1024> storage_;
 };
 
 class small_class {
-  [[maybe_unused]] std::array<char, 4 * 1024> storage_;
+  std::array<char, 4 * 1024> storage_;
 };
 
 /**

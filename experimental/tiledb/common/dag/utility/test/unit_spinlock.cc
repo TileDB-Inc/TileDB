@@ -34,6 +34,8 @@
 #include <future>
 #include <mutex>
 #include <vector>
+#include <chrono>
+#include <thread>
 #include "../spinlock.h"
 
 using namespace tiledb::common;

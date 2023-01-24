@@ -1136,7 +1136,7 @@ TEMPLATE_TEST_CASE(
   }
 
   Producer source_node([&i]() { return (*i++); });
-  Consumer sink_node(terminal{j});
+  Consumer sink_node{terminal{j}};
 
   auto a = Edge(source_node, sink_node);
   auto source = [&]() { source_node.run_for(rounds); };
@@ -1242,7 +1242,7 @@ TEMPLATE_TEST_CASE(
   auto w = std::back_inserter(output);
   terminal c{w};
 
-  Producer source_node(generators{19});
+  Producer source_node{generators{19}};
   Function mid_node([](size_t k) { return k; });
   Consumer sink_node{c};
 

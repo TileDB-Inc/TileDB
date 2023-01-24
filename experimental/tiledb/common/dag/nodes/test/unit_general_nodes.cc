@@ -794,8 +794,8 @@ TEST_CASE(
     CHECK(std::equal(input2.begin(), input2.end(), output2.begin()) == false);
   }
 
-  ProducerNode<AsyncMover3, size_t> source_node1(generators{19});
-  ProducerNode<AsyncMover3, double> source_node2(generators{337});
+  ProducerNode<AsyncMover3, size_t> source_node1{generators{19}};
+  ProducerNode<AsyncMover3, double> source_node2{generators{337}};
 
   GeneralFunctionNode<
       AsyncMover3,
