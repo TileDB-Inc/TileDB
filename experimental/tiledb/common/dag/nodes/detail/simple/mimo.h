@@ -495,7 +495,7 @@ class GeneralFunctionNode<
       case NodeState::init:
 
         instruction_counter_ = NodeState::input;
-	[[fallthrough]];
+        [[fallthrough]];
 
       case NodeState::input:
         /*
@@ -532,7 +532,7 @@ class GeneralFunctionNode<
         drain_all();
 
         instruction_counter_ = NodeState::compute;
-	[[fallthrough]];
+        [[fallthrough]];
 
       case NodeState::compute:
 
@@ -554,7 +554,7 @@ class GeneralFunctionNode<
         }
 
         instruction_counter_ = NodeState::output;
-	[[fallthrough]];
+        [[fallthrough]];
 
       case NodeState::output:
         if constexpr (!is_consumer_) {

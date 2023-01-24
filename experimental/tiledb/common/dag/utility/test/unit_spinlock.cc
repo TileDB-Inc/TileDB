@@ -31,11 +31,11 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <chrono>
 #include <future>
 #include <mutex>
-#include <vector>
-#include <chrono>
 #include <thread>
+#include <vector>
 #include "../spinlock.h"
 
 using namespace tiledb::common;

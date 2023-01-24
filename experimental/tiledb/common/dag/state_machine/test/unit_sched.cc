@@ -599,7 +599,6 @@ void test_stingy(Mover1& a, Mover2& b, bool debug = false) {
 
   auto mid_node_fn = [&](alt_triple_maker_state<size_t>& alt_state) {
     switch (alt_state.counter) {
-
       case state::init: {
         alt_state.n = rounds;
       }
