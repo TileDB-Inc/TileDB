@@ -518,6 +518,10 @@ class VFS {
    */
   Status flush_multipart_file_buffer(const URI& uri);
 
+  inline stats::Stats* stats() const {
+    return stats_;
+  }
+
  private:
   /* ********************************* */
   /*        PRIVATE DATATYPES          */
