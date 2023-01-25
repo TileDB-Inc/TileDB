@@ -1,9 +1,9 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/api/c_api/query_plan/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,29 +24,26 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
+include(common NO_POLICY_SCOPE)
 
-add_subdirectory(array)
-add_subdirectory(array_schema)
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(config)
-add_subdirectory(consolidator)
-add_subdirectory(crypto)
-add_subdirectory(filesystem)
-add_subdirectory(filter)
-add_subdirectory(group)
-add_subdirectory(metadata)
-add_subdirectory(misc)
-add_subdirectory(query)
-add_subdirectory(query_plan)
-add_subdirectory(rtree)
-add_subdirectory(stats)
-add_subdirectory(storage_manager)
-add_subdirectory(subarray)
-add_subdirectory(tile)
+list(APPEND SOURCES
+  query_plan_api.cc
+)
+gather_sources(${SOURCES})
 
+#
+# Object library for other units to depend upon
+#
+add_library(capi_query_plan OBJECT ${SOURCES})
+target_link_libraries(capi_query_plan PUBLIC export)
+target_link_libraries(capi_query_plan PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
-if (TILEDB_SERIALIZATION)
-  add_subdirectory(serialization)
-endif()
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_capi_query_plan EXCLUDE_FROM_ALL)
+target_link_libraries(compile_capi_query_plan PRIVATE capi_query_plan)
+target_sources(compile_capi_query_plan PRIVATE test/compile_capi_query_plan_main.cc)
+add_dependencies(all_link_complete compile_capi_query_plan)
+
+add_test_subdirectory()

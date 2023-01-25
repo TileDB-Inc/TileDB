@@ -1,9 +1,9 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/api/c_api/query_plan/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,29 +24,15 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
+find_package(Catch_EP REQUIRED)
 
-add_subdirectory(array)
-add_subdirectory(array_schema)
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(config)
-add_subdirectory(consolidator)
-add_subdirectory(crypto)
-add_subdirectory(filesystem)
-add_subdirectory(filter)
-add_subdirectory(group)
-add_subdirectory(metadata)
-add_subdirectory(misc)
-add_subdirectory(query)
-add_subdirectory(query_plan)
-add_subdirectory(rtree)
-add_subdirectory(stats)
-add_subdirectory(storage_manager)
-add_subdirectory(subarray)
-add_subdirectory(tile)
+add_executable(unit_capi_query_plan EXCLUDE_FROM_ALL)
+target_sources(unit_capi_query_plan PUBLIC unit_capi_query_plan.cc)
+target_link_libraries(unit_capi_query_plan PUBLIC capi_query_plan)
+target_link_libraries(unit_capi_query_plan PUBLIC Catch2::Catch2WithMain)
 
-
-if (TILEDB_SERIALIZATION)
-  add_subdirectory(serialization)
-endif()
+add_test(
+  NAME "unit_capi_query_plan"
+  COMMAND $<TARGET_FILE:unit_capi_query_plan>
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)

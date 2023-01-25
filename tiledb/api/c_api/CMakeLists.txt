@@ -100,3 +100,6 @@ add_subdirectory(string)
 # `vfs`: depends on `context`
 add_subdirectory(vfs)
 
+# `query_plan`: depends on `TODO`
+add_subdirectory(query_plan)
+
