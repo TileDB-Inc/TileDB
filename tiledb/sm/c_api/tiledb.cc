@@ -3129,12 +3129,10 @@ int32_t tiledb_array_create(
     }
 
     // Check no dimension labels (not yet implemented in REST)
-    if constexpr (is_experimental_build) {
-      if (array_schema->array_schema_->dim_label_num() > 0) {
-        throw StatusException(
-            Status_Error("Failed to create array; remote arrays with dimension "
-                         "labels are not currently supported."));
-      }
+    if (array_schema->array_schema_->dim_label_num() > 0) {
+      throw StatusException(
+          Status_Error("Failed to create array; remote arrays with dimension "
+                       "labels are not currently supported."));
     }
 
     throw_if_not_ok(rest_client->post_array_schema_to_rest(
@@ -3149,25 +3147,23 @@ int32_t tiledb_array_create(
         uri, array_schema->array_schema_, key));
 
     // Create any dimension labels in the array.
-    if constexpr (is_experimental_build) {
-      for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
-           ilabel < array_schema->array_schema_->dim_label_num();
-           ++ilabel) {
-        // Get dimension label information and define URI and name.
-        const auto& dim_label_ref =
-            array_schema->array_schema_->dimension_label_reference(ilabel);
-        if (dim_label_ref.is_external())
-          continue;
-        if (!dim_label_ref.has_schema()) {
-          throw StatusException(
-              Status_Error("Failed to create array. Dimension labels that are "
-                           "not external must have a schema."));
-        }
-
-        // Create the dimension label array with the same key.
-        throw_if_not_ok(ctx->storage_manager()->array_create(
-            dim_label_ref.uri(uri), dim_label_ref.schema(), key));
+    for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
+         ilabel < array_schema->array_schema_->dim_label_num();
+         ++ilabel) {
+      // Get dimension label information and define URI and name.
+      const auto& dim_label_ref =
+          array_schema->array_schema_->dimension_label_reference(ilabel);
+      if (dim_label_ref.is_external())
+        continue;
+      if (!dim_label_ref.has_schema()) {
+        throw StatusException(
+            Status_Error("Failed to create array. Dimension labels that are "
+                         "not external must have a schema."));
       }
+
+      // Create the dimension label array with the same key.
+      throw_if_not_ok(ctx->storage_manager()->array_create(
+          dim_label_ref.uri(uri), dim_label_ref.schema(), key));
     }
   }
   return TILEDB_OK;
@@ -3216,12 +3212,10 @@ int32_t tiledb_array_create_with_key(
     }
 
     // Check no dimension labels (not yet implemented in REST)
-    if constexpr (is_experimental_build) {
-      if (array_schema->array_schema_->dim_label_num() > 0) {
-        throw StatusException(
-            Status_Error("Failed to create array; remote arrays with dimension "
-                         "labels are not currently supported."));
-      }
+    if (array_schema->array_schema_->dim_label_num() > 0) {
+      throw StatusException(
+          Status_Error("Failed to create array; remote arrays with dimension "
+                       "labels are not currently supported."));
     }
 
     throw_if_not_ok(rest_client->post_array_schema_to_rest(
@@ -3239,25 +3233,23 @@ int32_t tiledb_array_create_with_key(
         uri, array_schema->array_schema_, key));
 
     // Create any dimension labels in the array.
-    if constexpr (is_experimental_build) {
-      for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
-           ilabel < array_schema->array_schema_->dim_label_num();
-           ++ilabel) {
-        // Get dimension label information and define URI and name.
-        const auto& dim_label_ref =
-            array_schema->array_schema_->dimension_label_reference(ilabel);
-        if (dim_label_ref.is_external())
-          continue;
-        if (!dim_label_ref.has_schema()) {
-          throw StatusException(
-              Status_Error("Failed to create array. Dimension labels that are "
-                           "not external must have a schema."));
-        }
-
-        // Create the dimension label array with the same key.
-        throw_if_not_ok(ctx->storage_manager()->array_create(
-            dim_label_ref.uri(uri), dim_label_ref.schema(), key));
+    for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
+         ilabel < array_schema->array_schema_->dim_label_num();
+         ++ilabel) {
+      // Get dimension label information and define URI and name.
+      const auto& dim_label_ref =
+          array_schema->array_schema_->dimension_label_reference(ilabel);
+      if (dim_label_ref.is_external())
+        continue;
+      if (!dim_label_ref.has_schema()) {
+        throw StatusException(
+            Status_Error("Failed to create array. Dimension labels that are "
+                         "not external must have a schema."));
       }
+
+      // Create the dimension label array with the same key.
+      throw_if_not_ok(ctx->storage_manager()->array_create(
+          dim_label_ref.uri(uri), dim_label_ref.schema(), key));
     }
   }
   return TILEDB_OK;

@@ -793,16 +793,14 @@ void ArraySchema::serialize(Serializer& serializer) const {
   }
 
   // Write dimension labels
-  if constexpr (is_experimental_build) {
-    auto label_num = static_cast<uint32_t>(dimension_label_references_.size());
-    if (label_num != dimension_label_references_.size()) {
-      throw ArraySchemaStatusException(
-          "Overflow when attempting to serialize label number.");
-    }
-    serializer.write<uint32_t>(label_num);
-    for (auto& label : dimension_label_references_) {
-      label->serialize(serializer, version);
-    }
+  auto label_num = static_cast<uint32_t>(dimension_label_references_.size());
+  if (label_num != dimension_label_references_.size()) {
+    throw ArraySchemaStatusException(
+        "Overflow when attempting to serialize label number.");
+  }
+  serializer.write<uint32_t>(label_num);
+  for (auto& label : dimension_label_references_) {
+    label->serialize(serializer, version);
   }
 }
 
@@ -855,11 +853,9 @@ bool ArraySchema::var_size(const std::string& name) const {
   }
 
   // Dimension label
-  if constexpr (is_experimental_build) {
-    auto dim_label_ref_it = dimension_label_reference_map_.find(name);
-    if (dim_label_ref_it != dimension_label_reference_map_.end()) {
-      return dim_label_ref_it->second->is_var();
-    }
+  auto dim_label_ref_it = dimension_label_reference_map_.find(name);
+  if (dim_label_ref_it != dimension_label_reference_map_.end()) {
+    return dim_label_ref_it->second->is_var();
   }
 
   // Name is not an attribute or dimension
@@ -895,6 +891,13 @@ void ArraySchema::add_dimension_label(
     DataOrder label_order,
     Datatype label_type,
     bool check_name) {
+  // Check the label order is valid.
+  if (label_order == DataOrder::UNORDERED_DATA) {
+    throw ArraySchemaStatusException(
+        "Cannot add dimension label; Unordered dimension labels are not yet "
+        "supported.");
+  }
+
   // Check domain is set and `dim_id` is a valid dimension index.
   if (!domain_) {
     throw ArraySchemaStatusException(
@@ -1058,13 +1061,11 @@ ArraySchema ArraySchema::deserialize(
 
   // Load dimension labels
   std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels;
-  if constexpr (is_experimental_build) {
-    if (version == constants::format_version) {
-      uint32_t label_num = deserializer.read<uint32_t>();
-      for (uint32_t i{0}; i < label_num; ++i) {
-        dimension_labels.emplace_back(
-            DimensionLabelReference::deserialize(deserializer, version));
-      }
+  if (version >= 18) {
+    uint32_t label_num = deserializer.read<uint32_t>();
+    for (uint32_t i{0}; i < label_num; ++i) {
+      dimension_labels.emplace_back(
+          DimensionLabelReference::deserialize(deserializer, version));
     }
   }
 

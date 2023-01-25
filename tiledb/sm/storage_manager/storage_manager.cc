@@ -721,11 +721,10 @@ Status StorageManagerCanonical::array_create(
       array_uri.join_path(constants::array_fragment_meta_dir_name);
   RETURN_NOT_OK(vfs()->create_dir(array_fragment_metadata_uri));
 
-  if constexpr (is_experimental_build) {
-    URI array_dimension_labels_uri =
-        array_uri.join_path(constants::array_dimension_labels_dir_name);
-    RETURN_NOT_OK(vfs()->create_dir(array_dimension_labels_uri));
-  }
+  // Create dimension label directory
+  URI array_dimension_labels_uri =
+      array_uri.join_path(constants::array_dimension_labels_dir_name);
+  RETURN_NOT_OK(vfs()->create_dir(array_dimension_labels_uri));
 
   // Get encryption key from config
   Status st;

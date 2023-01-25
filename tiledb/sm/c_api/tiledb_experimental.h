@@ -42,6 +42,7 @@
  * API sections
  */
 #include "tiledb/api/c_api/group/group_api_external_experimental.h"
+#include "tiledb_dimension_label_experimental.h"
 
 /* ********************************* */
 /*               MACROS              */

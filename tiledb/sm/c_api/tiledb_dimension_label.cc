@@ -26,12 +26,12 @@
  * THE SOFTWARE.
  */
 
-#include "tiledb/sm/c_api/tiledb_dimension_label.h"
 #include "tiledb/api/c_api/dimension_label/dimension_label_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/c_api/tiledb_dimension_label_experimental.h"
 
 using namespace tiledb::common;
 
