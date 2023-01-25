@@ -473,6 +473,9 @@ class Array {
    */
   bool serialize_metadata() const;
 
+  /** Checks the config to see if refactored array open should be used. */
+  bool use_refactored_array_open() const;
+
   /**
    * Sets the array state as open.
    *

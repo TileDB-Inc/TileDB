@@ -105,6 +105,9 @@ class Config {
   /** If the array non empty domain should be loaded on array open */
   static const std::string REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN;
 
+  /** Refactored array open is disabled by default */
+  static const std::string REST_USE_REFACTORED_ARRAY_OPEN;
+
   /** The prefix to use for checking for parameter environmental variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 

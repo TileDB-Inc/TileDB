@@ -179,10 +179,19 @@ Status Array::open_without_fragments(
       }
       /* #TODO Change get_array_schema_from_rest function signature to
         throw instead of return Status */
-      auto st =
-          rest_client->post_array_from_rest(array_uri_, storage_manager_, this);
-      if (!st.ok()) {
-        throw StatusException(st);
+      if (!use_refactored_array_open()) {
+        auto&& [st, array_schema_latest] =
+            rest_client->get_array_schema_from_rest(array_uri_);
+        if (!st.ok()) {
+          throw StatusException(st);
+        }
+        array_schema_latest_ = array_schema_latest.value();
+      } else {
+        auto st = rest_client->post_array_from_rest(
+            array_uri_, storage_manager_, this);
+        if (!st.ok()) {
+          throw StatusException(st);
+        }
       }
     } else {
       array_dir_ = ArrayDirectory(
@@ -338,10 +347,19 @@ Status Array::open(
         throw Status_ArrayError(
             "Cannot open array; remote array with no REST client.");
       }
-      auto st =
-          rest_client->post_array_from_rest(array_uri_, storage_manager_, this);
-      if (!st.ok()) {
-        throw StatusException(st);
+      if (!use_refactored_array_open()) {
+        auto&& [st, array_schema_latest] =
+            rest_client->get_array_schema_from_rest(array_uri_);
+        if (!st.ok()) {
+          throw StatusException(st);
+        }
+        array_schema_latest_ = array_schema_latest.value();
+      } else {
+        auto st = rest_client->post_array_from_rest(
+            array_uri_, storage_manager_, this);
+        if (!st.ok()) {
+          throw StatusException(st);
+        }
       }
     } else if (query_type == QueryType::READ) {
       array_dir_ = ArrayDirectory(
@@ -1075,6 +1093,20 @@ bool Array::serialize_metadata() const {
   }
 
   return serialize_metadata_array_open;
+}
+
+bool Array::use_refactored_array_open() const {
+  auto found = false;
+  auto refactored_array_open = false;
+  auto status = config_.get<bool>(
+      "rest.use_refactored_array_open", &refactored_array_open, &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get use_refactored_array_open configuration option from "
+        "config");
+  }
+
+  return refactored_array_open;
 }
 
 std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()

@@ -333,6 +333,12 @@ class RestClient {
    */
   bool resubmit_incomplete_;
 
+  /**
+   * If true, the new, experimental REST routes and APIs for opening an array
+   * and submitting a query will be used
+   */
+  bool use_refactored_array_and_query_;
+
   /** Collection of extra headers that are attached to REST requests. */
   std::unordered_map<std::string, std::string> extra_headers_;
 
