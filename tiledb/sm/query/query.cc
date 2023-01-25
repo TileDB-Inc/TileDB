@@ -635,7 +635,7 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
                              overflow_cells;
       }
 
-      // Trim overflow cells is any are found.
+      // Trim overflow cells if any are found.
       if (overflow_cells != 0) {
         uint64_t cache_overflow = overflow_cells * cache.cell_size;
         uint64_t dropped_bytes =
@@ -2509,7 +2509,6 @@ Status Query::submit() {
 
     // Align buffers to tile extents.
     bool submit = check_trim_and_buffer_tile_alignment();
-    // Only continue to submit if all buffers are > 5MB or query type is READ.
     if (!submit) {
       return Status::Ok();
     }

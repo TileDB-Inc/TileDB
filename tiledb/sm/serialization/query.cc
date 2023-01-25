@@ -1288,7 +1288,7 @@ Status query_to_capnp(
     bool remote_global_order_write = query.array()->is_remote() &&
                                      query.type() == QueryType::WRITE &&
                                      query.layout() == Layout::GLOBAL_ORDER;
-    if (buff.buffer_var_ != nullptr || buff.buffer_var_size_ != nullptr) {
+    if (buff.buffer_var_ != nullptr && buff.buffer_var_size_ != nullptr) {
       // Variable-sized buffer
       uint64_t offset_buff_size = buff_cache.byte_offset;
       // Calculate cached var buffer size up to the offset we are prepending.
@@ -1309,7 +1309,7 @@ Status query_to_capnp(
           buff.original_buffer_var_size_);
       attr_buffer_builder.setOriginalFixedLenBufferSizeInBytes(
           buff.original_buffer_size_);
-    } else if (buff.buffer_ != nullptr || buff.buffer_size_ != nullptr) {
+    } else if (buff.buffer_ != nullptr && buff.buffer_size_ != nullptr) {
       // Fixed-length buffer
 
       uint64_t buff_size = *buff.buffer_size_ + buff_cache.byte_offset;
