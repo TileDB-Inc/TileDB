@@ -34,8 +34,9 @@
 #define TILEDB_CPP_API_SUBARRAY_EXPERIMENTAL_H
 
 #include "array_schema_experimental.h"
+#include "dimension_label_experimental.h"
 #include "subarray.h"
-#include "tiledb_dimension_label.h"
+#include "tiledb_experimental.h"
 
 namespace tiledb {
 class SubarrayExperimental {

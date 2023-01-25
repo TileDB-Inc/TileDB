@@ -203,6 +203,8 @@ set(TILEDB_UNIT_TEST_SOURCES
 
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/test-cppapi-dimension-label.cc
+    src/test-cppapi-dense-array-dimension-label.cc
     src/unit-cppapi-array.cc
     src/unit-cppapi-bitsort-filter.cc
     src/unit-cppapi-checksum.cc
@@ -238,12 +240,6 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-webp-filter.cc
     src/unit-cppapi-xor-filter.cc
   )
-  if (TILEDB_EXPERIMENTAL_FEATURES)
-    list(APPEND TILEDB_UNIT_TEST_SOURCES
-        src/test-cppapi-dimension-label.cc
-        src/test-cppapi-dense-array-dimension-label.cc
-    )
-  endif()
 endif()
 
 if (TILEDB_SERIALIZATION)

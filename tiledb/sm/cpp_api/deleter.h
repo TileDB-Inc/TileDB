@@ -37,7 +37,6 @@
 
 #include "context.h"
 #include "tiledb.h"
-#include "tiledb_dimension_label.h"
 #include "tiledb_experimental.h"
 
 namespace tiledb {

@@ -36,7 +36,7 @@
 #include "array_schema.h"
 #include "dimension_label_experimental.h"
 #include "filter_list.h"
-#include "tiledb_dimension_label.h"
+#include "tiledb_experimental.h"
 
 #include <optional>
 
