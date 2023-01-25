@@ -234,6 +234,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#domain" id="toc-domain" class="nav-link" data-scroll-target="#domain">Domain</a></li>
   <li><a href="#dimension" id="toc-dimension" class="nav-link" data-scroll-target="#dimension">Dimension</a></li>
   <li><a href="#attribute" id="toc-attribute" class="nav-link" data-scroll-target="#attribute">Attribute</a></li>
+  <li><a href="#dimension-label" id="toc-dimension-label" class="nav-link" data-scroll-target="#dimension-label">Dimension Label</a></li>
   </ul>
 </nav>
     </div>
@@ -360,6 +361,26 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">Attribute N</td>
 <td style="text-align: left;"><a href="#attribute">Attribute</a></td>
 <td style="text-align: left;">Nth attribute</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Num labels</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Number of dimension labels in the array</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Label 1</td>
+<td style="text-align: left;"><a href="#dimension_label">Dimension Label</a></td>
+<td style="text-align: left;">First dimension label</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Label N</td>
+<td style="text-align: left;"><a href="#dimension_label">Dimension Label</a></td>
+<td style="text-align: left;">Nth dimension label</td>
 </tr>
 </tbody>
 </table>
@@ -520,6 +541,101 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">Order</td>
 <td style="text-align: left;"><code>uint8_t</code></td>
 <td style="text-align: left;">Order of the data stored in the attribute. This may be unordered, increasing or decreasing</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="dimension-label" class="level2">
+<h2 class="anchored" data-anchor-id="dimension-label">Dimension Label</h2>
+<p>The dimension label has internal format:</p>
+<table class="table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 19%">
+<col style="width: 29%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Dimension index</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Index of the dimension the label is for</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Label order</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Order of the label data</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Dimension label name length</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Number of characters in the dimension label name</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Dimension label name</td>
+<td style="text-align: left;"><code>uint8_t []</code></td>
+<td style="text-align: left;">The name of the dimension label</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Relative URI</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">If the URI of the array the label data is stored in is relative to this array</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">URI length</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The number of characters in the URI</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">URI</td>
+<td style="text-align: left;"><code>uint8_t []</code></td>
+<td style="text-align: left;">The URI the label data is stored in</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Label attribute name length</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">The length of the attribute name of the label data</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Label attribute name</td>
+<td style="text-align: left;"><code>uint8_t []</code></td>
+<td style="text-align: left;">The name of the attribute the label data is stored in</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Label datatype</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">The datatype of the label data</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Label cell_val_num</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">The number of values per cell of the label data. For variable-length labels, this is <code>std::numeric_limits&lt;uint32_t&gt;::max()</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Label domain size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The size of the label domain</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Label domain start size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The size of the first value of the domain for variable-lenght datatypes. For fixed-lenght labels, this is 0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Label domain data</td>
+<td style="text-align: left;"><code>uint8_t[]</code></td>
+<td style="text-align: left;">Byte array of length equal to domain size above, storing the min, max values of the dimension</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Is external</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">If the URI is not stored as part of this array</td>
 </tr>
 </tbody>
 </table>

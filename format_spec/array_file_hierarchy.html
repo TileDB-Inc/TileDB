@@ -268,6 +268,7 @@ ul.task-list li input[type="checkbox"] {
           |_ &lt;timestamped_name&gt;.meta    # consol. fragment meta file
           |_ ...                  
     |_ __meta                           # array metadata folder
+    |_ __labels                         # dimension label folder
 </code></pre>
 <p>A <code>&lt;timestamped_name&gt;</code> above has format <code>__t1_t2_uuid_v</code>, where</p>
 <ul>
@@ -286,6 +287,7 @@ ul.task-list li input[type="checkbox"] {
 <li>Inside the same commit folder, any number of <a href="../format_spec/ignore_file.html">ignore files</a> of the form <code>&lt;timestamped_name&gt;.ign</code>.</li>
 <li>Inside of a fragment metadata folder, any number of <a href="../format_spec/consolidated_fragment_metadata_file.html">consolidated fragment metadata files</a> of the form <code>&lt;timestamped_name&gt;.meta</code>.</li>
 <li><a href="../format_spec/metadata.html">Array metadata</a> folder <code>__meta</code>.</li>
+<li>Inside of a labels folder, additional TileDB arrays storing dimension label data.</li>
 </ul>
 
 
