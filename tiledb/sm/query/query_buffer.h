@@ -116,7 +116,7 @@ class QueryBuffer {
   }
 
   /** Move constructor. */
-  QueryBuffer(QueryBuffer&& rhs)
+  QueryBuffer(QueryBuffer&& rhs) noexcept
       : buffer_(rhs.buffer_)
       , buffer_var_(rhs.buffer_var_)
       , buffer_size_(rhs.buffer_size_)
@@ -132,7 +132,7 @@ class QueryBuffer {
   /* ********************************* */
 
   /** Move-assignment Operator. */
-  QueryBuffer& operator=(QueryBuffer&& rhs) {
+  QueryBuffer& operator=(QueryBuffer&& rhs) noexcept {
     if (&rhs == this)
       return *this;
 
@@ -254,7 +254,7 @@ class QueryBuffer {
   bool is_sorted() const {
     auto data = data_buffer_as<T>();
     uint64_t num_values = *buffer_size_ / sizeof(T);
-    Op compare;
+    Op compare{};
     for (uint64_t index{0}; index < num_values - 1; ++index) {
       if (compare(data[index + 1], data[index])) {
         return false;
@@ -275,7 +275,7 @@ class QueryBuffer {
     uint64_t last_offset_value = *buffer_var_size_ / sizeof(char);
 
     // Check the sort.
-    Op compare;
+    Op compare{};
     for (uint64_t index{0}; index < num_offset_values - 1; ++index) {
       uint64_t i0 = offsets[index];
       uint64_t i1 = offsets[index + 1];
