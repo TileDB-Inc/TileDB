@@ -2371,24 +2371,6 @@ int32_t tiledb_query_add_update_value(
   return TILEDB_OK;
 }
 
-int32_t tiledb_query_set_write_mode(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    tiledb_query_write_mode_t write_mode) noexcept {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, query) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  // Enable partial attribute write.
-  query->query_->set_write_mode(
-      static_cast<tiledb::sm::QueryWriteMode>(write_mode));
-
-  // Success
-  return TILEDB_OK;
-}
-
 /* ****************************** */
 /*         SUBARRAY               */
 /* ****************************** */
@@ -6817,14 +6799,6 @@ int32_t tiledb_query_get_relevant_fragment_num(
     uint64_t* relevant_fragment_num) noexcept {
   return api_entry<tiledb::api::tiledb_query_get_relevant_fragment_num>(
       ctx, query, relevant_fragment_num);
-}
-
-int32_t tiledb_query_set_write_mode(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    tiledb_query_write_mode_t write_mode) noexcept {
-  return api_entry<tiledb::api::tiledb_query_set_write_mode>(
-      ctx, query, write_mode);
 }
 
 /* ****************************** */

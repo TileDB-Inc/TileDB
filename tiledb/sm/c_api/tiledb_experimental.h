@@ -298,24 +298,6 @@ TILEDB_EXPORT int32_t tiledb_query_add_update_value(
     uint64_t update_value_size) TILEDB_NOEXCEPT;
 
 /**
- * Allows partial attribute write query.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_query_set_write_mode(ctx, query, TILEDB_QUERY_WRITE_MODE_DEFAULT);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The TileDB query.
- * @param write_mode The TileDB write mode.
- */
-TILEDB_EXPORT int32_t tiledb_query_set_write_mode(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    tiledb_query_write_mode_t write_mode) TILEDB_NOEXCEPT;
-
-/**
  * Adds point ranges to the given dimension index of the subarray
  * Effectively `add_range(x_i, x_i)` for `count` points in the
  * target array, but set in bulk to amortize expensive steps.

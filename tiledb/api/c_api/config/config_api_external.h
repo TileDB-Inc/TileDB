@@ -91,6 +91,14 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *
  * **Parameters**
  *
+ * - `sm.allow_separate_attribute_writes` <br>
+ *    **Experimental** <br>
+ *    Allow separate attribute write queries.<br>
+ *    **Default**: false
+ * - `sm.allow_updates_experimental` <br>
+ *    **Experimental** <br>
+ *    Allow update queries. Experimental for testing purposes, do not use.<br>
+ *    **Default**: false
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
  *    fragment writes. Note that ties during deduplication are broken

@@ -78,20 +78,6 @@ class QueryExperimental {
         ctx.ptr().get(), query.ptr().get(), &relevant_fragment_num));
     return relevant_fragment_num;
   }
-
-  /**
-   * Allows partial attribute write on a query.
-   *
-   * @param ctx TileDB context.
-   * @param query Query object.
-   * @param write_mode Write mode.
-   * @return Reference to this Query
-   */
-  static void set_write_mode(
-      const Context& ctx, Query& query, tiledb_query_write_mode_t write_mode) {
-    ctx.handle_error(tiledb_query_set_write_mode(
-        ctx.ptr().get(), query.ptr().get(), write_mode));
-  }
 };
 }  // namespace tiledb
 

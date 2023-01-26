@@ -45,7 +45,6 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/query_status_details.h"
-#include "tiledb/sm/enums/query_write_mode.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
@@ -652,15 +651,6 @@ class Query {
     fragment_size_ = fragment_size;
   }
 
-  /**
-   * Set write mode.
-   *
-   * @param write_mode Write mode.
-   */
-  void set_write_mode(QueryWriteMode write_mode) {
-    write_mode_ = write_mode;
-  }
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -823,8 +813,8 @@ class Query {
    */
   uint64_t fragment_size_;
 
-  /** Write mode for the query. */
-  QueryWriteMode write_mode_;
+  /** Allow separate attribute writes. */
+  bool allow_separate_attribute_writes_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

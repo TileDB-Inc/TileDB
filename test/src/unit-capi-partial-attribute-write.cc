@@ -40,7 +40,7 @@
 using namespace tiledb;
 using namespace tiledb::test;
 
-/** Tests for CPP API partial attribute write. */
+/** Tests for CAPI partial attribute write. */
 struct PartialAttrWriteFx {
   // Constants.
   const char* ARRAY_NAME = "test_partial_attr_write_array";
@@ -75,7 +75,12 @@ struct PartialAttrWriteFx {
 };
 
 PartialAttrWriteFx::PartialAttrWriteFx() {
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx_) == TILEDB_OK);
+  tiledb_config_t* config;
+  tiledb_error_t* error;
+  tiledb_config_alloc(&config, &error);
+  tiledb_config_set(
+      config, "sm.allow_separate_attribute_writes", "true", &error);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(tiledb_vfs_alloc(ctx_, nullptr, &vfs_) == TILEDB_OK);
 }
 
@@ -204,9 +209,6 @@ void PartialAttrWriteFx::write_sparse(
   // Create query.
   tiledb_query_t* query;
   REQUIRE(tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query) == TILEDB_OK);
-  REQUIRE(
-      tiledb_query_set_write_mode(ctx_, query, TILEDB_SEPARATE_ATTRIBUTES) ==
-      TILEDB_OK);
   REQUIRE(tiledb_query_set_layout(ctx_, query, layout) == TILEDB_OK);
 
   uint64_t dim1_data_size = dim1.size() * sizeof(uint64_t);
@@ -264,9 +266,6 @@ void PartialAttrWriteFx::write_dense(
   // Create query.
   tiledb_query_t* query;
   REQUIRE(tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query) == TILEDB_OK);
-  REQUIRE(
-      tiledb_query_set_write_mode(ctx_, query, TILEDB_SEPARATE_ATTRIBUTES) ==
-      TILEDB_OK);
   REQUIRE(tiledb_query_set_layout(ctx_, query, layout) == TILEDB_OK);
 
   uint64_t a1_data_size = a1.size() * sizeof(int);
@@ -360,41 +359,7 @@ bool PartialAttrWriteFx::is_array(const std::string& array_name) {
 
 TEST_CASE_METHOD(
     PartialAttrWriteFx,
-    "CPP API: Test partial attribute write, bad layout",
-    "[capi][partial-attribute-write][bad-layout]") {
-  remove_array();
-  create_sparse_array();
-
-  // Write fragment.
-  write_sparse(
-      TILEDB_GLOBAL_ORDER,
-      {0, 1, 2, 3, 4, 5, 6, 7},
-      {1, 1, 1, 2, 3, 4, 3, 3},
-      {1, 2, 4, 3, 1, 2, 3, 4},
-      1);
-
-  remove_array();
-}
-
-TEST_CASE_METHOD(
-    PartialAttrWriteFx,
-    "CPP API: Test partial attribute write, bad dense layout",
-    "[capi][partial-attribute-write][bad-dense-layout]") {
-  remove_array();
-  create_dense_array();
-
-  // Write fragment.
-  write_dense(TILEDB_ROW_MAJOR, {0, 1, 2, 3, 4, 5, 6, 7}, 1);
-
-  // Write fragment.
-  write_dense(TILEDB_COL_MAJOR, {0, 1, 2, 3, 4, 5, 6, 7}, 1);
-
-  remove_array();
-}
-
-TEST_CASE_METHOD(
-    PartialAttrWriteFx,
-    "CPP API: Test partial attribute write",
+    "CAPI: Test partial attribute write",
     "[capi][partial-attribute-write]") {
   remove_array();
   create_sparse_array();

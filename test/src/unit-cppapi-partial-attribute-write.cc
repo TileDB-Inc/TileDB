@@ -82,6 +82,7 @@ struct CppPartialAttrWriteFx {
 CppPartialAttrWriteFx::CppPartialAttrWriteFx()
     : vfs_(ctx_) {
   Config config;
+  config["sm.allow_separate_attribute_writes"] = "true";
   ctx_ = Context(config);
   vfs_ = VFS(ctx_);
 }
@@ -165,7 +166,6 @@ void CppPartialAttrWriteFx::write_sparse(
 
   // Create query.
   Query query(ctx_, array, TILEDB_WRITE);
-  QueryExperimental::set_write_mode(ctx_, query, TILEDB_SEPARATE_ATTRIBUTES);
   query.set_layout(layout);
   query.set_data_buffer("d1", dim1);
   query.set_data_buffer("d2", dim2);
@@ -197,7 +197,6 @@ void CppPartialAttrWriteFx::write_dense(
 
   // Create query.
   Query query(ctx_, array, TILEDB_WRITE);
-  QueryExperimental::set_write_mode(ctx_, query, TILEDB_SEPARATE_ATTRIBUTES);
   query.set_layout(layout);
   query.set_data_buffer("a1", a1);
   query.submit();
@@ -254,55 +253,6 @@ bool CppPartialAttrWriteFx::is_array(const std::string& array_name) {
 
 TEST_CASE_METHOD(
     CppPartialAttrWriteFx,
-    "CPP API: Test partial attribute write, bad layout",
-    "[cppapi][partial-attribute-write][bad-layout]") {
-  remove_array();
-  create_sparse_array();
-
-  // Write fragment.
-  CHECK_THROWS_WITH(
-      write_sparse(
-          TILEDB_GLOBAL_ORDER,
-          {0, 1, 2, 3, 4, 5, 6, 7},
-          {8, 9, 10, 11, 12, 13, 14, 15},
-          {1, 1, 1, 2, 3, 4, 3, 3},
-          {1, 2, 4, 3, 1, 2, 3, 4},
-          1),
-      "Query: Partial attribute write is only supported for unordered writes.");
-
-  remove_array();
-}
-
-TEST_CASE_METHOD(
-    CppPartialAttrWriteFx,
-    "CPP API: Test partial attribute write, bad dense layout",
-    "[cppapi][partial-attribute-write][bad-dense-layout]") {
-  remove_array();
-  create_dense_array();
-
-  // Write fragment.
-  CHECK_THROWS_WITH(
-      write_dense(
-          TILEDB_ROW_MAJOR,
-          {0, 1, 2, 3, 4, 5, 6, 7},
-          {8, 9, 10, 11, 12, 13, 14, 15},
-          1),
-      "Query: Partial attribute write is only supported for unordered writes.");
-
-  // Write fragment.
-  CHECK_THROWS_WITH(
-      write_dense(
-          TILEDB_COL_MAJOR,
-          {0, 1, 2, 3, 4, 5, 6, 7},
-          {8, 9, 10, 11, 12, 13, 14, 15},
-          1),
-      "Query: Partial attribute write is only supported for unordered writes.");
-
-  remove_array();
-}
-
-TEST_CASE_METHOD(
-    CppPartialAttrWriteFx,
     "CPP API: Test partial attribute write, not all dimensions set on first "
     "write",
     "[cppapi][partial-attribute-write][not-all-dims-set]") {
@@ -315,7 +265,6 @@ TEST_CASE_METHOD(
   // Create query.
   std::vector<uint64_t> dim1(10);
   Query query(ctx_, array, TILEDB_WRITE);
-  QueryExperimental::set_write_mode(ctx_, query, TILEDB_SEPARATE_ATTRIBUTES);
   query.set_layout(TILEDB_UNORDERED);
   query.set_data_buffer("d1", dim1);
   CHECK_THROWS_WITH(query.submit(), "Query: Dimension buffer d2 is not set");

@@ -136,13 +136,6 @@ typedef enum {
 #undef TILEDB_MIME_TYPE_ENUM
 } tiledb_mime_type_t;
 
-typedef enum {
-/** Helper macro for defining query write mode enums. */
-#define TILEDB_QUERY_WRITE_MODE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_QUERY_WRITE_MODE_ENUM
-} tiledb_query_write_mode_t;
-
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
 /* ****************************** */

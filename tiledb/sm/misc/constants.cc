@@ -293,13 +293,6 @@ const std::string query_type_update_str = "UPDATE";
 /** TILEDB_MODIFY_EXCLUSIVE Query String **/
 const std::string query_type_modify_exclusive_str = "MODIFY_EXCLUSIVE";
 
-/** TILEDB_QUERY_WRITE_MODE_DEFAULT Query Write Mode String **/
-const std::string query_write_mode_default_str = "DEFAULT";
-
-/** TILEDB_QUERY_WRITE_MODE_SEPARATE_ATTRIBUTES Query Write Mode String **/
-const std::string query_write_mode_separate_attributes_str =
-    "SeparateAttributes";
-
 /** TILEDB_FAILED Query String **/
 const std::string query_status_failed_str = "FAILED";
 
