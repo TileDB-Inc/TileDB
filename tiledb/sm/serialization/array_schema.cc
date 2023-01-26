@@ -180,8 +180,9 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
     case FilterType::FILTER_POSITIVE_DELTA: {
       auto data = filter_reader.getData();
       uint32_t window = data.getUint32();
-      return {Status::Ok(),
-              tiledb::common::make_shared<PositiveDeltaFilter>(HERE(), window)};
+      return {
+          Status::Ok(),
+          tiledb::common::make_shared<PositiveDeltaFilter>(HERE(), window)};
     }
     case FilterType::FILTER_GZIP:
     case FilterType::FILTER_ZSTD:
@@ -202,36 +203,40 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
         double scale = float_scale_config.getScale();
         double offset = float_scale_config.getOffset();
         uint64_t byte_width = float_scale_config.getByteWidth();
-        return {Status::Ok(),
-                tiledb::common::make_shared<FloatScalingFilter>(
-                    HERE(), byte_width, scale, offset)};
+        return {
+            Status::Ok(),
+            tiledb::common::make_shared<FloatScalingFilter>(
+                HERE(), byte_width, scale, offset)};
       }
 
-      return {Status::Ok(),
-              tiledb::common::make_shared<FloatScalingFilter>(HERE())};
+      return {
+          Status::Ok(),
+          tiledb::common::make_shared<FloatScalingFilter>(HERE())};
     }
     case FilterType::FILTER_NONE: {
       return {Status::Ok(), tiledb::common::make_shared<NoopFilter>(HERE())};
     }
     case FilterType::FILTER_BITSHUFFLE: {
-      return {Status::Ok(),
-              tiledb::common::make_shared<BitshuffleFilter>(HERE())};
+      return {
+          Status::Ok(), tiledb::common::make_shared<BitshuffleFilter>(HERE())};
     }
     case FilterType::FILTER_BYTESHUFFLE: {
-      return {Status::Ok(),
-              tiledb::common::make_shared<ByteshuffleFilter>(HERE())};
+      return {
+          Status::Ok(), tiledb::common::make_shared<ByteshuffleFilter>(HERE())};
     }
     case FilterType::FILTER_CHECKSUM_MD5: {
-      return {Status::Ok(),
-              tiledb::common::make_shared<ChecksumMD5Filter>(HERE())};
+      return {
+          Status::Ok(), tiledb::common::make_shared<ChecksumMD5Filter>(HERE())};
     }
     case FilterType::FILTER_CHECKSUM_SHA256: {
-      return {Status::Ok(),
-              tiledb::common::make_shared<ChecksumSHA256Filter>(HERE())};
+      return {
+          Status::Ok(),
+          tiledb::common::make_shared<ChecksumSHA256Filter>(HERE())};
     }
     case FilterType::INTERNAL_FILTER_AES_256_GCM: {
-      return {Status::Ok(),
-              tiledb::common::make_shared<EncryptionAES256GCMFilter>(HERE())};
+      return {
+          Status::Ok(),
+          tiledb::common::make_shared<EncryptionAES256GCMFilter>(HERE())};
     }
     case FilterType::FILTER_XOR: {
       return {Status::Ok(), tiledb::common::make_shared<XORFilter>(HERE())};
@@ -252,11 +257,12 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
           "type");
     }
   }
-  return {Status_SerializationError(
-              "Invalid data received from filter pipeline capnp reader, "
-              "unknown type " +
-              filter_type_str(type)),
-          std::nullopt};
+  return {
+      Status_SerializationError(
+          "Invalid data received from filter pipeline capnp reader, "
+          "unknown type " +
+          filter_type_str(type)),
+      std::nullopt};
 }
 
 tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
@@ -272,9 +278,10 @@ tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
     filter_list.push_back(filter.value());
   }
 
-  return {Status::Ok(),
-          make_shared<FilterPipeline>(
-              HERE(), constants::max_tile_chunk_size, filter_list)};
+  return {
+      Status::Ok(),
+      make_shared<FilterPipeline>(
+          HERE(), constants::max_tile_chunk_size, filter_list)};
 }
 
 Status attribute_to_capnp(
@@ -358,16 +365,17 @@ tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
         datatype, attribute_reader.getCellValNum());
   }
 
-  return {Status::Ok(),
-          tiledb::common::make_shared<Attribute>(
-              HERE(),
-              attribute_reader.getName(),
-              datatype,
-              nullable,
-              attribute_reader.getCellValNum(),
-              *(filters.get()),
-              fill_value_vec,
-              fill_value_validity)};
+  return {
+      Status::Ok(),
+      tiledb::common::make_shared<Attribute>(
+          HERE(),
+          attribute_reader.getName(),
+          datatype,
+          nullable,
+          attribute_reader.getCellValNum(),
+          *(filters.get()),
+          fill_value_vec,
+          fill_value_validity)};
 }
 
 Status dimension_to_capnp(

@@ -213,8 +213,9 @@ TEST_CASE(
   VFS vfs(ctx);
   const std::string array_name = "consolidate_timestamp_max_domain";
 
-  int64_t domain1[] = {std::numeric_limits<int64_t>::min() + 1,
-                       std::numeric_limits<int64_t>::max()};
+  int64_t domain1[] = {
+      std::numeric_limits<int64_t>::min() + 1,
+      std::numeric_limits<int64_t>::max()};
   const uint8_t domain2[2] = {0, 1};
   Domain domain(ctx);
   domain

@@ -42,8 +42,8 @@
 #include <string>
 
 #include "tiledb/common/common.h"
-#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/enums/serialization_type.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;

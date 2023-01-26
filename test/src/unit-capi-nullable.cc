@@ -889,10 +889,11 @@ TEST_CASE_METHOD(
            {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
         for (const tiledb_layout_t tile_order :
              {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
-          for (const tiledb_layout_t write_order : {TILEDB_ROW_MAJOR,
-                                                    TILEDB_COL_MAJOR,
-                                                    TILEDB_UNORDERED,
-                                                    TILEDB_GLOBAL_ORDER}) {
+          for (const tiledb_layout_t write_order :
+               {TILEDB_ROW_MAJOR,
+                TILEDB_COL_MAJOR,
+                TILEDB_UNORDERED,
+                TILEDB_GLOBAL_ORDER}) {
             do_2d_nullable_test(
                 test_attrs, array_type, cell_order, tile_order, write_order);
           }

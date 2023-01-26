@@ -214,19 +214,20 @@ class TestTypeTraits<
  public:
   static constexpr std::initializer_list<T> outer = {
       min, almost_min, -100.0, 0.0, 1.0, 2.0, 100.0, almost_max, max};
-  static constexpr std::initializer_list<T> inner = {min,
-                                                     almost_min,
-                                                     -100.01,
-                                                     -100.0,
-                                                     -99.99,
-                                                     -2.0,
-                                                     -1.0,
-                                                     0,
-                                                     0.9,
-                                                     1.0,
-                                                     1.1,
-                                                     almost_max,
-                                                     max};
+  static constexpr std::initializer_list<T> inner = {
+      min,
+      almost_min,
+      -100.01,
+      -100.0,
+      -99.99,
+      -2.0,
+      -1.0,
+      0,
+      0.9,
+      1.0,
+      1.1,
+      almost_max,
+      max};
 
   static constexpr T positive_infinity = std::numeric_limits<T>::infinity();
   static constexpr T negative_infinity = -std::numeric_limits<T>::infinity();

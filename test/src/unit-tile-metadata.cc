@@ -1127,22 +1127,23 @@ struct CPPFixedTileMetadataPartialFx {
     subarray.add_range(1, r[0], r[1]);
     query.set_subarray(subarray);
 
-    std::vector<double> a{1.7,
-                          1.1,
-                          2.2,
-                          2.5,
-                          1.5,
-                          1.3,
-                          2.1,
-                          2.6,
-                          3.4,
-                          3.8,
-                          4.1,
-                          4.2,
-                          3.5,
-                          3.2,
-                          4.9,
-                          4.6};
+    std::vector<double> a{
+        1.7,
+        1.1,
+        2.2,
+        2.5,
+        1.5,
+        1.3,
+        2.1,
+        2.6,
+        3.4,
+        3.8,
+        4.1,
+        4.2,
+        3.5,
+        3.2,
+        4.9,
+        4.6};
     query.set_layout(TILEDB_ROW_MAJOR);
     query.set_data_buffer("a", a);
 

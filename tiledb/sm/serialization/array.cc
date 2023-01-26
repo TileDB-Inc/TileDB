@@ -41,14 +41,14 @@
 
 #include <string>
 
-#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/serialization/array.h"
-#include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/array_directory.h"
+#include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/fragment_metadata.h"
 
 using namespace tiledb::common;

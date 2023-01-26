@@ -216,15 +216,16 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
   }
 
   SECTION("- valid and unsupported Datatypes") {
-    std::vector<Datatype> valid_unsupported_datatypes = {Datatype::CHAR,
-                                                         Datatype::BLOB,
-                                                         Datatype::BOOL,
-                                                         Datatype::STRING_UTF8,
-                                                         Datatype::STRING_UTF16,
-                                                         Datatype::STRING_UTF32,
-                                                         Datatype::STRING_UCS2,
-                                                         Datatype::STRING_UCS4,
-                                                         Datatype::ANY};
+    std::vector<Datatype> valid_unsupported_datatypes = {
+        Datatype::CHAR,
+        Datatype::BLOB,
+        Datatype::BOOL,
+        Datatype::STRING_UTF8,
+        Datatype::STRING_UTF16,
+        Datatype::STRING_UTF32,
+        Datatype::STRING_UCS2,
+        Datatype::STRING_UCS4,
+        Datatype::ANY};
 
     for (Datatype type : valid_unsupported_datatypes) {
       try {
@@ -383,22 +384,23 @@ TEMPLATE_LIST_TEST_CASE(
 TEST_CASE("test relevant_ranges", "[dimension][relevant_ranges][string]") {
   Dimension dim{"", Datatype::STRING_ASCII};
 
-  std::vector<char> range_data = {'a',
-                                  'a',
-                                  'a',
-                                  'a',
-                                  'b',
-                                  'b',
-                                  'c',
-                                  'd',
-                                  'e',
-                                  'f',
-                                  'e',
-                                  'g',
-                                  'h',
-                                  'i',
-                                  'y',
-                                  'z'};
+  std::vector<char> range_data = {
+      'a',
+      'a',
+      'a',
+      'a',
+      'b',
+      'b',
+      'c',
+      'd',
+      'e',
+      'f',
+      'e',
+      'g',
+      'h',
+      'i',
+      'y',
+      'z'};
   NDRange ranges;
   for (uint64_t r = 0; r < range_data.size() / 2; r++) {
     ranges.emplace_back(&range_data[r * 2], 2, 1);

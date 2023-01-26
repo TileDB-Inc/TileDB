@@ -101,8 +101,9 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
   auto subarray = subarray_->ndrange(0);  // Guaranteed to be unary
   std::vector<std::array<T, 2>> sub(dim_num);
   for (int32_t d = 0; d < dim_num; ++d)
-    sub[d] = {*(const T*)subarray[d].start_fixed(),
-              *(const T*)subarray[d].end_fixed()};
+    sub[d] = {
+        *(const T*)subarray[d].start_fixed(),
+        *(const T*)subarray[d].end_fixed()};
   auto tile_layout = array_schema_.cell_order();
   auto sub_layout = subarray_->layout();
 

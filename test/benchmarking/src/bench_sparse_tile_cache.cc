@@ -102,10 +102,11 @@ class Benchmark : public BenchmarkBase {
   virtual void pre_run() {
     Array array(*ctx_, array_uri_, TILEDB_READ);
     auto non_empty = array.non_empty_domain<uint32_t>();
-    subarray_ = {non_empty[0].second.first,
-                 non_empty[0].second.second,
-                 non_empty[1].second.first,
-                 non_empty[1].second.second};
+    subarray_ = {
+        non_empty[0].second.first,
+        non_empty[0].second.second,
+        non_empty[1].second.first,
+        non_empty[1].second.second};
 
     auto max_elements = array.max_buffer_elements(subarray_);
     data_.resize(max_elements["a"].second);

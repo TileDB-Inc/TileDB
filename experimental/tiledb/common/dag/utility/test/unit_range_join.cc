@@ -257,8 +257,9 @@ TEST_CASE("Join: Test list of spans", "[join]") {
 TEST_CASE("Join: Truncated list of spans", "[join]") {
   std::vector<int> a{1, 2, 3, 4};
   std::vector<int> b{5, 6, 7, 8};
-  std::list<tcb::span<int>> d{tcb::span<int>{a.data(), a.size() - 1},
-                              tcb::span<int>{b.data(), b.size() - 2}};
+  std::list<tcb::span<int>> d{
+      tcb::span<int>{a.data(), a.size() - 1},
+      tcb::span<int>{b.data(), b.size() - 2}};
   auto e = join(d);
 
   SECTION("check c vs e, list") {

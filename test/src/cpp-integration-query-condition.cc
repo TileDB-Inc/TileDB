@@ -136,10 +136,11 @@ void create_array(
   std::vector<uint8_t> c_data;
   std::vector<uint64_t> c_offsets;
 
-  std::vector<std::string> c_choices = {std::string("bird"),
-                                        std::string("bunny"),
-                                        std::string("cat"),
-                                        std::string("dog")};
+  std::vector<std::string> c_choices = {
+      std::string("bird"),
+      std::string("bunny"),
+      std::string("cat"),
+      std::string("dog")};
 
   for (int i = 0; i < num_rows * num_rows; ++i) {
     int row = (i / num_rows) + 1;
