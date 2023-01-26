@@ -120,16 +120,17 @@ void write_array(Context& ctx) {
   std::vector<int32_t> dim_data = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   std::vector<int32_t> a_data = {0, 2, 0, 4, 0, 6, 0, 8, 0, 10};
   std::vector<uint8_t> a_data_validity = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
-  std::vector<std::string> b_strs = {"alice",
-                                     "bob",
-                                     "craig",
-                                     "dave",
-                                     "erin",
-                                     "frank",
-                                     "grace",
-                                     "heidi",
-                                     "ivan",
-                                     "judy"};
+  std::vector<std::string> b_strs = {
+      "alice",
+      "bob",
+      "craig",
+      "dave",
+      "erin",
+      "frank",
+      "grace",
+      "heidi",
+      "ivan",
+      "judy"};
   std::string b_data = "";
   std::vector<uint64_t> b_data_offsets;
   for (const auto& elem : b_strs) {

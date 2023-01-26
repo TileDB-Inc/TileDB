@@ -334,31 +334,33 @@ void IncompleteFx2::write_sparse_full(const bool serialized_writes) {
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float buffer_a3[] = {0.1f,
-                       0.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f,
-                       3.1f,
-                       3.2f,
-                       4.1f,
-                       4.2f,
-                       5.1f,
-                       5.2f,
-                       6.1f,
-                       6.2f,
-                       7.1f,
-                       7.2f};
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
   uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
 
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_var_a2,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_var_a2,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),

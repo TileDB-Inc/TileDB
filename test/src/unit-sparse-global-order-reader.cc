@@ -412,17 +412,19 @@ TEST_CASE_METHOD(
   int num_frags = 2;
   for (int i = 1; i < num_frags + 1; i++) {
     // Write a fragment.
-    int coords[] = {i,
-                    num_frags + i,
-                    2 * num_frags + i,
-                    3 * num_frags + i,
-                    4 * num_frags + i};
+    int coords[] = {
+        i,
+        num_frags + i,
+        2 * num_frags + i,
+        3 * num_frags + i,
+        4 * num_frags + i};
     uint64_t coords_size = sizeof(coords);
-    int data[] = {i,
-                  num_frags + i,
-                  2 * num_frags + i,
-                  3 * num_frags + i,
-                  4 * num_frags + i};
+    int data[] = {
+        i,
+        num_frags + i,
+        2 * num_frags + i,
+        3 * num_frags + i,
+        4 * num_frags + i};
     uint64_t data_size = sizeof(data);
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
@@ -1107,17 +1109,19 @@ TEST_CASE_METHOD(
   int num_frags = 2;
   for (int i = 1; i < num_frags + 1; i++) {
     // Write a fragment.
-    int coords[] = {i,
-                    num_frags + i,
-                    2 * num_frags + i,
-                    3 * num_frags + i,
-                    4 * num_frags + i};
+    int coords[] = {
+        i,
+        num_frags + i,
+        2 * num_frags + i,
+        3 * num_frags + i,
+        4 * num_frags + i};
     uint64_t coords_size = sizeof(coords);
-    int data[] = {i,
-                  num_frags + i,
-                  2 * num_frags + i,
-                  3 * num_frags + i,
-                  4 * num_frags + i};
+    int data[] = {
+        i,
+        num_frags + i,
+        2 * num_frags + i,
+        3 * num_frags + i,
+        4 * num_frags + i};
     uint64_t data_size = sizeof(data);
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }

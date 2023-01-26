@@ -3237,8 +3237,8 @@ void populate_test_params_vector(
                 .ok());
 
     std::vector<uint8_t> expected_bitmap = {1, 1, 1, 1, 0, 0, 0, 1, 1, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 4},
-                                                  {result_tile, 7, 3}};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 0, 4}, {result_tile, 7, 3}};
     TestParams tp(
         std::move(query_condition_3),
         std::move(expected_bitmap),
@@ -3387,8 +3387,8 @@ void populate_test_params_vector(
             .ok());
 
     std::vector<uint8_t> expected_bitmap = {1, 1, 1, 0, 0, 0, 0, 0, 0, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 3},
-                                                  {result_tile, 9, 1}};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 0, 3}, {result_tile, 9, 1}};
     TestParams tp(
         std::move(combined_and),
         std::move(expected_bitmap),
@@ -3485,8 +3485,8 @@ void populate_test_params_vector(
                 .ok());
 
     std::vector<uint8_t> expected_bitmap = {0, 0, 0, 0, 0, 1, 0, 1, 0, 0};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 5, 1},
-                                                  {result_tile, 7, 1}};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 5, 1}, {result_tile, 7, 1}};
     TestParams tp(
         std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -3578,11 +3578,12 @@ void populate_test_params_vector(
                 .ok());
 
     std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
-                                                  {result_tile, 2, 1},
-                                                  {result_tile, 4, 1},
-                                                  {result_tile, 6, 1},
-                                                  {result_tile, 8, 1}};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 0, 1},
+        {result_tile, 2, 1},
+        {result_tile, 4, 1},
+        {result_tile, 6, 1},
+        {result_tile, 8, 1}};
     TestParams tp(
         std::move(combined_and4),
         std::move(expected_bitmap),
@@ -3672,11 +3673,12 @@ void populate_test_params_vector(
                     &combined_or4)
                 .ok());
     std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
-                                                  {result_tile, 2, 1},
-                                                  {result_tile, 4, 1},
-                                                  {result_tile, 6, 1},
-                                                  {result_tile, 8, 1}};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 0, 1},
+        {result_tile, 2, 1},
+        {result_tile, 4, 1},
+        {result_tile, 6, 1},
+        {result_tile, 8, 1}};
     TestParams tp(
         std::move(combined_or4),
         std::move(expected_bitmap),
@@ -3821,8 +3823,8 @@ void populate_string_test_params_vector(
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
 
     std::vector<uint8_t> expected_bitmap = {1, 1, 0, 0, 0, 1, 1, 1, 1, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 2},
-                                                  {result_tile, 5, 5}};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 0, 2}, {result_tile, 5, 5}};
     TestParams tp(
         std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -3936,11 +3938,12 @@ void populate_string_test_params_vector(
                   .ok());
 
       std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
-      std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
-                                                    {result_tile, 3, 1},
-                                                    {result_tile, 5, 1},
-                                                    {result_tile, 7, 1},
-                                                    {result_tile, 9, 1}};
+      std::vector<ResultCellSlab> expected_slabs = {
+          {result_tile, 1, 1},
+          {result_tile, 3, 1},
+          {result_tile, 5, 1},
+          {result_tile, 7, 1},
+          {result_tile, 9, 1}};
       TestParams tp(
           std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
       tp_vec.push_back(tp);
@@ -3973,11 +3976,12 @@ void populate_string_test_params_vector(
           qc3.combine(val_nodes[4], QueryConditionCombinationOp::OR, &qc).ok());
 
       std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
-      std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
-                                                    {result_tile, 2, 1},
-                                                    {result_tile, 4, 1},
-                                                    {result_tile, 6, 1},
-                                                    {result_tile, 8, 1}};
+      std::vector<ResultCellSlab> expected_slabs = {
+          {result_tile, 0, 1},
+          {result_tile, 2, 1},
+          {result_tile, 4, 1},
+          {result_tile, 6, 1},
+          {result_tile, 8, 1}};
       TestParams tp(
           std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
       tp_vec.push_back(tp);
@@ -4170,8 +4174,8 @@ void populate_utf8_string_test_params_vector(
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
 
     std::vector<uint8_t> expected_bitmap = {1, 1, 0, 0, 0, 1, 1, 1, 1, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 2},
-                                                  {result_tile, 5, 5}};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 0, 2}, {result_tile, 5, 5}};
     TestParams tp(
         std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -4303,11 +4307,12 @@ void populate_utf8_string_test_params_vector(
                   .ok());
 
       std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
-      std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
-                                                    {result_tile, 3, 1},
-                                                    {result_tile, 5, 1},
-                                                    {result_tile, 7, 1},
-                                                    {result_tile, 9, 1}};
+      std::vector<ResultCellSlab> expected_slabs = {
+          {result_tile, 1, 1},
+          {result_tile, 3, 1},
+          {result_tile, 5, 1},
+          {result_tile, 7, 1},
+          {result_tile, 9, 1}};
       TestParams tp(
           std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
       tp_vec.push_back(tp);
@@ -4341,11 +4346,12 @@ void populate_utf8_string_test_params_vector(
           qc3.combine(val_nodes[4], QueryConditionCombinationOp::OR, &qc).ok());
 
       std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
-      std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
-                                                    {result_tile, 2, 1},
-                                                    {result_tile, 4, 1},
-                                                    {result_tile, 6, 1},
-                                                    {result_tile, 8, 1}};
+      std::vector<ResultCellSlab> expected_slabs = {
+          {result_tile, 0, 1},
+          {result_tile, 2, 1},
+          {result_tile, 4, 1},
+          {result_tile, 6, 1},
+          {result_tile, 8, 1}};
       TestParams tp(
           std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
       tp_vec.push_back(tp);
@@ -4500,11 +4506,12 @@ void populate_nullable_test_params_vector(
     REQUIRE(qc.init(std::string(field_name), nullptr, 0, QueryConditionOp::EQ)
                 .ok());
     std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
-                                                  {result_tile, 2, 1},
-                                                  {result_tile, 4, 1},
-                                                  {result_tile, 6, 1},
-                                                  {result_tile, 8, 1}};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 0, 1},
+        {result_tile, 2, 1},
+        {result_tile, 4, 1},
+        {result_tile, 6, 1},
+        {result_tile, 8, 1}};
     TestParams tp(
         std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -4516,11 +4523,12 @@ void populate_nullable_test_params_vector(
     REQUIRE(qc.init(std::string(field_name), nullptr, 0, QueryConditionOp::NE)
                 .ok());
     std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
-                                                  {result_tile, 3, 1},
-                                                  {result_tile, 5, 1},
-                                                  {result_tile, 7, 1},
-                                                  {result_tile, 9, 1}};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 1, 1},
+        {result_tile, 3, 1},
+        {result_tile, 5, 1},
+        {result_tile, 7, 1},
+        {result_tile, 9, 1}};
     TestParams tp(
         std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -4537,10 +4545,11 @@ void populate_nullable_test_params_vector(
                   QueryConditionOp::GT)
                 .ok());
     std::vector<uint8_t> expected_bitmap = {0, 0, 0, 1, 0, 1, 0, 1, 0, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 3, 1},
-                                                  {result_tile, 5, 1},
-                                                  {result_tile, 7, 1},
-                                                  {result_tile, 9, 1}};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 3, 1},
+        {result_tile, 5, 1},
+        {result_tile, 7, 1},
+        {result_tile, 9, 1}};
     TestParams tp(
         std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -4592,10 +4601,11 @@ void populate_nullable_test_params_vector(
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
     std::vector<uint8_t> expected_bitmap = {1, 0, 1, 1, 1, 0, 1, 0, 1, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
-                                                  {result_tile, 2, 3},
-                                                  {result_tile, 6, 1},
-                                                  {result_tile, 8, 2}};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 0, 1},
+        {result_tile, 2, 3},
+        {result_tile, 6, 1},
+        {result_tile, 8, 2}};
     TestParams tp(
         std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -4618,10 +4628,11 @@ void populate_nullable_test_params_vector(
     QueryCondition qc;
     REQUIRE(qc2.combine(qc1, QueryConditionCombinationOp::OR, &qc).ok());
     std::vector<uint8_t> expected_bitmap = {1, 0, 1, 1, 1, 0, 1, 0, 1, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
-                                                  {result_tile, 2, 3},
-                                                  {result_tile, 6, 1},
-                                                  {result_tile, 8, 2}};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 0, 1},
+        {result_tile, 2, 3},
+        {result_tile, 6, 1},
+        {result_tile, 8, 2}};
     TestParams tp(
         std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -4644,11 +4655,12 @@ void populate_nullable_test_params_vector(
     QueryCondition qc;
     REQUIRE(qc2.combine(qc1, QueryConditionCombinationOp::OR, &qc).ok());
     std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
-                                                  {result_tile, 3, 1},
-                                                  {result_tile, 5, 1},
-                                                  {result_tile, 7, 1},
-                                                  {result_tile, 9, 1}};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 1, 1},
+        {result_tile, 3, 1},
+        {result_tile, 5, 1},
+        {result_tile, 7, 1},
+        {result_tile, 9, 1}};
     TestParams tp(
         std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);
@@ -4671,11 +4683,12 @@ void populate_nullable_test_params_vector(
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
     std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
-                                                  {result_tile, 3, 1},
-                                                  {result_tile, 5, 1},
-                                                  {result_tile, 7, 1},
-                                                  {result_tile, 9, 1}};
+    std::vector<ResultCellSlab> expected_slabs = {
+        {result_tile, 1, 1},
+        {result_tile, 3, 1},
+        {result_tile, 5, 1},
+        {result_tile, 7, 1},
+        {result_tile, 9, 1}};
     TestParams tp(
         std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
     tp_vec.push_back(tp);

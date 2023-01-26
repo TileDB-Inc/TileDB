@@ -167,10 +167,12 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
         uint64_t tile_idx_max,
         std::vector<FragmentRangeTileIndexes>& range_array_tile_indexes) {
       // Uses the values computed per fragments to compute the min/max.
-      std::array<uint64_t, 2> min = {std::numeric_limits<uint64_t>::max(),
-                                     std::numeric_limits<uint64_t>::max()};
-      std::array<uint64_t, 2> max = {std::numeric_limits<uint64_t>::min(),
-                                     std::numeric_limits<uint64_t>::min()};
+      std::array<uint64_t, 2> min = {
+          std::numeric_limits<uint64_t>::max(),
+          std::numeric_limits<uint64_t>::max()};
+      std::array<uint64_t, 2> max = {
+          std::numeric_limits<uint64_t>::min(),
+          std::numeric_limits<uint64_t>::min()};
 
       // While processing the tiles that we know to possibly contain the
       // searched values (IndexValueType::CONTAINED), also compute the minimum

@@ -325,8 +325,9 @@ class QueryBuffer {
     size_t next_offset = (*buffer_size_ > (index + 1) * sizeof(buffer_type)) ?
                              offsets[index + 1] :
                              *buffer_var_size_;
-    return {static_cast<char*>(buffer_var_) + start_offset,
-            next_offset - start_offset};
+    return {
+        static_cast<char*>(buffer_var_) + start_offset,
+        next_offset - start_offset};
   }
 
   tdb::DynamicTypedDatumView dimension_datum_at(

@@ -198,8 +198,8 @@ TEST_CASE(
   StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
 
   std::vector<tdb_unique_ptr<Array>> arrays;
-  std::vector<URI> uris = {URI("whitebox_array_vector_1"),
-                           URI("whitebox_array_vector_2")};
+  std::vector<URI> uris = {
+      URI("whitebox_array_vector_1"), URI("whitebox_array_vector_2")};
 
   // Register arrays
   size_t count = 0;

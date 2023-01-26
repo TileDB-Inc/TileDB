@@ -168,18 +168,20 @@ void StringEmptyFx::write_array(
 
   // Prepare buffers
   uint64_t buffer_a1_size = sizeof(buffer_a1);
-  uint64_t buffer_a1_offsets[] = {0 * sizeof(int32_t),
-                                  1 * sizeof(int32_t),
-                                  2 * sizeof(int32_t),
-                                  2 * sizeof(int32_t),
-                                  3 * sizeof(int32_t)};
+  uint64_t buffer_a1_offsets[] = {
+      0 * sizeof(int32_t),
+      1 * sizeof(int32_t),
+      2 * sizeof(int32_t),
+      2 * sizeof(int32_t),
+      3 * sizeof(int32_t)};
   uint64_t buffer_a1_offsets_size = sizeof(buffer_a1_offsets);
 
-  uint64_t buffer_a2_offsets[] = {UTF8_OFFSET_0_FOR_EMPTY,
-                                  UTF8_OFFSET_1_FOR_EMPTY,
-                                  UTF8_OFFSET_2_FOR_EMPTY,
-                                  UTF8_OFFSET_3_FOR_EMPTY,
-                                  UTF8_OFFSET_3_FOR_EMPTY};
+  uint64_t buffer_a2_offsets[] = {
+      UTF8_OFFSET_0_FOR_EMPTY,
+      UTF8_OFFSET_1_FOR_EMPTY,
+      UTF8_OFFSET_2_FOR_EMPTY,
+      UTF8_OFFSET_3_FOR_EMPTY,
+      UTF8_OFFSET_3_FOR_EMPTY};
   uint64_t buffer_a2_offsets_size = sizeof(buffer_a2_offsets);
   uint64_t buffer_a2_size =
       sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY;
@@ -190,11 +192,12 @@ void StringEmptyFx::write_array(
       UTF8_STRINGS_VAR_FOR_EMPTY,
       sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY);
 
-  uint64_t buffer_a3_offsets[] = {UTF8_OFFSET_0_FOR_EMPTY,
-                                  UTF8_OFFSET_1_FOR_EMPTY,
-                                  UTF8_OFFSET_4_FOR_EMPTY,
-                                  UTF8_OFFSET_4_FOR_EMPTY,
-                                  UTF8_OFFSET_4_FOR_EMPTY};
+  uint64_t buffer_a3_offsets[] = {
+      UTF8_OFFSET_0_FOR_EMPTY,
+      UTF8_OFFSET_1_FOR_EMPTY,
+      UTF8_OFFSET_4_FOR_EMPTY,
+      UTF8_OFFSET_4_FOR_EMPTY,
+      UTF8_OFFSET_4_FOR_EMPTY};
   uint64_t buffer_a3_offsets_size = sizeof(buffer_a3_offsets);
   uint64_t buffer_a3_size =
       sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY;
@@ -205,11 +208,12 @@ void StringEmptyFx::write_array(
       UTF8_STRINGS_VAR_FOR_EMPTY,
       sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY);
 
-  uint64_t buffer_a4_offsets[] = {0 * sizeof(float),
-                                  1 * sizeof(float),
-                                  2 * sizeof(float),
-                                  3 * sizeof(float),
-                                  4 * sizeof(float)};
+  uint64_t buffer_a4_offsets[] = {
+      0 * sizeof(float),
+      1 * sizeof(float),
+      2 * sizeof(float),
+      3 * sizeof(float),
+      4 * sizeof(float)};
   uint64_t buffer_a4_offsets_size = sizeof(buffer_a4_offsets);
   uint64_t buffer_a4_size = sizeof(buffer_a4);
 

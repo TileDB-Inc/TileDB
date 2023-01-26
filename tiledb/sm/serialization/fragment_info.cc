@@ -44,8 +44,8 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/serialization/fragment_info.h"
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/serialization/fragment_info.h"
 #include "tiledb/sm/serialization/fragment_metadata.h"
 
 using namespace tiledb::common;
@@ -215,10 +215,11 @@ single_fragment_info_from_capnp(
   // Use the array schema name to find the corresponding array schema
   auto schema = array_schemas.find(schema_name);
   if (schema == array_schemas.end()) {
-    return {Status_SerializationError(
-                "Could not find schema" + schema_name +
-                "in map of deserialized schemas."),
-            nullopt};
+    return {
+        Status_SerializationError(
+            "Could not find schema" + schema_name +
+            "in map of deserialized schemas."),
+        nullopt};
   }
 
   // Get list of single fragment info
@@ -239,13 +240,14 @@ single_fragment_info_from_capnp(
   if (meta->dense()) {
     meta->array_schema()->domain().expand_to_tiles(&expanded_non_empty_domain);
   }
-  SingleFragmentInfo single_frag_info{meta->fragment_uri(),
-                                      !meta->dense(),
-                                      meta->timestamp_range(),
-                                      single_frag_info_reader.getFragmentSize(),
-                                      meta->non_empty_domain(),
-                                      expanded_non_empty_domain,
-                                      meta};
+  SingleFragmentInfo single_frag_info{
+      meta->fragment_uri(),
+      !meta->dense(),
+      meta->timestamp_range(),
+      single_frag_info_reader.getFragmentSize(),
+      meta->non_empty_domain(),
+      expanded_non_empty_domain,
+      meta};
   // This is needed so that we don't try to load rtee from disk
   single_frag_info.meta()->set_rtree_loaded();
 
