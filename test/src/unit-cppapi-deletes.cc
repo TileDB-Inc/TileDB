@@ -1789,8 +1789,8 @@ TEST_CASE_METHOD(
     fragment_info.load();
     auto fragment_name1 = fragment_info.fragment_uri(1);
     auto fragment_name2 = fragment_info.fragment_uri(2);
-    const char* fragment_uris[2] = {fragment_name1.c_str(),
-                                    fragment_name2.c_str()};
+    const char* fragment_uris[2] = {
+        fragment_name1.c_str(), fragment_name2.c_str()};
     Array::delete_fragments_list(ctx_, SPARSE_ARRAY_NAME, fragment_uris, 2);
   }
 
