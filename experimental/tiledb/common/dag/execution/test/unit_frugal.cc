@@ -591,10 +591,10 @@ Task(node&)->Task<node>;
 Task(const node&)->Task<node>;
 
 template <template <class> class M, class T>
-Task(producer_node<M, T>)->Task<node>;
+Task(producer_node<M, T>) -> Task<node>;
 
 template <template <class> class M, class T>
-Task(consumer_node<M, T>)->Task<node>;
+Task(consumer_node<M, T>) -> Task<node>;
 
 template <
     template <class>
@@ -603,10 +603,10 @@ template <
     template <class>
     class M2,
     class T2>
-Task(function_node<M1, T1, M2, T2>)->Task<node>;
+Task(function_node<M1, T1, M2, T2>) -> Task<node>;
 
 template <template <class> class M1, class T1>
-Task(function_node<M1, T1>)->Task<node>;
+Task(function_node<M1, T1>) -> Task<node>;
 
 }  // namespace tiledb::common
 

@@ -219,11 +219,12 @@ deserialize_update_condition_and_values(
     const void* buff,
     const storage_size_t size) {
   Deserializer deserializer(buff, size);
-  return {QueryCondition(
-              condition_index,
-              condition_marker,
-              deserialize_condition_impl(deserializer)),
-          deserialize_update_values_impl(deserializer)};
+  return {
+      QueryCondition(
+          condition_index,
+          condition_marker,
+          deserialize_condition_impl(deserializer)),
+      deserialize_update_values_impl(deserializer)};
 }
 
 }  // namespace tiledb::sm::deletes_and_updates::serialization

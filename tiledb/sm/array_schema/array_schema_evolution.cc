@@ -78,9 +78,10 @@ ArraySchemaEvolution::evolve_schema(
     const shared_ptr<const ArraySchema>& orig_schema) {
   std::lock_guard<std::mutex> lock(mtx_);
   if (orig_schema == nullptr) {
-    return {LOG_STATUS(Status_ArraySchemaEvolutionError(
-                "Cannot evolve schema; Input array schema is null")),
-            nullopt};
+    return {
+        LOG_STATUS(Status_ArraySchemaEvolutionError(
+            "Cannot evolve schema; Input array schema is null")),
+        nullopt};
   }
 
   auto schema = make_shared<ArraySchema>(HERE(), *(orig_schema.get()));

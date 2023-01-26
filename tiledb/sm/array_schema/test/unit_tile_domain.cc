@@ -330,10 +330,10 @@ TEST_CASE("TileDomain: Test 2D, covers", "[TileDomain][2d][covers]") {
 
   auto size = 2 * (sizeof(int32_t));
   NDRange domain = {Range(&domain_vec[0], size), Range(&domain_vec[2], size)};
-  NDRange ds1 = {Range(&domain_slice_1[0], size),
-                 Range(&domain_slice_1[2], size)};
-  NDRange ds2 = {Range(&domain_slice_2[0], size),
-                 Range(&domain_slice_2[2], size)};
+  NDRange ds1 = {
+      Range(&domain_slice_1[0], size), Range(&domain_slice_1[2], size)};
+  NDRange ds2 = {
+      Range(&domain_slice_2[0], size), Range(&domain_slice_2[2], size)};
 
   TileDomain<int32_t> tile_domain_1(1, domain, ds1, tile_extents, layout);
 

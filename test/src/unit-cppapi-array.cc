@@ -584,10 +584,9 @@ TEST_CASE("C++ API: Incorrect offsets", "[cppapi][invalid-offsets]") {
 }
 
 TEST_CASE("C++ API: Read subarray with expanded domain", "[cppapi][dense]") {
-  const std::vector<tiledb_layout_t> tile_layouts = {TILEDB_ROW_MAJOR,
-                                                     TILEDB_COL_MAJOR},
-                                     cell_layouts = {TILEDB_ROW_MAJOR,
-                                                     TILEDB_COL_MAJOR};
+  const std::vector<tiledb_layout_t>
+      tile_layouts = {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR},
+      cell_layouts = {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR};
   const std::vector<int> tile_extents = {1, 2, 3, 4};
 
   for (auto tile_layout : tile_layouts) {

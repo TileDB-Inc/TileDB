@@ -174,11 +174,12 @@ void StringFx::write_array(
       sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE);
   void* buffers[] = {
       buffer_a1, buffer_a2_offsets, buffer_a2, buffer_a3_offsets, buffer_a3};
-  uint64_t buffer_sizes[] = {sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE,
-                             4 * sizeof(uint64_t),
-                             sizeof(UTF8_STRINGS_VAR) - UTF8_NULL_SIZE,
-                             4 * sizeof(uint64_t),
-                             sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE};
+  uint64_t buffer_sizes[] = {
+      sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE,
+      4 * sizeof(uint64_t),
+      sizeof(UTF8_STRINGS_VAR) - UTF8_NULL_SIZE,
+      4 * sizeof(uint64_t),
+      sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE};
 
   // Open array
   tiledb_array_t* array;

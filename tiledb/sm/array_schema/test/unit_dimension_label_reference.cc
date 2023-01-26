@@ -54,17 +54,18 @@ TEST_CASE(
   DataOrder label_order{DataOrder::INCREASING_DATA};
   bool is_external{true};
   bool is_relative{true};
-  DimensionLabelReference label{dim_id,
-                                name,
-                                URI("label/l0", false),
-                                label_attr_name,
-                                label_order,
-                                Datatype::FLOAT64,
-                                1,
+  DimensionLabelReference label{
+      dim_id,
+      name,
+      URI("label/l0", false),
+      label_attr_name,
+      label_order,
+      Datatype::FLOAT64,
+      1,
 
-                                nullptr,
-                                is_external,
-                                is_relative};
+      nullptr,
+      is_external,
+      is_relative};
   SizeComputationSerializer size_computation_serializer;
   label.serialize(size_computation_serializer, version);
 

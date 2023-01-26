@@ -104,9 +104,10 @@ Status group_member_to_capnp(
 std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
 group_member_from_capnp(capnp::GroupMember::Reader* group_member_reader) {
   if (!group_member_reader->hasUri()) {
-    return {Status_SerializationError(
-                "Incomplete group member type in deserialization, missing uri"),
-            std::nullopt};
+    return {
+        Status_SerializationError(
+            "Incomplete group member type in deserialization, missing uri"),
+        std::nullopt};
   }
 
   if (!group_member_reader->hasType()) {

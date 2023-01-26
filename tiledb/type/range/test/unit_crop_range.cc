@@ -84,8 +84,9 @@ TEMPLATE_TEST_CASE(
     test_crop_range<TestType>(bounds, range, bounds);
   }
   SECTION("Test crop full typeset") {
-    TestType range[2]{std::numeric_limits<TestType>::lowest(),
-                      std::numeric_limits<TestType>::max()};
+    TestType range[2]{
+        std::numeric_limits<TestType>::lowest(),
+        std::numeric_limits<TestType>::max()};
     test_crop_range<TestType>(bounds, range, bounds);
   }
 }
@@ -120,8 +121,9 @@ TEMPLATE_TEST_CASE(
     test_crop_range<TestType>(bounds, range, bounds);
   }
   SECTION("Test crop full typeset") {
-    TestType range[2]{std::numeric_limits<TestType>::lowest(),
-                      std::numeric_limits<TestType>::max()};
+    TestType range[2]{
+        std::numeric_limits<TestType>::lowest(),
+        std::numeric_limits<TestType>::max()};
     test_crop_range<TestType>(bounds, range, bounds);
   }
 }
@@ -151,13 +153,15 @@ TEMPLATE_TEST_CASE(
     test_crop_range<TestType>(bounds, range, bounds);
   }
   SECTION("Test crop full typeset") {
-    TestType range[2]{std::numeric_limits<TestType>::lowest(),
-                      std::numeric_limits<TestType>::max()};
+    TestType range[2]{
+        std::numeric_limits<TestType>::lowest(),
+        std::numeric_limits<TestType>::max()};
     test_crop_range<TestType>(bounds, range, bounds);
   }
   SECTION("Test crop infinite range") {
-    TestType range[2]{-std::numeric_limits<TestType>::infinity(),
-                      std::numeric_limits<TestType>::infinity()};
+    TestType range[2]{
+        -std::numeric_limits<TestType>::infinity(),
+        std::numeric_limits<TestType>::infinity()};
     test_crop_range<TestType>(bounds, range, bounds);
   }
 }

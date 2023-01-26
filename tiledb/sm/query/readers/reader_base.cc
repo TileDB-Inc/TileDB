@@ -797,9 +797,10 @@ tuple<Status, optional<uint64_t>> ReaderBase::load_chunk_data(
   }
 
   if (total_orig_size != tile->size()) {
-    return {LOG_STATUS(Status_ReaderError(
-                "Error incorrect unfiltered tile size allocated.")),
-            nullopt};
+    return {
+        LOG_STATUS(Status_ReaderError(
+            "Error incorrect unfiltered tile size allocated.")),
+        nullopt};
   }
 
   return {Status::Ok(), total_orig_size};
@@ -867,10 +868,11 @@ ReaderBase::load_tile_chunk_data(
       unfiltered_tile_validity_size = tile_validity_size.value();
     }
   }
-  return {Status::Ok(),
-          unfiltered_tile_size,
-          unfiltered_tile_var_size,
-          unfiltered_tile_validity_size};
+  return {
+      Status::Ok(),
+      unfiltered_tile_size,
+      unfiltered_tile_var_size,
+      unfiltered_tile_validity_size};
 }
 
 Status ReaderBase::unfilter_tile_chunk_range(
@@ -1811,9 +1813,10 @@ ReaderBase::cache_dimension_label_data() {
     max = std::max(max, ned[1]);
   }
 
-  return {Range(&min, &max, sizeof(IndexType)),
-          std::move(non_empty_domains),
-          std::move(frag_first_array_tile_idx)};
+  return {
+      Range(&min, &max, sizeof(IndexType)),
+      std::move(non_empty_domains),
+      std::move(frag_first_array_tile_idx)};
 }
 
 template <typename IndexType, typename AttributeType>

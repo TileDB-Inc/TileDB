@@ -1774,31 +1774,33 @@ void ConsolidationFx::write_sparse_full(const bool serialized_writes) {
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float buffer_a3[] = {0.1f,
-                       0.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f,
-                       3.1f,
-                       3.2f,
-                       4.1f,
-                       4.2f,
-                       5.1f,
-                       5.2f,
-                       6.1f,
-                       6.2f,
-                       7.1f,
-                       7.2f};
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
   uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
 
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_var_a2,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_var_a2,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
@@ -1886,12 +1888,13 @@ void ConsolidationFx::write_sparse_unordered() {
   uint64_t buffer_coords_dim1[] = {3, 3, 3, 4};
   uint64_t buffer_coords_dim2[] = {4, 2, 3, 1};
 
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_var_a2,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_var_a2,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
@@ -1982,17 +1985,19 @@ void ConsolidationFx::write_sparse_row(uint64_t row_idx) {
       row_idx + 1, row_idx + 1, row_idx + 1, row_idx + 1};
   uint64_t buffer_coords_dim2[] = {1, 2, 3, 4};
 
-  void* buffers[] = {buffer_a1 + 4 * row_idx,
-                     buffer_a2,
-                     buffer_var_a2 + 4 * row_idx,
-                     buffer_a3 + 8 * row_idx,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
-  uint64_t buffer_sizes[] = {4 * sizeof(int),
-                             4 * sizeof(uint64_t),
-                             4 * sizeof(char),
-                             8 * sizeof(float),
-                             sizeof(buffer_coords_dim1)};
+  void* buffers[] = {
+      buffer_a1 + 4 * row_idx,
+      buffer_a2,
+      buffer_var_a2 + 4 * row_idx,
+      buffer_a3 + 8 * row_idx,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      4 * sizeof(int),
+      4 * sizeof(uint64_t),
+      4 * sizeof(char),
+      8 * sizeof(float),
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -2069,31 +2074,33 @@ void ConsolidationFx::write_sparse_heterogeneous_full(
   int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
   uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float buffer_a3[] = {0.1f,
-                       0.2f,
-                       1.1f,
-                       1.2f,
-                       2.1f,
-                       2.2f,
-                       3.1f,
-                       3.2f,
-                       4.1f,
-                       4.2f,
-                       5.1f,
-                       5.2f,
-                       6.1f,
-                       6.2f,
-                       7.1f,
-                       7.2f};
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      5.1f,
+      5.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f};
   uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
   uint32_t buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
 
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_var_a2,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_var_a2,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
@@ -2182,12 +2189,13 @@ void ConsolidationFx::write_sparse_heterogeneous_unordered() {
   uint64_t buffer_coords_dim1[] = {3, 3, 3, 4};
   uint32_t buffer_coords_dim2[] = {4, 2, 3, 1};
 
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_var_a2,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_var_a2,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
@@ -2292,13 +2300,14 @@ void ConsolidationFx::write_sparse_string_full(const bool serialized_writes) {
   char buffer_coords_dim2[] = {'a', 'b', 'd', 'c', 'a', 'c', 'd', 'b'};
   uint64_t buffer_coords_dim2_off[] = {0, 1, 2, 3, 4, 5, 6, 7};
 
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_var_a2,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2_off,
-                     buffer_coords_dim2};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_var_a2,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2_off,
+      buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
@@ -2392,13 +2401,14 @@ void ConsolidationFx::write_sparse_string_unordered() {
   char buffer_coords_dim2[] = {'d', 'b', 'c', 'a'};
   uint64_t buffer_coords_dim2_off[] = {0, 1, 2, 3};
 
-  void* buffers[] = {buffer_a1,
-                     buffer_a2,
-                     buffer_var_a2,
-                     buffer_a3,
-                     buffer_coords_dim1,
-                     buffer_coords_dim2_off,
-                     buffer_coords_dim2};
+  void* buffers[] = {
+      buffer_a1,
+      buffer_a2,
+      buffer_var_a2,
+      buffer_a3,
+      buffer_coords_dim1,
+      buffer_coords_dim2_off,
+      buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
@@ -3259,22 +3269,23 @@ void ConsolidationFx::read_dense_subarray_full() {
 
 void ConsolidationFx::read_dense_four_tiles() {
   // Correct buffers
-  int c_buffer_a1[] = {112,
-                       113,
-                       114,
-                       115,
-                       112,
-                       113,
-                       114,
-                       115,
-                       112,
-                       113,
-                       114,
-                       115,
-                       112,
-                       113,
-                       114,
-                       115};
+  int c_buffer_a1[] = {
+      112,
+      113,
+      114,
+      115,
+      112,
+      113,
+      114,
+      115,
+      112,
+      113,
+      114,
+      115,
+      112,
+      113,
+      114,
+      115};
   uint64_t c_buffer_a2_off[] = {
       0, 1, 3, 6, 10, 11, 13, 16, 20, 21, 23, 26, 30, 31, 33, 36};
   char c_buffer_a2_val[] =
