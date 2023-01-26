@@ -391,7 +391,6 @@ struct RemoteGlobalOrderWriteFx {
   bool is_var_;
   bool is_nullable_;
   const unsigned submit_cell_count_;
-  // Find min number of values of type T to fill `bytes_`.
   const uint64_t total_cell_count_;
   const uint64_t extent_;
 
@@ -416,8 +415,9 @@ struct RemoteGlobalOrderWriteFx {
 //     float, double> TestTypes;
 typedef std::tuple<uint64_t, float> TestTypes;
 // Marked as mayfail pending CI for remote writes. (SC-23785)
-TEST_CASE("Global order remote writes debug", "[.mayfail]") {
-  typedef uint64_t T;
+TEMPLATE_LIST_TEST_CASE(
+    "Global order remote writes debug", "[.mayfail]", TestTypes) {
+  typedef TestType T;
   uint64_t cells;
   uint64_t extent;
   uint64_t chunk_size;

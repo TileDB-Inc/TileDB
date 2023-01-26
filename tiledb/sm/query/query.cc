@@ -508,8 +508,8 @@ bool Query::check_trim_and_buffer_tile_alignment(bool finalize) {
       query_remote_buffer_storage_[buff.first].cell_size = cell_size;
 
       // Construct and move a preallocated Buffer to initialize cache.
-      query_remote_buffer_storage_[buff.first].buffer = {
-          cell_num_per_tile * cell_size * 2};
+      query_remote_buffer_storage_[buff.first].buffer = {cell_num_per_tile *
+                                                         cell_size * 2};
       if (is_nullable) {
         query_remote_buffer_storage_[buff.first].buffer_validity = {
             cell_num_per_tile * 2};

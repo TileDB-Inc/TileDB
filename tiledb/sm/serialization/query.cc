@@ -2189,8 +2189,8 @@ Status query_serialize(
                 query->set_remote_buffer_cache_submit(name, true);
               } else {
                 data = {query_buffer.buffer_, *query_buffer.buffer_size_};
-                var = {
-                    query_buffer.buffer_var_, *query_buffer.buffer_var_size_};
+                var = {query_buffer.buffer_var_,
+                       *query_buffer.buffer_var_size_};
               };
 
               RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
@@ -2235,9 +2235,8 @@ Status query_serialize(
                     *query_buffer.validity_vector_.buffer_size()));
                 query->set_remote_buffer_cache_submit(name, true);
               } else {
-                data = {
-                    query_buffer.validity_vector_.buffer(),
-                    *query_buffer.validity_vector_.buffer_size()};
+                data = {query_buffer.validity_vector_.buffer(),
+                        *query_buffer.validity_vector_.buffer_size()};
               }
               RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
             }
