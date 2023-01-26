@@ -208,35 +208,27 @@ class QueryBuffer {
   /*           PUBLIC METHODS         */
   /* ********************************* */
 
-  Status set_data_buffer(void* data_buffer, uint64_t* size) {
+  void set_data_buffer(void* data_buffer, uint64_t* size) {
     buffer_ = data_buffer;
     buffer_size_ = size;
     original_buffer_size_ = *size;
-
-    return Status::Ok();
   }
 
-  Status set_data_var_buffer(void* data_var_buffer, uint64_t* size) {
+  void set_data_var_buffer(void* data_var_buffer, uint64_t* size) {
     buffer_var_ = data_var_buffer;
     buffer_var_size_ = size;
     original_buffer_var_size_ = *size;
-
-    return Status::Ok();
   }
 
-  Status set_offsets_buffer(void* offsets_buffer, uint64_t* size) {
+  void set_offsets_buffer(void* offsets_buffer, uint64_t* size) {
     buffer_ = offsets_buffer;
     buffer_size_ = size;
     original_buffer_size_ = *size;
-
-    return Status::Ok();
   }
 
-  Status set_validity_buffer(ValidityVector&& validity_vector) {
+  void set_validity_buffer(ValidityVector&& validity_vector) {
     validity_vector_ = std::move(validity_vector);
     original_validity_vector_size_ = *validity_vector_.buffer_size();
-
-    return Status::Ok();
   }
 
   /** Returns a const pointer to the data buffer as the requested type. */
