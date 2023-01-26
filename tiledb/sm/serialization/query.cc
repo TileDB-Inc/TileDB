@@ -2294,9 +2294,10 @@ Status query_est_result_size_reader_from_capnp(
     auto result_size = it.getValue();
     est_result_sizes_map.emplace(
         name,
-        Subarray::ResultSize{result_size.getSizeFixed(),
-                             result_size.getSizeVar(),
-                             result_size.getSizeValidity()});
+        Subarray::ResultSize{
+            result_size.getSizeFixed(),
+            result_size.getSizeVar(),
+            result_size.getSizeValidity()});
   }
 
   std::unordered_map<std::string, Subarray::MemorySize> max_memory_sizes_map;
@@ -2305,9 +2306,10 @@ Status query_est_result_size_reader_from_capnp(
     auto memory_size = it.getValue();
     max_memory_sizes_map.emplace(
         name,
-        Subarray::MemorySize{memory_size.getSizeFixed(),
-                             memory_size.getSizeVar(),
-                             memory_size.getSizeValidity()});
+        Subarray::MemorySize{
+            memory_size.getSizeFixed(),
+            memory_size.getSizeVar(),
+            memory_size.getSizeValidity()});
   }
 
   return query->set_est_result_size(est_result_sizes_map, max_memory_sizes_map);

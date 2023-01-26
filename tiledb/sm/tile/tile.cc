@@ -52,19 +52,21 @@ uint64_t WriterTile::max_tile_chunk_size_ = constants::max_tile_chunk_size;
 /* ****************************** */
 
 Tile Tile::from_generic(storage_size_t tile_size) {
-  return {0,
-          constants::generic_tile_datatype,
-          constants::generic_tile_cell_size,
-          0,
-          tile_size,
-          0};
+  return {
+      0,
+      constants::generic_tile_datatype,
+      constants::generic_tile_cell_size,
+      0,
+      tile_size,
+      0};
 }
 
 WriterTile WriterTile::from_generic(storage_size_t tile_size) {
-  return {0,
-          constants::generic_tile_datatype,
-          constants::generic_tile_cell_size,
-          tile_size};
+  return {
+      0,
+      constants::generic_tile_datatype,
+      constants::generic_tile_cell_size,
+      tile_size};
 }
 
 Status WriterTile::compute_chunk_size(

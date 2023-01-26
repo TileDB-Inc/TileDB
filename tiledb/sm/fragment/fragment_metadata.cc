@@ -1268,8 +1268,9 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
   assert(version_ > 8);
   const auto iter = idx_map_.find(name);
   if (iter == idx_map_.end())
-    return {Status_FragmentMetadataError("Name " + name + " not in idx_map_"),
-            std::nullopt};
+    return {
+        Status_FragmentMetadataError("Name " + name + " not in idx_map_"),
+        std::nullopt};
 
   const unsigned idx = iter->second;
 
@@ -1335,9 +1336,10 @@ tuple<Status, optional<URI>> FragmentMetadata::validity_uri(
   if (!st.ok())
     return {st, std::nullopt};
 
-  return {st,
-          fragment_uri_.join_path(
-              *encoded_name + "_validity" + constants::file_suffix)};
+  return {
+      st,
+      fragment_uri_.join_path(
+          *encoded_name + "_validity" + constants::file_suffix)};
 }
 
 const std::string& FragmentMetadata::array_schema_name() {

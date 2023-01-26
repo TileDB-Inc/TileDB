@@ -619,15 +619,17 @@ std::pair<Status, optional<std::string>> libmagic_get_mime(
   if (tiledb::sm::magic_dict::magic_mgc_embedded_load(magic)) {
     std::string errmsg(magic_error(magic));
     magic_close(magic);
-    return {Status_Error(std::string("Cannot load magic database - ") + errmsg),
-            nullopt};
+    return {
+        Status_Error(std::string("Cannot load magic database - ") + errmsg),
+        nullopt};
   }
   auto rv = magic_buffer(magic, data, size);
   if (!rv) {
     std::string errmsg(magic_error(magic));
     magic_close(magic);
-    return {Status_Error(std::string("Cannot get the mime type - ") + errmsg),
-            nullopt};
+    return {
+        Status_Error(std::string("Cannot get the mime type - ") + errmsg),
+        nullopt};
   }
   std::string mime(rv);
   magic_close(magic);
@@ -640,8 +642,9 @@ std::pair<Status, optional<std::string>> libmagic_get_mime_encoding(
   if (tiledb::sm::magic_dict::magic_mgc_embedded_load(magic)) {
     std::string errmsg(magic_error(magic));
     magic_close(magic);
-    return {Status_Error(std::string("Cannot load magic database - ") + errmsg),
-            nullopt};
+    return {
+        Status_Error(std::string("Cannot load magic database - ") + errmsg),
+        nullopt};
   }
   auto rv = magic_buffer(magic, data, size);
   if (!rv) {

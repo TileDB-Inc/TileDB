@@ -78,8 +78,9 @@ struct FixedOrderedAttributeArrayFixture {
     REQUIRE(st.ok());
 
     // Create the array and clean-up.
-    std::string base_name{"array_ordered_attr_" + datatype_str(type) + "_" +
-                          data_order_str(order)};
+    std::string base_name{
+        "array_ordered_attr_" + datatype_str(type) + "_" +
+        data_order_str(order)};
     array_name = temp_dir_.create_temporary_array(std::move(base_name), schema);
     tiledb_array_schema_free(&schema);
   }

@@ -191,10 +191,11 @@ tuple<uint64_t, uint64_t, uint64_t, uint64_t> RLE::calculate_compression_params(
   output_strings_size += previous.size();
   max_identicals = std::max(identicals, max_identicals);
 
-  return {compute_bytesize(max_identicals),
-          compute_bytesize(max_string_size),
-          num_of_runs,
-          output_strings_size};
+  return {
+      compute_bytesize(max_identicals),
+      compute_bytesize(max_string_size),
+      num_of_runs,
+      output_strings_size};
 }
 
 Status RLE::compress(

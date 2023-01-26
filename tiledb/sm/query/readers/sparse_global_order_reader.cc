@@ -1752,9 +1752,10 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
       status, logger_->status_no_return_value(status), nullopt);
 
   if (max_cs_idx == 0) {
-    return {Status_SparseUnorderedWithDupsReaderError(
-                "Unable to copy one slab with current budget/buffers"),
-            nullopt};
+    return {
+        Status_SparseUnorderedWithDupsReaderError(
+            "Unable to copy one slab with current budget/buffers"),
+        nullopt};
   }
 
   // Resize the result tiles vector.

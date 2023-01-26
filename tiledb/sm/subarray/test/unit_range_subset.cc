@@ -250,8 +250,8 @@ TEMPLATE_TEST_CASE_SIG(
     check_subset_range_values<T>(subset, 0, 2.0, 4.5);
   }
   SECTION("Test adding the full typeset") {
-    T fullset[2]{std::numeric_limits<T>::lowest(),
-                 std::numeric_limits<T>::max()};
+    T fullset[2]{
+        std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max()};
     Range range{fullset, 2 * sizeof(T)};
     auto&& [error_status, warn_message] = subset.add_range(range, false);
     CHECK(error_status.ok());
@@ -261,8 +261,9 @@ TEMPLATE_TEST_CASE_SIG(
     check_subset_range_values<T>(subset, 0, -1.5, 4.5);
   }
   SECTION("Test adding infinite range") {
-    T infinite[2]{-std::numeric_limits<T>::infinity(),
-                  std::numeric_limits<T>::infinity()};
+    T infinite[2]{
+        -std::numeric_limits<T>::infinity(),
+        std::numeric_limits<T>::infinity()};
     Range range{infinite, 2 * sizeof(T)};
     auto&& [error_status, warn_message] = subset.add_range(range, false);
     CHECK(error_status.ok());

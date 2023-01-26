@@ -213,15 +213,16 @@ TEST_CASE_METHOD(
   CHECK(iter.begin().ok());
   auto iter_ranges = iter.ranges();
 
-  std::vector<CellSlabIter<uint64_t>::Range> c_ranges = {{5, 10, 0},
-                                                         {11, 15, 1},
-                                                         {3, 5, 0},
-                                                         {10, 10, 0},
-                                                         {11, 20, 1},
-                                                         {6, 10, 0},
-                                                         {11, 20, 1},
-                                                         {21, 30, 2},
-                                                         {31, 36, 3}};
+  std::vector<CellSlabIter<uint64_t>::Range> c_ranges = {
+      {5, 10, 0},
+      {11, 15, 1},
+      {3, 5, 0},
+      {10, 10, 0},
+      {11, 20, 1},
+      {6, 10, 0},
+      {11, 20, 1},
+      {21, 30, 2},
+      {31, 36, 3}};
   CHECK(iter_ranges.size() == 1);
   CHECK(iter_ranges[0].size() == c_ranges.size());
   CHECK(std::equal(

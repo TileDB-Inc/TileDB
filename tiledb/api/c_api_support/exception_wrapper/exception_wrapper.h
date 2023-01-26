@@ -345,8 +345,8 @@ class ExceptionActionDetailCtx
     : public ExceptionActionImpl<LogAction, ContextAction> {
  public:
   explicit ExceptionActionDetailCtx(tiledb_ctx_handle_t* ctx)
-      : ExceptionActionImpl<LogAction, ContextAction>{LogAction{},
-                                                      ContextAction{ctx}} {
+      : ExceptionActionImpl<LogAction, ContextAction>{
+            LogAction{}, ContextAction{ctx}} {
   }
 };
 
@@ -357,8 +357,8 @@ class ExceptionActionDetailErr
     : public ExceptionActionImpl<LogAction, ErrorAction> {
  public:
   explicit ExceptionActionDetailErr(tiledb_error_handle_t** err)
-      : ExceptionActionImpl<LogAction, ErrorAction>{LogAction{},
-                                                    ErrorAction{err}} {
+      : ExceptionActionImpl<LogAction, ErrorAction>{
+            LogAction{}, ErrorAction{err}} {
   }
 };
 

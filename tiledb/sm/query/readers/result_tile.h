@@ -661,7 +661,7 @@ class ResultTile {
    * is invoked in a critical path and is experimentally faster as a c-style
    * function pointer than a bound `std::function`.
    */
-  const void* (ResultTile::*coord_func_)(uint64_t, unsigned)const;
+  const void* (ResultTile::*coord_func_)(uint64_t, unsigned) const;
 
   /**
    * Stores the appropriate templated compute_results_sparse() function based

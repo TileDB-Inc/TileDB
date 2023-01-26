@@ -108,16 +108,17 @@ constexpr unsigned short to_index(TaskEvent x) {
 /** Strings corresponding to each TaskEvent. Useful for testing and debugging.
  */
 namespace {
-std::vector<std::string> task_event_strings{"create",
-                                            "admit",
-                                            "dispatch",
-                                            "wait",
-                                            "notify",
-                                            "exit",
-                                            "yield",
-                                            "noop",
-                                            "error",
-                                            "last"};
+std::vector<std::string> task_event_strings{
+    "create",
+    "admit",
+    "dispatch",
+    "wait",
+    "notify",
+    "exit",
+    "yield",
+    "noop",
+    "error",
+    "last"};
 }
 
 /** Utility function to convert a TaskEvent to a string. */
@@ -155,18 +156,19 @@ constexpr unsigned short to_index(TaskAction ac) {
 /** Strings corresponding to each TaskAction. Useful for testing and debugging.
  */
 namespace {
-std::vector<std::string> task_action_strings{"none",
-                                             "create",
-                                             "stop_create",
-                                             "make_runnable",
-                                             "stop_runnable",
-                                             "make_running",
-                                             "stop_running",
-                                             "make_waiting",
-                                             "stop_waiting",
-                                             "ac_return",
-                                             "terminate",
-                                             "last"};
+std::vector<std::string> task_action_strings{
+    "none",
+    "create",
+    "stop_create",
+    "make_runnable",
+    "stop_runnable",
+    "make_running",
+    "stop_running",
+    "make_waiting",
+    "stop_waiting",
+    "ac_return",
+    "terminate",
+    "last"};
 }
 
 /** Utility function to convert a TaskAction to a string. */
