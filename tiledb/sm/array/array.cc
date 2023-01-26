@@ -140,6 +140,8 @@ Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  auto timer =
+      storage_manager_->stats()->start_timer("array_open_without_fragments");
   Status st;
   // Checks
   if (is_open()) {
@@ -194,9 +196,12 @@ Status Array::open_without_fragments(
         }
       }
     } else {
-      array_dir_ = ArrayDirectory(
-          resources_, array_uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ);
-
+      {
+        auto timer_se = storage_manager_->stats()->start_timer(
+            "array_open_without_fragments_load_directory");
+        array_dir_ = ArrayDirectory(
+            resources_, array_uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ);
+      }
       auto&& [array_schema, array_schemas] = open_for_reads_without_fragments();
       if (!st.ok())
         throw StatusException(st);
@@ -245,6 +250,8 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  auto timer = storage_manager_->stats()->start_timer(
+      "array_open_" + query_type_str(query_type));
   Status st;
   // Checks
   if (is_open()) {
@@ -362,9 +369,12 @@ Status Array::open(
         }
       }
     } else if (query_type == QueryType::READ) {
-      array_dir_ = ArrayDirectory(
-          resources_, array_uri_, timestamp_start_, timestamp_end_opened_at_);
-
+      {
+        auto timer_se = storage_manager_->stats()->start_timer(
+            "array_open_read_load_directory");
+        array_dir_ = ArrayDirectory(
+            resources_, array_uri_, timestamp_start_, timestamp_end_opened_at_);
+      }
       auto&& [array_schema_latest, array_schemas, fragment_metadata] =
           open_for_reads();
 
@@ -375,13 +385,16 @@ Status Array::open(
     } else if (
         query_type == QueryType::WRITE ||
         query_type == QueryType::MODIFY_EXCLUSIVE) {
-      array_dir_ = ArrayDirectory(
-          resources_,
-          array_uri_,
-          timestamp_start_,
-          timestamp_end_opened_at_,
-          ArrayDirectoryMode::SCHEMA_ONLY);
-
+      {
+        auto timer_se = storage_manager_->stats()->start_timer(
+            "array_open_write_load_directory");
+        array_dir_ = ArrayDirectory(
+            resources_,
+            array_uri_,
+            timestamp_start_,
+            timestamp_end_opened_at_,
+            ArrayDirectoryMode::SCHEMA_ONLY);
+      }
       auto&& [st, array_schema_latest, array_schemas] =
           storage_manager_->array_open_for_writes(this);
       throw_if_not_ok(st);
@@ -393,13 +406,16 @@ Status Array::open(
       metadata_.reset(timestamp_end_opened_at_);
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
-      array_dir_ = ArrayDirectory(
-          resources_,
-          array_uri_,
-          timestamp_start_,
-          timestamp_end_opened_at_,
-          ArrayDirectoryMode::READ);
-
+      {
+        auto timer_se = storage_manager_->stats()->start_timer(
+            "array_open_delete_or_update_load_directory");
+        array_dir_ = ArrayDirectory(
+            resources_,
+            array_uri_,
+            timestamp_start_,
+            timestamp_end_opened_at_,
+            ArrayDirectoryMode::READ);
+      }
       auto&& [st, array_schema_latest, array_schemas] =
           storage_manager_->array_open_for_writes(this);
       throw_if_not_ok(st);
@@ -746,6 +762,7 @@ Status Array::reopen() {
 }
 
 Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
+  auto timer = storage_manager_->stats()->start_timer("array_reopen");
   if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot reopen array; Array is not open"));
@@ -780,26 +797,27 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   }
 
   try {
-    array_dir_ = ArrayDirectory(
-        resources_,
-        array_uri_,
-        timestamp_start_,
-        timestamp_end_opened_at_,
-        query_type_ == QueryType::READ ? ArrayDirectoryMode::READ :
-                                         ArrayDirectoryMode::SCHEMA_ONLY);
+    {
+      auto timer_se =
+          storage_manager_->stats()->start_timer("array_reopen_directory");
+      array_dir_ = ArrayDirectory(
+          resources_,
+          array_uri_,
+          timestamp_start_,
+          timestamp_end_opened_at_,
+          query_type_ == QueryType::READ ? ArrayDirectoryMode::READ :
+                                           ArrayDirectoryMode::SCHEMA_ONLY);
+    }
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
 
-  {
-    auto timer_se = resources_.stats().start_timer("read_array_open");
-    auto&& [array_schema_latest, array_schemas, fragment_metadata] =
-        open_for_reads();
+  auto&& [array_schema_latest, array_schemas, fragment_metadata] =
+      open_for_reads();
 
-    array_schema_latest_ = array_schema_latest.value();
-    array_schemas_all_ = array_schemas.value();
-    fragment_metadata_ = fragment_metadata.value();
-  }
+  array_schema_latest_ = array_schema_latest.value();
+  array_schemas_all_ = array_schemas.value();
+  fragment_metadata_ = fragment_metadata.value();
 
   return Status::Ok();
 }
@@ -1194,7 +1212,8 @@ tuple<
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
     optional<std::vector<shared_ptr<FragmentMetadata>>>>
 Array::open_for_reads() {
-  auto timer_se = resources_.stats().start_timer("array_open_for_reads");
+  auto timer_se = resources_.stats().start_timer(
+      "array_open_read_load_schemas_and_fragment_meta");
   auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
       storage_manager_->load_array_schemas_and_fragment_metadata(
           array_directory(), memory_tracker(), *encryption_key());
@@ -1211,8 +1230,8 @@ tuple<
     optional<shared_ptr<ArraySchema>>,
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 Array::open_for_reads_without_fragments() {
-  auto timer_se =
-      resources_.stats().start_timer("array_open_for_reads_without_fragments");
+  auto timer_se = resources_.stats().start_timer(
+      "array_open_read_without_fragments_load_schemas");
 
   // Load array schemas
   auto&& [st_schemas, array_schema_latest, array_schemas_all] =

@@ -26,6 +26,7 @@ my_array                                # array folder
           |_ <timestamped_name>.meta    # consol. fragment meta file
           |_ ...                  
     |_ __meta                           # array metadata folder
+    |_ __labels                         # dimension label folder
 
 ```
 
@@ -46,3 +47,4 @@ Inside the array folder, you can find the following:
 * Inside the same commit folder, any number of [ignore files](./ignore_file.md) of the form `<timestamped_name>.ign`.
 * Inside of a fragment metadata folder, any number of [consolidated fragment metadata files](./consolidated_fragment_metadata_file.md) of the form `<timestamped_name>.meta`.
 * [Array metadata](./metadata.md) folder `__meta`.
+* Inside of a labels folder, additional TileDB arrays storing dimension label data.

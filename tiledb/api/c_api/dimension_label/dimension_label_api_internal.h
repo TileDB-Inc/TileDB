@@ -80,7 +80,7 @@ struct tiledb_dimension_label_handle_t
 
 namespace tiledb::api {
 /**
- * Returns if the argumetn is a valid dimension label: non-nall, valid as a
+ * Returns if the argument is a valid dimension label: non-null, valid as a
  * handle
  *
  * @param dim_label A dimension label of unknown validity

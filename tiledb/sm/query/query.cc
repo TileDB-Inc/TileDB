@@ -654,13 +654,11 @@ Status Query::get_offsets_buffer(
   }
 
   // Dimension label
-  if constexpr (is_experimental_build) {
-    auto it = label_buffers_.find(name);
-    if (it != label_buffers_.end()) {
-      *buffer_off = (uint64_t*)it->second.buffer_;
-      *buffer_off_size = it->second.buffer_size_;
-      return Status::Ok();
-    }
+  it = label_buffers_.find(name);
+  if (it != label_buffers_.end()) {
+    *buffer_off = (uint64_t*)it->second.buffer_;
+    *buffer_off_size = it->second.buffer_size_;
+    return Status::Ok();
   }
 
   // Named buffer does not exist
@@ -709,19 +707,17 @@ Status Query::get_data_buffer(
     return Status::Ok();
   }
 
-  if constexpr (is_experimental_build) {
-    // Return the buffer
-    auto it = label_buffers_.find(name);
-    if (it != label_buffers_.end()) {
-      if (array_schema_->dimension_label_reference(name).is_var()) {
-        *buffer = it->second.buffer_var_;
-        *buffer_size = it->second.buffer_var_size_;
-      } else {
-        *buffer = it->second.buffer_;
-        *buffer_size = it->second.buffer_size_;
-      }
-      return Status::Ok();
+  // Return the buffer
+  it = label_buffers_.find(name);
+  if (it != label_buffers_.end()) {
+    if (array_schema_->dimension_label_reference(name).is_var()) {
+      *buffer = it->second.buffer_var_;
+      *buffer_size = it->second.buffer_var_size_;
+    } else {
+      *buffer = it->second.buffer_;
+      *buffer_size = it->second.buffer_size_;
     }
+    return Status::Ok();
   }
 
   // Named buffer does not exist
@@ -1566,23 +1562,21 @@ Status Query::set_data_buffer(
 
   // If this is for a dimension label, set the dimension label buffer and
   // return.
-  if constexpr (is_experimental_build) {
-    if (array_schema_->is_dim_label(name)) {
-      // Check the query type is valid.
-      if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
-        throw StatusException(Status_SerializationError(
-            "Cannot set buffer; Unsupported query type."));
-      }
-
-      // Set dimension label buffer on the appropriate buffer depending if the
-      // label is fixed or variable length.
-      array_schema_->dimension_label_reference(name).is_var() ?
-          throw_if_not_ok(
-              label_buffers_[name].set_data_var_buffer(buffer, buffer_size)) :
-          throw_if_not_ok(
-              label_buffers_[name].set_data_buffer(buffer, buffer_size));
-      return Status::Ok();
+  if (array_schema_->is_dim_label(name)) {
+    // Check the query type is valid.
+    if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
+      throw StatusException(Status_SerializationError(
+          "Cannot set buffer; Unsupported query type."));
     }
+
+    // Set dimension label buffer on the appropriate buffer depending if the
+    // label is fixed or variable length.
+    array_schema_->dimension_label_reference(name).is_var() ?
+        throw_if_not_ok(
+            label_buffers_[name].set_data_var_buffer(buffer, buffer_size)) :
+        throw_if_not_ok(
+            label_buffers_[name].set_data_buffer(buffer, buffer_size));
+    return Status::Ok();
   }
 
   // For easy reference
@@ -1591,16 +1585,9 @@ Status Query::set_data_buffer(
 
   // Check that attribute/dimension exists
   if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
-    if constexpr (is_experimental_build) {
-      return logger_->status(Status_QueryError(
-          std::string(
-              "Cannot set buffer; Invalid attribute/dimension/label '") +
-          name + "'"));
-    } else {
-      return logger_->status(Status_QueryError(
-          std::string("Cannot set buffer; Invalid attribute/dimension '") +
-          name + "'"));
-    }
+    return logger_->status(Status_QueryError(
+        std::string("Cannot set buffer; Invalid attribute/dimension/label '") +
+        name + "'"));
   }
 
   if (array_schema_->dense() &&
@@ -1684,33 +1671,31 @@ Status Query::set_offsets_buffer(
 
   // If this is for a dimension label, set the dimension label offsets buffer
   // and return.
-  if constexpr (is_experimental_build) {
-    if (array_schema_->is_dim_label(name)) {
-      // Check the query type is valid.
-      if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
-        throw StatusException(Status_SerializationError(
-            "Cannot set buffer; Unsupported query type."));
-      }
-
-      // Check the dimension labe is in fact variable length.
-      if (!array_schema_->dimension_label_reference(name).is_var()) {
-        throw StatusException(Status_QueryError(
-            std::string("Cannot set buffer; Input dimension label '") + name +
-            "' is fixed-sized"));
-      }
-
-      // Check the query was not already initialized.
-      if (status_ != QueryStatus::UNINITIALIZED) {
-        throw StatusException(Status_QueryError(
-            std::string("Cannot set buffer for new dimension label '") + name +
-            "' after initialization"));
-      }
-
-      // Set dimension label offsets buffers.
-      throw_if_not_ok(label_buffers_[name].set_offsets_buffer(
-          buffer_offsets, buffer_offsets_size));
-      return Status::Ok();
+  if (array_schema_->is_dim_label(name)) {
+    // Check the query type is valid.
+    if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
+      throw StatusException(Status_SerializationError(
+          "Cannot set buffer; Unsupported query type."));
     }
+
+    // Check the dimension labe is in fact variable length.
+    if (!array_schema_->dimension_label_reference(name).is_var()) {
+      throw StatusException(Status_QueryError(
+          std::string("Cannot set buffer; Input dimension label '") + name +
+          "' is fixed-sized"));
+    }
+
+    // Check the query was not already initialized.
+    if (status_ != QueryStatus::UNINITIALIZED) {
+      throw StatusException(Status_QueryError(
+          std::string("Cannot set buffer for new dimension label '") + name +
+          "' after initialization"));
+    }
+
+    // Set dimension label offsets buffers.
+    throw_if_not_ok(label_buffers_[name].set_offsets_buffer(
+        buffer_offsets, buffer_offsets_size));
+    return Status::Ok();
   }
 
   // For easy reference
@@ -1719,15 +1704,9 @@ Status Query::set_offsets_buffer(
 
   // Neither a dimension nor an attribute
   if (!is_dim && !is_attr) {
-    if constexpr (is_experimental_build) {
-      return logger_->status(Status_QueryError(
-          std::string("Cannot set buffer; Invalid buffer name '") + name +
-          "' (it should be an attribute, dimension, or dimension label)"));
-    } else {
-      return logger_->status(Status_QueryError(
-          std::string("Cannot set buffer; Invalid buffer name '") + name +
-          "' (it should be an attribute or dimension)"));
-    }
+    return logger_->status(Status_QueryError(
+        std::string("Cannot set buffer; Invalid buffer name '") + name +
+        "' (it should be an attribute, dimension, or dimension label)"));
   }
 
   // Error if it is fixed-sized

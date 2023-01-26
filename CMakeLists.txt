@@ -333,6 +333,7 @@ list(APPEND TILEDB_C_API_FILENAME_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_dimension_label_experimental.h"
 )
 
 if (TILEDB_SERIALIZATION)

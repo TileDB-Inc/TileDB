@@ -34,7 +34,6 @@
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_dimension_label.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -60,6 +59,7 @@ TEST_CASE_METHOD(
   // Create and add dimension label schema (both fixed and variable length
   // examples).
   auto label_type = GENERATE(TILEDB_FLOAT64, TILEDB_STRING_ASCII);
+  auto label_order = GENERATE(TILEDB_INCREASING_DATA, TILEDB_DECREASING_DATA);
 
   // Create an array schema.
   uint64_t x_domain[2]{0, 63};
@@ -83,7 +83,7 @@ TEST_CASE_METHOD(
       false);
 
   require_tiledb_ok(tiledb_array_schema_add_dimension_label(
-      ctx, array_schema, 0, "label", TILEDB_INCREASING_DATA, label_type));
+      ctx, array_schema, 0, "label", label_order, label_type));
 
   // Check array schema and number of dimension labels.
   require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
@@ -135,6 +135,44 @@ TEST_CASE_METHOD(
 
   // Free remaining resources
   tiledb_array_schema_free(&loaded_array_schema);
+}
+
+TEST_CASE_METHOD(
+    TemporaryDirectoryFixture,
+    "Write and read back TileDB array schema with dimension label for "
+    "unordered labels",
+    "[capi][ArraySchema][DimensionLabel]") {
+  // Create and add dimension label schema (both fixed and variable length
+  // examples).
+  auto label_type = GENERATE(TILEDB_FLOAT64, TILEDB_STRING_ASCII);
+
+  // Create an array schema.
+  uint64_t x_domain[2]{0, 63};
+  uint64_t x_tile_extent{64};
+  uint64_t y_domain[2]{0, 63};
+  uint64_t y_tile_extent{64};
+  auto array_schema = create_array_schema(
+      ctx,
+      TILEDB_DENSE,
+      {"x", "y"},
+      {TILEDB_UINT64, TILEDB_UINT64},
+      {&x_domain[0], &y_domain[0]},
+      {&x_tile_extent, &y_tile_extent},
+      {"a"},
+      {TILEDB_FLOAT64},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      4096,
+      false);
+
+  check_tiledb_error_with(
+      tiledb_array_schema_add_dimension_label(
+          ctx, array_schema, 0, "label", TILEDB_UNORDERED_DATA, label_type),
+      "ArraySchema: Cannot add dimension label; Unordered dimension labels "
+      "are not yet supported.");
+  tiledb_array_schema_free(&array_schema);
 }
 
 TEST_CASE_METHOD(

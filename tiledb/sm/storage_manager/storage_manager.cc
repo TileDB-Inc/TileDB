@@ -243,6 +243,7 @@ tuple<
     optional<shared_ptr<ArraySchema>>,
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 StorageManagerCanonical::array_open_for_writes(Array* array) {
+  auto timer_se = stats()->start_timer("array_open_write_load_schemas");
   // Checks
   if (!vfs()->supports_uri_scheme(array->array_uri()))
     return {
@@ -293,7 +294,7 @@ StorageManagerCanonical::array_open_for_writes(Array* array) {
 tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManagerCanonical::array_load_fragments(
     Array* array, const std::vector<TimestampedURI>& fragments_to_load) {
-  auto timer_se = stats()->start_timer("array_load_fragments");
+  auto timer_se = stats()->start_timer("sm_array_load_fragments");
 
   // Load the fragment metadata
   std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
@@ -724,11 +725,10 @@ Status StorageManagerCanonical::array_create(
       array_uri.join_path(constants::array_fragment_meta_dir_name);
   RETURN_NOT_OK(vfs()->create_dir(array_fragment_metadata_uri));
 
-  if constexpr (is_experimental_build) {
-    URI array_dimension_labels_uri =
-        array_uri.join_path(constants::array_dimension_labels_dir_name);
-    RETURN_NOT_OK(vfs()->create_dir(array_dimension_labels_uri));
-  }
+  // Create dimension label directory
+  URI array_dimension_labels_uri =
+      array_uri.join_path(constants::array_dimension_labels_dir_name);
+  RETURN_NOT_OK(vfs()->create_dir(array_dimension_labels_uri));
 
   // Get encryption key from config
   Status st;
@@ -2253,7 +2253,7 @@ StorageManagerCanonical::load_fragment_metadata(
     const std::vector<TimestampedURI>& fragments_to_load,
     const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
         offsets) {
-  auto timer_se = stats()->start_timer("load_fragment_metadata");
+  auto timer_se = stats()->start_timer("sm_load_fragment_metadata");
 
   // Load the metadata for each fragment
   auto fragment_num = fragments_to_load.size();
@@ -2328,7 +2328,7 @@ tuple<
     optional<std::vector<std::pair<std::string, uint64_t>>>>
 StorageManagerCanonical::load_consolidated_fragment_meta(
     const URI& uri, const EncryptionKey& enc_key) {
-  auto timer_se = stats()->start_timer("read_load_consolidated_frag_meta");
+  auto timer_se = stats()->start_timer("sm_read_load_consolidated_frag_meta");
 
   // No consolidated fragment metadata file
   if (uri.to_string().empty())
