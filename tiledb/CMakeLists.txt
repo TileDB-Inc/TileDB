@@ -76,12 +76,6 @@ if (TILEDB_SERIALIZATION)
   )
 endif()
 
-if (TILEDB_EXPERIMENTAL_FEATURES)
-  list(APPEND TILEDB_PUBLIC_HEADERS
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_dimension_label.h
-  )
-endif()
-
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_PUBLIC_HEADERS
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb
@@ -151,6 +145,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer_list.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/api_argument_validator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_dimension_label.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_filestore.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cache/buffer_lru_cache.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/bzip_compressor.cc
@@ -287,10 +282,6 @@ set(TILEDB_CORE_SOURCES
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_API_SOURCES})
 
-if (TILEDB_EXPERIMENTAL_FEATURES)
-  list(APPEND TILEDB_CORE_SOURCES
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_dimension_label.cc)
-endif()
 
 
 #openssl3 md5 deprecation mitigation
@@ -351,7 +342,6 @@ list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/blosc"
 )
 list(APPEND TILEDB_EXTERNALS_SOURCES
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/md5/md5.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/iochain.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/bitshuffle_core.cc
 )

@@ -35,7 +35,6 @@
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_dimension_label.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -375,7 +374,7 @@ TEST_CASE_METHOD(
   std::vector<double> input_attr_data{};
 
   // Dimension label parameters.
-  tiledb_data_order_t label_order;
+  tiledb_data_order_t label_order{};
 
   SECTION("Write increasing labels", "[IncreasingLabels]") {
     // Set the label order.
@@ -409,22 +408,6 @@ TEST_CASE_METHOD(
     }
   }
 
-  SECTION("Write unordered labels and array", "[UnorderedLabels]") {
-    // Set the label order.
-    label_order = TILEDB_UNORDERED_DATA;
-
-    // Set the data values.
-    input_label_data = {-0.5, 1.0, 0.0, -1.0};
-
-    // Set the attribute values.
-    SECTION("With array data") {
-      input_attr_data = {0.5, 1.0, 1.5, 2.0};
-    }
-    SECTION("Without array data") {
-      input_attr_data = {};
-    }
-  }
-
   INFO(
       "Testing array with label order " +
       data_order_str(static_cast<DataOrder>(label_order)) + ".");
@@ -440,7 +423,7 @@ TEST_CASE_METHOD(
   }
 
   // Check range reader.
-  if (label_order != TILEDB_UNORDERED_DATA) {
+  {
     INFO("Reading data by label range.");
 
     // Check query on full range.
@@ -477,7 +460,7 @@ TEST_CASE_METHOD(
   std::vector<double> input_attr_data{};
 
   // Dimension label parameters.
-  tiledb_data_order_t label_order;
+  tiledb_data_order_t label_order{};
 
   SECTION("Increasing labels with bad order", "[IncreasingLabels]") {
     label_order = TILEDB_INCREASING_DATA;

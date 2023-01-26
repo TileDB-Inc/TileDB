@@ -1,5 +1,5 @@
 #
-# tiledb/sm/array/CMakeLists.txt
+# cmake/global-policies.cmake
 #
 # The MIT License
 #
@@ -24,18 +24,16 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
-include(object_library)
+# This file should be included at the start of any independent CMake project.
 
-#
-# `array` object library
-#
-commence(object_library array)
-    this_target_sources(array_directory.cc)
-    this_target_object_libraries(baseline uri_format uuid vfs)
-    if(TILEDB_STATS)
-        this_target_compile_definitions(-DTILEDB_STATS)
-    endif()
-conclude(object_library)
+# -------------------------------------------------------
+# CMake Global Policies
+# -------------------------------------------------------
 
-add_test_subdirectory()
+if (POLICY CMP0135)
+    # This policy instructs CMake to set the timestamp of files extracted
+    # from source archives by ExternalProject to match the extraction time.
+    # (OLD preserves timestamps from the archive, which may prevent correct
+    # rebuilds if files are re-extracted)
+    cmake_policy(SET CMP0135 NEW)
+endif()

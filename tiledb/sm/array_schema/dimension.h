@@ -318,7 +318,7 @@ class Dimension {
   template <
       class T,
       typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
-  static T tile_extent_mult(const T& v, const T& tile_extent) {
+  static uint64_t tile_extent_mult(const T& v, const T& tile_extent) {
     typedef typename std::make_unsigned<T>::type unsigned_t;
     return (unsigned_t)v * (unsigned_t)tile_extent;
   }

@@ -135,7 +135,7 @@ UnorderedWriter::~UnorderedWriter() {
 Status UnorderedWriter::dowork() {
   get_dim_attr_stats();
 
-  auto timer_se = stats_->start_timer("write");
+  auto timer_se = stats_->start_timer("dowork");
 
   // In case the user has provided a coordinates buffer
   RETURN_NOT_OK(split_coords_buffer());

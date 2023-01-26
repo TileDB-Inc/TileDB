@@ -1174,7 +1174,7 @@ Status WriterBase::write_tiles(
     uint64_t start_tile_id,
     WriterTileTupleVector* const tiles,
     bool close_files) {
-  auto timer_se = stats_->start_timer("tiles");
+  auto timer_se = stats_->start_timer("write_tiles");
 
   // Handle zero tiles
   if (tiles->empty()) {

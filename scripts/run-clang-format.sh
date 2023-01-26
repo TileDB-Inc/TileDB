@@ -27,6 +27,8 @@ shift
 APPLY_FIXES=$1
 shift
 
+echo "Running clang-format version: " `$CLANG_FORMAT --version`
+
 # clang format will only find its configuration if we are in
 # the source tree or in a path relative to the source tree
 pushd $SOURCE_DIR

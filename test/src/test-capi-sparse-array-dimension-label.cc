@@ -36,7 +36,6 @@
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array_schema/dimension_label_reference.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_dimension_label.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -313,7 +312,7 @@ TEST_CASE_METHOD(
   std::vector<uint64_t> index_data_sorted_by_label{};
 
   // Dimension label parameters.
-  tiledb_data_order_t label_order;
+  tiledb_data_order_t label_order{};
 
   SECTION("Write increasing labels", "[IncreasingLabels]") {
     // Set the label order.
@@ -359,29 +358,6 @@ TEST_CASE_METHOD(
     index_data_sorted_by_label = {3, 2, 1, 0};
   }
 
-  SECTION("Write unordered labels and array", "[UnorderedLabels]") {
-    // Set the label order.
-    label_order = TILEDB_UNORDERED_DATA;
-
-    // Set the data values.
-    input_index_data = {0, 3, 2, 1};
-    input_label_data = {1.0, 0.0, -0.5, -1.0};
-
-    SECTION("With attribute values") {
-      input_attr_data = {0.5, 1.0, 1.5, 2.0};
-      attr_data_sorted_by_index = {0.5, 2.0, 1.5, 1.0};
-    }
-    SECTION("Without attribute values") {
-      input_attr_data = {};
-      attr_data_sorted_by_index = {};
-    }
-
-    // Define expected output data.
-    label_data_sorted_by_index = {1.0, -1.0, -0.5, 0.0};
-    label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
-    index_data_sorted_by_label = {1, 2, 3, 0};
-  }
-
   INFO(
       "Testing array with label order " +
       data_order_str(static_cast<DataOrder>(label_order)) + ".");
@@ -398,7 +374,7 @@ TEST_CASE_METHOD(
   }
 
   // Check values when reading by label ranges.
-  if (label_order != TILEDB_UNORDERED_DATA) {
+  {
     INFO("Reading data by label range.");
 
     // Check query on full range.
@@ -436,7 +412,7 @@ TEST_CASE_METHOD(
   std::vector<double> input_attr_data{};
 
   // Dimension label parameters.
-  tiledb_data_order_t label_order;
+  tiledb_data_order_t label_order{};
 
   SECTION("Increasing labels with bad order", "[IncreasingLabels]") {
     label_order = TILEDB_INCREASING_DATA;

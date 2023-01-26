@@ -113,7 +113,14 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/test-capi-array-write-ordered-attr-fixed.cc
   src/test-capi-array-write-ordered-attr-var.cc
   src/test-capi-consolidation-plan.cc
+  src/test-capi-array-many-dimension-labels.cc
+  src/test-capi-dimension-label.cc
+  src/test-capi-dimension-label-encrypted.cc
+  src/test-capi-dense-array-dimension-label.cc
+  src/test-capi-dense-array-dimension-label-var.cc
   src/test-capi-query-error-handling.cc
+  src/test-capi-sparse-array-dimension-label.cc
+  src/test-capi-subarray-labels.cc
   src/test-cppapi-consolidation-plan.cc
   src/unit-average-cell-size.cc
   src/unit-azure.cc
@@ -252,18 +259,6 @@ if (TILEDB_ARROW_TESTS)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-arrow.cc
     ${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
-  )
-endif()
-
-if (TILEDB_EXPERIMENTAL_FEATURES)
-  list(APPEND TILEDB_UNIT_TEST_SOURCES
-    src/test-capi-array-many-dimension-labels.cc
-    src/test-capi-dimension-label.cc
-    src/test-capi-dimension-label-encrypted.cc
-    src/test-capi-dense-array-dimension-label.cc
-    src/test-capi-dense-array-dimension-label-var.cc
-    src/test-capi-sparse-array-dimension-label.cc
-    src/test-capi-subarray-labels.cc
   )
 endif()
 
