@@ -811,7 +811,7 @@ Status FragmentConsolidator::set_query_buffers(
       RETURN_NOT_OK(query->set_data_buffer(
           attr->name(), (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
       ++bid;
-      if (!attr->nullable()) {
+      if (attr->nullable()) {
         RETURN_NOT_OK(query->set_validity_buffer(
             attr->name(),
             (uint8_t*)&(*buffers)[bid][0],
