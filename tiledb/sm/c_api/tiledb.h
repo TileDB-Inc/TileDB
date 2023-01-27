@@ -67,6 +67,7 @@
 #include "tiledb/api/c_api/group/group_api_external.h"
 #include "tiledb/api/c_api/object/object_api_external.h"
 #include "tiledb/api/c_api/query/query_api_external.h"
+#include "tiledb/api/c_api/string/string_api_external.h"
 #include "tiledb/api/c_api/vfs/vfs_api_external.h"
 
 #include <stdint.h>
@@ -5098,7 +5099,8 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info) TILEDB_NOEXCEPT;
 
 /**
- * Gets a fragment name.
+ * Gets the name of a fragment. Deprecated, use
+ * \p tiledb_fragment_info_get_fragment_name_v2 instead.
  *
  * **Example:**
  *
@@ -5118,6 +5120,31 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_fragment_info_get_fragment_name(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     const char** name) TILEDB_NOEXCEPT;
+
+/**
+ * Gets the name of a fragment.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_string_t* name;
+ * tiledb_fragment_info_get_fragment_name(ctx, fragment_info, 1, &name);
+ * // Remember to free the string with tiledb_string_free when you are done with
+ * // it.
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param fragment_info The fragment info object.
+ * @param fid The index of the fragment of interest.
+ * @param name A pointer to a ::tiledb_string_t* that will hold the fragment's
+ * // name.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_name_v2(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    tiledb_string_t** name) TILEDB_NOEXCEPT;
 
 /**
  * Gets the number of fragments.

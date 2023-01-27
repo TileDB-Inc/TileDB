@@ -203,17 +203,23 @@ Status FragmentInfo::get_total_cell_num(uint64_t* cell_num) const {
   return Status::Ok();
 }
 
+std::string FragmentInfo::get_fragment_name_str(uint32_t fid) const {
+  if (fid >= fragment_num())
+    throw Status_FragmentInfoError(
+        "Cannot get fragment URI; Invalid fragment index");
+
+  return single_fragment_info_vec_[fid].name();
+}
+
 Status FragmentInfo::get_fragment_name(uint32_t fid, const char** name) const {
   ensure_loaded();
   if (name == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment name; Name argument cannot be null"));
 
-  if (fid >= fragment_num())
-    return LOG_STATUS(Status_FragmentInfoError(
-        "Cannot get fragment URI; Invalid fragment index"));
+  std::string str = get_fragment_name_str(fid);
 
-  *name = single_fragment_info_vec_[fid].name().c_str();
+  *name = str.c_str();
 
   return Status::Ok();
 }
