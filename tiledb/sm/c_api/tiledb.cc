@@ -2629,8 +2629,8 @@ int32_t tiledb_query_condition_combine(
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, left_cond) == TILEDB_ERR ||
-      (combination_op != TILEDB_NOT && 
-      sanity_check(ctx, right_cond) == TILEDB_ERR) ||
+      (combination_op != TILEDB_NOT &&
+       sanity_check(ctx, right_cond) == TILEDB_ERR) ||
       (combination_op == TILEDB_NOT && right_cond != nullptr))
     return TILEDB_ERR;
 

@@ -3108,7 +3108,7 @@ struct TestParams {
   std::vector<uint8_t> expected_bitmap_;
   std::vector<ResultCellSlab> expected_slabs_;
   std::vector<uint8_t> expected_not_bitmap_;
-  std::vector<uint8_t> expected_not_slabs_;
+  std::vector<ResultCellSlab> expected_not_slabs_;
 
   TestParams(
       QueryCondition&& qc,
@@ -3150,24 +3150,54 @@ void validate_qc_apply(
     uint64_t cells,
     shared_ptr<const ArraySchema> array_schema,
     ResultTile& result_tile) {
-  ResultCellSlab result_cell_slab(&result_tile, 0, cells);
-  std::vector<ResultCellSlab> result_cell_slabs;
-  result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
-  frag_md[0] = make_shared<FragmentMetadata>(
-      HERE(),
-      nullptr,
-      nullptr,
-      array_schema,
-      URI(),
-      std::make_pair<uint64_t, uint64_t>(0, 0),
-      true);
-  REQUIRE(tp.qc_.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
-  REQUIRE(result_cell_slabs.size() == tp.expected_slabs_.size());
-  uint64_t result_cell_slabs_size = result_cell_slabs.size();
-  for (uint64_t i = 0; i < result_cell_slabs_size; ++i) {
-    CHECK(result_cell_slabs[i].start_ == tp.expected_slabs_[i].start_);
-    CHECK(result_cell_slabs[i].length_ == tp.expected_slabs_[i].length_);
+  {
+    ResultCellSlab result_cell_slab(&result_tile, 0, cells);
+    std::vector<ResultCellSlab> result_cell_slabs;
+    result_cell_slabs.emplace_back(std::move(result_cell_slab));
+    std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
+    frag_md[0] = make_shared<FragmentMetadata>(
+        HERE(),
+        nullptr,
+        nullptr,
+        array_schema,
+        URI(),
+        std::make_pair<uint64_t, uint64_t>(0, 0),
+        true);
+    REQUIRE(tp.qc_.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
+    REQUIRE(result_cell_slabs.size() == tp.expected_slabs_.size());
+    uint64_t result_cell_slabs_size = result_cell_slabs.size();
+    for (uint64_t i = 0; i < result_cell_slabs_size; ++i) {
+      CHECK(result_cell_slabs[i].start_ == tp.expected_slabs_[i].start_);
+      CHECK(result_cell_slabs[i].length_ == tp.expected_slabs_[i].length_);
+    }
+  }
+
+  {
+    // Negation testing.
+    ResultCellSlab result_cell_slab(&result_tile, 0, cells);
+    std::vector<ResultCellSlab> result_cell_slabs;
+    result_cell_slabs.emplace_back(std::move(result_cell_slab));
+    std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
+    frag_md[0] = make_shared<FragmentMetadata>(
+        HERE(),
+        nullptr,
+        nullptr,
+        array_schema,
+        URI(),
+        std::make_pair<uint64_t, uint64_t>(0, 0),
+        true);
+
+    QueryCondition negated_cond;
+    REQUIRE(
+        tp.qc_.negate(QueryConditionCombinationOp::NOT, &negated_cond).ok());
+    REQUIRE(
+        negated_cond.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
+    REQUIRE(result_cell_slabs.size() == tp.expected_not_slabs_.size());
+    uint64_t result_cell_slabs_size = result_cell_slabs.size();
+    for (uint64_t i = 0; i < result_cell_slabs_size; ++i) {
+      CHECK(result_cell_slabs[i].start_ == tp.expected_not_slabs_[i].start_);
+      CHECK(result_cell_slabs[i].length_ == tp.expected_not_slabs_[i].length_);
+    }
   }
 }
 
@@ -3213,7 +3243,9 @@ void validate_qc_apply_sparse(
                   *array_schema, result_tile, sparse_result_bitmap2)
               .ok());
   for (uint64_t i = 0; i < cells; ++i) {
-    uint8_t res = tp.expected_not_bitmap_.size() == 0 ? (tp.expected_bitmap_[i] == 1 ? 0 : 1) : tp.expected_not_bitmap_[i];
+    uint8_t res = tp.expected_not_bitmap_.size() == 0 ?
+                      (tp.expected_bitmap_[i] == 1 ? 0 : 1) :
+                      tp.expected_not_bitmap_[i];
     CHECK(sparse_result_bitmap2[i] == res);
   }
 }
@@ -3264,7 +3296,9 @@ void validate_qc_apply_dense(
                   dense_result_bitmap1.data())
               .ok());
   for (uint64_t i = 0; i < cells; ++i) {
-    uint8_t res = tp.expected_not_bitmap_.size() == 0 ? (tp.expected_bitmap_[i] == 1 ? 0 : 1) : tp.expected_not_bitmap_[i];
+    uint8_t res = tp.expected_not_bitmap_.size() == 0 ?
+                      (tp.expected_bitmap_[i] == 1 ? 0 : 1) :
+                      tp.expected_not_bitmap_[i];
     CHECK(dense_result_bitmap1[i] == res);
   }
 }
@@ -3591,10 +3625,10 @@ void populate_test_params_vector(
                 .ok());
 
     TestParams tp(
-      std::move(qc),
-      {0, 0, 0, 0, 0, 1, 0, 1, 0, 0},
-      {{result_tile, 5, 1}, {result_tile, 7, 1}},
-      {{result_tile, 0, 5}, {result_tile, 6, 1}, {result_tile, 8, 2}});
+        std::move(qc),
+        {0, 0, 0, 0, 0, 1, 0, 1, 0, 0},
+        {{result_tile, 5, 1}, {result_tile, 7, 1}},
+        {{result_tile, 0, 5}, {result_tile, 6, 1}, {result_tile, 8, 2}});
     tp_vec.push_back(tp);
   }
 
@@ -3694,15 +3728,15 @@ void populate_test_params_vector(
         std::move(combined_and4),
         {1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
         {{result_tile, 0, 1},
-        {result_tile, 2, 1},
-        {result_tile, 4, 1},
-        {result_tile, 6, 1},
-        {result_tile, 8, 1}},
+         {result_tile, 2, 1},
+         {result_tile, 4, 1},
+         {result_tile, 6, 1},
+         {result_tile, 8, 1}},
         {{result_tile, 1, 1},
-        {result_tile, 3, 1},
-        {result_tile, 5, 1},
-        {result_tile, 7, 1},
-        {result_tile, 9, 1}});
+         {result_tile, 3, 1},
+         {result_tile, 5, 1},
+         {result_tile, 7, 1},
+         {result_tile, 9, 1}});
     tp_vec.push_back(tp);
   }
 
@@ -3792,15 +3826,15 @@ void populate_test_params_vector(
         std::move(combined_or4),
         {1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
         {{result_tile, 0, 1},
-        {result_tile, 2, 1},
-        {result_tile, 4, 1},
-        {result_tile, 6, 1},
-        {result_tile, 8, 1}},
+         {result_tile, 2, 1},
+         {result_tile, 4, 1},
+         {result_tile, 6, 1},
+         {result_tile, 8, 1}},
         {{result_tile, 1, 1},
-        {result_tile, 3, 1},
-        {result_tile, 5, 1},
-        {result_tile, 7, 1},
-        {result_tile, 9, 1}});
+         {result_tile, 3, 1},
+         {result_tile, 5, 1},
+         {result_tile, 7, 1},
+         {result_tile, 9, 1}});
     tp_vec.push_back(tp);
   }
 }
@@ -3861,9 +3895,11 @@ TEST_CASE(
   populate_test_params_vector(field_name, &result_tile, tp_vec);
 
   SECTION("Validate apply.") {
+    std::cout << "0";
     for (auto& elem : tp_vec) {
       validate_qc_apply(elem, cells, array_schema, result_tile);
     }
+    std::cout << "1";
   }
 
   SECTION("Validate apply_sparse.") {
@@ -3901,7 +3937,10 @@ void populate_string_test_params_vector(
             .ok());
 
     TestParams tp(
-        std::move(qc), {1, 1, 1, 1, 1, 0, 0, 0, 0, 0}, {{result_tile, 0, 5}}, {{result_tile, 5, 5}});
+        std::move(qc),
+        {1, 1, 1, 1, 1, 0, 0, 0, 0, 0},
+        {{result_tile, 0, 5}},
+        {{result_tile, 5, 5}});
     tp_vec.push_back(tp);
   }
   // Construct basic AND query condition `foo >= "bob" AND foo <= "eve"`.
@@ -3922,7 +3961,10 @@ void populate_string_test_params_vector(
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::AND, &qc).ok());
 
     TestParams tp(
-        std::move(qc),  {0, 1, 1, 1, 1, 0, 0, 0, 0, 0}, {{result_tile, 1, 4}}, {{result_tile, 0, 1}, {result_tile, 5, 5}});
+        std::move(qc),
+        {0, 1, 1, 1, 1, 0, 0, 0, 0, 0},
+        {{result_tile, 1, 4}},
+        {{result_tile, 0, 1}, {result_tile, 5, 5}});
     tp_vec.push_back(tp);
   }
 
@@ -3947,7 +3989,8 @@ void populate_string_test_params_vector(
     std::vector<ResultCellSlab> expected_slabs = {
         {result_tile, 0, 2}, {result_tile, 5, 5}};
     TestParams tp(
-        std::move(qc), {1, 1, 0, 0, 0, 1, 1, 1, 1, 1},
+        std::move(qc),
+        {1, 1, 0, 0, 0, 1, 1, 1, 1, 1},
         {{result_tile, 0, 2}, {result_tile, 5, 5}},
         {{result_tile, 2, 3}});
     tp_vec.push_back(tp);
@@ -4072,8 +4115,16 @@ void populate_string_test_params_vector(
       TestParams tp(
           std::move(qc),
           {0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
-          {{result_tile, 1, 1}, {result_tile, 3, 1}, {result_tile, 5, 1}, {result_tile, 7, 1}, {result_tile, 9, 1}},
-          {{result_tile, 0, 1}, {result_tile, 2, 1}, {result_tile, 4, 1}, {result_tile, 6, 1}, {result_tile, 8, 1}});
+          {{result_tile, 1, 1},
+           {result_tile, 3, 1},
+           {result_tile, 5, 1},
+           {result_tile, 7, 1},
+           {result_tile, 9, 1}},
+          {{result_tile, 0, 1},
+           {result_tile, 2, 1},
+           {result_tile, 4, 1},
+           {result_tile, 6, 1},
+           {result_tile, 8, 1}});
       tp_vec.push_back(tp);
     }
 
@@ -4106,8 +4157,16 @@ void populate_string_test_params_vector(
       TestParams tp(
           std::move(qc),
           {1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-          {{result_tile, 0, 1}, {result_tile, 2, 1}, {result_tile, 4, 1}, {result_tile, 6, 1}, {result_tile, 8, 1}},
-          {{result_tile, 1, 1}, {result_tile, 3, 1}, {result_tile, 5, 1}, {result_tile, 7, 1}, {result_tile, 9, 1}});
+          {{result_tile, 0, 1},
+           {result_tile, 2, 1},
+           {result_tile, 4, 1},
+           {result_tile, 6, 1},
+           {result_tile, 8, 1}},
+          {{result_tile, 1, 1},
+           {result_tile, 3, 1},
+           {result_tile, 5, 1},
+           {result_tile, 7, 1},
+           {result_tile, 9, 1}});
       tp_vec.push_back(tp);
     }
   }
@@ -4171,9 +4230,11 @@ TEST_CASE(
   populate_string_test_params_vector(field_name, &result_tile, tp_vec);
 
   SECTION("Validate apply.") {
+    std::cout << "2";
     for (auto& elem : tp_vec) {
       validate_qc_apply(elem, cells, array_schema, result_tile);
     }
+    std::cout << "3";
   }
 
   SECTION("Validate apply_sparse.") {
@@ -4249,7 +4310,10 @@ void populate_utf8_string_test_params_vector(
                 .ok());
 
     TestParams tp(
-        std::move(qc), {1, 1, 1, 1, 1, 0, 0, 0, 0, 0}, {{result_tile, 0, 5}}, {{result_tile, 5, 5}});
+        std::move(qc),
+        {1, 1, 1, 1, 1, 0, 0, 0, 0, 0},
+        {{result_tile, 0, 5}},
+        {{result_tile, 5, 5}});
     tp_vec.push_back(tp);
   }
 
@@ -4274,7 +4338,10 @@ void populate_utf8_string_test_params_vector(
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::AND, &qc).ok());
     TestParams tp(
-        std::move(qc),  {0, 1, 1, 1, 1, 0, 0, 0, 0, 0}, {{result_tile, 1, 4}}, {{result_tile, 0, 1}, {result_tile, 5, 5}});
+        std::move(qc),
+        {0, 1, 1, 1, 1, 0, 0, 0, 0, 0},
+        {{result_tile, 1, 4}},
+        {{result_tile, 0, 1}, {result_tile, 5, 5}});
     tp_vec.push_back(tp);
     tp_vec.push_back(tp);
   }
@@ -4301,7 +4368,8 @@ void populate_utf8_string_test_params_vector(
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
 
     TestParams tp(
-        std::move(qc), {1, 1, 0, 0, 0, 1, 1, 1, 1, 1},
+        std::move(qc),
+        {1, 1, 0, 0, 0, 1, 1, 1, 1, 1},
         {{result_tile, 0, 2}, {result_tile, 5, 5}},
         {{result_tile, 2, 3}});
   }
@@ -4436,8 +4504,16 @@ void populate_utf8_string_test_params_vector(
       TestParams tp(
           std::move(qc),
           {0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
-          {{result_tile, 1, 1}, {result_tile, 3, 1}, {result_tile, 5, 1}, {result_tile, 7, 1}, {result_tile, 9, 1}},
-          {{result_tile, 0, 1}, {result_tile, 2, 1}, {result_tile, 4, 1}, {result_tile, 6, 1}, {result_tile, 8, 1}});
+          {{result_tile, 1, 1},
+           {result_tile, 3, 1},
+           {result_tile, 5, 1},
+           {result_tile, 7, 1},
+           {result_tile, 9, 1}},
+          {{result_tile, 0, 1},
+           {result_tile, 2, 1},
+           {result_tile, 4, 1},
+           {result_tile, 6, 1},
+           {result_tile, 8, 1}});
       tp_vec.push_back(tp);
     }
 
@@ -4478,8 +4554,16 @@ void populate_utf8_string_test_params_vector(
       TestParams tp(
           std::move(qc),
           {1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-          {{result_tile, 0, 1}, {result_tile, 2, 1}, {result_tile, 4, 1}, {result_tile, 6, 1}, {result_tile, 8, 1}},
-          {{result_tile, 1, 1}, {result_tile, 3, 1}, {result_tile, 5, 1}, {result_tile, 7, 1}, {result_tile, 9, 1}});
+          {{result_tile, 0, 1},
+           {result_tile, 2, 1},
+           {result_tile, 4, 1},
+           {result_tile, 6, 1},
+           {result_tile, 8, 1}},
+          {{result_tile, 1, 1},
+           {result_tile, 3, 1},
+           {result_tile, 5, 1},
+           {result_tile, 7, 1},
+           {result_tile, 9, 1}});
       tp_vec.push_back(tp);
     }
   }
@@ -4600,9 +4684,11 @@ TEST_CASE(
   populate_utf8_string_test_params_vector(field_name, &result_tile, tp_vec);
 
   SECTION("Validate apply.") {
+    std::cout << "4";
     for (auto& elem : tp_vec) {
       validate_qc_apply(elem, cells, array_schema, result_tile);
     }
+    std::cout << "5";
   }
 
   SECTION("Validate apply_sparse.") {
@@ -4641,15 +4727,15 @@ void populate_nullable_test_params_vector(
         std::move(qc),
         {1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
         {{result_tile, 0, 1},
-        {result_tile, 2, 1},
-        {result_tile, 4, 1},
-        {result_tile, 6, 1},
-        {result_tile, 8, 1}},
+         {result_tile, 2, 1},
+         {result_tile, 4, 1},
+         {result_tile, 6, 1},
+         {result_tile, 8, 1}},
         {{result_tile, 1, 1},
-        {result_tile, 3, 1},
-        {result_tile, 5, 1},
-        {result_tile, 7, 1},
-        {result_tile, 9, 1}});
+         {result_tile, 3, 1},
+         {result_tile, 5, 1},
+         {result_tile, 7, 1},
+         {result_tile, 9, 1}});
     tp_vec.push_back(tp);
   }
 
@@ -4663,16 +4749,16 @@ void populate_nullable_test_params_vector(
         std::move(qc),
         {0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
         {{result_tile, 1, 1},
-        {result_tile, 3, 1},
-        {result_tile, 5, 1},
-        {result_tile, 7, 1},
-        {result_tile, 9, 1}},
+         {result_tile, 3, 1},
+         {result_tile, 5, 1},
+         {result_tile, 7, 1},
+         {result_tile, 9, 1}},
         {{result_tile, 0, 1},
-        {result_tile, 2, 1},
-        {result_tile, 4, 1},
-        {result_tile, 6, 1},
-        {result_tile, 8, 1}});
-      tp_vec.push_back(tp);
+         {result_tile, 2, 1},
+         {result_tile, 4, 1},
+         {result_tile, 6, 1},
+         {result_tile, 8, 1}});
+    tp_vec.push_back(tp);
   }
 
   // Construct basic query condition `foo > 2`.
@@ -4693,8 +4779,8 @@ void populate_nullable_test_params_vector(
          {result_tile, 5, 1},
          {result_tile, 7, 1},
          {result_tile, 9, 1}},
-         {0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-         {{result_tile, 1, 1}});
+        {0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+        {{result_tile, 1, 1}});
     tp_vec.push_back(tp);
   }
 
@@ -4752,13 +4838,13 @@ void populate_nullable_test_params_vector(
         std::move(qc),
         {1, 0, 1, 1, 1, 0, 1, 0, 1, 1},
         {{result_tile, 0, 1},
-          {result_tile, 2, 3},
-          {result_tile, 6, 1},
-          {result_tile, 8, 2}},
-          {{result_tile, 0, 1},
-          {result_tile, 2, 3},
-          {result_tile, 5, 1},
-          {result_tile, 8, 2}});
+         {result_tile, 2, 3},
+         {result_tile, 6, 1},
+         {result_tile, 8, 2}},
+        {{result_tile, 0, 1},
+         {result_tile, 2, 3},
+         {result_tile, 5, 1},
+         {result_tile, 8, 2}});
     tp_vec.push_back(tp);
   }
 
@@ -4783,13 +4869,13 @@ void populate_nullable_test_params_vector(
         std::move(qc),
         {1, 0, 1, 1, 1, 0, 1, 0, 1, 1},
         {{result_tile, 0, 1},
-          {result_tile, 2, 3},
-          {result_tile, 6, 1},
-          {result_tile, 8, 2}},
-          {{result_tile, 0, 1},
-          {result_tile, 2, 3},
-          {result_tile, 5, 1},
-          {result_tile, 8, 2}});
+         {result_tile, 2, 3},
+         {result_tile, 6, 1},
+         {result_tile, 8, 2}},
+        {{result_tile, 0, 1},
+         {result_tile, 2, 3},
+         {result_tile, 5, 1},
+         {result_tile, 8, 2}});
     tp_vec.push_back(tp);
   }
 
@@ -4814,16 +4900,13 @@ void populate_nullable_test_params_vector(
         std::move(qc),
         {0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
         {{result_tile, 1, 1},
-        {result_tile, 3, 1},
-        {result_tile, 5, 1},
-        {result_tile, 7, 1},
-        {result_tile, 9, 1}},
-        {{result_tile, 0, 1},
-        {result_tile, 2, 1},
-        {result_tile, 4, 1},
-        {result_tile, 6, 1},
-        {result_tile, 8, 1}});
-      tp_vec.push_back(tp);
+         {result_tile, 3, 1},
+         {result_tile, 5, 1},
+         {result_tile, 7, 1},
+         {result_tile, 9, 1}},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {});
+    tp_vec.push_back(tp);
   }
 
   // Construct basic query condition `foo > 4 || foo != null`.
@@ -4847,16 +4930,13 @@ void populate_nullable_test_params_vector(
         std::move(qc),
         {0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
         {{result_tile, 1, 1},
-        {result_tile, 3, 1},
-        {result_tile, 5, 1},
-        {result_tile, 7, 1},
-        {result_tile, 9, 1}},
-        {{result_tile, 0, 1},
-        {result_tile, 2, 1},
-        {result_tile, 4, 1},
-        {result_tile, 6, 1},
-        {result_tile, 8, 1}});
-      tp_vec.push_back(tp);
+         {result_tile, 3, 1},
+         {result_tile, 5, 1},
+         {result_tile, 7, 1},
+         {result_tile, 9, 1}},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {});
+    tp_vec.push_back(tp);
   }
 }
 
@@ -4924,9 +5004,14 @@ TEST_CASE(
   populate_nullable_test_params_vector(field_name, &result_tile, tp_vec);
 
   SECTION("Validate apply.") {
+    std::cout << "6";
+    int i = 0;
     for (auto& elem : tp_vec) {
+      std::cout << i;
       validate_qc_apply(elem, cells, array_schema, result_tile);
+      i++;
     }
+    std::cout << "7";
   }
 
   SECTION("Validate apply_sparse.") {

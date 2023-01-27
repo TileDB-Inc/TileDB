@@ -149,8 +149,8 @@ Status QueryCondition::combine(
 }
 
 Status QueryCondition::negate(
-  QueryConditionCombinationOp combination_op,
-  QueryCondition* combined_cond) const {
+    QueryConditionCombinationOp combination_op,
+    QueryCondition* combined_cond) const {
   if (combination_op != QueryConditionCombinationOp::NOT) {
     return Status_QueryConditionError(
         "Cannot negate query condition; Only the 'NOT' "
