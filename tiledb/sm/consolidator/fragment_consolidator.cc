@@ -808,40 +808,30 @@ Status FragmentConsolidator::set_query_buffers(
   // were written or not.
   for (const auto& attr : attributes) {
     if (!attr->var_size()) {
+      RETURN_NOT_OK(query->set_data_buffer(
+          attr->name(), (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
+      ++bid;
       if (!attr->nullable()) {
-        RETURN_NOT_OK(query->set_data_buffer(
-            attr->name(), (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
-        ++bid;
-      } else {
-        RETURN_NOT_OK(query->set_buffer_vbytemap(
+        RETURN_NOT_OK(query->set_validity_buffer(
             attr->name(),
-            (void*)&(*buffers)[bid][0],
-            &(*buffer_sizes)[bid],
-            (uint8_t*)&(*buffers)[bid + 1][0],
-            &(*buffer_sizes)[bid + 1]));
-        bid += 2;
+            (uint8_t*)&(*buffers)[bid][0],
+            &(*buffer_sizes)[bid]));
+        ++bid;
       }
     } else {
-      if (!attr->nullable()) {
-        RETURN_NOT_OK(query->set_data_buffer(
+      RETURN_NOT_OK(query->set_data_buffer(
+          attr->name(),
+          (void*)&(*buffers)[bid + 1][0],
+          &(*buffer_sizes)[bid + 1]));
+      RETURN_NOT_OK(query->set_offsets_buffer(
+          attr->name(), (uint64_t*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
+      bid += 2;
+      if (attr->nullable()) {
+        RETURN_NOT_OK(query->set_validity_buffer(
             attr->name(),
-            (void*)&(*buffers)[bid + 1][0],
-            &(*buffer_sizes)[bid + 1]));
-        RETURN_NOT_OK(query->set_offsets_buffer(
-            attr->name(),
-            (uint64_t*)&(*buffers)[bid][0],
+            (uint8_t*)&(*buffers)[bid][0],
             &(*buffer_sizes)[bid]));
-        bid += 2;
-      } else {
-        RETURN_NOT_OK(query->set_buffer_vbytemap(
-            attr->name(),
-            (uint64_t*)&(*buffers)[bid][0],
-            &(*buffer_sizes)[bid],
-            (void*)&(*buffers)[bid + 1][0],
-            &(*buffer_sizes)[bid + 1],
-            (uint8_t*)&(*buffers)[bid + 2][0],
-            &(*buffer_sizes)[bid + 2]));
-        bid += 3;
+        ++bid;
       }
     }
   }
