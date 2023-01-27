@@ -3164,6 +3164,19 @@ void validate_qc_apply_sparse(
   for (uint64_t i = 0; i < cells; ++i) {
     CHECK(sparse_result_bitmap1[i] == tp.expected_bitmap_[i] * 2);
   }
+
+  // Negation testing.
+  QueryCondition negated_cond;
+  REQUIRE(tp.qc_.negate(QueryConditionCombinationOp::NOT, &negated_cond).ok());
+  std::vector<uint8_t> sparse_result_bitmap2(cells, 1);
+  REQUIRE(negated_cond
+              .apply_sparse<uint8_t>(
+                  *array_schema, result_tile, sparse_result_bitmap2)
+              .ok());
+  for (uint64_t i = 0; i < cells; ++i) {
+    uint8_t res = tp.expected_bitmap_[i] == 1 ? 0 : 1;
+    CHECK(sparse_result_bitmap2[i] == res);
+  }
 }
 
 /**
@@ -3194,6 +3207,25 @@ void validate_qc_apply_dense(
               .ok());
   for (uint64_t i = 0; i < cells; ++i) {
     CHECK(dense_result_bitmap[i] == tp.expected_bitmap_[i]);
+  }
+
+  QueryCondition negated_cond;
+  REQUIRE(tp.qc_.negate(QueryConditionCombinationOp::NOT, &negated_cond).ok());
+  std::vector<uint8_t> dense_result_bitmap1(cells, 1);
+
+  REQUIRE(negated_cond
+              .apply_dense(
+                  *array_schema,
+                  &result_tile,
+                  0,
+                  10,
+                  0,
+                  1,
+                  dense_result_bitmap1.data())
+              .ok());
+  for (uint64_t i = 0; i < cells; ++i) {
+    auto res = tp.expected_bitmap_[i] == 1 ? 0 : 1;
+    CHECK(dense_result_bitmap1[i] == res);
   }
 }
 
