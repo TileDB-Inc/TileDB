@@ -46,7 +46,6 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
-#include "tiledb/sm/cache/buffer_lru_cache.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/consolidator/fragment_consolidator.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -103,16 +102,6 @@ StorageManagerCanonical::StorageManagerCanonical(
 }
 
 Status StorageManagerCanonical::init() {
-  // Get config params
-  bool found = false;
-  uint64_t tile_cache_size = 0;
-  RETURN_NOT_OK(
-      config_.get<uint64_t>("sm.tile_cache_size", &tile_cache_size, &found));
-  assert(found);
-
-  tile_cache_ =
-      tdb_unique_ptr<BufferLRUCache>(tdb_new(BufferLRUCache, tile_cache_size));
-
   auto& global_state = global_state::GlobalState::GetGlobalState();
   RETURN_NOT_OK(global_state.init(config_));
 
@@ -1853,19 +1842,6 @@ Status StorageManagerCanonical::query_submit_async(Query* query) {
   return async_push_query(query);
 }
 
-Status StorageManagerCanonical::read_from_cache(
-    const URI& uri,
-    uint64_t offset,
-    FilteredBuffer& buffer,
-    uint64_t nbytes,
-    bool* in_cache) const {
-  std::stringstream key;
-  key << uri.to_string() << "+" << offset;
-  RETURN_NOT_OK(tile_cache_->read(key.str(), buffer, 0, nbytes, in_cache));
-
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::read(
     const URI& uri, uint64_t offset, Buffer* buffer, uint64_t nbytes) const {
   RETURN_NOT_OK(buffer->realloc(nbytes));
@@ -2023,29 +1999,6 @@ Status StorageManagerCanonical::init_rest_client() {
     rest_client_.reset(tdb_new(RestClient));
     RETURN_NOT_OK(rest_client_->init(stats(), &config_, compute_tp(), logger_));
   }
-
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::write_to_cache(
-    const URI& uri, uint64_t offset, const FilteredBuffer& buffer) const {
-  // Do not write metadata or array schema to cache
-  std::string filename = uri.last_path_part();
-  std::string uri_str = uri.to_string();
-  if (filename == constants::fragment_metadata_filename ||
-      (uri_str.find(constants::array_schema_dir_name) != std::string::npos) ||
-      filename == constants::array_schema_filename) {
-    return Status::Ok();
-  }
-
-  // Generate key (uri + offset)
-  std::stringstream key;
-  key << uri.to_string() << "+" << offset;
-
-  // Insert to cache
-  FilteredBuffer cached_buffer(buffer);
-  RETURN_NOT_OK(
-      tile_cache_->insert(key.str(), std::move(cached_buffer), false));
 
   return Status::Ok();
 }

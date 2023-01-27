@@ -42,6 +42,7 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_macros.h"
+#include "tiledb/sm/query/readers/filtered_data.h"
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -96,7 +97,6 @@ SparseIndexReaderBase::SparseIndexReaderBase(
           buffers_.count(constants::delete_timestamps) != 0)
     , bitsort_attribute_(array_schema_.bitsort_filter_attr())
     , partial_tile_offsets_loading_(false) {
-  disable_cache_ = true;
 }
 
 /* ****************************** */
@@ -531,29 +531,28 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
     const std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("read_and_unfilter_coords");
 
-  if (include_coords_) {
+  if (include_coords_ && !bitsort_attribute_.has_value()) {
     // Read and unfilter zipped coordinate tiles. Note that
     // this will ignore fragments with a version >= 5.
-    std::vector<std::string> zipped_coords_names = {constants::coords};
     RETURN_CANCEL_OR_ERROR(
-        read_coordinate_tiles(zipped_coords_names, result_tiles));
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, result_tiles));
+        read_and_unfilter_coordinate_tiles({constants::coords}, result_tiles));
 
     // Read and unfilter unzipped coordinate tiles. Note that
     // this will ignore fragments with a version < 5.
-    RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names_, result_tiles));
-    for (const auto& dim_name : dim_names_) {
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, result_tiles));
-    }
+    RETURN_CANCEL_OR_ERROR(
+        read_and_unfilter_coordinate_tiles(dim_names_, result_tiles));
   }
 
   // Compute attributes to load.
   std::vector<std::string> attr_to_load;
   attr_to_load.reserve(
       1 + deletes_consolidation_no_purge_ + use_timestamps_ +
-      qc_loaded_attr_names_.size() + bitsort_attribute_.has_value());
+      qc_loaded_attr_names_.size() +
+      bitsort_attribute_.has_value() * (1 + dim_names_.size()));
   if (bitsort_attribute_.has_value()) {
     attr_to_load.emplace_back(bitsort_attribute_.value());
+    std::copy(
+        dim_names_.begin(), dim_names_.end(), std::back_inserter(attr_to_load));
   }
   if (use_timestamps_) {
     attr_to_load.emplace_back(constants::timestamps);
@@ -568,11 +567,8 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
       std::back_inserter(attr_to_load));
 
   // Read and unfilter attribute tiles.
-  RETURN_CANCEL_OR_ERROR(read_attribute_tiles(attr_to_load, result_tiles));
-
-  for (const auto& name : attr_to_load) {
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
-  }
+  RETURN_CANCEL_OR_ERROR(
+      read_and_unfilter_attribute_tiles(attr_to_load, result_tiles));
 
   logger_->debug("Done reading and unfiltering coords tiles");
   return Status::Ok();
@@ -892,10 +888,7 @@ SparseIndexReaderBase::read_and_unfilter_attributes(
 
   // Read and unfilter tiles.
   RETURN_NOT_OK_TUPLE(
-      read_attribute_tiles(names_to_read, result_tiles), nullopt);
-
-  for (auto& name : names_to_read)
-    RETURN_NOT_OK_TUPLE(unfilter_tiles(name, result_tiles), nullopt);
+      read_and_unfilter_attribute_tiles(names_to_read, result_tiles), nullopt);
 
   return {Status::Ok(), std::move(index_to_copy)};
 }

@@ -115,6 +115,7 @@ class AttributeOrderValidator {
         ret.emplace_back(&rt.second);
       }
     }
+    std::sort(ret.begin(), ret.end(), result_tile_cmp);
 
     return ret;
   }

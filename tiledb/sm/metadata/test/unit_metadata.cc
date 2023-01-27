@@ -118,8 +118,8 @@ TEST_CASE(
       tile1.cell_size(),
       0,
       tile1.size(),
+      tile1.filtered_buffer().data(),
       tile1.filtered_buffer().size());
-  memcpy(metadata_tiles[0]->data(), tile1.data(), tile1.size());
 
   metadata_tiles[1] = tdb::make_shared<Tile>(
       HERE(),
@@ -128,8 +128,8 @@ TEST_CASE(
       tile2.cell_size(),
       0,
       tile2.size(),
+      tile2.filtered_buffer().data(),
       tile2.filtered_buffer().size());
-  memcpy(metadata_tiles[1]->data(), tile2.data(), tile2.size());
 
   metadata_tiles[2] = tdb::make_shared<Tile>(
       HERE(),
@@ -138,8 +138,8 @@ TEST_CASE(
       tile3.cell_size(),
       0,
       tile3.size(),
+      tile3.filtered_buffer().data(),
       tile3.filtered_buffer().size());
-  memcpy(metadata_tiles[2]->data(), tile3.data(), tile3.size());
 
   auto meta{Metadata::deserialize(metadata_tiles)};
 

@@ -58,6 +58,7 @@ Tile Tile::from_generic(storage_size_t tile_size) {
       constants::generic_tile_cell_size,
       0,
       tile_size,
+      nullptr,
       0};
 }
 
@@ -128,16 +129,19 @@ Tile::Tile(
     const uint64_t cell_size,
     const unsigned int zipped_coords_dim_num,
     const uint64_t size,
-    const uint64_t filtered_size)
+    void* filtered_data,
+    uint64_t filtered_size)
     : TileBase(format_version, type, cell_size, size)
     , zipped_coords_dim_num_(zipped_coords_dim_num)
-    , filtered_buffer_(filtered_size) {
+    , filtered_data_(filtered_data)
+    , filtered_size_(filtered_size) {
 }
 
 Tile::Tile(Tile&& tile)
     : TileBase(std::move(tile))
     , zipped_coords_dim_num_(std::move(tile.zipped_coords_dim_num_))
-    , filtered_buffer_(std::move(tile.filtered_buffer_)) {
+    , filtered_data_(std::move(tile.filtered_data_))
+    , filtered_size_(std::move(tile.filtered_size_)) {
 }
 
 Tile& Tile::operator=(Tile&& tile) {
@@ -234,7 +238,8 @@ Status Tile::zip_coordinates() {
 
 void Tile::swap(Tile& tile) {
   TileBase::swap(tile);
-  std::swap(filtered_buffer_, tile.filtered_buffer_);
+  std::swap(filtered_data_, tile.filtered_data_);
+  std::swap(filtered_size_, tile.filtered_size_);
   std::swap(zipped_coords_dim_num_, tile.zipped_coords_dim_num_);
 }
 

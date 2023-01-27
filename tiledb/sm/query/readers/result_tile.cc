@@ -48,6 +48,20 @@ using namespace tiledb::type;
 namespace tiledb {
 namespace sm {
 
+bool result_tile_cmp(const ResultTile* a, const ResultTile* b) {
+  if (a->frag_idx() < b->frag_idx()) {
+    return true;
+  } else if (a->frag_idx() > b->frag_idx()) {
+    return false;
+  }
+
+  if (a->tile_idx() < b->tile_idx()) {
+    return true;
+  }
+
+  return false;
+}
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -170,8 +184,10 @@ void ResultTile::init_attr_tile(
     const format_version_t format_version,
     const ArraySchema& array_schema,
     const std::string& name,
-    const TileSizes tile_sizes) {
-  auto tuple = TileTuple(format_version, array_schema, name, tile_sizes);
+    const TileSizes tile_sizes,
+    const TileData tile_data) {
+  auto tuple =
+      TileTuple(format_version, array_schema, name, tile_sizes, tile_data);
 
   if (name == constants::coords) {
     coords_tile_ = std::move(tuple);
@@ -207,9 +223,11 @@ void ResultTile::init_coord_tile(
     const ArraySchema& array_schema,
     const std::string& name,
     const TileSizes tile_sizes,
+    const TileData tile_data,
     unsigned dim_idx) {
   coord_tiles_[dim_idx] = std::pair<std::string, TileTuple>(
-      name, TileTuple(format_version, array_schema, name, tile_sizes));
+      name,
+      TileTuple(format_version, array_schema, name, tile_sizes, tile_data));
 
   // When at least one unzipped coordinate has been initialized, we will
   // use the unzipped `coord()` implementation.

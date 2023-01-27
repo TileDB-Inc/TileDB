@@ -162,9 +162,6 @@ class Config {
    */
   static const std::string SM_CHECK_GLOBAL_ORDER;
 
-  /** The tile cache size. */
-  static const std::string SM_TILE_CACHE_SIZE;
-
   /** If `true`, bypass partitioning on estimated result sizes. */
   static const std::string SM_SKIP_EST_SIZE_PARTITIONING;
 
@@ -381,9 +378,6 @@ class Config {
 
   /** The default minimum number of bytes in a batched VFS read operation. */
   static const std::string VFS_MIN_BATCH_SIZE;
-
-  /** Disable batching from VFS, making direct reads from storage. */
-  static const std::string VFS_DISABLE_BATCHING;
 
   /** The default posix permissions for file creations */
   static const std::string VFS_FILE_POSIX_FILE_PERMISSIONS;

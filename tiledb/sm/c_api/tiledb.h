@@ -5024,7 +5024,7 @@ TILEDB_EXPORT void tiledb_fragment_info_free(
  * tiledb_config_t* config;
  * tiledb_error_t* error = NULL;
  * tiledb_config_alloc(&config, &error);
- * tiledb_config_set(config, "sm.tile_cache_size", "1000000", &error);
+ * tiledb_config_set(config, "sm.memory_budget", "1000000", &error);
  *
  * tiledb_fragment_info_load(ctx, fragment_info);
  * @endcode
