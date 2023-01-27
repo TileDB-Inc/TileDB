@@ -1102,14 +1102,8 @@ void QueryCondition::apply_tree(
         }
       } break;
       case QueryConditionCombinationOp::NOT: {
-        apply_tree(
-          tree_->get_negated_tree(),
-          array_schema,
-          fragment_metadata,
-          stride,
-          result_cell_slabs,
-          combination_op,
-          result_cell_bitmap);
+        throw std::runtime_error(
+            "Query condition NOT operator is not currently supported.");
       } break;
       default: {
         throw std::logic_error(
@@ -1853,15 +1847,8 @@ void QueryCondition::apply_tree_dense(
         }
       } break;
       case QueryConditionCombinationOp::NOT: {
-        apply_tree_dense(
-          tree_->get_negated_tree(),
-          array_schema,
-          result_tile,
-          start,
-          src_cell,
-          stride,
-          combination_op,
-          result_buffer);
+        throw std::runtime_error(
+            "Query condition NOT operator is not currently supported.");
       } break;
       default: {
         throw std::logic_error(
@@ -2572,12 +2559,8 @@ void QueryCondition::apply_tree_sparse(
         }
       } break;
       case QueryConditionCombinationOp::NOT: {
-        apply_tree_sparse<BitmapType>(
-            tree_->get_negated_tree(),
-            array_schema,
-            result_tile,
-            combination_op,
-            result_bitmap);
+        throw std::runtime_error(
+            "Query condition NOT operator is not currently supported.");
       } break;
       default: {
         throw std::logic_error(
