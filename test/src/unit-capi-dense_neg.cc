@@ -55,6 +55,10 @@ struct DenseNegFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
+  bool serialized_ = false;
+  // Buffers to allocate on query size for serialized queries
+  ServerQueryBuffers server_buffers_;
+
   // Functions
   DenseNegFx();
   ~DenseNegFx();
@@ -63,8 +67,7 @@ struct DenseNegFx {
   void create_dense_vector(const std::string& path);
   void create_dense_array(const std::string& path);
   void write_dense_vector(const std::string& path);
-  void write_dense_array_global(
-      const std::string& path, const bool serialized_writes);
+  void write_dense_array_global(const std::string& path);
   void write_dense_array_row(const std::string& path);
   void write_dense_array_col(const std::string& path);
   void read_dense_vector(const std::string& path);
@@ -237,9 +240,8 @@ void DenseNegFx::write_dense_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
+  // Submit query
+  rc = submit_query_wrapper(ctx_, path, &query, server_buffers_, serialized_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -251,8 +253,7 @@ void DenseNegFx::write_dense_vector(const std::string& path) {
   tiledb_query_free(&query);
 }
 
-void DenseNegFx::write_dense_array_global(
-    const std::string& path, const bool serialized_writes) {
+void DenseNegFx::write_dense_array_global(const std::string& path) {
   // Open array
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, path.c_str(), &array);
@@ -273,14 +274,9 @@ void DenseNegFx::write_dense_array_global(
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
 
-  if (!serialized_writes) {
-    rc = tiledb_query_submit(ctx_, query);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx_, query);
-    REQUIRE(rc == TILEDB_OK);
-  } else {
-    submit_and_finalize_serialized_query(ctx_, query);
-  }
+  // Submit query
+  rc = submit_query_wrapper(ctx_, path, &query, server_buffers_, serialized_);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -311,9 +307,8 @@ void DenseNegFx::write_dense_array_row(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
+  // Submit query
+  rc = submit_query_wrapper(ctx_, path, &query, server_buffers_, serialized_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -345,9 +340,8 @@ void DenseNegFx::write_dense_array_col(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
+  // Submit query
+  rc = submit_query_wrapper(ctx_, path, &query, server_buffers_, serialized_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -379,9 +373,8 @@ void DenseNegFx::read_dense_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
+  // Submit query
+  rc = submit_query_wrapper(ctx_, path, &query, server_buffers_, serialized_);
   REQUIRE(rc == TILEDB_OK);
 
   int a_c[] = {0, 1, 2, 3};
@@ -417,9 +410,8 @@ void DenseNegFx::read_dense_array_global(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
+  // Submit query
+  rc = submit_query_wrapper(ctx_, path, &query, server_buffers_, serialized_);
   REQUIRE(rc == TILEDB_OK);
 
   int a_c[] = {1, 20, 3, 40, 50, 6, 70, 8, 9, 100, 11, 120, 130, 140, 150, 160};
@@ -455,9 +447,8 @@ void DenseNegFx::read_dense_array_row(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
+  // Submit query
+  rc = submit_query_wrapper(ctx_, path, &query, server_buffers_, serialized_);
   REQUIRE(rc == TILEDB_OK);
 
   int a_c[] = {1, 20, 50, 6, 3, 40, 70, 8, 9, 100, 130, 140, 11, 120, 150, 160};
@@ -493,9 +484,8 @@ void DenseNegFx::read_dense_array_col(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
+  // Submit query
+  rc = submit_query_wrapper(ctx_, path, &query, server_buffers_, serialized_);
   REQUIRE(rc == TILEDB_OK);
 
   int a_c[] = {1, 3, 9, 11, 20, 40, 100, 120, 50, 70, 130, 150, 6, 8, 140, 160};
@@ -531,13 +521,12 @@ TEST_CASE_METHOD(
     DenseNegFx,
     "C API: Test 2d dense array with negative domain",
     "[capi][dense-neg][dense-neg-array]") {
-  bool serialized_writes = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+  SECTION("serialization enabled") {
+    serialized_ = true;
   }
 #endif
 
@@ -547,7 +536,7 @@ TEST_CASE_METHOD(
   create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   create_dense_array(vector_name);
-  write_dense_array_global(vector_name, serialized_writes);
+  write_dense_array_global(vector_name);
   write_dense_array_row(vector_name);
   write_dense_array_col(vector_name);
   read_dense_array_global(vector_name);

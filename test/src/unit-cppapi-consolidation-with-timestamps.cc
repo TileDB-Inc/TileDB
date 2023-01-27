@@ -52,7 +52,8 @@ struct ConsolidationWithTimestampsFx {
   Context ctx_;
   VFS vfs_;
   sm::StorageManager* sm_;
-  bool serialized_writes_ = false;
+  bool serialized_ = false;
+  ServerQueryBuffers server_buffers_;
 
   // Constructors/destructors.
   ConsolidationWithTimestampsFx();
@@ -177,12 +178,10 @@ void ConsolidationWithTimestampsFx::write_sparse(
   query.set_data_buffer("d1", dim1);
   query.set_data_buffer("d2", dim2);
 
-  if (!serialized_writes_) {
-    query.submit();
-    query.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx_, query);
-  }
+  // Submit query
+  auto rc = test::submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialized_);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array.
   array.close();
@@ -210,12 +209,11 @@ void ConsolidationWithTimestampsFx::write_sparse_v11(uint64_t timestamp) {
   query.set_data_buffer("a3", buffer_a3);
   query.set_data_buffer("d1", buffer_coords_dim1);
   query.set_data_buffer("d2", buffer_coords_dim2);
-  if (!serialized_writes_) {
-    query.submit();
-    query.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx_, query);
-  }
+
+  // Submit query
+  auto rc = test::submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialized_);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array.
   array.close();
@@ -311,7 +309,9 @@ void ConsolidationWithTimestampsFx::read_sparse(
   }
 
   // Submit the query.
-  query.submit();
+  auto rc = test::submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialized_, false);
+  REQUIRE(rc == TILEDB_OK);
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Get the query stats.
@@ -347,7 +347,9 @@ void ConsolidationWithTimestampsFx::reopen_sparse(
   }
 
   // Submit the query.
-  query.submit();
+  auto rc = test::submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialized_, false);
+  REQUIRE(rc == TILEDB_OK);
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Get the query stats.
@@ -381,11 +383,11 @@ TEST_CASE_METHOD(
   create_sparse_array();
 
   SECTION("no serialization") {
-    serialized_writes_ = false;
+    serialized_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
+    serialized_ = true;
   }
 #endif
   // Write first fragment.
@@ -416,11 +418,11 @@ TEST_CASE_METHOD(
   create_sparse_array(true);
 
   SECTION("no serialization") {
-    serialized_writes_ = false;
+    serialized_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
+    serialized_ = true;
   }
 #endif
   // Write first fragment.
@@ -479,11 +481,11 @@ TEST_CASE_METHOD(
   create_sparse_array();
 
   SECTION("no serialization") {
-    serialized_writes_ = false;
+    serialized_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
+    serialized_ = true;
   }
 #endif
   // Write first fragment.
@@ -535,11 +537,11 @@ TEST_CASE_METHOD(
   }
 
   SECTION("no serialization") {
-    serialized_writes_ = false;
+    serialized_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
+    serialized_ = true;
   }
 #endif
 
@@ -603,11 +605,11 @@ TEST_CASE_METHOD(
   create_sparse_array();
 
   SECTION("no serialization") {
-    serialized_writes_ = false;
+    serialized_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
+    serialized_ = true;
   }
 #endif
 
@@ -652,11 +654,11 @@ TEST_CASE_METHOD(
   create_sparse_array(allow_dups);
 
   SECTION("no serialization") {
-    serialized_writes_ = false;
+    serialized_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
+    serialized_ = true;
   }
 #endif
 
@@ -716,11 +718,11 @@ TEST_CASE_METHOD(
   create_sparse_array();
 
   SECTION("no serialization") {
-    serialized_writes_ = false;
+    serialized_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
+    serialized_ = true;
   }
 #endif
   // Write fragments.
@@ -767,11 +769,11 @@ TEST_CASE_METHOD(
   create_sparse_array();
 
   SECTION("no serialization") {
-    serialized_writes_ = false;
+    serialized_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
+    serialized_ = true;
   }
 #endif
   // Write fragments.
@@ -826,7 +828,7 @@ TEST_CASE_METHOD(
   create_sparse_array(true);
 
 #ifdef TILEDB_SERIALIZATION
-  serialized_writes_ = GENERATE(true, false);
+  serialized_ = GENERATE(true, false);
 #endif
 
   // Write first fragment.
@@ -917,7 +919,7 @@ TEST_CASE_METHOD(
   create_sparse_array();
 
 #ifdef TILEDB_SERIALIZATION
-  serialized_writes_ = GENERATE(true, false);
+  serialized_ = GENERATE(true, false);
 #endif
 
   // Write first fragment.
@@ -991,7 +993,7 @@ TEST_CASE_METHOD(
   create_sparse_array(true);
 
 #ifdef TILEDB_SERIALIZATION
-  serialized_writes_ = GENERATE(true, false);
+  serialized_ = GENERATE(true, false);
 #endif
 
   // Write first fragment.
@@ -1141,7 +1143,7 @@ TEST_CASE_METHOD(
   create_sparse_array(true);
 
 #ifdef TILEDB_SERIALIZATION
-  serialized_writes_ = GENERATE(true, false);
+  serialized_ = GENERATE(true, false);
 #endif
 
   // Write first fragment.
@@ -1253,7 +1255,7 @@ TEST_CASE_METHOD(
   create_sparse_array(true);
 
 #ifdef TILEDB_SERIALIZATION
-  serialized_writes_ = GENERATE(true, false);
+  serialized_ = GENERATE(true, false);
 #endif
 
   // Write first fragment.
@@ -1350,11 +1352,11 @@ TEST_CASE_METHOD(
   create_sparse_array(true);
 
   SECTION("no serialization") {
-    serialized_writes_ = false;
+    serialized_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
+    serialized_ = true;
   }
 #endif
   // Write first fragment.
@@ -1395,7 +1397,9 @@ TEST_CASE_METHOD(
   query.add_range<uint64_t>(1, 2, 3);
 
   // Submit/finalize the query
-  query.submit();
+  auto rc = test::submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialized_, false);
+  REQUIRE(rc == TILEDB_OK);
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Expect to read what the first 2 writes wrote: each element will
@@ -1459,7 +1463,7 @@ TEST_CASE_METHOD(
   create_sparse_array(true);
 
 #ifdef TILEDB_SERIALIZATION
-  serialized_writes_ = GENERATE(true, false);
+  serialized_ = GENERATE(true, false);
 #endif
 
   // Write first fragment.
@@ -1647,11 +1651,11 @@ TEST_CASE_METHOD(
     create_sparse_array(false);
 
     SECTION("no serialization") {
-      serialized_writes_ = false;
+      serialized_ = false;
     }
 #ifdef TILEDB_SERIALIZATION
     SECTION("serialization enabled global order write") {
-      serialized_writes_ = true;
+      serialized_ = true;
     }
 #endif
     // Write first fragment.
@@ -1674,11 +1678,11 @@ TEST_CASE_METHOD(
     create_sparse_array(false);
 
     SECTION("no serialization") {
-      serialized_writes_ = false;
+      serialized_ = false;
     }
 #ifdef TILEDB_SERIALIZATION
     SECTION("serialization enabled global order write") {
-      serialized_writes_ = true;
+      serialized_ = true;
     }
 #endif
     // Write first fragment.
@@ -1720,11 +1724,11 @@ TEST_CASE_METHOD(
   create_sparse_array(dups);
 
   SECTION("no serialization") {
-    serialized_writes_ = false;
+    serialized_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
+    serialized_ = true;
   }
 #endif
   // Write first fragment.
@@ -1804,11 +1808,11 @@ TEST_CASE_METHOD(
   create_sparse_array(true);
 
   SECTION("no serialization") {
-    serialized_writes_ = false;
+    serialized_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes_ = true;
+    serialized_ = true;
   }
 #endif
   // Write first fragment.
@@ -1837,7 +1841,9 @@ TEST_CASE_METHOD(
   query.set_data_buffer(tiledb_timestamps(), timestamps);
 
   // Submit the query.
-  query.submit();
+  auto rc = test::submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialized_, false);
+  REQUIRE(rc == TILEDB_OK);
   CHECK(query.query_status() == Query::Status::INCOMPLETE);
 
   // Validate.
@@ -1852,7 +1858,9 @@ TEST_CASE_METHOD(
       !memcmp(c_ts.data(), timestamps.data(), c_ts.size() * sizeof(uint64_t)));
 
   // Submit again.
-  query.submit();
+  rc = test::submit_query_wrapper(
+      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialized_, false);
+  REQUIRE(rc == TILEDB_OK);
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Validate.

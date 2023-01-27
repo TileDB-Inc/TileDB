@@ -141,6 +141,9 @@ class NullableArrayCppFx {
   /** The C++ API VFS object. */
   VFS vfs_;
 
+  // Buffers to allocate on query size for serialized queries
+  ServerQueryBuffers server_buffers_;
+
   /**
    * Removes a directory using `vfs_`.
    *
@@ -292,12 +295,10 @@ void NullableArrayCppFx::write(
     }
   }
 
-  if (!serialized_writes_) {
-    REQUIRE(query.submit() == Query::Status::COMPLETE);
-    query.finalize();
-  } else {
-    submit_and_finalize_serialized_query(ctx_, query);
-  }
+  // Submit query
+  auto rc = submit_query_wrapper(
+      ctx_, array_name, &query, server_buffers_, serialized_writes_);
+  REQUIRE(rc == TILEDB_OK);
 
   // Clean up
   array.close();

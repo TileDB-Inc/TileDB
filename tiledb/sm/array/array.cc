@@ -189,7 +189,8 @@ Status Array::open_without_fragments(
         }
         array_schema_latest_ = array_schema_latest.value();
       } else {
-        auto st = rest_client->post_array_from_rest(array_uri_, this);
+        auto st = rest_client->post_array_from_rest(
+            array_uri_, storage_manager_, this);
         if (!st.ok()) {
           throw StatusException(st);
         }
@@ -361,7 +362,8 @@ Status Array::open(
         }
         array_schema_latest_ = array_schema_latest.value();
       } else {
-        auto st = rest_client->post_array_from_rest(array_uri_, this);
+        auto st = rest_client->post_array_from_rest(
+            array_uri_, storage_manager_, this);
         if (!st.ok()) {
           throw StatusException(st);
         }
@@ -831,6 +833,12 @@ uint64_t Array::timestamp_start() const {
 
 Status Array::set_timestamp_end(const uint64_t timestamp_end) {
   timestamp_end_ = timestamp_end;
+  return Status::Ok();
+}
+
+Status Array::set_timestamp_end_opened_at(
+    const uint64_t timestamp_end_opened_at) {
+  timestamp_end_opened_at_ = timestamp_end_opened_at;
   return Status::Ok();
 }
 
@@ -1403,6 +1411,29 @@ Status Array::load_remote_non_empty_domain() {
   return Status::Ok();
 }
 
+ArrayDirectory& Array::load_array_directory() {
+  if (remote_) {
+    throw std::logic_error(
+        "Loading array directory for remote arrays is not supported");
+  }
+
+  auto mode = (query_type_ == QueryType::WRITE ||
+               query_type_ == QueryType::MODIFY_EXCLUSIVE) ?
+                  ArrayDirectoryMode::SCHEMA_ONLY :
+                  ArrayDirectoryMode::READ;
+  if (!array_dir_.loaded()) {
+    array_dir_ = ArrayDirectory(
+        resources_,
+        array_uri_,
+        timestamp_start_,
+        timestamp_end_opened_at_,
+        mode);
+    array_dir_.loaded() = true;
+  }
+
+  return array_dir_;
+}
+
 Status Array::compute_non_empty_domain() {
   if (remote_) {
     RETURN_NOT_OK(load_remote_non_empty_domain());
@@ -1483,6 +1514,10 @@ void ensure_supported_schema_version_for_read(format_version_t version) {
     err << constants::format_version << ")";
     throw Status_StorageManagerError(err.str());
   }
+}
+
+void Array::set_serialized_array_open() {
+  is_open_ = true;
 }
 
 }  // namespace sm

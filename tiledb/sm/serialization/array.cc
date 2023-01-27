@@ -45,8 +45,11 @@
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/serialization/array.h"
+#include "tiledb/sm/serialization/array_directory.h"
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/serialization/fragment_metadata.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
@@ -126,6 +129,9 @@ Status array_to_capnp(
   }
   array_builder->setStartTimestamp(array->timestamp_start());
   array_builder->setEndTimestamp(array->timestamp_end());
+  array_builder->setOpenedAtEndTimestamp(array->timestamp_end_opened_at());
+
+  array_builder->setQueryType(query_type_str(array->get_query_type()));
 
   const auto& array_schema_latest = array->array_schema_latest();
   auto array_schema_latest_builder = array_builder->initArraySchemaLatest();
@@ -143,6 +149,25 @@ Status array_to_capnp(
     auto schema_builder = entry.initValue();
     RETURN_NOT_OK(array_schema_to_capnp(
         *(schema.second.get()), &schema_builder, client_side));
+  }
+
+  // Serialize array directory (load if not loaded already)
+  const auto array_directory = array->load_array_directory();
+  auto array_directory_builder = array_builder->initArrayDirectory();
+  array_directory_to_capnp(array_directory, &array_directory_builder);
+
+  // Serialize fragment metadata iff loaded (if the array is open for READs)
+  if (array->get_query_type() == QueryType::READ) {
+    auto fragment_metadata_all = array->fragment_metadata();
+    if (!fragment_metadata_all.empty()) {
+      auto fragment_metadata_all_builder =
+          array_builder->initFragmentMetadataAll(fragment_metadata_all.size());
+      for (size_t i = 0; i < fragment_metadata_all.size(); i++) {
+        auto fragment_metadata_builder = fragment_metadata_all_builder[i];
+        RETURN_NOT_OK(fragment_metadata_to_capnp(
+            *fragment_metadata_all[i], &fragment_metadata_builder));
+      }
+    }
   }
 
   if (array->use_refactored_array_open()) {
@@ -180,7 +205,10 @@ Status array_to_capnp(
 }
 
 Status array_from_capnp(
-    const capnp::Array::Reader& array_reader, Array* array) {
+    const capnp::Array::Reader& array_reader,
+    StorageManager* storage_manager,
+    Array* array,
+    const bool client_side) {
   // The serialized URI is set if it exists
   // this is used for backwards compatibility with pre TileDB 2.5 clients that
   // want to serialized a query object TileDB >= 2.5 no longer needs to receive
@@ -190,6 +218,33 @@ Status array_from_capnp(
   }
   RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
   RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
+
+  if (array_reader.hasQueryType()) {
+    auto query_type_str = array_reader.getQueryType();
+    QueryType query_type = QueryType::READ;
+    RETURN_NOT_OK(query_type_enum(query_type_str, &query_type));
+    array->set_query_type(query_type);
+    if (!array->is_open()) {
+      array->set_serialized_array_open();
+    }
+
+    RETURN_NOT_OK(array->set_timestamp_end_opened_at(
+        array_reader.getOpenedAtEndTimestamp()));
+    if (array->timestamp_end_opened_at() == UINT64_MAX) {
+      if (query_type == QueryType::READ) {
+        RETURN_NOT_OK(array->set_timestamp_end_opened_at(
+            tiledb::sm::utils::time::timestamp_now_ms()));
+      } else if (
+          query_type == QueryType::WRITE ||
+          query_type == QueryType::MODIFY_EXCLUSIVE ||
+          query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
+        RETURN_NOT_OK(array->set_timestamp_end_opened_at(0));
+      } else {
+        throw StatusException(Status_SerializationError(
+            "Cannot open array; Unsupported query type."));
+      }
+    }
+  }
 
   if (array_reader.hasArraySchemasAll()) {
     std::unordered_map<std::string, shared_ptr<ArraySchema>> all_schemas;
@@ -217,6 +272,35 @@ Status array_from_capnp(
         make_shared<ArraySchema>(HERE(), array_schema_latest));
   }
 
+  // Deserialize array directory
+  if (array_reader.hasArrayDirectory()) {
+    const auto& array_directory_reader = array_reader.getArrayDirectory();
+    auto array_dir = array_directory_from_capnp(
+        array_directory_reader,
+        storage_manager->resources(),
+        array->array_uri());
+    array->set_array_directory(*array_dir);
+  }
+
+  if (array_reader.hasFragmentMetadataAll()) {
+    array->fragment_metadata().clear();
+    array->fragment_metadata().reserve(
+        array_reader.getFragmentMetadataAll().size());
+    for (auto frag_meta_reader : array_reader.getFragmentMetadataAll()) {
+      auto meta = make_shared<FragmentMetadata>(HERE());
+      RETURN_NOT_OK(fragment_metadata_from_capnp(
+          array->array_schema_latest_ptr(),
+          frag_meta_reader,
+          meta,
+          storage_manager,
+          array->memory_tracker()));
+      if (client_side) {
+        meta->set_rtree_loaded();
+      }
+      array->fragment_metadata().emplace_back(meta);
+    }
+  }
+
   if (array_reader.hasNonEmptyDomain()) {
     const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();
     // Deserialize
@@ -227,7 +311,6 @@ Status array_from_capnp(
 
   if (array_reader.hasArrayMetadata()) {
     const auto& array_metadata_reader = array_reader.getArrayMetadata();
-    // Deserialize
     RETURN_NOT_OK(
         metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
     array->set_metadata_loaded(true);
@@ -441,7 +524,8 @@ Status array_serialize(
 Status array_deserialize(
     Array* array,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    const Buffer& serialized_buffer,
+    StorageManager* storage_manager) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -453,7 +537,7 @@ Status array_deserialize(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             array_builder);
         capnp::Array::Reader array_reader = array_builder.asReader();
-        RETURN_NOT_OK(array_from_capnp(array_reader, array));
+        RETURN_NOT_OK(array_from_capnp(array_reader, storage_manager, array));
         break;
       }
       case SerializationType::CAPNP: {
@@ -463,7 +547,7 @@ Status array_deserialize(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             serialized_buffer.size() / sizeof(::capnp::word)));
         capnp::Array::Reader array_reader = reader.getRoot<capnp::Array>();
-        RETURN_NOT_OK(array_from_capnp(array_reader, array));
+        RETURN_NOT_OK(array_from_capnp(array_reader, storage_manager, array));
         break;
       }
       default: {
@@ -595,7 +679,8 @@ Status array_serialize(Array*, SerializationType, Buffer*, const bool) {
       "Cannot serialize; serialization not enabled."));
 }
 
-Status array_deserialize(Array*, SerializationType, const Buffer&) {
+Status array_deserialize(
+    Array*, SerializationType, const Buffer&, StorageManager*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

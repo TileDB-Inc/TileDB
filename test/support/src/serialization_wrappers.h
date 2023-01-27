@@ -68,6 +68,21 @@ int tiledb_array_open_serialize(
     tiledb_serialization_type_t serialize_type);
 
 /**
+ * Wrap an array serialize/deserialize call
+ *
+ * @param ctx tiledb context
+ * @param array_open_serialized array to serialize
+ * @param array_open_deserialized array to deserialize into
+ * @param serialize_type serialization format
+ * @return status
+ */
+int array_serialize_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_array_t** new_array,
+    tiledb_serialization_type_t serialize_type);
+
+/**
  * Wrap a group in serialize/deserialize call
  *
  * @param ctx tiledb context
@@ -113,5 +128,24 @@ int tiledb_fragment_info_serialize(
     tiledb_fragment_info_t* fragment_info_before_serialization,
     tiledb_fragment_info_t* fragment_info_deserialized,
     tiledb_serialization_type_t serialize_type);
+
+/**
+ * Wrap a query serialize/deserialize call
+ *
+ * @param ctx Tiledb context
+ * @param array_uri Array to execute the query on
+ * @param serialized Vector allocated externally to store serialized data
+ * @param client_to_server If it's server or client serializing this query
+ * @param query_to_serialize Query to serialize
+ * @param query_deserialized Query to deserialize into
+ * @return status
+ */
+int tiledb_query_v2_serialize(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    std::vector<uint8_t>& serialized,
+    bool client_to_server,
+    tiledb_query_t* query_to_serialize,
+    tiledb_query_t** query_deserialized);
 
 #endif  // TILEDB_TEST_SERIALIZATION_WRAPPERS_H

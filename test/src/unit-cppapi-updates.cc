@@ -39,6 +39,15 @@ using namespace tiledb;
 TEST_CASE(
     "C++ API updates: test writing two identical fragments",
     "[updates][updates-identical-fragments]") {
+  bool serialized = false;
+  SECTION("no serialization") {
+    serialized = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized = true;
+  }
+#endif
   const std::string array_name = "updates_identical_fragments";
   Context ctx;
   VFS vfs(ctx);
@@ -78,8 +87,10 @@ TEST_CASE(
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a1", data_a1)
       .set_offsets_buffer("a1", offsets_a1);
-  query_w1.submit();
-  query_w1.finalize();
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx, array_name, &query_w1, server_buffers_, serialized);
+  REQUIRE(rc == TILEDB_OK);
   array_w1.close();
 
   // Second write
@@ -89,8 +100,9 @@ TEST_CASE(
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a1", data_a1)
       .set_offsets_buffer("a1", offsets_a1);
-  query_w2.submit();
-  query_w2.finalize();
+  rc = test::submit_query_wrapper(
+      ctx, array_name, &query_w2, server_buffers_, serialized);
+  REQUIRE(rc == TILEDB_OK);
   array_w2.close();
 
   // Read
@@ -107,7 +119,9 @@ TEST_CASE(
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a1", r_data_a1)
       .set_offsets_buffer("a1", r_offsets_a1);
-  query.submit();
+  rc = test::submit_query_wrapper(
+      ctx, array_name, &query, server_buffers_, serialized, false);
+  REQUIRE(rc == TILEDB_OK);
   REQUIRE(query.query_status() == Query::Status::COMPLETE);
   array.close();
 
@@ -120,13 +134,13 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API updates: empty second write", "[updates][updates-empty-write]") {
-  bool serialized_writes = false;
+  bool serialized = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialized = true;
   }
 #endif
 
@@ -155,12 +169,12 @@ TEST_CASE(
   query_w1.set_layout(layout).set_data_buffer("d", data).set_offsets_buffer(
       "d", offsets);
 
-  if (!serialized_writes) {
-    query_w1.submit();
-    query_w1.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query_w1);
-  }
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx, array_name, &query_w1, server_buffers_, serialized);
+  REQUIRE(rc == TILEDB_OK);
+
   array_w1.close();
 
   // Second write
@@ -170,12 +184,11 @@ TEST_CASE(
   query_w2.set_layout(layout).set_data_buffer("d", data).set_offsets_buffer(
       "d", offsets);
 
-  if (!serialized_writes) {
-    query_w2.submit();
-    query_w2.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query_w2);
-  }
+  // Submit query
+  rc = test::submit_query_wrapper(
+      ctx, array_name, &query_w2, server_buffers_, serialized);
+  REQUIRE(rc == TILEDB_OK);
+
   array_w2.close();
 
   if (vfs.is_dir(array_name))

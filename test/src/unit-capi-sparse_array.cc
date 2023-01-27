@@ -87,6 +87,9 @@ struct SparseArrayFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
+  // Buffers to allocate on query size for serialized queries
+  ServerQueryBuffers server_buffers_;
+
   // Functions
   SparseArrayFx();
   ~SparseArrayFx();
@@ -5889,13 +5892,13 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, global order with 0-sized buffers",
     "[capi][sparse][global-check][zero-buffers]") {
-  bool serialized_writes = false;
+  bool serialized = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialized = true;
   }
 #endif
 
@@ -5945,12 +5948,10 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(ctx, query, "d2", coords_dim2, &zero_size);
   CHECK(rc == TILEDB_OK);
 
-  if (!serialized_writes) {
-    rc = tiledb_query_submit(ctx, query);
-    CHECK(rc == TILEDB_OK);
-  } else {
-    submit_serialized_query(ctx, query);
-  }
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx, array_name, &query, server_buffers_, serialized, false);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
@@ -6162,13 +6163,13 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers, global write",
     "[capi][sparse][split-coords][global]") {
-  bool serialized_writes = false;
+  bool serialized = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialized = true;
   }
 #endif
 
@@ -6242,14 +6243,10 @@ TEST_CASE_METHOD(
       ctx_, query, "d2", buffer_d2, &buffer_d2_size);
   CHECK(rc == TILEDB_OK);
 
-  if (!serialized_writes) {
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-  } else {
-    submit_and_finalize_serialized_query(ctx_, query);
-  }
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx_, array_name, &query, server_buffers_, serialized);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -6310,7 +6307,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
+  rc = submit_query_wrapper(
+      ctx_, array_name, &query, server_buffers_, serialized);
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -6943,13 +6941,13 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "Sparse array: 2D, multi write global order",
     "[capi][sparse][2D][multi-write]") {
-  bool serialized_writes = false;
+  bool serialized = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+  SECTION("serialization enabled") {
+    serialized = true;
   }
 #endif
 
@@ -7023,12 +7021,10 @@ TEST_CASE_METHOD(
     }
   }
 
-  if (!serialized_writes) {
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-  } else {
-    submit_serialized_query(ctx_, query);
-  }
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx_, array_name, &query, server_buffers_, serialized, false);
+  REQUIRE(rc == TILEDB_OK);
 
   // Create new buffers of smaller size to test being able to write multiple
   // buffer sizes
@@ -7083,14 +7079,9 @@ TEST_CASE_METHOD(
   }
 
   // Submit query
-  if (!serialized_writes) {
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-  } else {
-    submit_and_finalize_serialized_query(ctx_, query);
-  }
+  rc = submit_query_wrapper(
+      ctx_, array_name, &query, server_buffers_, serialized);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -7104,7 +7095,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     TemporaryDirectoryFixture,
     "Write sparse array without setting layout",
-    "[capi][query]") {
+    "[capi][sparse][query]") {
   // Create the array.
   uint64_t domain[2]{0, 3};
   uint64_t x_tile_extent{4};

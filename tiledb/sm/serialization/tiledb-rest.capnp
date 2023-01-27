@@ -57,6 +57,15 @@ struct Array {
 
   arrayMetadata @7 :ArrayMetadata;
   # array metadata
+
+  arrayDirectory @8 :ArrayDirectory;
+  # array directory (for reads)
+
+  fragmentMetadataAll @9 :List(FragmentMetadata);
+  # metadata for all fragments (for reads)
+
+  openedAtEndTimestamp @10 :UInt64;
+  # The ending timestamp that the array was last opened at
 }
 
 struct ArrayOpen {
@@ -885,6 +894,31 @@ struct SingleCoord {
 }
 
 struct FragmentMetadata {
+  struct GenericTileOffsets {
+      rtree @0 :UInt64;
+      # RTree serialized as a blob
+      tileOffsets @1 :List(UInt64);
+      # tile offsets
+      tileVarOffsets @2 :List(UInt64);
+      # variable tile offsets
+      tileVarSizes @3 :List(UInt64);
+      # sizes of the uncompressed variable tiles offsets
+      tileValidityOffsets @4 :List(UInt64);
+      # tile validity offsets
+      tileMinOffsets @5 :List(UInt64);
+      # min tile offsets
+      tileMaxOffsets @6 :List(UInt64);
+      # max tile offsets
+      tileSumOffsets @7 :List(UInt64);
+      # tile sum offsets
+      tileNullCountOffsets @8 :List(UInt64);
+      # null count offsets
+      fragmentMinMaxSumNullCountOffset @9 :UInt64;
+      # fragment min/max/sum/nullcount offsets
+      processedConditionsOffsets @10 :UInt64;
+      # processed conditions offsets
+  }
+
   fileSizes @0 :List(UInt64);
   # The size of each attribute file
 
@@ -968,6 +1002,9 @@ struct FragmentMetadata {
 
   hasConsolidatedFooter @27 :Bool;
   # if the fragment metadata footer appears in a consolidated file
+
+  gtOffsets @28 :GenericTileOffsets;
+  # the start offsets of the generic tiles stored in the metadata file
 }
 
 struct MultiPartUploadState {

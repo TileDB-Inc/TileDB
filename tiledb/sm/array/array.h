@@ -106,6 +106,11 @@ class Array {
   /** Returns the array directory object. */
   const ArrayDirectory& array_directory() const;
 
+  /** Set the array directory. */
+  void set_array_directory(const ArrayDirectory& dir) {
+    array_dir_ = dir;
+  }
+
   /** Sets the latest array schema.
    * @param array_schema The array schema to set.
    */
@@ -236,6 +241,13 @@ class Array {
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata() const;
 
   /**
+   * Accessor to the fragment metadata of the array.
+   */
+  inline std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata() {
+    return fragment_metadata_;
+  }
+
+  /**
    * Returns `true` if the array is empty at the time it is opened.
    * The funciton returns `false` if the array is not open.
    */
@@ -308,6 +320,9 @@ class Array {
   /** Directly set the timestamp end value. */
   Status set_timestamp_end(uint64_t timestamp_end);
 
+  /** Directly set the timestamp end opened at value. */
+  Status set_timestamp_end_opened_at(const uint64_t timestamp_end_opened_at);
+
   /** Directly set the array config. */
   Status set_config(Config config);
 
@@ -317,6 +332,11 @@ class Array {
   /** Directly set the array URI for serialized compatibility with pre
    * TileDB 2.5 clients */
   Status set_uri_serialized(const std::string& uri);
+
+  /** Sets the array URI. */
+  void set_array_uri(const URI& array_uri) {
+    array_uri_ = array_uri;
+  }
 
   /**
    * Deletes metadata from an array opened in WRITE mode.
@@ -456,6 +476,18 @@ class Array {
   /** Checks the config to see if refactored array open should be used. */
   bool use_refactored_array_open() const;
 
+  /**
+   * Sets the array state as open.
+   *
+   * @param query_type The QueryType of the Array.
+   */
+  void set_array_open(const QueryType& query_type);
+
+  /**
+   * Sets the array state as open, used in serialization
+   */
+  void set_serialized_array_open();
+
   /** Set the query type to open the array for. */
   inline void set_query_type(QueryType query_type) {
     query_type_ = query_type;
@@ -466,6 +498,9 @@ class Array {
    * dimensions/attributes.
    */
   std::unordered_map<std::string, uint64_t> get_average_var_cell_sizes() const;
+
+  /** Load array directory for non-remote arrays */
+  ArrayDirectory& load_array_directory();
 
  private:
   /* ********************************* */
@@ -672,13 +707,6 @@ class Array {
 
   /** Computes the non-empty domain of the array. */
   Status compute_non_empty_domain();
-
-  /**
-   * Sets the array state as open.
-   *
-   * @param query_type The QueryType of the Array.
-   */
-  void set_array_open(const QueryType& query_type);
 
   /** Sets the array state as closed.
    *

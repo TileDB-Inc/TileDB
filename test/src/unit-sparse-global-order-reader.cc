@@ -919,13 +919,13 @@ TEST_CASE_METHOD(
 TEST_CASE(
     "Sparse global order reader: user buffer cannot fit single cell",
     "[sparse-global-order][user-buffer][too-small]") {
-  bool serialized_writes = false;
+  bool serialized = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialized = true;
   }
 #endif
 
@@ -968,12 +968,11 @@ TEST_CASE(
   query.set_data_buffer("a", a1_data);
   query.set_offsets_buffer("a", a1_offsets);
 
-  if (!serialized_writes) {
-    CHECK_NOTHROW(query.submit());
-    query.finalize();
-  } else {
-    submit_and_finalize_serialized_query(ctx, query);
-  }
+  // Submit query
+  ServerQueryBuffers server_buffers_;
+  auto rc = submit_query_wrapper(
+      ctx, array_name, &query, server_buffers_, serialized);
+  REQUIRE(rc == TILEDB_OK);
 
   // Read using a buffer that can't fit a single result
   Array array2(ctx, array_name, TILEDB_READ);
@@ -992,14 +991,22 @@ TEST_CASE(
 
   // The user buffer cannot fit a single result so it should return Incomplete
   // with the right reason
-  auto st = query2.submit();
-  CHECK(st == Query::Status::INCOMPLETE);
+  rc = submit_query_wrapper(
+      ctx, array_name, &query2, server_buffers_, serialized, false);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(query2.query_status() == Query::Status::INCOMPLETE);
 
-  tiledb_query_status_details_t details;
-  int rc = tiledb_query_get_status_details(
-      ctx.ptr().get(), query2.ptr().get(), &details);
-  CHECK(rc == TILEDB_OK);
-  CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);
+  // For remote arrays the reason is always TILEDB_REASON_USER_BUFFER_SIZE, but
+  // we can't test it here since we simulate "remote" arrays by using a local
+  // URI so the array->is_remote() check will fail, and we won't get the
+  // correct result.
+  if (!serialized) {
+    tiledb_query_status_details_t details;
+    rc = tiledb_query_get_status_details(
+        ctx.ptr().get(), query2.ptr().get(), &details);
+    CHECK(rc == TILEDB_OK);
+    CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);
+  }
 
   array2.close();
 

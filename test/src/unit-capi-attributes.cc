@@ -61,6 +61,9 @@ struct Attributesfx {
   // Vector of supported filesystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
+  // Buffers to allocate on query size for serialized queries
+  tiledb::test::ServerQueryBuffers server_buffers_;
+
   // Functions
   Attributesfx();
   ~Attributesfx();
@@ -165,13 +168,13 @@ TEST_CASE_METHOD(
       "miles?hour",  "miles@hour", "miles[hour", "miles]hour",  "miles[hour",
       "miles\"hour", "miles<hour", "miles>hour", "miles\\hour", "miles|hour"};
 
-  bool serialized_writes = false;
+  bool serialized = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+  SECTION("serialization enabled") {
+    serialized = true;
   }
 #endif
 
@@ -221,15 +224,9 @@ TEST_CASE_METHOD(
       rc = tiledb_query_set_data_buffer(
           ctx_, query, attr_name.c_str(), buffer_a1, &buffer_a1_size);
       CHECK(rc == TILEDB_OK);
-
-      if (!serialized_writes) {
-        rc = tiledb_query_submit(ctx_, query);
-        CHECK(rc == TILEDB_OK);
-        rc = tiledb_query_finalize(ctx_, query);
-        CHECK(rc == TILEDB_OK);
-      } else {
-        submit_and_finalize_serialized_query(ctx_, query);
-      }
+      rc = tiledb::test::submit_query_wrapper(
+          ctx_, array_name, &query, server_buffers_, serialized);
+      CHECK(rc == TILEDB_OK);
 
       // Close array and clean up
       rc = tiledb_array_close(ctx_, array);
@@ -256,7 +253,8 @@ TEST_CASE_METHOD(
       rc = tiledb_query_set_data_buffer(
           ctx_, query, attr_name.c_str(), buffer_read, &buffer_read_size);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_query_submit(ctx_, query);
+      rc = submit_query_wrapper(
+          ctx_, array_name, &query, server_buffers_, serialized);
       CHECK(rc == TILEDB_OK);
 
       // Close array and clean up
@@ -279,13 +277,13 @@ TEST_CASE_METHOD(
     Attributesfx,
     "C API: Test attributes with tiledb_blob datatype",
     "[capi][attributes][tiledb_blob]") {
-  bool serialized_writes = false;
+  bool serialized = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+  SECTION("serialization enabled") {
+    serialized = true;
   }
 #endif
   for (const auto& fs : fs_vec_) {
@@ -334,15 +332,9 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_data_buffer(
         ctx_, query, attr_name.c_str(), buffer_write, &buffer_write_size);
     CHECK(rc == TILEDB_OK);
-
-    if (!serialized_writes) {
-      rc = tiledb_query_submit(ctx_, query);
-      CHECK(rc == TILEDB_OK);
-      rc = tiledb_query_finalize(ctx_, query);
-      CHECK(rc == TILEDB_OK);
-    } else {
-      submit_and_finalize_serialized_query(ctx_, query);
-    }
+    rc = submit_query_wrapper(
+        ctx_, array_name, &query, server_buffers_, serialized);
+    CHECK(rc == TILEDB_OK);
 
     // Close array and clean up
     rc = tiledb_array_close(ctx_, array);
@@ -369,7 +361,8 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_data_buffer(
         ctx_, query, attr_name.c_str(), buffer_read, &buffer_read_size);
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_submit(ctx_, query);
+    rc = submit_query_wrapper(
+        ctx_, array_name, &query, server_buffers_, serialized);
     CHECK(rc == TILEDB_OK);
 
     // Close array and clean up
@@ -395,13 +388,13 @@ TEST_CASE_METHOD(
     Attributesfx,
     "C API: Test attributes with tiledb_bool datatype",
     "[capi][attributes][tiledb_bool]") {
-  bool serialized_writes = false;
+  bool serialized = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+  SECTION("serialization enabled") {
+    serialized = true;
   }
 #endif
   for (const auto& fs : fs_vec_) {
@@ -450,15 +443,9 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_data_buffer(
         ctx_, query, attr_name.c_str(), buffer_write, &buffer_write_size);
     CHECK(rc == TILEDB_OK);
-
-    if (!serialized_writes) {
-      rc = tiledb_query_submit(ctx_, query);
-      CHECK(rc == TILEDB_OK);
-      rc = tiledb_query_finalize(ctx_, query);
-      CHECK(rc == TILEDB_OK);
-    } else {
-      submit_and_finalize_serialized_query(ctx_, query);
-    }
+    rc = submit_query_wrapper(
+        ctx_, array_name, &query, server_buffers_, serialized);
+    CHECK(rc == TILEDB_OK);
 
     // Close array and clean up
     rc = tiledb_array_close(ctx_, array);
@@ -485,7 +472,8 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_data_buffer(
         ctx_, query, attr_name.c_str(), buffer_read, &buffer_read_size);
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_submit(ctx_, query);
+    rc = submit_query_wrapper(
+        ctx_, array_name, &query, server_buffers_, serialized);
     CHECK(rc == TILEDB_OK);
 
     // Close array and clean up

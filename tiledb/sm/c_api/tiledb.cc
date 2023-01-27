@@ -3993,7 +3993,8 @@ int32_t tiledb_deserialize_array(
           tiledb::sm::serialization::array_deserialize(
               (*array)->array_.get(),
               (tiledb::sm::SerializationType)serialize_type,
-              buffer->buffer()))) {
+              buffer->buffer(),
+              ctx->storage_manager()))) {
     delete *array;
     *array = nullptr;
     return TILEDB_ERR;
@@ -4283,6 +4284,97 @@ int32_t tiledb_deserialize_query(
       client_side == 1,
       nullptr,
       query->query_,
+      ctx->storage_manager()->compute_tp()));
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_query_and_array(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    const char* array_uri,
+    tiledb_query_t** query,
+    tiledb_array_t** array) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || query == nullptr) {
+    return TILEDB_ERR;
+  }
+
+  api::ensure_buffer_is_valid(buffer);
+
+  // Create array struct
+  *array = new (std::nothrow) tiledb_array_t;
+  if (*array == nullptr) {
+    auto st = Status_Error(
+        "Failed to create TileDB array object; Memory allocation error");
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Check array URI
+  auto uri = tiledb::sm::URI(array_uri);
+  if (uri.is_invalid()) {
+    auto st = Status_Error("Failed to create TileDB array object; Invalid URI");
+    delete *array;
+    *array = nullptr;
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Allocate an array object
+  try {
+    (*array)->array_ =
+        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+  } catch (std::bad_alloc&) {
+    auto st = Status_Error(
+        "Failed to create TileDB array object; Memory allocation error");
+    delete array;
+    array = nullptr;
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // First deserialize the array included in the query
+  throw_if_not_ok(tiledb::sm::serialization::array_from_query_deserialize(
+      buffer->buffer(),
+      (tiledb::sm::SerializationType)serialize_type,
+      *(*array)->array_,
+      ctx->storage_manager()));
+
+  // Create query struct
+  *query = new (std::nothrow) tiledb_query_t;
+  if (*query == nullptr) {
+    auto st = Status_Error(
+        "Failed to allocate TileDB query object; Memory allocation failed");
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create query
+  (*query)->query_ = new (std::nothrow)
+      tiledb::sm::Query(ctx->storage_manager(), (*array)->array_);
+  if ((*query)->query_ == nullptr) {
+    auto st = Status_Error(
+        "Failed to allocate TileDB query object; Memory allocation failed");
+    delete *query;
+    *query = nullptr;
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  throw_if_not_ok(tiledb::sm::serialization::query_deserialize(
+      buffer->buffer(),
+      (tiledb::sm::SerializationType)serialize_type,
+      client_side == 1,
+      nullptr,
+      (*query)->query_,
       ctx->storage_manager()->compute_tp()));
 
   return TILEDB_OK;
@@ -7418,6 +7510,18 @@ int32_t tiledb_deserialize_query(
     tiledb_query_t* query) noexcept {
   return api_entry<tiledb::api::tiledb_deserialize_query>(
       ctx, buffer, serialize_type, client_side, query);
+}
+
+int32_t tiledb_deserialize_query_and_array(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    const char* array_uri,
+    tiledb_query_t** query,
+    tiledb_array_t** array) noexcept {
+  return api_entry<tiledb::api::tiledb_deserialize_query_and_array>(
+      ctx, buffer, serialize_type, client_side, array_uri, query, array);
 }
 
 int32_t tiledb_serialize_array_nonempty_domain(
