@@ -443,22 +443,6 @@ endif()
 # Compile options/definitions
 ############################################################
 
-if (SANITIZER)
-  if (NOT CMAKE_BUILD_TYPE MATCHES "Debug")
-    message(FATAL_ERROR "Sanitizers only enabled for Debug build")
-  endif()
-  string(TOLOWER ${SANITIZER} SANITIZER)
-  if (NOT SANITIZER MATCHES "^(address|memory|leak|thread|undefined)$")
-    message(FATAL_ERROR "Unknown clang sanitizer: ${SANITIZER})")
-  else()
-    message(STATUS "The TileDB library is compiled with sanitizer ${SANITIZER} enabled")
-  endif()
-  target_compile_options(TILEDB_CORE_OBJECTS
-    PRIVATE
-      -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=${SANITIZER}
-  )
-endif()
-
 if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
   message(STATUS "The TileDB library is compiled with verbosity.")

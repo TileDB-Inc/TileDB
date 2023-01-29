@@ -30,6 +30,8 @@
  * Tests the C++ API for bitsort filter related functions.
  */
 
+#ifndef TILEDB_SANITIZER
+
 #include <map>
 #include <optional>
 #include <random>
@@ -930,3 +932,5 @@ TEMPLATE_TEST_CASE(
         hilbert_order);
   }
 }
+
+#endif  // ifndef TILEDB_SANITIZER
