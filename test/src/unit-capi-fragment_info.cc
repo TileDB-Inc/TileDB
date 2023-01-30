@@ -360,7 +360,7 @@ TEST_CASE(
       ctx, fragment_info, 1, &nameStr);
   CHECK(rc == TILEDB_OK);
   const char* nameStrData;
-  uint64_t nameStrLength;
+  size_t nameStrLength;
   rc = tiledb_string_view(nameStr, &nameStrData, &nameStrLength);
   CHECK(rc == TILEDB_OK);
   CHECK(std::string(name) == std::string(nameStrData));
@@ -691,7 +691,7 @@ TEST_CASE(
       ctx, fragment_info, 1, &nameStr);
   CHECK(rc == TILEDB_OK);
   const char* nameStrData;
-  uint64_t nameStrLength;
+  size_t nameStrLength;
   rc = tiledb_string_view(nameStr, &nameStrData, &nameStrLength);
   CHECK(rc == TILEDB_OK);
   CHECK(std::string(name) == std::string(nameStrData));
