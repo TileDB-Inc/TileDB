@@ -1133,11 +1133,10 @@ class Query {
    * Check input buffers are tile aligned. Valid only for global order queries.
    * Enforces tile alignment for dense and sparse arrays.
    * If query is not tile-aligned, trim and cache buffers for later submissions.
-   * If query is finalized, unaligned data should remain cached until aligned.
    *
-   * Returns true if query buffers meet S3 multipart upload size requirements.
+   * Returns true if cached and user buffers fill one or more tiles.
    */
-  bool check_trim_and_buffer_tile_alignment(bool finalize = false);
+  bool check_trim_and_buffer_tile_alignment();
 
   /**
    * Reset coord buffer markers at end of a global write submit.

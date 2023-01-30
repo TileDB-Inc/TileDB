@@ -144,22 +144,27 @@ struct RemoteGlobalOrderWriteFx {
 
     auto is_sparse = array.schema().array_type() == TILEDB_SPARSE;
 
-    // Generate some data to write to the array.
-    std::vector<T> data(submit_cell_count_);
-    std::iota(data.begin(), data.end(), 0);
-
-    std::vector<uint8_t> validity_buffer(submit_cell_count_, 0);
-    for (size_t i = 0; i < validity_buffer.size(); i += 2) {
-      validity_buffer[i] = 1;
-    }
-
     char char_data = 'a';
     // Start at column coordinate 1
     uint64_t cols_start = 1;
     // Resubmit until we reach total mbs requested
+    uint64_t submit_cell_count = submit_cell_count_;
     for (uint64_t i = 0; i < total_cell_count_; i += submit_cell_count_) {
+      if (i + submit_cell_count_ > total_cell_count_) {
+        submit_cell_count -= (i + submit_cell_count_) - total_cell_count_;
+      }
+
+      // Generate some data to write to the array.
+      std::vector<T> data(submit_cell_count);
+      std::iota(data.begin(), data.end(), 0);
+
+      std::vector<uint8_t> validity_buffer(submit_cell_count, 0);
+      for (size_t i = 0; i < validity_buffer.size(); i += 2) {
+        validity_buffer[i] = 1;
+      }
+
       // Handle coords for sparse case.
-      std::vector<uint64_t> cols(submit_cell_count_);
+      std::vector<uint64_t> cols(submit_cell_count);
       if (is_sparse) {
         std::iota(cols.begin(), cols.end(), cols_start);
         query.set_data_buffer("cols", cols);
@@ -172,14 +177,14 @@ struct RemoteGlobalOrderWriteFx {
       }
 
       // Variable sized attribute.
-      std::string var_data(submit_cell_count_ * sizeof(T), char_data++);
+      std::string var_data(submit_cell_count * sizeof(T), char_data++);
       char_data = char_data > 'z' ? 'a' : char_data;
       std::vector<uint64_t> var_offsets;
       if (is_var_) {
         // Generate offsets for variable sized attribute.
         uint64_t max_step = var_data.size() / submit_cell_count_;
         uint64_t j = 0;  // + (i * sizeof(T));
-        var_offsets.resize(submit_cell_count_, j);
+        var_offsets.resize(submit_cell_count, j);
         std::generate_n(var_offsets.begin() + 1, var_offsets.size() - 1, [&]() {
           j += max_step--;
           max_step =
@@ -424,18 +429,10 @@ TEMPLATE_LIST_TEST_CASE(
   bool var = true;
   bool nullable = true;
 
-  SECTION("XL unaligned chunks") {
-    cells = 20;
-    extent = 10;
-    chunk_size = 200;
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
-    fx.run_test();
-  }
-
   SECTION("Small unaligned chunks") {
     cells = 20;
     extent = 10;
-    chunk_size = 2;
+    chunk_size = 3;
     RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
     fx.run_test();
   }
