@@ -967,6 +967,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
     unconsolidated_metadata_num_ += (uint32_t)!f.has_consolidated_footer();
   }
 
+  loaded_ = true;
   return Status::Ok();
 }
 
