@@ -107,7 +107,7 @@ class FragmentInfo {
   Status get_total_cell_num(uint64_t* cell_num) const;
 
   /** Retrieves the name of the fragment with the given index. */
-  std::string get_fragment_name_str(uint32_t fid) const;
+  const std::string& get_fragment_name_str(uint32_t fid) const;
 
   /** Retrieves the name of the fragment with the given index. Deprecated. */
   Status get_fragment_name(uint32_t fid, const char** name) const;

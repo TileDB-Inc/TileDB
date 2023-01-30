@@ -5045,7 +5045,7 @@ int32_t tiledb_fragment_info_get_fragment_name_v2(
       sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  std::string nameStr =
+  const std::string& nameStr =
       fragment_info->fragment_info_->get_fragment_name_str(fid);
 
   *name = tiledb_string_handle_t::make_handle(nameStr);
