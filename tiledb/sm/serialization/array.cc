@@ -151,26 +151,27 @@ Status array_to_capnp(
         *(schema.second.get()), &schema_builder, client_side));
   }
 
-  // Serialize array directory (load if not loaded already)
-  const auto array_directory = array->load_array_directory();
-  auto array_directory_builder = array_builder->initArrayDirectory();
-  array_directory_to_capnp(array_directory, &array_directory_builder);
+  if (array->use_refactored_array_open()) {
+    // Serialize array directory (load if not loaded already)
+    const auto array_directory = array->load_array_directory();
+    auto array_directory_builder = array_builder->initArrayDirectory();
+    array_directory_to_capnp(array_directory, &array_directory_builder);
 
-  // Serialize fragment metadata iff loaded (if the array is open for READs)
-  if (array->get_query_type() == QueryType::READ) {
-    auto fragment_metadata_all = array->fragment_metadata();
-    if (!fragment_metadata_all.empty()) {
-      auto fragment_metadata_all_builder =
-          array_builder->initFragmentMetadataAll(fragment_metadata_all.size());
-      for (size_t i = 0; i < fragment_metadata_all.size(); i++) {
-        auto fragment_metadata_builder = fragment_metadata_all_builder[i];
-        RETURN_NOT_OK(fragment_metadata_to_capnp(
-            *fragment_metadata_all[i], &fragment_metadata_builder));
+    // Serialize fragment metadata iff loaded (if the array is open for READs)
+    if (array->get_query_type() == QueryType::READ) {
+      auto fragment_metadata_all = array->fragment_metadata();
+      if (!fragment_metadata_all.empty()) {
+        auto fragment_metadata_all_builder =
+            array_builder->initFragmentMetadataAll(
+                fragment_metadata_all.size());
+        for (size_t i = 0; i < fragment_metadata_all.size(); i++) {
+          auto fragment_metadata_builder = fragment_metadata_all_builder[i];
+          RETURN_NOT_OK(fragment_metadata_to_capnp(
+              *fragment_metadata_all[i], &fragment_metadata_builder));
+        }
       }
     }
-  }
 
-  if (array->use_refactored_array_open()) {
     if (array->serialize_non_empty_domain()) {
       auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
       RETURN_NOT_OK(
