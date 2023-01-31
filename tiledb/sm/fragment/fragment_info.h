@@ -364,6 +364,11 @@ class FragmentInfo {
     return unconsolidated_metadata_num_;
   }
 
+  /** loaded_ accessor. */
+  inline bool& loaded() {
+    return loaded_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
