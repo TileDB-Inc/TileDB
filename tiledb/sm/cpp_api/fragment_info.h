@@ -102,7 +102,7 @@ class FragmentInfo {
     const char* name_c;
     size_t length;
     ctx.handle_error(tiledb_string_view(name_ptr.get(), &name_c, &length));
-    return std::string(name_c);
+    return std::string(name_c, length);
   }
 
   /**

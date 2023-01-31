@@ -5031,7 +5031,8 @@ int32_t tiledb_fragment_info_get_fragment_name(
       sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(fragment_info->fragment_info_->get_fragment_name(fid, name));
+  *name = (new std::string(fragment_info->fragment_info_->fragment_name(fid)))
+              ->c_str();
 
   return TILEDB_OK;
 }
@@ -5041,14 +5042,14 @@ int32_t tiledb_fragment_info_get_fragment_name_v2(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     tiledb_string_t** name) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  const std::string& nameStr =
-      fragment_info->fragment_info_->get_fragment_name_str(fid);
+  if (name == nullptr)
+    throw std::invalid_argument("Name cannot be null.");
 
-  *name = tiledb_string_handle_t::make_handle(nameStr);
+  *name = tiledb_string_handle_t::make_handle(
+      fragment_info->fragment_info_->fragment_name(fid));
 
   return TILEDB_OK;
 }

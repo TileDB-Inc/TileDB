@@ -350,21 +350,15 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   CHECK(std::string(uri) == written_frag_uri);
 
-  // Get fragment name
-  const char* name;
-  rc = tiledb_fragment_info_get_fragment_name(ctx, fragment_info, 1, &name);
+  tiledb_string_t* name;
+  rc = tiledb_fragment_info_get_fragment_name_v2(ctx, fragment_info, 1, &name);
   CHECK(rc == TILEDB_OK);
-
-  tiledb_string_t* nameStr;
-  rc = tiledb_fragment_info_get_fragment_name_v2(
-      ctx, fragment_info, 1, &nameStr);
+  const char* name_ptr;
+  size_t name_length;
+  rc = tiledb_string_view(name, &name_ptr, &name_length);
   CHECK(rc == TILEDB_OK);
-  const char* nameStrData;
-  size_t nameStrLength;
-  rc = tiledb_string_view(nameStr, &nameStrData, &nameStrLength);
+  rc = tiledb_string_free(&name);
   CHECK(rc == TILEDB_OK);
-  CHECK(std::string(name) == std::string(nameStrData));
-  tiledb_string_free(&nameStr);
 
   // Get schema name
   const char* schema_name;
@@ -681,21 +675,15 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   CHECK(std::string(uri) == written_frag_uri);
 
-  // Get fragment name
-  const char* name;
-  rc = tiledb_fragment_info_get_fragment_name(ctx, fragment_info, 1, &name);
+  tiledb_string_t* name;
+  rc = tiledb_fragment_info_get_fragment_name_v2(ctx, fragment_info, 1, &name);
   CHECK(rc == TILEDB_OK);
-
-  tiledb_string_t* nameStr;
-  rc = tiledb_fragment_info_get_fragment_name_v2(
-      ctx, fragment_info, 1, &nameStr);
+  const char* name_ptr;
+  size_t name_length;
+  rc = tiledb_string_view(name, &name_ptr, &name_length);
   CHECK(rc == TILEDB_OK);
-  const char* nameStrData;
-  size_t nameStrLength;
-  rc = tiledb_string_view(nameStr, &nameStrData, &nameStrLength);
+  rc = tiledb_string_free(&name);
   CHECK(rc == TILEDB_OK);
-  CHECK(std::string(name) == std::string(nameStrData));
-  tiledb_string_free(&nameStr);
 
   // Get fragment size
   uint64_t size;
