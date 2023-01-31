@@ -409,7 +409,7 @@ class FragmentInfo {
   uint64_t timestamp_end_;
 
   /** Whether the fragment info have been loaded. */
-  bool loaded_;
+  bool loaded_ = false;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
