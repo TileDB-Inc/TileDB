@@ -2153,66 +2153,60 @@ Status query_serialize(
           auto attr_buffer_builders = query_builder.getAttributeBufferHeaders();
           for (auto attr_buffer_builder : attr_buffer_builders) {
             const std::string name = attr_buffer_builder.getName().cStr();
-
             auto query_buffer = query->buffer(name);
-            auto query_buffer_cache = query->get_remote_buffer_cache(name);
+            auto buffer_cache = query->get_remote_buffer_cache(name);
 
             if (query_buffer.buffer_var_size_ != nullptr &&
                 query_buffer.buffer_var_ != nullptr) {
               // Variable size buffers.
               Buffer data;
-              Buffer var;
+              Buffer var(
+                  query_buffer.buffer_var_, *query_buffer.buffer_var_size_);
 
-              if (remote_global_order_write) {
-                throw_if_not_ok(data.write(
-                    query_buffer_cache.buffer.data(),
-                    query_buffer_cache.byte_offset));
+              // If we are not appending offsets we can use non-owning buffers.
+              if (buffer_cache.byte_offset > 0) {
+                Buffer prepend_data;
+                Buffer prepend_var_data;
+                throw_if_not_ok(prepend_data.write(
+                    buffer_cache.buffer.data(), buffer_cache.byte_offset));
+                RETURN_NOT_OK(
+                    serialized_buffer->add_buffer(std::move(prepend_data)));
+
+                // Ensure ascending order for appended user offsets.
                 throw_if_not_ok(data.write(
                     query_buffer.buffer_, *query_buffer.buffer_size_));
-
-                // If we are appending user offsets, ensure ascending order.
-                if (query_buffer_cache.byte_offset > 0) {
-                  for (uint64_t i = query_buffer_cache.byte_offset;
-                       i < data.size();
-                       i += constants::cell_var_offset_size) {
-                    *(uint64_t*)data.data(i) +=
-                        query_buffer_cache.var_data_offset;
-                  }
+                for (uint64_t i = 0; i < data.size();
+                     i += constants::cell_var_offset_size) {
+                  *(uint64_t*)data.data(i) += buffer_cache.var_data_offset;
                 }
+                RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
 
-                // Variable sized data buffers.
-                throw_if_not_ok(var.write(
-                    query_buffer_cache.buffer_var.data(),
-                    query_buffer_cache.var_data_offset));
-                throw_if_not_ok(var.write(
-                    query_buffer.buffer_var_, *query_buffer.buffer_var_size_));
+                throw_if_not_ok(prepend_var_data.write(
+                    buffer_cache.buffer_var.data(),
+                    buffer_cache.var_data_offset));
+                RETURN_NOT_OK(
+                    serialized_buffer->add_buffer(std::move(prepend_var_data)));
                 query->set_remote_buffer_cache_submit(name, true);
               } else {
                 data = {query_buffer.buffer_, *query_buffer.buffer_size_};
-                var = {
-                    query_buffer.buffer_var_, *query_buffer.buffer_var_size_};
-              };
+                RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
+              }
 
-              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
               RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(var)));
             } else if (
                 query_buffer.buffer_size_ != nullptr &&
                 query_buffer.buffer_ != nullptr) {
               // Fixed size buffers.
-              Buffer data;
+              Buffer data(query_buffer.buffer_, *query_buffer.buffer_size_);
 
-              // Avoid copy from appending user data if not remote global order.
               if (remote_global_order_write) {
-                throw_if_not_ok(data.write(
-                    query_buffer_cache.buffer.data(),
-                    query_buffer_cache.byte_offset));
-
-                // Append user data to trimmed cache data.
-                throw_if_not_ok(data.write(
-                    query_buffer.buffer_, *query_buffer.buffer_size_));
+                // Prepend cached data for remote global order writes.
+                Buffer prepend;
+                throw_if_not_ok(prepend.write(
+                    buffer_cache.buffer.data(), buffer_cache.byte_offset));
+                RETURN_NOT_OK(
+                    serialized_buffer->add_buffer(std::move(prepend)));
                 query->set_remote_buffer_cache_submit(name, true);
-              } else {
-                data = {query_buffer.buffer_, *query_buffer.buffer_size_};
               }
 
               RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
@@ -2223,22 +2217,21 @@ Status query_serialize(
 
             if (query_buffer.validity_vector_.buffer_size() != nullptr) {
               // Validity buffers.
-              Buffer data;
+              Buffer data(
+                  query_buffer.validity_vector_.buffer(),
+                  *query_buffer.validity_vector_.buffer_size());
 
               if (remote_global_order_write) {
-                uint64_t cached_cells = query_buffer_cache.byte_offset /
-                                        query_buffer_cache.cell_size;
-                throw_if_not_ok(data.write(
-                    query_buffer_cache.buffer_validity.data(), cached_cells));
-                throw_if_not_ok(data.write(
-                    query_buffer.validity_vector_.buffer(),
-                    *query_buffer.validity_vector_.buffer_size()));
+                Buffer prepend;
+                uint64_t cached_cells =
+                    buffer_cache.byte_offset / buffer_cache.cell_size;
+                throw_if_not_ok(prepend.write(
+                    buffer_cache.buffer_validity.data(), cached_cells));
+                RETURN_NOT_OK(
+                    serialized_buffer->add_buffer(std::move(prepend)));
                 query->set_remote_buffer_cache_submit(name, true);
-              } else {
-                data = {
-                    query_buffer.validity_vector_.buffer(),
-                    *query_buffer.validity_vector_.buffer_size()};
               }
+
               RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
             }
           }
