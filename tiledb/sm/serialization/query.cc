@@ -2153,57 +2153,52 @@ Status query_serialize(
           auto attr_buffer_builders = query_builder.getAttributeBufferHeaders();
           for (auto attr_buffer_builder : attr_buffer_builders) {
             const std::string name = attr_buffer_builder.getName().cStr();
-            auto query_buffer = query->buffer(name);
-            auto buffer_cache = query->get_remote_buffer_cache(name);
+            auto buffer = query->buffer(name);
+            auto& buffer_cache = query->get_remote_buffer_cache(name);
 
-            if (query_buffer.buffer_var_size_ != nullptr &&
-                query_buffer.buffer_var_ != nullptr) {
+            if (buffer.buffer_var_size_ != nullptr &&
+                buffer.buffer_var_ != nullptr) {
               // Variable size buffers.
               Buffer data;
-              Buffer var(
-                  query_buffer.buffer_var_, *query_buffer.buffer_var_size_);
+              Buffer var(buffer.buffer_var_, *buffer.buffer_var_size_);
 
               // If we are not appending offsets we can use non-owning buffers.
               if (buffer_cache.byte_offset > 0) {
-                Buffer prepend_data;
-                Buffer prepend_var_data;
-                throw_if_not_ok(prepend_data.write(
-                    buffer_cache.buffer.data(), buffer_cache.byte_offset));
+                Buffer prepend_data(
+                    buffer_cache.buffer.data(), buffer_cache.byte_offset);
+                Buffer prepend_var_data(
+                    buffer_cache.buffer_var.data(),
+                    buffer_cache.var_data_offset);
                 RETURN_NOT_OK(
                     serialized_buffer->add_buffer(std::move(prepend_data)));
 
                 // Ensure ascending order for appended user offsets.
-                throw_if_not_ok(data.write(
-                    query_buffer.buffer_, *query_buffer.buffer_size_));
+                // Copy user offsets so we don't modify buffer in client code.
+                throw_if_not_ok(
+                    data.write(buffer.buffer_, *buffer.buffer_size_));
                 for (uint64_t i = 0; i < data.size();
                      i += constants::cell_var_offset_size) {
                   *(uint64_t*)data.data(i) += buffer_cache.var_data_offset;
                 }
-                RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
 
-                throw_if_not_ok(prepend_var_data.write(
-                    buffer_cache.buffer_var.data(),
-                    buffer_cache.var_data_offset));
+                RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
                 RETURN_NOT_OK(
                     serialized_buffer->add_buffer(std::move(prepend_var_data)));
                 query->set_remote_buffer_cache_submit(name, true);
               } else {
-                data = {query_buffer.buffer_, *query_buffer.buffer_size_};
+                data = {buffer.buffer_, *buffer.buffer_size_};
                 RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
               }
 
               RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(var)));
             } else if (
-                query_buffer.buffer_size_ != nullptr &&
-                query_buffer.buffer_ != nullptr) {
+                buffer.buffer_size_ != nullptr && buffer.buffer_ != nullptr) {
               // Fixed size buffers.
-              Buffer data(query_buffer.buffer_, *query_buffer.buffer_size_);
+              Buffer data(buffer.buffer_, *buffer.buffer_size_);
 
               if (remote_global_order_write) {
-                // Prepend cached data for remote global order writes.
-                Buffer prepend;
-                throw_if_not_ok(prepend.write(
-                    buffer_cache.buffer.data(), buffer_cache.byte_offset));
+                Buffer prepend(
+                    buffer_cache.buffer.data(), buffer_cache.byte_offset);
                 RETURN_NOT_OK(
                     serialized_buffer->add_buffer(std::move(prepend)));
                 query->set_remote_buffer_cache_submit(name, true);
@@ -2215,18 +2210,17 @@ Status query_serialize(
                   "Unable to serialize invalid query buffers."));
             }
 
-            if (query_buffer.validity_vector_.buffer_size() != nullptr) {
+            if (buffer.validity_vector_.buffer_size() != nullptr) {
               // Validity buffers.
               Buffer data(
-                  query_buffer.validity_vector_.buffer(),
-                  *query_buffer.validity_vector_.buffer_size());
+                  buffer.validity_vector_.buffer(),
+                  *buffer.validity_vector_.buffer_size());
 
               if (remote_global_order_write) {
-                Buffer prepend;
                 uint64_t cached_cells =
                     buffer_cache.byte_offset / buffer_cache.cell_size;
-                throw_if_not_ok(prepend.write(
-                    buffer_cache.buffer_validity.data(), cached_cells));
+                Buffer prepend(
+                    buffer_cache.buffer_validity.data(), cached_cells);
                 RETURN_NOT_OK(
                     serialized_buffer->add_buffer(std::move(prepend)));
                 query->set_remote_buffer_cache_submit(name, true);

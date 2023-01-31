@@ -380,7 +380,7 @@ class Query {
    * @param name The buffer name to retrieve.
    * @return QueryRemoteBufferStorage for the requested buffer.
    */
-  inline QueryRemoteBufferStorage get_remote_buffer_cache(
+  inline const QueryRemoteBufferStorage& get_remote_buffer_cache(
       const std::string& name) {
     return query_remote_buffer_storage_[name];
   }
