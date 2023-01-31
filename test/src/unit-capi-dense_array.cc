@@ -57,6 +57,7 @@
 #include <thread>
 
 using namespace tiledb::test;
+using namespace tiledb;
 
 struct TestRange {
   TestRange(uint64_t i, uint64_t min, uint64_t max)
@@ -5342,4 +5343,64 @@ TEST_CASE_METHOD(
   tiledb_subarray_free(&subarray);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+}
+
+TEST_CASE_METHOD(DenseArrayFx, "buffer size error", "[buffer_size_error]") {
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
+  create_temp_dir(temp_dir);
+
+  // Create and write dense array
+  std::string array_name = "/Users/robertbindar/TileDB/test/production_data";
+
+  Context ctx(ctx_, false);
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+  query.set_layout(TILEDB_UNORDERED);
+
+  uint64_t up_limit = 1048576;
+  std::vector<char> obs_id(up_limit);
+  uint64_t offsets_size = up_limit / 8;
+  std::vector<uint64_t> obs_id_offsets(offsets_size);
+  uint64_t value_size = up_limit / sizeof(float);
+  std::vector<float> value(value_size);
+
+  auto set_buffers = [&]() {
+    query.set_data_buffer("obs_id", obs_id.data(), obs_id.size());
+    query.set_offsets_buffer(
+        "obs_id", obs_id_offsets.data(), obs_id_offsets.size());
+    query.set_data_buffer("value", value.data(), value.size());
+  };
+
+  auto serialize_and_submit = [&](Query& q) {
+    // Serialize into a copy (client side).
+    std::vector<uint8_t> serialized;
+    serialize_query(ctx, q, &serialized, true);
+
+    // Deserialize into a new query and allocate buffers (server side).
+    Array array2(ctx, array_name.c_str(), TILEDB_READ);
+    Query query2(ctx, array2);
+    deserialize_query(ctx, serialized, &query2, false);
+    auto to_free = allocate_query_buffers(ctx, array2, &query2);
+
+    // Submit and serialize results (server side).
+    query2.submit();
+    serialize_query(ctx, query2, &serialized, false);
+
+    // Deserialize into original query (client side).
+    deserialize_query(ctx, serialized, &q, true);
+
+    for (void* b : to_free)
+      std::free(b);
+  };
+
+  set_buffers();
+  Query::Status status;
+  do {
+    serialize_and_submit(query);
+    status = query.query_status();
+    std::cout << "read 1 chunk" << std::endl;
+  } while (status == Query::Status::INCOMPLETE);
+
+  remove_temp_dir(temp_dir);
 }

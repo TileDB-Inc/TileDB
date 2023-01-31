@@ -1406,19 +1406,17 @@ std::vector<void*> allocate_query_buffers(
   std::vector<void*> to_free;
   void* unused1;
   uint64_t* unused2;
-  uint8_t* unused3;
-  uint64_t *a1_size, *a2_size, *a2_validity_size, *a3_size, *a3_offset_size,
-      *coords_size;
+  uint64_t *a1_size, *a3_size, *a3_offset_size, *coords_size;
   ctx.handle_error(tiledb_query_get_data_buffer(
-      ctx.ptr().get(), query->ptr().get(), "a1", &unused1, &a1_size));
+      ctx.ptr().get(), query->ptr().get(), "value", &unused1, &a1_size));
   ctx.handle_error(tiledb_query_get_data_buffer(
-      ctx.ptr().get(), query->ptr().get(), "a2", &unused1, &a2_size));
-  ctx.handle_error(tiledb_query_get_validity_buffer(
-      ctx.ptr().get(), query->ptr().get(), "a2", &unused3, &a2_validity_size));
-  ctx.handle_error(tiledb_query_get_data_buffer(
-      ctx.ptr().get(), query->ptr().get(), "a3", &unused1, &a3_size));
+      ctx.ptr().get(), query->ptr().get(), "obs_id", &unused1, &a3_size));
   ctx.handle_error(tiledb_query_get_offsets_buffer(
-      ctx.ptr().get(), query->ptr().get(), "a3", &unused2, &a3_offset_size));
+      ctx.ptr().get(),
+      query->ptr().get(),
+      "obs_id",
+      &unused2,
+      &a3_offset_size));
   ctx.handle_error(tiledb_query_get_data_buffer(
       ctx.ptr().get(),
       query->ptr().get(),
@@ -1429,28 +1427,21 @@ std::vector<void*> allocate_query_buffers(
   if (a1_size != nullptr) {
     void* buff = std::malloc(*a1_size);
     ctx.handle_error(tiledb_query_set_data_buffer(
-        ctx.ptr().get(), query->ptr().get(), "a1", buff, a1_size));
+        ctx.ptr().get(), query->ptr().get(), "value", buff, a1_size));
     to_free.push_back(buff);
-  }
-
-  if (a2_size != nullptr) {
-    void* buff = std::malloc(*a2_size);
-    uint8_t* validity = (uint8_t*)std::malloc(*a2_validity_size);
-    ctx.handle_error(tiledb_query_set_data_buffer(
-        ctx.ptr().get(), query->ptr().get(), "a2", buff, a2_size));
-    ctx.handle_error(tiledb_query_set_validity_buffer(
-        ctx.ptr().get(), query->ptr().get(), "a2", validity, a2_validity_size));
-    to_free.push_back(buff);
-    to_free.push_back(validity);
   }
 
   if (a3_size != nullptr) {
     void* buff = std::malloc(*a3_size);
     uint64_t* offsets = (uint64_t*)std::malloc(*a3_offset_size);
     ctx.handle_error(tiledb_query_set_data_buffer(
-        ctx.ptr().get(), query->ptr().get(), "a3", buff, a3_size));
+        ctx.ptr().get(), query->ptr().get(), "obs_id", buff, a3_size));
     ctx.handle_error(tiledb_query_set_offsets_buffer(
-        ctx.ptr().get(), query->ptr().get(), "a3", offsets, a3_offset_size));
+        ctx.ptr().get(),
+        query->ptr().get(),
+        "obs_id",
+        offsets,
+        a3_offset_size));
     to_free.push_back(buff);
     to_free.push_back(offsets);
   }
@@ -1484,10 +1475,13 @@ void submit_serialized_query(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   context.handle_error(serialize_query(ctx, query, &serialized, true));
   context.handle_error(
       deserialize_query(ctx, serialized, copy_query.ptr().get(), false));
+  auto to_free = allocate_query_buffers(ctx, copy_array, &copy_query);
   copy_query.submit();
   context.handle_error(
       serialize_query(ctx, copy_query.ptr().get(), &serialized, false));
   context.handle_error(deserialize_query(ctx, serialized, query, true));
+  for (void* b : to_free)
+    std::free(b);
 }
 void finalize_serialized_query(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   Context context(ctx, false);
