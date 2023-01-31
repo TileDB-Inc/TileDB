@@ -174,19 +174,6 @@ Status GenericTileIO::write_generic(
   return Status::Ok();
 }
 
-template <class T>
-void GenericTileIO::serialize_generic_tile_header(
-    T& serializer, GenericTileHeader& header) {
-  serializer.write(header.version_number);
-  serializer.write(header.persisted_size);
-  serializer.write(header.tile_size);
-  serializer.write(header.datatype);
-  serializer.write(header.cell_size);
-  serializer.write(header.encryption_type);
-  serializer.write(header.filter_pipeline_size);
-  header.filters.serialize(serializer);
-}
-
 Status GenericTileIO::write_generic_tile_header(GenericTileHeader* header) {
   SizeComputationSerializer fp_size_computation_serializer;
   header->filters.serialize(fp_size_computation_serializer);

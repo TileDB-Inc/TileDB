@@ -33,6 +33,8 @@
 #ifndef TILEDB_SERIALIZERS_H
 #define TILEDB_SERIALIZERS_H
 
+#include <vector>
+
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 
@@ -109,6 +111,33 @@ class Serializer {
 
   /* Size left to be written or total size. */
   storage_size_t size_;
+};
+
+class ReallocatingSerializer {
+  public:
+    ReallocatingSerializer() {}
+
+    template <class T>
+    void write(const T& v) {
+      write(&v, sizeof(T));
+    }
+
+    void write(const void* data, storage_size_t size) {
+      auto curr_size = data_.size();
+      data_.resize(curr_size + size);
+      memcpy(data_.data() + curr_size, data, size);
+    }
+
+    void* data() {
+      return data_.data();
+    }
+
+    size_t size() {
+      return data_.size();
+    }
+
+  private:
+    std::vector<uint8_t> data_;
 };
 
 /**

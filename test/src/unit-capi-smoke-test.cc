@@ -412,7 +412,7 @@ SmokeTestFx::SmokeTestFx() {
 }
 
 SmokeTestFx::~SmokeTestFx() {
-  remove_dir(FILE_TEMP_DIR);
+  //remove_dir(FILE_TEMP_DIR);
   tiledb_ctx_free(&ctx_);
   tiledb_vfs_free(&vfs_);
 }
@@ -1434,6 +1434,7 @@ TEST_CASE_METHOD(
                           read_order,
                           encryption_type,
                           combination_op);
+                      //return;
                     }
                   }
                 }

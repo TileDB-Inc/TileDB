@@ -46,6 +46,7 @@
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
 using namespace tiledb::type;
@@ -483,6 +484,8 @@ class FragmentMetadata {
    * Applicable to format versions 15 or higher.
    */
   Status store_v15_or_higher(const EncryptionKey& encryption_key);
+
+  Status pjd_store_v15_or_higher(const EncryptionKey& encryption_key);
 
   /**
    * Simply sets the number of cells for the last tile.
@@ -1799,9 +1802,11 @@ class FragmentMetadata {
    * @return Status
    */
   Status store_rtree(const EncryptionKey& encryption_key, uint64_t* nbytes);
+  void serialize_rtree(ReallocatingSerializer& s, const EncryptionKey& encryption_key);
 
   /** Stores a footer with the basic information. */
   Status store_footer(const EncryptionKey& encryption_key);
+  void serialize_footer(ReallocatingSerializer& s, const EncryptionKey& encryption_key);
 
   /** Writes the R-tree to a tile. */
   WriterTile write_rtree();
@@ -1819,6 +1824,7 @@ class FragmentMetadata {
    */
   void store_tile_offsets(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+  void serialize_tile_offsets(ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key);
 
   /**
    * Writes the tile offsets of the input attribute or dimension idx to the
@@ -1837,6 +1843,8 @@ class FragmentMetadata {
    */
   void store_tile_var_offsets(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+  void serialize_tile_var_offsets(ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key);
+
 
   /**
    * Writes the variable tile offsets of the input attribute or dimension idx
@@ -1856,6 +1864,8 @@ class FragmentMetadata {
   void store_tile_var_sizes(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
+  void serialize_tile_var_sizes(ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key);
+
   /**
    * Writes the variable tile sizes for the input attribute or dimension
    * to storage.
@@ -1874,6 +1884,9 @@ class FragmentMetadata {
   void store_tile_validity_offsets(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
+  void serialize_tile_validity_offsets(
+      ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key);
+
   /**
    * Writes the validity tile offsets of the input attribute idx to the
    * input buffer.
@@ -1890,6 +1903,8 @@ class FragmentMetadata {
   void store_tile_mins(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
+  void serialize_tile_mins(ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key);
+
   /**
    * Writes the mins of the input attribute idx to the input buffer.
    */
@@ -1904,6 +1919,9 @@ class FragmentMetadata {
    */
   void store_tile_maxs(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  void serialize_tile_maxs(
+      ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key);
 
   /**
    * Writes the maxs of the input attribute idx to the input buffer.
@@ -1920,6 +1938,9 @@ class FragmentMetadata {
   void store_tile_sums(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
+  void serialize_tile_sums(
+      ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key);
+
   /**
    * Writes the sums of the input attribute idx to the input buffer.
    */
@@ -1934,6 +1955,9 @@ class FragmentMetadata {
    */
   void store_tile_null_counts(
       unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  void serialize_tile_null_counts(
+      ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key);
 
   /**
    * Writes the null counts of the input attribute idx to the input buffer.
@@ -1950,6 +1974,9 @@ class FragmentMetadata {
   void store_fragment_min_max_sum_null_count(
       uint64_t num, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
+  void serialize_fragment_min_max_sum_null_count(
+      ReallocatingSerializer& s, uint64_t num, const EncryptionKey& encryption_key);
+
   /**
    * Writes the processed conditions to storage.
    *
@@ -1958,6 +1985,9 @@ class FragmentMetadata {
    */
   void store_processed_conditions(
       const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  void serialize_processed_conditions(
+      ReallocatingSerializer& s, const EncryptionKey& encryption_key);
 
   /**
    * Compute the fragment min, max and sum values.
@@ -2021,6 +2051,8 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key,
       WriterTile& tile,
       uint64_t* nbytes) const;
+
+  void serialize_generic_tile(ReallocatingSerializer& s, const EncryptionKey& encryption_key, WriterTile& tile);
 
   /**
    * Writes the contents of the input buffer at the end of the fragment

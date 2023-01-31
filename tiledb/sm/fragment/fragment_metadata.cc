@@ -837,7 +837,7 @@ void FragmentMetadata::store(const EncryptionKey& encryption_key) {
     } else if (version_ <= 14) {
       throw_if_not_ok(store_v12_v14(encryption_key));
     } else {
-      throw_if_not_ok(store_v15_or_higher(encryption_key));
+      throw_if_not_ok(pjd_store_v15_or_higher(encryption_key));
     }
     return;
   } catch (...) {
@@ -1157,6 +1157,93 @@ Status FragmentMetadata::store_v15_or_higher(
 
   // Store footer
   throw_if_not_ok(store_footer(encryption_key));
+
+  // Close file
+  return storage_manager_->close_file(fragment_metadata_uri);
+}
+
+Status FragmentMetadata::pjd_store_v15_or_higher(
+    const EncryptionKey& encryption_key) {
+  auto fragment_metadata_uri =
+      fragment_uri_.join_path(constants::fragment_metadata_filename);
+  auto num = num_dims_and_attrs();
+
+  ReallocatingSerializer s;
+
+  // Store R-Tree
+  gt_offsets_.rtree_ = s.size();
+  serialize_rtree(s, encryption_key);
+
+  // Store tile offsets
+  gt_offsets_.tile_offsets_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_offsets_[i] = s.size();
+    serialize_tile_offsets(s, i, encryption_key);
+  }
+
+  // Store tile var offsets
+  gt_offsets_.tile_var_offsets_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_var_offsets_[i] = s.size();
+    serialize_tile_var_offsets(s, i, encryption_key);
+  }
+
+  // Store tile var sizes
+  gt_offsets_.tile_var_sizes_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_var_sizes_[i] = s.size();
+    serialize_tile_var_sizes(s, i, encryption_key);
+  }
+
+  // Store validity tile offsets
+  gt_offsets_.tile_validity_offsets_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_validity_offsets_[i] = s.size();
+    serialize_tile_validity_offsets(s, i, encryption_key);
+  }
+
+  // Store mins
+  gt_offsets_.tile_min_offsets_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_min_offsets_[i] = s.size();
+    serialize_tile_mins(s, i, encryption_key);
+  }
+
+  // Store maxs
+  gt_offsets_.tile_max_offsets_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_max_offsets_[i] = s.size();
+    serialize_tile_maxs(s, i, encryption_key);
+  }
+
+  // Store sums
+  gt_offsets_.tile_sum_offsets_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_sum_offsets_[i] = s.size();
+    serialize_tile_sums(s, i, encryption_key);
+  }
+
+  // Store null counts
+  gt_offsets_.tile_null_count_offsets_.resize(num);
+  for (unsigned int i = 0; i < num; ++i) {
+    gt_offsets_.tile_null_count_offsets_[i] = s.size();
+    serialize_tile_null_counts(s, i, encryption_key);
+  }
+
+  // Store fragment min, max, sum and null count
+  gt_offsets_.fragment_min_max_sum_null_count_offset_ = s.size();
+  serialize_fragment_min_max_sum_null_count(s, num, encryption_key);
+
+  // Store processed condition
+  gt_offsets_.processed_conditions_offsets_ = s.size();
+  serialize_processed_conditions(s, encryption_key);
+
+  // Store footer
+  serialize_footer(s, encryption_key);
+
+  // Write file
+  throw_if_not_ok(storage_manager_->resources().vfs().write(
+      fragment_metadata_uri, s.data(), s.size()));
 
   // Close file
   return storage_manager_->close_file(fragment_metadata_uri);
@@ -3927,6 +4014,11 @@ Status FragmentMetadata::store_rtree(
   return Status::Ok();
 }
 
+void FragmentMetadata::serialize_rtree(ReallocatingSerializer& s, const EncryptionKey& encryption_key) {
+  auto rtree_tile = write_rtree();
+  serialize_generic_tile(s, encryption_key, rtree_tile);
+}
+
 WriterTile FragmentMetadata::write_rtree() {
   rtree_.build_tree();
   SizeComputationSerializer size_computation_serializer;
@@ -4041,6 +4133,14 @@ Status FragmentMetadata::write_generic_tile_to_file(
   return Status::Ok();
 }
 
+void FragmentMetadata::serialize_generic_tile(ReallocatingSerializer& s, const EncryptionKey& encryption_key, WriterTile& tile) {
+  URI fragment_metadata_uri = fragment_uri_.join_path(
+      std::string(constants::fragment_metadata_filename));
+
+  GenericTileIO tile_io(storage_manager_->resources(), fragment_metadata_uri);
+  tile_io.serialize_generic(s, &tile, encryption_key);
+}
+
 Status FragmentMetadata::write_footer_to_file(WriterTile& tile) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
@@ -4069,6 +4169,17 @@ void FragmentMetadata::store_tile_offsets(
   throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
 
   storage_manager_->stats()->add_counter("write_tile_offsets_size", *nbytes);
+}
+
+void FragmentMetadata::serialize_tile_offsets(ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key) {
+  SizeComputationSerializer scs;
+  write_tile_offsets(idx, scs);
+
+  WriterTile tile{WriterTile::from_generic(scs.size())};
+  Serializer serializer(tile.data(), tile.size());
+  write_tile_offsets(idx, serializer);
+
+  serialize_generic_tile(s, encryption_key, tile);
 }
 
 void FragmentMetadata::write_tile_offsets(
@@ -4100,6 +4211,18 @@ void FragmentMetadata::store_tile_var_offsets(
       "write_tile_var_offsets_size", *nbytes);
 }
 
+void FragmentMetadata::serialize_tile_var_offsets(ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key) {
+  SizeComputationSerializer scs;
+  write_tile_var_offsets(idx, scs);
+
+  WriterTile tile{WriterTile::from_generic(scs.size())};
+
+  Serializer serializer(tile.data(), tile.size());
+  write_tile_var_offsets(idx, serializer);
+
+  serialize_generic_tile(s, encryption_key, tile);
+}
+
 void FragmentMetadata::write_tile_var_offsets(
     unsigned idx, Serializer& serializer) {
   // Write tile offsets for each attribute
@@ -4127,6 +4250,18 @@ void FragmentMetadata::store_tile_var_sizes(
   throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
 
   storage_manager_->stats()->add_counter("write_tile_var_sizes_size", *nbytes);
+}
+
+void FragmentMetadata::serialize_tile_var_sizes(ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key) {
+  SizeComputationSerializer scs;
+  write_tile_var_sizes(idx, scs);
+
+  WriterTile tile{WriterTile::from_generic(scs.size())};
+
+  Serializer serializer(tile.data(), tile.size());
+  write_tile_var_sizes(idx, serializer);
+
+  serialize_generic_tile(s, encryption_key, tile);
 }
 
 void FragmentMetadata::write_tile_var_sizes(
@@ -4158,6 +4293,18 @@ void FragmentMetadata::store_tile_validity_offsets(
       "write_tile_validity_offsets_size", *nbytes);
 }
 
+void FragmentMetadata::serialize_tile_validity_offsets(ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key) {
+  SizeComputationSerializer scs;
+  write_tile_validity_offsets(idx, scs);
+
+  WriterTile tile{WriterTile::from_generic(scs.size())};
+
+  Serializer serializer(tile.data(), tile.size());
+  write_tile_validity_offsets(idx, serializer);
+
+  serialize_generic_tile(s, encryption_key, tile);
+}
+
 void FragmentMetadata::write_tile_validity_offsets(
     unsigned idx, Serializer& serializer) {
   // Write number of tile offsets
@@ -4185,6 +4332,18 @@ void FragmentMetadata::store_tile_mins(
   throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
 
   storage_manager_->stats()->add_counter("write_mins_size", *nbytes);
+}
+
+void FragmentMetadata::serialize_tile_mins(ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key) {
+  SizeComputationSerializer scs;
+  write_tile_mins(idx, scs);
+
+  WriterTile tile{WriterTile::from_generic(scs.size())};
+
+  Serializer serializer(tile.data(), tile.size());
+  write_tile_mins(idx, serializer);
+
+  serialize_generic_tile(s, encryption_key, tile);
 }
 
 void FragmentMetadata::write_tile_mins(unsigned idx, Serializer& serializer) {
@@ -4224,6 +4383,17 @@ void FragmentMetadata::store_tile_maxs(
   storage_manager_->stats()->add_counter("write_maxs_size", *nbytes);
 }
 
+void FragmentMetadata::serialize_tile_maxs(ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key) {
+  SizeComputationSerializer scs;
+  write_tile_maxs(idx, scs);
+
+  WriterTile tile{WriterTile::from_generic(scs.size())};
+  Serializer serializer(tile.data(), tile.size());
+  write_tile_maxs(idx, serializer);
+
+  serialize_generic_tile(s, encryption_key, tile);
+}
+
 void FragmentMetadata::write_tile_maxs(unsigned idx, Serializer& serializer) {
   Status st;
 
@@ -4261,6 +4431,18 @@ void FragmentMetadata::store_tile_sums(
   storage_manager_->stats()->add_counter("write_sums_size", *nbytes);
 }
 
+void FragmentMetadata::serialize_tile_sums(ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key) {
+  SizeComputationSerializer scs;
+  write_tile_sums(idx, scs);
+
+  WriterTile tile{WriterTile::from_generic(scs.size())};
+
+  Serializer serializer(tile.data(), tile.size());
+  write_tile_sums(idx, serializer);
+
+  serialize_generic_tile(s, encryption_key, tile);
+}
+
 void FragmentMetadata::write_tile_sums(unsigned idx, Serializer& serializer) {
   // Write number of tile sums
   uint64_t tile_sums_num = tile_sums_[idx].size() / sizeof(uint64_t);
@@ -4285,6 +4467,18 @@ void FragmentMetadata::store_tile_null_counts(
   throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
 
   storage_manager_->stats()->add_counter("write_null_counts_size", *nbytes);
+}
+
+void FragmentMetadata::serialize_tile_null_counts(ReallocatingSerializer& s, unsigned idx, const EncryptionKey& encryption_key) {
+  SizeComputationSerializer scs;
+  write_tile_null_counts(idx, scs);
+
+  WriterTile tile{WriterTile::from_generic(scs.size())};
+
+  Serializer serializer(tile.data(), tile.size());
+  write_tile_null_counts(idx, serializer);
+
+  serialize_generic_tile(s, encryption_key, tile);
 }
 
 void FragmentMetadata::write_tile_null_counts(
@@ -4341,6 +4535,45 @@ void FragmentMetadata::store_fragment_min_max_sum_null_count(
   storage_manager_->stats()->add_counter("write_null_counts_size", *nbytes);
 }
 
+void FragmentMetadata::serialize_fragment_min_max_sum_null_count(ReallocatingSerializer& s,
+    uint64_t num, const EncryptionKey& encryption_key) {
+  Status st;
+  Buffer buff;
+
+  auto serialize_data = [&](Serializer& serializer) {
+    // Store all attributes.
+    for (unsigned int i = 0; i < num; ++i) {
+      // Store min.
+      uint64_t min_size = fragment_mins_[i].size();
+      serializer.write<uint64_t>(min_size);
+
+      serializer.write(fragment_mins_[i].data(), min_size);
+
+      // Store max.
+      uint64_t max_size = fragment_maxs_[i].size();
+      serializer.write<uint64_t>(max_size);
+
+      serializer.write(fragment_maxs_[i].data(), max_size);
+
+      // Store sum.
+      serializer.write<uint64_t>(fragment_sums_[i]);
+
+      // Store null count.
+      serializer.write<uint64_t>(fragment_null_counts_[i]);
+    }
+  };
+
+  SizeComputationSerializer scs;
+  serialize_data(scs);
+
+  WriterTile tile{WriterTile::from_generic(scs.size())};
+
+  Serializer serializer(tile.data(), tile.size());
+  serialize_data(serializer);
+
+  serialize_generic_tile(s, encryption_key, tile);
+}
+
 void FragmentMetadata::store_processed_conditions(
     const EncryptionKey& encryption_key, uint64_t* nbytes) {
   auto serialize_processed_conditions = [this](Serializer& serializer) {
@@ -4367,6 +4600,31 @@ void FragmentMetadata::store_processed_conditions(
 
   storage_manager_->stats()->add_counter(
       "write_processed_conditions_size", *nbytes);
+}
+
+void FragmentMetadata::serialize_processed_conditions(ReallocatingSerializer& s,
+    const EncryptionKey& encryption_key) {
+  auto serialize_processed_conditions = [this](Serializer& serializer) {
+    // Store num conditions.
+    uint64_t num = processed_conditions_.size();
+    serializer.write<uint64_t>(num);
+
+    for (auto& processed_condition : processed_conditions_) {
+      uint64_t size = processed_condition.size();
+      serializer.write<uint64_t>(size);
+
+      serializer.write(processed_condition.data(), processed_condition.size());
+    }
+  };
+  SizeComputationSerializer scs;
+  serialize_processed_conditions(scs);
+
+  WriterTile tile{WriterTile::from_generic(scs.size())};
+
+  Serializer serializer(tile.data(), tile.size());
+  serialize_processed_conditions(serializer);
+
+  serialize_generic_tile(s, encryption_key, tile);
 }
 
 template <class T>
@@ -4700,6 +4958,24 @@ Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
       "write_frag_meta_footer_size", tile.size());
 
   return Status::Ok();
+}
+
+void FragmentMetadata::serialize_footer(ReallocatingSerializer& s, const EncryptionKey& encryption_key) {
+  (void) encryption_key;
+  SizeComputationSerializer scs;
+  throw_if_not_ok(write_footer(scs));
+
+  WriterTile tile{WriterTile::from_generic(scs.size())};
+  Serializer serializer(tile.data(), tile.size());
+  throw_if_not_ok(write_footer(serializer));
+
+  s.write(tile.data(), tile.size());
+
+  // Write the size in the end if there is at least one var-sized dimension
+  uint64_t size = scs.size();
+  if (!array_schema_->domain().all_dims_fixed() || version_ >= 10) {
+    s.write(&size, sizeof(uint64_t));
+  }
 }
 
 void FragmentMetadata::clean_up() {

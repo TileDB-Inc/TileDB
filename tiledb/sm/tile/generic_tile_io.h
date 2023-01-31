@@ -39,6 +39,7 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
+#include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
 
@@ -147,6 +148,39 @@ class GenericTileIO {
       ContextResources& resources, const URI& uri, uint64_t file_offset);
 
   /**
+   * Serializes a tile generically to the file. This means that a header will be
+   * prepended to the serializer before writing the tile contents. The reason is
+   * that there will be no tile metadata retrieved from another source,
+   * other than the file itself.
+   *
+   * @param tile The tile to be written.
+   * @param encryption_key The encryption key to use.
+   * @param nbytes The total number of bytes written to the file.
+   * @return Status
+   */
+   template <class T>
+   void serialize_generic(T& serializer,
+       WriterTile* tile, const EncryptionKey& encryption_key) {
+
+     GenericTileHeader header;
+     throw_if_not_ok(init_generic_tile_header(tile, &header, encryption_key));
+
+     SizeComputationSerializer fp_size_computation_serializer;
+     header.filters.serialize(fp_size_computation_serializer);
+     header.filter_pipeline_size = fp_size_computation_serializer.size();
+
+     if(!tile->filtered()) {
+       throw_if_not_ok(header.filters.run_forward(
+         &resources_.stats(), tile, nullptr, &resources_.compute_tp()));
+       header.persisted_size = tile->filtered_buffer().size();
+     }
+     assert(tile->filtered());
+
+     serialize_generic_tile_header(serializer, header);
+     serializer.write(tile->filtered_buffer().data(), tile->filtered_buffer().size());
+   }
+
+  /**
    * Writes a tile generically to the file. This means that a header will be
    * prepended to the file before writing the tile contents. The reason is
    * that there will be no tile metadata retrieved from another source,
@@ -167,7 +201,24 @@ class GenericTileIO {
    * @param header The header to serialize.
    */
   template <class T>
-  void serialize_generic_tile_header(T& serializer, GenericTileHeader& header);
+  void serialize_generic_tile_header(
+      T& serializer, GenericTileHeader& header) {
+
+    serializer.write(header.version_number);
+    serializer.write(header.persisted_size);
+    serializer.write(header.tile_size);
+    serializer.write(header.datatype);
+    serializer.write(header.cell_size);
+    serializer.write(header.encryption_type);
+    serializer.write(header.filter_pipeline_size);
+
+    std::vector<uint8_t> tmp;
+    tmp.resize(header.filter_pipeline_size);
+    Serializer tmp_s(tmp.data(), tmp.size());
+    header.filters.serialize(tmp_s);
+
+    serializer.write(tmp.data(), tmp.size());
+  }
 
   /**
    * Writes the generic tile header to the file.
