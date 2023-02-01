@@ -35,11 +35,9 @@
 #ifndef TILEDB_CPP_API_DELETER_H
 #define TILEDB_CPP_API_DELETER_H
 
-#include <cassert>
 #include "context.h"
 #include "tiledb.h"
 #include "tiledb_experimental.h"
-
 
 namespace tiledb {
 
@@ -141,8 +139,7 @@ class Deleter {
   }
 
   void operator()(tiledb_string_t* p) const {
-    capi_return_t result = tiledb_string_free(&p);
-    assert(result == TILEDB_OK);
+    tiledb_string_free(&p);
   }
 
  private:
