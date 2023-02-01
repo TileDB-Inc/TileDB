@@ -102,6 +102,10 @@ class Deleter {
     tiledb_dimension_free(&p);
   }
 
+  void operator()(tiledb_dimension_label_t* p) const {
+    tiledb_dimension_label_free(&p);
+  }
+
   void operator()(tiledb_domain_t* p) const {
     tiledb_domain_free(&p);
   }

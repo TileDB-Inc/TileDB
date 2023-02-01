@@ -83,6 +83,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_evolution.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/attribute.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/config.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/consolidation_plan_experimental.h
@@ -90,6 +91,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/core_interface.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/deleter.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/dimension.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/dimension_label_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/domain.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/error.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/exception.h
@@ -101,12 +103,12 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object_iter.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query.h
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_condition.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/schema_base.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/stats.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/subarray.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/subarray_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/type.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/utils.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/version.h
