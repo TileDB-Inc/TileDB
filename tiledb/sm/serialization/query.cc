@@ -1780,19 +1780,19 @@ Status query_from_capnp(
         attr_state->var_len_data.swap(varlen_buff);
         attr_state->validity_len_data.swap(validitylen_buff);
         if (var_size) {
-          RETURN_NOT_OK(query->set_data_buffer(
+          throw_if_not_ok(query->set_data_buffer(
               name, nullptr, &attr_state->var_len_size, false));
-          RETURN_NOT_OK(query->set_offsets_buffer(
+          throw_if_not_ok(query->set_offsets_buffer(
               name, nullptr, &attr_state->fixed_len_size, false));
           if (nullable) {
-            RETURN_NOT_OK(query->set_validity_buffer(
+            throw_if_not_ok(query->set_validity_buffer(
                 name, nullptr, &attr_state->validity_len_size, false));
           }
         } else {
-          RETURN_NOT_OK(query->set_data_buffer(
+          throw_if_not_ok(query->set_data_buffer(
               name, nullptr, &attr_state->fixed_len_size, false));
           if (nullable) {
-            RETURN_NOT_OK(query->set_validity_buffer(
+            throw_if_not_ok(query->set_validity_buffer(
                 name, nullptr, &attr_state->validity_len_size, false));
           }
         }
@@ -1820,12 +1820,12 @@ Status query_from_capnp(
           attr_state->var_len_data.swap(varlen_buff);
           attr_state->validity_len_data.swap(validity_buff);
 
-          RETURN_NOT_OK(query->set_data_buffer(
+          throw_if_not_ok(query->set_data_buffer(
               name, varlen_data, &attr_state->var_len_size));
-          RETURN_NOT_OK(query->set_offsets_buffer(
+          throw_if_not_ok(query->set_offsets_buffer(
               name, offsets, &attr_state->fixed_len_size));
           if (nullable) {
-            RETURN_NOT_OK(query->set_validity_buffer(
+            throw_if_not_ok(query->set_validity_buffer(
                 name, validity, &attr_state->validity_len_size));
           }
         } else {
@@ -1848,10 +1848,10 @@ Status query_from_capnp(
           attr_state->var_len_data.swap(varlen_buff);
           attr_state->validity_len_data.swap(validity_buff);
 
-          RETURN_NOT_OK(
+          throw_if_not_ok(
               query->set_data_buffer(name, data, &attr_state->fixed_len_size));
           if (nullable) {
-            RETURN_NOT_OK(query->set_validity_buffer(
+            throw_if_not_ok(query->set_validity_buffer(
                 name, validity, &attr_state->validity_len_size));
           }
         }

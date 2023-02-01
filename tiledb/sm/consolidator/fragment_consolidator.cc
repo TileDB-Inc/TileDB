@@ -808,26 +808,26 @@ Status FragmentConsolidator::set_query_buffers(
   // were written or not.
   for (const auto& attr : attributes) {
     if (!attr->var_size()) {
-      RETURN_NOT_OK(query->set_data_buffer(
+      throw_if_not_ok(query->set_data_buffer(
           attr->name(), (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
       ++bid;
       if (attr->nullable()) {
-        RETURN_NOT_OK(query->set_validity_buffer(
+        throw_if_not_ok(query->set_validity_buffer(
             attr->name(),
             (uint8_t*)&(*buffers)[bid][0],
             &(*buffer_sizes)[bid]));
         ++bid;
       }
     } else {
-      RETURN_NOT_OK(query->set_data_buffer(
+      throw_if_not_ok(query->set_data_buffer(
           attr->name(),
           (void*)&(*buffers)[bid + 1][0],
           &(*buffer_sizes)[bid + 1]));
-      RETURN_NOT_OK(query->set_offsets_buffer(
+      throw_if_not_ok(query->set_offsets_buffer(
           attr->name(), (uint64_t*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
       bid += 2;
       if (attr->nullable()) {
-        RETURN_NOT_OK(query->set_validity_buffer(
+        throw_if_not_ok(query->set_validity_buffer(
             attr->name(),
             (uint8_t*)&(*buffers)[bid][0],
             &(*buffer_sizes)[bid]));
@@ -840,15 +840,15 @@ Status FragmentConsolidator::set_query_buffers(
       auto dim{array_schema.dimension_ptr(d)};
       auto dim_name = dim->name();
       if (!dim->var_size()) {
-        RETURN_NOT_OK(query->set_data_buffer(
+        throw_if_not_ok(query->set_data_buffer(
             dim_name, (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
         ++bid;
       } else {
-        RETURN_NOT_OK(query->set_data_buffer(
+        throw_if_not_ok(query->set_data_buffer(
             dim_name,
             (void*)&(*buffers)[bid + 1][0],
             &(*buffer_sizes)[bid + 1]));
-        RETURN_NOT_OK(query->set_offsets_buffer(
+        throw_if_not_ok(query->set_offsets_buffer(
             dim_name, (uint64_t*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
         bid += 2;
       }
@@ -856,7 +856,7 @@ Status FragmentConsolidator::set_query_buffers(
   }
 
   if (config_.with_timestamps_ && !dense) {
-    RETURN_NOT_OK(query->set_data_buffer(
+    throw_if_not_ok(query->set_data_buffer(
         constants::timestamps,
         (void*)&(*buffers)[bid][0],
         &(*buffer_sizes)[bid]));
@@ -864,12 +864,12 @@ Status FragmentConsolidator::set_query_buffers(
   }
 
   if (config_.with_delete_meta_ && !dense) {
-    RETURN_NOT_OK(query->set_data_buffer(
+    throw_if_not_ok(query->set_data_buffer(
         constants::delete_timestamps,
         (void*)&(*buffers)[bid][0],
         &(*buffer_sizes)[bid]));
     ++bid;
-    RETURN_NOT_OK(query->set_data_buffer(
+    throw_if_not_ok(query->set_data_buffer(
         constants::delete_condition_index,
         (void*)&(*buffers)[bid][0],
         &(*buffer_sizes)[bid]));
