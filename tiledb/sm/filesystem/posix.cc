@@ -75,14 +75,11 @@ uint64_t Posix::read_all(
   uint64_t nread = 0;
   do {
     ssize_t actual_read =
-        ::pread(fd, bytes + nread, nbytes - nread, offset + nread);
+        ::pread64(fd, bytes + nread, nbytes - nread, offset + nread);
     if (actual_read == -1) {
-      LOG_STATUS_NO_RETURN_VALUE(
-          Status_Error(std::string("POSIX pread error: ") + strerror(errno)));
       return nread;
-    } else {
-      nread += actual_read;
     }
+    nread += actual_read;
   } while (nread < nbytes);
 
   return nread;
@@ -431,21 +428,16 @@ Status Posix::read(
     return LOG_STATUS(Status_IOError(
         std::string("Cannot read from file; ") + strerror(errno)));
   }
-  if (offset > static_cast<uint64_t>(std::numeric_limits<off_t>::max())) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot read from file ' ") + path.c_str() +
-        "'; offset > typemax(off_t)"));
-  }
   if (nbytes > SSIZE_MAX) {
     return LOG_STATUS(Status_IOError(
-        std::string("Cannot read from file ' ") + path.c_str() +
+        std::string("Cannot read from file ' ") + path +
         "'; nbytes > SSIZE_MAX"));
   }
   uint64_t bytes_read = read_all(fd, buffer, nbytes, offset);
   if (bytes_read != nbytes) {
     return LOG_STATUS(Status_IOError(
-        std::string("Cannot read from file '") + path.c_str() +
-        "'; File reading error"));
+        std::string("Cannot read from file '") + path + "'; " +
+        strerror(errno)));
   }
   // Close file
   if (close(fd)) {
