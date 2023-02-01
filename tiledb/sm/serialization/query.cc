@@ -1495,7 +1495,7 @@ Status query_from_capnp(
 
     auto var_size = schema.var_size(name);
     auto nullable = schema.is_nullable(name);
-    if (type == QueryType::READ && context == SerializationContext::SERVER) {
+    if (type == QueryType::READ) {
       const QueryBuffer& query_buffer = query->buffer(name);
       // We use the query_buffer directly in order to get the original buffer
       // sizes. This avoid a problem where an incomplete query will change the
@@ -1528,7 +1528,7 @@ Status query_from_capnp(
               query_buffer.original_validity_vector_size_;
         }
       }
-    } else if (query_type == QueryType::WRITE || type == QueryType::READ) {
+    } else if (query_type == QueryType::WRITE) {
       // For writes we need to use get_buffer and clientside
       if (var_size) {
         if (!nullable) {
