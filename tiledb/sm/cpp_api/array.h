@@ -174,6 +174,97 @@ class Array {
       : Array(ctx, array_uri, query_type, nullptr, timestamp) {
   }
 
+  // top-level, to replace main constructor
+  Array(
+      const Context& ctx,
+      const std::string& array_uri,
+      tiledb_query_type_t query_type,
+      std::optional<EncryptionMode> encryption_mode,
+      std::optional<TimestampMode> timestamp_mode) {
+    // do we need a local member variable for the Modes?
+    // could have optional here, check if (enc/time_mode) {...}
+  }
+
+  // encryption, no timestamps
+  Array(
+      const Context& ctx,
+      const std::string& array_uri,
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      std::optional<TimestampMode> timestamp_mode)
+      : Array(
+            ctx,
+            array_uri,
+            query_type,
+            EncryptionMode(encryption_type, encryption_key),
+            timestamp_mode) {
+  }
+
+  // no encryption, one timestamp (TimeTraveling)
+  Array(
+      const Context& ctx,
+      const std::string& array_uri,
+      tiledb_query_type_t query_type,
+      std::optional<EncryptionMode> encryption_mode,
+      uint64_t timestamp)
+      : Array(
+            ctx,
+            array_uri,
+            query_type,
+            encryption_mode,
+            TimestampMode(TimeTravelingMarker(), timestamp)) {
+  }
+
+  // encryption, one timestamp (TimeTraveling)
+  Array(
+      const Context& ctx,
+      const std::string& array_uri,
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint64_t timestamp)
+      : Array(
+            ctx,
+            array_uri,
+            query_type,
+            EncryptionMode(encryption_type, encryption_key),
+            TimestampMode(TimeTravelingMarker(), timestamp)) {
+  }
+
+  // no encryption, two timestamps (TimeRange)
+  Array(
+      const Context& ctx,
+      const std::string& array_uri,
+      tiledb_query_type_t query_type,
+      std::optional<EncryptionMode> encryption_mode,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end)
+      : Array(
+            ctx,
+            array_uri,
+            query_type,
+            encryption_mode,
+            TimestampMode(TimeRangeMarker(), timestamp_start, timestamp_end)) {
+  }
+
+  // encryption, two timestamps (TimeRange)
+  Array(
+      const Context& ctx,
+      const std::string& array_uri,
+      tiledb_query_type_t query_type,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end)
+      : Array(
+            ctx,
+            array_uri,
+            query_type,
+            EncryptionMode(encryption_type, encryption_key),
+            TimestampMode(TimeRangeMarker(), timestamp_start, timestamp_end)) {
+  }
+
   /**
    * @brief Constructor. This sets the array config.
    *
@@ -1274,6 +1365,74 @@ class Array {
     std::memcpy((void*)key->data(), key_c, key_len);
   }
 
+  /* ****************************** */
+  /*         HELPER CLASSES         */
+  /* ****************************** */
+
+  /**
+   * Helper class for opening an Array in EncryptionMode.
+   */
+  class EncryptionMode {
+   public:
+    EncryptionMode()
+        : encryption_type_(TILEDB_NO_ENCRYPTION)
+        , encryption_key_(nullptr){};
+    EncryptionMode(tiledb_encryption_type_t type, const void* key timestamp)
+        : encryption_type_(type)
+        , encryption_key_(key){};
+
+    // getters...?
+    //  should we be setting the config in the constructor
+    //  & returning that instead...?
+    tiledb_encryption_type_t encryption_type() const {
+      return encryption_type_;
+    }
+
+   private:
+    tiledb_encryption_type_t encryption_type_;
+    const void* encryption_key_;
+  };
+
+  /**
+   * Helper class for opening an Array in TimestampMode.
+   *
+   * @note A TimestampMode Array is opened for TimeTraveling or TimeRange, with
+   * 1 or 2 timestamps respectively.
+   */
+  class TimestampMode {
+   public:
+    TimestampMode()
+        : timestamp_start_(0)
+        , timestamp_end_(UINT64_MAX){};
+    TimestampMode(const TimeTravelingMarker&, uint64_t timestamp)
+        : timestamp_start_(0)
+        , timestamp_end_(timestamp){};
+    TimestampMode(
+        const TimeRangeMarker&,
+        uint64_t timestamp_start,
+        uint64_t timestamp_end)
+        : timestamp_start_(timestamp_start)
+        , timestamp_end_(timestamp_end){};
+
+    // getters
+
+   private:
+    uint64_t timestamp_start_;
+    uint64_t timestamp_end_;
+  };
+
+  /**
+   * Marker class to enforce TimestampMode is constructed for time traveling.
+   */
+  class TimeTravelingMarker {};
+  static constexpr TimeTravelingMarker time_traveling{};
+
+  /**
+   * Marker class to enforce TimestampMode is constructed for a time range.
+   */
+  class TimeRangeMarker {};
+  static constexpr TimeRangeMarker time_range{};
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -1293,6 +1452,12 @@ class Array {
 
   /** The array schema. */
   ArraySchema schema_;
+
+  /** The array optional encryption mode. */
+  std::optional<EncryptionMode> encryption_mode_;
+
+  /** The array optional timestamp mode. */
+  std::optional<TimestampMode> timestamp_mode_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
