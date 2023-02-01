@@ -285,18 +285,6 @@ class Posix {
       struct FTW* ftwbuf);
 
   /**
-   * Writes all nbytes to the given file descriptor, retrying as necessary.
-   *
-   * @param fd Open file descriptor to write to
-   * @param file_offset File offset at which to write.
-   * @param buffer Buffer with data to write
-   * @param nbytes Number of bytes to write
-   * @return Number of bytes actually written (< nbytes on error).
-   */
-  static uint64_t pwrite_all(
-      int fd, uint64_t file_offset, const void* buffer, uint64_t nbytes);
-
-  /**
    * Write data from the given buffer to the file descriptor, beginning at the
    * given offset. Multiple threads can safely write to the same open file
    * descriptor.

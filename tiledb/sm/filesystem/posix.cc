@@ -88,25 +88,6 @@ uint64_t Posix::read_all(
   return nread;
 }
 
-uint64_t Posix::pwrite_all(
-    int fd, uint64_t file_offset, const void* buffer, uint64_t nbytes) {
-  auto bytes = reinterpret_cast<const char*>(buffer);
-  uint64_t written = 0;
-  do {
-    ssize_t actual_written =
-        ::pwrite(fd, bytes + written, nbytes - written, file_offset + written);
-    if (actual_written == -1) {
-      LOG_STATUS_NO_RETURN_VALUE(
-          Status_Error(std::string("POSIX write error: ") + strerror(errno)));
-      return written;
-    } else {
-      written += actual_written;
-    }
-  } while (written < nbytes);
-
-  return written;
-}
-
 void Posix::adjacent_slashes_dedup(std::string* path) {
   assert(utils::parse::starts_with(*path, "file://"));
   path->erase(
@@ -606,31 +587,17 @@ Status Posix::write(
 
 Status Posix::write_at(
     int fd, uint64_t file_offset, const void* buffer, uint64_t buffer_size) {
-  // Append data to the file in batches of constants::max_write_bytes
-  // bytes at a time
-  uint64_t buffer_bytes_written = 0;
   const char* buffer_bytes_ptr = static_cast<const char*>(buffer);
-  while (buffer_size > constants::max_write_bytes) {
-    uint64_t bytes_written = pwrite_all(
-        fd,
-        file_offset + buffer_bytes_written,
-        buffer_bytes_ptr + buffer_bytes_written,
-        constants::max_write_bytes);
-    if (bytes_written != constants::max_write_bytes) {
-      return LOG_STATUS(Status_IOError(
-          std::string("Cannot write to file; File writing error")));
+  while (buffer_size > 0) {
+    ssize_t actual_written =
+        ::pwrite64(fd, buffer_bytes_ptr, buffer_size, file_offset);
+    if (actual_written == -1) {
+      return LOG_STATUS(
+          Status_IOError(std::string("POSIX write error:") + strerror(errno)));
     }
-    buffer_bytes_written += bytes_written;
-    buffer_size -= bytes_written;
-  }
-  uint64_t bytes_written = pwrite_all(
-      fd,
-      file_offset + buffer_bytes_written,
-      buffer_bytes_ptr + buffer_bytes_written,
-      buffer_size);
-  if (bytes_written != buffer_size) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot write to file; File writing error")));
+    buffer_bytes_ptr += actual_written;
+    file_offset += actual_written;
+    buffer_size -= actual_written;
   }
   return Status::Ok();
 }
