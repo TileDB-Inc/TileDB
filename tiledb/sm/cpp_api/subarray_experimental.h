@@ -41,7 +41,19 @@
 namespace tiledb {
 class SubarrayExperimental {
  public:
-  /** TODO docs */
+  /**
+   * Adds a 1D range to a subarray dimension label, specified by its name, in
+   * the form (start, end, stride). The datatype of the range must be the same
+   * as the label datatype.
+   *
+   * @tparam T The datatype of the labels.
+   * @param ctx TileDB context.
+   * @param subarray Target subarray.
+   * @param label_name Name of the target dimension label to add the range to.
+   * @param start The range start to add.
+   * @param end The range end to add.
+   * @param stride The range stride to add.
+   */
   template <class T>
   static void add_label_range(
       const Context& ctx,
@@ -62,16 +74,25 @@ class SubarrayExperimental {
         (stride == 0) ? nullptr : &stride));
   }
 
-  /* TODO docs */
+  /**
+   * Adds a 1D string range to a subarray dimension label, specified by its
+   * name, in the form (start, end). Only applicable to string labels.
+   *
+   * @param ctx TileDB context.
+   * @param subarray Target subarray.
+   * @param label_name Name of the target dimension label to add the range to.
+   * @param start The range start to add.
+   * @param end The range end to add.
+   */
   static void add_label_range(
       const Context& ctx,
       Subarray& subarray,
       const std::string& label_name,
       const std::string& start,
       const std::string& end) {
-    impl::type_check<uint8_t>(ArraySchemaExperimental::dimension_label(
-                                  ctx, subarray.schema_, label_name)
-                                  .label_type());
+    impl::type_check<char>(ArraySchemaExperimental::dimension_label(
+                               ctx, subarray.schema_, label_name)
+                               .label_type());
     ctx.handle_error(tiledb_subarray_add_label_range_var(
         ctx.ptr().get(),
         subarray.ptr().get(),
@@ -82,7 +103,14 @@ class SubarrayExperimental {
         end.size()));
   }
 
-  /** TODO: docs */
+  /**
+   * Retrieves the number of ranges for a dimension label name.
+   *
+   * @param ctx TileDB context.
+   * @param subarray Target subarray.
+   * @param label_name Name of the target dimension label.
+   * @returns The number of ranges.
+   */
   static uint64_t label_range_num(
       const Context& ctx, Subarray& subarray, const std::string& label_name) {
     uint64_t range_num;
@@ -91,12 +119,21 @@ class SubarrayExperimental {
     return range_num;
   }
 
-  /** TODO: Docs */
+  /**
+   * Retrieves a range from a given dimension label name and range id. The
+   * template datatype must be the same as that of the underlying labels.
+   *
+   * @param ctx TileDB context.
+   * @param subarray Target subarray.
+   * @param label_name The name of the target dimension label.
+   * @param range_idx The range index.
+   * @returns A triplet of the form (start, end, stride).
+   */
   template <class T>
   static std::array<T, 3> label_range(
       const Context& ctx,
       Subarray& subarray,
-      std::string& label_name,
+      const std::string& label_name,
       uint64_t range_idx) {
     impl::type_check<T>(ArraySchemaExperimental::dimension_label(
                             ctx, subarray.schema_, label_name)
@@ -117,15 +154,24 @@ class SubarrayExperimental {
     return ret;
   }
 
-  /** TODO: docs */
-  std::array<std::string, 2> label_range(
+  /**
+   * Retrieves a string range from a given dimension label name and range id.
+   * The underlying labels must be have a string datatype.
+   *
+   * @param ctx TileDB context.
+   * @param subarray Target subarray.
+   * @param label_name The name of the target dimension label.
+   * @param range_idx The range index.
+   * @returns A pair of the form (start, end).
+   */
+  static std::array<std::string, 2> label_range(
       const Context& ctx,
       Subarray& subarray,
       const std::string& label_name,
       uint64_t range_idx) {
-    impl::type_check<uint8_t>(ArraySchemaExperimental::dimension_label(
-                                  ctx, subarray.schema_, label_name)
-                                  .label_type());
+    impl::type_check<char>(ArraySchemaExperimental::dimension_label(
+                               ctx, subarray.schema_, label_name)
+                               .label_type());
     uint64_t start_size, end_size;
     ctx.handle_error(tiledb_subarray_get_label_range_var_size(
         ctx.ptr().get(),
