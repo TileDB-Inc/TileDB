@@ -43,7 +43,18 @@
 namespace tiledb {
 class ArraySchemaExperimental {
  public:
-  /** TODO docs */
+  /**
+   * Adds a DimensionLabel to the array.
+   *
+   * @param ctx TileDB context.
+   * @param array_schema Target array schema.
+   * @param dim_index The index number of the dimension the labels will be
+   *     applied to.
+   * @param name The name of the dimension label.
+   * @param label_order The order (increasing or decreasing) of the labels.
+   * @param label_type The data type of the labels.
+   * @param filter_list Filters to apply the label data.
+   */
   static void add_dimension_label(
       const Context& ctx,
       ArraySchema& array_schema,
@@ -68,7 +79,21 @@ class ArraySchemaExperimental {
     }
   }
 
-  /** TODO docs */
+  /**
+   * Adds a DimensionLabel to the array schema.
+   *
+   * @tparam T Type of the dimension domain the labels are added to.
+   * @param ctx TileDB context.
+   * @param array_schema Target array schema.
+   * @param dim_index The index number of the dimension the labels will be
+   *     applied to.
+   * @param name The name of the dimension label.
+   * @param label_order The order (increasing or decreasing) of the labels.
+   * @param label_type The data type of the labels.
+   * @param dim_tile_extent Tile extent for the dimension of the dimension
+   *     label.
+   * @param filter_list Filters to apply the label data.
+   */
   template <typename T>
   static void add_dimension_label(
       const Context& ctx,
@@ -77,7 +102,7 @@ class ArraySchemaExperimental {
       const std::string& name,
       tiledb_data_order_t label_order,
       tiledb_datatype_t label_type,
-      T label_tile_extent,
+      T dim_tile_extent,
       std::optional<FilterList> filter_list = std::nullopt) {
     using DataT = impl::TypeHandler<T>;
     static_assert(
@@ -90,10 +115,16 @@ class ArraySchemaExperimental {
         array_schema.ptr().get(),
         name.c_str(),
         DataT::tiledb_type,
-        *label_tile_extent));
+        *dim_tile_extent));
   }
 
-  /** TODO docs */
+  /**
+   * Checks if the schema has a dimension label of the given name.
+   *
+   * @param ctx TileDB context.
+   * @param array_schema Target array schema.
+   * @param name Name of the target dimension label to check for.
+   */
   static bool has_dimension_label(
       const Context& ctx,
       const ArraySchema& array_schema,
@@ -107,7 +138,13 @@ class ArraySchemaExperimental {
     return has_dim_label != 0;
   }
 
-  /** TODO docs */
+  /**
+   * Returns a dimension label from the array schema.
+   *
+   * @param ctx TileDB context.
+   * @param array_schema Target array schema.
+   * @param name Name of the target dimension label to return.
+   */
   static DimensionLabel dimension_label(
       const Context& ctx,
       const ArraySchema& array_schema,
