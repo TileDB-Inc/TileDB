@@ -179,13 +179,13 @@ class FilteredData {
     }
 
     // Store data on the datablock in progress for fixed, var and nullable data.
-    std::optional<unsigned> current_frag_idx = nullopt;
-    storage_size_t current_fixed_offset = 0;
-    storage_size_t current_fixed_size = 0;
-    storage_size_t current_var_offset = 0;
-    storage_size_t current_var_size = 0;
-    storage_size_t current_nullable_offset = 0;
-    storage_size_t current_nullable_size = 0;
+    std::optional<unsigned> current_frag_idx{nullopt};
+    storage_size_t current_fixed_offset{0};
+    storage_size_t current_fixed_size{0};
+    storage_size_t current_var_offset{0};
+    storage_size_t current_var_size{0};
+    storage_size_t current_nullable_offset{0};
+    storage_size_t current_nullable_size{0};
 
     // Go through all the result tiles and create data blocks as we go.
     for (auto rt : result_tiles) {
@@ -195,7 +195,7 @@ class FilteredData {
       }
 
       // Make new blocks, if required as we go for fixed, var and nullable data.
-      auto fragment = fragment_metadata[rt->frag_idx()].get();
+      auto fragment{fragment_metadata[rt->frag_idx()].get()};
       make_new_block_if_required(
           fragment,
           min_batch_size,
@@ -276,7 +276,7 @@ class FilteredData {
    */
   inline void* fixed_filtered_data(
       const FragmentMetadata* fragment, const ResultTile* rt) {
-    auto offset = fragment->file_offset(name_, rt->tile_idx());
+    auto offset{fragment->file_offset(name_, rt->tile_idx())};
     ensure_data_block_current(TileType::FIXED, fragment, rt, offset);
     return current_data_block(TileType::FIXED)->data_at(offset);
   }
@@ -294,7 +294,7 @@ class FilteredData {
       return nullptr;
     }
 
-    auto offset = fragment->file_var_offset(name_, rt->tile_idx());
+    auto offset{fragment->file_var_offset(name_, rt->tile_idx())};
     ensure_data_block_current(TileType::VAR, fragment, rt, offset);
     return current_data_block(TileType::VAR)->data_at(offset);
   }
@@ -312,7 +312,7 @@ class FilteredData {
       return nullptr;
     }
 
-    auto offset = fragment->file_validity_offset(name_, rt->tile_idx());
+    auto offset{fragment->file_validity_offset(name_, rt->tile_idx())};
     ensure_data_block_current(TileType::NULLABLE, fragment, rt, offset);
     return current_data_block(TileType::NULLABLE)->data_at(offset);
   }
@@ -335,11 +335,11 @@ class FilteredData {
    * @param type Tile type.
    */
   void queue_last_block_for_read(TileType type) {
-    auto& block = data_blocks(type).back();
-    auto offset = block.offset();
-    auto data = block.data();
-    auto size = block.size();
-    URI uri = file_uri(fragment_metadata_[block.frag_idx()].get(), type);
+    auto& block{data_blocks(type).back()};
+    auto offset{block.offset()};
+    auto data{block.data()};
+    auto size{block.size()};
+    URI uri{file_uri(fragment_metadata_[block.frag_idx()].get(), type)};
     auto task =
         storage_manager_->io_tp()->execute([this, offset, data, size, uri]() {
           RETURN_NOT_OK(
@@ -437,19 +437,19 @@ class FilteredData {
   inline URI file_uri(const FragmentMetadata* fragment, const TileType type) {
     switch (type) {
       case TileType::FIXED: {
-        auto&& [status, uri] = fragment->uri(name_);
+        auto&& [status, uri]{fragment->uri(name_)};
         throw_if_not_ok(status);
         return std::move(*uri);
       }
 
       case TileType::VAR: {
-        auto&& [status, uri] = fragment->var_uri(name_);
+        auto&& [status, uri]{fragment->var_uri(name_)};
         throw_if_not_ok(status);
         return std::move(*uri);
       }
 
       case TileType::NULLABLE: {
-        auto&& [status, uri] = fragment->validity_uri(name_);
+        auto&& [status, uri]{fragment->validity_uri(name_)};
         throw_if_not_ok(status);
         return std::move(*uri);
       }
@@ -488,9 +488,9 @@ class FilteredData {
       storage_size_t& current_block_size,
       const ResultTile* rt,
       const TileType type) {
-    const auto tile_idx = rt->tile_idx();
-    storage_size_t offset = file_offset(fragment, type, tile_idx);
-    storage_size_t size = persisted_tile_size(fragment, type, tile_idx);
+    const auto tile_idx{rt->tile_idx()};
+    storage_size_t offset{file_offset(fragment, type, tile_idx)};
+    storage_size_t size{persisted_tile_size(fragment, type, tile_idx)};
 
     if (current_block_frag_idx == nullopt) {
       current_block_offset = offset;
@@ -498,8 +498,8 @@ class FilteredData {
       return;
     }
 
-    uint64_t new_size = (offset + size) - current_block_offset;
-    uint64_t gap = offset - (current_block_offset + current_block_size);
+    uint64_t new_size{(offset + size) - current_block_offset};
+    uint64_t gap{offset - (current_block_offset + current_block_size)};
     if (current_block_frag_idx == rt->frag_idx() &&
         new_size <= max_batch_size &&
         (new_size <= min_batch_size || gap <= min_batch_gap)) {
@@ -529,9 +529,9 @@ class FilteredData {
       const FragmentMetadata* fragment,
       const ResultTile* rt,
       const storage_size_t offset) {
-    storage_size_t size = persisted_tile_size(fragment, type, rt->tile_idx());
+    storage_size_t size{persisted_tile_size(fragment, type, rt->tile_idx())};
 
-    auto& current_block = current_data_block(type);
+    auto& current_block{current_data_block(type)};
     if (!current_block->contains(rt->frag_idx(), offset, size)) {
       current_block++;
 

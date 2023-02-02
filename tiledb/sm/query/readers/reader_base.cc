@@ -192,9 +192,9 @@ void ReaderBase::compute_result_space_tiles(
 
 bool ReaderBase::skip_field(
     const unsigned frag_idx, const std::string& name) const {
-  auto& fragment = fragment_metadata_[frag_idx];
-  const auto format_version = fragment->format_version();
-  const auto& schema = fragment->array_schema();
+  auto& fragment{fragment_metadata_[frag_idx]};
+  const auto format_version{fragment->format_version()};
+  const auto& schema{fragment->array_schema()};
 
   // Applicable for zipped coordinates only to versions < 5
   if (name == constants::coords && format_version >= 5) {
@@ -202,7 +202,7 @@ bool ReaderBase::skip_field(
   }
 
   // Applicable to separate coordinates only to versions >= 5
-  const auto is_dim = schema->is_dim(name);
+  const auto is_dim{schema->is_dim(name)};
   if (is_dim && format_version < 5) {
     return true;
   }
@@ -547,7 +547,7 @@ Status ReaderBase::load_processed_conditions() {
 Status ReaderBase::read_and_unfilter_attribute_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
-  auto filtered_data = read_attribute_tiles(names, result_tiles);
+  auto filtered_data{read_attribute_tiles(names, result_tiles)};
   for (auto& name : names) {
     RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
   }
@@ -558,7 +558,7 @@ Status ReaderBase::read_and_unfilter_attribute_tiles(
 Status ReaderBase::read_and_unfilter_coordinate_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
-  auto filtered_data = read_coordinate_tiles(names, result_tiles);
+  auto filtered_data{read_coordinate_tiles(names, result_tiles)};
   for (auto& name : names) {
     RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
   }
@@ -591,7 +591,7 @@ std::vector<FilteredData> ReaderBase::read_tiles(
     return filtered_data;
   }
 
-  uint64_t num_tiles_read = 0;
+  uint64_t num_tiles_read{0};
   std::vector<ThreadPool::Task> read_tasks;
   filtered_data.reserve(names.size());
 
@@ -600,8 +600,8 @@ std::vector<FilteredData> ReaderBase::read_tiles(
     // Create the filtered data blocks. This will also kick off the read for the
     // data blocks right after the memory is allocated so that we can optimize
     // read and memory allocations.
-    const bool var_sized = array_schema_.var_size(name);
-    const bool nullable = array_schema_.is_nullable(name);
+    const bool var_sized{array_schema_.var_size(name)};
+    const bool nullable{array_schema_.is_nullable(name)};
     filtered_data.emplace_back(
         *this,
         min_batch_size_,
@@ -617,31 +617,31 @@ std::vector<FilteredData> ReaderBase::read_tiles(
 
     // Go through each tiles and create the attribute tiles.
     for (auto tile : result_tiles) {
-      auto const fragment = fragment_metadata_[tile->frag_idx()];
-      const auto& array_schema = fragment->array_schema();
+      auto const fragment{fragment_metadata_[tile->frag_idx()]};
+      const auto& array_schema{fragment->array_schema()};
 
       if (skip_field(tile->frag_idx(), name)) {
         continue;
       }
 
       num_tiles_read++;
-      const auto tile_idx = tile->tile_idx();
+      const auto tile_idx{tile->tile_idx()};
 
       // Construct a TileSizes class.
-      ResultTile::TileSizes tile_sizes(
-          fragment, name, var_sized, nullable, tile_idx);
+      ResultTile::TileSizes tile_sizes{
+          fragment, name, var_sized, nullable, tile_idx};
 
       // Construct a tile data class.
-      ResultTile::TileData tile_data(
+      ResultTile::TileData tile_data{
           filtered_data.back().fixed_filtered_data(fragment.get(), tile),
           filtered_data.back().var_filtered_data(fragment.get(), tile),
-          filtered_data.back().nullable_filtered_data(fragment.get(), tile));
+          filtered_data.back().nullable_filtered_data(fragment.get(), tile)};
 
       // Initialize the tile(s)
-      const format_version_t format_version = fragment->format_version();
-      const auto is_dim = array_schema->is_dim(name);
+      const format_version_t format_version{fragment->format_version()};
+      const auto is_dim{array_schema->is_dim(name)};
       if (is_dim) {
-        const uint64_t dim_num = array_schema->dim_num();
+        const uint64_t dim_num{array_schema->dim_num()};
         for (uint64_t d = 0; d < dim_num; ++d) {
           if (array_schema->dimension_ptr(d)->name() == name) {
             tile->init_coord_tile(
@@ -659,7 +659,7 @@ std::vector<FilteredData> ReaderBase::read_tiles(
   stats_->add_counter("num_tiles_read", num_tiles_read);
 
   // Wait for the read tasks to finish.
-  auto statuses = storage_manager_->io_tp()->wait_all_status(read_tasks);
+  auto statuses{storage_manager_->io_tp()->wait_all_status(read_tasks)};
   for (const auto& st : statuses) {
     throw_if_not_ok(st);
   }

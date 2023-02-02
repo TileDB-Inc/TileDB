@@ -1619,7 +1619,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile::TileData tile_data(nullptr, nullptr, nullptr);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -1665,7 +1665,7 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data(nullptr, nullptr, nullptr);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -1770,7 +1770,7 @@ TEST_CASE(
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data(nullptr, nullptr, nullptr);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -2302,7 +2302,7 @@ void test_apply_dense<char*>(
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data(nullptr, nullptr, nullptr);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -2352,7 +2352,7 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data(nullptr, nullptr, nullptr);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -2457,7 +2457,7 @@ TEST_CASE(
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data(nullptr, nullptr, nullptr);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -2971,7 +2971,7 @@ void test_apply_sparse<char*>(
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data(nullptr, nullptr, nullptr);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -3021,7 +3021,7 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data(nullptr, nullptr, nullptr);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -3762,7 +3762,7 @@ TEST_CASE(
       std::nullopt,
       std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data(nullptr, nullptr, nullptr);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -4069,7 +4069,7 @@ TEST_CASE(
       std::nullopt,
       std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data(nullptr, nullptr, nullptr);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -4502,7 +4502,7 @@ TEST_CASE(
       std::nullopt,
       std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data(nullptr, nullptr, nullptr);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -4787,7 +4787,7 @@ TEST_CASE(
       cells * constants::cell_validity_size,
       0);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data(nullptr, nullptr, nullptr);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -4878,7 +4878,7 @@ TEST_CASE(
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data(nullptr, nullptr, nullptr);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,

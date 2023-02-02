@@ -135,7 +135,7 @@ GlobalOrderResultTile<uint8_t> CResultCoordsFx::make_tile_with_num_cells(
       std::nullopt,
       std::nullopt,
       std::nullopt);
-  ResultTile::TileData tile_data(nullptr, nullptr, nullptr);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
       array_->array_->array_schema_latest(),
