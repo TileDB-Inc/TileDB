@@ -62,7 +62,8 @@ class UnorderedWriter : public WriterBase {
       Subarray& subarray,
       Layout layout,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
-      Query::CoordsInfo& coords_info_,
+      Query::CoordsInfo& coords_info,
+      std::unordered_set<std::string>& written_buffers,
       bool remote_query,
       optional<std::string> fragment_name = nullopt,
       bool skip_checks_serialization = false);
@@ -107,7 +108,7 @@ class UnorderedWriter : public WriterBase {
   shared_ptr<FragmentMetadata> frag_meta_;
 
   /** Already written buffers. */
-  std::unordered_set<std::string> written_buffers_;
+  std::unordered_set<std::string>& written_buffers_;
 
   /**
    * Does this pass of the write include coordinates. This is used when we are

@@ -816,6 +816,9 @@ class Query {
   /** Allow separate attribute writes. */
   bool allow_separate_attribute_writes_;
 
+  /** Already written buffers. */
+  std::unordered_set<std::string> written_buffers_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */

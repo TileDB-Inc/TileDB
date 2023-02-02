@@ -1047,6 +1047,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           written_fragment_info_,
           coords_info_,
+          written_buffers_,
           remote_query_,
           fragment_name_,
           skip_checks_serialization));
@@ -1377,6 +1378,12 @@ Status Query::set_data_buffer(
     coords_info_.has_coords_ = true;
   }
 
+  // Make sure the buffer was not already written.
+  if (written_buffers_.count(name) != 0) {
+    return logger_->status(Status_QueryError(
+        std::string("Buffer ") + name + std::string(" was already written")));
+  }
+
   has_coords_buffer_ |= is_dim;
 
   // Set attribute/dimension buffer on the appropriate buffer
@@ -1414,22 +1421,21 @@ Status Query::set_offsets_buffer(
   if (array_schema_->is_dim_label(name)) {
     // Check the query type is valid.
     if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
-      throw StatusException(Status_SerializationError(
-          "Cannot set buffer; Unsupported query type."));
+      throw QueryStatusException("Cannot set buffer; Unsupported query type.");
     }
 
     // Check the dimension labe is in fact variable length.
     if (!array_schema_->dimension_label_reference(name).is_var()) {
-      throw StatusException(Status_QueryError(
+      throw QueryStatusException(
           std::string("Cannot set buffer; Input dimension label '") + name +
-          "' is fixed-sized"));
+          "' is fixed-sized");
     }
 
     // Check the query was not already initialized.
     if (status_ != QueryStatus::UNINITIALIZED) {
-      throw StatusException(Status_QueryError(
+      throw QueryStatusException(
           std::string("Cannot set buffer for new dimension label '") + name +
-          "' after initialization"));
+          "' after initialization");
     }
 
     // Set dimension label offsets buffers.
@@ -1484,6 +1490,12 @@ Status Query::set_offsets_buffer(
     offsets_buffer_name_ = name;
   }
 
+  // Make sure the buffer was not already written.
+  if (written_buffers_.count(name) != 0) {
+    return logger_->status(Status_QueryError(
+        std::string("Buffer ") + name + std::string(" was already written")));
+  }
+
   has_coords_buffer_ |= is_dim;
 
   // Set attribute/dimension buffer
@@ -1503,33 +1515,44 @@ Status Query::set_validity_buffer(
   RETURN_NOT_OK(validity_vector.init_bytemap(
       buffer_validity_bytemap, buffer_validity_bytemap_size));
   // Check validity buffer
-  if (check_null_buffers && validity_vector.buffer() == nullptr)
+  if (check_null_buffers && validity_vector.buffer() == nullptr) {
     return logger_->status(Status_QueryError(
         "Cannot set buffer; " + name + " validity buffer is null"));
+  }
 
   // Check validity buffer size
-  if (check_null_buffers && validity_vector.buffer_size() == nullptr)
+  if (check_null_buffers && validity_vector.buffer_size() == nullptr) {
     return logger_->status(Status_QueryError(
         "Cannot set buffer; " + name + " validity buffer size is null"));
+  }
 
   // Must be an attribute
-  if (!array_schema_->is_attr(name))
+  if (!array_schema_->is_attr(name)) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Buffer name '") + name +
         "' is not an attribute"));
+  }
 
   // Must be nullable
-  if (!array_schema_->is_nullable(name))
+  if (!array_schema_->is_nullable(name)) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is not nullable"));
+  }
 
   // Error if setting a new attribute after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
+  if (status_ != QueryStatus::UNINITIALIZED && !exists) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));
+  }
+
+  // Make sure the buffer was not already written.
+  if (written_buffers_.count(name) != 0) {
+    return logger_->status(Status_QueryError(
+        std::string("Buffer ") + name + std::string(" was already written")));
+  }
 
   // Set attribute/dimension buffer
   buffers_[name].set_validity_buffer(std::move(validity_vector));

@@ -83,6 +83,7 @@ UnorderedWriter::UnorderedWriter(
     Layout layout,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
+    std::unordered_set<std::string>& written_buffers,
     bool remote_query,
     optional<std::string> fragment_name,
     bool skip_checks_serialization)
@@ -102,6 +103,7 @@ UnorderedWriter::UnorderedWriter(
           fragment_name,
           skip_checks_serialization)
     , frag_uri_(std::nullopt)
+    , written_buffers_(written_buffers)
     , is_coords_pass_(true) {
   // Check the layout is unordered.
   if (layout != Layout::UNORDERED) {
@@ -141,7 +143,7 @@ Status UnorderedWriter::dowork() {
   // In case the user has provided a coordinates buffer
   RETURN_NOT_OK(split_coords_buffer());
 
-  if (check_coord_oob_) {
+  if (check_coord_oob_ && is_coords_pass_) {
     RETURN_NOT_OK(check_coord_oob());
   }
 

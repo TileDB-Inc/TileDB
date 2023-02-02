@@ -55,19 +55,19 @@ struct CppPartialAttrWriteFx {
 
   // Functions.
   void create_sparse_array(bool allows_dups = false);
-  void create_dense_array();
-  void write_sparse(
+  tuple<Array, Query> write_sparse_dims(
       tiledb_layout_t layout,
-      std::vector<int> a1,
-      std::vector<uint64_t> a2,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
       uint64_t timestamp);
-  void write_dense(
+  tuple<Array, Query> write_sparse_dims_and_a1(
       tiledb_layout_t layout,
+      std::vector<uint64_t> dim1,
+      std::vector<uint64_t> dim2,
       std::vector<int> a1,
-      std::vector<uint64_t> a2,
       uint64_t timestamp);
+  void write_sparse_a1(Query& query, std::vector<int> a1);
+  void write_sparse_a2(Query& query, std::vector<uint64_t> a2);
   void read_sparse(
       std::vector<int>& a1,
       std::vector<uint64_t>& a2,
@@ -124,40 +124,8 @@ void CppPartialAttrWriteFx::create_sparse_array(bool allows_dups) {
   Array::create(ARRAY_NAME, schema);
 }
 
-void CppPartialAttrWriteFx::create_dense_array() {
-  // Create dimensions.
-  auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 4}}, 2);
-  auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 4}}, 2);
-
-  // Create domain.
-  Domain domain(ctx_);
-  domain.add_dimension(d1);
-  domain.add_dimension(d2);
-
-  // Create attributes.
-  auto a1 = Attribute::create<int32_t>(ctx_, "a1");
-  auto a2 = Attribute::create<int64_t>(ctx_, "a2");
-
-  // Create array schema.
-  ArraySchema schema(ctx_, TILEDB_DENSE);
-  schema.set_domain(domain);
-  schema.set_capacity(20);
-  schema.add_attributes(a1);
-  schema.add_attributes(a2);
-
-  // Set up filters.
-  Filter filter(ctx_, TILEDB_FILTER_NONE);
-  FilterList filter_list(ctx_);
-  filter_list.add_filter(filter);
-  schema.set_coords_filter_list(filter_list);
-
-  Array::create(ARRAY_NAME, schema);
-}
-
-void CppPartialAttrWriteFx::write_sparse(
+tuple<Array, Query> CppPartialAttrWriteFx::write_sparse_dims(
     tiledb_layout_t layout,
-    std::vector<int> a1,
-    std::vector<uint64_t> a2,
     std::vector<uint64_t> dim1,
     std::vector<uint64_t> dim2,
     uint64_t timestamp) {
@@ -171,26 +139,14 @@ void CppPartialAttrWriteFx::write_sparse(
   query.set_data_buffer("d2", dim2);
   query.submit();
 
-  dim1.clear();
-  dim2.clear();
-
-  query.set_data_buffer("a1", a1);
-  query.submit();
-
-  a1.clear();
-
-  query.set_data_buffer("a2", a2);
-  query.submit();
-  query.finalize();
-
-  // Close array.
-  array.close();
+  return {array, query};
 }
 
-void CppPartialAttrWriteFx::write_dense(
+tuple<Array, Query> CppPartialAttrWriteFx::write_sparse_dims_and_a1(
     tiledb_layout_t layout,
+    std::vector<uint64_t> dim1,
+    std::vector<uint64_t> dim2,
     std::vector<int> a1,
-    std::vector<uint64_t> a2,
     uint64_t timestamp) {
   // Open array.
   Array array(ctx_, ARRAY_NAME, TILEDB_WRITE, timestamp);
@@ -198,17 +154,23 @@ void CppPartialAttrWriteFx::write_dense(
   // Create query.
   Query query(ctx_, array, TILEDB_WRITE);
   query.set_layout(layout);
+  query.set_data_buffer("d1", dim1);
+  query.set_data_buffer("d2", dim2);
   query.set_data_buffer("a1", a1);
   query.submit();
 
-  a1.clear();
+  return {array, query};
+}
 
+void CppPartialAttrWriteFx::write_sparse_a1(Query& query, std::vector<int> a1) {
+  query.set_data_buffer("a1", a1);
+  query.submit();
+}
+
+void CppPartialAttrWriteFx::write_sparse_a2(
+    Query& query, std::vector<uint64_t> a2) {
   query.set_data_buffer("a2", a2);
   query.submit();
-  query.finalize();
-
-  // Close array.
-  array.close();
 }
 
 void CppPartialAttrWriteFx::read_sparse(
@@ -276,19 +238,88 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CppPartialAttrWriteFx,
-    "CPP API: Test partial attribute write",
-    "[cppapi][partial-attribute-write]") {
+    "CPP API: Test partial attribute write, basic test",
+    "[cppapi][partial-attribute-write][basic]") {
+  remove_array();
+  create_sparse_array();
+
+  // Write fragment, seperating dimensions and attributes.
+  auto&& [array, query] = write_sparse_dims(
+      TILEDB_UNORDERED, {1, 1, 1, 2, 3, 4, 3, 3}, {1, 2, 4, 3, 1, 2, 3, 4}, 1);
+  write_sparse_a1(query, {0, 1, 2, 3, 4, 5, 6, 7});
+  write_sparse_a2(query, {8, 9, 10, 11, 12, 13, 14, 15});
+  query.finalize();
+  array.close();
+
+  size_t buffer_size = 8;
+  std::vector<int> a1(buffer_size);
+  std::vector<uint64_t> a2(buffer_size);
+  std::vector<uint64_t> dim1(buffer_size);
+  std::vector<uint64_t> dim2(buffer_size);
+  read_sparse(a1, a2, dim1, dim2);
+
+  CHECK(a1 == std::vector<int>({0, 1, 2, 3, 4, 5, 6, 7}));
+  CHECK(a2 == std::vector<uint64_t>({8, 9, 10, 11, 12, 13, 14, 15}));
+  CHECK(dim1 == std::vector<uint64_t>({1, 1, 1, 2, 3, 4, 3, 3}));
+  CHECK(dim2 == std::vector<uint64_t>({1, 2, 4, 3, 1, 2, 3, 4}));
+
+  remove_array();
+}
+
+TEST_CASE_METHOD(
+    CppPartialAttrWriteFx,
+    "CPP API: Test partial attribute write, basic test 2",
+    "[cppapi][partial-attribute-write][basic2]") {
+  remove_array();
+  create_sparse_array();
+
+  // Write fragment, seperating dimensions and attributes.
+  auto&& [array, query] = write_sparse_dims_and_a1(
+      TILEDB_UNORDERED,
+      {1, 1, 1, 2, 3, 4, 3, 3},
+      {1, 2, 4, 3, 1, 2, 3, 4},
+      {0, 1, 2, 3, 4, 5, 6, 7},
+      1);
+  write_sparse_a2(query, {8, 9, 10, 11, 12, 13, 14, 15});
+  query.finalize();
+  array.close();
+
+  size_t buffer_size = 8;
+  std::vector<int> a1(buffer_size);
+  std::vector<uint64_t> a2(buffer_size);
+  std::vector<uint64_t> dim1(buffer_size);
+  std::vector<uint64_t> dim2(buffer_size);
+  read_sparse(a1, a2, dim1, dim2);
+
+  CHECK(a1 == std::vector<int>({0, 1, 2, 3, 4, 5, 6, 7}));
+  CHECK(a2 == std::vector<uint64_t>({8, 9, 10, 11, 12, 13, 14, 15}));
+  CHECK(dim1 == std::vector<uint64_t>({1, 1, 1, 2, 3, 4, 3, 3}));
+  CHECK(dim2 == std::vector<uint64_t>({1, 2, 4, 3, 1, 2, 3, 4}));
+
+  remove_array();
+}
+
+TEST_CASE_METHOD(
+    CppPartialAttrWriteFx,
+    "CPP API: Test partial attribute write, rewrite",
+    "[cppapi][partial-attribute-write][rewrite]") {
   remove_array();
   create_sparse_array();
 
   // Write fragment.
-  write_sparse(
-      TILEDB_UNORDERED,
-      {0, 1, 2, 3, 4, 5, 6, 7},
-      {8, 9, 10, 11, 12, 13, 14, 15},
-      {1, 1, 1, 2, 3, 4, 3, 3},
-      {1, 2, 4, 3, 1, 2, 3, 4},
-      1);
+  auto&& [array, query] = write_sparse_dims(
+      TILEDB_UNORDERED, {1, 1, 1, 2, 3, 4, 3, 3}, {1, 2, 4, 3, 1, 2, 3, 4}, 1);
+  write_sparse_a1(query, {0, 1, 2, 3, 4, 5, 6, 7});
+
+  // Try to rewrite an attribute, will throw an exception.
+  CHECK_THROWS_WITH(
+      write_sparse_a1(query, {8, 9, 10, 11, 12, 13, 14, 15}),
+      "[TileDB::Query] Error: Buffer a1 was already written");
+
+  write_sparse_a2(query, {8, 9, 10, 11, 12, 13, 14, 15});
+
+  query.finalize();
+  array.close();
 
   size_t buffer_size = 8;
   std::vector<int> a1(buffer_size);

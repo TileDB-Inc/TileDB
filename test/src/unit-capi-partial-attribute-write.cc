@@ -55,15 +55,12 @@ struct PartialAttrWriteFx {
 
   // Functions.
   void create_sparse_array();
-  void create_dense_array();
   void write_sparse(
       tiledb_layout_t layout,
       std::vector<int> a1,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
       uint64_t timestamp);
-  void write_dense(
-      tiledb_layout_t layout, std::vector<int> a1, uint64_t timestamp);
   void read_sparse(
       std::vector<int>& a1,
       std::vector<uint64_t>& dim1,
@@ -141,58 +138,6 @@ void PartialAttrWriteFx::create_sparse_array() {
   tiledb_array_schema_free(&array_schema);
 }
 
-void PartialAttrWriteFx::create_dense_array() {
-  // Create dimensions
-  uint64_t dim_domain[] = {1, 4, 1, 4};
-  uint64_t tile_extents[] = {2, 2};
-  tiledb_dimension_t* d1;
-  CHECK(
-      tiledb_dimension_alloc(
-          ctx_, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0], &d1) ==
-      TILEDB_OK);
-  tiledb_dimension_t* d2;
-  CHECK(
-      tiledb_dimension_alloc(
-          ctx_, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1], &d2) ==
-      TILEDB_OK);
-
-  // Create domain
-  tiledb_domain_t* domain;
-  CHECK(tiledb_domain_alloc(ctx_, &domain) == TILEDB_OK);
-  CHECK(tiledb_domain_add_dimension(ctx_, domain, d1) == TILEDB_OK);
-  CHECK(tiledb_domain_add_dimension(ctx_, domain, d2) == TILEDB_OK);
-
-  // Create attributes
-  tiledb_attribute_t* a1;
-  CHECK(tiledb_attribute_alloc(ctx_, "a1", TILEDB_INT32, &a1) == TILEDB_OK);
-
-  // Create array schema
-  tiledb_array_schema_t* array_schema;
-  CHECK(
-      tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema) ==
-      TILEDB_OK);
-  CHECK(
-      tiledb_array_schema_set_cell_order(
-          ctx_, array_schema, TILEDB_ROW_MAJOR) == TILEDB_OK);
-  CHECK(
-      tiledb_array_schema_set_tile_order(
-          ctx_, array_schema, TILEDB_ROW_MAJOR) == TILEDB_OK);
-  CHECK(tiledb_array_schema_set_capacity(ctx_, array_schema, 2) == TILEDB_OK);
-  CHECK(
-      tiledb_array_schema_set_domain(ctx_, array_schema, domain) == TILEDB_OK);
-  CHECK(tiledb_array_schema_add_attribute(ctx_, array_schema, a1) == TILEDB_OK);
-
-  // Create array
-  CHECK(tiledb_array_create(ctx_, ARRAY_NAME, array_schema) == TILEDB_OK);
-
-  // Clean up
-  tiledb_attribute_free(&a1);
-  tiledb_dimension_free(&d1);
-  tiledb_dimension_free(&d2);
-  tiledb_domain_free(&domain);
-  tiledb_array_schema_free(&array_schema);
-}
-
 void PartialAttrWriteFx::write_sparse(
     tiledb_layout_t layout,
     std::vector<int> a1,
@@ -223,50 +168,6 @@ void PartialAttrWriteFx::write_sparse(
 
   dim1.clear();
   dim2.clear();
-
-  uint64_t a1_data_size = a1.size() * sizeof(int);
-  REQUIRE(
-      tiledb_query_set_data_buffer(
-          ctx_, query, "a1", a1.data(), &a1_data_size) == TILEDB_OK);
-
-  if (layout != TILEDB_UNORDERED) {
-    REQUIRE(tiledb_query_submit(ctx_, query) == TILEDB_ERR);
-
-    tiledb_error_t* err = NULL;
-    tiledb_ctx_get_last_error(ctx_, &err);
-    const char* msg;
-    tiledb_error_message(err, &msg);
-
-    std::string message(msg);
-    CHECK(
-        message ==
-        "Query: Partial attribute write is only supported for unordered "
-        "writes.");
-  } else {
-    REQUIRE(tiledb_query_submit(ctx_, query) == TILEDB_OK);
-    REQUIRE(tiledb_query_finalize(ctx_, query) == TILEDB_OK);
-  }
-
-  // Close array.
-  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
-
-  tiledb_query_free(&query);
-  tiledb_array_free(&array);
-}
-
-void PartialAttrWriteFx::write_dense(
-    tiledb_layout_t layout, std::vector<int> a1, uint64_t timestamp) {
-  // Open array.
-  tiledb_array_t* array;
-  REQUIRE(tiledb_array_alloc(ctx_, ARRAY_NAME, &array) == TILEDB_OK);
-  REQUIRE(
-      tiledb_array_set_open_timestamp_end(ctx_, array, timestamp) == TILEDB_OK);
-  REQUIRE(tiledb_array_open(ctx_, array, TILEDB_WRITE) == TILEDB_OK);
-
-  // Create query.
-  tiledb_query_t* query;
-  REQUIRE(tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query) == TILEDB_OK);
-  REQUIRE(tiledb_query_set_layout(ctx_, query, layout) == TILEDB_OK);
 
   uint64_t a1_data_size = a1.size() * sizeof(int);
   REQUIRE(
