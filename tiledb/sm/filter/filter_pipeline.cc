@@ -154,7 +154,7 @@ FilterPipeline::get_var_chunk_sizes(
 
 Status FilterPipeline::filter_chunks_forward(
     const WriterTile& tile,
-    void* support_data,
+    WriterTile* const offsets_tile,
     uint32_t chunk_size,
     std::vector<uint64_t>& chunk_offsets,
     FilteredBuffer& output,
@@ -215,7 +215,7 @@ Status FilterPipeline::filter_chunks_forward(
 
       RETURN_NOT_OK(f->run_forward(
           tile,
-          support_data,
+          offsets_tile,
           &input_metadata,
           &input_data,
           &output_metadata,
@@ -317,7 +317,7 @@ Status FilterPipeline::filter_chunks_forward(
 
 Status FilterPipeline::filter_chunks_reverse(
     Tile& tile,
-    void* support_data,
+    Tile* const offsets_tile,
     const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
     ThreadPool* const compute_tp,
     const Config& config) const {
@@ -393,7 +393,7 @@ Status FilterPipeline::filter_chunks_reverse(
 
       RETURN_NOT_OK(f->run_reverse(
           tile,
-          support_data,
+          offsets_tile,
           &input_metadata,
           &input_data,
           &output_metadata,
@@ -433,7 +433,6 @@ Status FilterPipeline::run_forward(
     WriterTile* const tile,
     WriterTile* const offsets_tile,
     ThreadPool* const compute_tp,
-    void* support_data,
     bool use_chunking) const {
   RETURN_NOT_OK(
       tile ? Status::Ok() : Status_Error("invalid argument: null Tile*"));
@@ -458,7 +457,7 @@ Status FilterPipeline::run_forward(
   RETURN_NOT_OK_ELSE(
       filter_chunks_forward(
           *tile,
-          support_data,
+          offsets_tile,
           chunk_size,
           *chunk_offsets,
           tile->filtered_buffer(),
@@ -475,7 +474,6 @@ Status FilterPipeline::run_forward(
 Status FilterPipeline::run_reverse_chunk_range(
     stats::Stats* const reader_stats,
     Tile* const tile,
-    void* support_data,
     const ChunkData& chunk_data,
     const uint64_t min_chunk_index,
     const uint64_t max_chunk_index,
@@ -531,7 +529,7 @@ Status FilterPipeline::run_reverse_chunk_range(
 
       RETURN_NOT_OK(f->run_reverse(
           *tile,
-          support_data,
+          nullptr,
           &input_metadata,
           &input_data,
           &output_metadata,
@@ -557,12 +555,11 @@ Status FilterPipeline::run_reverse(
     Tile* const tile,
     Tile* const offsets_tile,
     ThreadPool* const compute_tp,
-    const Config& config,
-    void* support_data) const {
+    const Config& config) const {
   assert(tile->filtered());
 
   return run_reverse_internal(
-      reader_stats, tile, offsets_tile, compute_tp, config, support_data);
+      reader_stats, tile, offsets_tile, compute_tp, config);
 }
 
 Status FilterPipeline::run_reverse_internal(
@@ -570,8 +567,7 @@ Status FilterPipeline::run_reverse_internal(
     Tile* const tile,
     Tile* const offsets_tile,
     ThreadPool* const compute_tp,
-    const Config& config,
-    void* support_data) const {
+    const Config& config) const {
   auto filtered_buffer_data = tile->filtered_data();
 
   // First make a pass over the tile to get the chunk information.
@@ -603,7 +599,7 @@ Status FilterPipeline::run_reverse_internal(
   reader_stats->add_counter("read_unfiltered_byte_num", total_orig_size);
 
   RETURN_NOT_OK(filter_chunks_reverse(
-      *tile, support_data, filtered_chunks, compute_tp, config));
+      *tile, offsets_tile, filtered_chunks, compute_tp, config));
 
   // Clear the filtered buffer now that we have reverse-filtered it into
   // 'tile->buffer()'.

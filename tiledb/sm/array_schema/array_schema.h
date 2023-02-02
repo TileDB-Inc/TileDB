@@ -475,16 +475,6 @@ class ArraySchema {
   /** Generates a new array schema URI with specified timestamp range. */
   Status generate_uri(const std::pair<uint64_t, uint64_t>& timestamp_range);
 
-  /**
-   * Returns the name of the attribute in this schema with a bitsort filter.
-   * If none exists, then this function returns std::nullopt. Note that
-   * there should only be one attribute per schema with a bitsort filter in
-   * place, as the bitsort filter will use the dimension tiles to store the
-   * positions, and there is only one set of dimension tiles per set of
-   * attribute tiles.
-   */
-  std::optional<std::string> bitsort_filter_attr() const;
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -571,12 +561,6 @@ class ArraySchema {
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
-
-  /**
-   * Attribute with bitsort filter in its filter pipeline.
-   * Set to nullopt when none exists.
-   */
-  std::optional<std::string> bitsort_filter_attr_;
 
   /**
    * Number of internal dimension labels - used for constructing label URI.

@@ -62,12 +62,11 @@ void PositiveDeltaFilter::dump(FILE* out) const {
 
 Status PositiveDeltaFilter::run_forward(
     const WriterTile& tile,
-    void* const support_data,
+    WriterTile* const offsets_tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  WriterTile* const offsets_tile = static_cast<WriterTile*>(support_data);
   auto tile_type = tile.type();
 
   // If encoding can't work, just return the input unmodified.
@@ -240,14 +239,13 @@ Status PositiveDeltaFilter::encode_part(
 
 Status PositiveDeltaFilter::run_reverse(
     const Tile& tile,
-    void* support_data,
+    Tile* const offsets_tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
     const Config& config) const {
   (void)config;
-  Tile* offsets_tile = static_cast<Tile*>(support_data);
 
   auto tile_type = tile.type();
 

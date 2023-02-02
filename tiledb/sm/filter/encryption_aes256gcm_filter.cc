@@ -72,7 +72,7 @@ void EncryptionAES256GCMFilter::dump(FILE* out) const {
 
 Status EncryptionAES256GCMFilter::run_forward(
     const WriterTile&,
-    void* const,
+    WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -141,7 +141,7 @@ Status EncryptionAES256GCMFilter::encrypt_part(
 
 Status EncryptionAES256GCMFilter::run_reverse(
     const Tile&,
-    void*,
+    Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

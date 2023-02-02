@@ -62,7 +62,7 @@ void ChecksumMD5Filter::dump(FILE* out) const {
 
 Status ChecksumMD5Filter::run_forward(
     const WriterTile&,
-    void* const,
+    WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -97,7 +97,7 @@ Status ChecksumMD5Filter::run_forward(
 
 Status ChecksumMD5Filter::run_reverse(
     const Tile&,
-    void*,
+    Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
