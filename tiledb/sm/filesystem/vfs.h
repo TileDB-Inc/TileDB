@@ -87,25 +87,13 @@ struct VFSParameters {
   VFSParameters() = delete;
 
   VFSParameters(const Config& config)
-      : max_batch_size_(config.get<uint64_t>("vfs.max_batch_size").value())
-      , min_batch_gap_(config.get<uint64_t>("vfs.min_batch_gap").value())
-      , min_batch_size_(config.get<uint64_t>("vfs.min_batch_size").value())
-      , min_parallel_size_(
+      : min_parallel_size_(
             config.get<uint64_t>("vfs.min_parallel_size").value())
       , read_ahead_cache_size_(
             config.get<uint64_t>("vfs.read_ahead_cache_size").value())
       , read_ahead_size_(config.get<uint64_t>("vfs.read_ahead_size").value()){};
 
   ~VFSParameters() = default;
-
-  /** The maximum number of bytes in a batched read operation. */
-  uint64_t max_batch_size_;
-
-  /** The minimum number of bytes between two read batches. */
-  uint64_t min_batch_gap_;
-
-  /** The minimum number of bytes in a batched read operation. */
-  uint64_t min_batch_size_;
 
   /** The minimum number of bytes in a parallel operation. */
   uint64_t min_parallel_size_;
@@ -398,42 +386,6 @@ class VFS {
       uint64_t nbytes,
       bool use_read_ahead = true);
 
-  /**
-   * Reads multiple regions from a file.
-   *
-   * @param uri The URI of the file.
-   * @param regions The list of regions to read. Each region is a tuple
-   *    `(file_offset, dest_buffer, nbytes)`.
-   * @param thread_pool Thread pool to execute async read tasks to.
-   * @param tasks Vector to which new async read tasks are pushed.
-   * @param use_read_ahead Whether to use the read-ahead cache.
-   * @return Status
-   */
-  Status read_all(
-      const URI& uri,
-      const std::vector<tuple<uint64_t, Tile*, uint64_t>>& regions,
-      ThreadPool* thread_pool,
-      std::vector<ThreadPool::Task>* tasks,
-      bool use_read_ahead = true);
-
-  /**
-   * Reads multiple regions from a file with no batching.
-   *
-   * @param uri The URI of the file.
-   * @param regions The list of regions to read. Each region is a tuple
-   *    `(file_offset, dest_buffer, nbytes)`.
-   * @param thread_pool Thread pool to execute async read tasks to.
-   * @param tasks Vector to which new async read tasks are pushed.
-   * @param use_read_ahead Whether to use the read-ahead cache.
-   * @return Status
-   */
-  Status read_all_no_batching(
-      const URI& uri,
-      const std::vector<tuple<uint64_t, Tile*, uint64_t>>& regions,
-      ThreadPool* thread_pool,
-      std::vector<ThreadPool::Task>* tasks,
-      bool use_read_ahead = true);
-
   /** Checks if a given filesystem is supported. */
   bool supports_fs(Filesystem fs) const;
 
@@ -526,30 +478,6 @@ class VFS {
   /* ********************************* */
   /*        PRIVATE DATATYPES          */
   /* ********************************* */
-
-  /**
-   * Helper type holding information about a batched read operation.
-   */
-  struct BatchedRead {
-    /** Construct a BatchedRead consisting of the single given region. */
-    BatchedRead(const tuple<uint64_t, Tile*, uint64_t>& region) {
-      offset = std::get<0>(region);
-      nbytes = std::get<2>(region);
-      regions.push_back(region);
-    }
-
-    /** Offset of the batch. */
-    uint64_t offset;
-
-    /** Number of bytes in the batch. */
-    uint64_t nbytes;
-
-    /**
-     * Original regions making up the batch. Vector of tuples of the form
-     * (offset, dest_buffer, nbytes).
-     */
-    std::vector<tuple<uint64_t, Tile*, uint64_t>> regions;
-  };
 
   /**
    * Represents a sub-range of data within a URI file at a
@@ -766,19 +694,6 @@ class VFS {
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
-
-  /**
-   * Groups the given vector of regions to be read into a possibly smaller
-   * vector of batched reads.
-   *
-   * @param regions Vector of individual regions to be read. Each region is a
-   *    tuple `(file_offset, dest_buffer, nbytes)`.
-   * @param batches Vector storing the batched read information.
-   * @return Status
-   */
-  Status compute_read_batches(
-      const std::vector<tuple<uint64_t, Tile*, uint64_t>>& regions,
-      std::vector<BatchedRead>* batches) const;
 
   /**
    * Reads from a file by calling the specific backend read function.

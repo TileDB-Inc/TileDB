@@ -109,9 +109,6 @@ Tile create_tile_for_unfiltering(uint64_t nelts, WriterTile& tile) {
       tile.cell_size(),
       0,
       tile.cell_size() * nelts,
-      tile.filtered_buffer().size());
-  memcpy(
-      ret.filtered_buffer().data(),
       tile.filtered_buffer().data(),
       tile.filtered_buffer().size());
   return ret;
@@ -632,7 +629,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
             .run_reverse(
                 &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
     CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -725,7 +722,7 @@ TEST_CASE(
             .run_reverse(
                 &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
     CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -786,7 +783,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -837,7 +834,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -934,7 +931,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -990,7 +987,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -1054,7 +1051,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -1105,7 +1102,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -1202,7 +1199,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -1258,7 +1255,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -1321,7 +1318,7 @@ TEST_CASE(
             .run_reverse(
                 &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
     CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -1418,7 +1415,7 @@ TEST_CASE(
             .run_reverse(
                 &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
     CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -1469,7 +1466,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
@@ -1495,7 +1492,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
@@ -1523,7 +1520,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
@@ -1609,7 +1606,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
@@ -1638,7 +1635,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
@@ -1669,7 +1666,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
@@ -1741,7 +1738,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -1810,7 +1807,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -1916,7 +1913,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -1986,7 +1983,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -2054,7 +2051,7 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
             .run_reverse(
                 &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
     CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -2158,7 +2155,7 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
             .run_reverse(
                 &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
     CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -2239,7 +2236,7 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
             .run_reverse(
                 &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
     CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -2326,7 +2323,7 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t n = 0; n < nelts; n++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t))
@@ -2360,7 +2357,7 @@ TEST_CASE(
             .run_reverse(
                 &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t n = 0; n < nelts; n++) {
     uint64_t elt = 0;
     CHECK(unfiltered_tile.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t))
@@ -2385,7 +2382,7 @@ TEST_CASE(
             .run_reverse(
                 &test::g_helper_stats, &unfiltered_tile2, nullptr, &tp, config)
             .ok());
-  CHECK(unfiltered_tile2.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile2.filtered_size() == 0);
   for (uint64_t n = 0; n < nelts; n++) {
     uint64_t elt = 0;
     CHECK(unfiltered_tile2.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t))
@@ -2443,7 +2440,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -2472,7 +2469,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-      CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+      CHECK(unfiltered_tile.filtered_size() == 0);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
         CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -2511,7 +2508,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -2551,7 +2548,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       int32_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(int32_t), sizeof(int32_t))
@@ -2583,7 +2580,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -2699,7 +2696,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -2730,7 +2727,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-      CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+      CHECK(unfiltered_tile.filtered_size() == 0);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
         CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -2771,7 +2768,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -2834,7 +2831,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       int32_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(int32_t), sizeof(int32_t))
@@ -2869,7 +2866,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -2929,7 +2926,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -2957,7 +2954,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-      CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+      CHECK(unfiltered_tile.filtered_size() == 0);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
         CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -3083,7 +3080,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -3115,7 +3112,7 @@ TEST_CASE(
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-      CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+      CHECK(unfiltered_tile.filtered_size() == 0);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
         CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -3165,7 +3162,7 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -3200,7 +3197,7 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
             .run_reverse(
                 &test::g_helper_stats, &unfiltered_tile2, nullptr, &tp, config)
             .ok());
-    CHECK(unfiltered_tile2.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile2.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
       CHECK(unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t))
@@ -3263,7 +3260,7 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -3300,7 +3297,7 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
             .run_reverse(
                 &test::g_helper_stats, &unfiltered_tile2, nullptr, &tp, config)
             .ok());
-    CHECK(unfiltered_tile2.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile2.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
       CHECK(unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t))
@@ -3334,7 +3331,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -3369,7 +3366,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
             .run_reverse(
                 &test::g_helper_stats, &unfiltered_tile2, nullptr, &tp, config)
             .ok());
-    CHECK(unfiltered_tile2.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile2.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
       CHECK(unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t))
@@ -3432,7 +3429,7 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -3469,7 +3466,7 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
             .run_reverse(
                 &test::g_helper_stats, &unfiltered_tile2, nullptr, &tp, config)
             .ok());
-    CHECK(unfiltered_tile2.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile2.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
       CHECK(unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t))
@@ -3515,7 +3512,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
@@ -3545,7 +3542,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
               .run_reverse(
                   &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
               .ok());
-    CHECK(unfiltered_tile.filtered_buffer().size() == 0);
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))

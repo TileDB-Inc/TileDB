@@ -81,12 +81,14 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
   const auto tile_data_offset =
       GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
 
+  std::vector<char> filtered_data(header.persisted_size);
   Tile tile(
       header.version_number,
       (Datatype)header.datatype,
       header.cell_size,
       0,
       header.tile_size,
+      filtered_data.data(),
       header.persisted_size);
 
   // Read the tile.
@@ -94,7 +96,7 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
       resources_.vfs().read(
           uri_,
           file_offset + tile_data_offset,
-          tile.filtered_buffer().data(),
+          tile.filtered_data(),
           header.persisted_size),
       nullopt);
 

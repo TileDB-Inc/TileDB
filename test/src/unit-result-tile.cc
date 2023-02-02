@@ -197,8 +197,14 @@ TEST_CASE_METHOD(
         0,
         std::nullopt,
         std::nullopt);
+    ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
     rt.init_coord_tile(
-        constants::format_version, array_schema, "d1", tile_sizes, 0);
+        constants::format_version,
+        array_schema,
+        "d1",
+        tile_sizes,
+        tile_data,
+        0);
   }
 
   ResultTile::TileSizes tile_sizes(
@@ -208,8 +214,14 @@ TEST_CASE_METHOD(
       0,
       std::nullopt,
       std::nullopt);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   rt.init_coord_tile(
-      constants::format_version, array_schema, dim_name, tile_sizes, dim_idx);
+      constants::format_version,
+      array_schema,
+      dim_name,
+      tile_sizes,
+      tile_data,
+      dim_idx);
   auto tile_tuple = rt.tile_tuple(dim_name);
   Tile* const t = &tile_tuple->fixed_tile();
   Tile* const t_var = &tile_tuple->var_tile();
@@ -288,8 +300,14 @@ TEST_CASE_METHOD(
         0,
         std::nullopt,
         std::nullopt);
+    ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
     rt.init_coord_tile(
-        constants::format_version, array_schema, "d1", tile_sizes, 0);
+        constants::format_version,
+        array_schema,
+        "d1",
+        tile_sizes,
+        tile_data,
+        0);
   }
 
   ResultTile::TileSizes tile_sizes(
@@ -299,8 +317,14 @@ TEST_CASE_METHOD(
       0,
       std::nullopt,
       std::nullopt);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   rt.init_coord_tile(
-      constants::format_version, array_schema, dim_name, tile_sizes, dim_idx);
+      constants::format_version,
+      array_schema,
+      dim_name,
+      tile_sizes,
+      tile_data,
+      dim_idx);
   auto tile_tuple = rt.tile_tuple(dim_name);
   Tile* const t = &tile_tuple->fixed_tile();
   Tile* const t_var = &tile_tuple->var_tile();

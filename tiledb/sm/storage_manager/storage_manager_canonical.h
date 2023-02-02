@@ -69,7 +69,6 @@ class ArrayDirectory;
 class ArraySchema;
 class ArraySchemaEvolution;
 class Buffer;
-class BufferLRUCache;
 class Consolidator;
 class EncryptionKey;
 class FragmentMetadata;
@@ -862,29 +861,6 @@ class StorageManagerCanonical {
   Status query_submit_async(Query* query);
 
   /**
-   * Reads from the cache into the input buffer. `uri` and `offset` collectively
-   * form the key of the cached object to be read. Essentially, this is used
-   * to read potentially cached tiles. `uri` is the URI of the attribute the
-   * tile belongs to, and `offset` is the offset in the attribute file where
-   * the tile is located. Observe that the `uri`, `offset` pair is unique.
-   *
-   * @param uri The URI of the cached object.
-   * @param offset The offset of the cached object.
-   * @param buffer The buffer to write into. The function reallocates memory
-   *     for the buffer, sets its size to *nbytes* and resets its offset.
-   * @param nbytes Number of bytes to be read.
-   * @param in_cache This is set to `true` if the object is in the cache,
-   *     and `false` otherwise.
-   * @return Status.
-   */
-  Status read_from_cache(
-      const URI& uri,
-      uint64_t offset,
-      FilteredBuffer& buffer,
-      uint64_t nbytes,
-      bool* in_cache) const;
-
-  /**
    * Reads from a file into the input buffer.
    *
    * @param uri The URI file to read from.
@@ -967,21 +943,6 @@ class StorageManagerCanonical {
   [[nodiscard]] inline VFS* vfs() const {
     return &(resources_.vfs());
   }
-
-  /**
-   * Writes the contents of a buffer into the cache. `uri` and `offset`
-   * collectively form the key of the object to be cached. Essentially, this is
-   * used to cach tiles. `uri` is the URI of the attribute the
-   * tile belongs to, and `offset` is the offset in the attribute file where
-   * the tile is located. Observe that the `uri`, `offset` pair is unique.
-   *
-   * @param uri The URI of the cached object.
-   * @param offset The offset of the cached object.
-   * @param buffer The buffer whose contents will be cached.
-   * @return Status.
-   */
-  Status write_to_cache(
-      const URI& uri, uint64_t offset, const FilteredBuffer& buffer) const;
 
   /**
    * Writes the input data into a URI file.
@@ -1110,9 +1071,6 @@ class StorageManagerCanonical {
 
   /** Tags for the context object. */
   std::unordered_map<std::string, std::string> tags_;
-
-  /** A tile cache. */
-  tdb_unique_ptr<BufferLRUCache> tile_cache_;
 
   /** The rest client (may be null if none was configured). */
   tdb_unique_ptr<RestClient> rest_client_;

@@ -335,7 +335,7 @@ Status FilterPipeline::filter_chunks_reverse(
 
   if (total_size != tile.size()) {
     return LOG_STATUS(
-        Status_FilterError("Error incorrect unfiltered tile size allocated."));
+        Status_FilterError("Incorrect unfiltered tile size allocated."));
   }
 
   // Run each chunk through the entire pipeline.
@@ -572,7 +572,7 @@ Status FilterPipeline::run_reverse_internal(
     ThreadPool* const compute_tp,
     const Config& config,
     void* support_data) const {
-  auto filtered_buffer_data = tile->filtered_buffer().data();
+  auto filtered_buffer_data = tile->filtered_data();
 
   // First make a pass over the tile to get the chunk information.
   uint64_t num_chunks;
@@ -607,10 +607,10 @@ Status FilterPipeline::run_reverse_internal(
 
   // Clear the filtered buffer now that we have reverse-filtered it into
   // 'tile->buffer()'.
-  tile->filtered_buffer().clear();
+  tile->clear_filtered_buffer();
   // If unfiltering also included offsets, clear their filtered buffer too
   if (offsets_tile) {
-    offsets_tile->filtered_buffer().clear();
+    offsets_tile->clear_filtered_buffer();
   }
 
   // Zip the coords.

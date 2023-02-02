@@ -1897,6 +1897,7 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
       }
     }
   }
+  std::sort(result_tiles.begin(), result_tiles.end(), result_tile_cmp);
 
   // Read a few attributes a a time.
   uint64_t buffer_idx = 0;

@@ -1524,46 +1524,43 @@ Status FragmentMetadata::load_processed_conditions(
   return Status::Ok();
 }
 
-Status FragmentMetadata::file_offset(
-    const std::string& name, uint64_t tile_idx, uint64_t* offset) {
+uint64_t FragmentMetadata::file_offset(
+    const std::string& name, uint64_t tile_idx) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_offsets_[idx]) {
-    return LOG_STATUS(Status_FragmentMetadataError(
-        "Trying to access tile offsets metadata that's not loaded"));
+    throw std::logic_error(
+        "Trying to access tile offsets metadata that's not loaded");
   }
 
-  *offset = tile_offsets_[idx][tile_idx];
-  return Status::Ok();
+  return tile_offsets_[idx][tile_idx];
 }
 
-Status FragmentMetadata::file_var_offset(
-    const std::string& name, uint64_t tile_idx, uint64_t* offset) {
+uint64_t FragmentMetadata::file_var_offset(
+    const std::string& name, uint64_t tile_idx) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_var_offsets_[idx]) {
-    return LOG_STATUS(Status_FragmentMetadataError(
-        "Trying to access tile var offsets metadata that's not loaded"));
+    throw std::logic_error(
+        "Trying to access tile var offsets metadata that's not loaded");
   }
 
-  *offset = tile_var_offsets_[idx][tile_idx];
-  return Status::Ok();
+  return tile_var_offsets_[idx][tile_idx];
 }
 
-Status FragmentMetadata::file_validity_offset(
-    const std::string& name, uint64_t tile_idx, uint64_t* offset) {
+uint64_t FragmentMetadata::file_validity_offset(
+    const std::string& name, uint64_t tile_idx) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_validity_offsets_[idx]) {
-    return LOG_STATUS(Status_FragmentMetadataError(
-        "Trying to access tile validity offsets metadata that's not loaded"));
+    throw std::logic_error(
+        "Trying to access tile validity offsets metadata that's not loaded");
   }
 
-  *offset = tile_validity_offsets_[idx][tile_idx];
-  return Status::Ok();
+  return tile_validity_offsets_[idx][tile_idx];
 }
 
 const NDRange& FragmentMetadata::mbr(uint64_t tile_idx) const {
@@ -1575,7 +1572,7 @@ const std::vector<NDRange>& FragmentMetadata::mbrs() const {
 }
 
 uint64_t FragmentMetadata::persisted_tile_size(
-    const std::string& name, uint64_t tile_idx) {
+    const std::string& name, uint64_t tile_idx) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -1594,7 +1591,7 @@ uint64_t FragmentMetadata::persisted_tile_size(
 }
 
 uint64_t FragmentMetadata::persisted_tile_var_size(
-    const std::string& name, uint64_t tile_idx) {
+    const std::string& name, uint64_t tile_idx) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -1615,7 +1612,7 @@ uint64_t FragmentMetadata::persisted_tile_var_size(
 }
 
 uint64_t FragmentMetadata::persisted_tile_validity_size(
-    const std::string& name, uint64_t tile_idx) {
+    const std::string& name, uint64_t tile_idx) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;

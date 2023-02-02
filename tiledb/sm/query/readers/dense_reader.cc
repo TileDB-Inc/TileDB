@@ -41,6 +41,7 @@
 #include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
+#include "tiledb/sm/query/readers/filtered_data.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -113,15 +114,6 @@ DenseReader::DenseReader(
 
   // Check the validity buffer sizes.
   check_validity_buffer_sizes();
-
-  bool found = false;
-  uint64_t tile_cache_size = 0;
-  if (!config_.get<uint64_t>("sm.tile_cache_size", &tile_cache_size, &found)
-           .ok()) {
-    throw DenseReaderStatusException("Cannot get setting");
-  }
-  assert(found);
-  disable_cache_ = tile_cache_size == 0;
 }
 
 /* ****************************** */
@@ -285,6 +277,7 @@ Status DenseReader::dense_read() {
       result_tiles.push_back(const_cast<ResultTile*>(&result_tile.second));
     }
   }
+  std::sort(result_tiles.begin(), result_tiles.end(), result_tile_cmp);
 
   // Compute subarrays for each tile.
   const auto& tile_coords = subarray.tile_coords();
@@ -425,8 +418,8 @@ Status DenseReader::dense_read() {
     if (condition_.field_names().count(name) == 0) {
       // Read and unfilter tiles.
       to_read[0] = name;
-      RETURN_CANCEL_OR_ERROR(read_attribute_tiles(to_read, result_tiles));
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
+      RETURN_CANCEL_OR_ERROR(
+          read_and_unfilter_attribute_tiles(to_read, result_tiles));
     }
 
     // Copy attribute data to users buffers.
@@ -621,9 +614,9 @@ DenseReader::apply_query_condition(
     }
 
     // Read and unfilter query condition attributes.
-    RETURN_CANCEL_OR_ERROR_TUPLE(read_attribute_tiles(qc_names, result_tiles));
-    for (auto& name : qc_names) {
-      RETURN_CANCEL_OR_ERROR_TUPLE(unfilter_tiles(name, result_tiles));
+    {
+      RETURN_CANCEL_OR_ERROR_TUPLE(
+          read_and_unfilter_attribute_tiles(qc_names, result_tiles));
     }
 
     if (stride == UINT64_MAX) {
