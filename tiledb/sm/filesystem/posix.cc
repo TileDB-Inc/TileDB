@@ -70,14 +70,16 @@ bool Posix::both_slashes(char a, char b) {
 }
 
 uint64_t Posix::read_all(
-    int fd, void* buffer, uint64_t nbytes, uint64_t offset) {
+    int fd, void* buffer, uint64_t nbytes, uint64_t offset, bool& failed) {
+  failed = false;
   auto bytes = reinterpret_cast<char*>(buffer);
   uint64_t nread = 0;
   do {
     ssize_t actual_read =
         ::pread(fd, bytes + nread, nbytes - nread, offset + nread);
-    if (actual_read == -1) {
-      return nread;
+    if (actual_read <= 0) {
+      failed = actual_read == -1;
+      break;
     }
     nread += actual_read;
   } while (nread < nbytes);
@@ -438,11 +440,13 @@ Status Posix::read(
         std::string("Cannot read from file ' ") + path +
         "'; nbytes > SSIZE_MAX"));
   }
-  uint64_t bytes_read = read_all(fd, buffer, nbytes, offset);
+  bool failed = false;
+  uint64_t bytes_read = read_all(fd, buffer, nbytes, offset, failed);
   if (bytes_read != nbytes) {
+    std::string reason =
+        failed ? std::string(strerror(errno)) : "File was too small";
     return LOG_STATUS(Status_IOError(
-        std::string("Cannot read from file '") + path + "'; " +
-        strerror(errno)));
+        std::string("Cannot read from file '") + path + "'; " + reason));
   }
   // Close file
   if (close(fd)) {

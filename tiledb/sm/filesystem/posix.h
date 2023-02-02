@@ -273,10 +273,11 @@ class Posix {
    * @param buffer Buffer to hold read data
    * @param nbytes Number of bytes to read
    * @param offset Offset in file to start reading from.
+   * @param failed Whether reading stopped due to a system error.
    * @return Number of bytes actually read (< nbytes on error).
    */
   static uint64_t read_all(
-      int fd, void* buffer, uint64_t nbytes, uint64_t offset);
+      int fd, void* buffer, uint64_t nbytes, uint64_t offset, bool& failed);
 
   static int unlink_cb(
       const char* fpath,
