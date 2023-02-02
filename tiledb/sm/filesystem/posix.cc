@@ -75,7 +75,7 @@ uint64_t Posix::read_all(
   uint64_t nread = 0;
   do {
     ssize_t actual_read =
-        ::pread64(fd, bytes + nread, nbytes - nread, offset + nread);
+        ::pread(fd, bytes + nread, nbytes - nread, offset + nread);
     if (actual_read == -1) {
       return nread;
     }
@@ -428,6 +428,11 @@ Status Posix::read(
     return LOG_STATUS(Status_IOError(
         std::string("Cannot read from file; ") + strerror(errno)));
   }
+  if (offset > static_cast<uint64_t>(std::numeric_limits<off_t>::max())) {
+    return LOG_STATUS(Status_IOError(
+        std::string("Cannot read from file ' ") + path.c_str() +
+        "'; offset > typemax(off_t)"));
+  }
   if (nbytes > SSIZE_MAX) {
     return LOG_STATUS(Status_IOError(
         std::string("Cannot read from file ' ") + path +
@@ -582,7 +587,7 @@ Status Posix::write_at(
   const char* buffer_bytes_ptr = static_cast<const char*>(buffer);
   while (buffer_size > 0) {
     ssize_t actual_written =
-        ::pwrite64(fd, buffer_bytes_ptr, buffer_size, file_offset);
+        ::pwrite(fd, buffer_bytes_ptr, buffer_size, file_offset);
     if (actual_written == -1) {
       return LOG_STATUS(
           Status_IOError(std::string("POSIX write error:") + strerror(errno)));
