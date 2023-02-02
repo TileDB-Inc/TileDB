@@ -49,7 +49,6 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
-#include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
@@ -195,6 +194,11 @@ class Query {
 
   /** Retrieves the URI of the written fragment with the input index. */
   Status get_written_fragment_uri(uint32_t idx, const char** uri) const;
+
+  /** Returns const pointer to storage manager for this Query. */
+  inline const StorageManager* get_storage_manager() {
+    return storage_manager_;
+  }
 
   /**
    * Retrieves the timestamp range [t1,t2] of the written fragment with the
@@ -374,18 +378,6 @@ class Query {
       uint64_t** buffer_validity_bytemap_size) const;
 
   /**
-   * Retrieve query buffer cache for remote global order write.
-   * If the cache does not exist, this will construct one.
-   *
-   * @param name The buffer name to retrieve.
-   * @return QueryRemoteBufferStorage for the requested buffer.
-   */
-  inline const QueryRemoteBufferStorage& get_remote_buffer_cache(
-      const std::string& name) {
-    return query_remote_buffer_storage_[name];
-  }
-
-  /**
    * Returns the serialization state associated with the given attribute.
    *
    * @param attribute Attribute to get serialization state for
@@ -552,18 +544,6 @@ class Query {
       uint64_t* const buffer_offsets,
       uint64_t* const buffer_offsets_size,
       const bool check_null_buffers = true);
-
-  /**
-   * Sets submit state for remote query buffer cache.
-   * Only used for remote global order writes.
-   *
-   * @param name Buffer name to set state.
-   * @param submit True if the buffer has been submit, else false.
-   */
-  inline void set_remote_buffer_cache_submit(
-      const std::string& name, bool submit) {
-    query_remote_buffer_storage_[name].submit = submit;
-  }
 
   /**
    * Sets the validity buffer for nullable attribute/dimension.
@@ -938,10 +918,6 @@ class Query {
    * */
   std::unordered_map<std::string, QueryBuffer> buffers_;
 
-  /** Cache for tile aligned remote global order writes. */
-  std::unordered_map<std::string, QueryRemoteBufferStorage>
-      query_remote_buffer_storage_;
-
   /** Maps label names to their buffers. */
   std::unordered_map<std::string, QueryBuffer> label_buffers_;
 
@@ -1128,15 +1104,6 @@ class Query {
       void** buffer_val,
       uint64_t** buffer_val_size,
       const ValidityVector** validity_vector) const;
-
-  /**
-   * Check input buffers are tile aligned. Valid only for global order queries.
-   * Enforces tile alignment for dense and sparse arrays.
-   * If query is not tile-aligned, trim and cache buffers for later submissions.
-   *
-   * Returns true if cached and user buffers fill one or more tiles.
-   */
-  bool check_trim_and_buffer_tile_alignment();
 
   /**
    * Reset coord buffer markers at end of a global write submit.

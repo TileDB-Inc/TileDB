@@ -469,8 +469,6 @@ Status Query::submit_and_finalize() {
           Status_QueryError("Error in query submit_and_finalize; remote array "
                             "with no rest client."));
 
-    check_trim_and_buffer_tile_alignment();
-
     if (status_ == QueryStatus::UNINITIALIZED) {
       RETURN_NOT_OK(create_strategy());
     }
@@ -485,145 +483,6 @@ Status Query::submit_and_finalize() {
   status_ = QueryStatus::COMPLETED;
 
   return Status::Ok();
-}
-
-bool Query::check_trim_and_buffer_tile_alignment() {
-  // Only applicable for remote global order writes
-  if (!array_->is_remote() || type_ != QueryType::WRITE ||
-      layout_ != Layout::GLOBAL_ORDER) {
-    return true;
-  }
-  uint64_t cell_num_per_tile = array_schema_->dense() ?
-                                   array_schema_->domain().cell_num_per_tile() :
-                                   array_schema_->capacity();
-
-  if (query_remote_buffer_storage_.empty()) {
-    for (const auto& buff : buffers_) {
-      bool is_var = array_schema_->var_size(buff.first);
-      bool is_nullable = array_schema_->is_nullable(buff.first);
-
-      uint64_t data_size = datatype_size(array_schema_->type(buff.first));
-      uint64_t cell_size = is_var ? constants::cell_var_offset_size : data_size;
-      query_remote_buffer_storage_[buff.first].cell_size = cell_size;
-
-      // Construct and move a preallocated Buffer to initialize cache.
-      query_remote_buffer_storage_[buff.first].buffer = {
-          cell_num_per_tile * cell_size * 2};
-      if (is_nullable) {
-        query_remote_buffer_storage_[buff.first].buffer_validity = {
-            cell_num_per_tile * 2};
-      }
-    }
-  }
-
-  bool submit = true;
-  for (auto&& buff : buffers_) {
-    bool is_var = array_schema_->var_size(buff.first);
-    bool is_nullable = array_schema_->is_nullable(buff.first);
-
-    auto& cache = query_remote_buffer_storage_[buff.first];
-    // Check if the cache was submit up to cache.byte_offset position.
-    if (cache.submit) {
-      cache.shift_cache(is_var);
-    }
-
-    // Buffer element size, or size of offsets if attribute is var-sized.
-    uint64_t buffer_size = *buff.second.buffer_size_;
-    uint64_t buffer_cells = buffer_size / cache.cell_size;
-    // Only consider cached data up to byte_offset that is queued for submit.
-    uint64_t cache_buffer_cells = cache.byte_offset / cache.cell_size;
-    uint64_t total_buffer_cells = buffer_cells + cache_buffer_cells;
-    // Cells cached since our last submit to REST.
-    uint64_t latest_cached_cells =
-        (cache.buffer.size() - cache.byte_offset) / cache.cell_size;
-
-    // If buffer_cells does not fill a tile, cache the entire buffer.
-    uint64_t tile_trim_cells = total_buffer_cells >= cell_num_per_tile ?
-                                   total_buffer_cells % cell_num_per_tile :
-                                   buffer_cells;
-    uint64_t tile_trim_bytes = tile_trim_cells * cache.cell_size;
-    // If the cache and user buffers add up to be exactly one tile.
-    if (total_buffer_cells >= cell_num_per_tile &&
-        cell_num_per_tile % total_buffer_cells == 0) {
-      submit = true;
-      continue;
-    } else if (total_buffer_cells + latest_cached_cells >= cell_num_per_tile) {
-      cache.byte_offset = cache.buffer.size();
-      cache.var_data_offset = cache.buffer_var.size();
-      tile_trim_cells =
-          (total_buffer_cells + latest_cached_cells) % cell_num_per_tile;
-      tile_trim_bytes = tile_trim_cells * cache.cell_size;
-    }
-
-    // Write fixed attribute trimmed data into cache buffer.
-    throw_if_not_ok(cache.buffer.write(
-        (char*)buff.second.buffer_ + buffer_size - tile_trim_bytes,
-        tile_trim_bytes));
-    *buff.second.buffer_size_ -= tile_trim_bytes;
-
-    if (is_var) {
-      uint64_t var_buffer_size = *buff.second.buffer_var_size_;
-
-      // Total bytes to trim from var data and offset buffers.
-      uint64_t tile_offset_trim_bytes = tile_trim_cells * cache.cell_size;
-      uint64_t var_data_trim_bytes = 0;
-      if (tile_trim_cells != 0) {
-        // Use var_buffer_size if we are trimming the entire var-size buffer.
-        uint64_t first_trimmed_offset =
-            buffer_cells == tile_trim_cells ?
-                var_buffer_size :
-                ((uint64_t*)
-                     buff.second.buffer_)[buffer_cells - tile_trim_cells];
-        // Use the first trimmed offset to calculate var bytes to trim.
-        var_data_trim_bytes = first_trimmed_offset == var_buffer_size ?
-                                  first_trimmed_offset :
-                                  var_buffer_size - first_trimmed_offset;
-      }
-      // Total bytes cached for offset and var data since last REST submit.
-      uint64_t last_cached_offset_bytes =
-          cache.buffer.size() - cache.byte_offset - tile_trim_bytes;
-      uint64_t last_cached_var_bytes =
-          cache.buffer_var.size() - cache.var_data_offset;
-
-      // Adjust any appended offsets to be relative to already cached data.
-      for (uint64_t pos = cache.byte_offset;
-           pos < tile_offset_trim_bytes + cache.byte_offset;
-           pos += constants::cell_var_offset_size) {
-        uint64_t cell_index =
-            (last_cached_offset_bytes + pos) / cache.cell_size;
-        *cache.get_cell_offset(cell_index) +=
-            last_cached_var_bytes + cache.var_data_offset;
-      }
-
-      // Write the variable sized data into cache.
-      throw_if_not_ok(cache.buffer_var.write(
-          (char*)buff.second.buffer_var_ + var_buffer_size -
-              var_data_trim_bytes,
-          var_data_trim_bytes));
-      *buff.second.buffer_var_size_ -= var_data_trim_bytes;
-    }
-    // Count cells cached since last submission to REST.
-    // Handles the case where N cached writes add up to be exactly one tile.
-    latest_cached_cells += tile_trim_cells;
-
-    if (is_nullable) {
-      // Write the validity buffers into cache.
-      throw_if_not_ok(cache.buffer_validity.write(
-          buff.second.validity_vector_.buffer() +
-              *buff.second.validity_vector_.buffer_size() - tile_trim_cells,
-          tile_trim_cells));
-      *buff.second.validity_vector_.buffer_size() -= tile_trim_cells;
-    }
-
-    // Update total cells written from cache and user buffers.
-    total_buffer_cells =
-        (cache.byte_offset + *buff.second.buffer_size_) / cache.cell_size;
-    if (total_buffer_cells + latest_cached_cells < cell_num_per_tile) {
-      submit = false;
-    }
-  }
-
-  return submit;
 }
 
 Status Query::get_buffer(
@@ -2432,11 +2291,7 @@ Status Query::submit() {
     }
 
     // Align buffers to tile extents.
-    bool submit = check_trim_and_buffer_tile_alignment();
-    if (submit) {
-      RETURN_NOT_OK(
-          rest_client->submit_query_to_rest(array_->array_uri(), this));
-    }
+    RETURN_NOT_OK(rest_client->submit_query_to_rest(array_->array_uri(), this));
 
     reset_coords_markers();
     return Status::Ok();

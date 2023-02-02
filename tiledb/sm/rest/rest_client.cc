@@ -528,6 +528,155 @@ Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
   return Status::Ok();
 }
 
+bool RestClient::check_tile_alignment(Query* query) {
+  // Only applicable for remote global order writes
+  if (query->type() != QueryType::WRITE ||
+      query->layout() != Layout::GLOBAL_ORDER) {
+    return true;
+  }
+  uint64_t cell_num_per_tile =
+      query->array_schema().dense() ?
+          query->array_schema().domain().cell_num_per_tile() :
+          query->array_schema().capacity();
+
+  if (query_remote_buffer_storage_.empty()) {
+    for (const auto& name : query->buffer_names()) {
+      bool is_var = query->array_schema().var_size(name);
+      bool is_nullable = query->array_schema().is_nullable(name);
+      uint64_t data_size = datatype_size(query->array_schema().type(name));
+      uint64_t cell_size = is_var ? constants::cell_var_offset_size : data_size;
+
+      query_remote_buffer_storage_[name].cell_size = cell_size;
+      // Construct and move a preallocated Buffer to initialize cache.
+      query_remote_buffer_storage_[name].buffer = {
+          cell_num_per_tile * cell_size};
+      if (is_nullable) {
+        query_remote_buffer_storage_[name].buffer_validity = {
+            cell_num_per_tile};
+      }
+    }
+  }
+
+  bool submit = true;
+  for (const auto& name : query->buffer_names()) {
+    auto query_buffer = query->buffer(name);
+    bool is_var = query->array_schema().var_size(name);
+    bool is_nullable = query->array_schema().is_nullable(name);
+    auto& cache = query_remote_buffer_storage_[name];
+
+    // Buffer element size, or size of offsets if attribute is var-sized.
+    uint64_t buffer_cells = *query_buffer.buffer_size_ / cache.cell_size;
+    // Only consider cached data up to byte_offset that is queued for submit.
+    uint64_t cache_buffer_cells = cache.buffer.size() / cache.cell_size;
+    uint64_t total_buffer_cells = buffer_cells + cache_buffer_cells;
+
+    // If buffer_cells does not fill a tile, cache the entire buffer.
+    uint64_t tile_cache_cells = buffer_cells;
+    uint64_t buffer_cache_bytes = tile_cache_cells * cache.cell_size;
+    // Check if data between cache and user buffer is tile-aligned.
+    if (total_buffer_cells >= cell_num_per_tile &&
+        total_buffer_cells % cell_num_per_tile == 0) {
+      // Submit all data and cache nothing after submit.
+      cache.cache_bytes = 0;
+      continue;
+    }
+
+    // Cases that will not write data into the cache.
+    bool cache_data = true;
+    if (buffer_cells >= cell_num_per_tile) {
+      tile_cache_cells =
+          (cache_buffer_cells + buffer_cells) % cell_num_per_tile;
+      buffer_cache_bytes = tile_cache_cells * cache.cell_size;
+      cache_data = false;
+    } else if (total_buffer_cells >= cell_num_per_tile) {
+      // The user buffer and cache data combined can fill one or more tiles.
+      tile_cache_cells = cell_num_per_tile % cache_buffer_cells;
+      buffer_cache_bytes = (buffer_cells - tile_cache_cells) * cache.cell_size;
+      cache_data = false;
+    }
+    uint64_t tile_cache_bytes = tile_cache_cells * cache.cell_size;
+
+    if (cache_data) {
+      // Write fixed attribute trimmed data into cache buffer.
+      throw_if_not_ok(cache.buffer.write(
+          (char*)query_buffer.buffer_ + *query_buffer.buffer_size_ -
+              buffer_cache_bytes,
+          tile_cache_bytes));
+      *query_buffer.buffer_size_ -= buffer_cache_bytes;
+
+      if (is_var) {
+        uint64_t var_buffer_size = *query_buffer.buffer_var_size_;
+        // Total bytes to cache from var data and offset buffers.
+        uint64_t var_data_cache_bytes = 0;
+        uint64_t first_cached_offset = 0;
+        if (tile_cache_cells != 0) {
+          // Use var_buffer_size if we are caching the entire var-size buffer.
+          first_cached_offset =
+              buffer_cells == tile_cache_cells ?
+                  var_buffer_size :
+                  ((uint64_t*)
+                       query_buffer.buffer_)[buffer_cells - tile_cache_cells];
+        }
+
+        // Use the first cached offset to calculate var bytes to cache.
+        var_data_cache_bytes = first_cached_offset == var_buffer_size ?
+                                   first_cached_offset :
+                                   var_buffer_size - first_cached_offset;
+
+        // Adjust any appended offsets to be relative to already cached data.
+        for (uint64_t pos = cache.buffer.size() - tile_cache_bytes;
+             pos < cache.buffer.size();
+             pos += constants::cell_var_offset_size) {
+          *cache.get_cell_offset(pos / cache.cell_size) +=
+              cache.buffer_var.size();
+        }
+
+        // Write the variable sized data into cache.
+        throw_if_not_ok(cache.buffer_var.write(
+            (char*)query_buffer.buffer_var_ + var_buffer_size -
+                var_data_cache_bytes,
+            var_data_cache_bytes));
+        *query_buffer.buffer_var_size_ -= var_data_cache_bytes;
+      }
+
+      if (is_nullable) {
+        // Write the validity buffers into cache.
+        throw_if_not_ok(cache.buffer_validity.write(
+            query_buffer.validity_vector_.buffer() +
+                *query_buffer.validity_vector_.buffer_size() - tile_cache_cells,
+            tile_cache_cells));
+        *query_buffer.validity_vector_.buffer_size() -= tile_cache_cells;
+      }
+    } else {
+      // Hold tile overflow cells from this submission and cache afterwards.
+      *query_buffer.buffer_size_ -= buffer_cache_bytes;
+      cache.cache_bytes = buffer_cache_bytes;
+      if (is_var) {
+        uint64_t var_buffer_size = *query_buffer.buffer_var_size_;
+        // Total bytes to cache from var data and offset buffers.
+        uint64_t var_data_cache_bytes = 0;
+        uint64_t first_cached_offset = 0;
+        if (tile_cache_cells != 0) {
+          first_cached_offset = ((uint64_t*)query_buffer.buffer_)
+              [buffer_cells - (buffer_cache_bytes / cache.cell_size)];
+        }
+        // Use the first cached offset to calculate var bytes to cache.
+        var_data_cache_bytes = first_cached_offset == var_buffer_size ?
+                                   first_cached_offset :
+                                   var_buffer_size - first_cached_offset;
+
+        *query_buffer.buffer_var_size_ -= var_data_cache_bytes;
+      }
+    }
+
+    if (total_buffer_cells < cell_num_per_tile) {
+      submit = false;
+    }
+  }
+
+  return submit;
+}
+
 Status RestClient::post_query_submit(
     const URI& uri, Query* query, serialization::CopyState* copy_state) {
   // Get array
@@ -535,6 +684,11 @@ Status RestClient::post_query_submit(
   if (array == nullptr) {
     return LOG_STATUS(
         Status_RestError("Error submitting query to REST; null array."));
+  }
+
+  bool submit = check_tile_alignment(query);
+  if (!submit) {
+    return Status::Ok();
   }
 
   auto rest_scratch = query->rest_scratch();
@@ -604,6 +758,10 @@ Status RestClient::post_query_submit(
         "server returned no data. "
         "Curl error: " +
         st.message()));
+  }
+
+  for (const auto& name : query->buffer_names()) {
+    query_remote_buffer_storage_[name].update_cache(query->buffer(name));
   }
 
   return st;
@@ -834,6 +992,8 @@ Status RestClient::submit_and_finalize_query_to_rest(
   }
 
   auto rest_scratch = query->rest_scratch();
+
+  check_tile_alignment(query);
 
   // Serialize query to send
   BufferList serialized;

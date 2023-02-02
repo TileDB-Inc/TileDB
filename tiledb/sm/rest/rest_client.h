@@ -40,6 +40,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/group/group.h"
+#include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/stats.h"
 
@@ -176,6 +177,18 @@ class RestClient {
       uint64_t timestamp_start,
       uint64_t timestamp_end,
       Array* array);
+
+  /**
+   * Retrieve query buffer cache for remote global order write.
+   * If the cache does not exist, this will construct one.
+   *
+   * @param name The buffer name to retrieve.
+   * @return QueryRemoteBufferStorage for the requested buffer.
+   */
+  inline const QueryRemoteBufferStorage& get_remote_buffer_cache(
+      const std::string& name) {
+    return query_remote_buffer_storage_[name];
+  }
 
   /**
    * Posts the array's metadata to the REST server.
@@ -354,9 +367,22 @@ class RestClient {
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
+  /** Cache for tile aligned remote global order writes. */
+  std::unordered_map<std::string, QueryRemoteBufferStorage>
+      query_remote_buffer_storage_;
+
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */
+
+  /**
+   * Check input buffers are tile aligned. Valid only for global order queries.
+   * Enforces tile alignment for dense and sparse arrays.
+   * If query is not tile-aligned, trim and cache buffers for later submissions.
+   *
+   * Returns true if cached and user buffers fill one or more tiles.
+   */
+  bool check_tile_alignment(Query* query);
 
   /**
    * POSTs a query submit request to the REST server and deserializes the
