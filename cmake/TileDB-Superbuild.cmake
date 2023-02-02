@@ -171,6 +171,12 @@ add_custom_target(examples
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
 )
 
+# make experimental/examples/
+add_custom_target(experimental-examples
+  COMMAND ${CMAKE_COMMAND} --build . --target experimental_examples --config ${CMAKE_BUILD_TYPE}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
+)
+
 # make check
 if (TILEDB_TESTS)
   add_custom_target(check

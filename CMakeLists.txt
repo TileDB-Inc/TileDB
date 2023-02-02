@@ -478,6 +478,7 @@ endforeach()
 #####################
 add_library(local_install INTERFACE)
 target_include_directories(local_install INTERFACE ${TILEDB_LOCALINSTALL_INCLUDE})
+target_include_directories(local_install INTERFACE ${CMAKE_SOURCE_DIR})
 
 ############################################################
 # Enable testing and add subdirectories
@@ -528,6 +529,8 @@ add_subdirectory(tiledb)
 
 # Build examples
 add_subdirectory(examples)
+
+add_subdirectory(experimental/experimental_examples)
 
 # Build tools
 if (TILEDB_TOOLS)
