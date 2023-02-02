@@ -107,17 +107,17 @@ UnorderedWriter::UnorderedWriter(
     , is_coords_pass_(true) {
   // Check the layout is unordered.
   if (layout != Layout::UNORDERED) {
-    throw StatusException(Status_WriterError(
+    throw UnorderWriterStatusException(
         "Failed to initialize UnorderedWriter; The unordered writer does not "
         "support layout " +
-        layout_str(layout)));
+        layout_str(layout));
   }
 
   // Check the array is sparse.
   if (array_schema_.dense()) {
-    throw StatusException(Status_WriterError(
+    throw UnorderWriterStatusException(
         "Failed to initialize UnorderedWriter; The unordered "
-        "writer does not support dense arrays."));
+        "writer does not support dense arrays.");
   }
 
   // Check no ordered attributes.
@@ -163,6 +163,11 @@ Status UnorderedWriter::dowork() {
 
 Status UnorderedWriter::finalize() {
   auto timer_se = stats_->start_timer("finalize");
+
+  if (written_buffers_.size() <
+      array_schema_.dim_num() + array_schema_.attribute_num()) {
+    throw UnorderWriterStatusException("Not all buffers already written");
+  }
 
   return Status::Ok();
 }
@@ -633,14 +638,13 @@ Status UnorderedWriter::unordered_write() {
 
   if (written_buffers_.size() >=
       array_schema_.dim_num() + array_schema_.attribute_num()) {
-    throw StatusException(Status_WriterError("All buffers already written"));
+    throw UnorderWriterStatusException("All buffers already written");
   }
 
   for (ArraySchema::dimension_size_type d = 0; d < array_schema_.dim_num();
        d++) {
     if (buffers_.count(array_schema_.dimension_ptr(d)->name()) == 0) {
-      throw StatusException(
-          Status_WriterError("All dimension buffers should be set"));
+      throw UnorderWriterStatusException("All dimension buffers should be set");
     }
   }
 

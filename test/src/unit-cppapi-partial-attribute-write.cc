@@ -335,3 +335,33 @@ TEST_CASE_METHOD(
 
   remove_array();
 }
+
+TEST_CASE_METHOD(
+    CppPartialAttrWriteFx,
+    "CPP API: Test partial attribute write, missing attributes",
+    "[cppapi][partial-attribute-write][missing-attributes]") {
+  remove_array();
+  create_sparse_array();
+
+  // Write fragment, seperating dimensions and attributes.
+  auto&& [array, query] = write_sparse_dims(
+      TILEDB_UNORDERED, {1, 1, 1, 2, 3, 4, 3, 3}, {1, 2, 4, 3, 1, 2, 3, 4}, 1);
+  write_sparse_a1(query, {0, 1, 2, 3, 4, 5, 6, 7});
+  CHECK_THROWS_WITH(
+      query.finalize(), "UnorderWriter: Not all buffers already written");
+  array.close();
+
+  size_t buffer_size = 8;
+  std::vector<int> a1(buffer_size, 0);
+  std::vector<uint64_t> a2(buffer_size, 0);
+  std::vector<uint64_t> dim1(buffer_size, 0);
+  std::vector<uint64_t> dim2(buffer_size, 0);
+  read_sparse(a1, a2, dim1, dim2);
+
+  CHECK(a1 == std::vector<int>({0, 0, 0, 0, 0, 0, 0, 0}));
+  CHECK(a2 == std::vector<uint64_t>({0, 0, 0, 0, 0, 0, 0, 0}));
+  CHECK(dim1 == std::vector<uint64_t>({0, 0, 0, 0, 0, 0, 0, 0}));
+  CHECK(dim2 == std::vector<uint64_t>({0, 0, 0, 0, 0, 0, 0, 0}));
+
+  remove_array();
+}
