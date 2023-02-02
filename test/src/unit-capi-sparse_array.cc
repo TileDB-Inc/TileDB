@@ -87,7 +87,10 @@ struct SparseArrayFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
-  // Buffers to allocate on query size for serialized queries
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
   ServerQueryBuffers server_buffers_;
 
   // Functions
@@ -5892,13 +5895,13 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, global order with 0-sized buffers",
     "[capi][sparse][global-check][zero-buffers]") {
-  bool serialized = false;
   SECTION("no serialization") {
-    serialized = false;
+    serialize_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
 #endif
 
@@ -5950,7 +5953,13 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx, array_name, &query, server_buffers_, serialized, false);
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -6163,13 +6172,13 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers, global write",
     "[capi][sparse][split-coords][global]") {
-  bool serialized = false;
   SECTION("no serialization") {
-    serialized = false;
+    serialize_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
 #endif
 
@@ -6245,7 +6254,12 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -6308,7 +6322,12 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -6941,13 +6960,13 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "Sparse array: 2D, multi write global order",
     "[capi][sparse][2D][multi-write]") {
-  bool serialized = false;
   SECTION("no serialization") {
-    serialized = false;
+    serialize_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled") {
-    serialized = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
 #endif
 
@@ -7023,7 +7042,13 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized, false);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   REQUIRE(rc == TILEDB_OK);
 
   // Create new buffers of smaller size to test being able to write multiple
@@ -7080,7 +7105,12 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array

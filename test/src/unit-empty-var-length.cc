@@ -59,8 +59,10 @@ uint64_t UTF8_OFFSET_4_FOR_EMPTY =
     sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY;
 
 struct StringEmptyFx {
-  bool serialized_ = false;
-  // Buffers to allocate on query size for serialized queries
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
   ServerQueryBuffers server_buffers_;
 
   void create_array(const std::string& array_name);
@@ -266,7 +268,12 @@ void StringEmptyFx::write_array(const std::string& array_name) {
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx, array_name, &query, server_buffers_, serialized_);
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -389,7 +396,12 @@ void StringEmptyFx::read_array(const std::string& array_name) {
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx, array_name, &query, server_buffers_, serialized_);
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Check results
@@ -470,11 +482,12 @@ TEST_CASE_METHOD(
   std::string array_name = "empty_string";
 
   SECTION("no serialization") {
-    serialized_ = false;
+    serialize_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_ = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
 #endif
 

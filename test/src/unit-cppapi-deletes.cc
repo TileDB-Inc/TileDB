@@ -59,8 +59,10 @@ struct DeletesFx {
   VFS vfs_;
   sm::StorageManager* sm_;
 
+  // Serialization parameters
   bool serialize_ = false;
-  // Buffers to allocate on query size for serialized queries
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
   ServerQueryBuffers server_buffers_;
 
   std::string key_ = "0123456789abcdeF0123456789abcdeF";
@@ -243,7 +245,12 @@ void DeletesFx::write_sparse(
 
   // Submit/finalize the query.
   submit_query_wrapper(
-      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialize_);
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
 
   // Close array.
   array->close();
@@ -274,7 +281,12 @@ void DeletesFx::write_sparse_v11(uint64_t timestamp) {
 
   // Submit/finalize the query.
   submit_query_wrapper(
-      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialize_);
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
 
   // Close array.
   array.close();
@@ -324,7 +336,13 @@ void DeletesFx::read_sparse(
 
   // Submit the query.
   submit_query_wrapper(
-      ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Get the query stats.
@@ -395,7 +413,13 @@ void DeletesFx::write_delete_condition(
     query.submit();
   } else {
     submit_query_wrapper(
-        ctx_, SPARSE_ARRAY_NAME, &query, server_buffers_, serialize_, false);
+        ctx_,
+        SPARSE_ARRAY_NAME,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        false);
   }
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
@@ -460,18 +484,20 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test writing delete condition",
     "[cppapi][deletes][write-check]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
-
   remove_sparse_array();
 
   bool encrypt = GENERATE(true, false);
+
+#ifdef TILEDB_SERIALIZATION
+  // serialization not supported for encrypted arrays
+  if (!encrypt) {
+    serialize_ = GENERATE(false, true);
+    if (serialize_) {
+      refactored_query_v2_ = GENERATE(true, false);
+    }
+  }
+#endif
+
   create_sparse_array(false, encrypt);
 
   // Define query condition (a1 < 4).
@@ -538,6 +564,12 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test deletes, reading with delete condition",
     "[cppapi][deletes][read]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
   remove_sparse_array();
 
   bool consolidate = GENERATE(true, false);
@@ -546,15 +578,6 @@ TEST_CASE_METHOD(
   bool allows_dups = GENERATE(true, false);
   bool legacy = GENERATE(true, false);
   tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
-
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
 
   if (!consolidate && (vacuum || purge_deleted_cells)) {
     return;
@@ -650,6 +673,13 @@ TEST_CASE_METHOD(
     "CPP API: Test deletes, reading with delete condition, consolidated "
     "fragment",
     "[cppapi][deletes][read][consolidated]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   bool consolidate = GENERATE(true, false);
@@ -658,15 +688,6 @@ TEST_CASE_METHOD(
   bool allows_dups = GENERATE(true, false);
   bool legacy = GENERATE(true, false);
   tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
-
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
 
   if (!consolidate && (vacuum || purge_deleted_cells)) {
     return;
@@ -840,6 +861,13 @@ TEST_CASE_METHOD(
     "CPP API: Test deletes, reading with delete condition, delete duplicates "
     "from later fragments",
     "[cppapi][deletes][duplicates]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   bool purge_deleted_cells = GENERATE(true, false);
@@ -848,15 +876,6 @@ TEST_CASE_METHOD(
   bool allows_dups = GENERATE(true, false);
   bool legacy = GENERATE(true, false);
   tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
-
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
 
   if (!consolidate && (vacuum || purge_deleted_cells)) {
     return;
@@ -920,16 +939,15 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test deletes, commits consolidation",
     "[cppapi][deletes][commits][consolidation]") {
-  bool vacuum = GENERATE(false, true);
-
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
   }
 #endif
+
+  bool vacuum = GENERATE(false, true);
+
   remove_sparse_array();
   create_sparse_array();
 
@@ -979,21 +997,19 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test deletes, consolidation, delete same cell earlier",
     "[cppapi][deletes][consolidation][same-cell]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   bool allows_dups = GENERATE(true, false);
   bool legacy = GENERATE(true, false);
   bool vacuum = GENERATE(true, false);
   tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
-
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
 
   create_sparse_array(allows_dups);
 
@@ -1108,6 +1124,13 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test deletes, multiple consolidation with deletes",
     "[cppapi][deletes][consolidation][multiple]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   bool purge_deleted_cells = GENERATE(true, false);
@@ -1115,15 +1138,6 @@ TEST_CASE_METHOD(
   bool legacy = GENERATE(true, false);
   bool vacuum = GENERATE(true, false);
   tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
-
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
 
   create_sparse_array(allows_dups);
 
@@ -1231,6 +1245,13 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test deletes, multiple cells with same coords in same fragment",
     "[cppapi][deletes][consolidation][multiple-cells-same-coords]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   bool purge_deleted_cells = GENERATE(true, false);
@@ -1238,15 +1259,6 @@ TEST_CASE_METHOD(
   bool legacy = GENERATE(true, false);
   bool vacuum = GENERATE(true, false);
   tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
-
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
 
   create_sparse_array(allows_dups);
 
@@ -1420,6 +1432,13 @@ TEST_CASE_METHOD(
     "across tiles",
     "[cppapi][deletes][consolidation][multiple-cells-same-coords][across-"
     "tiles]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   bool purge_deleted_cells = GENERATE(true, false);
@@ -1427,15 +1446,6 @@ TEST_CASE_METHOD(
   bool legacy = GENERATE(true, false);
   bool vacuum = GENERATE(true, false);
   tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
-
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
 
   create_sparse_array(allows_dups);
 
@@ -1608,14 +1618,13 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidating fragment with delete timestamp, with purge "
     "option",
     "[cppapi][deletes][consolidation][with-delete-meta][purge]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
   }
 #endif
+
   remove_sparse_array();
 
   create_sparse_array(false);
@@ -1735,14 +1744,18 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Deletion of fragment writes by timestamp and uri",
     "[cppapi][deletes][fragments]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   // Conditionally consolidate and vacuum
   bool consolidate = GENERATE(true, false);
   bool vacuum = GENERATE(true, false);
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-#endif
 
   if (!consolidate && vacuum) {
     return;
@@ -1827,17 +1840,15 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Deletion of fragment writes consolidated with timestamps",
     "[cppapi][deletes][fragments][consolidation_with_timestamps]") {
-  remove_sparse_array();
-  bool vacuum = GENERATE(true, false);
-
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
   }
 #endif
+
+  remove_sparse_array();
+  bool vacuum = GENERATE(true, false);
 
   // Write fragments at timestamps 1, 3, 5, 7
   create_sparse_array();
@@ -1899,12 +1910,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DeletesFx, "CPP API: Deletion of array data", "[cppapi][deletes][array]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
   }
 #endif
 
@@ -2008,12 +2017,10 @@ TEST_CASE_METHOD(
     return;
   }
 
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
   }
 #endif
 

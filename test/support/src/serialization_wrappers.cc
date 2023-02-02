@@ -180,29 +180,3 @@ int tiledb_fragment_info_serialize(
   tiledb_buffer_free(&buffer);
   return rc;
 }
-
-int tiledb_query_v2_serialize(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    std::vector<uint8_t>& serialized,
-    bool client_to_server,
-    tiledb_query_t* query_to_serialize,
-    tiledb_query_t** query_deserialized) {
-  // Serialize and Deserialize
-  int rc = tiledb::test::serialize_query(
-      ctx, query_to_serialize, &serialized, client_to_server);
-  REQUIRE(rc == TILEDB_OK);
-
-  if (client_to_server) {
-    // server side deserialization
-    rc = tiledb::test::deserialize_array_and_query(
-        ctx, serialized, query_deserialized, array_uri, 0);
-  } else {
-    // client side deserialization
-    rc = tiledb::test::deserialize_query(
-        ctx, serialized, *query_deserialized, 1);
-  }
-
-  REQUIRE(rc == TILEDB_OK);
-  return rc;
-}

@@ -919,13 +919,11 @@ TEST_CASE_METHOD(
 TEST_CASE(
     "Sparse global order reader: user buffer cannot fit single cell",
     "[sparse-global-order][user-buffer][too-small]") {
-  bool serialized = false;
-  SECTION("no serialization") {
-    serialized = false;
-  }
+  bool serialized = false, refactored_query_v2 = false;
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized = true;
+  serialized = GENERATE(true, false);
+  if (serialized) {
+    refactored_query_v2 = GENERATE(true, false);
   }
 #endif
 
@@ -971,7 +969,12 @@ TEST_CASE(
   // Submit query
   ServerQueryBuffers server_buffers_;
   auto rc = submit_query_wrapper(
-      ctx, array_name, &query, server_buffers_, serialized);
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialized,
+      refactored_query_v2);
   REQUIRE(rc == TILEDB_OK);
 
   // Read using a buffer that can't fit a single result
@@ -992,7 +995,13 @@ TEST_CASE(
   // The user buffer cannot fit a single result so it should return Incomplete
   // with the right reason
   rc = submit_query_wrapper(
-      ctx, array_name, &query2, server_buffers_, serialized, false);
+      ctx,
+      array_name,
+      &query2,
+      server_buffers_,
+      serialized,
+      refactored_query_v2,
+      false);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(query2.query_status() == Query::Status::INCOMPLETE);
 

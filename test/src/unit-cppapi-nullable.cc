@@ -44,6 +44,10 @@ using namespace tiledb::test;
 
 class NullableArrayCppFx {
  public:
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+
   template <typename T>
   struct test_dim_t {
     test_dim_t(
@@ -132,8 +136,6 @@ class NullableArrayCppFx {
       tiledb_layout_t tile_order,
       tiledb_layout_t write_order);
 
-  bool serialized_writes_ = false;
-
  private:
   /** The C++ API context object. */
   Context ctx_;
@@ -141,7 +143,7 @@ class NullableArrayCppFx {
   /** The C++ API VFS object. */
   VFS vfs_;
 
-  // Buffers to allocate on query size for serialized queries
+  // Buffers to allocate on server side for serialized queries
   ServerQueryBuffers server_buffers_;
 
   /**
@@ -297,7 +299,12 @@ void NullableArrayCppFx::write(
 
   // Submit query
   auto rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized_writes_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -559,11 +566,12 @@ TEST_CASE_METHOD(
   attrs.emplace_back("a3", true /* var */, true /* nullable */);
 
   SECTION("no serialization") {
-    serialized_writes_ = false;
+    serialize_ = false;
   }
   SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
-    serialized_writes_ = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
 #endif
   }
 
