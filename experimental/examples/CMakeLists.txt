@@ -1,10 +1,10 @@
 #
-# experimental/CMakeLists.txt
+# experimental/examples/CMakeLists.txt
 #
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,24 +25,9 @@
 # THE SOFTWARE.
 #
 
-if(NOT TILEDB_EXPERIMENTAL_FEATURES)
-    return()
+add_custom_target(experimental_examples)
+
+if (TILEDB_CPP_API)
+  add_subdirectory(cpp_api)
+  add_dependencies(experimental_examples experimental_examples_cpp)
 endif()
-
-message("TileDB is compiled with experimental features enabled")
-
-include(common NO_POLICY_SCOPE)
-
-add_subdirectory(tiledb)
-
-add_subdirectory(examples)
-add_custom_target(experimental DEPENDS experimental_examples)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_experimental EXCLUDE_FROM_ALL)
-add_dependencies(all_link_complete compile_experimental)
-target_sources(compile_experimental PRIVATE
-        test/compile_experimental_main.cc
-)
