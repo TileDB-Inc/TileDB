@@ -150,6 +150,8 @@ class FilteredData {
    * block.
    * @param fragment_metadata Fragment metadata for the array.
    * @param result_tiles Sorted list (per fragment/tile index) of result tiles.
+   * Only the fragment index and tile index of each result tiles is used here.
+   * Nothing is mutated inside of the vector.
    * @param name Name of the attribute.
    * @param var_sized Is the attribute var sized?
    * @param nullable Is the attribute nullable?

@@ -547,6 +547,21 @@ Status ReaderBase::load_processed_conditions() {
 Status ReaderBase::read_and_unfilter_attribute_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
+  // The filtered data here contains the memory allocations for all of the
+  // filtered data that is read by `read_attribute_tiles`. To prevent
+  // modifications to the filter pipeline at the moment, the `result_tiles`
+  // vector will be mutated in the following way: the `filtered_data_` and
+  // `filtered_size_` of each tiles will be stored in the `Tile` objects inside
+  // of `ResultTile`. `filtered_data_` will point to a memory location inside of
+  // a data block of 'filtered_data'. The filtered pipeline uses
+  // `filtered_data()` and `filtered_size()` to access the tile data. It also
+  // uses 'clear_filtered_buffer()' to clear those values once the tile is
+  // unfiltered to prevent access to memory that went away. Another refactor
+  // will store those two values in another class and pass it down to the filter
+  // pipeline to remove more and more data from the 'ResultTile' object and
+  // eventually get rid of it altogether so that we can clarify the data flow.
+  // At the end of this function call, all memory inside of 'filtered_data' has
+  // been used and the tiles are unfiltered so the data can be deleted.
   auto filtered_data{read_attribute_tiles(names, result_tiles)};
   for (auto& name : names) {
     RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
@@ -558,6 +573,8 @@ Status ReaderBase::read_and_unfilter_attribute_tiles(
 Status ReaderBase::read_and_unfilter_coordinate_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
+  // See the comment in 'read_and_unfilter_attribute_tiles' to get more
+  // information about the lifetime of this object.
   auto filtered_data{read_coordinate_tiles(names, result_tiles)};
   for (auto& name : names) {
     RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
@@ -632,6 +649,14 @@ std::vector<FilteredData> ReaderBase::read_tiles(
           fragment, name, var_sized, nullable, tile_idx};
 
       // Construct a tile data class.
+      // See the explanation in 'read_and_unfilter_attribute_tiles' for more
+      // lifetime details. The tile data class is used to transmit the location
+      // of the fixed/var/nullable filtered data to the created 'TileTuple'
+      // object inside of each 'ResultTile'. The filter pipeline currently uses
+      // the 'ResultTile' object to access the data. Eventually, these
+      // 'TileData' objects should be returned by this function and passed into
+      // 'unfilter_tiles' so that the filter pipeline can stop using the
+      // 'ResultTile' object to get access to the filtered data.
       ResultTile::TileData tile_data{
           filtered_data.back().fixed_filtered_data(fragment.get(), tile),
           filtered_data.back().var_filtered_data(fragment.get(), tile),
