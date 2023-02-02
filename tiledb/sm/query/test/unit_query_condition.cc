@@ -47,6 +47,11 @@
 
 using namespace tiledb::sm;
 
+void check_ast_str(QueryCondition qc, std::string expect) {
+  std::string ast_str = tiledb::test::ast_node_to_str(qc.ast());
+  CHECK(ast_str == expect);
+}
+
 TEST_CASE(
     "QueryCondition: Test default constructor",
     "[QueryCondition][default_constructor]") {
@@ -176,9 +181,8 @@ TEST_CASE(
   REQUIRE(!query_condition.empty());
   REQUIRE(!query_condition.field_names().empty());
   REQUIRE(query_condition.field_names().count(field_name) == 1);
-  REQUIRE(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "foo LT 62 61 72");
+  check_ast_str(query_condition, "foo LT 62 61 72");
+  check_ast_str(query_condition.negated_condition(), "foo GE 62 61 72");
 }
 
 TEST_CASE(
@@ -192,9 +196,8 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 78 56 34 12");
+  check_ast_str(query_condition, "x LT 78 56 34 12");
+  check_ast_str(query_condition.negated_condition(), "x GE 78 56 34 12");
 }
 
 TEST_CASE(
@@ -208,9 +211,7 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 12 ef cd ab");
+  check_ast_str(query_condition, "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
   int val1 = 0x33333333;
@@ -222,9 +223,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::GT)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 33 33 33 33");
+  check_ast_str(query_condition1, "y GT 33 33 33 33");
 
   QueryCondition combined_and;
   REQUIRE(
@@ -232,9 +231,10 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::AND, &combined_and)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and.ast()) ==
-      "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
+  check_ast_str(combined_and, "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
+  check_ast_str(
+      combined_and.negated_condition(),
+      "(x GE 12 ef cd ab OR y LE 33 33 33 33)");
 }
 
 TEST_CASE(
@@ -249,9 +249,7 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 12 ef cd ab");
+  check_ast_str(query_condition, "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
   int val1 = 0x33333333;
@@ -263,9 +261,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::GT)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 33 33 33 33");
+  check_ast_str(query_condition1, "y GT 33 33 33 33");
 
   QueryCondition combined_or;
   REQUIRE(
@@ -273,9 +269,10 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::OR, &combined_or)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or.ast()) ==
-      "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
+  check_ast_str(combined_or, "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
+  check_ast_str(
+      combined_or.negated_condition(),
+      "(x GE 12 ef cd ab AND y LE 33 33 33 33)");
 }
 
 TEST_CASE(
@@ -284,14 +281,12 @@ TEST_CASE(
   char e[] = "eve";
   QueryCondition query_condition;
   REQUIRE(query_condition.init("x", &e, strlen(e), QueryConditionOp::LT).ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) == "x LT 65 76 65");
+  check_ast_str(query_condition, "x LT 65 76 65");
 
   char b[] = "bob";
   QueryCondition query_condition1;
   REQUIRE(query_condition1.init("x", &b, strlen(b), QueryConditionOp::GT).ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) == "x GT 62 6f 62");
+  check_ast_str(query_condition1, "x GT 62 6f 62");
 
   QueryCondition combined_and;
   REQUIRE(
@@ -299,9 +294,9 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::AND, &combined_and)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and.ast()) ==
-      "(x LT 65 76 65 AND x GT 62 6f 62)");
+  check_ast_str(combined_and, "(x LT 65 76 65 AND x GT 62 6f 62)");
+  check_ast_str(
+      combined_and.negated_condition(), "(x GE 65 76 65 OR x LE 62 6f 62)");
 }
 
 TEST_CASE(
@@ -310,14 +305,12 @@ TEST_CASE(
   char e[] = "eve";
   QueryCondition query_condition;
   REQUIRE(query_condition.init("x", &e, strlen(e), QueryConditionOp::LT).ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) == "x LT 65 76 65");
+  check_ast_str(query_condition, "x LT 65 76 65");
 
   char b[] = "bob";
   QueryCondition query_condition1;
   REQUIRE(query_condition1.init("x", &b, strlen(b), QueryConditionOp::GT).ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) == "x GT 62 6f 62");
+  check_ast_str(query_condition1, "x GT 62 6f 62");
 
   QueryCondition combined_or;
   REQUIRE(
@@ -325,9 +318,9 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::OR, &combined_or)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or.ast()) ==
-      "(x LT 65 76 65 OR x GT 62 6f 62)");
+  check_ast_str(combined_or, "(x LT 65 76 65 OR x GT 62 6f 62)");
+  check_ast_str(
+      combined_or.negated_condition(), "(x GE 65 76 65 AND x LE 62 6f 62)");
 }
 
 TEST_CASE(
@@ -342,9 +335,7 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 12 ef cd ab");
+  check_ast_str(query_condition, "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
   int val1 = 0x33333333;
@@ -356,9 +347,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::GT)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 33 33 33 33");
+  check_ast_str(query_condition1, "y GT 33 33 33 33");
 
   QueryCondition combined_or;
   REQUIRE(
@@ -366,9 +355,7 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::OR, &combined_or)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or.ast()) ==
-      "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
+  check_ast_str(combined_or, "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
 
   // Second OR compound AST.
   std::string field_name2 = "a";
@@ -381,9 +368,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::EQ)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "a EQ 12 12 12 12");
+  check_ast_str(query_condition2, "a EQ 12 12 12 12");
 
   std::string field_name3 = "b";
   int val3 = 0x34343434;
@@ -395,9 +380,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "b NE 34 34 34 34");
+  check_ast_str(query_condition3, "b NE 34 34 34 34");
 
   QueryCondition combined_or1;
   REQUIRE(
@@ -405,19 +388,21 @@ TEST_CASE(
           .combine(
               query_condition3, QueryConditionCombinationOp::OR, &combined_or1)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or1.ast()) ==
-      "(a EQ 12 12 12 12 OR b NE 34 34 34 34)");
+  check_ast_str(combined_or1, "(a EQ 12 12 12 12 OR b NE 34 34 34 34)");
 
   QueryCondition combined_and;
   REQUIRE(combined_or
               .combine(
                   combined_or1, QueryConditionCombinationOp::AND, &combined_and)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and.ast()) ==
-      "((x LT 12 ef cd ab OR y GT 33 33 33 33) AND (a EQ 12 12 12 12 OR b NE "
-      "34 34 34 34))");
+  check_ast_str(
+      combined_and,
+      "((x LT 12 ef cd ab OR y GT 33 33 33 33) "
+      "AND (a EQ 12 12 12 12 OR b NE 34 34 34 34))");
+  check_ast_str(
+      combined_and.negated_condition(),
+      "((x GE 12 ef cd ab AND y LE 33 33 33 33) "
+      "OR (a NE 12 12 12 12 AND b EQ 34 34 34 34))");
 }
 
 TEST_CASE(
@@ -432,9 +417,7 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 12 ef cd ab");
+  check_ast_str(query_condition, "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
   int val1 = 0x33333333;
@@ -446,9 +429,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::GT)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 33 33 33 33");
+  check_ast_str(query_condition1, "y GT 33 33 33 33");
 
   QueryCondition combined_and;
   REQUIRE(
@@ -456,9 +437,7 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::AND, &combined_and)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and.ast()) ==
-      "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
+  check_ast_str(combined_and, "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
 
   // Second AND compound AST.
   std::string field_name2 = "a";
@@ -471,9 +450,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::EQ)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "a EQ 12 12 12 12");
+  check_ast_str(query_condition2, "a EQ 12 12 12 12");
 
   std::string field_name3 = "b";
   int val3 = 0x34343434;
@@ -485,9 +462,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "b NE 34 34 34 34");
+  check_ast_str(query_condition3, "b NE 34 34 34 34");
 
   QueryCondition combined_and1;
   REQUIRE(query_condition2
@@ -496,19 +471,21 @@ TEST_CASE(
                   QueryConditionCombinationOp::AND,
                   &combined_and1)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and1.ast()) ==
-      "(a EQ 12 12 12 12 AND b NE 34 34 34 34)");
+  check_ast_str(combined_and1, "(a EQ 12 12 12 12 AND b NE 34 34 34 34)");
 
   QueryCondition combined_or;
   REQUIRE(
       combined_and
           .combine(combined_and1, QueryConditionCombinationOp::OR, &combined_or)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or.ast()) ==
-      "((x LT 12 ef cd ab AND y GT 33 33 33 33) OR (a EQ 12 12 12 12 AND b NE "
-      "34 34 34 34))");
+  check_ast_str(
+      combined_or,
+      "((x LT 12 ef cd ab AND y GT 33 33 33 33) "
+      "OR (a EQ 12 12 12 12 AND b NE 34 34 34 34))");
+  check_ast_str(
+      combined_or.negated_condition(),
+      "((x GE 12 ef cd ab OR y LE 33 33 33 33) "
+      "AND (a NE 12 12 12 12 OR b EQ 34 34 34 34))");
 }
 
 TEST_CASE(
@@ -524,9 +501,7 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 12 ef cd ab");
+  check_ast_str(query_condition, "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
   int val1 = 0x33333333;
@@ -538,9 +513,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::GT)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 33 33 33 33");
+  check_ast_str(query_condition1, "y GT 33 33 33 33");
 
   QueryCondition combined_or;
   REQUIRE(
@@ -548,9 +521,7 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::OR, &combined_or)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or.ast()) ==
-      "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
+  check_ast_str(combined_or, "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
 
   // Second OR compound AST.
   std::string field_name2 = "a";
@@ -563,9 +534,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::EQ)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "a EQ 12 12 12 12");
+  check_ast_str(query_condition2, "a EQ 12 12 12 12");
 
   std::string field_name3 = "b";
   int val3 = 0x34343434;
@@ -577,9 +546,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "b NE 34 34 34 34");
+  check_ast_str(query_condition3, "b NE 34 34 34 34");
 
   QueryCondition combined_or1;
   REQUIRE(
@@ -587,19 +554,21 @@ TEST_CASE(
           .combine(
               query_condition3, QueryConditionCombinationOp::OR, &combined_or1)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or1.ast()) ==
-      "(a EQ 12 12 12 12 OR b NE 34 34 34 34)");
+  check_ast_str(combined_or1, "(a EQ 12 12 12 12 OR b NE 34 34 34 34)");
 
   QueryCondition combined_or2;
   REQUIRE(
       combined_or
           .combine(combined_or1, QueryConditionCombinationOp::OR, &combined_or2)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or2.ast()) ==
-      "(x LT 12 ef cd ab OR y GT 33 33 33 33 OR a EQ 12 12 12 12 OR b NE 34 34 "
-      "34 34)");
+  check_ast_str(
+      combined_or2,
+      "(x LT 12 ef cd ab OR y GT 33 33 33 33 "
+      "OR a EQ 12 12 12 12 OR b NE 34 34 34 34)");
+  check_ast_str(
+      combined_or2.negated_condition(),
+      "(x GE 12 ef cd ab AND y LE 33 33 33 33 "
+      "AND a NE 12 12 12 12 AND b EQ 34 34 34 34)");
 }
 
 TEST_CASE(
@@ -615,9 +584,7 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 12 ef cd ab");
+  check_ast_str(query_condition, "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
   int val1 = 0x33333333;
@@ -629,9 +596,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::GT)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 33 33 33 33");
+  check_ast_str(query_condition1, "y GT 33 33 33 33");
 
   QueryCondition combined_and;
   REQUIRE(
@@ -639,9 +604,7 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::AND, &combined_and)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and.ast()) ==
-      "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
+  check_ast_str(combined_and, "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
 
   // Second AND compound AST.
   std::string field_name2 = "a";
@@ -654,9 +617,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::EQ)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "a EQ 12 12 12 12");
+  check_ast_str(query_condition2, "a EQ 12 12 12 12");
 
   std::string field_name3 = "b";
   int val3 = 0x34343434;
@@ -668,9 +629,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "b NE 34 34 34 34");
+  check_ast_str(query_condition3, "b NE 34 34 34 34");
 
   QueryCondition combined_and1;
   REQUIRE(query_condition2
@@ -679,9 +638,7 @@ TEST_CASE(
                   QueryConditionCombinationOp::AND,
                   &combined_and1)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and1.ast()) ==
-      "(a EQ 12 12 12 12 AND b NE 34 34 34 34)");
+  check_ast_str(combined_and1, "(a EQ 12 12 12 12 AND b NE 34 34 34 34)");
 
   QueryCondition combined_and2;
   REQUIRE(
@@ -689,10 +646,14 @@ TEST_CASE(
           .combine(
               combined_and1, QueryConditionCombinationOp::AND, &combined_and2)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and2.ast()) ==
-      "(x LT 12 ef cd ab AND y GT 33 33 33 33 AND a EQ 12 12 12 12 AND b NE 34 "
-      "34 34 34)");
+  check_ast_str(
+      combined_and2,
+      "(x LT 12 ef cd ab AND y GT 33 33 33 33 "
+      "AND a EQ 12 12 12 12 AND b NE 34 34 34 34)");
+  check_ast_str(
+      combined_and2.negated_condition(),
+      "(x GE 12 ef cd ab OR y LE 33 33 33 33 "
+      "OR a NE 12 12 12 12 OR b EQ 34 34 34 34)");
 }
 
 TEST_CASE(
@@ -710,9 +671,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "foo NE aa aa aa aa");
+  check_ast_str(query_condition1, "foo NE aa aa aa aa");
 
   std::string field_name2 = "foo";
   int val2 = 0xbbbbbbbb;
@@ -724,9 +683,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "foo NE bb bb bb bb");
+  check_ast_str(query_condition2, "foo NE bb bb bb bb");
 
   std::string field_name3 = "foo";
   int val3 = 0xcccccccc;
@@ -738,9 +695,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "foo NE cc cc cc cc");
+  check_ast_str(query_condition3, "foo NE cc cc cc cc");
 
   std::string field_name4 = "foo";
   int val4 = 0xdddddddd;
@@ -752,9 +707,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition4.ast()) ==
-      "foo NE dd dd dd dd");
+  check_ast_str(query_condition4, "foo NE dd dd dd dd");
 
   std::string field_name5 = "foo";
   int val5 = 0xeeeeeeee;
@@ -766,9 +719,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition5.ast()) ==
-      "foo NE ee ee ee ee");
+  check_ast_str(query_condition5, "foo NE ee ee ee ee");
 
   QueryCondition combined_and1;
   REQUIRE(query_condition1
@@ -777,9 +728,8 @@ TEST_CASE(
                   QueryConditionCombinationOp::AND,
                   &combined_and1)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and1.ast()) ==
-      "(foo NE aa aa aa aa AND foo NE bb bb bb bb)");
+  check_ast_str(combined_and1, "(foo NE aa aa aa aa AND foo NE bb bb bb bb)");
+
   QueryCondition combined_and2;
   REQUIRE(combined_and1
               .combine(
@@ -787,9 +737,11 @@ TEST_CASE(
                   QueryConditionCombinationOp::AND,
                   &combined_and2)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and2.ast()) ==
-      "(foo NE aa aa aa aa AND foo NE bb bb bb bb AND foo NE cc cc cc cc)");
+  check_ast_str(
+      combined_and2,
+      "(foo NE aa aa aa aa AND foo NE bb bb bb bb "
+      "AND foo NE cc cc cc cc)");
+
   QueryCondition combined_and3;
   REQUIRE(combined_and2
               .combine(
@@ -797,10 +749,11 @@ TEST_CASE(
                   QueryConditionCombinationOp::AND,
                   &combined_and3)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and3.ast()) ==
-      "(foo NE aa aa aa aa AND foo NE bb bb bb bb AND foo NE cc cc cc cc AND "
-      "foo NE dd dd dd dd)");
+  check_ast_str(
+      combined_and3,
+      "(foo NE aa aa aa aa AND foo NE bb bb bb bb "
+      "AND foo NE cc cc cc cc AND foo NE dd dd dd dd)");
+
   QueryCondition combined_and4;
   REQUIRE(combined_and3
               .combine(
@@ -808,10 +761,15 @@ TEST_CASE(
                   QueryConditionCombinationOp::AND,
                   &combined_and4)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and4.ast()) ==
-      "(foo NE aa aa aa aa AND foo NE bb bb bb bb AND foo NE cc cc cc cc AND "
-      "foo NE dd dd dd dd AND foo NE ee ee ee ee)");
+  check_ast_str(
+      combined_and4,
+      "(foo NE aa aa aa aa AND foo NE bb bb bb bb "
+      "AND foo NE cc cc cc cc AND foo NE dd dd dd dd AND foo NE ee ee ee ee)");
+  check_ast_str(
+      combined_and4.negated_condition(),
+      "(foo EQ aa aa aa aa "
+      "OR foo EQ bb bb bb bb OR foo EQ cc cc cc cc OR foo EQ dd dd dd dd "
+      "OR foo EQ ee ee ee ee)");
 }
 
 TEST_CASE(
@@ -829,9 +787,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "foo NE aa aa aa aa");
+  check_ast_str(query_condition1, "foo NE aa aa aa aa");
 
   std::string field_name2 = "foo";
   int val2 = 0xbbbbbbbb;
@@ -843,9 +799,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "foo NE bb bb bb bb");
+  check_ast_str(query_condition2, "foo NE bb bb bb bb");
 
   std::string field_name3 = "foo";
   int val3 = 0xcccccccc;
@@ -857,9 +811,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "foo NE cc cc cc cc");
+  check_ast_str(query_condition3, "foo NE cc cc cc cc");
 
   std::string field_name4 = "foo";
   int val4 = 0xdddddddd;
@@ -871,9 +823,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition4.ast()) ==
-      "foo NE dd dd dd dd");
+  check_ast_str(query_condition4, "foo NE dd dd dd dd");
 
   std::string field_name5 = "foo";
   int val5 = 0xeeeeeeee;
@@ -885,9 +835,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition5.ast()) ==
-      "foo NE ee ee ee ee");
+  check_ast_str(query_condition5, "foo NE ee ee ee ee");
 
   QueryCondition combined_or1;
   REQUIRE(
@@ -895,38 +843,45 @@ TEST_CASE(
           .combine(
               query_condition2, QueryConditionCombinationOp::OR, &combined_or1)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or1.ast()) ==
-      "(foo NE aa aa aa aa OR foo NE bb bb bb bb)");
+  check_ast_str(combined_or1, "(foo NE aa aa aa aa OR foo NE bb bb bb bb)");
+
   QueryCondition combined_or2;
   REQUIRE(
       combined_or1
           .combine(
               query_condition3, QueryConditionCombinationOp::OR, &combined_or2)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or2.ast()) ==
-      "(foo NE aa aa aa aa OR foo NE bb bb bb bb OR foo NE cc cc cc cc)");
+  check_ast_str(
+      combined_or2,
+      "(foo NE aa aa aa aa OR foo NE bb bb bb bb "
+      "OR foo NE cc cc cc cc)");
+
   QueryCondition combined_or3;
   REQUIRE(
       combined_or2
           .combine(
               query_condition4, QueryConditionCombinationOp::OR, &combined_or3)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or3.ast()) ==
-      "(foo NE aa aa aa aa OR foo NE bb bb bb bb OR foo NE cc cc cc cc OR "
-      "foo NE dd dd dd dd)");
+  check_ast_str(
+      combined_or3,
+      "(foo NE aa aa aa aa OR foo NE bb bb bb bb "
+      "OR foo NE cc cc cc cc OR foo NE dd dd dd dd)");
+
   QueryCondition combined_or4;
   REQUIRE(
       combined_or3
           .combine(
               query_condition5, QueryConditionCombinationOp::OR, &combined_or4)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or4.ast()) ==
-      "(foo NE aa aa aa aa OR foo NE bb bb bb bb OR foo NE cc cc cc cc OR "
-      "foo NE dd dd dd dd OR foo NE ee ee ee ee)");
+  check_ast_str(
+      combined_or4,
+      "(foo NE aa aa aa aa OR foo NE bb bb bb bb "
+      "OR foo NE cc cc cc cc OR foo NE dd dd dd dd OR foo NE ee ee ee ee)");
+  check_ast_str(
+      combined_or4.negated_condition(),
+      "(foo EQ aa aa aa aa "
+      "AND foo EQ bb bb bb bb AND foo EQ cc cc cc cc "
+      "AND foo EQ dd dd dd dd AND foo EQ ee ee ee ee)");
 }
 
 TEST_CASE(
@@ -937,25 +892,21 @@ TEST_CASE(
   for (int i = 0; i < 7; ++i) {
     QueryCondition qc;
     REQUIRE(qc.init("x", &vals[i], sizeof(vals[i]), QueryConditionOp::EQ).ok());
-    CHECK(
-        tiledb::test::ast_node_to_str(qc.ast()) ==
-        "x EQ 0" + std::to_string(vals[i]) + " 00 00 00");
+    check_ast_str(qc, "x EQ 0" + std::to_string(vals[i]) + " 00 00 00");
     qc_value_vector.push_back(qc);
   }
 
   for (int i = 7; i < 9; ++i) {
     QueryCondition qc;
     REQUIRE(qc.init("x", &vals[i], sizeof(vals[i]), QueryConditionOp::NE).ok());
-    CHECK(
-        tiledb::test::ast_node_to_str(qc.ast()) ==
-        "x NE 0" + std::to_string(vals[i]) + " 00 00 00");
+    check_ast_str(qc, "x NE 0" + std::to_string(vals[i]) + " 00 00 00");
     qc_value_vector.push_back(qc);
   }
 
   int x = 6;
   QueryCondition x_neq_six;
   REQUIRE(x_neq_six.init("x", &x, sizeof(x), QueryConditionOp::NE).ok());
-  CHECK(tiledb::test::ast_node_to_str(x_neq_six.ast()) == "x NE 06 00 00 00");
+  check_ast_str(x_neq_six, "x NE 06 00 00 00");
 
   QueryCondition one_or_two;
   REQUIRE(
@@ -963,9 +914,7 @@ TEST_CASE(
           .combine(
               qc_value_vector[1], QueryConditionCombinationOp::OR, &one_or_two)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(one_or_two.ast()) ==
-      "(x EQ 01 00 00 00 OR x EQ 02 00 00 00)");
+  check_ast_str(one_or_two, "(x EQ 01 00 00 00 OR x EQ 02 00 00 00)");
 
   QueryCondition three_or_four;
   REQUIRE(qc_value_vector[2]
@@ -974,9 +923,7 @@ TEST_CASE(
                   QueryConditionCombinationOp::OR,
                   &three_or_four)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(three_or_four.ast()) ==
-      "(x EQ 03 00 00 00 OR x EQ 04 00 00 00)");
+  check_ast_str(three_or_four, "(x EQ 03 00 00 00 OR x EQ 04 00 00 00)");
 
   QueryCondition six_or_seven;
   REQUIRE(qc_value_vector[5]
@@ -985,9 +932,7 @@ TEST_CASE(
                   QueryConditionCombinationOp::OR,
                   &six_or_seven)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(six_or_seven.ast()) ==
-      "(x EQ 06 00 00 00 OR x EQ 07 00 00 00)");
+  check_ast_str(six_or_seven, "(x EQ 06 00 00 00 OR x EQ 07 00 00 00)");
 
   QueryCondition eight_and_nine;
   REQUIRE(qc_value_vector[7]
@@ -996,29 +941,27 @@ TEST_CASE(
                   QueryConditionCombinationOp::AND,
                   &eight_and_nine)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(eight_and_nine.ast()) ==
-      "(x NE 08 00 00 00 AND x NE 09 00 00 00)");
+  check_ast_str(eight_and_nine, "(x NE 08 00 00 00 AND x NE 09 00 00 00)");
 
   QueryCondition subtree_a;
   REQUIRE(
       one_or_two
           .combine(three_or_four, QueryConditionCombinationOp::AND, &subtree_a)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(subtree_a.ast()) ==
-      "((x EQ 01 00 00 00 OR x EQ 02 00 00 00) AND (x EQ 03 00 00 00 OR x EQ "
-      "04 00 00 00))");
+  check_ast_str(
+      subtree_a,
+      "((x EQ 01 00 00 00 OR x EQ 02 00 00 00) "
+      "AND (x EQ 03 00 00 00 OR x EQ 04 00 00 00))");
 
   QueryCondition subtree_d;
   REQUIRE(
       eight_and_nine
           .combine(six_or_seven, QueryConditionCombinationOp::AND, &subtree_d)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(subtree_d.ast()) ==
-      "(x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 00 00 00 OR x EQ 07 "
-      "00 00 00))");
+  check_ast_str(
+      subtree_d,
+      "(x NE 08 00 00 00 AND x NE 09 00 00 00 "
+      "AND (x EQ 06 00 00 00 OR x EQ 07 00 00 00))");
 
   QueryCondition subtree_c;
   REQUIRE(
@@ -1026,29 +969,38 @@ TEST_CASE(
           .combine(
               qc_value_vector[4], QueryConditionCombinationOp::OR, &subtree_c)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(subtree_c.ast()) ==
-      "((x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 00 00 00 OR x EQ "
-      "07 00 00 00)) OR x EQ 05 00 00 00)");
+  check_ast_str(
+      subtree_c,
+      "((x NE 08 00 00 00 AND x NE 09 00 00 00 "
+      "AND (x EQ 06 00 00 00 OR x EQ 07 00 00 00)) OR x EQ 05 00 00 00)");
 
   QueryCondition subtree_b;
   REQUIRE(
       subtree_c.combine(x_neq_six, QueryConditionCombinationOp::AND, &subtree_b)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(subtree_b.ast()) ==
-      "(((x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 00 00 00 OR x EQ "
-      "07 00 00 00)) OR x EQ 05 00 00 00) AND x NE 06 00 00 00)");
+  check_ast_str(
+      subtree_b,
+      "(((x NE 08 00 00 00 AND x NE 09 00 00 00 "
+      "AND (x EQ 06 00 00 00 OR x EQ 07 00 00 00)) OR x EQ 05 00 00 00) "
+      "AND x NE 06 00 00 00)");
 
   QueryCondition qc;
   REQUIRE(
       subtree_a.combine(subtree_b, QueryConditionCombinationOp::OR, &qc).ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(qc.ast()) ==
-      "(((x EQ 01 00 00 00 OR x EQ 02 00 00 00) AND (x EQ 03 00 00 00 OR x EQ "
-      "04 00 00 00)) OR (((x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 "
-      "00 00 00 OR x EQ 07 00 00 00)) OR x EQ 05 00 00 00) AND x NE 06 00 00 "
-      "00))");
+  check_ast_str(
+      qc,
+      "(((x EQ 01 00 00 00 OR x EQ 02 00 00 00) "
+      "AND (x EQ 03 00 00 00 OR x EQ 04 00 00 00)) "
+      "OR (((x NE 08 00 00 00 AND x NE 09 00 00 00 "
+      "AND (x EQ 06 00 00 00 OR x EQ 07 00 00 00)) "
+      "OR x EQ 05 00 00 00) AND x NE 06 00 00 00))");
+  check_ast_str(
+      qc.negated_condition(),
+      "(((x NE 01 00 00 00 AND x NE 02 00 00 00) "
+      "OR (x NE 03 00 00 00 AND x NE 04 00 00 00)) "
+      "AND (((x EQ 08 00 00 00 OR x EQ 09 00 00 00 "
+      "OR (x NE 06 00 00 00 AND x NE 07 00 00 00)) "
+      "AND x NE 05 00 00 00) OR x EQ 06 00 00 00))");
 }
 
 /**
@@ -3087,32 +3039,51 @@ TEST_CASE(
 struct TestParams {
   QueryCondition qc_;
   std::vector<uint8_t> expected_bitmap_;
+  std::vector<uint8_t> neg_expected_bitmap_;
   std::vector<ResultCellSlab> expected_slabs_;
-  std::vector<uint8_t> expected_not_bitmap_;
-  std::vector<ResultCellSlab> expected_not_slabs_;
 
   TestParams(
-      QueryCondition&& qc,
-      std::vector<uint8_t>&& expected_bitmap,
-      std::vector<ResultCellSlab>&& expected_slabs,
-      std::vector<ResultCellSlab>&& expected_not_slabs)
-      : qc_(std::move(qc))
+      ResultTile* result_tile,
+      QueryCondition qc,
+      std::vector<uint8_t> expected_bitmap,
+      std::vector<uint8_t> neg_expected_bitmap = {})
+      : qc_(qc)
       , expected_bitmap_(std::move(expected_bitmap))
-      , expected_slabs_(std::move(expected_slabs))
-      , expected_not_slabs_(std::move(expected_not_slabs)) {
+      , neg_expected_bitmap_(std::move(neg_expected_bitmap)) {
+    if (neg_expected_bitmap_.size() == 0) {
+      neg_expected_bitmap_.resize(expected_bitmap_.size());
+      for (size_t i = 0; i < expected_bitmap_.size(); i++) {
+        neg_expected_bitmap_[i] = expected_bitmap_[i] ? 0 : 1;
+      }
+    }
+
+    // Calculate expected_slabs_
+    int start = -1;
+    int length = -1;
+    for (size_t i = 0; i < expected_bitmap_.size(); i++) {
+      if (expected_bitmap_[i] && start < 0) {
+        start = i;
+        length = 1;
+      } else if (expected_bitmap_[i] && start >= 0) {
+        length += 1;
+      } else if (!expected_bitmap_[i] && start >= 0) {
+        expected_slabs_.emplace_back(result_tile, start, length);
+        start = -1;
+        length = -1;
+      }
+    }
+    if (start > 0) {
+      expected_slabs_.emplace_back(result_tile, start, length);
+    }
   }
 
-  TestParams(
-      QueryCondition&& qc,
-      std::vector<uint8_t>&& expected_bitmap,
-      std::vector<ResultCellSlab>&& expected_slabs,
-      std::vector<uint8_t>&& expected_not_bitmap,
-      std::vector<ResultCellSlab>&& expected_not_slabs)
-      : qc_(std::move(qc))
-      , expected_bitmap_(std::move(expected_bitmap))
-      , expected_slabs_(std::move(expected_slabs))
-      , expected_not_bitmap_(std::move(expected_not_bitmap))
-      , expected_not_slabs_(std::move(expected_not_slabs)) {
+  TestParams negate(ResultTile* result_tile) {
+    TestParams tp(
+        result_tile,
+        qc_.negated_condition(),
+        neg_expected_bitmap_,
+        expected_bitmap_);
+    return tp;
   }
 };
 
@@ -3130,55 +3101,31 @@ void validate_qc_apply(
     TestParams& tp,
     uint64_t cells,
     shared_ptr<const ArraySchema> array_schema,
-    ResultTile& result_tile) {
-  {
-    ResultCellSlab result_cell_slab(&result_tile, 0, cells);
-    std::vector<ResultCellSlab> result_cell_slabs;
-    result_cell_slabs.emplace_back(std::move(result_cell_slab));
-    std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
-    frag_md[0] = make_shared<FragmentMetadata>(
-        HERE(),
-        nullptr,
-        nullptr,
-        array_schema,
-        URI(),
-        std::make_pair<uint64_t, uint64_t>(0, 0),
-        true);
-    REQUIRE(tp.qc_.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
-    REQUIRE(result_cell_slabs.size() == tp.expected_slabs_.size());
-    uint64_t result_cell_slabs_size = result_cell_slabs.size();
-    for (uint64_t i = 0; i < result_cell_slabs_size; ++i) {
-      CHECK(result_cell_slabs[i].start_ == tp.expected_slabs_[i].start_);
-      CHECK(result_cell_slabs[i].length_ == tp.expected_slabs_[i].length_);
-    }
+    ResultTile& result_tile,
+    bool negated = false) {
+  ResultCellSlab result_cell_slab(&result_tile, 0, cells);
+  std::vector<ResultCellSlab> result_cell_slabs;
+  result_cell_slabs.emplace_back(std::move(result_cell_slab));
+  std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
+  frag_md[0] = make_shared<FragmentMetadata>(
+      HERE(),
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
+  REQUIRE(tp.qc_.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
+  REQUIRE(result_cell_slabs.size() == tp.expected_slabs_.size());
+  uint64_t result_cell_slabs_size = result_cell_slabs.size();
+  for (uint64_t i = 0; i < result_cell_slabs_size; ++i) {
+    CHECK(result_cell_slabs[i].start_ == tp.expected_slabs_[i].start_);
+    CHECK(result_cell_slabs[i].length_ == tp.expected_slabs_[i].length_);
   }
 
-  {
-    // Negation testing.
-    ResultCellSlab result_cell_slab(&result_tile, 0, cells);
-    std::vector<ResultCellSlab> result_cell_slabs;
-    result_cell_slabs.emplace_back(std::move(result_cell_slab));
-    std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
-    frag_md[0] = make_shared<FragmentMetadata>(
-        HERE(),
-        nullptr,
-        nullptr,
-        array_schema,
-        URI(),
-        std::make_pair<uint64_t, uint64_t>(0, 0),
-        true);
-
-    QueryCondition negated_cond;
-    REQUIRE(
-        tp.qc_.negate(QueryConditionCombinationOp::NOT, &negated_cond).ok());
-    REQUIRE(
-        negated_cond.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
-    REQUIRE(result_cell_slabs.size() == tp.expected_not_slabs_.size());
-    uint64_t result_cell_slabs_size = result_cell_slabs.size();
-    for (uint64_t i = 0; i < result_cell_slabs_size; ++i) {
-      CHECK(result_cell_slabs[i].start_ == tp.expected_not_slabs_[i].start_);
-      CHECK(result_cell_slabs[i].length_ == tp.expected_not_slabs_[i].length_);
-    }
+  if (!negated) {
+    auto neg_tp = tp.negate(&result_tile);
+    validate_qc_apply(neg_tp, cells, array_schema, result_tile, true);
   }
 }
 
@@ -3196,7 +3143,8 @@ void validate_qc_apply_sparse(
     TestParams& tp,
     uint64_t cells,
     shared_ptr<const ArraySchema> array_schema,
-    ResultTile& result_tile) {
+    ResultTile& result_tile,
+    bool negated = false) {
   std::vector<uint8_t> sparse_result_bitmap(cells, 1);
   REQUIRE(tp.qc_
               .apply_sparse<uint8_t>(
@@ -3215,19 +3163,9 @@ void validate_qc_apply_sparse(
     CHECK(sparse_result_bitmap1[i] == tp.expected_bitmap_[i] * 2);
   }
 
-  // Negation testing.
-  QueryCondition negated_cond;
-  REQUIRE(tp.qc_.negate(QueryConditionCombinationOp::NOT, &negated_cond).ok());
-  std::vector<uint8_t> sparse_result_bitmap2(cells, 1);
-  REQUIRE(negated_cond
-              .apply_sparse<uint8_t>(
-                  *array_schema, result_tile, sparse_result_bitmap2)
-              .ok());
-  for (uint64_t i = 0; i < cells; ++i) {
-    uint8_t res = tp.expected_not_bitmap_.size() == 0 ?
-                      (tp.expected_bitmap_[i] == 1 ? 0 : 1) :
-                      tp.expected_not_bitmap_[i];
-    CHECK(sparse_result_bitmap2[i] == res);
+  if (!negated) {
+    auto neg_tp = tp.negate(&result_tile);
+    validate_qc_apply(neg_tp, cells, array_schema, result_tile, true);
   }
 }
 
@@ -3245,7 +3183,8 @@ void validate_qc_apply_dense(
     TestParams& tp,
     uint64_t cells,
     shared_ptr<const ArraySchema> array_schema,
-    ResultTile& result_tile) {
+    ResultTile& result_tile,
+    bool negated = false) {
   std::vector<uint8_t> dense_result_bitmap(cells, 1);
   REQUIRE(tp.qc_
               .apply_dense(
@@ -3261,25 +3200,9 @@ void validate_qc_apply_dense(
     CHECK(dense_result_bitmap[i] == tp.expected_bitmap_[i]);
   }
 
-  QueryCondition negated_cond;
-  REQUIRE(tp.qc_.negate(QueryConditionCombinationOp::NOT, &negated_cond).ok());
-  std::vector<uint8_t> dense_result_bitmap1(cells, 1);
-
-  REQUIRE(negated_cond
-              .apply_dense(
-                  *array_schema,
-                  &result_tile,
-                  0,
-                  10,
-                  0,
-                  1,
-                  dense_result_bitmap1.data())
-              .ok());
-  for (uint64_t i = 0; i < cells; ++i) {
-    uint8_t res = tp.expected_not_bitmap_.size() == 0 ?
-                      (tp.expected_bitmap_[i] == 1 ? 0 : 1) :
-                      tp.expected_not_bitmap_[i];
-    CHECK(dense_result_bitmap1[i] == res);
+  if (!negated) {
+    auto neg_tp = tp.negate(&result_tile);
+    validate_qc_apply(neg_tp, cells, array_schema, result_tile, true);
   }
 }
 
@@ -3324,10 +3247,9 @@ void populate_test_params_vector(
                 .ok());
 
     TestParams tp(
+        result_tile,
         std::move(query_condition_3),
-        {0, 0, 0, 0, 1, 1, 1, 0, 0, 0},
-        {{result_tile, 4, 3}},
-        {{result_tile, 0, 4}, {result_tile, 7, 3}});
+        {0, 0, 0, 0, 1, 1, 1, 0, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -3362,10 +3284,9 @@ void populate_test_params_vector(
                 .ok());
 
     TestParams tp(
+        result_tile,
         std::move(query_condition_3),
-        {1, 1, 1, 1, 0, 0, 0, 1, 1, 1},
-        {{result_tile, 0, 4}, {result_tile, 7, 3}},
-        {{result_tile, 4, 3}});
+        {1, 1, 1, 1, 0, 0, 0, 1, 1, 1});
     tp_vec.push_back(tp);
   }
   // Construct query condition `(foo >= 3 AND foo <= 6) OR (foo > 5 AND foo <
@@ -3435,10 +3356,7 @@ void populate_test_params_vector(
             .ok());
 
     TestParams tp(
-        std::move(combined_or),
-        {0, 0, 0, 1, 1, 1, 1, 1, 1, 0},
-        {{result_tile, 3, 6}},
-        {{result_tile, 0, 3}, {result_tile, 9, 1}});
+        result_tile, std::move(combined_or), {0, 0, 0, 1, 1, 1, 1, 1, 1, 0});
     tp_vec.push_back(tp);
   }
 
@@ -3509,10 +3427,7 @@ void populate_test_params_vector(
             .ok());
 
     TestParams tp(
-        std::move(combined_and),
-        {1, 1, 1, 0, 0, 0, 0, 0, 0, 1},
-        {{result_tile, 0, 3}, {result_tile, 9, 1}},
-        {{result_tile, 3, 6}});
+        result_tile, std::move(combined_and), {1, 1, 1, 0, 0, 0, 0, 0, 0, 1});
     tp_vec.push_back(tp);
   }
 
@@ -3604,11 +3519,7 @@ void populate_test_params_vector(
     REQUIRE(subtree_a.combine(subtree_b, QueryConditionCombinationOp::OR, &qc)
                 .ok());
 
-    TestParams tp(
-        std::move(qc),
-        {0, 0, 0, 0, 0, 1, 0, 1, 0, 0},
-        {{result_tile, 5, 1}, {result_tile, 7, 1}},
-        {{result_tile, 0, 5}, {result_tile, 6, 1}, {result_tile, 8, 2}});
+    TestParams tp(result_tile, std::move(qc), {0, 0, 0, 0, 0, 1, 0, 1, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -3697,26 +3608,8 @@ void populate_test_params_vector(
                     &combined_and4)
                 .ok());
 
-    std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
-    std::vector<ResultCellSlab> expected_slabs = {
-        {result_tile, 0, 1},
-        {result_tile, 2, 1},
-        {result_tile, 4, 1},
-        {result_tile, 6, 1},
-        {result_tile, 8, 1}};
     TestParams tp(
-        std::move(combined_and4),
-        {1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-        {{result_tile, 0, 1},
-         {result_tile, 2, 1},
-         {result_tile, 4, 1},
-         {result_tile, 6, 1},
-         {result_tile, 8, 1}},
-        {{result_tile, 1, 1},
-         {result_tile, 3, 1},
-         {result_tile, 5, 1},
-         {result_tile, 7, 1},
-         {result_tile, 9, 1}});
+        result_tile, std::move(combined_and4), {1, 0, 1, 0, 1, 0, 1, 0, 1, 0});
     tp_vec.push_back(tp);
   }
 
@@ -3803,18 +3696,7 @@ void populate_test_params_vector(
                 .ok());
 
     TestParams tp(
-        std::move(combined_or4),
-        {1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-        {{result_tile, 0, 1},
-         {result_tile, 2, 1},
-         {result_tile, 4, 1},
-         {result_tile, 6, 1},
-         {result_tile, 8, 1}},
-        {{result_tile, 1, 1},
-         {result_tile, 3, 1},
-         {result_tile, 5, 1},
-         {result_tile, 7, 1},
-         {result_tile, 9, 1}});
+        result_tile, std::move(combined_or4), {1, 0, 1, 0, 1, 0, 1, 0, 1, 0});
     tp_vec.push_back(tp);
   }
 }
@@ -3875,11 +3757,9 @@ TEST_CASE(
   populate_test_params_vector(field_name, &result_tile, tp_vec);
 
   SECTION("Validate apply.") {
-    std::cout << "0";
     for (auto& elem : tp_vec) {
       validate_qc_apply(elem, cells, array_schema, result_tile);
     }
-    std::cout << "1";
   }
 
   SECTION("Validate apply_sparse.") {
@@ -3916,11 +3796,7 @@ void populate_string_test_params_vector(
         qc.init(std::string(field_name), &e, strlen(e), QueryConditionOp::LT)
             .ok());
 
-    TestParams tp(
-        std::move(qc),
-        {1, 1, 1, 1, 1, 0, 0, 0, 0, 0},
-        {{result_tile, 0, 5}},
-        {{result_tile, 5, 5}});
+    TestParams tp(result_tile, std::move(qc), {1, 1, 1, 1, 1, 0, 0, 0, 0, 0});
     tp_vec.push_back(tp);
   }
   // Construct basic AND query condition `foo >= "bob" AND foo <= "eve"`.
@@ -3940,11 +3816,7 @@ void populate_string_test_params_vector(
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::AND, &qc).ok());
 
-    TestParams tp(
-        std::move(qc),
-        {0, 1, 1, 1, 1, 0, 0, 0, 0, 0},
-        {{result_tile, 1, 4}},
-        {{result_tile, 0, 1}, {result_tile, 5, 5}});
+    TestParams tp(result_tile, std::move(qc), {0, 1, 1, 1, 1, 0, 0, 0, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -3965,14 +3837,7 @@ void populate_string_test_params_vector(
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
 
-    std::vector<uint8_t> expected_bitmap = {1, 1, 0, 0, 0, 1, 1, 1, 1, 1};
-    std::vector<ResultCellSlab> expected_slabs = {
-        {result_tile, 0, 2}, {result_tile, 5, 5}};
-    TestParams tp(
-        std::move(qc),
-        {1, 1, 0, 0, 0, 1, 1, 1, 1, 1},
-        {{result_tile, 0, 2}, {result_tile, 5, 5}},
-        {{result_tile, 2, 3}});
+    TestParams tp(result_tile, std::move(qc), {1, 1, 0, 0, 0, 1, 1, 1, 1, 1});
     tp_vec.push_back(tp);
   }
 
@@ -4008,11 +3873,7 @@ void populate_string_test_params_vector(
     REQUIRE(qc3.combine(qc4, QueryConditionCombinationOp::AND, &qc6).ok());
     REQUIRE(qc5.combine(qc6, QueryConditionCombinationOp::OR, &qc).ok());
 
-    TestParams tp(
-        std::move(qc),
-        {0, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-        {{result_tile, 1, 9}},
-        {{result_tile, 0, 1}});
+    TestParams tp(result_tile, std::move(qc), {0, 1, 1, 1, 1, 1, 1, 1, 1, 1});
     tp_vec.push_back(tp);
   }
 
@@ -4048,11 +3909,7 @@ void populate_string_test_params_vector(
     REQUIRE(qc3.combine(qc4, QueryConditionCombinationOp::OR, &qc6).ok());
     REQUIRE(qc5.combine(qc6, QueryConditionCombinationOp::AND, &qc).ok());
 
-   TestParams tp(
-        std::move(qc),
-        {0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
-        {{result_tile, 7, 1}},
-        {{result_tile, 0, 7}, {result_tile, 8, 2}});
+    TestParams tp(result_tile, std::move(qc), {0, 0, 0, 0, 0, 0, 0, 1, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4085,26 +3942,7 @@ void populate_string_test_params_vector(
       REQUIRE(qc3.combine(val_nodes[4], QueryConditionCombinationOp::AND, &qc)
                   .ok());
 
-      std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
-      std::vector<ResultCellSlab> expected_slabs = {
-          {result_tile, 1, 1},
-          {result_tile, 3, 1},
-          {result_tile, 5, 1},
-          {result_tile, 7, 1},
-          {result_tile, 9, 1}};
-      TestParams tp(
-          std::move(qc),
-          {0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
-          {{result_tile, 1, 1},
-           {result_tile, 3, 1},
-           {result_tile, 5, 1},
-           {result_tile, 7, 1},
-           {result_tile, 9, 1}},
-          {{result_tile, 0, 1},
-           {result_tile, 2, 1},
-           {result_tile, 4, 1},
-           {result_tile, 6, 1},
-           {result_tile, 8, 1}});
+      TestParams tp(result_tile, std::move(qc), {0, 1, 0, 1, 0, 1, 0, 1, 0, 1});
       tp_vec.push_back(tp);
     }
 
@@ -4134,19 +3972,7 @@ void populate_string_test_params_vector(
       REQUIRE(
           qc3.combine(val_nodes[4], QueryConditionCombinationOp::OR, &qc).ok());
 
-      TestParams tp(
-          std::move(qc),
-          {1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-          {{result_tile, 0, 1},
-           {result_tile, 2, 1},
-           {result_tile, 4, 1},
-           {result_tile, 6, 1},
-           {result_tile, 8, 1}},
-          {{result_tile, 1, 1},
-           {result_tile, 3, 1},
-           {result_tile, 5, 1},
-           {result_tile, 7, 1},
-           {result_tile, 9, 1}});
+      TestParams tp(result_tile, std::move(qc), {1, 0, 1, 0, 1, 0, 1, 0, 1, 0});
       tp_vec.push_back(tp);
     }
   }
@@ -4210,11 +4036,9 @@ TEST_CASE(
   populate_string_test_params_vector(field_name, &result_tile, tp_vec);
 
   SECTION("Validate apply.") {
-    std::cout << "2";
     for (auto& elem : tp_vec) {
       validate_qc_apply(elem, cells, array_schema, result_tile);
     }
-    std::cout << "3";
   }
 
   SECTION("Validate apply_sparse.") {
@@ -4289,11 +4113,7 @@ void populate_utf8_string_test_params_vector(
                   QueryConditionOp::LT)
                 .ok());
 
-    TestParams tp(
-        std::move(qc),
-        {1, 1, 1, 1, 1, 0, 0, 0, 0, 0},
-        {{result_tile, 0, 5}},
-        {{result_tile, 5, 5}});
+    TestParams tp(result_tile, std::move(qc), {1, 1, 1, 1, 1, 0, 0, 0, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4317,11 +4137,7 @@ void populate_utf8_string_test_params_vector(
 
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::AND, &qc).ok());
-    TestParams tp(
-        std::move(qc),
-        {0, 1, 1, 1, 1, 0, 0, 0, 0, 0},
-        {{result_tile, 1, 4}},
-        {{result_tile, 0, 1}, {result_tile, 5, 5}});
+    TestParams tp(result_tile, std::move(qc), {0, 1, 1, 1, 1, 0, 0, 0, 0, 0});
     tp_vec.push_back(tp);
     tp_vec.push_back(tp);
   }
@@ -4347,11 +4163,7 @@ void populate_utf8_string_test_params_vector(
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
 
-    TestParams tp(
-        std::move(qc),
-        {1, 1, 0, 0, 0, 1, 1, 1, 1, 1},
-        {{result_tile, 0, 2}, {result_tile, 5, 5}},
-        {{result_tile, 2, 3}});
+    TestParams tp(result_tile, std::move(qc), {1, 1, 0, 0, 0, 1, 1, 1, 1, 1});
   }
 
   // ($val > upper_aa && $val <= yarn) || ($val > lower_a0 && $val < doughnut)
@@ -4394,11 +4206,7 @@ void populate_utf8_string_test_params_vector(
     REQUIRE(qc3.combine(qc4, QueryConditionCombinationOp::AND, &qc6).ok());
     REQUIRE(qc5.combine(qc6, QueryConditionCombinationOp::OR, &qc).ok());
 
-    TestParams tp(
-        std::move(qc),
-        {0, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-        {{result_tile, 1, 9}},
-        {{result_tile, 0, 1}});
+    TestParams tp(result_tile, std::move(qc), {0, 1, 1, 1, 1, 1, 1, 1, 1, 1});
     tp_vec.push_back(tp);
   }
 
@@ -4443,11 +4251,7 @@ void populate_utf8_string_test_params_vector(
     REQUIRE(qc3.combine(qc4, QueryConditionCombinationOp::OR, &qc6).ok());
     REQUIRE(qc5.combine(qc6, QueryConditionCombinationOp::AND, &qc).ok());
 
-    TestParams tp(
-        std::move(qc),
-        {0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
-        {{result_tile, 7, 1}},
-        {{result_tile, 0, 7}, {result_tile, 8, 2}});
+    TestParams tp(result_tile, std::move(qc), {0, 0, 0, 0, 0, 0, 0, 1, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4481,19 +4285,7 @@ void populate_utf8_string_test_params_vector(
       REQUIRE(qc3.combine(val_nodes[4], QueryConditionCombinationOp::AND, &qc)
                   .ok());
 
-      TestParams tp(
-          std::move(qc),
-          {0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
-          {{result_tile, 1, 1},
-           {result_tile, 3, 1},
-           {result_tile, 5, 1},
-           {result_tile, 7, 1},
-           {result_tile, 9, 1}},
-          {{result_tile, 0, 1},
-           {result_tile, 2, 1},
-           {result_tile, 4, 1},
-           {result_tile, 6, 1},
-           {result_tile, 8, 1}});
+      TestParams tp(result_tile, std::move(qc), {0, 1, 0, 1, 0, 1, 0, 1, 0, 1});
       tp_vec.push_back(tp);
     }
 
@@ -4524,26 +4316,7 @@ void populate_utf8_string_test_params_vector(
       REQUIRE(
           qc3.combine(val_nodes[4], QueryConditionCombinationOp::OR, &qc).ok());
 
-      std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
-      std::vector<ResultCellSlab> expected_slabs = {
-          {result_tile, 0, 1},
-          {result_tile, 2, 1},
-          {result_tile, 4, 1},
-          {result_tile, 6, 1},
-          {result_tile, 8, 1}};
-      TestParams tp(
-          std::move(qc),
-          {1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-          {{result_tile, 0, 1},
-           {result_tile, 2, 1},
-           {result_tile, 4, 1},
-           {result_tile, 6, 1},
-           {result_tile, 8, 1}},
-          {{result_tile, 1, 1},
-           {result_tile, 3, 1},
-           {result_tile, 5, 1},
-           {result_tile, 7, 1},
-           {result_tile, 9, 1}});
+      TestParams tp(result_tile, std::move(qc), {1, 0, 1, 0, 1, 0, 1, 0, 1, 0});
       tp_vec.push_back(tp);
     }
   }
@@ -4664,11 +4437,9 @@ TEST_CASE(
   populate_utf8_string_test_params_vector(field_name, &result_tile, tp_vec);
 
   SECTION("Validate apply.") {
-    std::cout << "4";
     for (auto& elem : tp_vec) {
       validate_qc_apply(elem, cells, array_schema, result_tile);
     }
-    std::cout << "5";
   }
 
   SECTION("Validate apply_sparse.") {
@@ -4702,20 +4473,7 @@ void populate_nullable_test_params_vector(
     QueryCondition qc;
     REQUIRE(qc.init(std::string(field_name), nullptr, 0, QueryConditionOp::EQ)
                 .ok());
-
-    TestParams tp(
-        std::move(qc),
-        {1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-        {{result_tile, 0, 1},
-         {result_tile, 2, 1},
-         {result_tile, 4, 1},
-         {result_tile, 6, 1},
-         {result_tile, 8, 1}},
-        {{result_tile, 1, 1},
-         {result_tile, 3, 1},
-         {result_tile, 5, 1},
-         {result_tile, 7, 1},
-         {result_tile, 9, 1}});
+    TestParams tp(result_tile, std::move(qc), {1, 0, 1, 0, 1, 0, 1, 0, 1, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4724,20 +4482,7 @@ void populate_nullable_test_params_vector(
     QueryCondition qc;
     REQUIRE(qc.init(std::string(field_name), nullptr, 0, QueryConditionOp::NE)
                 .ok());
-
-    TestParams tp(
-        std::move(qc),
-        {0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
-        {{result_tile, 1, 1},
-         {result_tile, 3, 1},
-         {result_tile, 5, 1},
-         {result_tile, 7, 1},
-         {result_tile, 9, 1}},
-        {{result_tile, 0, 1},
-         {result_tile, 2, 1},
-         {result_tile, 4, 1},
-         {result_tile, 6, 1},
-         {result_tile, 8, 1}});
+    TestParams tp(result_tile, std::move(qc), {0, 1, 0, 1, 0, 1, 0, 1, 0, 1});
     tp_vec.push_back(tp);
   }
 
@@ -4751,16 +4496,11 @@ void populate_nullable_test_params_vector(
                   sizeof(float),
                   QueryConditionOp::GT)
                 .ok());
-
     TestParams tp(
+        result_tile,
         std::move(qc),
         {0, 0, 0, 1, 0, 1, 0, 1, 0, 1},
-        {{result_tile, 3, 1},
-         {result_tile, 5, 1},
-         {result_tile, 7, 1},
-         {result_tile, 9, 1}},
-        {0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-        {{result_tile, 1, 1}});
+        {0, 1, 0, 0, 0, 0, 0, 0, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4785,15 +4525,12 @@ void populate_nullable_test_params_vector(
                 .ok());
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
-    std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 0, 0, 0, 0, 1};
-    std::vector<ResultCellSlab> expected_slabs = {
-        {result_tile, 1, 1}, {result_tile, 3, 1}, {result_tile, 9, 1}};
+
     TestParams tp(
+        result_tile,
         std::move(qc),
         {0, 1, 0, 1, 0, 0, 0, 0, 0, 1},
-        {{result_tile, 1, 1}, {result_tile, 3, 1}, {result_tile, 9, 1}},
-        {0, 0, 0, 0, 0, 1, 0, 1, 0, 0},
-        {{result_tile, 5, 1}, {result_tile, 7, 1}});
+        {0, 0, 0, 0, 0, 1, 0, 1, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4813,18 +4550,11 @@ void populate_nullable_test_params_vector(
                 .ok());
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
-
     TestParams tp(
+        result_tile,
         std::move(qc),
         {1, 0, 1, 1, 1, 0, 1, 0, 1, 1},
-        {{result_tile, 0, 1},
-         {result_tile, 2, 3},
-         {result_tile, 6, 1},
-         {result_tile, 8, 2}},
-        {{result_tile, 0, 1},
-         {result_tile, 2, 3},
-         {result_tile, 5, 1},
-         {result_tile, 8, 2}});
+        {0, 1, 0, 0, 0, 1, 0, 1, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4846,16 +4576,10 @@ void populate_nullable_test_params_vector(
     REQUIRE(qc2.combine(qc1, QueryConditionCombinationOp::OR, &qc).ok());
 
     TestParams tp(
+        result_tile,
         std::move(qc),
         {1, 0, 1, 1, 1, 0, 1, 0, 1, 1},
-        {{result_tile, 0, 1},
-         {result_tile, 2, 3},
-         {result_tile, 6, 1},
-         {result_tile, 8, 2}},
-        {{result_tile, 0, 1},
-         {result_tile, 2, 3},
-         {result_tile, 5, 1},
-         {result_tile, 8, 2}});
+        {0, 1, 0, 0, 0, 1, 0, 1, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4877,15 +4601,10 @@ void populate_nullable_test_params_vector(
     REQUIRE(qc2.combine(qc1, QueryConditionCombinationOp::OR, &qc).ok());
 
     TestParams tp(
+        result_tile,
         std::move(qc),
         {0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
-        {{result_tile, 1, 1},
-         {result_tile, 3, 1},
-         {result_tile, 5, 1},
-         {result_tile, 7, 1},
-         {result_tile, 9, 1}},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {});
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4907,15 +4626,10 @@ void populate_nullable_test_params_vector(
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
 
     TestParams tp(
+        result_tile,
         std::move(qc),
         {0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
-        {{result_tile, 1, 1},
-         {result_tile, 3, 1},
-         {result_tile, 5, 1},
-         {result_tile, 7, 1},
-         {result_tile, 9, 1}},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {});
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
     tp_vec.push_back(tp);
   }
 }
@@ -4984,14 +4698,9 @@ TEST_CASE(
   populate_nullable_test_params_vector(field_name, &result_tile, tp_vec);
 
   SECTION("Validate apply.") {
-    std::cout << "6";
-    int i = 0;
     for (auto& elem : tp_vec) {
-      std::cout << i;
       validate_qc_apply(elem, cells, array_schema, result_tile);
-      i++;
     }
-    std::cout << "7";
   }
 
   SECTION("Validate apply_sparse.") {
