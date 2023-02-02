@@ -57,7 +57,7 @@ void check_load_correct_file() {
   // Create a test config file
   std::ofstream ofs("test_config.txt");
   ofs << "   # comment line\n";
-  ofs << "sm.tile_cache_size 1000\n";
+  ofs << "sm.memory_budget 1000\n";
   ofs << "# another comment line\n";
   ofs << "sm.consolidation.steps 2 # some comment\n";
   ofs << "#    last comment line\n";
@@ -110,7 +110,7 @@ void check_load_incorrect_file_missing_value() {
   // Create a test config file
   std::ofstream ofs("test_config.txt");
   ofs << "   # comment line\n";
-  ofs << "sm.tile_cache_size    \n";
+  ofs << "sm.memory_budget    \n";
   ofs << "# another comment line\n";
   ofs << "sm.consolidation.steps 2 # some comment\n";
   ofs << "#    last comment line\n";
@@ -140,7 +140,7 @@ void check_load_incorrect_file_extra_word() {
   // Create a test config file
   std::ofstream ofs("test_config.txt");
   ofs << "   # comment line\n";
-  ofs << "sm.tile_cache_size 1000\n";
+  ofs << "sm.memory_budget 1000\n";
   ofs << "# another comment line\n";
   ofs << "sm.consolidation.steps 2 some comment\n";
   ofs << "#    last comment line\n";
@@ -287,7 +287,6 @@ void check_save_to_file() {
   ss << "sm.skip_checksum_validation false\n";
   ss << "sm.skip_est_size_partitioning false\n";
   ss << "sm.skip_unary_partitioning_budget_check false\n";
-  ss << "sm.tile_cache_size 10000000\n";
   ss << "sm.vacuum.mode fragments\n";
   ss << "sm.var_offsets.bitsize 64\n";
   ss << "sm.var_offsets.extra_element false\n";
@@ -297,9 +296,7 @@ void check_save_to_file() {
      << "\n";
   ss << "vfs.azure.use_block_list_upload true\n";
   ss << "vfs.azure.use_https true\n";
-  ss << "vfs.disable_batching false\n";
-  ss << "vfs.file.max_parallel_ops " << std::thread::hardware_concurrency()
-     << "\n";
+  ss << "vfs.file.max_parallel_ops 1\n";
   ss << "vfs.file.posix_directory_permissions 755\n";
   ss << "vfs.file.posix_file_permissions 644\n";
   ss << "vfs.gcs.max_parallel_ops " << std::thread::hardware_concurrency()
@@ -307,7 +304,7 @@ void check_save_to_file() {
   ss << "vfs.gcs.multi_part_size 5242880\n";
   ss << "vfs.gcs.request_timeout_ms 3000\n";
   ss << "vfs.gcs.use_multi_part_upload true\n";
-  ss << "vfs.max_batch_size " << std::to_string(UINT64_MAX) << "\n";
+  ss << "vfs.max_batch_size 104857600\n";
   ss << "vfs.min_batch_gap 512000\n";
   ss << "vfs.min_batch_size 20971520\n";
   ss << "vfs.min_parallel_size 10485760\n";
@@ -353,7 +350,7 @@ TEST_CASE("C API: Test config", "[capi][config]") {
   CHECK(error == nullptr);
 
   // Check correct parameter, correct argument
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "100", &error);
+  rc = tiledb_config_set(config, "sm.memory_budget", "100", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   tiledb_ctx_t* ctx;
@@ -364,7 +361,7 @@ TEST_CASE("C API: Test config", "[capi][config]") {
 
   // Check get for existing argument
   const char* value = nullptr;
-  rc = tiledb_config_get(config, "sm.tile_cache_size", &value, &error);
+  rc = tiledb_config_get(config, "sm.memory_budget", &value, &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   CHECK(!strcmp(value, "100"));
@@ -381,7 +378,7 @@ TEST_CASE("C API: Test config", "[capi][config]") {
   tiledb_config_t* get_config = nullptr;
   rc = tiledb_ctx_get_config(ctx, &get_config);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_config_get(get_config, "sm.tile_cache_size", &value, &error);
+  rc = tiledb_config_get(get_config, "sm.memory_budget", &value, &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   CHECK(!strcmp(value, "100"));
@@ -389,7 +386,7 @@ TEST_CASE("C API: Test config", "[capi][config]") {
   tiledb_ctx_free(&ctx);
 
   // Check correct parameter, correct argument
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "+100", &error);
+  rc = tiledb_config_set(config, "sm.memory_budget", "+100", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_ctx_alloc(config, &ctx);
@@ -397,7 +394,7 @@ TEST_CASE("C API: Test config", "[capi][config]") {
   tiledb_ctx_free(&ctx);
 
   // Check invalid argument for correct parameter
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "xadf", &error);
+  rc = tiledb_config_set(config, "sm.memory_budget", "xadf", &error);
   CHECK(rc == TILEDB_ERR);
   CHECK(error != nullptr);
   check_error(
@@ -407,7 +404,7 @@ TEST_CASE("C API: Test config", "[capi][config]") {
   tiledb_error_free(&error);
 
   // Check invalid argument for correct parameter
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "10xadf", &error);
+  rc = tiledb_config_set(config, "sm.memory_budget", "10xadf", &error);
   CHECK(rc == TILEDB_ERR);
   CHECK(error != nullptr);
   check_error(
@@ -417,7 +414,7 @@ TEST_CASE("C API: Test config", "[capi][config]") {
   tiledb_error_free(&error);
 
   // Check invalid argument for correct parameter
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "-10", &error);
+  rc = tiledb_config_set(config, "sm.memory_budget", "-10", &error);
   CHECK(rc == TILEDB_ERR);
   CHECK(error != nullptr);
   check_error(
@@ -427,7 +424,7 @@ TEST_CASE("C API: Test config", "[capi][config]") {
   tiledb_error_free(&error);
 
   // Set valid
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "10", &error);
+  rc = tiledb_config_set(config, "sm.memory_budget", "10", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
@@ -442,13 +439,13 @@ TEST_CASE("C API: Test config", "[capi][config]") {
   CHECK(error == nullptr);
 
   // Unset valid parameter
-  rc = tiledb_config_unset(config, "sm.tile_cache_size", &error);
+  rc = tiledb_config_unset(config, "sm.memory_budget", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
-  rc = tiledb_config_get(config, "sm.tile_cache_size", &value, &error);
+  rc = tiledb_config_get(config, "sm.memory_budget", &value, &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
-  CHECK(!strcmp(value, "10000000"));
+  CHECK(!strcmp(value, "5368709120"));
 
   // Set valid, defaulting parameter
   rc = tiledb_config_set(config, "vfs.s3.region", "pluto", &error);
@@ -488,7 +485,7 @@ TEST_CASE("C API: Test config", "[capi][config]") {
 
   // Check out of range argument for correct parameter
   rc = tiledb_config_set(
-      config, "sm.tile_cache_size", "100000000000000000000", &error);
+      config, "sm.memory_budget", "100000000000000000000", &error);
   CHECK(rc == TILEDB_ERR);
   CHECK(error != nullptr);
   check_error(
@@ -536,9 +533,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_set(config, "config.logging_format", "JSON", &error);
-  CHECK(rc == TILEDB_OK);
-  CHECK(error == nullptr);
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "100", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_set(config, "vfs.s3.scheme", "https", &error);
@@ -600,7 +594,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.check_coord_dups"] = "true";
   all_param_values["sm.check_coord_oob"] = "true";
   all_param_values["sm.check_global_order"] = "true";
-  all_param_values["sm.tile_cache_size"] = "100";
   all_param_values["sm.skip_est_size_partitioning"] = "false";
   all_param_values["sm.skip_unary_partitioning_budget_check"] = "false";
   all_param_values["sm.memory_budget"] = "5368709120";
@@ -657,8 +650,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.fragment_info.preload_mbrs"] = "true";
   all_param_values["sm.partial_tile_offsets_loading"] = "false";
 
-  all_param_values["vfs.disable_batching"] = "false";
-  all_param_values["vfs.max_batch_size"] = std::to_string(UINT64_MAX);
+  all_param_values["vfs.max_batch_size"] = "104857600";
   all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
   all_param_values["vfs.min_parallel_size"] = "10485760";
@@ -681,8 +673,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.azure.use_https"] = "true";
   all_param_values["vfs.file.posix_file_permissions"] = "644";
   all_param_values["vfs.file.posix_directory_permissions"] = "755";
-  all_param_values["vfs.file.max_parallel_ops"] =
-      std::to_string(std::thread::hardware_concurrency());
+  all_param_values["vfs.file.max_parallel_ops"] = "1";
   all_param_values["vfs.s3.scheme"] = "https";
   all_param_values["vfs.s3.region"] = "us-east-1";
   all_param_values["vfs.s3.aws_access_key_id"] = "";
@@ -722,11 +713,10 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.s3.object_canned_acl"] = "NOT_SET";
 
   std::map<std::string, std::string> vfs_param_values;
-  vfs_param_values["max_batch_size"] = std::to_string(UINT64_MAX);
+  vfs_param_values["max_batch_size"] = "104857600";
   vfs_param_values["min_batch_gap"] = "512000";
   vfs_param_values["min_batch_size"] = "20971520";
   vfs_param_values["min_parallel_size"] = "10485760";
-  vfs_param_values["disable_batching"] = "false";
   vfs_param_values["read_ahead_size"] = "102400";
   vfs_param_values["read_ahead_cache_size"] = "10485760";
   vfs_param_values["gcs.project_id"] = "";
@@ -746,8 +736,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["azure.use_https"] = "true";
   vfs_param_values["file.posix_file_permissions"] = "644";
   vfs_param_values["file.posix_directory_permissions"] = "755";
-  vfs_param_values["file.max_parallel_ops"] =
-      std::to_string(std::thread::hardware_concurrency());
+  vfs_param_values["file.max_parallel_ops"] = "1";
   vfs_param_values["s3.scheme"] = "https";
   vfs_param_values["s3.region"] = "us-east-1";
   vfs_param_values["s3.aws_access_key_id"] = "";
@@ -1127,8 +1116,6 @@ TEST_CASE("C API: Test VFS config inheritance", "[capi][config][vfs-inherit]") {
   tiledb_config_t* config = nullptr;
   int rc = tiledb_config_alloc(&config, &err);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_config_set(config, "sm.tile_cache_size", "100", &err);
-  CHECK(rc == TILEDB_OK);
   tiledb_config_t* vfs_config = nullptr;
   rc = tiledb_config_alloc(&vfs_config, &err);
   REQUIRE(rc == TILEDB_OK);
@@ -1147,9 +1134,6 @@ TEST_CASE("C API: Test VFS config inheritance", "[capi][config][vfs-inherit]") {
   CHECK(rc == TILEDB_OK);
 
   const char* value = nullptr;
-  rc = tiledb_config_get(vfs_config_get, "sm.tile_cache_size", &value, &err);
-  CHECK(rc == TILEDB_OK);
-  CHECK(!strcmp(value, "100"));
   rc = tiledb_config_get(vfs_config_get, "vfs.s3.ca_file", &value, &err);
   CHECK(rc == TILEDB_OK);
   CHECK(!strcmp(value, "path"));

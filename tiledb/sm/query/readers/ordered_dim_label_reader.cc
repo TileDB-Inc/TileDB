@@ -29,9 +29,9 @@
  *
  * This file implements class OrderedDimLabelReader.
  */
+#include "tiledb/sm/query/readers/ordered_dim_label_reader.h"
 
 #include "tiledb/common/logger.h"
-
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -40,7 +40,7 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"
-#include "tiledb/sm/query/readers/ordered_dim_label_reader.h"
+#include "tiledb/sm/query/readers/filtered_data.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -146,14 +146,6 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     throw OrderedDimLabelReaderStatusException("Cannot get setting");
   }
   assert(found);
-
-  uint64_t tile_cache_size = 0;
-  if (!config_.get<uint64_t>("sm.tile_cache_size", &tile_cache_size, &found)
-           .ok()) {
-    throw OrderedDimLabelReaderStatusException("Cannot get setting");
-  }
-  assert(found);
-  disable_cache_ = tile_cache_size == 0;
 }
 
 /* ****************************** */
@@ -287,10 +279,11 @@ void OrderedDimLabelReader::label_read() {
         result_tiles.push_back(&result_tile.second);
       }
     }
+    std::sort(result_tiles.begin(), result_tiles.end(), result_tile_cmp);
 
     // Read/unfilter tiles.
-    throw_if_not_ok(read_attribute_tiles({label_name_}, result_tiles));
-    throw_if_not_ok(unfilter_tiles(label_name_, result_tiles));
+    throw_if_not_ok(
+        read_and_unfilter_attribute_tiles({label_name_}, result_tiles));
 
     // Compute/copy results.
     throw_if_not_ok(parallel_for(

@@ -53,6 +53,7 @@ namespace sm {
 
 class Array;
 class ArraySchema;
+class FilteredData;
 class Subarray;
 
 /** Processes read queries. */
@@ -154,6 +155,19 @@ class ReaderBase : public StrategyBase {
       const std::vector<TileDomain<T>>& frag_tile_domains,
       std::map<const T*, ResultSpaceTile<T>>& result_space_tiles);
 
+  /* ********************************* */
+  /*          PUBLIC METHODS           */
+  /* ********************************* */
+
+  /**
+   * Check if a field should be skipped for a certain fragment.
+   *
+   * @param frag_idx Fragment index.
+   * @param name Name of the dimension/attribute.
+   * @return True if the field should be skipped, false if they shouldn't.
+   */
+  bool skip_field(const unsigned frag_idx, const std::string& name) const;
+
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
@@ -183,12 +197,6 @@ class ReaderBase : public StrategyBase {
 
   /** The fragment metadata that the reader will focus on. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
-
-  /** Disable the tile cache or not. */
-  bool disable_cache_;
-
-  /** Read directly from storage without batching. */
-  bool disable_batching_;
 
   /**
    * The condition to apply on results when there is partial time overlap
@@ -222,6 +230,15 @@ class ReaderBase : public StrategyBase {
 
   /** Have we loaded the initial data. */
   bool initial_data_loaded_;
+
+  /** The maximum number of bytes in a batched read operation. */
+  uint64_t max_batch_size_;
+
+  /** The minimum number of bytes between two read batches. */
+  uint64_t min_batch_gap_;
+
+  /** The minimum number of bytes in a batched read operation. */
+  uint64_t min_batch_size_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
@@ -303,7 +320,7 @@ class ReaderBase : public StrategyBase {
    * Checks if timestamps should be loaded for a fragment.
    *
    * @param f Fragment index.
-   * @return True if timestamps should be included, false if they are not.
+   * @return True if timestamps should be included, false if they are not
    * needed.
    */
   bool include_timestamps(const unsigned f) const;
@@ -372,6 +389,30 @@ class ReaderBase : public StrategyBase {
   Status load_processed_conditions();
 
   /**
+   * Read and unfilter attribute tiles.
+   *
+   * @param names The attribute names.
+   * @param result_tiles The retrieved tiles will be stored inside the
+   *     `ResultTile` instances in this vector.
+   * @return Status.
+   */
+  Status read_and_unfilter_attribute_tiles(
+      const std::vector<std::string>& names,
+      const std::vector<ResultTile*>& result_tiles) const;
+
+  /**
+   * Read and unfilter coordinate tiles.
+   *
+   * @param names The coordinate/dimension names.
+   * @param result_tiles The retrieved tiles will be stored inside the
+   *     `ResultTile` instances in this vector.
+   * @return Status.
+   */
+  Status read_and_unfilter_coordinate_tiles(
+      const std::vector<std::string>& names,
+      const std::vector<ResultTile*>& result_tiles) const;
+
+  /**
    * Concurrently executes across each name in `names` and each result tile
    * in 'result_tiles'.
    *
@@ -381,9 +422,9 @@ class ReaderBase : public StrategyBase {
    * @param names The attribute names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
-   * @return Status
+   * @return Filtered data blocks.
    */
-  Status read_attribute_tiles(
+  std::vector<FilteredData> read_attribute_tiles(
       const std::vector<std::string>& names,
       const std::vector<ResultTile*>& result_tiles) const;
 
@@ -397,9 +438,9 @@ class ReaderBase : public StrategyBase {
    * @param names The coordinate/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
-   * @return Status
+   * @return Filtered data blocks.
    */
-  Status read_coordinate_tiles(
+  std::vector<FilteredData> read_coordinate_tiles(
       const std::vector<std::string>& names,
       const std::vector<ResultTile*>& result_tiles) const;
 
@@ -413,9 +454,9 @@ class ReaderBase : public StrategyBase {
    * @param names The attribute/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
-   * @return Status
+   * @return Filtered data blocks.
    */
-  Status read_tiles(
+  std::vector<FilteredData> read_tiles(
       const std::vector<std::string>& names,
       const std::vector<ResultTile*>& result_tiles) const;
 

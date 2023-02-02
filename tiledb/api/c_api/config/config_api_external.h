@@ -115,9 +115,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Checks if the coordinates obey the global array order. Applicable only
  *    to sparse writes in global order.
  *    **Default**: true
- * - `sm.tile_cache_size` <br>
- *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
- *    **Default**: 10,000,000
  * - `sm.enable_signal_handlers` <br>
  *    Determines whether or not TileDB will install signal handlers. <br>
  *    **Default**: true
@@ -304,10 +301,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.min_batch_gap` <br>
  *    The minimum number of bytes between two VFS read batches.<br>
  *    **Default**: 500KB
- * - `vfs.disable_batching` <br>
- *    **Experimental** <br>
- *    Disables tile batching from VFS, making direct reads.<br>
- *    **Default**: false
  * - `vfs.file.posix_file_permissions` <br>
  *    Permissions to use for posix file system with file creation.<br>
  *    **Default**: 644
@@ -317,7 +310,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.file.max_parallel_ops` <br>
  *    The maximum number of parallel operations on objects with `file:///`
  *    URIs. <br>
- *    **Default**: `sm.io_concurrency_level`
+ *    **Default**: `1`
  * - `vfs.azure.storage_account_name` <br>
  *    Set the Azure Storage Account name. <br>
  *    **Default**: ""
@@ -587,7 +580,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *
  * @code{.c}
  * tiledb_error_t* error = NULL;
- * tiledb_config_set(config, "sm.tile_cache_size", "1000000", &error);
+ * tiledb_config_set(config, "sm.memory_budget", "1000000", &error);
  * @endcode
  *
  * @param config The config object.
@@ -611,7 +604,7 @@ TILEDB_EXPORT capi_return_t tiledb_config_set(
  * @code{.c}
  * const char* value;
  * tiledb_error_t* error = NULL;
- * tiledb_config_get(config, "sm.tile_cache_size", &value, &error);
+ * tiledb_config_get(config, "sm.memory_budget", &value, &error);
  * @endcode
  *
  * @param config The config object.
@@ -636,7 +629,7 @@ TILEDB_EXPORT capi_return_t tiledb_config_get(
  *
  * @code{.c}
  * tiledb_error_t* error = NULL;
- * tiledb_config_unset(config, "sm.tile_cache_size", &error);
+ * tiledb_config_unset(config, "sm.memory_budget", &error);
  * @endcode
  *
  * @param config The config object.

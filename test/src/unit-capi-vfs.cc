@@ -955,9 +955,6 @@ TEST_CASE_METHOD(
   rc = tiledb_config_get(config2, "vfs.s3.scheme", &value, &error);
   REQUIRE(error == nullptr);
   CHECK(!strncmp(value, "https", strlen("https")));
-  rc = tiledb_config_get(config2, "sm.tile_cache_size", &value, &error);
-  REQUIRE(error == nullptr);
-  CHECK(!strncmp(value, "10000000", strlen("10000000")));
 
   // Clean up
   tiledb_config_free(&config);

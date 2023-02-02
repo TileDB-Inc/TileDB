@@ -1799,34 +1799,20 @@ Status query_from_capnp(
         attr_state->var_len_data.swap(varlen_buff);
         attr_state->validity_len_data.swap(validitylen_buff);
         if (var_size) {
-          if (!nullable) {
-            RETURN_NOT_OK(query->set_data_buffer(
-                name, nullptr, &attr_state->var_len_size, false));
-            RETURN_NOT_OK(query->set_offsets_buffer(
-                name, nullptr, &attr_state->fixed_len_size, false));
-          } else {
-            RETURN_NOT_OK(query->set_buffer_vbytemap(
-                name,
-                nullptr,
-                &attr_state->fixed_len_size,
-                nullptr,
-                &attr_state->var_len_size,
-                nullptr,
-                &attr_state->validity_len_size,
-                false));
+          throw_if_not_ok(query->set_data_buffer(
+              name, nullptr, &attr_state->var_len_size, false));
+          throw_if_not_ok(query->set_offsets_buffer(
+              name, nullptr, &attr_state->fixed_len_size, false));
+          if (nullable) {
+            throw_if_not_ok(query->set_validity_buffer(
+                name, nullptr, &attr_state->validity_len_size, false));
           }
         } else {
-          if (!nullable) {
-            RETURN_NOT_OK(query->set_data_buffer(
-                name, nullptr, &attr_state->fixed_len_size, false));
-          } else {
-            RETURN_NOT_OK(query->set_buffer_vbytemap(
-                name,
-                nullptr,
-                &attr_state->fixed_len_size,
-                nullptr,
-                &attr_state->validity_len_size,
-                false));
+          throw_if_not_ok(query->set_data_buffer(
+              name, nullptr, &attr_state->fixed_len_size, false));
+          if (nullable) {
+            throw_if_not_ok(query->set_validity_buffer(
+                name, nullptr, &attr_state->validity_len_size, false));
           }
         }
       } else if (query_type == QueryType::WRITE) {
@@ -1853,20 +1839,13 @@ Status query_from_capnp(
           attr_state->var_len_data.swap(varlen_buff);
           attr_state->validity_len_data.swap(validity_buff);
 
-          if (!nullable) {
-            RETURN_NOT_OK(query->set_data_buffer(
-                name, varlen_data, &attr_state->var_len_size));
-            RETURN_NOT_OK(query->set_offsets_buffer(
-                name, offsets, &attr_state->fixed_len_size));
-          } else {
-            RETURN_NOT_OK(query->set_buffer_vbytemap(
-                name,
-                offsets,
-                &attr_state->fixed_len_size,
-                varlen_data,
-                &attr_state->var_len_size,
-                validity,
-                &attr_state->validity_len_size));
+          throw_if_not_ok(query->set_data_buffer(
+              name, varlen_data, &attr_state->var_len_size));
+          throw_if_not_ok(query->set_offsets_buffer(
+              name, offsets, &attr_state->fixed_len_size));
+          if (nullable) {
+            throw_if_not_ok(query->set_validity_buffer(
+                name, validity, &attr_state->validity_len_size));
           }
         } else {
           auto* data = attribute_buffer_start;
@@ -1888,16 +1867,11 @@ Status query_from_capnp(
           attr_state->var_len_data.swap(varlen_buff);
           attr_state->validity_len_data.swap(validity_buff);
 
-          if (!nullable) {
-            RETURN_NOT_OK(query->set_data_buffer(
-                name, data, &attr_state->fixed_len_size));
-          } else {
-            RETURN_NOT_OK(query->set_buffer_vbytemap(
-                name,
-                data,
-                &attr_state->fixed_len_size,
-                validity,
-                &attr_state->validity_len_size));
+          throw_if_not_ok(
+              query->set_data_buffer(name, data, &attr_state->fixed_len_size));
+          if (nullable) {
+            throw_if_not_ok(query->set_validity_buffer(
+                name, validity, &attr_state->validity_len_size));
           }
         }
       } else {

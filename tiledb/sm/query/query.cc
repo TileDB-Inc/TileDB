@@ -485,67 +485,72 @@ Status Query::submit_and_finalize() {
   return Status::Ok();
 }
 
-Status Query::get_buffer(
-    const char* name, void** buffer, uint64_t** buffer_size) const {
-  // Check attribute
-  if (!ArraySchema::is_special_attribute(name)) {
-    if (array_schema_->attribute(name) == nullptr &&
-        array_schema_->dimension_ptr(name) == nullptr)
-      return logger_->status(Status_QueryError(
-          std::string("Cannot get buffer; Invalid attribute/dimension name '") +
-          name + "'"));
-  }
-  if (array_schema_->var_size(name))
-    return logger_->status(Status_QueryError(
-        std::string("Cannot get buffer; '") + name + "' is var-sized"));
-
-  return get_data_buffer(name, buffer, buffer_size);
-}
-
-Status Query::get_buffer(
-    const char* name,
-    uint64_t** buffer_off,
-    uint64_t** buffer_off_size,
-    void** buffer_val,
-    uint64_t** buffer_val_size) const {
-  // Check query type
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot get buffer; Unsupported query type."));
-  }
-
-  // Check attribute
-  if (name == constants::coords) {
-    return logger_->status(
-        Status_QueryError("Cannot get buffer; Coordinates are not var-sized"));
-  }
-  if (array_schema_->attribute(name) == nullptr &&
-      array_schema_->dimension_ptr(name) == nullptr) {
-    return logger_->status(Status_QueryError(
-        std::string("Cannot get buffer; Invalid attribute/dimension name '") +
-        name + "'"));
-  }
-  if (!array_schema_->var_size(name)) {
-    return logger_->status(Status_QueryError(
-        std::string("Cannot get buffer; '") + name + "' is fixed-sized"));
-  }
-
-  // Attribute or dimension
-  auto it = buffers_.find(name);
-  if (it != buffers_.end()) {
-    *buffer_off = (uint64_t*)it->second.buffer_;
-    *buffer_off_size = it->second.buffer_size_;
-    *buffer_val = it->second.buffer_var_;
-    *buffer_val_size = it->second.buffer_var_size_;
+Status Query::check_tile_alignment() const {
+  // Only applicable for remote global order writes
+  if (!array_->is_remote() || type_ != QueryType::WRITE ||
+      layout_ != Layout::GLOBAL_ORDER) {
     return Status::Ok();
   }
 
-  // Named buffer does not exist
-  *buffer_off = nullptr;
-  *buffer_off_size = nullptr;
-  *buffer_val = nullptr;
-  *buffer_val_size = nullptr;
+  // It is enough to check for the first attr/dim only as we have
+  // previously checked in check_buffer_sizes that all the buffers
+  // have the same size
+  auto& first_buffer_name = buffers_.begin()->first;
+  auto& first_buffer = buffers_.begin()->second;
+  const bool is_var_size = array_schema_->var_size(first_buffer_name);
+
+  uint64_t cell_num_per_tile = array_schema_->dense() ?
+                                   array_schema_->domain().cell_num_per_tile() :
+                                   array_schema_->capacity();
+  bool buffers_tile_aligned = true;
+  if (is_var_size) {
+    auto offsets_buf_size = *first_buffer.buffer_size_;
+    if ((offsets_buf_size / constants::cell_var_offset_size) %
+        cell_num_per_tile) {
+      buffers_tile_aligned = false;
+    }
+  } else {
+    uint64_t cell_size = array_schema_->cell_size(first_buffer_name);
+    if ((*first_buffer.buffer_size_ / cell_size) % cell_num_per_tile) {
+      buffers_tile_aligned = false;
+    }
+  }
+
+  if (!buffers_tile_aligned) {
+    return Status_WriterError(
+        "Tile alignment check failed; Input buffers need to be tile-aligned "
+        "for remote global order writes.");
+  }
+
+  return Status::Ok();
+}
+
+Status Query::check_buffer_multipart_size() const {
+  // Only applicable for remote global order writes
+  if (!array_->is_remote() || type_ != QueryType::WRITE ||
+      layout_ != Layout::GLOBAL_ORDER) {
+    return Status::Ok();
+  }
+
+  const uint64_t s3_multipart_min_limit = 5242880;  // 5MB
+  for (const auto& it : buffers_) {
+    const auto& buf_name = it.first;
+    const bool is_var = array_schema_->var_size(buf_name);
+    const uint64_t buffer_size =
+        is_var ? *it.second.buffer_var_size_ : *it.second.buffer_size_;
+
+    uint64_t buffer_validity_size = s3_multipart_min_limit;
+    if (array_schema_->is_nullable(buf_name)) {
+      buffer_validity_size = *it.second.validity_vector_.buffer_size();
+    }
+
+    if (buffer_size < s3_multipart_min_limit ||
+        buffer_validity_size < s3_multipart_min_limit) {
+      return logger_->status(Status_WriterError(
+          "Remote global order writes require buffers to be of"
+          "minimum 5MB in size."));
+    }
+  }
 
   return Status::Ok();
 }
@@ -680,137 +685,6 @@ Status Query::get_validity_buffer(
     *buffer_validity_bytemap = vv->bytemap();
     *buffer_validity_bytemap_size = vv->bytemap_size();
   }
-
-  return Status::Ok();
-}
-
-Status Query::get_buffer_vbytemap(
-    const char* name,
-    uint64_t** buffer_off,
-    uint64_t** buffer_off_size,
-    void** buffer_val,
-    uint64_t** buffer_val_size,
-    uint8_t** buffer_validity_bytemap,
-    uint64_t** buffer_validity_bytemap_size) const {
-  const ValidityVector* vv = nullptr;
-  RETURN_NOT_OK(get_buffer(
-      name, buffer_off, buffer_off_size, buffer_val, buffer_val_size, &vv));
-
-  if (vv != nullptr) {
-    *buffer_validity_bytemap = vv->bytemap();
-    *buffer_validity_bytemap_size = vv->bytemap_size();
-  }
-
-  return Status::Ok();
-}
-
-Status Query::get_buffer_vbytemap(
-    const char* name,
-    void** buffer,
-    uint64_t** buffer_size,
-    uint8_t** buffer_validity_bytemap,
-    uint64_t** buffer_validity_bytemap_size) const {
-  const ValidityVector* vv = nullptr;
-  RETURN_NOT_OK(get_buffer(name, buffer, buffer_size, &vv));
-
-  if (vv != nullptr) {
-    *buffer_validity_bytemap = vv->bytemap();
-    *buffer_validity_bytemap_size = vv->bytemap_size();
-  }
-
-  return Status::Ok();
-}
-
-Status Query::get_buffer(
-    const char* name,
-    void** buffer,
-    uint64_t** buffer_size,
-    const ValidityVector** validity_vector) const {
-  // Check query type
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot get buffer; Unsupported query type."));
-  }
-
-  // Check nullable attribute
-  if (array_schema_->attribute(name) == nullptr) {
-    return logger_->status(Status_QueryError(
-        std::string("Cannot get buffer; Invalid attribute name '") + name +
-        "'"));
-  }
-  if (array_schema_->var_size(name)) {
-    return logger_->status(Status_QueryError(
-        std::string("Cannot get buffer; '") + name + "' is var-sized"));
-  }
-  if (!array_schema_->is_nullable(name)) {
-    return logger_->status(Status_QueryError(
-        std::string("Cannot get buffer; '") + name + "' is non-nullable"));
-  }
-
-  // Attribute or dimension
-  auto it = buffers_.find(name);
-  if (it != buffers_.end()) {
-    *buffer = it->second.buffer_;
-    *buffer_size = it->second.buffer_size_;
-    *validity_vector = &it->second.validity_vector_;
-    return Status::Ok();
-  }
-
-  // Named buffer does not exist
-  *buffer = nullptr;
-  *buffer_size = nullptr;
-  *validity_vector = nullptr;
-
-  return Status::Ok();
-}
-
-Status Query::get_buffer(
-    const char* name,
-    uint64_t** buffer_off,
-    uint64_t** buffer_off_size,
-    void** buffer_val,
-    uint64_t** buffer_val_size,
-    const ValidityVector** validity_vector) const {
-  // Check query type
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot get buffer; Unsupported query type."));
-  }
-
-  // Check attribute
-  if (array_schema_->attribute(name) == nullptr) {
-    return logger_->status(Status_QueryError(
-        std::string("Cannot get buffer; Invalid attribute name '") + name +
-        "'"));
-  }
-  if (!array_schema_->var_size(name)) {
-    return logger_->status(Status_QueryError(
-        std::string("Cannot get buffer; '") + name + "' is fixed-sized"));
-  }
-  if (!array_schema_->is_nullable(name)) {
-    return logger_->status(Status_QueryError(
-        std::string("Cannot get buffer; '") + name + "' is non-nullable"));
-  }
-
-  // Attribute or dimension
-  auto it = buffers_.find(name);
-  if (it != buffers_.end()) {
-    *buffer_off = (uint64_t*)it->second.buffer_;
-    *buffer_off_size = it->second.buffer_size_;
-    *buffer_val = it->second.buffer_var_;
-    *buffer_val_size = it->second.buffer_var_size_;
-    *validity_vector = &it->second.validity_vector_;
-    return Status::Ok();
-  }
-
-  // Named buffer does not exist
-  *buffer_off = nullptr;
-  *buffer_off_size = nullptr;
-  *buffer_val = nullptr;
-  *buffer_val_size = nullptr;
-  *validity_vector = nullptr;
 
   return Status::Ok();
 }
@@ -1366,93 +1240,6 @@ Status Query::set_coords_buffer(void* buffer, uint64_t* buffer_size) {
   return Status::Ok();
 }
 
-Status Query::set_buffer(
-    const std::string& name,
-    void* const buffer,
-    uint64_t* const buffer_size,
-    const bool check_null_buffers) {
-  RETURN_NOT_OK(check_set_fixed_buffer(name));
-
-  // Check buffer
-  if (check_null_buffers && buffer == nullptr)
-    return logger_->status(
-        Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
-
-  // Check buffer size
-  if (check_null_buffers && buffer_size == nullptr)
-    return logger_->status(
-        Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
-
-  // For easy reference
-  const bool is_dim = array_schema_->is_dim(name);
-  const bool is_attr = array_schema_->is_attr(name);
-
-  // Check that attribute/dimension exists
-  if (name != constants::coords && !is_dim && !is_attr)
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
-        "'"));
-
-  // Must not be nullable
-  if (array_schema_->is_nullable(name))
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer; Input attribute/dimension '") + name +
-        "' is nullable"));
-
-  // Check that attribute/dimension is fixed-sized
-  const bool var_size =
-      (name != constants::coords && array_schema_->var_size(name));
-  if (var_size)
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer; Input attribute/dimension '") + name +
-        "' is var-sized"));
-
-  // Check if zipped coordinates coexist with separate coordinate buffers
-  if ((is_dim && has_zipped_coords_buffer_) ||
-      (name == constants::coords && has_coords_buffer_))
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set separate coordinate buffers and "
-                    "a zipped coordinate buffer in the same query")));
-
-  // Error if setting a new attribute/dimension after initialization
-  const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer for new attribute/dimension '") + name +
-        "' after initialization"));
-
-  if (name == constants::coords) {
-    has_zipped_coords_buffer_ = true;
-
-    // Set special function for zipped coordinates buffer
-    if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)
-      return set_coords_buffer(buffer, buffer_size);
-  }
-
-  if (is_dim &&
-      (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)) {
-    // Check number of coordinates
-    uint64_t coords_num = *buffer_size / array_schema_->cell_size(name);
-    if (coord_buffer_is_set_ && coords_num != coords_info_.coords_num_)
-      return logger_->status(Status_QueryError(
-          std::string("Cannot set buffer; Input buffer for dimension '") +
-          name +
-          "' has a different number of coordinates than previously "
-          "set coordinate buffers"));
-
-    coords_info_.coords_num_ = coords_num;
-    coord_buffer_is_set_ = true;
-    coords_info_.has_coords_ = true;
-  }
-
-  has_coords_buffer_ |= is_dim;
-
-  // Set attribute buffer
-  throw_if_not_ok(buffers_[name].set_data_buffer(buffer, buffer_size));
-
-  return Status::Ok();
-}
-
 void Query::set_dimension_label_buffer(
     const std::string& name, const QueryBuffer& buffer) {
   if (buffer.buffer_var_ || buffer.buffer_var_size_) {
@@ -1720,281 +1507,6 @@ Status Query::set_validity_buffer(
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  throw_if_not_ok(
-      buffers_[name].set_validity_buffer(std::move(validity_vector)));
-
-  return Status::Ok();
-}
-
-Status Query::set_buffer(
-    const std::string& name,
-    uint64_t* const buffer_off,
-    uint64_t* const buffer_off_size,
-    void* const buffer_val,
-    uint64_t* const buffer_val_size,
-    const bool check_null_buffers) {
-  // Check query type
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot set buffer; Unsupported query type."));
-  }
-
-  // Check buffer
-  if (check_null_buffers && buffer_val == nullptr)
-    if ((type_ != QueryType::WRITE && type_ != QueryType::MODIFY_EXCLUSIVE) ||
-        *buffer_val_size != 0)
-      return logger_->status(
-          Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
-
-  // Check buffer size
-  if (check_null_buffers && buffer_val_size == nullptr)
-    return logger_->status(Status_QueryError(
-        "Cannot set buffer; " + name + " buffer size is null"));
-
-  // Check offset buffer
-  if (check_null_buffers && buffer_off == nullptr)
-    return logger_->status(Status_QueryError(
-        "Cannot set buffer; " + name + " offset buffer is null"));
-
-  // Check offset buffer size
-  if (check_null_buffers && buffer_off_size == nullptr)
-    return logger_->status(Status_QueryError(
-        "Cannot set buffer; " + name + " offset buffer size is null"));
-
-  // For easy reference
-  const bool is_dim = array_schema_->is_dim(name);
-  const bool is_attr = array_schema_->is_attr(name);
-
-  // Check that attribute/dimension exists
-  if (!is_dim && !is_attr)
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
-        "'"));
-
-  // Must not be nullable
-  if (array_schema_->is_nullable(name))
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer; Input attribute/dimension '") + name +
-        "' is nullable"));
-
-  // Check that attribute/dimension is var-sized
-  if (!array_schema_->var_size(name))
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer; Input attribute/dimension '") + name +
-        "' is fixed-sized"));
-
-  // Error if setting a new attribute/dimension after initialization
-  const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer for new attribute/dimension '") + name +
-        "' after initialization"));
-
-  if (is_dim &&
-      (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)) {
-    // Check number of coordinates
-    uint64_t coords_num = *buffer_off_size / constants::cell_var_offset_size;
-    if (coord_buffer_is_set_ && coords_num != coords_info_.coords_num_)
-      return logger_->status(Status_QueryError(
-          std::string("Cannot set buffer; Input buffer for dimension '") +
-          name +
-          "' has a different number of coordinates than previously "
-          "set coordinate buffers"));
-
-    coords_info_.coords_num_ = coords_num;
-    coord_buffer_is_set_ = true;
-    coords_info_.has_coords_ = true;
-  }
-
-  // Set attribute/dimension buffer
-  throw_if_not_ok(
-      buffers_[name].set_data_var_buffer(buffer_val, buffer_val_size));
-  throw_if_not_ok(
-      buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size));
-
-  return Status::Ok();
-}
-
-Status Query::set_buffer_vbytemap(
-    const std::string& name,
-    void* const buffer,
-    uint64_t* const buffer_size,
-    uint8_t* const buffer_validity_bytemap,
-    uint64_t* const buffer_validity_bytemap_size,
-    const bool check_null_buffers) {
-  // Convert the bytemap into a ValidityVector.
-  ValidityVector vv;
-  RETURN_NOT_OK(
-      vv.init_bytemap(buffer_validity_bytemap, buffer_validity_bytemap_size));
-
-  return set_buffer(
-      name, buffer, buffer_size, std::move(vv), check_null_buffers);
-}
-
-Status Query::set_buffer_vbytemap(
-    const std::string& name,
-    uint64_t* const buffer_off,
-    uint64_t* const buffer_off_size,
-    void* const buffer_val,
-    uint64_t* const buffer_val_size,
-    uint8_t* const buffer_validity_bytemap,
-    uint64_t* const buffer_validity_bytemap_size,
-    const bool check_null_buffers) {
-  // Convert the bytemap into a ValidityVector.
-  ValidityVector vv;
-  RETURN_NOT_OK(
-      vv.init_bytemap(buffer_validity_bytemap, buffer_validity_bytemap_size));
-
-  return set_buffer(
-      name,
-      buffer_off,
-      buffer_off_size,
-      buffer_val,
-      buffer_val_size,
-      std::move(vv),
-      check_null_buffers);
-}
-
-Status Query::set_buffer(
-    const std::string& name,
-    void* const buffer,
-    uint64_t* const buffer_size,
-    ValidityVector&& validity_vector,
-    const bool check_null_buffers) {
-  RETURN_NOT_OK(check_set_fixed_buffer(name));
-
-  // Check buffer
-  if (check_null_buffers && buffer == nullptr)
-    return logger_->status(
-        Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
-
-  // Check buffer size
-  if (check_null_buffers && buffer_size == nullptr)
-    return logger_->status(Status_QueryError(
-        "Cannot set buffer; " + name + " buffer size is null"));
-
-  // Check validity buffer offset
-  if (check_null_buffers && validity_vector.buffer() == nullptr)
-    return logger_->status(Status_QueryError(
-        "Cannot set buffer; " + name + " validity buffer is null"));
-
-  // Check validity buffer size
-  if (check_null_buffers && validity_vector.buffer_size() == nullptr)
-    return logger_->status(Status_QueryError(
-        "Cannot set buffer; " + name + " validity buffer size is null"));
-
-  // Must be an attribute
-  if (!array_schema_->is_attr(name))
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer; Buffer name '") + name +
-        "' is not an attribute"));
-
-  // Must be fixed-size
-  if (array_schema_->var_size(name))
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer; Input attribute '") + name +
-        "' is var-sized"));
-
-  // Must be nullable
-  if (!array_schema_->is_nullable(name))
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer; Input attribute '") + name +
-        "' is not nullable"));
-
-  // Error if setting a new attribute/dimension after initialization
-  const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer for new attribute '") + name +
-        "' after initialization"));
-
-  // Set attribute buffer
-  throw_if_not_ok(buffers_[name].set_data_buffer(buffer, buffer_size));
-  throw_if_not_ok(
-      buffers_[name].set_validity_buffer(std::move(validity_vector)));
-
-  return Status::Ok();
-}
-
-Status Query::set_buffer(
-    const std::string& name,
-    uint64_t* const buffer_off,
-    uint64_t* const buffer_off_size,
-    void* const buffer_val,
-    uint64_t* const buffer_val_size,
-    ValidityVector&& validity_vector,
-    const bool check_null_buffers) {
-  // Check query type
-  if (type_ != QueryType::READ && type_ != QueryType::WRITE &&
-      type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot set layout; Unsupported query type."));
-  }
-
-  // Check buffer
-  if (check_null_buffers && buffer_val == nullptr)
-    if ((type_ != QueryType::WRITE && type_ != QueryType::MODIFY_EXCLUSIVE) ||
-        *buffer_val_size != 0)
-      return logger_->status(
-          Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
-
-  // Check buffer size
-  if (check_null_buffers && buffer_val_size == nullptr)
-    return logger_->status(Status_QueryError(
-        "Cannot set buffer; " + name + " buffer size is null"));
-
-  // Check buffer offset
-  if (check_null_buffers && buffer_off == nullptr)
-    return logger_->status(Status_QueryError(
-        "Cannot set buffer; " + name + " offset buffer is null"));
-
-  // Check buffer offset size
-  if (check_null_buffers && buffer_off_size == nullptr)
-    return logger_->status(Status_QueryError(
-        "Cannot set buffer; " + name + " offset buffer size is null"));
-  ;
-
-  // Check validity buffer offset
-  if (check_null_buffers && validity_vector.buffer() == nullptr)
-    return logger_->status(Status_QueryError(
-        "Cannot set buffer; " + name + " validity buffer is null"));
-
-  // Check validity buffer size
-  if (check_null_buffers && validity_vector.buffer_size() == nullptr)
-    return logger_->status(Status_QueryError(
-        "Cannot set buffer; " + name + " validity buffer size is null"));
-
-  // Must be an attribute
-  if (!array_schema_->is_attr(name))
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer; Buffer name '") + name +
-        "' is not an attribute"));
-
-  // Must be var-size
-  if (!array_schema_->var_size(name))
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer; Input attribute '") + name +
-        "' is fixed-sized"));
-
-  // Must be nullable
-  if (!array_schema_->is_nullable(name))
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer; Input attribute '") + name +
-        "' is not nullable"));
-
-  // Error if setting a new attribute after initialization
-  const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
-    return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer for new attribute '") + name +
-        "' after initialization"));
-
-  // Set attribute/dimension buffer
-  throw_if_not_ok(
-      buffers_[name].set_data_var_buffer(buffer_val, buffer_val_size));
-  throw_if_not_ok(
-      buffers_[name].set_offsets_buffer(buffer_off, buffer_off_size));
   throw_if_not_ok(
       buffers_[name].set_validity_buffer(std::move(validity_vector)));
 

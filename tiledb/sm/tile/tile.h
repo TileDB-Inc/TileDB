@@ -188,6 +188,7 @@ class Tile : public TileBase {
    * @param zipped_coords_dim_num The number of dimensions in case the tile
    *      stores coordinates.
    * @param size The size of the tile.
+   * @param filtered_data Pointer to the external filtered data.
    * @param filtered_size The filtered size to allocate.
    */
   Tile(
@@ -196,7 +197,8 @@ class Tile : public TileBase {
       const uint64_t cell_size,
       const unsigned int zipped_coords_dim_num,
       const uint64_t size,
-      const uint64_t filtered_size);
+      void* filtered_data,
+      uint64_t filtered_size);
 
   /** Move constructor. */
   Tile(Tile&& tile);
@@ -226,14 +228,31 @@ class Tile : public TileBase {
    * `true`, the buffer contains the filtered, on-disk format of the tile.
    */
   inline bool filtered() const {
-    return filtered_buffer_.size() > 0;
+    return filtered_size_ > 0;
+  }
+
+  /** Returns the buffer that contains the filtered, on-disk format. */
+  inline char* filtered_data() {
+    return static_cast<char*>(filtered_data_);
+  }
+
+  /** Returns the data casted as a type. */
+  template <class T>
+  inline T* filtered_data_as() {
+    return static_cast<T*>(filtered_data_);
+  }
+
+  /** Clears the filtered buffer. */
+  void clear_filtered_buffer() {
+    filtered_data_ = nullptr;
+    filtered_size_ = 0;
   }
 
   /**
-   * Returns the buffer that contains the filtered, on-disk format.
+   * Returns the buffer size.
    */
-  inline FilteredBuffer& filtered_buffer() {
-    return filtered_buffer_;
+  inline uint64_t filtered_size() {
+    return filtered_size_;
   }
 
   /**
@@ -262,7 +281,10 @@ class Tile : public TileBase {
    * pipeline. Note that this buffer is _only_ accessed in the filtered()
    * public API, all other public API routines operate on 'buffer_'.
    */
-  FilteredBuffer filtered_buffer_;
+  void* filtered_data_;
+
+  /** The size of the filtered data. */
+  uint64_t filtered_size_;
 };
 
 /**

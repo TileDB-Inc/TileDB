@@ -702,11 +702,9 @@ class FragmentMetadata {
    *
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @param offset The file offset to be retrieved.
-   * @return Status
+   * @return The file offset to be retrieved.
    */
-  Status file_offset(
-      const std::string& name, uint64_t tile_idx, uint64_t* offset);
+  uint64_t file_offset(const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Retrieves the starting offset of the input tile of input attribute or
@@ -714,11 +712,9 @@ class FragmentMetadata {
    *
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @param offset The file offset to be retrieved.
-   * @return Status
+   * @return The file offset to be retrieved.
    */
-  Status file_var_offset(
-      const std::string& name, uint64_t tile_idx, uint64_t* offset);
+  uint64_t file_var_offset(const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Retrieves the starting offset of the input validity tile of the
@@ -726,11 +722,10 @@ class FragmentMetadata {
    *
    * @param name The input attribute.
    * @param tile_idx The index of the tile in the metadata.
-   * @param offset The file offset to be retrieved.
-   * @return Status
+   * @return The file offset to be retrieved.
    */
-  Status file_validity_offset(
-      const std::string& name, uint64_t tile_idx, uint64_t* offset);
+  uint64_t file_validity_offset(
+      const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Retrieves the size of the fragment metadata footer
@@ -756,7 +751,8 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Size.
    */
-  uint64_t persisted_tile_size(const std::string& name, uint64_t tile_idx);
+  uint64_t persisted_tile_size(
+      const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
@@ -767,7 +763,8 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Size.
    */
-  uint64_t persisted_tile_var_size(const std::string& name, uint64_t tile_idx);
+  uint64_t persisted_tile_var_size(
+      const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Retrieves the size of the validity tile when it is persisted (e.g. the size
@@ -778,7 +775,7 @@ class FragmentMetadata {
    * @return Size.
    */
   uint64_t persisted_tile_validity_size(
-      const std::string& name, uint64_t tile_idx);
+      const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Returns the (uncompressed) tile size for a given attribute or dimension

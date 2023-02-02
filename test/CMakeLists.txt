@@ -180,7 +180,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-gcs.cc
   src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
-  src/unit-lru_cache.cc
   src/unit-ordered-dim-label-reader.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
@@ -203,6 +202,9 @@ set(TILEDB_UNIT_TEST_SOURCES
 
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/test-cppapi-dense-array-dimension-label.cc
+    src/test-cppapi-dimension-label.cc
+    src/test-cppapi-subarray-labels.cc
     src/unit-cppapi-array.cc
     src/unit-cppapi-bitsort-filter.cc
     src/unit-cppapi-checksum.cc

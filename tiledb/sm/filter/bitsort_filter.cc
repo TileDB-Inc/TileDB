@@ -365,8 +365,7 @@ void BitSortFilter::run_reverse_dim_tile(
     Tile* dim_tile, std::vector<uint64_t>& cell_pos) const {
   // Obtain the pointer to the data the code modifies.
   uint64_t cell_num = cell_pos.size();
-  FilteredBuffer& filtered_buffer = dim_tile->filtered_buffer();
-  DimType* filtered_tile_data = filtered_buffer.data_as<DimType>();
+  DimType* filtered_tile_data = dim_tile->filtered_data_as<DimType>();
   DimType* unfiltered_tile_data = dim_tile->data_as<DimType>();
 
   // Write to the unfiltered tile.
@@ -375,7 +374,7 @@ void BitSortFilter::run_reverse_dim_tile(
   }
 
   // Clear out the filtered buffer.
-  filtered_buffer.clear();
+  dim_tile->clear_filtered_buffer();
 }
 
 BitSortFilter* BitSortFilter::clone_impl() const {
