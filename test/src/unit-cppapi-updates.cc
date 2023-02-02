@@ -186,7 +186,12 @@ TEST_CASE(
 
   // Submit query
   rc = test::submit_query_wrapper(
-      ctx, array_name, &query_w2, server_buffers_, serialized);
+      ctx,
+      array_name,
+      &query_w2,
+      server_buffers_,
+      serialized,
+      layout != TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
 
   array_w2.close();
