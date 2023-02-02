@@ -1740,14 +1740,8 @@ TEST_CASE_METHOD(
   // Conditionally consolidate and vacuum
   bool consolidate = GENERATE(true, false);
   bool vacuum = GENERATE(true, false);
-
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
+  serialize_ = GENERATE(true, false);
 #endif
 
   if (!consolidate && vacuum) {
