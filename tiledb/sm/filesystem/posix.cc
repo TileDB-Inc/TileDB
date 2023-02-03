@@ -443,8 +443,8 @@ Status Posix::read(
   Status st = read_all(fd, buffer, nbytes, offset);
   // Close file
   if (close(fd)) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot read from file; ") + strerror(errno)));
+    LOG_STATUS_NO_RETURN_VALUE(Status_IOError(
+        std::string("Cannot close file; ") + strerror(errno)));
   }
   return st;
 }
