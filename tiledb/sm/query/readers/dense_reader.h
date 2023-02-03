@@ -159,6 +159,15 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    */
   bool qc_coords_mode_;
 
+  /** Total memory budget. */
+  uint64_t memory_budget_;
+
+  /** Target memory budget for tiles. */
+  uint64_t tile_memory_budget_;
+
+  /** Memory tracker object for the array. */
+  MemoryTracker* array_memory_tracker_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -174,17 +183,33 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Initializes the read state. */
   void init_read_state();
 
+  /**
+   * Compute the result tiles to process on an iteration to respect the memory
+   * budget.
+   */
+  template <class DimType>
+  tuple<uint64_t, std::vector<ResultTile*>> compute_result_tiles(
+      const std::vector<std::string>& names,
+      const std::unordered_set<std::string>& condition_names,
+      Subarray& subarray,
+      uint64_t tc_start,
+      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles);
+
   /** Apply the query condition. */
   template <class DimType, class OffType>
-  tuple<Status, optional<std::vector<uint8_t>>> apply_query_condition(
+  Status apply_query_condition(
       Subarray& subarray,
+      const uint64_t tc_start,
+      const uint64_t tc_end,
+      const std::unordered_set<std::string>& condition_names,
       const std::vector<DimType>& tile_extents,
       std::vector<ResultTile*>& result_tiles,
       DynamicArray<Subarray>& tile_subarrays,
       std::vector<uint64_t>& tile_offsets,
       const std::vector<RangeInfo<DimType>>& range_info,
       std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
-      const uint64_t num_range_threads);
+      const uint64_t num_range_threads,
+      std::vector<uint8_t>& qc_result);
 
   /** Fix offsets buffer after reading all offsets. */
   template <class OffType>
@@ -200,6 +225,8 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::string& name,
       const std::vector<DimType>& tile_extents,
       const Subarray& subarray,
+      const uint64_t tc_start,
+      const uint64_t tc_end,
       const DynamicArray<Subarray>& tile_subarrays,
       const std::vector<uint64_t>& tile_offsets,
       const std::vector<RangeInfo<DimType>>& range_info,
