@@ -143,34 +143,15 @@ class ArrayDirectory {
     std::vector<URI> fragment_uris(
         const std::vector<URI>& fragments_list) const {
       std::vector<URI> uris;
-
-      // Use a FragmentSet for parsing large fragment lists
-      if (fragments_list.size() > 100) {
-        FragmentSet fragment_set = fragment_uris_to_set();
-        for (auto fragment : fragments_list) {
-          auto iter = fragment_set.find(fragment);
-          if (iter == fragment_set.end()) {
-            throw std::runtime_error(
-                "[ArrayDirectory::fragment_uris] " + fragment.to_string() +
-                " is not a fragment of the ArrayDirectory.");
-          } else {
-            uris.emplace_back(*iter);
-          }
-        }
-      } else {
-        for (auto fragment : fragments_list) {
-          for (auto uri : fragment_uris_) {
-            if (fragment == uri.uri_) {
-              uris.emplace_back(uri.uri_);
-              break;
-            } else {
-              if (uri == fragment_uris_.back()) {
-                throw std::runtime_error(
-                    "[ArrayDirectory::fragment_uris] " + fragment.to_string() +
-                    " is not a fragment of the ArrayDirectory.");
-              }
-            }
-          }
+      FragmentSet fragment_set = fragment_uris_to_set();
+      for (auto fragment : fragments_list) {
+        auto iter = fragment_set.find(fragment);
+        if (iter == fragment_set.end()) {
+          throw std::runtime_error(
+              "[ArrayDirectory::fragment_uris] " + fragment.to_string() +
+              " is not a fragment of the ArrayDirectory.");
+        } else {
+          uris.emplace_back(*iter);
         }
       }
       return uris;
@@ -205,8 +186,7 @@ class ArrayDirectory {
     /* ********************************* */
 
     /**
-     * Convert the filtered fragment URIs into a FragmentSet for parsing large
-     * amounts of fragments.
+     * Convert the filtered fragment URIs into a FragmentSet to ease parsing.
      *
      * Note: this function is private and may only be called internally.
      */
