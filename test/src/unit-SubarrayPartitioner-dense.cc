@@ -86,12 +86,6 @@ struct SubarrayPartitionerDenseFx {
   /** Helper function that writes to the default 2D array. */
   void write_default_2d_array();
 
-  /** Helper function that writes to the default 1D array. */
-  void read_array_default_1d_array(
-      std::string memory_budget,
-      std::string skip_unary_partitioning_budget_check,
-      bool expect_failure = false);
-
   /**
    * Helper function to test the subarray partitioner for the given arguments.
    */
@@ -313,93 +307,6 @@ void SubarrayPartitionerDenseFx::test_subarray_partitioner(
   CHECK(st.ok());
 
   check_partitions(subarray_partitioner, partitions, unsplittable);
-}
-
-void SubarrayPartitionerDenseFx::read_array_default_1d_array(
-    std::string memory_budget,
-    std::string skip_unary_partitioning_budget_check,
-    bool expect_failure) {
-  // Create TileDB context, set sm.skip_unary_partitioning_budget_check to true.
-  tiledb_config_t* config;
-  tiledb_error_t* error = nullptr;
-  int rc = tiledb_config_alloc(&config, &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  rc = tiledb_config_set(
-      config, "sm.memory_budget", memory_budget.c_str(), &error);
-  REQUIRE(error == nullptr);
-  rc = tiledb_config_set(
-      config,
-      "sm.skip_unary_partitioning_budget_check",
-      skip_unary_partitioning_budget_check.c_str(),
-      &error);
-  REQUIRE(error == nullptr);
-
-  tiledb_ctx_t* ctx;
-  rc = tiledb_ctx_alloc(config, &ctx);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Open array
-  tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx, array_name_.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-
-  // Compute max buffer sizes
-  uint64_t subarray[] = {1, 10};
-
-  // Prepare cell buffers
-  std::vector<int> a(10);
-  uint64_t a_size = 10 * sizeof(int);
-
-  // Create query
-  tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx, query, "a", a.data(), &a_size);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx, query, subarray);
-  CHECK(rc == TILEDB_OK);
-
-  // Submit query
-  rc = tiledb_query_submit(ctx, query);
-
-  if (expect_failure) {
-    REQUIRE(rc == TILEDB_ERR);
-
-    // Retrieve the last error that occurred
-    tiledb_error_t* err = NULL;
-    tiledb_ctx_get_last_error(ctx, &err);
-    const char* msg;
-    tiledb_error_message(err, &msg);
-    std::string message(msg);
-
-    // Make sure we get the right message on failure
-    CHECK(
-        message ==
-        "SubarrayPartitioner: Trying to partition a unary range because of "
-        "memory budget, this will cause the query to run very slow. Increase "
-        "`sm.memory_budget` and `sm.memory_budget_var` through the "
-        "configuration settings to avoid this issue. To override and run the "
-        "query with the same budget, set "
-        "`sm.skip_unary_partitioning_budget_check` to `true`.");
-  } else {
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx, query);
-    REQUIRE(rc == TILEDB_OK);
-  }
-
-  // Close array
-  rc = tiledb_array_close(ctx, array);
-  CHECK(rc == TILEDB_OK);
-
-  // Clean up
-  tiledb_array_free(&array);
-  tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
 }
 
 /* ********************************* */
@@ -2119,19 +2026,6 @@ TEST_CASE_METHOD(
     test_subarray_partitioner(
         subarray_layout, ranges, partitions, attr, budget, unsplittable);
   }
-
-  close_array(ctx_, array_);
-}
-
-TEST_CASE_METHOD(
-    SubarrayPartitionerDenseFx,
-    "SubarrayPartitioner (Dense): 1D, single-range, memory budget unary range "
-    "split",
-    "[SubarrayPartitioner][dense][memory-budget-unary-range-split]") {
-  create_default_1d_array(TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-  write_default_1d_array();
-  read_array_default_1d_array("1", "false", true);
-  read_array_default_1d_array("1", "true", false);
 
   close_array(ctx_, array_);
 }

@@ -104,14 +104,15 @@ const std::string Config::SM_CHECK_GLOBAL_ORDER = "true";
 const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_SKIP_UNARY_PARTITIONING_BUDGET_CHECK = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
-const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
+const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB
 const std::string Config::SM_QUERY_DENSE_QC_COORDS_MODE = "false";
 const std::string Config::SM_QUERY_DENSE_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
-const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";  // 10GB;
+const std::string Config::SM_TILE_MEMORY_BUDGET = "2147483648";  // 2GB
+const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";   // 10GB
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION =
     "0.25";
@@ -272,6 +273,7 @@ const std::map<std::string, std::string> default_config_values = {
         "sm.query.sparse_unordered_with_dups.reader",
         Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER),
     std::make_pair("sm.mem.malloc_trim", Config::SM_MEM_MALLOC_TRIM),
+    std::make_pair("sm.mem.tile_memory_budget", Config::SM_TILE_MEMORY_BUDGET),
     std::make_pair("sm.mem.total_budget", Config::SM_MEM_TOTAL_BUDGET),
     std::make_pair(
         "sm.mem.reader.sparse_global_order.ratio_coords",

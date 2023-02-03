@@ -223,8 +223,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    **Default**: refactored
  * - `sm.mem.malloc_trim` <br>
  *    Should malloc_trim be called on context and query destruction? This might
- * reduce residual memory usage. <br>
+ *    reduce residual memory usage. <br>
  *    **Default**: true
+ * - `sm.mem.tile_memory_budget` <br>
+ *    Tile memory budget, only respected in the dense reader for now. <br>
+ *    **Default**: 2GB
  * - `sm.mem.total_budget` <br>
  *    Memory budget for readers and writers. <br>
  *    **Default**: 10GB

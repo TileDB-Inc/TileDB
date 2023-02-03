@@ -410,6 +410,9 @@ class Config {
    *    Should malloc_trim be called on context and query destruction? This
    *    might reduce residual memory usage. <br>
    *    **Default**: true
+   * - `sm.mem.tile_memory_budget` <br>
+   *    Tile memory budget, only respected in the dense reader for now. <br>
+   *    **Default**: 2GB
    * - `sm.mem.total_budget` <br>
    *    Memory budget for readers and writers. <br>
    *    **Default**: 10GB
