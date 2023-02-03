@@ -1265,18 +1265,6 @@ const Config& StorageManagerCanonical::config() const {
   return config_;
 }
 
-Status StorageManagerCanonical::create_dir(const URI& uri) {
-  return vfs()->create_dir(uri);
-}
-
-Status StorageManagerCanonical::is_dir(const URI& uri, bool* is_dir) const {
-  return vfs()->is_dir(uri, is_dir);
-}
-
-Status StorageManagerCanonical::touch(const URI& uri) {
-  return vfs()->touch(uri);
-}
-
 void StorageManagerCanonical::decrement_in_progress() {
   std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
   queries_in_progress_--;
@@ -1401,11 +1389,6 @@ bool StorageManagerCanonical::is_array(const URI& uri) const {
   }
 
   // TODO: mark unreachable
-}
-
-Status StorageManagerCanonical::is_file(const URI& uri, bool* is_file) const {
-  RETURN_NOT_OK(vfs()->is_file(uri, is_file));
-  return Status::Ok();
 }
 
 Status StorageManagerCanonical::is_group(const URI& uri, bool* is_group) const {
@@ -1842,21 +1825,6 @@ Status StorageManagerCanonical::query_submit_async(Query* query) {
   return async_push_query(query);
 }
 
-Status StorageManagerCanonical::read(
-    const URI& uri, uint64_t offset, Buffer* buffer, uint64_t nbytes) const {
-  RETURN_NOT_OK(buffer->realloc(nbytes));
-  RETURN_NOT_OK(vfs()->read(uri, offset, buffer->data(), nbytes));
-  buffer->set_size(nbytes);
-  buffer->reset_offset();
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
-  RETURN_NOT_OK(vfs()->read(uri, offset, buffer, nbytes));
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::set_tag(
     const std::string& key, const std::string& value) {
   tags_[key] = value;
@@ -1888,9 +1856,10 @@ Status StorageManagerCanonical::store_group_detail(
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
   bool group_detail_dir_exists = false;
-  RETURN_NOT_OK(is_dir(group_detail_folder_uri, &group_detail_dir_exists));
+  RETURN_NOT_OK(
+      vfs()->is_dir(group_detail_folder_uri, &group_detail_dir_exists));
   if (!group_detail_dir_exists)
-    RETURN_NOT_OK(create_dir(group_detail_folder_uri));
+    RETURN_NOT_OK(vfs()->create_dir(group_detail_folder_uri));
 
   RETURN_NOT_OK(
       store_data_to_generic_tile(tile, *group_detail_uri, encryption_key));
@@ -1915,7 +1884,7 @@ Status StorageManagerCanonical::store_array_schema(
 
   // Delete file if it exists already
   bool exists;
-  RETURN_NOT_OK(is_file(schema_uri, &exists));
+  RETURN_NOT_OK(vfs()->is_file(schema_uri, &exists));
   if (exists)
     RETURN_NOT_OK(vfs()->remove_file(schema_uri));
 
@@ -1924,9 +1893,9 @@ Status StorageManagerCanonical::store_array_schema(
   bool schema_dir_exists = false;
   URI array_schema_dir_uri =
       array_schema->array_uri().join_path(constants::array_schema_dir_name);
-  RETURN_NOT_OK(is_dir(array_schema_dir_uri, &schema_dir_exists));
+  RETURN_NOT_OK(vfs()->is_dir(array_schema_dir_uri, &schema_dir_exists));
   if (!schema_dir_exists)
-    RETURN_NOT_OK(create_dir(array_schema_dir_uri));
+    RETURN_NOT_OK(vfs()->create_dir(array_schema_dir_uri));
 
   RETURN_NOT_OK(store_data_to_generic_tile(tile, schema_uri, encryption_key));
 
@@ -1972,18 +1941,10 @@ Status StorageManagerCanonical::store_data_to_generic_tile(
   Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
 
   if (st.ok()) {
-    st = close_file(uri);
+    st = vfs()->close_file(uri);
   }
 
   return st;
-}
-
-Status StorageManagerCanonical::close_file(const URI& uri) {
-  return vfs()->close_file(uri);
-}
-
-Status StorageManagerCanonical::sync(const URI& uri) {
-  return vfs()->sync(uri);
 }
 
 void StorageManagerCanonical::wait_for_zero_in_progress() {
@@ -2001,11 +1962,6 @@ Status StorageManagerCanonical::init_rest_client() {
   }
 
   return Status::Ok();
-}
-
-Status StorageManagerCanonical::write(
-    const URI& uri, void* data, uint64_t size) const {
-  return vfs()->write(uri, data, size);
 }
 
 shared_ptr<Logger> StorageManagerCanonical::logger() const {

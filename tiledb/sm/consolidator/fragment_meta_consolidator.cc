@@ -179,7 +179,7 @@ Status FragmentMetaConsolidator::consolidate(
   uint64_t nbytes = 0;
   RETURN_NOT_OK(tile_io.write_generic(&tile, enc_key, &nbytes));
   (void)nbytes;
-  RETURN_NOT_OK(storage_manager_->close_file(uri));
+  RETURN_NOT_OK(storage_manager_->vfs()->close_file(uri));
 
   return Status::Ok();
 }

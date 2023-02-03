@@ -629,7 +629,7 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
   auto status = parallel_for(
       storage_manager_->io_tp(), 0, file_uris.size(), [&](uint64_t i) {
         const auto& file_ur = file_uris[i];
-        RETURN_NOT_OK(storage_manager_->close_file(file_ur));
+        RETURN_NOT_OK(storage_manager_->vfs()->close_file(file_ur));
         return Status::Ok();
       });
 
@@ -797,7 +797,7 @@ Status WriterBase::create_fragment(
   // URI, and the commit directory.
   throw_if_not_ok(storage_manager_->vfs()->create_dir(
       array_dir.get_fragments_dir(write_version)));
-  throw_if_not_ok(storage_manager_->create_dir(fragment_uri_));
+  throw_if_not_ok(storage_manager_->vfs()->create_dir(fragment_uri_));
   throw_if_not_ok(storage_manager_->vfs()->create_dir(
       array_dir.get_commits_dir(write_version)));
 
@@ -1213,14 +1213,14 @@ Status WriterBase::write_tiles(
        ++i, ++tile_id) {
     auto& tile = (*tiles)[i];
     auto& t = var_size ? tile.offset_tile() : tile.fixed_tile();
-    RETURN_NOT_OK(storage_manager_->write(
+    RETURN_NOT_OK(storage_manager_->vfs()->write(
         *uri, t.filtered_buffer().data(), t.filtered_buffer().size()));
     frag_meta->set_tile_offset(name, tile_id, t.filtered_buffer().size());
     auto null_count = tile.null_count();
 
     if (var_size) {
       auto& t_var = tile.var_tile();
-      RETURN_NOT_OK(storage_manager_->write(
+      RETURN_NOT_OK(storage_manager_->vfs()->write(
           *var_uri,
           t_var.filtered_buffer().data(),
           t_var.filtered_buffer().size()));
@@ -1244,7 +1244,7 @@ Status WriterBase::write_tiles(
 
     if (nullable) {
       auto& t_val = tile.validity_tile();
-      RETURN_NOT_OK(storage_manager_->write(
+      RETURN_NOT_OK(storage_manager_->vfs()->write(
           *validity_uri,
           t_val.filtered_buffer().data(),
           t_val.filtered_buffer().size()));
@@ -1282,7 +1282,7 @@ Status WriterBase::write_tiles(
               storage_manager_->vfs()->flush_multipart_file_buffer(u));
         }
       } else {
-        RETURN_NOT_OK(storage_manager_->close_file(u));
+        RETURN_NOT_OK(storage_manager_->vfs()->close_file(u));
       }
     }
   }
