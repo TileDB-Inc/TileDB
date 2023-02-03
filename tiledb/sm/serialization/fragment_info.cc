@@ -337,6 +337,7 @@ Status fragment_info_from_capnp(
         (uint32_t)!f.has_consolidated_footer();
   }
 
+  fragment_info->loaded() = true;
   return Status::Ok();
 }
 

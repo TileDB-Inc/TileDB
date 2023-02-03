@@ -364,6 +364,11 @@ class FragmentInfo {
     return unconsolidated_metadata_num_;
   }
 
+  /** loaded_ accessor. */
+  inline bool& loaded() {
+    return loaded_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -408,6 +413,9 @@ class FragmentInfo {
   /** Timestamp end used in load. */
   uint64_t timestamp_end_;
 
+  /** Whether the fragment info have been loaded. */
+  bool loaded_ = false;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -424,6 +432,11 @@ class FragmentInfo {
    * Loads the fragment info from an array using the array directory.
    */
   Status load(const ArrayDirectory& array_directory);
+
+  /**
+   * Throws if the info have not been loaded.
+   */
+  void ensure_loaded() const;
 
   /**
    * Loads the fragment metadata of the input URI and returns a

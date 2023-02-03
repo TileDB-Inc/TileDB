@@ -103,6 +103,7 @@ void FragmentInfo::expand_anterior_ndrange(
 }
 
 void FragmentInfo::dump(FILE* out) const {
+  ensure_loaded();
   if (out == nullptr)
     out = stdout;
 
@@ -131,6 +132,7 @@ void FragmentInfo::dump(FILE* out) const {
 }
 
 Status FragmentInfo::get_dense(uint32_t fid, int32_t* dense) const {
+  ensure_loaded();
   if (dense == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot check if fragment is dense; Dense argument cannot be null"));
@@ -145,6 +147,7 @@ Status FragmentInfo::get_dense(uint32_t fid, int32_t* dense) const {
 }
 
 Status FragmentInfo::get_sparse(uint32_t fid, int32_t* sparse) const {
+  ensure_loaded();
   if (sparse == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot check if fragment is sparse; Sparse argument cannot be null"));
@@ -159,10 +162,12 @@ Status FragmentInfo::get_sparse(uint32_t fid, int32_t* sparse) const {
 }
 
 uint32_t FragmentInfo::fragment_num() const {
+  ensure_loaded();
   return (uint32_t)single_fragment_info_vec_.size();
 }
 
 Status FragmentInfo::get_cell_num(uint32_t fid, uint64_t* cell_num) const {
+  ensure_loaded();
   if (cell_num == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; Cell number argument cannot be null"));
@@ -177,6 +182,7 @@ Status FragmentInfo::get_cell_num(uint32_t fid, uint64_t* cell_num) const {
 }
 
 Status FragmentInfo::get_total_cell_num(uint64_t* cell_num) const {
+  ensure_loaded();
   if (cell_num == nullptr)
     return LOG_STATUS(
         Status_FragmentInfoError("Cell number argument cannot be null"));
@@ -198,6 +204,7 @@ Status FragmentInfo::get_total_cell_num(uint64_t* cell_num) const {
 }
 
 Status FragmentInfo::get_fragment_name(uint32_t fid, const char** name) const {
+  ensure_loaded();
   if (name == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment name; Name argument cannot be null"));
@@ -212,6 +219,7 @@ Status FragmentInfo::get_fragment_name(uint32_t fid, const char** name) const {
 }
 
 Status FragmentInfo::get_fragment_size(uint32_t fid, uint64_t* size) const {
+  ensure_loaded();
   if (size == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; Size argument cannot be null"));
@@ -226,6 +234,7 @@ Status FragmentInfo::get_fragment_size(uint32_t fid, uint64_t* size) const {
 }
 
 Status FragmentInfo::get_fragment_uri(uint32_t fid, const char** uri) const {
+  ensure_loaded();
   if (uri == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; URI argument cannot be null"));
@@ -240,6 +249,7 @@ Status FragmentInfo::get_fragment_uri(uint32_t fid, const char** uri) const {
 }
 
 Status FragmentInfo::get_to_vacuum_uri(uint32_t fid, const char** uri) const {
+  ensure_loaded();
   if (uri == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get URI of fragment to vacuum; URI argument cannot be null"));
@@ -255,6 +265,7 @@ Status FragmentInfo::get_to_vacuum_uri(uint32_t fid, const char** uri) const {
 
 Status FragmentInfo::get_timestamp_range(
     uint32_t fid, uint64_t* start, uint64_t* end) const {
+  ensure_loaded();
   if (start == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get timestamp range; Start argument cannot be null"));
@@ -276,6 +287,7 @@ Status FragmentInfo::get_timestamp_range(
 
 Status FragmentInfo::get_non_empty_domain(
     uint32_t fid, uint32_t did, void* domain) const {
+  ensure_loaded();
   if (domain == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain; Domain argument cannot be null"));
@@ -304,6 +316,7 @@ Status FragmentInfo::get_non_empty_domain(
 
 Status FragmentInfo::get_non_empty_domain(
     uint32_t fid, const char* dim_name, void* domain) const {
+  ensure_loaded();
   if (fid >= fragment_num())
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain; Invalid fragment index"));
@@ -337,6 +350,7 @@ Status FragmentInfo::get_non_empty_domain_var_size(
     uint32_t did,
     uint64_t* start_size,
     uint64_t* end_size) const {
+  ensure_loaded();
   if (start_size == nullptr)
     return LOG_STATUS(
         Status_FragmentInfoError("Cannot get non-empty domain var size; Start "
@@ -374,6 +388,7 @@ Status FragmentInfo::get_non_empty_domain_var_size(
     const char* dim_name,
     uint64_t* start_size,
     uint64_t* end_size) const {
+  ensure_loaded();
   if (fid >= fragment_num())
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get var-sized non-empty domain; Invalid fragment index"));
@@ -406,6 +421,7 @@ Status FragmentInfo::get_non_empty_domain_var_size(
 
 Status FragmentInfo::get_non_empty_domain_var(
     uint32_t fid, uint32_t did, void* start, void* end) const {
+  ensure_loaded();
   if (start == nullptr)
     return LOG_STATUS(
         Status_FragmentInfoError("Cannot get non-empty domain var; Domain "
@@ -441,6 +457,7 @@ Status FragmentInfo::get_non_empty_domain_var(
 
 Status FragmentInfo::get_non_empty_domain_var(
     uint32_t fid, const char* dim_name, void* start, void* end) const {
+  ensure_loaded();
   if (fid >= fragment_num())
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain var; Invalid fragment index"));
@@ -472,6 +489,7 @@ Status FragmentInfo::get_non_empty_domain_var(
 }
 
 Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) {
+  ensure_loaded();
   if (mbr_num == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; MBR number argument cannot be null"));
@@ -494,6 +512,7 @@ Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) {
 
 Status FragmentInfo::get_mbr(
     uint32_t fid, uint32_t mid, uint32_t did, void* mbr) {
+  ensure_loaded();
   if (mbr == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get MBR; mbr argument cannot be null"));
@@ -534,6 +553,7 @@ Status FragmentInfo::get_mbr(
 
 Status FragmentInfo::get_mbr(
     uint32_t fid, uint32_t mid, const char* dim_name, void* mbr) {
+  ensure_loaded();
   if (fid >= fragment_num())
     return LOG_STATUS(
         Status_FragmentInfoError("Cannot get MBR; Invalid fragment index"));
@@ -568,6 +588,7 @@ Status FragmentInfo::get_mbr_var_size(
     uint32_t did,
     uint64_t* start_size,
     uint64_t* end_size) {
+  ensure_loaded();
   if (start_size == nullptr)
     return LOG_STATUS(
         Status_FragmentInfoError("Cannot get MBR var size; Start "
@@ -617,6 +638,7 @@ Status FragmentInfo::get_mbr_var_size(
     const char* dim_name,
     uint64_t* start_size,
     uint64_t* end_size) {
+  ensure_loaded();
   if (fid >= fragment_num())
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get MBR var size; Invalid fragment index"));
@@ -648,6 +670,7 @@ Status FragmentInfo::get_mbr_var_size(
 
 Status FragmentInfo::get_mbr_var(
     uint32_t fid, uint32_t mid, uint32_t did, void* start, void* end) {
+  ensure_loaded();
   if (start == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get MBR var; Start argument cannot be null"));
@@ -693,6 +716,7 @@ Status FragmentInfo::get_mbr_var(
 
 Status FragmentInfo::get_mbr_var(
     uint32_t fid, uint32_t mid, const char* dim_name, void* start, void* end) {
+  ensure_loaded();
   if (fid >= fragment_num())
     return LOG_STATUS(
         Status_FragmentInfoError("Cannot get MBR var; Invalid fragment index"));
@@ -724,6 +748,7 @@ Status FragmentInfo::get_mbr_var(
 }
 
 Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
+  ensure_loaded();
   if (version == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get version; Version argument cannot be null"));
@@ -739,6 +764,7 @@ Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
 
 tuple<Status, optional<shared_ptr<ArraySchema>>> FragmentInfo::get_array_schema(
     uint32_t fid) {
+  ensure_loaded();
   if (fid >= fragment_num())
     return {
         LOG_STATUS(Status_FragmentInfoError(
@@ -761,6 +787,7 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> FragmentInfo::get_array_schema(
 
 Status FragmentInfo::get_array_schema_name(
     uint32_t fid, const char** schema_name) {
+  ensure_loaded();
   if (schema_name == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get array schema URI; schema name argument cannot be null"));
@@ -781,6 +808,7 @@ Status FragmentInfo::get_array_schema_name(
 
 Status FragmentInfo::has_consolidated_metadata(
     uint32_t fid, int32_t* has) const {
+  ensure_loaded();
   if (has == nullptr)
     return LOG_STATUS(
         Status_FragmentInfoError("Cannot check if fragment has consolidated "
@@ -939,7 +967,14 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
     unconsolidated_metadata_num_ += (uint32_t)!f.has_consolidated_footer();
   }
 
+  loaded_ = true;
   return Status::Ok();
+}
+
+void FragmentInfo::ensure_loaded() const {
+  if (!loaded_) {
+    throw Status_FragmentInfoError("Fragment info has not been loaded.");
+  }
 }
 
 Status FragmentInfo::load_and_replace(
