@@ -357,6 +357,8 @@ TEST_CASE(
   size_t name_length;
   rc = tiledb_string_view(name, &name_ptr, &name_length);
   CHECK(rc == TILEDB_OK);
+  CHECK(name_ptr != nullptr);
+  CHECK(name_length > 0);
   rc = tiledb_string_free(&name);
   CHECK(rc == TILEDB_OK);
 

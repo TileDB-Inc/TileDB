@@ -5031,6 +5031,11 @@ int32_t tiledb_fragment_info_get_fragment_name(
       sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  LOG_WARN(
+      "tiledb_fragment_info_get_fragment_name is deprecated. Please use "
+      "tiledb_fragment_info_get_fragment_name_v2 instead.");
+  // This will leak the string but as a temporary solution until
+  // this deprecated function is removed.
   *name = (new std::string(fragment_info->fragment_info_->fragment_name(fid)))
               ->c_str();
 
@@ -5042,11 +5047,13 @@ int32_t tiledb_fragment_info_get_fragment_name_v2(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     tiledb_string_t** name) {
-  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
 
-  if (name == nullptr)
+  if (name == nullptr) {
     throw std::invalid_argument("Name cannot be null.");
+  }
 
   *name = tiledb_string_handle_t::make_handle(
       fragment_info->fragment_info_->fragment_name(fid));
