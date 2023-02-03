@@ -1289,10 +1289,8 @@ Status Query::set_data_buffer(
     // Set dimension label buffer on the appropriate buffer depending if the
     // label is fixed or variable length.
     array_schema_->dimension_label_reference(name).is_var() ?
-        throw_if_not_ok(
-            label_buffers_[name].set_data_var_buffer(buffer, buffer_size)) :
-        throw_if_not_ok(
-            label_buffers_[name].set_data_buffer(buffer, buffer_size));
+        label_buffers_[name].set_data_var_buffer(buffer, buffer_size) :
+        label_buffers_[name].set_data_buffer(buffer, buffer_size);
     return Status::Ok();
   }
 
@@ -1361,10 +1359,10 @@ Status Query::set_data_buffer(
   // Set attribute/dimension buffer on the appropriate buffer
   if (!array_schema_->var_size(name))
     // Fixed size data buffer
-    throw_if_not_ok(buffers_[name].set_data_buffer(buffer, buffer_size));
+    buffers_[name].set_data_buffer(buffer, buffer_size);
   else
     // Var sized data buffer
-    throw_if_not_ok(buffers_[name].set_data_var_buffer(buffer, buffer_size));
+    buffers_[name].set_data_var_buffer(buffer, buffer_size);
 
   return Status::Ok();
 }
@@ -1410,8 +1408,8 @@ Status Query::set_offsets_buffer(
     }
 
     // Set dimension label offsets buffers.
-    throw_if_not_ok(label_buffers_[name].set_offsets_buffer(
-        buffer_offsets, buffer_offsets_size));
+    label_buffers_[name].set_offsets_buffer(
+        buffer_offsets, buffer_offsets_size);
     return Status::Ok();
   }
 
@@ -1461,8 +1459,7 @@ Status Query::set_offsets_buffer(
   has_coords_buffer_ |= is_dim;
 
   // Set attribute/dimension buffer
-  throw_if_not_ok(
-      buffers_[name].set_offsets_buffer(buffer_offsets, buffer_offsets_size));
+  buffers_[name].set_offsets_buffer(buffer_offsets, buffer_offsets_size);
 
   return Status::Ok();
 }
@@ -1507,8 +1504,7 @@ Status Query::set_validity_buffer(
         "' after initialization"));
 
   // Set attribute/dimension buffer
-  throw_if_not_ok(
-      buffers_[name].set_validity_buffer(std::move(validity_vector)));
+  buffers_[name].set_validity_buffer(std::move(validity_vector));
 
   return Status::Ok();
 }
