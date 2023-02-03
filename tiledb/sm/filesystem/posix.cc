@@ -69,22 +69,22 @@ bool Posix::both_slashes(char a, char b) {
   return a == '/' && b == '/';
 }
 
-uint64_t Posix::read_all(
-    int fd, void* buffer, uint64_t nbytes, uint64_t offset, bool& failed) {
-  failed = false;
+Status Posix::read_all(int fd, void* buffer, uint64_t nbytes, uint64_t offset) {
   auto bytes = reinterpret_cast<char*>(buffer);
   uint64_t nread = 0;
   do {
     ssize_t actual_read =
         ::pread(fd, bytes + nread, nbytes - nread, offset + nread);
-    if (actual_read <= 0) {
-      failed = actual_read == -1;
-      break;
+    if (actual_read < 0) {
+      return LOG_STATUS(
+          Status_IOError(std::string("POSIX read error: ") + strerror(errno)));
+    } else if (actual_read == 0) {
+      return LOG_STATUS(Status_IOError("POSIX incomplete read: EOF reached"));
     }
     nread += actual_read;
   } while (nread < nbytes);
 
-  return nread;
+  return Status::Ok();
 }
 
 void Posix::adjacent_slashes_dedup(std::string* path) {
@@ -440,20 +440,13 @@ Status Posix::read(
         std::string("Cannot read from file ' ") + path +
         "'; nbytes > SSIZE_MAX"));
   }
-  bool failed = false;
-  uint64_t bytes_read = read_all(fd, buffer, nbytes, offset, failed);
-  if (bytes_read != nbytes) {
-    std::string reason =
-        failed ? std::string(strerror(errno)) : "File was too small";
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot read from file '") + path + "'; " + reason));
-  }
+  Status st = read_all(fd, buffer, nbytes, offset);
   // Close file
   if (close(fd)) {
     return LOG_STATUS(Status_IOError(
         std::string("Cannot read from file; ") + strerror(errno)));
   }
-  return Status::Ok();
+  return st;
 }
 
 Status Posix::sync(const std::string& path) {
