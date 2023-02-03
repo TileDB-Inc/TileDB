@@ -398,9 +398,6 @@ const std::string filter_scale_float_str = "SCALE_FLOAT";
 /** String describing FILTER_XOR. */
 const std::string filter_xor_str = "XOR";
 
-/** String describing FILTER_BITSORT. */
-const std::string filter_bitsort_str = "BITSORT";
-
 /** String describing FILTER_WEBP. */
 const std::string filter_webp_str = "WEBP";
 

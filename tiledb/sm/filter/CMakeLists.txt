@@ -121,19 +121,6 @@ commence(object_library xor_filter)
 conclude(object_library)
 
 #
-# `bitsort_filters` object library
-#
-add_library(bitsort_filters OBJECT bitsort_filter.cc)
-target_link_libraries(bitsort_filters PUBLIC filter $<TARGET_OBJECTS:filter>)
-target_link_libraries(bitsort_filters PUBLIC tile $<TARGET_OBJECTS:tile>)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_bitsort_filters EXCLUDE_FROM_ALL)
-target_link_libraries(compile_bitsort_filters PRIVATE bitsort_filters)
-target_sources(compile_bitsort_filters PRIVATE test/compile_bitsort_filter_main.cc)
-
-#
 # `webp_filter` object library.
 #
 #add_library(webp_filter OBJECT webp_filter.cc)
@@ -171,7 +158,7 @@ commence(object_library all_filters)
         bit_width_reduction_filter.cc noop_filter.cc positive_delta_filter.cc)
     this_target_object_libraries(bitshuffle_filter byteshuffle_filter
         checksum_filters compression_filter encryption_filters float_scaling_filter
-        xor_filter bitsort_filters webp_filter)
+        xor_filter webp_filter)
 conclude(object_library)
 
 #

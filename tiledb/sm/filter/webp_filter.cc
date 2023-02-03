@@ -52,7 +52,7 @@ namespace tiledb::sm {
 
 Status WebpFilter::run_forward(
     const WriterTile&,
-    void* const,
+    WriterTile* const,
     FilterBuffer*,
     FilterBuffer*,
     FilterBuffer*,
@@ -62,7 +62,7 @@ Status WebpFilter::run_forward(
 
 Status WebpFilter::run_reverse(
     const Tile&,
-    void* const,
+    Tile* const,
     FilterBuffer*,
     FilterBuffer*,
     FilterBuffer*,
@@ -99,7 +99,7 @@ namespace tiledb::sm {
 
 Status WebpFilter::run_forward(
     const WriterTile&,
-    void* const,
+    WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -214,7 +214,7 @@ Status WebpFilter::run_forward(
 
 Status WebpFilter::run_reverse(
     const Tile& tile,
-    void* const,
+    Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

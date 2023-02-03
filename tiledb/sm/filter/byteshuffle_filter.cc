@@ -60,7 +60,7 @@ void ByteshuffleFilter::dump(FILE* out) const {
 
 Status ByteshuffleFilter::run_forward(
     const WriterTile& tile,
-    void* const,
+    WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -109,7 +109,7 @@ Status ByteshuffleFilter::shuffle_part(
 
 Status ByteshuffleFilter::run_reverse(
     const Tile& tile,
-    void*,
+    Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

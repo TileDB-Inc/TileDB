@@ -95,7 +95,6 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , buffers_full_(false)
     , deletes_consolidation_no_purge_(
           buffers_.count(constants::delete_timestamps) != 0)
-    , bitsort_attribute_(array_schema_.bitsort_filter_attr())
     , partial_tile_offsets_loading_(false) {
 }
 
@@ -312,12 +311,6 @@ std::pair<uint64_t, uint64_t> SparseIndexReaderBase::get_coord_tiles_size(
         fragment_metadata_[f]->cell_num(t) * constants::timestamp_size;
   }
 
-  // Compute bitsort attribute tile size.
-  if (bitsort_attribute_.has_value()) {
-    // Calculate memory consumption for this tile.
-    tiles_size += get_attribute_tile_size(bitsort_attribute_.value(), f, t);
-  }
-
   // Compute query condition tile sizes.
   uint64_t tiles_size_qc = 0;
   if (!qc_loaded_attr_names_.empty()) {
@@ -531,7 +524,7 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
     const std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("read_and_unfilter_coords");
 
-  if (include_coords_ && !bitsort_attribute_.has_value()) {
+  if (include_coords_) {
     // Read and unfilter zipped coordinate tiles. Note that
     // this will ignore fragments with a version >= 5.
     RETURN_CANCEL_OR_ERROR(
@@ -547,13 +540,7 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
   std::vector<std::string> attr_to_load;
   attr_to_load.reserve(
       1 + deletes_consolidation_no_purge_ + use_timestamps_ +
-      qc_loaded_attr_names_.size() +
-      bitsort_attribute_.has_value() * (1 + dim_names_.size()));
-  if (bitsort_attribute_.has_value()) {
-    attr_to_load.emplace_back(bitsort_attribute_.value());
-    std::copy(
-        dim_names_.begin(), dim_names_.end(), std::back_inserter(attr_to_load));
-  }
+      qc_loaded_attr_names_.size());
   if (use_timestamps_) {
     attr_to_load.emplace_back(constants::timestamps);
   }

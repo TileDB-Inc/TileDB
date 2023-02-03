@@ -206,7 +206,6 @@ if (TILEDB_CPP_API)
     src/test-cppapi-dimension-label.cc
     src/test-cppapi-subarray-labels.cc
     src/unit-cppapi-array.cc
-    src/unit-cppapi-bitsort-filter.cc
     src/unit-cppapi-checksum.cc
     src/unit-cppapi-config.cc
     src/unit-cppapi-consolidation-sparse.cc
