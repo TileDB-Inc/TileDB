@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -3951,51 +3951,6 @@ TILEDB_EXPORT int32_t tiledb_array_open(
     tiledb_query_type_t query_type) TILEDB_NOEXCEPT;
 
 /**
- * Similar to `tiledb_array_open_with_key`, but this function takes as
- * input a timestamp, representing time in milliseconds ellapsed since
- * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
- * timestamp provides a view of the array with all writes/updates that
- * happened at or before `timestamp` (i.e., excluding those that
- * occurred after `timestamp`). This function is useful to ensure
- * consistency at a potential distributed setting, where machines
- * need to operate on the same view of the array.
- *
- * **Example:**
- *
- * @code{.c}
- * // Load AES-256 key from disk, environment variable, etc.
- * uint8_t key[32] = ...;
- * tiledb_array_t* array;
- * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
- * // Assuming `timestamp` is time represented in milliseconds:
- * tiledb_array_open_at_with_key(ctx, array, TILEDB_READ,
- *     TILEDB_AES_256_GCM, key, sizeof(key), timestamp);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The array object to be opened.
- * @param query_type The type of queries the array object will be receiving.
- * @param encryption_type The encryption type to use.
- * @param encryption_key The encryption key to use.
- * @param key_length Length in bytes of the encryption key.
- * @param timestamp The timestamp to open the array at.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note If the same array object is opened again without being closed,
- *     an error will be thrown.
- * @note This function is applicable only to read queries.
- * @note The config should be set before opening an array.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_open_at_with_key(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    uint64_t timestamp) TILEDB_NOEXCEPT;
-
-/**
  * Checks if the array is open.
  *
  * @param ctx The TileDB context.
@@ -4046,10 +4001,10 @@ tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) TILEDB_NOEXCEPT;
  * @code{.c}
  * tiledb_array_t* array;
  * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
- * tiledb_array_open(ctx, array, TILEDB_READ);
  * // Set the config for the given array.
  * tiledb_config_t* config;
  * tiledb_array_set_config(ctx, array, config);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -4057,8 +4012,6 @@ tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) TILEDB_NOEXCEPT;
  * @param config The config to be set.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
- * @note The array does not need to be opened via `tiledb_array_open_at` to use
- *      this function.
  * @note The config should be set before opening an array.
  */
 TILEDB_EXPORT int32_t tiledb_array_set_config(

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -226,12 +226,14 @@ void DeletesFx::write_sparse(
         ctx_,
         SPARSE_ARRAY_NAME,
         TILEDB_WRITE,
-        enc_type_,
-        std::string(key_),
-        timestamp);
+        TemporalPolicy(TimeTravel, timestamp),
+        EncryptionAlgorithm(AESGCM, key_.c_str()));
   } else {
     array = std::make_unique<Array>(
-        ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE, timestamp);
+        ctx_,
+        SPARSE_ARRAY_NAME,
+        TILEDB_WRITE,
+        TemporalPolicy(TimeTravel, timestamp));
   }
 
   // Create query.
@@ -307,12 +309,14 @@ void DeletesFx::read_sparse(
         ctx_,
         SPARSE_ARRAY_NAME,
         TILEDB_READ,
-        enc_type_,
-        std::string(key_),
-        timestamp);
+        TemporalPolicy(TimeTravel, timestamp),
+        EncryptionAlgorithm(AESGCM, key_.c_str()));
   } else {
     array = std::make_unique<Array>(
-        ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
+        ctx_,
+        SPARSE_ARRAY_NAME,
+        TILEDB_READ,
+        TemporalPolicy(TimeTravel, timestamp));
   }
 
   // Create query.
@@ -377,12 +381,14 @@ void DeletesFx::write_delete_condition(
         ctx_,
         SPARSE_ARRAY_NAME,
         TILEDB_DELETE,
-        enc_type_,
-        std::string(key_),
-        timestamp);
+        TemporalPolicy(TimeTravel, timestamp),
+        EncryptionAlgorithm(AESGCM, key_.c_str()));
   } else {
     array = std::make_unique<Array>(
-        ctx_, SPARSE_ARRAY_NAME, TILEDB_DELETE, timestamp);
+        ctx_,
+        SPARSE_ARRAY_NAME,
+        TILEDB_DELETE,
+        TemporalPolicy(TimeTravel, timestamp));
   }
 
   // Create query.
@@ -412,12 +418,14 @@ void DeletesFx::check_delete_conditions(
         ctx_,
         SPARSE_ARRAY_NAME,
         TILEDB_READ,
-        enc_type_,
-        std::string(key_),
-        timestamp);
+        TemporalPolicy(TimeTravel, timestamp),
+        EncryptionAlgorithm(AESGCM, key_.c_str()));
   } else {
     array = std::make_unique<Array>(
-        ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
+        ctx_,
+        SPARSE_ARRAY_NAME,
+        TILEDB_READ,
+        TemporalPolicy(TimeTravel, timestamp));
   }
   auto array_ptr = array->ptr()->array_;
 

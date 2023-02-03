@@ -225,8 +225,6 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_open_at_with_key
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_is_open
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_reopen

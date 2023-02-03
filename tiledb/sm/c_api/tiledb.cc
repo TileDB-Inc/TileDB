@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -2964,29 +2964,6 @@ int32_t tiledb_array_open(
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_open_at_with_key(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    uint64_t timestamp) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Open array
-  throw_if_not_ok(array->array_->open(
-      static_cast<tiledb::sm::QueryType>(query_type),
-      0,
-      timestamp,
-      static_cast<tiledb::sm::EncryptionType>(encryption_type),
-      encryption_key,
-      key_length));
 
   return TILEDB_OK;
 }
@@ -7019,24 +6996,6 @@ int32_t tiledb_array_open(
     tiledb_array_t* array,
     tiledb_query_type_t query_type) noexcept {
   return api_entry<tiledb::api::tiledb_array_open>(ctx, array, query_type);
-}
-
-int32_t tiledb_array_open_at_with_key(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    uint64_t timestamp) noexcept {
-  return api_entry<tiledb::api::tiledb_array_open_at_with_key>(
-      ctx,
-      array,
-      query_type,
-      encryption_type,
-      encryption_key,
-      key_length,
-      timestamp);
 }
 
 int32_t tiledb_array_is_open(

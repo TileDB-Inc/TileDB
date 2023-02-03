@@ -38,6 +38,7 @@ Configuration:
                                     ['"${default_dependency}"']
     --force-build-all-deps          force building of all dependencies, even those
                                     already installed at system-level
+    --remove-deprecations           build TileDB without any deprecated APIs
     --disable-werror                disables use of -Werror during build
     --disable-cpp-api               disables building of the TileDB C++ API
     --disable-tests                 disables building the TileDB tests
@@ -95,6 +96,7 @@ tiledb_werror="ON"
 tiledb_tests="ON"
 tiledb_cpp_api="ON"
 tiledb_force_all_deps="OFF"
+tiledb_remove_deprecations="OFF"
 tiledb_stats="ON"
 tiledb_static="OFF"
 tiledb_disable_avx2=""
@@ -115,6 +117,7 @@ while test $# != 0; do
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
     --force-build-all-deps) tiledb_force_all_deps="ON";;
+    --remove-deprecations) tiledb_remove_deprecations="ON";;
     --disable-werror) tiledb_werror="OFF";;
     --disable-tests) tiledb_tests="OFF";;
     --disable-cpp-api) tiledb_cpp_api="OFF";;
@@ -227,6 +230,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_WEBP=${tiledb_build_webp} \
     -DTILEDB_ABSEIL=${tiledb_build_abseil} \
     -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
+    -DTILEDB_REMOVE_DEPRECATIONS=${tiledb_remove_deprecations} \
     -DSANITIZER="${sanitizer}" \
     -DTILEDB_EXPERIMENTAL_FEATURES=${tiledb_experimental_features} \
     ${tiledb_disable_avx2} \

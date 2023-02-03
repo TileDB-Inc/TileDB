@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2021 TileDB, Inc.
+# Copyright (c) 2017-2023 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -110,6 +110,7 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 option(TILEDB_SUPERBUILD "If true, perform a superbuild (builds all missing dependencies)." ON)
 option(TILEDB_FORCE_ALL_DEPS "If true, force superbuild to download and build all dependencies, even those installed on the system." OFF)
+option(TILEDB_REMOVE_DEPRECATIONS "If true, do not build deprecated APIs." OFF)
 option(TILEDB_VERBOSE "Prints TileDB errors with verbosity" OFF)
 option(TILEDB_S3 "Enables S3/minio support using aws-cpp-sdk" OFF)
 option(TILEDB_AZURE "Enables Azure Storage support using azure-storage-cpp" OFF)

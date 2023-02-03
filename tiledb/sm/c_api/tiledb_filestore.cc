@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -174,9 +174,11 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
   }
 
   // Sync up the fragment timestamp and metadata timestamp
-  uint64_t time_now = tiledb_timestamp_now_ms();
   Array array(
-      context, std::string(filestore_array_uri), TILEDB_WRITE, time_now);
+      context,
+      std::string(filestore_array_uri),
+      TILEDB_WRITE,
+      TemporalPolicy(TimeTravel, tiledb_timestamp_now_ms()));
 
   // Detect mimetype and encoding with libmagic
   uint64_t size = std::min(file_size, static_cast<uint64_t>(1024));
@@ -445,9 +447,11 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
   Context context(ctx, false);
 
   // Sync up the fragment timestamp and metadata timestamp
-  uint64_t time_now = tiledb_timestamp_now_ms();
   Array array(
-      context, std::string(filestore_array_uri), TILEDB_WRITE, time_now);
+      context,
+      std::string(filestore_array_uri),
+      TILEDB_WRITE,
+      TemporalPolicy(TimeTravel, tiledb_timestamp_now_ms()));
 
   // Detect mimetype and encoding with libmagic
   uint64_t s = std::min(size, static_cast<size_t>(1024));
