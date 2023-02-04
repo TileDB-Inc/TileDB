@@ -316,8 +316,7 @@ void WriterBase::check_var_attr_offsets() const {
   }
 }
 
-Status WriterBase::initialize_memory_budget() {
-  return Status::Ok();
+void WriterBase::initialize_memory_budget() {
 }
 
 /* ****************************** */

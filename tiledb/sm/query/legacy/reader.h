@@ -100,7 +100,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
   QueryStatusDetailsReason status_incomplete_reason() const;
 
   /** Initialize the memory budget variables. */
-  Status initialize_memory_budget();
+  void initialize_memory_budget();
 
   /** Returns the current read state. */
   const ReadState* read_state() const;
