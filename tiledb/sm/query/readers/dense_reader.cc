@@ -110,6 +110,9 @@ DenseReader::DenseReader(
   // Check subarray.
   check_subarray();
 
+  // Initialize memory budget.
+  initialize_memory_budget();
+
   // Initialize the read state.
   init_read_state();
 
@@ -130,8 +133,23 @@ QueryStatusDetailsReason DenseReader::status_incomplete_reason() const {
                         QueryStatusDetailsReason::REASON_NONE;
 }
 
-Status DenseReader::initialize_memory_budget() {
-  return Status::Ok();
+void DenseReader::initialize_memory_budget() {
+  // Get config values.
+  bool found = false;
+  throw_if_not_ok(
+      config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found));
+  assert(found);
+  throw_if_not_ok(config_.get<uint64_t>(
+      "sm.mem.tile_memory_budget", &tile_memory_budget_, &found));
+  assert(found);
+
+  // Validate memory budget values.
+  if (tile_memory_budget_ > memory_budget_) {
+    throw DenseReaderStatusException("sm.tile_memory_budget > sm.total_budget");
+  }
+
+  // Set the memory budget for the array
+  array_memory_tracker_->set_budget(memory_budget_ - tile_memory_budget_);
 }
 
 const DenseReader::ReadState* DenseReader::read_state() const {
@@ -492,27 +510,6 @@ void DenseReader::init_read_state() {
 
   // Get config values.
   bool found = false;
-  if (!config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found)
-           .ok()) {
-    throw DenseReaderStatusException("Cannot get setting");
-  }
-  assert(found);
-  if (!config_
-           .get<uint64_t>(
-               "sm.mem.tile_memory_budget", &tile_memory_budget_, &found)
-           .ok()) {
-    throw DenseReaderStatusException("Cannot get setting");
-  }
-  assert(found);
-
-  // Validate memory budget values.
-  if (tile_memory_budget_ > memory_budget_) {
-    throw DenseReaderStatusException("sm.tile_memory_budget > sm.total_budget");
-  }
-
-  // Set the memory budget for the array data.
-  array_memory_tracker_->set_budget(memory_budget_ - tile_memory_budget_);
-
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {

@@ -1249,8 +1249,9 @@ Status Query::set_config(const Config& config) {
   config_ = config;
 
   // Refresh memory budget configuration.
-  if (strategy_ != nullptr)
-    RETURN_NOT_OK(strategy_->initialize_memory_budget());
+  if (strategy_ != nullptr) {
+    strategy_->initialize_memory_budget();
+  }
 
   // Set subarray's config for backwards compatibility
   // Users expect the query config to effect the subarray based on existing

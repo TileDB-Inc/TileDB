@@ -88,7 +88,7 @@ class DeletesAndUpdates : public StrategyBase, public IQueryStrategy {
   }
 
   /** Initialize the memory budget variables. */
-  Status initialize_memory_budget();
+  void initialize_memory_budget();
 
   /** Performs a delete query using its set members. */
   Status dowork();

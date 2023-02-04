@@ -161,8 +161,7 @@ QueryStatusDetailsReason OrderedDimLabelReader::status_incomplete_reason()
   return QueryStatusDetailsReason::REASON_NONE;
 }
 
-Status OrderedDimLabelReader::initialize_memory_budget() {
-  return Status::Ok();
+void OrderedDimLabelReader::initialize_memory_budget() {
 }
 
 Status OrderedDimLabelReader::dowork() {

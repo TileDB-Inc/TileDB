@@ -141,7 +141,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    *
    * @return Status.
    */
-  Status initialize_memory_budget();
+  void initialize_memory_budget();
 
   /**
    * Performs a read query using its set members.
