@@ -116,8 +116,7 @@ Status DeletesAndUpdates::finalize() {
   return Status::Ok();
 }
 
-Status DeletesAndUpdates::initialize_memory_budget() {
-  return Status::Ok();
+void DeletesAndUpdates::initialize_memory_budget() {
 }
 
 Status DeletesAndUpdates::dowork() {

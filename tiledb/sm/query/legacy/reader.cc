@@ -169,8 +169,7 @@ QueryStatusDetailsReason Reader::status_incomplete_reason() const {
                         QueryStatusDetailsReason::REASON_NONE;
 }
 
-Status Reader::initialize_memory_budget() {
-  return Status::Ok();
+void Reader::initialize_memory_budget() {
 }
 
 const Reader::ReadState* Reader::read_state() const {
