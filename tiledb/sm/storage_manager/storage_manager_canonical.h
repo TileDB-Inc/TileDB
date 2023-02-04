@@ -341,15 +341,6 @@ class StorageManagerCanonical {
       const Config& config);
 
   /**
-   * Writes a commit ignore file.
-   *
-   * @param array_dir The ArrayDirectory where the data is stored.
-   * @param commit_uris_to_ignore The commit files that are to be ignored.
-   */
-  Status write_commit_ignore_file(
-      ArrayDirectory array_dir, const std::vector<URI>& commit_uris_to_ignore);
-
-  /**
    * Writes a consolidated commits file.
    *
    * @param write_version Write version.
@@ -374,9 +365,8 @@ class StorageManagerCanonical {
    * @param array_name The name of the array whose fragments are to be deleted.
    * @param timestamp_start The start timestamp at which to delete.
    * @param timestamp_end The end timestamp at which to delete.
-   * @return Status
    */
-  Status delete_fragments(
+  void delete_fragments(
       const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /**

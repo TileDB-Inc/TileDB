@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -3915,6 +3915,31 @@ TILEDB_EXPORT int32_t tiledb_array_delete_fragments(
     const char* uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end) TILEDB_NOEXCEPT;
+
+/**
+ * Deletes array fragments with the input uris.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const char* fragment_uris[2] = {
+ *   "hdfs:///temp/my_array/__fragments/1",
+ *   "hdfs:///temp/my_array/__fragments/2"};
+ * tiledb_array_delete_fragments_list(
+ *   ctx, "hdfs:///temp/my_array", fragment_uris, 2);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri The URI of the fragments' parent Array.
+ * @param fragment_uris The URIs of the fragments to be deleted.
+ * @param num_fragments The number of fragments to be deleted.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_delete_fragments_list(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    const char* fragment_uris[],
+    const size_t num_fragments) TILEDB_NOEXCEPT;
 
 /**
  * Opens a TileDB array. The array is opened using a query type as input.
