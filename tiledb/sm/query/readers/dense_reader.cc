@@ -510,6 +510,9 @@ void DenseReader::init_read_state() {
     throw DenseReaderStatusException("sm.tile_memory_budget > sm.total_budget");
   }
 
+  // Set the memory budget for the array data.
+  array_memory_tracker_->set_budget(memory_budget_ - tile_memory_budget_);
+
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
