@@ -192,15 +192,15 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::vector<std::string>& names,
       const std::unordered_set<std::string>& condition_names,
       Subarray& subarray,
-      uint64_t tc_start,
+      uint64_t t_start,
       std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles);
 
   /** Apply the query condition. */
   template <class DimType, class OffType>
   Status apply_query_condition(
       Subarray& subarray,
-      const uint64_t tc_start,
-      const uint64_t tc_end,
+      const uint64_t t_start,
+      const uint64_t t_end,
       const std::unordered_set<std::string>& condition_names,
       const std::vector<DimType>& tile_extents,
       std::vector<ResultTile*>& result_tiles,
@@ -213,10 +213,12 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
 
   /** Fix offsets buffer after reading all offsets. */
   template <class OffType>
-  uint64_t fix_offsets_buffer(
+  void fix_offsets_buffer(
       const std::string& name,
       const bool nullable,
-      const uint64_t cell_num,
+      const uint64_t subarray_start_cell,
+      const uint64_t subarray_end_cell,
+      uint64_t& var_buffer_size,
       std::vector<void*>& var_data);
 
   /** Copy attribute into the users buffers. */
@@ -225,10 +227,13 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::string& name,
       const std::vector<DimType>& tile_extents,
       const Subarray& subarray,
-      const uint64_t tc_start,
-      const uint64_t tc_end,
+      const uint64_t t_start,
+      const uint64_t t_end,
+      const uint64_t subarray_start_cell,
+      const uint64_t subarray_end_cell,
       const DynamicArray<Subarray>& tile_subarrays,
       const std::vector<uint64_t>& tile_offsets,
+      uint64_t& var_buffer_size,
       const std::vector<RangeInfo<DimType>>& range_info,
       std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
       const std::vector<uint8_t>& qc_result,
@@ -267,6 +272,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       ResultSpaceTile<DimType>& result_space_tile,
       const Subarray& subarray,
       const Subarray& tile_subarray,
+      const uint64_t subarray_start_cell,
       const uint64_t global_cell_offset,
       std::vector<void*>& var_data,
       const std::vector<RangeInfo<DimType>>& range_info,
@@ -282,6 +288,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       ResultSpaceTile<DimType>& result_space_tile,
       const Subarray& subarray,
       const Subarray& tile_subarray,
+      const uint64_t subarray_start_cell,
       const uint64_t global_cell_offset,
       std::vector<void*>& var_data,
       const std::vector<RangeInfo<DimType>>& range_info,

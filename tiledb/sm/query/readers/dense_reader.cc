@@ -145,7 +145,8 @@ void DenseReader::initialize_memory_budget() {
 
   // Validate memory budget values.
   if (tile_memory_budget_ > memory_budget_) {
-    throw DenseReaderStatusException("sm.tile_memory_budget > sm.total_budget");
+    throw DenseReaderStatusException(
+        "sm.mem.tile_memory_budget > sm.mem.total_budget");
   }
 
   // Set the memory budget for the array
@@ -177,8 +178,9 @@ Status DenseReader::dowork() {
   get_dim_attr_stats();
 
   // Get next partition.
-  if (!read_state_.unsplittable_)
+  if (!read_state_.unsplittable_) {
     RETURN_NOT_OK(read_state_.next());
+  }
 
   // Loop until you find results, or unsplittable, or done.
   do {
@@ -392,30 +394,46 @@ Status DenseReader::dense_read() {
   RETURN_CANCEL_OR_ERROR(load_tile_offsets(
       read_state_.partitioner_.subarray().relevant_fragments(), names));
 
-  uint64_t tc_start = 0;
-  uint64_t tc_end = 0;
+  uint64_t t_start = 0;
+  uint64_t t_end = 0;
+  uint64_t subarray_start_cell = 0;
+  uint64_t subarray_end_cell = 0;
   std::vector<uint8_t> qc_result(
       condition_.empty() ? 0 : subarray.cell_num(), 1);
-  while (tc_end < tile_coords.size()) {
+
+  // Keep track of the current var buffer sizes.
+  std::map<std::string, uint64_t> var_buffer_sizes;
+  for (auto& name : names) {
+    var_buffer_sizes.emplace(name, 0);
+  }
+
+  while (t_end < tile_coords.size()) {
+    stats_->add_counter("internal_loop_num", 1);
+
     // Get result tiles to process on this iteration.
-    auto&& [ret_tc_end, result_tiles] = compute_result_tiles<DimType>(
-        names, condition_names, subarray, tc_start, result_space_tiles);
-    tc_end = ret_tc_end;
+    auto&& [ret_t_end, result_tiles] = compute_result_tiles<DimType>(
+        names, condition_names, subarray, t_start, result_space_tiles);
+    t_end = ret_t_end;
+
+    // Add the number of cells to process to subarray_end_cell.
+    for (uint64_t t = t_start; t < t_end; t++) {
+      subarray_end_cell += tile_subarrays[t].cell_num();
+    }
 
     // Compute parallelization parameters.
     uint64_t num_range_threads = 1;
     const auto num_threads =
         storage_manager_->compute_tp()->concurrency_level();
-    if ((tc_end - tc_start) < num_threads) {
+    if ((t_end - t_start) < num_threads) {
       // Ceil the division between thread_num and tile_num.
-      num_range_threads = 1 + ((num_threads - 1) / (tc_end - tc_start));
+      num_range_threads = 1 + ((num_threads - 1) / (t_end - t_start));
     }
 
     // Apply the query condition.
     auto st = apply_query_condition<DimType, OffType>(
         subarray,
-        tc_start,
-        tc_end,
+        t_start,
+        t_end,
         condition_names,
         tile_extents,
         result_tiles,
@@ -434,7 +452,7 @@ Status DenseReader::dense_read() {
         clear_tiles(name, result_tiles);
       }
 
-      tc_start = tc_end;
+      t_start = t_end;
       continue;
     }
 
@@ -457,14 +475,18 @@ Status DenseReader::dense_read() {
       // Only copy names that are present in the user buffers.
       if (buffers_.count(name) != 0) {
         // Copy attribute data to users buffers.
+        auto& var_buffer_size = var_buffer_sizes[name];
         status = copy_attribute<DimType, OffType>(
             name,
             tile_extents,
             subarray,
-            tc_start,
-            tc_end,
+            t_start,
+            t_end,
+            subarray_start_cell,
+            subarray_end_cell,
             tile_subarrays,
             tile_offsets,
+            var_buffer_size,
             range_info,
             result_space_tiles,
             qc_result,
@@ -479,7 +501,8 @@ Status DenseReader::dense_read() {
       return Status::Ok();
     }
 
-    tc_start = tc_end;
+    t_start = t_end;
+    subarray_start_cell = subarray_end_cell;
   }
 
   // For `qc_coords_mode` just fill in the coordinates and skip attribute
@@ -621,7 +644,7 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
     const std::vector<std::string>& names,
     const std::unordered_set<std::string>& condition_names,
     Subarray& subarray,
-    uint64_t tc_start,
+    uint64_t t_start,
     std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles) {
   // For easy reference.
   const auto& tile_coords = subarray.tile_coords();
@@ -636,10 +659,10 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
   // end or the memory budget. The memory budget is combined for all query
   // condition attributes.
   std::vector<ResultTile*> result_tiles;
-  uint64_t tc_end{tc_start};
+  uint64_t t_end{t_start};
   bool done = false;
-  while (!done && tc_end < tile_coords.size()) {
-    const DimType* tc = (DimType*)&tile_coords[tc_end][0];
+  while (!done && t_end < tile_coords.size()) {
+    const DimType* tc = (DimType*)&tile_coords[t_end][0];
     auto it = result_space_tiles.find(tc);
     assert(it != result_space_tiles.end());
 
@@ -655,7 +678,7 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
     }
 
     // If we reached the memory budget, stop. Always include the first tile.
-    if (tc_end != tc_start &&
+    if (t_end != t_start &&
         required_memory[0] + condition_memory > tile_memory_budget_) {
       done = true;
       break;
@@ -675,7 +698,7 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
       }
 
       // If we reached the memory budget, stop. Always include the first tile.
-      if (tc_end != tc_start &&
+      if (t_end != t_start &&
           required_memory[r_idx] + tile_memory > tile_memory_budget_) {
         done = true;
         break;
@@ -694,12 +717,12 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
       result_tiles.push_back(const_cast<ResultTile*>(&result_tile.second));
     }
 
-    tc_end++;
+    t_end++;
   }
   std::sort(result_tiles.begin(), result_tiles.end(), result_tile_cmp);
 
   // If we only include one tile, make sure we don't exceed the memory budget.
-  if (tc_end == tc_start + 1) {
+  if (t_end == t_start + 1) {
     const auto available_memory =
         memory_budget_ - array_memory_tracker_->get_memory_usage();
     for (auto mem : required_memory) {
@@ -710,15 +733,15 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
     }
   }
 
-  return {tc_end, result_tiles};
+  return {t_end, result_tiles};
 }
 
 /** Apply the query condition. */
 template <class DimType, class OffType>
 Status DenseReader::apply_query_condition(
     Subarray& subarray,
-    const uint64_t tc_start,
-    const uint64_t tc_end,
+    const uint64_t t_start,
+    const uint64_t t_end,
     const std::unordered_set<std::string>& condition_names,
     const std::vector<DimType>& tile_extents,
     std::vector<ResultTile*>& result_tiles,
@@ -756,8 +779,8 @@ Status DenseReader::apply_query_condition(
     // Process all tiles in parallel.
     auto status = parallel_for_2d(
         storage_manager_->compute_tp(),
-        tc_start,
-        tc_end,
+        t_start,
+        t_end,
         0,
         num_range_threads,
         [&](uint64_t t, uint64_t range_thread_idx) {
@@ -839,10 +862,12 @@ Status DenseReader::apply_query_condition(
 }
 
 template <class OffType>
-uint64_t DenseReader::fix_offsets_buffer(
+void DenseReader::fix_offsets_buffer(
     const std::string& name,
     const bool nullable,
-    const uint64_t cell_num,
+    const uint64_t subarray_start_cell,
+    const uint64_t subarray_end_cell,
+    uint64_t& var_buffer_size,
     std::vector<void*>& var_data) {
   // For easy reference.
   const auto& fill_value = array_schema_.attribute(name)->fill_value();
@@ -850,8 +875,7 @@ uint64_t DenseReader::fix_offsets_buffer(
   auto offsets_buffer = (OffType*)buffers_[name].buffer_;
 
   // Switch offsets from sizes to real offsets.
-  uint64_t offset = 0;
-  for (uint64_t i = 0; i < cell_num; ++i) {
+  for (uint64_t i = subarray_start_cell; i < subarray_end_cell; ++i) {
     auto tmp = offsets_buffer[i];
 
     // The maximum value is used as a sentinel to request the fill value.
@@ -859,21 +883,18 @@ uint64_t DenseReader::fix_offsets_buffer(
       tmp = fill_value_size;
 
       // Set the pointer for the var data.
-      var_data[i] = (void*)fill_value.data();
+      var_data[i - subarray_start_cell] = (void*)fill_value.data();
     }
-    offsets_buffer[i] = offset;
-    offset += tmp;
+    offsets_buffer[i] = var_buffer_size;
+    var_buffer_size += tmp;
   }
 
   // Set the output offset buffer sizes.
-  *buffers_[name].buffer_size_ = cell_num * sizeof(OffType);
+  *buffers_[name].buffer_size_ = subarray_end_cell * sizeof(OffType);
 
   if (nullable) {
-    *buffers_[name].validity_vector_.buffer_size() = cell_num;
+    *buffers_[name].validity_vector_.buffer_size() = subarray_end_cell;
   }
-
-  // Return the buffer size.
-  return offset;
 }
 
 template <class DimType, class OffType>
@@ -881,10 +902,13 @@ Status DenseReader::copy_attribute(
     const std::string& name,
     const std::vector<DimType>& tile_extents,
     const Subarray& subarray,
-    const uint64_t tc_start,
-    const uint64_t tc_end,
+    const uint64_t t_start,
+    const uint64_t t_end,
+    const uint64_t subarray_start_cell,
+    const uint64_t subarray_end_cell,
     const DynamicArray<Subarray>& tile_subarrays,
     const std::vector<uint64_t>& tile_offsets,
+    uint64_t& var_buffer_size,
     const std::vector<RangeInfo<DimType>>& range_info,
     std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
     const std::vector<uint8_t>& qc_result,
@@ -893,28 +917,27 @@ Status DenseReader::copy_attribute(
 
   // For easy reference
   const auto& tile_coords = subarray.tile_coords();
-  const auto cell_num = subarray.cell_num();
   const auto global_order = layout_ == Layout::GLOBAL_ORDER;
 
   if (array_schema_.var_size(name)) {
     // Make sure the user offset buffers are big enough.
     const auto required_size =
-        (cell_num + offsets_extra_element_) * sizeof(OffType);
-    if (required_size > *buffers_[name].buffer_size_) {
+        (subarray_end_cell + offsets_extra_element_) * sizeof(OffType);
+    if (required_size > buffers_[name].original_buffer_size_) {
       read_state_.overflowed_ = true;
       return Status::Ok();
     }
 
     // Vector to hold pointers to the var data.
-    std::vector<void*> var_data(cell_num);
+    std::vector<void*> var_data(subarray_end_cell - subarray_start_cell);
 
     // Process offsets.
     {
       auto timer_se = stats_->start_timer("copy_offset_tiles");
       auto status = parallel_for_2d(
           storage_manager_->compute_tp(),
-          tc_start,
-          tc_end,
+          t_start,
+          t_end,
           0,
           num_range_threads,
           [&](uint64_t t, uint64_t range_thread_idx) {
@@ -930,6 +953,7 @@ Status DenseReader::copy_attribute(
                 it->second,
                 subarray,
                 tile_subarrays[t],
+                subarray_start_cell,
                 global_order ? tile_offsets[t] : 0,
                 var_data,
                 range_info,
@@ -940,13 +964,17 @@ Status DenseReader::copy_attribute(
       RETURN_NOT_OK(status);
     }
 
-    uint64_t var_buffer_size;
     {
       // We have the cell lengths in the users buffer, convert to offsets.
       auto timer_se = stats_->start_timer("fix_offset_tiles");
       const bool nullable = array_schema_.is_nullable(name);
-      var_buffer_size =
-          fix_offsets_buffer<OffType>(name, nullable, cell_num, var_data);
+      fix_offsets_buffer<OffType>(
+          name,
+          nullable,
+          subarray_start_cell,
+          subarray_end_cell,
+          var_buffer_size,
+          var_data);
 
       // Make sure the user var buffer is big enough.
       uint64_t required_var_size = var_buffer_size;
@@ -956,7 +984,7 @@ Status DenseReader::copy_attribute(
 
       // Exit early in case of overflow.
       if (read_state_.overflowed_ ||
-          required_var_size > *buffers_[name].buffer_var_size_) {
+          required_var_size > buffers_[name].original_buffer_var_size_) {
         read_state_.overflowed_ = true;
         return Status::Ok();
       }
@@ -969,8 +997,8 @@ Status DenseReader::copy_attribute(
       // Process var data in parallel.
       auto status = parallel_for_2d(
           storage_manager_->compute_tp(),
-          tc_start,
-          tc_end,
+          t_start,
+          t_end,
           0,
           num_range_threads,
           [&](uint64_t t, uint64_t range_thread_idx) {
@@ -985,10 +1013,11 @@ Status DenseReader::copy_attribute(
                 it->second,
                 subarray,
                 tile_subarrays[t],
+                subarray_start_cell,
                 global_order ? tile_offsets[t] : 0,
                 var_data,
                 range_info,
-                t == tile_coords.size() - 1,
+                t == t_end - 1,
                 var_buffer_size,
                 range_thread_idx,
                 num_range_threads);
@@ -999,8 +1028,9 @@ Status DenseReader::copy_attribute(
     }
   } else {
     // Make sure the user fixed buffer is big enough.
-    const auto required_size = cell_num * array_schema_.cell_size(name);
-    if (required_size > *buffers_[name].buffer_size_) {
+    const auto required_size =
+        subarray_end_cell * array_schema_.cell_size(name);
+    if (required_size > buffers_[name].original_buffer_size_) {
       read_state_.overflowed_ = true;
       return Status::Ok();
     }
@@ -1010,8 +1040,8 @@ Status DenseReader::copy_attribute(
       // Process values in parallel.
       auto status = parallel_for_2d(
           storage_manager_->compute_tp(),
-          tc_start,
-          tc_end,
+          t_start,
+          t_end,
           0,
           num_range_threads,
           [&](uint64_t t, uint64_t range_thread_idx) {
@@ -1042,7 +1072,7 @@ Status DenseReader::copy_attribute(
     *buffers_[name].buffer_size_ = required_size;
 
     if (array_schema_.is_nullable(name)) {
-      *buffers_[name].validity_vector_.buffer_size() = cell_num;
+      *buffers_[name].validity_vector_.buffer_size() = subarray_end_cell;
     }
   }
 
@@ -1275,6 +1305,7 @@ Status DenseReader::copy_offset_tiles(
     ResultSpaceTile<DimType>& result_space_tile,
     const Subarray& subarray,
     const Subarray& tile_subarray,
+    const uint64_t subarray_start_cell,
     const uint64_t global_cell_offset,
     std::vector<void*>& var_data,
     const std::vector<RangeInfo<DimType>>& range_info,
@@ -1338,7 +1369,8 @@ Status DenseReader::copy_offset_tiles(
       if (overlaps) {
         // Calculate the destination pointers.
         auto dest_ptr = dst_buf + cell_offset * sizeof(OffType);
-        auto var_data_buff = var_data.data() + cell_offset;
+        auto var_data_buff =
+            var_data.data() + cell_offset - subarray_start_cell;
         auto dest_validity_ptr = dst_val_buf + cell_offset;
 
         // Get the tile buffers.
@@ -1460,6 +1492,7 @@ Status DenseReader::copy_var_tiles(
     ResultSpaceTile<DimType>& result_space_tile,
     const Subarray& subarray,
     const Subarray& tile_subarray,
+    const uint64_t subarray_start_cell,
     const uint64_t global_cell_offset,
     std::vector<void*>& var_data,
     const std::vector<RangeInfo<DimType>>& range_info,
@@ -1506,7 +1539,10 @@ Status DenseReader::copy_var_tiles(
     for (; i < cell_slab_length - 1; i++) {
       offset = offsets_buf[cell_offset + i] * mult;
       size = offsets_buf[cell_offset + i + 1] * mult - offset;
-      std::memcpy(dst_buf + offset, var_data[cell_offset + i], size);
+      std::memcpy(
+          dst_buf + offset,
+          var_data[cell_offset + i - subarray_start_cell],
+          size);
     }
 
     // Do the last copy.
@@ -1516,7 +1552,10 @@ Status DenseReader::copy_var_tiles(
     } else {
       size = offsets_buf[cell_offset + i + 1] * mult - offset;
     }
-    std::memcpy(dst_buf + offset, var_data[cell_offset + i], size);
+    std::memcpy(
+        dst_buf + offset,
+        var_data[cell_offset + i - subarray_start_cell],
+        size);
 
     // Adjust cell offset for global order.
     if (layout_ == Layout::GLOBAL_ORDER) {
