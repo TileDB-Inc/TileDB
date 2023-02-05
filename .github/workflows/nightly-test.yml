@@ -16,6 +16,9 @@ jobs:
             cxxflags: "-std=c++17"
           - os: macos-latest
             cxxflags: "-std=c++17"
+          - os: macos-latest # ASAN build
+            cxxflags: "-std=c++17"
+            asan: "true"
           - os: windows-latest
             cxxflags: "/std:c++17"
           - os: windows-2019
@@ -33,7 +36,7 @@ jobs:
     permissions:
       issues: write
     env:
-      MACOSX_DEPLOYMENT_TARGET: 10.14
+      MACOSX_DEPLOYMENT_TARGET: 10.15
 
     steps:
       - name: Print env
@@ -46,8 +49,9 @@ jobs:
         if: ${{ ! contains(matrix.os, 'windows') }}
         env:
           CXXFLAGS: ${{ matrix.cxxflags }}
+          SANITIZER_ARG: ${{ matrix.asan == 'true' && 'address' || 'OFF' }}
         run: |
-          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=Release -DSANITIZER=$SANITIZER_ARG
 
       - name: Configure TileDB CMake
         if: contains(matrix.os, 'windows')
