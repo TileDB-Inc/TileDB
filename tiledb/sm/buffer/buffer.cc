@@ -365,7 +365,7 @@ Buffer& Buffer::operator=(Buffer&& buff) {
 Status Buffer::ensure_alloced_size(const uint64_t nbytes) {
   if (preallocated_ && nbytes > alloced_size_) {
     throw BufferStatusException(
-        "Attempt to write outside of preallocated buffer bounds.");
+        "Failed to reallocate. Buffer is preallocated to a fixed size.");
   } else if (preallocated_ || alloced_size_ >= nbytes) {
     return Status::Ok();
   }

@@ -62,6 +62,7 @@
 #include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
@@ -1284,16 +1285,15 @@ Status query_to_capnp(
     auto attr_buffer_builder = attr_buffers_builder[i];
     const auto& name = buffer_names[i];
     const auto& buff = query.buffer(name);
-    auto buff_cache =
-        query.get_storage_manager()->rest_client()->get_remote_buffer_cache(
-            name);
+    const auto& buff_cache = query.get_remote_buffer_cache(name);
     attr_buffer_builder.setName(name);
     if (buff.buffer_var_ != nullptr && buff.buffer_var_size_ != nullptr) {
       // Variable-sized buffer
-      uint64_t offset_buff_size = *buff.buffer_size_ + buff_cache.buffer.size();
+      uint64_t offset_buff_size =
+          *buff.buffer_size_ + buff_cache.buffer_.size();
       // Calculate cached var buffer size up to the offset we are prepending.
       uint64_t var_buff_size =
-          *buff.buffer_var_size_ + buff_cache.buffer_var.size();
+          *buff.buffer_var_size_ + buff_cache.buffer_var_.size();
 
       total_var_len_bytes += var_buff_size;
       attr_buffer_builder.setVarLenBufferSizeInBytes(var_buff_size);
@@ -1309,7 +1309,7 @@ Status query_to_capnp(
     } else if (buff.buffer_ != nullptr && buff.buffer_size_ != nullptr) {
       // Fixed-length buffer
 
-      uint64_t buff_size = *buff.buffer_size_ + buff_cache.buffer.size();
+      uint64_t buff_size = *buff.buffer_size_ + buff_cache.buffer_.size();
 
       total_fixed_len_bytes += buff_size;
 
@@ -1327,7 +1327,7 @@ Status query_to_capnp(
 
     if (buff.validity_vector_.buffer_size() != nullptr) {
       uint64_t buff_size = *buff.validity_vector_.buffer_size() +
-                           buff_cache.buffer_validity.size();
+                           buff_cache.buffer_validity_.size();
 
       total_validity_len_bytes += buff_size;
       attr_buffer_builder.setValidityLenBufferSizeInBytes(buff_size);
@@ -2119,11 +2119,10 @@ Status query_serialize(
               query->layout() == Layout::GLOBAL_ORDER;
 
           auto attr_buffer_builders = query_builder.getAttributeBufferHeaders();
-          auto rest_client = query->get_storage_manager()->rest_client();
           for (auto attr_buffer_builder : attr_buffer_builders) {
             const std::string name = attr_buffer_builder.getName().cStr();
             auto buffer = query->buffer(name);
-            auto& buffer_cache = rest_client->get_remote_buffer_cache(name);
+            const auto& buffer_cache = query->get_remote_buffer_cache(name);
 
             if (buffer.buffer_var_size_ != nullptr &&
                 buffer.buffer_var_ != nullptr) {
@@ -2132,12 +2131,12 @@ Status query_serialize(
               Buffer var(buffer.buffer_var_, *buffer.buffer_var_size_);
 
               // If we are not appending offsets we can use non-owning buffers.
-              if (buffer_cache.buffer.size() > 0) {
+              if (buffer_cache.buffer_.size() > 0) {
                 Buffer prepend_data(
-                    buffer_cache.buffer.data(), buffer_cache.buffer.size());
+                    buffer_cache.buffer_.data(), buffer_cache.buffer_.size());
                 Buffer prepend_var_data(
-                    buffer_cache.buffer_var.data(),
-                    buffer_cache.buffer_var.size());
+                    buffer_cache.buffer_var_.data(),
+                    buffer_cache.buffer_var_.size());
                 RETURN_NOT_OK(
                     serialized_buffer->add_buffer(std::move(prepend_data)));
 
@@ -2147,7 +2146,7 @@ Status query_serialize(
                     data.write(buffer.buffer_, *buffer.buffer_size_));
                 for (uint64_t i = 0; i < data.size();
                      i += constants::cell_var_offset_size) {
-                  *(uint64_t*)data.data(i) += buffer_cache.buffer_var.size();
+                  *(uint64_t*)data.data(i) += buffer_cache.buffer_var_.size();
                 }
 
                 RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
@@ -2166,7 +2165,7 @@ Status query_serialize(
 
               if (remote_global_order_write) {
                 Buffer prepend(
-                    buffer_cache.buffer.data(), buffer_cache.buffer.size());
+                    buffer_cache.buffer_.data(), buffer_cache.buffer_.size());
                 RETURN_NOT_OK(
                     serialized_buffer->add_buffer(std::move(prepend)));
               }
@@ -2185,8 +2184,8 @@ Status query_serialize(
 
               if (remote_global_order_write) {
                 Buffer prepend(
-                    buffer_cache.buffer_validity.data(),
-                    buffer_cache.buffer_validity.size());
+                    buffer_cache.buffer_validity_.data(),
+                    buffer_cache.buffer_validity_.size());
                 RETURN_NOT_OK(
                     serialized_buffer->add_buffer(std::move(prepend)));
               }

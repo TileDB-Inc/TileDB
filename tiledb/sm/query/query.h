@@ -49,6 +49,7 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
@@ -195,11 +196,6 @@ class Query {
   /** Retrieves the URI of the written fragment with the input index. */
   Status get_written_fragment_uri(uint32_t idx, const char** uri) const;
 
-  /** Returns const pointer to storage manager for this Query. */
-  inline const StorageManager* get_storage_manager() {
-    return storage_manager_;
-  }
-
   /**
    * Retrieves the timestamp range [t1,t2] of the written fragment with the
    * input index.
@@ -322,6 +318,27 @@ class Query {
    * @return
    */
   std::unordered_map<std::string, Subarray::MemorySize> get_max_mem_size_map();
+
+  /**
+   * Retrieve query buffer cache for remote global order write.
+   * Throws if the cache does not exist.
+   *
+   * @param name The buffer name to retrieve.
+   * @return BufferCache for the requested buffer.
+   */
+  inline const BufferCache& get_remote_buffer_cache(
+      const std::string& name) const {
+    return query_remote_buffer_storage_.get_cache(name);
+  }
+
+  /**
+   * Retrieve remote buffer storage for remote global order writes.
+   *
+   * @return QueryRemoteBufferStorage for this query.
+   */
+  inline QueryRemoteBufferStorage& get_remote_buffer_cache() {
+    return query_remote_buffer_storage_;
+  }
 
   /**
    * Returns `true` if the query has results. Applicable only to read
@@ -817,6 +834,9 @@ class Query {
    * Note: This is only used for global order writes.
    */
   uint64_t fragment_size_;
+
+  /** Cache for tile aligned remote global order writes. */
+  QueryRemoteBufferStorage query_remote_buffer_storage_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

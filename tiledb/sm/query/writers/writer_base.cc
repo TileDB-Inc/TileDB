@@ -215,7 +215,7 @@ WriterBase::WriterBase(
 
   optimize_layout_for_1D();
 
-  // Remote GOWs may submit offsets > var_buffer size due to cached data.
+  // Remote global order writes may submit offsets > var size due to cache data.
   if (layout_ != Layout::GLOBAL_ORDER || !remote_query_) {
     check_var_attr_offsets();
   }

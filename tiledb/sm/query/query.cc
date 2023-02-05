@@ -108,7 +108,8 @@ Query::Query(
     , remote_query_(array_->is_remote())
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
-    , fragment_size_(std::numeric_limits<uint64_t>::max()) {
+    , fragment_size_(std::numeric_limits<uint64_t>::max())
+    , query_remote_buffer_storage_(this) {
   assert(array->is_open());
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
@@ -1800,9 +1801,15 @@ Status Query::submit() {
 
     if (status_ == QueryStatus::UNINITIALIZED) {
       RETURN_NOT_OK(create_strategy());
+
+      // Allocate remote buffer storage for global order writes if necessary.
+      // If we cache an entire write a query may be uninitialized for N submits.
+      if (!query_remote_buffer_storage_.is_allocated() &&
+          type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
+        query_remote_buffer_storage_ = {this};
+      }
     }
 
-    // Align buffers to tile extents.
     RETURN_NOT_OK(rest_client->submit_query_to_rest(array_->array_uri(), this));
 
     reset_coords_markers();

@@ -341,7 +341,7 @@ class Buffer : public BufferBase {
 
   /**
    * True if the buffer is preallocated to a fixed size.
-   * If this flag is set the buffer will not reallocate.
+   * If this flag is set an error will be thrown when trying to reallocate.
    */
   bool preallocated_ = false;
 
