@@ -171,6 +171,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-compression-rle.cc
   src/unit-crypto.cc
   src/unit-ctx.cc
+  src/unit-dense-reader.cc
   src/unit-DenseTiler.cc
   src/unit-dimension.cc
   src/unit-duplicates.cc
