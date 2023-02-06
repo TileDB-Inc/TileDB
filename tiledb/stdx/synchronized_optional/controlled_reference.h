@@ -123,10 +123,6 @@ class controlled_reference_base {
     return const_cast<const_handle_type&>(handle_);
   }
 
-  static constexpr bool arrow_is_noexcept =
-      std::is_nothrow_invocable_v<decltype(handle_.operator->())>;
-  static constexpr bool const_arrow_is_noexcept{std::is_nothrow_invocable_v<
-      decltype(const_cast<const_handle_type*>(&handle_)->operator->())>};
   static constexpr bool star_is_noexcept =
       std::is_nothrow_invocable_v<decltype(handle_.operator*())>;
   static constexpr bool const_star_is_noexcept{std::is_nothrow_invocable_v<
@@ -171,14 +167,6 @@ class controlled_reference
   controlled_reference& operator=(const controlled_reference&) = delete;
   controlled_reference& operator=(controlled_reference&&) = delete;
   ~controlled_reference() = default;
-
-  inline const T* operator->() const
-      noexcept(base_type::const_arrow_is_noexcept) {
-    return base_type::const_handle().operator->();
-  }
-  inline T* operator->() noexcept(base_type::arrow_is_noexcept) {
-    return base_type::handle().operator->();
-  }
 
   inline const T& operator*() const& noexcept(
       base_type::const_star_is_noexcept) {

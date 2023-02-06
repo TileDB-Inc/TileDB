@@ -25,6 +25,4 @@
 #
 include(common NO_POLICY_SCOPE)
 
-if (TILEDB_TESTS)
-  add_subdirectory(test)
-endif()
+add_test_subdirectory()

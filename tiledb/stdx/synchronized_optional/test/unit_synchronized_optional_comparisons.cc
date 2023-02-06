@@ -27,7 +27,7 @@
  * THE SOFTWARE.
  */
 
-#include <catch.hpp>
+#include "test/support/tdb_catch.h"
 #include "../synchronized_optional.h"
 
 /*

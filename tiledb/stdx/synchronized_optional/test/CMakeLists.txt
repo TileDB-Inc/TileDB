@@ -23,16 +23,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-include(common NO_POLICY_SCOPE)
+include(unit_test)
 
-add_executable(unit_synchronized_optional EXCLUDE_FROM_ALL)
-find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_synchronized_optional PUBLIC Catch2::Catch2)
-target_sources(unit_synchronized_optional PUBLIC
-    unit_synchronized_optional.cc
-    unit_synchronized_optional_comparisons.cc)
-add_test(
-    NAME "unit_synchronized_optional"
-    COMMAND $<TARGET_FILE:unit_synchronized_optional>
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+commence(unit_test synchronized_optional)
+  this_target_sources(
+      unit_synchronized_optional.cc unit_synchronized_optional_comparisons.cc)
+conclude(unit_test)

@@ -250,35 +250,6 @@ class intplus {
 };
 using sointplus = synchronized_optional<intplus>;
 
-TEST_CASE("synchronized_optional - operator->") {
-  sointplus x{std::in_place, 8};
-  REQUIRE(x);
-  SECTION("to write handle") {
-    const sointplus::reference_type y{x.operator->()};
-    CHECK(*y == 8);
-  }
-  SECTION("to read handle") {
-    // This syntax ensures that a read reference is returned
-    const sointplus::const_reference_type y{
-        const_cast<const sointplus&>(x).operator->()};
-    CHECK(*y == 8);
-  }
-  SECTION("through write handle to underlying") {
-    const int y{*x.operator->()};
-    CHECK(y == 8);
-  }
-  SECTION("through write handle to underlying 2") {
-    CHECK(x->intvalue() == 8);
-  }
-  SECTION("through read handle to underlying") {
-    const int y{*const_cast<const sointplus&>(x).operator->()};
-    CHECK(y == 8);
-  }
-  SECTION("through read handle to underlying 2") {
-    CHECK(const_cast<const sointplus&>(x)->intvalue() == 8);
-  }
-}
-
 TEST_CASE("synchronized_optional - simultaneous retrieval") {
   const soint x{std::in_place, 9};
   REQUIRE(x.has_value());
@@ -305,15 +276,9 @@ TEST_CASE("synchronized_optional - value") {
     const int y{*x.value()};
     CHECK(y == 10);
   }
-  SECTION("through write handle to underlying 2") {
-    CHECK(x.value()->intvalue() == 10);
-  }
   SECTION("through read handle to underlying") {
     const int y{*const_cast<const sointplus&>(x).value()};
     CHECK(y == 10);
-  }
-  SECTION("through read handle to underlying 2") {
-    CHECK(const_cast<const sointplus&>(x)->intvalue() == 10);
   }
 }
 

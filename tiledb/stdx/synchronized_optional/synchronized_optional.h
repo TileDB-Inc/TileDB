@@ -118,32 +118,15 @@ constexpr bool is_same_as(
  *
  * The external reference types, one for reading and one for writing, are scope-
  * oriented for this reason. They allow a reference to be easily maintained only
- * as long as is required. There are two kinds of scope explicitly supported:
- * block and temporary.
+ * as long as is required. Reference objects should be declared separately as
+ * variables that will be destroyed at the end of the block. Reference objects
+ * declared as temporaries may be destroyed prematurely and should thus be
+ * avoided.
  *
- * Block scope is the ordinary kind with curly-brace pairs. In this case the
- * reference object is stored in an automatic variable that will be destroyed at
- * the end of the block. The reference object is declared as a sentry, only
- * initialized at definition but not called. For example, suppose we have `class
- * X { void f(): };` and a variable `synchronized_optional<X> x;`. The sentry
+ * For example, suppose we have `class X { void f(): };` and a variable
+ * `synchronized_optional<X> x;` known not to be null. The reference variable
  * would be declared as `auto ref{*x}` for writes and `const auto ref{*x}` for
  * reads. In a subsequent statement within the block `ref->f()` may appear.
- *
- * Temporary scope is that of a temporary variable during expression evaluation,
- * the scope offered by `operator->`. Consider the expression `x->f()` for the
- * example above. First called is `synchronized_optional<X>::operator->()`,
- * which returns a reference object, say `t`, whose life span is that of the
- * expression. Next called is `t.operator->()`, which returns `X*`. With the
- * pointer, next `X::f()` is called. Now the expression goes out of scope,
- * calling the destructor of the reference object, which releases the lock on
- * `x`.
- *
- * The choice of scope depends on situational requirements for consistency
- * across calls. If only one call is required, there's no consistency issue. In
- * this case `operator->` is fine and there's no need for a temporary. If two
- * calls are required and the second call must be made to the same underlying
- * value, then block scope is required, since no change to the underlying value
- * is possible during the life span of the reference object.
  *
  * @par Comparison to `std::optional`
  *
@@ -169,16 +152,14 @@ constexpr bool is_same_as(
  * **Assignment**. The differences here are analogous to those in the
  * constructors. See above.
  *
- * **Dereference and `value`**. The `operator->`, `operator*`, and `value` do
- * not return direct pointers or references but rather pointer/reference
- * objects. `value_or` is not implemented for lack of need.
+ * **Dereference and `value`**. The `operator*`, and `value` do not return
+ * direct pointers or references but rather pointer/reference objects.
+ * `value_or` is not implemented for lack of need.
  *
  * The rvalue-ref-qualified versions of these are explicitly deleted, however.
  * Reference objects to temporaries will almost certainly lead to undefined
  * behavior, since the destructor of the `synchronized_optional` runs when the
- * expression goes out of scope. Related to this, it's possible to call
- * `operator->` with its explicit syntax and create an analogous situation;
- * don't do that.
+ * expression goes out of scope. Similarly, `operator->` is deleted; see below.
  *
  * **Value presence**. `has_value` and `operator bool` are identical but for
  * not having `noexcept`.
@@ -190,6 +171,33 @@ constexpr bool is_same_as(
  *
  * **Comparisons**. Comparisons are just like those in `std::optional`. They're
  * defined as non-member functions.
+ *
+ * @par On the absence of `operator->`
+ *
+ * `synchronized_optionat::operator->` is deleted because its actual behavior
+ * does not match its idiomatic meaning. C++ scoping rules for expressions do
+ * not extend the lifespan of a temporary except in certain circumstances. These
+ * circumstances do not include the evaluation of expressions of the form
+ * `a->b()`. At present the consequence of this is the following sequence of
+ * operations:
+ * - Call `a.operator->`, which constructs an object of type
+ *   `a::reference_type` and acquires a lock.
+ * - Call `a::reference_type::operator*`, which returns an object reference.
+ * - The reference object goes out of scope, so its destructor executes and
+ *   releases the lock.
+ * - Call `ref.b()`, which is called not under lock, that is, without
+ *   synchronization. That's the wrong behavior for something called
+ *   `synchronized_optional`.
+ *
+ * The expectation that `b` execute under lock in the expression `a->b()` is the
+ * reason to delete `operator->`. It's contrary to expectations of how such an
+ * expression should function.
+ *
+ * It would take a change in the language definition for `operator->` to work
+ * reliably across compiler platforms. The issue is that there's no explicit
+ * lifespan extension defined for the evaluation of `operator->` that mandates
+ * that its lifespan extend past the duration of the function. The compiler is
+ * free to resolve to a direct object reference `x` before executing `x.b()`.
  *
  * @tparam T The underlying object is of type `T`
  */
@@ -358,9 +366,7 @@ class synchronized_optional {
       return referent_.base_.operator*();
     }
 
-    U* operator->() const {
-      return referent_.base_.operator->();
-    }
+    U* operator->() = delete;
   };
 
   /**
@@ -556,30 +562,32 @@ class synchronized_optional {
   /*
    * Dereference and value functions
    */
+
   /**
    * Return a constant reference to the present object.
    */
   const_reference_type operator*() const& {
     return const_reference_type{*this};
   }
+
   /**
    * Return a reference to the present object.
    */
   reference_type operator*() & {
     return reference_type{*this};
   }
+
   /**
-   * Return a constant reference to the present object.
+   * `operator->` is deleted because its actual behavior cannot match its
+   * idiomatic usage.
    */
-  const_reference_type operator->() const {
-    return const_reference_type{*this};
-  }
+  const_reference_type operator->() const = delete;
+
   /**
-   * Return a reference to the present object.
+   * `operator->` is deleted because its actual behavior cannot match its
+   * idiomatic usage.
    */
-  reference_type operator->() {
-    return reference_type{*this};
-  }
+  reference_type operator->() = delete;
 
   /**
    * References to temporaries are not allowed.
