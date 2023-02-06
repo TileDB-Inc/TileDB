@@ -1510,6 +1510,7 @@ void VFS::finalize_and_close_file(const URI& uri) {
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     s3_.finalize_and_flush_object(uri);
+    return;
 #else
     throw StatusException(
         Status_VFSError("TileDB was built without S3 support"));
@@ -1546,6 +1547,7 @@ Status VFS::write(
 #ifdef HAVE_S3
     if (remote_global_order_write) {
       s3_.global_order_write_buffered(uri, buffer, buffer_size);
+      return Status::Ok();
     }
     return s3_.write(uri, buffer, buffer_size);
 #else
