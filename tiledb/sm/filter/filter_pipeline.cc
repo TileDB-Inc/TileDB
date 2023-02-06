@@ -315,108 +315,6 @@ Status FilterPipeline::filter_chunks_forward(
   return Status::Ok();
 }
 
-Status FilterPipeline::filter_chunks_reverse(
-    Tile& tile,
-    Tile* const offsets_tile,
-    const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
-    ThreadPool* const compute_tp,
-    const Config& config) const {
-  if (input.empty()) {
-    return Status::Ok();
-  }
-
-  // Precompute the sizes of the final output chunks.
-  uint64_t total_size = 0;
-  std::vector<uint64_t> chunk_offsets(input.size());
-  for (size_t i = 0; i < input.size(); i++) {
-    chunk_offsets[i] = total_size;
-    total_size += std::get<2>(input[i]);
-  }
-
-  if (total_size != tile.size()) {
-    return LOG_STATUS(
-        Status_FilterError("Incorrect unfiltered tile size allocated."));
-  }
-
-  // Run each chunk through the entire pipeline.
-  auto status = parallel_for(compute_tp, 0, input.size(), [&](uint64_t i) {
-    const auto& chunk_input = input[i];
-
-    const uint32_t filtered_chunk_len = std::get<1>(chunk_input);
-    const uint32_t orig_chunk_len = std::get<2>(chunk_input);
-    const uint32_t metadata_len = std::get<3>(chunk_input);
-    void* const metadata = std::get<0>(chunk_input);
-    void* const chunk_data = (char*)metadata + metadata_len;
-
-    // TODO(ttd): can we instead allocate one FilterStorage per thread?
-    // or make it threadsafe?
-    FilterStorage storage;
-    FilterBuffer input_data(&storage), output_data(&storage);
-    FilterBuffer input_metadata(&storage), output_metadata(&storage);
-
-    // First filter's input is the filtered chunk data.
-    RETURN_NOT_OK(input_metadata.init(metadata, metadata_len));
-    RETURN_NOT_OK(input_data.init(chunk_data, filtered_chunk_len));
-
-    // If the pipeline is empty, just copy input to output.
-    if (filters_.empty()) {
-      void* output_chunk_buffer =
-          static_cast<char*>(tile.data()) + chunk_offsets[i];
-      RETURN_NOT_OK(input_data.copy_to(output_chunk_buffer));
-      return Status::Ok();
-    }
-
-    // Apply the filters sequentially in reverse.
-    for (int64_t filter_idx = (int64_t)filters_.size() - 1; filter_idx >= 0;
-         filter_idx--) {
-      auto& f = filters_[filter_idx];
-
-      // Clear and reset I/O buffers
-      input_data.reset_offset();
-      input_data.set_read_only(true);
-      input_metadata.reset_offset();
-      input_metadata.set_read_only(true);
-
-      throw_if_not_ok(output_data.clear());
-      throw_if_not_ok(output_metadata.clear());
-
-      // Final filter: output directly into the shared output buffer.
-      bool last_filter = filter_idx == 0;
-      if (last_filter) {
-        void* output_chunk_buffer =
-            static_cast<char*>(tile.data()) + chunk_offsets[i];
-        RETURN_NOT_OK(output_data.set_fixed_allocation(
-            output_chunk_buffer, orig_chunk_len));
-      }
-
-      f->init_decompression_resource_pool(compute_tp->concurrency_level());
-
-      RETURN_NOT_OK(f->run_reverse(
-          tile,
-          offsets_tile,
-          &input_metadata,
-          &input_data,
-          &output_metadata,
-          &output_data,
-          config));
-
-      input_data.set_read_only(false);
-      input_metadata.set_read_only(false);
-
-      if (!last_filter) {
-        throw_if_not_ok(input_data.swap(output_data));
-        throw_if_not_ok(input_metadata.swap(output_metadata));
-        // Next input (input_buffers) now stores this output (output_buffers).
-      }
-    }
-    return Status::Ok();
-  });
-
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
-}
-
 Filter* FilterPipeline::get_filter(unsigned index) const {
   if (index >= filters_.size())
     return nullptr;
@@ -441,8 +339,8 @@ Status FilterPipeline::run_forward(
 
   uint32_t chunk_size = 0;
   if (use_chunking) {
-    RETURN_NOT_OK(WriterTile::compute_chunk_size(
-        tile->size(), tile->cell_size(), &chunk_size));
+    chunk_size =
+        WriterTile::compute_chunk_size(tile->size(), tile->cell_size());
   } else {
     chunk_size = tile->size();
   }
@@ -471,9 +369,10 @@ Status FilterPipeline::run_forward(
   return Status::Ok();
 }
 
-Status FilterPipeline::run_reverse_chunk_range(
+Status FilterPipeline::run_reverse(
     stats::Stats* const reader_stats,
     Tile* const tile,
+    Tile* const offsets_tile,
     const ChunkData& chunk_data,
     const uint64_t min_chunk_index,
     const uint64_t max_chunk_index,
@@ -529,7 +428,7 @@ Status FilterPipeline::run_reverse_chunk_range(
 
       RETURN_NOT_OK(f->run_reverse(
           *tile,
-          nullptr,
+          offsets_tile,
           &input_metadata,
           &input_data,
           &output_metadata,
@@ -544,80 +443,6 @@ Status FilterPipeline::run_reverse_chunk_range(
         throw_if_not_ok(input_metadata.swap(output_metadata));
         // Next input (input_buffers) now stores this output (output_buffers).
       }
-    }
-  }
-
-  return Status::Ok();
-}
-
-Status FilterPipeline::run_reverse(
-    stats::Stats* const reader_stats,
-    Tile* const tile,
-    Tile* const offsets_tile,
-    ThreadPool* const compute_tp,
-    const Config& config) const {
-  assert(tile->filtered());
-
-  return run_reverse_internal(
-      reader_stats, tile, offsets_tile, compute_tp, config);
-}
-
-Status FilterPipeline::run_reverse_internal(
-    stats::Stats* const reader_stats,
-    Tile* const tile,
-    Tile* const offsets_tile,
-    ThreadPool* const compute_tp,
-    const Config& config) const {
-  auto filtered_buffer_data = tile->filtered_data();
-
-  // First make a pass over the tile to get the chunk information.
-  uint64_t num_chunks;
-  memcpy(&num_chunks, filtered_buffer_data, sizeof(uint64_t));
-  filtered_buffer_data += sizeof(uint64_t);
-  std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>> filtered_chunks(
-      num_chunks);
-  uint64_t total_orig_size = 0;
-  for (uint64_t i = 0; i < num_chunks; i++) {
-    uint32_t filtered_chunk_size, orig_chunk_size, metadata_size;
-    memcpy(&orig_chunk_size, filtered_buffer_data, sizeof(uint32_t));
-    filtered_buffer_data += sizeof(uint32_t);
-    memcpy(&filtered_chunk_size, filtered_buffer_data, sizeof(uint32_t));
-    filtered_buffer_data += sizeof(uint32_t);
-    memcpy(&metadata_size, filtered_buffer_data, sizeof(uint32_t));
-    filtered_buffer_data += sizeof(uint32_t);
-
-    total_orig_size += orig_chunk_size;
-
-    filtered_chunks[i] = std::make_tuple(
-        filtered_buffer_data,
-        filtered_chunk_size,
-        orig_chunk_size,
-        metadata_size);
-    filtered_buffer_data += metadata_size + filtered_chunk_size;
-  }
-
-  reader_stats->add_counter("read_unfiltered_byte_num", total_orig_size);
-
-  RETURN_NOT_OK(filter_chunks_reverse(
-      *tile, offsets_tile, filtered_chunks, compute_tp, config));
-
-  // Clear the filtered buffer now that we have reverse-filtered it into
-  // 'tile->buffer()'.
-  tile->clear_filtered_buffer();
-  // If unfiltering also included offsets, clear their filtered buffer too
-  if (offsets_tile) {
-    offsets_tile->clear_filtered_buffer();
-  }
-
-  // Zip the coords.
-  if (tile->stores_coords()) {
-    // Note that format version < 2 only split the coordinates when compression
-    // was used. See https://github.com/TileDB-Inc/TileDB/issues/1053
-    // For format version > 4, a tile never stores coordinates
-    bool using_compression = get_filter<CompressionFilter>() != nullptr;
-    auto version = tile->format_version();
-    if (version > 1 || using_compression) {
-      RETURN_NOT_OK(tile->zip_coordinates());
     }
   }
 

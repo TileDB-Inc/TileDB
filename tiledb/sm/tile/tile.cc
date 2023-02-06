@@ -34,6 +34,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 #include <iostream>
 
@@ -42,6 +43,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+/** Class for locally generated status exceptions. */
+class TileStatusException : public StatusException {
+ public:
+  explicit TileStatusException(const std::string& msg)
+      : StatusException("Tile", msg) {
+  }
+};
 /* ****************************** */
 /*           STATIC INIT          */
 /* ****************************** */
@@ -70,10 +78,8 @@ WriterTile WriterTile::from_generic(storage_size_t tile_size) {
       tile_size};
 }
 
-Status WriterTile::compute_chunk_size(
-    const uint64_t tile_size,
-    const uint64_t tile_cell_size,
-    uint32_t* const chunk_size) {
+uint32_t WriterTile::compute_chunk_size(
+    const uint64_t tile_size, const uint64_t tile_cell_size) {
   const uint64_t dim_tile_size = tile_size;
   const uint64_t dim_cell_size = tile_cell_size;
 
@@ -81,11 +87,10 @@ Status WriterTile::compute_chunk_size(
   chunk_size64 = chunk_size64 / dim_cell_size * dim_cell_size;
   chunk_size64 = std::max(chunk_size64, dim_cell_size);
   if (chunk_size64 > std::numeric_limits<uint32_t>::max()) {
-    return LOG_STATUS(Status_TileError("Chunk size exceeds uint32_t"));
+    throw TileStatusException("Chunk size exceeds uint32_t");
   }
 
-  *chunk_size = chunk_size64;
-  return Status::Ok();
+  return static_cast<uint32_t>(chunk_size64);
 }
 
 void WriterTile::set_max_tile_chunk_size(uint64_t max_tile_chunk_size) {
@@ -234,6 +239,40 @@ Status Tile::zip_coordinates() {
   tdb_free((void*)tile_tmp);
 
   return Status::Ok();
+}
+
+uint64_t Tile::load_chunk_data(ChunkData& unfiltered_tile) {
+  assert(filtered());
+
+  Deserializer deserializer(filtered_data(), filtered_size());
+
+  // Make a pass over the tile to get the chunk information.
+  uint64_t num_chunks = deserializer.read<uint64_t>();
+
+  auto& filtered_chunks = unfiltered_tile.filtered_chunks_;
+  auto& chunk_offsets = unfiltered_tile.chunk_offsets_;
+  filtered_chunks.resize(num_chunks);
+  chunk_offsets.resize(num_chunks);
+  uint64_t total_orig_size = 0;
+  for (uint64_t i = 0; i < num_chunks; i++) {
+    auto& chunk = filtered_chunks[i];
+    chunk.unfiltered_data_size_ = deserializer.read<uint32_t>();
+    chunk.filtered_data_size_ = deserializer.read<uint32_t>();
+    chunk.filtered_metadata_size_ = deserializer.read<uint32_t>();
+    chunk.filtered_metadata_ = const_cast<void*>(
+        deserializer.get_ptr<void>(chunk.filtered_metadata_size_));
+    chunk.filtered_data_ = const_cast<void*>(
+        deserializer.get_ptr<void>(chunk.filtered_data_size_));
+
+    chunk_offsets[i] = total_orig_size;
+    total_orig_size += chunk.unfiltered_data_size_;
+  }
+
+  if (total_orig_size != size()) {
+    throw TileStatusException("Incorrect unfiltered tile size allocated.");
+  }
+
+  return total_orig_size;
 }
 
 void Tile::swap(Tile& tile) {

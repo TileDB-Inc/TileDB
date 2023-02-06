@@ -207,70 +207,24 @@ class FilterPipeline {
       bool chunking = true) const;
 
   /**
-   * Runs the pipeline in reverse on the given filtered tile. This is used
-   * during reads, and processes filtered Tile data (e.g. compressed) into
-   * unfiltered Tile data.
-   *
-   * This expects as input a Tile in the following byte format:
-   *
-   *   number_of_chunks (uint64_t)
-   *   chunk0_orig_len (uint32_t)
-   *   chunk0_data_len (uint32_t)
-   *   chunk0_metadata_len (uint32_t)
-   *   chunk0_metadata (uint8_t[])
-   *   chunk0_data (uint8_t[])
-   *   chunk1_orig_len (uint32_t)
-   *   chunk1_data_len (uint32_t)
-   *   chunk1_metadata_len (uint32_t)
-   *   chunk1_metadata (uint8_t[])
-   *   chunk1_data (uint8_t[])
-   *   ...
-   *   chunkN_orig_len (uint32_t)
-   *   chunkN_data_len (uint32_t)
-   *   chunkN_metadata_len (uint32_t)
-   *   chunkN_metadata (uint8_t[])
-   *   chunkN_data (uint8_t[])
-   *
-   * And modifies the Tile's buffer to contain the unfiltered byte array:
-   *
-   *   tile_data (uint8_t[])
-   *
-   * The length of tile_data will be the sum of all chunkI_orig_len for I in 0
-   * to N.
-   *
-   * @param reader_stats Reader stats
-   * @param tile Tile to unfilter
-   * @param offsets_tile Offsets tile to unfilter, null if it will be unfilered
-   * separately
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param config The global config.
-   * @return Status
-   */
-  Status run_reverse(
-      stats::Stats* reader_stats,
-      Tile* const tile,
-      Tile* const offsets_tile,
-      ThreadPool* compute_tp,
-      const Config& config) const;
-
-  /**
    * Run the given chunk range in reverse through the pipeline.
    *
-   * @param reader_stats Stats to record in the function
-   * @param tile Current tile on which the filter pipeline is being run
+   * @param reader_stats Stats to record in the function.
+   * @param tile Current tile on which the filter pipeline is being run.
    * @param offsets_tile Offsets tile to unfilter, null if it will be unfilered
-   * separately
-   * @param chunk_data The tile chunk info, buffers and offsets
-   * @param min_chunk_index The chunk range index to start from
-   * @param max_chunk_index The chunk range index to end at
-   * @param concurrency_level The maximum level of concurrency
+   * separately.
+   * @param chunk_data The tile chunk info, buffers and offsets.
+   * @param min_chunk_index The chunk range index to start from.
+   * @param max_chunk_index The chunk range index to end at.
+   * @param concurrency_level The maximum level of concurrency.
    * @param config The global config.
-   * @return Status
+   * @return Status.
    */
 
-  Status run_reverse_chunk_range(
+  Status run_reverse(
       stats::Stats* const reader_stats,
       Tile* const tile,
+      Tile* const offsets_tile,
       const ChunkData& chunk_data,
       const uint64_t min_chunk_index,
       const uint64_t max_chunk_index,
@@ -381,42 +335,6 @@ class FilterPipeline {
       std::vector<uint64_t>& chunk_offsets,
       FilteredBuffer& output,
       ThreadPool* const compute_tp) const;
-
-  /**
-   * Run the given list of chunks in reverse through the pipeline.
-   *
-   * @param tile Current tile on which the filter pipeline is being run
-   * @param offsets_tile Current offsets tile for var sized
-   * attributes/dimensions.
-   * @param input Filtered chunk buffers to reverse.
-   * @param output Chunked buffer where output of the last stage
-   *    will be written.
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param config The global config.
-   * @return Status
-   */
-  Status filter_chunks_reverse(
-      Tile& tile,
-      Tile* const offsets_tile,
-      const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
-      ThreadPool* const compute_tp,
-      const Config& config) const;
-
-  /**
-   * The internal work routine for `run_reverse`.
-   *
-   * @param tile Tile to filter
-   * @param offsets_tile Offsets tile for var sized tile to filter.
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param config The global config.
-   * @return Status
-   */
-  Status run_reverse_internal(
-      stats::Stats* reader_stats,
-      Tile* const tile,
-      Tile* const offsets_tile,
-      ThreadPool* compute_tp,
-      const Config& config) const;
 };
 
 }  // namespace sm

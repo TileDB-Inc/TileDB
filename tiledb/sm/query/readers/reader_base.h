@@ -468,7 +468,7 @@ class ReaderBase : public StrategyBase {
    * @param result_tiles Vector containing the tiles to be unfiltered.
    * @return Status
    */
-  Status unfilter_tiles_chunk_range(
+  Status unfilter_tiles(
       const std::string& name,
       const std::vector<ResultTile*>& result_tiles) const;
 
@@ -485,7 +485,7 @@ class ReaderBase : public StrategyBase {
    * @param tile_chunk_data Tile chunk info, buffers and offsets
    * @return Status
    */
-  Status unfilter_tile_chunk_range(
+  Status unfilter_tile(
       uint64_t num_range_threads,
       uint64_t thread_idx,
       const std::string& name,
@@ -506,7 +506,7 @@ class ReaderBase : public StrategyBase {
    * @param tile_var_chunk_data Value tile chunk info, buffers and offsets
    * @return Status
    */
-  Status unfilter_tile_chunk_range(
+  Status unfilter_tile(
       uint64_t num_range_threads,
       uint64_t thread_idx,
       const std::string& name,
@@ -531,7 +531,7 @@ class ReaderBase : public StrategyBase {
    * offsets
    * @return Status
    */
-  Status unfilter_tile_chunk_range_nullable(
+  Status unfilter_tile_nullable(
       uint64_t num_range_threads,
       uint64_t thread_idx,
       const std::string& name,
@@ -557,7 +557,7 @@ class ReaderBase : public StrategyBase {
    * offsets
    * @return Status
    */
-  Status unfilter_tile_chunk_range_nullable(
+  Status unfilter_tile_nullable(
       uint64_t num_range_threads,
       uint64_t thread_idx,
       const std::string& name,
@@ -567,72 +567,6 @@ class ReaderBase : public StrategyBase {
       const ChunkData& tile_var_chunk_data,
       Tile* tile_validity,
       const ChunkData& tile_validity_chunk_data) const;
-
-  /**
-   * Filters the tiles on a particular attribute/dimension from all input
-   * fragments based on the tile info in `result_tiles`.
-   *
-   * @param name Attribute/dimension whose tiles will be unfiltered.
-   * @param result_tiles Vector containing the tiles to be unfiltered.
-   * @return Status
-   */
-  Status unfilter_tiles(
-      const std::string& name,
-      const std::vector<ResultTile*>& result_tiles) const;
-
-  /**
-   * Runs the input fixed-sized tile for the input attribute or dimension
-   * through the filter pipeline. The tile buffer is modified to contain the
-   * output of the pipeline.
-   *
-   * @param name The attribute/dimension the tile belong to.
-   * @param tile The tile to be unfiltered.
-   * @return Status
-   */
-  Status unfilter_tile(const std::string& name, Tile* tile) const;
-
-  /**
-   * Runs the input var-sized tile for the input attribute or dimension through
-   * the filter pipeline. The tile buffer is modified to contain the output of
-   * the pipeline.
-   *
-   * @param name The attribute/dimension the tile belong to.
-   * @param tile The offsets tile to be unfiltered.
-   * @param tile_var The value tile to be unfiltered.
-   * @return Status
-   */
-  Status unfilter_tile(
-      const std::string& name, Tile* tile, Tile* tile_var) const;
-
-  /**
-   * Runs the input fixed-sized tile for the input nullable attribute
-   * through the filter pipeline. The tile buffer is modified to contain the
-   * output of the pipeline.
-   *
-   * @param name The attribute/dimension the tile belong to.
-   * @param tile The tile to be unfiltered.
-   * @param tile_validity The validity tile to be unfiltered.
-   * @return Status
-   */
-  Status unfilter_tile_nullable(
-      const std::string& name, Tile* tile, Tile* tile_validity) const;
-
-  /**
-   * Runs the input var-sized tile for the input nullable attribute through
-   * the filter pipeline. The tile buffer is modified to contain the output of
-   * the pipeline.
-   *
-   * @param name The attribute/dimension the tile belong to.
-   * @param tile The offsets tile to be unfiltered.
-   * @param tile_var The value tile to be unfiltered.
-   * @param tile_validity The validity tile to be unfiltered.
-   * @return Status
-   */
-  Status unfilter_tile_nullable(
-      const std::string& name,
-      Tile* tile,
-      Tile* tile_var,
-      Tile* tile_validity) const;
 
   /**
    * Returns the configured bytesize for var-sized attribute offsets
@@ -717,19 +651,9 @@ class ReaderBase : public StrategyBase {
       ResultTile* const tile,
       const bool var_size,
       const bool nullable,
-      ChunkData* const tile_chunk_data,
-      ChunkData* const tile_chunk_var_data,
-      ChunkData* const tile_chunk_validity_data) const;
-
-  /**
-   * Reads the chunk data of a tile buffer and populates a chunk data structure
-   *
-   * @param tile Offsets tile to be unfiltered.
-   * @param tile_chunk_data Tile chunk info, buffers and offsets
-   * @return Status
-   */
-  tuple<Status, optional<uint64_t>> load_chunk_data(
-      Tile* const tile, ChunkData* chunk_data) const;
+      ChunkData& tile_chunk_data,
+      ChunkData& tile_chunk_var_data,
+      ChunkData& tile_chunk_validity_data) const;
 
   /**
    * Unfilter a specific range of chunks in tile
@@ -748,7 +672,7 @@ class ReaderBase : public StrategyBase {
    * offsets
    * @return Status
    */
-  Status unfilter_tile_chunk_range(
+  Status unfilter_tile(
       const std::string& name,
       ResultTile* const tile,
       const bool var_size,
