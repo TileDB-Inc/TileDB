@@ -250,7 +250,24 @@ TILEDB_EXPORT capi_return_t tiledb_subarray_add_label_range_var(
     const void* end,
     uint64_t end_size) TILEDB_NOEXCEPT;
 
-/** TODO: DOCS */
+/**
+ * Gets the name of the dimension label for label ranges set on this dimension
+ * of the subarray.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * char* label_name;
+ * tiledb_subarray_get_label_name(
+ *     ctx, subarray, 0, &label_name);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @pram subarray The subarray.
+ * @param dim_idx The dimension index the label ranges are set on.
+ * @param label_name The output name of the dimension label.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
 TILEDB_EXPORT capi_return_t tiledb_subarray_get_label_name(
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
@@ -373,7 +390,24 @@ TILEDB_EXPORT capi_return_t tiledb_subarray_get_label_range_var_size(
     uint64_t* start_size,
     uint64_t* end_size) TILEDB_NOEXCEPT;
 
-/** TODO: DOCS */
+/**
+ * Checks whether the subarray has label ranges set on the requested dimension.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int32_t has_label_range;
+ * tiledb_array_schema_has_label_ranges(
+ *     ctx, array_schema, "label_0", &has_label_range);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param subarray The subarray.
+ * @param dim_idx The index of the dimension to check for label ranges.
+ * @param has_label_range Set to `1` if the subarray has label ranges set
+ *      on the given dimension, else `0`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
 TILEDB_EXPORT capi_return_t tiledb_subarray_has_label_ranges(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
