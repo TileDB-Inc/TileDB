@@ -265,6 +265,10 @@ class Config {
    *
    * **Parameters**
    *
+   * - `sm.allow_separate_attribute_writes` <br>
+   *    **Experimental** <br>
+   *    Allow separate attribute write queries.<br>
+   *    **Default**: false
    * - `sm.allow_updates_experimental` <br>
    *    **Experimental** <br>
    *    Allow update queries. Experimental for testing purposes, do not use.<br>

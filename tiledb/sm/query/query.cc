@@ -108,7 +108,8 @@ Query::Query(
     , remote_query_(false)
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
-    , fragment_size_(std::numeric_limits<uint64_t>::max()) {
+    , fragment_size_(std::numeric_limits<uint64_t>::max())
+    , allow_separate_attribute_writes_(false) {
   assert(array->is_open());
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
@@ -131,6 +132,22 @@ Query::Query(
   throw_if_not_ok(subarray_.set_config(config_));
 
   rest_scratch_ = make_shared<Buffer>(HERE());
+
+  bool found = false;
+  throw_if_not_ok(config_.get<bool>(
+      "sm.allow_separate_attribute_writes",
+      &allow_separate_attribute_writes_,
+      &found));
+  if (!found) {
+    throw QueryStatusException(
+        "Cannot find sm.allow_separate_attribute_writes in settings");
+  }
+
+  // Disallow partial attribute writes for remote arrays.
+  if (allow_separate_attribute_writes_ && array_->is_remote()) {
+    throw QueryStatusException(
+        "Cannot allow partial attribute writes on remote arrays.");
+  }
 }
 
 Query::~Query() {
@@ -961,7 +978,7 @@ Status Query::check_buffer_names() {
 
     // All attributes/dimensions must be provided unless this query is only for
     // dimension labels.
-    if (!only_dim_label_query()) {
+    if (!only_dim_label_query() && !allow_separate_attribute_writes_) {
       auto expected_num = array_schema_->attribute_num();
       expected_num += static_cast<decltype(expected_num)>(
           buffers_.count(constants::timestamps));
@@ -977,6 +994,17 @@ Status Query::check_buffer_names() {
         return logger_->status(Status_QueryError(
             "Writes expect all attributes (and coordinates in "
             "the sparse/unordered case) to be set"));
+      }
+    }
+
+    // All dimension buffers should be set for separate attribute writes.
+    if (allow_separate_attribute_writes_) {
+      for (unsigned d = 0; d < array_schema_->dim_num(); d++) {
+        auto dim = array_schema_->dimension_ptr(d);
+        if (buffers_.count(dim->name()) == 0) {
+          throw QueryStatusException(
+              "Dimension buffer " + dim->name() + " is not set");
+        }
       }
     }
   }
@@ -1025,6 +1053,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           layout_,
           written_fragment_info_,
           coords_info_,
+          written_buffers_,
           remote_query_,
           fragment_name_,
           skip_checks_serialization));
@@ -1322,7 +1351,8 @@ Status Query::set_data_buffer(
 
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists) {
+  if (status_ != QueryStatus::UNINITIALIZED && !exists &&
+      !allow_separate_attribute_writes_) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
@@ -1354,6 +1384,12 @@ Status Query::set_data_buffer(
     coords_info_.has_coords_ = true;
   }
 
+  // Make sure the buffer was not already written.
+  if (written_buffers_.count(name) != 0) {
+    return logger_->status(Status_QueryError(
+        std::string("Buffer ") + name + std::string(" was already written")));
+  }
+
   has_coords_buffer_ |= is_dim;
 
   // Set attribute/dimension buffer on the appropriate buffer
@@ -1375,36 +1411,37 @@ Status Query::set_offsets_buffer(
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   // Check buffer
-  if (check_null_buffers && buffer_offsets == nullptr)
+  if (check_null_buffers && buffer_offsets == nullptr) {
     return logger_->status(
         Status_QueryError("Cannot set buffer; " + name + " buffer is null"));
+  }
 
   // Check buffer size
-  if (check_null_buffers && buffer_offsets_size == nullptr)
+  if (check_null_buffers && buffer_offsets_size == nullptr) {
     return logger_->status(Status_QueryError(
         "Cannot set buffer; " + name + " buffer size is null"));
+  }
 
   // If this is for a dimension label, set the dimension label offsets buffer
   // and return.
   if (array_schema_->is_dim_label(name)) {
     // Check the query type is valid.
     if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
-      throw StatusException(Status_SerializationError(
-          "Cannot set buffer; Unsupported query type."));
+      throw QueryStatusException("Cannot set buffer; Unsupported query type.");
     }
 
     // Check the dimension labe is in fact variable length.
     if (!array_schema_->dimension_label_reference(name).is_var()) {
-      throw StatusException(Status_QueryError(
+      throw QueryStatusException(
           std::string("Cannot set buffer; Input dimension label '") + name +
-          "' is fixed-sized"));
+          "' is fixed-sized");
     }
 
     // Check the query was not already initialized.
     if (status_ != QueryStatus::UNINITIALIZED) {
-      throw StatusException(Status_QueryError(
+      throw QueryStatusException(
           std::string("Cannot set buffer for new dimension label '") + name +
-          "' after initialization"));
+          "' after initialization");
     }
 
     // Set dimension label offsets buffers.
@@ -1425,17 +1462,20 @@ Status Query::set_offsets_buffer(
   }
 
   // Error if it is fixed-sized
-  if (!array_schema_->var_size(name))
+  if (!array_schema_->var_size(name)) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is fixed-sized"));
+  }
 
   // Error if setting a new attribute/dimension after initialization
   bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
+  if (status_ != QueryStatus::UNINITIALIZED && !exists &&
+      !allow_separate_attribute_writes_) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
+  }
 
   if (is_dim &&
       (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)) {
@@ -1454,6 +1494,12 @@ Status Query::set_offsets_buffer(
     coord_offsets_buffer_is_set_ = true;
     coords_info_.has_coords_ = true;
     offsets_buffer_name_ = name;
+  }
+
+  // Make sure the buffer was not already written.
+  if (written_buffers_.count(name) != 0) {
+    return logger_->status(Status_QueryError(
+        std::string("Buffer ") + name + std::string(" was already written")));
   }
 
   has_coords_buffer_ |= is_dim;
@@ -1475,33 +1521,44 @@ Status Query::set_validity_buffer(
   RETURN_NOT_OK(validity_vector.init_bytemap(
       buffer_validity_bytemap, buffer_validity_bytemap_size));
   // Check validity buffer
-  if (check_null_buffers && validity_vector.buffer() == nullptr)
+  if (check_null_buffers && validity_vector.buffer() == nullptr) {
     return logger_->status(Status_QueryError(
         "Cannot set buffer; " + name + " validity buffer is null"));
+  }
 
   // Check validity buffer size
-  if (check_null_buffers && validity_vector.buffer_size() == nullptr)
+  if (check_null_buffers && validity_vector.buffer_size() == nullptr) {
     return logger_->status(Status_QueryError(
         "Cannot set buffer; " + name + " validity buffer size is null"));
+  }
 
   // Must be an attribute
-  if (!array_schema_->is_attr(name))
+  if (!array_schema_->is_attr(name)) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Buffer name '") + name +
         "' is not an attribute"));
+  }
 
   // Must be nullable
-  if (!array_schema_->is_nullable(name))
+  if (!array_schema_->is_nullable(name)) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is not nullable"));
+  }
 
   // Error if setting a new attribute after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists)
+  if (status_ != QueryStatus::UNINITIALIZED && !exists) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));
+  }
+
+  // Make sure the buffer was not already written.
+  if (written_buffers_.count(name) != 0) {
+    return logger_->status(Status_QueryError(
+        std::string("Buffer ") + name + std::string(" was already written")));
+  }
 
   // Set attribute/dimension buffer
   buffers_[name].set_validity_buffer(std::move(validity_vector));
@@ -1781,8 +1838,8 @@ Status Query::submit() {
   // Make sure fragment size is only set for global order.
   if (fragment_size_ != std::numeric_limits<uint64_t>::max() &&
       (layout_ != Layout::GLOBAL_ORDER || type_ != QueryType::WRITE)) {
-    throw StatusException(Status_QueryError(
-        "Fragment size is only supported for global order writes."));
+    throw QueryStatusException(
+        "Fragment size is only supported for global order writes.");
   }
 
   // Check attribute/dimensions buffers completeness before query submits

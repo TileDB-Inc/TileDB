@@ -217,7 +217,7 @@ void IncompleteFx2::create_sparse_array() {
   rc = tiledb_attribute_set_cell_val_num(ctx_, a3, 2);
   CHECK(rc == TILEDB_OK);
 
-  // Create array schmea
+  // Create array schema
   tiledb_array_schema_t* array_schema;
   rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
   CHECK(rc == TILEDB_OK);

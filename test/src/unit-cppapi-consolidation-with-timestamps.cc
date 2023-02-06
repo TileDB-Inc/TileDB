@@ -41,7 +41,7 @@
 using namespace tiledb;
 using namespace tiledb::test;
 
-/** Tests for C API consolidation with timestamps. */
+/** Tests for CPP API consolidation with timestamps. */
 struct ConsolidationWithTimestampsFx {
   // Constants.
   const char* SPARSE_ARRAY_NAME = "test_consolidate_sparse_array";
@@ -132,7 +132,7 @@ void ConsolidationWithTimestampsFx::create_sparse_array(bool allows_dups) {
   // Create attributes.
   auto a1 = Attribute::create<int32_t>(ctx_, "a1");
 
-  // Create array schmea.
+  // Create array schema.
   ArraySchema schema(ctx_, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.set_capacity(20);

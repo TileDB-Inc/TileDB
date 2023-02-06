@@ -717,15 +717,14 @@ void WriterBase::set_coords_metadata(
 Status WriterBase::compute_tiles_metadata(
     uint64_t tile_num,
     std::unordered_map<std::string, WriterTileTupleVector>& tiles) const {
-  auto attr_num = buffers_.size();
   auto compute_tp = storage_manager_->compute_tp();
 
   // Parallelize over attributes?
-  if (attr_num > tile_num) {
-    auto st = parallel_for(compute_tp, 0, attr_num, [&](uint64_t i) {
-      auto buff_it = buffers_.begin();
-      std::advance(buff_it, i);
-      const auto& attr = buff_it->first;
+  if (tiles.size() > tile_num) {
+    auto st = parallel_for(compute_tp, 0, tiles.size(), [&](uint64_t i) {
+      auto tiles_it = tiles.begin();
+      std::advance(tiles_it, i);
+      const auto& attr = tiles_it->first;
       auto& attr_tiles = tiles[attr];
       const auto type = array_schema_.type(attr);
       const auto is_dim = array_schema_.is_dim(attr);
@@ -743,9 +742,9 @@ Status WriterBase::compute_tiles_metadata(
     });
     RETURN_NOT_OK(st);
   } else {  // Parallelize over tiles
-    for (const auto& buff : buffers_) {
-      const auto& attr = buff.first;
-      auto& attr_tiles = tiles[attr];
+    for (auto& tile_vec : tiles) {
+      const auto& attr = tile_vec.first;
+      auto& attr_tiles = tile_vec.second;
       const auto type = array_schema_.type(attr);
       const auto is_dim = array_schema_.is_dim(attr);
       const auto var_size = array_schema_.var_size(attr);
