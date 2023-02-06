@@ -79,11 +79,14 @@ Status Posix::read_all(int fd, void* buffer, uint64_t nbytes, uint64_t offset) {
       return LOG_STATUS(
           Status_IOError(std::string("POSIX read error: ") + strerror(errno)));
     } else if (actual_read == 0) {
-      return LOG_STATUS(Status_IOError("POSIX incomplete read: EOF reached"));
+      break;
     }
     nread += actual_read;
   } while (nread < nbytes);
 
+  if (nread != nbytes) {
+    return LOG_STATUS(Status_IOError("POSIX incomplete read: EOF reached"));
+  }
   return Status::Ok();
 }
 
@@ -443,8 +446,8 @@ Status Posix::read(
   Status st = read_all(fd, buffer, nbytes, offset);
   // Close file
   if (close(fd)) {
-    LOG_STATUS_NO_RETURN_VALUE(Status_IOError(
-        std::string("Cannot close file; ") + strerror(errno)));
+    LOG_STATUS_NO_RETURN_VALUE(
+        Status_IOError(std::string("Cannot close file; ") + strerror(errno)));
   }
   return st;
 }
