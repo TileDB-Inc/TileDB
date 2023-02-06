@@ -164,9 +164,11 @@ Status UnorderedWriter::dowork() {
 Status UnorderedWriter::finalize() {
   auto timer_se = stats_->start_timer("finalize");
 
-  if (written_buffers_.size() <
-      array_schema_.dim_num() + array_schema_.attribute_num()) {
-    throw UnorderWriterStatusException("Not all buffers already written");
+  if (!array_->is_remote()) {
+    if (written_buffers_.size() <
+        array_schema_.dim_num() + array_schema_.attribute_num()) {
+      throw UnorderWriterStatusException("Not all buffers already written");
+    }
   }
 
   return Status::Ok();
@@ -673,6 +675,12 @@ Status UnorderedWriter::unordered_write() {
 
   // No tiles
   if (tiles.empty() || tiles.begin()->second.empty()) {
+    // Add the written buffers to the list.
+    for (const auto& it : buffers_) {
+      const auto& name = it.first;
+      written_buffers_.emplace(name);
+    }
+
     return Status::Ok();
   }
 
