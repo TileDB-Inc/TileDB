@@ -1495,8 +1495,8 @@ Status query_from_capnp(
 
     auto var_size = schema.var_size(name);
     auto nullable = schema.is_nullable(name);
+    const QueryBuffer& query_buffer = query->buffer(name);
     if (type == QueryType::READ) {
-      const QueryBuffer& query_buffer = query->buffer(name);
       // We use the query_buffer directly in order to get the original buffer
       // sizes. This avoid a problem where an incomplete query will change the
       // users buffer size to the smaller results and we end up not being able
@@ -1683,14 +1683,29 @@ Status query_from_capnp(
           if (attr_copy_state == nullptr) {
             // Set the size directly on the query (so user can introspect on
             // result size).
-            if (existing_offset_buffer_size_ptr != nullptr)
+            if (existing_offset_buffer_size_ptr != nullptr) {
               *existing_offset_buffer_size_ptr =
                   curr_offset_size + fixedlen_size_to_copy;
-            if (existing_buffer_size_ptr != nullptr)
+            } else {
+              *query_buffer.buffer_size_ =
+                  curr_offset_size + fixedlen_size_to_copy;
+              ;
+            }
+            if (existing_buffer_size_ptr != nullptr) {
               *existing_buffer_size_ptr = curr_data_size + varlen_size;
-            if (nullable && existing_validity_buffer_size_ptr != nullptr)
-              *existing_validity_buffer_size_ptr =
-                  curr_validity_size + validitylen_size;
+            } else {
+              *query_buffer.buffer_var_size_ = curr_data_size + varlen_size;
+            }
+            if (nullable) {
+              if (existing_validity_buffer_size_ptr != nullptr) {
+                *existing_validity_buffer_size_ptr =
+                    curr_validity_size + validitylen_size;
+              } else {
+                *query_buffer.validity_vector_.buffer_size() =
+                    curr_validity_size + validitylen_size;
+                ;
+              }
+            }
           } else {
             // Accumulate total bytes copied (caller's responsibility to
             // eventually update the query).
@@ -1718,11 +1733,20 @@ Status query_from_capnp(
           }
 
           if (attr_copy_state == nullptr) {
-            if (existing_buffer_size_ptr != nullptr)
+            if (existing_buffer_size_ptr != nullptr) {
               *existing_buffer_size_ptr = curr_data_size + fixedlen_size;
-            if (nullable && existing_validity_buffer_size_ptr != nullptr)
-              *existing_validity_buffer_size_ptr =
-                  curr_validity_size + validitylen_size;
+            } else {
+              *query_buffer.buffer_size_ = curr_data_size + fixedlen_size;
+            }
+            if (nullable) {
+              if (existing_validity_buffer_size_ptr != nullptr) {
+                *existing_validity_buffer_size_ptr =
+                    curr_validity_size + validitylen_size;
+              } else {
+                *query_buffer.validity_vector_.buffer_size() =
+                    curr_validity_size + validitylen_size;
+              }
+            }
           } else {
             attr_copy_state->data_size += fixedlen_size;
             if (nullable)
