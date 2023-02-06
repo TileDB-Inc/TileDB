@@ -1743,7 +1743,7 @@ int submit_query_wrapper(
   // Allocate new context for server
   tiledb_ctx_t* server_ctx;
   tiledb_ctx_alloc(config, &server_ctx);
-  tiledb_array_t* array_server;
+  tiledb_array_t* array_server = nullptr;
   if (refactored_query_v2) {
     rc = deserialize_array_and_query(
         server_ctx, serialized, &server_deser_query, array_uri.c_str(), 0);

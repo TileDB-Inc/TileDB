@@ -86,7 +86,6 @@ struct VariableOffsetsFx {
     query.set_offsets_buffer("attr", data_offsets);
 
     // Submit query
-    test::ServerQueryBuffers server_buffers_;
     auto rc = test::submit_query_wrapper(
         ctx,
         array_name,
