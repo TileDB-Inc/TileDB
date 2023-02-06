@@ -216,6 +216,11 @@ TEST_CASE(
   rc = tiledb_fragment_info_alloc(ctx, array_name.c_str(), &fragment_info);
   CHECK(rc == TILEDB_OK);
 
+  // Check that accessing stuff from fragment info before loading it fails.
+  uint32_t fragment_num;
+  rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
+  CHECK(rc != TILEDB_OK);
+
   // Load fragment info
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);
@@ -246,7 +251,6 @@ TEST_CASE(
   }
 
   // No fragments yet
-  uint32_t fragment_num;
   rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
   CHECK(rc == TILEDB_OK);
   CHECK(fragment_num == 0);

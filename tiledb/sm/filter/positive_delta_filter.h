@@ -93,7 +93,7 @@ class PositiveDeltaFilter : public Filter {
    */
   Status run_forward(
       const WriterTile& tile,
-      void* const,
+      WriterTile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -104,7 +104,7 @@ class PositiveDeltaFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      void* support_data,
+      Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

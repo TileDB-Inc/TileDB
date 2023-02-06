@@ -341,15 +341,6 @@ class StorageManagerCanonical {
       const Config& config);
 
   /**
-   * Writes a commit ignore file.
-   *
-   * @param array_dir The ArrayDirectory where the data is stored.
-   * @param commit_uris_to_ignore The commit files that are to be ignored.
-   */
-  Status write_commit_ignore_file(
-      ArrayDirectory array_dir, const std::vector<URI>& commit_uris_to_ignore);
-
-  /**
    * Writes a consolidated commits file.
    *
    * @param write_version Write version.
@@ -374,9 +365,8 @@ class StorageManagerCanonical {
    * @param array_name The name of the array whose fragments are to be deleted.
    * @param timestamp_start The start timestamp at which to delete.
    * @param timestamp_end The end timestamp at which to delete.
-   * @return Status
    */
-  Status delete_fragments(
+  void delete_fragments(
       const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /**
@@ -609,12 +599,6 @@ class StorageManagerCanonical {
   /** Returns the configuration parameters. */
   const Config& config() const;
 
-  /** Creates a directory with the input URI. */
-  Status create_dir(const URI& uri);
-
-  /** Creates an empty file with the input URI. */
-  Status touch(const URI& uri);
-
   /** Returns the current map of any set tags. */
   const std::unordered_map<std::string, std::string>& tags() const;
 
@@ -651,16 +635,6 @@ class StorageManagerCanonical {
   bool is_array(const URI& uri) const;
 
   /**
-   * Checks if the input URI represents a directory.
-   *
-   * @param The URI to be checked.
-   * @param is_dir Set to `true` if the URI is a directory and `false`
-   *     otherwise.
-   * @return Status
-   */
-  Status is_dir(const URI& uri, bool* is_dir) const;
-
-  /**
    * Checks if the input URI represents a group.
    *
    * @param The URI to be checked.
@@ -669,16 +643,6 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status is_group(const URI& uri, bool* is_group) const;
-
-  /**
-   * Checks if the input URI represents a file.
-   *
-   * @param The URI to be checked.
-   * @param is_file Set to `true` if the URI is a file and `false`
-   *     otherwise.
-   * @return Status
-   */
-  Status is_file(const URI& uri, bool* is_file) const;
 
   /**
    * Loads the schema of a schema uri from persistent storage into memory.
@@ -861,31 +825,6 @@ class StorageManagerCanonical {
   Status query_submit_async(Query* query);
 
   /**
-   * Reads from a file into the input buffer.
-   *
-   * @param uri The URI file to read from.
-   * @param offset The offset in the file the read will start from.
-   * @param buffer The buffer to write into. The function reallocates memory
-   *     for the buffer, sets its size to *nbytes* and resets its offset.
-   * @param nbytes The number of bytes to read.
-   * @return Status.
-   */
-  Status read(
-      const URI& uri, uint64_t offset, Buffer* buffer, uint64_t nbytes) const;
-
-  /**
-   * Reads from a file into the raw input buffer.
-   *
-   * @param uri The URI file to read from.
-   * @param offset The offset in the file the read will start from.
-   * @param buffer The buffer to write into.
-   * @param nbytes The number of bytes to read.
-   * @return Status.
-   */
-  Status read(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
-
-  /**
    * Sets a string/string KV "tag" on the storage manager instance.
    *
    * This is currently only meant for internal TileDB Inc. usage.
@@ -929,12 +868,6 @@ class StorageManagerCanonical {
   Status store_data_to_generic_tile(
       WriterTile& tile, const URI& uri, const EncryptionKey& encryption_key);
 
-  /** Closes a file, flushing its contents to persistent storage. */
-  Status close_file(const URI& uri);
-
-  /** Syncs a file or directory, flushing its contents to persistent storage. */
-  Status sync(const URI& uri);
-
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;
   }
@@ -943,16 +876,6 @@ class StorageManagerCanonical {
   [[nodiscard]] inline VFS* vfs() const {
     return &(resources_.vfs());
   }
-
-  /**
-   * Writes the input data into a URI file.
-   *
-   * @param uri The file to write into.
-   * @param data The data to write.
-   * @param size The data size in bytes.
-   * @return Status.
-   */
-  Status write(const URI& uri, void* data, uint64_t size) const;
 
   /** Returns `stats_`. */
   [[nodiscard]] inline stats::Stats* stats() {

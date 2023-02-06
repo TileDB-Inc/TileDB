@@ -426,40 +426,13 @@ Status StorageManagerCanonical::fragments_consolidate(
       array_name, encryption_type, encryption_key, key_length, fragment_uris);
 }
 
-Status StorageManagerCanonical::write_commit_ignore_file(
-    ArrayDirectory array_dir, const std::vector<URI>& commit_uris_to_ignore) {
-  auto&& [st, name] = array_dir.compute_new_fragment_name(
-      commit_uris_to_ignore.front(),
-      commit_uris_to_ignore.back(),
-      constants::format_version);
-  RETURN_NOT_OK(st);
-
-  // Write URIs, relative to the array URI.
-  std::stringstream ss;
-  auto base_uri_size = array_dir.uri().to_string().size();
-  for (const auto& uri : commit_uris_to_ignore) {
-    ss << uri.to_string().substr(base_uri_size) << "\n";
-  }
-
-  // Write an ignore file to ensure consolidated WRT files still work
-  auto data = ss.str();
-  URI ignore_file_uri =
-      array_dir.get_commits_dir(constants::format_version)
-          .join_path(name.value() + constants::ignore_file_suffix);
-  RETURN_NOT_OK(vfs()->write(ignore_file_uri, data.c_str(), data.size()));
-  RETURN_NOT_OK(vfs()->close_file(ignore_file_uri));
-
-  return Status::Ok();
-}
-
 void StorageManagerCanonical::write_consolidated_commits_file(
     format_version_t write_version,
     ArrayDirectory array_dir,
     const std::vector<URI>& commit_uris) {
   // Compute the file name.
-  auto&& [st1, name] = array_dir.compute_new_fragment_name(
+  auto name = array_dir.compute_new_fragment_name(
       commit_uris.front(), commit_uris.back(), write_version);
-  throw_if_not_ok(st1);
 
   // Compute size of consolidated file. Save the sizes of the files to re-use
   // below.
@@ -503,7 +476,7 @@ void StorageManagerCanonical::write_consolidated_commits_file(
   // Write the file to storage.
   URI consolidated_commits_uri =
       array_dir.get_commits_dir(write_version)
-          .join_path(name.value() + constants::con_commits_file_suffix);
+          .join_path(name + constants::con_commits_file_suffix);
   throw_if_not_ok(
       vfs()->write(consolidated_commits_uri, data.data(), data.size()));
   throw_if_not_ok(vfs()->close_file(consolidated_commits_uri));
@@ -511,13 +484,11 @@ void StorageManagerCanonical::write_consolidated_commits_file(
 
 void StorageManagerCanonical::delete_array(const char* array_name) {
   if (array_name == nullptr) {
-    throw Status_StorageManagerError(
-        "[delete_array] Array name cannot be null");
+    throw std::invalid_argument("[delete_array] Array name cannot be null");
   }
 
   // Delete fragments and commits
-  throw_if_not_ok(
-      delete_fragments(array_name, 0, std::numeric_limits<uint64_t>::max()));
+  delete_fragments(array_name, 0, std::numeric_limits<uint64_t>::max());
 
   auto array_dir = ArrayDirectory(
       resources(), URI(array_name), 0, std::numeric_limits<uint64_t>::max());
@@ -529,12 +500,10 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
   vfs()->remove_files(compute_tp(), array_dir.array_schema_uris());
 }
 
-Status StorageManagerCanonical::delete_fragments(
+void StorageManagerCanonical::delete_fragments(
     const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
-  Status st;
   if (array_name == nullptr) {
-    throw Status_StorageManagerError(
-        "[delete_fragments] Array name cannot be null");
+    throw std::invalid_argument("[delete_fragments] Array name cannot be null");
   }
 
   auto array_dir = ArrayDirectory(
@@ -558,22 +527,20 @@ Status StorageManagerCanonical::delete_fragments(
 
   // Write ignore file
   if (commit_uris_to_ignore.size() != 0) {
-    RETURN_NOT_OK(write_commit_ignore_file(array_dir, commit_uris_to_ignore));
+    array_dir.write_commit_ignore_file(commit_uris_to_ignore);
   }
 
   // Delete fragments and commits
-  st = parallel_for(compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
-    RETURN_NOT_OK(vfs()->remove_dir(fragment_uris[i].uri_));
-    bool is_file = false;
-    RETURN_NOT_OK(vfs()->is_file(commit_uris_to_delete[i], &is_file));
-    if (is_file) {
-      RETURN_NOT_OK(vfs()->remove_file(commit_uris_to_delete[i]));
-    }
-    return Status::Ok();
-  });
-  RETURN_NOT_OK(st);
-
-  return Status::Ok();
+  throw_if_not_ok(
+      parallel_for(compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs()->remove_dir(fragment_uris[i].uri_));
+        bool is_file = false;
+        RETURN_NOT_OK(vfs()->is_file(commit_uris_to_delete[i], &is_file));
+        if (is_file) {
+          RETURN_NOT_OK(vfs()->remove_file(commit_uris_to_delete[i]));
+        }
+        return Status::Ok();
+      }));
 }
 
 void StorageManagerCanonical::delete_group(const char* group_name) {
@@ -1265,18 +1232,6 @@ const Config& StorageManagerCanonical::config() const {
   return config_;
 }
 
-Status StorageManagerCanonical::create_dir(const URI& uri) {
-  return vfs()->create_dir(uri);
-}
-
-Status StorageManagerCanonical::is_dir(const URI& uri, bool* is_dir) const {
-  return vfs()->is_dir(uri, is_dir);
-}
-
-Status StorageManagerCanonical::touch(const URI& uri) {
-  return vfs()->touch(uri);
-}
-
 void StorageManagerCanonical::decrement_in_progress() {
   std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
   queries_in_progress_--;
@@ -1401,11 +1356,6 @@ bool StorageManagerCanonical::is_array(const URI& uri) const {
   }
 
   // TODO: mark unreachable
-}
-
-Status StorageManagerCanonical::is_file(const URI& uri, bool* is_file) const {
-  RETURN_NOT_OK(vfs()->is_file(uri, is_file));
-  return Status::Ok();
 }
 
 Status StorageManagerCanonical::is_group(const URI& uri, bool* is_group) const {
@@ -1842,21 +1792,6 @@ Status StorageManagerCanonical::query_submit_async(Query* query) {
   return async_push_query(query);
 }
 
-Status StorageManagerCanonical::read(
-    const URI& uri, uint64_t offset, Buffer* buffer, uint64_t nbytes) const {
-  RETURN_NOT_OK(buffer->realloc(nbytes));
-  RETURN_NOT_OK(vfs()->read(uri, offset, buffer->data(), nbytes));
-  buffer->set_size(nbytes);
-  buffer->reset_offset();
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
-  RETURN_NOT_OK(vfs()->read(uri, offset, buffer, nbytes));
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::set_tag(
     const std::string& key, const std::string& value) {
   tags_[key] = value;
@@ -1888,9 +1823,10 @@ Status StorageManagerCanonical::store_group_detail(
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
   bool group_detail_dir_exists = false;
-  RETURN_NOT_OK(is_dir(group_detail_folder_uri, &group_detail_dir_exists));
+  RETURN_NOT_OK(
+      vfs()->is_dir(group_detail_folder_uri, &group_detail_dir_exists));
   if (!group_detail_dir_exists)
-    RETURN_NOT_OK(create_dir(group_detail_folder_uri));
+    RETURN_NOT_OK(vfs()->create_dir(group_detail_folder_uri));
 
   RETURN_NOT_OK(
       store_data_to_generic_tile(tile, *group_detail_uri, encryption_key));
@@ -1915,7 +1851,7 @@ Status StorageManagerCanonical::store_array_schema(
 
   // Delete file if it exists already
   bool exists;
-  RETURN_NOT_OK(is_file(schema_uri, &exists));
+  RETURN_NOT_OK(vfs()->is_file(schema_uri, &exists));
   if (exists)
     RETURN_NOT_OK(vfs()->remove_file(schema_uri));
 
@@ -1924,9 +1860,9 @@ Status StorageManagerCanonical::store_array_schema(
   bool schema_dir_exists = false;
   URI array_schema_dir_uri =
       array_schema->array_uri().join_path(constants::array_schema_dir_name);
-  RETURN_NOT_OK(is_dir(array_schema_dir_uri, &schema_dir_exists));
+  RETURN_NOT_OK(vfs()->is_dir(array_schema_dir_uri, &schema_dir_exists));
   if (!schema_dir_exists)
-    RETURN_NOT_OK(create_dir(array_schema_dir_uri));
+    RETURN_NOT_OK(vfs()->create_dir(array_schema_dir_uri));
 
   RETURN_NOT_OK(store_data_to_generic_tile(tile, schema_uri, encryption_key));
 
@@ -1972,18 +1908,10 @@ Status StorageManagerCanonical::store_data_to_generic_tile(
   Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
 
   if (st.ok()) {
-    st = close_file(uri);
+    st = vfs()->close_file(uri);
   }
 
   return st;
-}
-
-Status StorageManagerCanonical::close_file(const URI& uri) {
-  return vfs()->close_file(uri);
-}
-
-Status StorageManagerCanonical::sync(const URI& uri) {
-  return vfs()->sync(uri);
 }
 
 void StorageManagerCanonical::wait_for_zero_in_progress() {
@@ -2001,11 +1929,6 @@ Status StorageManagerCanonical::init_rest_client() {
   }
 
   return Status::Ok();
-}
-
-Status StorageManagerCanonical::write(
-    const URI& uri, void* data, uint64_t size) const {
-  return vfs()->write(uri, data, size);
 }
 
 shared_ptr<Logger> StorageManagerCanonical::logger() const {

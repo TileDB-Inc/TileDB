@@ -965,7 +965,7 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_error(
 
   // Finalize query
   rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  CHECK(rc == TILEDB_ERR);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

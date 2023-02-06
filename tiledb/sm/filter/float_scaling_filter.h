@@ -101,7 +101,7 @@ class FloatScalingFilter : public Filter {
    */
   Status run_forward(
       const WriterTile& tile,
-      void* const support_data,
+      WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -114,7 +114,7 @@ class FloatScalingFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      void* support_data,
+      Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

@@ -210,12 +210,11 @@ Status CompressionFilter::get_option_impl(
 
 Status CompressionFilter::run_forward(
     const WriterTile& tile,
-    void* const support_data,
+    WriterTile* const offsets_tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  WriterTile* const offsets_tile = static_cast<WriterTile*>(support_data);
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {
     RETURN_NOT_OK(output->append_view(input));
@@ -272,14 +271,13 @@ Status CompressionFilter::run_forward(
 
 Status CompressionFilter::run_reverse(
     const Tile& tile,
-    void* support_data,
+    Tile* const offsets_tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
     const Config& config) const {
   (void)config;
-  Tile* offsets_tile = static_cast<Tile*>(support_data);
 
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {

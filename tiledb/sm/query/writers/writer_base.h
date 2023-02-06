@@ -320,19 +320,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status filter_tiles(const std::string& name, WriterTileTupleVector* tiles);
 
   /**
-   * Runs the input tiles for the input attribute through the filter pipeline
-   * for a bitsort attribute.
-   * The tile buffers are modified to contain the output of the pipeline.
-   *
-   * @param name The attribute/dimension the tiles belong to.
-   * @param tiles The tiles map, per attribute.
-   * @return Status
-   */
-  Status filter_tiles_bitsort(
-      const std::string& name,
-      std::unordered_map<std::string, WriterTileTupleVector>* tiles);
-
-  /**
    * Runs the input tile for the input attribute/dimension through the filter
    * pipeline. The tile buffer is modified to contain the output of the
    * pipeline.
@@ -343,7 +330,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @param offsets True if the tile to be filtered contains offsets for a
    *    var-sized attribute/dimension.
    * @param nullable True if the tile to be filtered contains validity values.
-   * @param support_data Support data for the filter.
    * @return Status
    */
   Status filter_tile(
@@ -351,8 +337,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       WriterTile* tile,
       WriterTile* offsets_tile,
       bool offsets,
-      bool nullable,
-      void* support_data);
+      bool nullable);
 
   /**
    * Determines if an attribute has min max metadata.

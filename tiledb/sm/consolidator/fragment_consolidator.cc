@@ -311,8 +311,7 @@ void FragmentConsolidator::vacuum(const char* array_name) {
       filtered_fragment_uris.commit_uris_to_ignore();
 
   if (commit_uris_to_ignore.size() > 0) {
-    throw_if_not_ok(storage_manager_->write_commit_ignore_file(
-        array_dir, commit_uris_to_ignore));
+    array_dir.write_commit_ignore_file(commit_uris_to_ignore);
   }
 
   // Delete the commit and vacuum files
@@ -645,10 +644,9 @@ Status FragmentConsolidator::create_queries(
   auto last = (*query_r)->last_fragment_uri();
 
   auto write_version = array_for_reads->array_schema_latest().write_version();
-  auto&& [st, fragment_name] =
+  auto fragment_name =
       array_for_reads->array_directory().compute_new_fragment_name(
           first, last, write_version);
-  RETURN_NOT_OK(st);
 
   // Create write query
   *query_w = tdb_new(Query, storage_manager_, array_for_writes, fragment_name);
@@ -672,7 +670,7 @@ Status FragmentConsolidator::create_queries(
   // Set the URI for the new fragment.
   auto frag_uri =
       array_for_reads->array_directory().get_fragments_dir(write_version);
-  *new_fragment_uri = frag_uri.join_path(fragment_name.value());
+  *new_fragment_uri = frag_uri.join_path(fragment_name);
 
   return Status::Ok();
 }

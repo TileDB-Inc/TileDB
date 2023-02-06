@@ -62,7 +62,8 @@ class UnorderedWriter : public WriterBase {
       Subarray& subarray,
       Layout layout,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
-      Query::CoordsInfo& coords_info_,
+      Query::CoordsInfo& coords_info,
+      std::unordered_set<std::string>& written_buffers,
       bool remote_query,
       optional<std::string> fragment_name = nullopt,
       bool skip_checks_serialization = false);
@@ -94,6 +95,27 @@ class UnorderedWriter : public WriterBase {
   /** Fragment URI. */
   std::optional<URI> frag_uri_;
 
+  /**
+   * The positions that resulted from sorting and according to which the cells
+   * must be re-arranged.
+   */
+  std::vector<uint64_t> cell_pos_;
+
+  /** The set with the positions of duplicate coordinates/cells. */
+  std::set<uint64_t> coord_dups_;
+
+  /** Pointer to the fragment metadata. */
+  shared_ptr<FragmentMetadata> frag_meta_;
+
+  /** Already written buffers. */
+  std::unordered_set<std::string>& written_buffers_;
+
+  /**
+   * Does this pass of the write include coordinates. This is used when we are
+   * doing a partial attribute write with multiple passes.
+   */
+  bool is_coords_pass_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -104,11 +126,9 @@ class UnorderedWriter : public WriterBase {
   /**
    * Throws an error if there are coordinate duplicates.
    *
-   * @param cell_pos The sorted positions of the coordinates in the
-   *     `attr_buffers_`.
    * @return Status
    */
-  Status check_coord_dups(const std::vector<uint64_t>& cell_pos) const;
+  Status check_coord_dups() const;
 
   /**
    * Computes the positions of the coordinate duplicates (if any). Note
@@ -116,33 +136,23 @@ class UnorderedWriter : public WriterBase {
    * coordinates appear 3 times, only 2 will be marked as duplicates,
    * whereas the first occurrence will not be marked as duplicate.
    *
-   * @param cell_pos The sorted positions of the coordinates in the
-   *     `attr_buffers_`.
    * @param A set indicating the positions of the duplicates.
    *     If there are not duplicates, this vector will be **empty** after
    *     the termination of the function.
    * @return Status
    */
-  Status compute_coord_dups(
-      const std::vector<uint64_t>& cell_pos,
-      std::set<uint64_t>* coord_dups) const;
+  Status compute_coord_dups();
 
   /**
    * It prepares the attribute and coordinate tiles, re-organizing the cells
    * from the user buffers based on the input sorted positions and coordinate
    * duplicates.
    *
-   * @param cell_pos The positions that resulted from sorting and
-   *     according to which the cells must be re-arranged.
-   * @param coord_dups The set with the positions
-   *     of duplicate coordinates/cells.
    * @param tiles The tiles to be created, one vector per attribute or
    *     coordinate.
    * @return Status
    */
   Status prepare_tiles(
-      const std::vector<uint64_t>& cell_pos,
-      const std::set<uint64_t>& coord_dups,
       std::unordered_map<std::string, WriterTileTupleVector>* tiles) const;
 
   /**
@@ -150,18 +160,11 @@ class UnorderedWriter : public WriterBase {
    * the cells from the user buffers based on the input sorted positions.
    *
    * @param name The attribute or dimension to prepare the tiles for.
-   * @param cell_pos The positions that resulted from sorting and
-   *     according to which the cells must be re-arranged.
-   * @param coord_dups The set with the positions
-   *     of duplicate coordinates/cells.
    * @param tiles The tiles to be created.
    * @return Status
    */
   Status prepare_tiles(
-      const std::string& name,
-      const std::vector<uint64_t>& cell_pos,
-      const std::set<uint64_t>& coord_dups,
-      WriterTileTupleVector* tiles) const;
+      const std::string& name, WriterTileTupleVector* tiles) const;
 
   /**
    * It prepares the tiles for the input attribute or dimension, re-organizing
@@ -169,18 +172,11 @@ class UnorderedWriter : public WriterBase {
    * Applicable only to fixed-sized attributes or dimensions.
    *
    * @param name The attribute or dimension to prepare the tiles for.
-   * @param cell_pos The positions that resulted from sorting and
-   *     according to which the cells must be re-arranged.
-   * @param coord_dups The set with the positions
-   *     of duplicate coordinates/cells.
    * @param tiles The tiles to be created.
    * @return Status
    */
   Status prepare_tiles_fixed(
-      const std::string& name,
-      const std::vector<uint64_t>& cell_pos,
-      const std::set<uint64_t>& coord_dups,
-      WriterTileTupleVector* tiles) const;
+      const std::string& name, WriterTileTupleVector* tiles) const;
 
   /**
    * It prepares the tiles for the input attribute or dimension, re-organizing
@@ -188,27 +184,19 @@ class UnorderedWriter : public WriterBase {
    * Applicable only to var-sized attributes or dimensions.
    *
    * @param name The attribute to prepare the tiles for.
-   * @param cell_pos The positions that resulted from sorting and
-   *     according to which the cells must be re-arranged.
-   * @param coord_dups The set with the positions
-   *     of duplicate coordinates/cells.
    * @param tiles The tiles to be created.
    * @return Status
    */
   Status prepare_tiles_var(
-      const std::string& name,
-      const std::vector<uint64_t>& cell_pos,
-      const std::set<uint64_t>& coord_dups,
-      WriterTileTupleVector* tiles) const;
+      const std::string& name, WriterTileTupleVector* tiles) const;
 
   /**
    * Sorts the coordinates of the user buffers, creating a vector with
    * the sorted positions.
    *
-   * @param cell_pos The sorted cell positions to be created.
    * @return Status
    */
-  Status sort_coords(std::vector<uint64_t>& cell_pos) const;
+  Status sort_coords();
 
   /**
    * Writes in unordered layout. Applicable to both dense and sparse arrays.

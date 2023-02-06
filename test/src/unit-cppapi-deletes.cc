@@ -1714,28 +1714,34 @@ TEST_CASE_METHOD(
       Catch::Matchers::ContainsSubstring(
           "Query type must be MODIFY_EXCLUSIVE"));
   CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
-
   array->close();
+
+  // Try to delete a fragment uri that doesn't exist
+  std::string extraneous_fragment =
+      std::string(SPARSE_ARRAY_NAME) + "/" +
+      tiledb::sm::constants::array_fragments_dir_name + "/extraneous";
+  const char* extraneous_fragments[1] = {extraneous_fragment.c_str()};
+  REQUIRE_THROWS_WITH(
+      Array::delete_fragments_list(
+          ctx_, SPARSE_ARRAY_NAME, extraneous_fragments, 1),
+      Catch::Matchers::ContainsSubstring(
+          "is not a fragment of the ArrayDirectory"));
+  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
+
   remove_sparse_array();
 }
 
 TEST_CASE_METHOD(
     DeletesFx,
-    "CPP API: Deletion of fragment writes",
+    "CPP API: Deletion of fragment writes by timestamp and uri",
     "[cppapi][deletes][fragments]") {
   remove_sparse_array();
 
   // Conditionally consolidate and vacuum
   bool consolidate = GENERATE(true, false);
   bool vacuum = GENERATE(true, false);
-
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
+  serialize_ = GENERATE(true, false);
 #endif
 
   if (!consolidate && vacuum) {
@@ -1748,6 +1754,7 @@ TEST_CASE_METHOD(
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 3);
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 5);
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 7);
+  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 4);
 
   if (consolidate) {
     consolidate_commits_sparse(vacuum);
@@ -1764,11 +1771,22 @@ TEST_CASE_METHOD(
   }
 
   // Delete fragments
-  std::unique_ptr<Array> array =
-      std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
-  array->delete_fragments(SPARSE_ARRAY_NAME, 2, 6);
-  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
-  array->close();
+  SECTION("delete fragments by timestamps") {
+    std::unique_ptr<Array> array = std::make_unique<Array>(
+        ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
+    array->delete_fragments(SPARSE_ARRAY_NAME, 2, 6);
+    array->close();
+  }
+
+  SECTION("delete fragments by uris") {
+    FragmentInfo fragment_info(ctx_, std::string(SPARSE_ARRAY_NAME));
+    fragment_info.load();
+    auto fragment_name1 = fragment_info.fragment_uri(1);
+    auto fragment_name2 = fragment_info.fragment_uri(2);
+    const char* fragment_uris[2] = {
+        fragment_name1.c_str(), fragment_name2.c_str()};
+    Array::delete_fragments_list(ctx_, SPARSE_ARRAY_NAME, fragment_uris, 2);
+  }
 
   // Check commits directory after deletion
   if (consolidate) {
@@ -1786,6 +1804,7 @@ TEST_CASE_METHOD(
       CHECK(commits_dir.dir_size() == 4);
     }
   }
+  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
 
   // Read array
   uint64_t buffer_size = 4;

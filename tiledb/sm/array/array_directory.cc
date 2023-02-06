@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -129,6 +129,66 @@ const uint64_t& ArrayDirectory::timestamp_start() const {
 
 const uint64_t& ArrayDirectory::timestamp_end() const {
   return timestamp_end_;
+}
+
+void ArrayDirectory::write_commit_ignore_file(
+    const std::vector<URI>& commit_uris_to_ignore) {
+  auto name = compute_new_fragment_name(
+      commit_uris_to_ignore.front(),
+      commit_uris_to_ignore.back(),
+      constants::format_version);
+
+  // Write URIs, relative to the array URI.
+  std::stringstream ss;
+  auto base_uri_size = uri().to_string().size();
+  for (const auto& uri : commit_uris_to_ignore) {
+    ss << uri.to_string().substr(base_uri_size) << "\n";
+  }
+
+  // Write an ignore file to ensure consolidated WRT files still work
+  auto data = ss.str();
+  URI ignore_file_uri = get_commits_dir(constants::format_version)
+                            .join_path(name + constants::ignore_file_suffix);
+  throw_if_not_ok(
+      resources_.get().vfs().write(ignore_file_uri, data.c_str(), data.size()));
+  throw_if_not_ok(resources_.get().vfs().close_file(ignore_file_uri));
+}
+
+void ArrayDirectory::delete_fragments_list(
+    const std::vector<URI>& fragment_uris) {
+  // Get fragment URIs from the array that match the input fragment_uris
+  auto filtered_uris = filtered_fragment_uris(true);
+  auto uris = filtered_uris.fragment_uris(fragment_uris);
+
+  // Retrieve commit uris to delete and ignore
+  std::vector<URI> commit_uris_to_delete;
+  std::vector<URI> commit_uris_to_ignore;
+  for (auto& timestamped_uri : uris) {
+    auto commit_uri = get_commit_uri(timestamped_uri);
+    commit_uris_to_delete.emplace_back(commit_uri);
+    if (consolidated_commit_uris_set().count(commit_uri.c_str()) != 0) {
+      commit_uris_to_ignore.emplace_back(commit_uri);
+    }
+  }
+
+  // Write ignore file
+  if (commit_uris_to_ignore.size() != 0) {
+    write_commit_ignore_file(commit_uris_to_ignore);
+  }
+
+  // Delete fragments and commits
+  throw_if_not_ok(parallel_for(
+      &resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(resources_.get().vfs().remove_dir(uris[i]));
+        bool is_file = false;
+        RETURN_NOT_OK(
+            resources_.get().vfs().is_file(commit_uris_to_delete[i], &is_file));
+        if (is_file) {
+          RETURN_NOT_OK(
+              resources_.get().vfs().remove_file(commit_uris_to_delete[i]));
+        }
+        return Status::Ok();
+      }));
 }
 
 Status ArrayDirectory::load() {
@@ -380,27 +440,25 @@ URI ArrayDirectory::get_vacuum_uri(const URI& fragment_uri) const {
   return URI(temp_uri.to_string() + constants::vacuum_file_suffix);
 }
 
-tuple<Status, optional<std::string>> ArrayDirectory::compute_new_fragment_name(
+std::string ArrayDirectory::compute_new_fragment_name(
     const URI& first, const URI& last, format_version_t format_version) const {
   // Get uuid
   std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), nullopt);
+  throw_if_not_ok(uuid::generate_uuid(&uuid, false));
 
   // For creating the new fragment URI
 
   // Get timestamp ranges
   std::pair<uint64_t, uint64_t> t_first, t_last;
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(first, &t_first), nullopt);
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(last, &t_last), nullopt);
+  throw_if_not_ok(utils::parse::get_timestamp_range(first, &t_first));
+  throw_if_not_ok(utils::parse::get_timestamp_range(last, &t_last));
 
   // Create new URI
   std::stringstream ss;
   ss << "/__" << t_first.first << "_" << t_last.second << "_" << uuid << "_"
      << format_version;
 
-  return {Status::Ok(), ss.str()};
+  return ss.str();
 }
 
 bool ArrayDirectory::loaded() const {

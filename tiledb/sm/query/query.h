@@ -823,6 +823,12 @@ class Query {
    */
   uint64_t fragment_size_;
 
+  /** Allow separate attribute writes. */
+  bool allow_separate_attribute_writes_;
+
+  /** Already written buffers. */
+  std::unordered_set<std::string> written_buffers_;
+
   /** Cache for tile aligned remote global order writes. */
   std::optional<QueryRemoteBufferStorage> query_remote_buffer_storage_;
 

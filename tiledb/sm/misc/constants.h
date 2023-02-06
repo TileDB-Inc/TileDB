@@ -385,9 +385,6 @@ extern const std::string filter_scale_float_str;
 /** String describing FILTER_XOR. */
 extern const std::string filter_xor_str;
 
-/** String describing FILTER_BITSORT. */
-extern const std::string filter_bitsort_str;
-
 /** String describing FILTER_WEBP. */
 extern const std::string filter_webp_str;
 

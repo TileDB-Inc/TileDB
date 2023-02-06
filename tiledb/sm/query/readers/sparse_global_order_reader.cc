@@ -1691,12 +1691,6 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
           return Status::Ok();
         }
 
-        // Bitsort attribute is already loaded in memory.
-        if (bitsort_attribute_.has_value() &&
-            name == bitsort_attribute_.value()) {
-          return Status::Ok();
-        }
-
         // Get the size for all tiles.
         uint64_t idx = 0;
         for (; idx < max_cs_idx; idx++) {
@@ -2012,10 +2006,7 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
       }
 
       // Clear tiles from memory.
-      const auto is_bitsort_attr =
-          bitsort_attribute_.has_value() && bitsort_attribute_.value() == name;
-      if (!is_bitsort_attr && !is_dim &&
-          qc_loaded_attr_names_set_.count(name) == 0 &&
+      if (!is_dim && qc_loaded_attr_names_set_.count(name) == 0 &&
           name != constants::timestamps &&
           name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);

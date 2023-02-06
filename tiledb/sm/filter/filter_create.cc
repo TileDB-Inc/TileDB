@@ -34,7 +34,6 @@
 #include "filter_create.h"
 #include "bit_width_reduction_filter.h"
 #include "bitshuffle_filter.h"
-#include "bitsort_filter.h"
 #include "byteshuffle_filter.h"
 #include "checksum_md5_filter.h"
 #include "checksum_sha256_filter.h"
@@ -83,8 +82,6 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
       return tdb_new(tiledb::sm::FloatScalingFilter);
     case tiledb::sm::FilterType::FILTER_XOR:
       return tdb_new(tiledb::sm::XORFilter);
-    case tiledb::sm::FilterType::FILTER_BITSORT:
-      return tdb_new(tiledb::sm::BitSortFilter);
     case tiledb::sm::FilterType::FILTER_WEBP: {
       if constexpr (webp_filter_exists) {
         return tdb_new(tiledb::sm::WebpFilter);
@@ -163,9 +160,6 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     };
     case FilterType::FILTER_XOR: {
       return make_shared<XORFilter>(HERE());
-    };
-    case FilterType::FILTER_BITSORT: {
-      return make_shared<BitSortFilter>(HERE());
     };
     case FilterType::FILTER_WEBP: {
       if constexpr (webp_filter_exists) {

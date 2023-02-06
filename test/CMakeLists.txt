@@ -150,6 +150,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-metadata.cc
   src/unit-capi-nullable.cc
   src/unit-capi-object_mgmt.cc
+  src/unit-capi-partial-attribute-write.cc
   src/unit-capi-query.cc
   src/unit-capi-query_2.cc
   src/unit-capi-smoke-test.cc
@@ -206,7 +207,6 @@ if (TILEDB_CPP_API)
     src/test-cppapi-dimension-label.cc
     src/test-cppapi-subarray-labels.cc
     src/unit-cppapi-array.cc
-    src/unit-cppapi-bitsort-filter.cc
     src/unit-cppapi-checksum.cc
     src/unit-cppapi-config.cc
     src/unit-cppapi-consolidation-sparse.cc
@@ -226,6 +226,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-max-fragment-size.cc
     src/unit-cppapi-metadata.cc
     src/unit-cppapi-nullable.cc
+    src/unit-cppapi-partial-attribute-write.cc
     src/unit-cppapi-query.cc
     src/cpp-integration-query-condition.cc
     src/unit-cppapi-schema.cc

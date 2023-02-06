@@ -92,7 +92,6 @@ ArraySchema::ArraySchema(ArrayType array_type)
   version_ = constants::format_version;
   auto timestamp = utils::time::timestamp_now_ms();
   timestamp_range_ = std::make_pair(timestamp, timestamp);
-  bitsort_filter_attr_ = std::nullopt;
 
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
@@ -149,41 +148,10 @@ ArraySchema::ArraySchema(
   }
 
   // Create attribute map
-  bitsort_filter_attr_ = std::nullopt;
   if (!attributes_.empty()) {
     for (auto attr_iter : attributes_) {
       auto attr = attr_iter.get();
       attribute_map_[attr->name()] = attr;
-      if (attr->filters().has_filter(FilterType::FILTER_BITSORT)) {
-        if (bitsort_filter_attr_.has_value()) {
-          throw StatusException(
-              Status_ArraySchemaError("Array schema creation failed. More than "
-                                      "one attribute has a bitsort filter."));
-        }
-
-        // An attribute with a bitsort filter must be not nullable.
-        if (attr->nullable()) {
-          throw StatusException(Status_ArraySchemaError(
-              "Array schema creation failed. Attribute with a bitsort filter "
-              "must be not nullable."));
-        }
-
-        // An array with a bitsort filter must be sparse.
-        if (array_type != ArrayType::SPARSE) {
-          throw StatusException(
-              Status_ArraySchemaError("Array schema creation failed. Array "
-                                      "with a bitsort filter must be sparse."));
-        }
-
-        // An array with a bitsort filter must have only fixed size dimensions.
-        if (!domain_->all_dims_fixed()) {
-          throw StatusException(Status_ArraySchemaError(
-              "Array schema creation failed. Bitsort filter cannot be applied "
-              "on an array with variable sized dimensions."));
-        }
-
-        bitsort_filter_attr_ = attr->name();
-      }
     }
   }
 
@@ -224,7 +192,6 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema) {
   coords_filters_ = array_schema.coords_filters_;
   tile_order_ = array_schema.tile_order_;
   version_ = array_schema.version_;
-  bitsort_filter_attr_ = array_schema.bitsort_filter_attr_;
 
   throw_if_not_ok(set_domain(array_schema.domain_));
 
@@ -1446,10 +1413,6 @@ Status ArraySchema::generate_uri(
       array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
 
   return Status::Ok();
-}
-
-std::optional<std::string> ArraySchema::bitsort_filter_attr() const {
-  return bitsort_filter_attr_;
 }
 
 }  // namespace sm

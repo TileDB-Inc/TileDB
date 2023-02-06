@@ -897,7 +897,7 @@ Status FragmentMetadata::store_v7_v10(const EncryptionKey& encryption_key) {
   throw_if_not_ok(store_footer(encryption_key));
 
   // Close file
-  return storage_manager_->close_file(fragment_metadata_uri);
+  return storage_manager_->vfs()->close_file(fragment_metadata_uri);
 }
 
 Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
@@ -979,7 +979,7 @@ Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK_ELSE(store_footer(encryption_key), clean_up());
 
   // Close file
-  return storage_manager_->close_file(fragment_metadata_uri);
+  return storage_manager_->vfs()->close_file(fragment_metadata_uri);
 }
 
 Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
@@ -1066,7 +1066,7 @@ Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
   throw_if_not_ok(store_footer(encryption_key));
 
   // Close file
-  return storage_manager_->close_file(fragment_metadata_uri);
+  return storage_manager_->vfs()->close_file(fragment_metadata_uri);
 }
 
 Status FragmentMetadata::store_v15_or_higher(
@@ -1159,7 +1159,7 @@ Status FragmentMetadata::store_v15_or_higher(
   throw_if_not_ok(store_footer(encryption_key));
 
   // Close file
-  return storage_manager_->close_file(fragment_metadata_uri);
+  return storage_manager_->vfs()->close_file(fragment_metadata_uri);
 }
 
 Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
@@ -2128,7 +2128,7 @@ Status FragmentMetadata::get_footer_offset_and_size(
     URI fragment_metadata_uri = fragment_uri_.join_path(
         std::string(constants::fragment_metadata_filename));
     uint64_t size_offset = meta_file_size_ - sizeof(uint64_t);
-    RETURN_NOT_OK(storage_manager_->read(
+    RETURN_NOT_OK(storage_manager_->vfs()->read(
         fragment_metadata_uri, size_offset, size, sizeof(uint64_t)));
     *offset = meta_file_size_ - *size - sizeof(uint64_t);
     storage_manager_->stats()->add_counter(
@@ -4018,7 +4018,7 @@ Status FragmentMetadata::read_file_footer(
   }
 
   // Read footer
-  return storage_manager_->read(
+  return storage_manager_->vfs()->read(
       fragment_metadata_uri,
       *footer_offset,
       tile->data_as<uint8_t>(),
@@ -4043,12 +4043,12 @@ Status FragmentMetadata::write_footer_to_file(WriterTile& tile) const {
       std::string(constants::fragment_metadata_filename));
 
   uint64_t size = tile.size();
-  RETURN_NOT_OK(
-      storage_manager_->write(fragment_metadata_uri, tile.data(), tile.size()));
+  RETURN_NOT_OK(storage_manager_->vfs()->write(
+      fragment_metadata_uri, tile.data(), tile.size()));
 
   // Write the size in the end if there is at least one var-sized dimension
   if (!array_schema_->domain().all_dims_fixed() || version_ >= 10)
-    return storage_manager_->write(
+    return storage_manager_->vfs()->write(
         fragment_metadata_uri, &size, sizeof(uint64_t));
   return Status::Ok();
 }
@@ -4703,7 +4703,7 @@ void FragmentMetadata::clean_up() {
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
 
-  throw_if_not_ok(storage_manager_->close_file(fragment_metadata_uri));
+  throw_if_not_ok(storage_manager_->vfs()->close_file(fragment_metadata_uri));
   throw_if_not_ok(storage_manager_->vfs()->remove_file(fragment_metadata_uri));
 }
 

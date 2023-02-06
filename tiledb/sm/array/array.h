@@ -224,12 +224,22 @@ class Array {
    * @param uri The uri of the Array whose fragments are to be deleted.
    * @param timestamp_start The start timestamp at which to delete fragments.
    * @param timestamp_end The end timestamp at which to delete fragments.
-   * @return Status
    *
    * @pre The Array must be open for exclusive writes
    */
-  Status delete_fragments(
+  void delete_fragments(
       const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
+
+  /**
+   * Deletes the fragments with the given URIs from the Array with given URI.
+   *
+   * @param uri The uri of the Array whose fragments are to be deleted.
+   * @param fragment_uris The uris of the fragments to be deleted.
+   *
+   * @pre The Array must be open for exclusive writes
+   */
+  void delete_fragments_list(
+      const URI& uri, const std::vector<URI>& fragment_uris);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
@@ -492,6 +502,11 @@ class Array {
   inline void set_query_type(QueryType query_type) {
     query_type_ = query_type;
   }
+
+  /**
+   * Checks the array is open, in MODIFY_EXCLUSIVE mode, before deleting data.
+   */
+  void ensure_array_is_valid_for_delete(const URI& uri);
 
   /**
    * Returns a map of the computed average cell size for var size

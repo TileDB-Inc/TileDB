@@ -93,6 +93,7 @@ const std::string Config::REST_CURL_VERBOSE = "false";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "false";
+const std::string Config::SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES = "false";
 const std::string Config::SM_ALLOW_UPDATES_EXPERIMENTAL = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
 const std::string Config::SM_ENCRYPTION_TYPE = "NO_ENCRYPTION";
@@ -246,6 +247,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("config.logging_level", Config::CONFIG_LOGGING_LEVEL),
     std::make_pair(
         "config.logging_format", Config::CONFIG_LOGGING_DEFAULT_FORMAT),
+    std::make_pair(
+        "sm.allow_separate_attribute_writes",
+        Config::SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES),
     std::make_pair(
         "sm.allow_updates_experimental", Config::SM_ALLOW_UPDATES_EXPERIMENTAL),
     std::make_pair("sm.encryption_key", Config::SM_ENCRYPTION_KEY),
@@ -673,6 +677,8 @@ Status Config::sanity_check(
     if (value != "DEFAULT" && value != "JSON")
       return LOG_STATUS(
           Status_ConfigError("Invalid logging format parameter value"));
+  } else if (param == "sm.allow_separate_attribute_writes") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.allow_updates_experimental") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.dedup_coords") {

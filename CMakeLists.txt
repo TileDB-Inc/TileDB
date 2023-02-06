@@ -563,6 +563,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
   # C API basics
   add_dependencies(tests unit_capi_error unit_capi_config unit_capi_context)
+  add_dependencies(tests unit_capi_array)
   add_dependencies(tests unit_capi_buffer)
   add_dependencies(tests unit_capi_data_order)
   add_dependencies(tests unit_capi_datatype)

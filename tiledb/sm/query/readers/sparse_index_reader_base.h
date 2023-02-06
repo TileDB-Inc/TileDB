@@ -309,9 +309,6 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Are we doing deletes consolidation (without purge option). */
   bool deletes_consolidation_no_purge_;
 
-  /** Optional string for a bitsort attribute. */
-  std::optional<std::string> bitsort_attribute_;
-
   /** Do we allo partial tile offset loading for this query? */
   bool partial_tile_offsets_loading_;
 

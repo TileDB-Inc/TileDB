@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -382,6 +382,18 @@ class Array {
         uri.c_str(),
         timestamp_start,
         timestamp_end));
+  }
+
+  /**
+   * Deletes the fragments with the input uris on an array with the input uri.
+   */
+  static void delete_fragments_list(
+      const Context& ctx,
+      const std::string& uri,
+      const char* fragment_uris[],
+      const size_t num_fragments) {
+    ctx.handle_error(tiledb_array_delete_fragments_list(
+        ctx.ptr().get(), uri.c_str(), fragment_uris, num_fragments));
   }
 
   /**
