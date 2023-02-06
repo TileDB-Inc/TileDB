@@ -1,5 +1,5 @@
 /**
- * @file   unit-cppapi-updates.cc
+ * @file   unit-cppapi-updates-queries.cc
  *
  * @section LICENSE
  *
