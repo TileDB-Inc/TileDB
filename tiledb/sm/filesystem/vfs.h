@@ -451,7 +451,6 @@ class VFS {
    * global order writes.
    *
    * @param uri The URI of the file.
-   * @return nothing
    */
   void finalize_and_close_file(const URI& uri);
 
@@ -461,22 +460,14 @@ class VFS {
    * @param uri The URI of the file.
    * @param buffer The buffer to write from.
    * @param buffer_size The buffer size.
+   * @param remote_global_order_write Remote global order write
    * @return Status
    */
-  Status write(const URI& uri, const void* buffer, uint64_t buffer_size);
-
-  /**
-   * Writes the contents of a buffer into a file.
-   * This function has special S3 logic tailored to work best with remote
-   * global order writes.
-   *
-   * @param uri The URI of the file.
-   * @param buffer The buffer to write from.
-   * @param buffer_size The buffer size.
-   * @return nothing
-   */
-  void global_order_write(
-      const URI& uri, const void* buffer, uint64_t buffer_size);
+  Status write(
+      const URI& uri,
+      const void* buffer,
+      uint64_t buffer_size,
+      bool remote_global_order_write = false);
 
   /**
    * Used in serialization to share the multipart upload state

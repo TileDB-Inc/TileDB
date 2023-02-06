@@ -1042,7 +1042,8 @@ struct WrittenFragmentInfo {
 
 struct BufferedChunk {
   uri@0 :Text;
-  # path to intermediate chunk buffering a <5mb remote gow partial write
+  # path to intermediate chunk which buffers
+  # a <5mb remote global order write operation
 
   size@1 :UInt64;
   # the size in bytes of the intermediate chunk

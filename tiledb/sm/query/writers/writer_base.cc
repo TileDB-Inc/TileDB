@@ -1152,29 +1152,21 @@ Status WriterBase::write_tiles(
        ++i, ++tile_id) {
     auto& tile = (*tiles)[i];
     auto& t = var_size ? tile.offset_tile() : tile.fixed_tile();
-    if (remote_global_order_write) {
-      storage_manager_->vfs()->global_order_write(
-          *uri, t.filtered_buffer().data(), t.filtered_buffer().size());
-    } else {
-      RETURN_NOT_OK(storage_manager_->vfs()->write(
-          *uri, t.filtered_buffer().data(), t.filtered_buffer().size()));
-    }
+    RETURN_NOT_OK(storage_manager_->vfs()->write(
+        *uri,
+        t.filtered_buffer().data(),
+        t.filtered_buffer().size(),
+        remote_global_order_write));
     frag_meta->set_tile_offset(name, tile_id, t.filtered_buffer().size());
     auto null_count = tile.null_count();
 
     if (var_size) {
       auto& t_var = tile.var_tile();
-      if (remote_global_order_write) {
-        storage_manager_->vfs()->global_order_write(
-            *var_uri,
-            t_var.filtered_buffer().data(),
-            t_var.filtered_buffer().size());
-      } else {
-        RETURN_NOT_OK(storage_manager_->vfs()->write(
-            *var_uri,
-            t_var.filtered_buffer().data(),
-            t_var.filtered_buffer().size()));
-      }
+      RETURN_NOT_OK(storage_manager_->vfs()->write(
+          *var_uri,
+          t_var.filtered_buffer().data(),
+          t_var.filtered_buffer().size(),
+          remote_global_order_write));
       frag_meta->set_tile_var_offset(
           name, tile_id, t_var.filtered_buffer().size());
       frag_meta->set_tile_var_size(name, tile_id, tile.var_pre_filtered_size());
@@ -1195,17 +1187,11 @@ Status WriterBase::write_tiles(
 
     if (nullable) {
       auto& t_val = tile.validity_tile();
-      if (remote_global_order_write) {
-        storage_manager_->vfs()->global_order_write(
-            *validity_uri,
-            t_val.filtered_buffer().data(),
-            t_val.filtered_buffer().size());
-      } else {
-        RETURN_NOT_OK(storage_manager_->vfs()->write(
-            *validity_uri,
-            t_val.filtered_buffer().data(),
-            t_val.filtered_buffer().size()));
-      }
+      RETURN_NOT_OK(storage_manager_->vfs()->write(
+          *validity_uri,
+          t_val.filtered_buffer().data(),
+          t_val.filtered_buffer().size(),
+          remote_global_order_write));
       frag_meta->set_tile_validity_offset(
           name, tile_id, t_val.filtered_buffer().size());
       frag_meta->set_tile_null_count(name, tile_id, null_count);

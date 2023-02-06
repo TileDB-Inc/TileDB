@@ -160,7 +160,6 @@ class S3 {
    * finalize() call.
    *
    * @param uri The URI of the object to be flushed.
-   * @return nothing
    */
   void finalize_and_flush_object(const URI& uri);
 
@@ -388,7 +387,6 @@ class S3 {
    * @param uri The URI of the object to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
-   * @return nothing
    */
 
   void global_order_write_buffered(
@@ -401,7 +399,6 @@ class S3 {
    * @param uri The URI of the object to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
-   * @return nothing
    */
   void global_order_write(const URI& uri, const void* buffer, uint64_t length);
 
@@ -540,15 +537,18 @@ class S3 {
    *   create one and initiate multipart request
    * - look at the sizes of all intermediate chunks persisted before
    *   for this URI
-   * - If sum(intermediate_chunks[i].size) + current_chunk_size < 5MB
-   *   - persist the new chunk as an intermediate chunk on s3 under
-   *     fragment_uri/__gow_chunks/buffer_name_intID
+   * - If the sum of all intermediate chunks and the current chunk is less
+   *   than 5MB
+   *   a) persist the new chunk as an intermediate chunk on s3 under
+   * fragment_uri/__global_order_write__chunks/buffer_name_intID
    * - Else
    *   a) read all previous intermediate chunks,
    *   b) merge them in memory including the current chunk,
    *   c) upload the merged buffer as a new part using multipart upload
-   *   d) delete all intermediate chunks under __gow_chunks/ for this URI
+   *   d) delete all intermediate chunks under __global_order_write_chunks/
+   *      for this URI
    *   e) clear the intermediate chunks from multipart_upload_states[uri]
+   * - Done
    * When the global order write is done and the buffer file is finalized
    * via finalize_and_flush_object(uri):
    *   a) read all intermediate chunks (not uploaded as >5mbs multipart parts)
@@ -639,8 +639,10 @@ class S3 {
     /** The overall status of the multipart request. */
     Status st;
 
-    /** Tracks all global order write intermediate chunks that make up a >5mb
-     * multipart upload part */
+    /**
+     * Tracks all global order write intermediate chunks that make up a >5mb
+     * multipart upload part
+     */
     std::vector<BufferedChunk> buffered_chunks;
 
     /** Mutex for thread safety */
@@ -1002,8 +1004,25 @@ class S3 {
   std::optional<S3::MultiPartUploadState> multipart_upload_state(
       const URI& uri);
 
+  /**
+   * Generate a URI for an intermediate chunk based on the attribute URI
+   * and a chunk id
+   *
+   * @param uri The URI of the intermediate chunk
+   * @param id A numeric id for the new chunk
+   * @return generated URI
+   */
   URI generate_chunk_uri(const URI& attribute_uri, uint64_t id);
 
+  /**
+   * Generate a URI for an intermediate chunk based on the attribute URI
+   * and a chunk id
+   *
+   * @param uri The URI of the intermediate chunk
+   * @param chunk_name A previously generated intermediate chunk name in
+   * in the form of "<attributename>_<numericid>"
+   * @return generated URI
+   */
   URI generate_chunk_uri(
       const URI& attribute_uri, const std::string& chunk_name);
 };

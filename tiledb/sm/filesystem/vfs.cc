@@ -1518,9 +1518,15 @@ void VFS::finalize_and_close_file(const URI& uri) {
   throw_if_not_ok(close_file(uri));
 }
 
-Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
+Status VFS::write(
+    const URI& uri,
+    const void* buffer,
+    uint64_t buffer_size,
+    bool remote_global_order_write) {
   stats_->add_counter("write_byte_num", buffer_size);
   stats_->add_counter("write_ops_num", 1);
+
+  (void)remote_global_order_write;
 
   if (uri.is_file()) {
 #ifdef _WIN32
@@ -1538,6 +1544,9 @@ Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
+    if (remote_global_order_write) {
+      s3_.global_order_write_buffered(uri, buffer, buffer_size);
+    }
     return s3_.write(uri, buffer, buffer_size);
 #else
     return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
@@ -1563,20 +1572,6 @@ Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
   }
   return LOG_STATUS(
       Status_VFSError("Unsupported URI schemes: " + uri.to_string()));
-}
-
-void VFS::global_order_write(
-    const URI& uri, const void* buffer, uint64_t buffer_size) {
-  if (uri.is_s3()) {
-#ifdef HAVE_S3
-    s3_.global_order_write_buffered(uri, buffer, buffer_size);
-#else
-    throw StatusException(
-        Status_VFSError("TileDB was built without S3 support"));
-#endif
-  }
-
-  throw_if_not_ok(write(uri, buffer, buffer_size));
 }
 
 std::pair<Status, std::optional<VFS::MultiPartUploadState>>
