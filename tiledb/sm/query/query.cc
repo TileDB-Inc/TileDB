@@ -142,6 +142,12 @@ Query::Query(
     throw QueryStatusException(
         "Cannot find sm.allow_separate_attribute_writes in settings");
   }
+
+  // Disallow partial attribute writes for remote arrays.
+  if (allow_separate_attribute_writes_ && array_->is_remote()) {
+    throw QueryStatusException(
+        "Cannot allow partial attribute writes on remote arrays.");
+  }
 }
 
 Query::~Query() {
