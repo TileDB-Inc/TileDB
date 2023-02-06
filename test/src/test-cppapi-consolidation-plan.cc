@@ -142,7 +142,7 @@ std::string CppConsolidationPlanFx::write_sparse(
         ctx_,
         SPARSE_ARRAY_NAME,
         TILEDB_WRITE,
-        TemporalPolicy(TimeTravel, timestamp));
+        TemporalPolicy(TimestampStartEnd, 0, timestamp));
   }
 
   // Create query.

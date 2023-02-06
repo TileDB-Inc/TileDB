@@ -50,9 +50,9 @@ namespace tiledb {
 class TimeTravelMarker {};
 static constexpr TimeTravelMarker TimeTravel{};
 
-/** Marker class to enforce a RangeSelector TemporalPolicy. */
-class RangeSelectorMarker {};
-static constexpr RangeSelectorMarker RangeSelector{};
+/** Marker class to enforce a TimestampStartEnd TemporalPolicy. */
+class TimestampStartEndMarker {};
+static constexpr TimestampStartEndMarker TimestampStartEnd{};
 
 /**
  * Class representing a TileDB temporal policy object.
@@ -60,7 +60,7 @@ static constexpr RangeSelectorMarker RangeSelector{};
  * @details
  * A TemporalPolicy object dictates the timestamp usage with which an Array is
  * opened. TimeTravel represents opening at a single point in time, while
- * RangeSelector will open between the two specified times.
+ * TimestampStartEnd will open between the two specified times.
  * Note that this class was created specifically to maintain timestamps for the
  * Array class, but its semantics are not specific to an Array.
  *
@@ -72,11 +72,11 @@ static constexpr RangeSelectorMarker RangeSelector{};
  * tiledb::Array array_time_travel(
  *    ctx, "s3://bucket/array", TILEDB_WRITE, TemporalPolicy(TimeTravel, 1));
  *
- * // Open an array with RangeSelector
- * TemporalPolicy tp_range_selector(RangeSelector, 0, 1);
+ * // Open an array with TimestampStartEnd
+ * TemporalPolicy tp_time_range(TimestampStartEnd, 0, 1);
  * tiledb::Context ctx;
- * tiledb::Array array_range_selector(
- *    ctx, "s3://bucket/array", TILEDB_WRITE, tp_range_selector);
+ * tiledb::Array array_time_range(
+ *    ctx, "s3://bucket/array", TILEDB_WRITE, tp_time_range);
  * @endcode
  */
 class TemporalPolicy {
@@ -95,7 +95,7 @@ class TemporalPolicy {
       , timestamp_end_(timestamp){};
 
   TemporalPolicy(
-      const RangeSelectorMarker&,
+      const TimestampStartEndMarker&,
       uint64_t timestamp_start,
       uint64_t timestamp_end)
       : timestamp_start_(timestamp_start)
@@ -206,6 +206,7 @@ class Array {
    * @param array_uri The array URI.
    * @param query_type Query type to open the array for.
    * @param temporal_policy The TemporalPolicy with which to open the array.
+   * @param encryption_algorithm The EncryptionAlgorithm to set on the array.
    */
   Array(
       const Context& ctx,
