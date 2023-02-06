@@ -539,11 +539,13 @@ Status RestClient::post_query_submit(
   }
 
   auto& cache = query->get_remote_buffer_cache();
-  if (cache.should_cache_write()) {
-    cache.cache_write();
-    return Status::Ok();
+  if (cache != std::nullopt) {
+    if (cache.value().should_cache_write()) {
+      cache.value().cache_write();
+      return Status::Ok();
+    }
+    cache.value().make_buffers_tile_aligned();
   }
-  cache.make_buffers_tile_aligned();
 
   auto rest_scratch = query->rest_scratch();
 
@@ -614,7 +616,9 @@ Status RestClient::post_query_submit(
         st.message()));
   }
 
-  cache.cache_non_tile_aligned_data();
+  if (cache != std::nullopt) {
+    cache.value().cache_non_tile_aligned_data();
+  }
   return st;
 }
 

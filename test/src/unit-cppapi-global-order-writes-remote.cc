@@ -6,7 +6,6 @@
  * The MIT License
  *
  * @copyright Copyright (c) 2023 TileDB Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -62,7 +61,7 @@ struct RemoteGlobalOrderWriteFx {
     if constexpr (remote) {
       // Config for using local REST server.
       Config localConfig;
-      localConfig.set("rest.username", "shaunreed");
+      localConfig.set("rest.username", "demo");
       localConfig.set("rest.password", "demodemo");
       localConfig.set("rest.server_address", "http://localhost:8181");
       localConfig.set("vfs.s3.region", aws_region);

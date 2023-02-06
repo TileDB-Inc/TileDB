@@ -41,16 +41,41 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 class Query;
-struct BufferCache {
-  Buffer buffer_;
-  Buffer buffer_var_;
-  Buffer buffer_validity_;
 
-  /** Size of a single cell stored in fixed buffer. */
-  uint8_t cell_size_;
+class QueryBufferCache {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
 
-  /** Tile overflow fixed bytes to write to cache after submission. */
-  uint64_t cache_bytes_;
+  /** Constructor for fixed / var-size data. */
+  QueryBufferCache(
+      uint64_t cell_num_per_tile, uint64_t cell_size, bool is_var = false)
+      : is_var_(is_var)
+      , is_nullable_(false)
+      , cell_size_(cell_size)
+      , cache_bytes_(0)
+      , buffer_(cell_num_per_tile * cell_size_)
+      , buffer_validity_(0) {
+  }
+
+  /** Constructor for nullable data which may be fixed or var-size. */
+  QueryBufferCache(
+      uint64_t cell_num_per_tile,
+      uint64_t cell_size,
+      bool is_var,
+      bool is_nullable)
+      : is_var_(is_var)
+      , is_nullable_(is_nullable)
+      , cell_size_(cell_size)
+      , cache_bytes_(0)
+      , buffer_(cell_num_per_tile * cell_size_)
+      , buffer_validity_(cell_num_per_tile) {
+  }
+
+  /* ********************************* */
+  /*           PUBLIC METHODS          */
+  /* ********************************* */
 
   /**
    * Adjust offsets added to the cache to ensure ascending order.
@@ -58,6 +83,26 @@ struct BufferCache {
    * @param cached_bytes The number of bytes added to the offset buffer.
    */
   void adjust_offsets(uint64_t cached_bytes);
+
+  /* ********************************* */
+  /*          PUBLIC ATTRIBUTES        */
+  /* ********************************* */
+
+  /** True if the cache represents var-size data. */
+  bool is_var_;
+
+  /** True if the cache represents nullable data. */
+  bool is_nullable_;
+
+  /** Size of a single cell stored in fixed buffer. */
+  uint8_t cell_size_;
+
+  /** Tile overflow fixed bytes to write to cache after submission. */
+  uint64_t cache_bytes_;
+
+  Buffer buffer_;
+  Buffer buffer_var_;
+  Buffer buffer_validity_;
 };
 
 class QueryRemoteBufferStorage {
@@ -76,8 +121,6 @@ class QueryRemoteBufferStorage {
 
   /**
    * Updates cache with any unsubmitted data from a previous unaligned write.
-   *
-   * @param query The Query to cache unaligned buffer data.
    */
   void cache_non_tile_aligned_data();
 
@@ -99,33 +142,26 @@ class QueryRemoteBufferStorage {
   void make_buffers_tile_aligned();
 
   /**
-   * @param name Name of attribute or dimension BufferCache to retrieve.
-   * @return Const reference to BufferCache. Throws if the cache doesn't exist.
-   */
-  const BufferCache& get_cache(const std::string& name) const;
-
-  /**
-   * Checks if this storage has already been allocated.
+   * Retrieve QueryBufferCache associated with attribute or dimension name.
    *
-   * @return True if the buffer storage has been allocated.
+   * @param name Name of attribute or dimension QueryBufferCache to retrieve.
+   * @return Const reference to QueryBufferCache.
    */
-  inline bool is_allocated() const {
-    return caches_.begin()->second.buffer_.alloced_size() > 0;
-  }
+  const QueryBufferCache& get_query_buffer_cache(const std::string& name) const;
 
  private:
   /* ********************************* */
   /*           PRIVATE ATTRIBUTES      */
   /* ********************************* */
 
-  /** Number of cells in one tile. */
-  uint64_t cell_num_per_tile_;
-
   /** Pointer to the query that owns this cache. */
   Query* query_;
 
+  /** Number of cells in one tile. */
+  uint64_t cell_num_per_tile_;
+
   /** Cache buffers for the query. */
-  std::unordered_map<std::string, BufferCache> caches_;
+  std::unordered_map<std::string, QueryBufferCache> query_buffer_caches_;
 };
 
 }  // namespace tiledb::sm

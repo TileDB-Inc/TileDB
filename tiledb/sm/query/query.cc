@@ -109,7 +109,7 @@ Query::Query(
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
     , fragment_size_(std::numeric_limits<uint64_t>::max())
-    , query_remote_buffer_storage_(this) {
+    , query_remote_buffer_storage_(std::nullopt) {
   assert(array->is_open());
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
@@ -1804,7 +1804,7 @@ Status Query::submit() {
 
       // Allocate remote buffer storage for global order writes if necessary.
       // If we cache an entire write a query may be uninitialized for N submits.
-      if (!query_remote_buffer_storage_.is_allocated() &&
+      if (query_remote_buffer_storage_ == std::nullopt &&
           type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
         query_remote_buffer_storage_ = {this};
       }

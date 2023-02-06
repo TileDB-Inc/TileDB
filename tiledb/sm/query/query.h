@@ -320,23 +320,11 @@ class Query {
   std::unordered_map<std::string, Subarray::MemorySize> get_max_mem_size_map();
 
   /**
-   * Retrieve query buffer cache for remote global order write.
-   * Throws if the cache does not exist.
-   *
-   * @param name The buffer name to retrieve.
-   * @return BufferCache for the requested buffer.
-   */
-  inline const BufferCache& get_remote_buffer_cache(
-      const std::string& name) const {
-    return query_remote_buffer_storage_.get_cache(name);
-  }
-
-  /**
    * Retrieve remote buffer storage for remote global order writes.
    *
    * @return QueryRemoteBufferStorage for this query.
    */
-  inline QueryRemoteBufferStorage& get_remote_buffer_cache() {
+  inline std::optional<QueryRemoteBufferStorage>& get_remote_buffer_cache() {
     return query_remote_buffer_storage_;
   }
 
@@ -836,7 +824,7 @@ class Query {
   uint64_t fragment_size_;
 
   /** Cache for tile aligned remote global order writes. */
-  QueryRemoteBufferStorage query_remote_buffer_storage_;
+  std::optional<QueryRemoteBufferStorage> query_remote_buffer_storage_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
