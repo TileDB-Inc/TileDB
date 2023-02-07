@@ -1859,7 +1859,7 @@ Status Query::submit() {
       // If we cache an entire write a query may be uninitialized for N submits.
       if (query_remote_buffer_storage_ == std::nullopt &&
           type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
-        query_remote_buffer_storage_ = {this};
+        query_remote_buffer_storage_.emplace(*this, buffers_);
       }
     }
 

@@ -41,6 +41,7 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 class Query;
+class QueryBuffer;
 
 class QueryBufferCache {
  public:
@@ -111,7 +112,8 @@ class QueryRemoteBufferStorage {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  QueryRemoteBufferStorage(Query* query);
+  QueryRemoteBufferStorage(
+      Query& query, std::unordered_map<std::string, QueryBuffer>& buffers);
 
   ~QueryRemoteBufferStorage() = default;
 
@@ -155,7 +157,7 @@ class QueryRemoteBufferStorage {
   /* ********************************* */
 
   /** Pointer to the query that owns this cache. */
-  Query* query_;
+  std::unordered_map<std::string, QueryBuffer>& query_buffers_;
 
   /** Number of cells in one tile. */
   uint64_t cell_num_per_tile_;

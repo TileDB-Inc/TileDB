@@ -62,17 +62,18 @@ void QueryBufferCache::adjust_offsets(uint64_t cached_bytes) {
 /*   QueryRemoteBufferStorage    */
 /* ***************************** */
 
-QueryRemoteBufferStorage::QueryRemoteBufferStorage(Query* query)
-    : query_(query)
+QueryRemoteBufferStorage::QueryRemoteBufferStorage(
+    Query& query, std::unordered_map<std::string, QueryBuffer>& buffers)
+    : query_buffers_(buffers)
     , cell_num_per_tile_(
-          query->array_schema().dense() ?
-              query->array_schema().domain().cell_num_per_tile() :
-              query->array_schema().capacity()) {
-  for (const auto& name : query_->buffer_names()) {
-    bool is_var = query_->array_schema().var_size(name);
-    uint64_t data_size = datatype_size(query_->array_schema().type(name));
+          query.array_schema().dense() ?
+              query.array_schema().domain().cell_num_per_tile() :
+              query.array_schema().capacity()) {
+  for (const auto& name : query.buffer_names()) {
+    bool is_var = query.array_schema().var_size(name);
+    uint64_t data_size = datatype_size(query.array_schema().type(name));
     uint64_t cell_size = is_var ? constants::cell_var_offset_size : data_size;
-    bool is_nullable = query_->array_schema().is_nullable(name);
+    bool is_nullable = query.array_schema().is_nullable(name);
 
     if (is_nullable) {
       query_buffer_caches_.emplace(
@@ -87,7 +88,7 @@ QueryRemoteBufferStorage::QueryRemoteBufferStorage(Query* query)
 
 void QueryRemoteBufferStorage::cache_non_tile_aligned_data() {
   for (auto& query_buffer_cache : query_buffer_caches_) {
-    const auto& query_buffer = query_->buffer(query_buffer_cache.first);
+    const auto& query_buffer = query_buffers_[query_buffer_cache.first];
     auto& cache = query_buffer_cache.second;
     uint64_t cache_cells = cache.cache_bytes_ / cache.cell_size_;
 
@@ -128,7 +129,7 @@ void QueryRemoteBufferStorage::cache_non_tile_aligned_data() {
 bool QueryRemoteBufferStorage::should_cache_write() {
   for (const auto& query_buffer_cache : query_buffer_caches_) {
     uint64_t query_buffer_size =
-        *query_->buffer(query_buffer_cache.first).buffer_size_;
+        *query_buffers_[query_buffer_cache.first].buffer_size_;
     uint64_t buffer_cells =
         query_buffer_size / query_buffer_cache.second.cell_size_;
     uint64_t cache_buffer_cells = query_buffer_cache.second.buffer_.size() /
@@ -144,7 +145,7 @@ bool QueryRemoteBufferStorage::should_cache_write() {
 
 void QueryRemoteBufferStorage::cache_write() {
   for (auto& query_buffer_cache : query_buffer_caches_) {
-    auto query_buffer = query_->buffer(query_buffer_cache.first);
+    auto query_buffer = query_buffers_[query_buffer_cache.first];
     auto& cache = query_buffer_cache.second;
 
     // Buffer element size, or size of offsets if attribute is var-sized.
@@ -177,7 +178,7 @@ void QueryRemoteBufferStorage::cache_write() {
 
 void QueryRemoteBufferStorage::make_buffers_tile_aligned() {
   for (auto& query_buffer_cache : query_buffer_caches_) {
-    const auto& query_buffer = query_->buffer(query_buffer_cache.first);
+    const auto& query_buffer = query_buffers_[query_buffer_cache.first];
     auto& cache = query_buffer_cache.second;
 
     // Buffer element size, or size of offsets if attribute is var-sized.
