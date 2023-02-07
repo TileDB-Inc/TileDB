@@ -45,18 +45,10 @@ namespace impl {
  * TODO: This is currently a stub; write a proper implementation.
  */
 class Log {
- private:
-  static Log instance_;
-
-  Log() {
-  }
-
  public:
-  static Log& instance() {
-    return instance_;
-  }
+  Log() = delete;
 
-  void warn(const std::string&) noexcept {
+  static void warn(const std::string&) noexcept {
   }
 };
 
