@@ -279,13 +279,8 @@ TEST_CASE(
   }
 
   bool serialized_load = false;
-  SECTION("no serialization") {
-    serialized_load = false;
-  }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled fragment info load") {
-    serialized_load = true;
-  }
+  serialized_load = GENERATE(false, true);
 #endif
 
   tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
