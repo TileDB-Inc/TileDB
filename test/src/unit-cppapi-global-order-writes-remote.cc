@@ -384,9 +384,6 @@ struct RemoteGlobalOrderWriteFx {
   std::vector<uint8_t> var_validity_wrote_;
 };
 
-// typedef std::tuple<
-//     uint64_t, int64_t, uint32_t, int32_t, uint16_t, int16_t, uint8_t, int8_t,
-//     float, double> TestTypes;
 typedef std::tuple<uint64_t, float> TestTypes;
 // Marked as mayfail pending CI for remote writes. (SC-23785)
 TEMPLATE_LIST_TEST_CASE(
