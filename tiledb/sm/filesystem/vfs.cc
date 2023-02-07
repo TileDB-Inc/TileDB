@@ -1655,7 +1655,7 @@ Status VFS::set_multipart_upload_state(
 
     if (state.buffered_chunks.has_value()) {
       for (auto& chunk : *state.buffered_chunks) {
-        // chunk URI gets reconstructed from the serialized chunk name
+        // Chunk URI gets reconstructed from the serialized chunk name
         // and the real attribute uri
         s3_state.buffered_chunks.emplace_back(
             s3_.generate_chunk_uri(uri, chunk.uri).to_string(), chunk.size);

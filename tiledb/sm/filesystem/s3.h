@@ -533,32 +533,32 @@ class S3 {
    *
    * Intermediate chunks are persisted across cloud executors via serialization
    * When a new write arrives via global_order_write(URI):
-   * - look if there is a multipart state for the URI, if not,
-   *   create one and initiate multipart request
-   * - look at the sizes of all intermediate chunks persisted before
-   *   for this URI
+   * - Look if there is a multipart state for the URI, if not,
+   *   create one and initiate multipart request.
+   * - Look at the sizes of all intermediate chunks persisted before
+   *   for this URI.
    * - If the sum of all intermediate chunks and the current chunk is less
-   *   than 5MB
-   *   a) persist the new chunk as an intermediate chunk on s3 under
-   * fragment_uri/__global_order_write__chunks/buffer_name_intID
+   *   than 5MB.
+   *   a) Persist the new chunk as an intermediate chunk on s3 under
+   *      fragment_uri/__global_order_write__chunks/buffer_name_intID.
    * - Else
-   *   a) read all previous intermediate chunks,
-   *   b) merge them in memory including the current chunk,
-   *   c) upload the merged buffer as a new part using multipart upload
-   *   d) delete all intermediate chunks under __global_order_write_chunks/
-   *      for this URI
-   *   e) clear the intermediate chunks from multipart_upload_states[uri]
+   *   a) Read all previous intermediate chunks.
+   *   b) Merge them in memory including the current chunk.
+   *   c) Upload the merged buffer as a new part using multipart upload.
+   *   d) Delete all intermediate chunks under __global_order_write_chunks/
+   *      for this URI.
+   *   e) Clear the intermediate chunks from multipart_upload_states[uri].
    * - Done
    * When the global order write is done and the buffer file is finalized
    * via finalize_and_flush_object(uri):
-   *   a) read all intermediate chunks (not uploaded as >5mbs multipart parts)
-   *      if any left from the last submit()
-   *   b) merge them with the current chunk and upload as the last multipart
-   *      part (can be smaller than 5mb),
-   *   c) the intermediate chunk list might just be empty if the last submit()
-   *      also triggered a part upload.
-   *   d) send CompleteMultipartUploadRequest for S3 to merge the final buffer
-   * file object.
+   * - Read all intermediate chunks (not uploaded as >5mbs multipart parts)
+   *   if any left from the last submit().
+   * - Merge them with the current chunk and upload as the last multipart
+   *   part (can be smaller than 5mb).
+   * - The intermediate chunk list might just be empty if the last submit()
+   *   also triggered a part upload.
+   * - Send CompleteMultipartUploadRequest for S3 to merge the final buffer
+   *   file object.
    */
   struct BufferedChunk {
     std::string uri;
@@ -933,9 +933,8 @@ class S3 {
    * @param uri The URI of the S3 file to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
-   * @return Status
    */
-  Status write_direct(const URI& uri, const void* buffer, uint64_t length);
+  void write_direct(const URI& uri, const void* buffer, uint64_t length);
 
   /**
    * Writes the input buffer to a file by issuing one or more multipart upload

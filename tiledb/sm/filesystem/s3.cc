@@ -588,9 +588,9 @@ void S3::finalize_and_flush_object(const URI& uri) {
     }
 
     std::vector<std::byte> merged(sum_sizes);
-    uint64_t length_returned;
-    auto st = parallel_for(
+    throw_if_not_ok(parallel_for(
         vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
+          uint64_t length_returned;
           throw_if_not_ok(read(
               URI(intermediate_chunks[i].uri),
               0,
@@ -599,7 +599,7 @@ void S3::finalize_and_flush_object(const URI& uri) {
               0,
               &length_returned));
           return Status::Ok();
-        });
+        }));
 
     const int part_num = state.part_number++;
     auto ctx = make_upload_part_req(
@@ -1257,14 +1257,16 @@ void S3::global_order_write(
 
   if (sum_sizes < tiledb::sm::constants::s3_min_multipart_part_size) {
     auto new_uri = generate_chunk_uri(uri, intermediate_chunks.size());
-    throw_if_not_ok(write_direct(new_uri, buffer, length));
+    write_direct(new_uri, buffer, length);
     intermediate_chunks.emplace_back(new_uri.to_string(), length);
     return;
   }
 
-  // We have enough buffered for a multipart part upload
+  // We have enough buffered for a multipart part upload.
+  // Read all previously written chunks into one contiguous buffer and add the
+  // current data at the end.
   std::vector<std::byte> merged(sum_sizes);
-  auto st = parallel_for(
+  throw_if_not_ok(parallel_for(
       vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
         uint64_t length_returned;
         throw_if_not_ok(read(
@@ -1275,7 +1277,7 @@ void S3::global_order_write(
             0,
             &length_returned));
         return Status::Ok();
-      });
+      }));
   std::memcpy(merged.data() + offsets.back(), buffer, length);
 
   // Issue one more multiple part uploads depending on the cumulative size of
@@ -1309,8 +1311,9 @@ void S3::global_order_write(
                        (op_idx + 1) * bytes_per_op - 1,
                        uint64_t(merged.size() - 1));
           uint64_t thread_nbytes = end - begin + 1;
-          auto thread_buffer =
-              reinterpret_cast<const char*>(merged.data()) + begin;
+          auto thread_buffer = static_cast<const char*>(
+                                   static_cast<const void*>(merged.data())) +
+                               begin;
           int part_num = static_cast<int>(part_num_base + op_idx);
           ctx_vec[op_idx] = make_upload_part_req(
               aws_uri, thread_buffer, thread_nbytes, upload_id, part_num);
@@ -1782,10 +1785,11 @@ Status S3::flush_direct(const URI& uri) {
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(get_file_buffer(uri, &buff));
 
-  return write_direct(uri, buff->data(), buff->size());
+  write_direct(uri, buff->data(), buff->size());
+  return Status::Ok();
 }
 
-Status S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
+void S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
   const Aws::Http::URI aws_uri(uri.c_str());
   const std::string uri_path(aws_uri.GetPath().c_str());
 
@@ -1835,8 +1839,6 @@ Status S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
 
   throw_if_not_ok(wait_for_object_to_propagate(
       put_object_request.GetBucket(), put_object_request.GetKey()));
-
-  return Status::Ok();
 }
 
 Status S3::write_multipart(
@@ -1941,7 +1943,7 @@ Status S3::write_multipart(
       uint64_t begin = i * bytes_per_op,
                end = std::min((i + 1) * bytes_per_op - 1, length - 1);
       uint64_t thread_nbytes = end - begin + 1;
-      auto thread_buffer = reinterpret_cast<const char*>(buffer) + begin;
+      auto thread_buffer = static_cast<const char*>(buffer) + begin;
       int part_num = static_cast<int>(part_num_base + i);
       ctx_vec[i] = make_upload_part_req(
           aws_uri, thread_buffer, thread_nbytes, upload_id, part_num);
