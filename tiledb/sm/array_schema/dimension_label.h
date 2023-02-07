@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/array_schema/dimension_label_reference.h
+ * @file tiledb/sm/array_schema/dimension_label.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * Defines the dimension label reference class
+ * Defines the dimension label class
  */
 
-#ifndef TILEDB_DIMENSION_LABEL_REFERENCE_H
-#define TILEDB_DIMENSION_LABEL_REFERENCE_H
+#ifndef TILEDB_DIMENSION_LABEL_H
+#define TILEDB_DIMENSION_LABEL_H
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/filesystem/uri.h"
@@ -61,7 +61,7 @@ enum class DataOrder : uint8_t;
  * By default, the dimension label schema is not loaded when the array schema is
  * loaded.
  */
-class DimensionLabelReference {
+class DimensionLabel {
  public:
   /**
    * Size type for the number of dimensions of an array and for dimension
@@ -73,7 +73,7 @@ class DimensionLabelReference {
   using dimension_size_type = uint32_t;
 
   /** Default constructor is not C.41. */
-  DimensionLabelReference() = delete;
+  DimensionLabel() = delete;
 
   /**
    * Constructor for accessing an existing dimension label.
@@ -92,7 +92,7 @@ class DimensionLabelReference {
    * array.
    * @param relative_uri If ``true``, the URI is relative.
    */
-  DimensionLabelReference(
+  DimensionLabel(
       dimension_size_type dim_id,
       const std::string& dim_label_name,
       const URI& uri,
@@ -114,7 +114,7 @@ class DimensionLabelReference {
    * @param label_order The order of the dimension label.
    * @param label_type The datatype of the label data.
    */
-  DimensionLabelReference(
+  DimensionLabel(
       dimension_size_type dim_id,
       const std::string& dim_label_name,
       const URI& uri,
@@ -127,9 +127,9 @@ class DimensionLabelReference {
    *
    * @param deserializer The deserializer to deserialize from.
    * @param version The array schema version.
-   * @return DimensionLabelReference
+   * @return DimensionLabel
    */
-  static shared_ptr<DimensionLabelReference> deserialize(
+  static shared_ptr<DimensionLabel> deserialize(
       Deserializer& deserializer, uint32_t version);
 
   /** Index of the dimension the label is attached to. */

@@ -66,7 +66,7 @@ capi_return_t tiledb_array_schema_get_dimension_label_from_name(
   tiledb::api::ensure_output_pointer_is_valid(dim_label);
   *dim_label = tiledb_dimension_label_t::make_handle(
       array_schema->array_schema_->array_uri(),
-      array_schema->array_schema_->dimension_label_reference(label_name));
+      array_schema->array_schema_->dimension_label(label_name));
   return TILEDB_OK;
 }
 

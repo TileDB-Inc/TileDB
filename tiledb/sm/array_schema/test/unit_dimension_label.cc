@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/array_schema/test/unit_dimension_label_reference.cc
+ * @file tiledb/sm/array_schema/test/unit_dimension_label.cc
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file tests the DimensionLabelReference object
+ * This file tests the DimensionLabel object
  */
 
 #include <tdb_catch.h>
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -47,14 +47,14 @@ TEST_CASE(
     "Roundtrip dimension label serialization",
     "[dimension_label][serialize][deserialize]") {
   const uint32_t version{14};
-  DimensionLabelReference::dimension_size_type dim_id{0};
+  DimensionLabel::dimension_size_type dim_id{0};
   std::string name{"label0"};
   std::string label_attr_name{"label"};
   URI uri{"label/l0", false};
   DataOrder label_order{DataOrder::INCREASING_DATA};
   bool is_external{true};
   bool is_relative{true};
-  DimensionLabelReference label{
+  DimensionLabel label{
       dim_id,
       name,
       URI("label/l0", false),
@@ -74,7 +74,7 @@ TEST_CASE(
   label.serialize(serializer, version);
 
   Deserializer deserializer(data.data(), data.size());
-  auto label2 = DimensionLabelReference::deserialize(deserializer, version);
+  auto label2 = DimensionLabel::deserialize(deserializer, version);
   CHECK(dim_id == label2->dimension_index());
   CHECK(name == label2->name());
   CHECK(label2->label_type() == Datatype::FLOAT64);

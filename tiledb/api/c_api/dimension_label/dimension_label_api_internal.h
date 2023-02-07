@@ -36,7 +36,7 @@
 #include "../../c_api_support/handle/handle.h"
 #include "../config/config_api_internal.h"
 #include "../error/error_api_internal.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/filesystem/uri.h"
 
 /**
@@ -50,7 +50,7 @@ struct tiledb_dimension_label_handle_t
   static constexpr std::string_view object_type_name{"dimension label"};
 
  private:
-  tiledb::sm::DimensionLabelReference dim_label_;
+  tiledb::sm::DimensionLabel dim_label_;
   tiledb::sm::URI uri_;
 
  public:
@@ -63,13 +63,13 @@ struct tiledb_dimension_label_handle_t
    */
   explicit tiledb_dimension_label_handle_t(
       const tiledb::sm::URI& array_uri,
-      const tiledb::sm::DimensionLabelReference& dim_label)
+      const tiledb::sm::DimensionLabel& dim_label)
       : dim_label_{dim_label}
       , uri_{array_uri.empty() ? dim_label_.uri() : dim_label_.uri(array_uri)} {
   }
 
-  [[nodiscard]] inline const tiledb::sm::DimensionLabelReference&
-  dimension_label() const {
+  [[nodiscard]] inline const tiledb::sm::DimensionLabel& dimension_label()
+      const {
     return dim_label_;
   }
 

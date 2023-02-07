@@ -35,7 +35,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/unreachable.h"
 #include "tiledb/sm/array/array.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -52,7 +52,7 @@ namespace tiledb::sm {
 DimensionLabelQuery::DimensionLabelQuery(
     StorageManager* storage_manager,
     shared_ptr<Array> dim_label,
-    const DimensionLabelReference& dim_label_ref,
+    const DimensionLabel& dim_label_ref,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
     const QueryBuffer& index_buffer,
@@ -109,7 +109,7 @@ DimensionLabelQuery::DimensionLabelQuery(
 DimensionLabelQuery::DimensionLabelQuery(
     StorageManager* storage_manager,
     shared_ptr<Array> dim_label,
-    const DimensionLabelReference& dim_label_ref,
+    const DimensionLabel& dim_label_ref,
     const std::vector<Range>& label_ranges)
     : Query(storage_manager, dim_label, nullopt)
     , dim_label_name_{dim_label_ref.name()}

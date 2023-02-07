@@ -40,7 +40,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
@@ -873,7 +873,7 @@ ArraySchema array_schema_from_capnp(
   }
 
   // Placeholder for deserializing dimension label references
-  std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels{};
+  std::vector<shared_ptr<const DimensionLabel>> dimension_labels{};
 
   // Set the range if we have two values
   // #TODO Add security validation

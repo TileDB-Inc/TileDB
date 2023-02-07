@@ -32,7 +32,7 @@
 
 #include <tdb_catch.h>
 
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/array_schema/test/unit_array_schema_helper.h"
 
 using namespace tiledb::common;
@@ -223,15 +223,15 @@ TEST_CASE(
   schema->add_dimension_label(
       0, "z", DataOrder::INCREASING_DATA, Datatype::FLOAT64, true);
   // Check dimension label schemas
-  const auto& xref = schema->dimension_label_reference("x1");
+  const auto& xref = schema->dimension_label("x1");
   REQUIRE(
       xref.uri().to_string() ==
       constants::array_dimension_labels_dir_name + "/l0");
-  const auto& yref = schema->dimension_label_reference("y");
+  const auto& yref = schema->dimension_label("y");
   REQUIRE(
       yref.uri().to_string() ==
       constants::array_dimension_labels_dir_name + "/l1");
-  const auto& zref = schema->dimension_label_reference("z");
+  const auto& zref = schema->dimension_label("z");
   REQUIRE(
       zref.uri().to_string() ==
       constants::array_dimension_labels_dir_name + "/l2");
