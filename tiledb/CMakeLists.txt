@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2022 TileDB, Inc.
+# Copyright (c) 2017-2023 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -80,6 +80,7 @@ if (TILEDB_CPP_API)
   list(APPEND TILEDB_PUBLIC_HEADERS
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb_experimental
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_deprecated.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_evolution.h
@@ -442,6 +443,12 @@ endif()
 ############################################################
 # Compile options/definitions
 ############################################################
+
+if (TILEDB_REMOVE_DEPRECATIONS)
+  add_definitions(-DTILEDB_REMOVE_DEPRECATIONS)
+else()
+  message(STATUS "The TileDB library is compiled without deprecated APIs.")
+endif()
 
 if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
