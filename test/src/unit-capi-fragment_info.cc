@@ -197,7 +197,7 @@ TEST_CASE(
   tiledb_encryption_type_t encryption_type;
   const char* key;
   int key_length;
-  int expected_fragment_size;
+  uint64_t expected_fragment_size;
   if (encrypt) {
     encryption_type = tiledb_encryption_type_t::TILEDB_AES_256_GCM;
     key = "12345678901234567890123456789012";
