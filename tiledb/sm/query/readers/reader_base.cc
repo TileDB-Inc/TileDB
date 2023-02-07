@@ -706,8 +706,7 @@ ReaderBase::load_tile_chunk_data(
 
   const FilterPipeline& filters = array_schema_.filters(name);
   if (!var_size ||
-      !filters.skip_offsets_filtering(
-          nullable ? t->type() : t_var->type(), array_schema_.version())) {
+      !filters.skip_offsets_filtering(t_var->type(), array_schema_.version())) {
     unfiltered_tile_size = t->load_chunk_data(tile_chunk_data);
   }
 
@@ -1134,7 +1133,7 @@ Status ReaderBase::unfilter_tile_nullable(
   auto concurrency_level = storage_manager_->compute_tp()->concurrency_level();
 
   const bool skip_offsets_filtering =
-      filters.skip_offsets_filtering(tile->type(), array_schema_.version());
+      filters.skip_offsets_filtering(tile_var->type(), array_schema_.version());
 
   // Append an encryption unfilter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
