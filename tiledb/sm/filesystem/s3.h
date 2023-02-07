@@ -155,6 +155,14 @@ class S3 {
    */
   Status flush_object(const URI& uri);
 
+  /**
+   * Flushes an s3 object as a result of a remote global order write
+   * finalize() call.
+   *
+   * @param uri The URI of the object to be flushed.
+   */
+  void finalize_and_flush_object(const URI& uri);
+
   /** Checks if a bucket is empty. */
   Status is_empty_bucket(const URI& bucket, bool* is_empty) const;
 
@@ -371,15 +379,28 @@ class S3 {
   Status write(const URI& uri, const void* buffer, uint64_t length);
 
   /**
-   * Used in serialization of global order writes to set the multipart upload
-   * state in multipart_upload_states_ during deserialization
+   * Writes the input buffer to an S3 object. This function buffers in memory
+   * file_buffer_size_ bytes before calling global_order_write() to execute
+   * the s3 global write logic.
+   * This function should only be called for tiledb global order writes.
    *
-   * @param uri The file uri used as key in the internal map
-   * @param state The multipart upload state info
-   * @return Status
+   * @param uri The URI of the object to be written to.
+   * @param buffer The input buffer.
+   * @param length The size of the input buffer.
    */
-  Status set_multipart_upload_state(
-      const std::string& uri, S3::MultiPartUploadState& state);
+
+  void global_order_write_buffered(
+      const URI& uri, const void* buffer, uint64_t length);
+
+  /**
+   * Writes the input buffer to an S3 object using the algorithm
+   * described at the BufferedChunk struct definition.
+   *
+   * @param uri The URI of the object to be written to.
+   * @param buffer The input buffer.
+   * @param length The size of the input buffer.
+   */
+  void global_order_write(const URI& uri, const void* buffer, uint64_t length);
 
  private:
   /* ********************************* */
@@ -505,6 +526,50 @@ class S3 {
     int upload_part_num;
   };
 
+  /**
+   * This type holds the location and the size of an intermediate chunk on S3
+   * These chunks are used with remote global writes according to the
+   * algorithm below:
+   *
+   * Intermediate chunks are persisted across cloud executors via serialization
+   * When a new write arrives via global_order_write(URI):
+   * - Look if there is a multipart state for the URI, if not,
+   *   create one and initiate multipart request.
+   * - Look at the sizes of all intermediate chunks persisted before
+   *   for this URI.
+   * - If the sum of all intermediate chunks and the current chunk is less
+   *   than 5MB.
+   *   a) Persist the new chunk as an intermediate chunk on s3 under
+   *      fragment_uri/__global_order_write__chunks/buffer_name_intID.
+   * - Else
+   *   a) Read all previous intermediate chunks.
+   *   b) Merge them in memory including the current chunk.
+   *   c) Upload the merged buffer as a new part using multipart upload.
+   *   d) Delete all intermediate chunks under __global_order_write_chunks/
+   *      for this URI.
+   *   e) Clear the intermediate chunks from multipart_upload_states[uri].
+   * - Done
+   * When the global order write is done and the buffer file is finalized
+   * via finalize_and_flush_object(uri):
+   * - Read all intermediate chunks (not uploaded as >5mbs multipart parts)
+   *   if any left from the last submit().
+   * - Merge them with the current chunk and upload as the last multipart
+   *   part (can be smaller than 5mb).
+   * - The intermediate chunk list might just be empty if the last submit()
+   *   also triggered a part upload.
+   * - Send CompleteMultipartUploadRequest for S3 to merge the final buffer
+   *   file object.
+   */
+  struct BufferedChunk {
+    std::string uri;
+    uint64_t size;
+
+    BufferedChunk(std::string chunk_uri, uint64_t chunk_size)
+        : uri(chunk_uri)
+        , size(chunk_size) {
+    }
+  };
+
   /** Contains all state associated with a multipart upload transaction. */
   struct MultiPartUploadState {
     MultiPartUploadState()
@@ -531,6 +596,7 @@ class S3 {
       this->upload_id = std::move(other.upload_id);
       this->completed_parts = std::move(other.completed_parts);
       this->st = other.st;
+      this->buffered_chunks = std::move(other.buffered_chunks);
     }
 
     // Copy initialization
@@ -541,6 +607,7 @@ class S3 {
       this->upload_id = other.upload_id;
       this->completed_parts = other.completed_parts;
       this->st = other.st;
+      this->buffered_chunks = other.buffered_chunks;
     }
 
     MultiPartUploadState& operator=(const MultiPartUploadState& other) {
@@ -550,6 +617,7 @@ class S3 {
       this->upload_id = other.upload_id;
       this->completed_parts = other.completed_parts;
       this->st = other.st;
+      this->buffered_chunks = other.buffered_chunks;
       return *this;
     }
 
@@ -570,6 +638,12 @@ class S3 {
 
     /** The overall status of the multipart request. */
     Status st;
+
+    /**
+     * Tracks all global order write intermediate chunks that make up a >5mb
+     * multipart upload part
+     */
+    std::vector<BufferedChunk> buffered_chunks;
 
     /** Mutex for thread safety */
     mutable std::mutex mtx;
@@ -852,6 +926,17 @@ class S3 {
   Status flush_direct(const URI& uri);
 
   /**
+   * Writes the input buffer to a file by issuing one PutObject
+   * request. If the file does not exist, then it is created. If the file
+   * exists then it is appended to.
+   *
+   * @param uri The URI of the S3 file to be written to.
+   * @param buffer The input buffer.
+   * @param length The size of the input buffer.
+   */
+  void write_direct(const URI& uri, const void* buffer, uint64_t length);
+
+  /**
    * Writes the input buffer to a file by issuing one or more multipart upload
    * requests. If the file does not exist, then it is created. If the file
    * exists then it is appended to. This command will upload chunks of an
@@ -899,6 +984,17 @@ class S3 {
       const URI& uri, const std::string& uri_path, MakeUploadPartCtx& ctx);
 
   /**
+   * Used in serialization of global order writes to set the multipart upload
+   * state in multipart_upload_states_ during deserialization
+   *
+   * @param uri The file uri used as key in the internal map
+   * @param state The multipart upload state info
+   * @return Status
+   */
+  Status set_multipart_upload_state(
+      const std::string& uri, S3::MultiPartUploadState& state);
+
+  /**
    * Returns the multipart upload state identified by uri
    *
    * @param uri The URI of the multipart state
@@ -906,6 +1002,28 @@ class S3 {
    */
   std::optional<S3::MultiPartUploadState> multipart_upload_state(
       const URI& uri);
+
+  /**
+   * Generate a URI for an intermediate chunk based on the attribute URI
+   * and a chunk id
+   *
+   * @param uri The URI of the intermediate chunk
+   * @param id A numeric id for the new chunk
+   * @return generated URI
+   */
+  URI generate_chunk_uri(const URI& attribute_uri, uint64_t id);
+
+  /**
+   * Generate a URI for an intermediate chunk based on the attribute URI
+   * and a chunk id
+   *
+   * @param uri The URI of the intermediate chunk
+   * @param chunk_name A previously generated intermediate chunk name in
+   * in the form of "<attributename>_<numericid>"
+   * @return generated URI
+   */
+  URI generate_chunk_uri(
+      const URI& attribute_uri, const std::string& chunk_name);
 };
 
 }  // namespace sm

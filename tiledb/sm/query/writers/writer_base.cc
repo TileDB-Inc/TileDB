@@ -629,8 +629,12 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
 
   auto status = parallel_for(
       storage_manager_->io_tp(), 0, file_uris.size(), [&](uint64_t i) {
-        const auto& file_ur = file_uris[i];
-        RETURN_NOT_OK(storage_manager_->vfs()->close_file(file_ur));
+        const auto& file_uri = file_uris[i];
+        if (layout_ == Layout::GLOBAL_ORDER && remote_query()) {
+          storage_manager_->vfs()->finalize_and_close_file(file_uri);
+        } else {
+          RETURN_NOT_OK(storage_manager_->vfs()->close_file(file_uri));
+        }
         return Status::Ok();
       });
 
@@ -1139,13 +1143,19 @@ Status WriterBase::write_tiles(
   const auto has_min_max_md = has_min_max_metadata(name, var_size);
   const auto has_sum_md = has_sum_metadata(name, var_size);
 
+  bool remote_global_order_write =
+      (layout_ == Layout::GLOBAL_ORDER && remote_query());
+
   // Write tiles
   for (size_t i = start_tile_idx, tile_id = start_tile_id; i < end_tile_idx;
        ++i, ++tile_id) {
     auto& tile = (*tiles)[i];
     auto& t = var_size ? tile.offset_tile() : tile.fixed_tile();
     RETURN_NOT_OK(storage_manager_->vfs()->write(
-        *uri, t.filtered_buffer().data(), t.filtered_buffer().size()));
+        *uri,
+        t.filtered_buffer().data(),
+        t.filtered_buffer().size(),
+        remote_global_order_write));
     frag_meta->set_tile_offset(name, tile_id, t.filtered_buffer().size());
     auto null_count = tile.null_count();
 
@@ -1154,7 +1164,8 @@ Status WriterBase::write_tiles(
       RETURN_NOT_OK(storage_manager_->vfs()->write(
           *var_uri,
           t_var.filtered_buffer().data(),
-          t_var.filtered_buffer().size()));
+          t_var.filtered_buffer().size(),
+          remote_global_order_write));
       frag_meta->set_tile_var_offset(
           name, tile_id, t_var.filtered_buffer().size());
       frag_meta->set_tile_var_size(name, tile_id, tile.var_pre_filtered_size());
@@ -1178,7 +1189,8 @@ Status WriterBase::write_tiles(
       RETURN_NOT_OK(storage_manager_->vfs()->write(
           *validity_uri,
           t_val.filtered_buffer().data(),
-          t_val.filtered_buffer().size()));
+          t_val.filtered_buffer().size(),
+          remote_global_order_write));
       frag_meta->set_tile_validity_offset(
           name, tile_id, t_val.filtered_buffer().size());
       frag_meta->set_tile_null_count(name, tile_id, null_count);

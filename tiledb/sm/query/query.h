@@ -874,13 +874,6 @@ class Query {
   Status check_tile_alignment() const;
 
   /**
-   * Check if input buffers are bigger than 5MB. S3 multipart upload
-   * requires each part be bigger than 5MB, except the last part.
-   * This function should be called only for remote global order writes.
-   */
-  Status check_buffer_multipart_size() const;
-
-  /**
    * Reset coord buffer markers at end of a global write submit.
    * This will allow for the user to properly set the next write batch.
    */

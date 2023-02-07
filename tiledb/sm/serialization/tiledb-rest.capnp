@@ -1019,6 +1019,13 @@ struct MultiPartUploadState {
 
   completedParts@3 :List(CompletedPart);
   # A list of parts that are already uploaded
+
+  bufferedChunks@4 :List(BufferedChunk);
+  # S3 specific field. A partial remote global order write might not be
+  # result in a direct multipart part upload, s3 does not permit parts to be
+  # smaller than 5mb (except the last one). We buffer directly on S3 using
+  # intermediate files until we can deliver a big enough multipart part.
+  # This list helps us keep track of these intermediate buffering files.
 }
 struct CompletedPart {
   eTag@0 :Text;
@@ -1032,3 +1039,13 @@ struct WrittenFragmentInfo {
   uri @0 :Text;
   timestampRange @1 :List(UInt64);
 }
+
+struct BufferedChunk {
+  uri@0 :Text;
+  # path to intermediate chunk which buffers
+  # a <5mb remote global order write operation
+
+  size@1 :UInt64;
+  # the size in bytes of the intermediate chunk
+}
+

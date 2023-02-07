@@ -543,36 +543,6 @@ Status Query::check_tile_alignment() const {
   return Status::Ok();
 }
 
-Status Query::check_buffer_multipart_size() const {
-  // Only applicable for remote global order writes
-  if (!array_->is_remote() || type_ != QueryType::WRITE ||
-      layout_ != Layout::GLOBAL_ORDER) {
-    return Status::Ok();
-  }
-
-  const uint64_t s3_multipart_min_limit = 5242880;  // 5MB
-  for (const auto& it : buffers_) {
-    const auto& buf_name = it.first;
-    const bool is_var = array_schema_->var_size(buf_name);
-    const uint64_t buffer_size =
-        is_var ? *it.second.buffer_var_size_ : *it.second.buffer_size_;
-
-    uint64_t buffer_validity_size = s3_multipart_min_limit;
-    if (array_schema_->is_nullable(buf_name)) {
-      buffer_validity_size = *it.second.validity_vector_.buffer_size();
-    }
-
-    if (buffer_size < s3_multipart_min_limit ||
-        buffer_validity_size < s3_multipart_min_limit) {
-      return logger_->status(Status_WriterError(
-          "Remote global order writes require buffers to be of"
-          "minimum 5MB in size."));
-    }
-  }
-
-  return Status::Ok();
-}
-
 Status Query::get_offsets_buffer(
     const char* name, uint64_t** buffer_off, uint64_t** buffer_off_size) const {
   // Check query type

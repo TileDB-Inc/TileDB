@@ -273,6 +273,11 @@ std::string URI::last_two_path_parts() const {
   return uri_.substr(uri_.rfind('/', uri_.rfind('/') - 1) + 1);
 }
 
+URI URI::parent_path() const {
+  auto pos = this->remove_trailing_slash().to_string().find_last_of('/');
+  return URI(uri_.substr(0, pos + 1));
+}
+
 std::string URI::to_path(const std::string& uri) {
   if (is_file(uri)) {
 #ifdef _WIN32
