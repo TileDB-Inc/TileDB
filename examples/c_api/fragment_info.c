@@ -36,10 +36,25 @@
 #include <string.h>
 #include <tiledb/tiledb.h>
 
+static tiledb_ctx_t* ctx;
+
+void fatal_error() {
+  fprintf(stderr, "Fatal error");
+  abort();
+}
+
 void handle_error(capi_return_t result) {
   if (result != TILEDB_OK) {
-    fprintf(
-        stderr, "Error %d in file %s and line %d", result, __FILE__, __LINE__);
+    tiledb_error_t* err;
+    if (tiledb_ctx_get_last_error(ctx, &err) != TILEDB_OK) {
+      fatal_error();
+    }
+    char* error_msg;
+    if (tiledb_error_message(err, &error_msg) != TILEDB_OK) {
+      fatal_error();
+    }
+    fprintf(stderr, "Error: %s", error_msg);
+    tiledb_error_free(&err);
     exit(1);
   }
 }
@@ -48,10 +63,6 @@ void handle_error(capi_return_t result) {
 const char* array_name = "fragment_info_array";
 
 void create_array() {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  handle_error(tiledb_ctx_alloc(NULL, &ctx));
-
   // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
   int dim_domain[] = {1, 4, 1, 4};
   int tile_extents[] = {2, 2};
@@ -91,14 +102,9 @@ void create_array() {
   tiledb_dimension_free(&d2);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
-  tiledb_ctx_free(&ctx);
 }
 
 void write_array() {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  handle_error(tiledb_ctx_alloc(NULL, &ctx));
-
   // Open array for writing
   tiledb_array_t* array;
   handle_error(tiledb_array_alloc(ctx, array_name, &array));
@@ -131,14 +137,9 @@ void write_array() {
   tiledb_subarray_free(&subarray);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
 }
 
 void get_fragment_info() {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  handle_error(tiledb_ctx_alloc(NULL, &ctx));
-
   // Create fragment info object
   tiledb_fragment_info_t* fragment_info;
   handle_error(tiledb_fragment_info_alloc(ctx, array_name, &fragment_info));
@@ -229,12 +230,10 @@ void get_fragment_info() {
 
   // Clean up
   tiledb_fragment_info_free(&fragment_info);
-  tiledb_ctx_free(&ctx);
 }
 
 int main() {
   // Get object type
-  tiledb_ctx_t* ctx;
   handle_error(tiledb_ctx_alloc(NULL, &ctx));
   tiledb_object_t type;
   handle_error(tiledb_object_type(ctx, array_name, &type));
@@ -242,11 +241,11 @@ int main() {
   if (type == TILEDB_ARRAY) {
     handle_error(tiledb_object_remove(ctx, array_name));
   }
-  tiledb_ctx_free(&ctx);
 
   create_array();
   write_array();
   get_fragment_info();
 
+  tiledb_ctx_free(&ctx);
   return 0;
 }
