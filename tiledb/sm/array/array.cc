@@ -785,6 +785,14 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   }
 
   if (remote_) {
+    try {
+      set_array_closed();
+    } catch (std::exception& e) {
+      is_opening_or_closing_ = false;
+      throw Status_ArrayError(e.what());
+    }
+    is_opening_or_closing_ = false;
+
     return open(
         query_type_,
         encryption_key_->encryption_type(),
