@@ -56,6 +56,9 @@ namespace sm {
 class ASTNegationT {};
 static constexpr ASTNegationT ASTNegation{};
 
+class ASTOptimizationT {};
+static constexpr ASTOptimizationT ASTOptimization{};
+
 /**
  * @brief The ASTNode class is an abstract class that contains virtual
  * methods used by both the value and expression node implementation
@@ -86,6 +89,14 @@ class ASTNode {
    * @return tdb_unique_ptr<ASTNode> A negated deep copy of the ASTNode.
    */
   virtual tdb_unique_ptr<ASTNode> get_negated_tree() const = 0;
+
+  /**
+   * @brief ASTNode class method used in the QueryCondition that returns a copy
+   * of the caller node, but optimized with NAND replacing OR.
+   *
+   * @return tdb_unique_ptr<ASTNode> An optimized deep copy of the ASTNode.
+   */
+  virtual tdb_unique_ptr<ASTNode> get_optimized_tree() const = 0;
 
   /**
    * @brief Gets the set of field names from all the value nodes in the ASTNode.
@@ -281,6 +292,14 @@ class ASTNodeVal : public ASTNode {
   tdb_unique_ptr<ASTNode> get_negated_tree() const override;
 
   /**
+   * @brief ASTNode class method used in the QueryCondition that returns a copy
+   * of the caller node, but optimized with NAND replacing OR.
+   *
+   * @return tdb_unique_ptr<ASTNode> An optimized deep copy of the ASTNode.
+   */
+  virtual tdb_unique_ptr<ASTNode> get_optimized_tree() const override;
+
+  /**
    * @brief Gets the set of field names from all the value nodes in the ASTNode.
    *
    * @param field_name_set The set variable the function populates.
@@ -423,6 +442,24 @@ class ASTNodeExpr : public ASTNode {
   }
 
   /**
+   * @brief Copy constructor, optimized.
+   */
+  ASTNodeExpr(const ASTNodeExpr& rhs, ASTOptimizationT)
+      : combination_op_(optimize_qc_combination_op(rhs.combination_op_)) {
+    if (combination_op_ == QueryConditionCombinationOp::NAND &&
+        combination_op_ != rhs.combination_op_) {
+      for (auto& node : rhs.nodes_) {
+        auto neg_node = node->get_negated_tree();
+        nodes_.push_back(neg_node->get_optimized_tree());
+      }
+    } else {
+      for (auto& node : rhs.nodes_) {
+        nodes_.push_back(node->clone());
+      }
+    }
+  }
+
+  /**
    * @brief Default destructor of ASTNodeExpr.
    */
   ~ASTNodeExpr() {
@@ -456,6 +493,14 @@ class ASTNodeExpr : public ASTNode {
    * @return tdb_unique_ptr<ASTNode> A negated deep copy of the ASTNode.
    */
   tdb_unique_ptr<ASTNode> get_negated_tree() const override;
+
+  /**
+   * @brief ASTNode class method used in the QueryCondition that returns a copy
+   * of the caller node, but optimized with NAND replacing OR.
+   *
+   * @return tdb_unique_ptr<ASTNode> An optimized deep copy of the ASTNode.
+   */
+  virtual tdb_unique_ptr<ASTNode> get_optimized_tree() const override;
 
   /**
    * @brief Gets the set of field names from all the value nodes in the ASTNode.

@@ -212,6 +212,11 @@ class QueryCondition {
   QueryCondition negated_condition();
 
   /**
+   * Optimize the query condition using De Morgan's laws and NAND combinations.
+   */
+  QueryCondition optimized_condition();
+
+  /**
    * Sets the AST. This is internal state to only be used in
    * the serialization path.
    */

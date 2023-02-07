@@ -335,6 +335,9 @@ const std::string query_condition_combination_op_or_str = "OR";
 /** TILEDB_NOT Query Condition Combination Op String **/
 const std::string query_condition_combination_op_not_str = "NOT";
 
+/** TILEDB_NAND Query Condition Combination Op String **/
+const std::string query_condition_combination_op_nand_str = "NAND";
+
 /** TILEDB_COMPRESSION Filter type string */
 const std::string filter_type_compression_str = "COMPRESSION";
 

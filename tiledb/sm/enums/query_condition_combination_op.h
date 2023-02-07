@@ -65,6 +65,8 @@ inline const std::string& query_condition_combination_op_str(
       return constants::query_condition_combination_op_or_str;
     case QueryConditionCombinationOp::NOT:
       return constants::query_condition_combination_op_not_str;
+    case QueryConditionCombinationOp::NAND:
+      return constants::query_condition_combination_op_nand_str;
     default:
       return constants::empty_str;
   }
@@ -85,6 +87,10 @@ inline Status query_condition_combination_op_enum(
       query_condition_combination_op_str ==
       constants::query_condition_combination_op_not_str)
     *query_condition_combination_op = QueryConditionCombinationOp::NOT;
+  else if (
+    query_condition_combination_op_str ==
+    constants::query_condition_combination_op_nand_str)
+    *query_condition_combination_op = QueryConditionCombinationOp::NAND;
   else {
     return Status_Error(
         "Invalid QueryConditionCombinationOp " +
@@ -96,7 +102,7 @@ inline Status query_condition_combination_op_enum(
 inline void ensure_qc_combo_op_is_valid(
     QueryConditionCombinationOp query_condition_combo_op) {
   auto qc_combo_op_enum{::stdx::to_underlying(query_condition_combo_op)};
-  if (qc_combo_op_enum > 2) {
+  if (qc_combo_op_enum > 3) {
     throw std::runtime_error(
         "Invalid Query Condition Op " + std::to_string(qc_combo_op_enum));
   }
@@ -125,6 +131,17 @@ inline QueryConditionCombinationOp negate_qc_combination_op(
 
     default:
       throw std::runtime_error("negate_qc_combination_op: Invalid op.");
+  }
+}
+
+/** Returns the optimized combination op given a combination op. */
+inline QueryConditionCombinationOp optimize_qc_combination_op(
+    const QueryConditionCombinationOp op) {
+  switch (op) {
+    case QueryConditionCombinationOp::OR:
+      return QueryConditionCombinationOp::NAND;
+    default:
+      return op;
   }
 }
 

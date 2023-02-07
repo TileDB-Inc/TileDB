@@ -322,6 +322,9 @@ extern const std::string query_condition_combination_op_or_str;
 /** TILEDB_NOT Query Condition Combination Op String **/
 extern const std::string query_condition_combination_op_not_str;
 
+/** TILEDB_NAND Query Condition Combination Op String **/
+extern const std::string query_condition_combination_op_nand_str;
+
 /** TILEDB_COMPRESSION Filter type string */
 extern const std::string filter_type_compression_str;
 

@@ -55,6 +55,10 @@ tdb_unique_ptr<ASTNode> ASTNodeVal::get_negated_tree() const {
   return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeVal, *this, ASTNegation));
 }
 
+tdb_unique_ptr<ASTNode> ASTNodeVal::get_optimized_tree() const {
+  return clone();
+}
+
 void ASTNodeVal::get_field_names(
     std::unordered_set<std::string>& field_name_set) const {
   field_name_set.insert(field_name_);
@@ -196,6 +200,10 @@ tdb_unique_ptr<ASTNode> ASTNodeExpr::clone() const {
 
 tdb_unique_ptr<ASTNode> ASTNodeExpr::get_negated_tree() const {
   return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeExpr, *this, ASTNegation));
+}
+
+tdb_unique_ptr<ASTNode> ASTNodeExpr::get_optimized_tree() const {
+  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeExpr, *this, ASTOptimization));
 }
 
 void ASTNodeExpr::get_field_names(

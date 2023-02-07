@@ -276,6 +276,8 @@ TEST_CASE(
   CHECK(
       tiledb::test::ast_node_to_str(combined_or.ast()) ==
       "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
+  CHECK(tiledb::test::ast_node_to_str(combined_or.ast()->get_optimized_tree())
+      == "(x GE 12 ef cd ab NAND y LE 33 33 33 33)");
 }
 
 TEST_CASE(
@@ -302,6 +304,8 @@ TEST_CASE(
   CHECK(
       tiledb::test::ast_node_to_str(combined_and.ast()) ==
       "(x LT 65 76 65 AND x GT 62 6f 62)");
+  CHECK(tiledb::test::ast_node_to_str(combined_and.ast()->get_optimized_tree())
+      == "(x LT 65 76 65 AND x GT 62 6f 62)");
 }
 
 TEST_CASE(
@@ -3111,6 +3115,8 @@ void validate_qc_apply(
     uint64_t cells,
     shared_ptr<const ArraySchema> array_schema,
     ResultTile& result_tile) {
+  std::cerr << "QC APPLY: " << tiledb::test::ast_node_to_str(tp.qc_.ast()) << std::endl;
+  std::cerr << "QC OPTIMIZED: " << tiledb::test::ast_node_to_str(tp.qc_.ast()->get_optimized_tree()) << std::endl;
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));

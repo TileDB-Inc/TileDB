@@ -1101,6 +1101,41 @@ void QueryCondition::apply_tree(
           result_cell_bitmap[c] *= combination_op_bitmap[c];
         }
       } break;
+
+        /*
+         * Fancy math goes here, but my thought is:
+         * OR(A, B) = NOT(NOT(OR(A, B)) = NOT(AND(NOT(A), NOT(B))
+         */
+      case QueryConditionCombinationOp::NAND: {
+        std::vector<uint8_t> combination_op_bitmap(result_bitmap_size, 1);
+
+        // I think this is impossible, but I'm not removing the OR logic
+        // as part of this hack.
+        if constexpr (std::is_same_v<CombinationOp, std::logical_or<uint8_t>>) {
+          throw std::logic_error("Blargh? This is possible?");
+        }
+
+        for (const auto& child : node->get_children()) {
+          apply_tree(
+              child,
+              array_schema,
+              fragment_metadata,
+              stride,
+              result_cell_slabs,
+              std::logical_and<uint8_t>(),
+              combination_op_bitmap);
+        }
+
+        // Complete the NAND
+        for (size_t c = 0; c < result_bitmap_size; ++c) {
+          combination_op_bitmap[c] = !combination_op_bitmap[c];
+        }
+
+        // Combine with previous results
+        for (size_t c = 0; c < result_bitmap_size; ++c) {
+          result_cell_bitmap[c] *= combination_op_bitmap[c];
+        }
+      } break;
       case QueryConditionCombinationOp::NOT: {
         throw std::runtime_error(
             "Query condition NOT operator is not currently supported.");
@@ -1122,6 +1157,8 @@ Status QueryCondition::apply(
     return Status::Ok();
   }
 
+  auto opt_tree = tree_->get_optimized_tree();
+
   size_t total_lengths = 0;
   for (const auto& elem : result_cell_slabs) {
     total_lengths += elem.length_;
@@ -1129,7 +1166,7 @@ Status QueryCondition::apply(
 
   std::vector<uint8_t> result_cell_bitmap(total_lengths, 1);
   apply_tree(
-      tree_,
+      opt_tree,
       array_schema,
       fragment_metadata,
       stride,
@@ -2441,6 +2478,10 @@ Status QueryCondition::apply_sparse(
 
 QueryCondition QueryCondition::negated_condition() {
   return QueryCondition(tree_->get_negated_tree());
+}
+
+QueryCondition QueryCondition::optimized_condition() {
+  return QueryCondition(tree_->get_optimized_tree());
 }
 
 const tdb_unique_ptr<ASTNode>& QueryCondition::ast() const {
