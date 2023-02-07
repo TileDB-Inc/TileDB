@@ -1680,31 +1680,25 @@ Status query_from_capnp(
             }
           }
 
+          // attr_copy_state==nulptr models the case of deserialization code
+          // being called via the C API tiledb_query_deserialize (e.g. unit
+          // test serialization wrappers).
+          // When a rest_client exists, there is always a copy_state
           if (attr_copy_state == nullptr) {
             // Set the size directly on the query (so user can introspect on
             // result size).
-            if (existing_offset_buffer_size_ptr != nullptr) {
-              *existing_offset_buffer_size_ptr =
-                  curr_offset_size + fixedlen_size_to_copy;
-            } else {
-              *query_buffer.buffer_size_ =
-                  curr_offset_size + fixedlen_size_to_copy;
-              ;
-            }
-            if (existing_buffer_size_ptr != nullptr) {
-              *existing_buffer_size_ptr = curr_data_size + varlen_size;
-            } else {
-              *query_buffer.buffer_var_size_ = curr_data_size + varlen_size;
-            }
+            // Subsequent incomplete submits will use the original buffer
+            // sizes members from the query in the beginning of the loop
+            // to calculate if user buffers have enough space to hold the data,
+            // here we only care that after data received from the wire is
+            // copied within the user buffers, the buffer sizes are accurate so
+            // user can introspect.
+            *query_buffer.buffer_size_ =
+                curr_offset_size + fixedlen_size_to_copy;
+            *query_buffer.buffer_var_size_ = curr_data_size + varlen_size;
             if (nullable) {
-              if (existing_validity_buffer_size_ptr != nullptr) {
-                *existing_validity_buffer_size_ptr =
-                    curr_validity_size + validitylen_size;
-              } else {
-                *query_buffer.validity_vector_.buffer_size() =
-                    curr_validity_size + validitylen_size;
-                ;
-              }
+              *query_buffer.validity_vector_.buffer_size() =
+                  curr_validity_size + validitylen_size;
             }
           } else {
             // Accumulate total bytes copied (caller's responsibility to
@@ -1732,20 +1726,23 @@ Status query_from_capnp(
             attribute_buffer_start += validitylen_size;
           }
 
+          // attr_copy_state==nulptr models the case of deserialization code
+          // being called via the C API tiledb_query_deserialize (e.g. unit
+          // test serialization wrappers).
+          // When a rest_client exists, there is always a copy_state
           if (attr_copy_state == nullptr) {
-            if (existing_buffer_size_ptr != nullptr) {
-              *existing_buffer_size_ptr = curr_data_size + fixedlen_size;
-            } else {
-              *query_buffer.buffer_size_ = curr_data_size + fixedlen_size;
-            }
+            // Set the size directly on the query (so user can introspect on
+            // result size).
+            // Subsequent incomplete submits will use the original buffer
+            // sizes members from the query in the beginning of the loop
+            // to calculate if user buffers have enough space to hold the data,
+            // here we only care that after data received from the wire is
+            // copied within the user buffers, the buffer sizes are accurate so
+            // user can introspect.
+            *query_buffer.buffer_size_ = curr_data_size + fixedlen_size;
             if (nullable) {
-              if (existing_validity_buffer_size_ptr != nullptr) {
-                *existing_validity_buffer_size_ptr =
-                    curr_validity_size + validitylen_size;
-              } else {
-                *query_buffer.validity_vector_.buffer_size() =
-                    curr_validity_size + validitylen_size;
-              }
+              *query_buffer.validity_vector_.buffer_size() =
+                  curr_validity_size + validitylen_size;
             }
           } else {
             attr_copy_state->data_size += fixedlen_size;
