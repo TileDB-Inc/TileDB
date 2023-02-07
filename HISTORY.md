@@ -1,3 +1,9 @@
+# TileDB v2.14.1 Release Notes
+
+## Defects removed
+
+* Tile metadata generator: fix buffer overflow on string comparison. [#3821](https://github.com/TileDB-Inc/TileDB/pull/3821)
+
 # TileDB v2.14.0 Release Notes
 
 ## Announcements
