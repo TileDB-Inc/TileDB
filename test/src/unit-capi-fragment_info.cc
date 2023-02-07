@@ -192,12 +192,33 @@ TEST_CASE(
   rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
+  tiledb_encryption_type_t encryption_type =
+      tiledb_encryption_type_t::TILEDB_NO_ENCRYPTION;
+  const char* key = "";
+  int key_length = 0;
+  int expected_fragment_size = 3202;
+  SECTION("encrypted") {
+    encryption_type = tiledb_encryption_type_t::TILEDB_AES_256_GCM;
+    key = "12345678901234567890123456789012";
+    key_length = 32;
+    expected_fragment_size = 5585;
+  }
+  SECTION("not encrypted") {
+    encryption_type = tiledb_encryption_type_t::TILEDB_NO_ENCRYPTION;
+    key = "";
+    key_length = 0;
+    expected_fragment_size = 3202;
+  }
+
   // Create array
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent = 5;
   create_array(
       ctx,
       array_name,
+      encryption_type,
+      key,
+      key_length,
       TILEDB_DENSE,
       {"d"},
       {TILEDB_UINT64},
@@ -221,9 +242,41 @@ TEST_CASE(
   rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
   CHECK(rc != TILEDB_OK);
 
-  // Load fragment info
-  rc = tiledb_fragment_info_load(ctx, fragment_info);
-  CHECK(rc == TILEDB_OK);
+  tiledb_config_t* cfg = nullptr;
+  if (encryption_type == tiledb_encryption_type_t::TILEDB_AES_256_GCM) {
+    // Array is encrypted
+    rc = tiledb_fragment_info_load(ctx, fragment_info);
+    CHECK(rc != TILEDB_OK);
+
+    // Test with wrong key
+    const char* wrong_key = "12345678901234567890123456789013";
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_config_alloc(&cfg, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", wrong_key, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_fragment_info_set_config(ctx, fragment_info, cfg);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_fragment_info_load(ctx, fragment_info);
+    CHECK(rc == TILEDB_ERR);
+
+    // Load fragment info
+    rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_fragment_info_set_config(ctx, fragment_info, cfg);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_fragment_info_load(ctx, fragment_info);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    // Load fragment info
+    rc = tiledb_fragment_info_load(ctx, fragment_info);
+    CHECK(rc == TILEDB_OK);
+  }
 
   bool serialized_load = false;
   SECTION("no serialization") {
@@ -240,6 +293,11 @@ TEST_CASE(
     rc = tiledb_fragment_info_alloc(
         ctx, array_name.c_str(), &deserialized_fragment_info);
     CHECK(rc == TILEDB_OK);
+    if (cfg != nullptr) {
+      rc =
+          tiledb_fragment_info_set_config(ctx, deserialized_fragment_info, cfg);
+      CHECK(rc == TILEDB_OK);
+    }
     tiledb_fragment_info_serialize(
         ctx,
         array_name.c_str(),
@@ -261,7 +319,16 @@ TEST_CASE(
   std::vector<int32_t> a = {1, 2, 3, 4, 5, 6};
   uint64_t a_size = a.size() * sizeof(int32_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  write_array(ctx, array_name, 1, subarray, TILEDB_ROW_MAJOR, buffers);
+  write_array(
+      ctx,
+      array_name,
+      encryption_type,
+      key,
+      key_length,
+      1,
+      subarray,
+      TILEDB_ROW_MAJOR,
+      buffers);
 
   // Load fragment info again
   rc = tiledb_fragment_info_load(ctx, fragment_info);
@@ -271,6 +338,11 @@ TEST_CASE(
     rc = tiledb_fragment_info_alloc(
         ctx, array_name.c_str(), &deserialized_fragment_info);
     CHECK(rc == TILEDB_OK);
+    if (cfg != nullptr) {
+      rc =
+          tiledb_fragment_info_set_config(ctx, deserialized_fragment_info, cfg);
+      CHECK(rc == TILEDB_OK);
+    }
     tiledb_fragment_info_serialize(
         ctx,
         array_name.c_str(),
@@ -307,6 +379,9 @@ TEST_CASE(
   write_array(
       ctx,
       array_name,
+      encryption_type,
+      key,
+      key_length,
       2,
       subarray,
       TILEDB_ROW_MAJOR,
@@ -319,7 +394,16 @@ TEST_CASE(
   a = {6, 7, 1, 2, 3, 4, 5, 6};
   a_size = a.size() * sizeof(int32_t);
   buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  write_array(ctx, array_name, 3, subarray, TILEDB_ROW_MAJOR, buffers);
+  write_array(
+      ctx,
+      array_name,
+      encryption_type,
+      key,
+      key_length,
+      3,
+      subarray,
+      TILEDB_ROW_MAJOR,
+      buffers);
 
   // Load fragment info again
   rc = tiledb_fragment_info_load(ctx, fragment_info);
@@ -329,6 +413,11 @@ TEST_CASE(
     rc = tiledb_fragment_info_alloc(
         ctx, array_name.c_str(), &deserialized_fragment_info);
     CHECK(rc == TILEDB_OK);
+    if (cfg != nullptr) {
+      rc =
+          tiledb_fragment_info_set_config(ctx, deserialized_fragment_info, cfg);
+      CHECK(rc == TILEDB_OK);
+    }
     tiledb_fragment_info_serialize(
         ctx,
         array_name.c_str(),
@@ -350,6 +439,7 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   CHECK(std::string(uri) == written_frag_uri);
 
+  // Get fragment name
   tiledb_string_t* name;
   rc = tiledb_fragment_info_get_fragment_name_v2(ctx, fragment_info, 1, &name);
   CHECK(rc == TILEDB_OK);
@@ -378,7 +468,7 @@ TEST_CASE(
   uint64_t size;
   rc = tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 1, &size);
   CHECK(rc == TILEDB_OK);
-  CHECK(size == 3202);
+  CHECK(size == expected_fragment_size);
 
   // Get dense / sparse
   int32_t dense;
@@ -448,295 +538,6 @@ TEST_CASE(
       total_cell_num_after_third_write ==
       frag0_cell_num + frag1_cell_num + frag2_cell_num);
 
-  // Get version
-  uint32_t version;
-  rc = tiledb_fragment_info_get_version(ctx, fragment_info, 0, &version);
-  CHECK(rc == TILEDB_OK);
-  CHECK(version == tiledb::sm::constants::format_version);
-
-  // Clean up
-  tiledb_fragment_info_free(&fragment_info);
-  remove_dir(array_name, ctx, vfs);
-  tiledb_ctx_free(&ctx);
-  tiledb_vfs_free(&vfs);
-}
-
-TEST_CASE(
-    "C API: Test fragment info, load from encrypted array",
-    "[capi][fragment_info][load][encryption]") {
-  // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
-  tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Key
-  const char* key = "12345678901234567890123456789012";
-
-  // Create array
-  uint64_t domain[] = {1, 10};
-  uint64_t tile_extent = 5;
-  create_array(
-      ctx,
-      array_name,
-      TILEDB_AES_256_GCM,
-      key,
-      32,
-      TILEDB_DENSE,
-      {"d"},
-      {TILEDB_UINT64},
-      {domain},
-      {&tile_extent},
-      {"a"},
-      {TILEDB_INT32},
-      {1},
-      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
-      TILEDB_ROW_MAJOR,
-      TILEDB_ROW_MAJOR,
-      2);
-
-  // Create fragment info object
-  tiledb_fragment_info_t* fragment_info = nullptr;
-  rc = tiledb_fragment_info_alloc(ctx, array_name.c_str(), &fragment_info);
-  CHECK(rc == TILEDB_OK);
-
-  // Array is encrypted
-  rc = tiledb_fragment_info_load(ctx, fragment_info);
-  CHECK(rc == TILEDB_ERR);
-
-  // Test with wrong key
-  const char* wrong_key = "12345678901234567890123456789013";
-  tiledb_config_t* cfg;
-  tiledb_error_t* err = nullptr;
-  rc = tiledb_config_alloc(&cfg, &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-  rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
-  REQUIRE(err == nullptr);
-  rc = tiledb_config_set(cfg, "sm.encryption_key", wrong_key, &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-  tiledb_ctx_t* ctx_wrong_key;
-  REQUIRE(tiledb_ctx_alloc(cfg, &ctx_wrong_key) == TILEDB_OK);
-  rc = tiledb_fragment_info_load(ctx_wrong_key, fragment_info);
-  CHECK(rc == TILEDB_ERR);
-  tiledb_ctx_free(&ctx_wrong_key);
-
-  // Load fragment info
-  rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
-  tiledb_ctx_t* ctx_correct_key;
-  REQUIRE(tiledb_ctx_alloc(cfg, &ctx_correct_key) == TILEDB_OK);
-  rc = tiledb_fragment_info_set_config(ctx, fragment_info, cfg);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
-  CHECK(rc == TILEDB_OK);
-
-  bool serialized_load = false;
-  SECTION("no serialization") {
-    serialized_load = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled fragment info load") {
-    serialized_load = true;
-  }
-#endif
-
-  tiledb_fragment_info_t* deserialized_fragment_info = nullptr;
-  if (serialized_load) {
-    rc = tiledb_fragment_info_alloc(
-        ctx, array_name.c_str(), &deserialized_fragment_info);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_fragment_info_set_config(ctx, deserialized_fragment_info, cfg);
-    CHECK(rc == TILEDB_OK);
-    tiledb_fragment_info_serialize(
-        ctx,
-        array_name.c_str(),
-        fragment_info,
-        deserialized_fragment_info,
-        tiledb_serialization_type_t(0));
-    tiledb_fragment_info_free(&fragment_info);
-    fragment_info = deserialized_fragment_info;
-  }
-
-  // No fragments yet
-  uint32_t fragment_num;
-  rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
-  CHECK(rc == TILEDB_OK);
-  CHECK(fragment_num == 0);
-
-  // Write a dense fragment
-  QueryBuffers buffers;
-  uint64_t subarray[] = {1, 6};
-  std::vector<int32_t> a = {1, 2, 3, 4, 5, 6};
-  uint64_t a_size = a.size() * sizeof(int32_t);
-  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  write_array(
-      ctx,
-      array_name,
-      TILEDB_AES_256_GCM,
-      key,
-      32,
-      1,
-      subarray,
-      TILEDB_ROW_MAJOR,
-      buffers);
-
-  // Load fragment info again
-  rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
-  CHECK(rc == TILEDB_OK);
-
-  if (serialized_load) {
-    rc = tiledb_fragment_info_alloc(
-        ctx, array_name.c_str(), &deserialized_fragment_info);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_fragment_info_set_config(ctx, deserialized_fragment_info, cfg);
-    CHECK(rc == TILEDB_OK);
-    tiledb_fragment_info_serialize(
-        ctx,
-        array_name.c_str(),
-        fragment_info,
-        deserialized_fragment_info,
-        tiledb_serialization_type_t(0));
-    tiledb_fragment_info_free(&fragment_info);
-    fragment_info = deserialized_fragment_info;
-  }
-
-  // Get fragment num again
-  rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
-  CHECK(rc == TILEDB_OK);
-  CHECK(fragment_num == 1);
-
-  // Write another dense fragment
-  subarray[0] = 1;
-  subarray[1] = 7;
-  a = {7, 1, 2, 3, 4, 5, 6};
-  a_size = a.size() * sizeof(int32_t);
-  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  std::string written_frag_uri;
-  write_array(
-      ctx,
-      array_name,
-      TILEDB_AES_256_GCM,
-      key,
-      32,
-      2,
-      subarray,
-      TILEDB_ROW_MAJOR,
-      buffers,
-      &written_frag_uri);
-
-  // Write another dense fragment
-  subarray[0] = 2;
-  subarray[1] = 9;
-  a = {6, 7, 1, 2, 3, 4, 5, 6};
-  a_size = a.size() * sizeof(int32_t);
-  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
-  write_array(
-      ctx,
-      array_name,
-      TILEDB_AES_256_GCM,
-      key,
-      32,
-      3,
-      subarray,
-      TILEDB_ROW_MAJOR,
-      buffers);
-
-  // Load fragment info again
-  rc = tiledb_fragment_info_load(ctx_correct_key, fragment_info);
-  CHECK(rc == TILEDB_OK);
-
-  if (serialized_load) {
-    rc = tiledb_fragment_info_alloc(
-        ctx, array_name.c_str(), &deserialized_fragment_info);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_fragment_info_set_config(ctx, deserialized_fragment_info, cfg);
-    CHECK(rc == TILEDB_OK);
-    tiledb_fragment_info_serialize(
-        ctx,
-        array_name.c_str(),
-        fragment_info,
-        deserialized_fragment_info,
-        tiledb_serialization_type_t(0));
-    tiledb_fragment_info_free(&fragment_info);
-    fragment_info = deserialized_fragment_info;
-  }
-
-  // Get fragment num again
-  rc = tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
-  CHECK(rc == TILEDB_OK);
-  CHECK(fragment_num == 3);
-
-  // Get fragment URI
-  const char* uri;
-  rc = tiledb_fragment_info_get_fragment_uri(ctx, fragment_info, 1, &uri);
-  CHECK(rc == TILEDB_OK);
-  CHECK(std::string(uri) == written_frag_uri);
-
-  tiledb_string_t* name;
-  rc = tiledb_fragment_info_get_fragment_name_v2(ctx, fragment_info, 1, &name);
-  CHECK(rc == TILEDB_OK);
-  const char* name_ptr;
-  size_t name_length;
-  rc = tiledb_string_view(name, &name_ptr, &name_length);
-  CHECK(rc == TILEDB_OK);
-  CHECK(name_ptr != nullptr);
-  CHECK(name_length > 0);
-  rc = tiledb_string_free(&name);
-  CHECK(rc == TILEDB_OK);
-
-  // Get fragment size
-  uint64_t size;
-  rc = tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 1, &size);
-  CHECK(rc == TILEDB_OK);
-  CHECK(size == 5585);
-
-  // Get dense / sparse
-  int32_t dense;
-  rc = tiledb_fragment_info_get_dense(ctx, fragment_info, 0, &dense);
-  CHECK(rc == TILEDB_OK);
-  CHECK(dense == 1);
-  rc = tiledb_fragment_info_get_sparse(ctx, fragment_info, 0, &dense);
-  CHECK(rc == TILEDB_OK);
-  CHECK(dense == 0);
-  rc = tiledb_fragment_info_get_dense(ctx, fragment_info, 1, &dense);
-  CHECK(rc == TILEDB_OK);
-  CHECK(dense == 1);
-  rc = tiledb_fragment_info_get_sparse(ctx, fragment_info, 1, &dense);
-  CHECK(rc == TILEDB_OK);
-  CHECK(dense == 0);
-
-  // Get timestamp range
-  uint64_t start, end;
-  rc = tiledb_fragment_info_get_timestamp_range(
-      ctx, fragment_info, 1, &start, &end);
-  CHECK(rc == TILEDB_OK);
-  CHECK(start == 2);
-  CHECK(end == 2);
-
-  // Get non-empty domain
-  std::vector<uint64_t> non_empty_dom(2);
-  rc = tiledb_fragment_info_get_non_empty_domain_from_index(
-      ctx, fragment_info, 0, 0, &non_empty_dom[0]);
-  CHECK(rc == TILEDB_OK);
-  CHECK(non_empty_dom == std::vector<uint64_t>{1, 6});
-  rc = tiledb_fragment_info_get_non_empty_domain_from_index(
-      ctx, fragment_info, 1, 0, &non_empty_dom[0]);
-  CHECK(rc == TILEDB_OK);
-  CHECK(non_empty_dom == std::vector<uint64_t>{1, 7});
-  rc = tiledb_fragment_info_get_non_empty_domain_from_index(
-      ctx, fragment_info, 2, 0, &non_empty_dom[0]);
-  CHECK(rc == TILEDB_OK);
-  CHECK(non_empty_dom == std::vector<uint64_t>{2, 9});
-  rc = tiledb_fragment_info_get_non_empty_domain_from_name(
-      ctx, fragment_info, 1, "d", &non_empty_dom[0]);
-  CHECK(rc == TILEDB_OK);
-  CHECK(non_empty_dom == std::vector<uint64_t>{1, 7});
-
   // Get number of MBRs - should always be 0 since it's a dense array
   uint64_t mbr_num;
   rc = tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 0, &mbr_num);
@@ -759,18 +560,6 @@ TEST_CASE(
   rc = tiledb_fragment_info_get_mbr_from_name(
       ctx, fragment_info, 1, 0, "d", &mbr[0]);
   CHECK(rc == TILEDB_ERR);
-
-  // Get number of cells
-  uint64_t cell_num;
-  rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 0, &cell_num);
-  CHECK(rc == TILEDB_OK);
-  CHECK(cell_num == 10);
-  rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 1, &cell_num);
-  CHECK(rc == TILEDB_OK);
-  CHECK(cell_num == 10);
-  rc = tiledb_fragment_info_get_cell_num(ctx, fragment_info, 2, &cell_num);
-  CHECK(rc == TILEDB_OK);
-  CHECK(cell_num == 10);
 
   // Get version
   uint32_t version;
@@ -979,6 +768,9 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   // Clean up
   tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
+  if (cfg != nullptr) {
+    tiledb_config_free(&cfg);
+  }
   tiledb_vfs_free(&vfs);
   tiledb_ctx_free(&ctx);
 }
