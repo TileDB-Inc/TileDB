@@ -38,13 +38,6 @@
 
 using namespace tiledb;
 
-const std::string aws_region = "us-east-2";
-const std::string aws_key_id = "<AWS_KEY_ID>";
-const std::string aws_secret_key = "<AWS_SECRET_KEY>";
-
-// Toggle remote queries for sanity check.
-constexpr bool remote = true;
-
 template <typename T>
 struct RemoteGlobalOrderWriteFx {
   RemoteGlobalOrderWriteFx(
@@ -58,29 +51,9 @@ struct RemoteGlobalOrderWriteFx {
       , submit_cell_count_(submit_cell_count)
       , total_cell_count_(total_cells)
       , extent_(extent) {
-    if constexpr (remote) {
-      // Config for using local REST server.
-      Config localConfig;
-      localConfig.set("rest.username", "demo");
-      localConfig.set("rest.password", "demodemo");
-      localConfig.set("rest.server_address", "http://localhost:8181");
-      localConfig.set("vfs.s3.region", aws_region);
-      localConfig.set("vfs.s3.aws_access_key_id", aws_key_id);
-      localConfig.set("vfs.s3.aws_secret_access_key", aws_secret_key);
-      ctx_ = Context(localConfig);
-      auto type = Object::object(ctx_, array_uri_).type();
-      if (type == Object::Type::Array) {
-        delete_array();
-      }
-      VFS vfs(ctx_);
-      if (vfs.is_dir(s3_uri_)) {
-        vfs.remove_dir(s3_uri_);
-      }
-    } else {
-      VFS vfs(ctx_);
-      if (vfs.is_dir(array_uri_)) {
-        vfs.remove_dir(array_uri_);
-      }
+    VFS vfs(ctx_);
+    if (vfs.is_dir(array_uri_)) {
+      vfs.remove_dir(array_uri_);
     }
   }
 
@@ -398,11 +371,8 @@ struct RemoteGlobalOrderWriteFx {
   const uint64_t total_cell_count_;
   const uint64_t extent_;
 
-  const std::string array_name_ =
-      "global-array-" + std::to_string(total_cell_count_);
-  const std::string s3_uri_ = "s3://shaun.reed/arrays/" + array_name_;
   const std::string array_uri_ =
-      remote ? "tiledb://shaunreed/" + s3_uri_ : array_name_;
+      "global-array-" + std::to_string(total_cell_count_);
 
   // Vectors to store all the data wrote to the array.
   // + We will use these vectors to validate subsequent read.
