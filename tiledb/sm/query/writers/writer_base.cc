@@ -822,14 +822,12 @@ Status WriterBase::create_fragment(
 Status WriterBase::filter_tiles(
     std::unordered_map<std::string, WriterTileTupleVector>* tiles) {
   auto timer_se = stats_->start_timer("filter_tiles");
-
-  auto num = buffers_.size();
-  auto status =
-      parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
-        auto buff_it = buffers_.begin();
-        std::advance(buff_it, i);
-        const auto& name = buff_it->first;
-        RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
+  auto status = parallel_for(
+      storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
+        auto tiles_it = tiles->begin();
+        std::advance(tiles_it, i);
+        RETURN_CANCEL_OR_ERROR(
+            filter_tiles(tiles_it->first, &tiles_it->second));
         return Status::Ok();
       });
 
