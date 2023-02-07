@@ -80,6 +80,15 @@ class DimensionLabel {
     return dim_index;
   }
 
+  /** Returns the name of the attribute the label data is stored on. */
+  std::string label_attr_name() const {
+    auto& ctx = ctx_.get();
+    const char* label_attr_name;
+    ctx.handle_error(tiledb_dimension_label_get_label_attr_name(
+        ctx.ptr().get(), dim_label_.get(), &label_attr_name));
+    return label_attr_name;
+  }
+
   /** Returns the number of values per cell in the labels. */
   uint32_t label_cell_val_num() const {
     auto& ctx = ctx_.get();

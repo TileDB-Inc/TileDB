@@ -249,8 +249,6 @@ TEST_CASE_METHOD(
   tiledb_array_schema_t* loaded_dim_label_array_schema{nullptr};
   require_tiledb_ok(tiledb_array_schema_load(
       ctx, dim_label_uri, &loaded_dim_label_array_schema));
-  tiledb_dimension_label_free(&loaded_dim_label);
-  tiledb_array_schema_free(&loaded_array_schema);
 
   // Check the filter on the label attribute.
   tiledb_attribute_t* label_attr;
@@ -281,6 +279,8 @@ TEST_CASE_METHOD(
 
   // Free remaining resources.
   tiledb_array_schema_free(&loaded_dim_label_array_schema);
+  tiledb_dimension_label_free(&loaded_dim_label);
+  tiledb_array_schema_free(&loaded_array_schema);
 }
 
 TEST_CASE_METHOD(
