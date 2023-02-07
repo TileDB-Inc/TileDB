@@ -90,7 +90,7 @@ constexpr bool is_same_as(
  * `sychronized_optional` does not expose any way of directly obtaining such
  * a reference.
  *
- * Access is therefore possible only indirectly, as a object of an external
+ * Access is therefore possible only indirectly, as an object of an external
  * reference class. The reference object holds the required lock for the
  * lifespan of the reference object. It _is_ possible to obtain a direct
  * reference through the indirect reference object, but it is an error (meaning
@@ -134,7 +134,7 @@ constexpr bool is_same_as(
  * as possible. The central necessary change is in how value references work,
  * as described above. This section outlines the differences.
  *
- * There's two blanket distinctions that apply universally. The class is
+ * There are two blanket distinctions that apply universally. The class is
  * synchronized, so all operations must obtain a lock of some kind; both
  * distinctions arise as a consequence from this. The first is that nothing in
  * this class is `noexcept`, not even when the underlying class might otherwise
@@ -684,7 +684,7 @@ class synchronized_optional {
     /*
      * Swapping with oneself does nothing.
      */
-    if (is_same_as(*this, x)) {
+    if (detail::is_same_as(*this, x)) {
       return;
     }
     /*
