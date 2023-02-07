@@ -461,8 +461,7 @@ class ReaderBase : public StrategyBase {
 
   /**
    * Filters the tiles on a particular attribute/dimension from all input
-   * fragments based on the tile info in `result_tiles`. Used only by new
-   * readers that parallelize on chunk ranges.
+   * fragments based on the tile info in `result_tiles`.
    *
    * @param name Attribute/dimension whose tiles will be unfiltered.
    * @param result_tiles Vector containing the tiles to be unfiltered.
@@ -475,8 +474,7 @@ class ReaderBase : public StrategyBase {
   /**
    * Runs the input fixed-sized tile for the input attribute or dimension
    * through the filter pipeline. The tile buffer is modified to contain the
-   * output of the pipeline. Used only by new readers that parallelize on chunk
-   * ranges.
+   * output of the pipeline.
    *
    * @param num_range_threads Total number of range threads.
    * @param range_thread_idx Current range thread index.
@@ -495,7 +493,7 @@ class ReaderBase : public StrategyBase {
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
    * the filter pipeline. The tile buffer is modified to contain the output of
-   * the pipeline. Used only by new readers that parallelize on chunk ranges.
+   * the pipeline.
    *
    * @param num_range_threads Total number of range threads.
    * @param range_thread_idx Current range thread index.
@@ -518,8 +516,7 @@ class ReaderBase : public StrategyBase {
   /**
    * Runs the input fixed-sized tile for the input nullable attribute
    * through the filter pipeline. The tile buffer is modified to contain the
-   * output of the pipeline. Used only by new readers that parallelize on chunk
-   * ranges.
+   * output of the pipeline.
    *
    * @param num_range_threads Total number of range threads.
    * @param range_thread_idx Current range thread index.
@@ -543,7 +540,7 @@ class ReaderBase : public StrategyBase {
   /**
    * Runs the input var-sized tile for the input nullable attribute through
    * the filter pipeline. The tile buffer is modified to contain the output of
-   * the pipeline. Used only by new readers that parallelize on chunk ranges.
+   * the pipeline.
    *
    * @param num_range_threads Total number of range threads.
    * @param range_thread_idx Current range thread index.

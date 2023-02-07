@@ -102,27 +102,8 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
 
   // Unfilter
   assert(tile.filtered());
-
-  ChunkData chunk_data;
-  tile.load_chunk_data(chunk_data);
-
-  throw_if_not_ok(parallel_for(
-      &resources_.compute_tp(),
-      0,
-      chunk_data.filtered_chunks_.size(),
-      [&](const unsigned c) {
-        return header.filters.run_reverse(
-            &resources_.stats(),
-            &tile,
-            nullptr,
-            chunk_data,
-            c,
-            c + 1,
-            resources_.compute_tp().concurrency_level(),
-            config);
-      }));
-
-  tile.clear_filtered_buffer();
+  header.filters.run_reverse(
+      &resources_.stats(), tile, resources_.compute_tp(), config);
   assert(!tile.filtered());
 
   return {Status::Ok(), std::move(tile)};

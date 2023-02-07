@@ -207,6 +207,20 @@ class FilterPipeline {
       bool chunking = true) const;
 
   /**
+   * Runs the pipeline in reverse on the given tile.
+   *
+   * @param reader_stats Stats to record in the function.
+   * @param tile Current tile on which the filter pipeline is being run.
+   * @param compute_tp Compute theread pool.
+   * @param config Global config.
+   */
+  void run_reverse(
+      stats::Stats* stats,
+      Tile& tile,
+      ThreadPool& compute_tp,
+      const Config& config) const;
+
+  /**
    * Run the given chunk range in reverse through the pipeline.
    *
    * @param reader_stats Stats to record in the function.
@@ -220,7 +234,6 @@ class FilterPipeline {
    * @param config The global config.
    * @return Status.
    */
-
   Status run_reverse(
       stats::Stats* const reader_stats,
       Tile* const tile,
