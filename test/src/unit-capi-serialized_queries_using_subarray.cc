@@ -108,7 +108,11 @@ struct SerializationFx {
   Context ctx;
   VFS vfs;
 
-  // Buffers to allocate on query size for serialized queries
+  // Serialization parameters
+  bool serialize_ = true;
+  bool refactored_query_v2_ = false;
+  bool finalize_ = false;
+  // Buffers to allocate on server side for serialized queries
   tiledb::test::ServerQueryBuffers server_buffers_;
 
   SerializationFx()
@@ -207,7 +211,13 @@ struct SerializationFx {
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the write stats
@@ -253,7 +263,13 @@ struct SerializationFx {
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
   }
 
@@ -292,7 +308,13 @@ struct SerializationFx {
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
   }
 
@@ -334,7 +356,13 @@ struct SerializationFx {
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
   }
 };
@@ -345,6 +373,7 @@ TEST_CASE_METHOD(
     SerializationFx,
     "subarray - Query serialization, dense",
     "[query][dense][serialization]") {
+  refactored_query_v2_ = GENERATE(true, false);
   create_array(TILEDB_DENSE);
   auto expected_results = write_dense_array();
 
@@ -369,7 +398,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
@@ -407,7 +442,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
@@ -470,7 +511,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
@@ -506,7 +553,13 @@ TEST_CASE_METHOD(
     // Submit initial query.
     set_buffers(query);
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
@@ -520,7 +573,13 @@ TEST_CASE_METHOD(
     // Reset buffers, serialize and resubmit
     set_buffers(query);
     rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
@@ -534,7 +593,13 @@ TEST_CASE_METHOD(
     // Reset buffers, serialize and resubmit
     set_buffers(query);
     rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
@@ -551,6 +616,7 @@ TEST_CASE_METHOD(
     SerializationFx,
     "subarray - Query serialization, sparse",
     "[query][sparse][serialization]") {
+  refactored_query_v2_ = GENERATE(true, false);
   create_array(TILEDB_SPARSE);
   write_sparse_array();
 
@@ -578,7 +644,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
@@ -595,6 +667,7 @@ TEST_CASE_METHOD(
     SerializationFx,
     "subarray - Query serialization, split coords, sparse",
     "[query][sparse][serialization][split-coords]") {
+  refactored_query_v2_ = GENERATE(true, false);
   create_array(TILEDB_SPARSE);
   write_sparse_array_split_coords();
 
@@ -621,7 +694,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
@@ -639,6 +718,7 @@ TEST_CASE_METHOD(
     SerializationFx,
     "subarray - Query serialization, dense ranges",
     "[query][dense][serialization]") {
+  refactored_query_v2_ = GENERATE(true, false);
   create_array(TILEDB_DENSE);
   write_dense_array_ranges();
 
@@ -664,7 +744,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
@@ -698,7 +784,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
@@ -735,7 +827,13 @@ TEST_CASE_METHOD(
     // Submit initial query.
     set_buffers(query);
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
 
@@ -750,7 +848,13 @@ TEST_CASE_METHOD(
     set_buffers(query);
     // Submit query
     rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
@@ -765,7 +869,13 @@ TEST_CASE_METHOD(
     set_buffers(query);
     // Submit query
     rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     REQUIRE(query.query_status() == Query::Status::COMPLETE);

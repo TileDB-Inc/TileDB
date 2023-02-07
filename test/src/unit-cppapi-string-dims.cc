@@ -1447,12 +1447,13 @@ TEST_CASE(
 }
 
 void write_sparse_array_string_dim(
-    const bool serialized,
     Context ctx,
     const std::string& array_name,
     std::string& data,
     std::vector<uint64_t>& data_offsets,
-    tiledb_layout_t layout) {
+    tiledb_layout_t layout,
+    const bool serialized,
+    const bool refactored_query_v2) {
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(layout);
@@ -1462,19 +1463,25 @@ void write_sparse_array_string_dim(
   // Submit query
   test::ServerQueryBuffers server_buffers_;
   auto rc = test::submit_query_wrapper(
-      ctx, array_name, &query, server_buffers_, serialized);
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialized,
+      refactored_query_v2);
   REQUIRE(rc == TILEDB_OK);
 
   array.close();
 }
 
 void read_and_check_sparse_array_string_dim(
-    const bool serialized,
     Context ctx,
     const std::string& array_name,
     std::string& expected_data,
     std::vector<uint64_t>& expected_offsets,
-    tiledb_layout_t layout) {
+    tiledb_layout_t layout,
+    const bool serialized,
+    const bool refactored_query_v2) {
   Array array(ctx, array_name, TILEDB_READ);
 
   std::vector<uint64_t> offsets_back(expected_offsets.size());
@@ -1490,7 +1497,12 @@ void read_and_check_sparse_array_string_dim(
   // Submit query
   test::ServerQueryBuffers server_buffers_;
   auto rc = test::submit_query_wrapper(
-      ctx, array_name, &query, server_buffers_, serialized);
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialized,
+      refactored_query_v2);
   REQUIRE(rc == TILEDB_OK);
 
   // Check the element data and offsets are properly returned
@@ -1504,11 +1516,12 @@ TEST_CASE(
     "C++ API: Test filtering of string dimensions on sparse arrays",
     "[cppapi][string-dims][rle-strings][dict-strings][sparse]") {
   std::string array_name = "test_rle_string_dim";
-
+  bool serialized = false, refactored_query_v2 = false;
 #ifdef TILEDB_SERIALIZATION
-  bool serialized = GENERATE(true, false);
-#else
-  bool serialized = false;
+  serialized = GENERATE(true, false);
+  if (serialized) {
+    refactored_query_v2 = GENERATE(true, false);
+  }
 #endif
 
   // Create data buffer to use
@@ -1554,69 +1567,82 @@ TEST_CASE(
 
   SECTION("Unordered write") {
     write_sparse_array_string_dim(
-        serialized, ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
-    SECTION("Row major read") {
-      read_and_check_sparse_array_string_dim(
-          serialized,
-          ctx,
-          array_name,
-          data,
-          data_elem_offsets,
-          TILEDB_ROW_MAJOR);
-    }
-    SECTION("Global order read") {
-      read_and_check_sparse_array_string_dim(
-          serialized,
-          ctx,
-          array_name,
-          data,
-          data_elem_offsets,
-          TILEDB_GLOBAL_ORDER);
-    }
-    SECTION("Unordered read") {
-      read_and_check_sparse_array_string_dim(
-          serialized,
-          ctx,
-          array_name,
-          data,
-          data_elem_offsets,
-          TILEDB_UNORDERED);
-    }
-  }
-  SECTION("Global order write") {
-    write_sparse_array_string_dim(
-        serialized,
         ctx,
         array_name,
         data,
         data_elem_offsets,
-        TILEDB_GLOBAL_ORDER);
+        TILEDB_UNORDERED,
+        serialized,
+        refactored_query_v2);
     SECTION("Row major read") {
       read_and_check_sparse_array_string_dim(
-          serialized,
           ctx,
           array_name,
           data,
           data_elem_offsets,
-          TILEDB_ROW_MAJOR);
+          TILEDB_ROW_MAJOR,
+          serialized,
+          refactored_query_v2);
     }
     SECTION("Global order read") {
       read_and_check_sparse_array_string_dim(
-          serialized,
           ctx,
           array_name,
           data,
           data_elem_offsets,
-          TILEDB_GLOBAL_ORDER);
+          TILEDB_GLOBAL_ORDER,
+          serialized,
+          refactored_query_v2);
     }
     SECTION("Unordered read") {
       read_and_check_sparse_array_string_dim(
-          serialized,
           ctx,
           array_name,
           data,
           data_elem_offsets,
-          TILEDB_UNORDERED);
+          TILEDB_UNORDERED,
+          serialized,
+          refactored_query_v2);
+    }
+  }
+  SECTION("Global order write") {
+    write_sparse_array_string_dim(
+        ctx,
+        array_name,
+        data,
+        data_elem_offsets,
+        TILEDB_GLOBAL_ORDER,
+        serialized,
+        refactored_query_v2);
+    SECTION("Row major read") {
+      read_and_check_sparse_array_string_dim(
+          ctx,
+          array_name,
+          data,
+          data_elem_offsets,
+          TILEDB_ROW_MAJOR,
+          serialized,
+          refactored_query_v2);
+    }
+    SECTION("Global order read") {
+      read_and_check_sparse_array_string_dim(
+          ctx,
+          array_name,
+          data,
+          data_elem_offsets,
+          TILEDB_GLOBAL_ORDER,
+          serialized,
+          refactored_query_v2);
+    }
+    SECTION("Unordered read") {
+      read_and_check_sparse_array_string_dim(
+          ctx,
+          array_name,
+          data,
+          data_elem_offsets,
+          TILEDB_UNORDERED,
+          serialized,
+          refactored_query_v2);
     }
   }
 

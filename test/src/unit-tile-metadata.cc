@@ -41,7 +41,7 @@ using namespace tiledb;
 
 template <typename TestType>
 struct CPPFixedTileMetadataFx {
-  // Buffers to allocate on query size for serialized queries
+  // Buffers to allocate on server side for serialized queries
   test::ServerQueryBuffers server_buffers_;
 
   CPPFixedTileMetadataFx()
@@ -111,12 +111,13 @@ struct CPPFixedTileMetadataFx {
   }
 
   void write_fragment(
-      const bool serialized_writes,
       uint64_t f,
       tiledb_layout_t layout,
       bool nullable,
       bool all_null,
-      uint64_t cell_val_num) {
+      uint64_t cell_val_num,
+      const bool serialized,
+      const bool refactored_query_v2) {
     std::default_random_engine random_engine;
 
     // Generate random, sorted strings for the string ascii type.
@@ -260,7 +261,12 @@ struct CPPFixedTileMetadataFx {
 
     // Submit query
     auto rc = test::submit_query_wrapper(
-        ctx_, ARRAY_NAME, &query, server_buffers_, serialized_writes);
+        ctx_,
+        ARRAY_NAME,
+        &query,
+        server_buffers_,
+        serialized,
+        refactored_query_v2);
     REQUIRE(rc == TILEDB_OK);
 
     array.close();
@@ -625,16 +631,16 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   typedef TestType T;
   std::string test = GENERATE("nullable", "all null", "non nullable");
 
-  bool serialized_writes = false;
+  bool serialized = false, refactored_query_v2 = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialized = true;
+    refactored_query_v2 = GENERATE(true, false);
   }
 #endif
-
   tiledb_layout_t layout =
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER, TILEDB_ROW_MAJOR);
 
@@ -651,7 +657,13 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   for (uint64_t f = 0; f < num_frag; f++) {
     // Write a fragment.
     CPPFixedTileMetadataFx<T>::write_fragment(
-        serialized_writes, f, layout, nullable, all_null, cell_val_num);
+        f,
+        layout,
+        nullable,
+        all_null,
+        cell_val_num,
+        serialized,
+        refactored_query_v2);
   }
 
   for (uint64_t f = 0; f < num_frag; f++) {
@@ -662,7 +674,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 }
 
 struct CPPVarTileMetadataFx {
-  // Buffers to allocate on query size for serialized queries
+  // Buffers to allocate on server side for serialized queries
   test::ServerQueryBuffers server_buffers_;
 
   CPPVarTileMetadataFx()
@@ -699,11 +711,12 @@ struct CPPVarTileMetadataFx {
   }
 
   void write_fragment(
-      const bool serialized_writes,
       uint64_t f,
       tiledb_layout_t layout,
       bool nullable,
-      bool all_null) {
+      bool all_null,
+      const bool serialized,
+      const bool refactored_query_v2) {
     std::default_random_engine random_engine;
 
     uint64_t max_string_size = 100;
@@ -799,7 +812,12 @@ struct CPPVarTileMetadataFx {
 
     // Submit query
     auto rc = test::submit_query_wrapper(
-        ctx_, ARRAY_NAME, &query, server_buffers_, serialized_writes);
+        ctx_,
+        ARRAY_NAME,
+        &query,
+        server_buffers_,
+        serialized,
+        refactored_query_v2);
     REQUIRE(rc == TILEDB_OK);
     array.close();
   }
@@ -1025,13 +1043,14 @@ TEST_CASE_METHOD(
     "[tile-metadata][var-data]") {
   std::string test = GENERATE("nullable", "all null", "non nullable");
 
-  bool serialized_writes = false;
+  bool serialized = false, refactored_query_v2 = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialized = true;
+    refactored_query_v2 = GENERATE(true, false);
   }
 #endif
 
@@ -1049,7 +1068,7 @@ TEST_CASE_METHOD(
   for (uint64_t f = 0; f < num_frag; f++) {
     // Write a fragment.
     CPPVarTileMetadataFx::write_fragment(
-        serialized_writes, f, layout, nullable, all_null);
+        f, layout, nullable, all_null, serialized, refactored_query_v2);
   }
 
   for (uint64_t f = 0; f < num_frag; f++) {

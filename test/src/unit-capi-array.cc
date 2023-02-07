@@ -87,7 +87,10 @@ struct ArrayFx {
   tiledb_encryption_type_t encryption_type_ = TILEDB_NO_ENCRYPTION;
   const char* encryption_key_ = nullptr;
 
-  // Buffers to allocate on query size for serialized queries
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
   tiledb::test::ServerQueryBuffers server_buffers_;
 
   // Functions
@@ -885,16 +888,16 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "array-open-at-reads";
-  bool serialized = false;
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
     encryption_key_ = nullptr;
     SECTION("no serialization") {
-      serialized = false;
+      serialize_ = false;
     }
 #ifdef TILEDB_SERIALIZATION
     SECTION("serialization enabled") {
-      serialized = true;
+      serialize_ = true;
+      refactored_query_v2_ = GENERATE(true, false);
     }
 #endif
   }
@@ -902,14 +905,6 @@ TEST_CASE_METHOD(
   SECTION("- with encryption") {
     encryption_type_ = TILEDB_AES_256_GCM;
     encryption_key_ = "0123456789abcdeF0123456789abcdeF";
-    SECTION("no serialization") {
-      serialized = false;
-    }
-    SECTION("serialization enabled") {
-#ifdef TILEDB_SERIALIZATION
-      serialized = true;
-#endif
-    }
   }
 
   create_temp_dir(temp_dir);
@@ -960,7 +955,12 @@ TEST_CASE_METHOD(
       ctx_, query, "a", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb::test::submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1010,7 +1010,12 @@ TEST_CASE_METHOD(
       ctx_, query, "a", buffer_upd, &buffer_upd_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb::test::submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1069,7 +1074,12 @@ TEST_CASE_METHOD(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb::test::submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1128,7 +1138,12 @@ TEST_CASE_METHOD(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb::test::submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1180,7 +1195,12 @@ TEST_CASE_METHOD(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb::test::submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1238,7 +1258,12 @@ TEST_CASE_METHOD(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb::test::submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Clean up but don't close the array yet (we will reopen it).
@@ -1270,7 +1295,12 @@ TEST_CASE_METHOD(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb::test::submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Clean up but don't close the array yet (we will reopen it).
@@ -1305,7 +1335,12 @@ TEST_CASE_METHOD(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb::test::submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1370,7 +1405,12 @@ TEST_CASE_METHOD(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb::test::submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1435,7 +1475,12 @@ TEST_CASE_METHOD(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb::test::submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1474,16 +1519,16 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "array-open-at-writes";
-  bool serialized = false;
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
     encryption_key_ = nullptr;
     SECTION("no serialization") {
-      serialized = false;
+      serialize_ = false;
     }
 #ifdef TILEDB_SERIALIZATION
     SECTION("serialization enabled") {
-      serialized = true;
+      serialize_ = true;
+      refactored_query_v2_ = GENERATE(true, false);
     }
 #endif
   }
@@ -1491,14 +1536,6 @@ TEST_CASE_METHOD(
   SECTION("- with encryption") {
     encryption_type_ = TILEDB_AES_256_GCM;
     encryption_key_ = "0123456789abcdeF0123456789abcdeF";
-    SECTION("no serialization") {
-      serialized = false;
-    }
-    SECTION("serialization enabled") {
-#ifdef TILEDB_SERIALIZATION
-      serialized = true;
-#endif
-    }
   }
 
   create_temp_dir(temp_dir);
@@ -1551,7 +1588,12 @@ TEST_CASE_METHOD(
       ctx_, query, "a", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb::test::submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Get written timestamp
@@ -1617,7 +1659,12 @@ TEST_CASE_METHOD(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb::test::submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1669,7 +1716,12 @@ TEST_CASE_METHOD(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb::test::submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialized);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -2575,24 +2627,33 @@ TEST_CASE_METHOD(
   // opened
   tiledb_query_t* deserialized_query;
   std::vector<uint8_t> serialized;
-  rc = tiledb_query_v2_serialize(
-      ctx_,
-      array_name.c_str(),
-      serialized,
-      true,
-      query_client,
-      &deserialized_query);
+  rc = serialize_query(ctx_, query_client, &serialized, 1);
   REQUIRE(rc == TILEDB_OK);
 
-  // 9. Server: Submit query WITHOUT re-opening the array, using under the hood
+  // 9. Server: Deserialize query request
+  // Allocate new context for server
+  tiledb_ctx_t* server_ctx;
+  tiledb_ctx_alloc(config, &server_ctx);
+  rc = deserialize_array_and_query(
+      server_ctx, serialized, &deserialized_query, array_name.c_str(), 0);
+
+  // 10. Server: Submit query WITHOUT re-opening the array, using under the hood
   // the array found in the deserialized query
-  rc = tiledb_query_submit(ctx_, deserialized_query);
+  rc = tiledb_query_submit(server_ctx, deserialized_query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, deserialized_query);
+  rc = tiledb_query_finalize(server_ctx, deserialized_query);
   CHECK(rc == TILEDB_OK);
 
-  // 10. Server: serialize the query with the results back to the client
-  // 11. Client: deserialize
+  // 11. Server: serialize the query with the results back to the client
+  rc = serialize_query(server_ctx, deserialized_query, &serialized, 0);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_ctx_free(&server_ctx);
+  CHECK(server_ctx == nullptr);
+
+  // 12. Client: Deserialize query
+  rc = deserialize_query(ctx_, serialized, query_client, 1);
+  REQUIRE(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_free(&array);

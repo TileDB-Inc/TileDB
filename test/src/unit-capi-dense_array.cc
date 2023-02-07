@@ -94,12 +94,6 @@ struct DenseArrayFx {
   tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
   const char* encryption_key = nullptr;
 
-  /**
-   * If true, queries are serialized before submission, to test the
-   * serialization paths.
-   */
-  bool serialize_query_ = false;
-
   // use separate subarray prepared 'outside' of a query
   bool use_external_subarray_ = false;
 
@@ -110,7 +104,10 @@ struct DenseArrayFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
-  // Buffers to allocate on query size for serialized queries
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
   ServerQueryBuffers server_buffers_;
 
   // Functions
@@ -515,7 +512,8 @@ int* DenseArrayFx::read_dense_array_2D(
     REQUIRE(rc == TILEDB_OK);
     tiledb_config_free(&cfg);
   }
-  rc = array_open_wrapper(ctx_, query_type, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, query_type, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -538,7 +536,12 @@ int* DenseArrayFx::read_dense_array_2D(
 
   // Read from array
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Now the query must have results
@@ -603,7 +606,8 @@ void DenseArrayFx::write_dense_vector_mixed(const std::string& array_name) {
     REQUIRE(rc == TILEDB_OK);
     tiledb_config_free(&cfg);
   }
-  rc = array_open_wrapper(ctx_, TILEDB_WRITE, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_WRITE, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Submit query #1 - Dense
@@ -618,7 +622,12 @@ void DenseArrayFx::write_dense_vector_mixed(const std::string& array_name) {
   rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query_1, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query_1,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query_1);
 
@@ -634,7 +643,12 @@ void DenseArrayFx::write_dense_vector_mixed(const std::string& array_name) {
       ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query_2, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query_2,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query_2);
 
@@ -650,7 +664,12 @@ void DenseArrayFx::write_dense_vector_mixed(const std::string& array_name) {
       ctx_, query_3, "d", coords_3, &coords_3_size);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query_3, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query_3,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query_3);
 
@@ -667,7 +686,12 @@ void DenseArrayFx::write_dense_vector_mixed(const std::string& array_name) {
   rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query_4, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query_4,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query_4);
 
@@ -721,7 +745,8 @@ void DenseArrayFx::write_dense_array_by_tiles(
     REQUIRE(rc == TILEDB_OK);
     tiledb_config_free(&cfg);
   }
-  rc = array_open_wrapper(ctx_, TILEDB_WRITE, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_WRITE, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -799,7 +824,8 @@ void DenseArrayFx::write_dense_subarray_2D(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK_SAFE(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_WRITE, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_WRITE, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -816,7 +842,12 @@ void DenseArrayFx::write_dense_subarray_2D(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE_SAFE(rc == TILEDB_OK);
 
   // Close array
@@ -844,7 +875,8 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_WRITE, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_WRITE, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -1026,7 +1058,8 @@ void DenseArrayFx::check_sorted_reads(const std::string& path) {
     REQUIRE(rc == TILEDB_OK);
     tiledb_config_free(&cfg);
   }
-  rc = array_open_wrapper(ctx_, TILEDB_READ, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_READ, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Check out of bounds subarray
@@ -1197,7 +1230,8 @@ void DenseArrayFx::check_invalid_cell_num_in_dense_writes(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_WRITE, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_WRITE, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Global order
@@ -1224,7 +1258,12 @@ void DenseArrayFx::check_invalid_cell_num_in_dense_writes(
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_ERR);
   tiledb_query_free(&query);
 
@@ -1697,7 +1736,8 @@ void DenseArrayFx::write_dense_array(const std::string& array_name) {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_WRITE, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_WRITE, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -1720,7 +1760,12 @@ void DenseArrayFx::write_dense_array(const std::string& array_name) {
   CHECK(rc == TILEDB_OK);
 
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -1772,7 +1817,8 @@ void DenseArrayFx::write_dense_array_missing_attributes(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_WRITE, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_WRITE, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -1795,7 +1841,12 @@ void DenseArrayFx::write_dense_array_missing_attributes(
 
   // Submit query - this should fail
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_ERR);
 
   // Close array
@@ -1831,7 +1882,8 @@ void DenseArrayFx::write_partial_dense_array(const std::string& array_name) {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_WRITE, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_WRITE, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -1857,7 +1909,12 @@ void DenseArrayFx::write_partial_dense_array(const std::string& array_name) {
   CHECK(rc == TILEDB_OK);
 
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -1916,7 +1973,12 @@ void DenseArrayFx::write_large_dense_array(const std::string& array_name) {
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -1964,7 +2026,8 @@ void DenseArrayFx::read_dense_vector_mixed(const std::string& array_name) {
     REQUIRE(rc == TILEDB_OK);
     tiledb_config_free(&cfg);
   }
-  rc = array_open_wrapper(ctx_, TILEDB_READ, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_READ, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Preparation
@@ -1983,7 +2046,12 @@ void DenseArrayFx::read_dense_vector_mixed(const std::string& array_name) {
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2032,7 +2100,8 @@ void DenseArrayFx::read_dense_array_with_coords_full_global(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_READ, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_READ, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -2094,7 +2163,12 @@ void DenseArrayFx::read_dense_array_with_coords_full_global(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2175,7 +2249,8 @@ void DenseArrayFx::read_dense_array_with_coords_full_row(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_READ, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_READ, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -2237,7 +2312,12 @@ void DenseArrayFx::read_dense_array_with_coords_full_row(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2316,7 +2396,8 @@ void DenseArrayFx::read_dense_array_with_coords_full_col(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_READ, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_READ, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -2378,7 +2459,12 @@ void DenseArrayFx::read_dense_array_with_coords_full_col(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2459,7 +2545,8 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_global(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_READ, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_READ, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -2521,7 +2608,12 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_global(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2601,7 +2693,8 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_row(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_READ, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_READ, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -2663,7 +2756,12 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_row(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2743,7 +2841,8 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_READ, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_READ, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -2805,7 +2904,12 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2866,7 +2970,8 @@ void DenseArrayFx::read_large_dense_array(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_READ, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_READ, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -2889,7 +2994,12 @@ void DenseArrayFx::read_large_dense_array(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2913,7 +3023,8 @@ void DenseArrayFx::check_non_empty_domain(const std::string& path) {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_READ, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_READ, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
   int is_empty;
   uint64_t domain[4];
@@ -2935,7 +3046,8 @@ void DenseArrayFx::check_non_empty_domain(const std::string& path) {
   write_partial_dense_array(array_name);
 
   // Open array
-  rc = array_open_wrapper(ctx_, TILEDB_READ, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_READ, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Check non-empty domain
@@ -3023,11 +3135,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, sorted reads",
     "[capi][dense][sorted_reads][longtest]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
+#ifdef TILEDB_SERIALIZATION
   SECTION("- Serialization") {
-    serialize_query_ = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -3041,12 +3156,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, invalid number of cells in dense writes",
     "[capi][dense][invalid_cell_num_writes]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
+#ifdef TILEDB_SERIALIZATION
   SECTION("- Serialization") {
-    serialize_query_ = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
-
+#endif
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
@@ -3059,11 +3176,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, sorted writes",
     "[capi][dense][sorted_writes]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
+#ifdef TILEDB_SERIALIZATION
   SECTION("- Serialization") {
-    serialize_query_ = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -3077,11 +3197,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, simultaneous writes",
     "[capi][dense][dense-simultaneous-writes]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
+#ifdef TILEDB_SERIALIZATION
   SECTION("- Serialization") {
-    serialize_query_ = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -3095,22 +3218,28 @@ TEST_CASE_METHOD(
     "C API: Test dense array, cancel and retry writes",
     "[capi][dense][async][cancel]") {
   SECTION("- No serialization nor outside subarray") {
-    serialize_query_ = false;
+    serialize_ = false;
     use_external_subarray_ = false;
   }
+#ifdef TILEDB_SERIALIZATION
   SECTION("- Serialization, no outside subarray") {
-    serialize_query_ = true;
+    serialize_ = true;
     use_external_subarray_ = false;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   SECTION("- no serialization, with outside subarray") {
-    serialize_query_ = false;
+    serialize_ = false;
     use_external_subarray_ = true;
   }
+#ifdef TILEDB_SERIALIZATION
   SECTION("- Serialization, with outside subarray") {
-    serialize_query_ = true;
+    serialize_ = true;
     use_external_subarray_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -3126,7 +3255,7 @@ TEST_CASE_METHOD(
   bool split_coords = false;
 
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
 
     SECTION("-- zipped coordinates") {
       split_coords = false;
@@ -3136,10 +3265,10 @@ TEST_CASE_METHOD(
       split_coords = true;
     }
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
-    serialize_query_ = true;
-#endif
+  SECTION("- Serialization") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
 
     SECTION("-- zipped coordinates") {
       split_coords = false;
@@ -3149,6 +3278,7 @@ TEST_CASE_METHOD(
       split_coords = true;
     }
   }
+#endif
 
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -3162,13 +3292,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, non-empty domain",
     "[capi][dense][dense-non-empty]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
-    serialize_query_ = true;
-#endif
+  SECTION("- Serialization") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   SupportedFsLocal local_fs;
 
@@ -3183,13 +3314,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, invalid set query buffer",
     "[capi][dense][invalid_set_query_buffer]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
-    serialize_query_ = true;
-#endif
+  SECTION("- Serialization") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -3204,7 +3336,8 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = array_open_wrapper(ctx_, TILEDB_READ, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_READ, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   // Allocate query
@@ -3237,7 +3370,12 @@ TEST_CASE_METHOD(
 
   // Check no buffers set
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_ERR);
 
   // Issue an incomplete query
@@ -3245,7 +3383,13 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   // This is an incomplete query, do not finalize
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_, false);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   CHECK(rc == TILEDB_OK);
 
   // Check that setting a new attribute for an incomplete query fails
@@ -3259,7 +3403,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Close array
-  if (serialize_query_ == false) {
+  if (serialize_ == false) {
     rc = tiledb_array_close(ctx_, array);
     CHECK(rc == TILEDB_OK);
   }
@@ -3336,7 +3480,12 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_ERR);
 
   // Close array
@@ -3345,7 +3494,12 @@ TEST_CASE_METHOD(
 
   // Submitting the query after closing an array should fail
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_ERR);
 
   // Clean up
@@ -3406,7 +3560,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_subarray(ctx_, query_1, &subarray[0]);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query_1, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query_1,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // The read query should not see the second fragment
@@ -3429,7 +3588,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_subarray(ctx_, query_2, &subarray[0]);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query_2, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query_2,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // The new query see the updated array
@@ -3469,13 +3633,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, URI ending in a slash",
     "[capi][dense][uri-ending-slash]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
-    serialize_query_ = true;
-#endif
+  SECTION("- Serialization") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -3492,11 +3657,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, missing attributes in writes",
     "[capi][dense][write-missing-attributes]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
+#ifdef TILEDB_SERIALIZATION
   SECTION("- Serialization") {
-    serialize_query_ = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -3512,11 +3680,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, read subarrays with empty cells",
     "[capi][dense][read_empty]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
+#ifdef TILEDB_SERIALIZATION
   SECTION("- Serialization") {
-    serialize_query_ = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -3546,7 +3717,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -3588,7 +3764,12 @@ TEST_CASE_METHOD(
       ctx_, query, attributes[0], read_a1, &read_a1_size);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -3606,11 +3787,14 @@ TEST_CASE_METHOD(
     "adjacent cell ranges",
     "[capi][dense][dense-read-empty][dense-read-empty-merge]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
+#ifdef TILEDB_SERIALIZATION
   SECTION("- Serialization") {
-    serialize_query_ = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -3640,7 +3824,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -3682,7 +3871,12 @@ TEST_CASE_METHOD(
       ctx_, query, attributes[0], read_a1, &read_a1_size);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -3699,11 +3893,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, multi-fragment reads",
     "[capi][dense][dense-multi-fragment]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
+#ifdef TILEDB_SERIALIZATION
   SECTION("- Serialization") {
-    serialize_query_ = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -3732,7 +3929,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_subarray(ctx_, query, subarray_1);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -3757,7 +3959,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_subarray(ctx_, query, subarray_2);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -3798,7 +4005,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(ctx_, query, "a1", read_a, &read_a_size);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -3815,11 +4027,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, check if open",
     "[capi][dense][dense-is-open]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
+#ifdef TILEDB_SERIALIZATION
   SECTION("- Serialization") {
-    serialize_query_ = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -3860,11 +4075,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, get schema from opened array",
     "[capi][dense][dense-get-schema]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
+#ifdef TILEDB_SERIALIZATION
   SECTION("- Serialization") {
-    serialize_query_ = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -3900,13 +4118,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, read in col-major after updates",
     "[capi][dense][dense-col-updates]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
-    serialize_query_ = true;
-#endif
+  SECTION("- Serialization") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -3936,7 +4155,12 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &wq1, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &wq1,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -3964,7 +4188,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_layout(ctx_, wq2, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &wq2, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &wq2,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, wq2);
   REQUIRE(rc == TILEDB_OK);
@@ -3994,7 +4223,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_layout(ctx_, wq3, TILEDB_COL_MAJOR);
   REQUIRE(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &wq3, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &wq3,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, wq3);
   REQUIRE(rc == TILEDB_OK);
@@ -4025,7 +4259,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
@@ -4062,13 +4301,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, splitting to unary ranges",
     "[capi][dense][splitting][unary-range]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
-    serialize_query_ = true;
-#endif
+  SECTION("- Serialization") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -4086,7 +4326,8 @@ TEST_CASE_METHOD(
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
 
-  rc = array_open_wrapper(ctx_, TILEDB_READ, serialize_query_, &array);
+  rc = array_open_wrapper(
+      ctx_, TILEDB_READ, (serialize_ && refactored_query_v2_), &array);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_t* query;
@@ -4112,7 +4353,13 @@ TEST_CASE_METHOD(
   int c_a1[] = {0, 1, 4, 5, 2, 3, 6, 7, 8, 9, 12, 13, 10, 11, 14, 15};
   for (uint64_t i = 0; i < 16; i++) {
     rc = submit_query_wrapper(
-        ctx_, array_name, &query, server_buffers_, serialize_query_, false);
+        ctx_,
+        array_name,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        false);
     CHECK(rc == TILEDB_OK);
 
     rc = tiledb_query_get_status(ctx_, query, &status);
@@ -4135,13 +4382,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, subarray default dim",
     "[capi][dense][default-dim]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
-    serialize_query_ = true;
-#endif
+  SECTION("- Serialization") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -4174,7 +4422,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(ctx_, query, "a1", a1, &a1_size);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -4199,11 +4452,14 @@ TEST_CASE_METHOD(
     "change",
     "[capi][dense][overlapping-fragments][same-tile][cell-order-change]") {
   SECTION("- No serialization") {
-    serialize_query_ = false;
+    serialize_ = false;
   }
+#ifdef TILEDB_SERIALIZATION
   SECTION("- Serialization") {
-    serialize_query_ = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -4243,7 +4499,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query);
 
@@ -4271,7 +4532,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_subarray(ctx_, query, subarray_2);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -4308,7 +4574,12 @@ TEST_CASE_METHOD(
       ctx_, query, attributes[1], read_a2, &read_a2_size);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_query_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
@@ -4325,12 +4596,12 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, simple multi-index",
     "[capi][dense][multi-index][simple]") {
-  SECTION("- No serialization") {
-    serialize_query_ = false;
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
   }
-  SECTION("- Serialization") {
-    serialize_query_ = true;
-  }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -4382,12 +4653,12 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, complex multi-index",
     "[capi][dense][multi-index][complex]") {
-  SECTION("- No serialization") {
-    serialize_query_ = false;
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
   }
-  SECTION("- Serialization") {
-    serialize_query_ = true;
-  }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -4456,12 +4727,12 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, multi-index, cross tile boundary",
     "[capi][dense][multi-index][cross-tile-boundary]") {
-  SECTION("- No serialization") {
-    serialize_query_ = false;
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
   }
-  SECTION("- Serialization") {
-    serialize_query_ = true;
-  }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -4513,12 +4784,12 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, multi-index, out of order ranges",
     "[capi][dense][multi-index][out-of-order-ranges]") {
-  SECTION("- No serialization") {
-    serialize_query_ = false;
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
   }
-  SECTION("- Serialization") {
-    serialize_query_ = true;
-  }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
@@ -4570,12 +4841,12 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, multi-index, out of order ranges, coalesce",
     "[capi][dense][multi-index][out-of-order-ranges-2]") {
-  SECTION("- No serialization") {
-    serialize_query_ = false;
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
   }
-  SECTION("- Serialization") {
-    serialize_query_ = true;
-  }
+#endif
 
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();

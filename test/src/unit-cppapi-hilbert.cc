@@ -108,7 +108,8 @@ void write_2d_array(
     std::vector<T2>& buff_d2,
     std::vector<int32_t>& buff_a,
     tiledb_layout_t layout,
-    const bool serialized = false) {
+    const bool serialized = false,
+    const bool refactored_query_v2 = false) {
   Context ctx;
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w, TILEDB_WRITE);
@@ -119,7 +120,12 @@ void write_2d_array(
   // Submit query
   test::ServerQueryBuffers server_buffers_;
   auto rc = test::submit_query_wrapper(
-      ctx, array_name, &query_w, server_buffers_, serialized);
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialized,
+      refactored_query_v2);
   REQUIRE(rc == TILEDB_OK);
 
   array_w.close();
@@ -252,13 +258,14 @@ TEST_CASE("C++ API: Test Hilbert, errors", "[cppapi][hilbert][error]") {
 TEST_CASE(
     "C++ API: Test Hilbert, test 2D, int32, write unordered, read global",
     "[cppapi][hilbert][2d][int32]") {
-  bool serialized = false;
+  bool serialized = false, refactored_query_v2 = false;
   SECTION("no serialization") {
     serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
     serialized = true;
+    refactored_query_v2 = GENERATE(true, false);
   }
 #endif
   Context ctx;
@@ -279,7 +286,13 @@ TEST_CASE(
   std::vector<int32_t> buff_d1 = {1, 1, 4, 5};
   std::vector<int32_t> buff_d2 = {1, 3, 2, 4};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED, serialized);
+      array_name,
+      buff_d1,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED,
+      serialized,
+      refactored_query_v2);
 
   // Read
   SECTION("- Global order") {
@@ -294,7 +307,12 @@ TEST_CASE(
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     // Submit query
     auto rc = test::submit_query_wrapper(
-        ctx, array_name, &query_r, server_buffers_, serialized);
+        ctx,
+        array_name,
+        &query_r,
+        server_buffers_,
+        serialized,
+        refactored_query_v2);
     REQUIRE(rc == TILEDB_OK);
     array_r.close();
 
@@ -319,7 +337,12 @@ TEST_CASE(
     query_r.set_layout(TILEDB_ROW_MAJOR);
     // Submit query
     auto rc = test::submit_query_wrapper(
-        ctx, array_name, &query_r, server_buffers_, serialized);
+        ctx,
+        array_name,
+        &query_r,
+        server_buffers_,
+        serialized,
+        refactored_query_v2);
     REQUIRE(rc == TILEDB_OK);
     array_r.close();
 
@@ -344,7 +367,12 @@ TEST_CASE(
     query_r.set_layout(TILEDB_COL_MAJOR);
     // Submit query
     auto rc = test::submit_query_wrapper(
-        ctx, array_name, &query_r, server_buffers_, serialized);
+        ctx,
+        array_name,
+        &query_r,
+        server_buffers_,
+        serialized,
+        refactored_query_v2);
     REQUIRE(rc == TILEDB_OK);
     array_r.close();
 
@@ -370,7 +398,12 @@ TEST_CASE(
     query_r.set_layout(TILEDB_UNORDERED);
     // Submit query
     auto rc = test::submit_query_wrapper(
-        ctx, array_name, &query_r, server_buffers_, serialized);
+        ctx,
+        array_name,
+        &query_r,
+        server_buffers_,
+        serialized,
+        refactored_query_v2);
     REQUIRE(rc == TILEDB_OK);
     array_r.close();
 
@@ -405,7 +438,13 @@ TEST_CASE(
     query_r.set_layout(TILEDB_UNORDERED);
     // Submit query
     auto rc = test::submit_query_wrapper(
-        ctx, array_name, &query_r, server_buffers_, serialized, false);
+        ctx,
+        array_name,
+        &query_r,
+        server_buffers_,
+        serialized,
+        refactored_query_v2,
+        false);
     REQUIRE(rc == TILEDB_OK);
     CHECK(query_r.query_status() == tiledb::Query::Status::COMPLETE);
     // check number of results
@@ -547,13 +586,14 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, test writing in global order",
     "[cppapi][hilbert][write][global-order]") {
-  bool serialized = false;
+  bool serialized = false, refactored_query_v2 = false;
   SECTION("no serialization") {
     serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
     serialized = true;
+    refactored_query_v2 = GENERATE(true, false);
   }
 #endif
 
@@ -587,7 +627,12 @@ TEST_CASE(
 
   test::ServerQueryBuffers server_buffers_;
   auto rc = test::submit_query_wrapper(
-      ctx, array_name, &query_w, server_buffers_, serialized);
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialized,
+      refactored_query_v2);
   REQUIRE(rc == TILEDB_OK);
 
   // Remove array
