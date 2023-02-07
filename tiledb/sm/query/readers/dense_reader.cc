@@ -150,7 +150,7 @@ void DenseReader::initialize_memory_budget() {
   }
 
   // Set the memory budget for the array
-  array_memory_tracker_->set_budget(memory_budget_ - tile_memory_budget_);
+  array_memory_tracker_->set_budget(memory_budget_);
 }
 
 const DenseReader::ReadState* DenseReader::read_state() const {
@@ -647,6 +647,9 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
     uint64_t t_start,
     std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles) {
   // For easy reference.
+  const uint64_t left_over_budget = std::min(
+      tile_memory_budget_,
+      memory_budget_ - array_memory_tracker_->get_memory_usage());
   const auto& tile_coords = subarray.tile_coords();
 
   // Keep track of the required memory to load the result space tiles. The first
@@ -679,7 +682,7 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
 
     // If we reached the memory budget, stop. Always include the first tile.
     if (t_end != t_start &&
-        required_memory[0] + condition_memory > tile_memory_budget_) {
+        required_memory[0] + condition_memory > left_over_budget) {
       done = true;
       break;
     } else {
@@ -699,7 +702,7 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
 
       // If we reached the memory budget, stop. Always include the first tile.
       if (t_end != t_start &&
-          required_memory[r_idx] + tile_memory > tile_memory_budget_) {
+          required_memory[r_idx] + tile_memory > left_over_budget) {
         done = true;
         break;
       } else {
