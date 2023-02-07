@@ -27,8 +27,8 @@
  * THE SOFTWARE.
  */
 
-#include "test/support/tdb_catch.h"
 #include "../synchronized_optional.h"
+#include "test/support/tdb_catch.h"
 
 /*
  * Comparison tests

@@ -74,7 +74,7 @@ class [[maybe_unused]] controlled_reference_default_traits {
    * @param source
    * @return
    */
-  handle_type attach(H & source) {
+  handle_type attach(H& source) {
     return source.attach();
   }
 
@@ -84,7 +84,7 @@ class [[maybe_unused]] controlled_reference_default_traits {
    * @param source
    * @return
    */
-  handle_type attach(H & source, std::adopt_lock_t) {
+  handle_type attach(H& source, std::adopt_lock_t) {
     return source.attach(std::adopt_lock);
   }
 };
